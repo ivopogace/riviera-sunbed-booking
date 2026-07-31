@@ -1,6 +1,6 @@
 import { Directive } from '@angular/core';
 
-// Tailwind twins of the shared/_glass.scss `failure-*` mixins (spike: SCSS-vs-Tailwind comparison) —
+// Tailwind twins of the retired shared/_glass.scss `failure-*` mixins (spike: SCSS-vs-Tailwind comparison) —
 // the load-failure panel shared by Discover (#149) and the beach map (#136). Four co-located
 // directives, one per element of the panel; the "Try again" button is already <app-retry-button>.
 // Directives, not mixins (see shared/retry-button.ts). Import the whole set via FAILURE_DIRECTIVES.

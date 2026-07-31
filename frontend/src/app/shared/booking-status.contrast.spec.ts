@@ -1,12 +1,12 @@
 import { AA_NORMAL, contrastRatio } from '../../testing/contrast';
 
 /**
- * WCAG-AA contrast guard for the shared status chips (introduced #138, extracted to the shared
- * `status-chip` mixin at #139). The chips use OPAQUE SOLID fills (the css:S7924 treatment — see
- * `shared/_glass.scss` `status-chip`), so their text contrast is theme-independent and asserted
- * directly. This is the **single home** of that proof — both `booking-view` and `my-bookings`
- * consume the mixin, so the assertion lives here once (not duplicated per consumer). Values mirror
- * the `status-chip` mixin.
+ * WCAG-AA contrast guard for the shared status chips (introduced #138, extracted to a shared
+ * `status-chip` recipe at #139, ported to the `shared/status-chip.ts` directive at #477). The chips
+ * use OPAQUE SOLID fills (the css:S7924 treatment — see `shared/status-chip.ts`), so their text
+ * contrast is theme-independent and asserted directly. This is the **single home** of that proof —
+ * both `booking-view` and `my-bookings` consume the directive, so the assertion lives here once
+ * (not duplicated per consumer). Values mirror that directive's `FILLS` map.
  */
 const CHIPS: readonly [status: string, ink: string, fill: string][] = [
   ['CONFIRMED', '#0e6e46', '#d9f2e7'],
@@ -20,7 +20,7 @@ const CHIPS: readonly [status: string, ink: string, fill: string][] = [
   ['WITHDRAWN', '#5c5470', '#eeecf4'],
 ];
 
-describe('Status chips (solid fills, WCAG AA) — shared/_glass.scss status-chip', () => {
+describe('Status chips (solid fills, WCAG AA) — shared/status-chip.ts', () => {
   it.each(CHIPS)('the %s chip ink meets AA on its solid fill', (_status, ink, fill) => {
     expect(contrastRatio(ink, fill)).toBeGreaterThanOrEqual(AA_NORMAL);
   });

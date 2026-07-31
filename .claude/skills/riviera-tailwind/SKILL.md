@@ -11,8 +11,8 @@ description: The how-to-write-Tailwind authority for the riviera-sunbed-booking 
 
 Tailwind v4 is the **go-forward** for styling here; component SCSS is being retired
 (precedent: `shared/retry-button.ts`, then the beach-map migration — the `shared/*-glass`
-+ `amenity-chip` + `failure-panel` directives and 7 migrated components). Those files are
-worked examples: **read the nearest one before styling**, don't re-derive the pattern.
++ `amenity-chip` + `status-chip` + `failure-panel` directives and 8 migrated components). Those
+files are worked examples: **read the nearest one before styling**, don't re-derive the pattern.
 This skill states only the few decisions and traps the *code can't show you*.
 
 ## The rules
@@ -83,9 +83,12 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 
 ## SCSS→Tailwind migration checklist
 
-The bulk of what remains is `booking/` — 7 of the ~13 remaining `.scss` files under
+The bulk of what remains is `booking/` — 6 of the 11 remaining `.scss` files under
 `frontend/src/app` sit there (plus `app.scss`, `auth.scss`, `home.scss` — the scrim
-stays SCSS on purpose — `operator-console.scss`, `venue-editor.scss`, `shared/_glass.scss`).
+stays SCSS on purpose — `operator-console.scss`, `venue-editor.scss`). **There is no shared
+SCSS left**: `shared/_glass.scss` was retired at #477 when its last recipe, `status-chip`, became
+`shared/status-chip.ts` — so step 1's inventory now finds a shared recipe only if a new one has
+been added since.
 
 1. Inventory the shared SCSS recipes the file uses **and their blast radius** (grep every
    `@include`/`@extend`). This decides scope.

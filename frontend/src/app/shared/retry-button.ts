@@ -1,6 +1,6 @@
 import { Component, input, output } from '@angular/core';
 
-// Tailwind twin of the shared/_glass.scss `failure-retry` + `retry-focus-ring` mixins (spike:
+// Tailwind twin of the retired shared/_glass.scss `failure-retry` + `retry-focus-ring` mixins (spike:
 // SCSS-vs-Tailwind comparison). A component, not a mixin — Tailwind has no CSS-level sharing
 // primitive, so reuse across home.ts/venue-map.ts moves to the component layer instead.
 @Component({

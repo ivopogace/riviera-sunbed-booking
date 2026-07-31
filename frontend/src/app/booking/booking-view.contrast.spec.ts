@@ -17,10 +17,12 @@ import {
  *  1. Card-surface text sits on the translucent card glass over the bare gradient, so each pair is
  *     the EFFECTIVE colour composited over the theme's worst-case stops (the confirmation-card
  *     pattern) — proven with `expectAaOverStops`.
- *  2. Status banners and the cancel buttons use OPAQUE SOLID fills (the css:S7924 treatment — see
- *     booking-view.scss), so their text contrast is theme-independent and asserted directly with
- *     `contrastRatio`. Values mirror booking-view.scss. (The status **chips** moved to the shared
- *     `status-chip` mixin at #139 — their AA proof lives in `shared/booking-status.contrast.spec.ts`.)
+ *  2. Status banners and the cancel buttons use OPAQUE SOLID fills (the css:S7924 treatment), so
+ *     their text contrast is theme-independent and asserted directly with `contrastRatio`. Values
+ *     mirror the `CLS` recipes in `booking-view.ts` — the component's SCSS was retired at #477, so
+ *     the utilities on those elements are what these numbers must track. (The status **chips**
+ *     moved to a shared recipe at #139 and to the `shared/status-chip.ts` directive at #477 — their
+ *     AA proof lives in `shared/booking-status.contrast.spec.ts`.)
  */
 
 const ACCENT = '#085a6e'; // --riv-accent-ink (booking code, Paid amount, cancel result, links)

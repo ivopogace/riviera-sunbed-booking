@@ -6,7 +6,8 @@ import { AA_NORMAL, contrastRatio } from '../../testing/contrast';
  * contrast is theme-independent and asserted directly on the ink/fill pair — the same chip reads
  * AA on both the light Discover card and the dark glass beach-map header. This is the single home
  * of that proof; values mirror that directive's `classes()` list. (The `_glass.scss` `amenity-chip`
- * mixin this once cited was ported to that directive; only `status-chip` still lives there.)
+ * mixin this once cited was ported to that directive; `status-chip` followed at #477 and that file
+ * is now retired.)
  */
 const CHIPS: readonly [name: string, ink: string, fill: string][] = [
   ['amenity-chip (neutral tag)', '#2f4a54', '#eef2f4'],

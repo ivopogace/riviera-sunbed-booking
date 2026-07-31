@@ -1,4 +1,11 @@
-import { Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  afterRenderEffect,
+  Component,
+  ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -7,9 +14,61 @@ import { metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
+import { StatusChip } from '../shared/status-chip';
 import { MoneyView } from '../venue/venue.model';
 import { BookingDetail, Cancellation } from './booking.model';
 import { BookingService } from './booking.service';
+
+/** The card-glass EXTRAS `appCardGlass` deliberately doesn't carry (radius stays with the consumer). */
+const CARD_SURFACE =
+  'rounded-[28px] backdrop-blur-[26px] backdrop-saturate-[170%] shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)]';
+
+const BANNER =
+  'mx-0 mt-[18px] mb-1 rounded-[20px] border px-[18px] py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]';
+const BTN =
+  'cursor-pointer rounded-[14px] px-[18px] py-[11px] text-[14px] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) disabled:cursor-not-allowed disabled:opacity-65';
+const BTN_OUTLINE = `${BTN} border-[1.5px] bg-[#f4f6f7] font-semibold [transition:background_0.15s_ease] hover:bg-[#e7ebec]`;
+const LINK =
+  'text-[14.5px] font-semibold text-(--riv-accent-ink) underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)';
+
+/** The repeated Tailwind recipes of this view — see {@link BookingView} for why they live here. */
+const CLS = {
+  card: `${CARD_SURFACE} mx-auto my-8 max-w-[560px] px-[26px] pt-[26px] pb-6`,
+  stateCard: `${CARD_SURFACE} mx-auto my-8 max-w-[460px] px-[30px] py-10 text-center`,
+  title: 'm-0 text-[28px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
+  stateTitle: 'mx-0 mt-0 mb-2 text-[22px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
+  lead: 'mx-0 mt-0 mb-[18px] text-[14.5px] leading-[1.5] text-(--riv-card-ink-soft)',
+  link: LINK,
+  linkBack: `${LINK} mt-[18px] inline-block`,
+  bannerAwaiting: `${BANNER} border-[#bfe6ee] bg-[#ddf4f8]`,
+  bannerPending: `${BANNER} border-[#f3e3bf] bg-[#fdf5e6]`,
+  bannerDeclined: `${BANNER} border-[#eed6ce] bg-[#faefec]`,
+  bannerExpired: `${BANNER} border-[#dde1e3] bg-[#f0f2f3]`,
+  bannerWithdrawn: `${BANNER} border-[#ddd8e8] bg-[#f0eef6]`,
+  eyebrow: 'm-0 text-[11px] font-bold tracking-[0.1em] uppercase',
+  // The banner inks are FIXED per banner fill — themed tokens would drift between themes.
+  eyebrowAwaiting: 'text-[#0a5e7a]',
+  eyebrowPending: 'text-[#8a5410]',
+  eyebrowDeclined: 'text-[#8a3a2a]',
+  eyebrowExpired: 'text-[#4f5f67]',
+  eyebrowWithdrawn: 'text-[#5c5470]',
+  bannerBody: 'mx-0 mt-1.5 mb-0 text-[14px] leading-[1.5] text-[#334a52] [&_strong]:text-[#0a2a33]',
+  row: 'flex items-center justify-between gap-3 border-b border-(--riv-card-track) py-2.5 text-[14.5px] last:border-b-0',
+  rowLabel: 'text-(--riv-card-ink-soft)',
+  rowValue: 'm-0 text-right font-bold text-(--riv-card-ink)',
+  rowAmount: 'm-0 text-right font-bold text-(--riv-accent-ink)',
+  // `empty:hidden` is the twin of the retired `.result:empty` — both regions render an empty <p>.
+  result:
+    'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-(--riv-accent-ink) empty:hidden',
+  confirmQ: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-(--riv-card-ink)',
+  confirmQOnBanner: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-[#334a52]',
+  actions: 'flex flex-wrap gap-2.5',
+  btnDanger: `${BTN} border border-[rgba(200,90,60,0.4)] bg-[linear-gradient(180deg,#c14a2c,#a83c25)] font-bold text-white shadow-[0_8px_20px_rgba(179,67,42,0.4)] [transition:filter_0.15s_ease] hover:brightness-[1.08]`,
+  btnOutline: `${BTN_OUTLINE} border-[rgba(255,255,255,0.7)] text-[#0a4f5e]`,
+  btnOutlineDanger: `${BTN_OUTLINE} border-[rgba(200,90,60,0.5)] text-[#a3372a]`,
+  btnCta:
+    'mt-3.5 block w-full cursor-pointer rounded-[16px] border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15.5px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:brightness-[1.06] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-65',
+} as const;
 
 /**
  * View a booking by its code and cancel it (U6, issue #11; Liquid Glass restyle #138). Loads the
@@ -29,31 +88,41 @@ import { BookingService } from './booking.service';
  * {@link BookingService#beginPayment} and routes to `/booking/pay` — the same flow as the 202
  * create path, so confirmation still only ever comes from the verified webhook, invariant #8);
  * `DECLINED`/`EXPIRED`/`WITHDRAWN` explain the terminal, no-charge outcome.
+ *
+ * <p>Styling is Tailwind-only since #477 (the component's SCSS is retired). The recipes live in the
+ * module-local {@link CLS} map rather than inline so the shared *bases* stay single-sourced — the
+ * banner shell across five banners, the row across five rows, the button chrome across six buttons —
+ * which the retired SCSS shared through selectors. Many individual `CLS` entries are then used once;
+ * they sit there to name the variant beside its siblings, not because each one repeats.
+ * Conflicting utilities are never concatenated onto one element: two competing `border-*` or
+ * `text-*` utilities resolve by **stylesheet order, not class order**, so each variant spells out
+ * its own colour rather than overriding a base — which is why `bannerPending` and
+ * `btnOutlineDanger` are whole recipes and not a base plus an override.
  */
 @Component({
   selector: 'app-booking-view',
-  imports: [RouterLink, CardGlass],
+  imports: [RouterLink, CardGlass, StatusChip],
   template: `
     @if (notFound()) {
-      <section class="state-card" appCardGlass aria-labelledby="bv-title">
-        <h1 id="bv-title">Booking not found</h1>
-        <p class="lead">We couldn’t find a booking for that code. Check the code and try again.</p>
-        <a routerLink="/" class="link">Back to home</a>
+      <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
+        <h1 id="bv-title" [class]="cls.stateTitle">Booking not found</h1>
+        <p [class]="cls.lead">We couldn’t find a booking for that code. Check the code and try again.</p>
+        <a routerLink="/" [class]="cls.link">Back to home</a>
       </section>
     } @else if (failed()) {
-      <section class="state-card" appCardGlass aria-labelledby="bv-title">
-        <h1 id="bv-title">Couldn’t load your booking</h1>
-        <p class="lead">Something went wrong. Please try again in a moment.</p>
-        <a routerLink="/" class="link">Back to home</a>
+      <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
+        <h1 id="bv-title" [class]="cls.stateTitle">Couldn’t load your booking</h1>
+        <p [class]="cls.lead">Something went wrong. Please try again in a moment.</p>
+        <a routerLink="/" [class]="cls.link">Back to home</a>
       </section>
     } @else if (booking(); as b) {
-      <section class="booking-card" appCardGlass aria-labelledby="bv-title">
-        <div class="card-head">
-          <h1 id="bv-title">Your booking</h1>
-          <span class="status-wrap">
+      <section [class]="cls.card" appCardGlass aria-labelledby="bv-title">
+        <div class="flex items-center justify-between gap-3">
+          <h1 id="bv-title" [class]="cls.title">Your booking</h1>
+          <span>
             <!-- Restores the "Status: X" context the removed dl row gave assistive tech. -->
             <span class="sr-only">Booking status:</span>
-            <span class="chip {{ chipClass(b.status) }}" data-testid="booking-status">{{
+            <span [appStatusChip]="chipClass(b.status)" data-testid="booking-status">{{
               statusLabel(b.status)
             }}</span>
           </span>
@@ -63,26 +132,28 @@ import { BookingService } from './booking.service';
           @case ('AWAITING_PAYMENT') {
             @if (b.payment) {
               <section
-                class="banner banner--awaiting"
+                [class]="cls.bannerAwaiting"
                 data-testid="request-accepted"
                 aria-labelledby="request-state-title"
               >
                 @if (b.requestExpiresAt) {
-                  <h2 id="request-state-title" class="banner-eyebrow">
+                  <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowAwaiting }}">
                     Request accepted&ngsp;<span aria-hidden="true">🎉</span>
                   </h2>
-                  <p class="banner-body">
+                  <p [class]="cls.bannerBody">
                     {{ b.venueName }} accepted your booking request. Pay now to confirm your spot.
                   </p>
                 } @else {
                   <!-- An instant booking with an open payment (e.g. an interrupted checkout) was
                        never a request — don't claim the venue "accepted" anything. -->
-                  <h2 id="request-state-title" class="banner-eyebrow">Complete your payment</h2>
-                  <p class="banner-body">
+                  <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowAwaiting }}">
+                    Complete your payment
+                  </h2>
+                  <p [class]="cls.bannerBody">
                     This booking is reserved but unpaid. Pay now to confirm your spot.
                   </p>
                 }
-                <button type="button" class="btn-cta" (click)="payNow(b)" data-testid="pay-now">
+                <button type="button" [class]="cls.btnCta" (click)="payNow(b)" data-testid="pay-now">
                   Pay now
                 </button>
               </section>
@@ -90,29 +161,33 @@ import { BookingService } from './booking.service';
           }
           @case ('PENDING_REQUEST') {
             <section
-              class="banner banner--pending"
+              [class]="cls.bannerPending"
               data-testid="request-pending"
               aria-labelledby="request-state-title"
             >
-              <h2 id="request-state-title" class="banner-eyebrow">Waiting for the venue</h2>
-              <p class="banner-body">
+              <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowPending }}">
+                Waiting for the venue
+              </h2>
+              <p [class]="cls.bannerBody">
                 {{ b.venueName }} hasn’t responded to your booking request yet. You won’t be
                 charged unless they accept.
               </p>
               @if (b.requestExpiresAt; as deadline) {
-                <p class="banner-body">
+                <p [class]="cls.bannerBody">
                   They have until <strong>{{ deadlineLabel(deadline) }}</strong> to respond.
                 </p>
               }
               @if (b.withdrawable && !withdrawn()) {
-                <div class="withdraw">
+                <div class="mt-3.5">
                   @if (confirmingWithdraw()) {
-                    <p class="confirm-q">Withdraw this request? This can’t be undone.</p>
-                    <div class="actions">
+                    <p [class]="cls.confirmQOnBanner">
+                      Withdraw this request? This can’t be undone.
+                    </p>
+                    <div [class]="cls.actions">
                       <button
                         #withdrawConfirmBtn
                         type="button"
-                        class="btn-danger"
+                        [class]="cls.btnDanger"
                         [disabled]="withdrawing()"
                         (click)="confirmWithdraw()"
                         data-testid="confirm-withdraw"
@@ -121,7 +196,7 @@ import { BookingService } from './booking.service';
                       </button>
                       <button
                         type="button"
-                        class="btn-outline"
+                        [class]="cls.btnOutline"
                         [disabled]="withdrawing()"
                         (click)="keepRequest()"
                       >
@@ -131,7 +206,7 @@ import { BookingService } from './booking.service';
                   } @else {
                     <button
                       type="button"
-                      class="btn-outline danger"
+                      [class]="cls.btnOutlineDanger"
                       (click)="startWithdraw()"
                       data-testid="withdraw-request"
                     >
@@ -145,12 +220,14 @@ import { BookingService } from './booking.service';
           }
           @case ('WITHDRAWN') {
             <section
-              class="banner banner--withdrawn"
+              [class]="cls.bannerWithdrawn"
               data-testid="request-withdrawn"
               aria-labelledby="request-state-title"
             >
-              <h2 id="request-state-title" class="banner-eyebrow">Request withdrawn</h2>
-              <p class="banner-body">
+              <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowWithdrawn }}">
+                Request withdrawn
+              </h2>
+              <p [class]="cls.bannerBody">
                 You withdrew this request, so the spot is free for other guests again. You
                 haven’t been charged — pick another set or date to book again.
               </p>
@@ -158,12 +235,14 @@ import { BookingService } from './booking.service';
           }
           @case ('DECLINED') {
             <section
-              class="banner banner--declined"
+              [class]="cls.bannerDeclined"
               data-testid="request-declined"
               aria-labelledby="request-state-title"
             >
-              <h2 id="request-state-title" class="banner-eyebrow">Request declined</h2>
-              <p class="banner-body">
+              <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowDeclined }}">
+                Request declined
+              </h2>
+              <p [class]="cls.bannerBody">
                 {{ b.venueName }} couldn’t take this booking, so it was declined. You haven’t been
                 charged — pick another set or date to book again.
               </p>
@@ -171,12 +250,14 @@ import { BookingService } from './booking.service';
           }
           @case ('EXPIRED') {
             <section
-              class="banner banner--expired"
+              [class]="cls.bannerExpired"
               data-testid="request-expired"
               aria-labelledby="request-state-title"
             >
-              <h2 id="request-state-title" class="banner-eyebrow">Request expired</h2>
-              <p class="banner-body">
+              <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowExpired }}">
+                Request expired
+              </h2>
+              <p [class]="cls.bannerBody">
                 {{ b.venueName }} didn’t respond in time, so this request expired. You haven’t been
                 charged — pick another set or date to book again.
               </p>
@@ -184,24 +265,50 @@ import { BookingService } from './booking.service';
           }
         }
 
-        <div class="code-card" data-testid="booking-code">
-          <span class="code-label">Booking code</span>
-          <div class="code">{{ b.code }}</div>
-          <p class="code-note">Show this code to staff when you arrive to claim your set.</p>
+        <div
+          class="mx-0 mt-[18px] mb-4 rounded-[18px] border border-dashed border-(--riv-field-border) bg-[rgba(255,255,255,0.4)] p-[15px]"
+          data-testid="booking-code"
+        >
+          <span class="block text-[11px] tracking-[0.16em] text-(--riv-card-ink-soft) uppercase">
+            Booking code
+          </span>
+          <div class="mt-[5px] text-[27px] font-bold tracking-[0.12em] text-(--riv-accent-ink)">
+            {{ b.code }}
+          </div>
+          <p class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-(--riv-card-ink-soft)">
+            Show this code to staff when you arrive to claim your set.
+          </p>
         </div>
 
-        <dl class="details">
-          <div class="row"><dt>Venue</dt><dd>{{ b.venueName }}</dd></div>
-          <div class="row"><dt>Set</dt><dd>{{ b.rowLabel }} · spot {{ b.positionNo }}</dd></div>
-          <div class="row"><dt>Date</dt><dd>{{ dateLabel(b.bookingDate) }}</dd></div>
-          <div class="row"><dt>{{ amountLabel(b.status) }}</dt><dd class="amount">{{ formatMoney(b.amount) }}</dd></div>
+        <dl class="m-0">
+          <div [class]="cls.row">
+            <dt [class]="cls.rowLabel">Venue</dt>
+            <dd [class]="cls.rowValue">{{ b.venueName }}</dd>
+          </div>
+          <div [class]="cls.row">
+            <dt [class]="cls.rowLabel">Set</dt>
+            <dd [class]="cls.rowValue">{{ b.rowLabel }} · spot {{ b.positionNo }}</dd>
+          </div>
+          <div [class]="cls.row">
+            <dt [class]="cls.rowLabel">Date</dt>
+            <dd [class]="cls.rowValue">{{ dateLabel(b.bookingDate) }}</dd>
+          </div>
+          <div [class]="cls.row">
+            <dt [class]="cls.rowLabel">{{ amountLabel(b.status) }}</dt>
+            <dd [class]="cls.rowAmount">{{ formatMoney(b.amount) }}</dd>
+          </div>
           @if (b.refundedAmount && b.refundedAmount.minorUnits > 0) {
-            <div class="row"><dt>Refunded</dt><dd data-testid="refunded-amount">{{ formatMoney(b.refundedAmount) }}</dd></div>
+            <div [class]="cls.row">
+              <dt [class]="cls.rowLabel">Refunded</dt>
+              <dd [class]="cls.rowValue" data-testid="refunded-amount">
+                {{ formatMoney(b.refundedAmount) }}
+              </dd>
+            </div>
           }
         </dl>
 
         <!-- Outside the status switch on purpose: scoped to PENDING_REQUEST it would unmount on success. -->
-        <p class="result" role="status" aria-live="polite" data-testid="withdraw-result">
+        <p [class]="cls.result" role="status" aria-live="polite" data-testid="withdraw-result">
           @if (withdrawn()) {
             Request withdrawn. The spot is free for other guests again.
           } @else if (withdrawFailed()) {
@@ -210,7 +317,7 @@ import { BookingService } from './booking.service';
         </p>
 
         <!-- Live result of a cancellation, announced to assistive tech. -->
-        <p class="result" role="status" aria-live="polite" data-testid="cancel-result">
+        <p [class]="cls.result" role="status" aria-live="polite" data-testid="cancel-result">
           @if (cancellation(); as c) {
             Booking cancelled. {{ refundSentence(c.tier, c.refund) }}
           } @else if (cancelFailed()) {
@@ -219,46 +326,69 @@ import { BookingService } from './booking.service';
         </p>
 
         @if (b.cancellable && !cancellation()) {
-          <section class="cancel" aria-labelledby="cancel-title">
-            <h2 id="cancel-title">Cancel this booking</h2>
-            <p class="terms" data-testid="refund-terms">{{ refundTerms(b) }}</p>
+          <section
+            class="mt-5 border-t border-(--riv-card-track) pt-[18px]"
+            aria-labelledby="cancel-title"
+          >
+            <h2 id="cancel-title" class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-(--riv-card-ink)">
+              Cancel this booking
+            </h2>
+            <p
+              class="mx-0 mt-0 mb-3.5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft)"
+              data-testid="refund-terms"
+            >
+              {{ refundTerms(b) }}
+            </p>
 
             @if (confirming()) {
-              <p class="confirm-q">Cancel this booking? This can’t be undone.</p>
-              <div class="actions">
+              <p [class]="cls.confirmQ">Cancel this booking? This can’t be undone.</p>
+              <div [class]="cls.actions">
                 <button
                   #confirmBtn
                   type="button"
-                  class="btn-danger"
+                  [class]="cls.btnDanger"
                   [disabled]="cancelling()"
                   (click)="confirmCancel()"
                   data-testid="confirm-cancel"
                 >
                   {{ cancelling() ? 'Cancelling…' : 'Confirm cancellation' }}
                 </button>
-                <button type="button" class="btn-outline" [disabled]="cancelling()" (click)="keepBooking()">
+                <button
+                  type="button"
+                  [class]="cls.btnOutline"
+                  [disabled]="cancelling()"
+                  (click)="keepBooking()"
+                >
                   Keep booking
                 </button>
               </div>
             } @else {
-              <button type="button" class="btn-outline danger" (click)="startCancel()" data-testid="start-cancel">
+              <button
+                type="button"
+                [class]="cls.btnOutlineDanger"
+                (click)="startCancel()"
+                data-testid="start-cancel"
+              >
                 Cancel booking
               </button>
             }
           </section>
         }
 
-        <a routerLink="/" class="link back">Back to home</a>
+        <a routerLink="/" [class]="cls.linkBack">Back to home</a>
       </section>
     } @else {
-      <section class="state-card" appCardGlass aria-labelledby="bv-title" aria-busy="true">
-        <h1 id="bv-title">Loading your booking…</h1>
+      <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title" aria-busy="true">
+        <h1 id="bv-title" [class]="cls.stateTitle">Loading your booking…</h1>
       </section>
     }
   `,
-  styleUrl: './booking-view.scss',
+  host: { class: 'block text-(--riv-card-ink)' },
 })
 export class BookingView {
+  /** The repeated Tailwind recipes (see {@link CLS}), exposed to the template. */
+  protected readonly cls = CLS;
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly bookings = inject(BookingService);
@@ -309,16 +439,20 @@ export class BookingView {
         this.notFound.set(true);
       }
     });
-    // Move focus to the destructive confirm button when the prompt appears (a11y).
-    effect(() => {
-      if (this.confirming()) {
-        this.confirmButton()?.nativeElement.focus();
-      }
+    // Move focus to the destructive confirm button when its prompt appears (a11y) — a DOM write.
+    afterRenderEffect({
+      write: () => {
+        if (this.confirming()) {
+          this.confirmButton()?.nativeElement.focus();
+        }
+      },
     });
-    effect(() => {
-      if (this.confirmingWithdraw()) {
-        this.withdrawConfirmButton()?.nativeElement.focus();
-      }
+    afterRenderEffect({
+      write: () => {
+        if (this.confirmingWithdraw()) {
+          this.withdrawConfirmButton()?.nativeElement.focus();
+        }
+      },
     });
   }
 
