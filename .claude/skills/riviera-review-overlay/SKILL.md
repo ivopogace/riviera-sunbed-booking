@@ -40,7 +40,9 @@ frontend-only review never pays for the backend bank:
   If the diff changes any **wire shape** (an endpoint, a request/response DTO, an
   error body) — even with no frontend file touched — also load `references/fe-be-contract.md`.
 - **Frontend diff** → `references/frontend-conventions.md` — Angular standards,
-  beach-map stale-availability handling, money/date rendering, no client secrets.
+  beach-map stale-availability handling, money/date rendering, no client secrets,
+  and **RV-FE-8** (no *new* cross-feature folder import — the FE mirror of RV-BE-3;
+  the grandfathered set is `riviera-frontend`'s debt table, tracked by #489).
 - **Fullstack diff** → both of the above, plus `references/fe-be-contract.md` —
   API typing, money/date on the wire, webhook-vs-redirect, idempotency.
 
