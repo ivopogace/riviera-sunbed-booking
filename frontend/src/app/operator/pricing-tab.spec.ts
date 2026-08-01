@@ -1,8 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 
 import { formatMoney } from '../shared/money';
 import { todayBookingDate } from '../shared/booking-date';
@@ -22,6 +22,7 @@ describe('PricingTab (#174)', () => {
   let fixture: ComponentFixture<PricingTab>;
   let http: HttpTestingController;
   let host: HTMLElement;
+  let params$: BehaviorSubject<ParamMap>;
 
   // Row A: two ONLINE premium (3500) + one WALK_IN (3500); Row B: one ONLINE standard (2000).
   const SEED: SetView[] = [
@@ -33,6 +34,7 @@ describe('PricingTab (#174)', () => {
 
   /** `beforeCreate` runs after the injector exists but before the tab mounts — the shell's window. */
   function configure(beforeCreate?: () => void): void {
+    params$ = new BehaviorSubject(convertToParamMap({ venueId: '1' }));
     TestBed.configureTestingModule({
       imports: [PricingTab],
       providers: [
@@ -43,7 +45,7 @@ describe('PricingTab (#174)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap({ venueId: '1' }) }, paramMap: of(convertToParamMap({ venueId: '1' })) },
+            parent: { snapshot: { paramMap: params$.value }, paramMap: params$ },
           },
         },
       ],
@@ -379,6 +381,30 @@ describe('PricingTab (#174)', () => {
 
     expect(input('A').value).toBe('50'); // the server's truth, not the stale snapshot
     expect(host.querySelector('[data-testid="pricing-stale-banner"]')).toBeNull();
+  });
+
+  it('re-loads for the new venue when the parent param changes in place (#180)', () => {
+    render(SEED, 7);
+    expect(rows()).toHaveLength(2);
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    // Venue 1's rows must not render against venue 2 while its read is in flight.
+    expect(rows()).toHaveLength(0);
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({
+        id: 2,
+        name: 'W',
+        sets: [seat(9, 'C', 1, 'STANDARD', 'ONLINE', 1500, 1, 1)],
+        setVersion: 2,
+      });
+    fixture.detectChanges();
+
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0].getAttribute('data-row')).toBe('C');
+    expect(input('C').value).toBe('15');
   });
 });
 

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -80,8 +80,9 @@ export class LayoutEditor {
   private readonly console = inject(OperatorConsoleService);
   protected readonly operator = inject(OperatorAuth);
 
-  /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if invalid). */
-  protected readonly venueId: number | undefined;
+  /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if
+   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+  protected readonly venueId = parentVenueId(this.route);
 
   /** Generate inputs: rows × positions. Clamped to the design maxima on generate. */
   protected readonly genRows = signal(4);
@@ -165,11 +166,28 @@ export class LayoutEditor {
   });
 
   constructor() {
-    const id = parentVenueId(this.route)();
-    if (id !== undefined) {
-      this.venueId = id;
-      this.loadExisting(id);
-    }
+    // Re-runs on an in-place venue switch (#180): reset the draft + flags, then load the new venue.
+    effect(() => {
+      const id = this.venueId();
+      if (id !== undefined) {
+        untracked(() => this.resetForVenue(id));
+      }
+    });
+  }
+
+  /** Drop every venue-scoped draft/flag so nothing from the previous venue leaks, then load. */
+  private resetForVenue(venueId: number): void {
+    this.grid.set([]);
+    this.priceByCoord.clear();
+    this.activeTool.set('premium');
+    this.savedNotice.set(false);
+    this.errorCode.set(undefined);
+    this.confirmRegen.set(false);
+    this.loadedSetVersion.set(null);
+    this.reloading.set(false);
+    this.reloadFailed.set(false);
+    this.loadFailed.set(false);
+    this.loadExisting(venueId);
   }
 
   // ---- Generate ----
@@ -259,7 +277,8 @@ export class LayoutEditor {
   // ---- Save ----
 
   protected async onSave(): Promise<void> {
-    if (this.venueId === undefined) {
+    const venueId = this.venueId();
+    if (venueId === undefined) {
       return;
     }
     const sets = this.toRequest();
@@ -278,7 +297,7 @@ export class LayoutEditor {
     this.errorCode.set(undefined);
     this.savedNotice.set(false);
     try {
-      await firstValueFrom(this.console.replaceLayout(this.venueId, { sets, expectedVersion }));
+      await firstValueFrom(this.console.replaceLayout(venueId, { sets, expectedVersion }));
       this.savedNotice.set(true);
       // The layout was replaced, so the console's shared snapshot now describes retired sets (#486).
       this.venueMap.reset();
@@ -332,7 +351,7 @@ export class LayoutEditor {
    * work is intact.
    */
   protected reloadAfterStale(): void {
-    const venueId = this.venueId;
+    const venueId = this.venueId();
     if (venueId === undefined || this.reloading()) {
       return;
     }
@@ -341,6 +360,9 @@ export class LayoutEditor {
     this.venueMap.reset(); // the other tabs must not serve the pre-conflict layout either (#486)
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
+        if (this.venueId() !== venueId) {
+          return; // a venue switch superseded this reload (#180)
+        }
         // Success: NOW replace the in-progress grid with the server's latest layout + token, clear the banner.
         this.priceByCoord.clear();
         this.grid.set([]); // hasLayout() → false, so seedFrom re-seeds (or leaves the empty state)
@@ -352,6 +374,9 @@ export class LayoutEditor {
         this.reloading.set(false);
       },
       error: (error: unknown) => {
+        if (this.venueId() !== venueId) {
+          return; // a venue switch superseded this reload (#180)
+        }
         // Failure: keep the painted grid, the stale token, and the banner; show a retry hint — no data loss.
         this.reloadFailed.set(true);
         this.reloading.set(false);
@@ -393,11 +418,17 @@ export class LayoutEditor {
     // the token null and sets loadFailed so Save surfaces a refresh prompt (never a silent no-op).
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
+        if (this.venueId() !== venueId) {
+          return; // a venue switch superseded this load — never seed the new venue's editor (#180)
+        }
         this.loadFailed.set(false);
         this.loadedSetVersion.set(venue.setVersion ?? null);
         this.seedFrom(venue.sets);
       },
       error: (error: unknown) => {
+        if (this.venueId() !== venueId) {
+          return; // a venue switch superseded this load (#180)
+        }
         this.loadFailed.set(true);
         if (error instanceof HttpErrorResponse && error.status === 401) {
           this.operator.sessionLost();

@@ -156,16 +156,16 @@ N/A — no contract change; the same endpoints are called with a different `venu
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** phase 2 — layout-editor + pricing tabs reactive, red→green per tab
+**Next action:** phase 3 — daily-view + requests tabs reactive, red→green per tab (carry the late-response guard pattern)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — signal-returning `parentVenueId` helper | ✅ | "Make parentVenueId a reactive signal (#180)" — shim decision: tabs call the signal once (`parentVenueId(route)()`, snapshot semantics preserved) so each tab phase still goes red→green; R-2 mock sweep done here (12 spec files), 244 operator+shared tests green |
 | 1 — reactive shell (`operator-console`) | ✅ | "React to venue param changes in the console shell (#180)" — AC-1 + AC-3 pinned; scope addition: `ConsoleStatsStrip.load` now resets its tiles (old venue's takings must not render against the new venue — it was already input-reactive, so this was the only gap); 247 operator+shared tests green |
-| 2 — tabs: layout-editor + pricing | ⏳ | |
-| 3 — tabs: daily-view + requests | | |
+| 2 — tabs: layout-editor + pricing | ✅ | "React to venue param changes in the layout and pricing tabs (#180)" — reload + reset pinned per tab; pattern addition: the **late-response guard** (`if (this.venueId() !== venueId) return` in every subscribe/await continuation), pinned by the layout-editor race spec; 250 tests green | 
+| 3 — tabs: daily-view + requests | ⏳ | |
 | 4 — tabs: payouts + venue-tab; harness integration spec | | |
 | 5 — lint + full FE suite + PR ready-for-review | | |
 
@@ -318,6 +318,7 @@ stubbed (open-questions assumption); navigate `/operator/1/beach-map` →
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-01 | plan (grill) | constructor-snapshot `:venueId` reads | `grep -rn "parentVenueId\|snapshot.paramMap" frontend/src/app` | shell + 6 tabs (in scope); `venue-map.ts` (tourist) | fix all in-scope; `venue-map` deliberately out (Non-goal — no in-app venue→venue nav on the tourist side either) |
+| 2026-08-01 | phase 2 (layout-editor race spec) | late-response race: a superseded venue's HTTP response resolving after the switch writes into the new venue's state | `grep -n "subscribe\|await firstValueFrom" operator/*.ts` (venue-scoped loads/writes) | shell `load`, strip `load`, all 6 tabs' loads + layout/pricing write continuations | guard every continuation with `this.venueId() !== venueId` — shell/strip guards land in phase 4's sweep; per-tab guards land with each tab's phase |
 
 ---
 
