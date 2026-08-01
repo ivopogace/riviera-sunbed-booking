@@ -229,7 +229,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-1 | CI (run 30692508369, d455925) | `RespondToRequestServiceTest.pendingQueueChecksOwnershipAndResolvesGuestNames` still stubbed the old per-row `findById` — a second test class covering the queue that the phase-1 scoped run missed | fixed-in-follow-up commit (stub moved to `findByIds`) |
 
 ---
 
@@ -318,6 +318,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-01 | F-1 (phase 1 CI red) | other tests stubbing `CustomerLookup.findById` | `grep -rl 'findById(' platform/src/test \| xargs grep -l CustomerLookup` | 2 (`SuppressedConfirmationMailDeliveryTest`, `BookingMailFactsServiceTest`) | skip — both exercise `notification` call sites that legitimately still use the single-id read |
 
 ---
 

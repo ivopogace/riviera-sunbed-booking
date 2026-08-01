@@ -310,7 +310,7 @@ class RespondToRequestServiceTest {
 		when(bookings.findPendingRequestsForVenue(VENUE)).thenReturn(List.of(new PendingRequestRow(
 				BOOKING.value(), new SetId(3), java.time.LocalDate.of(2026, 8, 3), customerId,
 				4500L, "EUR", NOW.minusSeconds(3600), NOW.plusSeconds(3600))));
-		when(lookup.findById(customerId)).thenReturn(Optional.of(
+		when(lookup.findByIds(java.util.Set.of(customerId))).thenReturn(java.util.Map.of(customerId,
 				new ai.riviera.platform.customer.vocabulary.GuestContact("g@e.com", "Guest Name", "+355")));
 
 		var queue = new PendingRequestsService(ownership, bookings, lookup).forVenue(OPERATOR, VENUE);
