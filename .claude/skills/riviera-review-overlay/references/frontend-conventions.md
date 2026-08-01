@@ -181,3 +181,46 @@ CI-run a11y suite green-but-blind to a real regression; Minor for a cosmetic-onl
 - Peer-review: "Load `playwright-cli` and check the new/changed spec against its best
   practices. Which suite covers this change, and will CI run it? Are the locators and data
   per-test-safe, with no fixed sleeps?"
+
+---
+
+### RV-FE-8. No **new** cross-feature import (the FE mirror of RV-BE-3 / invariant #11)
+**Gate:** Does the diff add a feature-folder import that isn't already in `riviera-frontend`'s
+grandfathered debt table?
+- [ ] no new `feature/ → other-feature/` import  [ ] no new `shared/ → feature/` or `core/ → feature/` import (these break `shared`/`core` → nothing, the edges that keep the direction acyclic)  [ ] no new `pages/ → feature/` import  [ ] a *removed* or *consolidated* existing edge is fine — and good  [ ] if the diff genuinely needs a new one, it is argued in the plan doc, not slipped in on the precedent of the table
+
+> **The table is a freeze, not a licence.** `riviera-frontend`'s
+> "That rule is violated today — known debt, not a carve-out (#488)" section lists every
+> cross-feature edge that exists (33 imports / 21 files at the time of writing, tracked for
+> removal by **#489**). Its purpose is to stop the count growing while the placement is fixed.
+> **"`operator/` already imports `venue/`" is not an argument for a new import** — that is the
+> exact reasoning that shipped four times without converging (O1 silently, O2/#171's R-6, #226,
+> #487 → #488). Judge a new edge on its merits, against the one-way rule.
+>
+> **Verify mechanically rather than by eye** (feature folders are the direct children of
+> `frontend/src/app`; `core/`, `shared/`, `pages/`, `environments/` are not features):
+>
+> ```
+> grep -rn "from '\(\.\./\)\+\(admin\|auth\|booking\|operator\|pages\|venue\|venue-admin\)/" \
+>   --include=*.ts frontend/src/app | grep -v "\.spec\.ts"
+> ```
+>
+> Count the result and compare against the table. Watch for `../../` forms (a `pages/home/`
+> file reaching `venue/` is three levels of nesting, and a `../<feature>/`-only grep misses it —
+> that undercount is how the first draft of the table shipped wrong).
+
+**Follow-up:**
+- A new edge that is really "two features need the same thing" → promote it per the taxonomy
+  (pure → `shared/`, stateful/HTTP → `core/`), don't cross-import.
+- Removing an edge, or shrinking the table, needs the corresponding **table update** in
+  `riviera-frontend`'s debt section in the same PR — a stale count reads as licence.
+- There is **no ESLint boundary rule** enforcing this today, which is precisely why it is a
+  review-bank item; if #489 lands, consider whether the residual set is small enough to pin.
+
+**Default severity:** **Major** for a new feature→feature import; **Blocker** for a new
+`shared/ →` or `core/ → feature/` import (it reintroduces the cycle the one-way rule prevents).
+Not a finding for a pre-existing edge the diff merely moves or consolidates.
+**Skill framing:**
+- Peer-review: "Run the grep. Is every cross-feature import in the diff already in
+  `riviera-frontend`'s debt table? If the diff adds one, what is the argument — and is it
+  really just 'the neighbours already do it'?"
