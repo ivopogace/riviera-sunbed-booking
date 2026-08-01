@@ -84,6 +84,10 @@ branch substitutes for `feature/console-venue-map-dedupe` (`riviera-sdlc` §Remo
   while two loads inside the window still coalesce.
   *Pinned by:* `ConsoleVenueMap.'refetches once the snapshot ages out — a tab revisit stays a fresh read (review F-3)'`
   + `ConsoleVenueMap.'still coalesces two loads inside the snapshot window'`.
+- [ ] **AC-9:** *(re-review F-6)* Given a read still in flight past the TTL, when another consumer
+  asks for the same key, then it joins that read — the window is measured from settle, so latency
+  can never manufacture the duplicate AC-1 forbids.
+  *Pinned by:* `ConsoleVenueMap.'does not age out a read that is still in flight (review F-6)'`.
 
 ## Non-goals
 
@@ -196,7 +200,7 @@ practices for new v22 singletons; `inject()`; no `any` on the contract — the c
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-verification pushed`
+**Stage pointer:** `review gate — cleared, incl. the re-review of the fix round`
 
 **Next action:** Confirm CI + Sonar green on the fix commit, then merge PR #487 and run the
 close-out (epic tick N/A — #141 is closed and fully ticked; file the F-5 follow-up issue).
@@ -206,7 +210,8 @@ close-out (epic tick N/A — #141 is closed and fully ticked; file the F-5 follo
 | 0 — `ConsoleVenueMap` service + spec | ✅ 5/5 green | `4dde56e` |
 | 1 — Wire the three consumers + the two invalidation edges | ✅ 1030/1030 unit green, lint clean | (this commit) |
 | 2 — e2e route counters (mocked suite) | ✅ 24/24 operator e2e green | `76d2615` |
-| 3 — Review-gate fixes (F-1..F-4) | ✅ lint clean, 1033 unit + 15 e2e green | (this commit) |
+| 3 — Review-gate fixes (F-1..F-4) | ✅ lint clean, 1033 unit + 15 e2e green | `cf94ac6` |
+| 4 — Re-review fix (F-6, defect in the F-3 fix) | ✅ lint clean, 1034 unit + 15 e2e green | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -219,6 +224,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 | F-2 | review gate (agent #4, prior-PR comment context) | `console-venue-map.ts` guarded failure-invalidation with **string key equality**, so an orphaned in-flight read that fails after a `reset()` + re-`load()` of the same `(venue, date)` reset the newer, successful snapshot — the "late response overwrites fresher state" class #482/#484 already swept for | fixed — guard is now a monotonic `generation` (identity, not value). Regression test verified red against the pre-fix code (`expected undefined to be 'Fresh'`) |
 | F-3 | review gate (agent #3, git-history context) | The snapshot lived for the whole session, so **revisiting** Pricing/Requests became a cache hit — but a tab activation was previously their only refresh, so another device's edit stayed invisible until a write or sign-out. A ledger row was missing for it | fixed — `SNAPSHOT_TTL_MS` (30s) bounds the snapshot; ledger row added; R-1 closed. The reviewer's suggested fix (reset on tab construction) was **not** taken: it would re-issue the duplicate request AC-1 forbids |
 | F-4 | review gate (agent #5, code-comment guidance) | Advisory: the class TSDoc said `LayoutEditor` "reloads precisely because it mutated the map", but its direct reads are the *initial* seed and the *conflict* recovery | fixed — reworded to "seeds its grid from the server and re-reads to escape a write conflict" |
+| F-6 | **re-review of the F-3 fix** (re-entry rule — the fix round itself cleared the loop) | The TTL was anchored to fetch **dispatch**, so a read slower than 30s looked expired while still in flight and a second concurrent GET went out for the same key — AC-1's duplicate, re-entered through latency instead of a race. Neither AC-8 test crossed the boundary with a request genuinely outstanding | fixed — the window now opens when the read **settles** (`tap`, generation-guarded); in-flight snapshots hold `Number.POSITIVE_INFINITY`. Regression test verified red first |
 | F-5 | review gate (overlay agent) | Advisory, **not fixed here**: `riviera-frontend`'s taxonomy forbids feature→feature imports, but every file in `operator/` already imports `venue/`. This slice consolidates that edge rather than creating it | deferred → follow-up issue (skill and codebase are out of sync; a per-file change here would be wrong) |
 
 ---

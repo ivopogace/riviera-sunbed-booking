@@ -1,14 +1,16 @@
 import { inject, Service } from '@angular/core';
-import { catchError, Observable, shareReplay, throwError } from 'rxjs';
+import { catchError, Observable, shareReplay, tap, throwError } from 'rxjs';
 
 import { VenueMapView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
 
 /**
- * How long a snapshot may be reused. Long enough to coalesce the console-open burst — the shell and
- * its lazily-routed tab mount milliseconds apart — and short enough that returning to a tab later is
- * the fresh read it was before this cache existed (a tab is destroyed and recreated on every
- * navigation, so its activation was the only refresh Pricing and Requests ever had).
+ * How long a snapshot may be reused, measured from when it **settles** — never from when the request
+ * left, or a read slower than this would look expired while still in flight and a second concurrent
+ * GET would go out for the same key. Long enough to coalesce the console-open burst (the shell and
+ * its lazily-routed tab mount milliseconds apart), short enough that returning to a tab later is the
+ * fresh read it was before this cache existed (a tab is destroyed and recreated on every navigation,
+ * so its activation was the only refresh Pricing and Requests ever had).
  */
 const SNAPSHOT_TTL_MS = 30_000;
 
@@ -65,7 +67,8 @@ export class ConsoleVenueMap {
     const key = `${venueId}@${date}`;
     if (this.key !== key || this.snapshot === undefined || Date.now() >= this.expiresAt) {
       this.key = key;
-      this.expiresAt = Date.now() + SNAPSHOT_TTL_MS;
+      // An in-flight read is about to answer, so it never ages out; the window opens when it settles.
+      this.expiresAt = Number.POSITIVE_INFINITY;
       this.snapshot = this.fetch(venueId, date, ++this.generation);
     }
     return this.snapshot;
@@ -80,6 +83,11 @@ export class ConsoleVenueMap {
 
   private fetch(venueId: number, date: string, generation: number): Observable<VenueMapView> {
     return this.venues.getVenueMap(venueId, date).pipe(
+      tap(() => {
+        if (this.generation === generation) {
+          this.expiresAt = Date.now() + SNAPSHOT_TTL_MS;
+        }
+      }),
       catchError((error: unknown) => {
         // Identity, not key: the key recurs after a reset, so a value check drops the replacement.
         if (this.generation === generation) {

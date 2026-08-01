@@ -155,6 +155,20 @@ describe('ConsoleVenueMap (#486)', () => {
     expect(joined).toBe('One read');
   });
 
+  it('does not age out a read that is still in flight (review F-6)', () => {
+    // The window must start when the data becomes real, not when the request left. A read slower than
+    // the TTL is still about to answer, so expiring it would dispatch a second concurrent GET for the
+    // same key — the duplicate this whole slice exists to remove, re-entered through latency.
+    cache.load(VENUE, TODAY).subscribe();
+    vi.setSystemTime(new Date(Date.now() + 31_000));
+
+    let joined: string | undefined;
+    cache.load(VENUE, TODAY).subscribe((v) => (joined = v.name));
+    flushMap(TODAY, venueMap('One slow read'));
+
+    expect(joined).toBe('One slow read');
+  });
+
   it('refetches when the key changes — a venue switch or a date rollover evicts the slot', () => {
     cache.load(VENUE, TODAY).subscribe();
     flushMap(TODAY, venueMap());
