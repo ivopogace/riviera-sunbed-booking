@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.booking.application.Bookings;
@@ -38,9 +39,10 @@ class WithdrawRequestServiceTest {
 
 	private final Bookings bookings = mock(Bookings.class);
 	private final AvailabilityClaim availability = mock(AvailabilityClaim.class);
+	private final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
 	private WithdrawRequestService service() {
-		return new WithdrawRequestService(bookings, new RequestReleaseService(bookings, availability));
+		return new WithdrawRequestService(bookings, new RequestReleaseService(bookings, availability, publisher));
 	}
 
 	@Test

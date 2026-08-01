@@ -20,6 +20,8 @@ import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
+import ai.riviera.platform.notification.application.RequestDeclinedMail;
+import ai.riviera.platform.notification.application.RequestExpiredMail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -124,6 +126,16 @@ class MailSenderWiringIT {
 
 		@Override
 		public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
+			record();
+		}
+
+		@Override
+		public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
+			record();
+		}
+
+		@Override
+		public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
 			record();
 		}
 

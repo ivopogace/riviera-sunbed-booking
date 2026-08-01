@@ -64,6 +64,12 @@ class TransactionalMailServiceTest {
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1),
 			Instant.parse("2026-07-31T18:00:00Z"), 4500, "EUR",
 			URI.create("https://riviera.example/booking/CODE1234"));
+	private static final RequestDeclinedMail DECLINED = new RequestDeclinedMail(
+			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1),
+			URI.create("https://riviera.example/booking/CODE1234"));
+	private static final RequestExpiredMail EXPIRED = new RequestExpiredMail(
+			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1),
+			URI.create("https://riviera.example/booking/CODE1234"));
 
 	private final Mailer mailer = mock(Mailer.class);
 	private final EmailSuppressions suppressions = mock(EmailSuppressions.class);
@@ -388,6 +394,79 @@ class TransactionalMailServiceTest {
 				.isInstanceOf(TransientDataAccessResourceException.class);
 
 		verify(mailer, never()).sendPaymentDue(any(), any());
+	}
+
+	/**
+	 * #124's two request-outcome mails join the registry vehicle, so each must behave like its three
+	 * siblings and not like the recovery pair: synchronous, the throw left intact (it is what keeps
+	 * the publication outstanding for the restart republish and the #405 re-drive), the suppression
+	 * skip a normal return, and no #386 fail-open carve-out. One test per property per kind — the
+	 * arguments are the payment-due trio's, unchanged.
+	 */
+	@Test
+	void theRequestDeclinedIsSynchronousAndPropagatesTransportFailures() {
+		service.sendRequestDeclined(EMAIL, DECLINED);
+
+		verify(mailer).sendRequestDeclined(EMAIL, DECLINED);
+		assertThat(dispatched.get()).as("the registry vehicle does not use the in-memory dispatcher").isNull();
+
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendRequestDeclined(any(), any());
+		assertThatThrownBy(() -> service.sendRequestDeclined(EMAIL, DECLINED))
+				.isInstanceOf(IllegalStateException.class);
+	}
+
+	@Test
+	void aSuppressedAddressSkipsTheRequestDeclined() {
+		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
+
+		assertThatCode(() -> service.sendRequestDeclined(EMAIL, DECLINED)).doesNotThrowAnyException();
+
+		verify(mailer, never()).sendRequestDeclined(any(), any());
+		assertThat(failedTotal()).as("a withheld mail is the policy working, not a loss").isZero();
+	}
+
+	@Test
+	void aFailingSuppressionReadDoesNotFailOpenOnTheRequestDeclined() {
+		when(suppressions.isSuppressed(EMAIL))
+				.thenThrow(new TransientDataAccessResourceException("read timed out"));
+
+		assertThatThrownBy(() -> service.sendRequestDeclined(EMAIL, DECLINED))
+				.isInstanceOf(TransientDataAccessResourceException.class);
+
+		verify(mailer, never()).sendRequestDeclined(any(), any());
+	}
+
+	@Test
+	void theRequestExpiredIsSynchronousAndPropagatesTransportFailures() {
+		service.sendRequestExpired(EMAIL, EXPIRED);
+
+		verify(mailer).sendRequestExpired(EMAIL, EXPIRED);
+		assertThat(dispatched.get()).as("the registry vehicle does not use the in-memory dispatcher").isNull();
+
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendRequestExpired(any(), any());
+		assertThatThrownBy(() -> service.sendRequestExpired(EMAIL, EXPIRED))
+				.isInstanceOf(IllegalStateException.class);
+	}
+
+	@Test
+	void aSuppressedAddressSkipsTheRequestExpired() {
+		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
+
+		assertThatCode(() -> service.sendRequestExpired(EMAIL, EXPIRED)).doesNotThrowAnyException();
+
+		verify(mailer, never()).sendRequestExpired(any(), any());
+		assertThat(failedTotal()).as("a withheld mail is the policy working, not a loss").isZero();
+	}
+
+	@Test
+	void aFailingSuppressionReadDoesNotFailOpenOnTheRequestExpired() {
+		when(suppressions.isSuppressed(EMAIL))
+				.thenThrow(new TransientDataAccessResourceException("read timed out"));
+
+		assertThatThrownBy(() -> service.sendRequestExpired(EMAIL, EXPIRED))
+				.isInstanceOf(TransientDataAccessResourceException.class);
+
+		verify(mailer, never()).sendRequestExpired(any(), any());
 	}
 
 	@Test

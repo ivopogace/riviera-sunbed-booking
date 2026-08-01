@@ -13,9 +13,9 @@ import java.net.URI;
  * {@code SmtpMailer} under {@code mailer} (#368, ADR-0011); {@code MockMailerProdGuard} forbids the
  * mock from running in production.
  *
- * <p>Recovery messages carry a raw single-use token inside the emailed link and the three booking
- * kinds carry the arrival code — the payment-due kind additionally inside its pay link, which is
- * therefore a bearer URL too — all bearer credentials (invariant #7). The caller hands each here
+ * <p>Recovery messages carry a raw single-use token inside the emailed link and the booking
+ * kinds carry the arrival code — the payment-due and the two request-outcome kinds additionally
+ * inside their links, which are therefore bearer URLs too — all bearer credentials (invariant #7). The caller hands each here
  * fully formed, so the mailer never touches the token store, the account, or the booking. <strong>No
  * implementation reachable in production may log them</strong>: {@code SmtpMailer} logs neither, and
  * {@code MockMailer}'s deliberate dev-only echo of the recovery <em>link</em> is the documented
@@ -60,4 +60,17 @@ public interface Mailer {
 	 * invariant-#7 argument here.
 	 */
 	void sendOperatorApproved(String toEmail, URI signInLink);
+
+	/**
+	 * Send the "the venue declined your request" record (#124): the outcome, that nothing is held and
+	 * nothing was charged, and the code-gated status link. A plain record with no call-to-action, by
+	 * product decision; structured like the other booking kinds, and for the same reason.
+	 */
+	void sendRequestDeclined(String toEmail, RequestDeclinedMail declined);
+
+	/**
+	 * Send the "your request expired unanswered" record (#124) — {@link #sendRequestDeclined}'s mirror
+	 * for the sweep's outcome, under the same plain-record rule.
+	 */
+	void sendRequestExpired(String toEmail, RequestExpiredMail expired);
 }

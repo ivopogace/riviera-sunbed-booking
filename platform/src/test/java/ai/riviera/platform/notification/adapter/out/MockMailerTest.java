@@ -69,7 +69,7 @@ class MockMailerTest {
 		assertThat(recorded.kind()).isEqualTo(SentEmail.Kind.BOOKING_CANCELLATION);
 		assertThat(recorded.cancellation()).isEqualTo(CANCELLATION);
 		assertThat(recorded.link()).as("a cancellation carries no tokenized link").isNull();
-		assertThat(recorded.confirmation()).as("the three booking kinds do not share a slot").isNull();
+		assertThat(recorded.confirmation()).as("the booking kinds do not share a slot").isNull();
 	}
 
 	@Test
@@ -80,7 +80,7 @@ class MockMailerTest {
 		assertThat(recorded.kind()).isEqualTo(SentEmail.Kind.PAYMENT_DUE);
 		assertThat(recorded.paymentDue()).isEqualTo(PAYMENT_DUE);
 		assertThat(recorded.link()).as("the pay link rides the payload, not the recovery slot").isNull();
-		assertThat(recorded.confirmation()).as("the three booking kinds do not share a slot").isNull();
+		assertThat(recorded.confirmation()).as("the booking kinds do not share a slot").isNull();
 		assertThat(recorded.cancellation()).isNull();
 	}
 

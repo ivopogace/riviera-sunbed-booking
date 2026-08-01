@@ -16,6 +16,8 @@ import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
+import ai.riviera.platform.notification.application.RequestDeclinedMail;
+import ai.riviera.platform.notification.application.RequestExpiredMail;
 
 /**
  * A transport whose latency and failure are the test's to choose — the "deliberately blocking
@@ -103,6 +105,17 @@ public final class ControllableMailer implements Mailer {
 	/** #373's payment-due notice is the third kind on this vehicle — observed, for the reason above. */
 	@Override
 	public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
+		observeRegistrySend(toEmail);
+	}
+
+	/** #124's two request-outcome records are the fourth and fifth — observed, same reason. */
+	@Override
+	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
+		observeRegistrySend(toEmail);
+	}
+
+	@Override
+	public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
 		observeRegistrySend(toEmail);
 	}
 

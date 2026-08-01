@@ -12,6 +12,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.events.BookingPaymentDue;
+import ai.riviera.platform.booking.events.BookingRequestDeclined;
+import ai.riviera.platform.booking.events.BookingRequestExpired;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -66,6 +68,14 @@ public final class BookingMailFixtures {
 	 */
 	public static final String PAYMENT_DUE_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
 			+ "RequestPaymentDueMailListener.on(ai.riviera.platform.booking.events.BookingPaymentDue)";
+
+	/** The registry's id for the request-declined listener (#124); new class, no migration needed. */
+	public static final String REQUEST_DECLINED_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
+			+ "RequestDeclinedMailListener.on(ai.riviera.platform.booking.events.BookingRequestDeclined)";
+
+	/** The registry's id for the request-expired listener (#124); new class, no migration needed. */
+	public static final String REQUEST_EXPIRED_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
+			+ "RequestExpiredMailListener.on(ai.riviera.platform.booking.events.BookingRequestExpired)";
 
 	private final JdbcClient jdbc;
 	private final TransactionTemplate transactions;
@@ -136,6 +146,16 @@ public final class BookingMailFixtures {
 				new SetId(set.setId()), date, payBy, amountMinor, "EUR");
 	}
 
+	/** The decline fact an IT publishes to drive the mail (#124); the date is the matching fragment. */
+	public BookingRequestDeclined requestDeclinedOf(SetRef set, long bookingId, LocalDate date) {
+		return new BookingRequestDeclined(new BookingId(bookingId), new SetId(set.setId()), date);
+	}
+
+	/** The expiry fact an IT publishes to drive the mail (#124); the date is the matching fragment. */
+	public BookingRequestExpired requestExpiredOf(SetRef set, long bookingId, LocalDate date) {
+		return new BookingRequestExpired(new BookingId(bookingId), new SetId(set.setId()), date);
+	}
+
 	/** How much the registry still owes the confirmation listener for one test's event. */
 	public long outstandingMailPublications(long amountMinor) {
 		return outstandingPublicationsFor(LISTENER_ID, amountMinor);
@@ -143,12 +163,21 @@ public final class BookingMailFixtures {
 
 	/** The same read for any one listener — the cancellation listener needs it too. */
 	public long outstandingPublicationsFor(String listenerId, long amountMinor) {
+		return outstandingPublicationsMatching(listenerId, String.valueOf(amountMinor));
+	}
+
+	/**
+	 * The amount-fragment read generalized (#124): the request-outcome events carry no amount, so
+	 * their ITs match on the booking-<em>date</em> fragment instead — unique by this class's
+	 * dates-per-IT discipline, and just as improbable to collide as an amount.
+	 */
+	public long outstandingPublicationsMatching(String listenerId, String fragment) {
 		return jdbc.sql("""
 				SELECT COUNT(*) FROM event_publication
 				WHERE completion_date IS NULL AND listener_id = :listener
-				  AND serialized_event LIKE :amountFragment
+				  AND serialized_event LIKE :fragment
 				""")
-				.param("listener", listenerId).param("amountFragment", "%" + amountMinor + "%")
+				.param("listener", listenerId).param("fragment", "%" + fragment + "%")
 				.query(Long.class).single();
 	}
 

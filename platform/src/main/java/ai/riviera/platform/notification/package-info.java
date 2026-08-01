@@ -20,8 +20,9 @@
  * synchronous {@code MailDeliverability} read that lets the authenticated verification-resend stop
  * claiming a mail was sent when suppression withheld it; {@code application} holds the
  * chokepoint service, the internal transport/dispatch/suppression ports and the dispatcher;
- * {@code adapter/in} the three registry listeners — {@code BookingConfirmed}, since #374
- * {@code BookingCancelled}, and since #373 {@code BookingPaymentDue} (all driving adapters, all on
+ * {@code adapter/in} the five registry listeners — {@code BookingConfirmed}, since #374
+ * {@code BookingCancelled}, since #373 {@code BookingPaymentDue}, and since #124
+ * {@code BookingRequestDeclined} + {@code BookingRequestExpired} (all driving adapters, all on
  * the mail bulkhead) — plus the config that binds them their properties; {@code adapter/out}
  * the transports and the suppression repository. No {@code domain} — the module owns table-backed
  * state but no aggregate yet (the single {@code SuppressionReason} enum rides with its port).
@@ -40,9 +41,9 @@
  * already in hand, which is what keeps it on this side of RV-BE-11. Nothing depends on
  * {@code notification} except the root.
  *
- * <p>The grants below are the three registry listeners' reads, least-privilege (#95) — no command
- * surface; #374 and #373 each added a listener without widening them, because all three assemble the
- * same facts through one shared resolver. {@code shared} is the OPEN kernel, granted for the admin adapter's RFC-7807
+ * <p>The grants below are the five registry listeners' reads, least-privilege (#95) — no command
+ * surface; #374, #373 and #124 each added listeners without widening them, because all five assemble
+ * the same facts through one shared resolver. {@code shared} is the OPEN kernel, granted for the admin adapter's RFC-7807
  * {@code ApiProblem} factory (#391); it publishes no named interfaces, so the whole (deliberately
  * tiny) module root is the narrowest grant available, exactly as {@code payout} declares it.
  * {@code booking::spi} is the one <em>inbound</em> grant (#390): booking declares

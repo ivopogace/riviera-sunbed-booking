@@ -12,7 +12,7 @@ import org.springframework.web.util.UriComponentsBuilder;
  * <em>credential-material machinery</em> — minting a token, hashing it, deciding its TTL — at the
  * platform edge, and this mints nothing: it formats a booking code the module already reads through
  * {@code booking.api} in order to render it into the mail body. The edge cannot build this one
- * anyway, because the three booking mails are raised by registry listeners inside the hexagon rather
+ * anyway, because the booking mails are raised by registry listeners inside the hexagon rather
  * than by an edge flow with a request in hand.
  *
  * <p><strong>Why {@code /booking/<code>} and not {@code /booking/pay}.</strong> The pay screen

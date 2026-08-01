@@ -55,7 +55,8 @@ public final class ObservabilityMetrics {
 	 * vehicle's drop is a different event with a different meaning (nothing to retry from), so it has
 	 * its own name — {@link #MAIL_RECOVERY_DROPPED} (#415). Each later mail loss earned a name of its
 	 * own for the same reason ({@link #MAIL_RECOVERY_FAILED} #423, {@link #MAIL_CONFIRMATION_ABANDONED}
-	 * #428, {@link #MAIL_CANCELLATION_ABANDONED} #374, {@link #MAIL_PAYMENT_DUE_ABANDONED} #373):
+	 * #428, {@link #MAIL_CANCELLATION_ABANDONED} #374, {@link #MAIL_PAYMENT_DUE_ABANDONED} #373,
+	 * {@link #MAIL_REQUEST_DECLINED_ABANDONED} / {@link #MAIL_REQUEST_EXPIRED_ABANDONED} #124):
 	 * <strong>do not sum them.</strong> This one is the only member of the set that is expected
 	 * to be re-delivered, which is precisely why summing would mislead.
 	 */
@@ -116,7 +117,7 @@ public final class ObservabilityMetrics {
 	 * <p><strong>Read this one first during a suspected relay outage.</strong> Saturating the recovery
 	 * dispatcher takes 100 sends queued behind a wedged drainer at a volume of a handful a day, so
 	 * {@code MAIL_RECOVERY_DROPPED} is rare by construction; a relay that is simply down fails
-	 * <em>every</em> send and raises this one immediately. Do not sum the six mail counters — they
+	 * <em>every</em> send and raises this one immediately. Do not sum the mail counters — they
 	 * measure a deferral, a send the pool never ran, an attempt that failed, and — on three separate
 	 * series (#428, #374, #373) — a booking mail given up on. ("Never ran" rather than "refused" since #434
 	 * widened the first of those — see {@link #MAIL_RECOVERY_DROPPED}.)
@@ -140,9 +141,10 @@ public final class ObservabilityMetrics {
 
 	/**
 	 * Counter: booking-confirmation mails the registry listener <em>gave up on</em> because a fact it
-	 * needs — the booking, the set, or the contact — did not resolve (#428). The first of the three
-	 * <em>abandoned</em> names ({@link #MAIL_CANCELLATION_ABANDONED} #374 and
-	 * {@link #MAIL_PAYMENT_DUE_ABANDONED} #373 are the others), and the kind
+	 * needs — the booking, the set, or the contact — did not resolve (#428). The first of the
+	 * <em>abandoned</em> names ({@link #MAIL_CANCELLATION_ABANDONED} #374,
+	 * {@link #MAIL_PAYMENT_DUE_ABANDONED} #373 and #124's {@link #MAIL_REQUEST_DECLINED_ABANDONED} /
+	 * {@link #MAIL_REQUEST_EXPIRED_ABANDONED} are the others), and the kind
 	 * of loss <strong>no gauge could otherwise see</strong>.
 	 *
 	 * <p><strong>That invisibility is the whole reason it exists.</strong>
@@ -155,7 +157,7 @@ public final class ObservabilityMetrics {
 	 * <em>silently</em> was not.
 	 *
 	 * <p>Do not sum them. A shed is deferred, a drop was refused, a failure was attempted — an
-	 * abandoned mail is the only kind that is <strong>never</strong> retried; and the three abandoned
+	 * abandoned mail is the only kind that is <strong>never</strong> retried; and the abandoned
 	 * series are not each other's totals either ({@link #MAIL_CANCELLATION_ABANDONED} says why).
 	 *
 	 * <p>Carries a {@code reason} tag ({@code no-booking} / {@code no-set} / {@code no-contact})
@@ -201,7 +203,7 @@ public final class ObservabilityMetrics {
 	 * {@link #MAIL_CANCELLATION_ABANDONED} states applies unchanged, and so does <strong>do not sum
 	 * them</strong>.
 	 *
-	 * <p>What differs is the consequence, and it is the sharpest of the three. The other two describe
+	 * <p>What differs is the consequence, and it is the sharpest of the series. The other two describe
 	 * a record that failed to arrive about something already settled — a booking confirmed, a
 	 * cancellation decided. This one is the guest's <em>only</em> notice that an accepted request must
 	 * be paid for, and by when: the app shows it only to someone who happens to reload. An increment
@@ -215,6 +217,28 @@ public final class ObservabilityMetrics {
 	 * first.
 	 */
 	public static final String MAIL_PAYMENT_DUE_ABANDONED = "riviera.mail.payment-due.abandoned";
+
+	/**
+	 * Counter: request-declined record mails the registry listener <em>gave up on</em> because a fact
+	 * it needs — the booking, the set, or the contact — did not resolve (#124). The fourth of the
+	 * <em>abandoned</em> series: same vehicle, same invisibility, same three {@code reason} tag
+	 * values read off the same enum; the naming rule {@link #MAIL_CANCELLATION_ABANDONED} states
+	 * applies unchanged, and so does <strong>do not sum them</strong>. The consequence is
+	 * retrospective, like the confirmation's and unlike {@link #MAIL_PAYMENT_DUE_ABANDONED}'s: the
+	 * guest is left waiting on a request the venue already refused, until they happen to reload the
+	 * app — nothing further is forfeited on a clock.
+	 */
+	public static final String MAIL_REQUEST_DECLINED_ABANDONED = "riviera.mail.request-declined.abandoned";
+
+	/**
+	 * Counter: request-expired record mails the registry listener <em>gave up on</em> (#124) — the
+	 * fifth of the <em>abandoned</em> series and {@link #MAIL_REQUEST_DECLINED_ABANDONED}'s mirror
+	 * for the sweep's outcome; everything that entry says applies unchanged. A sibling series rather
+	 * than a tag on it for the standing flow-not-vehicle rule, and because the two are acted on
+	 * against different parties: a declined guest was answered and not told, an expired one was never
+	 * answered at all.
+	 */
+	public static final String MAIL_REQUEST_EXPIRED_ABANDONED = "riviera.mail.request-expired.abandoned";
 
 	private ObservabilityMetrics() {
 	}

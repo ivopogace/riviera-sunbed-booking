@@ -32,8 +32,9 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * very experience it was added to remove. That asymmetry is why the loss counters are read through
  * their {@code kind} tag rather than in aggregate ({@code docs/runbooks/observability.md}).
  *
- * <p><strong>The three booking mails</strong> — the confirmation (#371), the cancellation/refund
- * record (#374) and the accepted request's payment deadline (#373), all module-internal and driven
+ * <p><strong>The booking mails</strong> — the confirmation (#371), the cancellation/refund
+ * record (#374), the accepted request's payment deadline (#373) and the two request-outcome
+ * records (#124), all module-internal and driven
  * by registry listeners — are deliberately the
  * opposite: synchronous on the listener's thread, transport failures propagating, so the Event
  * Publication Registry keeps the publication outstanding and retries — the at-least-once contract.
@@ -66,8 +67,8 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * less observable than the one this class exists to record.
  *
  * <p><strong>The registry vehicle deliberately gets no equivalent counter.</strong> Its transport
- * failure propagates (see {@link #sendBookingConfirmation}, {@link #sendBookingCancellation} and
- * {@link #sendPaymentDue}), so
+ * failure propagates (see {@link #sendBookingConfirmation}, {@link #sendBookingCancellation},
+ * {@link #sendPaymentDue}, {@link #sendRequestDeclined} and {@link #sendRequestExpired}), so
  * the publication stays outstanding and
  * {@code riviera.outbox.pending} — already watched by {@code MoneyPathAlertCheck} — rises on exactly
  * this event. Adding a second series would count one failure twice and invite summing two numbers
@@ -161,7 +162,7 @@ public class TransactionalMailService implements MailSender {
 
 	/**
 	 * Deliver the accepted request's payment deadline now, on the caller's thread; a transport failure
-	 * propagates (#373). The registry vehicle's posture, identical to its two siblings — and the one
+	 * propagates (#373). The registry vehicle's posture, identical to its siblings — and the one
 	 * where the retry the throw buys is most obviously worth having, since the mail is the guest's
 	 * only warning that an unnoticed acceptance will be swept away again.
 	 */
@@ -171,6 +172,32 @@ public class TransactionalMailService implements MailSender {
 			return;
 		}
 		mailer.sendPaymentDue(toEmail, paymentDue);
+	}
+
+	/**
+	 * Deliver the declined request's record now, on the caller's thread; a transport failure
+	 * propagates (#124). The registry vehicle's posture, identical to its three siblings — the throw
+	 * keeps the publication outstanding for the restart republish, and the suppression check gets no
+	 * fail-open carve-out for {@link #sendBookingCancellation}'s reason.
+	 */
+	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
+		if (suppressions.isSuppressed(toEmail)) {
+			log.info("Request-declined mail skipped: the address is suppressed");
+			return;
+		}
+		mailer.sendRequestDeclined(toEmail, declined);
+	}
+
+	/**
+	 * Deliver the expired request's record now, on the caller's thread (#124) —
+	 * {@link #sendRequestDeclined}'s mirror, same posture, same reasons.
+	 */
+	public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
+		if (suppressions.isSuppressed(toEmail)) {
+			log.info("Request-expired mail skipped: the address is suppressed");
+			return;
+		}
+		mailer.sendRequestExpired(toEmail, expired);
 	}
 
 	private void dispatchQuietly(MailKind kind, String toEmail, Runnable send) {
@@ -242,8 +269,8 @@ public class TransactionalMailService implements MailSender {
 	 * than as the relay fault it is not.
 	 *
 	 * <p>Deliberately <strong>not</strong> shared with any registry-vehicle send
-	 * ({@link #sendBookingConfirmation}, {@link #sendBookingCancellation}, {@link #sendPaymentDue}):
-	 * there the throw is
+	 * ({@link #sendBookingConfirmation}, {@link #sendBookingCancellation}, {@link #sendPaymentDue},
+	 * {@link #sendRequestDeclined}, {@link #sendRequestExpired}): there the throw is
 	 * load-bearing, keeping the publication outstanding so the at-least-once contract (#371) retries
 	 * against a healthy database instead of burning the delivery on a blip.
 	 */

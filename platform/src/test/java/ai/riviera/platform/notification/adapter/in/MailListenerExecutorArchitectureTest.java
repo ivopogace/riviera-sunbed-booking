@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The fitness function behind #383 AC-4: <em>every</em> mail path honours the isolation rule
- * {@code AsyncMailDispatcher} states, not just the three that exist today.
+ * {@code AsyncMailDispatcher} states, not just the listeners that exist today.
  *
  * <p>The regression this exists to prevent is silent and cheap to make. {@code @ApplicationModuleListener}
  * is the documented, obvious way to write a registry-backed listener — {@code riviera-modulith}'s own
@@ -122,7 +122,8 @@ class MailListenerExecutorArchitectureTest {
 	@Test
 	void theRuleExaminesEveryProductionListener() {
 		List<Class<?>> expected = List.of(BookingConfirmationMailListener.class,
-				BookingCancellationMailListener.class, RequestPaymentDueMailListener.class);
+				BookingCancellationMailListener.class, RequestPaymentDueMailListener.class,
+				RequestDeclinedMailListener.class, RequestExpiredMailListener.class);
 		List<Class<?>> examined = inScopeListeners(notificationEventListeners()).stream()
 				.filter(listener -> "on".equals(listener.getName()))
 				.map(Method::getDeclaringClass)
