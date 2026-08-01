@@ -120,7 +120,7 @@ than recalls**, and make `riviera-docs-freshness` state *ran* or *N/A + reason* 
 listed" and "not applicable" look identical in a diff, so a skipped run hid five times.
 
 **The count.** #373 added the third registry-borne booking mail and the sixth mail counter,
-falsifying **sixteen** stated facts: `Mailer`'s "the two booking kinds",
+falsifying **sixteen** stated facts, among them: `Mailer`'s "the two booking kinds",
 `MissingBookingFact`'s "two counters"/"two listeners", both `package-info.java` files,
 `MAIL_CONFIRMATION_ABANDONED`'s "first of the two",
 `MailListenerExecutorArchitectureTest`'s "not just the two that exist today",

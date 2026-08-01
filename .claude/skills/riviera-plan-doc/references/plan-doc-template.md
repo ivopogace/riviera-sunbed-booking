@@ -246,8 +246,8 @@ detail in the in-repo `angular-developer` skill's `references/`.)
 > never a merge SHA**: the squash SHA cannot exist before the merge, so citing it guarantees
 > a second docs-only PR, while the PR number is knowable the moment you open it (the SHA is
 > one `git log --grep "(#NN)"` away). Three consecutive slices paid that tax (case history:
-> `riviera-sdlc` `references/case-history.md`). Details: `riviera-sdlc`
-> `references/pr-gates.md` §3 step 4.
+> `riviera-sdlc` `references/case-history.md`, the *three docs-only close-out PRs* entry).
+> Details: `riviera-sdlc` `references/pr-gates.md` §3 step 4.
 
 **Stage pointer:** <current `riviera-sdlc` stage, e.g. `implement (phase 2)` /
 `review gate — fixing findings` / `sonar gate` / `merge close-out step 3`>
