@@ -33,13 +33,17 @@ staff-daily is retired and the second surface is now `shared/availability-grid.t
 Daily view, and that a bare count endpoint cannot fix per-tile classification) ·
 `riviera-plan-doc` (this template — forced the behavior-parity ledger for the tile-semantics
 change) · `tdd` (each phase red-green at the smallest seam) · `riviera-review-overlay` (review
-gate — runs at ready-for-review) · `riviera-docs-freshness` (ran over the merge range at
-close-out — 1 finding: the RESPONSIBILITIES.md `venue`/`availability` §s needed the new SPI
-method + read recorded, patched in the PR) · `riviera-modulith` (placed the read: SPI extension
+gate — runs at ready-for-review) · `riviera-docs-freshness` (**ran**, pre-merge smoke over
+`origin/main...HEAD` — rename grep + counting sweep clean; 3 patches folded into this PR:
+RESPONSIBILITIES.md `venue` + `availability` Job lines and the CLAUDE.md `venue` module-table
+row now record the #207 read + `statesOn`) · `riviera-modulith` (placed the read: SPI extension
 on the existing #44 inversion, composition + endpoint in `venue`, no new grants — both
 `availability → venue::spi` and `venue → operator::api` edges already exist) ·
 `codebase-design` (kept one deep seam — extended `SetAvailabilityLookup` instead of a new
-port/api surface; two adapters already sit at it) · `postgres` (confirmed the state read is
+port/api surface; two adapters already sit at it) · `domain-modeling` (loaded at the review-fix
+round after RV-PROC-1 flagged its omission — checked the slice against `CONTEXT.md`: walk-in, the
+three state tokens and soft-hold are already glossary terms, so no new term and no ADR; the seam
+decision lives in this plan) · `postgres` (confirmed the state read is
 covered by the existing `(set_id, booking_date)` unique index — no new index) ·
 `riviera-frontend` (placement: service method + model in `operator/`, derivation stays in
 `shared/availability-grid.ts`, spec in the CI-safe mocked e2e suite) · `riviera-java-conventions`
@@ -113,21 +117,25 @@ stands in for `bugfix/operator-availability-states` (riviera-sdlc cloud addendum
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The new operator GET falls through to the public `GET /api/venues/**` `permitAll` (the #316/#317/#328 failure class) | med | high | matcher `/api/venues/*/availability` registered **before** the public venue GET; `EndpointRoleGateCoverageTest` fails the build if unlisted; explicit 401 IT | agent | open |
-| R-2 | BOLA: a non-owner reads another venue's hold pattern (invariant #13) | med | high | `assertOwns` first statement of the application service, **before** existence check (`403` outranks `404`); `CrossVenueDenialIT` row | agent | open |
-| R-3 | FE: map read and states read race → tile flicker/misclassification between reads | low | med | both reads join the existing `forkJoin` (loaded flips once **all** settle); states are the sole classification source; reconcile re-reads all three | agent | open |
-| R-4 | Strip shows walk-ins from a fresh read beside a Free tile from the #486 cached snapshot → momentary cross-tile inconsistency | med | low | accepted + documented in the strip's TSDoc: each tile names its source; walk-ins correctness is the issue's point; Free-tile freshness unchanged from today | agent | open |
-| R-5 | Sonar gate: <80% new-code coverage or duplication on the twin FE load paths | med | med | unit specs per changed file; IT per backend class; pull the Sonar issue list via API before merge (pr-gates §2) | agent | open |
-| R-6 | Mocked e2e fixtures drift from the new endpoint (suite fails or silently mocks 404) | med | med | extend the console e2e support mocks with the `/availability` route in the same phase as the spec | agent | open |
-| R-7 | Error contract drift: new endpoint invents a per-controller error body | low | med | RFC-7807 via `ApiProblem`/`ApiErrorHandler` like the sibling reads; 404 `NO_SUCH_VENUE` via Optional-empty mapping (§6b) | agent | open |
+| R-1 | The new operator GET falls through to the public `GET /api/venues/**` `permitAll` (the #316/#317/#328 failure class) | med | high | matcher `/api/venues/*/availability` registered **before** the public venue GET; `EndpointRoleGateCoverageTest` fails the build if unlisted; explicit 401 IT | agent | **closed** — matcher landed in phase 2 (30f02c0); coverage test was red until it did, proving it probes the endpoint |
+| R-2 | BOLA: a non-owner reads another venue's hold pattern (invariant #13) | med | high | `assertOwns` first statement of the application service, **before** existence check (`403` outranks `404`); `CrossVenueDenialIT` row | agent | **closed** — pinned by `DailyAvailabilityServiceTest.deniesNonOwnerBeforeExistenceCheck` (`verifyNoInteractions`) + `CrossVenueDenialIT.dailyAvailabilityReadByNonOwnerIs403` |
+| R-3 | FE: map read and states read race → tile flicker/misclassification between reads | low | med | both reads join the existing `forkJoin` (loaded flips once **all** settle); states are the sole classification source; reconcile re-reads all three | agent | **closed** — the #126 latch generalized to three reads; settle-time error decision is order-independent (daily-view-tab spec: states-fail → error card) |
+| R-4 | Strip shows walk-ins from a fresh read beside a Free tile from the #486 cached snapshot → momentary cross-tile inconsistency | med | low | accepted + documented in the strip's TSDoc: each tile names its source; walk-ins correctness is the issue's point; Free-tile freshness unchanged from today | agent | **closed** — accepted; TSDoc states each tile's source |
+| R-5 | Sonar gate: <80% new-code coverage or duplication on the twin FE load paths | med | med | unit specs per changed file; IT per backend class; pull the Sonar issue list via API before merge (pr-gates §2) | agent | **closed** — 96.2% new-code coverage, 0 new issues, 0 duplication at 300d1e6; API list re-checked after the review-fix push |
+| R-6 | Mocked e2e fixtures drift from the new endpoint (suite fails or silently mocks 404) | med | med | extend the console e2e support mocks with the `/availability` route in the same phase as the spec | agent | **closed** — CI caught exactly this on the phase-3 push (F-1); phase 4 extended all 8 console specs; 117/117 green |
+| R-7 | Error contract drift: new endpoint invents a per-controller error body | low | med | RFC-7807 via `ApiProblem`/`ApiErrorHandler` like the sibling reads; 404 `NO_SUCH_VENUE` via Optional-empty mapping (§6b) | agent | **closed** — review F-4 caught the bare `notFound()`; the 404 now ships the coded `ApiProblem` body |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the sparse wire shape (only held sets returned; absent ⇒ free) is sufficient
-  for both consumers — the map supplies the full set list. — *Owner:* agent · *Resolves by:* phase 3 (FE consumes it)
-- **Assumption:** `VenueAdminController` is the right host for the endpoint (it already serves the
-  owner-scoped profile GET); no new controller needed. — *Owner:* agent · *Resolves by:* phase 2
-- **Open question:** none.
+None open.
+
+### Resolved
+
+- **Assumption: the sparse wire shape suffices for both consumers** — confirmed in phase 3: the
+  daily view derives tiles from map (layout) + states (classification); the strip counts
+  `STAFF_MARKED` directly. Resolved in 695cfa7.
+- **Assumption: `VenueAdminController` is the right host** — confirmed in phase 2 (mirrors the
+  owner profile GET; no new controller). Resolved in 30f02c0.
 
 ## Availability & concurrency (invariant #2)
 
@@ -202,9 +210,9 @@ a11y/contrast specs re-run (tile accessible names already carry the state).
 
 ## Execution status
 
-**Stage pointer:** implement — phase 4 done; awaiting CI green, then gates (phase 5)
+**Stage pointer:** DONE — merged via PR #501 (all gates ran; this final state written in the PR's last commit)
 
-**Next action:** verify the CI run on the phase-4 push, then mark PR #501 ready-for-review and run the review gate
+**Next action:** none — close-out complete (issue #207 closes via the PR; no parent epic)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -212,8 +220,8 @@ a11y/contrast specs re-run (tile accessible names already carry the state).
 | 1 — `statesOn` on the SPI + JDBC impl (`AvailabilityLookupIT` red-green) | ✅ | 00ae354 |
 | 2 — venue read service + endpoint + role gate (+ `CrossVenueDenialIT`, coverage test) | ✅ | 30f02c0 |
 | 3 — FE: service + grid derivation + daily view + stats strip (Vitest red-green) | ✅ | 695cfa7 |
-| 4 — mocked e2e + a11y re-run (117/117 locally) | ✅ | (this commit) |
-| 5 — gates: CI green, ready-for-review, review, Sonar, merge close-out | | |
+| 4 — mocked e2e + a11y re-run (117/117 locally) | ✅ | 300d1e6 |
+| 5 — gates: CI green (run 30719272119, 7/7), review gate ran (`/code-review` 6-agent fan-out + overlay walk), Sonar green + API list clear, review-fix round + close-out | ✅ | (this commit — the PR's last) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -222,6 +230,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (run on 695cfa7) | 3 mocked e2e red — the strip's new `/availability` read was unmocked in `operator-console`/`operator-daily` specs (phase 3 pushed ahead of phase 4 by design) | fixed in phase 4 commit (mocks + unpaid-hold fixture) |
+| F-2 | review (RV-BE-11 / agent #3 + overlay, Major) | plan claimed the RESPONSIBILITIES.md patch was already in the PR; it wasn't | fixed in the review-fix commit — docs-freshness pre-merge smoke ran; RESPONSIBILITIES.md `venue`/`availability` + CLAUDE.md venue row patched; Skills-consulted line rewritten truthfully |
+| F-3 | review (RV-PROC-1, Major) | `domain-modeling` missing from Skills consulted despite the backend-structure routing row | fixed — skill loaded at the fix round (glossary already covers the vocabulary; no new term/ADR), line updated |
+| F-4 | review (RV-CT-5, Minor) | new 404 returned bare `notFound()` while the plan contract promises `404 NO_SUCH_VENUE` | fixed — the endpoint now returns the coded `ApiProblem` body |
+| F-5 | review (RV-STYLE-1, Minor) | multi-line inline comments introduced by the diff (FE component, SecurityConfig, controller, specs, e2e) | fixed — shortened to one line or moved into Javadoc; the controller comment became the method's Javadoc |
+| F-6 | review (agent #5, pre-existing, score 0) | `AvailabilityLookupIT` class Javadoc said the port is "declared in `venue.api`" (it is `venue.spi`) | fixed while in the touched file (one word) |
 
 ---
 
@@ -344,26 +357,28 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-4:** scoped gradle runs of the named tests → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5..AC-6:** `npm test` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** tourist-path diff is empty; `VenueReadControllerIT` green.
-- [ ] **AC-8:** `npm run test:e2e:a11y` → PASS.
+- [x] **AC-1..AC-4:** scoped gradle runs of `AvailabilityLookupIT`, `DailyAvailabilityServiceTest`,
+  `VenueAdminControllerIT`, `CrossVenueDenialIT`, `EndpointRoleGateCoverageTest` + the structural
+  net → PASS locally (phases 1–2) and in CI run 30719272119 (full suite, head 300d1e6).
+- [x] **AC-5..AC-6:** `npm test` (1070 specs) → PASS at 695cfa7 and in CI.
+- [x] **AC-7:** tourist-path diff is empty (`git diff origin/main...HEAD` touches no tourist read); `VenueReadControllerIT` green in CI.
+- [x] **AC-8:** `npm run test:e2e:a11y` → 117/117 PASS locally at 300d1e6 and in CI.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section filled; read-only, no concurrency change (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
-- [ ] **Payment/payout** N/A honest — no money path touched.
-- [ ] Timezone: date param is the `Europe/Tirane` civil day, like the sibling reads (invariant #6).
-- [ ] Booking codes: none touched (invariant #7).
-- [ ] No Flyway migration needed — verified no schema change (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** (invocation ladder + overlay).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section filled; read-only, no concurrency change (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11); `ModularityTests` + shape tests green.
+- [x] **Payment/payout** N/A honest — no money path touched.
+- [x] Timezone: date param is the `Europe/Tirane` civil day, like the sibling reads (invariant #6).
+- [x] Booking codes: none touched (invariant #7).
+- [x] No Flyway migration needed — verified no schema change (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** citing `merged via PR #501`.
+- [x] **The review gate ran in full** — `/code-review` workflow (ladder rung 1: the Skill invocation succeeded) with a 6-agent fan-out + the riviera overlay bank walk; findings F-2..F-6 fixed in this commit.

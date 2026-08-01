@@ -32,8 +32,7 @@ describe('DailyViewTab (#175)', () => {
     seat(4, 'B', 1, 'STANDARD', 'WALK_IN', 'FREE'),
   ];
   const BOOKINGS = [{ setId: 2, code: 'ABC12345' }]; // set 2 is held by a confirmed online booking
-  // The server states read (#207) is the tile-classification authority: set 2 online-held,
-  // set 3 staff-marked; FREE sets are absent.
+  // #207 server states — the tile-classification authority; FREE sets are absent.
   const STATES = [
     { setId: 2, state: 'BOOKED_ONLINE' },
     { setId: 3, state: 'STAFF_MARKED' },
@@ -124,8 +123,7 @@ describe('DailyViewTab (#175)', () => {
   });
 
   it('locks an unpaid online hold — server state wins over the confirmed-bookings list (#207)', () => {
-    // Set 3 is claimed BOOKED_ONLINE but its booking is unpaid, so it is NOT in the bookings read.
-    // The old derivation rendered it as a tappable walk-in ✓; the state token locks it.
+    // Set 3: claimed BOOKED_ONLINE, unpaid, absent from bookings — the old derivation showed ✓.
     render(SEED, BOOKINGS, [
       { setId: 2, state: 'BOOKED_ONLINE' },
       { setId: 3, state: 'BOOKED_ONLINE' },

@@ -301,8 +301,7 @@ export class DailyViewTab {
         return of(undefined);
       }),
     );
-    // #207: the states read is the tile-classification authority — as essential as the map; a failed
-    // reconcile keeps the last consistent states, mirroring the venue read's degrade.
+    // #207: a failed reconcile keeps the last consistent states, mirroring the venue read's degrade.
     const states$ = this.console.dailyAvailability(venueId, requested).pipe(
       tap((list) => {
         if (current()) {
@@ -314,11 +313,10 @@ export class DailyViewTab {
         return of(undefined);
       }),
     );
-    // The join flips `loaded` only once ALL reads settle — no "0 of 0 free" flash. States still
-    // missing here means their initial read failed: error card, never tiles guessed without truth
-    // (decided at settle time, so the venue read's success can't clear it — order-independent).
+    // The join flips `loaded` only once ALL reads settle — no "0 of 0 free" flash (#126).
     forkJoin([venue$, bookings$, states$]).subscribe(() => {
       if (current()) {
+        // States still missing = their initial read failed: error card, never tiles without truth.
         if (this.states() === undefined) {
           this.loadError.set(true);
         }

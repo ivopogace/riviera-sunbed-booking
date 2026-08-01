@@ -321,10 +321,7 @@ class SecurityConfig {
 						// MUST precede the public "GET /api/venues/**" below (first match wins); the
 						// per-venue ownership check itself lives in the application service (invariant #13).
 						.requestMatchers(HttpMethod.GET, TAKINGS_PATH).hasRole(OPERATOR_ROLE)
-						// Per-venue daily availability states read (#207) — operator-only: the hold split
-						// (online hold vs walk-in mark) is venue operational data the public FREE/TAKEN map
-						// deliberately hides. MUST precede the public "GET /api/venues/**" below (first
-						// match wins); the ownership check itself lives in the application service (#13).
+						// #207 — MUST precede the public "GET /api/venues/**" (rationale on the constant).
 						.requestMatchers(HttpMethod.GET, DAILY_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
 						// S9 #277: MUST precede the public "GET /api/venues/**" below, or ownership leaks.
 						.requestMatchers(HttpMethod.GET, MY_VENUES_PATH).hasRole(OPERATOR_ROLE)

@@ -12,8 +12,7 @@ import { settle } from './support/booking-dialog';
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
-// A1 free, A2 held by a CONFIRMED online booking (locked), A3 free, A4 an UNPAID online hold
-// (#207): claimed BOOKED_ONLINE at reserve, so absent from the confirmed-bookings read.
+// A1 free, A2 held by a CONFIRMED booking, A3 free, A4 an UNPAID online hold (#207).
 const BOOKINGS = [{ setId: 2, code: 'ABC12345' }];
 
 function seat(
@@ -63,8 +62,7 @@ async function mockDaily(page: Page): Promise<void> {
     return route.fulfill({ status: 204, body: '' });
   });
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: BOOKINGS }));
-  // The owner availability-states read (#207): sets 2 + 4 are online holds (4's booking unpaid,
-  // so it appears here but never in the bookings read); a staff-marked set carries its token.
+  // #207 states read: sets 2 + 4 are online holds (4 unpaid, so absent from the bookings read).
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({
       json: [
@@ -135,12 +133,10 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'FREE');
   await expect(page.locator('[data-set-id="2"]')).toHaveAttribute('data-state', 'BOOKED_ONLINE');
 
-  // #207: the UNPAID hold (set 4, no confirmed booking) is locked booked-online — never a
-  // tappable walk-in ✓, which is exactly the bug the states read fixed.
+  // #207: the UNPAID hold (set 4, no confirmed booking) is locked — never a tappable walk-in ✓.
   await expect(page.locator('[data-set-id="4"]')).toHaveAttribute('data-state', 'BOOKED_ONLINE');
 
-  // #207: the strip counts only STAFF_MARKED states — with two online holds and one CONFIRMED
-  // booking the old taken−confirmed remainder showed a phantom walk-in; now it is exactly 0.
+  // #207: only STAFF_MARKED states count — the old taken−confirmed remainder showed a phantom 1.
   await expect(page.getByTestId('oc-stat-walkins')).toHaveText('0');
 
   // Arrivals: one row with the display-only booking code chip.

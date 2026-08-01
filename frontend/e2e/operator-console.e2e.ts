@@ -154,7 +154,6 @@ test('shows the stats strip with live free/total, walk-ins and takings, across a
   page,
 }) => {
   await mockConsole(page, 0, 2, [
-    // #207: walk-ins come from the states read, not a taken−confirmed remainder.
     { setId: 3, state: 'BOOKED_ONLINE' },
     { setId: 4, state: 'BOOKED_ONLINE' },
     { setId: 5, state: 'STAFF_MARKED' },
@@ -163,8 +162,7 @@ test('shows the stats strip with live free/total, walk-ins and takings, across a
   await signIn(page);
   await expect(page.getByTestId('oc-header')).toBeVisible();
 
-  // The four tiles, live for the venue today, above the tabs: 5 sets (2 free), 2 booked online,
-  // 1 STAFF_MARKED state (#207), and €110 gross with the server-computed €93.50 net after 15%.
+  // Four live tiles: 5 sets (2 free), 2 booked, 1 STAFF_MARKED (#207), €110 gross / €93.50 net.
   await expect(page.getByTestId('oc-stat-free')).toHaveText(/2\s*\/\s*5/);
   await expect(page.getByTestId('oc-stat-booked')).toHaveText('2');
   await expect(page.getByTestId('oc-stat-walkins')).toHaveText('1');

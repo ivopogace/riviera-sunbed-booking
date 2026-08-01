@@ -246,8 +246,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void dailyAvailabilityReadByNonOwnerIs403() throws Exception {
-		// #207: the per-set hold split (online hold vs walk-in mark) is venue operational data the
-		// public map hides — a non-owner is denied BEFORE any existence/set probe (invariant #13).
+		// #207: the hold split is operator data — denied BEFORE any existence probe (invariant #13).
 		actingAs(operatorA);
 		mvc.perform(get("/api/venues/{v}/availability", MIRAMAR).cookie(operatorSession)
 						.param("date", "2026-09-14"))

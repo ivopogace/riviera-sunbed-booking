@@ -118,8 +118,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void dailyAvailabilityReturnsPerSetStatesForTheOwner() throws Exception {
-		// #207 AC-2/AC-4: the owner's state-aware read splits an online hold from a walk-in mark —
-		// the split the public FREE/TAKEN map deliberately hides. The free third set is absent.
+		// #207 AC-2/AC-4: the state-aware read splits hold vs walk-in; the free third set is absent.
 		long venue = createVenue("States Club");
 		long onlineHeld = addSet(venue, setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 		long staffMarked = addSet(venue, setBody("A", 2, "STANDARD", "ONLINE", 3000, "EUR", 2, 1));
@@ -150,8 +149,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void dailyAvailabilityRequiresOperator() throws Exception {
-		// #207 AC-4: gated to role OPERATOR ahead of the public venue GET — anonymous is 401, the
-		// hold split never serves publicly (the tourist map stays FREE/TAKEN, pinned elsewhere).
+		// #207 AC-4: gated OPERATOR ahead of the public venue GET — the hold split never serves publicly.
 		mvc.perform(get("/api/venues/{v}/availability", MIRAMAR).param("date", "2026-09-14"))
 				.andExpect(status().isUnauthorized());
 	}

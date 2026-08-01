@@ -50,8 +50,7 @@ describe('availability-grid', () => {
     });
 
     it('renders an unpaid online hold as BOOKED_ONLINE (locked), never a walk-in (#207)', () => {
-      // The old derivation mislabeled a TAKEN set without a CONFIRMED booking as STAFF_MARKED;
-      // the server state token is authoritative regardless of what the bookings read carries.
+      // The old derivation mislabeled a TAKEN set without a CONFIRMED booking as STAFF_MARKED.
       const state = deriveTileStates(
         [seat(1, 'A', 1, 'TAKEN')],
         new Map<number, HeldSetState>([[1, 'BOOKED_ONLINE']]),

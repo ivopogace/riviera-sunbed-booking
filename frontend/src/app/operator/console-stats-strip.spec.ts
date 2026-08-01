@@ -111,8 +111,7 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
   }
 
   it('derives free/total from the map and walk-ins from the server states (#207)', async () => {
-    // 5 sets: 2 FREE, 3 TAKEN. The states read says 2 online holds + 1 staff mark -> 1 walk-in,
-    // regardless of how many bookings are CONFIRMED (the old taken−confirmed derivation is gone).
+    // 2 online holds + 1 staff mark -> 1 walk-in, regardless of the CONFIRMED count.
     const map = venueMap([
       set(1, 'FREE'),
       set(2, 'FREE'),
@@ -133,8 +132,7 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
   });
 
   it('never counts an unpaid online hold as a walk-in (#207 AC-6)', async () => {
-    // One set is claimed BOOKED_ONLINE while its booking is still unpaid: zero CONFIRMED bookings,
-    // yet walk-ins must be 0 (the old derivation showed a phantom 1 here).
+    // An unpaid BOOKED_ONLINE hold with zero CONFIRMED bookings: the old derivation showed 1.
     const map = venueMap([set(1, 'FREE'), set(2, 'TAKEN')]);
 
     await render(map, 0, TAKINGS, [{ setId: 2, state: 'BOOKED_ONLINE' }]);

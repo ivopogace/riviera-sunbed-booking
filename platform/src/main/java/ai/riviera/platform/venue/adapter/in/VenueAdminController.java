@@ -2,7 +2,6 @@ package ai.riviera.platform.venue.adapter.in;
 
 import java.net.URI;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -34,7 +33,6 @@ import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
-import ai.riviera.platform.venue.application.SetDayState;
 import ai.riviera.platform.venue.application.SetRejection;
 import ai.riviera.platform.venue.application.ViewDailyAvailability;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
@@ -111,18 +109,23 @@ class VenueAdminController {
 				.orElseGet(() -> ResponseEntity.notFound().build());
 	}
 
+	/**
+	 * The owner's per-set availability states for one day (#207) — owner-scoped (invariant #13): the
+	 * service asserts ownership before answering, so a venue's hold pattern (online hold vs walk-in
+	 * mark) never leaks to a non-owner ({@code 403} via {@code ApiErrorHandler}). Gated to role
+	 * OPERATOR ABOVE the public {@code GET /api/venues/**} in {@code SecurityConfig}, like the
+	 * profile + takings reads. A free set is absent from the list; an owned-but-vanished venue is
+	 * {@code 404 NO_SUCH_VENUE} (the one coded 404 contract this controller already speaks).
+	 */
 	@GetMapping("/{venueId}/availability")
-	ResponseEntity<List<SetDayState>> dailyAvailability(Authentication authentication,
+	ResponseEntity<?> dailyAvailability(Authentication authentication,
 			@PathVariable long venueId,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-		// Owner-scoped read (#207, invariant #13): the service asserts ownership before answering,
-		// so a venue's hold pattern (online hold vs walk-in mark) never leaks to a non-owner — 403 via
-		// ApiErrorHandler. Gated to role OPERATOR ABOVE the public "GET /api/venues/**" in
-		// SecurityConfig, like the profile + takings reads; a free set is absent from the list.
 		OperatorId operator = currentOperator.require(authentication);
 		return viewDailyAvailability.statesFor(operator, new VenueId(venueId), date)
-				.map(ResponseEntity::ok)
-				.orElseGet(() -> ResponseEntity.notFound().build());
+				.<ResponseEntity<?>>map(ResponseEntity::ok)
+				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
+						NO_SUCH_VENUE_DETAIL));
 	}
 
 	@PatchMapping("/{venueId}")

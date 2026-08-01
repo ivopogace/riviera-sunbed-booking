@@ -83,7 +83,12 @@ port, and the public content-hash serving read — ADR-0008), the beach map / la
 positions, the online-vs-walk-in pool assignment for each set, pricing, and the booking mode
 (Instant / Request). Since S9 (#277) also **assemble the signed-in operator's own-venues read model**
 (`GET /api/venues/mine`): I ask `operator::api` for the ownership set and join the names, because
-naming venues is my job and `operator → venue` would cycle.
+naming venues is my job and `operator → venue` would cycle. Since #207 also **compose the owner's
+per-set daily availability read** (`GET /api/venues/{venueId}/availability?date=`, owner-asserted,
+403-before-existence): I own the set list and the map composition (the #44 split, one state-aware
+step deeper), while `availability` answers the per-`(set, date)` state tokens through my `spi`
+(`SetAvailabilityLookup#statesOn`); the public tourist map stays state-agnostic (`FREE`/`TAKEN`) —
+hold type never reaches the public surface.
 
 **Not My Job:**
 - Knowing whether a specific set is free on a date → **`availability`** (I own the
@@ -102,7 +107,10 @@ naming venues is my job and `operator → venue` would cycle.
 ## `availability`
 **Job:** Own the single source-of-truth state per `(set, date)` — free / booked-online /
 staff-marked. Be the **only writer** of that table. Claim a set atomically so it can
-never be double-sold.
+never be double-sold. Answer the read-side facts through `venue::spi`
+(`SetAvailabilityLookup`): the state-agnostic taken-set overlay for the public map (#44)
+and, since #207, the per-set **state tokens** (`statesOn`) behind the owner's daily
+availability read — `venue` composes; I answer state.
 
 **Not My Job:**
 - The venue layout, which sets exist, or their positions → **`venue`** (I reference

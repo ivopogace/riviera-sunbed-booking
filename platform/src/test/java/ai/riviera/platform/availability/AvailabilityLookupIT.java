@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * a {@code set_availability} row for a date is taken on that date and free on another; a set
  * with no row is free; any state ({@code BOOKED_ONLINE} / {@code STAFF_MARKED}) counts as taken;
  * an empty input is handled without a query. This is the read side of the dependency-inverted
- * {@link SetAvailabilityLookup} port (declared in {@code venue.api}, implemented by
+ * {@link SetAvailabilityLookup} port (declared in {@code venue.spi}, implemented by
  * {@code availability}). Real Postgres + seed via Testcontainers. Each test uses a distinct date
  * so methods stay independent (the context/DB is shared).
  */
