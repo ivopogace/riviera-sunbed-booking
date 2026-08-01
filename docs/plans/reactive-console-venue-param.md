@@ -28,7 +28,8 @@ that the fix scope grew from the shell to shell + six tabs, all snapshot-readers
 coverage inapplicable) · `riviera-plan-doc` (this template — forced the per-tab
 transient-state reset audit into the ACs/risks) · `tdd` (each phase red-green: failing
 param-change spec first, then the reactive read) · `riviera-review-overlay` (review
-gate — pending, at ready-for-review; RV-FE-E2E consulted for the e2e-N/A claim) ·
+gate — ran at ready-for-review: FE bank walked, RV-FE-E2E N/A verified, 6 findings fixed in
+`96518de`) ·
 `riviera-docs-freshness` (**ran** pre-merge over `origin/main...HEAD` — 1 finding: the
 `riviera-frontend` routing bullet still called the tab read a snapshot read, patched in
 this PR; counting sweep clean — no counted set grew) · `riviera-frontend`
@@ -160,9 +161,9 @@ N/A — no contract change; the same endpoints are called with a different `venu
 
 ## Execution status
 
-**Stage pointer:** review gate (PR #495 ready for review)
+**Stage pointer:** DONE — merged via PR #495
 
-**Next action:** run the Review gate (`/code-review` ladder + `riviera-review-overlay`) on PR #495, then the Sonar gate issue-list pull
+**Next action:** none — slice complete (issue #180 closed by the merge)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -184,7 +185,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | review (scored 75; the #487 precedent) | all ~33 late-response guards compared `venueId()` **by value** — an A→B→A switch re-passes the check, so a reordered first-visit response could beat the fresh load | fixed — per-component `epoch` identity guard replaces every value guard; pinned by the layout-editor A→B→A spec |
 | F-4 | review (scored 75) | two TSDoc "loaded once" claims went stale under the reactive reload | fixed — reworded |
 | F-5 | review overlay (RV-STYLE-1, Minor ×9) | multi-line inline comments added by the diff | fixed — trimmed to one line each |
-| F-6 | sonar (gate FAILED at `e52d4ef`: 77.2% new-code coverage < 80%) | guard negative branches uncovered (venue-tab 69%, pricing 72%, payouts 75%, requests 76%) | fixed — a late-response race spec per tab + the two layout-editor race specs (262 tests); re-check on next analysis |
+| F-6 | sonar (gate FAILED at `e52d4ef`: 77.2% new-code coverage < 80%) | guard negative branches uncovered (venue-tab 69%, pricing 72%, payouts 75%, requests 76%) | fixed — gate PASSED at `96518de`: 82.4% new-code coverage, 0 issues, 0 duplication |
 
 ---
 
