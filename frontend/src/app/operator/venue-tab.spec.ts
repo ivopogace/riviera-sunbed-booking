@@ -1,7 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { VenueProfileView } from './operator-console.model';
@@ -18,6 +19,7 @@ import { VenueTab } from './venue-tab';
  */
 describe('VenueTab (#177)', () => {
   let fixture: ComponentFixture<VenueTab>;
+  let params$: BehaviorSubject<ParamMap>;
   let http: HttpTestingController;
   let host: HTMLElement;
 
@@ -44,6 +46,7 @@ describe('VenueTab (#177)', () => {
   const API = 'http://localhost:8080';
 
   function configure(parentVenueId: Record<string, string> = { venueId: '1' }): void {
+    params$ = new BehaviorSubject(convertToParamMap(parentVenueId));
     TestBed.configureTestingModule({
       imports: [VenueTab],
       providers: [
@@ -54,7 +57,7 @@ describe('VenueTab (#177)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap(parentVenueId) } },
+            parent: { snapshot: { paramMap: params$.value }, paramMap: params$ },
           },
         },
       ],
@@ -447,4 +450,40 @@ describe('VenueTab (#177)', () => {
     // No profile read is attempted without a venue id (afterEach http.verify() asserts none).
     expect(host.querySelector('form')).toBeNull();
   });
+
+  it('re-loads for the new venue when the parent param changes in place (#180)', () => {
+    render();
+    expect((byId('venue-name') as HTMLInputElement).value).toBe('Miramar');
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    // Venue 1's details (and its version token) must not stay in the form while venue 2 loads.
+    expect(host.querySelector('form')).toBeNull();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/profile'))
+      .flush({ ...PROFILE, name: 'Second Venue', version: 9 });
+    fixture.detectChanges();
+
+    expect((byId('venue-name') as HTMLInputElement).value).toBe('Second Venue');
+  });
+
+  it('ignores the old venue’s late profile response after a venue switch (#180)', () => {
+    configure();
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/profile'))
+      .flush({ ...PROFILE, name: 'Second Venue', version: 9 });
+    // The superseded venue-1 response resolves late — it must not re-seed venue 2's form.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/profile'))
+      .flush(PROFILE);
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect((byId('venue-name') as HTMLInputElement).value).toBe('Second Venue');
+  });
+
 });

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { todayBookingDate } from '../shared/booking-date';
+import { venueIdParam } from '../shared/parent-venue-id';
 import { VenueMapView } from '../shared/venue-views';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -49,8 +50,9 @@ export class OperatorConsole {
   private readonly requests = inject(PendingRequestsStore);
   protected readonly operator = inject(OperatorAuth);
 
-  /** The venue this console manages, read once from the route param (like StaffDaily). */
-  protected readonly venueId: number | undefined;
+  /** The venue this console manages — reactive to in-place `:venueId` changes (#180): the router
+   *  reuses this instance when only the param differs, so a snapshot read would pin the old venue. */
+  protected readonly venueId = venueIdParam(this.route);
 
   /** The six console sections, in design order; only Requests carries the live badge. */
   protected readonly tabs: readonly ConsoleTab[] = [
@@ -64,25 +66,23 @@ export class OperatorConsole {
 
   /** The venue name shown in the header, from the public venue read (best-effort). */
   protected readonly venueName = signal<string | undefined>(undefined);
-  /** The venue map loaded once for the header, shared with the stats strip for its free/total tile (#171). */
+  /** The venue map loaded per venue for the header, shared with the stats strip for its free/total tile (#171). */
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   /** The live pending-request count for the Requests tab badge — the shared store the Requests tab
    *  writes after every accept/decline, so the badge stays in sync with the queue (#176). The shell
    *  seeds it from its own count read below; a failed read leaves it at 0 (no badge). */
   protected readonly requestsCount = this.requests.count;
+  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  private epoch = 0;
+
 
   constructor() {
-    const id = Number(this.route.snapshot.paramMap.get('venueId'));
-    // A valid venue id is a positive integer; a non-numeric or non-positive segment leaves venueId
-    // undefined so the template shows a not-found state instead of a shell with broken tab links.
-    if (Number.isInteger(id) && id > 0) {
-      this.venueId = id;
-    }
-    // Load the header's venue title + the Requests badge count once a session exists — covers a
-    // fresh sign-in AND the async /me restore (issue #109), which resolves after construction.
+    // Load per session (#109: the async /me restore resolves late) AND per venue param (#180).
     effect(() => {
-      if (this.operator.signedIn()) {
-        untracked(() => this.load());
+      const id = this.venueId();
+      if (this.operator.signedIn() && id !== undefined) {
+        untracked(() => this.load(id));
       }
     });
   }
@@ -101,21 +101,27 @@ export class OperatorConsole {
    * Load the header's venue title + the Requests badge count. Both are best-effort: a failed read
    * leaves the fallback title / no badge and never blocks the shell.
    */
-  private load(): void {
-    if (this.venueId === undefined) {
-      return;
-    }
-    // Fresh console mount starts the badge at 0, so a slow/failed seed never shows a stale count — nor
+  private load(venueId: number): void {
+    const epoch = ++this.epoch;
+    // A venue switch reuses this instance (#180) — drop the old name/map while the new one loads.
+    this.venueName.set(undefined);
+    this.venue.set(undefined);
+    // Fresh load starts the badge at 0, so a slow/failed seed never shows a stale count — nor
     // one leaked from a previously-managed venue (the store is a root singleton). The Requests tab, once
     // visited, takes authority over this store via `set`; the shell only ever seeds it.
     this.requests.reset();
-    this.bestEffort(this.venueMap.load(this.venueId, todayBookingDate(new Date())), (venue) => {
-      this.venueName.set(venue.name);
-      this.venue.set(venue);
+    // Continuations re-check the venue so a superseded venue's reads never land here (#180).
+    this.bestEffort(this.venueMap.load(venueId, todayBookingDate(new Date())), (venue) => {
+      if (this.epoch === epoch) {
+        this.venueName.set(venue.name);
+        this.venue.set(venue);
+      }
     });
-    this.bestEffort(this.console.pendingRequestCount(this.venueId), (count) =>
-      this.requests.seed(count),
-    );
+    this.bestEffort(this.console.pendingRequestCount(venueId), (count) => {
+      if (this.epoch === epoch) {
+        this.requests.seed(count);
+      }
+    });
   }
 
   /** Subscribe to a best-effort read: apply the value, or silently ignore a failure. */

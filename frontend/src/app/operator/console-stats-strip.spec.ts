@@ -153,4 +153,27 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     expect(text('oc-stat-walkins')).toBe('—');
     expect(text('oc-stat-takings')).toBe('€110'); // the independent takings read still renders
   });
+
+  it('resets the tiles when the venueId input changes, then loads the new venue (#180)', async () => {
+    await render(venueMap([]), 2, TAKINGS);
+    expect(text('oc-stat-takings')).toBe('€110');
+
+    // A venue switch reuses the strip — old counts/takings must not render against the new venue.
+    fixture.componentRef.setInput('venueId', 2);
+    fixture.componentRef.setInput('venue', undefined);
+    await fixture.whenStable();
+    expect(text('oc-stat-booked')).toBe('—');
+    expect(text('oc-stat-takings')).toBe('—');
+
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/2/bookings` && r.method === 'GET')
+      .flush([{ setId: 1, code: 'X' }]);
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/2/takings` && r.method === 'GET')
+      .flush({ ...TAKINGS, gross: { minorUnits: 5000, currency: 'EUR' } });
+    await fixture.whenStable();
+
+    expect(text('oc-stat-booked')).toBe('1');
+    expect(text('oc-stat-takings')).toBe('€50');
+  });
 });

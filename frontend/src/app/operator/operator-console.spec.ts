@@ -1,7 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter, Router } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
@@ -15,9 +16,9 @@ import { PendingRequestsStore } from './pending-requests-store';
 const BASE = environment.apiBaseUrl;
 const VENUE = 1;
 
-function venueMap(name: string): VenueMapView {
+function venueMap(name: string, id = VENUE): VenueMapView {
   return {
-    id: VENUE,
+    id,
     name,
     beach: 'Ksamil',
     region: 'Albanian Riviera',
@@ -30,30 +31,36 @@ function venueMap(name: string): VenueMapView {
   };
 }
 
-function baseProviders() {
+/** BehaviorSubject-backed route stub — the param-change tests (#180) push new maps through it. */
+function routeStub(venueId: string): {
+  params$: BehaviorSubject<ParamMap>;
+  route: Partial<ActivatedRoute>;
+} {
+  const params$ = new BehaviorSubject(convertToParamMap({ venueId }));
+  return { params$, route: { snapshot: { paramMap: params$.value }, paramMap: params$ } as never };
+}
+
+function baseProviders(route: Partial<ActivatedRoute> = routeStub(String(VENUE)).route) {
   return [
     provideHttpClient(),
     provideHttpClientTesting(),
     provideRouter([]),
-    {
-      provide: ActivatedRoute,
-      useValue: { snapshot: { paramMap: convertToParamMap({ venueId: String(VENUE) }) } },
-    },
+    { provide: ActivatedRoute, useValue: route },
   ];
 }
 
 /** The venue-title read the console fires once a session exists (best-effort, date-independent). */
-function flushVenue(httpMock: HttpTestingController, name: string): void {
+function flushVenue(httpMock: HttpTestingController, name: string, venue = VENUE): void {
   httpMock
-    .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET')
-    .flush(venueMap(name));
+    .expectOne((r) => r.url === `${BASE}/api/venues/${venue}` && r.method === 'GET')
+    .flush(venueMap(name, venue));
 }
 
 /** The Requests-badge count read the console fires once a session exists (owner-asserted server-side,
  *  invariant #13). The exact URL is pinned here (AC-8: no new unscoped call). */
-function flushRequests(httpMock: HttpTestingController, pending: number): void {
+function flushRequests(httpMock: HttpTestingController, pending: number, venue = VENUE): void {
   httpMock
-    .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET')
+    .expectOne((r) => r.url === `${BASE}/api/venues/${venue}/booking-requests` && r.method === 'GET')
     .flush(Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })));
 }
 
@@ -62,12 +69,12 @@ function flushRequests(httpMock: HttpTestingController, pending: number): void {
  * takings. URLs pinned (owner-asserted server-side, invariant #13); both best-effort in the strip, so
  * flushing zeros keeps every shell-rendering test green without asserting on the strip itself.
  */
-function flushStrip(httpMock: HttpTestingController): void {
+function flushStrip(httpMock: HttpTestingController, venue = VENUE): void {
   httpMock
-    .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET')
+    .expectOne((r) => r.url === `${BASE}/api/venues/${venue}/bookings` && r.method === 'GET')
     .flush([]);
   httpMock
-    .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/takings` && r.method === 'GET')
+    .expectOne((r) => r.url === `${BASE}/api/venues/${venue}/takings` && r.method === 'GET')
     .flush({
       gross: { minorUnits: 0, currency: 'EUR' },
       net: { minorUnits: 0, currency: 'EUR' },
@@ -263,6 +270,90 @@ describe('OperatorConsole — restored session (reload survival, #170 AC-3)', ()
   });
 });
 
+describe('OperatorConsole — in-place venue param change (#180)', () => {
+  let fixture: ComponentFixture<OperatorConsole>;
+  let httpMock: HttpTestingController;
+  let params$: BehaviorSubject<ParamMap>;
+
+  beforeEach(async () => {
+    document.documentElement.removeAttribute('data-riv-theme');
+    const stub = routeStub(String(VENUE));
+    params$ = stub.params$;
+    TestBed.configureTestingModule({
+      imports: [OperatorConsole],
+      providers: baseProviders(stub.route),
+    });
+    TestBed.inject(OperatorAuth);
+    httpMock = TestBed.inject(HttpTestingController);
+    httpMock
+      .expectOne(`${BASE}/api/auth/me`)
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    fixture = TestBed.createComponent(OperatorConsole);
+    await fixture.whenStable();
+    flushVenue(httpMock, 'First Venue');
+    flushRequests(httpMock, 3);
+    flushStrip(httpMock);
+    await fixture.whenStable();
+  });
+
+  afterEach(() => httpMock.verify());
+
+  function host(): HTMLElement {
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('reloads the header and badge when the venue param changes in place (#180, AC-1)', async () => {
+    // The router REUSES the component instance when only :venueId changes — no re-construction.
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    // The old venue's name and badge must not linger while venue 2 loads.
+    expect(host().querySelector('[data-testid="oc-venue-title"]')?.textContent).toContain(
+      'Your venue',
+    );
+    expect(host().querySelector('[data-testid="oc-requests-badge"]')).toBeNull();
+
+    await fixture.whenStable();
+    flushVenue(httpMock, 'Second Venue', 2);
+    flushRequests(httpMock, 5, 2);
+    flushStrip(httpMock, 2);
+    await fixture.whenStable();
+
+    expect(host().querySelector('[data-testid="oc-venue-title"]')?.textContent).toContain(
+      'Second Venue',
+    );
+    expect(host().querySelector('[data-testid="oc-requests-badge"]')?.textContent).toContain('5');
+    const nav = host().querySelector('[data-testid="oc-tabs"]')!;
+    expect(nav.querySelector('a[href="/operator/2/beach-map"]')).not.toBeNull();
+    expect(nav.querySelector(`a[href="/operator/${VENUE}/beach-map"]`)).toBeNull();
+  });
+
+  it('shows not-found when the param turns invalid, and recovers (#180, AC-3)', async () => {
+    params$.next(convertToParamMap({ venueId: 'foo' }));
+    fixture.detectChanges();
+
+    expect(host().querySelector('[data-testid="oc-invalid-venue"]')).not.toBeNull();
+    expect(host().querySelector('[data-testid="oc-header"]')).toBeNull();
+    // No venue reads fire for an invalid id.
+    httpMock.expectNone((r) => r.url.startsWith(`${BASE}/api/venues/`));
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    await fixture.whenStable();
+    flushVenue(httpMock, 'Second Venue', 2);
+    flushRequests(httpMock, 0, 2);
+    flushStrip(httpMock, 2);
+    await fixture.whenStable();
+
+    expect(host().querySelector('[data-testid="oc-invalid-venue"]')).toBeNull();
+    expect(host().querySelector('[data-testid="oc-venue-title"]')?.textContent).toContain(
+      'Second Venue',
+    );
+  });
+});
+
 describe('OperatorConsole — invalid venue id (#170 review finding 1)', () => {
   let fixture: ComponentFixture<OperatorConsole>;
   let httpMock: HttpTestingController;
@@ -271,15 +362,7 @@ describe('OperatorConsole — invalid venue id (#170 review finding 1)', () => {
     document.documentElement.removeAttribute('data-riv-theme');
     TestBed.configureTestingModule({
       imports: [OperatorConsole],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideRouter([]),
-        {
-          provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ venueId: 'foo' }) } },
-        },
-      ],
+      providers: baseProviders(routeStub('foo').route),
     });
     TestBed.inject(OperatorAuth);
     httpMock = TestBed.inject(HttpTestingController);

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { catchError, forkJoin, of, tap } from 'rxjs';
 
@@ -54,8 +54,9 @@ export class DailyViewTab {
   private readonly console = inject(OperatorConsoleService);
   protected readonly operator = inject(OperatorAuth);
 
-  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if invalid). */
-  private readonly venueId: number | undefined;
+  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
+   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+  private readonly venueId = parentVenueId(this.route);
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly bookings = signal<readonly ConsoleDailyBooking[]>([]);
@@ -73,16 +74,37 @@ export class DailyViewTab {
   private readonly overrides = signal<ReadonlyMap<number, TileState>>(new Map());
   /** Sets with an in-flight mark/release — disabled until it settles. */
   protected readonly pendingSets = signal<ReadonlySet<number>>(new Set());
+  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  private epoch = 0;
+
 
   constructor() {
-    const id = parentVenueId(this.route);
-    if (id !== undefined) {
-      this.venueId = id;
-      this.load();
-    } else {
-      this.loaded.set(true);
-      this.loadError.set(true);
-    }
+    // Re-runs on an in-place venue switch (#180): reset to the fresh-mount state, then load.
+    effect(() => {
+      const id = this.venueId();
+      untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
+    });
+  }
+
+  private markInvalid(): void {
+    this.loaded.set(true);
+    this.loadError.set(true);
+  }
+
+  /** Drop every venue-scoped signal — grid, codes, optimistic/pending state — and load fresh, on
+   *  today's date (the same state a full navigation would mount with). */
+  private resetForVenue(): void {
+    this.epoch++;
+    this.selectedDate.set(todayBookingDate(new Date()));
+    this.overrides.set(new Map());
+    this.pendingSets.set(new Set());
+    this.notice.set(undefined);
+    this.loadError.set(false);
+    this.loaded.set(false);
+    this.venue.set(undefined);
+    this.bookings.set([]);
+    this.load();
   }
 
   /** Sets grouped into rows (read order preserved) for the grid. */
@@ -142,9 +164,11 @@ export class DailyViewTab {
    * directions — only the endpoint and the error mapper differ.
    */
   protected onTile(set: SetView): void {
-    if (this.venueId === undefined || this.isPending(set)) {
+    const venueId = this.venueId();
+    if (venueId === undefined || this.isPending(set)) {
       return;
     }
+    const epoch = this.epoch;
     const action = tileTapAction(this.stateOf(set));
     if (action === undefined) {
       return; // BOOKED_ONLINE — locked
@@ -152,11 +176,18 @@ export class DailyViewTab {
     const marking = action === 'mark';
     this.applyOverride(set.id, marking ? 'STAFF_MARKED' : 'FREE');
     const write = marking
-      ? this.console.markSet(this.venueId, set.id, this.selectedDate())
-      : this.console.releaseSet(this.venueId, set.id, this.selectedDate());
+      ? this.console.markSet(venueId, set.id, this.selectedDate())
+      : this.console.releaseSet(venueId, set.id, this.selectedDate());
     write.subscribe({
-      next: () => this.reconcile(set.id),
+      next: () => {
+        if (this.epoch === epoch) {
+          this.reconcile(set.id); // skip if a venue switch superseded this write (#180)
+        }
+      },
       error: (e: unknown) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this write (#180)
+        }
         if (marking) {
           const reason = markErrorOf(e);
           this.onWriteError(set.id, markFailureNotice(reason), reason === 'UNAUTHORIZED');
@@ -225,13 +256,17 @@ export class DailyViewTab {
 
   /** Fetch the map + bookings for the selected date; `onSettled` runs after BOTH settle. */
   private load(onSettled?: () => void): void {
-    if (this.venueId === undefined) {
+    const venueId = this.venueId();
+    if (venueId === undefined) {
       return;
     }
     const requested = this.selectedDate();
-    const venue$ = this.venues.getVenueMap(this.venueId, requested).pipe(
+    const epoch = this.epoch;
+    // Continuations re-check venue + date so a superseded venue/day never writes here (#180).
+    const current = (): boolean => this.epoch === epoch && this.selectedDate() === requested;
+    const venue$ = this.venues.getVenueMap(venueId, requested).pipe(
       tap((v) => {
-        if (this.selectedDate() === requested) {
+        if (current()) {
           this.venue.set(v);
           this.loadError.set(false);
         }
@@ -239,16 +274,16 @@ export class DailyViewTab {
       catchError((error: unknown) => {
         // Wipe to the error card only when there is no grid to preserve (initial / date-change load).
         // A transient failure of a post-write reconcile keeps the working grid the operator is using.
-        if (this.selectedDate() === requested && this.venue() === undefined) {
+        if (current() && this.venue() === undefined) {
           this.loadError.set(true);
         }
         this.dropSessionIfUnauthorized(error);
         return of(undefined);
       }),
     );
-    const bookings$ = this.console.dailyBookings(this.venueId, requested).pipe(
+    const bookings$ = this.console.dailyBookings(venueId, requested).pipe(
       tap((b) => {
-        if (this.selectedDate() === requested) {
+        if (current()) {
           this.bookings.set(b);
         }
       }),
@@ -259,7 +294,9 @@ export class DailyViewTab {
     );
     // The join flips `loaded` only once BOTH reads settle — no "0 of 0 free" flash.
     forkJoin([venue$, bookings$]).subscribe(() => {
-      this.loaded.set(true);
+      if (current()) {
+        this.loaded.set(true);
+      }
       onSettled?.();
     });
   }

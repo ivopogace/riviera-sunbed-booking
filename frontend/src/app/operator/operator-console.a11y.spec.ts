@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -46,7 +47,10 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ venueId: String(VENUE) }) } },
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ venueId: String(VENUE) }) },
+            paramMap: of(convertToParamMap({ venueId: String(VENUE) })),
+          },
         },
       ],
     });

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -80,8 +80,9 @@ export class LayoutEditor {
   private readonly console = inject(OperatorConsoleService);
   protected readonly operator = inject(OperatorAuth);
 
-  /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if invalid). */
-  protected readonly venueId: number | undefined;
+  /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if
+   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+  protected readonly venueId = parentVenueId(this.route);
 
   /** Generate inputs: rows × positions. Clamped to the design maxima on generate. */
   protected readonly genRows = signal(4);
@@ -122,6 +123,10 @@ export class LayoutEditor {
 
   /** Drag state — a plain field (not reactive; only the pointer handlers read it). */
   private painting = false;
+  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  private epoch = 0;
+
 
   /**
    * Prices of the sets loaded from the venue, keyed by `${gridX},${gridY}` — so a load→save round-trip
@@ -165,11 +170,30 @@ export class LayoutEditor {
   });
 
   constructor() {
-    const id = parentVenueId(this.route);
-    if (id !== undefined) {
-      this.venueId = id;
-      this.loadExisting(id);
-    }
+    // Re-runs on an in-place venue switch (#180): reset the draft + flags, then load the new venue.
+    effect(() => {
+      const id = this.venueId();
+      if (id !== undefined) {
+        untracked(() => this.resetForVenue(id));
+      }
+    });
+  }
+
+  /** Drop every venue-scoped draft/flag so nothing from the previous venue leaks, then load. */
+  private resetForVenue(venueId: number): void {
+    this.epoch++;
+    this.grid.set([]);
+    this.priceByCoord.clear();
+    this.activeTool.set('premium');
+    this.saving.set(false);
+    this.savedNotice.set(false);
+    this.errorCode.set(undefined);
+    this.confirmRegen.set(false);
+    this.loadedSetVersion.set(null);
+    this.reloading.set(false);
+    this.reloadFailed.set(false);
+    this.loadFailed.set(false);
+    this.loadExisting(venueId);
   }
 
   // ---- Generate ----
@@ -259,7 +283,8 @@ export class LayoutEditor {
   // ---- Save ----
 
   protected async onSave(): Promise<void> {
-    if (this.venueId === undefined) {
+    const venueId = this.venueId();
+    if (venueId === undefined) {
       return;
     }
     const sets = this.toRequest();
@@ -274,11 +299,15 @@ export class LayoutEditor {
       this.loadFailed.set(true);
       return;
     }
+    const epoch = this.epoch;
     this.saving.set(true);
     this.errorCode.set(undefined);
     this.savedNotice.set(false);
     try {
-      await firstValueFrom(this.console.replaceLayout(this.venueId, { sets, expectedVersion }));
+      await firstValueFrom(this.console.replaceLayout(venueId, { sets, expectedVersion }));
+      if (this.epoch !== epoch) {
+        return; // a venue switch superseded this save (#180); saving clears in finally
+      }
       this.savedNotice.set(true);
       // The layout was replaced, so the console's shared snapshot now describes retired sets (#486).
       this.venueMap.reset();
@@ -286,6 +315,9 @@ export class LayoutEditor {
       // consecutive save by the same operator isn't spuriously rejected as a stale write.
       this.loadedSetVersion.set(expectedVersion + 1);
     } catch (error) {
+      if (this.epoch !== epoch) {
+        return; // a venue switch superseded this save (#180)
+      }
       const code = layoutErrorOf(error);
       this.errorCode.set(code);
       if (code === 'UNAUTHORIZED') {
@@ -332,15 +364,19 @@ export class LayoutEditor {
    * work is intact.
    */
   protected reloadAfterStale(): void {
-    const venueId = this.venueId;
+    const venueId = this.venueId();
     if (venueId === undefined || this.reloading()) {
       return;
     }
+    const epoch = this.epoch;
     this.reloading.set(true);
     this.reloadFailed.set(false);
     this.venueMap.reset(); // the other tabs must not serve the pre-conflict layout either (#486)
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this reload (#180)
+        }
         // Success: NOW replace the in-progress grid with the server's latest layout + token, clear the banner.
         this.priceByCoord.clear();
         this.grid.set([]); // hasLayout() → false, so seedFrom re-seeds (or leaves the empty state)
@@ -352,6 +388,9 @@ export class LayoutEditor {
         this.reloading.set(false);
       },
       error: (error: unknown) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this reload (#180)
+        }
         // Failure: keep the painted grid, the stale token, and the banner; show a retry hint — no data loss.
         this.reloadFailed.set(true);
         this.reloading.set(false);
@@ -387,17 +426,24 @@ export class LayoutEditor {
   }
 
   private loadExisting(venueId: number): void {
+    const epoch = this.epoch;
     // Best-effort: seed the grid from the venue's current layout so the operator paints on it. An empty
     // venue leaves the empty state, from which Generate builds a fresh grid. Always capture the
     // optimistic-concurrency token (#226 setVersion) so a later Save can echo it back; a failed read leaves
     // the token null and sets loadFailed so Save surfaces a refresh prompt (never a silent no-op).
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this load — never seed the new venue's editor (#180)
+        }
         this.loadFailed.set(false);
         this.loadedSetVersion.set(venue.setVersion ?? null);
         this.seedFrom(venue.sets);
       },
       error: (error: unknown) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this load (#180)
+        }
         this.loadFailed.set(true);
         if (error instanceof HttpErrorResponse && error.status === 401) {
           this.operator.sessionLost();

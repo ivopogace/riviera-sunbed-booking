@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
@@ -43,8 +43,9 @@ export class PayoutsTab {
   private readonly console = inject(OperatorConsoleService);
   protected readonly operator = inject(OperatorAuth);
 
-  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if invalid). */
-  private readonly venueId: number | undefined;
+  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
+   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+  private readonly venueId = parentVenueId(this.route);
 
   private readonly ledger = signal<PayoutLedgerView | undefined>(undefined);
   /** True once the initial ledger read settles (success or failure) — drives loading vs content. */
@@ -64,16 +65,35 @@ export class PayoutsTab {
   protected readonly notice = signal<string | undefined>(undefined);
   /** True while the display-only payout-statement modal is open. */
   protected readonly statementOpen = signal(false);
-
+  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  private epoch = 0;
   constructor() {
-    const id = parentVenueId(this.route);
-    if (id !== undefined) {
-      this.venueId = id;
-      this.load();
-    } else {
-      this.loaded.set(true);
-      this.loadErrorMsg.set(loadFailureNotice('UNKNOWN'));
-    }
+    // Re-runs on an in-place venue switch (#180): reset to the fresh-mount state, then load.
+    effect(() => {
+      const id = this.venueId();
+      untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
+    });
+  }
+
+  private markInvalid(): void {
+    this.loaded.set(true);
+    this.loadErrorMsg.set(loadFailureNotice('UNKNOWN'));
+  }
+
+  /** Drop every venue-scoped signal — ledger, notice, refund/statement state — and load fresh, on
+   *  today's date (the same state a full navigation would mount with). */
+  private resetForVenue(): void {
+    this.epoch++;
+    this.ledger.set(undefined);
+    this.loaded.set(false);
+    this.loadErrorMsg.set(undefined);
+    this.selectedDate.set(todayBookingDate(new Date()));
+    this.weatherConfirm.set(false);
+    this.refunding.set(false);
+    this.notice.set(undefined);
+    this.statementOpen.set(false);
+    this.load();
   }
 
   private readonly entries = computed<readonly PayoutLedgerEntryView[]>(
@@ -163,21 +183,29 @@ export class PayoutsTab {
    * listener, so after the outcome lands the ledger is re-read to pull it in (eventually-consistent, R-2).
    */
   protected onConfirmWeather(): void {
-    if (this.venueId === undefined || this.refunding()) {
+    const venueId = this.venueId();
+    if (venueId === undefined || this.refunding()) {
       return;
     }
+    const epoch = this.epoch;
     this.refunding.set(true);
     this.notice.set(undefined);
     const date = this.selectedDate();
     const dateLabel = formatCivilDate(date);
-    this.console.weatherRefund(this.venueId, date).subscribe({
+    this.console.weatherRefund(venueId, date).subscribe({
       next: (result) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this refund's UI state (#180); the switch reset the flags
+        }
         this.refunding.set(false);
         this.weatherConfirm.set(false);
         this.notice.set(weatherSuccessNotice(result, dateLabel));
         this.reloadLedger();
       },
       error: (e: unknown) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this refund's UI state (#180)
+        }
         this.refunding.set(false);
         this.weatherConfirm.set(false);
         const reason = payoutErrorOf(e);
@@ -200,11 +228,17 @@ export class PayoutsTab {
   /** Re-read the ledger after a weather refund so the reversal(s) appear; a re-read failure keeps the
    *  current view (the action notice already reported the outcome). */
   private reloadLedger(): void {
-    if (this.venueId === undefined) {
+    const venueId = this.venueId();
+    if (venueId === undefined) {
       return;
     }
-    this.console.payoutLedger(this.venueId).subscribe({
-      next: (l) => this.ledger.set(l),
+    const epoch = this.epoch;
+    this.console.payoutLedger(venueId).subscribe({
+      next: (l) => {
+        if (this.epoch === epoch) {
+          this.ledger.set(l); // a superseded venue's ledger never overwrites the new one (#180)
+        }
+      },
       error: () => {
         /* keep the current view; the outcome was already reported */
       },
@@ -212,16 +246,24 @@ export class PayoutsTab {
   }
 
   private load(): void {
-    if (this.venueId === undefined) {
+    const venueId = this.venueId();
+    if (venueId === undefined) {
       return;
     }
-    this.console.payoutLedger(this.venueId).subscribe({
+    const epoch = this.epoch;
+    this.console.payoutLedger(venueId).subscribe({
       next: (l) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this load (#180)
+        }
         this.ledger.set(l);
         this.loadErrorMsg.set(undefined);
         this.loaded.set(true);
       },
       error: (e: unknown) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this load (#180)
+        }
         const reason = payoutErrorOf(e);
         if (reason === 'UNAUTHORIZED') {
           // The server already rejected the session — clear local state without a logout round-trip.
