@@ -9,7 +9,7 @@ import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../venue/booking-date';
 import { SetView, VenueMapView } from '../venue/venue.model';
-import { VenueService } from '../venue/venue.service';
+import { ConsoleVenueMap } from './console-venue-map';
 import { PendingRequestItem, RequestErrorCode } from './operator-console.model';
 import { OperatorConsoleService, requestErrorOf } from './operator-console.service';
 import { PendingRequestsStore } from './pending-requests-store';
@@ -57,7 +57,7 @@ interface RequestRow {
 })
 export class RequestsTab {
   private readonly route = inject(ActivatedRoute);
-  private readonly venues = inject(VenueService);
+  private readonly venueMap = inject(ConsoleVenueMap);
   private readonly console = inject(OperatorConsoleService);
   private readonly badge = inject(PendingRequestsStore);
   private readonly destroyRef = inject(DestroyRef);
@@ -220,7 +220,7 @@ export class RequestsTab {
     this.refreshNow();
     // Best-effort: the map only supplies set labels/tiers (date-independent); a failure degrades to
     // "Set {id}" / "Standard" and never blocks the queue. Read once — labels don't change under the tab.
-    this.venues.getVenueMap(this.venueId, todayBookingDate(new Date())).subscribe({
+    this.venueMap.load(this.venueId, todayBookingDate(new Date())).subscribe({
       next: (v) => this.venue.set(v),
       error: () => {
         /* labels degrade gracefully; the queue read owns the error/loaded state */

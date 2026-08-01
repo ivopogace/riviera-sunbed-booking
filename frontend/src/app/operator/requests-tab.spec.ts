@@ -4,7 +4,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
+import { todayBookingDate } from '../venue/booking-date';
 import { MoneyView, Pool, SetView, Tier } from '../venue/venue.model';
+import { ConsoleVenueMap } from './console-venue-map';
 import { PendingRequestsStore } from './pending-requests-store';
 import { RequestsTab } from './requests-tab';
 
@@ -49,7 +51,8 @@ describe('RequestsTab (#176)', () => {
     seat(2, 'B', 2, 'STANDARD'),
   ];
 
-  function configure(): void {
+  /** `beforeCreate` runs after the injector exists but before the tab mounts — the shell's window. */
+  function configure(beforeCreate?: () => void): void {
     TestBed.configureTestingModule({
       imports: [RequestsTab],
       providers: [
@@ -65,8 +68,9 @@ describe('RequestsTab (#176)', () => {
         },
       ],
     });
-    fixture = TestBed.createComponent(RequestsTab);
     http = TestBed.inject(HttpTestingController);
+    beforeCreate?.();
+    fixture = TestBed.createComponent(RequestsTab);
     store = TestBed.inject(PendingRequestsStore);
     fixture.detectChanges();
     // OperatorAuth restores the session on construction — settle it signed-out (the shell gates access).
@@ -300,6 +304,44 @@ describe('RequestsTab (#176)', () => {
     host = fixture.nativeElement as HTMLElement;
     expect(byId('requests-load-error')).toBeTruthy();
     expect(byId('requests-empty')).toBeNull();
+  });
+
+  it('reuses the shell snapshot instead of re-fetching the venue map (#486)', () => {
+    // The shell loads (venue, today) for its header title + Free-today tile before this lazy tab route
+    // activates; the tab wants the same snapshot for its set labels. The expectOne below is the
+    // assertion — it throws on the second, byte-identical GET this slice removes.
+    let shellSnapshot: SetView[] | undefined;
+    configure(() => {
+      TestBed.inject(ConsoleVenueMap)
+        .load(1, todayBookingDate(new Date()))
+        .subscribe((venue) => (shellSnapshot = [...venue.sets]));
+    });
+    flushLoad([request()]);
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(shellSnapshot).toHaveLength(2); // the shell's subscriber was served by the shared read
+    // ...and the tab labelled its card from that same snapshot, not the "Set {id}" degraded fallback.
+    expect(cards()[0].textContent).toContain('A · 1');
+  });
+
+  it('still degrades to the Set-{id} fallback when the shared map read fails (#486 AC-5)', () => {
+    configure();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
+      .flush([request()]);
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/booking-requests'),
+      )
+      .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(cards()[0].textContent).toContain('Set 1');
+    expect(byId('requests-load-error')).toBeNull(); // the map is best-effort; the queue still rendered
   });
 });
 

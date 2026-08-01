@@ -3,7 +3,9 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 
+import { todayBookingDate } from '../venue/booking-date';
 import { SetView } from '../venue/venue.model';
+import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
 
 /**
@@ -183,6 +185,33 @@ describe('LayoutEditor (#172)', () => {
     await fixture.whenStable(); // onSave awaits the PUT — settle the notice
     fixture.detectChanges();
     expect(byId('layout-saved')).toBeTruthy();
+  });
+
+  it('drops the shared console snapshot after a successful save (#486 AC-4)', async () => {
+    // This tab writes the map, so the shell's warm snapshot describes retired sets the moment the PUT
+    // lands. Leaving it would show the Requests and Pricing tabs a layout that no longer exists.
+    render();
+    const snapshots = TestBed.inject(ConsoleVenueMap);
+    snapshots.load(1, todayBookingDate(new Date())).subscribe();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+
+    generate('1', '1');
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+      .flush(null);
+    await fixture.whenStable();
+
+    // The snapshot was invalidated, so the next tab to ask goes back to the server for the new layout.
+    let refetched: number | undefined;
+    snapshots.load(1, todayBookingDate(new Date())).subscribe((v) => (refetched = v.setVersion));
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: [], setVersion: 1 });
+
+    expect(refetched).toBe(1);
   });
 
   it('keeps edits and offers Reload on a 409 STALE_WRITE, then Reload re-seeds from the server', async () => {

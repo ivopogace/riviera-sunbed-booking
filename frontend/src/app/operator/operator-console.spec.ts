@@ -6,7 +6,9 @@ import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
+import { todayBookingDate } from '../venue/booking-date';
 import { VenueMapView } from '../venue/venue.model';
+import { ConsoleVenueMap } from './console-venue-map';
 import { OperatorConsole } from './operator-console';
 import { PendingRequestsStore } from './pending-requests-store';
 
@@ -149,6 +151,17 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
       queryParams: { audience: 'operator' },
     });
     expect(TestBed.inject(PendingRequestsStore).count()).toBe(0);
+
+    // The shared snapshot outlives this component, so sign-out must drop it too (#486 R-3) — otherwise
+    // the next operator on this device would open the console on the previous one's venue map.
+    let refetched: string | undefined;
+    TestBed.inject(ConsoleVenueMap)
+      .load(VENUE, todayBookingDate(new Date()))
+      .subscribe((venue) => (refetched = venue.name));
+    httpMock
+      .expectOne((r) => r.method === 'GET' && r.url.includes(`/api/venues/${VENUE}`))
+      .flush({ id: VENUE, name: 'A different venue', sets: [] });
+    expect(refetched).toBe('A different venue');
   });
 
   it('scopes porcelain to its own host and never mutates the global theme (#170, AC-6)', async () => {

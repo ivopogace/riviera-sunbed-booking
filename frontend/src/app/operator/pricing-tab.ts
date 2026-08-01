@@ -10,7 +10,7 @@ import { eurosToMinorUnits, formatMoney, minorUnitsToEuros } from '../shared/mon
 import { parentVenueId } from '../shared/parent-venue-id';
 import { todayBookingDate } from '../venue/booking-date';
 import { MoneyView, SetView } from '../venue/venue.model';
-import { VenueService } from '../venue/venue.service';
+import { ConsoleVenueMap } from './console-venue-map';
 import { RepriceErrorCode } from './operator-console.model';
 import { OperatorConsoleService, repriceErrorOf } from './operator-console.service';
 
@@ -46,7 +46,7 @@ interface PriceRow {
 })
 export class PricingTab {
   private readonly route = inject(ActivatedRoute);
-  private readonly venues = inject(VenueService);
+  private readonly venueMap = inject(ConsoleVenueMap);
   private readonly console = inject(OperatorConsoleService);
   protected readonly operator = inject(OperatorAuth);
 
@@ -148,6 +148,8 @@ export class PricingTab {
       // The conditional write bumped set_version by one (#226); advance our token so a following
       // sequential row edit isn't spuriously rejected as a stale write.
       this.loadedSetVersion.set(expectedVersion + 1);
+      // This row's price just changed server-side, so the console's shared snapshot is stale (#486).
+      this.venueMap.reset();
     } catch (error) {
       if (previous) {
         this.applyRowPrice(row.label, previous); // revert only this row, leaving concurrent edits intact
@@ -198,11 +200,14 @@ export class PricingTab {
     this.staleConflict.set(false);
     this.errorRow.set(null);
     this.savedRow.set(null);
+    // Reload exists to escape the conflict, so it must reach the server: the shared snapshot holds the
+    // very setVersion that lost the race, and re-seeding from it would make the 409 unrecoverable (#486).
+    this.venueMap.reset();
     this.load(venueId);
   }
 
   private load(venueId: number): void {
-    this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
+    this.venueMap.load(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
         this.sets.set([...venue.sets]);
         this.loadedSetVersion.set(venue.setVersion ?? null); // #226: the token for the next reprice
