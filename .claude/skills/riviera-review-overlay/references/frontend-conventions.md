@@ -189,33 +189,28 @@ CI-run a11y suite green-but-blind to a real regression; Minor for a cosmetic-onl
 grandfathered debt table?
 - [ ] no new `feature/ → other-feature/` import  [ ] no new `shared/ → feature/` or `core/ → feature/` import (these break `shared`/`core` → nothing, the edges that keep the direction acyclic)  [ ] no new `pages/ → feature/` import  [ ] a *removed* or *consolidated* existing edge is fine — and good  [ ] if the diff genuinely needs a new one, it is argued in the plan doc, not slipped in on the precedent of the table
 
-> **The table is a freeze, not a licence.** `riviera-frontend`'s
-> "That rule is violated today — known debt, not a carve-out (#488)" section lists every
-> cross-feature edge that exists (33 imports / 21 files at the time of writing, tracked for
-> removal by **#489**). Its purpose is to stop the count growing while the placement is fixed.
-> **"`operator/` already imports `venue/`" is not an argument for a new import** — that is the
-> exact reasoning that shipped four times without converging (O1 silently, O2/#171's R-6, #226,
-> #487 → #488). Judge a new edge on its merits, against the one-way rule.
+> **The table is a freeze, not a licence.** `riviera-frontend`'s debt section lists every
+> cross-feature edge that exists (tracked for removal by **#489**); its purpose is to stop the
+> count growing while the placement is fixed. **"`operator/` already imports `venue/`" is not
+> an argument for a new import** — judge a new edge against the one-way rule on its merits.
 >
-> **Verify mechanically rather than by eye** (feature folders are the direct children of
-> `frontend/src/app`; `core/`, `shared/`, `pages/`, `environments/` are not features):
+> **Verify mechanically, not by eye** — feature folders are the direct children of
+> `frontend/src/app`; `core/`, `shared/`, `pages/`, `environments/` are not. Match **both**
+> `../feature/` and `../../feature/` (a `pages/home/` file reaching `venue/` nests twice, and
+> a one-level pattern silently undercounts):
 >
 > ```
 > grep -rn "from '\(\.\./\)\+\(admin\|auth\|booking\|operator\|pages\|venue\|venue-admin\)/" \
 >   --include=*.ts frontend/src/app | grep -v "\.spec\.ts"
 > ```
->
-> Count the result and compare against the table. Watch for `../../` forms (a `pages/home/`
-> file reaching `venue/` is three levels of nesting, and a `../<feature>/`-only grep misses it —
-> that undercount is how the first draft of the table shipped wrong).
 
 **Follow-up:**
 - A new edge that is really "two features need the same thing" → promote it per the taxonomy
   (pure → `shared/`, stateful/HTTP → `core/`), don't cross-import.
-- Removing an edge, or shrinking the table, needs the corresponding **table update** in
-  `riviera-frontend`'s debt section in the same PR — a stale count reads as licence.
-- There is **no ESLint boundary rule** enforcing this today, which is precisely why it is a
-  review-bank item; if #489 lands, consider whether the residual set is small enough to pin.
+- Shrinking the set means updating `riviera-frontend`'s table in the same PR — a stale count
+  reads as licence.
+- **No ESLint boundary rule enforces this today**, which is why it is a review-bank item; once
+  #489 lands, consider whether the residual set is small enough to pin mechanically.
 
 **Default severity:** **Major** for a new feature→feature import; **Blocker** for a new
 `shared/ →` or `core/ → feature/` import (it reintroduces the cycle the one-way rule prevents).
