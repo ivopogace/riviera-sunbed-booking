@@ -609,6 +609,11 @@ class VenueAdminServiceTest {
 		int insertedInLayout;
 
 		@Override
+		public List<SetId> setIdsOf(VenueId venueId) {
+			return existingSetIds.stream().map(SetId::new).toList();
+		}
+
+		@Override
 		public List<SetId> lockSetsOfVenue(VenueId venueId) {
 			return existingSetIds.stream().map(SetId::new).toList();
 		}

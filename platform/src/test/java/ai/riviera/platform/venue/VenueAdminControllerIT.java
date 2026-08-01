@@ -42,6 +42,9 @@ class VenueAdminControllerIT {
 	@Autowired
 	MockMvc mvc;
 
+	@Autowired
+	org.springframework.jdbc.core.simple.JdbcClient jdbc;
+
 	private Cookie operatorSession;
 
 	@BeforeEach
@@ -111,6 +114,56 @@ class VenueAdminControllerIT {
 	private static long idFrom(MvcResult result) throws Exception {
 		String json = result.getResponse().getContentAsString();
 		return Long.parseLong(com.jayway.jsonpath.JsonPath.read(json, "$.id").toString());
+	}
+
+	@Test
+	void dailyAvailabilityReturnsPerSetStatesForTheOwner() throws Exception {
+		// #207 AC-2/AC-4: the owner's state-aware read splits an online hold from a walk-in mark —
+		// the split the public FREE/TAKEN map deliberately hides. The free third set is absent.
+		long venue = createVenue("States Club");
+		long onlineHeld = addSet(venue, setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
+		long staffMarked = addSet(venue, setBody("A", 2, "STANDARD", "ONLINE", 3000, "EUR", 2, 1));
+		addSet(venue, setBody("A", 3, "STANDARD", "WALK_IN", 2500, "EUR", 3, 1));
+		String date = "2026-09-14";
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
+						+ "VALUES (:id, :date::date, 'BOOKED_ONLINE')")
+				.param("id", onlineHeld).param("date", date).update();
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
+						+ "VALUES (:id, :date::date, 'STAFF_MARKED')")
+				.param("id", staffMarked).param("date", date).update();
+
+		mvc.perform(get("/api/venues/{v}/availability", venue).cookie(operatorSession)
+						.param("date", date))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[0].setId").value(onlineHeld))
+				.andExpect(jsonPath("$[0].state").value("BOOKED_ONLINE"))
+				.andExpect(jsonPath("$[1].setId").value(staffMarked))
+				.andExpect(jsonPath("$[1].state").value("STAFF_MARKED"));
+
+		// Another day is untouched — an all-free day is an empty list, not a 404.
+		mvc.perform(get("/api/venues/{v}/availability", venue).cookie(operatorSession)
+						.param("date", "2026-09-15"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(0));
+	}
+
+	@Test
+	void dailyAvailabilityRequiresOperator() throws Exception {
+		// #207 AC-4: gated to role OPERATOR ahead of the public venue GET — anonymous is 401, the
+		// hold split never serves publicly (the tourist map stays FREE/TAKEN, pinned elsewhere).
+		mvc.perform(get("/api/venues/{v}/availability", MIRAMAR).param("date", "2026-09-14"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void dailyAvailabilityRejectsAMissingOrMalformedDate() throws Exception {
+		long venue = createVenue("Dateless Club");
+		mvc.perform(get("/api/venues/{v}/availability", venue).cookie(operatorSession))
+				.andExpect(status().isBadRequest());
+		mvc.perform(get("/api/venues/{v}/availability", venue).cookie(operatorSession)
+						.param("date", "not-a-date"))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test

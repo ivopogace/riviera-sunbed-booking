@@ -110,6 +110,13 @@ class SecurityConfig {
 	/** The operator-only per-venue daily online-takings read (#171, O2); gated BEFORE the public venue GET. */
 	private static final String TAKINGS_PATH = "/api/venues/*/takings";
 	/**
+	 * The operator-only per-venue daily availability-states read (#207): per-set
+	 * {@code BOOKED_ONLINE}/{@code STAFF_MARKED} tokens — the hold split the public FREE/TAKEN map
+	 * hides — so it MUST be gated BEFORE the public "GET /api/venues/**" below (first match wins).
+	 * A single {@code *} segment: never collides with the deeper {@code /sets/*}/availability writes.
+	 */
+	private static final String DAILY_AVAILABILITY_PATH = "/api/venues/*/availability";
+	/**
 	 * The signed-in operator's own-venues read (S9 #277) — {@code MyVenuesController}. It returns the
 	 * operator↔venue ownership map for the session principal, so it MUST be gated BEFORE the public
 	 * "GET /api/venues/**" below (first match wins): without that ordering it would fall through to
@@ -314,6 +321,11 @@ class SecurityConfig {
 						// MUST precede the public "GET /api/venues/**" below (first match wins); the
 						// per-venue ownership check itself lives in the application service (invariant #13).
 						.requestMatchers(HttpMethod.GET, TAKINGS_PATH).hasRole(OPERATOR_ROLE)
+						// Per-venue daily availability states read (#207) — operator-only: the hold split
+						// (online hold vs walk-in mark) is venue operational data the public FREE/TAKEN map
+						// deliberately hides. MUST precede the public "GET /api/venues/**" below (first
+						// match wins); the ownership check itself lives in the application service (#13).
+						.requestMatchers(HttpMethod.GET, DAILY_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
 						// S9 #277: MUST precede the public "GET /api/venues/**" below, or ownership leaks.
 						.requestMatchers(HttpMethod.GET, MY_VENUES_PATH).hasRole(OPERATOR_ROLE)
 						// Pending-requests queue + accept/decline (#98) — operator-only: guest names and
