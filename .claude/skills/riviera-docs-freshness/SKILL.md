@@ -87,19 +87,13 @@ a stale fact there propagates into every future plan and review.
    next reader believes.
 
    Case history: **#373** added the third registry-borne booking mail and the sixth mail
-   counter, and the review found **sixteen** statements it falsified — `Mailer`'s "the two
-   booking kinds", `MissingBookingFact`'s "two counters"/"two listeners", both
-   `package-info.java` files, `MAIL_CONFIRMATION_ABANDONED`'s "first of the two",
-   `MailListenerExecutorArchitectureTest`'s "not just the two that exist today",
-   `MockMailerTest`'s assertion description, three surviving "five mail counters", and the
-   runbook's "do not sum the two abandoned counters". **How they were found is the
-   argument for this step:** ordinary review of the changed files surfaced six; the other
-   **ten** came only from grepping the substrate, in a second round, after the first six
-   were already fixed — invisible to file-by-file review because they were never in the
-   diff. #374 hit the same class one slice earlier. **Re-run the sweep after the fix
-   round** —
-   #373's own fix made `PaymentDueAnnouncerIT`'s Javadoc stale within the hour, by turning
-   a package-private method public.
+   counter, and the review found **sixteen** statements it falsified. **How they were found
+   is the argument for this step:** ordinary review of the changed files surfaced six; the
+   other **ten** came only from grepping the substrate, in a second round, after the first
+   six were already fixed — invisible to file-by-file review because they were never in the
+   diff. **Re-run the sweep after the fix round** — #373's own fix made a test's Javadoc
+   stale within the hour. The itemized sixteen, and #374 hitting the same class one slice
+   earlier: `riviera-sdlc` `references/case-history.md` (#447).
 3. **Walk the map top-down for the reverse direction.** Skim each substrate doc's claims
    that TOUCH the diff's area (the module table row, the skill's example table, the
    glossary entries) and ask: does the diff make any stated sentence false, even where no

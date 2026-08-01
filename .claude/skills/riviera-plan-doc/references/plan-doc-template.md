@@ -32,12 +32,10 @@ slice.>
 > The `riviera-sdlc` routing table's **"Anything, always"** row is due on essentially
 > every slice — that table is the authority for its contents; this line pre-fills them
 > rather than re-listing them, so the two cannot drift. But an author filling it in is
-> thinking about the *routed* skills, so something falls off the line —
-> **RV-PROC-1 caught an omission here on six consecutive slices: #427, #430, #436, #440,
-> #374, #373.** What was omitted varied (`riviera-review-overlay` and
-> `riviera-docs-freshness` most often; `riviera-stripe-payments` on #430,
-> `riviera-local-debug` on #440), which is the point: six in a row is not six mistakes, it
-> is a template asking a question whose answer is partly constant. The fix is to make the
+> thinking about the *routed* skills, so something falls off the line — RV-PROC-1 caught an
+> omission here on **six consecutive slices**, which is not six mistakes but a template
+> asking a question whose answer is partly constant (case history: `riviera-sdlc`
+> `references/case-history.md` #447). The fix is to make the
 > author **edit rather than recall**. Each pre-filled entry still carries a parenthesis you
 > must fill with what it actually did — a name with a fixed label attached is cargo cult,
 > and RV-PROC-1 checks the line against the diff either way.
@@ -247,8 +245,9 @@ detail in the in-repo `angular-developer` skill's `references/`.)
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**: the squash SHA cannot exist before the merge, so citing it guarantees
 > a second docs-only PR, while the PR number is knowable the moment you open it (the SHA is
-> one `git log --grep "(#NN)"` away). Three consecutive slices paid that tax — #326→#347,
-> #346→#352, #351→#354. Details: `riviera-sdlc` `references/pr-gates.md` §3 step 4.
+> one `git log --grep "(#NN)"` away). Three consecutive slices paid that tax (case history:
+> `riviera-sdlc` `references/case-history.md`, the *three docs-only close-out PRs* entry).
+> Details: `riviera-sdlc` `references/pr-gates.md` §3 step 4.
 
 **Stage pointer:** <current `riviera-sdlc` stage, e.g. `implement (phase 2)` /
 `review gate — fixing findings` / `sonar gate` / `merge close-out step 3`>

@@ -78,8 +78,7 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    Behavior-parity ledger — enumerate the OLD surface's behaviors and mark each
    **preserved / changed / dropped (with reason)**. A "restyle/refactor only, no
    behavior change" claim is **not self-justifying** — verify it behavior-by-behavior
-   here. Case history: O6 #176 silently dropped StaffDaily's post-action reconcile under
-   a "restyle only" label → 14 review findings, ~40% of the build spent re-fixing.
+   here. (Case history: O6 #176 — told in the template's ledger blockquote.)
 
 ## Workflow additions at execution time
 

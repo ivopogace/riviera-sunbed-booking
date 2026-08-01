@@ -132,44 +132,30 @@ Each module lives at `ai.riviera.platform.<module>` with the hexagonal layout in
 invariant #11.
 
 > **Plus one non-context module: `shared`** (#371) — the **Shared Kernel**, an
-> `@ApplicationModule(type = OPEN)` holding `ApiProblem`, `CurrentOperator`,
-> `CurrentCustomer`, `InvalidApiRequestException` (#118 — the typed edge-validation signal the
-> advice maps to `400 INVALID_REQUEST`, admitted on the same ownership ground as `ApiProblem`:
-> module adapters throw it, the one advice consuming it sits at the composition root; raw
-> `IllegalArgumentException` and non-duplicate `DataIntegrityViolationException` now propagate
-> as logged 500s instead of masquerading as client errors),
-> `ObservabilityMetrics`, `ShutdownBudget` (#456 — the platform's
-> SIGTERM grace and each draining pool's claim on it, admitted on **ownership** rather than
-> reuse: no bounded context owns how long the process has to close, which is why the
-> previous arrangement had `notification` stating a number that silently bound `booking`)
-> `ResubmissionThrottle` + `ResubmissionOutcome` (#454 — the once-only guard and outcome vocabulary
-> behind the two admin outbox-resubmit levers, admitted on the same ownership ground: the sweep it
-> throttles races the registry's root-configured boot republication, which no context owns, and the
-> second lever module made a module-owned home structurally unavailable)
-> and `MdcTaskDecorator` (#455 — the one way a pooled worker inherits its submitter's MDC,
-> admitted on the same ground and more sharply: that mechanism's other half,
-> `CorrelationIdFilter`, sits at the composition root no module may depend on, so once #404's
-> refund pool became a second consumer there was **no** module-owned home available. It
-> overturns #410, which placed it in `notification` because "both users are inside this one
-> module" — true then, falsified by #404; `WorkerContextArchitectureTest` now pins that every
-> self-configured pool carries it, the guard whose absence let #404 ship undecorated).
-> It is *not* a bounded context and owns no
-> aggregate; it exists because the root package was doing two jobs with opposite dependency
-> directions — composition root (depends on modules) **and** the home of types five modules
-> depended on — which closes cycles by construction, and did the moment an edge listener
-> needed `root → booking`. The rule it restores: **modules depend on `shared`, the root
-> depends on modules, and nothing depends on the root.** Keep it tiny (Evans' warning):
-> admission requires no business logic, no module-owned state, and no dependency on a module
-> that depends back — it may only reach `customer::api` and `operator::api`. It is not a home
-> for "code used in more than one place". Consequence for tests: `@ApplicationModuleTest`
-> auto-supplies root-package beans but not another module's, so a module test now mocks the
-> kernel beans it transitively needs (see `PayoutModuleTest`).
+> `@ApplicationModule(type = OPEN)` holding `ApiProblem`, `CurrentOperator`, `CurrentCustomer`,
+> `InvalidApiRequestException` (#118 — the typed edge-validation signal the advice maps to
+> `400 INVALID_REQUEST`; raw `IllegalArgumentException` and non-duplicate
+> `DataIntegrityViolationException` propagate as logged 500s instead of masquerading as client
+> errors), `ObservabilityMetrics`, `ShutdownBudget` (#456), `ResubmissionThrottle` +
+> `ResubmissionOutcome` (#454) and `MdcTaskDecorator` (#455).
+> It is *not* a bounded context and owns no aggregate; it exists because the root package was
+> doing two jobs with opposite dependency directions — composition root (depends on modules)
+> **and** the home of types five modules depended on — which closes cycles by construction.
+> The rule it restores: **modules depend on `shared`, the root depends on modules, and nothing
+> depends on the root.** Keep it tiny (Evans' warning): admission requires no business logic,
+> no module-owned state, and no dependency on a module that depends back — it may only reach
+> `customer::api` and `operator::api`; it is not a home for "code used in more than one
+> place". Every admission rests on **ownership, never reuse** — the per-type grounds, the
+> #410→#455 reversal, and the admission bar live in `RESPONSIBILITIES.md` §`shared`.
+> Consequence for tests: `@ApplicationModuleTest` auto-supplies root-package beans but not
+> another module's, so a module test mocks the kernel beans it transitively needs (see
+> `PayoutModuleTest`).
 
 | Module | Owns | Aggregate root(s) |
 |---|---|---|
 | `venue` | venue profiles, the beach map / layout, set positions, online-vs-walk-in pool assignment, pricing, booking mode (Instant / Request), amenities + distance-to-water, venue photos (#142, ADR-0008), the signed-in operator's own-venues read (`GET /api/venues/mine`, S9 #277) | `Venue`, `BeachMap` |
 | `availability` | the per-`(set, date)` source-of-truth state (free / booked-online / staff-marked); the only writer of that table | `SetAvailability` |
-| `booking` | bookings, booking codes, lifecycle (pending-request/awaiting-payment/confirmed/cancelled/completed/no-show/declined/expired/**withdrawn**), request accept/decline + expiry sweep (#98) + the guest's own **withdraw** (#123, V37) — the third terminal leg on `RequestReleaseService`, and the one authorized by the booking **code** rather than by venue scope, so it is the only request command with no ownership check; it publishes **no** event, deliberately: nothing accrued (no `BookingConfirmed`) and nothing was collected (payment-request-on-accept), so routing it through `CancelBookingService` would have fanned a `refundMinor = 0` `BookingCancelled` out to three subscribers, one of which (#374) would mail the guest a cancellation record for a request they retracted themselves. Its guard is the status alone — **not** deadline-guarded, matching decline rather than expire — so on an overdue row its `WHERE` and the sweep's both match and the **row lock**, not the predicates, is what leaves exactly one transition and exactly one release (`ConcurrentRequestTerminationIT`); that is the argument decline and the sweep have always relied on, *accept* being the only leg genuinely disjoint from expire by predicate, cancellation-policy enforcement, the retention-basis fact for `customer`'s sweep (`customer.spi.GuestBookingHistory`, #101 Slice 2), the post-commit cancellation **refund** — driven through `payment.api.RefundPort` on this module's own **bounded** executor since #404, deliberately not Boot's shared `applicationTaskExecutor`: the listener makes a blocking gateway round-trip (one attempt, ≈25s worst case — `StripeClient` adds no retries, pinned by `StripeConfigTest`) and `WeatherRefundService` dispatches a whole venue-day of them in one transaction, so on the shared pool a single admin action starves the spine it also carries; the same swap **drops** the `REQUIRES_NEW` the composite annotation supplied, which bought nothing (the one write is a single statement, after a successful refund) while pinning one of ten Hikari connections across the call — thread isolation alone would have left the spine starving on the scarcer resource. Saturation **sheds** to `ObservabilityMetrics.REFUNDS_SHED` and the publication stays outstanding for the restart republish, but the queue is sized (`riviera.booking.refund.*`, validated at boot) so that shedding is unreachable for any plausible burst — unlike a shed mail, a shed refund is money owed under invariant #10 and a shed is the one loss mode that does not trigger its own recovery — which is why #454 added the ADMIN `GET`/`POST /api/admin/refund-outbox` re-drive, scoped to the refund listener's **exact id**, never the `booking` package prefix, which would hand the button `PaymentEventListener`'s payment→confirm spine (invariant #8; `RefundOutboxScopeIT`); the rule is structural (`RefundListenerExecutorArchitectureTest`, scoped to `booking` listeners reaching `payment::api`, so `PaymentEventListener` and `payout`'s DB-only listeners correctly stay on the shared pool), the withheld-confirmation-mail flag on a **confirmed** booking's read model (`booking.spi.ConfirmationMailDelivery`, implemented by `notification`, #390) — disclosed only when `payment.api.CollectionGuarantee` says the wired gateway really collects before confirming, since the in-process stub reaches CONFIRMED having taken nothing and the flag would then be a free suppression oracle (D-8); **so it is inert outside the `stripe` profile**, and the two reads #380's admin mail-delivery view needs — `BookingNotificationFacts#confirmationFacts` (the resend has no event payload to rebuild the mail from) and `CustomerBookings` (which bookings one guest contact has, split by consumer role per #94); neither publishes `BookingStatus`, both answer `everConfirmed` read from `confirmed_at`, so a booking cancelled *after* confirmation still reads as having had one | `Booking` |
+| `booking` | bookings, booking codes, lifecycle (pending-request/awaiting-payment/confirmed/cancelled/completed/no-show/declined/expired/**withdrawn**), request accept/decline + expiry sweep (#98) + the guest's own **withdraw** (#123, V37 — authorized by the booking code, not venue scope; publishes no event), cancellation-policy enforcement, the retention-basis fact for `customer`'s sweep (`customer.spi.GuestBookingHistory`, #101 Slice 2), the post-commit cancellation **refund** — driven through `payment.api.RefundPort` on this module's own **bounded** executor (#404), re-drivable via the ADMIN `GET`/`POST /api/admin/refund-outbox` scoped to that listener's **exact id**, never the `booking` package prefix (#454; invariant #8, `RefundOutboxScopeIT`) — the withheld-confirmation-mail flag on a **confirmed** booking's read model (`booking.spi.ConfirmationMailDelivery`, implemented by `notification`, #390; disclosed only when `payment.api.CollectionGuarantee` says the wired gateway really collects, so **inert outside the `stripe` profile** — otherwise a free suppression oracle, D-8), and the two reads #380's admin mail-delivery view needs — `BookingNotificationFacts#confirmationFacts` and `CustomerBookings` (split by consumer role per #94; neither publishes `BookingStatus`, both answer `everConfirmed` read from `confirmed_at`). Withdraw-leg concurrency argument, refund-executor rationale and per-issue history: `RESPONSIBILITIES.md` §`booking` | `Booking` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
 | `payout` | the venue payout ledger (bookings − commission), manual BKT batch reporting; the accrual/reversal pair is **order-independent** since #428 — a refunded cancellation with no `ACCRUAL` yet to mirror *defers* (throws, so its publication stays outstanding and `riviera.outbox.pending` carries it) instead of completing as "nothing to reverse", which silently left the ledger overstating; the inverse of #428's own count-and-complete, because this fact *can* appear later | `PayoutLedgerEntry`, `PayoutBatch` |
 | `customer` | tourist identity: guest-checkout contact + the customer account (email + opaque credential hash) for register/sign-in (#111, thin→full) + SSO identity linkage (`(provider, subject)`→account resolve-or-create, #112) + email verification + password recovery/reset tokens + set-password (#113) + GDPR right-to-erasure scrub (#101 Slice 1, ADR-0010: pseudonymize-in-place, retaining the statutory-retention financial records) + the **retention policy** — configured window, expired-basis selection and the scheduled sweep that tombstones guest contacts with no live basis (#101 Slice 2, ships disabled); account identity is separate from the guest row, no FK (D-6, guest-booking back-linking a permanent non-goal) + the **canonical email form** (`customer.vocabulary.Emails`, #386) — the platform's one definition, consumed by the edge and by `notification` (where it is the suppression key's HMAC input); it cannot live in `shared`, which depends on `customer::api` | `Customer`, `CustomerAccount` |
