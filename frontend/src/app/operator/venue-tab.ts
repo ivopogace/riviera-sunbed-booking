@@ -1,6 +1,6 @@
 import { NgOptimizedImage } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { form, required, submit, FormField } from '@angular/forms/signals';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -92,8 +92,9 @@ export class VenueTab {
   private readonly photos = inject(VenuePhotoService);
   protected readonly operator = inject(OperatorAuth);
 
-  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if invalid). */
-  protected readonly venueId: number | undefined;
+  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
+   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+  protected readonly venueId = parentVenueId(this.route);
 
   protected readonly loaded = signal(false);
   protected readonly loadError = signal(false);
@@ -143,13 +144,28 @@ export class VenueTab {
       this.saved.set(false);
     });
 
-    const id = parentVenueId(this.route)();
-    if (id !== undefined) {
-      this.venueId = id;
-      this.load(id);
-    } else {
-      this.loaded.set(true);
-    }
+    // Re-runs on an in-place venue switch (#180): reset the form + flags, then load the new venue.
+    effect(() => {
+      const id = this.venueId();
+      untracked(() => (id === undefined ? this.loaded.set(true) : this.resetForVenue(id)));
+    });
+  }
+
+  /** Drop every venue-scoped field — form model, drafts, version token, photo slots — and load. */
+  private resetForVenue(venueId: number): void {
+    this.details.set(EMPTY_DETAILS);
+    this.amenityDraft.set(new Set());
+    this.distanceDraft.set('');
+    this.commissionBps.set(null);
+    this.payoutCurrency.set(null);
+    this.loadedVersion.set(null);
+    this.slotUi.set(EMPTY_SLOTS);
+    this.loaded.set(false);
+    this.loadError.set(false);
+    this.saved.set(false);
+    this.errorCode.set(null);
+    this.distanceError.set(false);
+    this.load(venueId);
   }
 
   protected isAmenityActive(code: Amenity): boolean {
@@ -187,7 +203,7 @@ export class VenueTab {
    * lost session so the shell re-gates; other failures show operator-facing copy.
    */
   protected onSave(): void {
-    const venueId = this.venueId;
+    const venueId = this.venueId();
     if (venueId === undefined || this.saving()) {
       return;
     }
@@ -230,11 +246,17 @@ export class VenueTab {
       this.saving.set(true);
       try {
         await firstValueFrom(this.console.updateVenueProfile(venueId, request));
+        if (this.venueId() !== venueId) {
+          return; // a venue switch superseded this save's UI state (#180); saving clears in finally
+        }
         this.saved.set(true);
         // The conditional write bumped the row's version by exactly one (#224); advance our token so a
         // second consecutive save by the same operator isn't spuriously rejected as a stale write.
         this.loadedVersion.set(expectedVersion + 1);
       } catch (error) {
+        if (this.venueId() !== venueId) {
+          return; // a venue switch superseded this save's UI state (#180)
+        }
         const code = venueProfileErrorOf(error);
         this.errorCode.set(code);
         if (code === 'UNAUTHORIZED') {
@@ -266,8 +288,15 @@ export class VenueTab {
 
   private load(venueId: number): void {
     this.console.venueProfile(venueId).subscribe({
-      next: (profile) => this.seed(profile),
+      next: (profile) => {
+        if (this.venueId() === venueId) {
+          this.seed(profile); // a superseded venue's profile never seeds the new venue's form (#180)
+        }
+      },
       error: (error: unknown) => {
+        if (this.venueId() !== venueId) {
+          return; // a venue switch superseded this load (#180)
+        }
         // A transient read failure must NOT read as a blank form — show an error instead.
         this.loadError.set(true);
         this.loaded.set(true);
@@ -313,15 +342,21 @@ export class VenueTab {
   protected async onPhotoPicked(slot: PhotoSlotKey, input: HTMLInputElement): Promise<void> {
     const file = input.files?.[0];
     input.value = ''; // re-picking the same file later must re-fire (change)
-    const venueId = this.venueId;
+    const venueId = this.venueId();
     if (!file || venueId === undefined || this.slotUi()[slot].busy) {
       return;
     }
     this.patchSlot(slot, { busy: true, error: null });
     try {
       const uploaded = await firstValueFrom(this.photos.upload(venueId, slot, file));
+      if (this.venueId() !== venueId) {
+        return; // a venue switch superseded this upload's UI state (#180)
+      }
       this.patchSlot(slot, { previewUrl: previewUrlOf(uploaded) });
     } catch (error) {
+      if (this.venueId() !== venueId) {
+        return; // a venue switch superseded this upload's UI state (#180)
+      }
       const code = photoErrorOf(error);
       this.patchSlot(slot, { error: code });
       if (code === 'UNAUTHORIZED') {
@@ -334,15 +369,21 @@ export class VenueTab {
 
   /** Remove the slot's photo (#142) — a single-transaction erasure server-side (metadata + bytes). */
   protected async onPhotoRemove(slot: PhotoSlotKey): Promise<void> {
-    const venueId = this.venueId;
+    const venueId = this.venueId();
     if (venueId === undefined || this.slotUi()[slot].busy) {
       return;
     }
     this.patchSlot(slot, { busy: true, error: null });
     try {
       await firstValueFrom(this.photos.remove(venueId, slot));
+      if (this.venueId() !== venueId) {
+        return; // a venue switch superseded this removal's UI state (#180)
+      }
       this.patchSlot(slot, { previewUrl: null });
     } catch (error) {
+      if (this.venueId() !== venueId) {
+        return; // a venue switch superseded this removal's UI state (#180)
+      }
       const code = photoErrorOf(error);
       this.patchSlot(slot, { error: code });
       if (code === 'UNAUTHORIZED') {
@@ -385,7 +426,7 @@ export class VenueTab {
    * discards it in favour of the current server state, from which they re-apply and Save.
    */
   protected reloadAfterStale(): void {
-    const venueId = this.venueId;
+    const venueId = this.venueId();
     if (venueId === undefined) {
       return;
     }

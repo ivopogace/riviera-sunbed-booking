@@ -88,14 +88,24 @@ export class ConsoleStatsStrip {
     // the tiles show their dash defaults while the new venue's reads are in flight.
     this.bookedOnline.set(undefined);
     this.takings.set(undefined);
+    // Both continuations re-check the venue: a switch mid-flight must not let the superseded
+    // venue's count/takings land on the new venue's tiles (#180).
     this.console.dailyBookingCount(venueId, this.date).subscribe({
-      next: (count) => this.bookedOnline.set(count),
+      next: (count) => {
+        if (this.venueId() === venueId) {
+          this.bookedOnline.set(count);
+        }
+      },
       error: () => {
         // best-effort — leave bookedOnline undefined so the tile (and walk-ins) render "—", not 0
       },
     });
     this.console.dailyTakings(venueId, this.date).subscribe({
-      next: (value) => this.takings.set(value),
+      next: (value) => {
+        if (this.venueId() === venueId) {
+          this.takings.set(value);
+        }
+      },
       error: () => {
         // best-effort — the takings tile shows a dash
       },

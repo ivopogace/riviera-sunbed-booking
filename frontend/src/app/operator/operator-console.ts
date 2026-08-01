@@ -108,13 +108,19 @@ export class OperatorConsole {
     // one leaked from a previously-managed venue (the store is a root singleton). The Requests tab, once
     // visited, takes authority over this store via `set`; the shell only ever seeds it.
     this.requests.reset();
+    // Both continuations re-check the venue: a switch mid-flight must not let the superseded
+    // venue's name/map/count land on the new venue's header (#180).
     this.bestEffort(this.venueMap.load(venueId, todayBookingDate(new Date())), (venue) => {
-      this.venueName.set(venue.name);
-      this.venue.set(venue);
+      if (this.venueId() === venueId) {
+        this.venueName.set(venue.name);
+        this.venue.set(venue);
+      }
     });
-    this.bestEffort(this.console.pendingRequestCount(venueId), (count) =>
-      this.requests.seed(count),
-    );
+    this.bestEffort(this.console.pendingRequestCount(venueId), (count) => {
+      if (this.venueId() === venueId) {
+        this.requests.seed(count);
+      }
+    });
   }
 
   /** Subscribe to a best-effort read: apply the value, or silently ignore a failure. */

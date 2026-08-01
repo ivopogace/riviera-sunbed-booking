@@ -1,8 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 
 import { formatMoney } from '../shared/money';
 import { formatCivilDate } from '../shared/booking-date';
@@ -20,6 +20,7 @@ import { PayoutsTab } from './payouts-tab';
  */
 describe('PayoutsTab (#173) — ledger', () => {
   let fixture: ComponentFixture<PayoutsTab>;
+  let params$: BehaviorSubject<ParamMap>;
   let http: HttpTestingController;
   let host: HTMLElement;
 
@@ -49,6 +50,7 @@ describe('PayoutsTab (#173) — ledger', () => {
   }
 
   function configure(): void {
+    params$ = new BehaviorSubject(convertToParamMap({ venueId: '1' }));
     TestBed.configureTestingModule({
       imports: [PayoutsTab],
       providers: [
@@ -59,7 +61,7 @@ describe('PayoutsTab (#173) — ledger', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap({ venueId: '1' }) }, paramMap: of(convertToParamMap({ venueId: '1' })) },
+            parent: { snapshot: { paramMap: params$.value }, paramMap: params$ },
           },
         },
       ],
@@ -323,5 +325,26 @@ describe('PayoutsTab (#173) — ledger', () => {
     byId('statement-close')!.click();
     fixture.detectChanges();
     expect(byId('payout-statement')).toBeNull();
+  });
+
+  it('re-loads for the new venue when the parent param changes in place (#180)', () => {
+    render(ledger({ netOwedMinor: 3825, entries: [entry({ bookingId: 11 })] }));
+    byId('statement-open')!.click();
+    fixture.detectChanges();
+    expect(byId('payout-statement')).not.toBeNull();
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    // Venue 1's ledger — and its open statement modal — must not show against venue 2.
+    expect(byId('payout-statement')).toBeNull();
+    expect(rows()).toHaveLength(0);
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/payout-ledger'))
+      .flush(ledger({ venueId: 2, netOwedMinor: 10000, entries: [entry({ bookingId: 77 })] }));
+    fixture.detectChanges();
+
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0].textContent).toContain('#77');
   });
 });

@@ -106,12 +106,15 @@ behavior-preservation concern is captured as AC-4 and R-3 instead.
 
 ## Open questions / Assumptions
 
-- **Assumption:** keeping the helper file at `shared/parent-venue-id.ts` (generalized
-  signature, updated TSDoc) beats renaming it — six imports + specs stay put, and the
-  name still describes the dominant (tab) use. — *Owner:* Claude · *Resolves by:* phase 0
-- **Assumption:** `operatorSessionGuard` can be satisfied in the AC-5 harness spec by
-  stubbing the session-auth seam it awaits (`whenReady`), not by overriding the route
-  config. — *Owner:* Claude · *Resolves by:* phase 4
+### Resolved
+
+- **Assumption:** keeping the helper file at `shared/parent-venue-id.ts` beats renaming
+  it. — **Resolved at phase 0:** kept; `venueIdParam` + `parentVenueId` co-live there,
+  imports/specs untouched (commit "Make parentVenueId a reactive signal (#180)").
+- **Assumption:** `operatorSessionGuard` needs a stubbed session seam in the AC-5
+  harness spec. — **Resolved at phase 4:** no stub needed — flushing `GET /api/auth/me`
+  with a principal settles `whenReady()`, exactly as the component specs do
+  (`console-venue-switch.spec.ts`).
 
 ## Availability & concurrency (invariant #2)
 
@@ -156,9 +159,9 @@ N/A — no contract change; the same endpoints are called with a different `venu
 
 ## Execution status
 
-**Stage pointer:** implement (phase 4)
+**Stage pointer:** implement (phase 5)
 
-**Next action:** phase 4 — payouts + venue-tab reactive; shell/strip late-response guards; harness integration spec
+**Next action:** phase 5 — full FE suite + build; merge latest main if moved; mark PR #495 ready for review; run the Review + Sonar gates
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -166,7 +169,7 @@ N/A — no contract change; the same endpoints are called with a different `venu
 | 1 — reactive shell (`operator-console`) | ✅ | "React to venue param changes in the console shell (#180)" — AC-1 + AC-3 pinned; scope addition: `ConsoleStatsStrip.load` now resets its tiles (old venue's takings must not render against the new venue — it was already input-reactive, so this was the only gap); 247 operator+shared tests green |
 | 2 — tabs: layout-editor + pricing | ✅ | "React to venue param changes in the layout and pricing tabs (#180)" — reload + reset pinned per tab; pattern addition: the **late-response guard** (`if (this.venueId() !== venueId) return` in every subscribe/await continuation), pinned by the layout-editor race spec; 250 tests green | 
 | 3 — tabs: daily-view + requests | ✅ | "React to venue param changes in the daily and requests tabs (#180)" — daily resets to today's date on switch (full-navigation parity), its load continuations now guard venue+date jointly; requests' poll interval is lifetime-scoped and reconciles the *current* venue; both carry the late-response guards; 252 tests green |
-| 4 — tabs: payouts + venue-tab; harness integration spec | | |
+| 4 — tabs: payouts + venue-tab; harness integration spec | ✅ | "React to venue param changes in the payouts and venue tabs, pin via router harness (#180)" — payouts closes its statement modal on switch; venue-tab re-seeds form/photos/version; shell + strip gained the phase-2 late-response guards (generalization closed); `console-venue-switch.spec.ts` pins AC-5 on the real routes, asserting instance REUSE + reload; 255 tests green. Open-questions assumption resolved: the guard passes with a flushed `/me` principal — no stubbing needed |
 | 5 — lint + full FE suite + PR ready-for-review | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
