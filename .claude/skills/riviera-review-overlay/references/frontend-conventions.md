@@ -11,8 +11,17 @@ reference `CLAUDE.md`.
 
 ### RV-FE-1. Angular standards
 **Gate:** Does new Angular code follow the project standards?
-- [ ] standalone components (no `NgModule` for new code)  [ ] `inject()` not constructor DI  [ ] `@if`/`@for`/`@switch` not `*ngIf`/`*ngFor`  [ ] `input()`/`output()` signal APIs not `@Input`/`@Output`  [ ] `NgOptimizedImage` for new `<img>` (venue photos especially)
-- **Greppable "don't write the obsolete thing" (Angular 22+):**  [ ] no redundant `standalone: true` (it's the default ≥ v20)  [ ] no explicit `changeDetection: OnPush` (it's the default ≥ v22)  [ ] `class`/`style` bindings, not `ngClass`/`ngStyle`  [ ] host bindings in the `host: {}` object, not `@HostBinding`/`@HostListener`  [ ] singleton services use `providedIn: 'root'` (or the `@Service` decorator, v22+)
+- [ ] standalone components (no `NgModule` for new code)
+- [ ] `inject()` not constructor DI
+- [ ] `@if`/`@for`/`@switch` not `*ngIf`/`*ngFor`
+- [ ] `input()`/`output()` signal APIs not `@Input`/`@Output`
+- [ ] `NgOptimizedImage` for new `<img>` (venue photos especially)
+- **Greppable "don't write the obsolete thing" (Angular 22+):**
+  - [ ] no redundant `standalone: true` (it's the default ≥ v20)
+  - [ ] no explicit `changeDetection: OnPush` (it's the default ≥ v22)
+  - [ ] `class`/`style` bindings, not `ngClass`/`ngStyle`
+  - [ ] host bindings in the `host: {}` object, not `@HostBinding`/`@HostListener`
+  - [ ] singleton services use `providedIn: 'root'` (or the `@Service` decorator, v22+)
 
 **Follow-up:**
 - Match the established style; document any deliberate deviation in the plan doc.
@@ -33,7 +42,10 @@ reference `CLAUDE.md`.
 
 ### RV-FE-7. Styling is Tailwind, shared via directives, with no rendered drift (`riviera-tailwind`)
 **Gate:** Does new/changed styling follow the project's Tailwind conventions?
-- [ ] Tailwind utilities (SCSS is being retired) — new component styling isn't a fresh `.scss`  [ ] a reused surface/element is a shared directive/component (`shared/*-glass.ts`, `retry-button.ts`), **not** `@apply`/`@utility`  [ ] a class a spec queries (`.set-tile.premium`, `.amenity-chip`, `.failure-title`, …) is retained as an inert marker after its styling moved to utilities  [ ] a restyle/migration proves **no rendered drift** with a computed-style diff, not just the class list (the `*.contrast.spec.ts` are pure maths and can't see it)
+- [ ] Tailwind utilities (SCSS is being retired) — new component styling isn't a fresh `.scss`
+- [ ] a reused surface/element is a shared directive/component (`shared/*-glass.ts`, `retry-button.ts`), **not** `@apply`/`@utility`
+- [ ] a class a spec queries (`.set-tile.premium`, `.amenity-chip`, `.failure-title`, …) is retained as an inert marker after its styling moved to utilities
+- [ ] a restyle/migration proves **no rendered drift** with a computed-style diff, not just the class list (the `*.contrast.spec.ts` are pure maths and can't see it)
 
 **Follow-up:**
 - Sharing moves to the directive/component layer — Tailwind has no mixin and this repo does not `@apply`. Surface directives carry no `border-radius` (it resolves by stylesheet order, not `class` order).
@@ -49,7 +61,11 @@ reference `CLAUDE.md`.
 ### RV-FE-6. Forms use the modern API (Signal Forms / Reactive, never Template-driven)
 **Gate:** Do new forms (booking, venue/beach-map editor, cancellation, guest-checkout
 contact) use a modern forms API with typed, server-validated state?
-- [ ] **Signal Forms** (`@angular/forms/signals`, stable v22+) preferred for new forms  [ ] Reactive forms acceptable when Signal Forms don't fit  [ ] **Template-driven** forms (`[(ngModel)]`-driven) for new work (violation)  [ ] form types are explicit — no `any` on form values that cross the FE↔BE contract  [ ] client validation is UX only; the **server** is authoritative (esp. money, dates, availability)
+- [ ] **Signal Forms** (`@angular/forms/signals`, stable v22+) preferred for new forms
+- [ ] Reactive forms acceptable when Signal Forms don't fit
+- [ ] **Template-driven** forms (`[(ngModel)]`-driven) for new work (violation)
+- [ ] form types are explicit — no `any` on form values that cross the FE↔BE contract
+- [ ] client validation is UX only; the **server** is authoritative (esp. money, dates, availability)
 
 **Follow-up:**
 - The MCP/`angular-developer` standard for Angular 22+ is Signal Forms first
@@ -72,7 +88,10 @@ on the contract; Minor for a Reactive-where-Signal-Forms-fit style choice.
 ### RV-FE-2. Beach-map availability can go stale — handle the conflict (invariant #2)
 **Gate:** Does the seat picker treat its availability snapshot as **stale-able** and
 recover gracefully when a chosen set was taken meanwhile?
-- [ ] map refetches availability for the selected date (not cached indefinitely)  [ ] booking submit handles a `409 SET_TAKEN` by refreshing the map and telling the user  [ ] optimistic "selected" state with no server reconciliation (violation)  [ ] taken sets visually distinct and not selectable
+- [ ] map refetches availability for the selected date (not cached indefinitely)
+- [ ] booking submit handles a `409 SET_TAKEN` by refreshing the map and telling the user
+- [ ] optimistic "selected" state with no server reconciliation (violation)
+- [ ] taken sets visually distinct and not selectable
 
 **Follow-up:**
 - The server is the source of truth (invariant #2); the client map is a snapshot. A
@@ -92,7 +111,10 @@ periodic refresh.
 ### RV-FE-3. Money and dates rendered from the wire shape (invariants #5, #6)
 **Gate:** Does the UI render money from minor units + currency, and dates as the
 booking `LocalDate`, without doing money math in JS floats?
-- [ ] amount formatted from integer minor units + currency code  [ ] price arithmetic done in JS with floats (violation)  [ ] booking date shown as a date (no implicit timezone shift)  [ ] total recomputed client-side and trusted (smell — server is authoritative)
+- [ ] amount formatted from integer minor units + currency code
+- [ ] price arithmetic done in JS with floats (violation)
+- [ ] booking date shown as a date (no implicit timezone shift)
+- [ ] total recomputed client-side and trusted (smell — server is authoritative)
 
 **Follow-up:**
 - Format minor units to a localized currency string at the view edge; don't add/scale
@@ -113,7 +135,10 @@ Minor for display-only rounding.
 ### RV-FE-4. Payment UI trusts Stripe Elements, not the client (invariant #8)
 **Gate:** Does the checkout use Stripe's hosted/Elements flow with only the
 **publishable** key, and never self-report success to confirm a booking?
-- [ ] Stripe Elements / Checkout with publishable key only  [ ] any secret/restricted key in the frontend bundle (violation)  [ ] booking shown as confirmed purely from the client redirect, with no server/webhook confirmation (violation)  [ ] card data touched by app code instead of Stripe (violation — PCI)
+- [ ] Stripe Elements / Checkout with publishable key only
+- [ ] any secret/restricted key in the frontend bundle (violation)
+- [ ] booking shown as confirmed purely from the client redirect, with no server/webhook confirmation (violation)
+- [ ] card data touched by app code instead of Stripe (violation — PCI)
 
 **Follow-up:**
 - Only the publishable key ships to the browser; secret keys stay server-side.
@@ -133,7 +158,10 @@ Major for treating the redirect as proof of payment.
 ### RV-FE-5. The visual seat picker is accessible
 **Gate:** Is the beach-map seat picker usable beyond a pure pointer/visual
 interaction?
-- [ ] sets are keyboard-focusable and activatable  [ ] taken vs available conveyed by more than color alone  [ ] each selectable set has an accessible name (row/position, price, status)  [ ] map is a `<canvas>`/SVG with no semantic fallback (concern)
+- [ ] sets are keyboard-focusable and activatable
+- [ ] taken vs available conveyed by more than color alone
+- [ ] each selectable set has an accessible name (row/position, price, status)
+- [ ] map is a `<canvas>`/SVG with no semantic fallback (concern)
 
 **Follow-up:**
 - Front-row vs back-row, taken vs free, premium pricing — encode with text/aria, not
@@ -151,7 +179,13 @@ interaction?
 **Gate:** Does the diff add/adjust an e2e spec that (a) is authored to Playwright best
 practice — **load the `playwright-cli` skill and judge the spec against it** — and (b) lives
 in the **suite that will actually run it**?
-- [ ] coverage exists for the changed flow (not just a unit spec)  [ ] the spec follows `playwright-cli` best practice — role/label/test-id locators over CSS/text, web-first `expect` auto-waiting (no fixed sleeps), per-test isolation, no brittle selectors  [ ] it is in the **correct** suite — mocked-a11y (`frontend/e2e/`, `npm run test:e2e:a11y`, **CI-run**) for render/a11y/interaction; real-backend (`frontend/e2e/real-backend/`, `npm run test:e2e`, **local-only**) for wiring / DB constraints / round-trip  [ ] no strict-mode/timing flakiness (exact-vs-non-exact `getByLabel` under Signal Forms; `getByTestId` for option-folding selects)  [ ] per-test unique data, no reliance on seeded rows  [ ] asserts the read-back round-trip  [ ] a backend-dependent spec is NOT parked where CI can't run it (leaving CI green-but-blind)
+- [ ] coverage exists for the changed flow (not just a unit spec)
+- [ ] the spec follows `playwright-cli` best practice — role/label/test-id locators over CSS/text, web-first `expect` auto-waiting (no fixed sleeps), per-test isolation, no brittle selectors
+- [ ] it is in the **correct** suite — mocked-a11y (`frontend/e2e/`, `npm run test:e2e:a11y`, **CI-run**) for render/a11y/interaction; real-backend (`frontend/e2e/real-backend/`, `npm run test:e2e`, **local-only**) for wiring / DB constraints / round-trip
+- [ ] no strict-mode/timing flakiness (exact-vs-non-exact `getByLabel` under Signal Forms; `getByTestId` for option-folding selects)
+- [ ] per-test unique data, no reliance on seeded rows
+- [ ] asserts the read-back round-trip
+- [ ] a backend-dependent spec is NOT parked where CI can't run it (leaving CI green-but-blind)
 
 > **Project facts the generic skill can't know (apply on top of it):** there are **two
 > suites** — the CI-run mocked-a11y suite (`frontend/e2e/`, API mocked via `page.route`,
