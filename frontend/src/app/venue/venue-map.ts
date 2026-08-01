@@ -3,9 +3,11 @@ import {
   afterRenderEffect,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -21,6 +23,7 @@ import { PanelGlass } from '../shared/panel-glass';
 import { isRated, ratingScore } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
 import { defaultBookingDate, isIsoDate } from '../shared/booking-date';
+import { routeIdParam } from '../shared/parent-venue-id';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from './venue.service';
 
@@ -141,7 +144,12 @@ export class VenueMap {
    */
   protected readonly selectedDate = signal(this.readInitialDate());
 
-  private readonly venueId: number | undefined;
+  /** The venue from the `:id` param (undefined if invalid) — reactive to in-place changes,
+   *  which reuse this instance (#499, the tourist mirror of #180). */
+  private readonly venueId = routeIdParam(this.route, 'id');
+  /** Bumped per venue context (#499): an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  private epoch = 0;
 
   /** The set whose booking dialog is open, or undefined when closed. */
   protected readonly selectedSet = signal<SetView | undefined>(undefined);
@@ -224,13 +232,34 @@ export class VenueMap {
       this.scrollHint.set(!!el && el.scrollWidth > el.clientWidth + 1);
     });
 
-    const id = Number(this.route.snapshot.paramMap.get('id'));
-    if (!Number.isInteger(id)) {
-      // Non-numeric path (e.g. /venues/abc) — fail fast instead of requesting /venues/NaN.
+    // Fresh mounts load synchronously below (constructor parity); the effect handles only an
+    // IN-PLACE `:id` change (#499) — the router reuses this instance — so it skips any run
+    // whose id matches the context already loaded (incl. its own first run).
+    let current = this.venueId();
+    effect(() => {
+      const id = this.venueId();
+      if (id === current) {
+        return;
+      }
+      current = id;
+      untracked(() => this.resetForVenue(id));
+    });
+    this.resetForVenue(current);
+  }
+
+  /** Drop every venue-scoped state — map, dialog, pan gesture — and load fresh, or fail fast
+   *  on an invalid `:id` (no request for /venues/NaN). */
+  private resetForVenue(id: number | undefined): void {
+    this.epoch++;
+    this.venue.set(undefined);
+    this.selectedSet.set(undefined);
+    this.lastTriggerId = undefined;
+    this.panPointerDown = false;
+    this.panned = false;
+    if (id === undefined) {
       this.failed.set(true);
       return;
     }
-    this.venueId = id;
     this.load();
   }
 
@@ -256,22 +285,25 @@ export class VenueMap {
 
   /** Fetch the map for the currently selected date. */
   private load(): void {
-    if (this.venueId === undefined) {
+    const id = this.venueId();
+    if (id === undefined) {
       return;
     }
     // A fresh attempt clears any prior failure so a recovered load renders the map.
     this.failed.set(false);
-    // Capture the requested date so a slower earlier response can't overwrite a newer one
-    // (last-writer-wins across rapid date switches) — apply only if it's still the chosen date.
+    // Capture the venue epoch and requested date so a superseded response can't overwrite a
+    // newer one — the epoch is identity, so even an A→B→A venue switch invalidates it (#499);
+    // the date check keeps last-writer-wins across rapid date switches within one venue.
+    const epoch = this.epoch;
     const requested = this.selectedDate();
-    this.venues.getVenueMap(this.venueId, requested).subscribe({
+    this.venues.getVenueMap(id, requested).subscribe({
       next: (venue) => {
-        if (this.selectedDate() === requested) {
+        if (this.epoch === epoch && this.selectedDate() === requested) {
           this.venue.set(venue);
         }
       },
       error: () => {
-        if (this.selectedDate() === requested) {
+        if (this.epoch === epoch && this.selectedDate() === requested) {
           this.failed.set(true);
         }
       },

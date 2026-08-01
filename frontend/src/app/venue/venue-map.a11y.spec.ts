@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -70,6 +71,8 @@ describe('VenueMap accessibility (axe)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({ id: '1' }), queryParamMap: convertToParamMap({}) },
+            paramMap: new BehaviorSubject(convertToParamMap({ id: '1' })),
+            queryParamMap: new BehaviorSubject(convertToParamMap({})),
           },
         },
       ],

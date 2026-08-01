@@ -171,14 +171,14 @@ N/A — no contract change; the same endpoint is called with a different `venueI
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** phase 1 — failing #499 param-change specs in `venue-map.spec.ts`
+**Next action:** phase 2 — failing AC-3 route-date spec in `venue-map.spec.ts`
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `routeIdParam` helper generalization | ✅ | "Generalize the route-id-param helper to any param name (#499)" — `venueIdParam` is now a one-line delegate (R-5 mitigated by signature parity); 9 shared tests green; generalization audit logged (no further in-scope snapshot readers) |
-| 1 — reactive `:id` + epoch guard in `VenueMap` | | |
+| 1 — reactive `:id` + epoch guard in `VenueMap` | ✅ | "React to in-place venue param changes on the tourist map (#499)" — AC-1/2/4 pinned (incl. the A→B→A identity case); design note: the fresh-mount load stays synchronous in the constructor (AC-5 parity — ~30 existing specs assert the immediate request), the effect resets only when the id *value* differs from the loaded context; R-1 reset audit + R-2 mock sweep (3 sites) done; 62 venue-folder tests green |
 | 2 — reactive `?date` re-seed | | |
 | 3 — harness switch spec over real routes | | |
 | 4 — lint + full FE suite + gates + close-out | | |

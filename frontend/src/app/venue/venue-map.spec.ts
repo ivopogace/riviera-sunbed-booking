@@ -5,7 +5,8 @@ import {
   TestRequest,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter, Router } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
@@ -73,8 +74,12 @@ describe('rowCode', () => {
 describe('VenueMap', () => {
   let fixture: ComponentFixture<VenueMap>;
   let httpMock: HttpTestingController;
+  let params$: BehaviorSubject<ParamMap>;
+  let queryParams$: BehaviorSubject<ParamMap>;
 
   beforeEach(async () => {
+    params$ = new BehaviorSubject(convertToParamMap({ id: '1' }));
+    queryParams$ = new BehaviorSubject(convertToParamMap({}));
     await TestBed.configureTestingModule({
       imports: [VenueMap],
       providers: [
@@ -84,7 +89,9 @@ describe('VenueMap', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { paramMap: convertToParamMap({ id: '1' }), queryParamMap: convertToParamMap({}) },
+            snapshot: { paramMap: params$.value, queryParamMap: queryParams$.value },
+            paramMap: params$,
+            queryParamMap: queryParams$,
           },
         },
       ],
@@ -97,8 +104,8 @@ describe('VenueMap', () => {
   afterEach(() => httpMock.verify());
 
   /** Match the venue request on path only (a `?date=` param is appended — issue #44). */
-  function venueRequest(): TestRequest {
-    return httpMock.expectOne((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
+  function venueRequest(id = 1): TestRequest {
+    return httpMock.expectOne((req) => req.url === `${environment.apiBaseUrl}/api/venues/${id}`);
   }
 
   function flushVenue(): void {
@@ -366,6 +373,78 @@ describe('VenueMap', () => {
     req.flush(miramar());
   });
 
+  it('re-loads and resets when the venue param changes in place (#499)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    el().querySelector<HTMLButtonElement>('.set-button')!.click();
+    await fixture.whenStable();
+    expect(el().querySelector('app-booking-dialog')).not.toBeNull();
+
+    params$.next(convertToParamMap({ id: '2' }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Fresh-mount state: the dialog is closed and venue 1's map no longer renders while loading.
+    expect(el().querySelector('app-booking-dialog')).toBeNull();
+    expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
+    venueRequest(2).flush({ ...miramar(), id: 2, name: 'Riviera Blue' });
+    await fixture.whenStable();
+    expect(el().querySelector('header')?.textContent).toContain('Riviera Blue');
+  });
+
+  it("drops a superseded venue's late response (#499)", async () => {
+    const stale = venueRequest(); // venue 1's load, still in flight at the switch
+    params$.next(convertToParamMap({ id: '2' }));
+    await fixture.whenStable();
+
+    stale.flush(miramar());
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
+
+    venueRequest(2).flush({ ...miramar(), id: 2, name: 'Riviera Blue' });
+    await fixture.whenStable();
+    expect(el().querySelector('header')?.textContent).toContain('Riviera Blue');
+  });
+
+  it('drops a stale first-visit response after an A→B→A switch (#499)', async () => {
+    const firstVisit = venueRequest(); // venue 1's first load, never answered before the round trip
+    params$.next(convertToParamMap({ id: '2' }));
+    await fixture.whenStable();
+    const detour = venueRequest(2);
+    params$.next(convertToParamMap({ id: '1' }));
+    await fixture.whenStable();
+
+    // Both superseded responses land AFTER the return to venue 1 — a value guard (id === 1)
+    // would re-admit the first one; the epoch identity guard must not (#487 class).
+    detour.flush({ ...miramar(), id: 2, name: 'Riviera Blue' });
+    firstVisit.flush({ ...miramar(), name: 'Stale Miramar' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
+
+    venueRequest().flush(miramar());
+    await fixture.whenStable();
+    expect(el().querySelector('header')?.textContent).toContain('Miramar Beach Club');
+  });
+
+  it('fails fast when the param turns invalid and recovers on a valid id (#499)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+
+    params$.next(convertToParamMap({ id: 'abc' }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el().querySelector('[data-testid="map-error"]')).not.toBeNull();
+
+    params$.next(convertToParamMap({ id: '3' }));
+    await fixture.whenStable();
+    venueRequest(3).flush({ ...miramar(), id: 3 });
+    await fixture.whenStable();
+    expect(el().querySelector('[data-testid="map-error"]')).toBeNull();
+    expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(24);
+  });
+
   it('opens the booking dialog pre-set to the map’s selected date', async () => {
     flushVenue();
     await fixture.whenStable();
@@ -415,6 +494,8 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
               paramMap: convertToParamMap({ id: '1' }),
               queryParamMap: convertToParamMap(queryParams),
             },
+            paramMap: new BehaviorSubject(convertToParamMap({ id: '1' })),
+            queryParamMap: new BehaviorSubject(convertToParamMap(queryParams)),
           },
         },
       ],
