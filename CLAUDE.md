@@ -133,7 +133,12 @@ invariant #11.
 
 > **Plus one non-context module: `shared`** (#371) — the **Shared Kernel**, an
 > `@ApplicationModule(type = OPEN)` holding `ApiProblem`, `CurrentOperator`,
-> `CurrentCustomer`, `ObservabilityMetrics`, `ShutdownBudget` (#456 — the platform's
+> `CurrentCustomer`, `InvalidApiRequestException` (#118 — the typed edge-validation signal the
+> advice maps to `400 INVALID_REQUEST`, admitted on the same ownership ground as `ApiProblem`:
+> module adapters throw it, the one advice consuming it sits at the composition root; raw
+> `IllegalArgumentException` and non-duplicate `DataIntegrityViolationException` now propagate
+> as logged 500s instead of masquerading as client errors),
+> `ObservabilityMetrics`, `ShutdownBudget` (#456 — the platform's
 > SIGTERM grace and each draining pool's claim on it, admitted on **ownership** rather than
 > reuse: no bounded context owns how long the process has to close, which is why the
 > previous arrangement had `notification` stating a number that silently bound `booking`)

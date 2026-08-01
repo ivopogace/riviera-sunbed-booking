@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.CurrentOperator;
+import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.application.PhotoProcessingResult.Reason;
 import ai.riviera.platform.venue.application.PhotoUploadResult;
@@ -112,7 +113,7 @@ class VenuePhotoController {
 
 	/** Map the lower-case REST slot to the {@link PhotoSlot} enum; an unknown value → 400 via the advice. */
 	private static PhotoSlot parseSlot(String slot) {
-		return PhotoSlot.valueOf(slot.toUpperCase(Locale.ROOT));
+		return InvalidApiRequestException.parsing(() -> PhotoSlot.valueOf(slot.toUpperCase(Locale.ROOT)));
 	}
 
 	private static ResponseEntity<ProblemDetail> reject(Reason reason) {

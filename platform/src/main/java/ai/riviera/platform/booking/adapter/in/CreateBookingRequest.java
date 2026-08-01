@@ -12,8 +12,9 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * The {@code POST /api/bookings} request body. A transport DTO using primitives/strings on
  * the wire (the booking date is an ISO {@code LocalDate} string); {@link #toCommand()} maps it
  * onto the typed {@link CreateBookingCommand}, validating presence and shape. Any bad input
- * surfaces as {@link IllegalArgumentException}, which the controller maps to {@code 400}
- * (the project has no {@code spring-boot-starter-validation}, so validation is explicit here).
+ * surfaces as {@link IllegalArgumentException}, which the controller's conversion wrap translates
+ * to the typed 400 (#118; the project has no {@code spring-boot-starter-validation}, so
+ * validation is explicit here).
  */
 record CreateBookingRequest(Long setId, String bookingDate, Contact contact) {
 

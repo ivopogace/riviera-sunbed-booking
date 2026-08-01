@@ -13,6 +13,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
+import ai.riviera.platform.shared.InvalidApiRequestException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -72,7 +73,7 @@ class MockSsoIdpController {
 				&& redirectUri.getPort() == ownCallback.getPort()
 				&& ownCallback.getPath().equals(redirectUri.getPath());
 		if (!matches) {
-			throw new IllegalArgumentException("invalid redirect_uri");
+			throw new InvalidApiRequestException("invalid redirect_uri");
 		}
 	}
 

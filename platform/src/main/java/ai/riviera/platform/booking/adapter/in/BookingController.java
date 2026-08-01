@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.CurrentCustomer;
+import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
@@ -114,7 +115,9 @@ class BookingController {
 		// principal resolves to null → an unchanged guest booking (invariant #2/#4 flows untouched). The
 		// account id comes from the SESSION principal only, never the request body (BOLA-safe).
 		CustomerAccountId accountId = currentCustomer.optional(authentication).orElse(null);
-		BookingOutcome outcome = createBooking.create(request.toCommand(accountId));
+		// The conversion wrap keeps bad request input a 400 while a service-level IAE stays a 500 (#118).
+		BookingOutcome outcome = createBooking.create(
+				InvalidApiRequestException.parsing(() -> request.toCommand(accountId)));
 		return switch (outcome) {
 			case BookingOutcome.Confirmed confirmed -> ResponseEntity.status(HttpStatus.CREATED)
 					.body(BookingConfirmationView.of(confirmed.confirmation()));
