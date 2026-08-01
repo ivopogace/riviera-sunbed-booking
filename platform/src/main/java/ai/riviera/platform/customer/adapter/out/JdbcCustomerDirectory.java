@@ -32,6 +32,10 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 	/** The column, kept apart from the bind parameter above: the two coincide today by accident, not by rule. */
 	private static final String COL_EMAIL = "email";
 
+	// Result-column names shared by the row mappers (the JdbcBookings convention).
+	private static final String COL_FULL_NAME = "full_name";
+	private static final String COL_PHONE = "phone";
+
 	private final JdbcClient jdbc;
 
 	JdbcCustomerDirectory(JdbcClient jdbc) {
@@ -52,7 +56,7 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 				""")
 				.param(PARAM_EMAIL, email)
 				.param("name", contact.fullName())
-				.param("phone", contact.phone())
+				.param(COL_PHONE, contact.phone())
 				.query(Long.class)
 				.single();
 		return new CustomerId(id);
@@ -72,7 +76,7 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 		return jdbc.sql("SELECT email, full_name, phone FROM customer WHERE id = :id")
 				.param("id", id.value())
 				.query((rs, rowNum) -> new GuestContact(
-						rs.getString(COL_EMAIL), rs.getString("full_name"), rs.getString("phone")))
+						rs.getString(COL_EMAIL), rs.getString(COL_FULL_NAME), rs.getString(COL_PHONE)))
 				.optional();
 	}
 
@@ -86,8 +90,8 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 				.param("ids", ids.stream().map(CustomerId::value).toList())
 				.query((rs, rowNum) -> Map.entry(
 						new CustomerId(rs.getLong("id")),
-						new GuestContact(rs.getString(COL_EMAIL), rs.getString("full_name"),
-								rs.getString("phone"))))
+						new GuestContact(rs.getString(COL_EMAIL), rs.getString(COL_FULL_NAME),
+								rs.getString(COL_PHONE))))
 				.list().stream()
 				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
