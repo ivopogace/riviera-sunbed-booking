@@ -80,7 +80,9 @@ export class StripeJsPaymentGateway extends StripePaymentGateway {
  * harness sets `window.__RIVIERA_FAKE_STRIPE__` (see app.config) — it is inert in production,
  * which never sets that flag. It renders a labelled stand-in for the card field (so the page's
  * a11y is audited honestly) and confirms successfully, after which the page polls the mocked
- * backend exactly as in production.
+ * backend exactly as in production. When the harness also sets `__RIVIERA_FAKE_STRIPE_FAIL__`,
+ * confirm fails the way a dead PaymentIntent does (#126) — read at confirm time, so a test can
+ * flip it after mount.
  */
 @Injectable()
 export class FakeStripePaymentGateway extends StripePaymentGateway {
@@ -91,6 +93,11 @@ export class FakeStripePaymentGateway extends StripePaymentGateway {
     input.setAttribute('aria-label', 'Card number (test mode)');
     input.dataset['testid'] = 'fake-card-input';
     host.appendChild(input);
-    return { confirm: async () => ({}) };
+    return {
+      confirm: async () =>
+        (window as unknown as { __RIVIERA_FAKE_STRIPE_FAIL__?: boolean }).__RIVIERA_FAKE_STRIPE_FAIL__
+          ? { error: 'This PaymentIntent has been canceled.' }
+          : {},
+    };
   }
 }

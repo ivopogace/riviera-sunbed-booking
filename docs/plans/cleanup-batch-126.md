@@ -209,9 +209,9 @@ byte-compatible; `GET /api/bookings/{code}` is consumed as-is by the new re-chec
 
 ## Execution status
 
-**Stage pointer:** implement (phase 5)
+**Stage pointer:** phase 6 — close-out (merge main, Sonar gate incl. its 1 reported new issue, review gate, docs freshness)
 
-**Next action:** load `playwright-cli`, red specs for AC-1..3, then the pay-page failure-path re-check
+**Next action:** merge latest `origin/main`, pull the Sonar new-issue list for PR #482, run the review gate
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -220,7 +220,7 @@ byte-compatible; `GET /api/bookings/{code}` is consumed as-is by the new re-chec
 | 2 — BE: booking insert + 202-view dedup (AC-6, AC-7) | ✅ | see phase-2 commit — freeze widened to the 201 body; `@JsonUnwrapped` flattening verified on Jackson 3 (R-1 fallback unneeded) |
 | 3 — FE: `BookingService` single-result hand-off (AC-9) | ✅ | full FE suite 1005 green + lint; R-6 grep: all consumers pull-once, a11y stubs cast — no timing assumptions broken |
 | 4 — FE: daily-tab `forkJoin` (AC-8) | ✅ | per-stream tap/catchError inside the join keeps per-response timing; new both-settle ordering spec added |
-| 5 — FE: Pay-now dead-intent fix + e2e (AC-1..3) | | |
+| 5 — FE: Pay-now dead-intent fix + e2e (AC-1..3) | ✅ | one deliberate pin change: "never re-checks status" → "ONE re-check, no poll"; fake gateway gained `__RIVIERA_FAKE_STRIPE_FAIL__`; e2e 7/7 green locally |
 | 6 — close-out: docs-freshness, #126 update, ready-for-review, gates | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

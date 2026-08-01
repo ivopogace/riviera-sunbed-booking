@@ -131,13 +131,33 @@ describe('BookingPay', () => {
     }
   });
 
-  it('surfaces a mount/config failure as the error state', async () => {
+  it('surfaces a mount/config failure as the error state (still payable → retryable)', async () => {
     const gateway = new FakeGateway();
     gateway.failMount = 'Stripe publishable key is not configured.';
-    const { comp } = await setup(gateway);
+    const { comp, httpMock } = await setup(gateway);
 
     expect(comp.state()).toBe('error');
     expect(comp.errorMessage()).toMatch(/publishable key/i);
+    // The failure triggers ONE status re-check (#126); still AWAITING_PAYMENT → retry in place.
+    httpMock.expectOne(STATUS_URL).flush(DETAIL);
+    expect(comp.terminalError()).toBe(false);
+    httpMock.verify();
+  });
+
+  it('mount failure on a booking the sweep cancelled → terminal, with a link back to the booking (#126)', async () => {
+    const gateway = new FakeGateway();
+    gateway.failMount = 'This PaymentIntent has been canceled.';
+    const { comp, fixture, httpMock } = await setup(gateway);
+
+    httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CANCELLED' });
+    expect(comp.state()).toBe('error');
+    expect(comp.terminalError()).toBe(true);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(
+      host.querySelector<HTMLAnchorElement>('[data-testid="booking-status-link"]')?.getAttribute('href'),
+    ).toBe('/booking/WXYZ345678');
+    httpMock.verify();
   });
 
   it('stays processing until the backend reports CONFIRMED, then shows confirmed', async () => {
@@ -215,7 +235,7 @@ describe('BookingPay', () => {
     }
   });
 
-  it('declined card → retry state, and never starts polling (no false confirm)', async () => {
+  it('declined card → retry state after ONE status re-check, and never starts polling (no false confirm)', async () => {
     const gateway = new FakeGateway();
     gateway.confirmResult = { error: 'Your card was declined.' };
     const { comp, httpMock } = await setup(gateway);
@@ -224,7 +244,52 @@ describe('BookingPay', () => {
 
     expect(comp.state()).toBe('error');
     expect(comp.errorMessage()).toContain('declined');
-    httpMock.expectNone(STATUS_URL); // the Stripe.js failure never triggers a status poll
+    // The re-check (#126) is a single GET, not a poll; still AWAITING_PAYMENT → retry in place.
+    httpMock.expectOne(STATUS_URL).flush(DETAIL);
+    expect(comp.terminalError()).toBe(false);
+    httpMock.verify(); // nothing further in flight — no poll loop began
+  });
+
+  it('confirm failure on a booking the sweep cancelled → terminal, no retry loop (#126)', async () => {
+    const gateway = new FakeGateway();
+    gateway.confirmResult = { error: 'This PaymentIntent has been canceled.' };
+    const { comp, httpMock } = await setup(gateway);
+
+    await comp.pay();
+
+    httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CANCELLED' });
+    expect(comp.state()).toBe('error');
+    expect(comp.terminalError()).toBe(true);
+    expect(comp.errorMessage()).toMatch(/no longer be paid/i);
+    httpMock.verify();
+  });
+
+  it('confirm failure but the webhook already confirmed → adopts the confirmed state (#126)', async () => {
+    const gateway = new FakeGateway();
+    gateway.confirmResult = { error: 'Something went sideways client-side.' };
+    const { comp, httpMock } = await setup(gateway);
+
+    await comp.pay();
+
+    // Server truth outranks the client error report (invariant #8) — the booking IS paid.
+    httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED' });
+    expect(comp.state()).toBe('confirmed');
+    expect(comp.errorMessage()).toBeUndefined();
+    httpMock.verify();
+  });
+
+  it('a failed re-check leaves the retry-in-place state untouched (#126)', async () => {
+    const gateway = new FakeGateway();
+    gateway.confirmResult = { error: 'Your card was declined.' };
+    const { comp, httpMock } = await setup(gateway);
+
+    await comp.pay();
+
+    httpMock.expectOne(STATUS_URL).flush(null, { status: 500, statusText: 'Server Error' });
+    expect(comp.state()).toBe('error');
+    expect(comp.terminalError()).toBe(false);
+    expect(comp.errorMessage()).toContain('declined');
+    httpMock.verify();
   });
 
   it('a server-side CANCELLED (failed payment) → terminal error, never confirmed or awaiting', async () => {

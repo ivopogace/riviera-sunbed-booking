@@ -147,6 +147,52 @@ test('accepted request: Pay now → fake Stripe → poll to CONFIRMED (invariant
   await expectNoSeriousAxeViolations(page, 'payment page (confirmed)');
 });
 
+test('pay window closed mid-page: Pay now fails → honest terminal state + link back (#126)', async ({ page }) => {
+  // Fake Stripe whose confirm fails like a dead PaymentIntent (the sweep cancelled it).
+  await page.addInitScript(() => {
+    const w = window as unknown as {
+      __RIVIERA_FAKE_STRIPE__?: boolean;
+      __RIVIERA_FAKE_STRIPE_FAIL__?: boolean;
+    };
+    w.__RIVIERA_FAKE_STRIPE__ = true;
+    w.__RIVIERA_FAKE_STRIPE_FAIL__ = true;
+  });
+  // Stateful mock: accepted while the page loads; CANCELLED by the time the guest taps Pay.
+  let phase: 'accepted' | 'cancelled' = 'accepted';
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) => {
+    if (phase === 'accepted') {
+      return route.fulfill({
+        json: {
+          ...DETAIL_BASE,
+          status: 'AWAITING_PAYMENT',
+          payment: { clientSecret: 'pi_123_secret_abc', paymentIntentId: 'pi_123' },
+        },
+      });
+    }
+    return route.fulfill({
+      json: { ...DETAIL_BASE, status: 'CANCELLED', withdrawable: false, requestExpiresAt: null },
+    });
+  });
+
+  await page.goto(`/booking/${CODE}`);
+  await page.getByTestId('pay-now').click();
+  await expect(page).toHaveURL(/\/booking\/pay/);
+  await expect(page.getByTestId('pay-button')).toBeVisible();
+
+  // The pay-window sweep cancels the booking while the guest sits on the page.
+  phase = 'cancelled';
+  await page.getByTestId('pay-button').click();
+
+  // The failure re-checks server truth (#126) and goes terminal — no retry loop on a dead intent.
+  await expect(page.getByRole('heading', { name: /couldn.t be completed/ })).toBeVisible();
+  await expect(page.getByTestId('pay-button')).toHaveCount(0);
+  await expectNoSeriousAxeViolations(page, 'payment page (terminal, dead intent)');
+
+  // The way back: the code-gated booking view has the authoritative status.
+  await page.getByTestId('booking-status-link').click();
+  await expect(page).toHaveURL(new RegExp(`/booking/${CODE}`));
+});
+
 test('a guest withdraws their pending request and the spot is freed (#123)', async ({ page }) => {
   let withdrawn = false;
   const withdrawCalls: string[] = [];

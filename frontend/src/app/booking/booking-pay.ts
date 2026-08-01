@@ -40,7 +40,8 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
  * mutates after it is already in the DOM.
  *
  * <p>States: `mounting` → `ready` (card form) → on pay: `error` (declined/failed — retry in place,
- * the element stays mounted, no polling) or `processing` (polling, "Confirming your booking…") →
+ * the element stays mounted; one status re-check decides retryable vs terminal, #126 — see
+ * {@link failCardStep}) or `processing` (polling, "Confirming your booking…") →
  * `confirmed` (backend said so) or `awaiting` (webhook hasn't landed within ~30s — "payment
  * received", never "confirmed"). A cold load with no hand-off shows `missing`. A terminal server
  * CANCELLED shows an honest failure (invariant #2/#8 — the design's "someone just booked" pay state
@@ -150,6 +151,9 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
             }
 
             @if (state() === 'error' && terminalError()) {
+              <a [routerLink]="['/booking', code]" class="link" data-testid="booking-status-link">
+                View booking status
+              </a>
               <a routerLink="/" class="link" data-testid="startover-link">Start a new booking</a>
             }
           </div>
@@ -273,12 +277,46 @@ export class BookingPay {
         );
         this.state.set('ready');
       } catch (error) {
-        this.errorMessage.set(
+        this.failCardStep(
           error instanceof Error ? error.message : 'Could not load the payment form. Please try again.',
         );
-        this.state.set('error');
       }
     });
+  }
+
+  /**
+   * A card-step failure (mount or confirm) is only retryable while the booking is still payable:
+   * the pay-window sweep may have cancelled the intent while this page was open, and retrying a
+   * dead intent loops forever (#126). So the error state re-reads the booking once — server truth,
+   * invariant #8 intact: the answer can only escalate to the terminal state (or adopt a booking the
+   * verified webhook already confirmed), never report a payment the backend hasn't. A failed
+   * re-check changes nothing — the retry-in-place state stays.
+   */
+  private failCardStep(message: string): void {
+    this.errorMessage.set(message);
+    this.state.set('error');
+    this.bookings
+      .getByCode(this.code)
+      .pipe(
+        catchError(() => of(undefined)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((detail) => {
+        if (detail === undefined || detail.status === 'AWAITING_PAYMENT') {
+          return;
+        }
+        if (detail.status === 'CONFIRMED') {
+          // The webhook beat the client's error report — the booking is genuinely paid.
+          this.errorMessage.set(undefined);
+          this.emailWithheld.set(detail.emailWithheld);
+          this.state.set('confirmed');
+          return;
+        }
+        this.errorMessage.set(
+          'This booking can no longer be paid — its status changed while this page was open.',
+        );
+        this.terminalError.set(true);
+      });
   }
 
   protected async pay(): Promise<void> {
@@ -292,8 +330,7 @@ export class BookingPay {
     this.paying.set(false);
     if (error) {
       // A client-side failure (decline / 3DS) is NOT a confirmation — show retry, do not poll.
-      this.errorMessage.set(error);
-      this.state.set('error');
+      this.failCardStep(error);
       return;
     }
     // The card step finished. Confirmation is the backend's call (invariant #8) — start polling.
