@@ -1,5 +1,5 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Service, inject, signal } from '@angular/core';
+import { Service, computed, inject, signal } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
@@ -27,8 +27,9 @@ import {
  * <p>The create call discriminates on the HTTP status and body: `201` → the booking is already
  * `CONFIRMED` (stub/Instant profile); `202` with `AWAITING_PAYMENT` → the card must be collected
  * via Stripe (stripe profile); `202` with `PENDING_REQUEST` → a REQUEST-mode venue must accept
- * first (issue #98). The outcomes are kept in separate hand-off signals so the confirmation
- * screen never renders an unpaid booking as "Paid" (invariant #8).
+ * first (issue #98). One source signal holds the latest outcome (#126) — at most one hand-off
+ * can exist at a time *structurally*, so the confirmation screen never renders an unpaid
+ * booking as "Paid" (invariant #8); the three per-outcome accessors are `computed` projections.
  *
  * <p>Every successful create — confirmed, awaiting-payment, or requested — remembers its booking
  * code in {@link DeviceLocalBookings} so the guest's device-local "My bookings" list (#139) can
@@ -39,17 +40,25 @@ export class BookingService {
   private readonly http = inject(HttpClient);
   private readonly device = inject(DeviceLocalBookings);
 
-  private readonly confirmation = signal<BookingConfirmation | undefined>(undefined);
+  private readonly handoff = signal<LastHandoff | undefined>(undefined);
+
   /** The last confirmed booking (201 path), consumed by the confirmation route. */
-  readonly lastConfirmation = this.confirmation.asReadonly();
+  readonly lastConfirmation = computed(() => {
+    const h = this.handoff();
+    return h?.kind === 'confirmed' ? h.confirmation : undefined;
+  });
 
-  private readonly awaiting = signal<PaymentHandoff | undefined>(undefined);
   /** The last payment hand-off (202 `AWAITING_PAYMENT`, or "Pay now"), consumed by the payment route. */
-  readonly lastAwaitingPayment = this.awaiting.asReadonly();
+  readonly lastAwaitingPayment = computed(() => {
+    const h = this.handoff();
+    return h?.kind === 'awaiting' ? h.awaiting : undefined;
+  });
 
-  private readonly requested = signal<RequestedBooking | undefined>(undefined);
   /** The last pending request (202 `PENDING_REQUEST` path), consumed by the requested route. */
-  readonly lastRequested = this.requested.asReadonly();
+  readonly lastRequested = computed(() => {
+    const h = this.handoff();
+    return h?.kind === 'requested' ? h.requested : undefined;
+  });
 
   private readonly prefetched = signal<BookingDetail | undefined>(undefined);
 
@@ -70,21 +79,15 @@ export class BookingService {
           if (response.status === 202) {
             if (response.body?.status === 'PENDING_REQUEST') {
               const requested = response.body as RequestedBooking;
-              this.requested.set(requested);
-              this.confirmation.set(undefined);
-              this.awaiting.set(undefined);
+              this.handoff.set({ kind: 'requested', requested });
               return { kind: 'requested', requested };
             }
             const awaiting = response.body as AwaitingPayment;
-            this.awaiting.set(awaiting);
-            this.confirmation.set(undefined);
-            this.requested.set(undefined);
+            this.handoff.set({ kind: 'awaiting', awaiting });
             return { kind: 'awaiting', awaiting };
           }
           const confirmation = response.body as BookingConfirmation;
-          this.confirmation.set(confirmation);
-          this.awaiting.set(undefined);
-          this.requested.set(undefined);
+          this.handoff.set({ kind: 'confirmed', confirmation });
           return { kind: 'confirmed', confirmation };
         }),
       );
@@ -96,15 +99,11 @@ export class BookingService {
    * credentials, then navigates to `/booking/pay` exactly as the 202 create path does.
    */
   beginPayment(handoff: PaymentHandoff): void {
-    this.awaiting.set(handoff);
-    this.confirmation.set(undefined);
-    this.requested.set(undefined);
+    this.handoff.set({ kind: 'awaiting', awaiting: handoff });
   }
 
   clear(): void {
-    this.confirmation.set(undefined);
-    this.awaiting.set(undefined);
-    this.requested.set(undefined);
+    this.handoff.set(undefined);
   }
 
   /**
@@ -170,6 +169,12 @@ export class BookingService {
     );
   }
 }
+
+/** The latest create/pay hand-off — a discriminated union, so only one outcome can exist (#126). */
+type LastHandoff =
+  | { kind: 'confirmed'; confirmation: BookingConfirmation }
+  | { kind: 'awaiting'; awaiting: PaymentHandoff }
+  | { kind: 'requested'; requested: RequestedBooking };
 
 /** Map an HTTP failure (RFC-7807 body, issue #97) to a stable, displayable booking error code. */
 export function bookingErrorOf(error: unknown): BookingErrorCode {
