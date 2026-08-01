@@ -372,6 +372,42 @@ describe('RequestsTab (#176)', () => {
     expect(cards()).toHaveLength(2);
     expect(store.count()).toBe(2);
   });
+
+  it('ignores the old venue’s late queue response after a venue switch (#180)', () => {
+    configure();
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/booking-requests'))
+      .flush([request({ bookingId: 21 })]);
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/2') &&
+          !r.url.includes('/booking-requests'),
+      )
+      .flush({ id: 2, name: 'W', beach: 'Dhermi', region: 'Riviera', sets: SEED_SETS });
+    // The superseded venue-1 reads resolve late — they must not replace venue 2's queue or badge.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
+      .flush([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/booking-requests'),
+      )
+      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED_SETS });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(cards()).toHaveLength(1);
+    expect(store.count()).toBe(1);
+  });
+
 });
 
 /** A pending Request-to-Book entry as the operator queue endpoint returns it (no booking code, #7). */

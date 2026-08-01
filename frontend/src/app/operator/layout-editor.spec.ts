@@ -370,6 +370,60 @@ describe('LayoutEditor (#172)', () => {
 
     expect(cells()).toHaveLength(0);
   });
+
+  it('ignores the first visit’s late response after switching away and back (#180, A→B→A)', () => {
+    // A value check on venueId passes again after A→B→A — only an epoch/identity guard drops it
+    // (the #487 ConsoleVenueMap precedent: "the key recurs after a reset").
+    configure();
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    params$.next(convertToParamMap({ venueId: '1' }));
+    fixture.detectChanges();
+
+    const venue1Reads = http.match((r) => r.method === 'GET' && r.url.includes('/api/venues/1'));
+    expect(venue1Reads).toHaveLength(2); // the first visit's read + the return visit's read
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({ id: 2, name: 'W', sets: [], setVersion: 3 });
+    // The RETURN visit's read settles first (empty layout at version 9)…
+    venue1Reads[1].flush({ id: 1, name: 'V', sets: [], setVersion: 9 });
+    // …then the FIRST visit's response arrives last. It must not seed the returned-to editor.
+    venue1Reads[0].flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 7 });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(cells()).toHaveLength(0);
+  });
+
+  it('drops a superseded save’s outcome after a venue switch (#180)', async () => {
+    // A save for venue 1 resolving after a switch must not stamp venue 1's advanced #226 token
+    // (or its Saved notice) onto venue 2's freshly-loaded editor.
+    render([], 7);
+    generate('1', '1');
+    byId('layout-save').click();
+    const stalePut = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+    );
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({ id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 });
+    stalePut.flush(null); // venue 1's save succeeds late
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="layout-saved"]')).toBeNull();
+    // The proof the token wasn't stamped: venue 2's next save echoes ITS version (3), not 7+1.
+    byId('layout-save').click();
+    const venue2Put = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/2/beach-map'),
+    );
+    expect(venue2Put.request.body.expectedVersion).toBe(3);
+    venue2Put.flush(null);
+    await fixture.whenStable();
+  });
 });
 
 function seat(

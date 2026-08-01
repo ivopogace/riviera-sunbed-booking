@@ -75,6 +75,10 @@ export class PricingTab {
    *  conflict (the whole `set_version` moved), so it drives a recover-and-reload banner, not the
    *  per-row inline error. Cleared by {@link reloadAfterStale}. */
   protected readonly staleConflict = signal(false);
+  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  private epoch = 0;
+
 
   /** One row per label (in read order), with its tier description and current price as a EUR string. */
   protected readonly rows = computed<PriceRow[]>(() =>
@@ -108,9 +112,11 @@ export class PricingTab {
 
   /** Drop every venue-scoped row/flag so nothing from the previous venue leaks, then load. */
   private resetForVenue(venueId: number): void {
+    this.epoch++;
     this.sets.set([]);
     this.loaded.set(false);
     this.loadError.set(false);
+    this.saving.set(false);
     this.savedRow.set(null);
     this.errorRow.set(null);
     this.loadedSetVersion.set(null);
@@ -148,6 +154,7 @@ export class PricingTab {
       return;
     }
     const price: MoneyView = { minorUnits, currency: row.currency };
+    const epoch = this.epoch;
     const previous = this.rowPrice(row.label); // for a scoped revert — never a whole-sets snapshot
     this.applyRowPrice(row.label, price); // optimistic — the projection updates immediately
     this.savedRow.set(null);
@@ -156,8 +163,8 @@ export class PricingTab {
     this.saving.set(true); // synchronous, before the await — disables the inputs so no overlap starts
     try {
       await firstValueFrom(this.console.repriceRow(venueId, row.label, price, expectedVersion));
-      if (this.venueId() !== venueId) {
-        return; // a venue switch superseded this reprice — don't write venue 1's outcome over venue 2 (#180)
+      if (this.epoch !== epoch) {
+        return; // a venue switch superseded this reprice — don't write its outcome over the new venue (#180)
       }
       this.savedRow.set(row.label);
       // The conditional write bumped set_version by one (#226); advance our token so a following
@@ -166,7 +173,7 @@ export class PricingTab {
       // This row's price just changed server-side, so the console's shared snapshot is stale (#486).
       this.venueMap.reset();
     } catch (error) {
-      if (this.venueId() !== venueId) {
+      if (this.epoch !== epoch) {
         return; // a venue switch superseded this reprice (#180); `saving` still clears in finally
       }
       if (previous) {
@@ -223,9 +230,10 @@ export class PricingTab {
   }
 
   private load(venueId: number): void {
+    const epoch = this.epoch;
     this.venueMap.load(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this load (#180)
         }
         this.sets.set([...venue.sets]);
@@ -233,7 +241,7 @@ export class PricingTab {
         this.loaded.set(true);
       },
       error: (error: unknown) => {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this load (#180)
         }
         // A transient read failure must NOT read as "no sets yet" (a dead-end) — show an error.

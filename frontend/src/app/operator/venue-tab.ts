@@ -104,6 +104,10 @@ export class VenueTab {
   /** A field-level error for the distance input (not a Signal-Form field), so a bad metres value points
    *  the operator at the right field instead of a generic form-wide message. */
   protected readonly distanceError = signal(false);
+  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  private epoch = 0;
+
   /** The optimistic-concurrency token loaded with the profile (#224), echoed back on Save; a `409
    *  STALE_WRITE` means the venue moved on since — the tab keeps the edits and offers Reload. */
   protected readonly loadedVersion = signal<number | null>(null);
@@ -153,6 +157,7 @@ export class VenueTab {
 
   /** Drop every venue-scoped field — form model, drafts, version token, photo slots — and load. */
   private resetForVenue(venueId: number): void {
+    this.epoch++;
     this.details.set(EMPTY_DETAILS);
     this.amenityDraft.set(new Set());
     this.distanceDraft.set('');
@@ -162,6 +167,7 @@ export class VenueTab {
     this.slotUi.set(EMPTY_SLOTS);
     this.loaded.set(false);
     this.loadError.set(false);
+    this.saving.set(false);
     this.saved.set(false);
     this.errorCode.set(null);
     this.distanceError.set(false);
@@ -243,10 +249,11 @@ export class VenueTab {
         distanceToWaterM,
         expectedVersion,
       };
+      const epoch = this.epoch;
       this.saving.set(true);
       try {
         await firstValueFrom(this.console.updateVenueProfile(venueId, request));
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this save's UI state (#180); saving clears in finally
         }
         this.saved.set(true);
@@ -254,7 +261,7 @@ export class VenueTab {
         // second consecutive save by the same operator isn't spuriously rejected as a stale write.
         this.loadedVersion.set(expectedVersion + 1);
       } catch (error) {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this save's UI state (#180)
         }
         const code = venueProfileErrorOf(error);
@@ -287,14 +294,15 @@ export class VenueTab {
   }
 
   private load(venueId: number): void {
+    const epoch = this.epoch;
     this.console.venueProfile(venueId).subscribe({
       next: (profile) => {
-        if (this.venueId() === venueId) {
+        if (this.epoch === epoch) {
           this.seed(profile); // a superseded venue's profile never seeds the new venue's form (#180)
         }
       },
       error: (error: unknown) => {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this load (#180)
         }
         // A transient read failure must NOT read as a blank form — show an error instead.
@@ -346,15 +354,16 @@ export class VenueTab {
     if (!file || venueId === undefined || this.slotUi()[slot].busy) {
       return;
     }
+    const epoch = this.epoch;
     this.patchSlot(slot, { busy: true, error: null });
     try {
       const uploaded = await firstValueFrom(this.photos.upload(venueId, slot, file));
-      if (this.venueId() !== venueId) {
+      if (this.epoch !== epoch) {
         return; // a venue switch superseded this upload's UI state (#180)
       }
       this.patchSlot(slot, { previewUrl: previewUrlOf(uploaded) });
     } catch (error) {
-      if (this.venueId() !== venueId) {
+      if (this.epoch !== epoch) {
         return; // a venue switch superseded this upload's UI state (#180)
       }
       const code = photoErrorOf(error);
@@ -373,15 +382,16 @@ export class VenueTab {
     if (venueId === undefined || this.slotUi()[slot].busy) {
       return;
     }
+    const epoch = this.epoch;
     this.patchSlot(slot, { busy: true, error: null });
     try {
       await firstValueFrom(this.photos.remove(venueId, slot));
-      if (this.venueId() !== venueId) {
+      if (this.epoch !== epoch) {
         return; // a venue switch superseded this removal's UI state (#180)
       }
       this.patchSlot(slot, { previewUrl: null });
     } catch (error) {
-      if (this.venueId() !== venueId) {
+      if (this.epoch !== epoch) {
         return; // a venue switch superseded this removal's UI state (#180)
       }
       const code = photoErrorOf(error);

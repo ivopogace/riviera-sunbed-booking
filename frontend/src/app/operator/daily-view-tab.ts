@@ -74,6 +74,10 @@ export class DailyViewTab {
   private readonly overrides = signal<ReadonlyMap<number, TileState>>(new Map());
   /** Sets with an in-flight mark/release — disabled until it settles. */
   protected readonly pendingSets = signal<ReadonlySet<number>>(new Set());
+  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  private epoch = 0;
+
 
   constructor() {
     // Re-runs on an in-place venue switch (#180): reset to the fresh-mount state, then load.
@@ -91,6 +95,7 @@ export class DailyViewTab {
   /** Drop every venue-scoped signal — grid, codes, optimistic/pending state — and load fresh, on
    *  today's date (the same state a full navigation would mount with). */
   private resetForVenue(): void {
+    this.epoch++;
     this.selectedDate.set(todayBookingDate(new Date()));
     this.overrides.set(new Map());
     this.pendingSets.set(new Set());
@@ -163,6 +168,7 @@ export class DailyViewTab {
     if (venueId === undefined || this.isPending(set)) {
       return;
     }
+    const epoch = this.epoch;
     const action = tileTapAction(this.stateOf(set));
     if (action === undefined) {
       return; // BOOKED_ONLINE — locked
@@ -174,12 +180,12 @@ export class DailyViewTab {
       : this.console.releaseSet(venueId, set.id, this.selectedDate());
     write.subscribe({
       next: () => {
-        if (this.venueId() === venueId) {
+        if (this.epoch === epoch) {
           this.reconcile(set.id); // skip if a venue switch superseded this write (#180)
         }
       },
       error: (e: unknown) => {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this write (#180)
         }
         if (marking) {
@@ -255,9 +261,9 @@ export class DailyViewTab {
       return;
     }
     const requested = this.selectedDate();
-    // Every continuation re-checks venue + date: a response for a superseded venue or day must not
-    // write into the current view (#180 / the date-change rule).
-    const current = (): boolean => this.venueId() === venueId && this.selectedDate() === requested;
+    const epoch = this.epoch;
+    // Continuations re-check venue + date so a superseded venue/day never writes here (#180).
+    const current = (): boolean => this.epoch === epoch && this.selectedDate() === requested;
     const venue$ = this.venues.getVenueMap(venueId, requested).pipe(
       tap((v) => {
         if (current()) {

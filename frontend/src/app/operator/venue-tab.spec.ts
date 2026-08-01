@@ -467,4 +467,23 @@ describe('VenueTab (#177)', () => {
 
     expect((byId('venue-name') as HTMLInputElement).value).toBe('Second Venue');
   });
+
+  it('ignores the old venue’s late profile response after a venue switch (#180)', () => {
+    configure();
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/profile'))
+      .flush({ ...PROFILE, name: 'Second Venue', version: 9 });
+    // The superseded venue-1 response resolves late — it must not re-seed venue 2's form.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/profile'))
+      .flush(PROFILE);
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect((byId('venue-name') as HTMLInputElement).value).toBe('Second Venue');
+  });
+
 });

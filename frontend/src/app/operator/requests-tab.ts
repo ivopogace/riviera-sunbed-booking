@@ -88,6 +88,10 @@ export class RequestsTab {
   private readonly declineConfirm = signal<ReadonlySet<number>>(new Set());
   /** Requests the sweep expired mid-action — the dismissible expired-race card. */
   private readonly expired = signal<ReadonlySet<number>>(new Set());
+  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  private epoch = 0;
+
 
   constructor() {
     // Re-runs on an in-place venue switch (#180): reset to the fresh-mount state, then load.
@@ -95,9 +99,7 @@ export class RequestsTab {
       const id = this.venueId();
       untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
     });
-    // Poll so a request the #98 sweep expires (or another operator device handles) leaves the list,
-    // and the urgency clock stays current, without the operator refreshing this long-open surface.
-    // One interval for the tab's lifetime — reconcile reads the current venue and no-ops when invalid.
+    // One lifetime poll: the #98 sweep + urgency clock reconcile whatever venue is current.
     const poll = setInterval(() => this.reconcile(), REFRESH_MS);
     this.destroyRef.onDestroy(() => clearInterval(poll));
   }
@@ -109,6 +111,7 @@ export class RequestsTab {
 
   /** Drop every venue-scoped signal — queue, notice, transient card state — and load fresh. */
   private resetForVenue(): void {
+    this.epoch++;
     this.venue.set(undefined);
     this.requests.set([]);
     this.loaded.set(false);
@@ -179,6 +182,7 @@ export class RequestsTab {
     if (venueId === undefined || this.isDeciding(bookingId)) {
       return;
     }
+    const epoch = this.epoch;
     this.notice.set(undefined);
     this.declineConfirm.update((s) => without(s, bookingId));
     this.deciding.update((s) => new Set(s).add(bookingId));
@@ -188,7 +192,7 @@ export class RequestsTab {
         : this.console.declineRequest(venueId, bookingId);
     call.subscribe({
       next: (decision) => {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this decision's UI state (#180)
         }
         this.stopDeciding(bookingId);
@@ -197,7 +201,7 @@ export class RequestsTab {
         this.reconcile(); // …then re-sync the rest of the queue with server truth
       },
       error: (e: unknown) => {
-        if (this.venueId() === venueId) {
+        if (this.epoch === epoch) {
           this.onDecisionError(bookingId, action, e); // skip if a venue switch superseded it (#180)
         }
       },
@@ -245,12 +249,11 @@ export class RequestsTab {
       return;
     }
     this.refreshNow();
-    // Best-effort: the map only supplies set labels/tiers (date-independent); a failure degrades to
-    // "Set {id}" / "Standard" and never blocks the queue. Read once per venue — labels don't change
-    // under the tab.
+    const epoch = this.epoch;
+    // Best-effort labels/tiers, read once per venue — a failure degrades to "Set {id}".
     this.venueMap.load(venueId, todayBookingDate(new Date())).subscribe({
       next: (v) => {
-        if (this.venueId() === venueId) {
+        if (this.epoch === epoch) {
           this.venue.set(v); // a superseded venue's labels never dress the new venue's queue (#180)
         }
       },
@@ -282,9 +285,10 @@ export class RequestsTab {
     if (venueId === undefined) {
       return;
     }
+    const epoch = this.epoch;
     this.console.pendingRequests(venueId).subscribe({
       next: (r) => {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this read — never seed the new venue's queue/badge (#180)
         }
         this.requests.set(r);
@@ -295,7 +299,7 @@ export class RequestsTab {
         }
       },
       error: (e: unknown) => {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this read (#180)
         }
         if (initial) {

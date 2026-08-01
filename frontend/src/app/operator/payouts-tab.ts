@@ -65,7 +65,9 @@ export class PayoutsTab {
   protected readonly notice = signal<string | undefined>(undefined);
   /** True while the display-only payout-statement modal is open. */
   protected readonly statementOpen = signal(false);
-
+  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  private epoch = 0;
   constructor() {
     // Re-runs on an in-place venue switch (#180): reset to the fresh-mount state, then load.
     effect(() => {
@@ -82,6 +84,7 @@ export class PayoutsTab {
   /** Drop every venue-scoped signal — ledger, notice, refund/statement state — and load fresh, on
    *  today's date (the same state a full navigation would mount with). */
   private resetForVenue(): void {
+    this.epoch++;
     this.ledger.set(undefined);
     this.loaded.set(false);
     this.loadErrorMsg.set(undefined);
@@ -184,13 +187,14 @@ export class PayoutsTab {
     if (venueId === undefined || this.refunding()) {
       return;
     }
+    const epoch = this.epoch;
     this.refunding.set(true);
     this.notice.set(undefined);
     const date = this.selectedDate();
     const dateLabel = formatCivilDate(date);
     this.console.weatherRefund(venueId, date).subscribe({
       next: (result) => {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this refund's UI state (#180); the switch reset the flags
         }
         this.refunding.set(false);
@@ -199,7 +203,7 @@ export class PayoutsTab {
         this.reloadLedger();
       },
       error: (e: unknown) => {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this refund's UI state (#180)
         }
         this.refunding.set(false);
@@ -228,9 +232,10 @@ export class PayoutsTab {
     if (venueId === undefined) {
       return;
     }
+    const epoch = this.epoch;
     this.console.payoutLedger(venueId).subscribe({
       next: (l) => {
-        if (this.venueId() === venueId) {
+        if (this.epoch === epoch) {
           this.ledger.set(l); // a superseded venue's ledger never overwrites the new one (#180)
         }
       },
@@ -245,9 +250,10 @@ export class PayoutsTab {
     if (venueId === undefined) {
       return;
     }
+    const epoch = this.epoch;
     this.console.payoutLedger(venueId).subscribe({
       next: (l) => {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this load (#180)
         }
         this.ledger.set(l);
@@ -255,7 +261,7 @@ export class PayoutsTab {
         this.loaded.set(true);
       },
       error: (e: unknown) => {
-        if (this.venueId() !== venueId) {
+        if (this.epoch !== epoch) {
           return; // a venue switch superseded this load (#180)
         }
         const reason = payoutErrorOf(e);

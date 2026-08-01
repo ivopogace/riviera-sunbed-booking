@@ -406,6 +406,31 @@ describe('PricingTab (#174)', () => {
     expect(rows()[0].getAttribute('data-row')).toBe('C');
     expect(input('C').value).toBe('15');
   });
+
+  it('ignores the old venue’s late response after a venue switch (#180)', () => {
+    configure();
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({
+        id: 2,
+        name: 'W',
+        sets: [seat(9, 'C', 1, 'STANDARD', 'ONLINE', 1500, 1, 1)],
+        setVersion: 2,
+      });
+    // The superseded venue-1 response resolves late — it must not replace venue 2's rows.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: SEED, setVersion: 7 });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0].getAttribute('data-row')).toBe('C');
+  });
+
 });
 
 function seat(

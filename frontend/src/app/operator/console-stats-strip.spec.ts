@@ -158,8 +158,7 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     await render(venueMap([]), 2, TAKINGS);
     expect(text('oc-stat-takings')).toBe('€110');
 
-    // The shell reuses the strip across an in-place venue switch — the OLD venue's counts and
-    // takings must not render against the NEW venue while its reads are in flight.
+    // A venue switch reuses the strip — old counts/takings must not render against the new venue.
     fixture.componentRef.setInput('venueId', 2);
     fixture.componentRef.setInput('venue', undefined);
     await fixture.whenStable();

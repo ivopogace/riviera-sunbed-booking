@@ -179,6 +179,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`/code-review` fan-out, 2 agents independently; scored 100) | `layout-editor.onSave` was the one write continuation without the supersede guard — a late venue-1 save stamped its advanced #226 token + Saved notice onto venue 2 | fixed — epoch guard + "drops a superseded save's outcome" spec |
+| F-2 | review (scored 75) | `resetForVenue` didn't reset `saving` in layout-editor/pricing/venue-tab — worse than cosmetic: the `if (saving())` early-returns silently blocked the NEW venue's saves until the old request settled | fixed — `saving.set(false)` added to all three resets |
+| F-3 | review (scored 75; the #487 precedent) | all ~33 late-response guards compared `venueId()` **by value** — an A→B→A switch re-passes the check, so a reordered first-visit response could beat the fresh load | fixed — per-component `epoch` identity guard replaces every value guard; pinned by the layout-editor A→B→A spec |
+| F-4 | review (scored 75) | two TSDoc "loaded once" claims went stale under the reactive reload | fixed — reworded |
+| F-5 | review overlay (RV-STYLE-1, Minor ×9) | multi-line inline comments added by the diff | fixed — trimmed to one line each |
+| F-6 | sonar (gate FAILED at `e52d4ef`: 77.2% new-code coverage < 80%) | guard negative branches uncovered (venue-tab 69%, pricing 72%, payouts 75%, requests 76%) | fixed — a late-response race spec per tab + the two layout-editor race specs (262 tests); re-check on next analysis |
 
 ---
 

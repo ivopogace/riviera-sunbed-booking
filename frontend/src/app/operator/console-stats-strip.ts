@@ -29,7 +29,7 @@ export class ConsoleStatsStrip {
 
   /** The venue this strip summarizes — required (the strip only renders inside the signed-in shell). */
   readonly venueId = input.required<number>();
-  /** The venue map the shell loaded once and shares — the source of free/total (undefined until loaded). */
+  /** The venue map the shell loads per venue and shares — the source of free/total (undefined until loaded). */
   readonly venue = input<VenueMapView | undefined>(undefined);
 
   /** Today in Europe/Tirane — the civil day all tiles report on (invariant #6). */
@@ -43,6 +43,10 @@ export class ConsoleStatsStrip {
   protected readonly bookedOnline = signal<number | undefined>(undefined);
   /** Gross + net-after-commission takings for today, or undefined until the read resolves. */
   protected readonly takings = signal<TakingsView | undefined>(undefined);
+  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  private epoch = 0;
+
 
   /** Total sets across both pools (design "Free today {free}/{total}"). */
   protected readonly total = computed(() => this.venue()?.sets.length ?? 0);
@@ -84,15 +88,14 @@ export class ConsoleStatsStrip {
   }
 
   private load(venueId: number): void {
-    // An in-place venue switch reuses this strip (#180): drop the old venue's counts/takings so
-    // the tiles show their dash defaults while the new venue's reads are in flight.
+    const epoch = ++this.epoch;
+    // A venue switch reuses this strip (#180) — reset to dash defaults while the new reads run.
     this.bookedOnline.set(undefined);
     this.takings.set(undefined);
-    // Both continuations re-check the venue: a switch mid-flight must not let the superseded
-    // venue's count/takings land on the new venue's tiles (#180).
+    // Continuations re-check the venue so a superseded venue's reads never land here (#180).
     this.console.dailyBookingCount(venueId, this.date).subscribe({
       next: (count) => {
-        if (this.venueId() === venueId) {
+        if (this.epoch === epoch) {
           this.bookedOnline.set(count);
         }
       },
@@ -102,7 +105,7 @@ export class ConsoleStatsStrip {
     });
     this.console.dailyTakings(venueId, this.date).subscribe({
       next: (value) => {
-        if (this.venueId() === venueId) {
+        if (this.epoch === epoch) {
           this.takings.set(value);
         }
       },

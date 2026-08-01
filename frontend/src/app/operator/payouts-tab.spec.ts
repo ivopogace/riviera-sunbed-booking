@@ -347,4 +347,24 @@ describe('PayoutsTab (#173) — ledger', () => {
     expect(rows()).toHaveLength(1);
     expect(rows()[0].textContent).toContain('#77');
   });
+
+  it('ignores the old venue’s late ledger response after a venue switch (#180)', () => {
+    configure();
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/payout-ledger'))
+      .flush(ledger({ venueId: 2, netOwedMinor: 10000, entries: [entry({ bookingId: 77 })] }));
+    // The superseded venue-1 response resolves late — it must not replace venue 2's ledger.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/payout-ledger'))
+      .flush(ledger({ netOwedMinor: 3825, entries: [entry({ bookingId: 11 })] }));
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0].textContent).toContain('#77');
+  });
+
 });

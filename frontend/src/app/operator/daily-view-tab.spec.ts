@@ -338,6 +338,42 @@ describe('DailyViewTab (#175)', () => {
     expect(tile(9).getAttribute('data-state')).toBe('FREE');
     expect(host.querySelectorAll('[data-set-id]')).toHaveLength(1);
   });
+
+  it('ignores the old venue’s late reads after a venue switch (#180)', () => {
+    configure();
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/bookings'))
+      .flush([]);
+    http
+      .expectOne(
+        (r) => r.method === 'GET' && r.url.includes('/api/venues/2') && !r.url.includes('/bookings'),
+      )
+      .flush({
+        id: 2,
+        name: 'W',
+        beach: 'Dhermi',
+        region: 'Riviera',
+        sets: [seat(9, 'A', 1, 'STANDARD', 'ONLINE', 'FREE')],
+      });
+    // The superseded venue-1 reads resolve late — they must not replace venue 2's grid.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings'))
+      .flush(BOOKINGS);
+    http
+      .expectOne(
+        (r) => r.method === 'GET' && r.url.includes('/api/venues/1') && !r.url.includes('/bookings'),
+      )
+      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelectorAll('[data-set-id]')).toHaveLength(1);
+    expect(tile(9).getAttribute('data-state')).toBe('FREE');
+  });
+
 });
 
 function seat(
