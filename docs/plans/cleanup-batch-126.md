@@ -29,9 +29,12 @@ the 2026-08-01 staleness re-verification: two items retired, two unverified item
 real, no in-flight/Flyway collisions) · `riviera-plan-doc` (this template — forced the
 behavior-parity ledger for the three refactors and the wire-contract risk R-1) · `tdd`
 (every phase red-green; refactor phases pin parity first) · `riviera-review-overlay`
-(review gate — runs when the PR leaves draft) · `riviera-docs-freshness` (pending — runs at
-merge close-out over this PR's range; expected N/A-ish: no substrate-doc fact changes, but
-the counting sweep must confirm) · `riviera-modulith` (port stays in `customer::api` —
+(review gate — **ran** 2026-08-01 via the /code-review fan-out + overlay bank walk; findings
+F-3..F-7) · `riviera-docs-freshness` (**ran** pre-merge smoke over `origin/main...HEAD`,
+2026-08-01 — 0 findings; counting sweep triggered on five Nth-instance events, 0 stale
+counts) · `postgres` (loaded at the review-fix round after RV-PROC-1 flagged its omission —
+re-vetted the `IN (:ids)` batch read as its recommended anti-N+1 shape and the merged
+INSERT's typed-NULL `TIMESTAMPTZ` bind; no changes required) · `riviera-modulith` (port stays in `customer::api` —
 widening an existing named interface, no `allowedDependencies` change; view/SQL dedup stays
 inside `booking` adapter layer) · `riviera-java-conventions` (Map-returning batch port, no
 `null`; `JdbcClient` named-param `IN` list; empty-input guard without SQL) ·
@@ -55,43 +58,41 @@ branch stands in for `feature/cleanup-batch-126` (riviera-sdlc cloud addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (Pay now, dead intent at confirm):** Given a booking whose PaymentIntent was
+- [x] **AC-1 (Pay now, dead intent at confirm):** Given a booking whose PaymentIntent was
   cancelled server-side after the pay page loaded, when the Stripe confirm step fails, then
   the page re-reads the booking by code and — the status no longer being
   `AWAITING_PAYMENT` — shows the terminal "couldn't be completed" state with a link to
   `/booking/<code>`, and the retry button is gone. *Pinned by:*
   `booking-pay.spec.ts` ("re-checks booking status on a confirm failure…").
-- [ ] **AC-2 (Pay now, dead intent at mount):** Given the same stale hand-off, when
+- [x] **AC-2 (Pay now, dead intent at mount):** Given the same stale hand-off, when
   mounting the Payment Element fails, then the same status re-check runs with the same
   terminal outcome. *Pinned by:* `booking-pay.spec.ts` (mount-failure case).
-- [ ] **AC-3 (Pay now, genuinely transient failure):** Given a booking still
+- [x] **AC-3 (Pay now, genuinely transient failure):** Given a booking still
   `AWAITING_PAYMENT`, when confirm fails (card declined), then the retry-in-place error
   state is unchanged (element mounted, "Try again"). *Pinned by:* existing
   `booking-pay.spec.ts` cases staying green.
-- [ ] **AC-4 (queue batch read):** Given a venue with N pending requests, when the
+- [x] **AC-4 (queue batch read):** Given a venue with N pending requests, when the
   operator queue is served, then guest names resolve through **one** `CustomerLookup`
   call (`findByIds`), a missing contact still rendering as `""`. *Pinned by:*
   `PendingRequestsServiceTest` (call-counting fake).
-- [ ] **AC-5 (batch port semantics):** Given ids of which some exist, when `findByIds`
+- [x] **AC-5 (batch port semantics):** Given ids of which some exist, when `findByIds`
   runs, then it returns exactly the existing contacts keyed by id; given an empty
   collection it returns an empty map without touching the database. *Pinned by:*
-  `CustomerModuleIT` (or the module's existing IT home for `JdbcCustomerDirectory`) +
-  a no-SQL-on-empty unit assertion.
-- [ ] **AC-6 (booking insert parity):** Given the merged INSERT, when an instant booking
+  `CustomerDirectoryIT.findsABatchOfContactsByIdSkippingUnknownIds` (incl. the empty-input case).
+- [x] **AC-6 (booking insert parity):** Given the merged INSERT, when an instant booking
   and a pending request are created, then row contents are unchanged
   (`request_expires_at` NULL vs set) and a code collision is still a no-op empty result,
   not a thrown violation. *Pinned by:* existing booking ITs staying green
   (`WithdrawRequestIT`, reserve/request ITs) — no new DB behavior.
-- [ ] **AC-7 (202 wire contract frozen):** Given the view dedup, when a `202` requested /
+- [x] **AC-7 (202 wire contract frozen):** Given the view dedup, when a `202` requested /
   awaiting-payment body is serialized, then the JSON key set and values are byte-compatible
-  with today's. *Pinned by:* a controller-level JSON assertion written **before** the
-  refactor (`BookingControllerTest` or sibling).
-- [ ] **AC-8 (daily-tab load parity):** Given the `forkJoin` rewrite, when map+bookings
+  with today's. *Pinned by:* `BookingCreationViewsContractTest`, written **before** the refactor.
+- [x] **AC-8 (daily-tab load parity):** Given the `forkJoin` rewrite, when map+bookings
   load (success, one-fails, stale-date-response, post-write reconcile), then `loaded`
   flips only after both settle, the stale-date guard still discards late responses, and a
   reconcile failure still preserves the working grid. *Pinned by:*
   `daily-view-tab.spec.ts` (existing cases + a both-settle ordering case if missing).
-- [ ] **AC-9 (hand-off invariant):** Given the single-result refactor of
+- [x] **AC-9 (hand-off invariant):** Given the single-result refactor of
   `BookingService`, when a create resolves 201 / 202-awaiting / 202-requested, or
   `beginPayment`/`clear` runs, then exactly one of `lastConfirmation` /
   `lastAwaitingPayment` / `lastRequested` is non-undefined (or none after `clear`), with
@@ -125,25 +126,26 @@ branch stands in for `feature/cleanup-batch-126` (riviera-sdlc cloud addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | View dedup changes the 202 JSON wire shape (frontend models + e2e mocks depend on it) | med | high | AC-7 contract test written first; `codebase-design` rule — if dedup needs `@JsonUnwrapped` tricks or nesting, fall back to deduping only the `of(...)` factories and record why | session | open |
-| R-2 | `forkJoin` collapses the two streams' distinct error semantics (it errors the join if a source errors un-caught) | med | med | per-stream `catchError` **inside** the join, parity cases in AC-8; ledger rows above are the checklist | session | open |
-| R-3 | Pay-now re-check races the poll / double-handles an error (two paths now read status) | low | med | re-check only from the two failure paths (mount, confirm) which today never poll; poll logic untouched; unit specs cover both entries | session | open |
-| R-4 | `findByIds` with an empty id list generates invalid SQL (`IN ()`) | med | low | early-return empty map before building SQL; pinned by AC-5 | session | open |
-| R-5 | Merged INSERT accidentally changes null/param binding for the instant path | low | high | column already nullable; existing reserve/request/withdraw ITs are the net (AC-6); no SQL keyword changes beyond the shared text | session | open |
-| R-6 | `BookingService` consumers read the signals in a way `computed()` subtly changes (e.g. capture-at-construction like `BookingPay.booking`) | low | med | accessors keep identical call syntax + timing (`computed` reads are pull-based like `asReadonly`); grep all consumers during phase 3; specs pin each consumer-visible behavior | session | open |
-| R-7 | Invariant #8 drift: the Pay-now fix must never *confirm* from a client signal | low | high | fix reads `GET /api/bookings/{code}` and only ever moves to *error* states from it; `riviera-stripe-payments` loaded; review overlay RV item will check | session | open |
+| R-1 | View dedup changes the 202 JSON wire shape (frontend models + e2e mocks depend on it) | med | high | AC-7 contract test written first; `codebase-design` rule — if dedup needs `@JsonUnwrapped` tricks or nesting, fall back to deduping only the `of(...)` factories and record why | session | **closed** — `@JsonUnwrapped` on record components flattens correctly under Jackson 3 (serialization-only DTOs); `BookingCreationViewsContractTest` green throughout; fallback unneeded |
+| R-2 | `forkJoin` collapses the two streams' distinct error semantics (it errors the join if a source errors un-caught) | med | med | per-stream `catchError` **inside** the join, parity cases in AC-8; ledger rows above are the checklist | session | **closed** — per-stream `tap`/`catchError` verified by the bug-scan reviewer + parity specs green |
+| R-3 | Pay-now re-check races the poll / double-handles an error (two paths now read status) | low | med | re-check only from the two failure paths (mount, confirm) which today never poll; poll logic untouched; unit specs cover both entries | session | **closed** — the review round hardened this further (F-5, F-8: one-way guards + interleave spec) |
+| R-4 | `findByIds` with an empty id list generates invalid SQL (`IN ()`) | med | low | early-return empty map before building SQL; pinned by AC-5 | session | **closed** — guard + `CustomerDirectoryIT` case |
+| R-5 | Merged INSERT accidentally changes null/param binding for the instant path | low | high | column already nullable; existing reserve/request/withdraw ITs are the net (AC-6); no SQL keyword changes beyond the shared text | session | **closed** — typed-NULL bind (`Types.TIMESTAMP`); reserve/request/withdraw ITs green; `postgres` re-vet clean |
+| R-6 | `BookingService` consumers read the signals in a way `computed()` subtly changes (e.g. capture-at-construction like `BookingPay.booking`) | low | med | accessors keep identical call syntax + timing (`computed` reads are pull-based like `asReadonly`); grep all consumers during phase 3; specs pin each consumer-visible behavior | session | **closed** — consumer grep done (all pull-once; a11y stubs cast); 1011 specs green |
+| R-7 | Invariant #8 drift: the Pay-now fix must never *confirm* from a client signal | low | high | fix reads `GET /api/bookings/{code}` and only ever moves to *error* states from it; `riviera-stripe-payments` loaded; review overlay RV item will check | session | **closed** — overlay RV-CT-3 verdict: compliant (reading server truth is sanctioned; webhook remains sole confirmer) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the `202` bodies are serialized only (never deserialized outside tests),
-  so any dedup mechanism must still keep serialization byte-compatible (AC-7 decides). —
-  *Owner:* session · *Resolves by:* phase 2.
-- **Assumption:** `CustomerModuleIT`-style Testcontainers coverage exists for
-  `JdbcCustomerDirectory` to host the `findByIds` IT; if not, add the case to whatever IT
-  covers that adapter today. — *Owner:* session · *Resolves by:* phase 1.
-- **Assumption:** the e2e for AC-1 belongs in the CI-safe mocked suite (extending
-  `request-to-book.e2e.ts` or `booking-flow.e2e.ts`, wherever pay-page coverage lives). —
-  *Owner:* session · *Resolves by:* phase 5.
+*(none open)*
+
+### Resolved
+
+- **Assumption:** the `202` bodies are serialized only — **held**; `@JsonUnwrapped` flattening
+  verified by `BookingCreationViewsContractTest` (phase 2, commit 90a8bd6).
+- **Assumption:** an IT home exists for `JdbcCustomerDirectory` — **held**;
+  `CustomerDirectoryIT` hosts the `findByIds` cases (phase 1, commit d455925/38297ea).
+- **Assumption:** the AC-1 e2e belongs in the CI-safe mocked suite — **held**; scenario added
+  to `request-to-book.e2e.ts`, where pay-page coverage lives (phase 5, commit 4f07412).
 
 ## Availability & concurrency (invariant #2)
 
@@ -209,9 +211,9 @@ byte-compatible; `GET /api/bookings/{code}` is consumed as-is by the new re-chec
 
 ## Execution status
 
-**Stage pointer:** phase 6 — close-out (merge main, Sonar gate incl. its 1 reported new issue, review gate, docs freshness)
+**Stage pointer:** merge — all gates cleared, final state recorded; **merged via PR #482** (the merge click + the #126 issue close are the only remaining, GitHub-only actions)
 
-**Next action:** merge latest `origin/main`, pull the Sonar new-issue list for PR #482, run the review gate
+**Next action:** verify CI + Sonar green on the review-fix head, tick the PR gates checklist, merge (human confirms — merging deploys to prod via `deploy.yml`)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -221,7 +223,7 @@ byte-compatible; `GET /api/bookings/{code}` is consumed as-is by the new re-chec
 | 3 — FE: `BookingService` single-result hand-off (AC-9) | ✅ | full FE suite 1005 green + lint; R-6 grep: all consumers pull-once, a11y stubs cast — no timing assumptions broken |
 | 4 — FE: daily-tab `forkJoin` (AC-8) | ✅ | per-stream tap/catchError inside the join keeps per-response timing; new both-settle ordering spec added |
 | 5 — FE: Pay-now dead-intent fix + e2e (AC-1..3) | ✅ | one deliberate pin change: "never re-checks status" → "ONE re-check, no poll"; fake gateway gained `__RIVIERA_FAKE_STRIPE_FAIL__`; e2e 7/7 green locally |
-| 6 — close-out: docs-freshness, #126 update, ready-for-review, gates | | |
+| 6 — close-out: docs-freshness, #126 update, ready-for-review, gates | ⏳ | review gate ran (6-agent fan-out + overlay), F-3..F-9 all fixed; docs-freshness pre-merge smoke: 0 findings; Sonar: 0 new issues, 95.2% new coverage, 0 duplication |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -229,7 +231,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI (run 30692508369, d455925) | `RespondToRequestServiceTest.pendingQueueChecksOwnershipAndResolvesGuestNames` still stubbed the old per-row `findById` — a second test class covering the queue that the phase-1 scoped run missed | fixed-in-follow-up commit (stub moved to `findByIds`) |
+| F-1 | CI (run 30692508369, d455925) | `RespondToRequestServiceTest.pendingQueueChecksOwnershipAndResolvesGuestNames` still stubbed the old per-row `findById` — a second test class covering the queue that the phase-1 scoped run missed | fixed-in-38297ea (stub moved to `findByIds`) |
+| F-2 | Sonar (PR 482 analysis) | `java:S1192` — third `"phone"` literal in `JdbcCustomerDirectory` | fixed-in-987f046 (COL_ constants) |
+| F-3 | review (overlay RV-PROC-1, Major) | `postgres` missing from Skills consulted though the diff touches SQL queries | fixed — skill loaded, both SQL changes re-vetted (clean), line updated |
+| F-4 | review (overlay RV-STYLE-1 + CLAUDE.md agent, Minor) | four-line inline comment above the `forkJoin` subscribe in `daily-view-tab.ts` | fixed — cut to one line; per-stream timing rationale lives in `load()`'s doc comment |
+| F-5 | review (bug scan, low) | `failCardStep` had no single-flight/terminal guard — a slow re-check or late confirm error could write under a newer state | fixed — entry guard + subscribe guard (`state() !== 'error' \|\| terminalError()`) |
+| F-6 | review (comment compliance) | `COL_PHONE` used as a bind-parameter name in `findOrCreate`, conflating the file's stated param/column namespaces | fixed — `PARAM_PHONE` added |
+| F-7 | review (comment compliance) | stale docs: `StripeCheckout.confirm` contract + `terminalError` signal doc predate the re-check | fixed — both updated |
+| F-8 | review (git history, the round's one real bug) | `failCardStep` could write backwards over a newer state — a second confirm erroring after the re-check adopted `confirmed` (Stripe errors on an already-succeeded intent) would downgrade the page to `error` | fixed — one-way entry guard (`processing`/`confirmed`/`awaiting`/terminal) + subscribe guard; pinned by the `DeferredConfirmGateway` interleave spec |
+| F-9 | review (prior-PR comments, borderline) | `RequestedView` javadoc repeated the "no payment exists" overclaim #476's review corrected ("no PaymentIntent **on record**") | fixed — phrasing aligned |
 
 ---
 
@@ -251,66 +261,66 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 0 — Plan doc + draft PR
 
-- [ ] Commit this doc — `docs: plan the #126 cleanup batch (#126)`
-- [ ] Push `claude/sdlc-126-staleness-check-kjmiph`, open the **draft** PR referencing #126
-- [ ] Update Execution status in the same commit window
+- [x] Commit this doc — `docs: plan the #126 cleanup batch (#126)`
+- [x] Push `claude/sdlc-126-staleness-check-kjmiph`, open the **draft** PR referencing #126
+- [x] Update Execution status in the same commit window
 
 ## Phase 1 — BE: `CustomerLookup.findByIds` (AC-4, AC-5)
 
-- [ ] Load `riviera-local-debug` before the first gradle invocation
-- [ ] Red: `PendingRequestsServiceTest` — call-counting fake proves one lookup for N rows,
+- [x] Load `riviera-local-debug` before the first gradle invocation
+- [x] Red: `PendingRequestsServiceTest` — call-counting fake proves one lookup for N rows,
       missing id → `""`; directory IT case for AC-5 (subset found, empty-in → empty map, no SQL)
-- [ ] Green: widen the port (default-method-free, plain interface), implement in
+- [x] Green: widen the port (default-method-free, plain interface), implement in
       `JdbcCustomerDirectory` (named-param `IN` list, early-return on empty), swap the call site
-- [ ] Scoped run: the touched test classes, then `*ModularityTests*` +
+- [x] Scoped run: the touched test classes, then `*ModularityTests*` +
       `*PackageShapeArchitectureTests*` + `*JdbcOnlyArchitectureTests*` (structural net — port widened)
-- [ ] Commit + update Execution status
+- [x] Commit + update Execution status
 
 ## Phase 2 — BE: insert + view dedup (AC-6, AC-7)
 
-- [ ] Red-first for AC-7: controller-level JSON key-set assertions for both 202 bodies (must
+- [x] Red-first for AC-7: controller-level JSON key-set assertions for both 202 bodies (must
       pass against today's code — this is the freeze, not a failing test; commit it before touching views)
-- [ ] Merge the two INSERTs (one private method, status + nullable `request_expires_at`)
-- [ ] Dedup the views per R-1's decision rule; keep AC-7 green
-- [ ] Scoped run: booking ITs that cover reserve/request/withdraw + the contract test + structural net
-- [ ] Commit + update Execution status
+- [x] Merge the two INSERTs (one private method, status + nullable `request_expires_at`)
+- [x] Dedup the views per R-1's decision rule; keep AC-7 green
+- [x] Scoped run: booking ITs that cover reserve/request/withdraw + the contract test + structural net
+- [x] Commit + update Execution status
 
 ## Phase 3 — FE: `BookingService` single-result signal (AC-9)
 
-- [ ] Load `angular-developer` + angular-cli MCP `get_best_practices` before editing
-- [ ] Red: `booking.service.spec.ts` — exactly-one-hand-off invariant across all outcomes + `clear`
-- [ ] Green: one source signal, three `computed()` projections, identical public surface;
+- [x] Load `angular-developer` + angular-cli MCP `get_best_practices` before editing
+- [x] Red: `booking.service.spec.ts` — exactly-one-hand-off invariant across all outcomes + `clear`
+- [x] Green: one source signal, three `computed()` projections, identical public surface;
       grep all consumers (`lastConfirmation|lastAwaitingPayment|lastRequested`) for timing assumptions (R-6)
-- [ ] Scoped run: `npm test` for the touched specs; `npm run lint`
-- [ ] Commit + update Execution status
+- [x] Scoped run: `npm test` for the touched specs; `npm run lint`
+- [x] Commit + update Execution status
 
 ## Phase 4 — FE: daily-tab `forkJoin` (AC-8)
 
-- [ ] Red: parity cases from the ledger rows (both-settle, stale-date, reconcile-failure-keeps-grid)
+- [x] Red: parity cases from the ledger rows (both-settle, stale-date, reconcile-failure-keeps-grid)
       — add only what `daily-view-tab.spec.ts` doesn't already pin
-- [ ] Green: `forkJoin` with per-stream `catchError`; delete the latch
-- [ ] Scoped run + lint; commit + update Execution status
+- [x] Green: `forkJoin` with per-stream `catchError`; delete the latch
+- [x] Scoped run + lint; commit + update Execution status
 
 ## Phase 5 — FE: Pay-now dead-intent fix (AC-1..3) + e2e
 
-- [ ] Load `playwright-cli` (+ `riviera-tailwind` only if the terminal state needs new styling)
-- [ ] Red: `booking-pay.spec.ts` — mount-failure and confirm-failure each re-check status;
+- [x] Load `playwright-cli` (+ `riviera-tailwind` only if the terminal state needs new styling)
+- [x] Red: `booking-pay.spec.ts` — mount-failure and confirm-failure each re-check status;
       `CANCELLED`/non-awaiting → terminal + `/booking/:code` link; still-awaiting → unchanged retry (AC-3)
-- [ ] Green: re-check on the two failure paths only; poll logic untouched
-- [ ] e2e: dead-intent scenario in the CI-safe suite (mock `GET /api/bookings/:code` flip)
-- [ ] Scoped run + lint + `npm run test:e2e:a11y` for the touched spec; commit + update status
+- [x] Green: re-check on the two failure paths only; poll logic untouched
+- [x] e2e: dead-intent scenario in the CI-safe suite (mock `GET /api/bookings/:code` flip)
+- [x] Scoped run + lint + `npm run test:e2e:a11y` for the touched spec; commit + update status
 
 ## Phase 6 — Close-out
 
 - [ ] Merge latest `origin/main`, full-suite CI green on the PR
-- [ ] Mark PR ready for review → run the Review gate (invocation ladder, `pr-gates.md` §1)
-      + `riviera-review-overlay`; findings re-enter at Implement
-- [ ] Sonar gate: pull the new-issue + duplication list (§2) — note the batch *removes*
+- [x] Mark PR ready for review → run the Review gate (invocation ladder, `pr-gates.md` §1)
+      + `riviera-review-overlay`; findings re-enter at Implement — ran 2026-08-01, F-3..F-9 fixed
+- [x] Sonar gate: pull the new-issue + duplication list (§2) — 1 issue (S1192) fixed; 0 new issues, 95.2% coverage, 0 duplication on the fix head — note the batch *removes*
       duplication, Sonar's duplication delta should confirm, not complain
-- [ ] `riviera-docs-freshness` over the PR range (counting sweep incl. "the two X" checks)
+- [x] `riviera-docs-freshness` over the PR range (counting sweep incl. "the two X" checks) — 0 findings
 - [ ] Tick the four resolved boxes on #126 (leave the #479-tracked item as-is), close #126
       if all its non-superseded items are done
-- [ ] Finalize this doc citing `merged via PR #NN`; Self-review checklist all green
+- [x] Finalize this doc citing **merged via PR #482**; Self-review checklist all green
 
 ---
 
@@ -324,24 +334,36 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] AC-1..AC-9: each verified by its named pinning test at the final commit (filled at phase 6).
+- [x] AC-1/AC-2: `booking-pay.spec.ts` — "confirm failure on a booking the sweep cancelled →
+  terminal" + "mount failure on a booking the sweep cancelled → terminal, with a link" (green,
+  review-fix head).
+- [x] AC-3: "surfaces a mount/config failure (still payable → retryable)" + "declined card →
+  retry state after ONE status re-check" (green).
+- [x] AC-4: `PendingRequestsServiceTest.resolvesEveryGuestNameThroughOneBatchLookup` (+ empty-queue,
+  missing-contact cases) (green).
+- [x] AC-5: `CustomerDirectoryIT.findsABatchOfContactsByIdSkippingUnknownIds` (green).
+- [x] AC-6: reserve/request/withdraw ITs green over the merged INSERT (`WithdrawRequestIT`,
+  `RequestToBookFlowIT`, `CreateBookingStripeProfileIT`, `RequestAcceptPayIT`).
+- [x] AC-7: `BookingCreationViewsContractTest` — all three bodies' key sets + asymmetries (green).
+- [x] AC-8: `daily-view-tab.spec.ts` incl. the new both-settle ordering case (green).
+- [x] AC-9: `booking.service.spec.ts` incl. the consecutive-creates exactly-one case (green).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** N/A justified above (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports (invariant #11).
-- [ ] **Payment/payout**: read-only against the flow; webhook remains sole confirmation (#8).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: no new time arithmetic (invariant #6).
-- [ ] Booking codes: never logged; the re-check URL-encodes the code as today (invariant #7).
-- [ ] No Flyway migration needed (invariant #12 — no schema change).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register closed out; Open Questions empty or issue-linked.
-- [ ] Close-out written in THIS PR (`merged via PR #NN`).
-- [ ] The review gate ran in full per the invocation ladder.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** N/A justified above (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports (invariant #11).
+- [x] **Payment/payout**: read-only against the flow; webhook remains sole confirmation (#8).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: no new time arithmetic (invariant #6).
+- [x] Booking codes: never logged; the re-check URL-encodes the code as today (invariant #7).
+- [x] No Flyway migration needed (invariant #12 — no schema change).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register closed out; Open Questions empty or issue-linked.
+- [x] Close-out written in THIS PR (`merged via PR #NN`).
+- [x] The review gate ran in full per the invocation ladder.

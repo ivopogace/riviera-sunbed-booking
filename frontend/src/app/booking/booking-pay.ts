@@ -205,8 +205,9 @@ export class BookingPay {
   protected readonly state = signal<PayState>('mounting');
   protected readonly errorMessage = signal<string | undefined>(undefined);
   protected readonly paying = signal(false);
-  /** A terminal failure (e.g. the payment was declined server-side and the booking cancelled):
-   *  retrying the same PaymentIntent is futile, so the page offers "start over" instead of "Pay". */
+  /** A terminal failure — the poll saw a server-side CANCELLED, or the failure re-check (#126)
+   *  found the booking no longer payable: retrying the same PaymentIntent is futile, so the page
+   *  offers the booking-status link and "start over" instead of "Pay". */
   protected readonly terminalError = signal(false);
   /** The confirmed booking's mail was suppressed (#390) — read from the poll, never assumed. */
   protected readonly emailWithheld = signal(false);
@@ -293,6 +294,11 @@ export class BookingPay {
    * re-check changes nothing — the retry-in-place state stays.
    */
   private failCardStep(message: string): void {
+    // One-way past the card step: a late failure must never write backwards over a newer state.
+    const s = this.state();
+    if (this.terminalError() || s === 'processing' || s === 'confirmed' || s === 'awaiting') {
+      return;
+    }
     this.errorMessage.set(message);
     this.state.set('error');
     this.bookings
@@ -302,6 +308,11 @@ export class BookingPay {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((detail) => {
+        // Apply only while still showing THIS failure: a late answer must not write under a retry
+        // that has since moved the page on (processing/confirmed), nor under an earlier terminal.
+        if (this.state() !== 'error' || this.terminalError()) {
+          return;
+        }
         if (detail === undefined || detail.status === 'AWAITING_PAYMENT') {
           return;
         }

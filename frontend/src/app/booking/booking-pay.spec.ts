@@ -69,6 +69,20 @@ class FakeGateway extends StripePaymentGateway {
   }
 }
 
+/** A gateway whose confirm promises resolve only when the test says so — for racing interleaves. */
+class DeferredConfirmGateway extends StripePaymentGateway {
+  private readonly resolvers: ((r: { error?: string }) => void)[] = [];
+
+  override async mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+    host.appendChild(document.createElement('div'));
+    return { confirm: () => new Promise((resolve) => this.resolvers.push(resolve)) };
+  }
+
+  resolveNextConfirm(result: { error?: string }): void {
+    this.resolvers.shift()?.(result);
+  }
+}
+
 interface PayProbe {
   state(): string;
   errorMessage(): string | undefined;
@@ -77,7 +91,7 @@ interface PayProbe {
 }
 
 async function setup(
-  gateway: FakeGateway,
+  gateway: StripePaymentGateway,
   { prime = true }: { prime?: boolean } = {},
 ): Promise<{ fixture: ComponentFixture<BookingPay>; httpMock: HttpTestingController; comp: PayProbe }> {
   TestBed.configureTestingModule({
@@ -273,6 +287,27 @@ describe('BookingPay', () => {
 
     // Server truth outranks the client error report (invariant #8) — the booking IS paid.
     httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED' });
+    expect(comp.state()).toBe('confirmed');
+    expect(comp.errorMessage()).toBeUndefined();
+    httpMock.verify();
+  });
+
+  it('a late confirm error cannot downgrade a page the re-check already confirmed (#126)', async () => {
+    const gateway = new DeferredConfirmGateway();
+    const { comp, httpMock } = await setup(gateway);
+
+    const firstPay = comp.pay();
+    gateway.resolveNextConfirm({ error: 'Your card was declined.' });
+    await firstPay; // error state; re-check A is now in flight
+
+    const secondPay = comp.pay(); // the user retries while A is still unanswered
+    httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED' }); // the webhook won
+    expect(comp.state()).toBe('confirmed');
+
+    // Stripe errors when confirming an already-succeeded intent — it must not write backwards.
+    gateway.resolveNextConfirm({ error: 'This PaymentIntent has already succeeded.' });
+    await secondPay;
+
     expect(comp.state()).toBe('confirmed');
     expect(comp.errorMessage()).toBeUndefined();
     httpMock.verify();

@@ -28,6 +28,7 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 
 	/** Named once, per the {@code JdbcBookings} bind-parameter convention — two call sites bind it. */
 	private static final String PARAM_EMAIL = "email";
+	private static final String PARAM_PHONE = "phone";
 
 	/** The column, kept apart from the bind parameter above: the two coincide today by accident, not by rule. */
 	private static final String COL_EMAIL = "email";
@@ -56,7 +57,7 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 				""")
 				.param(PARAM_EMAIL, email)
 				.param("name", contact.fullName())
-				.param(COL_PHONE, contact.phone())
+				.param(PARAM_PHONE, contact.phone())
 				.query(Long.class)
 				.single();
 		return new CustomerId(id);

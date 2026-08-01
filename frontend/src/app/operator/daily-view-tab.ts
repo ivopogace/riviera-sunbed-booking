@@ -257,10 +257,7 @@ export class DailyViewTab {
         return of(undefined);
       }),
     );
-    // Flip `loaded` only once both reads have settled, so the grid never renders with a resolved
-    // bookings list but a still-undefined venue (a "0 of 0 free" flash). Each stream keeps its own
-    // state writes and error handling (the tap/catchError above), so per-response timing is
-    // unchanged — the join adds only the both-settled barrier the hand-rolled latch provided.
+    // The join flips `loaded` only once BOTH reads settle — no "0 of 0 free" flash.
     forkJoin([venue$, bookings$]).subscribe(() => {
       this.loaded.set(true);
       onSettled?.();
