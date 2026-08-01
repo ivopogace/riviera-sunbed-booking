@@ -1,5 +1,7 @@
-import { Component, effect, inject, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
+import { EMPTY, Observable, catchError, defer, from, mergeMap, tap } from 'rxjs';
 
 import { CustomerAuth } from '../core/customer-auth';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
@@ -74,6 +76,12 @@ type Row =
   | { readonly code: string; readonly state: 'loading' }
   | { readonly code: string; readonly state: 'loaded'; readonly view: RowView }
   | { readonly code: string; readonly state: 'failed' };
+
+/**
+ * How many per-code lookups may be in flight at once (#164). Under the ~6-connections-per-host
+ * HTTP/1.1 cap this leaves a slot for the account list; on HTTP/2 it is a deliberate self-limit.
+ */
+const DEVICE_FETCH_CONCURRENCY = 5;
 
 /** A booking the backend does not return right now — a 404 on the per-code lookup. */
 function isNotFound(error: unknown): boolean {
@@ -203,6 +211,7 @@ export class MyBookings {
   private readonly store = inject(DeviceLocalBookings);
   private readonly bookings = inject(BookingService);
   private readonly auth = inject(CustomerAuth);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly rows = signal<readonly Row[]>([]);
   /**
@@ -242,11 +251,21 @@ export class MyBookings {
     }
   }
 
-  /** Render this device's remembered codes (issue #139), each fetched live by code. */
+  /** Render this device's remembered codes (issue #139), each fetched live by code, K at a time. */
   private loadDeviceLocal(codes: readonly string[]): void {
     this.rows.set(codes.map((code) => ({ code, state: 'loading' as const })));
     this.loading.set(false);
-    codes.forEach((code) => this.load(code));
+    from(codes)
+      .pipe(
+        mergeMap((code) => this.queuedFetch(code), DEVICE_FETCH_CONCURRENCY),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
+  }
+
+  /** One queued lookup: `defer` keeps it lazy, so nothing is issued until the queue reaches it. */
+  private queuedFetch(code: string): Observable<unknown> {
+    return defer(() => this.fetch(code));
   }
 
   /**
@@ -259,17 +278,20 @@ export class MyBookings {
   private loadAccount(deviceCodes: readonly string[]): void {
     this.accountError.set(false);
     const onDevice = new Set(deviceCodes);
-    this.bookings.myBookings().subscribe({
-      next: (account) => {
-        const additions: Row[] = account
-          .filter((b) => !onDevice.has(b.code))
-          .map((b) => ({ code: b.code, state: 'loaded', view: buildView(b) }));
-        if (additions.length > 0) {
-          this.rows.update((rows) => [...rows, ...additions]);
-        }
-      },
-      error: () => this.accountError.set(true),
-    });
+    this.bookings
+      .myBookings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (account) => {
+          const additions: Row[] = account
+            .filter((b) => !onDevice.has(b.code))
+            .map((b) => ({ code: b.code, state: 'loaded', view: buildView(b) }));
+          if (additions.length > 0) {
+            this.rows.update((rows) => [...rows, ...additions]);
+          }
+        },
+        error: () => this.accountError.set(true),
+      });
   }
 
   /** Re-attempt the account list after a failure (review F1); the device rows stay untouched. */
@@ -278,14 +300,16 @@ export class MyBookings {
   }
 
   protected retry(code: string): void {
-    this.load(code);
+    // A manual retry bypasses the queue — the user asked for this one now.
+    this.fetch(code).pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
   }
 
-  private load(code: string): void {
+  /** The per-code lookup and its row transitions, shared by the queue and the manual Retry. */
+  private fetch(code: string): Observable<unknown> {
     this.setRow({ code, state: 'loading' });
-    this.bookings.getByCode(code).subscribe({
-      next: (detail) => this.setRow({ code, state: 'loaded', view: buildView(detail) }),
-      error: (e: unknown) => {
+    return this.bookings.getByCode(code).pipe(
+      tap((detail) => this.setRow({ code, state: 'loaded', view: buildView(detail) })),
+      catchError((e: unknown) => {
         if (isNotFound(e)) {
           // 404: drop the row from view, but keep the code (invariant #7 — see the class doc).
           this.rows.update((rows) => rows.filter((r) => r.code !== code));
@@ -293,8 +317,9 @@ export class MyBookings {
           // Transient (offline / 5xx): keep the code, offer Retry — never lose a valid booking.
           this.setRow({ code, state: 'failed' });
         }
-      },
-    });
+        return EMPTY;
+      }),
+    );
   }
 
   private setRow(row: Row): void {

@@ -54,6 +54,35 @@ function stubService(
   };
 }
 
+/**
+ * A {@link BookingService} whose per-code lookups stay open until the spec resolves them, exposing
+ * the order codes were actually asked for — the observable the fan-out bound (#164) is about.
+ */
+function pendingService(): Partial<BookingService> & {
+  readonly inFlight: Map<string, Subject<BookingDetail>>;
+  readonly asked: string[];
+} {
+  const inFlight = new Map<string, Subject<BookingDetail>>();
+  const asked: string[] = [];
+  return {
+    inFlight,
+    asked,
+    getByCode: (code: string) => {
+      asked.push(code);
+      const subject = new Subject<BookingDetail>();
+      inFlight.set(code, subject);
+      return subject.asObservable();
+    },
+  };
+}
+
+/** Resolve one held per-code lookup with a CONFIRMED detail. */
+function resolve(service: { readonly inFlight: Map<string, Subject<BookingDetail>> }, code: string): void {
+  const subject = service.inFlight.get(code);
+  subject?.next(detail(code, 'CONFIRMED'));
+  subject?.complete();
+}
+
 /** A minimal {@link CustomerAuth}: the component only reads `restoring` + `signedIn` (both settled). */
 function authStub(signedIn: boolean): CustomerAuth {
   return { restoring: signal(false), signedIn: signal(signedIn) } as unknown as CustomerAuth;
@@ -263,6 +292,49 @@ describe('MyBookings (device-local list, issue #139)', () => {
     expect(loading).not.toBeNull();
     expect(loading?.getAttribute('aria-busy')).toBe('true');
     await expectNoAxeViolations(host);
+  });
+
+  describe('fetch fan-out (#164)', () => {
+    const many = (prefix: string): string[] =>
+      Array.from({ length: 12 }, (_, i) => `${prefix}${String(i).padStart(4, '0')}`);
+
+    it('bounds the per-code fetch fan-out to 5 in-flight requests', async () => {
+      const codes = many('CODE');
+      seedCodes(codes);
+      const service = pendingService();
+      const fixture = await render(service);
+
+      // Only the first K go out; the rest are queued, not issued.
+      expect(service.asked).toEqual(codes.slice(0, 5));
+
+      // Resolving one frees exactly one slot, in order.
+      resolve(service, codes[0]);
+      await fixture.whenStable();
+      expect(service.asked).toEqual(codes.slice(0, 6));
+
+      for (const code of codes) {
+        resolve(service, code);
+        await fixture.whenStable();
+      }
+
+      // Every code is eventually asked for, exactly once.
+      expect(service.asked).toEqual(codes);
+    });
+
+    it('issues no further per-code fetches after destroy', async () => {
+      const codes = many('GONE');
+      seedCodes(codes);
+      const service = pendingService();
+      const fixture = await render(service);
+      expect(service.asked).toHaveLength(5);
+
+      fixture.destroy();
+      // Completing an in-flight lookup must not pull the next one off a destroyed queue.
+      resolve(service, codes[0]);
+      await fixture.whenStable();
+
+      expect(service.asked).toHaveLength(5);
+    });
   });
 
   describe('signed in (S3 #114): merges the account list with device-local codes', () => {

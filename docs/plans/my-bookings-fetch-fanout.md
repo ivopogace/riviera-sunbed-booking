@@ -40,7 +40,7 @@ change) · `angular-developer` + **angular-cli MCP** (`list_projects` → framew
 *single*-request reactive-fetch tool, which is why the N-row fan-out with per-row retry stays an
 explicit RxJS pipeline rather than being rewritten onto resources) · `playwright-cli` (e2e: the
 existing `frontend/e2e/my-bookings.e2e.ts` covers both modes and is provenance-agnostic — no new
-spec, it is a regression guard here) · `riviera-local-debug` (scoped `npm test -- my-bookings`
+spec, it is a regression guard here) · `riviera-local-debug` (scoped `npm test -- --include="src/app/booking/my-bookings.spec.ts"`
 runs, never the full suite in-session)
 
 **Branch:** `claude/sdlc-164-staleness-check-tst1oi` — **cloud-session substitution** for
@@ -176,16 +176,20 @@ same typed service methods. The slice only changes *how many* of one of them are
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan — complete, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 1`
 
-**Next action:** Phase 0 step 1 — add the AC-1 failing spec (concurrency ceiling) to
-`frontend/src/app/booking/my-bookings.spec.ts`.
+**Next action:** Phase 1 step 1 — add the AC-2/AC-3/AC-4 failing specs (dequeue-time skip,
+F2 non-gating, 404-restore) to `frontend/src/app/booking/my-bookings.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Bound the fan-out + destroy teardown (AC-1, AC-5, AC-6) | | |
-| 1 — Trim the redundant per-code fetch (AC-2, AC-3, AC-4, AC-7) | | |
+| 0 — Bound the fan-out + destroy teardown (AC-1, AC-5, AC-6) | ✅ | `<phase-0>` |
+| 1 — Trim the redundant per-code fetch (AC-2, AC-3, AC-4, AC-7) | ⏳ | |
 | 2 — Doc freshness + e2e/regression sweep | | |
+
+**Note on test invocation:** the `test` target is `@angular/build:unit-test`, whose project
+argument is the *project* name — a bare `npm test -- my-bookings` errors with
+`Invalid values: Argument: project`. Scope with `--include=<spec path>` instead.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -340,7 +344,7 @@ protected retry(code: string): void {
 }
 ```
 
-- [ ] **Step 4: Run, verify pass** — `npm test -- my-bookings` → PASS (new + all pre-existing, AC-6).
+- [ ] **Step 4: Run, verify pass** — `npm test -- --include="src/app/booking/my-bookings.spec.ts"` → PASS (new + all pre-existing, AC-6).
 
 > Scope (end-of-phase regression): `npm test -- booking` + `npm test -- device-local` + `npm run lint`.
 
@@ -419,7 +423,7 @@ it('restores a 404-dropped device row that the account list vouches for', async 
 });
 ```
 
-- [ ] **Step 2: Run, verify fail** — `npm test -- my-bookings` → FAIL (`asked` contains the queued code).
+- [ ] **Step 2: Run, verify fail** — `npm test -- --include="src/app/booking/my-bookings.spec.ts"` → FAIL (`asked` contains the queued code).
 
 - [ ] **Step 3: Minimal implementation** — a dequeue-time skip set + an upsert merge.
 
@@ -459,7 +463,7 @@ private upsert(incoming: readonly Row[]): void {
 }
 ```
 
-- [ ] **Step 4: Run, verify pass** — `npm test -- my-bookings` → PASS, including the pre-existing
+- [ ] **Step 4: Run, verify pass** — `npm test -- --include="src/app/booking/my-bookings.spec.ts"` → PASS, including the pre-existing
   signed-in dedupe specs (AC-7) and the F1 retry specs.
 
 > `loadAccount` loses its `deviceCodes` parameter (the upsert no longer needs the device set) —
@@ -504,12 +508,13 @@ private upsert(incoming: readonly Row[]): void {
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-01 | Phase 0 (bounded fan-out) | Other unbounded per-item HTTP fan-outs on the FE | `grep -rn "forEach(.*subscribe\|\.map(.*subscribe" src/app`; `grep -rn "forkJoin\|mergeMap\|concatMap" src/app` (spec files excluded) | 1 — `operator/daily-view-tab.ts:261` `forkJoin([venue$, bookings$])` | **skip**: bounded by construction at exactly 2 fixed streams, not per-item over a user-grown list, so the amplification this phase fixes cannot arise there. No other site fans out per item |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- my-bookings` → `bounds the per-code fetch fan-out` passes. Verified at `<sha>`.
+- [ ] **AC-1:** `npm test -- --include="src/app/booking/my-bookings.spec.ts"` → `bounds the per-code fetch fan-out` passes. Verified at `<sha>`.
 - [ ] **AC-2:** same run → `spends no per-code request on a code the account list already resolved` passes. Verified at `<sha>`.
 - [ ] **AC-3:** same run → `renders device rows without waiting for the account list (F2)` passes. Verified at `<sha>`.
 - [ ] **AC-4:** same run → `restores a 404-dropped device row that the account list vouches for` passes. Verified at `<sha>`.
