@@ -2,6 +2,7 @@ package ai.riviera.platform.availability;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -83,5 +84,39 @@ class AvailabilityLookupIT {
 	@Test
 	void emptyInputYieldsEmptyResult() {
 		assertEquals(Set.of(), lookup.takenOn(List.of(), LocalDate.of(2026, 11, 5)));
+	}
+
+	@Test
+	void statesOnReportsPerSetState() {
+		List<SetId> sets = firstThreeOnlineSets();
+		SetId online = sets.get(0);
+		SetId marked = sets.get(1);
+		LocalDate date = LocalDate.of(2026, 11, 6);
+		mark(online, date, "BOOKED_ONLINE");
+		mark(marked, date, "STAFF_MARKED");
+
+		Map<SetId, String> states = lookup.statesOn(sets, date);
+
+		assertEquals(Map.of(online, "BOOKED_ONLINE", marked, "STAFF_MARKED"), states,
+				"held sets carry their state; the free third set is absent");
+	}
+
+	@Test
+	void statesOnIsScopedToTheAskedDateAndSets() {
+		List<SetId> sets = firstThreeOnlineSets();
+		SetId held = sets.getFirst();
+		LocalDate date = LocalDate.of(2026, 11, 7);
+		mark(held, date, "BOOKED_ONLINE");
+		mark(sets.get(2), LocalDate.of(2026, 11, 8), "STAFF_MARKED");
+
+		assertEquals(Map.of(held, "BOOKED_ONLINE"), lookup.statesOn(sets, date),
+				"another date's hold never leaks into the asked day");
+		assertEquals(Map.of(), lookup.statesOn(List.of(sets.get(1)), date),
+				"a set outside the asked list is not reported");
+	}
+
+	@Test
+	void statesOnEmptyInputYieldsEmptyResultWithoutAQuery() {
+		assertEquals(Map.of(), lookup.statesOn(List.of(), LocalDate.of(2026, 11, 9)));
 	}
 }

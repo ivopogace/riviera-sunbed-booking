@@ -2,6 +2,7 @@ package ai.riviera.platform.venue.spi;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -54,4 +55,20 @@ public interface SetAvailabilityLookup {
 	 *         without touching the database
 	 */
 	boolean anyClaims(Collection<SetId> setIds);
+
+	/**
+	 * The per-set availability <em>state</em> of the held subset of {@code setIds} on {@code date} —
+	 * the state token ({@code BOOKED_ONLINE} or {@code STAFF_MARKED}) keyed by set id; a set with no
+	 * availability row is simply absent (it is free). Unlike {@link #takenOn} this is deliberately
+	 * state-aware: it feeds the <strong>owner-asserted operator</strong> daily read (issue #207), which
+	 * must distinguish an online hold from a staff walk-in mark so an unpaid hold never renders as a
+	 * walk-in. The tourist map keeps using the state-agnostic {@link #takenOn} — hold type never
+	 * reaches the public surface.
+	 *
+	 * @param setIds the set positions to check (typically one venue's map)
+	 * @param date   the calendar day, a {@code LocalDate} in {@code Europe/Tirane} (invariant #6)
+	 * @return state token by set id for the held sets only; never {@code null}; an empty input yields
+	 *         an empty result without touching the database
+	 */
+	Map<SetId, String> statesOn(Collection<SetId> setIds, LocalDate date);
 }

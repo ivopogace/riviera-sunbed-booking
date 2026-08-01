@@ -202,14 +202,14 @@ a11y/contrast specs re-run (tile accessible names already carry the state).
 
 ## Execution status
 
-**Stage pointer:** plan — plan doc authored, awaiting phase 0 commit
+**Stage pointer:** implement (phase 2)
 
-**Next action:** commit this plan doc (phase 0), open the draft PR, then phase 1 (SPI `statesOn` red-green)
+**Next action:** phase 2 — venue read service + endpoint + role gate (red tests first)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc committed, draft PR opened | ⏳ | |
-| 1 — `statesOn` on the SPI + JDBC impl (`AvailabilityLookupIT` red-green) | | |
+| 0 — plan doc committed, draft PR opened | ✅ | c77c2db (PR #501, draft) |
+| 1 — `statesOn` on the SPI + JDBC impl (`AvailabilityLookupIT` red-green) | ✅ | (this commit) |
 | 2 — venue read service + endpoint + role gate (+ `CrossVenueDenialIT`, coverage test) | | |
 | 3 — FE: service + grid derivation + daily view + stats strip (Vitest red-green) | | |
 | 4 — mocked e2e + a11y re-run | | |
@@ -335,6 +335,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-01 | phase 1 (statesOn) | other `takenOn`/state-blind consumers that need states | `grep -rn "takenOn" platform/src/main` | `JdbcVenueCatalog` (tourist map) | skip — the tourist read is state-agnostic **by design** (no hold-type leak); only the operator read graduates |
 
 ---
 

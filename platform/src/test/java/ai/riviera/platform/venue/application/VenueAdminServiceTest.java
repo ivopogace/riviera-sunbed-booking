@@ -667,6 +667,11 @@ class VenueAdminServiceTest {
 			anyClaimsCalls++;
 			return claimed;
 		}
+
+		@Override
+		public java.util.Map<SetId, String> statesOn(Collection<SetId> setIds, java.time.LocalDate date) {
+			return java.util.Map.of();
+		}
 	}
 
 	/** Programmable {@link BookingPresence}: {@code hasBookings} drives the guard. */
