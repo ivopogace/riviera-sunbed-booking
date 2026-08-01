@@ -1,5 +1,5 @@
 import { BookingStatus } from '../shared/booking-status';
-import { MoneyView } from '../venue/venue.model';
+import { MoneyView } from '../shared/money';
 
 // Re-exported from its canonical home in shared/ so booking-domain code keeps importing it from the
 // model (no call-site churn) while shared/ owns the exhaustive STATUS_META keyed by it (#139 review).

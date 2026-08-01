@@ -8,8 +8,9 @@ import { SetRow, TileState, deriveTileStates, groupSetsByRow, tileTapAction } fr
 import { CardGlass } from '../shared/card-glass';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
-import { formatCivilDate, todayBookingDate } from '../venue/booking-date';
-import { MoneyView, SetView, VenueMapView } from '../venue/venue.model';
+import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
+import { MoneyView } from '../shared/money';
+import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
 import { BeachGridFrame } from './beach-grid-frame';
 import { ConsoleDailyBooking, MarkErrorCode, ReleaseErrorCode } from './operator-console.model';

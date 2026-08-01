@@ -15,7 +15,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
-import { MoneyView } from '../venue/venue.model';
+import { MoneyView } from '../shared/money';
 import { BookingDetail, Cancellation } from './booking.model';
 import { BookingService } from './booking.service';
 

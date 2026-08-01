@@ -8,8 +8,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
-import { defaultBookingDate } from '../../venue/booking-date';
-import { VenueSummary } from '../../venue/venue.model';
+import { defaultBookingDate } from '../../shared/booking-date';
+import { VenueSummary } from '../../shared/venue-views';
 import { Home } from './home';
 
 /** Two venues across two beaches/regions, mirroring the discovery summary shape. */

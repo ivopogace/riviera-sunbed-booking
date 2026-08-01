@@ -1,9 +1,10 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 
 import { CardGlass } from '../shared/card-glass';
-import { MoneyView, VenueMapView } from '../venue/venue.model';
+import { MoneyView } from '../shared/money';
+import { VenueMapView } from '../shared/venue-views';
 import { formatMoney } from '../shared/money';
-import { todayBookingDate } from '../venue/booking-date';
+import { todayBookingDate } from '../shared/booking-date';
 import { TakingsView } from './operator-console.model';
 import { OperatorConsoleService } from './operator-console.service';
 

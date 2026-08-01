@@ -3,7 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { expectNoAxeViolations } from '../../testing/axe';
-import { SetView } from '../venue/venue.model';
+import { SetView } from '../shared/venue-views';
 import { BookingDialog } from './booking-dialog';
 
 const SET: SetView = {

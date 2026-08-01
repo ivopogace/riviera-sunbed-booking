@@ -1,4 +1,4 @@
-import { BookingMode } from '../venue/venue.model';
+import { BookingMode } from '../shared/venue-views';
 
 /**
  * Typed views of the venue **onboarding** write API (`POST /api/venues`). Money travels as integer

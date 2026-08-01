@@ -20,8 +20,9 @@ import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
 import { isRated, ratingScore } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
-import { defaultBookingDate, isIsoDate } from './booking-date';
-import { MoneyView, SetView, VenueMapView } from './venue.model';
+import { defaultBookingDate, isIsoDate } from '../shared/booking-date';
+import { MoneyView } from '../shared/money';
+import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from './venue.service';
 
 /**

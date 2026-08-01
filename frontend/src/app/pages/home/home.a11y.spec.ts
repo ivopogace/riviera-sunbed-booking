@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { expectNoAxeViolations } from '../../../testing/axe';
-import { VenueSummary } from '../../venue/venue.model';
+import { VenueSummary } from '../../shared/venue-views';
 import { Home } from './home';
 
 /**

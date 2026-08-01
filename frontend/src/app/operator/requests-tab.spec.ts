@@ -4,8 +4,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
-import { todayBookingDate } from '../venue/booking-date';
-import { MoneyView, Pool, SetView, Tier } from '../venue/venue.model';
+import { todayBookingDate } from '../shared/booking-date';
+import { MoneyView } from '../shared/money';
+import { Pool, SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { PendingRequestsStore } from './pending-requests-store';
 import { RequestsTab } from './requests-tab';

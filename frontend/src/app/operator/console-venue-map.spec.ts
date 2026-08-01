@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
-import { VenueMapView } from '../venue/venue.model';
+import { VenueMapView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 
 /**

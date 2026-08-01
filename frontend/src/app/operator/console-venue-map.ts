@@ -1,7 +1,7 @@
 import { inject, Service } from '@angular/core';
 import { catchError, Observable, shareReplay, tap, throwError } from 'rxjs';
 
-import { VenueMapView } from '../venue/venue.model';
+import { VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
 
 /**

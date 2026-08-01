@@ -10,7 +10,7 @@ import { Amenity, AMENITY_CATALOGUE, amenityLabel } from '../shared/amenities';
 import { CardGlass } from '../shared/card-glass';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { parseWholeNumber } from '../shared/whole-number';
-import { BookingMode } from '../venue/venue.model';
+import { BookingMode } from '../shared/venue-views';
 import {
   PhotoSlotKey,
   VenueProfileErrorCode,
