@@ -187,7 +187,11 @@ CI-run a11y suite green-but-blind to a real regression; Minor for a cosmetic-onl
 ### RV-FE-8. No **new** cross-feature import (the FE mirror of RV-BE-3 / invariant #11)
 **Gate:** Does the diff add a feature-folder import that isn't already in `riviera-frontend`'s
 grandfathered debt table?
-- [ ] no new `feature/ → other-feature/` import  [ ] no new `shared/ → feature/` or `core/ → feature/` import (these break `shared`/`core` → nothing, the edges that keep the direction acyclic)  [ ] no new `pages/ → feature/` import  [ ] a *removed* or *consolidated* existing edge is fine — and good  [ ] if the diff genuinely needs a new one, it is argued in the plan doc, not slipped in on the precedent of the table
+- [ ] no new `feature/ → other-feature/` import
+- [ ] no new `shared/ → feature/` or `core/ → feature/` import — these break `shared`/`core` → nothing, the edges that keep the direction acyclic
+- [ ] no new `pages/ → feature/` import
+- [ ] a *removed* or *consolidated* existing edge is fine — and good
+- [ ] a genuinely needed new edge is argued in the plan doc, not slipped in on the table's precedent
 
 > **The table is a freeze, not a licence.** `riviera-frontend`'s debt section lists every
 > cross-feature edge that exists (tracked for removal by **#489**); its purpose is to stop the
