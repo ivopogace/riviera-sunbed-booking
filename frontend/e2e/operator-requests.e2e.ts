@@ -131,6 +131,7 @@ async function mockRequests(
       },
     }),
   );
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
     mapReads += 1;
     return route.fulfill({ json: venueMap() });

@@ -129,6 +129,7 @@ async function mockPricing(
       },
     }),
   );
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   return { puts, bump, mapReads: () => mapReads };
 }
 

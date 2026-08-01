@@ -202,17 +202,17 @@ a11y/contrast specs re-run (tile accessible names already carry the state).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 4 — mocked e2e)
+**Stage pointer:** implement — phase 4 done; awaiting CI green, then gates (phase 5)
 
-**Next action:** phase 4 — extend the console e2e support mocks + daily spec with the unpaid-hold fixture
+**Next action:** verify the CI run on the phase-4 push, then mark PR #501 ready-for-review and run the review gate
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc committed, draft PR opened | ✅ | c77c2db (PR #501, draft) |
 | 1 — `statesOn` on the SPI + JDBC impl (`AvailabilityLookupIT` red-green) | ✅ | 00ae354 |
 | 2 — venue read service + endpoint + role gate (+ `CrossVenueDenialIT`, coverage test) | ✅ | 30f02c0 |
-| 3 — FE: service + grid derivation + daily view + stats strip (Vitest red-green) | ✅ | (this commit) |
-| 4 — mocked e2e + a11y re-run | | |
+| 3 — FE: service + grid derivation + daily view + stats strip (Vitest red-green) | ✅ | 695cfa7 |
+| 4 — mocked e2e + a11y re-run (117/117 locally) | ✅ | (this commit) |
 | 5 — gates: CI green, ready-for-review, review, Sonar, merge close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -221,6 +221,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (run on 695cfa7) | 3 mocked e2e red — the strip's new `/availability` read was unmocked in `operator-console`/`operator-daily` specs (phase 3 pushed ahead of phase 4 by design) | fixed in phase 4 commit (mocks + unpaid-hold fixture) |
 
 ---
 

@@ -155,6 +155,7 @@ async function mockPayouts(
       },
     }),
   );
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: venueMap() }));
 }
 
