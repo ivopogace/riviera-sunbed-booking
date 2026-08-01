@@ -117,6 +117,7 @@ import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
 import ai.riviera.platform.venue.application.StoredBytes;
 import ai.riviera.platform.venue.application.VenuePhotos;
+import ai.riviera.platform.venue.application.ViewDailyAvailability;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
@@ -752,6 +753,12 @@ class WebSliceStubs {
 	@Bean
 	ViewVenueProfile viewVenueProfile() {
 		return (_, _) -> Optional.empty();
+	}
+
+	/** #207: the owner daily availability-states read behind {@code GET /api/venues/{id}/availability}. */
+	@Bean
+	ViewDailyAvailability viewDailyAvailability() {
+		return (_, _, _) -> Optional.empty();
 	}
 
 	/**

@@ -4,7 +4,14 @@ import { ActivatedRoute } from '@angular/router';
 import { catchError, forkJoin, of, tap } from 'rxjs';
 
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
-import { SetRow, TileState, deriveTileStates, groupSetsByRow, tileTapAction } from '../shared/availability-grid';
+import {
+  HeldSetState,
+  SetRow,
+  TileState,
+  deriveTileStates,
+  groupSetsByRow,
+  tileTapAction,
+} from '../shared/availability-grid';
 import { CardGlass } from '../shared/card-glass';
 import { formatMoney, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -31,9 +38,11 @@ interface ArrivalRow {
  * <p>A restyle only — <strong>no change to the availability invariants</strong>. It is the second
  * driving adapter onto the existing owner-asserted staff mark/release writes (invariant #13):
  * `availability` stays the single writer per `(set, date)` (invariant #2) and the online/walk-in
- * pools stay separate (invariant #3). Tap state is optimistic-but-reconciled — the tile flips
- * immediately, the write is sent, then the map + bookings are re-read so server truth replaces the
- * guess (the server release deletes only a `STAFF_MARKED` row, so a mis-tap on an online-held tile is
+ * pools stay separate (invariant #3). Tile classification comes from the owner availability-states
+ * read (#207) — `BOOKED_ONLINE` covers any online hold, paid or not, so an unpaid hold renders locked,
+ * never as a phantom walk-in. Tap state is optimistic-but-reconciled — the tile flips immediately, the
+ * write is sent, then the map + bookings + states are re-read so server truth replaces the guess (the
+ * server release deletes only a `STAFF_MARKED` row, so a mis-tap on an online-held tile is
  * a safe no-op). Reads `:venueId` from the parent route via {@link parentVenueId} (child routes don't
  * inherit it — the O1 finding), the same as {@link import('./pricing-tab').PricingTab}. Always
  * porcelain (inherited from the console shell); glass via {@link CardGlass}; the shared sea-facing
@@ -60,6 +69,8 @@ export class DailyViewTab {
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly bookings = signal<readonly ConsoleDailyBooking[]>([]);
+  /** The day's per-set server states (#207) — the tile-classification authority; undefined until loaded. */
+  private readonly states = signal<ReadonlyMap<number, HeldSetState> | undefined>(undefined);
   /** True once the initial load settles (success or failure) — drives the loading vs content state. */
   protected readonly loaded = signal(false);
   /** True when the initial venue read failed — shows an error (not a false "no sets" state). */
@@ -104,6 +115,7 @@ export class DailyViewTab {
     this.loaded.set(false);
     this.venue.set(undefined);
     this.bookings.set([]);
+    this.states.set(undefined);
     this.load();
   }
 
@@ -112,13 +124,9 @@ export class DailyViewTab {
     groupSetsByRow(this.venue()?.sets ?? []),
   );
 
-  /** The effective tile state per set id: optimistic override, else derived from server truth. */
+  /** The effective tile state per set id: optimistic override, else the server state token (#207). */
   private readonly tileState = computed<ReadonlyMap<number, TileState>>(() =>
-    deriveTileStates(
-      this.venue()?.sets ?? [],
-      new Set(this.bookings().map((b) => b.setId)),
-      this.overrides(),
-    ),
+    deriveTileStates(this.venue()?.sets ?? [], this.states() ?? new Map(), this.overrides()),
   );
 
   /** The arrivals rows, each labelled with its set's position (else the raw set id). */
@@ -224,6 +232,7 @@ export class DailyViewTab {
     this.loaded.set(false);
     this.venue.set(undefined);
     this.bookings.set([]);
+    this.states.set(undefined);
     this.load();
   }
 
@@ -235,9 +244,9 @@ export class DailyViewTab {
   }
 
   /**
-   * Re-read the map + bookings, then clear ONLY this set's settled override/pending — server truth
-   * now wins for it. A global clear would wipe the in-flight optimistic state of a DIFFERENT tile the
-   * operator tapped while this reload was outstanding (which would re-enable it and duplicate its write).
+   * Re-read the map + bookings + states, then clear ONLY this set's settled override/pending — server
+   * truth now wins for it. A global clear would wipe the in-flight optimistic state of a DIFFERENT tile
+   * the operator tapped while this reload was outstanding (re-enabling it and duplicating its write).
    */
   private reconcile(setId: number): void {
     this.load(() => {
@@ -254,7 +263,7 @@ export class DailyViewTab {
     });
   }
 
-  /** Fetch the map + bookings for the selected date; `onSettled` runs after BOTH settle. */
+  /** Fetch the map + bookings + availability states for the selected date; `onSettled` runs after ALL settle. */
   private load(onSettled?: () => void): void {
     const venueId = this.venueId();
     if (venueId === undefined) {
@@ -292,9 +301,25 @@ export class DailyViewTab {
         return of(undefined);
       }),
     );
-    // The join flips `loaded` only once BOTH reads settle — no "0 of 0 free" flash.
-    forkJoin([venue$, bookings$]).subscribe(() => {
+    // #207: a failed reconcile keeps the last consistent states, mirroring the venue read's degrade.
+    const states$ = this.console.dailyAvailability(venueId, requested).pipe(
+      tap((list) => {
+        if (current()) {
+          this.states.set(new Map(list.map((s) => [s.setId, s.state])));
+        }
+      }),
+      catchError((error: unknown) => {
+        this.dropSessionIfUnauthorized(error);
+        return of(undefined);
+      }),
+    );
+    // The join flips `loaded` only once ALL reads settle — no "0 of 0 free" flash (#126).
+    forkJoin([venue$, bookings$, states$]).subscribe(() => {
       if (current()) {
+        // States still missing = their initial read failed: error card, never tiles without truth.
+        if (this.states() === undefined) {
+          this.loadError.set(true);
+        }
         this.loaded.set(true);
       }
       onSettled?.();

@@ -12,7 +12,7 @@ import { settle } from './support/booking-dialog';
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
-// A1 free, A2 held by a confirmed online booking (locked), A3 free.
+// A1 free, A2 held by a CONFIRMED booking, A3 free, A4 an UNPAID online hold (#207).
 const BOOKINGS = [{ setId: 2, code: 'ABC12345' }];
 
 function seat(
@@ -62,7 +62,17 @@ async function mockDaily(page: Page): Promise<void> {
     return route.fulfill({ status: 204, body: '' });
   });
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: BOOKINGS }));
-  // The venue map: set 2 is always TAKEN (online-booked); a marked set reads TAKEN too.
+  // #207 states read: sets 2 + 4 are online holds (4 unpaid, so absent from the bookings read).
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: [
+        { setId: 2, state: 'BOOKED_ONLINE' },
+        { setId: 4, state: 'BOOKED_ONLINE' },
+        ...[...marked].map((setId) => ({ setId, state: 'STAFF_MARKED' })),
+      ],
+    }),
+  );
+  // The venue map: sets 2 + 4 are always TAKEN (online-held); a marked set reads TAKEN too.
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
     route.fulfill({
       json: {
@@ -75,8 +85,13 @@ async function mockDaily(page: Page): Promise<void> {
         reviewsCount: 12,
         bookingMode: 'INSTANT',
         fromPrice: { minorUnits: 3000, currency: 'EUR' },
-        sets: [1, 2, 3].map((id) =>
-          seat(id, id, id === 3 ? 'WALK_IN' : 'ONLINE', id === 2 || marked.has(id) ? 'TAKEN' : 'FREE'),
+        sets: [1, 2, 3, 4].map((id) =>
+          seat(
+            id,
+            id,
+            id === 3 ? 'WALK_IN' : 'ONLINE',
+            id === 2 || id === 4 || marked.has(id) ? 'TAKEN' : 'FREE',
+          ),
         ),
       },
     }),
@@ -117,6 +132,12 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   // Tile states: set 1 free, set 2 booked online (locked), set 3 free.
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'FREE');
   await expect(page.locator('[data-set-id="2"]')).toHaveAttribute('data-state', 'BOOKED_ONLINE');
+
+  // #207: the UNPAID hold (set 4, no confirmed booking) is locked — never a tappable walk-in ✓.
+  await expect(page.locator('[data-set-id="4"]')).toHaveAttribute('data-state', 'BOOKED_ONLINE');
+
+  // #207: only STAFF_MARKED states count — the old taken−confirmed remainder showed a phantom 1.
+  await expect(page.getByTestId('oc-stat-walkins')).toHaveText('0');
 
   // Arrivals: one row with the display-only booking code chip.
   await expect(page.getByTestId('daily-arrival-row')).toHaveCount(1);

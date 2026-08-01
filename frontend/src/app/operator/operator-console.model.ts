@@ -1,4 +1,5 @@
 import { Amenity } from '../shared/amenities';
+import { HeldSetState } from '../shared/availability-grid';
 import { MoneyView } from '../shared/money';
 import { BookingMode, Pool, Tier } from '../shared/venue-views';
 
@@ -69,6 +70,17 @@ export type RepriceErrorCode =
 export interface ConsoleDailyBooking {
   readonly setId: number;
   readonly code: string;
+}
+
+/**
+ * One held set on the owner's daily availability read (`GET /api/venues/{id}/availability?date`,
+ * #207) — the authoritative `set_availability` state token for the day. Sparse: a free set is
+ * absent from the response. `BOOKED_ONLINE` covers ANY online hold (paid or not), which is
+ * exactly what lets the console stop mislabeling an unpaid hold as a walk-in.
+ */
+export interface SetDayState {
+  readonly setId: number;
+  readonly state: HeldSetState;
 }
 
 /** The kind of payout-ledger entry (O7 #173; mirrors backend `EntryType`): a confirmed booking accrues,

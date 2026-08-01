@@ -68,6 +68,7 @@ async function mockConsole(
   page: import('@playwright/test').Page,
   pending = 0,
   booked = 0,
+  heldStates: { setId: number; state: string }[] = [],
 ): Promise<void> {
   let sessionLive = false;
   await page.route(/\/api\/auth\/me$/, (route) =>
@@ -87,11 +88,14 @@ async function mockConsole(
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })) }),
   );
-  // The stats strip's two reads (#171): confirmed online bookings today + the takings figure.
+  // The stats strip's three reads (#171, #207): confirmed bookings, takings, availability states.
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
     route.fulfill({ json: Array.from({ length: booked }, (_, i) => ({ setId: i + 1, code: 'X' })) }),
   );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) => route.fulfill({ json: TAKINGS }));
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: heldStates }),
+  );
 }
 
 async function signIn(page: import('@playwright/test').Page): Promise<void> {
@@ -149,13 +153,16 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
 test('shows the stats strip with live free/total, walk-ins and takings, across a tab switch (#171)', async ({
   page,
 }) => {
-  await mockConsole(page, 0, 2); // 2 confirmed online bookings today
+  await mockConsole(page, 0, 2, [
+    { setId: 3, state: 'BOOKED_ONLINE' },
+    { setId: 4, state: 'BOOKED_ONLINE' },
+    { setId: 5, state: 'STAFF_MARKED' },
+  ]); // 2 confirmed online bookings today
   await page.goto('/operator/1');
   await signIn(page);
   await expect(page.getByTestId('oc-header')).toBeVisible();
 
-  // The four tiles, live for the venue today, above the tabs: 5 sets (2 free), 2 booked online, so
-  // 1 walk-in (the remainder), and €110 gross with the server-computed €93.50 net after 15%.
+  // Four live tiles: 5 sets (2 free), 2 booked, 1 STAFF_MARKED (#207), €110 gross / €93.50 net.
   await expect(page.getByTestId('oc-stat-free')).toHaveText(/2\s*\/\s*5/);
   await expect(page.getByTestId('oc-stat-booked')).toHaveText('2');
   await expect(page.getByTestId('oc-stat-walkins')).toHaveText('1');

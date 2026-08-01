@@ -65,9 +65,10 @@ function flushRequests(httpMock: HttpTestingController, pending: number, venue =
 }
 
 /**
- * The stats-strip reads the signed-in shell now mounts (#171): the booked-online count + the daily
- * takings. URLs pinned (owner-asserted server-side, invariant #13); both best-effort in the strip, so
- * flushing zeros keeps every shell-rendering test green without asserting on the strip itself.
+ * The stats-strip reads the signed-in shell now mounts (#171): the booked-online count, the daily
+ * takings and the availability states (#207). URLs pinned (owner-asserted server-side, invariant
+ * #13); all best-effort in the strip, so flushing zeros keeps every shell-rendering test green
+ * without asserting on the strip itself.
  */
 function flushStrip(httpMock: HttpTestingController, venue = VENUE): void {
   httpMock
@@ -81,6 +82,9 @@ function flushStrip(httpMock: HttpTestingController, venue = VENUE): void {
       commissionBps: 1500,
       date: '2026-07-07',
     });
+  httpMock
+    .expectOne((r) => r.url === `${BASE}/api/venues/${venue}/availability` && r.method === 'GET')
+    .flush([]);
 }
 
 /**

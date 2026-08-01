@@ -11,6 +11,9 @@ import { SetView } from './venue-views';
 /** A set's state on a chosen day: `FREE` → tap to mark; `STAFF_MARKED` → tap to release; `BOOKED_ONLINE` → locked. */
 export type TileState = 'FREE' | 'STAFF_MARKED' | 'BOOKED_ONLINE';
 
+/** A held set's server state token (#207) — what the owner availability read reports; free sets are absent. */
+export type HeldSetState = Exclude<TileState, 'FREE'>;
+
 /** Sets grouped into a beach-map row; first-seen read order is preserved for both rows and sets. */
 export interface SetRow {
   readonly label: string;
@@ -32,25 +35,20 @@ export function groupSetsByRow(sets: readonly SetView[]): SetRow[] {
 }
 
 /**
- * Derive each set's effective tile state from server truth, which sets a confirmed online booking
- * holds, and any optimistic overrides (which win until a reconcile clears them). A `TAKEN` set is
- * `BOOKED_ONLINE` when an online booking holds it, otherwise a staff walk-in mark.
+ * Derive each set's effective tile state from the server's per-set state tokens (#207) and any
+ * optimistic overrides (which win until a reconcile clears them). The states map is the single
+ * classification authority: a set absent from it is `FREE`; a held one carries `BOOKED_ONLINE`
+ * (any online hold — paid or not — renders locked) or `STAFF_MARKED`. This replaced the
+ * taken−confirmed-bookings heuristic that mislabeled an unpaid online hold as a walk-in.
  */
 export function deriveTileStates(
   sets: readonly SetView[],
-  onlineHeldSetIds: ReadonlySet<number>,
+  heldStates: ReadonlyMap<number, HeldSetState>,
   overrides: ReadonlyMap<number, TileState>,
 ): Map<number, TileState> {
   const state = new Map<number, TileState>();
   for (const set of sets) {
-    const override = overrides.get(set.id);
-    if (override) {
-      state.set(set.id, override);
-    } else if (set.availability === 'FREE') {
-      state.set(set.id, 'FREE');
-    } else {
-      state.set(set.id, onlineHeldSetIds.has(set.id) ? 'BOOKED_ONLINE' : 'STAFF_MARKED');
-    }
+    state.set(set.id, overrides.get(set.id) ?? heldStates.get(set.id) ?? 'FREE');
   }
   return state;
 }

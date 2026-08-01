@@ -3,6 +3,7 @@ package ai.riviera.platform.availability.adapter.out;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,9 +26,10 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
  * {@code ModularityTests} stays cycle-free. The adapter depends only on {@link JdbcClient}, so
  * the Spring bean graph is acyclic too.
  *
- * <p>A row's mere existence means taken (its {@code state} — {@code BOOKED_ONLINE} or, later,
- * {@code STAFF_MARKED} — is irrelevant to "is it free?"), so the query selects {@code set_id}
- * without filtering on {@code state}. The predicate is served by the existing
+ * <p>A row's mere existence means taken (its {@code state} — {@code BOOKED_ONLINE} or
+ * {@code STAFF_MARKED} — is irrelevant to "is it free?"), so {@code takenOn} selects
+ * {@code set_id} without filtering on {@code state}; {@code statesOn} (#207) additionally returns
+ * the state token for the owner-asserted operator read. Every predicate is served by the existing
  * {@code UNIQUE(set_id, booking_date)} composite index; no new index is needed.
  */
 @Repository
@@ -70,5 +72,25 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 				.param("ids", ids)
 				.query(Boolean.class)
 				.single();
+	}
+
+	@Override
+	public Map<SetId, String> statesOn(Collection<SetId> setIds, LocalDate date) {
+		if (setIds.isEmpty()) {
+			return Map.of(); // no IN-list — avoid an empty "IN ()" and a needless round-trip
+		}
+		List<Long> ids = setIds.stream().map(SetId::value).toList();
+		return jdbc.sql("""
+				SELECT set_id, state
+				FROM set_availability
+				WHERE booking_date = :date
+				  AND set_id IN (:ids)
+				""")
+				.param("date", date)
+				.param("ids", ids)
+				.query((rs, rowNum) -> Map.entry(new SetId(rs.getLong("set_id")), rs.getString("state")))
+				.list()
+				.stream()
+				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
 }

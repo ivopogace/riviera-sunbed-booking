@@ -609,6 +609,11 @@ class VenueAdminServiceTest {
 		int insertedInLayout;
 
 		@Override
+		public List<SetId> setIdsOf(VenueId venueId) {
+			return existingSetIds.stream().map(SetId::new).toList();
+		}
+
+		@Override
 		public List<SetId> lockSetsOfVenue(VenueId venueId) {
 			return existingSetIds.stream().map(SetId::new).toList();
 		}
@@ -666,6 +671,11 @@ class VenueAdminServiceTest {
 		public boolean anyClaims(Collection<SetId> setIds) {
 			anyClaimsCalls++;
 			return claimed;
+		}
+
+		@Override
+		public java.util.Map<SetId, String> statesOn(Collection<SetId> setIds, java.time.LocalDate date) {
+			return java.util.Map.of();
 		}
 	}
 

@@ -245,6 +245,17 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void dailyAvailabilityReadByNonOwnerIs403() throws Exception {
+		// #207: the hold split is operator data — denied BEFORE any existence probe (invariant #13).
+		actingAs(operatorA);
+		mvc.perform(get("/api/venues/{v}/availability", MIRAMAR).cookie(operatorSession)
+						.param("date", "2026-09-14"))
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void staffAvailabilityMarkByNonOwnerIs403_evenWhenSpoofingThePathVenue() throws Exception {
 		// A owns venueOwnedByA and puts it in the PATH, but targets a Miramar setId. The check must
 		// resolve the venue from the set (Miramar → owned by B), not the path → 403 (invariant #13, R-2).
@@ -342,6 +353,10 @@ class CrossVenueDenialIT {
 		mvc.perform(get("/api/venues/{v}/payout-ledger", venueOwnedByB).cookie(operatorSession))
 				.andExpect(status().isOk());
 		mvc.perform(get("/api/venues/{v}/takings", venueOwnedByB).cookie(operatorSession))
+				.andExpect(status().isOk());
+		// #207: the owner's daily availability read passes — proving its 403 is genuinely ownership.
+		mvc.perform(get("/api/venues/{v}/availability", venueOwnedByB).cookie(operatorSession)
+						.param("date", "2026-09-14"))
 				.andExpect(status().isOk());
 		// A weather refund on a day with no bookings is a no-op (200), not a 403 — the check passed.
 		mvc.perform(post("/api/venues/{v}/weather-refund", venueOwnedByB).cookie(operatorSession)

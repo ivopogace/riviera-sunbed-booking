@@ -78,6 +78,14 @@ public interface Venues {
 	int repriceRow(VenueId venueId, RowPriceCommand command);
 
 	/**
+	 * The ids of every set currently on the venue's map, <strong>without locking</strong> — the
+	 * plain read the owner's daily availability view composes with the per-day states (issue #207).
+	 * Empty when the venue has no sets. For the bulk layout replace use {@link #lockSetsOfVenue},
+	 * whose {@code FOR UPDATE} is that write's invariant-#2 guard; a read must never take it.
+	 */
+	List<SetId> setIdsOf(VenueId venueId);
+
+	/**
 	 * The ids of every set currently on the venue's map, <strong>locking those rows</strong>
 	 * ({@code SELECT … FOR UPDATE}) for the caller's transaction (empty when the venue has no sets).
 	 * The lock is the invariant-#2 guard for the bulk layout replace: a concurrent

@@ -90,6 +90,7 @@ async function mockEditor(page: Page, lock = false): Promise<{ puts: Request[]; 
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({ json: { gross: { minorUnits: 0, currency: 'EUR' }, net: { minorUnits: 0, currency: 'EUR' }, commissionBps: 1500, date: '2026-07-08' } }),
   );
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   return { puts, bump };
 }
 

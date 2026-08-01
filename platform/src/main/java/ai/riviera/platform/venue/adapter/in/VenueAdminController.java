@@ -1,8 +1,10 @@
 package ai.riviera.platform.venue.adapter.in;
 
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.Map;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.shared.ApiProblem;
@@ -31,6 +34,7 @@ import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
 import ai.riviera.platform.venue.application.SetRejection;
+import ai.riviera.platform.venue.application.ViewDailyAvailability;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
 
 /**
@@ -63,15 +67,17 @@ class VenueAdminController {
 	private final EditBeachMap editBeachMap;
 	private final EditVenueProfile editVenueProfile;
 	private final ViewVenueProfile viewVenueProfile;
+	private final ViewDailyAvailability viewDailyAvailability;
 	private final CurrentOperator currentOperator;
 
 	VenueAdminController(OnboardVenue onboardVenue, EditBeachMap editBeachMap,
 			EditVenueProfile editVenueProfile, ViewVenueProfile viewVenueProfile,
-			CurrentOperator currentOperator) {
+			ViewDailyAvailability viewDailyAvailability, CurrentOperator currentOperator) {
 		this.onboardVenue = onboardVenue;
 		this.editBeachMap = editBeachMap;
 		this.editVenueProfile = editVenueProfile;
 		this.viewVenueProfile = viewVenueProfile;
+		this.viewDailyAvailability = viewDailyAvailability;
 		this.currentOperator = currentOperator;
 	}
 
@@ -101,6 +107,25 @@ class VenueAdminController {
 				.map(VenueProfileResponse::from)
 				.map(ResponseEntity::ok)
 				.orElseGet(() -> ResponseEntity.notFound().build());
+	}
+
+	/**
+	 * The owner's per-set availability states for one day (#207) — owner-scoped (invariant #13): the
+	 * service asserts ownership before answering, so a venue's hold pattern (online hold vs walk-in
+	 * mark) never leaks to a non-owner ({@code 403} via {@code ApiErrorHandler}). Gated to role
+	 * OPERATOR ABOVE the public {@code GET /api/venues/**} in {@code SecurityConfig}, like the
+	 * profile + takings reads. A free set is absent from the list; an owned-but-vanished venue is
+	 * {@code 404 NO_SUCH_VENUE} (the one coded 404 contract this controller already speaks).
+	 */
+	@GetMapping("/{venueId}/availability")
+	ResponseEntity<?> dailyAvailability(Authentication authentication,
+			@PathVariable long venueId,
+			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+		OperatorId operator = currentOperator.require(authentication);
+		return viewDailyAvailability.statesFor(operator, new VenueId(venueId), date)
+				.<ResponseEntity<?>>map(ResponseEntity::ok)
+				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
+						NO_SUCH_VENUE_DETAIL));
 	}
 
 	@PatchMapping("/{venueId}")

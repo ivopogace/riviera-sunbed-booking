@@ -146,6 +146,7 @@ async function mockVenue(
       },
     }),
   );
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) => route.fulfill({ json: [] }));
 
   return { patches, bump };
 }

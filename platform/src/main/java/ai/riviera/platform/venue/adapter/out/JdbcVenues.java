@@ -208,6 +208,17 @@ class JdbcVenues implements Venues {
 	}
 
 	@Override
+	public List<SetId> setIdsOf(VenueId venueId) {
+		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :venue ORDER BY id")
+				.param(P_VENUE, venueId.value())
+				.query(Long.class)
+				.list()
+				.stream()
+				.map(SetId::new)
+				.toList();
+	}
+
+	@Override
 	public List<SetId> lockSetsOfVenue(VenueId venueId) {
 		// FOR UPDATE locks the venue's set_position rows so a concurrent set_availability/booking
 		// insert (which needs FOR KEY SHARE on the referenced row for its FK check) blocks until this
