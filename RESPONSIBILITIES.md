@@ -486,9 +486,10 @@ RFC-7807 error-contract factory (#97) and the **typed edge-validation signal**
 exception→status contract belongs to the composition-root advice no module may depend on,
 while module adapters are its throwers), the accessors that resolve an authenticated
 principal to a typed id, the **platform's metric names** (`ObservabilityMetrics`: the
-money-path trio from #100, plus the six mail-loss counters — the registry-mail shed added by
+money-path trio from #100, plus the mail-loss counters — the registry-mail shed added by
 #408, the recovery-mail drop by #415, the recovery-mail transport failure by #423, the abandoned
-booking confirmation by #428, the abandoned cancellation record by #374 and the abandoned
+booking confirmation by #428, the abandoned cancellation record by #374, the abandoned
+request-outcome records by #124 and the abandoned
 payment-due notice by #373), the **platform's shutdown budget** (`ShutdownBudget`, #456 — the
 SIGTERM grace and every draining pool's claim on it), the **one way a pooled worker inherits
 its submitter's logging context** (`MdcTaskDecorator`, #455), and the **once-only guard behind an

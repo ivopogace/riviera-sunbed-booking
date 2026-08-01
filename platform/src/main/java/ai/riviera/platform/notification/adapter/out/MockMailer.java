@@ -48,6 +48,9 @@ public class MockMailer implements Mailer {
 
 	private static final Logger log = LoggerFactory.getLogger(MockMailer.class);
 
+	/** The kind/recipient/venue/date line the code-free booking records share (riviera-java-conventions §6a). */
+	private static final String BOOKING_RECORD_LOG = "[mock-mailer] {} (to {}) for {} on {}";
+
 	private final List<SentEmail> sent = new CopyOnWriteArrayList<>();
 
 	@Override
@@ -69,7 +72,7 @@ public class MockMailer implements Mailer {
 		sent.add(SentEmail.bookingConfirmation(toEmail, confirmation));
 		// No code in the line: unlike a recovery link, the arrival code needs no dev affordance — the
 		// tourist already has it in the app — so invariant #7 costs nothing here.
-		log.info("[mock-mailer] {} (to {}) for {} on {}", SentEmail.Kind.BOOKING_CONFIRMATION,
+		log.info(BOOKING_RECORD_LOG, SentEmail.Kind.BOOKING_CONFIRMATION,
 				sanitize(toEmail), sanitize(confirmation.venueName()), confirmation.bookingDate());
 	}
 
@@ -96,14 +99,14 @@ public class MockMailer implements Mailer {
 	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
 		sent.add(SentEmail.requestDeclined(toEmail, declined));
 		// Neither the code nor the status link that embeds it (invariant #7) — the confirmation's rule.
-		log.info("[mock-mailer] {} (to {}) for {} on {}", SentEmail.Kind.REQUEST_DECLINED,
+		log.info(BOOKING_RECORD_LOG, SentEmail.Kind.REQUEST_DECLINED,
 				sanitize(toEmail), sanitize(declined.venueName()), declined.bookingDate());
 	}
 
 	@Override
 	public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
 		sent.add(SentEmail.requestExpired(toEmail, expired));
-		log.info("[mock-mailer] {} (to {}) for {} on {}", SentEmail.Kind.REQUEST_EXPIRED,
+		log.info(BOOKING_RECORD_LOG, SentEmail.Kind.REQUEST_EXPIRED,
 				sanitize(toEmail), sanitize(expired.venueName()), expired.bookingDate());
 	}
 

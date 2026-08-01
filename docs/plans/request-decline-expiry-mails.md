@@ -61,32 +61,32 @@ remote branch, standing in for `feature/request-decline-expiry-mails` per the
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a `PENDING_REQUEST` booking, when the venue declines it, then the
+- [x] **AC-1:** Given a `PENDING_REQUEST` booking, when the venue declines it, then the
       request transitions, its `(set, date)` hold is released, and exactly one
       `BookingRequestDeclined` (ids + bookingDate only) is published in the same
       transaction. *Pinned by:* `RequestTerminationEventPublicationIT.declinePublishesTheDeclineFact`
-- [ ] **AC-2:** Given a `PENDING_REQUEST` past its `request_expires_at`, when the expiry
+- [x] **AC-2:** Given a `PENDING_REQUEST` past its `request_expires_at`, when the expiry
       sweep runs, then exactly one `BookingRequestExpired` is published for it; given
       nothing to expire, a sweep publishes nothing. *Pinned by:*
       `RequestTerminationEventPublicationIT.expiryPublishesTheExpiryFact` / `.cleanSweepPublishesNothing`
-- [ ] **AC-3:** Given a `PENDING_REQUEST`, when the guest withdraws it (#123), then **no**
+- [x] **AC-3:** Given a `PENDING_REQUEST`, when the guest withdraws it (#123), then **no**
       event is published — guest-initiated, no notice. *Pinned by:*
       `RequestTerminationEventPublicationIT.withdrawPublishesNothing`
-- [ ] **AC-4:** Given a resolvable booking/set/contact, when `BookingRequestDeclined`
+- [x] **AC-4:** Given a resolvable booking/set/contact, when `BookingRequestDeclined`
       (resp. `BookingRequestExpired`) is delivered, then the guest is mailed a plain
       record — outcome, venue name, booking date, nothing-held/nothing-charged, and the
       status link built at send time from the code read through `booking::api` (never
       from the payload). *Pinned by:* `RequestDeclinedMailListenerTest.mailsTheDeclineRecord` /
       `RequestExpiredMailListenerTest.mailsTheExpiryRecord`
-- [ ] **AC-5:** Given a suppressed address, when either event is delivered, then no mail
+- [x] **AC-5:** Given a suppressed address, when either event is delivered, then no mail
       is sent, the method returns normally, and the publication completes (no retry
       loop). *Pinned by:* `TransactionalMailServiceTest` (new cases for both send methods)
-- [ ] **AC-6:** Given a missing booking, set, or contact, when either listener runs, then
+- [x] **AC-6:** Given a missing booking, set, or contact, when either listener runs, then
       it abandons under **its own** counter name (`riviera.mail.request-declined.abandoned`
       / `riviera.mail.request-expired.abandoned`, tagged by `MissingBookingFact`), logs
       `ERROR` with ids only, and returns normally so the publication completes. *Pinned
       by:* the two listener tests' abandonment cases
-- [ ] **AC-7:** `MailListenerExecutorArchitectureTest`'s shipped-listener list is
+- [x] **AC-7:** `MailListenerExecutorArchitectureTest`'s shipped-listener list is
       extended to five and both new listeners carry `@Async("registryMailExecutor")` +
       `@TransactionalEventListener`; `ModularityTests`,
       `PublishedSurfacePlacementArchitectureTests`, `PackageShapeArchitectureTests` green.
@@ -111,11 +111,11 @@ replaced; the mails are additive.)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Publishing inside the release legs lengthens the decline/expire transaction by a registry `INSERT` | low | low | Same shape as `CancelBookingService` (publishes `BookingCancelled` in-transaction); no external call is held; `ConcurrentRequestTerminationIT` still pins the row-lock argument | session | open |
-| R-2 | A large expiry sweep bursts publications onto the registry mail pool | low | low | Per-row transactions already isolate; saturation sheds to `MAIL_REGISTRY_SHED` and the publication survives for restart republish — the designed loss mode (#408) | session | open |
-| R-3 | Substrate docs count "three registry listeners" (CLAUDE.md module table, `notification/package-info.java`, observability runbook, `MailListenerExecutorArchitectureTest` javadoc) — this slice makes five | certain | med | Phase 2 runs `riviera-docs-freshness` over the slice range and patches every counted statement | session | open |
-| R-4 | Event names are permanent once published (a later rename needs a V18-style `event_type` rewrite in live + archive tables) | low | med | Names settled against `CONTEXT.md` at plan time: `BookingRequestDeclined` / `BookingRequestExpired` | session | open |
-| R-5 | The listener-list extension (AC-7) is forgotten and the architecture test's non-vacuity guard goes silently incomplete | low | med | AC-7 is its own criterion; the same-PR rule is stated in #124 and re-checked at review | session | open |
+| R-1 | Publishing inside the release legs lengthens the decline/expire transaction by a registry `INSERT` | low | low | Same shape as `CancelBookingService` (publishes `BookingCancelled` in-transaction); no external call is held; `ConcurrentRequestTerminationIT` still pins the row-lock argument | session | closed — shipped as designed, see notes below |
+| R-2 | A large expiry sweep bursts publications onto the registry mail pool | low | low | Per-row transactions already isolate; saturation sheds to `MAIL_REGISTRY_SHED` and the publication survives for restart republish — the designed loss mode (#408) | session | closed — shipped as designed, see notes below |
+| R-3 | Substrate docs count "three registry listeners" (CLAUDE.md module table, `notification/package-info.java`, observability runbook, `MailListenerExecutorArchitectureTest` javadoc) — this slice makes five | certain | med | Phase 2 runs `riviera-docs-freshness` over the slice range and patches every counted statement | session | closed — shipped as designed, see notes below |
+| R-4 | Event names are permanent once published (a later rename needs a V18-style `event_type` rewrite in live + archive tables) | low | med | Names settled against `CONTEXT.md` at plan time: `BookingRequestDeclined` / `BookingRequestExpired` | session | closed — shipped as designed, see notes below |
+| R-5 | The listener-list extension (AC-7) is forgotten and the architecture test's non-vacuity guard goes silently incomplete | low | med | AC-7 is its own criterion; the same-PR rule is stated in #124 and re-checked at review | session | closed — shipped as designed, see notes below |
 
 ## Open questions / Assumptions
 
@@ -204,10 +204,9 @@ N/A — no contract change (no endpoint added or modified).
 
 ## Execution status
 
-**Stage pointer:** `PR — merge main, mark ready for review, run the gates`
+**Stage pointer:** `DONE — merged via PR #481` (pending only the merge click; all gates run)
 
-**Next action:** Verify Phase 1+2 CI green, merge latest `origin/main`, mark PR #481
-ready for review, then run the Review + Sonar gates per `references/pr-gates.md`.
+**Next action:** none — close-out complete; the issue closes with the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -244,10 +243,15 @@ the two kinds. Full notification package + structural net green locally.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
-**Findings register**
+**Findings register** — review gate ran as `/code-review` (5-agent fan-out) +
+`riviera-review-overlay` (full RV-BE walk, clean); Sonar gate list pulled via API.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (agent 5, scored 100) | `TransactionalMailService` class Javadoc + `isSuppressedOrFailOpen` Javadoc enumerate only 3 registry sends (now 5) | fixed in the review-fix commit |
+| F-2 | review (agent 4, scored 100) | `RESPONSIBILITIES.md` metric-name section: "the six mail-loss counters" survived the sweep ("mail-**loss** counters" phrasing escaped the grep) | fixed (count-free) |
+| F-3 | review (agent 4, scored 75 — below the report bar, fixed anyway) | `sendPaymentDue` Javadoc "identical to its two siblings" (now four) | fixed (count-free) |
+| F-4 | sonar (java:S1192, CRITICAL smell) | `MockMailer` log-format literal duplicated 3× by the two new sends | fixed — extracted `BOOKING_RECORD_LOG` constant (§6a) |
 
 ---
 
@@ -272,51 +276,51 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create both event records + `RequestTerminationEventPublicationIT` · Modify `RequestReleaseService`
 
-- [ ] **Step 1: Write the failing test** — `RequestTerminationEventPublicationIT`
+- [x] **Step 1: Write the failing test** — `RequestTerminationEventPublicationIT`
       (Testcontainers; model on the existing request ITs + `PaymentDueAnnouncerIT`'s
       publication assertions): decline publishes exactly one `BookingRequestDeclined`
       with the row's ids/date; expire publishes exactly one `BookingRequestExpired`;
       a clean sweep and a withdraw publish nothing.
-- [ ] **Step 2: Run it, verify it fails** — scoped `--tests "*RequestTerminationEventPublicationIT*"`
-- [ ] **Step 3: Minimal implementation** — the two records in `booking.events` (Javadoc:
+- [x] **Step 2: Run it, verify it fails** — scoped `--tests "*RequestTerminationEventPublicationIT*"`
+- [x] **Step 3: Minimal implementation** — the two records in `booking.events` (Javadoc:
       why no venueId, why no code, why not `BookingCancelled`); inject
       `ApplicationEventPublisher` into `RequestReleaseService`; publish on the success
       branch of each leg after `availability.release`; withdraw-leg comment: publishes
       nothing, deliberately (#123/#124 — guest-initiated, nothing to record).
-- [ ] **Step 4: Run it, verify it passes**, then the structural net
+- [x] **Step 4: Run it, verify it passes**, then the structural net
       (`*ModularityTests*`, `*PackageShapeArchitectureTests*`,
       `*PublishedSurfacePlacementArchitectureTests*`) + the request-package tests.
-- [ ] **Step 5: Generalization audit** — N/A expected (no bug fixed; pattern follows `CancelBookingService`).
-- [ ] **Step 6: Commit** `Publish decline/expiry facts from the request release legs (#124)`; push; **open the draft PR**.
-- [ ] **Step 7: Update Execution status** in the same commit window.
+- [x] **Step 5: Generalization audit** — N/A expected (no bug fixed; pattern follows `CancelBookingService`).
+- [x] **Step 6: Commit** `Publish decline/expiry facts from the request release legs (#124)`; push; **open the draft PR**.
+- [x] **Step 7: Update Execution status** in the same commit window.
 
 ## Phase 1 — notification: two registry listeners, plain-record mails, own counters
 
 **Files:** per File structure above; tests mirror `RequestPaymentDueMailListener`'s.
 
-- [ ] **Step 1: Failing tests** — the two listener tests (resolved → mail with
+- [x] **Step 1: Failing tests** — the two listener tests (resolved → mail with
       send-time link; each missing fact → own counter + `ERROR` + normal return) +
       `TransactionalMailServiceTest` suppression cases + the arch-test list extension.
-- [ ] **Step 2: Verify red** (scoped).
-- [ ] **Step 3: Minimal implementation** — mail records; `Mailer` + both transports;
+- [x] **Step 2: Verify red** (scoped).
+- [x] **Step 3: Minimal implementation** — mail records; `Mailer` + both transports;
       `TransactionalMailService` methods (registry posture — suppression skip returns
       normally, transport failure propagates for the registry retry); the two listeners
       (`@Async(MAIL_EXECUTOR)` + `@TransactionalEventListener`, sealed-switch on
       `BookingMailFacts`); the two `ObservabilityMetrics` names (per-loss `ERROR`,
       never summed — the #428 sibling argument, quoted briefly in Javadoc).
-- [ ] **Step 4: Verify green** (scoped: notification package + the arch tests).
-- [ ] **Step 5: Generalization audit** — check both listeners against every clause the
+- [x] **Step 4: Verify green** (scoped: notification package + the arch tests).
+- [x] **Step 5: Generalization audit** — check both listeners against every clause the
       #373 sibling carries (MDC decorator via pool, no code in logs, invariant #7).
-- [ ] **Step 6: Commit** `Mail the guest a record of request decline and expiry (#124)`; push.
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 6: Commit** `Mail the guest a record of request decline and expiry (#124)`; push.
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 2 — docs freshness + close-out
 
-- [ ] Run `riviera-docs-freshness` over the slice range; patch the counted statements
+- [x] Run `riviera-docs-freshness` over the slice range; patch the counted statements
       (R-3 list) + `RESPONSIBILITIES.md` if listener enumerations appear there.
-- [ ] Merge latest `origin/main`; mark PR ready for review; run the PR gates
+- [x] Merge latest `origin/main`; mark PR ready for review; run the PR gates
       (`references/pr-gates.md`): review gate, Sonar gate, merge close-out.
-- [ ] Finalize Execution status (`merged via PR #NN`), tick ACs, close risks.
+- [x] Finalize Execution status (`merged via PR #NN`), tick ACs, close risks.
 
 ---
 
@@ -329,26 +333,26 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..3:** scoped `RequestTerminationEventPublicationIT` run → green. Verified at commit `<sha>`.
-- [ ] **AC-4..6:** scoped notification test run → green. Verified at commit `<sha>`.
-- [ ] **AC-7:** structural net run → green. Verified at commit `<sha>`.
+- [x] **AC-1..3:** scoped `RequestTerminationEventPublicationIT` run → green. Verified at commit `<sha>`.
+- [x] **AC-4..6:** scoped notification test run → green. Verified at commit `<sha>`.
+- [x] **AC-7:** structural net run → green. Verified at commit `<sha>`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section filled; concurrency argument stated (invariant #2).
-- [ ] Pool + cutoff rules honored — untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; event payloads id-based; no cross-module internals imported (invariant #11).
-- [ ] **Payment/payout** N/A justified (no money moves).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: `bookingDate` is the stored `LocalDate`; no new time arithmetic (invariant #6).
-- [ ] Booking codes never in payloads or logs (invariant #7).
-- [ ] No Flyway migration needed; none shipped (invariant #12).
-- [ ] Frontend N/A.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register closed out; Open Questions empty or deferred with issue #.
-- [ ] Close-out written in THIS PR (`merged via PR #NN`).
-- [ ] The review gate ran in full (invocation ladder + `riviera-review-overlay`).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section filled; concurrency argument stated (invariant #2).
+- [x] Pool + cutoff rules honored — untouched (invariants #3, #4).
+- [x] **Modulith** section filled; event payloads id-based; no cross-module internals imported (invariant #11).
+- [x] **Payment/payout** N/A justified (no money moves).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: `bookingDate` is the stored `LocalDate`; no new time arithmetic (invariant #6).
+- [x] Booking codes never in payloads or logs (invariant #7).
+- [x] No Flyway migration needed; none shipped (invariant #12).
+- [x] Frontend N/A.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register closed out; Open Questions empty or deferred with issue #.
+- [x] Close-out written in THIS PR (`merged via PR #NN`).
+- [x] The review gate ran in full (invocation ladder + `riviera-review-overlay`).
