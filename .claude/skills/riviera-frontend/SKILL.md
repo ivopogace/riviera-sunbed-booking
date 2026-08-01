@@ -18,7 +18,7 @@ cheap here and expensive at review.
 | Folder | Owns | May import from | Examples today |
 |---|---|---|---|
 | `core/` | **Stateful cross-cutting singletons**: auth state, HTTP interceptors, route guards, current-principal service, theme state | `shared/` only — never a feature | `operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts` |
-| `shared/` | **Pure, stateless utilities and presentational primitives**: no HTTP, no app state | nothing app-internal | `money.ts` |
+| `shared/` | **Pure, stateless utilities and presentational primitives**: no HTTP, no app state — including the published API-view vocabulary (backend-vocabulary mirrors like `venue-views.ts`, `amenities.ts`, `booking-status.ts`) | nothing app-internal (`environments/` is config, not app code — see note below) | `money.ts`, `venue-views.ts` |
 | `pages/` | **Static/marketing routes** with no domain logic | `core/`, `shared/` | `pages/home/` |
 | Feature folders (`booking/`, `venue/`, `venue-admin/`, `operator/`, `auth/`, `admin/`, …) | One user-facing domain area: its components, its models, its HTTP service | `core/`, `shared/` — **never another feature folder** | `booking/booking-view.ts`, `venue/venue.service.ts` |
 | `environments/` | `apiBaseUrl` + public config (e.g. `stripePublishableKey`) | — | see Environment rules |
@@ -29,48 +29,56 @@ cheap here and expensive at review.
 feature). A feature importing from another feature is the FE version of a
 Modulith boundary violation — flag it, don't ship it.
 
-### That rule is violated today — known debt, not a carve-out (#488)
+**`environments/` sits beneath the taxonomy, not inside it.** It is public
+build-time config, not app code: any stratum — including `shared/` (worked
+example: `shared/photo-url.ts` resolving against `apiBaseUrl`) — may read
+`environments/environment`. That does not loosen `shared/`'s purity: frozen
+config is not app state, and `shared/` stays stateless and HTTP-free.
+(Clarified by #489, which `photo-url.ts` forced: it is pure and cross-cutting
+but config-dependent, so without this note it had no legal address at all.)
 
-**Before you cite an existing cross-feature import as precedent: it isn't one.**
-Thirty-three non-spec imports across twenty-one files cross a feature boundary
-today, in both directions, and two of them break `shared` → nothing. They are
-grandfathered debt, frozen by **`riviera-review-overlay` RV-FE-8**: a *new* edge
-is a Major finding (Blocker if `shared/`- or `core/`-directed), a pre-existing
-one moved or consolidated is not. Shrink this table in the same PR that shrinks
-the code.
+### The residual cross-feature imports — five, behavioral, frozen (#489)
+
+**The placement debt is paid.** #488 recorded thirty-three cross-feature imports
+across twenty-one files; #489 moved the published API-view vocabulary that caused
+twenty-eight of them out of `venue/` (decision + rationale:
+`docs/plans/vocabulary-out-of-venue.md`). The split by kind it chose:
+
+- **`shared/venue-views.ts`** (was `venue/venue.model.ts`) — the venue-owned
+  API-view vocabulary, the FE mirror of the backend's `venue::vocabulary`
+  published surface (the #95 shape in spirit). The `venue` feature remains its
+  **editor of record** — changes ride venue API slices — following the exact
+  precedent of `amenities.ts`/`booking-status.ts`, both already
+  backend-vocabulary mirrors living in `shared/`.
+- **`MoneyView` → `shared/money.ts`** — platform money vocabulary (invariant #5)
+  colocated with its renderer/parser, the one home of the euros↔minor boundary
+  (the #371 kernel shape).
+- **`shared/booking-date.ts`**, **`shared/photo-url.ts`** — genuinely
+  cross-cutting pure helpers (#371 shape).
+
+On the frontend the #95-vs-#371 distinction **collapses at the address level**:
+there is no `allowedDependencies` analogue, and the one-way rule leaves `shared/`
+as the only stratum every consumer may import — so the split is expressed in file
+grain and documented ownership, not folder taxonomy.
+
+**What remains — frozen by `riviera-review-overlay` RV-FE-8** (a *new* edge is a
+Major finding, Blocker if `shared/`- or `core/`-directed; a pre-existing edge
+moved or consolidated is not; shrink this table in the same PR that shrinks the
+code):
 
 | Edge | Files | What crosses |
 |---|---|---|
-| `operator/` → `venue/` | 12 | `venue.model`, `booking-date`, `photo-url`; `venue.service` (×3) |
-| `booking/` → `venue/` | 3 | `venue.model` |
-| `venue-admin/` → `venue/` | 2 | `venue.model` |
-| `pages/home` → `venue/` | 1 | `venue.model`, `booking-date`; `venue.service` (`pages/` may take only `core`/`shared`) |
-| `shared/{money,availability-grid}` → `venue/` | 2 | `venue.model` |
-| `venue/venue-map` → `booking/` | 1 | `booking-dialog` — the reverse edge |
+| `operator/` → `venue/` | 3 | `venue.service` (`console-venue-map.ts`, `daily-view-tab.ts`, `layout-editor.ts`) |
+| `pages/home` → `venue/` | 1 | `venue.service` (`pages/` may take only `core`/`shared`) |
+| `venue/venue-map` → `booking/` | 1 | `booking-dialog` — the reverse edge, the one feature→feature *component* import |
 
-**The diagnosis is misplacement, not a missing exception.** Twenty-eight of the
-thirty-three import only types and pure functions — `venue/venue.model.ts`,
-`venue/booking-date.ts`, `venue/photo-url.ts` — which together are the platform's
-**published API-view vocabulary** wearing a feature's address. It is consumed by
-three other features, by `pages/`, *and* by `shared/`, which is exactly why the
-one edge no exception could ever absolve (`shared` → a feature) exists at all.
-
-**Target state (#489):** move that vocabulary to a correct address, **split by
-kind** — the venue-owned read models and the genuinely cross-cutting helpers have
-different right answers (the backend's #95 published-surface shape vs #371's
-kernel promotion, whose admission test excludes business logic). #489 owns that
-choice; don't pre-empt it. Either way it clears `booking/`, `venue-admin/` and
-`shared/` entirely, leaving five behavioural imports: `operator/` (×3) and
-`pages/home` → `venue.service`, `venue/venue-map` → `booking/booking-dialog` —
-argued one at a time, never absorbed into a blanket rule.
-
-**Why debt rather than a codified exception.** A "features may import another
-feature's published surface" rule isn't alien here — it's close to what the
-backend does — but it cannot absolve `shared/` → `venue/`, and the frontend has
-nothing to enforce it (no ESLint boundary rule), so it would read as blanket
-permission. Fix the placement first. Nothing here is a runtime defect; every
-listed import works and is tested. Full argument, and the four prior occasions
-this surfaced without being actioned: #488 and the review record on PR #490.
+These five carry **behavior, not vocabulary** — a shared HTTP service and a
+component edge — and each needs its own argument on its merits (e.g. promoting
+`VenueService` to `core/`, or inverting the dialog edge); never a blanket
+"features may import features" rule, which could not absolve the `pages/` edge
+anyway. With the set this small, mechanical ESLint pinning is the natural
+follow-up (deliberately not added by #489). History: #488 (the diagnosis), PR
+#490 (the review record), #489 (the move).
 
 **New feature = new folder.** The auth epic (#108) added `auth/` as a feature
 folder: **one audience-aware sign-in card** (`auth/auth-page.ts` at

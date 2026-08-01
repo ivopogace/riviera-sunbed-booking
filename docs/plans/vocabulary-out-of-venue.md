@@ -136,11 +136,11 @@ unchanged unit suite, and the unchanged e2e:a11y suite (AC-7).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The "pure move" silently edits logic (missed importer, bad path rewrite, dropped export) | med | med | `git mv` for whole files; single mechanical find/replace per old path; `npm run lint` (import ordering) + `npm test` + `npm run build` + e2e:a11y; `git diff` must show only import/rename hunks | session | open |
-| R-2 | `shared/photo-url.ts` creates the first `shared/` → `environments/` import and gets read as licence for `shared/` importing app code | low | med | the rule clarification is written into `riviera-frontend` in this same PR: `environments/` is the config stratum, not app-internal; `shared/` remains stateless | session | open |
-| R-3 | Debt-record drift: `riviera-frontend`'s table or RV-FE-8's text still claims 33/21 after the move ("a stale count reads as licence") | med | med | AC-8 updates both in this PR; final counts taken from the AC-5 grep output, not from memory | session | open |
+| R-1 | The "pure move" silently edits logic (missed importer, bad path rewrite, dropped export) | med | med | `git mv` for whole files; single mechanical find/replace per old path; `npm run lint` (import ordering) + `npm test` + `npm run build` + e2e:a11y; `git diff` must show only import/rename hunks | session | closed — `698131e`: only content hunk beyond imports/TSDoc is the `MoneyView` interface relocation; all four suites green |
+| R-2 | `shared/photo-url.ts` creates the first `shared/` → `environments/` import and gets read as licence for `shared/` importing app code | low | med | the rule clarification is written into `riviera-frontend` in this same PR: `environments/` is the config stratum, not app-internal; `shared/` remains stateless | session | closed — clarification shipped in `riviera-frontend` §taxonomy (Phase 3 commit) |
+| R-3 | Debt-record drift: `riviera-frontend`'s table or RV-FE-8's text still claims 33/21 after the move ("a stale count reads as licence") | med | med | AC-8 updates both in this PR; final counts taken from the AC-5 grep output, not from memory | session | closed — both skills rewritten from the live grep (Phase 3 commit); straggler sweep found zero stale path references outside intentional history notes |
 | R-4 | Collision with in-flight work | low | low | intake gate checked: only dependabot dependency PRs open; none touch `src/app` | session | closed — verified at intake |
-| R-5 | Import cycles inside `shared/` after the move | low | med | dependency direction fixed by design (see intra-`shared/` map above); `npm run build` fails on true cycles | session | open |
+| R-5 | Import cycles inside `shared/` after the move | low | med | dependency direction fixed by design (see intra-`shared/` map above); `npm run build` fails on true cycles | session | closed — build green at `698131e` |
 
 ## Open questions / Assumptions
 
@@ -195,18 +195,26 @@ N/A — no contract change; the types keep mirroring the same wire shapes byte-f
 
 ## Execution status
 
-**Stage pointer:** plan committed — next: implement (phases 1+2)
+**Stage pointer:** implement done — next: mark PR #494 ready → review gate + Sonar gate
 
-**Next action:** open the draft PR, then perform the atomic move commit (phases 1+2).
+**Next action:** verify CI green on the Phase-3 push, mark PR #494 ready for review, run the review gate per `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + draft PR | ⏳ | |
-| 1 — move `booking-date.ts` + `photo-url.ts` → `shared/` | | |
-| 2 — `venue.model.ts` → `shared/venue-views.ts`; `MoneyView` → `shared/money.ts` | | |
-| 3 — debt records (`riviera-frontend` + RV-FE-8) + full verification incl. e2e:a11y | | |
+| 0 — plan doc + draft PR (#494) | ✅ | `b683135` |
+| 1 — move `booking-date.ts` + `photo-url.ts` → `shared/` | ✅ | `698131e` (atomic with 2) |
+| 2 — `venue.model.ts` → `shared/venue-views.ts`; `MoneyView` → `shared/money.ts` | ✅ | `698131e` |
+| 3 — debt records (`riviera-frontend` + RV-FE-8) + full verification incl. e2e:a11y | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**AC-1..5 verification (RV-FE-8 grep at Phase 3, exactly 5 lines):**
+`operator/console-venue-map.ts`, `operator/daily-view-tab.ts`, `operator/layout-editor.ts`
+→ `../venue/venue.service`; `pages/home/home.ts` → `../../venue/venue.service`;
+`venue/venue-map.ts` → `../booking/booking-dialog`. Zero hits under `shared/`, `core/`,
+`booking/`, `venue-admin/`. Suites at `698131e`+Phase 3: lint ✅ · 1034 unit tests / 128
+files ✅ · build ✅ · e2e:a11y 117 ✅ (chromium via `PW_CHROMIUM_EXECUTABLE`, the config's
+own escape hatch for a pre-installed browser revision).
 
 **Phase merge note:** `photo-url.ts` imports `CoverPhotoView` from `venue.model.ts`.
 Moving `photo-url.ts` alone would create a NEW `shared/` → `venue/` import — the exact
@@ -270,6 +278,7 @@ recorded per AC-6) · `.claude/skills/riviera-review-overlay/references/frontend
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-01 | Phase 1+2 sweep (`698131e`) | residual references to the three old paths | `grep -rn "venue/venue\.model\|venue/booking-date\|venue/photo-url" frontend/src frontend/e2e` + the substrate docs | 2, both in the two skills' debt tables | rewritten in Phase 3 (AC-8); remaining mentions are intentional history notes |
 
 ---
 
