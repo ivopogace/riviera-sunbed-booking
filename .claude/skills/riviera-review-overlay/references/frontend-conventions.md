@@ -17,11 +17,11 @@ reference `CLAUDE.md`.
 - [ ] `input()`/`output()` signal APIs not `@Input`/`@Output`
 - [ ] `NgOptimizedImage` for new `<img>` (venue photos especially)
 - **Greppable "don't write the obsolete thing" (Angular 22+):**
-- [ ] no redundant `standalone: true` (it's the default ≥ v20)
-- [ ] no explicit `changeDetection: OnPush` (it's the default ≥ v22)
-- [ ] `class`/`style` bindings, not `ngClass`/`ngStyle`
-- [ ] host bindings in the `host: {}` object, not `@HostBinding`/`@HostListener`
-- [ ] singleton services use `providedIn: 'root'` (or the `@Service` decorator, v22+)
+  - [ ] no redundant `standalone: true` (it's the default ≥ v20)
+  - [ ] no explicit `changeDetection: OnPush` (it's the default ≥ v22)
+  - [ ] `class`/`style` bindings, not `ngClass`/`ngStyle`
+  - [ ] host bindings in the `host: {}` object, not `@HostBinding`/`@HostListener`
+  - [ ] singleton services use `providedIn: 'root'` (or the `@Service` decorator, v22+)
 
 **Follow-up:**
 - Match the established style; document any deliberate deviation in the plan doc.
@@ -215,3 +215,45 @@ CI-run a11y suite green-but-blind to a real regression; Minor for a cosmetic-onl
 - Peer-review: "Load `playwright-cli` and check the new/changed spec against its best
   practices. Which suite covers this change, and will CI run it? Are the locators and data
   per-test-safe, with no fixed sleeps?"
+
+---
+
+### RV-FE-8. No **new** cross-feature import (the FE mirror of RV-BE-3 / invariant #11)
+**Gate:** Does the diff add a feature-folder import that isn't already in `riviera-frontend`'s
+grandfathered debt table?
+- [ ] no new `feature/ → other-feature/` import
+- [ ] no new `shared/ → feature/` or `core/ → feature/` import — these break `shared`/`core` → nothing, the edges that keep the direction acyclic
+- [ ] no new `pages/ → feature/` import
+- [ ] a *removed* or *consolidated* existing edge is fine — and good
+- [ ] a genuinely needed new edge is argued in the plan doc, not slipped in on the table's precedent
+
+> **The table is a freeze, not a licence.** `riviera-frontend`'s debt section lists every
+> cross-feature edge that exists (tracked for removal by **#489**); its purpose is to stop the
+> count growing while the placement is fixed. **"`operator/` already imports `venue/`" is not
+> an argument for a new import** — judge a new edge against the one-way rule on its merits.
+>
+> **Verify mechanically, not by eye** — feature folders are the direct children of
+> `frontend/src/app`; `core/`, `shared/`, `pages/`, `environments/` are not. Match **both**
+> `../feature/` and `../../feature/` (a `pages/home/` file reaching `venue/` nests twice, and
+> a one-level pattern silently undercounts):
+>
+> ```
+> grep -rn "from '\(\.\./\)\+\(admin\|auth\|booking\|operator\|pages\|venue\|venue-admin\)/" \
+>   --include=*.ts frontend/src/app | grep -v "\.spec\.ts"
+> ```
+
+**Follow-up:**
+- A new edge that is really "two features need the same thing" → promote it per the taxonomy
+  (pure → `shared/`, stateful/HTTP → `core/`), don't cross-import.
+- Shrinking the set means updating `riviera-frontend`'s table in the same PR — a stale count
+  reads as licence.
+- **No ESLint boundary rule enforces this today**, which is why it is a review-bank item; once
+  #489 lands, consider whether the residual set is small enough to pin mechanically.
+
+**Default severity:** **Major** for a new feature→feature import; **Blocker** for a new
+`shared/ →` or `core/ → feature/` import (it reintroduces the cycle the one-way rule prevents).
+Not a finding for a pre-existing edge the diff merely moves or consolidates.
+**Skill framing:**
+- Peer-review: "Run the grep. Is every cross-feature import in the diff already in
+  `riviera-frontend`'s debt table? If the diff adds one, what is the argument — and is it
+  really just 'the neighbours already do it'?"

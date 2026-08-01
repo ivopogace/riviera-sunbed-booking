@@ -1,6 +1,6 @@
 ---
 name: riviera-frontend
-description: The Angular frontend STRUCTURE authority for riviera-sunbed-booking — which folder a file belongs in (core/ vs feature vs shared/ vs pages/), the import-direction rules between them, the flat lazy-route convention in app.routes.ts, where interceptors/guards/auth state live, the DI-token adapter-swap pattern for external services, environment-config rules, and the two-suite e2e split. Load BEFORE creating or modifying ANY file under frontend/src or frontend/e2e — which folder a file lands in is this skill's call. Pairs with angular-developer (HOW to write it) and frontend/.claude/CLAUDE.md (language idioms); the review bank (RV-FE-*) checks the result.
+description: The Angular frontend STRUCTURE authority for riviera-sunbed-booking — which folder a file belongs in (core/ vs feature vs shared/ vs pages/), the import-direction rules between them plus the ledger of shipped cross-feature-import debt (grandfathered, not sanctioned — check it before citing an existing cross-feature import as precedent), the flat lazy-route convention in app.routes.ts, where interceptors/guards/auth state live, the DI-token adapter-swap pattern for external services, environment-config rules, and the two-suite e2e split. Load BEFORE creating or modifying ANY file under frontend/src or frontend/e2e — which folder a file lands in is this skill's call. Pairs with angular-developer (HOW to write it) and frontend/.claude/CLAUDE.md (language idioms); the review bank (RV-FE-*) checks the result.
 ---
 
 # Riviera frontend structure
@@ -28,6 +28,49 @@ cheap here and expensive at review.
 `shared/`, stateful/HTTP → `core/` (or question whether it is really one
 feature). A feature importing from another feature is the FE version of a
 Modulith boundary violation — flag it, don't ship it.
+
+### That rule is violated today — known debt, not a carve-out (#488)
+
+**Before you cite an existing cross-feature import as precedent: it isn't one.**
+Thirty-three non-spec imports across twenty-one files cross a feature boundary
+today, in both directions, and two of them break `shared` → nothing. They are
+grandfathered debt, frozen by **`riviera-review-overlay` RV-FE-8**: a *new* edge
+is a Major finding (Blocker if `shared/`- or `core/`-directed), a pre-existing
+one moved or consolidated is not. Shrink this table in the same PR that shrinks
+the code.
+
+| Edge | Files | What crosses |
+|---|---|---|
+| `operator/` → `venue/` | 12 | `venue.model`, `booking-date`, `photo-url`; `venue.service` (×3) |
+| `booking/` → `venue/` | 3 | `venue.model` |
+| `venue-admin/` → `venue/` | 2 | `venue.model` |
+| `pages/home` → `venue/` | 1 | `venue.model`, `booking-date`; `venue.service` (`pages/` may take only `core`/`shared`) |
+| `shared/{money,availability-grid}` → `venue/` | 2 | `venue.model` |
+| `venue/venue-map` → `booking/` | 1 | `booking-dialog` — the reverse edge |
+
+**The diagnosis is misplacement, not a missing exception.** Twenty-eight of the
+thirty-three import only types and pure functions — `venue/venue.model.ts`,
+`venue/booking-date.ts`, `venue/photo-url.ts` — which together are the platform's
+**published API-view vocabulary** wearing a feature's address. It is consumed by
+three other features, by `pages/`, *and* by `shared/`, which is exactly why the
+one edge no exception could ever absolve (`shared` → a feature) exists at all.
+
+**Target state (#489):** move that vocabulary to a correct address, **split by
+kind** — the venue-owned read models and the genuinely cross-cutting helpers have
+different right answers (the backend's #95 published-surface shape vs #371's
+kernel promotion, whose admission test excludes business logic). #489 owns that
+choice; don't pre-empt it. Either way it clears `booking/`, `venue-admin/` and
+`shared/` entirely, leaving five behavioural imports: `operator/` (×3) and
+`pages/home` → `venue.service`, `venue/venue-map` → `booking/booking-dialog` —
+argued one at a time, never absorbed into a blanket rule.
+
+**Why debt rather than a codified exception.** A "features may import another
+feature's published surface" rule isn't alien here — it's close to what the
+backend does — but it cannot absolve `shared/` → `venue/`, and the frontend has
+nothing to enforce it (no ESLint boundary rule), so it would read as blanket
+permission. Fix the placement first. Nothing here is a runtime defect; every
+listed import works and is tested. Full argument, and the four prior occasions
+this surfaced without being actioned: #488 and the review record on PR #490.
 
 **New feature = new folder.** The auth epic (#108) added `auth/` as a feature
 folder: **one audience-aware sign-in card** (`auth/auth-page.ts` at
