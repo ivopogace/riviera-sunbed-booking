@@ -209,15 +209,15 @@ byte-compatible; `GET /api/bookings/{code}` is consumed as-is by the new re-chec
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** AC-7 wire-freeze test for the two 202 bodies, then the insert/view dedup
+**Next action:** load `angular-developer` + MCP best practices, then red specs for AC-9
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | 0178ae1; draft PR #482 |
 | 1 — BE: `findByIds` batch read (AC-4, AC-5) | ✅ | 1f95f6e |
-| 2 — BE: booking insert + 202-view dedup (AC-6, AC-7) | | |
+| 2 — BE: booking insert + 202-view dedup (AC-6, AC-7) | ✅ | see phase-2 commit — freeze widened to the 201 body; `@JsonUnwrapped` flattening verified on Jackson 3 (R-1 fallback unneeded) |
 | 3 — FE: `BookingService` single-result hand-off (AC-9) | | |
 | 4 — FE: daily-tab `forkJoin` (AC-8) | | |
 | 5 — FE: Pay-now dead-intent fix + e2e (AC-1..3) | | |
