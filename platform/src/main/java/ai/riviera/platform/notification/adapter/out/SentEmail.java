@@ -19,7 +19,7 @@ import ai.riviera.platform.notification.application.RequestExpiredMail;
  * is populated, per {@link #kind}; use the {@link #recovery}, {@link #bookingConfirmation},
  * {@link #bookingCancellation} and {@link #paymentDue(String, PaymentDueMail)} factories rather than
  * the canonical constructor so no caller has to
- * remember which slot goes with which kind. The three booking kinds deliberately do <em>not</em> share
+ * remember which slot goes with which kind. The booking kinds deliberately do <em>not</em> share
  * a slot: an IT asserting on a confirmation must not silently match a cancellation, which is exactly
  * what a shared {@code Object} payload would allow — and #373's payment-due mail is the case that
  * makes the rule bite, since it carries the same code and venue as the confirmation for the same

@@ -35,7 +35,7 @@ public enum MissingBookingFact {
 	/** {@code customer.api.CustomerLookup} found no contact — investigate {@code customer}. */
 	NO_CONTACT("no-contact");
 
-	/** The metric tag key. Shared by all three abandon counters, so a reader can pivot between them. */
+	/** The metric tag key. Shared by all the abandon counters, so a reader can pivot between them. */
 	public static final String TAG = "reason";
 
 	private final String tagValue;

@@ -5,7 +5,7 @@ import java.time.LocalDate;
 
 /**
  * Everything the "the venue declined your request" email renders (#124) — structured rather than
- * pre-rendered, exactly as its three booking siblings, so each {@link Mailer} decides its own
+ * pre-rendered, exactly as its booking siblings, so each {@link Mailer} decides its own
  * presentation.
  *
  * <p>A <strong>plain record only</strong>, by product decision (2026-08-01): the outcome, the

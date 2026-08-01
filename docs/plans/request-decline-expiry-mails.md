@@ -204,17 +204,32 @@ N/A — no contract change (no endpoint added or modified).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2 — docs freshness + PR gates)`
+**Stage pointer:** `PR — merge main, mark ready for review, run the gates`
 
-**Next action:** Run `riviera-docs-freshness` over the slice range (the "three
-registry listeners" counting sweep), then merge latest main, mark PR #481 ready for
-review, and run the PR gates per `references/pr-gates.md`.
+**Next action:** Verify Phase 1+2 CI green, merge latest `origin/main`, mark PR #481
+ready for review, then run the Review + Sonar gates per `references/pr-gates.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — booking: two events + in-leg publication | ✅ | `5ae7267`, CI run 1787 green |
-| 1 — notification: two listeners, mails, counters, arch-test list | ✅ | see PR #481 (`Mail the guest a record…`) |
-| 2 — docs freshness + close-out | ⏳ | |
+| 1 — notification: two listeners, mails, counters, arch-test list | ✅ | `ec27bcc` |
+| 2 — docs freshness + close-out | ✅ | see PR #481 (`Docs: five registry listeners…`) |
+
+**riviera-docs-freshness ran** over `origin/main...HEAD` (this slice): **19 findings, all
+patched** — the counting-sweep class, no rename class. CLAUDE.md (notification row ×3
+clauses + mail list + the spine paragraph's event enumeration, booking row untouched),
+`notification/package-info.java` ×2, `ObservabilityMetrics` ×5 ("six mail counters",
+"first of the three", "the three abandoned series", "sharpest of the three", shed-entry
+enumeration), `Mailer` bearer-credential sentence, `TransactionalMailService` "three
+booking mails", `BookingLinks`, `MissingBookingFact` TAG javadoc,
+`RequestPaymentDueMailListener` ×2 ("three booking mails", "two sibling listeners"),
+`SentEmail` "three booking kinds", `MailListenerExecutorArchitectureTest` "the three that
+exist today", `MockMailerTest` assertion text ×2, RESPONSIBILITIES.md ×4 (mail list +
+"sixth counter completes the set" + "six mail counters" ×2 + metric-name enumeration
+"all six/latter five" → eight/seven), observability runbook ×5. Where a number wasn't
+load-bearing the patch went count-free to resist the next rot. Re-swept after fixing
+(the #373 lesson): residual hits are other-subject truths. Graph refresh skipped —
+`graphify-out/` absent in this cloud clone.
 
 Phase 0 notes: red→green as planned (5-case IT; the recorder needed methods-only access —
 Modulith's completion-registering post-processor CGLIB-proxies any

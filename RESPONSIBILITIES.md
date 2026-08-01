@@ -342,7 +342,7 @@ and still queued when the drain window expired — counted by draining the queue
 awaited, which is what makes the number a loss rather than a guess; the send caught **running** is
 deliberately excluded, being the one that may already have reached the relay. Read the name as **never
 ran**, not *refused*. #423 had extended that accounting with `MAIL_RECOVERY_FAILED` — the send this vehicle *accepts* and then cannot deliver,
-which is the likelier loss and the first of the six mail counters to move in a relay outage. It is
+which is the likelier loss and the first of the mail counters to move in a relay outage. It is
 tagged by `kind` and by `reason` (`transport` / `suppression-lookup`) because the one swallowing catch
 can lose a mail to the relay or to a suppression read broken past #386's transient fail-open, and an
 operator acts on the cause, not the consequence. **Since #442 the drop counter carries `kind` too**, on
@@ -369,10 +369,14 @@ ports (ids only) by one module-internal resolver: the `BookingConfirmed` confirm
 #374, the `BookingCancelled` cancellation/refund record — one listener covering every cancellation
 channel, tourist self-service and operator weather refund alike, because it subscribes to the fact
 rather than to either caller, and **rendering** the server-computed refund (invariant #10) rather
-than deciding it; and since #373 the `BookingPaymentDue` notice an accepted Request-mode booking's
-guest gets, whose sixth counter `MAIL_PAYMENT_DUE_ABANDONED` completes the abandoned set and is the
-only one of the three whose loss is **predictive** — the sweep releases the set at the mailed
-deadline, so the errand it opens expires. That listener also decides nothing about *whether* payment
+than deciding it; since #373 the `BookingPaymentDue` notice an accepted Request-mode booking's
+guest gets, whose counter `MAIL_PAYMENT_DUE_ABANDONED` is the
+only abandoned flow whose loss is **predictive** — the sweep releases the set at the mailed
+deadline, so the errand it opens expires; and since #124 the `BookingRequestDeclined` /
+`BookingRequestExpired` records — plain-record copy, no CTA, published from inside
+`RequestReleaseService`'s winning decline/expire legs (the withdraw leg deliberately mails
+nothing, #123), each abandoning under its own sibling counter
+(`MAIL_REQUEST_DECLINED_ABANDONED` / `MAIL_REQUEST_EXPIRED_ABANDONED`). That listener also decides nothing about *whether* payment
 is owed: `booking` settles that by publishing the fact only on the accept branch where money is
 genuinely outstanding, which a status read here could not do without racing the stub's synchronous
 confirm — and the module's
@@ -494,15 +498,16 @@ republication; each lever module keeps its own scope, window value and log noun)
 
 > The metric-name clause is deliberately about *names*, not about observability. A name is a
 > `String` constant, compile-time-inlined, with the emission staying in the module that owns
-> the thing being measured — `payment` emits `REFUNDS_FAILED`, `notification` emits all six of
+> the thing being measured — `payment` emits `REFUNDS_FAILED`, `notification` emits all eight of
 > `MAIL_REGISTRY_SHED`, `MAIL_RECOVERY_DROPPED`, `MAIL_RECOVERY_FAILED`,
-> `MAIL_CONFIRMATION_ABANDONED`, `MAIL_CANCELLATION_ABANDONED` and
-> `MAIL_PAYMENT_DUE_ABANDONED`, including the latter five's
+> `MAIL_CONFIRMATION_ABANDONED`, `MAIL_CANCELLATION_ABANDONED`,
+> `MAIL_PAYMENT_DUE_ABANDONED`, `MAIL_REQUEST_DECLINED_ABANDONED` and
+> `MAIL_REQUEST_EXPIRED_ABANDONED`, including the latter seven's
 > `kind`/`reason` tag values, which are the emitter's vocabulary and stay with it. #408 widened the remit from "money-path metrics" to "metric names"
 > explicitly rather than let a second convention grow, because the alternative — each module
 > declaring its own — leaves the codebase with two answers to "where is a metric name written
 > down" and no way to check one against the other. Note the names are admitted on a justification
-> unique to them — **consistency of the naming convention**, not need: all six mail counters have a
+> unique to them — **consistency of the naming convention**, not need: all the mail counters have a
 > single reader today, so "more than one module needs it" would not have carried them. That is a
 > narrower claim than the other entries make — hold new *metric-name* entries to it.
 >

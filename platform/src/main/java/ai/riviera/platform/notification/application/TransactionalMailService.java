@@ -32,8 +32,9 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * very experience it was added to remove. That asymmetry is why the loss counters are read through
  * their {@code kind} tag rather than in aggregate ({@code docs/runbooks/observability.md}).
  *
- * <p><strong>The three booking mails</strong> — the confirmation (#371), the cancellation/refund
- * record (#374) and the accepted request's payment deadline (#373), all module-internal and driven
+ * <p><strong>The booking mails</strong> — the confirmation (#371), the cancellation/refund
+ * record (#374), the accepted request's payment deadline (#373) and the two request-outcome
+ * records (#124), all module-internal and driven
  * by registry listeners — are deliberately the
  * opposite: synchronous on the listener's thread, transport failures propagating, so the Event
  * Publication Registry keeps the publication outstanding and retries — the at-least-once contract.

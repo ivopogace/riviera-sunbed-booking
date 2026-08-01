@@ -208,10 +208,12 @@ the work was taken, ran, and failed. Only one of those is about the relay.
 
 ### `riviera_mail_confirmation_abandoned_total` (counter, #428)
 
-**A mail loss `riviera_outbox_pending` cannot show** — and one of the three that are never retried by
-anything. Since #374 it has a sibling, `riviera_mail_cancellation_abandoned_total`, which is this
-counter's argument applied to the cancellation listener; everything below holds for both, and the
-one place they differ — what an operator does about an increment — is in that section.
+**A mail loss `riviera_outbox_pending` cannot show** — and one of the abandoned counters, which are
+never retried by anything. Since #374 it has siblings — `riviera_mail_cancellation_abandoned_total`,
+#373's `riviera_mail_payment_due_abandoned_total`, and #124's
+`riviera_mail_request_declined_abandoned_total` / `riviera_mail_request_expired_abandoned_total` —
+each this counter's argument applied to its own listener; everything below holds for all of them, and
+the one place they differ — what an operator does about an increment — is in that section.
 
 A booking confirmation the registry listener **gave up on** because a fact it needs did not resolve:
 the booking row, the set, or the guest contact. The listener logs and returns *normally*, which is
@@ -257,7 +259,7 @@ is zero in a healthy system, so it cannot flood, and with the publication comple
 durable copy — the line is the only per-loss artefact there is. Lines carry the booking and set ids,
 never the arrival code and never the address (invariant #7).
 
-**Which of the six mail counters to read first, during a suspected relay outage:**
+**Which of the mail counters to read first, during a suspected relay outage:**
 
 1. **`riviera_mail_recovery_failed_total{reason="transport"}`** — the fastest and least ambiguous
    signal. One failed send moves it; no queue has to fill first.
@@ -267,8 +269,10 @@ never the arrival code and never the address (invariant #7).
 3. **`riviera_mail_recovery_dropped_total`** — last. It needs 100 sends queued behind a wedged
    drainer, so at current volume it is a symptom of a *long* outage, not an early warning.
 
-None of the three abandoned counters — `riviera_mail_confirmation_abandoned_total`, its #374 sibling
-`riviera_mail_cancellation_abandoned_total`, or #373's `riviera_mail_payment_due_abandoned_total` —
+None of the abandoned counters — `riviera_mail_confirmation_abandoned_total`, its #374 sibling
+`riviera_mail_cancellation_abandoned_total`, #373's `riviera_mail_payment_due_abandoned_total`, or
+#124's `riviera_mail_request_declined_abandoned_total` /
+`riviera_mail_request_expired_abandoned_total` —
 is in that order, deliberately: they never rise because
 of a relay, so seeing any of them during an outage means you have found a *second*, unrelated fault.
 
@@ -409,7 +413,7 @@ that a shipped metric name breaks whatever reads it. What #442's lesson *does* r
 dimension: both series read it off one enum (`notification.application.MissingBookingFact`), so a
 filter written for one works verbatim on the other and `no-set` cannot become `no_set` across them.
 
-**Do not sum the three abandoned counters.** They are acted on differently — see the numbered steps
+**Do not sum the abandoned counters.** They are acted on differently — see the numbered steps
 above, the confirmation's invariant-#7 errand, which has no analogue here, and #373's deadline, which
 makes its errand expire.
 

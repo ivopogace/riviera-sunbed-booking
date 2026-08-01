@@ -22,7 +22,7 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * story 14) — the thing that today reaches them only if they happen to reload the app, and whose
  * absence quietly costs them the slot.
  *
- * <p><strong>It is the only one of the three booking mails that is not a record of something
+ * <p><strong>It is the only one of the booking mails that is not a record of something
  * settled.</strong> The confirmation and the cancellation report a decision already made; this one
  * asks for an action inside a window. That difference is what the copy, the counter and the retry
  * posture are all shaped by — a late confirmation is still useful, a payment-due mail delivered
@@ -36,7 +36,7 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * <em>synchronously</em>, so a status read on this pool could land on either side of it.
  *
  * <p>Everything the mail renders is either on the payload or resolved through
- * {@link BookingMailFactsService}, the same three-port assembly the two sibling listeners use. The
+ * {@link BookingMailFactsService}, the same three-port assembly its sibling listeners use. The
  * deadline is emphatically the former: {@code payBy} is the server-derived instant the abandoned
  * sweep enforces, and recomputing it here would put a second opinion about the guest's window in a
  * module that owns neither the clock nor the configuration behind it. The arrival code comes from
