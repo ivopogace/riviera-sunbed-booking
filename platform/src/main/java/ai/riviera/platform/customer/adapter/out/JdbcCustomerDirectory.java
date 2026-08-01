@@ -1,5 +1,9 @@
 package ai.riviera.platform.customer.adapter.out;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -70,5 +74,21 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 				.query((rs, rowNum) -> new GuestContact(
 						rs.getString(COL_EMAIL), rs.getString("full_name"), rs.getString("phone")))
 				.optional();
+	}
+
+	@Override
+	public Map<CustomerId, GuestContact> findByIds(Collection<CustomerId> ids) {
+		// Guard before SQL: an empty collection would expand to invalid `IN ()`.
+		if (ids.isEmpty()) {
+			return Map.of();
+		}
+		return jdbc.sql("SELECT id, email, full_name, phone FROM customer WHERE id IN (:ids)")
+				.param("ids", ids.stream().map(CustomerId::value).toList())
+				.query((rs, rowNum) -> Map.entry(
+						new CustomerId(rs.getLong("id")),
+						new GuestContact(rs.getString(COL_EMAIL), rs.getString("full_name"),
+								rs.getString("phone"))))
+				.list().stream()
+				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
 }

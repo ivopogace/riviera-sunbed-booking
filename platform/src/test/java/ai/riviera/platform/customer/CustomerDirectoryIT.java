@@ -1,5 +1,7 @@
 package ai.riviera.platform.customer;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -83,6 +85,28 @@ class CustomerDirectoryIT {
 
 		assertEquals(Optional.empty(), lookup.findByEmail("never-seen@example.com"));
 		assertEquals(before, countCustomers(), "a lookup must not create a guest contact");
+	}
+
+	/**
+	 * The batch read (#126): one query resolves many ids; unknown ids are absent from the map, and
+	 * an empty input returns an empty map without touching the database (an empty {@code IN ()}
+	 * would be invalid SQL — the guard is the contract, this proves it holds).
+	 */
+	@Test
+	void findsABatchOfContactsByIdSkippingUnknownIds() {
+		CustomerId cala = directory.findOrCreate(
+				new GuestContact("cala@example.com", "Cala Doe", "+355600444"));
+		CustomerId dren = directory.findOrCreate(
+				new GuestContact("dren@example.com", "Dren Doe", "+355600555"));
+		CustomerId unknown = new CustomerId(999_999_999L);
+
+		Map<CustomerId, GuestContact> found = lookup.findByIds(List.of(cala, dren, unknown));
+
+		assertEquals(2, found.size());
+		assertEquals("Cala Doe", found.get(cala).fullName());
+		assertEquals("Dren Doe", found.get(dren).fullName());
+
+		assertEquals(Map.of(), lookup.findByIds(List.of()), "empty input must not build IN () SQL");
 	}
 
 	private long countCustomers() {

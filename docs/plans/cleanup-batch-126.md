@@ -209,14 +209,14 @@ byte-compatible; `GET /api/bookings/{code}` is consumed as-is by the new re-chec
 
 ## Execution status
 
-**Stage pointer:** plan — doc authored, committing as phase 0
+**Stage pointer:** implement (phase 2)
 
-**Next action:** commit this plan doc, push the branch, open the draft PR (#126 batch)
+**Next action:** AC-7 wire-freeze test for the two 202 bodies, then the insert/view dedup
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + draft PR | ⏳ | |
-| 1 — BE: `findByIds` batch read (AC-4, AC-5) | | |
+| 0 — plan doc + draft PR | ✅ | 0178ae1; draft PR #482 |
+| 1 — BE: `findByIds` batch read (AC-4, AC-5) | ✅ | 1f95f6e |
 | 2 — BE: booking insert + 202-view dedup (AC-6, AC-7) | | |
 | 3 — FE: `BookingService` single-result hand-off (AC-9) | | |
 | 4 — FE: daily-tab `forkJoin` (AC-8) | | |
