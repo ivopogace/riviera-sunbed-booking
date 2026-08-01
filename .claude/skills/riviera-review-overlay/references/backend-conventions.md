@@ -15,7 +15,11 @@ historical, not sequential — see the note at RV-BE-9. Invariant numbers refere
 ### RV-BE-1. Availability single-source-of-truth & concurrency (invariant #2)
 **Gate:** For any write to `availability(set_id, booking_date)`, is a set provably
 holdable by at most one party per date, even under concurrent requests?
-- [ ] no availability write  [ ] DB unique constraint on `(set_id, booking_date)` present  [ ] reservation uses `SELECT … FOR UPDATE` or atomic `INSERT … ON CONFLICT DO NOTHING`  [ ] check-then-insert with no lock (race — violation)  [ ] concurrent-reservation test present
+- [ ] no availability write
+- [ ] DB unique constraint on `(set_id, booking_date)` present
+- [ ] reservation uses `SELECT … FOR UPDATE` or atomic `INSERT … ON CONFLICT DO NOTHING`
+- [ ] check-then-insert with no lock (race — violation)
+- [ ] concurrent-reservation test present
 
 **Follow-up:**
 - The online-booking path and the staff tap-to-mark path write the **same** row.
@@ -49,7 +53,10 @@ missing concurrency test on a guarded path.
 
 ### RV-BE-2. JDBC only — no JPA (invariant #1)
 **Gate:** Does the change stay on Spring Data JDBC / `JdbcTemplate` with zero JPA?
-- [ ] JDBC only  [ ] `spring-boot-starter-data-jpa` added to the build (violation)  [ ] `@Entity`/`@OneToMany`/`@ManyToOne`/`mappedBy`/`EntityManager` used (violation)  [ ] `JpaRepository` extended (violation)
+- [ ] JDBC only
+- [ ] `spring-boot-starter-data-jpa` added to the build (violation)
+- [ ] `@Entity`/`@OneToMany`/`@ManyToOne`/`mappedBy`/`EntityManager` used (violation)
+- [ ] `JpaRepository` extended (violation)
 
 **Split by what's checkable.** The structural half is machine-enforced —
 `JdbcOnlyArchitectureTests` probes the classpath for JPA/Hibernate types; verify it
@@ -70,7 +77,11 @@ mapping), not ORM-managed.
 ### RV-BE-3. Spring Modulith boundaries (invariant #11)
 **Gate:** Does any file import another module's `application.*`, `adapter.*`,
 or `domain.*` instead of going through its published surfaces or an event?
-- [ ] no cross-module import outside the published surfaces (`api`/`spi`/`vocabulary`/`events`)  [ ] cross-module import of `application.*` (violation)  [ ] cross-module import of `adapter.*` (violation)  [ ] cross-module import of another module's `domain.*` (violation)  [ ] new module without `package-info.java` `@ApplicationModule`
+- [ ] no cross-module import outside the published surfaces (`api`/`spi`/`vocabulary`/`events`)
+- [ ] cross-module import of `application.*` (violation)
+- [ ] cross-module import of `adapter.*` (violation)
+- [ ] cross-module import of another module's `domain.*` (violation)
+- [ ] new module without `package-info.java` `@ApplicationModule`
 
 **Split by what's checkable.** Illegal cross-module imports and the
 `allowedDependencies` grants are machine-enforced by `ModularityTests`
@@ -93,7 +104,12 @@ missing `@ApplicationModule`.
 ### RV-BE-3b. API vs SPI for cross-module ports (invariant #11)
 **Gate:** Is each cross-module port in the correct named interface — inbound ports
 others *call* in `api/`, and a *driven* port another module *implements* in `spi/`?
-- [ ] no new cross-module port  [ ] inbound port (others call) in `api/`  [ ] driven port implemented by ANOTHER module in `spi/` (`@NamedInterface("spi")`), not `api/`  [ ] an `api/` interface that another module *implements* rather than calls (misfiled — belongs in `spi/`)  [ ] `<provider>::spi` granted only to the implementor; call-only modules granted `<provider>::api` only  [ ] a driven port implemented by the module's OWN adapters wrongly published instead of staying internal in `application/`
+- [ ] no new cross-module port
+- [ ] inbound port (others call) in `api/`
+- [ ] driven port implemented by ANOTHER module in `spi/` (`@NamedInterface("spi")`), not `api/`
+- [ ] an `api/` interface that another module *implements* rather than calls (misfiled — belongs in `spi/`)
+- [ ] `<provider>::spi` granted only to the implementor; call-only modules granted `<provider>::api` only
+- [ ] a driven port implemented by the module's OWN adapters wrongly published instead of staying internal in `application/`
 
 **Follow-up:**
 - Default is `api/` (inbound). Promote a driven port to a named interface **only** when
@@ -139,7 +155,10 @@ rewrite (Event Publication Registry) — see V18.
 
 ### RV-BE-4. Domain events carry ids, not aggregates (invariant #11)
 **Gate:** Do domain-event payloads carry technical ids only?
-- [ ] no events  [ ] payload is ids (`BookingId`, `SetId`, `VenueId`, `bookingDate`)  [ ] payload embeds a full aggregate / foreign module type (violation)  [ ] payload carries mutable business fields (email, name) as identity (smell)
+- [ ] no events
+- [ ] payload is ids (`BookingId`, `SetId`, `VenueId`, `bookingDate`)
+- [ ] payload embeds a full aggregate / foreign module type (violation)
+- [ ] payload carries mutable business fields (email, name) as identity (smell)
 
 **Follow-up:**
 - `@TransactionalEventListener(phase = AFTER_COMMIT)` for async side effects so a
@@ -154,7 +173,10 @@ rewrite (Event Publication Registry) — see V18.
 
 ### RV-BE-5. Money is integer minor units (invariant #5)
 **Gate:** Are all monetary amounts integer minor units with an explicit currency?
-- [ ] money as `long`/`int` minor units + currency  [ ] `double`/`float` amount (violation)  [ ] `BigDecimal` of euros flowing through domain (smell — convert at the edge)  [ ] commission/payout division without a written rounding rule
+- [ ] money as `long`/`int` minor units + currency
+- [ ] `double`/`float` amount (violation)
+- [ ] `BigDecimal` of euros flowing through domain (smell — convert at the edge)
+- [ ] commission/payout division without a written rounding rule
 
 **Follow-up:**
 - Where commission introduces a division, the rounding rule is explicit and tested
@@ -170,7 +192,11 @@ rewrite (Event Publication Registry) — see V18.
 ### RV-BE-6. Timezone: store UTC, reason in Europe/Tirane (invariant #6)
 **Gate:** Is date/cutoff logic computed in `Europe/Tirane` with UTC storage, never
 the JVM default zone?
-- [ ] no time logic  [ ] booking date is `LocalDate` in `Europe/Tirane`  [ ] cutoff computed in `Europe/Tirane`  [ ] `LocalDateTime.now()` / `new Date()` / JVM-default-zone arithmetic (violation)  [ ] timestamp persisted as local time instead of UTC `Instant` (violation)
+- [ ] no time logic
+- [ ] booking date is `LocalDate` in `Europe/Tirane`
+- [ ] cutoff computed in `Europe/Tirane`
+- [ ] `LocalDateTime.now()` / `new Date()` / JVM-default-zone arithmetic (violation)
+- [ ] timestamp persisted as local time instead of UTC `Instant` (violation)
 
 **Follow-up:**
 - Mechanics of the cutoff computation and UTC persistence: invariants #4 and #6.
@@ -185,7 +211,12 @@ for cosmetic local-time persistence.
 
 ### RV-BE-7. Stripe webhook is the source of truth + idempotent (invariant #8)
 **Gate:** Is payment state driven by signature-verified webhooks, idempotently?
-- [ ] no payment change  [ ] booking confirmed on verified webhook  [ ] booking confirmed from client redirect / client-reported success (violation)  [ ] webhook signature not verified (violation)  [ ] handler not idempotent on duplicate event delivery (violation)  [ ] missing idempotency key on charge/refund creation
+- [ ] no payment change
+- [ ] booking confirmed on verified webhook
+- [ ] booking confirmed from client redirect / client-reported success (violation)
+- [ ] webhook signature not verified (violation)
+- [ ] handler not idempotent on duplicate event delivery (violation)
+- [ ] missing idempotency key on charge/refund creation
 
 **Follow-up:**
 - Verify the Stripe signature on every webhook before acting.
@@ -205,7 +236,11 @@ webhook; Major for a non-idempotent handler.
 ### RV-BE-8. Payout ledger is exactly-once and reversible (invariant #9)
 **Gate:** Does each booking accrue to a venue's payout exactly once, with refunds
 reversing it?
-- [ ] no payout change  [ ] accrual on confirm, keyed so it can't double  [ ] accrual not idempotent (double-pay risk — violation)  [ ] refund does not reverse the accrual (over-pay — violation)  [ ] commission rate read from a hardcoded constant instead of the venue setting
+- [ ] no payout change
+- [ ] accrual on confirm, keyed so it can't double
+- [ ] accrual not idempotent (double-pay risk — violation)
+- [ ] refund does not reverse the accrual (over-pay — violation)
+- [ ] commission rate read from a hardcoded constant instead of the venue setting
 
 **Follow-up:**
 - Accrual is keyed by `BookingId` so a re-delivered confirmation event can't accrue
@@ -323,7 +358,9 @@ judgment** and the "is this the right use-case slice" call → review. Default *
 
 ### RV-BE-14. Booking codes are unguessable (invariant #7)
 **Gate:** Are booking codes high-entropy and treated as bearer credentials?
-- [ ] random ≥8-char (e.g. base32) code  [ ] sequential / predictable id used as the code (violation)  [ ] code logged in plaintext at info level (smell)
+- [ ] random ≥8-char (e.g. base32) code
+- [ ] sequential / predictable id used as the code (violation)
+- [ ] code logged in plaintext at info level (smell)
 
 **Follow-up:**
 - Generate from a CSPRNG; avoid ambiguous chars if staff read it aloud. (Why it
@@ -338,7 +375,10 @@ judgment** and the "is this the right use-case slice" call → review. Default *
 ### RV-BE-15. Pool and cutoff enforced server-side (invariants #3, #4)
 **Gate:** Are the online-pool restriction and the no-same-day cutoff enforced on the
 server, not just hidden in the UI?
-- [ ] online booking restricted to online-pool sets server-side  [ ] pool only enforced in the frontend (violation)  [ ] same-day booking rejected server-side at the cutoff  [ ] cutoff only enforced in the UI (violation)
+- [ ] online booking restricted to online-pool sets server-side
+- [ ] pool only enforced in the frontend (violation)
+- [ ] same-day booking rejected server-side at the cutoff
+- [ ] cutoff only enforced in the UI (violation)
 
 **Follow-up:**
 - A crafted request must not be able to book a walk-in-pool set or a same-day slot.
@@ -353,7 +393,10 @@ server, not just hidden in the UI?
 
 ### RV-BE-16. Refund policy computed server-side (invariant #10)
 **Gate:** Is refund eligibility/amount decided on the server from the policy?
-- [ ] refund decision server-side from booking state + policy  [ ] client supplies the refund amount (violation)  [ ] weather refund modeled as an explicit admin action  [ ] policy thresholds hardcoded in two places (drift risk)
+- [ ] refund decision server-side from booking state + policy
+- [ ] client supplies the refund amount (violation)
+- [ ] weather refund modeled as an explicit admin action
+- [ ] policy thresholds hardcoded in two places (drift risk)
 
 **Follow-up:**
 - One source for the cutoff/threshold values; reuse it for both the booking-close
@@ -374,7 +417,10 @@ thresholds.
 ### RV-BE-13. No injection: SQL, log, deserialization
 **Gate:** Is untrusted input kept out of SQL string-building, log lines, and
 unsafe deserialization?
-- [ ] SQL uses bound params (`:name`), never string concatenation of input  [ ] user-controlled text logged without neutralizing `\r\n` (log forging — violation)  [ ] booking code / secret / PII logged in clear (violation — invariant #7)  [ ] untrusted bytes deserialized without an allowlist (violation)
+- [ ] SQL uses bound params (`:name`), never string concatenation of input
+- [ ] user-controlled text logged without neutralizing `\r\n` (log forging — violation)
+- [ ] booking code / secret / PII logged in clear (violation — invariant #7)
+- [ ] untrusted bytes deserialized without an allowlist (violation)
 
 **Default severity:** **Blocker** for SQL injection or a secret in logs; Major for
 unsanitized untrusted text in logs or unguarded deserialization.
@@ -413,7 +459,11 @@ login budgets still charge (#343). Default **Blocker**. (Authority: the CLAUDE.m
 ### RV-BE-17. Flyway migrations enforce the invariants (invariant #12)
 **Gate:** Do schema changes go through versioned Flyway migrations, and do the
 constraints that enforce invariants exist in SQL (not just app code)?
-- [ ] no schema change  [ ] versioned forward migration under `db/migration`  [ ] schema changed via app code / hand-run DDL (violation)  [ ] availability uniqueness exists only in app logic, not as a DB constraint (violation)  [ ] migration not tested
+- [ ] no schema change
+- [ ] versioned forward migration under `db/migration`
+- [ ] schema changed via app code / hand-run DDL (violation)
+- [ ] availability uniqueness exists only in app logic, not as a DB constraint (violation)
+- [ ] migration not tested
 
 **Follow-up:**
 - Forward-only versioned scripts; naming follows existing migrations. (Why the

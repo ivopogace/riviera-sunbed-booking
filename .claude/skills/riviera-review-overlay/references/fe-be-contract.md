@@ -12,7 +12,10 @@ contract change). Invariant numbers reference `CLAUDE.md`.
 ### RV-CT-1. API typing — no `as any`, no hand-stubbed DTOs
 **Gate:** Does the Angular client consume the API through generated or explicitly
 typed services, with the backend DTO as the single source of shape?
-- [ ] no contract change  [ ] client typed from the backend contract (generated from OpenAPI, or a typed service mirroring the DTO)  [ ] `as any` / untyped `any` on a response (violation)  [ ] frontend interface silently diverges from the backend DTO (drift)
+- [ ] no contract change
+- [ ] client typed from the backend contract (generated from OpenAPI, or a typed service mirroring the DTO)
+- [ ] `as any` / untyped `any` on a response (violation)
+- [ ] frontend interface silently diverges from the backend DTO (drift)
 
 **Follow-up:**
 - If an OpenAPI-generated client is used, regenerate after a backend contract change
@@ -33,7 +36,10 @@ hand-stubbed type.
 
 ### RV-CT-2. Money and dates on the wire (invariants #5, #6)
 **Gate:** Do money and dates cross the boundary in the agreed shape?
-- [ ] amounts as integer minor units + ISO currency code  [ ] amount sent/received as a float or euro-decimal string (violation)  [ ] booking date as ISO `LocalDate` (`YYYY-MM-DD`), not a timestamp  [ ] a date sent as a full `Instant` that can shift the calendar day across zones (violation)
+- [ ] amounts as integer minor units + ISO currency code
+- [ ] amount sent/received as a float or euro-decimal string (violation)
+- [ ] booking date as ISO `LocalDate` (`YYYY-MM-DD`), not a timestamp
+- [ ] a date sent as a full `Instant` that can shift the calendar day across zones (violation)
 
 **Follow-up:**
 - Agree once, both sides honor it; the money and calendar-date rules are canonical
@@ -50,7 +56,10 @@ encoding.
 ### RV-CT-3. Payment confirmation flow — webhook is truth, redirect is UX (invariant #8)
 **Gate:** Is the end-to-end payment flow confirmed by a server-side verified webhook,
 with the client redirect treated as UX only?
-- [ ] no payment flow change  [ ] booking confirmed server-side on a verified webhook; FE shows a finalizing→confirmed state reconciled from the server  [ ] FE marks the booking confirmed purely from the Stripe redirect (violation)  [ ] FE polls/loads the server booking state to confirm (acceptable)
+- [ ] no payment flow change
+- [ ] booking confirmed server-side on a verified webhook; FE shows a finalizing→confirmed state reconciled from the server
+- [ ] FE marks the booking confirmed purely from the Stripe redirect (violation)
+- [ ] FE polls/loads the server booking state to confirm (acceptable)
 
 **Follow-up:**
 - The redirect can be lost (closed tab, retries). The booking's confirmed state lives
@@ -70,7 +79,10 @@ money/trust correctness bug.
 
 ### RV-CT-4. Double-submit / idempotency across the boundary
 **Gate:** Are reserve-and-pay actions safe against double submission and retries?
-- [ ] booking creation is idempotent or guarded against double-submit  [ ] a retried/duplicated submit can create two bookings or two charges (violation)  [ ] the FE disables/locks the submit while in flight  [ ] backend dedupes via the availability claim (invariant #2) and the Stripe idempotency key (invariant #8)
+- [ ] booking creation is idempotent or guarded against double-submit
+- [ ] a retried/duplicated submit can create two bookings or two charges (violation)
+- [ ] the FE disables/locks the submit while in flight
+- [ ] backend dedupes via the availability claim (invariant #2) and the Stripe idempotency key (invariant #8)
 
 **Follow-up:**
 - The availability single-winner guarantee (RV-BE-1) already stops two confirmed
@@ -89,7 +101,10 @@ money/trust correctness bug.
 ### RV-CT-5. Error contract is consistent and surfaced
 **Gate:** Do business errors follow the shipped RFC-7807 contract, with a stable
 machine-readable `code` the FE branches on?
-- [ ] business errors are `ProblemDetail` (`application/problem+json`) with the `code` extension (e.g. `409 SET_TAKEN`, `BOOKING_CLOSED`, `NOT_ONLINE_POOL`)  [ ] domain conflicts surface as generic 500s or a bespoke `{"error": …}` body (violation)  [ ] FE shows a raw error string instead of a user-meaningful message  [ ] a new business rejection ships without its own `code` the FE can explain
+- [ ] business errors are `ProblemDetail` (`application/problem+json`) with the `code` extension (e.g. `409 SET_TAKEN`, `BOOKING_CLOSED`, `NOT_ONLINE_POOL`)
+- [ ] domain conflicts surface as generic 500s or a bespoke `{"error": …}` body (violation)
+- [ ] FE shows a raw error string instead of a user-meaningful message
+- [ ] a new business rejection ships without its own `code` the FE can explain
 
 **Follow-up:**
 - The contract is shipped and centralized (RV-BE-10): `ApiProblem` +
