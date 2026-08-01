@@ -119,6 +119,16 @@ never be double-sold.
 **Job:** Own bookings, booking codes, and the lifecycle (confirmed / cancelled /
 completed / no-show). Enforce the cancellation policy and the same-day cutoff.
 Orchestrate the reserve → pay → confirm flow across `availability` and `payment`.
+Own the request lifecycle's three terminal legs on `RequestReleaseService` — decline,
+the expiry sweep, and the guest's own **withdraw** (#123): withdraw is authorized by the
+booking **code** alone (the only request command with no ownership check) and guarded by
+status alone — **not** deadline-guarded, matching decline — so on an overdue row its
+`WHERE` and the sweep's both match and the **row lock**, not the predicates, is what
+leaves exactly one transition and exactly one release (`ConcurrentRequestTerminationIT`);
+it publishes **no** event, deliberately: nothing accrued and nothing collected
+(payment-request-on-accept), and routing it through `CancelBookingService` would fan a
+`refundMinor = 0` `BookingCancelled` out to three subscribers, one of which (#374) would
+mail the guest a cancellation record for a request they retracted themselves.
 Publish the **notification-facts** reads a mail needs: the arrival code + contact id
 (`BookingNotificationFacts#notificationInfo`, #371) and, since **#380**, the wider
 `#confirmationFacts` an admin resend rebuilds the mail from (it has no event payload to read), plus
@@ -135,7 +145,20 @@ what a consumer actually needs and keeps `BookingStatus` internal.
   hold a PaymentIntent or a webhook). Since #404 I do own the **bounded executor** my post-commit
   refund listener drains on — that is wiring for *my* driving adapter, not gateway knowledge: I still
   only call `payment.api.RefundPort` and never learn which gateway is behind it. `payment` must not
-  host it; it does not know it is being called asynchronously, and must not have to. Since **#454** I
+  host it; it does not know it is being called asynchronously, and must not have to. The listener
+  makes a blocking gateway round-trip (one attempt, ≈25s worst case — `StripeClient` adds no
+  retries, pinned by `StripeConfigTest`) and `WeatherRefundService` dispatches a whole venue-day of
+  refunds in one transaction, so on Boot's shared `applicationTaskExecutor` a single admin action
+  would starve the spine that pool also carries; the same swap **dropped** the `REQUIRES_NEW` the
+  composite annotation supplied — it bought nothing (the one write is a single statement, after a
+  successful refund) while pinning one of ten Hikari connections across the call. Saturation
+  **sheds** to `ObservabilityMetrics.REFUNDS_SHED` and the publication stays outstanding for the
+  restart republish, but the queue is sized (`riviera.booking.refund.*`, validated at boot) so
+  shedding is unreachable for any plausible burst — unlike a shed mail, a shed refund is money owed
+  under invariant #10, and a shed is the one loss mode that does not trigger its own recovery. The
+  executor rule is structural: `RefundListenerExecutorArchitectureTest`, scoped to `booking`
+  listeners reaching `payment::api`, so `PaymentEventListener` and `payout`'s DB-only listeners
+  correctly stay on the shared pool. Since **#454** I
   also own the ADMIN **refund-outbox re-drive** (`GET`/`POST /api/admin/refund-outbox`) — the retry
   lever for what the registry still owes *my* refund listener, scoped to that listener's **exact id**
   (an allowlist of one, never the `booking` package prefix, which would sweep `PaymentEventListener`'s
@@ -317,17 +340,26 @@ bearer-credential payloads (ADR-0011 decision 5), **each draining on its own bou
 (#383) so a degraded relay can never occupy the shared `applicationTaskExecutor` that carries the
 payment→booking and booking→payout listeners; the registry listener therefore spells out
 `@Async("registryMailExecutor")` + `@TransactionalEventListener` instead of
-`@ApplicationModuleListener`, and holds no transaction across the send; that pool's size and queue
+`@ApplicationModuleListener`, and holds no transaction across the send — pinned by
+`MailListenerExecutorArchitectureTest`, whose non-vacuity guard names all five shipped listeners
+off one list; that pool's size and queue
 depth are `riviera.notification.registry-mail.*` properties since #408 (defaults `2`/`200`, validated
-at boot, so #370 can retune them against a real relay without a deploy) — and since #410 both pools'
+at boot **on both ends** — a non-positive `queue-capacity` would yield a `SynchronousQueue` that
+sheds nearly everything, an oversized one would restore the very unbounded queue the bulkhead
+removed, and both would boot clean — so #370 can retune them against a real relay without a deploy) — and since #410 both pools'
 shutdown drain window is **derived** from a third such property,
 `riviera.notification.mail.socket-timeout-ms`, which is also what every
 `spring.mail.properties.mail.smtp.*` timeout interpolates, so the relay budget and the drain cannot
-drift apart the way a flat 5s and a 10s socket timeout did; when that window expires both pools give
+drift apart the way a flat 5s and a 10s socket timeout did; since #456 the drain arithmetic lives in
+`shared`'s `ShutdownBudget` (the SIGTERM grace and every draining pool's claim on it), and
+`ShutdownDrainArchitectureTest` **discovers** draining pools from bytecode — not from the context,
+which would miss the `defaultCandidate = false` bulkheads and the non-bean recovery pool — and sums
+the claims against the grace; when that window expires both pools give
 up rather than interrupting, since an interrupt cannot tell a send that already reached the relay from
 one that has not. Both also carry the submitting request's MDC onto their workers through one shared
-`MdcTaskDecorator` (#410), composed onto the registry pool beside the shed policy that already owns
-its decorator slot — a class that **#455 moved to `shared`**, because #404's refund pool needed the
+`MdcTaskDecorator` (#410), composed onto the registry pool via `CompositeTaskDecorator` beside the
+shed policy that already owns its decorator slot (replacing it would silently strand the episode
+flag open) — a class that **#455 moved to `shared`**, because #404's refund pool needed the
 same mechanism and invariant #11 forbids `booking` importing this module's `application` package; the
 decorator is no longer this module's to own, and `WorkerContextArchitectureTest` now pins that every
 self-configured pool carries it. Each shed send increments
@@ -378,7 +410,8 @@ deadline, so the errand it opens expires; and since #124 the `BookingRequestDecl
 nothing, #123), each abandoning under its own sibling counter
 (`MAIL_REQUEST_DECLINED_ABANDONED` / `MAIL_REQUEST_EXPIRED_ABANDONED`). That listener also decides nothing about *whether* payment
 is owed: `booking` settles that by publishing the fact only on the accept branch where money is
-genuinely outstanding, which a status read here could not do without racing the stub's synchronous
+genuinely outstanding (a failed PaymentIntent reverts the booking to `PENDING_REQUEST`), which a
+status read here could not do without racing the stub's synchronous
 confirm — and the module's
 first owned state (the second is #380's delivery log, below): the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
 a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
@@ -412,8 +445,8 @@ never marked failed. The application-side single-flight + cooldown is therefore 
 eligible again in milliseconds. Publishes exactly one
 named interface, `notification::api`, holding **two role-split ports**:
 the fire-and-forget `MailSender` (never throws, runs off the caller's thread,
-suppression-enforced — and since #375 carrying the **operator-approval notice** alongside the two
-recovery kinds, which is why "recovery" in `MAIL_RECOVERY_*` names the *vehicle* and the `kind` tag
+suppression-enforced — and since #375 carrying the **operator-approval notice**
+(`kind="operator-approved"`) alongside the two recovery kinds, which is why "recovery" in `MAIL_RECOVERY_*` names the *vehicle* and the `kind` tag
 names the flow: the notice carries no bearer credential, but it is edge-orchestrated from an admin
 request rather than driven by a domain fact, and ADR-0011 decision 5 reads both) and, since #400,
 the synchronous read `MailDeliverability`
@@ -499,7 +532,8 @@ republication; each lever module keeps its own scope, window value and log noun)
 
 > The metric-name clause is deliberately about *names*, not about observability. A name is a
 > `String` constant, compile-time-inlined, with the emission staying in the module that owns
-> the thing being measured — `payment` emits `REFUNDS_FAILED`, `notification` emits all eight of
+> the thing being measured — `payment` emits `REFUNDS_FAILED`, `booking` emits `REFUNDS_SHED`
+> (#404's refund-pool shed), `notification` emits all eight of
 > `MAIL_REGISTRY_SHED`, `MAIL_RECOVERY_DROPPED`, `MAIL_RECOVERY_FAILED`,
 > `MAIL_CONFIRMATION_ABANDONED`, `MAIL_CANCELLATION_ABANDONED`,
 > `MAIL_PAYMENT_DUE_ABANDONED`, `MAIL_REQUEST_DECLINED_ABANDONED` and
@@ -562,6 +596,10 @@ sufficient.
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
 | No login machinery inside `operator` (RV-BE-11) | `OperatorAuthPlacementTests` |
 | No login machinery inside `customer` (RV-BE-11) | `CustomerAuthPlacementTests` |
+| Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` (#383) | `MailListenerExecutorArchitectureTest` |
+| `booking` listeners reaching `payment::api` run on the bounded refund pool, not the shared one (#404) | `RefundListenerExecutorArchitectureTest` |
+| Every self-configured worker pool carries the shared MDC decorator (#455) | `WorkerContextArchitectureTest` |
+| The draining pools' shutdown claims sum within the platform's SIGTERM grace (#456) | `ShutdownDrainArchitectureTest` |
 
 Each rule is proven able to fail on every build, against deliberately-violating fixtures
 (`ai.riviera.responsibilityfixture`, `ai.riviera.placementfixture`) — never by breaking

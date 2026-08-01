@@ -120,13 +120,17 @@ than recalls**, and make `riviera-docs-freshness` state *ran* or *N/A + reason* 
 listed" and "not applicable" look identical in a diff, so a skipped run hid five times.
 
 **The count.** #373 added the third registry-borne booking mail and the sixth mail counter,
-falsifying **sixteen** stated facts — "the two booking kinds", "the first of the two",
-"five mail counters", and so on. Reviewing the changed files found six of them. The other
-**ten** came only from grepping the substrate, in a second round, after the first six were
-fixed: by definition they lived in files the diff never touched, so no amount of reviewing
-the diff could surface them. One of the sixteen was self-inflicted inside the fix round —
-`PaymentDueAnnouncerIT`'s Javadoc still called a method package-private an hour after the
-fix made it public. #374 hit the same class one slice earlier. Lesson: when a slice makes
-the **Nth** of something, grep the substrate for the phrasings of **N−1** (not just the
-renamed identifier) and **re-run the sweep after the fix round** — `riviera-docs-freshness`
-procedure step 2b, cited from merge close-out step 5.
+falsifying **sixteen** stated facts: `Mailer`'s "the two booking kinds",
+`MissingBookingFact`'s "two counters"/"two listeners", both `package-info.java` files,
+`MAIL_CONFIRMATION_ABANDONED`'s "first of the two",
+`MailListenerExecutorArchitectureTest`'s "not just the two that exist today",
+`MockMailerTest`'s assertion description, three surviving "five mail counters", and the
+runbook's "do not sum the two abandoned counters". Reviewing the changed files found six of
+them. The other **ten** came only from grepping the substrate, in a second round, after the
+first six were fixed: by definition they lived in files the diff never touched, so no
+amount of reviewing the diff could surface them. One of the sixteen was self-inflicted
+inside the fix round — `PaymentDueAnnouncerIT`'s Javadoc still called a method
+package-private an hour after the fix made it public. #374 hit the same class one slice
+earlier. Lesson: when a slice makes the **Nth** of something, grep the substrate for the
+phrasings of **N−1** (not just the renamed identifier) and **re-run the sweep after the fix
+round** — `riviera-docs-freshness` procedure step 2b, cited from merge close-out step 5.
