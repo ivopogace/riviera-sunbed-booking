@@ -56,34 +56,34 @@ addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (id reacts + state resets):** Given the map rendered for venue 1 with a
+- [x] **AC-1 (id reacts + state resets):** Given the map rendered for venue 1 with a
   set's booking dialog open, when the route's `paramMap` emits `id=2` without the
   component being destroyed, then the dialog closes, the venue-1 map clears (loading
   state), and venue 2's map is fetched for the current route date and rendered.
   *Pinned by:* `venue-map.spec.ts` › "re-loads and resets when the venue param
   changes in place (#499)"
-- [ ] **AC-2 (superseded responses dropped, identity-guarded):** Given a venue-1 map
+- [x] **AC-2 (superseded responses dropped, identity-guarded):** Given a venue-1 map
   load still in flight, when the param switches to venue 2 — including an A→B→A
   switch back to venue 1 — then the superseded response never lands in the view
   (epoch identity, not param-value comparison). *Pinned by:* `venue-map.spec.ts` ›
   "drops a superseded venue's late response (#499)" and "drops a stale first-visit
   response after an A→B→A switch (#499)"
-- [ ] **AC-3 (route date re-seeds):** Given the map rendered on date D (route-seeded
+- [x] **AC-3 (route date re-seeds):** Given the map rendered on date D (route-seeded
   or picker-chosen), when a route emission carries a different valid `?date=E` on/after
   the booking floor, then the map resets to E and fetches E's availability; a
   malformed or past `?date` falls back to the floor (invariant #4, display). *Pinned
   by:* `venue-map.spec.ts` › "re-seeds the date from the ?date param on an in-place
   navigation (#499)"
-- [ ] **AC-4 (invalid param transition + recovery):** Given the map rendered for a
+- [x] **AC-4 (invalid param transition + recovery):** Given the map rendered for a
   valid venue, when the param turns non-numeric, then the failure panel shows; when a
   valid id then arrives, the map recovers and loads it. *Pinned by:*
   `venue-map.spec.ts` › "fails fast when the param turns invalid and recovers (#499)"
-- [ ] **AC-5 (fresh-navigation parity):** Given a fresh navigation to `/venues/:id`
+- [x] **AC-5 (fresh-navigation parity):** Given a fresh navigation to `/venues/:id`
   (the only flow that exists today), when the component constructs, then behavior is
   unchanged: one load for the seeded date, `?date` honored/clamped exactly as before.
   *Pinned by:* the existing `venue-map.spec.ts` + `venue-map.a11y.spec.ts` suites
   staying green, unmodified in intent (route mocks upgraded only).
-- [ ] **AC-6 (real route config, end to end):** Given the real `app.routes.ts` config
+- [x] **AC-6 (real route config, end to end):** Given the real `app.routes.ts` config
   under `RouterTestingHarness`, when navigating `/venues/1` → `/venues/2`, then the
   same `VenueMap` instance is reused and venue 2's name renders off a venue-2 HTTP
   load. *Pinned by:* `venue/venue-map-switch.spec.ts`
@@ -120,18 +120,21 @@ constructor path is rebuilt, so the fresh-mount behaviors are enumerated:
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Per-venue transient state leaks across a switch (open dialog, `lastTriggerId` focus target, pan-gesture flags, stale map while venue 2 loads) | med | high | `resetForRoute` clears every venue-scoped signal + imperative field; AC-1 asserts the dialog + map reset | Claude | open |
-| R-2 | `toSignal(paramMap/queryParamMap)` subscribes at construction — the 3 snapshot-only route mocks (`venue-map.spec.ts` ×2 sites, `venue-map.a11y.spec.ts`) crash | high | low | Sweep the mocks to `BehaviorSubject`-backed ones in phase 1; red Vitest run catches stragglers | Claude | open |
-| R-3 | A same-value `?date` route emission after a local picker change does not reset (computed equality) — fresh-mount parity edge | low | low | Accepted: no such navigation exists; the #487 identity rule is applied where it matters (async continuation guards), while the *reset trigger* keys on value change like every #495 tab | Claude | accepted |
-| R-4 | Blanking the map on reset regresses an existing flow | low | med | Only route emissions reset; the picker path is untouched (parity ledger row); AC-5 pins existing suites unmodified | Claude | open |
-| R-5 | The helper generalization changes operator-side behavior | low | high | `venueIdParam`/`parentVenueId` become one-line delegates with identical signatures; the untouched operator + shared suites stay green | Claude | open |
+| R-1 | Per-venue transient state leaks across a switch (open dialog, `lastTriggerId` focus target, pan-gesture flags, stale map while venue 2 loads) | med | high | `resetForVenue` clears every venue-scoped signal + imperative field; AC-1 asserts the dialog + map reset | Claude | closed — reset audit pinned (phase 1); review confirmed completeness incl. `scrollHint` self-correcting via `afterRenderEffect` |
+| R-2 | `toSignal(paramMap/queryParamMap)` subscribes at construction — the 3 snapshot-only route mocks (`venue-map.spec.ts` ×2 sites, `venue-map.a11y.spec.ts`) crash | high | low | Sweep the mocks to `BehaviorSubject`-backed ones in phase 1; red Vitest run catches stragglers | Claude | closed — 3 mock sites patched at phase 1 |
+| R-3 | A same-value `?date` route emission after a local picker change does not reset — fresh-mount parity edge | low | low | Narrowed by review F-1's raw-param key: any emission whose RAW `?date` differs now resets; the only remaining skip is a same-raw-value emission, which the router does not deliver for a same-URL navigation | Claude | closed — residual is unreachable by the router's own semantics |
+| R-4 | Blanking the map on reset regresses an existing flow | low | med | Only route emissions reset; the picker path is untouched (parity ledger row); AC-5 pins existing suites unmodified | Claude | closed — existing suites green, unmodified in intent |
+| R-5 | The helper generalization changes operator-side behavior | low | high | `venueIdParam`/`parentVenueId` become one-line delegates with identical signatures; the untouched operator + shared suites stay green | Claude | closed — full FE suite (1065 tests incl. all operator specs) green |
 
 ## Open questions / Assumptions
 
-- **Assumption:** seeding `selectedDate` with the floor and letting the reset effect's
-  first run apply the route date before first render is flash-free (effects flush
-  during the first CD pass). — *Owner:* Claude · *Resolves by:* phase 2 (AC-5 suites
-  would surface a seeding regression).
+### Resolved
+
+- **Assumption:** seeding `selectedDate` with the floor and letting the constructor
+  reset apply the route date before first render is flash-free. — **Resolved at
+  phase 2:** the fresh-mount load stays synchronous in the constructor (design note in
+  the phase-1 row), so the seed happens before the first render; AC-5 suites green
+  ("Re-seed the tourist map date from route emissions (#499)").
 
 ## Availability & concurrency (invariant #2)
 
@@ -171,9 +174,9 @@ N/A — no contract change; the same endpoint is called with a different `venueI
 
 ## Execution status
 
-**Stage pointer:** implement (phase 4)
+**Stage pointer:** DONE — merged via PR #500
 
-**Next action:** phase 4 — lint + full FE suite + build, push, verify CI, mark ready-for-review
+**Next action:** none — slice complete (issue #499 closed by the merge)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -181,7 +184,7 @@ N/A — no contract change; the same endpoint is called with a different `venueI
 | 1 — reactive `:id` + epoch guard in `VenueMap` | ✅ | "React to in-place venue param changes on the tourist map (#499)" — AC-1/2/4 pinned (incl. the A→B→A identity case); design note: the fresh-mount load stays synchronous in the constructor (AC-5 parity — ~30 existing specs assert the immediate request), the effect resets only when the id *value* differs from the loaded context; R-1 reset audit + R-2 mock sweep (3 sites) done; 62 venue-folder tests green |
 | 2 — reactive `?date` re-seed | ✅ | "Re-seed the tourist map date from route emissions (#499)" — AC-3 pinned (valid carried date + below-floor clamp); `readInitialDate()` folded into the `routeDate` computed; the reset effect keys on the `(id, routeDate)` value pair; Open-questions assumption resolved (no flash — `selectedDate` is seeded from `routeDate` at field init, the constructor reset is a same-value write); 73 venue+shared tests green |
 | 3 — harness switch spec over real routes | ✅ | "Pin the tourist venue switch on the real routes (#499)" — AC-6: `venue-map-switch.spec.ts` asserts instance REUSE + venue-2 reload under the real `app.routes.ts` config (the `console-venue-switch.spec.ts` mirror) |
-| 4 — lint + full FE suite + gates + close-out | | |
+| 4 — lint + full FE suite + gates + close-out | ✅ | lint clean; full FE suite 131 files / 1065 tests green; build error-free (two pre-existing SCSS budget warnings only); `main` unmoved; CI green per push; review + Sonar gates run at ready-for-review, findings fixed in "Guard per dispatch and re-derive the booking floor per reset (#499)"; docs-freshness pre-merge smoke ran over `origin/main...HEAD` — zero findings (no substrate statement contradicted; no counted set grew) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -189,6 +192,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`/code-review` fan-out, 5 agents + scoring; 75) | The #487 class one level down: `epoch` bumped per reset only, so two in-flight loads for the same `(venue, date)` (picker A→B→A within one venue) were indistinguishable — a stale same-date success could resurrect a map whose freshest load failed | fixed — `epoch` now increments per `load()` dispatch (subsuming the date value check); pinned by "drops a stale same-date response from before a picker round trip" |
+| F-2 | review (git-history agent; 72) | `minDate` was constructor-frozen while the instance now outlives navigations — a reset after Tirane midnight clamped `?date` against yesterday's floor and re-seeded a stale fallback (the operator pattern re-reads the clock per reset; the port dropped that) | fixed — `minDate` is a signal re-derived from a fresh clock in `resetForVenue`; pinned by "re-derives the booking floor at an in-place switch after midnight" |
+| F-3 | review (RV-STYLE-1, Minor ×3) | multi-line inline comments added by the diff (constructor, `load()`, one spec) | fixed — collapsed to one line each; rationale lives in the exempt TSDoc |
+| F-4 | review (comment agent, 50) | TSDoc drift: "every in-place route change" overstated the reset trigger; "The venue" for a venue id; `epoch` "per venue context"; the reset enumeration omitted the date re-seed; class doc silent on the new reactivity | fixed — all five reworded to match the code |
+| F-5 | review (advisory) | `selectedDate` is nearly the `linkedSignal` shape | no change, with rationale: a `linkedSignal` over `routeDate` alone would not re-seed on a venue-only switch; the explicit reset keys on the raw route context and stays uniform with the #495 tabs |
 
 ---
 
@@ -250,7 +258,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   malformed/past → floor) → `routeDate` computed from `toSignal(queryParamMap)`,
   tracked by the same reset effect; `readInitialDate()` removed.
 - [ ] **Commit** — `Re-seed the tourist map date from route emissions (#499)`
-- [ ] Execution status updated.
+- [x] Execution status updated.
 
 ## Phase 3 — Harness switch spec over real routes
 
@@ -260,7 +268,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   `HttpTestingController`; navigate `/venues/1` → `/venues/2`; assert instance reuse,
   venue-2 GET, venue-2 name rendered.
 - [ ] **Commit** — `Pin the tourist venue switch on the real routes (#499)`
-- [ ] Execution status updated.
+- [x] Execution status updated.
 
 ## Phase 4 — Suite green + gates + close-out
 
@@ -277,33 +285,34 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-01 | review fix F-1 (per-dispatch generation) | other continuation guards comparing per-reset state by value | read of every `subscribe`/`await` continuation in `venue-map.ts` (review agents' sweep) | `load()` is the component's only async continuation; dialog callbacks write no venue state | fixed the one site; F-2's fresh-floor fix applied to the same reset path |
 | 2026-08-01 | plan (grill) | constructor-snapshot route reads | `grep -rn "snapshot\.\(paramMap\|queryParamMap\)" frontend/src` | `venue-map.ts` (this slice); `verify-email.ts`, `reset-password.ts`, `operator-home.ts` (one-shot full-page flows, no reuse path) | fix `venue-map`; others deliberately out — a token/returnUrl read on a flow the router never param-swaps |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-5:** `npm test -- --include 'src/app/venue/**/*.spec.ts' --include
+- [x] **AC-1..AC-5:** `npm test -- --include 'src/app/venue/**/*.spec.ts' --include
   'src/app/shared/parent-venue-id.spec.ts'` → green incl. the #499 cases.
-- [ ] **AC-6:** `npm test -- --include 'src/app/venue/venue-map-switch.spec.ts'` →
+- [x] **AC-6:** `npm test -- --include 'src/app/venue/venue-map-switch.spec.ts'` →
   green (instance reuse + venue-2 reload on the real routes).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — display floor unchanged.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: `defaultBookingDate` usage unchanged (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] Flyway N/A (invariant #12).
-- [ ] **Frontend** standards met; no `as any`; RV-FE-8 table unchanged.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** (`merged via PR #NN`).
-- [ ] **The review gate ran in full** per `references/pr-gates.md` §1.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — display floor unchanged.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** justified N/A (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: `defaultBookingDate` usage unchanged (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] Flyway N/A (invariant #12).
+- [x] **Frontend** standards met; no `as any`; RV-FE-8 table unchanged.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** (`merged via PR #NN`).
+- [x] **The review gate ran in full** per `references/pr-gates.md` §1.

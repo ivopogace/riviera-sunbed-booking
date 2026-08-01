@@ -97,7 +97,9 @@ export function rowCode(index: number): string {
  * description + cutoff explainer), a per-date availability summary, and the positioned,
  * row-major set grid coloured by tier and availability. The map owns the selected date:
  * changing it re-fetches that date's availability and seeds the booking dialog's date, so
- * the two always agree. Money is rendered from integer minor units; tile state is conveyed
+ * the two always agree. Reactive to in-place `:id`/`?date` route changes since #499 — the
+ * router reuses the instance, so a change resets per-venue state and re-loads like a fresh
+ * mount. Money is rendered from integer minor units; tile state is conveyed
  * by an accessible name, not colour alone (WCAG AA). Big venues pan horizontally by drag;
  * a click-vs-drag threshold keeps a pan-release from opening the booking dialog.
  *
@@ -136,33 +138,27 @@ export class VenueMap {
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly failed = signal(false);
 
-  /** Earliest bookable day (tomorrow, Europe/Tirane): today is not offered (invariant #4, display). */
-  protected readonly minDate = defaultBookingDate(new Date());
+  /** Earliest bookable day (tomorrow, Europe/Tirane): today is not offered (invariant #4, display).
+   *  Re-derived from a fresh clock on every route reset (#499) — the instance now outlives
+   *  navigations, so a construction-time floor would go stale past Tirane midnight. */
+  protected readonly minDate = signal(defaultBookingDate(new Date()));
 
   private readonly queryParams = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   });
   /**
-   * The route-carried map date: the `?date=` query param the discovery page attaches when a venue
-   * is opened (#294), validated and clamped to {@link minDate} — absent, malformed, or past/today
-   * falls back to it (invariant #4, display). Reactive since #499, so an in-place navigation that
-   * changes the carried date re-seeds the map like a fresh mount.
-   */
-  private readonly routeDate = computed(() => {
-    const raw = this.queryParams().get('date');
-    return raw && isIsoDate(raw) && raw >= this.minDate ? raw : this.minDate;
-  });
-  /**
    * The day the map reflects (ISO YYYY-MM-DD). Seeded from {@link routeDate} on mount and on every
-   * in-place route change (#499); the date picker then writes it directly without touching the URL.
+   * in-place route change that alters the venue or the carried `?date` param (#499); the date
+   * picker then writes it directly without touching the URL.
    */
-  protected readonly selectedDate = signal(this.routeDate());
+  protected readonly selectedDate = signal(this.minDate());
 
-  /** The venue from the `:id` param (undefined if invalid) — reactive to in-place changes,
+  /** The venue id from the `:id` param (undefined if invalid) — reactive to in-place changes,
    *  which reuse this instance (#499, the tourist mirror of #180). */
   private readonly venueId = routeIdParam(this.route, 'id');
-  /** Bumped per venue context (#499): an identity guard — a venueId value check passes again
-   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  /** Bumped per load dispatch and per route reset (#499): an identity guard — a value check
+   *  (id or date) passes again after an A→B→A round trip, so continuations compare this
+   *  instead (the #487 precedent). */
   private epoch = 0;
 
   /** The set whose booking dialog is open, or undefined when closed. */
@@ -246,12 +242,10 @@ export class VenueMap {
       this.scrollHint.set(!!el && el.scrollWidth > el.clientWidth + 1);
     });
 
-    // Fresh mounts load synchronously below (constructor parity); the effect handles only an
-    // IN-PLACE route change (#499) — the router reuses this instance — so it skips any run
-    // whose (id, route date) matches the context already loaded (incl. its own first run).
-    let current = `${this.venueId()}|${this.routeDate()}`;
+    // In-place route changes only: skip runs matching the last route key (fresh mount loads below).
+    let current = this.routeKey();
     effect(() => {
-      const key = `${this.venueId()}|${this.routeDate()}`;
+      const key = this.routeKey();
       if (key === current) {
         return;
       }
@@ -261,8 +255,19 @@ export class VenueMap {
     this.resetForVenue(this.venueId());
   }
 
-  /** Drop every venue-scoped state — map, dialog, pan gesture — and load fresh, or fail fast
-   *  on an invalid `:id` (no request for /venues/NaN). */
+  /** The raw route context — `:id` plus the raw `?date` param — whose change triggers a reset. */
+  private routeKey(): string {
+    return `${this.venueId()}|${this.queryParams().get('date') ?? ''}`;
+  }
+
+  /** The route-carried map date (#294): a well-formed `?date` on/after `floor`, else `floor`. */
+  private routeDate(floor: string): string {
+    const raw = this.queryParams().get('date');
+    return raw && isIsoDate(raw) && raw >= floor ? raw : floor;
+  }
+
+  /** Drop every venue-scoped state — map, dialog, pan gesture, the map date — and load fresh,
+   *  or fail fast on an invalid `:id` (no request for /venues/NaN). */
   private resetForVenue(id: number | undefined): void {
     this.epoch++;
     this.venue.set(undefined);
@@ -270,7 +275,9 @@ export class VenueMap {
     this.lastTriggerId = undefined;
     this.panPointerDown = false;
     this.panned = false;
-    this.selectedDate.set(this.routeDate());
+    const floor = defaultBookingDate(new Date());
+    this.minDate.set(floor);
+    this.selectedDate.set(this.routeDate(floor));
     if (id === undefined) {
       this.failed.set(true);
       return;
@@ -296,19 +303,16 @@ export class VenueMap {
     }
     // A fresh attempt clears any prior failure so a recovered load renders the map.
     this.failed.set(false);
-    // Capture the venue epoch and requested date so a superseded response can't overwrite a
-    // newer one — the epoch is identity, so even an A→B→A venue switch invalidates it (#499);
-    // the date check keeps last-writer-wins across rapid date switches within one venue.
-    const epoch = this.epoch;
-    const requested = this.selectedDate();
-    this.venues.getVenueMap(id, requested).subscribe({
+    // The per-dispatch generation: any later dispatch or reset supersedes this response (#487).
+    const epoch = ++this.epoch;
+    this.venues.getVenueMap(id, this.selectedDate()).subscribe({
       next: (venue) => {
-        if (this.epoch === epoch && this.selectedDate() === requested) {
+        if (this.epoch === epoch) {
           this.venue.set(venue);
         }
       },
       error: () => {
-        if (this.epoch === epoch && this.selectedDate() === requested) {
+        if (this.epoch === epoch) {
           this.failed.set(true);
         }
       },

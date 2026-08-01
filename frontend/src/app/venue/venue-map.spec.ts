@@ -415,8 +415,7 @@ describe('VenueMap', () => {
     params$.next(convertToParamMap({ id: '1' }));
     await fixture.whenStable();
 
-    // Both superseded responses land AFTER the return to venue 1 — a value guard (id === 1)
-    // would re-admit the first one; the epoch identity guard must not (#487 class).
+    // A value guard (id === 1) would re-admit `firstVisit`; the epoch identity guard must not (#487).
     detour.flush({ ...miramar(), id: 2, name: 'Riviera Blue' });
     firstVisit.flush({ ...miramar(), name: 'Stale Miramar' });
     await fixture.whenStable();
@@ -426,6 +425,51 @@ describe('VenueMap', () => {
     venueRequest().flush(miramar());
     await fixture.whenStable();
     expect(el().querySelector('header')?.textContent).toContain('Miramar Beach Club');
+  });
+
+  it('drops a stale same-date response from before a picker round trip (#499, the #487 class)', async () => {
+    const first = venueRequest(); // the initial date-A load, never settled before the round trip
+    await fixture.whenStable();
+
+    const c = fixture.componentInstance as unknown as { onDateChange(e: Event): void };
+    const dateB = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    c.onDateChange({ target: { value: dateB } } as unknown as Event);
+    const detour = venueRequest();
+    c.onDateChange({ target: { value: defaultBookingDate(new Date()) } } as unknown as Event);
+    const fresh = venueRequest();
+
+    fresh.error(new ProgressEvent('error'));
+    detour.flush(miramar());
+    // Same venue, same date as `fresh` — only a per-DISPATCH generation tells this stale
+    // success from the freshest attempt's failure (#487); it must not resurrect the map.
+    first.flush(miramar());
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el().querySelector('[data-testid="map-error"]')).not.toBeNull();
+    expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
+  });
+
+  it('re-derives the booking floor at an in-place switch after midnight (#499, invariant #4)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+
+    const frozen = new Date();
+    vi.setSystemTime(new Date(frozen.getTime() + 3 * 24 * 60 * 60 * 1000));
+    try {
+      params$.next(convertToParamMap({ id: '2' }));
+      await fixture.whenStable();
+      // The reset must clamp to the CURRENT tomorrow, not the construction-time floor.
+      const req = venueRequest(2);
+      expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
+      req.flush({ ...miramar(), id: 2 });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
+      expect(input.getAttribute('min')).toBe(defaultBookingDate(new Date()));
+    } finally {
+      vi.setSystemTime(frozen);
+    }
   });
 
   it('re-seeds the date from the ?date param on an in-place navigation (#499)', async () => {
