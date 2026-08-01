@@ -4,7 +4,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 
 import { formatMoney } from '../shared/money';
+import { todayBookingDate } from '../venue/booking-date';
 import { Pool, SetView, Tier } from '../venue/venue.model';
+import { ConsoleVenueMap } from './console-venue-map';
 import { PricingTab } from './pricing-tab';
 
 /**
@@ -28,7 +30,8 @@ describe('PricingTab (#174)', () => {
     seat(4, 'B', 1, 'STANDARD', 'ONLINE', 2000, 1, 2),
   ];
 
-  function configure(): void {
+  /** `beforeCreate` runs after the injector exists but before the tab mounts — the shell's window. */
+  function configure(beforeCreate?: () => void): void {
     TestBed.configureTestingModule({
       imports: [PricingTab],
       providers: [
@@ -44,8 +47,9 @@ describe('PricingTab (#174)', () => {
         },
       ],
     });
-    fixture = TestBed.createComponent(PricingTab);
     http = TestBed.inject(HttpTestingController);
+    beforeCreate?.();
+    fixture = TestBed.createComponent(PricingTab);
     fixture.detectChanges();
     // OperatorAuth restores the session on construction — settle it signed-out (the shell gates access).
     http
@@ -300,6 +304,80 @@ describe('PricingTab (#174)', () => {
     expect(byId('pricing-empty')).toBeTruthy();
     expect(host.querySelector('[data-testid="pricing-load-error"]')).toBeNull();
     expect(rows()).toHaveLength(0);
+  });
+
+  it('reuses the shell snapshot instead of re-fetching the venue map (#486)', () => {
+    // The shell warms (venue, today) first; expectOne throws if the tab issues its own GET.
+    configure(() => {
+      TestBed.inject(ConsoleVenueMap).load(1, todayBookingDate(new Date())).subscribe();
+    });
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: SEED, setVersion: 3 });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(input('A').value).toBe('35'); // rows seeded from the shared snapshot
+
+    // ...and the token came with it: a reprice sends set_version 3, so it is genuinely the same read.
+    editRow('A', '40');
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'));
+    expect(put.request.body.expectedVersion).toBe(3);
+    put.flush(null);
+  });
+
+  it('drops the shared snapshot after a successful reprice so other tabs see the new price (#486 AC-4)', async () => {
+    render(SEED, 3);
+    editRow('A', '40');
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'))
+      .flush(null);
+    await fixture.whenStable();
+
+    // The write invalidated the console's snapshot, so the next tab to ask goes back to the server.
+    let refetched: number | undefined;
+    TestBed.inject(ConsoleVenueMap)
+      .load(1, todayBookingDate(new Date()))
+      .subscribe((venue) => (refetched = venue.setVersion));
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: SEED, setVersion: 4 });
+
+    expect(refetched).toBe(4);
+  });
+
+  it('bypasses the shared snapshot on stale-write recovery (#486 AC-6)', async () => {
+    // Reload escapes a 409; re-seeding from the snapshot that lost the race would never recover.
+    configure(() => {
+      TestBed.inject(ConsoleVenueMap).load(1, todayBookingDate(new Date())).subscribe();
+    });
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: SEED, setVersion: 3 });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    editRow('A', '99');
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    byId('pricing-stale-reload').click();
+    // expectOne is the assertion: a cache hit would issue no request at all and this would throw.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({
+        id: 1,
+        name: 'V',
+        sets: [seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 5000, 1, 1)],
+        setVersion: 4,
+      });
+    fixture.detectChanges();
+
+    expect(input('A').value).toBe('50'); // the server's truth, not the stale snapshot
+    expect(host.querySelector('[data-testid="pricing-stale-banner"]')).toBeNull();
   });
 });
 

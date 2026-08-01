@@ -5,6 +5,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 
 import { defaultBookingDate, todayBookingDate } from '../venue/booking-date';
 import { Pool, SetView, Tier } from '../venue/venue.model';
+import { ConsoleVenueMap } from './console-venue-map';
 import { DailyViewTab } from './daily-view-tab';
 
 /**
@@ -30,7 +31,8 @@ describe('DailyViewTab (#175)', () => {
   ];
   const BOOKINGS = [{ setId: 2, code: 'ABC12345' }]; // set 2 is held by a confirmed online booking
 
-  function configure(): void {
+  /** `beforeCreate` runs after the injector exists but before the tab mounts — the shell's window. */
+  function configure(beforeCreate?: () => void): void {
     TestBed.configureTestingModule({
       imports: [DailyViewTab],
       providers: [
@@ -46,8 +48,9 @@ describe('DailyViewTab (#175)', () => {
         },
       ],
     });
-    fixture = TestBed.createComponent(DailyViewTab);
     http = TestBed.inject(HttpTestingController);
+    beforeCreate?.();
+    fixture = TestBed.createComponent(DailyViewTab);
     fixture.detectChanges();
     // OperatorAuth restores the session on construction — settle it signed-out (the shell gates access).
     http
@@ -200,6 +203,30 @@ describe('DailyViewTab (#175)', () => {
     ], []);
     expect(tile(2).getAttribute('data-state')).toBe('FREE');
     expect(host.querySelectorAll('[data-testid="daily-arrival-row"]')).toHaveLength(0);
+  });
+
+  it('never serves the console snapshot — its reads are excluded from the shared cache (#486 AC-3)', () => {
+    // Warm on this tab's own key, yet both flushLoad calls below still demand a real request.
+    configure(() => {
+      TestBed.inject(ConsoleVenueMap).load(1, todayBookingDate(new Date())).subscribe();
+      http
+        .expectOne(
+          (r) => r.method === 'GET' && r.url.includes('/api/venues/1') && !r.url.includes('/bookings'),
+        )
+        .flush({ id: 1, name: 'V', sets: SEED });
+    });
+    flushLoad(); // the tab's own opening (venue, today) read still reaches the server
+    host = fixture.nativeElement as HTMLElement;
+
+    (tile(1) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/sets/1/availability'))
+      .flush(null);
+    // ...and so does the reconcile, on the very same key the warm snapshot holds.
+    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), ...SEED.slice(1)]);
+
+    expect(tile(1).getAttribute('data-state')).toBe('STAFF_MARKED');
   });
 
   it('shows the not-owner notice when a mark is 403 (invariant #13) and reconciles', () => {

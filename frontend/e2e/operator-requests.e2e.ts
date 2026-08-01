@@ -78,9 +78,10 @@ function seedQueue() {
 async function mockRequests(
   page: Page,
   overrides: Record<number, { status: number; code: string }> = {},
-): Promise<void> {
+): Promise<{ mapReads: () => number }> {
   let sessionLive = false;
   let queue = seedQueue();
+  let mapReads = 0;
 
   await page.route(/\/api\/auth\/me$/, (route) =>
     sessionLive
@@ -130,7 +131,11 @@ async function mockRequests(
       },
     }),
   );
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: venueMap() }));
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
+    mapReads += 1;
+    return route.fulfill({ json: venueMap() });
+  });
+  return { mapReads: () => mapReads };
 }
 
 async function signInAndOpenRequests(page: Page): Promise<void> {
@@ -185,6 +190,25 @@ test('lists the queue, accepts (badge decrements), and declines to empty — no 
   await expect(page.getByTestId('oc-requests-badge')).toHaveCount(0); // 0 → the badge disappears
   await expect(page.getByTestId('requests-notice')).toContainText('declined');
   await expectNoSeriousAxeViolations(page, 'all caught up');
+});
+
+test('opens the Requests tab on ONE venue-map read, not two (#486)', async ({ page }) => {
+  const { mapReads } = await mockRequests(page);
+
+  // Deep-linked so only the shell + tab mount; /operator/1 would add the layout editor's own read.
+  await page.goto(`/operator/${VENUE}/requests`);
+  await page.getByLabel('Username', { exact: true }).fill('operator');
+  await page.getByLabel('Password', { exact: true }).fill('pw');
+  await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
+
+  await expect(page.getByTestId('oc-header')).toBeVisible();
+  await expect(page.getByTestId('request-card')).toHaveCount(2);
+  // The set label proves the tab really got the map — a cache hit, not a skipped read.
+  await expect(page.getByTestId('request-card').first()).toContainText('A · 1');
+  await settle(page);
+
+  // The shell (header title + Free-today tile) and the tab (set labels) share one snapshot.
+  expect(mapReads()).toBe(1);
 });
 
 test('an accept that lost the sweep race shows the dismissible expired-race copy (409 REQUEST_EXPIRED)', async ({

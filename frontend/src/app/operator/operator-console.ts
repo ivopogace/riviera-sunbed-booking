@@ -5,8 +5,8 @@ import { Observable } from 'rxjs';
 import { OperatorAuth } from '../core/operator-auth';
 import { todayBookingDate } from '../venue/booking-date';
 import { VenueMapView } from '../venue/venue.model';
-import { VenueService } from '../venue/venue.service';
 import { ConsoleStatsStrip } from './console-stats-strip';
+import { ConsoleVenueMap } from './console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
 import { PendingRequestsStore } from './pending-requests-store';
 
@@ -44,7 +44,7 @@ interface ConsoleTab {
 export class OperatorConsole {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly venues = inject(VenueService);
+  private readonly venueMap = inject(ConsoleVenueMap);
   private readonly console = inject(OperatorConsoleService);
   private readonly requests = inject(PendingRequestsStore);
   protected readonly operator = inject(OperatorAuth);
@@ -91,6 +91,7 @@ export class OperatorConsole {
     await this.operator.signOut();
     this.venueName.set(undefined);
     this.venue.set(undefined);
+    this.venueMap.reset(); // it outlives this component — the next operator must not inherit it
     this.requests.reset();
     // The guard gates on ACTIVATION, so leave ourselves rather than sit on a dead session (#277).
     await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
@@ -108,7 +109,7 @@ export class OperatorConsole {
     // one leaked from a previously-managed venue (the store is a root singleton). The Requests tab, once
     // visited, takes authority over this store via `set`; the shell only ever seeds it.
     this.requests.reset();
-    this.bestEffort(this.venues.getVenueMap(this.venueId, todayBookingDate(new Date())), (venue) => {
+    this.bestEffort(this.venueMap.load(this.venueId, todayBookingDate(new Date())), (venue) => {
       this.venueName.set(venue.name);
       this.venue.set(venue);
     });

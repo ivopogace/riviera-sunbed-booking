@@ -11,6 +11,7 @@ import { BeachGridFrame } from './beach-grid-frame';
 import { todayBookingDate } from '../venue/booking-date';
 import { MoneyView, SetView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
+import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutCellRequest, LayoutErrorCode } from './operator-console.model';
 import { OperatorConsoleService, layoutErrorOf } from './operator-console.service';
 
@@ -75,6 +76,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
 export class LayoutEditor {
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);
+  private readonly venueMap = inject(ConsoleVenueMap);
   private readonly console = inject(OperatorConsoleService);
   protected readonly operator = inject(OperatorAuth);
 
@@ -278,6 +280,8 @@ export class LayoutEditor {
     try {
       await firstValueFrom(this.console.replaceLayout(this.venueId, { sets, expectedVersion }));
       this.savedNotice.set(true);
+      // The layout was replaced, so the console's shared snapshot now describes retired sets (#486).
+      this.venueMap.reset();
       // The conditional write bumped set_version by exactly one (#226); advance our token so a second
       // consecutive save by the same operator isn't spuriously rejected as a stale write.
       this.loadedSetVersion.set(expectedVersion + 1);
@@ -334,6 +338,7 @@ export class LayoutEditor {
     }
     this.reloading.set(true);
     this.reloadFailed.set(false);
+    this.venueMap.reset(); // the other tabs must not serve the pre-conflict layout either (#486)
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
         // Success: NOW replace the in-progress grid with the server's latest layout + token, clear the banner.
