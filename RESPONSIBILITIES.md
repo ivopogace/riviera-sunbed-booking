@@ -469,13 +469,18 @@ moved listener, and the V32 suppression list enforced on both vehicles.
 ## `shared` (not a bounded context)
 
 The **Shared Kernel** (Evans, DDD ch. 14), extracted from the root package in #371 —
-`ApiProblem`, `CurrentOperator`, `CurrentCustomer`, `ObservabilityMetrics`, `ShutdownBudget`,
+`ApiProblem`, `CurrentOperator`, `CurrentCustomer`, `InvalidApiRequestException`,
+`ObservabilityMetrics`, `ShutdownBudget`,
 `MdcTaskDecorator`, `ResubmissionThrottle` + `ResubmissionOutcome`. An
 `@ApplicationModule(type = OPEN)`: technical shared code, so it publishes no
 `api`/`vocabulary` surface and consumers use its types directly.
 
 **Job:** hold the handful of edge types that bounded contexts legitimately share — the
-RFC-7807 error-contract factory (#97), the accessors that resolve an authenticated
+RFC-7807 error-contract factory (#97) and the **typed edge-validation signal**
+(`InvalidApiRequestException`, #118 — the one exception the advice maps to
+`400 INVALID_REQUEST`, admitted on the same ownership ground as `ApiProblem`: the
+exception→status contract belongs to the composition-root advice no module may depend on,
+while module adapters are its throwers), the accessors that resolve an authenticated
 principal to a typed id, the **platform's metric names** (`ObservabilityMetrics`: the
 money-path trio from #100, plus the six mail-loss counters — the registry-mail shed added by
 #408, the recovery-mail drop by #415, the recovery-mail transport failure by #423, the abandoned

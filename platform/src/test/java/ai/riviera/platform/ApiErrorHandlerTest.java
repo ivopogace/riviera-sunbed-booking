@@ -1,9 +1,12 @@
 package ai.riviera.platform;
 
 import ai.riviera.platform.shared.ApiProblem;
+import ai.riviera.platform.shared.InvalidApiRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
@@ -17,8 +20,12 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
+import jakarta.servlet.ServletException;
+
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -26,11 +33,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Pins the one advice's exception-to-ProblemDetail mapping (issue #97) without a Spring context:
- * every thrown failure — domain authorization, validation, the constraint-race backstop, and a
- * framework-raised type mismatch — lands as {@code application/problem+json} with a stable
- * {@code code}. The constraint-race case matters here because no controller IT can trigger it
- * (the pre-checks win the race in a sequential test); this is its only wire-level pin.
+ * Pins the one advice's exception-to-ProblemDetail mapping (issue #97, narrowed by #118) without a
+ * Spring context: every thrown failure — domain authorization, typed edge validation, the
+ * unique-constraint-race backstop, and a framework-raised type mismatch — lands as
+ * {@code application/problem+json} with a stable {@code code}. The constraint-race case matters here
+ * because no controller IT can trigger it (the pre-checks win the race in a sequential test); this is
+ * its only wire-level pin.
+ *
+ * <p>Since #118 the advice deliberately does NOT map raw {@link IllegalArgumentException} or a
+ * non-duplicate {@link DataIntegrityViolationException}: both signal a server-side defect (a domain
+ * invariant tripping on stored data, a schema/FK/NOT-NULL bug), and mapping them to 4xx blamed the
+ * caller and dropped the failure out of 5xx monitoring and the logs. The propagation tests below are
+ * the pin that keeps a bug looking like a bug.
  */
 class ApiErrorHandlerTest {
 
@@ -61,7 +75,7 @@ class ApiErrorHandlerTest {
 	}
 
 	@Test
-	void illegalArgumentIs400InvalidRequestWithoutEchoingTheMessage() throws Exception {
+	void invalidApiRequestIs400WithoutEchoingTheMessage() throws Exception {
 		mvc.perform(get("/throw/invalid"))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -70,12 +84,33 @@ class ApiErrorHandlerTest {
 				.andExpect(jsonPath("$.detail").value("Request validation failed."));
 	}
 
+	/**
+	 * Issue #118: a raw {@code IllegalArgumentException} is a server bug (e.g. a {@code Money} or
+	 * {@code PayoutLedgerEntry} invariant tripping on corrupt stored data), not client input — it must
+	 * propagate to the framework's 500 (which logs it with a stack trace), never be mapped to a 400
+	 * blamed on the caller.
+	 */
 	@Test
-	void dataIntegrityViolationIs409Conflict() throws Exception {
+	void aDeepBugIllegalArgumentIsNotMaskedAsA400() {
+		assertPropagates(IllegalArgumentException.class, () -> mvc.perform(get("/throw/deep-bug")));
+	}
+
+	@Test
+	void duplicateKeyRaceIs409Conflict() throws Exception {
 		mvc.perform(get("/throw/race"))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("CONFLICT"));
+	}
+
+	/**
+	 * Issue #118's DIVE half: only a unique-index race ({@link DuplicateKeyException}) is the designed
+	 * 409; any other integrity violation (FK, NOT-NULL, CHECK) is a schema-level bug and must surface
+	 * as a 500, not be presented as a normal conflict.
+	 */
+	@Test
+	void aNonRaceDataIntegrityViolationIsNotMaskedAsA409() {
+		assertPropagates(DataIntegrityViolationException.class, () -> mvc.perform(get("/throw/schema-bug")));
 	}
 
 	@Test
@@ -129,6 +164,13 @@ class ApiErrorHandlerTest {
 				.andExpect(content().string(not(containsString("/throw/invalid"))));
 	}
 
+	/** MockMvc rethrows an unresolved exception, possibly wrapped in a {@link ServletException}. */
+	private static void assertPropagates(Class<? extends Exception> expected, Executable request) {
+		Exception thrown = assertThrows(Exception.class, request);
+		Throwable unwrapped = thrown instanceof ServletException wrapper ? wrapper.getCause() : thrown;
+		assertInstanceOf(expected, unwrapped);
+	}
+
 	@RestController
 	static class ThrowingController {
 
@@ -144,12 +186,22 @@ class ApiErrorHandlerTest {
 
 		@GetMapping("/throw/invalid")
 		void invalid() {
-			throw new IllegalArgumentException("internal message that must not leak");
+			throw new InvalidApiRequestException("internal message that must not leak");
+		}
+
+		@GetMapping("/throw/deep-bug")
+		void deepBug() {
+			throw new IllegalArgumentException("a domain invariant tripped on stored data");
 		}
 
 		@GetMapping("/throw/race")
 		void race() {
-			throw new DataIntegrityViolationException("duplicate key value violates unique constraint");
+			throw new DuplicateKeyException("duplicate key value violates unique constraint");
+		}
+
+		@GetMapping("/throw/schema-bug")
+		void schemaBug() {
+			throw new DataIntegrityViolationException("null value in column violates not-null constraint");
 		}
 
 		@GetMapping("/throw/too-large")

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.CurrentOperator;
+import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -40,8 +41,8 @@ import ai.riviera.platform.venue.application.ViewVenueProfile;
  * public U1 read endpoint is a separate controller. Outcomes map to HTTP via exhaustive
  * {@code switch}: created→201 (+Location), applied→204, {@code NO_SUCH_*}→404,
  * {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}→409; malformed→400 and the
- * constraint-race backstop ({@code DataIntegrityViolationException}→409 {@code CONFLICT},
- * invariant #12) map centrally in {@code ApiErrorHandler}. Errors are RFC-7807
+ * constraint-race backstop ({@code DuplicateKeyException}→409 {@code CONFLICT},
+ * invariant #12; #118) map centrally in {@code ApiErrorHandler}. Errors are RFC-7807
  * {@link ProblemDetail} built by {@link ApiProblem} (issue #97).
  *
  * <p>The per-set edits and the profile edit ({@code PATCH /api/venues/{venueId}} — amenities +
@@ -81,7 +82,9 @@ class VenueAdminController {
 		// to the service, which records ownership in the same transaction as the insert. Create is still
 		// role-gated only (any ACTIVE operator may create) — there is no prior owner to check against.
 		OperatorId creator = currentOperator.require(authentication);
-		VenueId id = onboardVenue.onboard(creator, request.toCommand());
+		// Conversion wraps here and below: bad request input stays a 400, a service IAE stays a 500 (#118).
+		var command = InvalidApiRequestException.parsing(request::toCommand);
+		VenueId id = onboardVenue.onboard(creator, command);
 		return ResponseEntity.created(URI.create("/api/venues/" + id.value()))
 				.body(Map.of("id", id.value()));
 	}
@@ -106,8 +109,10 @@ class VenueAdminController {
 		OperatorId operator = currentOperator.require(authentication);
 		// requiredExpectedVersion() first: a missing token is a 400 (INVALID_REQUEST) before the write,
 		// never a silent 0 (#224). STALE_WRITE → 409 lets the tab reload the latest values and re-apply.
+		long expectedVersion = InvalidApiRequestException.parsing(request::requiredExpectedVersion);
+		var command = InvalidApiRequestException.parsing(request::toCommand);
 		return switch (editVenueProfile.updateProfile(operator, new VenueId(venueId),
-				request.requiredExpectedVersion(), request.toCommand())) {
+				expectedVersion, command)) {
 			case APPLIED -> ResponseEntity.noContent().build();
 			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
 					NO_SUCH_VENUE_DETAIL);
@@ -120,7 +125,8 @@ class VenueAdminController {
 	ResponseEntity<?> addSet(Authentication authentication, @PathVariable long venueId,
 			@RequestBody SetPositionRequest request) {
 		OperatorId operator = currentOperator.require(authentication);
-		return switch (editBeachMap.addSet(operator, new VenueId(venueId), request.toCommand())) {
+		var command = InvalidApiRequestException.parsing(request::toCommand);
+		return switch (editBeachMap.addSet(operator, new VenueId(venueId), command)) {
 			case AddSetOutcome.Added added -> ResponseEntity
 					.created(URI.create("/api/venues/" + venueId + "/sets/" + added.setId().value()))
 					.body(Map.of("id", added.setId().value()));
@@ -132,8 +138,8 @@ class VenueAdminController {
 	ResponseEntity<?> editSet(Authentication authentication, @PathVariable long venueId,
 			@PathVariable long setId, @RequestBody SetPositionRequest request) {
 		OperatorId operator = currentOperator.require(authentication);
-		return toResponse(editBeachMap.editSet(operator, new VenueId(venueId), new SetId(setId),
-				request.toCommand()));
+		var command = InvalidApiRequestException.parsing(request::toCommand);
+		return toResponse(editBeachMap.editSet(operator, new VenueId(venueId), new SetId(setId), command));
 	}
 
 	@DeleteMapping("/{venueId}/sets/{setId}")
@@ -149,8 +155,10 @@ class VenueAdminController {
 		OperatorId operator = currentOperator.require(authentication);
 		// requiredExpectedVersion() first: a missing token is a 400 (INVALID_REQUEST) before the write,
 		// never a silent 0 (#226). STALE_WRITE → 409 lets the tab reload the latest map and re-apply.
+		long expectedVersion = InvalidApiRequestException.parsing(request::requiredExpectedVersion);
+		var command = InvalidApiRequestException.parsing(request::toCommand);
 		return switch (editBeachMap.replaceLayout(operator, new VenueId(venueId),
-				request.requiredExpectedVersion(), request.toCommand())) {
+				expectedVersion, command)) {
 			case ReplaceLayoutOutcome.Replaced ignored -> ResponseEntity.noContent().build();
 			case ReplaceLayoutOutcome.Rejected rejected -> error(rejected.reason());
 		};
@@ -162,8 +170,9 @@ class VenueAdminController {
 		OperatorId operator = currentOperator.require(authentication);
 		// requiredExpectedVersion() first: a missing token is a 400 (INVALID_REQUEST) before the write,
 		// never a silent 0 (#226). STALE_WRITE → 409 lets the tab reload the latest prices and re-apply.
-		return toResponse(editBeachMap.repriceRow(operator, new VenueId(venueId),
-				request.requiredExpectedVersion(), request.toCommand(rowLabel)));
+		long expectedVersion = InvalidApiRequestException.parsing(request::requiredExpectedVersion);
+		var command = InvalidApiRequestException.parsing(() -> request.toCommand(rowLabel));
+		return toResponse(editBeachMap.repriceRow(operator, new VenueId(venueId), expectedVersion, command));
 	}
 
 	private static ResponseEntity<?> toResponse(ChangeOutcome outcome) {

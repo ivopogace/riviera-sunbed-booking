@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.shared.InvalidApiRequestException;
+
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -9,8 +11,8 @@ import java.nio.charset.StandardCharsets;
  * without threading a collaborator through each constructor (keeping them under the parameter budget).
  *
  * <p>Policy (design D-8): a server-side minimum length, capped at bcrypt's 72-byte input limit. A
- * violation throws {@link IllegalArgumentException}, which the single {@code ApiErrorHandler} maps to
- * {@code 400 INVALID_REQUEST} — the same contract every edge write already uses.
+ * violation throws {@link InvalidApiRequestException} (#118), which the single {@code ApiErrorHandler}
+ * maps to {@code 400 INVALID_REQUEST} — the same contract every edge write already uses.
  */
 final class CustomerPasswords {
 
@@ -31,11 +33,11 @@ final class CustomerPasswords {
 		return password != null && !password.isEmpty();
 	}
 
-	/** Enforce the password policy before any encode/write; throws {@link IllegalArgumentException} if violated. */
+	/** Enforce the password policy before any encode/write; throws {@link InvalidApiRequestException} if violated. */
 	static void validate(String password) {
 		int bytes = password.getBytes(StandardCharsets.UTF_8).length;
 		if (password.length() < MIN_PASSWORD_LENGTH || bytes > MAX_PASSWORD_BYTES) {
-			throw new IllegalArgumentException("password outside the permitted length");
+			throw new InvalidApiRequestException("password outside the permitted length");
 		}
 	}
 

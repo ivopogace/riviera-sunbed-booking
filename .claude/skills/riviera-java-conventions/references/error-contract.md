@@ -10,13 +10,19 @@ stable machine-readable **`code`** extension. The shape is built in exactly two 
   — SKILL.md §6 — so an advice never sees them). `detail` must be safe for any caller: never
   a booking code (invariant #7), an exception message, or another internal echo.
 - **`ApiErrorHandler`** (root package) — the **single** `@RestControllerAdvice` for
-  everything thrown: `IllegalArgumentException` → `400 INVALID_REQUEST`,
-  `DataIntegrityViolationException` → `409 CONFLICT` (the constraint-race backstop,
-  invariant #12), `NotVenueOwnerException`/`AccessDeniedException` → `403` (invariant #13);
-  it extends `ResponseEntityExceptionHandler` so framework errors carry the same shape.
-  **Per-controller `@ExceptionHandler`s are forbidden** — machine-locked by
-  `ErrorContractArchitectureTests`. (`RateLimitFilter` mirrors the shape by hand: it rejects
-  before MVC dispatch.)
+  everything thrown: `shared.InvalidApiRequestException` (typed edge validation, #118) →
+  `400 INVALID_REQUEST`, `DuplicateKeyException` → `409 CONFLICT` (the unique-constraint-race
+  backstop, invariant #12), `NotVenueOwnerException`/`AccessDeniedException` → `403`
+  (invariant #13); it extends `ResponseEntityExceptionHandler` so framework errors carry the
+  same shape. **Raw `IllegalArgumentException` and non-duplicate
+  `DataIntegrityViolationException` are deliberately unmapped since #118** — they signal
+  server bugs (a domain invariant on stored data, a schema/FK/NOT-NULL fault) and propagate
+  to the framework's logged 500; edge code throws the typed exception directly, and a
+  controller feeding request input into IAE-throwing guards (`toCommand()`, `PeriodKey.of`,
+  enum parses) translates at the conversion boundary via
+  `InvalidApiRequestException.parsing(...)`. **Per-controller `@ExceptionHandler`s are
+  forbidden** — machine-locked by `ErrorContractArchitectureTests`. (`RateLimitFilter`
+  mirrors the shape by hand: it rejects before MVC dispatch.)
 - **Where validation lives.** Presence/shape/format checks belong at the edge (the DTO's
   `toCommand()`), domain invariants in the value object's canonical constructor (`Money`,
   ids) and the application service. Keep HTTP-status mapping out of the domain — the
@@ -36,7 +42,8 @@ stable machine-readable **`code`** extension. The shape is built in exactly two 
   (`BookingController` uses its collection path).
 
 > **Decision settled at #97's plan stage:** **centralized-explicit validation** — hand-rolled
-> checks in `toCommand()` throwing `IllegalArgumentException`, mapped once by the advice.
+> checks in `toCommand()` throwing `IllegalArgumentException`, translated at the controller's
+> conversion boundary (#118) and mapped once by the advice.
 > `spring-boot-starter-validation`/`@Valid` was deliberately **not** adopted (three DTOs whose
 > checks are parse/cross-field logic; annotations would split validation across two
 > mechanisms; explicit code in records is the house idiom). Reversible in one dependency line

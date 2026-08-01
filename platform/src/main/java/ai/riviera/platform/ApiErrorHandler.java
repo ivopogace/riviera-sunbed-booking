@@ -2,9 +2,10 @@ package ai.riviera.platform;
 
 import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.shared.ApiProblem;
+import ai.riviera.platform.shared.InvalidApiRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -36,15 +37,23 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
  *       to no active operator → {@code 403 ACCESS_DENIED}. Intentionally broad: any authorization
  *       denial reaching MVC dispatch gets the one uniform {@code 403} shape; role-gate denials in
  *       the security filter chain never reach this advice, so 401/403 filter behavior is untouched.</li>
- *   <li>{@link IllegalArgumentException} — request-DTO {@code toCommand()} validation, bad enum /
- *       period tokens → {@code 400 INVALID_REQUEST}. The detail is generic on purpose: an
- *       exception message may echo internals or user input, and validation style is
- *       centralized-explicit per the §6b decision (plan doc {@code error-contract-problemdetail}).</li>
- *   <li>{@link DataIntegrityViolationException} — a DB constraint beat a pre-check in a race
+ *   <li>{@link InvalidApiRequestException} — typed edge validation (#118): request-DTO
+ *       {@code toCommand()} conversion, bad enum / period tokens, the password policy →
+ *       {@code 400 INVALID_REQUEST}. The detail is generic on purpose: an exception message may echo
+ *       internals or user input, and validation style is centralized-explicit per the §6b decision
+ *       (plan doc {@code error-contract-problemdetail}).</li>
+ *   <li>{@link DuplicateKeyException} — a unique constraint beat a pre-check in a race
  *       (e.g. the V2/V12 layout UNIQUE) → {@code 409 CONFLICT}, not 500: the constraint is the
- *       correctness guarantee (invariant #12). Logged at WARN because the same exception from a
- *       genuine bug (e.g. a NOT-NULL violation) must stay diagnosable.</li>
+ *       correctness guarantee (invariant #12). Logged at WARN so the race stays diagnosable.</li>
  * </ul>
+ *
+ * <p><strong>Deliberately unmapped since #118</strong> (plan doc {@code typed-edge-validation}): a raw
+ * {@link IllegalArgumentException} and a non-duplicate
+ * {@link org.springframework.dao.DataIntegrityViolationException} signal server-side defects — a
+ * domain invariant tripping on stored data, a schema/FK/NOT-NULL bug — and propagate to the
+ * framework's logged 500. Mapping them here blamed the caller (an unlogged 400/409) and hid the bug
+ * from 5xx monitoring; edge code that validates request input throws (or wraps into) the typed
+ * exception instead.
  */
 @RestControllerAdvice
 public class ApiErrorHandler extends ResponseEntityExceptionHandler {
@@ -77,17 +86,17 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 		return ApiProblem.of(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid credentials.");
 	}
 
-	@ExceptionHandler(IllegalArgumentException.class)
-	ProblemDetail onInvalidRequest(IllegalArgumentException e) {
+	@ExceptionHandler(InvalidApiRequestException.class)
+	ProblemDetail onInvalidRequest(InvalidApiRequestException e) {
 		return ApiProblem.of(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Request validation failed.");
 	}
 
-	@ExceptionHandler(DataIntegrityViolationException.class)
-	ProblemDetail onConstraintViolation(DataIntegrityViolationException e) {
+	@ExceptionHandler(DuplicateKeyException.class)
+	ProblemDetail onConstraintRace(DuplicateKeyException e) {
 		// Class names only, never the message or stack: a constraint violation's DB message embeds
 		// the offending column values — user-controlled text (CRLF log forging, §10) or even a
 		// booking code on a code-collision insert (invariant #7, booking_code_uniq).
-		log.warn("Data-integrity violation surfaced to the API as 409 CONFLICT: {} (root cause {})",
+		log.warn("Unique-constraint race surfaced to the API as 409 CONFLICT: {} (root cause {})",
 				e.getClass().getSimpleName(), e.getMostSpecificCause().getClass().getName());
 		return ApiProblem.of(HttpStatus.CONFLICT, "CONFLICT", "The change conflicts with existing data.");
 	}

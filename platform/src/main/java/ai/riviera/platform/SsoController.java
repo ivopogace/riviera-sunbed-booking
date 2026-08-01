@@ -1,6 +1,7 @@
 package ai.riviera.platform;
 
 import ai.riviera.platform.shared.CurrentCustomer;
+import ai.riviera.platform.shared.InvalidApiRequestException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -118,13 +119,13 @@ class SsoController {
 	/**
 	 * Validate the returned {@code state} against the session's, confirm the provider matches, and return
 	 * the stored PKCE verifier — clearing all three attributes first so a callback cannot be replayed
-	 * (single-use). Any mismatch or missing attribute is a generic {@link IllegalArgumentException} →
-	 * {@code 400 INVALID_REQUEST}, with nothing written.
+	 * (single-use). Any mismatch or missing attribute is a typed {@link InvalidApiRequestException} →
+	 * {@code 400 INVALID_REQUEST} (#118), with nothing written.
 	 */
 	private static String consumeValidatedChallenge(HttpServletRequest request, SsoProvider provider, String state) {
 		HttpSession session = request.getSession(false);
 		if (session == null) {
-			throw new IllegalArgumentException("no SSO authorization in progress");
+			throw new InvalidApiRequestException("no SSO authorization in progress");
 		}
 		Object expectedState = session.getAttribute(STATE_ATTR);
 		Object sessionProvider = session.getAttribute(PROVIDER_ATTR);
@@ -134,7 +135,7 @@ class SsoController {
 		session.removeAttribute(PROVIDER_ATTR);
 		if (!(expectedState instanceof String expected) || !constantTimeEquals(expected, state)
 				|| !provider.name().equals(sessionProvider) || !(verifier instanceof String codeVerifier)) {
-			throw new IllegalArgumentException("invalid SSO state");
+			throw new InvalidApiRequestException("invalid SSO state");
 		}
 		return codeVerifier;
 	}

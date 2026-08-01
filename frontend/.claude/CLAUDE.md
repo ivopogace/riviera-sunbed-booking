@@ -68,6 +68,15 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Enforced at the review gate as **RV-STYLE-1**; this section exists so the first draft already
   complies instead of being trimmed later.
 
+## Unit tests
+
+- **The Vitest clock is frozen** at Monday 2026-06-15 midday Europe/Tirane
+  (`src/test-setup.ts`, wired via the `test` target's `setupFiles`): `new Date()` in a spec
+  is deterministic and never the machine's real calendar. Never write a spec that needs the
+  real "today"; a spec that genuinely needs the real clock opts out with `vi.useRealTimers()`.
+  Only `Date` is faked — real timers and `fakeAsync` are untouched. (Origin: a hardcoded
+  `'2026-08-01'` literal collided with the real calendar date and turned CI red for a day.)
+
 ## Services
 
 - Design services around a single responsibility

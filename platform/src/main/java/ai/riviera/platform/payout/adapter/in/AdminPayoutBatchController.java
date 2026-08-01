@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.shared.ApiProblem;
+import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.PayoutReport;
 import ai.riviera.platform.payout.domain.BatchStatus;
@@ -43,17 +44,17 @@ class AdminPayoutBatchController {
 
 	@PostMapping
 	List<PayoutBatchView> generate(@RequestParam String period) {
-		return payoutReport.generate(PeriodKey.of(period)).stream().map(PayoutBatchView::of).toList();
+		return payoutReport.generate(parsePeriod(period)).stream().map(PayoutBatchView::of).toList();
 	}
 
 	@GetMapping
 	List<PayoutBatchView> forPeriod(@RequestParam String period) {
-		return payoutReport.forPeriod(PeriodKey.of(period)).stream().map(PayoutBatchView::of).toList();
+		return payoutReport.forPeriod(parsePeriod(period)).stream().map(PayoutBatchView::of).toList();
 	}
 
 	@PatchMapping("/{id}")
 	ResponseEntity<?> mark(@PathVariable long id, @RequestBody UpdateBatchStatusRequest request) {
-		BatchStatus target = BatchStatus.valueOf(request.status());
+		BatchStatus target = InvalidApiRequestException.parsing(() -> BatchStatus.valueOf(request.status()));
 		return switch (payoutReport.mark(id, target)) {
 			case BatchStatusOutcome.Marked marked -> ResponseEntity.ok(PayoutBatchView.of(marked.batch()));
 			case BatchStatusOutcome.NotFound ignored -> ApiProblem.response(HttpStatus.NOT_FOUND,
@@ -64,6 +65,11 @@ class AdminPayoutBatchController {
 		};
 	}
 
+
+	/** A malformed period token is a 400, while {@link PeriodKey}'s guard stays a 500 off the edge (#118). */
+	private static PeriodKey parsePeriod(String period) {
+		return InvalidApiRequestException.parsing(() -> PeriodKey.of(period));
+	}
 
 	/** PATCH body: the target status token ({@code REPORTED} | {@code SETTLED}). */
 	record UpdateBatchStatusRequest(String status) {
