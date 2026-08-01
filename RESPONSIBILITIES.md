@@ -317,7 +317,9 @@ bearer-credential payloads (ADR-0011 decision 5), **each draining on its own bou
 (#383) so a degraded relay can never occupy the shared `applicationTaskExecutor` that carries the
 payment→booking and booking→payout listeners; the registry listener therefore spells out
 `@Async("registryMailExecutor")` + `@TransactionalEventListener` instead of
-`@ApplicationModuleListener`, and holds no transaction across the send; that pool's size and queue
+`@ApplicationModuleListener`, and holds no transaction across the send — a rule pinned by
+`MailListenerExecutorArchitectureTest`, whose non-vacuity guard names all five shipped listeners off
+one list so the check cannot quietly start asserting nothing; that pool's size and queue
 depth are `riviera.notification.registry-mail.*` properties since #408 (defaults `2`/`200`, validated
 at boot, so #370 can retune them against a real relay without a deploy) — and since #410 both pools'
 shutdown drain window is **derived** from a third such property,
@@ -491,7 +493,9 @@ money-path trio from #100, plus the mail-loss counters — the registry-mail she
 booking confirmation by #428, the abandoned cancellation record by #374, the abandoned
 request-outcome records by #124 and the abandoned
 payment-due notice by #373), the **platform's shutdown budget** (`ShutdownBudget`, #456 — the
-SIGTERM grace and every draining pool's claim on it), the **one way a pooled worker inherits
+SIGTERM grace and every draining pool's claim on it, summed by `ShutdownDrainArchitectureTest`, which
+**discovers** draining pools from bytecode rather than from the context, since the context would miss
+the `defaultCandidate = false` bulkheads and the non-bean recovery pool), the **one way a pooled worker inherits
 its submitter's logging context** (`MdcTaskDecorator`, #455), and the **once-only guard behind an
 admin outbox-resubmit lever** (`ResubmissionThrottle` + its `ResubmissionOutcome` vocabulary, #454 —
 single-flight plus a construction-seeded cooldown, so a press cannot race the registry's boot
