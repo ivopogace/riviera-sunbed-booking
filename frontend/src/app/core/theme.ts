@@ -3,9 +3,10 @@ import { Service, signal } from '@angular/core';
 import { readStorage, writeStorage } from '../shared/safe-storage';
 
 /**
- * The Liquid Glass themes shipped so far (issue #134). Palettes themselves are CSS custom
- * properties under `[data-riv-theme="…"]` in `styles.scss` — this registry only carries what the
- * switcher UI needs, so adding a palette (#143) is a styles.scss block plus one row here.
+ * The two Liquid Glass themes (issue #134) — one dark, one light, the full set by decision
+ * (#143, closed not-planned). Palettes themselves are CSS custom properties under
+ * `[data-riv-theme="…"]` in `styles.scss` — this registry only carries what the switcher UI
+ * needs; a palette change is a styles.scss block plus one row here.
  */
 export type ThemeId = 'riviera' | 'porcelain';
 
@@ -64,8 +65,7 @@ function initialTheme(): ThemeId {
   const prefersLight =
     typeof globalThis.matchMedia === 'function' &&
     globalThis.matchMedia('(prefers-color-scheme: light)').matches;
-  // Derived from the registry, not hardcoded, so the light default follows the data when
-  // palettes are added (#143).
+  // Derived from the registry, not hardcoded, so the light default follows the data.
   const lightDefault = THEME_OPTIONS.find((option) => option.light)?.id ?? DEFAULT_THEME;
   return prefersLight ? lightDefault : DEFAULT_THEME;
 }

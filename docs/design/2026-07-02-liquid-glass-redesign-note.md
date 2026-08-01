@@ -49,7 +49,9 @@ behavior stays with the backend contracts and the invariants in `CLAUDE.md`.
 3. **Themes: two now, infra for all.** Ship `riviera` (dark glass, default) and
    `porcelain` (light) as CSS-token themes with a switcher, localStorage
    persistence, and `prefers-color-scheme` default. The other 12 palettes in
-   the design file are follow-up data, not code.
+   the design file are follow-up data, not code. *(Superseded — maintainer,
+   2026-08-01: the follow-up was declined; two themes, one dark + one light,
+   are the final set. #143 closed not-planned.)*
 4. **Amenities + distance-to-water: fullstack slice** in the tourist epic
    (Flyway migration, `venue` module surface, editor input, discovery/map
    chips). The operator design's "Commodities" chip editor is the operator-side
@@ -123,5 +125,5 @@ restyle must respect:
 | Auth modal, SSO buttons, user menu | Epic #108 (#111/#112/#114) — design is their visual spec |
 | Auth **surface split** (tourist modal vs operator sign-in card) | **Overridden** (maintainer, 2026-07-02): one unified sign-in/register page for both sides; registration chooses the account type. Styling per the designs; split per the #108 comment |
 | Venue photos (upload + display) | Follow-up issue |
-| Remaining 12 theme palettes | Follow-up issue |
+| Remaining 12 theme palettes | **Declined** (maintainer, 2026-08-01): two themes — one dark, one light — are the final set; #143 closed not-planned |
 | Platform-admin console (approvals, operators, commissions, daily payouts, privacy) | Epic #348 — added 2026-07-26, outside the original import |
