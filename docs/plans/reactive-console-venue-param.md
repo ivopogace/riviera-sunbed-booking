@@ -156,15 +156,15 @@ N/A — no contract change; the same endpoints are called with a different `venu
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** phase 1 — failing AC-1/AC-3 specs for `operator-console`, then the reactive shell
+**Next action:** phase 2 — layout-editor + pricing tabs reactive, red→green per tab
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — signal-returning `parentVenueId` helper | ✅ | "Make parentVenueId a reactive signal (#180)" — shim decision: tabs call the signal once (`parentVenueId(route)()`, snapshot semantics preserved) so each tab phase still goes red→green; R-2 mock sweep done here (12 spec files), 244 operator+shared tests green |
-| 1 — reactive shell (`operator-console`) | ⏳ | |
-| 2 — tabs: layout-editor + pricing | | |
+| 1 — reactive shell (`operator-console`) | ✅ | "React to venue param changes in the console shell (#180)" — AC-1 + AC-3 pinned; scope addition: `ConsoleStatsStrip.load` now resets its tiles (old venue's takings must not render against the new venue — it was already input-reactive, so this was the only gap); 247 operator+shared tests green |
+| 2 — tabs: layout-editor + pricing | ⏳ | |
 | 3 — tabs: daily-view + requests | | |
 | 4 — tabs: payouts + venue-tab; harness integration spec | | |
 | 5 — lint + full FE suite + PR ready-for-review | | |

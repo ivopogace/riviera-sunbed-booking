@@ -1,4 +1,4 @@
-@if (venueId === undefined) {
+@if (venueId() === undefined) {
   <main class="oc-signin">
     <div class="oc-signin-card">
       <h1 class="oc-signin-title" data-testid="oc-invalid-venue">Venue not found</h1>
@@ -53,13 +53,13 @@
       </div>
     </header>
 
-    <app-console-stats-strip [venueId]="venueId!" [venue]="venue()" />
+    <app-console-stats-strip [venueId]="venueId()!" [venue]="venue()" />
 
     <nav class="oc-tabs" data-testid="oc-tabs" aria-label="Operator console sections">
       @for (tab of tabs; track tab.path) {
         <a
           class="oc-tab"
-          [routerLink]="['/operator', venueId, tab.path]"
+          [routerLink]="['/operator', venueId(), tab.path]"
           routerLinkActive="oc-tab--active"
           ariaCurrentWhenActive="page"
         >

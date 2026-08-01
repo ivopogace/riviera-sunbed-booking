@@ -84,6 +84,10 @@ export class ConsoleStatsStrip {
   }
 
   private load(venueId: number): void {
+    // An in-place venue switch reuses this strip (#180): drop the old venue's counts/takings so
+    // the tiles show their dash defaults while the new venue's reads are in flight.
+    this.bookedOnline.set(undefined);
+    this.takings.set(undefined);
     this.console.dailyBookingCount(venueId, this.date).subscribe({
       next: (count) => this.bookedOnline.set(count),
       error: () => {
