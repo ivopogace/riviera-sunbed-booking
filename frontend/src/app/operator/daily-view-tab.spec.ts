@@ -1,8 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 
 import { defaultBookingDate, todayBookingDate } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
@@ -21,6 +21,7 @@ describe('DailyViewTab (#175)', () => {
   let fixture: ComponentFixture<DailyViewTab>;
   let http: HttpTestingController;
   let host: HTMLElement;
+  let params$: BehaviorSubject<ParamMap>;
 
   // A1 FREE (tap→mark); A2 TAKEN + booked online (locked); A3 TAKEN staff-marked (tap→release);
   // B1 FREE walk-in.
@@ -34,6 +35,7 @@ describe('DailyViewTab (#175)', () => {
 
   /** `beforeCreate` runs after the injector exists but before the tab mounts — the shell's window. */
   function configure(beforeCreate?: () => void): void {
+    params$ = new BehaviorSubject(convertToParamMap({ venueId: '1' }));
     TestBed.configureTestingModule({
       imports: [DailyViewTab],
       providers: [
@@ -44,7 +46,7 @@ describe('DailyViewTab (#175)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap({ venueId: '1' }) }, paramMap: of(convertToParamMap({ venueId: '1' })) },
+            parent: { snapshot: { paramMap: params$.value }, paramMap: params$ },
           },
         },
       ],
@@ -306,6 +308,35 @@ describe('DailyViewTab (#175)', () => {
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
     expect(byId('daily-load-error')).toBeTruthy();
+  });
+
+  it('re-loads for the new venue when the parent param changes in place (#180)', () => {
+    render();
+    expect(tile(3).getAttribute('data-state')).toBe('STAFF_MARKED');
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    // Venue 1's grid, codes and counts must not render against venue 2 while its reads are in flight.
+    expect(host.querySelector('[data-set-id]')).toBeNull();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/bookings'))
+      .flush([]);
+    http
+      .expectOne(
+        (r) => r.method === 'GET' && r.url.includes('/api/venues/2') && !r.url.includes('/bookings'),
+      )
+      .flush({
+        id: 2,
+        name: 'W',
+        beach: 'Dhermi',
+        region: 'Riviera',
+        sets: [seat(9, 'A', 1, 'STANDARD', 'ONLINE', 'FREE')],
+      });
+    fixture.detectChanges();
+
+    expect(tile(9).getAttribute('data-state')).toBe('FREE');
+    expect(host.querySelectorAll('[data-set-id]')).toHaveLength(1);
   });
 });
 

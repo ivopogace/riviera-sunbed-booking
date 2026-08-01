@@ -1,8 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { todayBookingDate } from '../shared/booking-date';
@@ -24,6 +24,7 @@ import { RequestsTab } from './requests-tab';
  */
 describe('RequestsTab (#176)', () => {
   let fixture: ComponentFixture<RequestsTab>;
+  let params$: BehaviorSubject<ParamMap>;
   let http: HttpTestingController;
   let host: HTMLElement;
   let store: PendingRequestsStore;
@@ -55,6 +56,7 @@ describe('RequestsTab (#176)', () => {
 
   /** `beforeCreate` runs after the injector exists but before the tab mounts — the shell's window. */
   function configure(beforeCreate?: () => void): void {
+    params$ = new BehaviorSubject(convertToParamMap({ venueId: '1' }));
     TestBed.configureTestingModule({
       imports: [RequestsTab],
       providers: [
@@ -65,7 +67,7 @@ describe('RequestsTab (#176)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap({ venueId: '1' }) }, paramMap: of(convertToParamMap({ venueId: '1' })) },
+            parent: { snapshot: { paramMap: params$.value }, paramMap: params$ },
           },
         },
       ],
@@ -342,6 +344,33 @@ describe('RequestsTab (#176)', () => {
 
     expect(cards()[0].textContent).toContain('Set 1');
     expect(byId('requests-load-error')).toBeNull(); // the map is best-effort; the queue still rendered
+  });
+
+  it('re-loads for the new venue when the parent param changes in place (#180)', () => {
+    render([request()]);
+    expect(cards()).toHaveLength(1);
+    expect(store.count()).toBe(1);
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    // Venue 1's queue must not render (or keep the badge) against venue 2 while its reads run.
+    expect(cards()).toHaveLength(0);
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/booking-requests'))
+      .flush([request({ bookingId: 21 }), request({ bookingId: 22, setId: 2 })]);
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/2') &&
+          !r.url.includes('/booking-requests'),
+      )
+      .flush({ id: 2, name: 'W', beach: 'Dhermi', region: 'Riviera', sets: SEED_SETS });
+    fixture.detectChanges();
+
+    expect(cards()).toHaveLength(2);
+    expect(store.count()).toBe(2);
   });
 });
 

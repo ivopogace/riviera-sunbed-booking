@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
@@ -63,7 +63,9 @@ export class RequestsTab {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly operator = inject(OperatorAuth);
 
-  private readonly venueId: number | undefined;
+  /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
+   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+  private readonly venueId = parentVenueId(this.route);
 
   /** The venue map, loaded best-effort for set labels + tiers (undefined until/if it loads). */
   private readonly venue = signal<VenueMapView | undefined>(undefined);
@@ -88,18 +90,34 @@ export class RequestsTab {
   private readonly expired = signal<ReadonlySet<number>>(new Set());
 
   constructor() {
-    const id = parentVenueId(this.route)();
-    if (id !== undefined) {
-      this.venueId = id;
-      this.load();
-      // Poll so a request the #98 sweep expires (or another operator device handles) leaves the list,
-      // and the urgency clock stays current, without the operator refreshing this long-open surface.
-      const poll = setInterval(() => this.reconcile(), REFRESH_MS);
-      this.destroyRef.onDestroy(() => clearInterval(poll));
-    } else {
-      this.loaded.set(true);
-      this.loadError.set(true);
-    }
+    // Re-runs on an in-place venue switch (#180): reset to the fresh-mount state, then load.
+    effect(() => {
+      const id = this.venueId();
+      untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
+    });
+    // Poll so a request the #98 sweep expires (or another operator device handles) leaves the list,
+    // and the urgency clock stays current, without the operator refreshing this long-open surface.
+    // One interval for the tab's lifetime — reconcile reads the current venue and no-ops when invalid.
+    const poll = setInterval(() => this.reconcile(), REFRESH_MS);
+    this.destroyRef.onDestroy(() => clearInterval(poll));
+  }
+
+  private markInvalid(): void {
+    this.loaded.set(true);
+    this.loadError.set(true);
+  }
+
+  /** Drop every venue-scoped signal — queue, notice, transient card state — and load fresh. */
+  private resetForVenue(): void {
+    this.venue.set(undefined);
+    this.requests.set([]);
+    this.loaded.set(false);
+    this.loadError.set(false);
+    this.notice.set(undefined);
+    this.deciding.set(new Set());
+    this.declineConfirm.set(new Set());
+    this.expired.set(new Set());
+    this.load();
   }
 
   /** The pending-request rows, each resolved to a set label + tier from the loaded map (else the raw id). */
@@ -157,7 +175,8 @@ export class RequestsTab {
   }
 
   private decide(bookingId: number, action: 'accept' | 'decline'): void {
-    if (this.venueId === undefined || this.isDeciding(bookingId)) {
+    const venueId = this.venueId();
+    if (venueId === undefined || this.isDeciding(bookingId)) {
       return;
     }
     this.notice.set(undefined);
@@ -165,16 +184,23 @@ export class RequestsTab {
     this.deciding.update((s) => new Set(s).add(bookingId));
     const call =
       action === 'accept'
-        ? this.console.acceptRequest(this.venueId, bookingId)
-        : this.console.declineRequest(this.venueId, bookingId);
+        ? this.console.acceptRequest(venueId, bookingId)
+        : this.console.declineRequest(venueId, bookingId);
     call.subscribe({
       next: (decision) => {
+        if (this.venueId() !== venueId) {
+          return; // a venue switch superseded this decision's UI state (#180)
+        }
         this.stopDeciding(bookingId);
         this.notice.set(decisionNotice(action, decision.status));
         this.removeCard(bookingId); // instant optimistic removal…
         this.reconcile(); // …then re-sync the rest of the queue with server truth
       },
-      error: (e: unknown) => this.onDecisionError(bookingId, action, e),
+      error: (e: unknown) => {
+        if (this.venueId() === venueId) {
+          this.onDecisionError(bookingId, action, e); // skip if a venue switch superseded it (#180)
+        }
+      },
     });
   }
 
@@ -214,14 +240,20 @@ export class RequestsTab {
   }
 
   private load(): void {
-    if (this.venueId === undefined) {
+    const venueId = this.venueId();
+    if (venueId === undefined) {
       return;
     }
     this.refreshNow();
     // Best-effort: the map only supplies set labels/tiers (date-independent); a failure degrades to
-    // "Set {id}" / "Standard" and never blocks the queue. Read once — labels don't change under the tab.
-    this.venueMap.load(this.venueId, todayBookingDate(new Date())).subscribe({
-      next: (v) => this.venue.set(v),
+    // "Set {id}" / "Standard" and never blocks the queue. Read once per venue — labels don't change
+    // under the tab.
+    this.venueMap.load(venueId, todayBookingDate(new Date())).subscribe({
+      next: (v) => {
+        if (this.venueId() === venueId) {
+          this.venue.set(v); // a superseded venue's labels never dress the new venue's queue (#180)
+        }
+      },
       error: () => {
         /* labels degrade gracefully; the queue read owns the error/loaded state */
       },
@@ -246,11 +278,15 @@ export class RequestsTab {
    * queue or flash the error card — only surface a lost session).
    */
   private fetchQueue(initial: boolean): void {
-    if (this.venueId === undefined) {
+    const venueId = this.venueId();
+    if (venueId === undefined) {
       return;
     }
-    this.console.pendingRequests(this.venueId).subscribe({
+    this.console.pendingRequests(venueId).subscribe({
       next: (r) => {
+        if (this.venueId() !== venueId) {
+          return; // a venue switch superseded this read — never seed the new venue's queue/badge (#180)
+        }
         this.requests.set(r);
         this.badge.set(r.length);
         this.pruneTransient(r);
@@ -259,6 +295,9 @@ export class RequestsTab {
         }
       },
       error: (e: unknown) => {
+        if (this.venueId() !== venueId) {
+          return; // a venue switch superseded this read (#180)
+        }
         if (initial) {
           this.loadError.set(true);
           this.loaded.set(true);

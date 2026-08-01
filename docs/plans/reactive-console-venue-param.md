@@ -156,16 +156,16 @@ N/A — no contract change; the same endpoints are called with a different `venu
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** implement (phase 4)
 
-**Next action:** phase 3 — daily-view + requests tabs reactive, red→green per tab (carry the late-response guard pattern)
+**Next action:** phase 4 — payouts + venue-tab reactive; shell/strip late-response guards; harness integration spec
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — signal-returning `parentVenueId` helper | ✅ | "Make parentVenueId a reactive signal (#180)" — shim decision: tabs call the signal once (`parentVenueId(route)()`, snapshot semantics preserved) so each tab phase still goes red→green; R-2 mock sweep done here (12 spec files), 244 operator+shared tests green |
 | 1 — reactive shell (`operator-console`) | ✅ | "React to venue param changes in the console shell (#180)" — AC-1 + AC-3 pinned; scope addition: `ConsoleStatsStrip.load` now resets its tiles (old venue's takings must not render against the new venue — it was already input-reactive, so this was the only gap); 247 operator+shared tests green |
 | 2 — tabs: layout-editor + pricing | ✅ | "React to venue param changes in the layout and pricing tabs (#180)" — reload + reset pinned per tab; pattern addition: the **late-response guard** (`if (this.venueId() !== venueId) return` in every subscribe/await continuation), pinned by the layout-editor race spec; 250 tests green | 
-| 3 — tabs: daily-view + requests | ⏳ | |
+| 3 — tabs: daily-view + requests | ✅ | "React to venue param changes in the daily and requests tabs (#180)" — daily resets to today's date on switch (full-navigation parity), its load continuations now guard venue+date jointly; requests' poll interval is lifetime-scoped and reconciles the *current* venue; both carry the late-response guards; 252 tests green |
 | 4 — tabs: payouts + venue-tab; harness integration spec | | |
 | 5 — lint + full FE suite + PR ready-for-review | | |
 
