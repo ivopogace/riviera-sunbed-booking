@@ -176,16 +176,26 @@ same typed service methods. The slice only changes *how many* of one of them are
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phase 2`
+**Stage pointer:** `CI gate — awaiting the phase-2 push's run, then PR ready-for-review`
 
-**Next action:** Phase 2 step 1 — correct the stale `#114 unshipped` TSDoc in
-`core/device-local-bookings.ts`, then run the e2e + scoped regression sweep.
+**Next action:** Confirm CI green on PR #484's latest push, mark the PR ready for review, then run
+the Review gate (`references/pr-gates.md` §1 invocation ladder) followed by the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Bound the fan-out + destroy teardown (AC-1, AC-5, AC-6) | ✅ | `f11cee0` |
-| 1 — Trim the redundant per-code fetch (AC-2, AC-3, AC-4, AC-7) | ✅ | `<phase-1>` |
-| 2 — Doc freshness + e2e/regression sweep | ⏳ | |
+| 1 — Trim the redundant per-code fetch (AC-2, AC-3, AC-4, AC-7) | ✅ | `fc3fb70` |
+| 2 — Doc freshness + e2e/regression sweep | ✅ | `<phase-2>` |
+
+**Local verification at phase 2 (scoped per `riviera-local-debug`; CI owns the full suite):**
+
+| Run | Result |
+|---|---|
+| `npm test --include="src/app/booking/**" --include="src/app/core/device-local-bookings.spec.ts"` | 241 passed / 24 files |
+| `npm run test:a11y` | 312 passed / 51 files |
+| `npm run lint` | clean |
+| `npm run build` | success (2 pre-existing SCSS budget warnings, in files this slice does not touch) |
+| `npm run test:e2e:a11y -- my-bookings` | 3 passed (incl. signed-in union + both-theme axe) |
 
 **PR:** #484 (draft, opened at the phase-0 push per `riviera-sdlc` rule 3).
 
@@ -502,7 +512,12 @@ private upsert(incoming: readonly Row[]): void {
   its motivating case.
 - [ ] **Step 2: Update the `MyBookings` class TSDoc** to describe the bounded queue and the skip —
   the class doc is the documented surface (RV-STYLE-1), so the *why* lives there, not inline.
-- [ ] **Step 3: Verify e2e unchanged and green** — `npm run test:e2e:a11y -- my-bookings`. Both
+- [ ] **Step 3: Verify e2e unchanged and green** — `npm run test:e2e:a11y -- my-bookings`. In a
+  cloud session the pinned `@playwright/test` 1.61.1 wants `chromium_headless_shell-1228` while the
+  image ships revision 1194, so use the config's existing escape hatch rather than
+  `playwright install` (which the environment forbids):
+  `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npm run test:e2e:a11y -- my-bookings`.
+  Both
   suites' scenarios use ≤2 device codes, so no queueing occurs and the shared-row assertions are
   provenance-agnostic; this is a regression guard, not new coverage (`playwright-cli`: no new spec
   is warranted for a change with no new user-facing state).

@@ -103,6 +103,15 @@ function isNotFound(error: unknown): boolean {
  * email is a later, #113-gated step (design D-6), so a pre-sign-in guest booking made elsewhere is
  * not yet listed here. The merge is display-only — no booking codes are handed to the account.
  *
+ * <p><strong>Fetch scheduling (#164):</strong> the per-code lookups are queued through a bounded
+ * {@link DEVICE_FETCH_CONCURRENCY} rather than all issued at once. That bound is also what makes
+ * the account list able to answer for a device code: because the queue subscribes to each lookup
+ * lazily, a code still waiting its turn when `GET /api/me/bookings` returns is served from that
+ * response and never fetched. Crucially this is a dequeue-time skip, **not** a barrier — device
+ * rows and their first requests go out immediately, so a slow or failed account list never delays
+ * them (review F2). The stored code list itself is deliberately uncapped and unpruned — see
+ * {@link DeviceLocalBookings#forget}.
+ *
  * <p>Each row loads independently into a precomputed {@link RowView}. Rows link to the T5
  * `/booking/:code` detail view. Money renders from integer minor units via {@link formatMoney}
  * (invariant #5); the PENDING_REQUEST deadline via {@link formatDeadline} (Europe/Tirane, invariant
