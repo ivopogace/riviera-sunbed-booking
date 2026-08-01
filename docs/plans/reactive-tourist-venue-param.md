@@ -171,16 +171,16 @@ N/A — no contract change; the same endpoint is called with a different `venueI
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** implement (phase 4)
 
-**Next action:** phase 3 — `venue/venue-map-switch.spec.ts` harness spec (AC-6)
+**Next action:** phase 4 — lint + full FE suite + build, push, verify CI, mark ready-for-review
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `routeIdParam` helper generalization | ✅ | "Generalize the route-id-param helper to any param name (#499)" — `venueIdParam` is now a one-line delegate (R-5 mitigated by signature parity); 9 shared tests green; generalization audit logged (no further in-scope snapshot readers) |
 | 1 — reactive `:id` + epoch guard in `VenueMap` | ✅ | "React to in-place venue param changes on the tourist map (#499)" — AC-1/2/4 pinned (incl. the A→B→A identity case); design note: the fresh-mount load stays synchronous in the constructor (AC-5 parity — ~30 existing specs assert the immediate request), the effect resets only when the id *value* differs from the loaded context; R-1 reset audit + R-2 mock sweep (3 sites) done; 62 venue-folder tests green |
 | 2 — reactive `?date` re-seed | ✅ | "Re-seed the tourist map date from route emissions (#499)" — AC-3 pinned (valid carried date + below-floor clamp); `readInitialDate()` folded into the `routeDate` computed; the reset effect keys on the `(id, routeDate)` value pair; Open-questions assumption resolved (no flash — `selectedDate` is seeded from `routeDate` at field init, the constructor reset is a same-value write); 73 venue+shared tests green |
-| 3 — harness switch spec over real routes | | |
+| 3 — harness switch spec over real routes | ✅ | "Pin the tourist venue switch on the real routes (#499)" — AC-6: `venue-map-switch.spec.ts` asserts instance REUSE + venue-2 reload under the real `app.routes.ts` config (the `console-venue-switch.spec.ts` mirror) |
 | 4 — lint + full FE suite + gates + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
