@@ -188,8 +188,7 @@ describe('LayoutEditor (#172)', () => {
   });
 
   it('drops the shared console snapshot after a successful save (#486 AC-4)', async () => {
-    // This tab writes the map, so the shell's warm snapshot describes retired sets the moment the PUT
-    // lands. Leaving it would show the Requests and Pricing tabs a layout that no longer exists.
+    // The PUT retires the sets the shell's warm snapshot describes, so leaving it stales both tabs.
     render();
     const snapshots = TestBed.inject(ConsoleVenueMap);
     snapshots.load(1, todayBookingDate(new Date())).subscribe();

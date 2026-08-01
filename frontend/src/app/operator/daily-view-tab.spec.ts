@@ -206,10 +206,7 @@ describe('DailyViewTab (#175)', () => {
   });
 
   it('never serves the console snapshot — its reads are excluded from the shared cache (#486 AC-3)', () => {
-    // The shell's snapshot is warm for (venue, today), which is exactly this tab's opening key. It must
-    // still fetch anyway: its post-tap-to-mark reconcile is what proves the mark landed, and served from
-    // a snapshot it would show a set the operator just marked as still free. Both flushLoad calls below
-    // throw if this tab ever became a cache consumer — they expect a real request each time.
+    // Warm on this tab's own key, yet both flushLoad calls below still demand a real request.
     configure(() => {
       TestBed.inject(ConsoleVenueMap).load(1, todayBookingDate(new Date())).subscribe();
       http

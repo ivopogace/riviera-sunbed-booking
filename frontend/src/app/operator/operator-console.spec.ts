@@ -152,8 +152,7 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     });
     expect(TestBed.inject(PendingRequestsStore).count()).toBe(0);
 
-    // The shared snapshot outlives this component, so sign-out must drop it too (#486 R-3) — otherwise
-    // the next operator on this device would open the console on the previous one's venue map.
+    // Sign-out drops the shared snapshot, so the next operator cannot inherit it (#486 R-3).
     let refetched: string | undefined;
     TestBed.inject(ConsoleVenueMap)
       .load(VENUE, todayBookingDate(new Date()))

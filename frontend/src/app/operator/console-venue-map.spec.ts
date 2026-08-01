@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { VenueMapView } from '../venue/venue.model';
@@ -19,6 +20,7 @@ describe('ConsoleVenueMap (#486)', () => {
 
   let cache: ConsoleVenueMap;
   let http: HttpTestingController;
+  let frozenNow: number;
 
   function venueMap(name = 'Miramar Beach Club'): VenueMapView {
     return {
@@ -50,9 +52,13 @@ describe('ConsoleVenueMap (#486)', () => {
     });
     cache = TestBed.inject(ConsoleVenueMap);
     http = TestBed.inject(HttpTestingController);
+    frozenNow = Date.now();
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    vi.setSystemTime(new Date(frozenNow)); // the suite-wide frozen clock, restored for the next spec
+    http.verify();
+  });
 
   it('coalesces two concurrent loads of the same key into one request', () => {
     const seen: string[] = [];
@@ -102,6 +108,51 @@ describe('ConsoleVenueMap (#486)', () => {
     flushMap(TODAY, venueMap('After the save'));
 
     expect(after?.name).toBe('After the save');
+  });
+
+  it('does not let a superseded fetch drop the snapshot that replaced it (review F-2)', () => {
+    // The key is equal again by the time the orphan fails — only identity separates the two.
+    let orphanFailed = false;
+    cache.load(VENUE, TODAY).subscribe({ error: () => (orphanFailed = true) });
+    cache.reset();
+    cache.load(VENUE, TODAY).subscribe();
+
+    const [orphan, current] = http.match(
+      `${environment.apiBaseUrl}/api/venues/${VENUE}?date=${TODAY}`,
+    );
+    current.flush(venueMap('Fresh'));
+    orphan.flush('nope', { status: 500, statusText: 'Server Error' });
+    expect(orphanFailed).toBe(true);
+
+    let served: string | undefined;
+    cache.load(VENUE, TODAY).subscribe((v) => (served = v.name));
+    expect(served).toBe('Fresh');
+    http.expectNone(`${environment.apiBaseUrl}/api/venues/${VENUE}?date=${TODAY}`);
+  });
+
+  it('refetches once the snapshot ages out — a tab revisit stays a fresh read (review F-3)', () => {
+    cache.load(VENUE, TODAY).subscribe();
+    flushMap(TODAY, venueMap('At console open'));
+
+    // A tab is recreated on every navigation, so a revisit always re-read from the server before.
+    vi.setSystemTime(new Date(Date.now() + 31_000));
+
+    let revisit: string | undefined;
+    cache.load(VENUE, TODAY).subscribe((v) => (revisit = v.name));
+    flushMap(TODAY, venueMap('Repriced from another device'));
+
+    expect(revisit).toBe('Repriced from another device');
+  });
+
+  it('still coalesces two loads inside the snapshot window', () => {
+    cache.load(VENUE, TODAY).subscribe();
+    vi.setSystemTime(new Date(Date.now() + 5_000)); // the tab route resolves a moment after the shell
+
+    let joined: string | undefined;
+    cache.load(VENUE, TODAY).subscribe((v) => (joined = v.name));
+    flushMap(TODAY, venueMap('One read'));
+
+    expect(joined).toBe('One read');
   });
 
   it('refetches when the key changes — a venue switch or a date rollover evicts the slot', () => {

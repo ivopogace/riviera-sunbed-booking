@@ -307,8 +307,7 @@ describe('PricingTab (#174)', () => {
   });
 
   it('reuses the shell snapshot instead of re-fetching the venue map (#486)', () => {
-    // The shell loads (venue, today) before this lazy tab route activates; the tab wants the same
-    // snapshot for its rows AND its #226 setVersion token. expectOne throws on a second GET.
+    // The shell warms (venue, today) first; expectOne throws if the tab issues its own GET.
     configure(() => {
       TestBed.inject(ConsoleVenueMap).load(1, todayBookingDate(new Date())).subscribe();
     });
@@ -348,9 +347,7 @@ describe('PricingTab (#174)', () => {
   });
 
   it('bypasses the shared snapshot on stale-write recovery (#486 AC-6)', async () => {
-    // The grill hazard: Reload exists to escape a 409 STALE_WRITE. Served from the very snapshot whose
-    // setVersion lost the race, it would re-seed the same stale token and the conflict would be
-    // unrecoverable — so this read must always reach the server.
+    // Reload escapes a 409; re-seeding from the snapshot that lost the race would never recover.
     configure(() => {
       TestBed.inject(ConsoleVenueMap).load(1, todayBookingDate(new Date())).subscribe();
     });

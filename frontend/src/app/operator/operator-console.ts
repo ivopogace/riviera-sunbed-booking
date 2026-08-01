@@ -91,9 +91,7 @@ export class OperatorConsole {
     await this.operator.signOut();
     this.venueName.set(undefined);
     this.venue.set(undefined);
-    // The snapshot outlives this component, so drop it here — the next operator on this device
-    // must not inherit the previous one's venue map.
-    this.venueMap.reset();
+    this.venueMap.reset(); // it outlives this component — the next operator must not inherit it
     this.requests.reset();
     // The guard gates on ACTIVATION, so leave ourselves rather than sit on a dead session (#277).
     await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });

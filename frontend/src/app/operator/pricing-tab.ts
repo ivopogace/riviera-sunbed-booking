@@ -200,9 +200,7 @@ export class PricingTab {
     this.staleConflict.set(false);
     this.errorRow.set(null);
     this.savedRow.set(null);
-    // Reload exists to escape the conflict, so it must reach the server: the shared snapshot holds the
-    // very setVersion that lost the race, and re-seeding from it would make the 409 unrecoverable (#486).
-    this.venueMap.reset();
+    this.venueMap.reset(); // the snapshot holds the setVersion that lost the race — never re-seed from it
     this.load(venueId);
   }
 

@@ -179,9 +179,7 @@ test('lists rows, projects the online-only take, and commits a minor-unit repric
 test('opens the Pricing tab on ONE venue-map read, not two (#486)', async ({ page }) => {
   const { puts, mapReads } = await mockPricing(page);
 
-  // Deep-link straight to the tab so only the shell and the Pricing tab mount: landing on /operator/1
-  // would redirect to the beach-map default child, whose layout editor does its own (deliberately
-  // uncached) read and would blur the count this test exists to make.
+  // Deep-linked so only the shell + tab mount; /operator/1 would add the layout editor's own read.
   await page.goto('/operator/1/pricing');
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');

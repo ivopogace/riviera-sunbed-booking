@@ -307,9 +307,7 @@ describe('RequestsTab (#176)', () => {
   });
 
   it('reuses the shell snapshot instead of re-fetching the venue map (#486)', () => {
-    // The shell loads (venue, today) for its header title + Free-today tile before this lazy tab route
-    // activates; the tab wants the same snapshot for its set labels. The expectOne below is the
-    // assertion — it throws on the second, byte-identical GET this slice removes.
+    // The shell warms (venue, today) first; flushLoad's expectOne throws on a second identical GET.
     let shellSnapshot: SetView[] | undefined;
     configure(() => {
       TestBed.inject(ConsoleVenueMap)

@@ -5,6 +5,14 @@ import { VenueMapView } from '../venue/venue.model';
 import { VenueService } from '../venue/venue.service';
 
 /**
+ * How long a snapshot may be reused. Long enough to coalesce the console-open burst — the shell and
+ * its lazily-routed tab mount milliseconds apart — and short enough that returning to a tab later is
+ * the fresh read it was before this cache existed (a tab is destroyed and recreated on every
+ * navigation, so its activation was the only refresh Pricing and Requests ever had).
+ */
+const SNAPSHOT_TTL_MS = 30_000;
+
+/**
  * The operator console's shared `(venue, date)` beach-map snapshot (issue #486). The shell reads the
  * map for its header title and the stats strip's Free-today tile, and two of the tabs rendered inside
  * that shell wanted the byte-identical read — so opening the console on Requests or Pricing fired
@@ -15,13 +23,17 @@ import { VenueService } from '../venue/venue.service';
  * Three of the six `getVenueMap` callers want a shared snapshot (this shell, {@code RequestsTab},
  * {@code PricingTab}); the other three want server truth and keep calling {@link VenueService}
  * directly — {@code DailyViewTab} (its post-tap-to-mark reconcile must never render a set the
- * operator just marked as still free), {@code LayoutEditor} (it reloads precisely because it mutated
- * the map), and the tourist beach map (a different feature). A transparent layer would have staled
- * all three silently, and freshness is the harder property to get back.
+ * operator just marked as still free), {@code LayoutEditor} (it seeds its grid from the server and
+ * re-reads to escape a write conflict), and the tourist beach map (a different feature). A
+ * transparent layer would have staled all three silently, and freshness is the harder property to
+ * get back.
  *
- * <p><strong>Single slot.</strong> Every consumer asks for the same key within one console session,
- * so one entry is enough — and a changed key (venue switch, midnight date rollover) evicts the
- * previous snapshot outright rather than parking it in a map with an eviction policy to get wrong.
+ * <p><strong>Bounded, single slot.</strong> Every consumer asks for the same key within one console
+ * session, so one entry is enough — and a changed key (venue switch, midnight date rollover) evicts
+ * the previous snapshot outright rather than parking it in a map with an eviction policy to get
+ * wrong. {@link SNAPSHOT_TTL_MS} bounds how long that entry survives, so this stays a coalescing
+ * window rather than a session-lifetime cache that would hide another device's edits until the next
+ * write.
  *
  * <p><strong>Invalidation is the sharp edge.</strong> {@link reset} is called on sign-out and after
  * every successful write to the map — a layout save and a row reprice — or the tabs would render
@@ -39,18 +51,22 @@ export class ConsoleVenueMap {
 
   private key?: string;
   private snapshot?: Observable<VenueMapView>;
+  private expiresAt = 0;
+  /** Identifies the current fetch, so a superseded one cannot invalidate the snapshot that replaced it. */
+  private generation = 0;
 
   /**
-   * The venue map for `(venueId, date)`, shared with every other caller asking for the same key.
-   * Concurrent callers join one in-flight request; a later caller replays the settled snapshot. A
-   * failed read is never retained, so the caller's own error handling still runs and the next ask
-   * goes back to the server.
+   * The venue map for `(venueId, date)`, shared with every other caller asking for the same key
+   * within {@link SNAPSHOT_TTL_MS}. Concurrent callers join one in-flight request; a later caller
+   * replays the settled snapshot. A failed read is never retained, so the caller's own error handling
+   * still runs and the next ask goes back to the server.
    */
   load(venueId: number, date: string): Observable<VenueMapView> {
     const key = `${venueId}@${date}`;
-    if (this.key !== key || this.snapshot === undefined) {
+    if (this.key !== key || this.snapshot === undefined || Date.now() >= this.expiresAt) {
       this.key = key;
-      this.snapshot = this.fetch(venueId, date, key);
+      this.expiresAt = Date.now() + SNAPSHOT_TTL_MS;
+      this.snapshot = this.fetch(venueId, date, ++this.generation);
     }
     return this.snapshot;
   }
@@ -59,18 +75,19 @@ export class ConsoleVenueMap {
   reset(): void {
     this.key = undefined;
     this.snapshot = undefined;
+    this.expiresAt = 0;
   }
 
-  private fetch(venueId: number, date: string, key: string): Observable<VenueMapView> {
+  private fetch(venueId: number, date: string, generation: number): Observable<VenueMapView> {
     return this.venues.getVenueMap(venueId, date).pipe(
       catchError((error: unknown) => {
-        if (this.key === key) {
-          this.reset(); // a failure is not cached, so the caller can retry
+        // Identity, not key: the key recurs after a reset, so a value check drops the replacement.
+        if (this.generation === generation) {
+          this.reset();
         }
         return throwError(() => error);
       }),
-      // refCount:false — an early unsubscribe (a tab destroyed mid-flight) must not cancel the
-      // request the other consumer is still waiting on.
+      // refCount:false — an unsubscribing tab must not cancel the request another consumer awaits.
       shareReplay({ bufferSize: 1, refCount: false }),
     );
   }

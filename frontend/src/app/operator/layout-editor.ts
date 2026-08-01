@@ -338,9 +338,7 @@ export class LayoutEditor {
     }
     this.reloading.set(true);
     this.reloadFailed.set(false);
-    // This read is deliberately direct (never the shared snapshot — it is what the conflict makes
-    // stale); drop that snapshot too so the other tabs don't serve the pre-conflict layout (#486).
-    this.venueMap.reset();
+    this.venueMap.reset(); // the other tabs must not serve the pre-conflict layout either (#486)
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
         // Success: NOW replace the in-progress grid with the server's latest layout + token, clear the banner.

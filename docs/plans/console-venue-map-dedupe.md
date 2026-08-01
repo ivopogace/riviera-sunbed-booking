@@ -6,9 +6,10 @@
 **Goal:** Opening the operator console on the Requests or Pricing tab issues **one**
 `GET /api/venues/{id}?date=…`, not two, without turning any needed refresh into a cache hit.
 
-**Architecture:** A single-slot, console-scoped snapshot cache (`operator/console-venue-map.ts`)
-that coalesces the shell's and the tabs' identical `(venueId, today)` read into one shared
-in-flight request. The one significant decision is that the cache is **opt-in per call site**,
+**Architecture:** A single-slot, **time-bounded** console-scoped snapshot cache
+(`operator/console-venue-map.ts`) that coalesces the shell's and the tabs' identical
+`(venueId, today)` read into one shared in-flight request. The 30s window is what keeps it a
+*coalescing* cache rather than a session-lifetime one (review F-3). The one significant decision is that the cache is **opt-in per call site**,
 not a transparent layer inside `VenueService`: three of the six `getVenueMap` callers want a
 shared snapshot, and the other three (`DailyViewTab`, `LayoutEditor`, the tourist `VenueMap`)
 want server truth — a transparent cache would silently break them, and their freshness is the
@@ -23,7 +24,7 @@ parent epic #141, closed).
 `setVersion` recovery hazard the issue does not mention, R-1/AC-6) · `riviera-plan-doc` (this
 template — forced the Behavior-parity ledger, which is what turned "3 call sites" into the
 6-call-site preserved/changed table) · `tdd` (each phase red-first; the request-count assertions
-are written before the cache exists) · `riviera-review-overlay` (review gate — run at PR ready-for-review)
+are written before the cache exists) · `riviera-review-overlay` (review gate — ran on PR #487 alongside `/code-review`'s 6-agent fan-out; contributed RV-STYLE-1, which caught F-1, and passed RV-PROC-1 / RV-FE-E2E)
 · `riviera-docs-freshness` (`N/A — no substrate doc states the console's fetch count; the module
 table, CONTEXT.md and the ADRs are all backend-facing and this slice is frontend-only`) ·
 `riviera-frontend` (placement: `operator/` root `@Service()`, **not** `core/` — the
@@ -32,7 +33,8 @@ shared state, not a cross-cutting singleton"; also ruled out `core/`, which may 
 feature's `VenueService`) · `angular-developer` + angular-cli MCP (`get_best_practices` → `@Service()`
 over `@Injectable({providedIn:'root'})` for new singletons, `inject()`, signals; `search_documentation`
 → confirmed route-scoped `Route.providers` exists as an alternative and was rejected, see Resolved Q-1) ·
-`playwright-cli` (the mocked-suite route counter for AC-1/AC-2)
+`playwright-cli` (the mocked-suite route counter for AC-1/AC-2, verified non-vacuous by
+restoring the pre-fix tab and watching it report `Received: 2`)
 
 **Branch:** `claude/angular-mcp-search-doc-nfkm6j` — **cloud session:** the designated remote
 branch substitutes for `feature/console-venue-map-dedupe` (`riviera-sdlc` §Remote/cloud addendum).
@@ -73,6 +75,16 @@ branch substitutes for `feature/console-venue-map-dedupe` (`riviera-sdlc` §Remo
   `setVersion`, never the stale cached snapshot that caused the conflict.
   *Pinned by:* `PricingTab.'bypasses the shared snapshot on stale-write recovery (#486 AC-6)'`.
 
+- [ ] **AC-7:** *(review F-2)* Given a read is in flight when a write resets the slot, and a second
+  read for the **same** `(venue, date)` supersedes it and succeeds, when the first read finally fails,
+  then the newer snapshot survives — the orphan cannot invalidate its own replacement.
+  *Pinned by:* `ConsoleVenueMap.'does not let a superseded fetch drop the snapshot that replaced it (review F-2)'`.
+- [ ] **AC-8:** *(review F-3)* Given a snapshot older than `SNAPSHOT_TTL_MS`, when a tab is revisited,
+  then the read reaches the server — a revisit stays as fresh as it was before this cache existed,
+  while two loads inside the window still coalesce.
+  *Pinned by:* `ConsoleVenueMap.'refetches once the snapshot ages out — a tab revisit stays a fresh read (review F-3)'`
+  + `ConsoleVenueMap.'still coalesces two loads inside the snapshot window'`.
+
 ## Non-goals
 
 - No API change. `getVenueMap` is the right read; only the number of calls changes (issue: "no API
@@ -92,6 +104,7 @@ branch substitutes for `feature/console-venue-map-dedupe` (`riviera-sdlc` §Remo
 |---|---|---|
 | `OperatorConsole` reads `(venue, today)` for header name + stats strip, best-effort | preserved | now via `ConsoleVenueMap.load()`; same signal writes, same silent-error swallow |
 | `OperatorConsole` clears `venue`/`venueName` on sign-out | preserved + **extended** | also calls `ConsoleVenueMap.reset()`, so the next operator on this device cannot inherit a snapshot |
+| **Every activation of `RequestsTab`/`PricingTab` re-read the map** (they are lazily-routed children, destroyed and recreated on each navigation, with no other refresh mechanism) | **changed — ledger row added at the review gate (F-3)** | The first draft made a revisit a cache hit for the whole session, hiding another device's edits until a write or sign-out. `SNAPSHOT_TTL_MS` (30s) bounds the snapshot so the console-open burst still coalesces but any real revisit is a fresh read again. This row is the one the first ledger pass missed — exactly the O6 #176 failure mode the ledger exists to catch |
 | `RequestsTab` reads `(venue, today)` for set labels/tiers, best-effort, once | changed | same data, served from the shared snapshot; its own comment already says the read is date-independent and load-once |
 | `RequestsTab` degrades to `Set {id}` / `Standard` on failure | preserved | the failure still propagates to the subscriber; failures are not cached |
 | `PricingTab` reads `(venue, today)` for rows + `setVersion`, owns its load-error card | changed | served from the shared snapshot; error card path unchanged |
@@ -108,11 +121,11 @@ branch substitutes for `feature/console-venue-map-dedupe` (`riviera-sdlc` §Remo
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **The `setVersion` staleness widening (#226).** `PricingTab` uses `venue.setVersion` as its optimistic-concurrency token. Served from a console-mount snapshot instead of a tab-open fetch, the token can be older, so a reprice is likelier to lose a `409 STALE_WRITE` race | med | med | The existing recovery path is kept and made cache-bypassing (AC-6): `reset()` then load, so Reload always reaches the server. A write by *this* console (layout or reprice) resets the snapshot, so the widened window only covers edits from another device — which is exactly what #226's token exists to catch | this slice | open |
-| R-2 | A transparent cache silently staling `DailyViewTab`'s post-mark reconcile (operator marks a walk-in, grid still shows it free) | low | high | Opt-in by call site: `DailyViewTab` and `LayoutEditor` never touch the cache. Pinned by AC-3, which asserts they still fetch | this slice | open |
-| R-3 | Snapshot outliving its operator — the next sign-in on a shared device sees the previous venue's map | low | med | `reset()` on sign-out (shell), plus the single-slot design: a different `(venueId, date)` key evicts the previous entry outright | this slice | open |
-| R-4 | Coalescing races the shell against a lazy tab route — whichever subscribes first must create the entry and the other must join the *same* in-flight request, not start a second | med | med | `shareReplay({bufferSize:1, refCount:false})` over one stored observable: creation is on first `load()`, subscription joins. Order-independent; AC-1's spec asserts one request with the tab loading *before* and *after* the shell | this slice | open |
-| R-5 | Date rollover at midnight during a long console session serves yesterday's snapshot | low | low | The key includes the booking date, so the first post-midnight `load()` misses and refetches | this slice | open |
+| R-1 | **The `setVersion` staleness widening (#226).** `PricingTab` uses `venue.setVersion` as its optimistic-concurrency token. Served from a console-mount snapshot instead of a tab-open fetch, the token can be older, so a reprice is likelier to lose a `409 STALE_WRITE` race | med | med | The existing recovery path is kept and made cache-bypassing (AC-6): `reset()` then load, so Reload always reaches the server. A write by *this* console (layout or reprice) resets the snapshot, so the widened window only covers edits from another device — which is exactly what #226's token exists to catch | this slice | **closed** — bounded by `SNAPSHOT_TTL_MS` (F-3 fix); the window is now ~the console-open moment, not the session |
+| R-2 | A transparent cache silently staling `DailyViewTab`'s post-mark reconcile (operator marks a walk-in, grid still shows it free) | low | high | Opt-in by call site: `DailyViewTab` and `LayoutEditor` never touch the cache. Pinned by AC-3, which asserts they still fetch | this slice | **closed** — AC-3 pins both exclusions; reviewers #2 and the overlay independently re-verified the two paths still call `VenueService` directly |
+| R-3 | Snapshot outliving its operator — the next sign-in on a shared device sees the previous venue's map | low | med | `reset()` on sign-out (shell), plus the single-slot design: a different `(venueId, date)` key evicts the previous entry outright | this slice | **closed** — single-slot key eviction + `reset()` on sign-out, pinned by `operator-console.spec.ts` |
+| R-4 | Coalescing races the shell against a lazy tab route — whichever subscribes first must create the entry and the other must join the *same* in-flight request, not start a second | med | med | `shareReplay({bufferSize:1, refCount:false})` over one stored observable: creation is on first `load()`, subscription joins. Order-independent; AC-1's spec asserts one request with the tab loading *before* and *after* the shell | this slice | **closed** — `shareReplay({refCount:false})` verified against the RxJS source by review agent #2; order-independence pinned by the coalescing spec |
+| R-5 | Date rollover at midnight during a long console session serves yesterday's snapshot | low | low | The key includes the booking date, so the first post-midnight `load()` misses and refetches | this slice | **closed** — the key carries the booking date, pinned by the key-change eviction spec |
 
 ## Open questions / Assumptions
 
@@ -183,16 +196,17 @@ practices for new v22 singletons; `inject()`; no `any` on the contract — the c
 
 ## Execution status
 
-**Stage pointer:** `PR — ready for review; review + sonar gates due`
+**Stage pointer:** `review gate — findings fixed, re-verification pushed`
 
-**Next action:** Run the review gate (`references/pr-gates.md` §1 invocation ladder) + the
-`riviera-review-overlay` bank over the diff, then pull the Sonar new-issue list for PR #487.
+**Next action:** Confirm CI + Sonar green on the fix commit, then merge PR #487 and run the
+close-out (epic tick N/A — #141 is closed and fully ticked; file the F-5 follow-up issue).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `ConsoleVenueMap` service + spec | ✅ 5/5 green | `4dde56e` |
 | 1 — Wire the three consumers + the two invalidation edges | ✅ 1030/1030 unit green, lint clean | (this commit) |
-| 2 — e2e route counters (mocked suite) | ✅ 24/24 operator e2e green | (this commit) |
+| 2 — e2e route counters (mocked suite) | ✅ 24/24 operator e2e green | `76d2615` |
+| 3 — Review-gate fixes (F-1..F-4) | ✅ lint clean, 1033 unit + 15 e2e green | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -201,7 +215,11 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (`/code-review` agent #1 + overlay agent, RV-STYLE-1) | 12 new multi-line inline `//` comments; `frontend/.claude/CLAUDE.md` says "Inline comments are one line, or they are not written" (TSDoc exempt) | fixed — all collapsed to one line; a final sweep over `git diff origin/main` reports 0 multi-line added `//` runs |
+| F-2 | review gate (agent #4, prior-PR comment context) | `console-venue-map.ts` guarded failure-invalidation with **string key equality**, so an orphaned in-flight read that fails after a `reset()` + re-`load()` of the same `(venue, date)` reset the newer, successful snapshot — the "late response overwrites fresher state" class #482/#484 already swept for | fixed — guard is now a monotonic `generation` (identity, not value). Regression test verified red against the pre-fix code (`expected undefined to be 'Fresh'`) |
+| F-3 | review gate (agent #3, git-history context) | The snapshot lived for the whole session, so **revisiting** Pricing/Requests became a cache hit — but a tab activation was previously their only refresh, so another device's edit stayed invisible until a write or sign-out. A ledger row was missing for it | fixed — `SNAPSHOT_TTL_MS` (30s) bounds the snapshot; ledger row added; R-1 closed. The reviewer's suggested fix (reset on tab construction) was **not** taken: it would re-issue the duplicate request AC-1 forbids |
+| F-4 | review gate (agent #5, code-comment guidance) | Advisory: the class TSDoc said `LayoutEditor` "reloads precisely because it mutated the map", but its direct reads are the *initial* seed and the *conflict* recovery | fixed — reworded to "seeds its grid from the server and re-reads to escape a write conflict" |
+| F-5 | review gate (overlay agent) | Advisory, **not fixed here**: `riviera-frontend`'s taxonomy forbids feature→feature imports, but every file in `operator/` already imports `venue/`. This slice consolidates that edge rather than creating it | deferred → follow-up issue (skill and codebase are out of sync; a per-file change here would be wrong) |
 
 ---
 

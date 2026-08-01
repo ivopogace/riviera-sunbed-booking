@@ -195,9 +195,7 @@ test('lists the queue, accepts (badge decrements), and declines to empty — no 
 test('opens the Requests tab on ONE venue-map read, not two (#486)', async ({ page }) => {
   const { mapReads } = await mockRequests(page);
 
-  // Deep-link straight to the tab so only the shell and the Requests tab mount: landing on /operator/1
-  // would redirect to the beach-map default child, whose layout editor does its own (deliberately
-  // uncached) read and would blur the count this test exists to make.
+  // Deep-linked so only the shell + tab mount; /operator/1 would add the layout editor's own read.
   await page.goto(`/operator/${VENUE}/requests`);
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');
