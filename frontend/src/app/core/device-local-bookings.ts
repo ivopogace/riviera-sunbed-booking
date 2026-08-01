@@ -6,8 +6,11 @@ const STORAGE_KEY = 'riviera.bookings.v1';
 
 /**
  * Device-local registry of the guest's booking codes (issue #139, epic #133). A guest has no
- * account yet (#114 unshipped), so a booking's unguessable bearer code (invariant #7) is the only
- * key to it — this service is the on-device memory of which codes belong to this browser.
+ * account, so a booking's unguessable bearer code (invariant #7) is the only key to it — this
+ * service is the on-device memory of which codes belong to this browser. Since S3 (#114) it is no
+ * longer the *only* source the "My bookings" list draws on: a signed-in customer's account-linked
+ * bookings come from `GET /api/me/bookings`. It stays authoritative for guest bookings, which are
+ * never back-linked to an account by email (design D-6, a permanent non-goal).
  *
  * <p>It stores <strong>only the codes</strong>, never a display snapshot: the "My bookings" list
  * re-fetches the truth per code from `GET /api/bookings/{code}`, so there is nothing to go stale
@@ -39,10 +42,11 @@ export class DeviceLocalBookings {
   }
 
   /**
-   * Explicitly forget a code — for a future account-merge (#114) or a user-initiated removal. The
-   * list does **not** call this on a `404`: the code is the guest's only key (invariant #7) and a
-   * 404 can be transient, so the list hides the row but keeps the code (a recovered booking
-   * reappears on the next load).
+   * Explicitly forget a code — for a user-initiated removal. Nothing calls this today: the list
+   * does **not** call it on a `404` (the code is the guest's only key, invariant #7, and a 404 can
+   * be transient, so the list hides the row but keeps the code — a recovered booking reappears on
+   * the next load), and the signed-in merge (#114) never evicts a device code either. The same
+   * reasoning is why this list is deliberately left uncapped and unpruned (#164).
    */
   forget(code: string): void {
     this.current.update((codes) => codes.filter((c) => c !== code));

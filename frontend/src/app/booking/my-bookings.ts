@@ -1,5 +1,7 @@
-import { Component, effect, inject, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
+import { EMPTY, Observable, catchError, defer, from, mergeMap, tap } from 'rxjs';
 
 import { CustomerAuth } from '../core/customer-auth';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
@@ -75,6 +77,12 @@ type Row =
   | { readonly code: string; readonly state: 'loaded'; readonly view: RowView }
   | { readonly code: string; readonly state: 'failed' };
 
+/**
+ * How many per-code lookups may be in flight at once (#164). Under the ~6-connections-per-host
+ * HTTP/1.1 cap this leaves a slot for the account list; on HTTP/2 it is a deliberate self-limit.
+ */
+const DEVICE_FETCH_CONCURRENCY = 5;
+
 /** A booking the backend does not return right now — a 404 on the per-code lookup. */
 function isNotFound(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { status?: number }).status === 404;
@@ -94,6 +102,18 @@ function isNotFound(error: unknown): boolean {
  * account-linked bookings show on any device they sign in on. Back-linking past guest bookings by
  * email is a later, #113-gated step (design D-6), so a pre-sign-in guest booking made elsewhere is
  * not yet listed here. The merge is display-only — no booking codes are handed to the account.
+ *
+ * <p><strong>Fetch scheduling (#164):</strong> the per-code lookups are queued through a bounded
+ * {@link DEVICE_FETCH_CONCURRENCY} rather than all issued at once. That bound is also what makes
+ * the account list able to answer for a device code: because the queue subscribes to each lookup
+ * lazily, a code still waiting its turn when `GET /api/me/bookings` returns is served from that
+ * response and never fetched. Crucially this is a dequeue-time skip, **not** a barrier — device
+ * rows and their first requests go out immediately, so a slow or failed account list never delays
+ * them (review F2). Because those first requests are therefore always in flight when the account
+ * list lands, the account's answer is also treated as **authoritative once given**: a per-code
+ * lookup that fails afterwards leaves the row alone rather than retracting a booking the account
+ * just vouched for. The stored code list itself is deliberately uncapped and unpruned — see
+ * {@link DeviceLocalBookings#forget}.
  *
  * <p>Each row loads independently into a precomputed {@link RowView}. Rows link to the T5
  * `/booking/:code` detail view. Money renders from integer minor units via {@link formatMoney}
@@ -203,6 +223,7 @@ export class MyBookings {
   private readonly store = inject(DeviceLocalBookings);
   private readonly bookings = inject(BookingService);
   private readonly auth = inject(CustomerAuth);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly rows = signal<readonly Row[]>([]);
   /**
@@ -215,6 +236,11 @@ export class MyBookings {
    * account bookings behind the device-local ones (review F1).
    */
   protected readonly accountError = signal(false);
+  /**
+   * Codes the account list has already answered for (#164). Consulted when a queued per-code lookup
+   * is DEQUEUED — never as a barrier, so device rows are still issued immediately (review F2).
+   */
+  private readonly accountResolved = new Set<string>();
 
   constructor() {
     // Kick the load once the session restore has settled — signed-in vs guest is only known then.
@@ -238,54 +264,92 @@ export class MyBookings {
     // account list then merges IN the bookings this device doesn't already list.
     this.loadDeviceLocal(codes);
     if (this.auth.signedIn()) {
-      this.loadAccount(codes);
+      this.loadAccount();
     }
   }
 
-  /** Render this device's remembered codes (issue #139), each fetched live by code. */
+  /** Render this device's remembered codes (issue #139), each fetched live by code, K at a time. */
   private loadDeviceLocal(codes: readonly string[]): void {
     this.rows.set(codes.map((code) => ({ code, state: 'loading' as const })));
     this.loading.set(false);
-    codes.forEach((code) => this.load(code));
+    from(codes)
+      .pipe(
+        mergeMap((code) => this.queuedFetch(code), DEVICE_FETCH_CONCURRENCY),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
+  }
+
+  /**
+   * One queued lookup. `defer` keeps it lazy, so the skip test below runs when the queue REACHES
+   * this code — by which time the account list may already have answered for it.
+   */
+  private queuedFetch(code: string): Observable<unknown> {
+    return defer(() => (this.accountResolved.has(code) ? EMPTY : this.fetch(code)));
   }
 
   /**
    * Signed in (S3 #114): merge the account's server list ON TOP of the already-rendered device rows,
-   * adding only the bookings this device does NOT already list (deduped by code — a booking made on
-   * another device). A failed or slow list call leaves the device rows intact and surfaces a Retry
+   * deduped by code. A failed or slow list call leaves the device rows intact and surfaces a Retry
    * (review F1) rather than silently hiding the account bookings; a 401 (expired session) surfaces the
    * same way, not as a false "these are all your bookings."
+   *
+   * <p>Each returned code is also recorded as account-resolved (#164), so a device code still sitting
+   * in the fetch queue is answered from here instead of costing a second request for the same booking.
    */
-  private loadAccount(deviceCodes: readonly string[]): void {
+  private loadAccount(): void {
     this.accountError.set(false);
-    const onDevice = new Set(deviceCodes);
-    this.bookings.myBookings().subscribe({
-      next: (account) => {
-        const additions: Row[] = account
-          .filter((b) => !onDevice.has(b.code))
-          .map((b) => ({ code: b.code, state: 'loaded', view: buildView(b) }));
-        if (additions.length > 0) {
-          this.rows.update((rows) => [...rows, ...additions]);
-        }
-      },
-      error: () => this.accountError.set(true),
+    this.bookings
+      .myBookings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (account) => {
+          account.forEach((b) => this.accountResolved.add(b.code));
+          this.merge(
+            account.map((b) => ({ code: b.code, state: 'loaded' as const, view: buildView(b) })),
+          );
+        },
+        error: () => this.accountError.set(true),
+      });
+  }
+
+  /**
+   * Merge server rows in: replace the row for a code already listed, append the rest. Both branches
+   * earn their keep — <em>replace</em> answers a code still queued (its row is listed, loading),
+   * <em>append</em> restores one a transient 404 had removed from the list entirely. Either way the
+   * row comes from the same {@link buildView}, so it renders identically to a per-code fetch.
+   */
+  private merge(incoming: readonly Row[]): void {
+    this.rows.update((rows) => {
+      const byCode = new Map(incoming.map((r) => [r.code, r]));
+      const listed = new Set(rows.map((r) => r.code));
+      return [
+        ...rows.map((r) => byCode.get(r.code) ?? r),
+        ...incoming.filter((r) => !listed.has(r.code)),
+      ];
     });
   }
 
   /** Re-attempt the account list after a failure (review F1); the device rows stay untouched. */
   protected retryAccount(): void {
-    this.loadAccount(this.store.codes());
+    this.loadAccount();
   }
 
   protected retry(code: string): void {
-    this.load(code);
+    // A manual retry bypasses the queue — the user asked for this one now.
+    this.fetch(code).pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
   }
 
-  private load(code: string): void {
+  /** The per-code lookup and its row transitions, shared by the queue and the manual Retry. */
+  private fetch(code: string): Observable<unknown> {
     this.setRow({ code, state: 'loading' });
-    this.bookings.getByCode(code).subscribe({
-      next: (detail) => this.setRow({ code, state: 'loaded', view: buildView(detail) }),
-      error: (e: unknown) => {
+    return this.bookings.getByCode(code).pipe(
+      tap((detail) => this.setRow({ code, state: 'loaded', view: buildView(detail) })),
+      catchError((e: unknown) => {
+        if (this.accountResolved.has(code)) {
+          // The account list already vouched for this booking — a failed lookup must not retract it.
+          return EMPTY;
+        }
         if (isNotFound(e)) {
           // 404: drop the row from view, but keep the code (invariant #7 — see the class doc).
           this.rows.update((rows) => rows.filter((r) => r.code !== code));
@@ -293,8 +357,9 @@ export class MyBookings {
           // Transient (offline / 5xx): keep the code, offer Retry — never lose a valid booking.
           this.setRow({ code, state: 'failed' });
         }
-      },
-    });
+        return EMPTY;
+      }),
+    );
   }
 
   private setRow(row: Row): void {
