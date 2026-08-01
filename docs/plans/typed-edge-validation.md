@@ -208,7 +208,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-1 | CI (Frontend job on `ccb1f12`) | Pre-existing date-triggered test bug, not this diff: `daily-view-tab.spec.ts` hardcoded `date.value = '2026-08-01'`, which became "today in Tirane" on 2026-08-01 — same value → no reload → `expectOne` found none. Latent on `main` (green through Jul 31), fails every run today. Fixed with `defaultBookingDate(new Date())` (tomorrow in Tirane, never equal to the preloaded today); re-entry gate: `riviera-frontend` loaded (spec-only edit, no placement change); generalization grep over `src/app/**/*.spec.ts` found no sibling (other date literals are pure-formatter inputs with injected `now`). All 1004 FE tests + lint green locally. | fixed-in-`5d00bae` |
+| F-2 | docs-freshness pre-merge counting sweep | `RESPONSIBILITIES.md` Shared-Kernel class enumeration + Job line missed the new `InvalidApiRequestException` | fixed-in-`5d00bae` |
 
 ---
 

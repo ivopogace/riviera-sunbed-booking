@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 
-import { todayBookingDate } from '../venue/booking-date';
+import { defaultBookingDate, todayBookingDate } from '../venue/booking-date';
 import { Pool, SetView, Tier } from '../venue/venue.model';
 import { DailyViewTab } from './daily-view-tab';
 
@@ -187,7 +187,9 @@ describe('DailyViewTab (#175)', () => {
   it('reloads and clears optimistic overrides when the date changes', () => {
     render();
     const date = byId('daily-date') as HTMLInputElement;
-    date.value = '2026-08-01';
+    // Tomorrow in Tirane: always differs from the preloaded today, so the reload actually fires
+    // (a hardcoded '2026-08-01' equalled "today" on that date and no request was issued).
+    date.value = defaultBookingDate(new Date());
     date.dispatchEvent(new Event('change'));
     fixture.detectChanges();
     // A fresh load cycle for the new date; all four sets free that day.
