@@ -116,7 +116,10 @@ subfolders at this app size):
   `booking/:code`) — keep literal segments above `:param` siblings.
 - **Child routes do NOT inherit the parent's params** under the default
   `emptyOnly` strategy — a non-empty child (e.g. an `/operator/:venueId` tab) reads
-  `:venueId` from `route.parent`, not its own snapshot (O1 review finding).
+  `:venueId` from `route.parent`, not its own route (O1 review finding) — and reads it
+  **reactively**, via `shared/parent-venue-id.ts`'s signal helpers (#180): the router
+  reuses the component instance when only the param changes, so a constructor snapshot
+  read pins the old venue.
 - Route guards are cross-cutting → they live in `core/` and are applied in
   `app.routes.ts` (`canActivate`/`canMatch`), not inside feature components. The
   worked example is `core/operator-session.guard.ts` (S9 #277): restore-aware — it

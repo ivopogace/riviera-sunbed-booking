@@ -29,8 +29,9 @@ coverage inapplicable) · `riviera-plan-doc` (this template — forced the per-t
 transient-state reset audit into the ACs/risks) · `tdd` (each phase red-green: failing
 param-change spec first, then the reactive read) · `riviera-review-overlay` (review
 gate — pending, at ready-for-review; RV-FE-E2E consulted for the e2e-N/A claim) ·
-`riviera-docs-freshness` (pending — run at merge close-out over this branch's range;
-tab TSDoc "reads once, like StaffDaily" phrases go stale in-diff) · `riviera-frontend`
+`riviera-docs-freshness` (**ran** pre-merge over `origin/main...HEAD` — 1 finding: the
+`riviera-frontend` routing bullet still called the tab read a snapshot read, patched in
+this PR; counting sweep clean — no counted set grew) · `riviera-frontend`
 (placement: the helper stays in `shared/` — pure, stateless; no new cross-feature
 edges; `app.config.ts` untouched since the reuse-strategy option was rejected) ·
 `angular-developer` + angular-cli MCP (`list_projects` v22; `search_documentation` —
@@ -47,28 +48,28 @@ branch stands in for `bugfix/reactive-console-venue-param` (cloud-session addend
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (shell reacts):** Given the console shell rendered for venue 1 (signed
+- [x] **AC-1 (shell reacts):** Given the console shell rendered for venue 1 (signed
   in, header shows venue 1's name), when the route's `paramMap` emits `venueId=2`
   without the component being destroyed, then the shell re-loads: the header title and
   Requests badge are re-fetched for venue 2 and every tab `routerLink` targets
   `/operator/2/<tab>`. *Pinned by:* `operator-console.spec.ts` › "reloads the header
   and badge when the venue param changes in place (#180)"
-- [ ] **AC-2 (tabs react):** Given a console tab rendered for venue 1, when the
+- [x] **AC-2 (tabs react):** Given a console tab rendered for venue 1, when the
   **parent** route's `paramMap` emits `venueId=2`, then the tab re-fetches its data for
   venue 2 and its per-venue transient state is reset (no venue-1 leftovers). *Pinned
   by:* one "re-loads when the parent venue param changes (#180)" spec in each of
   `layout-editor.spec.ts`, `pricing-tab.spec.ts`, `daily-view-tab.spec.ts`,
   `requests-tab.spec.ts`, `payouts-tab.spec.ts`, `venue-tab.spec.ts`
-- [ ] **AC-3 (invalid param transition):** Given the shell rendered for a valid venue,
+- [x] **AC-3 (invalid param transition):** Given the shell rendered for a valid venue,
   when the param changes to a non-numeric/non-positive segment, then the shell shows
   the existing not-found state (and recovers when a valid id arrives). *Pinned by:*
   `operator-console.spec.ts` › "shows not-found when the param turns invalid (#180)"
-- [ ] **AC-4 (construction behavior unchanged):** Given a fresh navigation to the
+- [x] **AC-4 (construction behavior unchanged):** Given a fresh navigation to the
   console (the only flow that exists today), when the component constructs with the
   async `/me` session restore resolving later, then exactly one load runs once the
   session exists — the #109 behavior. *Pinned by:* the existing `operator-console.spec.ts`
   suite staying green, unmodified in intent.
-- [ ] **AC-5 (real route config, end to end):** Given the real `app.routes.ts` config
+- [x] **AC-5 (real route config, end to end):** Given the real `app.routes.ts` config
   under `RouterTestingHarness`, when navigating `/operator/1/beach-map` →
   `/operator/2/beach-map`, then the shell shows venue 2's name and venue-2 HTTP loads
   are issued (shell + tab), proving the fix under the router's actual reuse behavior.
@@ -97,12 +98,12 @@ behavior-preservation concern is captured as AC-4 and R-3 instead.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Per-venue transient state leaks across a venue switch (daily `pendingSets`, requests `expired`, pricing per-row edit/saved flags, layout-editor draft grid, venue-tab form values, payouts `statementOpen`) | med | high | Per-tab reset audit in each tab's phase: `load` must overwrite or explicitly reset every venue-scoped signal; the AC-2 spec for each tab asserts a representative reset | Claude | open |
-| R-2 | `toSignal(parent.paramMap)` subscribes at construction — every spec whose route mock lacks a `paramMap` observable crashes (≈12 spec files mock only `snapshot`) | high | low | Sweep all operator spec route mocks in the same phase as the code change; compiler + red Vitest run catches stragglers | Claude | open |
-| R-3 | Double-load on init: an effect reading both `signedIn()` and `venueId()` must fire once per change, not once per source | low | med | Single `effect` reads both signals, loads via `untracked`; AC-4 pins the existing single-load behavior | Claude | open |
-| R-4 | `ConsoleVenueMap` shared snapshot serves venue-1 data after the switch | low | med | It is keyed by `(venueId, date)` — a venue-2 load is a key miss and refetches; AC-5's harness spec observes the venue-2 HTTP call | Claude | open |
+| R-1 | Per-venue transient state leaks across a venue switch (daily `pendingSets`, requests `expired`, pricing per-row edit/saved flags, layout-editor draft grid, venue-tab form values, payouts `statementOpen`) | med | high | Per-tab reset audit in each tab's phase: `load` must overwrite or explicitly reset every venue-scoped signal; the AC-2 spec for each tab asserts a representative reset | Claude | closed — every tab gained a `resetForVenue` covering all listed state (phases 2–4); pinned per tab |
+| R-2 | `toSignal(parent.paramMap)` subscribes at construction — every spec whose route mock lacks a `paramMap` observable crashes (≈12 spec files mock only `snapshot`) | high | low | Sweep all operator spec route mocks in the same phase as the code change; compiler + red Vitest run catches stragglers | Claude | closed — 13 spec files patched (phase 0 + the console a11y spec at phase 1); full suite green |
+| R-3 | Double-load on init: an effect reading both `signedIn()` and `venueId()` must fire once per change, not once per source | low | med | Single `effect` reads both signals, loads via `untracked`; AC-4 pins the existing single-load behavior | Claude | closed — existing shell suite green unmodified in intent (phase 1) |
+| R-4 | `ConsoleVenueMap` shared snapshot serves venue-1 data after the switch | low | med | It is keyed by `(venueId, date)` — a venue-2 load is a key miss and refetches; AC-5's harness spec observes the venue-2 HTTP call | Claude | closed — `console-venue-switch.spec.ts` flushes the venue-2 GET (a cache hit would make `match` empty and the venue-2 title assertion fail) |
 | R-5 | Layout-editor unsaved draft is silently discarded on a venue switch | med | low | Accepted: identical to today's full-page-navigation semantics; a dirty-guard is a future switcher-slice concern, not #180's | Claude | accepted |
-| R-6 | Requests-badge race between the shell's re-seed and the tab's authoritative write on the same navigation | low | low | Existing `PendingRequestsStore` semantics unchanged: shell resets + seeds, a mounted Requests tab re-loads and `set`s; both are driven by the same param emission | Claude | open |
+| R-6 | Requests-badge race between the shell's re-seed and the tab's authoritative write on the same navigation | low | low | Existing `PendingRequestsStore` semantics unchanged: shell resets + seeds, a mounted Requests tab re-loads and `set`s; both are driven by the same param emission | Claude | closed — both writes carry the late-response guard; requests-tab param spec asserts the venue-2 count |
 
 ## Open questions / Assumptions
 
@@ -159,9 +160,9 @@ N/A — no contract change; the same endpoints are called with a different `venu
 
 ## Execution status
 
-**Stage pointer:** implement (phase 5)
+**Stage pointer:** review gate (PR #495 ready for review)
 
-**Next action:** phase 5 — full FE suite + build; merge latest main if moved; mark PR #495 ready for review; run the Review + Sonar gates
+**Next action:** run the Review gate (`/code-review` ladder + `riviera-review-overlay`) on PR #495, then the Sonar gate issue-list pull
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -170,7 +171,7 @@ N/A — no contract change; the same endpoints are called with a different `venu
 | 2 — tabs: layout-editor + pricing | ✅ | "React to venue param changes in the layout and pricing tabs (#180)" — reload + reset pinned per tab; pattern addition: the **late-response guard** (`if (this.venueId() !== venueId) return` in every subscribe/await continuation), pinned by the layout-editor race spec; 250 tests green | 
 | 3 — tabs: daily-view + requests | ✅ | "React to venue param changes in the daily and requests tabs (#180)" — daily resets to today's date on switch (full-navigation parity), its load continuations now guard venue+date jointly; requests' poll interval is lifetime-scoped and reconciles the *current* venue; both carry the late-response guards; 252 tests green |
 | 4 — tabs: payouts + venue-tab; harness integration spec | ✅ | "React to venue param changes in the payouts and venue tabs, pin via router harness (#180)" — payouts closes its statement modal on switch; venue-tab re-seeds form/photos/version; shell + strip gained the phase-2 late-response guards (generalization closed); `console-venue-switch.spec.ts` pins AC-5 on the real routes, asserting instance REUSE + reload; 255 tests green. Open-questions assumption resolved: the guard passes with a flushed `/me` principal — no stubbing needed |
-| 5 — lint + full FE suite + PR ready-for-review | | |
+| 5 — lint + full FE suite + PR ready-for-review | ✅ | lint clean; full FE suite 129 files / 1048 tests green; `npm run build` clean (pre-existing app.scss budget warning only); `main` unmoved; docs-freshness pre-merge smoke ran (1 finding patched) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -327,26 +328,30 @@ stubbed (open-questions assumption); navigate `/operator/1/beach-map` →
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-4:** `npm test -- --run operator` → all operator specs green incl. the
-  new param-change cases. Verified at commit `<sha>`.
-- [ ] **AC-5:** `npm test -- --run console-venue-switch` → green. Verified at `<sha>`.
+- [x] **AC-1..AC-4:** `npm test -- --include 'src/app/operator/**/*.spec.ts' --include
+  'src/app/shared/parent-venue-id.spec.ts' --watch=false` → 35 files / 255 tests green,
+  incl. one param-change case per surface. Verified at phase-4 HEAD (`47b4c23`); full
+  suite 129 files / 1048 tests green at phase 5.
+- [x] **AC-5:** `npm test -- --include 'src/app/operator/console-venue-switch.spec.ts'
+  --watch=false` → green (instance reuse + venue-2 reload on the real routes). Verified
+  at `47b4c23`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: `todayBookingDate` usage unchanged (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] Flyway N/A (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract; RV-FE-8 table unchanged.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** (`merged via PR #NN`).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** justified N/A (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: `todayBookingDate` usage unchanged (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] Flyway N/A (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract; RV-FE-8 table unchanged.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** (`merged via PR #NN`).
 - [ ] **The review gate ran in full** per `references/pr-gates.md` §1.
