@@ -43,15 +43,15 @@ branch substitutes for `feature/console-venue-map-dedupe` (`riviera-sdlc` §Remo
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in operator whose console shell has loaded the venue map, when the
+- [x] **AC-1:** Given a signed-in operator whose console shell has loaded the venue map, when the
   Requests tab renders under that shell, then exactly **one** `GET /api/venues/{id}?date=<today>`
   has been issued in total. *Pinned by:* `ConsoleVenueMap.'coalesces two concurrent loads of the same key into one request'`
   + `RequestsTab.'reuses the shell snapshot instead of re-fetching the venue map (#486)'`
   + `operator-requests.e2e.ts 'opens the Requests tab on ONE venue-map read, not two (#486)'` (route counter).
-- [ ] **AC-2:** Same for the Pricing tab: the rows and the `setVersion` token come from the shared
+- [x] **AC-2:** Same for the Pricing tab: the rows and the `setVersion` token come from the shared
   snapshot and no second request is issued. *Pinned by:* `PricingTab.'reuses the shell snapshot instead of re-fetching the venue map (#486)'`
   + `operator-pricing.e2e.ts 'opens the Pricing tab on ONE venue-map read, not two (#486)'` (route counter).
-- [ ] **AC-3:** Given a warm snapshot for `(venue, today)`, when `DailyViewTab` changes the selected
+- [x] **AC-3:** Given a warm snapshot for `(venue, today)`, when `DailyViewTab` changes the selected
   date **or** reconciles after a tap-to-mark, and when `LayoutEditor` loads or reloads, then each
   still issues its own request to the server. *Pinned by:*
   `DailyViewTab.'never serves the console snapshot — its reads are excluded from the shared cache (#486 AC-3)'`
@@ -59,32 +59,32 @@ branch substitutes for `feature/console-venue-map-dedupe` (`riviera-sdlc` §Remo
   `DailyViewTab.'reloads and clears optimistic overrides when the date changes'` +
   `LayoutEditor.'keeps edits and offers Reload on a 409 STALE_WRITE, then Reload re-seeds from the server'`,
   which both `expectOne` a real request and so fail if either path ever became a cache consumer.
-- [ ] **AC-4:** Given a warm snapshot, when a layout save (`replaceLayout`) or a row reprice
+- [x] **AC-4:** Given a warm snapshot, when a layout save (`replaceLayout`) or a row reprice
   (`repriceRow`) succeeds, then the snapshot is dropped and the next tab to ask receives the **new**
   sets from the server. *Pinned by:* `ConsoleVenueMap.'refetches after reset — the invalidation edge a layout or pricing save uses'`
   + `LayoutEditor.'drops the shared console snapshot after a successful save (#486 AC-4)'`
   + `PricingTab.'drops the shared snapshot after a successful reprice so other tabs see the new price (#486 AC-4)'`.
-- [ ] **AC-5:** Given the venue-map read fails, when any of the three consumers asks, then each
+- [x] **AC-5:** Given the venue-map read fails, when any of the three consumers asks, then each
   degrades to its existing fallback (`Your venue` title, `Set {id}` / `Standard` labels, the pricing
   load-error card), the failure is **not** cached, and the next ask re-issues the request.
   *Pinned by:* `ConsoleVenueMap.'does not retain a failure — the next caller retries against the server'`
   + `RequestsTab.'still degrades to the Set-{id} fallback when the shared map read fails (#486 AC-5)'`
   + the existing `PricingTab.'shows a load-error message (not a false empty state) when the venue read fails'`.
-- [ ] **AC-6:** *(grill addition — not in the issue)* Given a reprice lost the `409 STALE_WRITE` race,
+- [x] **AC-6:** *(grill addition — not in the issue)* Given a reprice lost the `409 STALE_WRITE` race,
   when the operator hits Reload, then the recovery read reaches the **server** and re-seeds a fresh
   `setVersion`, never the stale cached snapshot that caused the conflict.
   *Pinned by:* `PricingTab.'bypasses the shared snapshot on stale-write recovery (#486 AC-6)'`.
 
-- [ ] **AC-7:** *(review F-2)* Given a read is in flight when a write resets the slot, and a second
+- [x] **AC-7:** *(review F-2)* Given a read is in flight when a write resets the slot, and a second
   read for the **same** `(venue, date)` supersedes it and succeeds, when the first read finally fails,
   then the newer snapshot survives — the orphan cannot invalidate its own replacement.
   *Pinned by:* `ConsoleVenueMap.'does not let a superseded fetch drop the snapshot that replaced it (review F-2)'`.
-- [ ] **AC-8:** *(review F-3)* Given a snapshot older than `SNAPSHOT_TTL_MS`, when a tab is revisited,
+- [x] **AC-8:** *(review F-3)* Given a snapshot older than `SNAPSHOT_TTL_MS`, when a tab is revisited,
   then the read reaches the server — a revisit stays as fresh as it was before this cache existed,
   while two loads inside the window still coalesce.
   *Pinned by:* `ConsoleVenueMap.'refetches once the snapshot ages out — a tab revisit stays a fresh read (review F-3)'`
   + `ConsoleVenueMap.'still coalesces two loads inside the snapshot window'`.
-- [ ] **AC-9:** *(re-review F-6)* Given a read still in flight past the TTL, when another consumer
+- [x] **AC-9:** *(re-review F-6)* Given a read still in flight past the TTL, when another consumer
   asks for the same key, then it joins that read — the window is measured from settle, so latency
   can never manufacture the duplicate AC-1 forbids.
   *Pinned by:* `ConsoleVenueMap.'does not age out a read that is still in flight (review F-6)'`.
@@ -200,10 +200,10 @@ practices for new v22 singletons; `inject()`; no `any` on the contract — the c
 
 ## Execution status
 
-**Stage pointer:** `review gate — cleared, incl. the re-review of the fix round`
+**Stage pointer:** `DONE — merged via PR #487`
 
-**Next action:** Confirm CI + Sonar green on the fix commit, then merge PR #487 and run the
-close-out (epic tick N/A — #141 is closed and fully ticked; file the F-5 follow-up issue).
+**Next action:** None — slice complete. (Epic-checklist tick N/A: #141 closed 2026-07-11 with all
+eight slices ticked; #486 is a post-epic follow-up. F-5 propagated to issue #488.)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -211,7 +211,7 @@ close-out (epic tick N/A — #141 is closed and fully ticked; file the F-5 follo
 | 1 — Wire the three consumers + the two invalidation edges | ✅ 1030/1030 unit green, lint clean | (this commit) |
 | 2 — e2e route counters (mocked suite) | ✅ 24/24 operator e2e green | `76d2615` |
 | 3 — Review-gate fixes (F-1..F-4) | ✅ lint clean, 1033 unit + 15 e2e green | `cf94ac6` |
-| 4 — Re-review fix (F-6, defect in the F-3 fix) | ✅ lint clean, 1034 unit + 15 e2e green | (this commit) |
+| 4 — Re-review fix (F-6, defect in the F-3 fix) | ✅ lint clean, 1034 unit + 15 e2e green | `28e704b` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -251,38 +251,38 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Create `operator/console-venue-map.ts` · Test `operator/console-venue-map.spec.ts`
 
-- [ ] **Step 1: Write the failing spec** — two `load()` calls for the same key flush exactly one
+- [x] **Step 1: Write the failing spec** — two `load()` calls for the same key flush exactly one
   request and both subscribers receive the value; a failed load is not retained; `reset()` forces a
   refetch; a different `(venueId, date)` key evicts the previous slot.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- console-venue-map` → FAIL (module not found).
-- [ ] **Step 3: Minimal implementation** — the single-slot `shareReplay` cache.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- console-venue-map` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — search every `getVenueMap` caller and record which are
+- [x] **Step 2: Run it, verify it fails** — `npm test -- console-venue-map` → FAIL (module not found).
+- [x] **Step 3: Minimal implementation** — the single-slot `shareReplay` cache.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- console-venue-map` → PASS.
+- [x] **Step 5: Generalization-audit pass** — search every `getVenueMap` caller and record which are
   registered as consumers and why the rest are not (the Behavior-parity ledger is the output).
-- [ ] **Step 6: Commit** — `git commit -m "Share one operator-console venue-map read (#486)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Share one operator-console venue-map read (#486)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Wire the consumers and the invalidation edges
 
 **Files:** Modify `operator-console.ts`, `requests-tab.ts`, `pricing-tab.ts`, `layout-editor.ts` + their specs
 
-- [ ] **Step 1: Write the failing specs** — AC-1..AC-6 assertions in the four component specs
+- [x] **Step 1: Write the failing specs** — AC-1..AC-6 assertions in the four component specs
   (`expectNone` on the venue URL for a warm cache; `expectOne` for the excluded paths).
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- operator` → FAIL.
-- [ ] **Step 3: Implementation** — swap the three read sources; add `reset()` at the two write-success
+- [x] **Step 2: Run them, verify they fail** — `npm test -- operator` → FAIL.
+- [x] **Step 3: Implementation** — swap the three read sources; add `reset()` at the two write-success
   sites and the two stale-recovery sites and sign-out.
-- [ ] **Step 4: Run them, verify they pass** — `npm test -- operator` → PASS.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** · **Step 7: Update execution status.**
+- [x] **Step 4: Run them, verify they pass** — `npm test -- operator` → PASS.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** · **Step 7: Update execution status.**
 
 ## Phase 2 — e2e route counters
 
 **Files:** Modify `frontend/e2e/operator-requests.e2e.ts`, `frontend/e2e/operator-pricing.e2e.ts`
 
-- [ ] **Step 1: Add a `page.route` counter** on `**/api/venues/1?*` and assert it is `1` after the tab
+- [x] **Step 1: Add a `page.route` counter** on `**/api/venues/1?*` and assert it is `1` after the tab
   renders (currently `2` → red).
-- [ ] **Step 2: Run** — `npm run test:e2e:a11y -- operator-requests operator-pricing` → PASS after phase 1.
-- [ ] **Step 3: Commit** · **Step 4: Update execution status.**
+- [x] **Step 2: Run** — `npm run test:e2e:a11y -- operator-requests operator-pricing` → PASS after phase 1.
+- [x] **Step 3: Commit** · **Step 4: Update execution status.**
 
 ---
 
@@ -297,28 +297,28 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1** · [ ] **AC-2** · [ ] **AC-3** · [ ] **AC-4** · [ ] **AC-5** · [ ] **AC-6**
+- [x] **AC-1** · [ ] **AC-2** · [ ] **AC-3** · [ ] **AC-4** · [ ] **AC-5** · [ ] **AC-6**
   — each verified by the named spec at the commit recorded in the phase table.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled with a justified N/A; the two freshness-critical read paths are
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled with a justified N/A; the two freshness-critical read paths are
       excluded from the cache and pinned (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section justified N/A (frontend-only); no backend file in the diff (invariant #11).
-- [ ] **Payment/payout** N/A justified (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: the cache key uses `todayBookingDate(new Date())`, the same `Europe/Tirane` booking
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section justified N/A (frontend-only); no backend file in the diff (invariant #11).
+- [x] **Payment/payout** N/A justified (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: the cache key uses `todayBookingDate(new Date())`, the same `Europe/Tirane` booking
       date the callers already compute — no new date arithmetic (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No Flyway migration needed (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `references/pr-gates.md` §1
+- [x] Booking codes untouched (invariant #7).
+- [x] No Flyway migration needed (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in `references/pr-gates.md` §1
       plus `riviera-review-overlay`.
