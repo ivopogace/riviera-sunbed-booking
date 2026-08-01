@@ -467,6 +467,35 @@ describe('MyBookings (device-local list, issue #139)', () => {
       expect(rows[0].textContent).toContain('FLAKY001');
     });
 
+    it.each<[string, unknown]>([
+      ['404', { status: 404 }],
+      ['transient failure', { status: 500 }],
+    ])(
+      'keeps an account-resolved row when the in-flight device lookup then ends in a %s',
+      async (_label, error) => {
+        // The account list answers while the per-code lookup is ALREADY in flight (it was inside the
+        // concurrency bound, so the dequeue-time skip could not apply). Its late failure must not
+        // undo a row the account vouched for.
+        seedCodes(['INFLT001']);
+        const service = pendingService();
+        const fixture = await render(
+          { ...service, myBookings: () => of([summary('INFLT001')]) },
+          authStub(true),
+        );
+        expect(service.asked).toEqual(['INFLT001']);
+
+        service.inFlight.get('INFLT001')!.error(error);
+        await fixture.whenStable();
+        fixture.detectChanges();
+        const host = fixture.nativeElement as HTMLElement;
+
+        const rows = host.querySelectorAll('[data-testid="booking-row"]');
+        expect(rows).toHaveLength(1);
+        expect(rows[0].textContent).toContain('INFLT001');
+        expect(host.querySelector('[data-testid="booking-row-failed"]')).toBeNull();
+      },
+    );
+
     it('retry re-loads the account list after a failure', async () => {
       seedCodes([]);
       let calls = 0;

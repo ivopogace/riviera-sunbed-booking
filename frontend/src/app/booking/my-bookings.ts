@@ -109,7 +109,10 @@ function isNotFound(error: unknown): boolean {
  * lazily, a code still waiting its turn when `GET /api/me/bookings` returns is served from that
  * response and never fetched. Crucially this is a dequeue-time skip, **not** a barrier — device
  * rows and their first requests go out immediately, so a slow or failed account list never delays
- * them (review F2). The stored code list itself is deliberately uncapped and unpruned — see
+ * them (review F2). Because those first requests are therefore always in flight when the account
+ * list lands, the account's answer is also treated as **authoritative once given**: a per-code
+ * lookup that fails afterwards leaves the row alone rather than retracting a booking the account
+ * just vouched for. The stored code list itself is deliberately uncapped and unpruned — see
  * {@link DeviceLocalBookings#forget}.
  *
  * <p>Each row loads independently into a precomputed {@link RowView}. Rows link to the T5
@@ -311,9 +314,10 @@ export class MyBookings {
   }
 
   /**
-   * Merge server rows in: replace the row for a code already listed, append the rest. Replacing
-   * rather than discarding is what lets an account row answer a queued (or transiently 404'd)
-   * device code — both sources feed the same {@link buildView}, so the rendered row is identical.
+   * Merge server rows in: replace the row for a code already listed, append the rest. Both branches
+   * earn their keep — <em>replace</em> answers a code still queued (its row is listed, loading),
+   * <em>append</em> restores one a transient 404 had removed from the list entirely. Either way the
+   * row comes from the same {@link buildView}, so it renders identically to a per-code fetch.
    */
   private merge(incoming: readonly Row[]): void {
     this.rows.update((rows) => {
@@ -342,6 +346,10 @@ export class MyBookings {
     return this.bookings.getByCode(code).pipe(
       tap((detail) => this.setRow({ code, state: 'loaded', view: buildView(detail) })),
       catchError((e: unknown) => {
+        if (this.accountResolved.has(code)) {
+          // The account list already vouched for this booking — a failed lookup must not retract it.
+          return EMPTY;
+        }
         if (isNotFound(e)) {
           // 404: drop the row from view, but keep the code (invariant #7 — see the class doc).
           this.rows.update((rows) => rows.filter((r) => r.code !== code));
