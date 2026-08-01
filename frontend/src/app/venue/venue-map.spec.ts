@@ -428,6 +428,39 @@ describe('VenueMap', () => {
     expect(el().querySelector('header')?.textContent).toContain('Miramar Beach Club');
   });
 
+  it('re-seeds the date from the ?date param on an in-place navigation (#499)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+
+    const carried = defaultBookingDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000));
+    queryParams$.next(convertToParamMap({ date: carried }));
+    await fixture.whenStable();
+
+    const req = venueRequest();
+    expect(req.request.params.get('date')).toBe(carried);
+    req.flush(miramar());
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
+    expect(input.value).toBe(carried);
+  });
+
+  it('clamps an in-place ?date below the booking floor back to it (#499, invariant #4)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    // Move off the floor first so the clamped fallback is an observable change.
+    const carried = defaultBookingDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000));
+    queryParams$.next(convertToParamMap({ date: carried }));
+    await fixture.whenStable();
+    venueRequest().flush(miramar());
+
+    queryParams$.next(convertToParamMap({ date: '2020-01-01' }));
+    await fixture.whenStable();
+    const req = venueRequest();
+    expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
+    req.flush(miramar());
+  });
+
   it('fails fast when the param turns invalid and recovers on a valid id (#499)', async () => {
     flushVenue();
     await fixture.whenStable();

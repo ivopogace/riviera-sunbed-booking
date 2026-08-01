@@ -10,6 +10,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
@@ -137,12 +138,25 @@ export class VenueMap {
 
   /** Earliest bookable day (tomorrow, Europe/Tirane): today is not offered (invariant #4, display). */
   protected readonly minDate = defaultBookingDate(new Date());
+
+  private readonly queryParams = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
   /**
-   * The day the map reflects (ISO YYYY-MM-DD). Seeded from the `?date=` query param the discovery
-   * page carries when a venue is opened, so the chosen date persists across the hop (#294) — validated
-   * and clamped to {@link minDate}; an absent or malformed param falls back to it (tomorrow, Tirane).
+   * The route-carried map date: the `?date=` query param the discovery page attaches when a venue
+   * is opened (#294), validated and clamped to {@link minDate} — absent, malformed, or past/today
+   * falls back to it (invariant #4, display). Reactive since #499, so an in-place navigation that
+   * changes the carried date re-seeds the map like a fresh mount.
    */
-  protected readonly selectedDate = signal(this.readInitialDate());
+  private readonly routeDate = computed(() => {
+    const raw = this.queryParams().get('date');
+    return raw && isIsoDate(raw) && raw >= this.minDate ? raw : this.minDate;
+  });
+  /**
+   * The day the map reflects (ISO YYYY-MM-DD). Seeded from {@link routeDate} on mount and on every
+   * in-place route change (#499); the date picker then writes it directly without touching the URL.
+   */
+  protected readonly selectedDate = signal(this.routeDate());
 
   /** The venue from the `:id` param (undefined if invalid) — reactive to in-place changes,
    *  which reuse this instance (#499, the tourist mirror of #180). */
@@ -233,18 +247,18 @@ export class VenueMap {
     });
 
     // Fresh mounts load synchronously below (constructor parity); the effect handles only an
-    // IN-PLACE `:id` change (#499) — the router reuses this instance — so it skips any run
-    // whose id matches the context already loaded (incl. its own first run).
-    let current = this.venueId();
+    // IN-PLACE route change (#499) — the router reuses this instance — so it skips any run
+    // whose (id, route date) matches the context already loaded (incl. its own first run).
+    let current = `${this.venueId()}|${this.routeDate()}`;
     effect(() => {
-      const id = this.venueId();
-      if (id === current) {
+      const key = `${this.venueId()}|${this.routeDate()}`;
+      if (key === current) {
         return;
       }
-      current = id;
-      untracked(() => this.resetForVenue(id));
+      current = key;
+      untracked(() => this.resetForVenue(this.venueId()));
     });
-    this.resetForVenue(current);
+    this.resetForVenue(this.venueId());
   }
 
   /** Drop every venue-scoped state — map, dialog, pan gesture — and load fresh, or fail fast
@@ -256,21 +270,12 @@ export class VenueMap {
     this.lastTriggerId = undefined;
     this.panPointerDown = false;
     this.panned = false;
+    this.selectedDate.set(this.routeDate());
     if (id === undefined) {
       this.failed.set(true);
       return;
     }
     this.load();
-  }
-
-  /** Seed the map date from a valid, in-range `?date=` query param, else the earliest bookable day. */
-  private readInitialDate(): string {
-    const raw = this.route.snapshot.queryParamMap.get('date');
-    // Honour a valid `?date=` on/after the floor; absent, malformed, or past/today falls back to it (#4).
-    if (raw && isIsoDate(raw) && raw >= this.minDate) {
-      return raw;
-    }
-    return this.minDate;
   }
 
   /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */
