@@ -467,6 +467,18 @@ RV-BE-12, RV-PROC-1, RV-FE-E2E — see the table in the review note; availabilit
   `Amenity.valueOf` 500 on an unknown DB code — the `venue_amenity_catalogue_check` + enum-in-lockstep
   guarantee no unknown code at rest; rolling-deploy skew is out of scope for v1.
 
+**Deferral disposition (issue #166, closed won't-fix 2026-08-01).** The two tracked deferrals (3) and
+(4) are both settled, and neither by being implemented as filed. (4) was **superseded**: #297 replaced
+the per-CD card helpers with a `computed()` view-model (`home.ts` `venuesView`/`toCard`), naming
+`cardAmenities`/`toWater` explicitly — the memoization landed as part of a broader refactor, not off
+this deferral. (3) is **kept permanently**: its own trigger ("if the venue write path gets hot") never
+fired — still one caller, ≤11 rows — and `JdbcVenues.insertSets` makes the identical per-row choice at
+`MAX_SETS` = 1040, so the amenity loop is the smaller instance of a house pattern this class already
+documents (with `batchUpdate` named as the escape hatch). One correction to (3)'s rationale above: a
+batch insert would **not** require dynamic SQL — `NamedParameterJdbcTemplate.batchUpdate` takes a
+static SQL string plus a batch of param maps, so the Sonar-risk clause is wrong; the deferral rests on
+cost-not-worth-it alone. (5) and (6) re-verified unchanged and still accurate.
+
 **CI gate (full-suite-only failures caught at PR):**
 - `WebSliceStubs` missing the new `EditVenueProfile` bean → web-slice context load failure
   (`WebCorsConfigTest`, `RateLimit*Test`). Fixed (added the stub bean); recorded in the audit log.
