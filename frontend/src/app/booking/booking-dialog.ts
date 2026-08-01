@@ -15,7 +15,7 @@ import { firstValueFrom } from 'rxjs';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { trapFocusWithin } from '../shared/focus-trap';
 import { formatMoney } from '../shared/money';
-import { BookingMode, SetView } from '../venue/venue.model';
+import { BookingMode, SetView } from '../shared/venue-views';
 import {
   AwaitingPayment,
   BookingConfirmation,

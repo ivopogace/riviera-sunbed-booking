@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 
 import { formatMoney } from '../shared/money';
-import { formatCivilDate } from '../venue/booking-date';
+import { formatCivilDate } from '../shared/booking-date';
 import { PayoutLedgerEntryView, PayoutLedgerView } from './operator-console.model';
 import { PayoutsTab } from './payouts-tab';
 

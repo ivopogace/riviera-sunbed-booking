@@ -227,10 +227,11 @@ grandfathered debt table?
 - [ ] a *removed* or *consolidated* existing edge is fine — and good
 - [ ] a genuinely needed new edge is argued in the plan doc, not slipped in on the table's precedent
 
-> **The table is a freeze, not a licence.** `riviera-frontend`'s debt section lists every
-> cross-feature edge that exists (tracked for removal by **#489**); its purpose is to stop the
-> count growing while the placement is fixed. **"`operator/` already imports `venue/`" is not
-> an argument for a new import** — judge a new edge against the one-way rule on its merits.
+> **The table is a freeze, not a licence.** `riviera-frontend`'s residual table lists every
+> cross-feature edge that exists — five behavioral edges since **#489** moved the published
+> API-view vocabulary to `shared/`; each awaits its own slice, and the freeze stops the count
+> growing meanwhile. **"`operator/` already imports `venue/`" is not an argument for a new
+> import** — judge a new edge against the one-way rule on its merits.
 >
 > **Verify mechanically, not by eye** — feature folders are the direct children of
 > `frontend/src/app`; `core/`, `shared/`, `pages/`, `environments/` are not. Match **both**
@@ -247,8 +248,8 @@ grandfathered debt table?
   (pure → `shared/`, stateful/HTTP → `core/`), don't cross-import.
 - Shrinking the set means updating `riviera-frontend`'s table in the same PR — a stale count
   reads as licence.
-- **No ESLint boundary rule enforces this today**, which is why it is a review-bank item; once
-  #489 lands, consider whether the residual set is small enough to pin mechanically.
+- **No ESLint boundary rule enforces this today**, which is why it is a review-bank item; with
+  the residual down to five (#489), pinning it mechanically is the natural follow-up.
 
 **Default severity:** **Major** for a new feature→feature import; **Blocker** for a new
 `shared/ →` or `core/ → feature/` import (it reintroduces the cycle the one-way rule prevents).

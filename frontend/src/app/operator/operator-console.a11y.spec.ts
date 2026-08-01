@@ -6,7 +6,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { environment } from '../../environments/environment';
 import { expectNoAxeViolations } from '../../testing/axe';
 import { OperatorAuth } from '../core/operator-auth';
-import { VenueMapView } from '../venue/venue.model';
+import { VenueMapView } from '../shared/venue-views';
 import { OperatorConsole } from './operator-console';
 
 /**

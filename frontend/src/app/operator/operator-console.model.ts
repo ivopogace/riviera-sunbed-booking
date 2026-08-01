@@ -1,5 +1,6 @@
 import { Amenity } from '../shared/amenities';
-import { BookingMode, MoneyView, Pool, Tier } from '../venue/venue.model';
+import { MoneyView } from '../shared/money';
+import { BookingMode, Pool, Tier } from '../shared/venue-views';
 
 /**
  * The operator console's "online takings today" read (`GET /api/venues/{id}/takings`, #171). Mirrors

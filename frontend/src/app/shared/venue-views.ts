@@ -1,14 +1,12 @@
-import { Amenity } from '../shared/amenities';
+import { Amenity } from './amenities';
+import { MoneyView } from './money';
 
 /**
- * Typed view of the U1 venue read API (`GET /api/venues/{id}`). Mirrors the backend
- * `VenueMapView` exactly — money travels as integer minor units + currency (invariant #5),
- * the rating as tenths (no float on the wire). No `any` anywhere.
+ * The venue read APIs' published view vocabulary — the frontend mirror of the backend's
+ * `venue::vocabulary` surface, exactly as it travels the wire. No `any` anywhere. The venue
+ * feature is this file's **editor of record** (issue #489): it lives in `shared/` because
+ * every feature, `pages/`, and `shared/` itself consume it, but changes ride venue API slices.
  */
-export interface MoneyView {
-  readonly minorUnits: number;
-  readonly currency: string;
-}
 
 /**
  * The venue's tourist-surfaced cover photo (#142): content-addressed, immutably-cached serving
@@ -37,6 +35,11 @@ export interface SetView {
   readonly availability: SeatAvailability;
 }
 
+/**
+ * Typed view of the U1 venue read API (`GET /api/venues/{id}`). Mirrors the backend
+ * `VenueMapView` exactly — money travels as integer minor units + currency (invariant #5),
+ * the rating as tenths (no float on the wire).
+ */
 export interface VenueMapView {
   readonly id: number;
   readonly name: string;

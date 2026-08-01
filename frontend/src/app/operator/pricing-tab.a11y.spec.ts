@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 
 import { expectNoAxeViolations } from '../../testing/axe';
-import { SetView } from '../venue/venue.model';
+import { SetView } from '../shared/venue-views';
 import { PricingTab } from './pricing-tab';
 
 /**

@@ -3,8 +3,8 @@ import { ActivatedRoute, Router, RouterLink, RouterLinkActive, RouterOutlet } fr
 import { Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
-import { todayBookingDate } from '../venue/booking-date';
-import { VenueMapView } from '../venue/venue.model';
+import { todayBookingDate } from '../shared/booking-date';
+import { VenueMapView } from '../shared/venue-views';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { ConsoleVenueMap } from './console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';

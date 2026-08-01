@@ -3,8 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 
-import { defaultBookingDate, todayBookingDate } from '../venue/booking-date';
-import { Pool, SetView, Tier } from '../venue/venue.model';
+import { defaultBookingDate, todayBookingDate } from '../shared/booking-date';
+import { Pool, SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { DailyViewTab } from './daily-view-tab';
 

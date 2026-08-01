@@ -11,8 +11,8 @@ import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
 import { isRated, ratingScore } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
-import { defaultBookingDate } from '../../venue/booking-date';
-import { VenueSummary } from '../../venue/venue.model';
+import { defaultBookingDate } from '../../shared/booking-date';
+import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
 
 /**

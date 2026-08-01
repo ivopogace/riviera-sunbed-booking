@@ -5,11 +5,11 @@ import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
-import { formatMoney } from '../shared/money';
+import { formatMoney, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { BeachGridFrame } from './beach-grid-frame';
-import { todayBookingDate } from '../venue/booking-date';
-import { MoneyView, SetView } from '../venue/venue.model';
+import { todayBookingDate } from '../shared/booking-date';
+import { SetView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutCellRequest, LayoutErrorCode } from './operator-console.model';

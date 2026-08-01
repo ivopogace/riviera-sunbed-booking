@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
-import { SetView } from '../venue/venue.model';
+import { SetView } from '../shared/venue-views';
 import { AwaitingPayment, BookingConfirmation, RequestedBooking } from './booking.model';
 import { BookingDialog } from './booking-dialog';
 

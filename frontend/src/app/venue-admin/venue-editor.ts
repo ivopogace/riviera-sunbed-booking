@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues } from '../core/owned-venues';
 import { parseWholeNumber } from '../shared/whole-number';
-import { BookingMode } from '../venue/venue.model';
+import { BookingMode } from '../shared/venue-views';
 import { VenueAdminErrorCode } from './venue-admin.model';
 import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 

@@ -3,8 +3,8 @@ import { Service, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { resolveCoverPhoto } from './photo-url';
-import { VenueMapView, VenueSummary } from './venue.model';
+import { resolveCoverPhoto } from '../shared/photo-url';
+import { VenueMapView, VenueSummary } from '../shared/venue-views';
 
 /** Optional discovery filters; an omitted dimension is no constraint (mirrors the backend). */
 export interface VenueListFilter {

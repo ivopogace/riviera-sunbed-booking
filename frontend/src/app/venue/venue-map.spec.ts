@@ -10,8 +10,8 @@ import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { formatBookingDate } from '../shared/booking-date-label';
-import { defaultBookingDate } from './booking-date';
-import { SetView, VenueMapView } from './venue.model';
+import { defaultBookingDate } from '../shared/booking-date';
+import { SetView, VenueMapView } from '../shared/venue-views';
 import { rowCode, VenueMap } from './venue-map';
 
 /** A 24-set fixture mirroring the Miramar seed: 4 rows × 6, 6 taken (18 free), front row premium. */

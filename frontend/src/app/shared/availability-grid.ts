@@ -1,4 +1,4 @@
-import { SetView } from '../venue/venue.model';
+import { SetView } from './venue-views';
 
 /**
  * Shared logic for the operator console's per-day availability grid — the read-model derivations used

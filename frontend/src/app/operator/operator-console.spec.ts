@@ -6,8 +6,8 @@ import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
-import { todayBookingDate } from '../venue/booking-date';
-import { VenueMapView } from '../venue/venue.model';
+import { todayBookingDate } from '../shared/booking-date';
+import { VenueMapView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { OperatorConsole } from './operator-console';
 import { PendingRequestsStore } from './pending-requests-store';

@@ -5,7 +5,7 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 
 import { environment } from '../../environments/environment';
 import { expectNoAxeViolations } from '../../testing/axe';
-import { SetView, VenueMapView } from './venue.model';
+import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
 
 /**

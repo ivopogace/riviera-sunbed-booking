@@ -4,8 +4,8 @@ import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { problemCodeOf } from '../shared/api-error';
-import { apiPhotoUrl } from '../venue/photo-url';
-import { MoneyView } from '../venue/venue.model';
+import { apiPhotoUrl } from '../shared/photo-url';
+import { MoneyView } from '../shared/money';
 import {
   BeachMapLayoutRequest,
   ConsoleDailyBooking,

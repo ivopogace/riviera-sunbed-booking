@@ -4,7 +4,7 @@ import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { problemCodeOf } from '../shared/api-error';
-import { apiPhotoUrl } from '../venue/photo-url';
+import { apiPhotoUrl } from '../shared/photo-url';
 import { PhotoSlotKey } from './operator-console.model';
 
 /** One stored variant of an uploaded photo (#142): its surface, serving URL, and dimensions. */

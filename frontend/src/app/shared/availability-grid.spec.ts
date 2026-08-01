@@ -1,4 +1,4 @@
-import { Pool, SetView, Tier } from '../venue/venue.model';
+import { Pool, SetView, Tier } from './venue-views';
 import { TileState, deriveTileStates, groupSetsByRow, tileTapAction } from './availability-grid';
 
 /**

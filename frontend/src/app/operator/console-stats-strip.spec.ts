@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
-import { Pool, SeatAvailability, SetView, VenueMapView } from '../venue/venue.model';
+import { Pool, SeatAvailability, SetView, VenueMapView } from '../shared/venue-views';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { TakingsView } from './operator-console.model';
 

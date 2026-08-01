@@ -5,7 +5,7 @@ import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
-import { formatCivilDate, todayBookingDate } from '../venue/booking-date';
+import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
 import {
   LedgerRow,
   PayoutErrorCode,

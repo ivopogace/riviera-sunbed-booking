@@ -1,6 +1,6 @@
 import { environment } from '../../environments/environment';
 
-import { CoverPhotoView } from './venue.model';
+import { CoverPhotoView } from './venue-views';
 
 /**
  * Resolve a photo serving path from the API (`/api/venues/{id}/photos/{hash}`) against the API
