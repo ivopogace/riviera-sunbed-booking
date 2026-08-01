@@ -51,7 +51,9 @@ thrown by module adapters, mapped at the composition root which nothing may depe
 same ground as `ApiProblem`) · `riviera-stripe-payments` (payout admin controller touched —
 confirmed the wrap changes no payout/commission semantics, collect-only model untouched) ·
 `riviera-local-debug` (scoped-test discipline for the cloud session; system gradle + JDK-25
-toolchain recipe).
+toolchain recipe) · `riviera-frontend` + the angular-cli MCP (F-1/F-3 re-entry: the spec date
+fix and the frozen-clock test setup — placement of `test-setup.ts`, the `setupFiles` option
+verified against the v22 docs).
 
 **Branch:** `claude/sdlc-118-relevance-check-s3sa34` — the session's designated remote
 branch, standing in for `bugfix/typed-edge-validation` per the riviera-sdlc cloud addendum.
@@ -60,21 +62,21 @@ branch, standing in for `bugfix/typed-edge-validation` per the riviera-sdlc clou
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a controller throws `InvalidApiRequestException`, when the advice maps
+- [x] **AC-1:** Given a controller throws `InvalidApiRequestException`, when the advice maps
   it, then the wire is `400` `application/problem+json` with `code=INVALID_REQUEST`, the
   generic detail, and no exception-message echo. *Pinned by:*
   `ApiErrorHandlerTest.invalidApiRequestIs400WithoutEchoingTheMessage`
-- [ ] **AC-2:** Given a controller throws a raw `IllegalArgumentException` (a deep bug —
+- [x] **AC-2:** Given a controller throws a raw `IllegalArgumentException` (a deep bug —
   e.g. a `Money`/`PayoutLedgerEntry` invariant on stored data), when the request completes,
   then the exception **propagates** (surfaces as `500`, logged with stack trace by the
   framework) and is **not** mapped to `400`. *Pinned by:*
   `ApiErrorHandlerTest.aDeepBugIllegalArgumentIsNotMaskedAsA400`
-- [ ] **AC-3:** Given a `DuplicateKeyException` (unique-constraint race), when the advice
+- [x] **AC-3:** Given a `DuplicateKeyException` (unique-constraint race), when the advice
   maps it, then the wire is `409 CONFLICT` and the class names are WARN-logged; given a
   non-duplicate `DataIntegrityViolationException` (FK/NOT-NULL — a schema bug), then it
   **propagates** as a `500`. *Pinned by:* `ApiErrorHandlerTest.duplicateKeyRaceIs409Conflict`
   + `ApiErrorHandlerTest.aNonRaceDataIntegrityViolationIsNotMaskedAsA409`
-- [ ] **AC-4:** Given any of the existing deliberate edge-validation rejections — weak
+- [x] **AC-4:** Given any of the existing deliberate edge-validation rejections — weak
   password (`CustomerPasswords.validate`), bad SSO state/provider, bad mock `redirect_uri`,
   malformed booking/venue/payout-admin/photo-slot input — when the request is made, then the
   wire behavior is **byte-identical to today** (`400 INVALID_REQUEST`). *Pinned by:* the
@@ -83,7 +85,7 @@ branch, standing in for `bugfix/typed-edge-validation` per the riviera-sdlc clou
   `BookingControllerIT`, `VenueAdminControllerIT`, `VenueRepriceIT`,
   `AdminPayoutBatchControllerTest` (36 `INVALID_REQUEST` assertions across 16 files — the
   regression net; **no assertion in them is edited**).
-- [ ] **AC-5:** Structure holds: `ModularityTests`, `PackageShapeArchitectureTests`,
+- [x] **AC-5:** Structure holds: `ModularityTests`, `PackageShapeArchitectureTests`,
   `PublishedSurfacePlacementArchitectureTests`, `ErrorContractArchitectureTests` all pass
   with the new `shared` class.
 
@@ -190,10 +192,9 @@ valid client mistakes unchanged).
 
 ## Execution status
 
-**Stage pointer:** PR — draft open, awaiting CI on `ba5ca93`
+**Stage pointer:** merge close-out — done (merged via PR #480)
 
-**Next action:** check the push's CI run; when the slice is confirmed green, mark the PR
-ready for review and run the Review + Sonar gates (`references/pr-gates.md`).
+**Next action:** none — issue #118 closed by the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -210,7 +211,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | CI (Frontend job on `ccb1f12`) | Pre-existing date-triggered test bug, not this diff: `daily-view-tab.spec.ts` hardcoded `date.value = '2026-08-01'`, which became "today in Tirane" on 2026-08-01 — same value → no reload → `expectOne` found none. Latent on `main` (green through Jul 31), fails every run today. Fixed with `defaultBookingDate(new Date())` (tomorrow in Tirane, never equal to the preloaded today); re-entry gate: `riviera-frontend` loaded (spec-only edit, no placement change); generalization grep over `src/app/**/*.spec.ts` found no sibling (other date literals are pure-formatter inputs with injected `now`). All 1004 FE tests + lint green locally. | fixed-in-`48184aa` |
 | F-2 | docs-freshness pre-merge counting sweep | `RESPONSIBILITIES.md` Shared-Kernel class enumeration + Job line missed the new `InvalidApiRequestException` | fixed-in-`48184aa` |
-| F-3 | user directive (harden F-1's class, not just the instance) | Any spec could still depend on the machine's real calendar. Structural fix: the Vitest clock is now **frozen** at 2026-06-15 midday Tirane via `src/test-setup.ts` + the `test` target's `setupFiles` (only `Date` faked; real timers/`fakeAsync` untouched; `vi.useRealTimers()` opts out). Verified doubly: a deliberate throw in the setup fails the suite (proves it loads), and an in-setup assertion that `new Date()` is 2026-06-15 passes (proves the freeze); all 1004 tests + lint green under it. Convention documented in `frontend/.claude/CLAUDE.md` §Unit tests. | fixed-in-`4be2c49` |
+| F-3 | user directive (harden F-1's class, not just the instance) | Any spec could still depend on the machine's real calendar. Structural fix: the Vitest clock is now **frozen** at 2026-06-15 midday Tirane via `src/test-setup.ts` + the `test` target's `setupFiles` (only `Date` faked; real timers/`fakeAsync` untouched; `vi.useRealTimers()` opts out). Verified doubly: a deliberate throw in the setup fails the suite (proves it loads), and an in-setup assertion that `new Date()` is 2026-06-15 passes (proves the freeze); all 1004 tests + lint green under it. Convention documented in `frontend/.claude/CLAUDE.md` §Unit tests. | fixed-in-`9a3d364` |
+| F-4 | review gate (`/code-review` subagent fan-out + overlay, on `9a3d364`) | `VenueAdminController` class javadoc still claimed `DataIntegrityViolationException`→409 maps centrally — the exact mapping this PR narrowed (flagged independently by 3 of 6 reviewers; confidence 100) | fixed-in-`8a7d797` |
+| F-5 | review gate (RV-STYLE-1, confidence 100) | The F-1 spec fix added a two-line inline comment; `frontend/.claude/CLAUDE.md`: one line or none | fixed-in-`8a7d797` |
+| F-6 | review gate (RV-PROC-1, confidence 75 — below the workflow's ≥80 comment filter, fixed regardless as an overlay Major) | *Skills consulted* line omitted `riviera-frontend` + angular-cli MCP for the F-1/F-3 frontend re-entry (loaded and recorded in F-1, but not on the line RV-PROC-1 audits) | fixed-in-`8a7d797` |
+| F-7 | review gate (scored 25/0 — filtered) | `test-setup.ts` file-header doc length (judged compliant: TSDoc is the documented surface); pre-existing broken `{@link #toCommand()}` in `CreateBookingRequest` (pre-dates this PR, #385) | no-change — rejected with rationale |
 
 ---
 
@@ -296,20 +301,20 @@ by request input), the 16 test files asserting `INVALID_REQUEST`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event changes (invariant #11).
-- [ ] **Payment/payout** section justified N/A; parsing-only change in `payout` adapter (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] Booking codes: no code logged or echoed by the new paths; generic detail preserved (invariant #7).
-- [ ] No schema change → no Flyway (invariant #12).
-- [ ] **Frontend** N/A.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register closed; Open Questions resolved.
-- [ ] **Close-out written in THIS PR** — cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `references/pr-gates.md` §1 plus `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event changes (invariant #11).
+- [x] **Payment/payout** section justified N/A; parsing-only change in `payout` adapter (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] Booking codes: no code logged or echoed by the new paths; generic detail preserved (invariant #7).
+- [x] No schema change → no Flyway (invariant #12).
+- [x] **Frontend** N/A.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register closed; Open Questions resolved.
+- [x] **Close-out written in THIS PR** — cites `merged via PR #NN`.
+- [x] **The review gate ran in full** — Skill probe succeeded (rung 1): the /code-review workflow executed as a 6-agent fan-out (5 workflow lenses + the riviera-review-overlay bank walk) with per-finding confidence scoring; findings F-4..F-7 in the register.

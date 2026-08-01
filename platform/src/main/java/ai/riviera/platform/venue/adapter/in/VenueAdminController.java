@@ -41,8 +41,8 @@ import ai.riviera.platform.venue.application.ViewVenueProfile;
  * public U1 read endpoint is a separate controller. Outcomes map to HTTP via exhaustive
  * {@code switch}: created→201 (+Location), applied→204, {@code NO_SUCH_*}→404,
  * {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}→409; malformed→400 and the
- * constraint-race backstop ({@code DataIntegrityViolationException}→409 {@code CONFLICT},
- * invariant #12) map centrally in {@code ApiErrorHandler}. Errors are RFC-7807
+ * constraint-race backstop ({@code DuplicateKeyException}→409 {@code CONFLICT},
+ * invariant #12; #118) map centrally in {@code ApiErrorHandler}. Errors are RFC-7807
  * {@link ProblemDetail} built by {@link ApiProblem} (issue #97).
  *
  * <p>The per-set edits and the profile edit ({@code PATCH /api/venues/{venueId}} — amenities +
