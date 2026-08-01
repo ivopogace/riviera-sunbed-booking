@@ -18,6 +18,7 @@ import {
   RepriceErrorCode,
   RequestDecision,
   RequestErrorCode,
+  SetDayState,
   SlotPhotoView,
   TakingsView,
   VenueProfileErrorCode,
@@ -81,6 +82,18 @@ export class OperatorConsoleService {
         params: new HttpParams().set('date', date),
       })
       .pipe(map((bookings) => bookings.length));
+  }
+
+  /**
+   * The venue's held sets for `date` with their authoritative state tokens (#207) —
+   * `BOOKED_ONLINE` (any online hold, paid or not) vs `STAFF_MARKED`; a free set is absent.
+   * Owner-asserted server-side (invariant #13). The Daily view's tile classification and the
+   * strip's Walk-ins tile read this instead of deriving from `taken − confirmed bookings`.
+   */
+  dailyAvailability(venueId: number, date: string): Observable<SetDayState[]> {
+    return this.http.get<SetDayState[]>(`${this.base}/api/venues/${venueId}/availability`, {
+      params: new HttpParams().set('date', date),
+    });
   }
 
   /**

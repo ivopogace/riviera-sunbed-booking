@@ -1,5 +1,11 @@
 import { Pool, SetView, Tier } from './venue-views';
-import { TileState, deriveTileStates, groupSetsByRow, tileTapAction } from './availability-grid';
+import {
+  HeldSetState,
+  TileState,
+  deriveTileStates,
+  groupSetsByRow,
+  tileTapAction,
+} from './availability-grid';
 
 /**
  * The shared operator availability-grid logic (#175): row grouping, tile-state derivation, and the
@@ -24,24 +30,39 @@ describe('availability-grid', () => {
   });
 
   describe('deriveTileStates', () => {
-    it('maps FREE sets to FREE', () => {
-      const state = deriveTileStates([seat(1, 'A', 1, 'FREE')], new Set(), new Map());
+    it('maps a set absent from the server states to FREE', () => {
+      const state = deriveTileStates([seat(1, 'A', 1, 'FREE')], new Map(), new Map());
       expect(state.get(1)).toBe('FREE');
     });
 
-    it('maps a TAKEN online-held set to BOOKED_ONLINE and a TAKEN unheld set to STAFF_MARKED', () => {
+    it('classifies from the server state tokens — hold vs walk-in, no booking heuristic (#207)', () => {
       const state = deriveTileStates(
-        [seat(1, 'A', 1, 'TAKEN'), seat(2, 'A', 2, 'TAKEN')],
-        new Set([1]), // only set 1 is held by a confirmed online booking
+        [seat(1, 'A', 1, 'TAKEN'), seat(2, 'A', 2, 'TAKEN'), seat(3, 'A', 3, 'FREE')],
+        new Map<number, HeldSetState>([
+          [1, 'BOOKED_ONLINE'],
+          [2, 'STAFF_MARKED'],
+        ]),
         new Map(),
       );
       expect(state.get(1)).toBe('BOOKED_ONLINE');
       expect(state.get(2)).toBe('STAFF_MARKED');
+      expect(state.get(3)).toBe('FREE');
+    });
+
+    it('renders an unpaid online hold as BOOKED_ONLINE (locked), never a walk-in (#207)', () => {
+      // The old derivation mislabeled a TAKEN set without a CONFIRMED booking as STAFF_MARKED;
+      // the server state token is authoritative regardless of what the bookings read carries.
+      const state = deriveTileStates(
+        [seat(1, 'A', 1, 'TAKEN')],
+        new Map<number, HeldSetState>([[1, 'BOOKED_ONLINE']]),
+        new Map(),
+      );
+      expect(state.get(1)).toBe('BOOKED_ONLINE');
     });
 
     it('lets an optimistic override win over server truth', () => {
       const overrides = new Map<number, TileState>([[1, 'STAFF_MARKED']]);
-      const state = deriveTileStates([seat(1, 'A', 1, 'FREE')], new Set(), overrides);
+      const state = deriveTileStates([seat(1, 'A', 1, 'FREE')], new Map(), overrides);
       expect(state.get(1)).toBe('STAFF_MARKED');
     });
   });

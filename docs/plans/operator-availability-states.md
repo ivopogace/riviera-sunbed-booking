@@ -202,16 +202,16 @@ a11y/contrast specs re-run (tile accessible names already carry the state).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3 — frontend)
+**Stage pointer:** implement (phase 4 — mocked e2e)
 
-**Next action:** phase 3 — FE service + grid derivation + daily view + stats strip (red Vitest specs first)
+**Next action:** phase 4 — extend the console e2e support mocks + daily spec with the unpaid-hold fixture
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc committed, draft PR opened | ✅ | c77c2db (PR #501, draft) |
 | 1 — `statesOn` on the SPI + JDBC impl (`AvailabilityLookupIT` red-green) | ✅ | 00ae354 |
-| 2 — venue read service + endpoint + role gate (+ `CrossVenueDenialIT`, coverage test) | ✅ | (this commit) |
-| 3 — FE: service + grid derivation + daily view + stats strip (Vitest red-green) | | |
+| 2 — venue read service + endpoint + role gate (+ `CrossVenueDenialIT`, coverage test) | ✅ | 30f02c0 |
+| 3 — FE: service + grid derivation + daily view + stats strip (Vitest red-green) | ✅ | (this commit) |
 | 4 — mocked e2e + a11y re-run | | |
 | 5 — gates: CI green, ready-for-review, review, Sonar, merge close-out | | |
 
@@ -337,6 +337,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|---|---|
 | 2026-08-01 | phase 1 (statesOn) | other `takenOn`/state-blind consumers that need states | `grep -rn "takenOn" platform/src/main` | `JdbcVenueCatalog` (tourist map) | skip — the tourist read is state-agnostic **by design** (no hold-type leak); only the operator read graduates |
 | 2026-08-01 | phase 2 (role gate) | the #316/#317/#328 GET fall-through class on the new endpoint | `EndpointRoleGateCoverageTest` run | matcher registered before the public venue GET; coverage test green (and red before the matcher landed — it genuinely probes the new endpoint) | fixed by construction |
+| 2026-08-01 | phase 3 (FE truth swap) | any remaining `taken − confirmed` remainder / `onlineHeldSetIds` heuristic | `grep -rn "- bookedOnline\|onlineHeldSetIds\|walkIns" frontend/src/app` | none outside the new states-based `walkIns` | heuristic fully deleted, not relocated |
 
 ---
 

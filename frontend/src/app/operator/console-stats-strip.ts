@@ -4,7 +4,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatMoney, MoneyView } from '../shared/money';
 import { VenueMapView } from '../shared/venue-views';
 import { todayBookingDate } from '../shared/booking-date';
-import { TakingsView } from './operator-console.model';
+import { SetDayState, TakingsView } from './operator-console.model';
 import { OperatorConsoleService } from './operator-console.service';
 
 /**
@@ -12,12 +12,13 @@ import { OperatorConsoleService } from './operator-console.service';
  * the operator's venue today (Europe/Tirane, invariant #6): Free today `{free}/{total}`, Booked
  * online, Walk-ins marked, and Online takings today (gross + net after commission).
  *
- * <p>Occupancy counts are composed on the client (the seam decision, #171): free/total come from the
- * venue map the shell already loads (passed in via {@link venue}), booked-online from the day's
- * confirmed bookings, and walk-ins are the remainder — the same derivation `staff-daily` ships. Only
- * the takings figure is a dedicated server read; net-after-commission is computed server-side
- * (invariant #9) and merely rendered here via {@link formatMoney} (invariant #5 — no money math on
- * the client). Both reads are best-effort: a failure leaves the tile at its zero/dash default.
+ * <p>Each tile names its source: free/total come from the venue map the shell already loads (passed
+ * in via {@link venue}, the #486 shared snapshot), booked-online from the day's CONFIRMED bookings,
+ * and walk-ins from the owner availability-states read (#207) — an exact `STAFF_MARKED` count, which
+ * replaced the `taken − booked` remainder that transiently mislabeled an unpaid online hold as a
+ * walk-in. Net-after-commission is computed server-side (invariant #9) and merely rendered via
+ * {@link formatMoney} (invariant #5 — no money math on the client). All three reads are
+ * best-effort: a failure leaves that tile at its zero/dash default and never poisons the others.
  */
 @Component({
   selector: 'app-console-stats-strip',
@@ -43,6 +44,11 @@ export class ConsoleStatsStrip {
   protected readonly bookedOnline = signal<number | undefined>(undefined);
   /** Gross + net-after-commission takings for today, or undefined until the read resolves. */
   protected readonly takings = signal<TakingsView | undefined>(undefined);
+  /**
+   * Today's held sets with their server state tokens (#207), or `undefined` until the read resolves —
+   * a failed read stays `undefined` (walk-ins render "—"), distinct from a real all-free day (`[]`).
+   */
+  private readonly held = signal<readonly SetDayState[] | undefined>(undefined);
   /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
    *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
   private epoch = 0;
@@ -55,18 +61,15 @@ export class ConsoleStatsStrip {
     () => this.venue()?.sets.filter((s) => s.availability === 'FREE').length ?? 0,
   );
   /**
-   * Walk-ins marked = taken − booked-online (taken = total − free); never negative; `undefined`
-   * (rendered "—") until the booked-online count loads, so a failed read isn't shown as walk-ins.
-   *
-   * Known limitation (#171 follow-up): the map's "taken" is state-agnostic — it counts a set as taken
-   * from the moment it is claimed `BOOKED_ONLINE` at reserve (while still `AWAITING_PAYMENT`), but
-   * `bookedOnline` counts only `CONFIRMED` bookings, so an unpaid online hold is transiently counted
-   * here as a walk-in. Same derivation the shipped `staff-daily` view uses; a precise split needs a
-   * server-side `STAFF_MARKED` count (deferred with the Option-B seam) — tracked for both surfaces.
+   * Walk-ins marked — the exact count of `STAFF_MARKED` states from the owner availability read
+   * (#207); `undefined` (rendered "—") until it resolves, so a failed read is never shown as a
+   * phantom count. An unpaid online hold carries `BOOKED_ONLINE` and is therefore never counted.
    */
   protected readonly walkIns = computed(() => {
-    const booked = this.bookedOnline();
-    return booked === undefined ? undefined : Math.max(0, this.total() - this.free() - booked);
+    const held = this.held();
+    return held === undefined
+      ? undefined
+      : held.filter((s) => s.state === 'STAFF_MARKED').length;
   });
 
   constructor() {
@@ -92,6 +95,7 @@ export class ConsoleStatsStrip {
     // A venue switch reuses this strip (#180) — reset to dash defaults while the new reads run.
     this.bookedOnline.set(undefined);
     this.takings.set(undefined);
+    this.held.set(undefined);
     // Continuations re-check the venue so a superseded venue's reads never land here (#180).
     this.console.dailyBookingCount(venueId, this.date).subscribe({
       next: (count) => {
@@ -111,6 +115,16 @@ export class ConsoleStatsStrip {
       },
       error: () => {
         // best-effort — the takings tile shows a dash
+      },
+    });
+    this.console.dailyAvailability(venueId, this.date).subscribe({
+      next: (states) => {
+        if (this.epoch === epoch) {
+          this.held.set(states);
+        }
+      },
+      error: () => {
+        // best-effort — walk-ins render "—", never a phantom count (#207)
       },
     });
   }

@@ -19,7 +19,11 @@ describe('DailyViewTab a11y (#175)', () => {
   let fixture: ComponentFixture<DailyViewTab>;
   let http: HttpTestingController;
 
-  function render(sets: SetView[], bookings: { setId: number; code: string }[]): void {
+  function render(
+    sets: SetView[],
+    bookings: { setId: number; code: string }[],
+    states: { setId: number; state: string }[] = [],
+  ): void {
     TestBed.configureTestingModule({
       imports: [DailyViewTab],
       providers: [
@@ -43,8 +47,15 @@ describe('DailyViewTab a11y (#175)', () => {
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
     http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings')).flush(bookings);
     http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
+      .flush(states);
+    http
       .expectOne(
-        (r) => r.method === 'GET' && r.url.includes('/api/venues/1') && !r.url.includes('/bookings'),
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/bookings') &&
+          !r.url.includes('/availability'),
       )
       .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets });
     fixture.detectChanges();
@@ -64,6 +75,10 @@ describe('DailyViewTab a11y (#175)', () => {
         seat(3, 'A', 3, 'PREMIUM', 'ONLINE', 'TAKEN'),
       ],
       [{ setId: 2, code: 'ABC12345' }],
+      [
+        { setId: 2, state: 'BOOKED_ONLINE' },
+        { setId: 3, state: 'STAFF_MARKED' },
+      ],
     );
     await expectNoAxeViolations(host());
   });

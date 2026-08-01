@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { environment } from '../../environments/environment';
 import { Pool, SeatAvailability, SetView, VenueMapView } from '../shared/venue-views';
 import { ConsoleStatsStrip } from './console-stats-strip';
-import { TakingsView } from './operator-console.model';
+import { SetDayState, TakingsView } from './operator-console.model';
 
 const BASE = environment.apiBaseUrl;
 const VENUE = 1;
@@ -77,6 +77,7 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     venue: VenueMapView | undefined,
     booked: number | 'fail',
     takings: TakingsView | 'fail',
+    held: SetDayState[] | 'fail' = [],
   ): Promise<void> {
     fixture = TestBed.createComponent(ConsoleStatsStrip);
     fixture.componentRef.setInput('venueId', VENUE);
@@ -98,11 +99,20 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     } else {
       takingsReq.flush(takings);
     }
+    const heldReq = httpMock.expectOne(
+      (r) => r.url === `${BASE}/api/venues/${VENUE}/availability` && r.method === 'GET',
+    );
+    if (held === 'fail') {
+      heldReq.flush({}, { status: 500, statusText: 'Server Error' });
+    } else {
+      heldReq.flush(held);
+    }
     await fixture.whenStable();
   }
 
-  it('derives free/total, booked-online and walk-ins from the map + bookings (#171 AC-6)', async () => {
-    // 5 sets: 2 FREE, 3 TAKEN; 2 of the taken are confirmed online bookings -> 1 walk-in.
+  it('derives free/total from the map and walk-ins from the server states (#207)', async () => {
+    // 5 sets: 2 FREE, 3 TAKEN. The states read says 2 online holds + 1 staff mark -> 1 walk-in,
+    // regardless of how many bookings are CONFIRMED (the old taken−confirmed derivation is gone).
     const map = venueMap([
       set(1, 'FREE'),
       set(2, 'FREE'),
@@ -111,11 +121,26 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
       set(5, 'TAKEN', 'WALK_IN'),
     ]);
 
-    await render(map, 2, TAKINGS);
+    await render(map, 2, TAKINGS, [
+      { setId: 3, state: 'BOOKED_ONLINE' },
+      { setId: 4, state: 'BOOKED_ONLINE' },
+      { setId: 5, state: 'STAFF_MARKED' },
+    ]);
 
     expect(text('oc-stat-free')).toBe('2 / 5');
     expect(text('oc-stat-booked')).toBe('2');
     expect(text('oc-stat-walkins')).toBe('1');
+  });
+
+  it('never counts an unpaid online hold as a walk-in (#207 AC-6)', async () => {
+    // One set is claimed BOOKED_ONLINE while its booking is still unpaid: zero CONFIRMED bookings,
+    // yet walk-ins must be 0 (the old derivation showed a phantom 1 here).
+    const map = venueMap([set(1, 'FREE'), set(2, 'TAKEN')]);
+
+    await render(map, 0, TAKINGS, [{ setId: 2, state: 'BOOKED_ONLINE' }]);
+
+    expect(text('oc-stat-booked')).toBe('0');
+    expect(text('oc-stat-walkins')).toBe('0');
   });
 
   it('renders gross takings + net-after-commission via formatMoney, no client math (#171 AC-7)', async () => {
@@ -135,23 +160,29 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     expect(text('oc-stat-takings')).toBe('—');
   });
 
-  it('degrades booked + walk-ins to a dash (not a phantom count) when the bookings read fails', async () => {
-    // 5 sets, 2 free -> 3 taken; the /bookings read fails, so booked-online is unknown. Walk-ins must
-    // NOT render "3" (it would mislabel taken-but-unknown sets as walk-ins) — both show "—".
-    const map = venueMap([
-      set(1, 'FREE'),
-      set(2, 'FREE'),
-      set(3, 'TAKEN'),
-      set(4, 'TAKEN'),
-      set(5, 'TAKEN'),
+  it('degrades booked to a dash on a failed bookings read; walk-ins stay exact (#207)', async () => {
+    // The bookings read failing no longer poisons walk-ins — they come from the states read now.
+    const map = venueMap([set(1, 'FREE'), set(2, 'TAKEN'), set(3, 'TAKEN')]);
+
+    await render(map, 'fail', TAKINGS, [
+      { setId: 2, state: 'BOOKED_ONLINE' },
+      { setId: 3, state: 'STAFF_MARKED' },
     ]);
 
-    await render(map, 'fail', TAKINGS);
-
-    expect(text('oc-stat-free')).toBe('2 / 5'); // free/total still come from the map
+    expect(text('oc-stat-free')).toBe('1 / 3'); // free/total still come from the map
     expect(text('oc-stat-booked')).toBe('—');
-    expect(text('oc-stat-walkins')).toBe('—');
+    expect(text('oc-stat-walkins')).toBe('1');
     expect(text('oc-stat-takings')).toBe('€110'); // the independent takings read still renders
+  });
+
+  it('degrades walk-ins to a dash (not a phantom count) when the states read fails (#207 AC-6)', async () => {
+    const map = venueMap([set(1, 'FREE'), set(2, 'TAKEN'), set(3, 'TAKEN')]);
+
+    await render(map, 1, TAKINGS, 'fail');
+
+    expect(text('oc-stat-free')).toBe('1 / 3');
+    expect(text('oc-stat-booked')).toBe('1'); // the independent bookings read still renders
+    expect(text('oc-stat-walkins')).toBe('—');
   });
 
   it('resets the tiles when the venueId input changes, then loads the new venue (#180)', async () => {
@@ -171,9 +202,13 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/2/takings` && r.method === 'GET')
       .flush({ ...TAKINGS, gross: { minorUnits: 5000, currency: 'EUR' } });
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/2/availability` && r.method === 'GET')
+      .flush([{ setId: 9, state: 'STAFF_MARKED' }]);
     await fixture.whenStable();
 
     expect(text('oc-stat-booked')).toBe('1');
     expect(text('oc-stat-takings')).toBe('€50');
+    expect(text('oc-stat-walkins')).toBe('1');
   });
 });

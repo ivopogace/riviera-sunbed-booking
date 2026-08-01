@@ -32,6 +32,12 @@ describe('DailyViewTab (#175)', () => {
     seat(4, 'B', 1, 'STANDARD', 'WALK_IN', 'FREE'),
   ];
   const BOOKINGS = [{ setId: 2, code: 'ABC12345' }]; // set 2 is held by a confirmed online booking
+  // The server states read (#207) is the tile-classification authority: set 2 online-held,
+  // set 3 staff-marked; FREE sets are absent.
+  const STATES = [
+    { setId: 2, state: 'BOOKED_ONLINE' },
+    { setId: 3, state: 'STAFF_MARKED' },
+  ];
 
   /** `beforeCreate` runs after the injector exists but before the tab mounts — the shell's window. */
   function configure(beforeCreate?: () => void): void {
@@ -61,22 +67,37 @@ describe('DailyViewTab (#175)', () => {
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
   }
 
-  /** Flush one load cycle: the venue-map GET + the daily-bookings GET (initial load and each reconcile). */
-  function flushLoad(sets: SetView[] = SEED, bookings = BOOKINGS): void {
+  /** Flush one load cycle: the venue-map, daily-bookings and availability-states GETs (#207). */
+  function flushLoad(
+    sets: SetView[] = SEED,
+    bookings = BOOKINGS,
+    states: { setId: number; state: string }[] = STATES,
+  ): void {
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings'))
       .flush(bookings);
     http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
+      .flush(states);
+    http
       .expectOne(
-        (r) => r.method === 'GET' && r.url.includes('/api/venues/1') && !r.url.includes('/bookings'),
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/bookings') &&
+          !r.url.includes('/availability'),
       )
       .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets });
     fixture.detectChanges();
   }
 
-  function render(sets: SetView[] = SEED, bookings = BOOKINGS): void {
+  function render(
+    sets: SetView[] = SEED,
+    bookings = BOOKINGS,
+    states: { setId: number; state: string }[] = STATES,
+  ): void {
     configure();
-    flushLoad(sets, bookings);
+    flushLoad(sets, bookings, states);
     host = fixture.nativeElement as HTMLElement;
   }
 
@@ -102,6 +123,17 @@ describe('DailyViewTab (#175)', () => {
     expect(tile(2).tagName).toBe('SPAN');
   });
 
+  it('locks an unpaid online hold — server state wins over the confirmed-bookings list (#207)', () => {
+    // Set 3 is claimed BOOKED_ONLINE but its booking is unpaid, so it is NOT in the bookings read.
+    // The old derivation rendered it as a tappable walk-in ✓; the state token locks it.
+    render(SEED, BOOKINGS, [
+      { setId: 2, state: 'BOOKED_ONLINE' },
+      { setId: 3, state: 'BOOKED_ONLINE' },
+    ]);
+    expect(tile(3).getAttribute('data-state')).toBe('BOOKED_ONLINE');
+    expect(tile(3).tagName).toBe('SPAN');
+  });
+
   it('marks a free set: POST + optimistic flip, then reconciles to server truth', () => {
     render();
     (tile(1) as HTMLButtonElement).click();
@@ -114,8 +146,11 @@ describe('DailyViewTab (#175)', () => {
     // Optimistic: tile 1 already shows STAFF_MARKED before the server responds.
     expect(tile(1).getAttribute('data-state')).toBe('STAFF_MARKED');
     req.flush(null);
-    // Reconcile re-reads map + bookings; return set 1 now TAKEN (staff-marked) so it stays marked.
-    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), ...SEED.slice(1)]);
+    // Reconcile re-reads map + bookings + states; the server now reports set 1 staff-marked.
+    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), ...SEED.slice(1)], BOOKINGS, [
+      { setId: 1, state: 'STAFF_MARKED' },
+      ...STATES,
+    ]);
     expect(tile(1).getAttribute('data-state')).toBe('STAFF_MARKED');
   });
 
@@ -128,7 +163,9 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'DELETE' && r.url.includes('/api/venues/1/sets/3/availability'))
       .flush(null);
     expect(tile(3).getAttribute('data-state')).toBe('FREE'); // optimistic release
-    flushLoad([...SEED.slice(0, 2), seat(3, 'A', 3, 'PREMIUM', 'ONLINE', 'FREE'), SEED[3]]);
+    flushLoad([...SEED.slice(0, 2), seat(3, 'A', 3, 'PREMIUM', 'ONLINE', 'FREE'), SEED[3]], BOOKINGS, [
+      { setId: 2, state: 'BOOKED_ONLINE' },
+    ]);
     expect(tile(3).getAttribute('data-state')).toBe('FREE');
   });
 
@@ -150,13 +187,20 @@ describe('DailyViewTab (#175)', () => {
     // A completes and reconciles (a full reload) while B is still outstanding — must NOT wipe set 4's
     // optimistic override + pending flag. Set 4 still reads server-FREE here; its override must win.
     postA.flush(null);
-    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), ...SEED.slice(1)]);
+    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), ...SEED.slice(1)], BOOKINGS, [
+      { setId: 1, state: 'STAFF_MARKED' },
+      ...STATES,
+    ]);
     expect(tile(4).getAttribute('data-state')).toBe('STAFF_MARKED'); // override preserved
     expect((tile(4) as HTMLButtonElement).disabled).toBe(true); // still pending — no second tap possible
 
     // B settles → its own reconcile clears set 4; the server now confirms it staff-marked.
     postB.flush(null);
-    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), SEED[1], SEED[2], seat(4, 'B', 1, 'STANDARD', 'WALK_IN', 'TAKEN')]);
+    flushLoad(
+      [seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), SEED[1], SEED[2], seat(4, 'B', 1, 'STANDARD', 'WALK_IN', 'TAKEN')],
+      BOOKINGS,
+      [{ setId: 1, state: 'STAFF_MARKED' }, ...STATES, { setId: 4, state: 'STAFF_MARKED' }],
+    );
     expect(tile(4).getAttribute('data-state')).toBe('STAFF_MARKED');
     expect((tile(4) as HTMLButtonElement).disabled).toBe(false);
   });
@@ -203,7 +247,7 @@ describe('DailyViewTab (#175)', () => {
       seat(2, 'A', 2, 'PREMIUM', 'ONLINE', 'FREE'),
       seat(3, 'A', 3, 'PREMIUM', 'ONLINE', 'FREE'),
       seat(4, 'B', 1, 'STANDARD', 'WALK_IN', 'FREE'),
-    ], []);
+    ], [], []);
     expect(tile(2).getAttribute('data-state')).toBe('FREE');
     expect(host.querySelectorAll('[data-testid="daily-arrival-row"]')).toHaveLength(0);
   });
@@ -227,7 +271,10 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/sets/1/availability'))
       .flush(null);
     // ...and so does the reconcile, on the very same key the warm snapshot holds.
-    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), ...SEED.slice(1)]);
+    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), ...SEED.slice(1)], BOOKINGS, [
+      { setId: 1, state: 'STAFF_MARKED' },
+      ...STATES,
+    ]);
 
     expect(tile(1).getAttribute('data-state')).toBe('STAFF_MARKED');
   });
@@ -276,19 +323,26 @@ describe('DailyViewTab (#175)', () => {
     expect(byId('daily-notice').textContent?.toLowerCase()).toContain('session');
   });
 
-  it('keeps the loading state until BOTH reads settle — no "0 of 0 free" flash (#126)', () => {
+  it('keeps the loading state until ALL reads settle — no "0 of 0 free" flash (#126)', () => {
     configure();
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings'))
       .flush(BOOKINGS);
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
+      .flush(STATES);
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
-    // Bookings resolved but the venue read is still in flight — the grid must not render yet.
+    // Bookings + states resolved but the venue read is still in flight — no grid yet.
     expect(host.querySelector('[data-testid="daily-view-tab"]')).toBeNull();
 
     http
       .expectOne(
-        (r) => r.method === 'GET' && r.url.includes('/api/venues/1') && !r.url.includes('/bookings'),
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/bookings') &&
+          !r.url.includes('/availability'),
       )
       .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED });
     fixture.detectChanges();
@@ -301,10 +355,39 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings'))
       .flush([]);
     http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
+      .flush([]);
+    http
       .expectOne(
-        (r) => r.method === 'GET' && r.url.includes('/api/venues/1') && !r.url.includes('/bookings'),
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/bookings') &&
+          !r.url.includes('/availability'),
       )
       .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+    expect(byId('daily-load-error')).toBeTruthy();
+  });
+
+  it('shows a load-error when the states read fails on first load — tiles must never guess (#207)', () => {
+    configure();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings'))
+      .flush(BOOKINGS);
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
+      .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/bookings') &&
+          !r.url.includes('/availability'),
+      )
+      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
     expect(byId('daily-load-error')).toBeTruthy();
@@ -323,8 +406,15 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/bookings'))
       .flush([]);
     http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/availability'))
+      .flush([]);
+    http
       .expectOne(
-        (r) => r.method === 'GET' && r.url.includes('/api/venues/2') && !r.url.includes('/bookings'),
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/2') &&
+          !r.url.includes('/bookings') &&
+          !r.url.includes('/availability'),
       )
       .flush({
         id: 2,
@@ -348,8 +438,15 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/bookings'))
       .flush([]);
     http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/availability'))
+      .flush([]);
+    http
       .expectOne(
-        (r) => r.method === 'GET' && r.url.includes('/api/venues/2') && !r.url.includes('/bookings'),
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/2') &&
+          !r.url.includes('/bookings') &&
+          !r.url.includes('/availability'),
       )
       .flush({
         id: 2,
@@ -363,8 +460,15 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings'))
       .flush(BOOKINGS);
     http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
+      .flush(STATES);
+    http
       .expectOne(
-        (r) => r.method === 'GET' && r.url.includes('/api/venues/1') && !r.url.includes('/bookings'),
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/bookings') &&
+          !r.url.includes('/availability'),
       )
       .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED });
     fixture.detectChanges();
