@@ -176,16 +176,28 @@ same typed service methods. The slice only changes *how many* of one of them are
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phase 1`
+**Stage pointer:** `implement — phase 2`
 
-**Next action:** Phase 1 step 1 — add the AC-2/AC-3/AC-4 failing specs (dequeue-time skip,
-F2 non-gating, 404-restore) to `frontend/src/app/booking/my-bookings.spec.ts`.
+**Next action:** Phase 2 step 1 — correct the stale `#114 unshipped` TSDoc in
+`core/device-local-bookings.ts`, then run the e2e + scoped regression sweep.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Bound the fan-out + destroy teardown (AC-1, AC-5, AC-6) | ✅ | `<phase-0>` |
-| 1 — Trim the redundant per-code fetch (AC-2, AC-3, AC-4, AC-7) | ⏳ | |
-| 2 — Doc freshness + e2e/regression sweep | | |
+| 0 — Bound the fan-out + destroy teardown (AC-1, AC-5, AC-6) | ✅ | `f11cee0` |
+| 1 — Trim the redundant per-code fetch (AC-2, AC-3, AC-4, AC-7) | ✅ | `<phase-1>` |
+| 2 — Doc freshness + e2e/regression sweep | ⏳ | |
+
+**PR:** #484 (draft, opened at the phase-0 push per `riviera-sdlc` rule 3).
+
+**Test-honesty note (AC-3):** the F2 spec passes against the phase-0 code without any phase-1
+change — it is a **regression guard**, not a red-then-green driver. It is kept because the
+obvious "optimization" this slice invites (load the account list first, then fetch only the
+uncovered codes) would break F2 silently and this spec is what fails when someone tries it.
+AC-2 and AC-4 were genuinely red before the phase-1 implementation.
+
+**Note on test invocation:** the `test` target is `@angular/build:unit-test`, whose project
+argument is the *project* name — a bare `npm test -- my-bookings` errors with
+`Invalid values: Argument: project`. Scope with `--include=<spec path>` instead.
 
 **Note on test invocation:** the `test` target is `@angular/build:unit-test`, whose project
 argument is the *project* name — a bare `npm test -- my-bookings` errors with
@@ -509,6 +521,7 @@ private upsert(incoming: readonly Row[]): void {
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-01 | Phase 0 (bounded fan-out) | Other unbounded per-item HTTP fan-outs on the FE | `grep -rn "forEach(.*subscribe\|\.map(.*subscribe" src/app`; `grep -rn "forkJoin\|mergeMap\|concatMap" src/app` (spec files excluded) | 1 — `operator/daily-view-tab.ts:261` `forkJoin([venue$, bookings$])` | **skip**: bounded by construction at exactly 2 fixed streams, not per-item over a user-grown list, so the amplification this phase fixes cannot arise there. No other site fans out per item |
+| 2026-08-01 | Phase 1 (two-source merge) | Another surface merging two async sources by discarding one | `grep -rn "myBookings()\|\.filter((b) =>\|new Set(" src/app` (spec files excluded) | 0 — `myBookings()` has exactly one consumer; every other `new Set` is local UI state (`requests-tab` decide/expire flags, `venue-tab` amenity draft) or value dedupe (`home`, `amenities`) | **skip**: no sibling. `requests-tab.ts:277` reconciles stale UI flags against fresh rows, which is pruning, not a two-source merge |
 
 ---
 

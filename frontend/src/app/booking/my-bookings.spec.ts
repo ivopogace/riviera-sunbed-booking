@@ -410,6 +410,63 @@ describe('MyBookings (device-local list, issue #139)', () => {
       await expectNoAxeViolations(host);
     });
 
+    it('spends no per-code request on a code the account list already resolved', async () => {
+      // 8 device codes, so the last one is still QUEUED (bound = 5) when the account list answers.
+      const codes = Array.from({ length: 8 }, (_, i) => `DEV${String(i).padStart(5, '0')}`);
+      const queued = codes[7];
+      seedCodes(codes);
+      const service = pendingService();
+      const fixture = await render(
+        { ...service, myBookings: () => of([summary(queued)]) },
+        authStub(true),
+      );
+
+      for (const code of codes.slice(0, 7)) {
+        resolve(service, code);
+        await fixture.whenStable();
+      }
+      fixture.detectChanges();
+      const host = fixture.nativeElement as HTMLElement;
+
+      // The account list already answered for it, so the queue must never ask.
+      expect(service.asked).toEqual(codes.slice(0, 7));
+      expect(service.asked).not.toContain(queued);
+      // …and it still renders exactly once, from the account summary.
+      const rows = host.querySelectorAll('[data-testid="booking-row"]');
+      expect([...rows].filter((r) => r.textContent?.includes(queued))).toHaveLength(1);
+    });
+
+    it('renders device rows without waiting for the account list (F2)', async () => {
+      seedCodes(['DEVONLY1']);
+      const service: Partial<BookingService> = {
+        ...stubService({ DEVONLY1: detail('DEVONLY1', 'CONFIRMED') }),
+        // Never emits: the device rows must not be gated on it.
+        myBookings: () => new Subject<MyBookingSummary[]>().asObservable(),
+      };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+
+      const rows = host.querySelectorAll('[data-testid="booking-row"]');
+      expect(rows).toHaveLength(1);
+      expect(rows[0].textContent).toContain('DEVONLY1');
+      expect(host.querySelector('[data-testid="my-bookings-loading"]')).toBeNull();
+    });
+
+    it('restores a 404-dropped device row that the account list vouches for', async () => {
+      // The per-code 404 may be transient (invariant #7); the account list says the booking exists.
+      seedCodes(['FLAKY001']);
+      const service: Partial<BookingService> = {
+        ...stubService({ FLAKY001: { error: { status: 404 } } }),
+        myBookings: () => of([summary('FLAKY001')]),
+      };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+
+      const rows = host.querySelectorAll('[data-testid="booking-row"]');
+      expect(rows).toHaveLength(1);
+      expect(rows[0].textContent).toContain('FLAKY001');
+    });
+
     it('retry re-loads the account list after a failure', async () => {
       seedCodes([]);
       let calls = 0;

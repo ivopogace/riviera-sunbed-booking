@@ -224,6 +224,11 @@ export class MyBookings {
    * account bookings behind the device-local ones (review F1).
    */
   protected readonly accountError = signal(false);
+  /**
+   * Codes the account list has already answered for (#164). Consulted when a queued per-code lookup
+   * is DEQUEUED — never as a barrier, so device rows are still issued immediately (review F2).
+   */
+  private readonly accountResolved = new Set<string>();
 
   constructor() {
     // Kick the load once the session restore has settled — signed-in vs guest is only known then.
@@ -247,7 +252,7 @@ export class MyBookings {
     // account list then merges IN the bookings this device doesn't already list.
     this.loadDeviceLocal(codes);
     if (this.auth.signedIn()) {
-      this.loadAccount(codes);
+      this.loadAccount();
     }
   }
 
@@ -263,40 +268,58 @@ export class MyBookings {
       .subscribe();
   }
 
-  /** One queued lookup: `defer` keeps it lazy, so nothing is issued until the queue reaches it. */
+  /**
+   * One queued lookup. `defer` keeps it lazy, so the skip test below runs when the queue REACHES
+   * this code — by which time the account list may already have answered for it.
+   */
   private queuedFetch(code: string): Observable<unknown> {
-    return defer(() => this.fetch(code));
+    return defer(() => (this.accountResolved.has(code) ? EMPTY : this.fetch(code)));
   }
 
   /**
    * Signed in (S3 #114): merge the account's server list ON TOP of the already-rendered device rows,
-   * adding only the bookings this device does NOT already list (deduped by code — a booking made on
-   * another device). A failed or slow list call leaves the device rows intact and surfaces a Retry
+   * deduped by code. A failed or slow list call leaves the device rows intact and surfaces a Retry
    * (review F1) rather than silently hiding the account bookings; a 401 (expired session) surfaces the
    * same way, not as a false "these are all your bookings."
+   *
+   * <p>Each returned code is also recorded as account-resolved (#164), so a device code still sitting
+   * in the fetch queue is answered from here instead of costing a second request for the same booking.
    */
-  private loadAccount(deviceCodes: readonly string[]): void {
+  private loadAccount(): void {
     this.accountError.set(false);
-    const onDevice = new Set(deviceCodes);
     this.bookings
       .myBookings()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (account) => {
-          const additions: Row[] = account
-            .filter((b) => !onDevice.has(b.code))
-            .map((b) => ({ code: b.code, state: 'loaded', view: buildView(b) }));
-          if (additions.length > 0) {
-            this.rows.update((rows) => [...rows, ...additions]);
-          }
+          account.forEach((b) => this.accountResolved.add(b.code));
+          this.merge(
+            account.map((b) => ({ code: b.code, state: 'loaded' as const, view: buildView(b) })),
+          );
         },
         error: () => this.accountError.set(true),
       });
   }
 
+  /**
+   * Merge server rows in: replace the row for a code already listed, append the rest. Replacing
+   * rather than discarding is what lets an account row answer a queued (or transiently 404'd)
+   * device code — both sources feed the same {@link buildView}, so the rendered row is identical.
+   */
+  private merge(incoming: readonly Row[]): void {
+    this.rows.update((rows) => {
+      const byCode = new Map(incoming.map((r) => [r.code, r]));
+      const listed = new Set(rows.map((r) => r.code));
+      return [
+        ...rows.map((r) => byCode.get(r.code) ?? r),
+        ...incoming.filter((r) => !listed.has(r.code)),
+      ];
+    });
+  }
+
   /** Re-attempt the account list after a failure (review F1); the device rows stay untouched. */
   protected retryAccount(): void {
-    this.loadAccount(this.store.codes());
+    this.loadAccount();
   }
 
   protected retry(code: string): void {
