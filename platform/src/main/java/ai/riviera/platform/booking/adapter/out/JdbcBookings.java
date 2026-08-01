@@ -106,37 +106,24 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public OptionalLong insertAwaitingPayment(NewBooking b) {
-		// ON CONFLICT (code) DO NOTHING makes a code collision a no-op (empty result), NOT a
-		// thrown unique violation — so the caller's regenerate-and-retry works WITHOUT aborting
-		// the surrounding transaction (a thrown violation would poison it). FK/CHECK failures
-		// still throw, as they should. RETURNING yields the id only on a real insert.
-		return jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date,
-				                     amount_minor, amount_currency, status)
-				VALUES (:code, :venue, :set, :customer, :account, :date, :amount, :currency, :status)
-				ON CONFLICT (code) DO NOTHING
-				RETURNING id
-				""")
-				.param("code", b.code())
-				.param(PARAM_VENUE, b.venueId().value())
-				.param("set", b.setId().value())
-				.param("customer", b.customerId().value())
-				.param(PARAM_ACCOUNT, accountParam(b))
-				.param("date", b.bookingDate())
-				.param("amount", b.amountMinor())
-				.param("currency", b.amountCurrency())
-				.param(PARAM_STATUS, BookingStatus.AWAITING_PAYMENT.name())
-				.query(Long.class)
-				.optional()
-				.map(OptionalLong::of)
-				.orElseGet(OptionalLong::empty);
+		return insert(b, BookingStatus.AWAITING_PAYMENT, null);
 	}
 
 	@Override
 	public OptionalLong insertPendingRequest(NewBooking b, Instant requestExpiresAt) {
-		// Request-to-Book (issue #98): same ON CONFLICT (code) DO NOTHING contract as the
-		// AWAITING_PAYMENT insert — a code collision is an empty retry signal, never a poisoned
-		// transaction. The deadline is stored on the row so accept guard + expiry sweep share it.
+		// Request-to-Book (issue #98): the deadline is stored on the row so accept guard + expiry sweep share it.
+		return insert(b, BookingStatus.PENDING_REQUEST, requestExpiresAt);
+	}
+
+	/**
+	 * The one creation INSERT both entry statuses share (#126). {@code ON CONFLICT (code) DO NOTHING}
+	 * makes a code collision a no-op (empty result), NOT a thrown unique violation — so the caller's
+	 * regenerate-and-retry works WITHOUT aborting the surrounding transaction (a thrown violation
+	 * would poison it). FK/CHECK failures still throw, as they should. RETURNING yields the id only
+	 * on a real insert. {@code request_expires_at} binds NULL on the instant path — only a pending
+	 * request stores a deadline.
+	 */
+	private OptionalLong insert(NewBooking b, BookingStatus status, Instant requestExpiresAt) {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date,
 				                     amount_minor, amount_currency, status, request_expires_at)
@@ -152,8 +139,9 @@ class JdbcBookings implements Bookings {
 				.param("date", b.bookingDate())
 				.param("amount", b.amountMinor())
 				.param("currency", b.amountCurrency())
-				.param(PARAM_STATUS, BookingStatus.PENDING_REQUEST.name())
-				.param("expires", java.sql.Timestamp.from(requestExpiresAt))
+				.param(PARAM_STATUS, status.name())
+				.param("expires", requestExpiresAt == null ? null : java.sql.Timestamp.from(requestExpiresAt),
+						java.sql.Types.TIMESTAMP)
 				.query(Long.class)
 				.optional()
 				.map(OptionalLong::of)

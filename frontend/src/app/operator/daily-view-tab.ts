@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { catchError, forkJoin, of, tap } from 'rxjs';
 
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { SetRow, TileState, deriveTileStates, groupSetsByRow, tileTapAction } from '../shared/availability-grid';
@@ -222,50 +223,44 @@ export class DailyViewTab {
     });
   }
 
-  /** Fetch the map + bookings for the selected date; `onSettled` runs after BOTH resolve. */
+  /** Fetch the map + bookings for the selected date; `onSettled` runs after BOTH settle. */
   private load(onSettled?: () => void): void {
     if (this.venueId === undefined) {
       return;
     }
     const requested = this.selectedDate();
-    let remaining = 2;
-    const settle = () => {
-      // Flip `loaded` only once both reads have settled, so the grid never renders with a resolved
-      // bookings list but a still-undefined venue (a "0 of 0 free" flash).
-      if (--remaining === 0) {
-        this.loaded.set(true);
-        onSettled?.();
-      }
-    };
-    this.venues.getVenueMap(this.venueId, requested).subscribe({
-      next: (v) => {
+    const venue$ = this.venues.getVenueMap(this.venueId, requested).pipe(
+      tap((v) => {
         if (this.selectedDate() === requested) {
           this.venue.set(v);
           this.loadError.set(false);
         }
-        settle();
-      },
-      error: (error: unknown) => {
+      }),
+      catchError((error: unknown) => {
         // Wipe to the error card only when there is no grid to preserve (initial / date-change load).
         // A transient failure of a post-write reconcile keeps the working grid the operator is using.
         if (this.selectedDate() === requested && this.venue() === undefined) {
           this.loadError.set(true);
         }
         this.dropSessionIfUnauthorized(error);
-        settle();
-      },
-    });
-    this.console.dailyBookings(this.venueId, requested).subscribe({
-      next: (b) => {
+        return of(undefined);
+      }),
+    );
+    const bookings$ = this.console.dailyBookings(this.venueId, requested).pipe(
+      tap((b) => {
         if (this.selectedDate() === requested) {
           this.bookings.set(b);
         }
-        settle();
-      },
-      error: (error: unknown) => {
+      }),
+      catchError((error: unknown) => {
         this.dropSessionIfUnauthorized(error);
-        settle();
-      },
+        return of(undefined);
+      }),
+    );
+    // The join flips `loaded` only once BOTH reads settle — no "0 of 0 free" flash.
+    forkJoin([venue$, bookings$]).subscribe(() => {
+      this.loaded.set(true);
+      onSettled?.();
     });
   }
 

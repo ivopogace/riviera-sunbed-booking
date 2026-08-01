@@ -1,5 +1,9 @@
 package ai.riviera.platform.customer.adapter.out;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -24,9 +28,14 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 
 	/** Named once, per the {@code JdbcBookings} bind-parameter convention — two call sites bind it. */
 	private static final String PARAM_EMAIL = "email";
+	private static final String PARAM_PHONE = "phone";
 
 	/** The column, kept apart from the bind parameter above: the two coincide today by accident, not by rule. */
 	private static final String COL_EMAIL = "email";
+
+	// Result-column names shared by the row mappers (the JdbcBookings convention).
+	private static final String COL_FULL_NAME = "full_name";
+	private static final String COL_PHONE = "phone";
 
 	private final JdbcClient jdbc;
 
@@ -48,7 +57,7 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 				""")
 				.param(PARAM_EMAIL, email)
 				.param("name", contact.fullName())
-				.param("phone", contact.phone())
+				.param(PARAM_PHONE, contact.phone())
 				.query(Long.class)
 				.single();
 		return new CustomerId(id);
@@ -68,7 +77,23 @@ class JdbcCustomerDirectory implements CustomerDirectory, ai.riviera.platform.cu
 		return jdbc.sql("SELECT email, full_name, phone FROM customer WHERE id = :id")
 				.param("id", id.value())
 				.query((rs, rowNum) -> new GuestContact(
-						rs.getString(COL_EMAIL), rs.getString("full_name"), rs.getString("phone")))
+						rs.getString(COL_EMAIL), rs.getString(COL_FULL_NAME), rs.getString(COL_PHONE)))
 				.optional();
+	}
+
+	@Override
+	public Map<CustomerId, GuestContact> findByIds(Collection<CustomerId> ids) {
+		// Guard before SQL: an empty collection would expand to invalid `IN ()`.
+		if (ids.isEmpty()) {
+			return Map.of();
+		}
+		return jdbc.sql("SELECT id, email, full_name, phone FROM customer WHERE id IN (:ids)")
+				.param("ids", ids.stream().map(CustomerId::value).toList())
+				.query((rs, rowNum) -> Map.entry(
+						new CustomerId(rs.getLong("id")),
+						new GuestContact(rs.getString(COL_EMAIL), rs.getString(COL_FULL_NAME),
+								rs.getString(COL_PHONE))))
+				.list().stream()
+				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
 }

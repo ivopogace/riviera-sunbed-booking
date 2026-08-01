@@ -1,5 +1,7 @@
 package ai.riviera.platform.customer.api;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 
 import ai.riviera.platform.customer.vocabulary.CustomerId;
@@ -15,6 +17,13 @@ public interface CustomerLookup {
 
 	/** The stored contact for a customer id, or empty if unknown. */
 	Optional<GuestContact> findById(CustomerId id);
+
+	/**
+	 * The stored contacts for a batch of customer ids, keyed by id; unknown ids are simply absent
+	 * from the map (#126). One query where {@link #findById} in a loop would be N — the operator
+	 * pending-requests queue resolves every row's guest name through a single call.
+	 */
+	Map<CustomerId, GuestContact> findByIds(Collection<CustomerId> ids);
 
 	/**
 	 * The id of the guest contact with this email, or empty if no contact has it (#380).

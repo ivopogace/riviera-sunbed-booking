@@ -246,6 +246,25 @@ describe('DailyViewTab (#175)', () => {
     expect(byId('daily-notice').textContent?.toLowerCase()).toContain('session');
   });
 
+  it('keeps the loading state until BOTH reads settle — no "0 of 0 free" flash (#126)', () => {
+    configure();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings'))
+      .flush(BOOKINGS);
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+    // Bookings resolved but the venue read is still in flight — the grid must not render yet.
+    expect(host.querySelector('[data-testid="daily-view-tab"]')).toBeNull();
+
+    http
+      .expectOne(
+        (r) => r.method === 'GET' && r.url.includes('/api/venues/1') && !r.url.includes('/bookings'),
+      )
+      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED });
+    fixture.detectChanges();
+    expect(host.querySelector('[data-testid="daily-view-tab"]')).toBeTruthy();
+  });
+
   it('shows a load-error (not a false empty state) when the venue read fails', () => {
     configure();
     http

@@ -6,8 +6,10 @@ import { environment } from '../../environments/environment';
 /**
  * A mounted Stripe Payment Element the caller can confirm.
  *
- * <p>{@link confirm} returns a **UX-level** result only — `{ error }` ⇒ show the message and let
- * the user retry; otherwise the card step finished and the caller begins polling the backend.
+ * <p>{@link confirm} returns a **UX-level** result only — `{ error }` ⇒ the caller shows the
+ * message and re-checks the booking's server status once (#126: retry in place while it is still
+ * payable, terminal when it no longer is); otherwise the card step finished and the caller begins
+ * polling the backend.
  * It is **never** treated as proof the booking is confirmed: confirmation comes only from the
  * signature-verified webhook, observed via `GET /api/bookings/{code}` (invariant #8). No redirect
  * is used for cards (`redirect: 'if_required'`), so the user stays on the payment page.
@@ -80,7 +82,9 @@ export class StripeJsPaymentGateway extends StripePaymentGateway {
  * harness sets `window.__RIVIERA_FAKE_STRIPE__` (see app.config) — it is inert in production,
  * which never sets that flag. It renders a labelled stand-in for the card field (so the page's
  * a11y is audited honestly) and confirms successfully, after which the page polls the mocked
- * backend exactly as in production.
+ * backend exactly as in production. When the harness also sets `__RIVIERA_FAKE_STRIPE_FAIL__`,
+ * confirm fails the way a dead PaymentIntent does (#126) — read at confirm time, so a test can
+ * flip it after mount.
  */
 @Injectable()
 export class FakeStripePaymentGateway extends StripePaymentGateway {
@@ -91,6 +95,11 @@ export class FakeStripePaymentGateway extends StripePaymentGateway {
     input.setAttribute('aria-label', 'Card number (test mode)');
     input.dataset['testid'] = 'fake-card-input';
     host.appendChild(input);
-    return { confirm: async () => ({}) };
+    return {
+      confirm: async () =>
+        (window as unknown as { __RIVIERA_FAKE_STRIPE_FAIL__?: boolean }).__RIVIERA_FAKE_STRIPE_FAIL__
+          ? { error: 'This PaymentIntent has been canceled.' }
+          : {},
+    };
   }
 }

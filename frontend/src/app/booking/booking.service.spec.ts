@@ -199,6 +199,20 @@ describe('BookingService', () => {
     expect(service.lastConfirmation()).toBeUndefined();
   });
 
+  it('keeps exactly one hand-off across consecutive creates (#126)', () => {
+    const url = `${environment.apiBaseUrl}/api/bookings`;
+
+    service.createBooking(REQUEST).subscribe();
+    httpMock.expectOne(url).flush(AWAITING, { status: 202, statusText: 'Accepted' });
+    service.createBooking(REQUEST).subscribe();
+    httpMock.expectOne(url).flush(CONFIRMATION, { status: 201, statusText: 'Created' });
+
+    // The later outcome owns the hand-off; the earlier one must not linger beside it.
+    expect(service.lastConfirmation()).toEqual(CONFIRMATION);
+    expect(service.lastAwaitingPayment()).toBeUndefined();
+    expect(service.lastRequested()).toBeUndefined();
+  });
+
   it('clear() resets all handoffs', () => {
     service.createBooking(REQUEST).subscribe();
     httpMock
