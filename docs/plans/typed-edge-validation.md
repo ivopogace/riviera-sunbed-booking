@@ -122,18 +122,21 @@ behavior of the OLD mapping.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A deliberate edge-validation site is missed → its legitimate 400 becomes a 500 (the mirror-image bug the re-check warned about) | med | high | exhaustive throw-site inventory (this plan §File structure); the 36 existing `INVALID_REQUEST` assertions run **unmodified** as the regression net; scoped IT runs per phase | this slice | open |
-| R-2 | A production path relied on non-duplicate DIVE → 409 | low | med | only `ApiErrorHandlerTest` asserts the wire `CONFLICT`; all module-level DIVE tests are JDBC-level (advice not involved); designed 409s (layout race, code collision) are unique-index → `DuplicateKeyException` | this slice | open |
-| R-3 | `shared` kernel growth violates its admission rule | low | med | admission argued on ownership (edge contract vocabulary, mapped at the root); no logic, no state, no module deps; `ModularityTests` + `PackageShapeArchitectureTests` pin it | this slice | open |
-| R-4 | Error-contract docs (§6b, `error-contract.md`, javadoc) go stale | high | med | doc updates are Phase 3 of this slice, not a follow-up | this slice | open |
+| R-1 | A deliberate edge-validation site is missed → its legitimate 400 becomes a 500 (the mirror-image bug the re-check warned about) | med | high | exhaustive throw-site inventory (this plan §File structure); the 36 existing `INVALID_REQUEST` assertions run **unmodified** as the regression net; scoped IT runs per phase | this slice | closed `ba5ca93` — all named suites green, 0 assertions edited; CI full suite is the final check |
+| R-2 | A production path relied on non-duplicate DIVE → 409 | low | med | only `ApiErrorHandlerTest` asserts the wire `CONFLICT`; all module-level DIVE tests are JDBC-level (advice not involved); designed 409s (layout race, code collision) are unique-index → `DuplicateKeyException` | this slice | closed `ba5ca93` |
+| R-3 | `shared` kernel growth violates its admission rule | low | med | admission argued on ownership (edge contract vocabulary, mapped at the root); no logic, no state, no module deps; `ModularityTests` + `PackageShapeArchitectureTests` pin it | this slice | closed `ba5ca93` — structural net green |
+| R-4 | Error-contract docs (§6b, `error-contract.md`, javadoc) go stale | high | med | doc updates are Phase 3 of this slice, not a follow-up | this slice | closed `ba5ca93` |
 | R-5 | Flyway collision | — | — | no migration in scope | — | closed — N/A |
 
 ## Open questions / Assumptions
 
+### Resolved
+
 - **Assumption:** Jackson creator exceptions (compact-constructor throws) surface as
   `HttpMessageNotReadableException` → 400 via the base class, so those DTO sites need no
-  change — *verified by AC-4's unmodified suites staying green.* — *Owner:* this slice ·
-  *Resolves by:* Phase 2 test run
+  change — **confirmed at `ba5ca93`**: the compact-ctor suites (`OperatorAccountControllerTest`,
+  `AccountRecoveryControllerTest`, `SetPasswordIT`, `CustomerRegisterIT`,
+  `OperatorRegistrationIT`) pass unmodified against the narrowed advice.
 
 ## Availability & concurrency (invariant #2)
 
@@ -187,17 +190,17 @@ valid client mistakes unchanged).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** PR — draft open, awaiting CI on `ba5ca93`
 
-**Next action:** rewrite `ApiErrorHandlerTest` pins (AC-1/2/3) red, then add the shared
-exception and narrow the handlers.
+**Next action:** check the push's CI run; when the slice is confirmed green, mark the PR
+ready for review and run the Review + Sonar gates (`references/pr-gates.md`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc committed | ⏳ | |
-| 1 — `InvalidApiRequestException` + narrowed `ApiErrorHandler` (TDD) | | |
-| 2 — edge riders + conversion wraps (root, booking, venue, payout) | | |
-| 3 — docs (§6b, error-contract.md, javadocs, CLAUDE.md kernel inventory) | | |
+| 0 — plan doc committed | ✅ | 45cda4c |
+| 1 — `InvalidApiRequestException` + narrowed `ApiErrorHandler` (TDD) | ✅ | ba5ca93 |
+| 2 — edge riders + conversion wraps (root, booking, venue, payout) | ✅ | ba5ca93 |
+| 3 — docs (§6b, error-contract.md, javadocs, CLAUDE.md kernel inventory) | ✅ | ba5ca93 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -280,9 +283,14 @@ by request input), the 16 test files asserting `INVALID_REQUEST`.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..3:** `gradle test --tests "*ApiErrorHandlerTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-4:** scoped run of the 9 named suites → PASS with 0 assertions edited. Verified at `<sha>`.
-- [ ] **AC-5:** scoped run of the structural suites → PASS. Verified at `<sha>`.
+- [x] **AC-1..3:** `gradle test --tests "*ApiErrorHandlerTest*"` → PASS (10 tests, incl. the two
+  propagation pins). Verified at `ba5ca93`.
+- [x] **AC-4:** scoped runs of the named suites (MockMvc batch + two Docker-IT batches, all
+  executed — `skipped="0"` confirmed in the XML reports) → PASS with 0 assertions edited.
+  Verified at `ba5ca93`; CI's full suite re-verifies on the PR.
+- [x] **AC-5:** `ModularityTests`, `PackageShapeArchitectureTests`,
+  `PublishedSurfacePlacementArchitectureTests`, `ErrorContractArchitectureTests`,
+  `JdbcOnlyArchitectureTests` → PASS. Verified at `ba5ca93`.
 
 ## Self-review checklist (before merge / PR)
 
