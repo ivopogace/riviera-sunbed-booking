@@ -29,6 +29,65 @@ cheap here and expensive at review.
 feature). A feature importing from another feature is the FE version of a
 Modulith boundary violation — flag it, don't ship it.
 
+### That rule is violated today — known debt, not a carve-out (#488)
+
+**Before you cite an existing cross-feature import as precedent: it isn't one.**
+Thirty-three non-spec imports across twenty-one files cross a feature boundary
+right now, in both directions, and two of them break `shared` → nothing. They
+are grandfathered **debt with a target state** — don't add to them, and don't
+read the table as permission.
+
+| Edge | Files | What crosses |
+|---|---|---|
+| `operator/` → `venue/` | 12 | `venue.model`, `booking-date`, `photo-url`; `venue.service` (×3) |
+| `booking/` → `venue/` | 3 | `venue.model` |
+| `venue-admin/` → `venue/` | 2 | `venue.model` |
+| `pages/home` → `venue/` | 1 | `venue.model`, `booking-date`; `venue.service` (`pages/` may take only `core`/`shared`) |
+| `shared/{money,availability-grid}` → `venue/` | 2 | `venue.model` |
+| `venue/venue-map` → `booking/` | 1 | `booking-dialog` — the reverse edge |
+
+**The diagnosis is misplacement, not a missing exception.** Twenty-eight of the
+thirty-three import only types and pure functions — `venue/venue.model.ts`
+(`MoneyView`, `SetView`, `Tier`, `Pool`, `BookingMode`, `VenueMapView`,
+`VenueSummary`), `venue/booking-date.ts`, `venue/photo-url.ts`. That file set is
+the platform's **published API-view vocabulary** wearing a feature's address: it
+is consumed by three other features, by `pages/`, *and* by `shared/` — which is
+exactly why the one edge no exception could ever absolve (`shared` → a feature)
+exists at all.
+The backend met this shape twice and answered it the same way both times — #95
+split the published surface by kind so value types live in `vocabulary/`, and
+#371 lifted the Shared Kernel out of a package that was doing two jobs with
+opposite dependency directions.
+
+**Target state (#489):** move that vocabulary to its correct address — types and
+pure helpers → `shared/` — which makes twenty-eight of the thirty-three imports
+legal with no semantic change, and empties `booking/`, `venue-admin/` and
+`shared/` of cross-feature edges entirely. What survives is the small genuine
+set of five: `operator/` (×3) and `pages/home` reaching `venue.service`, and
+`venue/venue-map` reaching `booking/booking-dialog`. Those are real
+feature-to-feature coupling, to be argued one at a time rather than absorbed
+into a blanket rule.
+
+**Why this is recorded as debt instead of codified as an exception.** A rule
+saying "a feature may import another feature's published surface" was the
+tempting fix, and it is the wrong one: it would make this skill strictly weaker
+than the backend rule it mirrors, and it still would not cover
+`shared/` → `venue/`. A carve-out that its own worst case escapes leaves the
+next reader with a false answer — just a different one from the answer the
+unqualified rule gave. Nothing here is a runtime defect; every listed import
+works and is tested.
+
+**Why the table is here rather than in a review transcript.** This is the third
+time the same judgment has been made: O1 shipped the first `operator/` → `venue/`
+edges, O2 (#171) hit it as risk R-6, resolved it "deferred — the
+`venue/`-as-shared-read-layer cleanup is a separate, codebase-wide change, filed
+as a follow-up rather than smuggled into O2", and no follow-up was filed; #487's
+review gate then reached the identical verdict on the identical reasoning (*no
+**new** cross-feature edge is added*) and became #488. That reasoning is sound
+every single time and never converges — which is the tell that it needed a
+durable record and a ticket, not a fourth correct deferral. #489 is the
+follow-up O2 promised.
+
 **New feature = new folder.** The auth epic (#108) added `auth/` as a feature
 folder: **one audience-aware sign-in card** (`auth/auth-page.ts` at
 `/account/sign-in`, S9 #277 — the old `auth/sign-in`, `auth/register` and
