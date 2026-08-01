@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 
 import { formatMoney } from '../shared/money';
 import { todayBookingDate } from '../shared/booking-date';
@@ -42,7 +43,7 @@ describe('PricingTab (#174)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap({ venueId: '1' }) } },
+            parent: { snapshot: { paramMap: convertToParamMap({ venueId: '1' }) }, paramMap: of(convertToParamMap({ venueId: '1' })) },
           },
         },
       ],

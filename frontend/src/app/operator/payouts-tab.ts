@@ -66,7 +66,7 @@ export class PayoutsTab {
   protected readonly statementOpen = signal(false);
 
   constructor() {
-    const id = parentVenueId(this.route);
+    const id = parentVenueId(this.route)();
     if (id !== undefined) {
       this.venueId = id;
       this.load();

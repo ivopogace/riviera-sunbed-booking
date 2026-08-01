@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { VenueProfileView } from './operator-console.model';
@@ -54,7 +55,7 @@ describe('VenueTab (#177)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap(parentVenueId) } },
+            parent: { snapshot: { paramMap: convertToParamMap(parentVenueId) }, paramMap: of(convertToParamMap(parentVenueId)) },
           },
         },
       ],

@@ -75,7 +75,7 @@ export class DailyViewTab {
   protected readonly pendingSets = signal<ReadonlySet<number>>(new Set());
 
   constructor() {
-    const id = parentVenueId(this.route);
+    const id = parentVenueId(this.route)();
     if (id !== undefined) {
       this.venueId = id;
       this.load();

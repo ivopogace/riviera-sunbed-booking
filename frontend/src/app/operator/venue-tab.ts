@@ -143,7 +143,7 @@ export class VenueTab {
       this.saved.set(false);
     });
 
-    const id = parentVenueId(this.route);
+    const id = parentVenueId(this.route)();
     if (id !== undefined) {
       this.venueId = id;
       this.load(id);

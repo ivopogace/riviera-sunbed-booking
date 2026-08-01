@@ -1,15 +1,35 @@
-import { ActivatedRoute } from '@angular/router';
+import { computed, Signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, ParamMap } from '@angular/router';
 
 /**
- * The venue id from the operator console's parent route (`/operator/:venueId`), or `undefined` when
- * the segment is missing or not a positive integer.
+ * The venue id carried by a route's `:venueId` param as a signal, or a signal of `undefined` when
+ * the route is absent or the segment is missing / not a positive integer.
  *
- * <p>Console tab child routes do NOT inherit the parent's params under the router's default
- * `emptyOnly` strategy (the O1 review finding), so a tab reads `:venueId` from `route.parent`, not
- * its own snapshot. Extracted at O5 (#175) as the third consumer of this exact guard, after the
- * layout editor and the pricing tab.
+ * <p>Reactive since #180: the router REUSES a component instance when only the param changes (an
+ * in-app `/operator/1/…` → `/operator/2/…` navigation), so a constructor snapshot read would pin
+ * the component to the old venue. The signal tracks `paramMap`, mirroring the `booking-view`
+ * `paramMap` reload (#167). Must be called in an injection context (a field initializer or
+ * constructor).
+ *
+ * <p>The console shell reads its OWN route via {@link venueIdParam}; console tab child routes read
+ * the PARENT route via {@link parentVenueId} — child routes do not inherit the param under the
+ * router's default `emptyOnly` strategy (the O1 finding). Extracted at O5 (#175).
  */
-export function parentVenueId(route: ActivatedRoute): number | undefined {
-  const id = Number(route.parent?.snapshot.paramMap.get('venueId'));
+export function venueIdParam(route: ActivatedRoute | null): Signal<number | undefined> {
+  if (route === null) {
+    return computed(() => undefined);
+  }
+  const params = toSignal(route.paramMap, { initialValue: route.snapshot.paramMap });
+  return computed(() => toVenueId(params()));
+}
+
+/** {@link venueIdParam} against the parent route — the console-tab case. */
+export function parentVenueId(route: ActivatedRoute): Signal<number | undefined> {
+  return venueIdParam(route.parent);
+}
+
+function toVenueId(params: ParamMap): number | undefined {
+  const id = Number(params.get('venueId'));
   return Number.isInteger(id) && id > 0 ? id : undefined;
 }

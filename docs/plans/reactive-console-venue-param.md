@@ -156,14 +156,14 @@ N/A — no contract change; the same endpoints are called with a different `venu
 
 ## Execution status
 
-**Stage pointer:** plan — plan doc authored, awaiting commit
+**Stage pointer:** implement (phase 1)
 
-**Next action:** commit this plan doc, then start phase 0 (helper spec first)
+**Next action:** phase 1 — failing AC-1/AC-3 specs for `operator-console`, then the reactive shell
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — signal-returning `parentVenueId` helper | | |
-| 1 — reactive shell (`operator-console`) | | |
+| 0 — signal-returning `parentVenueId` helper | ✅ | "Make parentVenueId a reactive signal (#180)" — shim decision: tabs call the signal once (`parentVenueId(route)()`, snapshot semantics preserved) so each tab phase still goes red→green; R-2 mock sweep done here (12 spec files), 244 operator+shared tests green |
+| 1 — reactive shell (`operator-console`) | ⏳ | |
 | 2 — tabs: layout-editor + pricing | | |
 | 3 — tabs: daily-view + requests | | |
 | 4 — tabs: payouts + venue-tab; harness integration spec | | |
