@@ -216,6 +216,28 @@ public final class ObservabilityMetrics {
 	 */
 	public static final String MAIL_PAYMENT_DUE_ABANDONED = "riviera.mail.payment-due.abandoned";
 
+	/**
+	 * Counter: request-declined record mails the registry listener <em>gave up on</em> because a fact
+	 * it needs — the booking, the set, or the contact — did not resolve (#124). The fourth of the
+	 * <em>abandoned</em> series: same vehicle, same invisibility, same three {@code reason} tag
+	 * values read off the same enum; the naming rule {@link #MAIL_CANCELLATION_ABANDONED} states
+	 * applies unchanged, and so does <strong>do not sum them</strong>. The consequence is
+	 * retrospective, like the confirmation's and unlike {@link #MAIL_PAYMENT_DUE_ABANDONED}'s: the
+	 * guest is left waiting on a request the venue already refused, until they happen to reload the
+	 * app — nothing further is forfeited on a clock.
+	 */
+	public static final String MAIL_REQUEST_DECLINED_ABANDONED = "riviera.mail.request-declined.abandoned";
+
+	/**
+	 * Counter: request-expired record mails the registry listener <em>gave up on</em> (#124) — the
+	 * fifth of the <em>abandoned</em> series and {@link #MAIL_REQUEST_DECLINED_ABANDONED}'s mirror
+	 * for the sweep's outcome; everything that entry says applies unchanged. A sibling series rather
+	 * than a tag on it for the standing flow-not-vehicle rule, and because the two are acted on
+	 * against different parties: a declined guest was answered and not told, an expired one was never
+	 * answered at all.
+	 */
+	public static final String MAIL_REQUEST_EXPIRED_ABANDONED = "riviera.mail.request-expired.abandoned";
+
 	private ObservabilityMetrics() {
 	}
 }

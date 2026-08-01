@@ -204,21 +204,28 @@ N/A — no contract change (no endpoint added or modified).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2 — docs freshness + PR gates)`
 
-**Next action:** Phase 1 step 1 — failing listener tests + `TransactionalMailServiceTest`
-suppression cases + the arch-test list extension.
+**Next action:** Run `riviera-docs-freshness` over the slice range (the "three
+registry listeners" counting sweep), then merge latest main, mark PR #481 ready for
+review, and run the PR gates per `references/pr-gates.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — booking: two events + in-leg publication | ✅ | see PR #481 (`Publish decline/expiry facts…`) |
-| 1 — notification: two listeners, mails, counters, arch-test list | ⏳ | |
-| 2 — docs freshness + close-out | | |
+| 0 — booking: two events + in-leg publication | ✅ | `5ae7267`, CI run 1787 green |
+| 1 — notification: two listeners, mails, counters, arch-test list | ✅ | see PR #481 (`Mail the guest a record…`) |
+| 2 — docs freshness + close-out | ⏳ | |
 
 Phase 0 notes: red→green as planned (5-case IT; the recorder needed methods-only access —
 Modulith's completion-registering post-processor CGLIB-proxies any
 `@TransactionalEventListener` bean, so proxy fields are null). Structural net green.
 Docker was available; ITs ran locally.
+
+Phase 1 notes: red (compile — new types) → green. Two e2e ITs on the sibling pattern
+(dates 2029-09-xx / 2029-10-xx; publications matched on the **date** fragment via a new
+`BookingMailFixtures.outstandingPublicationsMatching`, since these payloads carry no
+amount). The two `Mailer` test fakes (`ControllableMailer`, `MailSenderWiringIT`) gained
+the two kinds. Full notification package + structural net green locally.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

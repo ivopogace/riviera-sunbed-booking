@@ -14,6 +14,8 @@ import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
+import ai.riviera.platform.notification.application.RequestDeclinedMail;
+import ai.riviera.platform.notification.application.RequestExpiredMail;
 
 /**
  * Default-profile ({@code @Profile("!mailer & !smtp4dev")}) recording {@link Mailer} that plays a cooperative mail
@@ -88,6 +90,21 @@ public class MockMailer implements Mailer {
 		log.info("[mock-mailer] {} (to {}) for {} on {} — {} {} due by {}", SentEmail.Kind.PAYMENT_DUE,
 				sanitize(toEmail), sanitize(paymentDue.venueName()), paymentDue.bookingDate(),
 				paymentDue.currency(), paymentDue.amountMinor(), paymentDue.payBy());
+	}
+
+	@Override
+	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
+		sent.add(SentEmail.requestDeclined(toEmail, declined));
+		// Neither the code nor the status link that embeds it (invariant #7) — the confirmation's rule.
+		log.info("[mock-mailer] {} (to {}) for {} on {}", SentEmail.Kind.REQUEST_DECLINED,
+				sanitize(toEmail), sanitize(declined.venueName()), declined.bookingDate());
+	}
+
+	@Override
+	public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
+		sent.add(SentEmail.requestExpired(toEmail, expired));
+		log.info("[mock-mailer] {} (to {}) for {} on {}", SentEmail.Kind.REQUEST_EXPIRED,
+				sanitize(toEmail), sanitize(expired.venueName()), expired.bookingDate());
 	}
 
 	@Override

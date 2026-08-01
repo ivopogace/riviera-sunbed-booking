@@ -60,4 +60,17 @@ public interface Mailer {
 	 * invariant-#7 argument here.
 	 */
 	void sendOperatorApproved(String toEmail, URI signInLink);
+
+	/**
+	 * Send the "the venue declined your request" record (#124): the outcome, that nothing is held and
+	 * nothing was charged, and the code-gated status link. A plain record with no call-to-action, by
+	 * product decision; structured like the other booking kinds, and for the same reason.
+	 */
+	void sendRequestDeclined(String toEmail, RequestDeclinedMail declined);
+
+	/**
+	 * Send the "your request expired unanswered" record (#124) — {@link #sendRequestDeclined}'s mirror
+	 * for the sweep's outcome, under the same plain-record rule.
+	 */
+	void sendRequestExpired(String toEmail, RequestExpiredMail expired);
 }

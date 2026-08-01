@@ -5,6 +5,8 @@ import java.net.URI;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.PaymentDueMail;
+import ai.riviera.platform.notification.application.RequestDeclinedMail;
+import ai.riviera.platform.notification.application.RequestExpiredMail;
 
 /**
  * One email the {@link MockMailer} recorded instead of sending (S8, epic #108; extended for the
@@ -25,7 +27,8 @@ import ai.riviera.platform.notification.application.PaymentDueMail;
  * the value the mock's observation seam speaks to ITs outside this package.
  */
 public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmationMail confirmation,
-		BookingCancellationMail cancellation, PaymentDueMail paymentDue) {
+		BookingCancellationMail cancellation, PaymentDueMail paymentDue,
+		RequestDeclinedMail requestDeclined, RequestExpiredMail requestExpired) {
 
 	/** Which message this is. */
 	public enum Kind {
@@ -34,12 +37,14 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 		BOOKING_CONFIRMATION,
 		BOOKING_CANCELLATION,
 		PAYMENT_DUE,
-		OPERATOR_APPROVED
+		OPERATOR_APPROVED,
+		REQUEST_DECLINED,
+		REQUEST_EXPIRED
 	}
 
 	/** A recovery email, identified by its tokenized link (a bearer credential, invariant #7). */
 	static SentEmail recovery(String toEmail, Kind kind, URI link) {
-		return new SentEmail(toEmail, kind, link, null, null, null);
+		return new SentEmail(toEmail, kind, link, null, null, null, null, null);
 	}
 
 	/**
@@ -49,17 +54,17 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 	 * mock's logging rules turn on.
 	 */
 	static SentEmail operatorApproved(String toEmail, URI signInLink) {
-		return new SentEmail(toEmail, Kind.OPERATOR_APPROVED, signInLink, null, null, null);
+		return new SentEmail(toEmail, Kind.OPERATOR_APPROVED, signInLink, null, null, null, null, null);
 	}
 
 	/** A booking confirmation, identified by the details it renders. */
 	static SentEmail bookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
-		return new SentEmail(toEmail, Kind.BOOKING_CONFIRMATION, null, confirmation, null, null);
+		return new SentEmail(toEmail, Kind.BOOKING_CONFIRMATION, null, confirmation, null, null, null, null);
 	}
 
 	/** A cancellation/refund record, identified by the details it renders. */
 	static SentEmail bookingCancellation(String toEmail, BookingCancellationMail cancellation) {
-		return new SentEmail(toEmail, Kind.BOOKING_CANCELLATION, null, null, cancellation, null);
+		return new SentEmail(toEmail, Kind.BOOKING_CANCELLATION, null, null, cancellation, null, null, null);
 	}
 
 	/**
@@ -69,6 +74,16 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 	 * the recovery ITs, and this URL leads to a booking, not a token exchange.
 	 */
 	static SentEmail paymentDue(String toEmail, PaymentDueMail paymentDue) {
-		return new SentEmail(toEmail, Kind.PAYMENT_DUE, null, null, null, paymentDue);
+		return new SentEmail(toEmail, Kind.PAYMENT_DUE, null, null, null, paymentDue, null, null);
+	}
+
+	/** A declined request's record (#124); its {@code statusLink} rides the payload, like the pay link. */
+	static SentEmail requestDeclined(String toEmail, RequestDeclinedMail declined) {
+		return new SentEmail(toEmail, Kind.REQUEST_DECLINED, null, null, null, null, declined, null);
+	}
+
+	/** An expired request's record (#124), on the declined kind's rules. */
+	static SentEmail requestExpired(String toEmail, RequestExpiredMail expired) {
+		return new SentEmail(toEmail, Kind.REQUEST_EXPIRED, null, null, null, null, null, expired);
 	}
 }

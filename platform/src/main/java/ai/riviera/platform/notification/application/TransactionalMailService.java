@@ -173,6 +173,32 @@ public class TransactionalMailService implements MailSender {
 		mailer.sendPaymentDue(toEmail, paymentDue);
 	}
 
+	/**
+	 * Deliver the declined request's record now, on the caller's thread; a transport failure
+	 * propagates (#124). The registry vehicle's posture, identical to its three siblings — the throw
+	 * keeps the publication outstanding for the restart republish, and the suppression check gets no
+	 * fail-open carve-out for {@link #sendBookingCancellation}'s reason.
+	 */
+	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
+		if (suppressions.isSuppressed(toEmail)) {
+			log.info("Request-declined mail skipped: the address is suppressed");
+			return;
+		}
+		mailer.sendRequestDeclined(toEmail, declined);
+	}
+
+	/**
+	 * Deliver the expired request's record now, on the caller's thread (#124) —
+	 * {@link #sendRequestDeclined}'s mirror, same posture, same reasons.
+	 */
+	public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
+		if (suppressions.isSuppressed(toEmail)) {
+			log.info("Request-expired mail skipped: the address is suppressed");
+			return;
+		}
+		mailer.sendRequestExpired(toEmail, expired);
+	}
+
 	private void dispatchQuietly(MailKind kind, String toEmail, Runnable send) {
 		// Between them the two catches cover the whole task: nothing may escape onto the drainer.
 		dispatcher.dispatch(kind, () -> {

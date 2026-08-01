@@ -122,7 +122,8 @@ class MailListenerExecutorArchitectureTest {
 	@Test
 	void theRuleExaminesEveryProductionListener() {
 		List<Class<?>> expected = List.of(BookingConfirmationMailListener.class,
-				BookingCancellationMailListener.class, RequestPaymentDueMailListener.class);
+				BookingCancellationMailListener.class, RequestPaymentDueMailListener.class,
+				RequestDeclinedMailListener.class, RequestExpiredMailListener.class);
 		List<Class<?>> examined = inScopeListeners(notificationEventListeners()).stream()
 				.filter(listener -> "on".equals(listener.getName()))
 				.map(Method::getDeclaringClass)

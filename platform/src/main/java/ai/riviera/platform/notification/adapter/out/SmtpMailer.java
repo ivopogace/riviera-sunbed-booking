@@ -18,6 +18,8 @@ import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
+import ai.riviera.platform.notification.application.RequestDeclinedMail;
+import ai.riviera.platform.notification.application.RequestExpiredMail;
 
 /**
  * Real SMTP {@link Mailer} (#368, ADR-0011; booking confirmations added in #371, cancellations in
@@ -42,6 +44,8 @@ class SmtpMailer implements Mailer {
 	private static final String CANCELLATION_SUBJECT = "Your booking at %s is cancelled";
 	private static final String PAYMENT_DUE_SUBJECT = "%s accepted your request — payment due";
 	private static final String OPERATOR_APPROVED_SUBJECT = "Your operator account is approved";
+	private static final String REQUEST_DECLINED_SUBJECT = "%s declined your booking request";
+	private static final String REQUEST_EXPIRED_SUBJECT = "Your booking request to %s has expired";
 
 	/** English-only in v1 (ADR-0011); the locale is explicit so the JVM default cannot change the copy. */
 	private static final DateTimeFormatter DATE_FORMAT =
@@ -179,6 +183,39 @@ class SmtpMailer implements Mailer {
 						DATE_FORMAT.format(paymentDue.bookingDate()),
 						formatAmount(paymentDue.amountMinor(), paymentDue.currency()),
 						DEADLINE_FORMAT.format(paymentDue.payBy().atZone(TIRANE)), paymentDue.payLink()));
+	}
+
+	@Override
+	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
+		send(toEmail, REQUEST_DECLINED_SUBJECT.formatted(headerSafe(declined.venueName())), """
+				%s declined your booking request — nothing is held for you and nothing was charged.
+
+				  Booking code:  %s
+				  Venue:         %s
+				  Date:          %s
+
+				You can see the request here:
+
+				%s"""
+				.formatted(declined.venueName(), declined.bookingCode(), declined.venueName(),
+						DATE_FORMAT.format(declined.bookingDate()), declined.statusLink()));
+	}
+
+	@Override
+	public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
+		send(toEmail, REQUEST_EXPIRED_SUBJECT.formatted(headerSafe(expired.venueName())), """
+				Your booking request expired without an answer from the venue — nothing is held for
+				you and nothing was charged.
+
+				  Booking code:  %s
+				  Venue:         %s
+				  Date:          %s
+
+				You can see the request here:
+
+				%s"""
+				.formatted(expired.bookingCode(), expired.venueName(),
+						DATE_FORMAT.format(expired.bookingDate()), expired.statusLink()));
 	}
 
 	@Override
