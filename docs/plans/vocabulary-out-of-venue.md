@@ -30,8 +30,11 @@ records itself, AC-8) · `riviera-frontend` (the placement decision itself: taxo
 the amenities/booking-status precedent, the debt table this PR rewrites) ·
 `riviera-local-debug` (frontend npm recipes; e2e:a11y is the CI-safe suite) ·
 `angular-developer` + angular-cli MCP (`get_best_practices` — confirmed import-path-only
-edits implicate no v22 API surface) · `playwright-cli` (N/A — no e2e spec authored or
-moved; the existing mocked suite runs unchanged as the parity proof).
+edits implicate no v22 API surface; `search_documentation` → the official style guide's
+project-structure section corroborates the placement: organize by "features … or common
+themes", no type-based directories, kebab-case file names, one concept per file) ·
+`playwright-cli` (N/A — no e2e spec authored or moved; the existing mocked suite runs
+unchanged as the parity proof).
 
 **Branch:** `claude/sdlc-489-cgiixi` — the session's designated remote branch stands in
 for `feature/vocabulary-out-of-venue` per the riviera-sdlc cloud addendum.
@@ -195,16 +198,19 @@ N/A — no contract change; the types keep mirroring the same wire shapes byte-f
 
 ## Execution status
 
-**Stage pointer:** implement done — next: mark PR #494 ready → review gate + Sonar gate
+**Stage pointer:** DONE — merged via PR #494 (review + Sonar gates run, findings fixed)
 
-**Next action:** verify CI green on the Phase-3 push, mark PR #494 ready for review, run the review gate per `references/pr-gates.md` §1.
+**Next action:** none — slice complete. Follow-up candidates live in Non-goals (the five
+residual behavioral imports each get their own argued slice; ESLint boundary pinning; the
+`formatCivilDate` / `booking-date-label` dedup).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR (#494) | ✅ | `b683135` |
 | 1 — move `booking-date.ts` + `photo-url.ts` → `shared/` | ✅ | `698131e` (atomic with 2) |
 | 2 — `venue.model.ts` → `shared/venue-views.ts`; `MoneyView` → `shared/money.ts` | ✅ | `698131e` |
-| 3 — debt records (`riviera-frontend` + RV-FE-8) + full verification incl. e2e:a11y | ✅ | this commit |
+| 3 — debt records (`riviera-frontend` + RV-FE-8) + full verification incl. e2e:a11y | ✅ | `13bbac7` |
+| 4 — review-gate + Sonar findings fixed (F-1, F-2) + close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -225,6 +231,15 @@ listed separately only as work breakdown.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate (`/code-review` fan-out — 3 of 6 agents) | the move left `venue.model.ts`'s header TSDoc (originally attached to `MoneyView`) orphaned in `venue-views.ts`, silently dropping `VenueMapView`'s doc | fixed in phase-4 commit — header rewritten as file-purpose doc, `VenueMapView`'s U1 description restored |
+| F-2 | review gate (agent #3) + Sonar (12× `typescript:S3863`, MINOR) | six files ended with two `../shared/money` imports (the rewrite added `MoneyView` beside an existing `formatMoney` import) | fixed in phase-4 commit — imports merged; repo-wide sweep confirms zero duplicate import sources remain |
+
+Review-gate record: `/code-review` ran via the Skill invocation (ladder rung 1) — 6 agents
+(5 workflow reviewers + the `riviera-review-overlay` bank walker at medium effort, the
+pure-move risk class). Overlay walk: RV-FE-8, RV-PROC-1, RV-FE-E2E, RV-STYLE-1 and the
+money/date items all PASS; agents #2 (bug scan) and #4 (prior-PR guidance) clean. Sonar:
+quality gate green, 0 hotspots, 0.0% duplication; the 12 reported issues were all F-2 and
+are code-fixed (list re-checked after the fix push).
 
 ---
 
@@ -243,7 +258,7 @@ listed separately only as work breakdown.
 
 ## Phase 0 — Plan doc + draft PR
 
-- [ ] Commit this plan doc → push → open draft PR referencing #489 (CI vehicle per rule 3).
+- [x] Commit this plan doc → push → open draft PR referencing #489 (CI vehicle per rule 3).
 
 ## Phase 1+2 — The atomic move (one commit; see phase merge note)
 
@@ -255,10 +270,10 @@ listed separately only as work breakdown.
 exported · Rewrite every importer (booking ×3, operator ×12, venue-admin ×2, shared ×2,
 pages/home, venue ×2 internal, + the spec files).
 
-- [ ] Adapted TDD steps: run the RV-FE-8 grep (33 hits = red) → perform the moves + rewrites → re-run the grep (5 hits = green) → `npm run lint && npm test && npm run build`.
-- [ ] Generalization sweep: re-grep for `venue/venue.model|venue/booking-date|venue/photo-url` anywhere (`frontend/src`, `frontend/e2e`, `docs`, `.claude`) to catch stragglers; log below.
-- [ ] Verify `git diff` shows only renames + import-line hunks (R-1).
-- [ ] Commit + update Execution status in the same window.
+- [x] Adapted TDD steps: run the RV-FE-8 grep (33 hits = red) → perform the moves + rewrites → re-run the grep (5 hits = green) → `npm run lint && npm test && npm run build`.
+- [x] Generalization sweep: re-grep for `venue/venue.model|venue/booking-date|venue/photo-url` anywhere (`frontend/src`, `frontend/e2e`, `docs`, `.claude`) to catch stragglers; log below.
+- [x] Verify `git diff` shows only renames + import-line hunks (R-1).
+- [x] Commit + update Execution status in the same window.
 
 ## Phase 3 — Debt records + full verification
 
@@ -267,10 +282,10 @@ target-state paragraph rewritten to "done", `environments/` clarification, decis
 recorded per AC-6) · `.claude/skills/riviera-review-overlay/references/frontend-conventions.md`
 (RV-FE-8: stale counts/wording updated).
 
-- [ ] Update both skills from the live grep output (not from memory).
-- [ ] `npm run test:e2e:a11y` (the CI-safe suite; Chromium preinstalled per `riviera-local-debug`).
-- [ ] Verify every AC above; record the grep output in Execution status.
-- [ ] Commit; mark PR ready for review; enter the gates (`references/pr-gates.md`).
+- [x] Update both skills from the live grep output (not from memory).
+- [x] `npm run test:e2e:a11y` (the CI-safe suite; Chromium preinstalled per `riviera-local-debug`).
+- [x] Verify every AC above; record the grep output in Execution status.
+- [x] Commit; mark PR ready for review; enter the gates (`references/pr-gates.md`).
 
 ---
 
@@ -279,32 +294,33 @@ recorded per AC-6) · `.claude/skills/riviera-review-overlay/references/frontend
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-01 | Phase 1+2 sweep (`698131e`) | residual references to the three old paths | `grep -rn "venue/venue\.model\|venue/booking-date\|venue/photo-url" frontend/src frontend/e2e` + the substrate docs | 2, both in the two skills' debt tables | rewritten in Phase 3 (AC-8); remaining mentions are intentional history notes |
+| 2026-08-01 | F-2 fix (phase 4) | any file with two imports from the same source (not just `shared/money`) | per-file `awk`/`uniq -d` over every `import … from` line under `frontend/src` | 6 (the F-2 set exactly; specs clean) | all merged; zero duplicate import sources repo-wide |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..5:** RV-FE-8 grep at the final commit → exactly the 5 residual lines, zero under `shared/`/`core/`/`booking/`/`venue-admin/`.
-- [ ] **AC-6:** decision + rationale in this doc; `riviera-frontend` updated in same PR.
-- [ ] **AC-7:** lint / unit / build / e2e:a11y all green locally; CI green on the PR.
-- [ ] **AC-8:** both debt records rewritten from live grep output, same PR.
+- [x] **AC-1..5:** RV-FE-8 grep → exactly the 5 residual lines (`operator/{console-venue-map,daily-view-tab,layout-editor}.ts` + `pages/home/home.ts` → `venue.service`; `venue/venue-map.ts` → `booking/booking-dialog`), zero under `shared/`/`core/`/`booking/`/`venue-admin/`. Re-verified independently by the overlay walker and review agent #4.
+- [x] **AC-6:** decision + rationale in *The design decision*; `riviera-frontend` §taxonomy + residual section updated in this PR.
+- [x] **AC-7:** lint ✅ · 1034 unit tests / 128 files ✅ · build ✅ · e2e:a11y 117 ✅ (at `13bbac7`; the phase-4 import-merge re-verified with lint + unit + CI's full frontend job incl. e2e). CI green on PR #494.
+- [x] **AC-8:** both debt records rewritten from live grep output, this PR (`13bbac7`).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying pin (grep or suite).
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases (no signatures change at all).
-- [ ] No JPA introduced (frontend-only; invariant #1 untouched).
-- [ ] Availability section justified N/A (invariant #2 untouched).
-- [ ] Pool + cutoff rules untouched (#3, #4) — `booking-date.ts` moved verbatim.
-- [ ] Modulith section justified N/A; no backend imports (invariant #11's FE mirror is the slice itself).
-- [ ] Payment/payout justified N/A; `MoneyView` shape untouched (#5).
-- [ ] Refund policy untouched (#10).
-- [ ] Timezone logic moved verbatim, not edited (#6).
-- [ ] Booking codes untouched (#7).
-- [ ] No schema change (#12).
-- [ ] Frontend standards: no `as any`, no logic edits; import order per ESLint.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale open rows; Open Questions empty.
-- [ ] Close-out written in THIS PR (`merged via PR #NN` recorded above).
-- [ ] The review gate ran in full (invocation ladder per `references/pr-gates.md` §1 plus the overlay, not the overlay alone).
+- [x] Every AC has an implementing task and a verifying pin (grep or suite).
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases (no signatures change at all).
+- [x] No JPA introduced (frontend-only; invariant #1 untouched).
+- [x] Availability section justified N/A (invariant #2 untouched).
+- [x] Pool + cutoff rules untouched (#3, #4) — `booking-date.ts` moved verbatim.
+- [x] Modulith section justified N/A; no backend imports (invariant #11's FE mirror is the slice itself).
+- [x] Payment/payout justified N/A; `MoneyView` shape untouched (#5).
+- [x] Refund policy untouched (#10).
+- [x] Timezone logic moved verbatim, not edited (#6).
+- [x] Booking codes untouched (#7).
+- [x] No schema change (#12).
+- [x] Frontend standards: no `as any`, no logic edits beyond the reviewed doc/import fixes; lint green.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale open rows; Open Questions empty.
+- [x] Close-out written in THIS PR (`merged via PR #494` recorded above).
+- [x] The review gate ran in full — `/code-review` fan-out (6 agents) + `riviera-review-overlay` bank walk; record in the findings register.

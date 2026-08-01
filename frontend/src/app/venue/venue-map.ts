@@ -15,13 +15,12 @@ import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '.
 import { AmenityChip } from '../shared/amenity-chip';
 import { CardGlass } from '../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
-import { formatMoney } from '../shared/money';
+import { formatMoney, MoneyView } from '../shared/money';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
 import { isRated, ratingScore } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
 import { defaultBookingDate, isIsoDate } from '../shared/booking-date';
-import { MoneyView } from '../shared/money';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from './venue.service';
 
