@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
-import { parentVenueId, venueIdParam } from './parent-venue-id';
+import { parentVenueId, routeIdParam, venueIdParam } from './parent-venue-id';
 
 /**
  * The shared venue-id route-param guard (#175, reactive since #180). A console tab reads `:venueId`
@@ -75,5 +75,24 @@ describe('venueIdParam', () => {
 
   it('resolves to undefined for a null route', () => {
     expect(TestBed.runInInjectionContext(() => venueIdParam(null))()).toBeUndefined();
+  });
+});
+
+describe('routeIdParam', () => {
+  it('reads a non-venueId param name reactively (the tourist :id case, #499)', () => {
+    const params$ = new BehaviorSubject(convertToParamMap({ id: '3' }));
+    const route = {
+      snapshot: { paramMap: params$.value },
+      paramMap: params$,
+    } as unknown as ActivatedRoute;
+    const id = TestBed.runInInjectionContext(() => routeIdParam(route, 'id'));
+
+    expect(id()).toBe(3);
+    params$.next(convertToParamMap({ id: '8' }));
+    expect(id()).toBe(8);
+    params$.next(convertToParamMap({ id: 'abc' }));
+    expect(id()).toBeUndefined();
+    params$.next(convertToParamMap({ id: '0' }));
+    expect(id()).toBeUndefined();
   });
 });

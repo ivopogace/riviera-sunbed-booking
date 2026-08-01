@@ -171,13 +171,13 @@ N/A — no contract change; the same endpoint is called with a different `venueI
 
 ## Execution status
 
-**Stage pointer:** plan committed — entering implement (phase 0)
+**Stage pointer:** implement (phase 1)
 
-**Next action:** phase 0 — failing `routeIdParam` spec in `parent-venue-id.spec.ts`
+**Next action:** phase 1 — failing #499 param-change specs in `venue-map.spec.ts`
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `routeIdParam` helper generalization | | |
+| 0 — `routeIdParam` helper generalization | ✅ | "Generalize the route-id-param helper to any param name (#499)" — `venueIdParam` is now a one-line delegate (R-5 mitigated by signature parity); 9 shared tests green; generalization audit logged (no further in-scope snapshot readers) |
 | 1 — reactive `:id` + epoch guard in `VenueMap` | | |
 | 2 — reactive `?date` re-seed | | |
 | 3 — harness switch spec over real routes | | |
