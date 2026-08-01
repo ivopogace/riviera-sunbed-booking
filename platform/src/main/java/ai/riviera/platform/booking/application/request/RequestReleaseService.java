@@ -3,10 +3,13 @@ package ai.riviera.platform.booking.application.request;
 import java.time.Instant;
 import java.util.Optional;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.booking.events.BookingRequestDeclined;
+import ai.riviera.platform.booking.events.BookingRequestExpired;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -33,16 +36,25 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * transaction proxy is real — the accept path stays deliberately non-transactional around its
  * Stripe call, and the sweep isolates failures per row by calling {@link #expire} once per
  * candidate. Methods public for the proxy; the class stays package-private.
+ *
+ * <p><strong>Decline and expire publish their fact from inside the winning leg</strong> (#124):
+ * the guarded transition settles the outcome right here — unlike the accept branch, whose answer
+ * arrives only after its transaction ({@code PaymentDueAnnouncer}) — so publishing on the success
+ * branch makes the Event Publication Registry row commit atomically with the transition, and the
+ * row-lock exclusivity above is also what guarantees a booking at most one terminal fact.
  */
 @Service
 class RequestReleaseService {
 
 	private final Bookings bookings;
 	private final AvailabilityClaim availability;
+	private final ApplicationEventPublisher events;
 
-	RequestReleaseService(Bookings bookings, AvailabilityClaim availability) {
+	RequestReleaseService(Bookings bookings, AvailabilityClaim availability,
+			ApplicationEventPublisher events) {
 		this.bookings = bookings;
 		this.availability = availability;
+		this.events = events;
 	}
 
 	@Transactional
@@ -50,6 +62,8 @@ class RequestReleaseService {
 		return bookings.declinePending(bookingId.value(), venueId)
 				.map(claim -> {
 					availability.release(claim.setId(), claim.bookingDate());
+					events.publishEvent(new BookingRequestDeclined(bookingId, claim.setId(),
+							claim.bookingDate()));
 					return true;
 				})
 				.orElse(false);
@@ -60,6 +74,8 @@ class RequestReleaseService {
 		return bookings.expirePendingRequest(bookingId.value(), now)
 				.map(claim -> {
 					availability.release(claim.setId(), claim.bookingDate());
+					events.publishEvent(new BookingRequestExpired(bookingId, claim.setId(),
+							claim.bookingDate()));
 					return true;
 				})
 				.orElse(false);
@@ -75,6 +91,10 @@ class RequestReleaseService {
 	 * guest authorizes by bearer credential rather than by venue scope; and it therefore
 	 * <strong>returns</strong> the booking id, which decline and expire are already given by their
 	 * caller — so the caller can log which booking ended without logging the code (invariant #7).
+	 *
+	 * <p>And a third, now its siblings publish (#124): this leg raises <strong>no</strong> event,
+	 * deliberately — the guest retracted the request themselves, so there is no outcome to mail
+	 * them (#123). Do not "complete the set"; {@code RequestTerminationEventPublicationIT} pins it.
 	 */
 	@Transactional
 	public Optional<BookingId> withdraw(String code) {

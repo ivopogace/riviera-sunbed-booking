@@ -79,7 +79,7 @@ class RespondToRequestServiceTest {
 
 	private RespondToRequestService service() {
 		return new RespondToRequestService(ownership, bookings,
-				new RequestReleaseService(bookings, availability), checkout, confirmBooking,
+				new RequestReleaseService(bookings, availability, publisher), checkout, confirmBooking,
 				releaseAbandoned, new PaymentDueAnnouncer(publisher), WINDOWS, clock);
 	}
 
@@ -278,7 +278,7 @@ class RespondToRequestServiceTest {
 				.thenReturn(Optional.of(new ClaimRef(new SetId(2), date)));
 
 		int expired = new ExpireRequestsService(bookings,
-				new RequestReleaseService(bookings, availability), clock).sweep();
+				new RequestReleaseService(bookings, availability, publisher), clock).sweep();
 
 		assertEquals(2, expired);
 		verify(availability).release(new SetId(1), date);
@@ -297,7 +297,7 @@ class RespondToRequestServiceTest {
 				.thenReturn(Optional.of(new ClaimRef(new SetId(2), date)));
 
 		int expired = new ExpireRequestsService(bookings,
-				new RequestReleaseService(bookings, availability), clock).sweep();
+				new RequestReleaseService(bookings, availability, publisher), clock).sweep();
 
 		assertEquals(1, expired, "the healthy row is still expired");
 		verify(availability).release(new SetId(2), date);

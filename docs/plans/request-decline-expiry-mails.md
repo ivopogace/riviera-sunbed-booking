@@ -204,16 +204,21 @@ N/A — no contract change (no endpoint added or modified).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Load `riviera-local-debug`, then Phase 0 step 1 (failing
-`RequestTerminationEventPublicationIT`).
+**Next action:** Phase 1 step 1 — failing listener tests + `TransactionalMailServiceTest`
+suppression cases + the arch-test list extension.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — booking: two events + in-leg publication | ⏳ | |
-| 1 — notification: two listeners, mails, counters, arch-test list | | |
+| 0 — booking: two events + in-leg publication | ✅ | see PR #481 (`Publish decline/expiry facts…`) |
+| 1 — notification: two listeners, mails, counters, arch-test list | ⏳ | |
 | 2 — docs freshness + close-out | | |
+
+Phase 0 notes: red→green as planned (5-case IT; the recorder needed methods-only access —
+Modulith's completion-registering post-processor CGLIB-proxies any
+`@TransactionalEventListener` bean, so proxy fields are null). Structural net green.
+Docker was available; ITs ran locally.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
