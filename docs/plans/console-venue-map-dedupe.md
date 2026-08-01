@@ -43,29 +43,35 @@ branch substitutes for `feature/console-venue-map-dedupe` (`riviera-sdlc` §Remo
 
 - [ ] **AC-1:** Given a signed-in operator whose console shell has loaded the venue map, when the
   Requests tab renders under that shell, then exactly **one** `GET /api/venues/{id}?date=<today>`
-  has been issued in total. *Pinned by:* `ConsoleVenueMapSpec.'coalesces two identical loads into one request'`
-  + `RequestsTab.'reuses the shell snapshot instead of re-fetching'` + `operator-requests.e2e.ts`
-  (`page.route` counter).
+  has been issued in total. *Pinned by:* `ConsoleVenueMap.'coalesces two concurrent loads of the same key into one request'`
+  + `RequestsTab.'reuses the shell snapshot instead of re-fetching the venue map (#486)'`
+  + `operator-requests.e2e.ts 'opens the Requests tab on ONE venue-map read, not two (#486)'` (route counter).
 - [ ] **AC-2:** Same for the Pricing tab: the rows and the `setVersion` token come from the shared
-  snapshot and no second request is issued. *Pinned by:* `PricingTab.'reuses the shell snapshot instead of re-fetching'`
-  + `operator-pricing.e2e.ts` (route counter).
+  snapshot and no second request is issued. *Pinned by:* `PricingTab.'reuses the shell snapshot instead of re-fetching the venue map (#486)'`
+  + `operator-pricing.e2e.ts 'opens the Pricing tab on ONE venue-map read, not two (#486)'` (route counter).
 - [ ] **AC-3:** Given a warm snapshot for `(venue, today)`, when `DailyViewTab` changes the selected
   date **or** reconciles after a tap-to-mark, and when `LayoutEditor` loads or reloads, then each
-  still issues its own request to the server. *Pinned by:* `DailyViewTab.'still re-fetches on date change'`,
-  `DailyViewTab.'still re-fetches on post-mark reconcile'`, `LayoutEditor.'still re-fetches on reload after stale'`.
+  still issues its own request to the server. *Pinned by:*
+  `DailyViewTab.'never serves the console snapshot — its reads are excluded from the shared cache (#486 AC-3)'`
+  (covers the opening read **and** the post-tap-to-mark reconcile, both on the warm key) and the existing
+  `DailyViewTab.'reloads and clears optimistic overrides when the date changes'` +
+  `LayoutEditor.'keeps edits and offers Reload on a 409 STALE_WRITE, then Reload re-seeds from the server'`,
+  which both `expectOne` a real request and so fail if either path ever became a cache consumer.
 - [ ] **AC-4:** Given a warm snapshot, when a layout save (`replaceLayout`) or a row reprice
   (`repriceRow`) succeeds, then the snapshot is dropped and the next tab to ask receives the **new**
-  sets from the server. *Pinned by:* `ConsoleVenueMapSpec.'reset drops the snapshot'` +
-  `LayoutEditor.'drops the shared snapshot after a successful save'` +
-  `PricingTab.'drops the shared snapshot after a successful reprice'`.
+  sets from the server. *Pinned by:* `ConsoleVenueMap.'refetches after reset — the invalidation edge a layout or pricing save uses'`
+  + `LayoutEditor.'drops the shared console snapshot after a successful save (#486 AC-4)'`
+  + `PricingTab.'drops the shared snapshot after a successful reprice so other tabs see the new price (#486 AC-4)'`.
 - [ ] **AC-5:** Given the venue-map read fails, when any of the three consumers asks, then each
   degrades to its existing fallback (`Your venue` title, `Set {id}` / `Standard` labels, the pricing
   load-error card), the failure is **not** cached, and the next ask re-issues the request.
-  *Pinned by:* `ConsoleVenueMapSpec.'does not cache a failure'` + the existing best-effort specs, unchanged.
+  *Pinned by:* `ConsoleVenueMap.'does not retain a failure — the next caller retries against the server'`
+  + `RequestsTab.'still degrades to the Set-{id} fallback when the shared map read fails (#486 AC-5)'`
+  + the existing `PricingTab.'shows a load-error message (not a false empty state) when the venue read fails'`.
 - [ ] **AC-6:** *(grill addition — not in the issue)* Given a reprice lost the `409 STALE_WRITE` race,
   when the operator hits Reload, then the recovery read reaches the **server** and re-seeds a fresh
   `setVersion`, never the stale cached snapshot that caused the conflict.
-  *Pinned by:* `PricingTab.'stale-write recovery bypasses the shared snapshot'`.
+  *Pinned by:* `PricingTab.'bypasses the shared snapshot on stale-write recovery (#486 AC-6)'`.
 
 ## Non-goals
 
@@ -177,16 +183,16 @@ practices for new v22 singletons; `inject()`; no `any` on the contract — the c
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — ready for review; review + sonar gates due`
 
-**Next action:** Phase 2 — add the `page.route` counters to `operator-requests.e2e.ts` and
-`operator-pricing.e2e.ts`, then mark the PR ready for review.
+**Next action:** Run the review gate (`references/pr-gates.md` §1 invocation ladder) + the
+`riviera-review-overlay` bank over the diff, then pull the Sonar new-issue list for PR #487.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `ConsoleVenueMap` service + spec | ✅ 5/5 green | `4dde56e` |
 | 1 — Wire the three consumers + the two invalidation edges | ✅ 1030/1030 unit green, lint clean | (this commit) |
-| 2 — e2e route counters (mocked suite) | ⏳ | |
+| 2 — e2e route counters (mocked suite) | ✅ 24/24 operator e2e green | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

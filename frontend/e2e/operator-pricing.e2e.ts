@@ -65,10 +65,14 @@ test.use({ colorScheme: 'dark' });
  * mismatch is 409 STALE_WRITE) and bumps it on success. `bump()` simulates a concurrent writer moving the
  * prices on behind the tab's back, so a subsequent stale reprice is genuinely rejected.
  */
-async function mockPricing(page: Page, deny = false): Promise<{ puts: Request[]; bump: () => void }> {
+async function mockPricing(
+  page: Page,
+  deny = false,
+): Promise<{ puts: Request[]; bump: () => void; mapReads: () => number }> {
   const puts: Request[] = [];
   let sessionLive = false;
   let serverSetVersion = 0;
+  let mapReads = 0;
   const bump = () => {
     serverSetVersion += 1;
   };
@@ -109,9 +113,10 @@ async function mockPricing(page: Page, deny = false): Promise<{ puts: Request[];
   });
   // The venue map (tab source + shell header/stats) — carries the current setVersion. Keep below the
   // reprice route (disjoint anyway).
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({ json: { ...VENUE_MAP, setVersion: serverSetVersion } }),
-  );
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
+    mapReads += 1;
+    return route.fulfill({ json: { ...VENUE_MAP, setVersion: serverSetVersion } });
+  });
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
@@ -124,7 +129,7 @@ async function mockPricing(page: Page, deny = false): Promise<{ puts: Request[];
       },
     }),
   );
-  return { puts, bump };
+  return { puts, bump, mapReads: () => mapReads };
 }
 
 async function signInAndOpenPricing(page: Page): Promise<void> {
@@ -169,6 +174,31 @@ test('lists rows, projects the online-only take, and commits a minor-unit repric
 
   // Projected recomputes from the new online prices: 4250 + 4250 + 2000 = 10500 → €105.
   await expect(page.getByTestId('pricing-projected')).toHaveText('€105');
+});
+
+test('opens the Pricing tab on ONE venue-map read, not two (#486)', async ({ page }) => {
+  const { puts, mapReads } = await mockPricing(page);
+
+  // Deep-link straight to the tab so only the shell and the Pricing tab mount: landing on /operator/1
+  // would redirect to the beach-map default child, whose layout editor does its own (deliberately
+  // uncached) read and would blur the count this test exists to make.
+  await page.goto('/operator/1/pricing');
+  await page.getByLabel('Username', { exact: true }).fill('operator');
+  await page.getByLabel('Password', { exact: true }).fill('pw');
+  await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
+
+  await expect(page.getByTestId('oc-header')).toBeVisible();
+  await expect(page.getByTestId('pricing-tab')).toBeVisible();
+  // The rows prove the tab really got the map — a cache hit, not a skipped read.
+  await expect(page.getByTestId('pricing-input-A')).toHaveValue('35');
+
+  expect(mapReads()).toBe(1);
+
+  // The shared snapshot carried the #226 token too: a reprice off it is accepted, not falsely stale.
+  await page.getByTestId('pricing-input-A').fill('40');
+  await page.getByTestId('pricing-input-A').blur();
+  await expect.poll(() => puts.length).toBe(1);
+  await expect(page.getByTestId('pricing-stale-banner')).toHaveCount(0);
 });
 
 test('shows the not-owner message and reverts the projection when the reprice is 403', async ({
