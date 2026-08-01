@@ -177,15 +177,15 @@ practices for new v22 singletons; `inject()`; no `any` on the contract — the c
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write `console-venue-map.spec.ts` red (coalescing, no-cache-on-failure,
-reset), then implement `ConsoleVenueMap`.
+**Next action:** Phase 1 — swap the three read sources onto `ConsoleVenueMap` and add `reset()` at
+the two write-success sites, the two stale-recovery sites, and sign-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `ConsoleVenueMap` service + spec | | |
-| 1 — Wire the three consumers + the two invalidation edges | | |
+| 0 — `ConsoleVenueMap` service + spec | ✅ 5/5 green | (this commit) |
+| 1 — Wire the three consumers + the two invalidation edges | ⏳ | |
 | 2 — e2e route counters (mocked suite) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -260,6 +260,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-01 | Phase 0 (new sharing pattern) | every `getVenueMap` call site, to decide consumer vs. excluded | `grep -rn "getVenueMap" --include=*.ts frontend/src/app \| grep -v spec` | 6 (shell, requests, pricing, daily-view, layout-editor ×2, tourist venue-map) | Registered 3 as consumers; excluded 3 for freshness and recorded every one in the Behavior-parity ledger with its reason — the audit is what produced that table |
 
 ---
 
