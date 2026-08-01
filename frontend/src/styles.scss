@@ -3,8 +3,9 @@
  * docs/design/riviera-sunbeds-liquid-glass-v3.dc.html — every "(design: …)" note below cites it).
  *
  * Themes are CSS custom properties scoped by `data-riv-theme` on <html> — the attribute is
- * written only by core/theme.ts. Components consume tokens, never palette literals, so a new
- * palette (#143) is one block here + one row in core/theme.ts.
+ * written only by core/theme.ts. Components consume tokens, never palette literals; a palette
+ * change is one block here + one row in core/theme.ts. The set is fixed at these two — one
+ * dark, one light (#143 closed not-planned).
  *
  * Deviation from the design file, on purpose: the riviera header glass is a DARK tint
  * (design: white 0.13) because white ink on the gradient's light top stops fails WCAG AA;

@@ -99,9 +99,10 @@ The only place providers are wired:
   **not** touch the document attribute / `ThemeService`, so the tourist theme
   choice is preserved. Local pinning like this is fine; writing the **document**
   attribute stays `ThemeService`-only.
-- **The token registry lives in two places, and only two**: a new palette (#143)
-  is one CSS block in `styles.scss` + one registry row in `core/theme.ts`, zero
-  component edits. Restyle slices add page-surface tokens there (e.g. the T2
+- **The token registry lives in two places, and only two**: a palette change is
+  one CSS block in `styles.scss` + one registry row in `core/theme.ts`, zero
+  component edits. The theme set is fixed at two — one dark, one light (#143
+  closed not-planned 2026-08-01). Restyle slices add page-surface tokens there (e.g. the T2
   `--riv-card-*` card-glass set) so later slices reuse them.
 - **HOW to consume the tokens** — token-first styling, the `:host-context`
   escape hatch, and the composited-contrast proofs (helpers in
