@@ -500,7 +500,7 @@ class VenueAdminControllerIT {
 	void replaceWithoutVersionIs400() throws Exception {
 		// #226, AC-5: a beach-map replace body without expectedVersion is 400 INVALID_REQUEST — never
 		// treated as 0 (which would match a fresh venue and re-open the last-write-wins hole), mirroring
-		// the profile PATCH. requiredExpectedVersion() throws before the write.
+		// the profile PATCH. ExpectedVersion.require throws before the write.
 		long venue = createVenue("No Layout Version Club");
 
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
@@ -517,7 +517,7 @@ class VenueAdminControllerIT {
 	@Test
 	void repriceWithoutVersionIs400() throws Exception {
 		// #226, AC-5: a per-row reprice body without expectedVersion is 400 INVALID_REQUEST — never a
-		// silent 0. requiredExpectedVersion() throws before venue/row existence or the price command.
+		// silent 0. ExpectedVersion.require throws before venue/row existence or the price command.
 		long venue = createVenue("No Reprice Version Club");
 
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())

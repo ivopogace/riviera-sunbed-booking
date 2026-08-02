@@ -162,24 +162,15 @@
           <!-- #224: a stale-write 409 is a distinct, recoverable conflict — not a plain error. Keep
                the operator's edits, explain what happened, and offer a Reload (never a silent discard). -->
           @if (errorCode() === 'STALE_WRITE') {
-            <div
-              class="mt-1 flex flex-col gap-2 rounded-[14px] border border-[#d97706] bg-[#f59e0b]/[0.14] px-3.5 py-3"
-              role="alert"
+            <app-stale-write-banner
+              class="mt-1"
               data-testid="venue-stale-banner"
+              reloadTestId="venue-stale-reload"
+              (reload)="reloadAfterStale()"
             >
-              <span class="text-[12px] leading-[1.5] font-semibold text-(--riv-card-ink)">
-                This venue was changed somewhere else since you opened it. Your edits are kept — reload
-                the latest details, re-apply your changes, then Save again.
-              </span>
-              <button
-                type="button"
-                class="self-start rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2 text-[13px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/90"
-                data-testid="venue-stale-reload"
-                (click)="reloadAfterStale()"
-              >
-                Reload latest
-              </button>
-            </div>
+              This venue was changed somewhere else since you opened it. Your edits are kept — reload
+              the latest details, re-apply your changes, then Save again.
+            </app-stale-write-banner>
           }
         </form>
       </section>

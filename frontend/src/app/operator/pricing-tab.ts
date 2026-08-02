@@ -14,6 +14,7 @@ import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { RepriceErrorCode } from './operator-console.model';
 import { OperatorConsoleService, repriceErrorOf } from './operator-console.service';
+import { StaleWriteBanner } from './stale-write-banner';
 
 /**
  * One editable pricing row. {@link priceEur} is the euros string bound to the input — empty when the
@@ -42,7 +43,7 @@ interface PriceRow {
  */
 @Component({
   selector: 'app-pricing-tab',
-  imports: [CardGlass],
+  imports: [CardGlass, StaleWriteBanner],
   templateUrl: './pricing-tab.html',
 })
 export class PricingTab {

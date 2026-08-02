@@ -336,7 +336,6 @@ export function repriceErrorOf(error: unknown): RepriceErrorCode {
       case 'NO_SUCH_VENUE':
       case 'INVALID_REQUEST':
       case 'STALE_WRITE':
-      case 'CONFLICT':
         return code;
       default:
         return 'UNKNOWN';

@@ -18,6 +18,7 @@ import {
   VenueProfileView,
 } from './operator-console.model';
 import { OperatorConsoleService, venueProfileErrorOf } from './operator-console.service';
+import { StaleWriteBanner } from './stale-write-banner';
 import {
   PhotoErrorCode,
   VenuePhotoService,
@@ -83,7 +84,7 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
  */
 @Component({
   selector: 'app-venue-tab',
-  imports: [FormField, CardGlass, NgOptimizedImage],
+  imports: [FormField, CardGlass, NgOptimizedImage, StaleWriteBanner],
   templateUrl: './venue-tab.html',
 })
 export class VenueTab {

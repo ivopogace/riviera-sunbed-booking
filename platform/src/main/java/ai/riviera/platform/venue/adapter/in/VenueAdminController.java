@@ -132,9 +132,10 @@ class VenueAdminController {
 	ResponseEntity<?> updateProfile(Authentication authentication, @PathVariable long venueId,
 			@RequestBody UpdateVenueProfileRequest request) {
 		OperatorId operator = currentOperator.require(authentication);
-		// requiredExpectedVersion() first: a missing token is a 400 (INVALID_REQUEST) before the write,
+		// ExpectedVersion.require first: a missing token is a 400 (INVALID_REQUEST) before the write,
 		// never a silent 0 (#224). STALE_WRITE → 409 lets the tab reload the latest values and re-apply.
-		long expectedVersion = InvalidApiRequestException.parsing(request::requiredExpectedVersion);
+		long expectedVersion = InvalidApiRequestException
+				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));
 		var command = InvalidApiRequestException.parsing(request::toCommand);
 		return switch (editVenueProfile.updateProfile(operator, new VenueId(venueId),
 				expectedVersion, command)) {
@@ -178,9 +179,10 @@ class VenueAdminController {
 	ResponseEntity<?> replaceLayout(Authentication authentication, @PathVariable long venueId,
 			@RequestBody BeachMapLayoutRequest request) {
 		OperatorId operator = currentOperator.require(authentication);
-		// requiredExpectedVersion() first: a missing token is a 400 (INVALID_REQUEST) before the write,
+		// ExpectedVersion.require first: a missing token is a 400 (INVALID_REQUEST) before the write,
 		// never a silent 0 (#226). STALE_WRITE → 409 lets the tab reload the latest map and re-apply.
-		long expectedVersion = InvalidApiRequestException.parsing(request::requiredExpectedVersion);
+		long expectedVersion = InvalidApiRequestException
+				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));
 		var command = InvalidApiRequestException.parsing(request::toCommand);
 		return switch (editBeachMap.replaceLayout(operator, new VenueId(venueId),
 				expectedVersion, command)) {
@@ -193,9 +195,10 @@ class VenueAdminController {
 	ResponseEntity<?> repriceRow(Authentication authentication, @PathVariable long venueId,
 			@PathVariable String rowLabel, @RequestBody RowPriceRequest request) {
 		OperatorId operator = currentOperator.require(authentication);
-		// requiredExpectedVersion() first: a missing token is a 400 (INVALID_REQUEST) before the write,
+		// ExpectedVersion.require first: a missing token is a 400 (INVALID_REQUEST) before the write,
 		// never a silent 0 (#226). STALE_WRITE → 409 lets the tab reload the latest prices and re-apply.
-		long expectedVersion = InvalidApiRequestException.parsing(request::requiredExpectedVersion);
+		long expectedVersion = InvalidApiRequestException
+				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));
 		var command = InvalidApiRequestException.parsing(() -> request.toCommand(rowLabel));
 		return toResponse(editBeachMap.repriceRow(operator, new VenueId(venueId), expectedVersion, command));
 	}

@@ -57,24 +57,15 @@
       <!-- #226: a stale-write 409 is a distinct, recoverable conflict — not a per-row error. The failing
            row's optimistic value has already reverted; explain what happened and offer a Reload. -->
       @if (staleConflict()) {
-        <div
-          class="mt-3 flex flex-col gap-2 rounded-[14px] border border-[#d97706] bg-[#f59e0b]/[0.14] px-3.5 py-3"
-          role="alert"
+        <app-stale-write-banner
+          class="mt-3"
           data-testid="pricing-stale-banner"
+          reloadTestId="pricing-stale-reload"
+          (reload)="reloadAfterStale()"
         >
-          <span class="text-[12.5px] leading-[1.5] font-semibold text-(--riv-card-ink)">
-            These prices were changed somewhere else since you opened this tab. Your edit was not applied —
-            reload the latest prices and try again.
-          </span>
-          <button
-            type="button"
-            class="self-start rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2 text-[13px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/90"
-            data-testid="pricing-stale-reload"
-            (click)="reloadAfterStale()"
-          >
-            Reload latest
-          </button>
-        </div>
+          These prices were changed somewhere else since you opened this tab. Your edit was not applied —
+          reload the latest prices and try again.
+        </app-stale-write-banner>
       }
 
       <p class="mt-3 text-[12px] text-(--riv-card-ink-soft)">
