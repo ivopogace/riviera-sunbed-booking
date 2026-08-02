@@ -57,7 +57,6 @@ export type RepriceErrorCode =
   | 'INVALID_REQUEST'
   | 'STALE_WRITE'
   | 'UNAUTHORIZED'
-  | 'CONFLICT'
   | 'UNKNOWN';
 
 /**

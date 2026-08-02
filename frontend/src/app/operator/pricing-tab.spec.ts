@@ -164,10 +164,10 @@ describe('PricingTab (#174)', () => {
   it('reverts the failing row on error without touching other rows (sequential edits)', async () => {
     render();
 
-    // Edit A → €40; it fails (CONFLICT) and reverts to €35. A failed write does NOT advance the token.
+    // Edit A → €40; it fails (a server error) and reverts to €35. A failed write does NOT advance the token.
     editRow('A', '40');
     const reqA = http.expectOne((r) => r.url.includes('/api/venues/1/rows/A/price'));
-    reqA.flush({ code: 'CONFLICT' }, { status: 409, statusText: 'Conflict' });
+    reqA.flush({}, { status: 500, statusText: 'Internal Server Error' });
     await fixture.whenStable();
     fixture.detectChanges();
 

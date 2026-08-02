@@ -14,6 +14,7 @@ import { VenueService } from '../venue/venue.service';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutCellRequest, LayoutErrorCode } from './operator-console.model';
 import { OperatorConsoleService, layoutErrorOf } from './operator-console.service';
+import { StaleWriteBanner } from './stale-write-banner';
 
 /** What a grid cell holds, and the paint tools (in design order). `gap` = no set / erase to an aisle. */
 type CellState = 'premium' | 'standard' | 'walkin' | 'gap';
@@ -70,7 +71,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
  */
 @Component({
   selector: 'app-layout-editor',
-  imports: [CardGlass, BeachGridFrame],
+  imports: [CardGlass, BeachGridFrame, StaleWriteBanner],
   templateUrl: './layout-editor.html',
 })
 export class LayoutEditor {

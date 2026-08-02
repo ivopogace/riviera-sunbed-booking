@@ -149,7 +149,7 @@ class CrossVenueDenialIT {
 	void beachMapLayoutReplaceByNonOwnerIs403() throws Exception {
 		// #172: the bulk layout replace is venue-scoped — a non-owner is denied before any read/write,
 		// so Miramar's layout is never touched. Ownership asserts first (invariant #13, BOLA). The body is
-		// VALID — including the #226 required expectedVersion — so requiredExpectedVersion() passes and the
+		// VALID — including the #226 required expectedVersion — so ExpectedVersion.require passes and the
 		// 403 is genuinely from ownership, not a 400 (parse-then-authorize; mirrors FULL_PROFILE_BODY).
 		actingAs(operatorA);
 		String layoutBody = """
@@ -187,7 +187,7 @@ class CrossVenueDenialIT {
 	}
 
 	/** A full, VALID widened profile body (O8 #177, versioned by #224): valid — including the required
-	 *  {@code expectedVersion} — so {@code toCommand()}/{@code requiredExpectedVersion()} pass and the
+	 *  {@code expectedVersion} — so {@code toCommand()}/{@code ExpectedVersion.require} pass and the
 	 *  403 comes from the service's ownership check, not from body/version validation (parse-then-authorize).
 	 *  The owning-venue counterpart edits a fresh venue, so {@code expectedVersion} 0 matches. */
 	private static final String FULL_PROFILE_BODY = """
