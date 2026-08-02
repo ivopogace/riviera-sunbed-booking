@@ -47,7 +47,7 @@ test.describe('O7 payouts — real backend, real Postgres', () => {
   }) => {
     // Create a venue via the legacy editor (bootstrap operator session), then open the Payouts tab —
     // the editor sign-in cookie carries the real owner-asserted session.
-    await page.goto('/venue-admin');
+    await page.goto('/operator');
     await signIn(page);
     const id = await createVenue(page, venueName('payouts'));
 

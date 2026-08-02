@@ -19,7 +19,7 @@ test('operator signs in, survives a reload, and signs out', async ({ page }) => 
   await mockAuthApi(page, { validPassword: 'good-pw' });
   const signIn = new OperatorSignInPage(page);
 
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await signIn.expectSignedOut();
   await expectNoSeriousAxeViolations(page, 'signed-out sign-in card');
 

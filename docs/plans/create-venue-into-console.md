@@ -143,9 +143,13 @@ Old surface: `venue-admin/venue-editor.{ts,html,scss}` at `/venue-admin`.
 - **Assumption:** header links keep the label "Create a venue" (parity); only the picker
   gains the issue's "Add another venue" wording — the issue names the affordance, not the
   copy. — *Owner:* session · *Resolves by:* phase 3.
+### Resolved
+
 - **Open question:** does the mocked e2e support's `mockAuthApi` already stub
-  `GET /api/venues/mine` (its `venues:` option suggests yes), and what minimum console-tab
-  stubs does the post-create navigation need? — *Owner:* session · *Resolves by:* phase 5.
+  `GET /api/venues/mine`, and what minimum console-tab stubs does the post-create
+  navigation need? → Yes (its `venues:` option); the new `operator-onboarding.e2e.ts`
+  stubs the six venue-31 console reads (venue, beach-map is part of the venue read,
+  booking-requests, bookings, takings, availability). Resolved in the phase-5 commit.
 
 ## Availability & concurrency (invariant #2)
 
@@ -199,10 +203,10 @@ their shapes; `GET /api/venues/mine` consumed unchanged.
 > Session-recovery anchor: re-read this section (plus the current stage's `riviera-sdlc`
 > reference) after any compaction or fresh-session pickup, before acting.
 
-**Stage pointer:** implement (phase 5 — e2e sweep)
+**Stage pointer:** implement (phase 6 — close-out), then PR ready-for-review
 
-**Next action:** phase 5 — load `playwright-cli`, author operator-onboarding.e2e.ts,
-sweep the /venue-admin entry points.
+**Next action:** phase 6 — riviera-docs-freshness over main..HEAD, finalize plan, mark PR
+ready-for-review, run the review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -210,8 +214,8 @@ sweep the /venue-admin entry points.
 | 1 — `VenueCreateCard` + relocated service/model (red-green) | ✅ | `05333cb` |
 | 2 — `OperatorHome` zero-state + `?create=1` + landing flip | ✅ | `20b6073` |
 | 3 — Link repoints (chrome, console, picker) | ✅ | `0f3eca5` |
-| 4 — Delete `venue-admin/`, redirect route, inventory updates | ✅ | phase-4 commit (sha recorded next window) |
-| 5 — e2e sweep (mocked new+updated; real-backend repoint) | | |
+| 4 — Delete `venue-admin/`, redirect route, inventory updates | ✅ | `f6b36d3` |
+| 5 — e2e sweep (mocked new+updated; real-backend repoint) | ✅ | phase-5 commit (sha recorded next window) |
 | 6 — Close-out (docs-freshness, final plan state) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -221,7 +225,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | | none yet | |
+| F-1 | CI (run 30738419981, on `f6b36d3`) | The phase-4 push predated the e2e sweep: `unified-auth` still asserted the `/venue-admin$` landing URL and `operator-registration` the retired "venue-created" card — 2 failures in the mocked suite | fixed by the phase-5 sweep (this commit window); full mocked suite 120/120 locally |
 
 ---
 

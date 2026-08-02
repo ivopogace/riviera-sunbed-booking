@@ -84,7 +84,7 @@ async function mockEmptyOutbox(page: Page): Promise<void> {
 /** Sign in as the platform admin and open the Email tab. */
 async function openEmailTab(page: Page): Promise<void> {
   await mockEmptyOutbox(page);
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
   await page.goto('/admin/email');
 }

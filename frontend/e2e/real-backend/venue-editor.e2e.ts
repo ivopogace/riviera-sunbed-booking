@@ -10,25 +10,28 @@ import {
 } from './support/operator';
 
 /**
- * Real-backend e2e for venue ONBOARDING (the retired editor's surviving job, O8 #177). A real
- * Chromium drives the /venue-admin create-a-venue form, which calls the REAL Spring Boot backend and
- * persists to a REAL Flyway-migrated Postgres — nothing is mocked. Editing an existing venue (layout,
- * pricing, details, commodities) moved to the operator console tabs; the console Venue tab's real
- * round-trip is `real-backend/venue.e2e.ts`.
+ * Real-backend e2e for venue ONBOARDING, which lives on the operator home's create state since #278
+ * (`/operator?create=1`; the retired `/venue-admin` page now redirects there). A real Chromium
+ * drives the create form, which calls the REAL Spring Boot backend and persists to a REAL
+ * Flyway-migrated Postgres — nothing is mocked. Editing an existing venue (layout, pricing, details,
+ * commodities) lives in the console tabs; the Venue tab's real round-trip is
+ * `real-backend/venue.e2e.ts`.
  */
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/venue-admin');
+  // The guard bounces a signed-out visit to the unified auth card with the operator tab preselected.
+  await page.goto('/operator?create=1');
 });
 
 test.describe('venue onboarding — real backend, real Postgres', () => {
   test('gates the create form behind operator sign-in', async ({ page }) => {
-    // Signed out: the sign-in card shows and the create form is hidden.
-    await expect(page.getByRole('heading', { name: 'Operator sign-in' })).toBeVisible();
+    // Signed out: the unified auth card shows (real guard + session restore) — no create form.
+    const card = new OperatorSignInPage(page);
+    await card.expectSignedOut();
     await expect(page.getByRole('heading', { name: 'Venue details' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Create venue' })).toHaveCount(0);
 
-    // A real session login (server-validated, cookie established) reveals the create form.
+    // A real session login (server-validated, cookie established) returns to the create state.
     await signInOperator(page);
     await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
   });
@@ -46,17 +49,20 @@ test.describe('venue onboarding — real backend, real Postgres', () => {
     await expect(page.getByRole('heading', { name: 'Venue details' })).toHaveCount(0);
   });
 
-  test('creates a venue (real 201) and links the operator into its console', async ({ page }) => {
+  test('creates a venue (real 201) and lands the operator in its console beach-map tab', async ({
+    page,
+  }) => {
     await signInOperator(page);
     const id = await createVenue(page, venueName('create'));
 
-    // The created card confirms the id and offers the "Open the console" link to lay out the venue.
-    await expect(page.getByTestId('venue-created')).toContainText(`#${id}`);
-    await expect(page.getByTestId('venue-console-link')).toHaveAttribute('href', `/operator/${id}`);
+    // #278: creation navigates STRAIGHT into the new console — the id comes from the real 201.
+    await expect(page).toHaveURL(new RegExp(`/operator/${id}/beach-map`));
+    await expect(page.getByTestId('oc-header')).toBeVisible();
   });
 
   test('the onboarding form has no serious axe violations (real render)', async ({ page }) => {
     await signInOperator(page);
+    await page.goto('/operator?create=1');
     await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
 
     // Mirror the a11y suite's bar (shared policy): WCAG 2 A/AA, gate on serious + critical.

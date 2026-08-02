@@ -28,20 +28,21 @@ export async function signInOperator(page: Page, password: string = OPERATOR_PAS
 }
 
 /**
- * Fill the venue-onboarding "Venue details" create form (defaults stand for commission/currency/
- * cutoff) and submit; returns the real venue id parsed from the "Venue #{id} created" status. Must be
- * signed in first.
+ * Create a venue on the operator home's create state (#278 — the retired /venue-admin form moved
+ * there): open `/operator?create=1` (deterministic whatever the operator already owns), fill the
+ * "Venue details" form (defaults stand for commission/currency/cutoff) and submit; returns the real
+ * venue id parsed from the beach-map console URL the app navigates into. Must be signed in first.
  */
 export async function createVenue(page: Page, name: string): Promise<number> {
+  await page.goto('/operator?create=1');
   await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Beach', { exact: true }).fill('Ksamil');
   await page.getByLabel('Region', { exact: true }).fill('Albanian Riviera');
   await page.getByRole('button', { name: 'Create venue' }).click();
 
-  const created = page.getByTestId('venue-created');
-  await expect(created).toBeVisible();
-  const id = Number((await created.textContent())?.match(/#(\d+)/)?.[1]);
+  await expect(page).toHaveURL(/\/operator\/\d+\/beach-map/);
+  const id = Number(/\/operator\/(\d+)\/beach-map/.exec(page.url())?.[1]);
   expect(Number.isInteger(id)).toBe(true);
   return id;
 }

@@ -62,7 +62,7 @@ test.describe('O4 pricing — real backend, real Postgres', () => {
     page,
   }) => {
     // Lay out a venue with two ONLINE sets in row A at €35 via the legacy editor (bootstrap operator).
-    await page.goto('/venue-admin');
+    await page.goto('/operator');
     await signIn(page);
     const id = await createVenue(page, venueName('pricing'));
     await addSet(page, { rowLabel: 'A', positionNo: 1, priceMinor: 3500, gridX: 1, gridY: 1, pool: 'ONLINE', tier: 'PREMIUM' });
