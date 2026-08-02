@@ -38,8 +38,7 @@ describe('app.routes — retired auth surfaces', () => {
   });
 
   it('forwards retired /venue-admin into the operator home in create mode (#278)', async () => {
-    // One-release deprecation window, like the auth redirects above: the ?create=1 target keeps
-    // the bookmark's CREATE intent for an operator who already owns venues.
+    // One-release window like the auth redirects above; ?create=1 keeps the bookmark's create intent.
     await router.navigateByUrl('/venue-admin');
     expect(router.url).toBe('/operator?create=1');
   });

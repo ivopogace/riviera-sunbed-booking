@@ -1,9 +1,19 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  DOCUMENT,
+  inject,
+  Injector,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { skip } from 'rxjs';
 
 import { OwnedVenue, OwnedVenues } from '../core/owned-venues';
-import { landingRouteFor } from '../shared/auth-landing';
+import { landingRouteFor, safeReturnUrl } from '../shared/auth-landing';
 import { CardGlass } from '../shared/card-glass';
 import { RetryButton } from '../shared/retry-button';
 import { VenueCreateCard } from './venue-create-card';
@@ -50,7 +60,8 @@ import { VenueCreateCard } from './venue-create-card';
       } @else if (creating()) {
         <h1
           id="operator-home-title"
-          class="m-0 mb-1 text-[22px] font-semibold text-(--riv-ink)"
+          tabindex="-1"
+          class="m-0 mb-1 text-[22px] font-semibold text-(--riv-ink) outline-none"
         >
           {{ zeroState() ? 'Create your venue' : 'Add another venue' }}
         </h1>
@@ -68,7 +79,11 @@ import { VenueCreateCard } from './venue-create-card';
           class="rounded-[20px] p-6 shadow-[0_12px_44px_rgba(12,42,51,0.14)]"
           data-testid="operator-home-picker"
         >
-          <h1 id="operator-home-title" class="m-0 text-[22px] font-semibold text-(--riv-card-ink)">
+          <h1
+            id="operator-home-title"
+            tabindex="-1"
+            class="m-0 text-[22px] font-semibold text-(--riv-card-ink) outline-none"
+          >
             Choose a venue
           </h1>
           <p class="mt-2 mb-4 text-[15px] text-(--riv-card-ink-soft)">
@@ -109,6 +124,8 @@ export class OperatorHome implements OnInit {
   private readonly ownedVenues = inject(OwnedVenues);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
   private readonly query = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   });
@@ -124,8 +141,14 @@ export class OperatorHome implements OnInit {
   protected readonly zeroState = computed(() => this.loaded() && this.venues().length === 0);
 
   constructor() {
-    // Param-only navigations (picker → create and back) re-run the landing decision.
-    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(() => void this.decide());
+    // Param-only navs (picker ⇄ create) re-decide AND re-anchor focus on the swapped-in title (WCAG 2.4.3).
+    this.route.queryParamMap.pipe(skip(1), takeUntilDestroyed()).subscribe(() => {
+      void this.decide();
+      afterNextRender(
+        { read: () => this.document.getElementById('operator-home-title')?.focus() },
+        { injector: this.injector },
+      );
+    });
   }
 
   // Not the constructor: an async call there is a testability/ordering smell (typescript:S7059).
@@ -147,10 +170,15 @@ export class OperatorHome implements OnInit {
 
   /** Forward per {@link landingRouteFor} — unless the create state or this page itself is the answer. */
   private async decide(): Promise<void> {
-    if (!this.loaded() || this.creating()) {
+    if (!this.loaded()) {
       return;
     }
-    const route = landingRouteFor(this.venues(), this.query().get('returnUrl') ?? undefined);
+    const returnUrl = this.query().get('returnUrl') ?? undefined;
+    // A safe returnUrl outranks even the create state — the landingRouteFor contract.
+    if (this.creating() && safeReturnUrl(returnUrl) === undefined) {
+      return;
+    }
+    const route = landingRouteFor(this.venues(), returnUrl);
     // '/operator' IS this page — render the picker rather than navigating to ourselves.
     if (route !== '/operator') {
       await this.router.navigateByUrl(route);

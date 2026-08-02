@@ -57,8 +57,7 @@ test('operator registers, is approved by an admin, then signs in and creates a v
   await signIn.signIn(NEW_OP.username, NEW_OP.password);
   await signIn.expectSignedInAs(NEW_OP.username);
 
-  // 5. The approved operator creates a venue on the inline /operator form (#278) and lands straight
-  //    in its console (creator-owns-on-create on the backend).
+  // 5. The approved operator creates a venue on the inline /operator form and lands in its console (#278).
   await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
   await page.getByLabel('Name', { exact: true }).fill('Sunset Club');
   await page.getByLabel('Beach', { exact: true }).fill('Ksamil');

@@ -128,8 +128,7 @@ export const routes: Routes = [
     title: 'Terms of service — Riviera',
   },
   {
-    // #278: the retired onboarding page → the operator home's create state; kept one release for
-    // existing links. ?create=1 preserves the bookmark's CREATE intent for a multi-venue owner.
+    // #278: retired onboarding → the operator home's create state; kept one release for old links.
     path: 'venue-admin',
     redirectTo: () => inject(Router).parseUrl('/operator?create=1'),
     pathMatch: 'full',
@@ -148,8 +147,7 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
-    // S9 (#277): operator landing — 0 → inline create (#278), 1 → that console, 2+ → picker.
-    // MUST stay above 'operator/:venueId'.
+    // S9/#278 operator landing (0 → inline create, 1 → console, 2+ → picker). Above ':venueId'.
     path: 'operator',
     loadComponent: () => import('./operator/operator-home').then((m) => m.OperatorHome),
     title: 'Your venues — Riviera',

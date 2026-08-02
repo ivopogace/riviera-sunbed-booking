@@ -87,23 +87,32 @@ test('a first-time operator creates their venue inline on /operator and lands in
   await expect(page.getByTestId('oc-header')).toBeVisible();
 });
 
-test('the deliberate ?create=1 entry renders the form for an operator who already owns a venue', async ({
+test('the picker’s Add-another-venue link swaps to the create form and keeps keyboard focus anchored', async ({
   page,
 }) => {
   await mockAuthApi(page, {
     validPassword: 'good-pw',
-    venues: [{ id: 7, name: 'Sereno', beach: 'Jal' }],
+    venues: [
+      { id: 7, name: 'Sereno', beach: 'Jal' },
+      { id: 9, name: 'Miramar Beach Club', beach: 'Ksamil' },
+    ],
   });
   await mockNewVenueConsole(page);
   const signIn = new OperatorSignInPage(page);
 
-  // What the guard produces for a signed-out visit to the Add-another-venue entry.
-  await signIn.goto('/operator?create=1');
+  await signIn.goto();
   await signIn.signIn('operator', 'good-pw');
+  await expect(page.getByTestId('operator-home-picker')).toBeVisible();
+
+  // The real in-app transition (not a goto): the focused link unmounts with the branch swap.
+  await page.getByTestId('operator-home-add-venue').click();
 
   await expect(page).toHaveURL(/\/operator\?create=1/);
   await expect(page.getByTestId('venue-create-card')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Add another venue' })).toBeVisible();
+  const title = page.getByRole('heading', { name: 'Add another venue' });
+  await expect(title).toBeVisible();
+  // WCAG 2.4.3 (the #148/#351/#462 stranded-focus class): focus re-anchors on the new title.
+  await expect(title).toBeFocused();
 });
 
 test('a /venue-admin bookmark keeps working for one release — it forwards to the create state', async ({

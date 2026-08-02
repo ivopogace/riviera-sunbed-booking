@@ -206,10 +206,10 @@ their shapes; `GET /api/venues/mine` consumed unchanged.
 > Session-recovery anchor: re-read this section (plus the current stage's `riviera-sdlc`
 > reference) after any compaction or fresh-session pickup, before acting.
 
-**Stage pointer:** review gate (PR #505 ready-for-review)
+**Stage pointer:** review gate — fixes pushed; re-verify CI + Sonar, then merge close-out
 
-**Next action:** run the `/code-review` invocation ladder + `riviera-review-overlay`, then
-the Sonar issue-list pull (pr-gates.md §1–2); findings re-enter at Implement.
+**Next action:** confirm CI + Sonar green on the review-fix push, post the review comment,
+merge PR #505, run close-out (pr-gates.md §3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -228,14 +228,18 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI (run 30738419981, on `f6b36d3`) | The phase-4 push predated the e2e sweep: `unified-auth` still asserted the `/venue-admin$` landing URL and `operator-registration` the retired "venue-created" card — 2 failures in the mocked suite | fixed by the phase-5 sweep (this commit window); full mocked suite 120/120 locally |
+| F-1 | CI (run 30738419981, on `f6b36d3`) | The phase-4 push predated the e2e sweep: `unified-auth` still asserted the `/venue-admin$` landing URL and `operator-registration` the retired "venue-created" card — 2 failures in the mocked suite | fixed by the phase-5 sweep (`70bb02e`); full mocked suite 120/120 locally |
+| F-2 | review (`/code-review` agent #4, scored 100) | Picker → "Add another venue" is a param-only navigation: the focused link unmounts with the `@if` branch swap and keyboard/AT focus falls to `document.body` — WCAG 2.4.3, the recurring #148/#351/#462 stranded-focus class | fixed in the review-fix commit: focus re-anchors on the swapped-in `#operator-home-title` (`tabindex="-1"`) via `afterNextRender`; pinned by a new unit spec + the e2e now clicks the real link and asserts `toBeFocused` |
+| F-3 | review (agent #5, scored 50) | Plan doc self-contradiction: claimed `CardGlass + FieldGlass` while the shipped card follows the venue-tab idiom (no FieldGlass) | fixed in the review-fix commit (this doc) |
+| F-4 | review (overlay RV-STYLE-1, Minor ×5; + agent #3's latent-contract note, scored 50) | Five multi-line inline comments introduced by the diff; and `decide()` silently outranked a (currently unreachable) `returnUrl` with the create param, contradicting `landingRouteFor`'s documented "returnUrl wins" contract | fixed in the review-fix commit: comments trimmed to one line; `decide()` now lets a safe `returnUrl` outrank the create state, pinned by a new unit spec |
 
 ---
 
 ## File structure
 
 - `frontend/src/app/operator/venue-create-card.ts|.html` — the Liquid Glass create form
-  (CardGlass + FieldGlass; Signal Forms schema moved from `VenueEditor`)
+  (CardGlass + the venue-tab form idiom — not FieldGlass; Signal Forms schema moved from
+  `VenueEditor`)
 - `frontend/src/app/operator/venue-create-card.spec.ts|.a11y.spec.ts|.contrast.spec.ts` —
   parity-ledger pins, axe, composited contrast
 - `frontend/src/app/operator/venue-admin.service.ts|.model.ts|.service.spec.ts` — relocated
@@ -266,7 +270,8 @@ service spec · Test `venue-create-card.spec.ts` first
       path (create → `reset()` → `navigateByUrl('/operator/31/beach-map')`).
 - [ ] Step 2: Run `npm test -- venue-create-card` → FAIL (component absent).
 - [ ] Step 3: Implement the card: template from `venue-editor.html` restructured onto
-      CardGlass/FieldGlass with Tailwind tokens; logic from `VenueEditor` minus the
+      CardGlass + the venue-tab field classes (the nearest exemplar — FieldGlass's
+      `--riv-field-*` idiom deliberately not used); logic from `VenueEditor` minus the
       success-card state, plus router navigation. Relocate service/model (git mv).
 - [ ] Step 4: Run `npm test -- venue-create-card venue-admin.service` → PASS; a11y +
       contrast specs green.
@@ -319,6 +324,7 @@ service spec · Test `venue-create-card.spec.ts` first
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-02 | F-2 (stranded focus on branch swap) | other same-page `@if` branch swaps driven by query params that could unmount a focused control | `grep -rn "queryParamMap" frontend/src/app` | `operator-home.ts` (fixed), `auth-page.ts` (mode param — swaps card *contents* but the triggering control survives the swap; existing #351-era focus handling), `layout-editor`/tabs (path navigations — router focus rules apply) | fix the one; others verified not in the class |
 
 ---
 
