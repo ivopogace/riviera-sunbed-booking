@@ -199,15 +199,15 @@ their shapes; `GET /api/venues/mine` consumed unchanged.
 > Session-recovery anchor: re-read this section (plus the current stage's `riviera-sdlc`
 > reference) after any compaction or fresh-session pickup, before acting.
 
-**Stage pointer:** plan committed → implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** load `riviera-tailwind` + `angular-developer`, then write the failing
-`venue-create-card.spec.ts` (phase 1, step 1).
+**Next action:** phase 2 — failing specs for OperatorHome zero-state/?create=1 + the
+`landingRouteFor` flip.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc committed | ⏳ | |
-| 1 — `VenueCreateCard` + relocated service/model (red-green) | | |
+| 0 — Plan doc committed | ✅ | `aafcc28` |
+| 1 — `VenueCreateCard` + relocated service/model (red-green) | ✅ | phase-1 commit (sha recorded next window) |
 | 2 — `OperatorHome` zero-state + `?create=1` + landing flip | | |
 | 3 — Link repoints (chrome, console, picker) | | |
 | 4 — Delete `venue-admin/`, redirect route, inventory updates | | |

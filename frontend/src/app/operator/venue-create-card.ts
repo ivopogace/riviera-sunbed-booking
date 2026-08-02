@@ -1,42 +1,40 @@
 import { Component, inject, signal } from '@angular/core';
 import { form, required, submit, FormField } from '@angular/forms/signals';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues } from '../core/owned-venues';
+import { CardGlass } from '../shared/card-glass';
 import { parseWholeNumber } from '../shared/whole-number';
 import { BookingMode } from '../shared/venue-views';
-import { VenueAdminErrorCode } from '../operator/venue-admin.model';
-import { VenueAdminService, venueAdminErrorOf } from '../operator/venue-admin.service';
+import { VenueAdminErrorCode } from './venue-admin.model';
+import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 
 /**
- * Venue onboarding (U7) — a signed-in operator **creates** a venue. This is all that remains of
- * the legacy in-page venue editor: editing an existing venue's beach-map layout (O3 #172), row
- * pricing (O4 #174) and details/commodities (O8 #177) now lives in the operator console's tabs, so
- * this page's editing role is retired (issue #177). It stays the reachable "Create a venue" entry
- * point (linked from the console and operator-chrome headers, which also carry the session
- * controls); on success it links the operator into the console for the new venue to lay out its
- * map. Signal Forms for the create form. The server re-validates every field (invariants
+ * The create-venue form inside the operator console surface (#278) — the retired
+ * `/venue-admin` editor's one surviving job, restyled to Liquid Glass. Rendered by
+ * `OperatorHome` for an operator with no venue (the zero state) and for the deliberate
+ * `/operator?create=1` entry. On success it resets the cached owned-venues list (S9 #277 —
+ * the landing decision reads it) and navigates straight into the new venue's beach-map tab:
+ * laying out the map is the operator's next real step, and creator-owns-on-create (S6 #115)
+ * means the console is immediately theirs. The server re-validates every field (invariants
  * #3/#5/#12); numeric fields are parsed on submit.
  */
 @Component({
-  selector: 'app-venue-editor',
-  imports: [FormField, RouterLink],
-  templateUrl: './venue-editor.html',
-  styleUrl: './venue-editor.scss',
+  selector: 'app-venue-create-card',
+  imports: [CardGlass, FormField],
+  templateUrl: './venue-create-card.html',
 })
-export class VenueEditor {
+export class VenueCreateCard {
   private readonly admin = inject(VenueAdminService);
   private readonly ownedVenues = inject(OwnedVenues);
+  private readonly router = inject(Router);
   protected readonly operator = inject(OperatorAuth);
 
-  /** The created venue's id (undefined until the create form succeeds) — then we link to its console. */
-  protected readonly venueId = signal<number | undefined>(undefined);
   protected readonly saving = signal(false);
   private readonly errorCode = signal<VenueAdminErrorCode | undefined>(undefined);
 
-  // --- Create-venue form ---
   protected readonly venueModel = signal({
     name: '',
     beach: '',
@@ -79,10 +77,9 @@ export class VenueEditor {
             bookingCutoff: m.bookingCutoff,
           }),
         );
-        this.venueId.set(created.id);
-        // The operator now owns one more venue, so the cached landing list is stale (S9 #277):
-        // without this, /operator would keep forwarding a first-time creator back to onboarding.
+        // Reset BEFORE navigating: the console we land in is fed by this cached list (S9 #277).
         this.ownedVenues.reset();
+        await this.router.navigateByUrl(`/operator/${created.id}/beach-map`);
       } catch (error) {
         this.failWrite(error);
       } finally {
