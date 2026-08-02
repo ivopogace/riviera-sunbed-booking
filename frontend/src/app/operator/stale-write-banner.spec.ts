@@ -14,7 +14,7 @@ import { StaleWriteBanner } from './stale-write-banner';
       (reload)="reloads = reloads + 1"
     >
       The thing was changed somewhere else.
-      <ng-container bannerFooter>
+      <ng-container ngProjectAs="[bannerFooter]">
         @if (footer()) {
           <span data-testid="host-footer">Reload failed.</span>
         }

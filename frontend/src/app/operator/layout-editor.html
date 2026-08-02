@@ -233,7 +233,7 @@
     >
       This layout was changed somewhere else since you opened it. Your painted grid is kept — reload the
       latest layout, re-apply your changes, then Save again.
-      <ng-container bannerFooter>
+      <ng-container ngProjectAs="[bannerFooter]">
         @if (reloadFailed()) {
           <span class="text-[12px] font-semibold text-[#a3160e]" role="alert" data-testid="layout-reload-failed">
             Couldn’t reload — your changes are still here. Check your connection and try again.

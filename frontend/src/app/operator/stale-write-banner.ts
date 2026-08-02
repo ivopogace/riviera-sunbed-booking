@@ -8,7 +8,9 @@ import { Component, input, output } from '@angular/core';
  * react to {@link reload}, and keep their own state. The host element IS the amber alert surface
  * (`role="alert"` + the container classes), so a consumer's `data-testid` and margin utility land
  * on the banner itself and existing spec hooks keep working. An optional `[bannerFooter]` slot
- * after the button hosts surface-specific follow-ups (the layout editor's reload-failed hint).
+ * after the button hosts surface-specific follow-ups (the layout editor's reload-failed hint);
+ * conditional footer content reaches it via `ngProjectAs="[bannerFooter]"` on an `ng-container`,
+ * the documented alias for projecting `@if`-guarded content into a named slot.
  */
 @Component({
   selector: 'app-stale-write-banner',
