@@ -199,16 +199,16 @@ their shapes; `GET /api/venues/mine` consumed unchanged.
 > Session-recovery anchor: re-read this section (plus the current stage's `riviera-sdlc`
 > reference) after any compaction or fresh-session pickup, before acting.
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** phase 2 — failing specs for OperatorHome zero-state/?create=1 + the
-`landingRouteFor` flip.
+**Next action:** phase 3 — repoint the chrome/console links + picker entry specs, then
+the links themselves.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc committed | ✅ | `aafcc28` |
-| 1 — `VenueCreateCard` + relocated service/model (red-green) | ✅ | phase-1 commit (sha recorded next window) |
-| 2 — `OperatorHome` zero-state + `?create=1` + landing flip | | |
+| 1 — `VenueCreateCard` + relocated service/model (red-green) | ✅ | `05333cb` |
+| 2 — `OperatorHome` zero-state + `?create=1` + landing flip | ✅ | phase-2 commit (sha recorded next window) |
 | 3 — Link repoints (chrome, console, picker) | | |
 | 4 — Delete `venue-admin/`, redirect route, inventory updates | | |
 | 5 — e2e sweep (mocked new+updated; real-backend repoint) | | |
