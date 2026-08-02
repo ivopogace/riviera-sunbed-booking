@@ -220,10 +220,10 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     expect(host().querySelector('[data-testid="oc-requests-badge"]')?.textContent).toContain('4');
   });
 
-  it('exposes a reachable create-venue link to the legacy onboarding (#170, AC-5)', async () => {
+  it('exposes a reachable create-venue link to the operator-home create state (#278)', async () => {
     await createSignedIn();
     const link = host().querySelector<HTMLAnchorElement>('[data-testid="oc-create-venue"]');
-    expect(link?.getAttribute('href')).toBe('/venue-admin');
+    expect(link?.getAttribute('href')).toBe('/operator?create=1');
   });
 
   it('keeps the shell working when the badge fetch fails — no badge (#170, R-4)', async () => {

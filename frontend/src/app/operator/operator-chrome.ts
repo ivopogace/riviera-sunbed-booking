@@ -42,7 +42,8 @@ import { OperatorAuth } from '../core/operator-auth';
             @if (operator.signedIn()) {
               <a
                 class="text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
-                routerLink="/venue-admin"
+                routerLink="/operator"
+                [queryParams]="{ create: '1' }"
                 data-testid="opc-create-venue"
                 >Create a venue</a
               >
