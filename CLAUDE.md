@@ -20,8 +20,9 @@ Current state: full stack built and deployed, served **same-origin by the backen
 (Spring bundles the Angular SPA into its Docker image) at
 riviera-sunbed-booking.onrender.com (#110; GitHub Pages retired). Shipped epics: the
 tourist Liquid Glass restyle (#133), the operator console (#141, O1–O8 tabs — the legacy
-StaffDaily and venue-editor pages are retired; venue-editor survives as onboarding only),
-and venue photos end-to-end (#142, ADR-0008). Customer accounts (epic #108) are all but
+StaffDaily and venue-editor pages are retired; venue creation lives inline on the `/operator`
+home since #278, which deleted `venue-admin/` and completed the Liquid Glass surface
+coverage), and venue photos end-to-end (#142, ADR-0008). Customer accounts (epic #108) are all but
 done — S1–S4 and S6–S9 shipped (Flyway V25–V29); the one remaining slice is **S5 (#116)**:
 swap the mocked Google/Apple SSO adapters for real ones. The durable rules that epic
 established (per-slice history: the issues + `docs/plans/`):
@@ -35,7 +36,8 @@ established (per-slice history: the issues + `docs/plans/`):
 - **Login/session machinery lives at the platform edge**, never in modules (RV-BE-11) —
   server-side sessions (Spring Session JDBC), **two principal types** with separate
   authentication managers (D-2), one audience-aware sign-in page at `/account/sign-in`
-  (S9); post-sign-in landing is driven by `GET /api/venues/mine` (0 venues → onboarding,
+  (S9); post-sign-in landing is driven by `GET /api/venues/mine` (0 venues → the inline
+  create form at `/operator` (#278),
   1 → console, 2+ → picker; `returnUrl` outranks all).
 - **Mocked externals are prod-guarded:** the mock SSO IdPs (`@Profile("prod & !sso")`)
   and mock mailer (`@Profile("prod & !mailer")`) cannot reach prod; the real `SmtpMailer`

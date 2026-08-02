@@ -20,7 +20,7 @@ cheap here and expensive at review.
 | `core/` | **Stateful cross-cutting singletons**: auth state, HTTP interceptors, route guards, current-principal service, theme state | `shared/` only — never a feature | `operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts` |
 | `shared/` | **Pure, stateless utilities and presentational primitives**: no HTTP, no app state — including the published API-view vocabulary (backend-vocabulary mirrors like `venue-views.ts`, `amenities.ts`, `booking-status.ts`) | nothing app-internal (`environments/` is config, not app code — see note below) | `money.ts`, `venue-views.ts` |
 | `pages/` | **Static/marketing routes** with no domain logic | `core/`, `shared/` | `pages/home/` |
-| Feature folders (`booking/`, `venue/`, `venue-admin/`, `operator/`, `auth/`, `admin/`, …) | One user-facing domain area: its components, its models, its HTTP service | `core/`, `shared/` — **never another feature folder** | `booking/booking-view.ts`, `venue/venue.service.ts` |
+| Feature folders (`booking/`, `venue/`, `operator/`, `auth/`, `admin/`, …) | One user-facing domain area: its components, its models, its HTTP service | `core/`, `shared/` — **never another feature folder** | `booking/booking-view.ts`, `venue/venue.service.ts` |
 | `environments/` | `apiBaseUrl` + public config (e.g. `stripePublishableKey`) | — | see Environment rules |
 
 **Import direction is one-way:** features → `core`/`shared`; `core` → `shared`;
@@ -123,8 +123,8 @@ subfolders at this app size):
 - Route guards are cross-cutting → they live in `core/` and are applied in
   `app.routes.ts` (`canActivate`/`canMatch`), not inside feature components. The
   worked example is `core/operator-session.guard.ts` (S9 #277): restore-aware — it
-  awaits `SessionAuth.whenReady()` before deciding — and applied on `/operator`,
-  `/operator/:venueId`, `/venue-admin` and `/account/operator-password`.
+  awaits `SessionAuth.whenReady()` before deciding — and applied on `/operator` (incl. its
+  #278 create state), `/operator/:venueId` and `/account/operator-password`.
 
 ## `app.config.ts` (the composition root)
 

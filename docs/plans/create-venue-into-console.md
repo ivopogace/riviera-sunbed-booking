@@ -30,15 +30,18 @@ venue-editor specs exist, not four) · `riviera-plan-doc` (this template — for
 behavior-parity ledger below, which surfaced the success-state and page-title changes as
 *changed*, not *preserved*) · `tdd` (each phase is red-green: component specs before the
 component, spec updates before each repoint) · `riviera-review-overlay` (review gate — due
-at ready-for-review) · `riviera-docs-freshness` (due at close-out over `main..HEAD` —
-parenthesis updated when it runs) · `grilling` (issue interrogation — validated the #277
+at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` — 6 findings, all patched:
+CLAUDE.md current-state + landing lines, riviera-frontend folder table + guard example,
+riviera-tailwind SCSS inventory 11→10, review-overlay grep recipe) · `grilling` (issue interrogation — validated the #277
 seams against code) · `riviera-frontend` (placement: `operator/` owns the relocated
 service/model; redirect uses the established `parseUrl` shape; picker/console link rules) ·
 angular-cli MCP `list_projects` + `get_best_practices` (v22 standards confirmed: Signal
 Forms, `@Service`, host-object bindings, inline template for small components, a11y
-mandatory) · `riviera-tailwind` (load before phase 1 styling — share-via-directive,
-token-first, no `@apply`) · `angular-developer` (load before phase 1 — component technique)
-· `playwright-cli` (load before phase 5 — e2e authoring; suite placement per RV-FE-E2E)
+mandatory) · `riviera-tailwind` (loaded before phase 1 — venue-tab chosen as nearest exemplar;
+test-hook `field` class retained; no `@apply`) · `angular-developer` (loaded before phase 1 —
+Signal Forms carry-over, reactive query-param read) · `playwright-cli` (loaded before
+phase 5 — mocked-suite authoring, PW_CHROMIUM_EXECUTABLE local run) · `riviera-local-debug`
+(loaded before the first npm run — scoped Vitest include patterns)
 
 **Branch:** `claude/create-venue-liquid-glass-migration-ysor0z` — the session's designated
 remote branch, standing in for `feature/create-venue-into-console` per the `riviera-sdlc`
@@ -48,46 +51,46 @@ cloud addendum.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in operator owning **no** venue, when they land on
+- [x] **AC-1:** Given a signed-in operator owning **no** venue, when they land on
       `/operator`, then the create-venue form renders inline on the porcelain console
       surface (no forward to a second page). *Pinned by:*
       `operator-home.spec.ts` ("renders the create card for an operator with no venues") +
       `unified-auth.e2e.ts` ("an operator with no venue is sent to onboarding", repointed to
       `/operator`).
-- [ ] **AC-2:** Given valid venue details, when the operator submits, then the venue is
+- [x] **AC-2:** Given valid venue details, when the operator submits, then the venue is
       created via `POST /api/venues`, the cached owned-venues list is reset **before**
       navigation, and the operator lands in `/operator/:newId/beach-map` (creator-owns-on-
       create re-proven, not re-implemented). *Pinned by:*
       `venue-create-card.spec.ts` ("creates the venue, resets the owned list, navigates to
       the new console's beach-map tab") + mocked e2e `operator-onboarding.e2e.ts`.
-- [ ] **AC-3:** Given an operator who already owns venues, when they follow the "Create a
+- [x] **AC-3:** Given an operator who already owns venues, when they follow the "Create a
       venue" entry (console header, operator chrome, or the picker's "Add another venue"),
       then `/operator?create=1` renders the create form without forwarding to any owned
       console. *Pinned by:* `operator-home.spec.ts` ("?create=1 renders the create card
       instead of forwarding") + `operator-chrome.spec.ts` / `operator-console.spec.ts`
       (link targets).
-- [ ] **AC-4:** Given any visit to `/venue-admin`, when the route resolves, then the app
+- [x] **AC-4:** Given any visit to `/venue-admin`, when the route resolves, then the app
       redirects to `/operator?create=1`, and no in-app link or navigation targets
       `/venue-admin` (the `/venue-admin/daily/:venueId` → console-tab redirect stays).
       *Pinned by:* `app.routes.spec.ts` ("/venue-admin redirects to the operator home in
       create mode") + `app.spec.ts` route-inventory update + a repo grep at review.
-- [ ] **AC-5:** Given the retired editor's behavior ledger (below), when the new form is
+- [x] **AC-5:** Given the retired editor's behavior ledger (below), when the new form is
       exercised, then every `preserved` row holds: all 8 fields with their defaults, the 6
       `required` validations and their exact messages, numeric parse-on-submit →
       `INVALID_REQUEST`, each `VenueAdminErrorCode` message, `UNAUTHORIZED` →
       `operator.sessionLost()`, and the saving/disabled submit state. *Pinned by:*
       `venue-create-card.spec.ts` (one test per ledger row marked preserved).
-- [ ] **AC-6:** Given the new create surface, when axe and the composited-contrast specs
+- [x] **AC-6:** Given the new create surface, when axe and the composited-contrast specs
       run, then WCAG AA holds — contrast proven by maths, not eyeballing. *Pinned by:*
       `venue-create-card.a11y.spec.ts` + `venue-create-card.contrast.spec.ts` + the axe
       check in the mocked e2e.
-- [ ] **AC-7:** Given the mocked Playwright suite, when an operator signs in with 0 venues
+- [x] **AC-7:** Given the mocked Playwright suite, when an operator signs in with 0 venues
       and creates a venue, then the browser lands in the new venue's console; the
       real-backend suite's create path (`support/operator.ts#createVenue` +
       `venue-editor.e2e.ts`) is repointed to the new flow, not dropped. *Pinned by:*
       `operator-onboarding.e2e.ts` (mocked, CI) + repointed
       `real-backend/venue-editor.e2e.ts` (local-only).
-- [ ] **AC-8:** No SCSS files added, no `@apply`; the deleted `venue-editor.scss` is the
+- [x] **AC-8:** No SCSS files added, no `@apply`; the deleted `venue-editor.scss` is the
       last venue-admin SCSS. *Pinned by:* review-gate check + `git ls-files
       'frontend/src/app/venue-admin/*'` returning empty.
 
@@ -127,22 +130,22 @@ Old surface: `venue-admin/venue-editor.{ts,html,scss}` at `/venue-admin`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The 11-file e2e blast radius: mocked-suite specs entering via `goto('/venue-admin')` start traversing a redirect chain and assert stale URLs (`unified-auth.e2e.ts` asserts `/venue-admin$`) | high | med | Phase 5 sweeps every hit of the intake grep: repoint entry `goto`s to `/operator`, fix URL assertions, keep exactly one spec asserting the redirect itself | session | open |
-| R-2 | The real-backend suite is local-only and cannot run in this cloud session — a repoint error ships silently | med | med | All four consumers go through `support/operator.ts#createVenue`; change the id source (console URL instead of the removed success card) in that one helper; flag the residual risk in the PR for a maintainer-local run | session | open |
-| R-3 | `OperatorHome` becomes dual-purpose (forward vs render-form) and regresses the S9 landing table (R-12's "network blip sends operator to onboarding") | med | high | The decision table stays in pure `landingRouteFor` (one line changes: `[] → '/operator'`); the failed-load → retry state is untouched and its spec keeps pinning it; every branch (0/1/N venues × create-param × failure) gets a unit spec | session | open |
-| R-4 | Contrast regressions on the porcelain form (WCAG 1.4.11 field borders, error text) | low | med | Reuse the already-AA-proven `--riv-field-*`/`--riv-card-*` tokens; composited maths in `venue-create-card.contrast.spec.ts` per the established pattern | session | open |
-| R-5 | Dangling references after deleting `venue-admin/` (imports, route inventory, `app.spec.ts` chrome list) | med | low | Phase 4 is delete + full `npm run lint` + full unit run + the intake grep re-run | session | open |
+| R-1 | The 11-file e2e blast radius: mocked-suite specs entering via `goto('/venue-admin')` start traversing a redirect chain and assert stale URLs (`unified-auth.e2e.ts` asserts `/venue-admin$`) | high | med | Phase 5 sweeps every hit of the intake grep: repoint entry `goto`s to `/operator`, fix URL assertions, keep exactly one spec asserting the redirect itself | session | closed — `70bb02e` (F-1 confirmed the risk on the phase-4 push; sweep fixed it) |
+| R-2 | The real-backend suite is local-only and cannot run in this cloud session — a repoint error ships silently | med | med | All four consumers go through `support/operator.ts#createVenue`; change the id source (console URL instead of the removed success card) in that one helper; flag the residual risk in the PR for a maintainer-local run | session | closed — helper repointed in `70bb02e`; residual flagged in PR #505 description |
+| R-3 | `OperatorHome` becomes dual-purpose (forward vs render-form) and regresses the S9 landing table (R-12's "network blip sends operator to onboarding") | med | high | The decision table stays in pure `landingRouteFor` (one line changes: `[] → '/operator'`); the failed-load → retry state is untouched and its spec keeps pinning it; every branch (0/1/N venues × create-param × failure) gets a unit spec | session | closed — `20b6073` |
+| R-4 | Contrast regressions on the porcelain form (WCAG 1.4.11 field borders, error text) | low | med | Reuse the already-AA-proven `--riv-field-*`/`--riv-card-*` tokens; composited maths in `venue-create-card.contrast.spec.ts` per the established pattern | session | closed — `05333cb` |
+| R-5 | Dangling references after deleting `venue-admin/` (imports, route inventory, `app.spec.ts` chrome list) | med | low | Phase 4 is delete + full `npm run lint` + full unit run + the intake grep re-run | session | closed — `f6b36d3` |
 | R-6 | A parallel PR claims the same files | low | low | Grill check found only Dependabot PRs open; no Flyway numbers in scope | session | closed — verified at intake |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the real-backend suite cannot be executed in this cloud session (needs a
-  live backend + Postgres under Playwright); the repoint is static and a maintainer-local
-  run is the verification. — *Owner:* session · *Resolves by:* PR description (flag it) +
-  R-2.
-- **Assumption:** header links keep the label "Create a venue" (parity); only the picker
-  gains the issue's "Add another venue" wording — the issue names the affordance, not the
-  copy. — *Owner:* session · *Resolves by:* phase 3.
+### Resolved (assumptions)
+
+- **Assumption:** the real-backend suite cannot be executed in this cloud session; the
+  repoint is static and a maintainer-local run is the verification. → Held; single-helper
+  repoint (`70bb02e`); flagged in PR #505 + R-2.
+- **Assumption:** header links keep the label "Create a venue"; only the picker gains
+  "Add another venue". → Implemented that way in `0f3eca5`/`20b6073`.
 ### Resolved
 
 - **Open question:** does the mocked e2e support's `mockAuthApi` already stub
@@ -203,10 +206,10 @@ their shapes; `GET /api/venues/mine` consumed unchanged.
 > Session-recovery anchor: re-read this section (plus the current stage's `riviera-sdlc`
 > reference) after any compaction or fresh-session pickup, before acting.
 
-**Stage pointer:** implement (phase 6 — close-out), then PR ready-for-review
+**Stage pointer:** review gate (PR #505 ready-for-review)
 
-**Next action:** phase 6 — riviera-docs-freshness over main..HEAD, finalize plan, mark PR
-ready-for-review, run the review + Sonar gates.
+**Next action:** run the `/code-review` invocation ladder + `riviera-review-overlay`, then
+the Sonar issue-list pull (pr-gates.md §1–2); findings re-enter at Implement.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -215,8 +218,8 @@ ready-for-review, run the review + Sonar gates.
 | 2 — `OperatorHome` zero-state + `?create=1` + landing flip | ✅ | `20b6073` |
 | 3 — Link repoints (chrome, console, picker) | ✅ | `0f3eca5` |
 | 4 — Delete `venue-admin/`, redirect route, inventory updates | ✅ | `f6b36d3` |
-| 5 — e2e sweep (mocked new+updated; real-backend repoint) | ✅ | phase-5 commit (sha recorded next window) |
-| 6 — Close-out (docs-freshness, final plan state) | | |
+| 5 — e2e sweep (mocked new+updated; real-backend repoint) | ✅ | `70bb02e` |
+| 6 — Close-out (docs-freshness ran; final plan state lands with the gate results) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -321,9 +324,9 @@ service spec · Test `venue-create-card.spec.ts` first
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-6:** `npm test` (full unit run incl. a11y/contrast specs) → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** `npm run test:e2e:a11y` → PASS (real-backend repoint static — R-2). Verified at commit `<sha>`.
-- [ ] **AC-8:** `git ls-files 'frontend/src/app/venue-admin/*'` → empty. Verified at commit `<sha>`.
+- [x] **AC-1..AC-6:** `npm test` (full unit run incl. a11y/contrast specs) → 1087 PASS. Verified at `f6b36d3`/`70bb02e`.
+- [x] **AC-7:** `npm run test:e2e:a11y` → 120 PASS locally (real-backend repoint static — R-2). Verified at `70bb02e`.
+- [x] **AC-8:** `git ls-files 'frontend/src/app/venue-admin/*'` → empty. Verified at `f6b36d3`.
 
 ## Self-review checklist (before merge / PR)
 

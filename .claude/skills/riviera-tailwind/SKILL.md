@@ -83,9 +83,10 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 
 ## SCSS→Tailwind migration checklist
 
-The bulk of what remains is `booking/` — 6 of the 11 remaining `.scss` files under
+The bulk of what remains is `booking/` — 6 of the 10 remaining `.scss` files under
 `frontend/src/app` sit there (plus `app.scss`, `auth.scss`, `home.scss` — the scrim
-stays SCSS on purpose — `operator-console.scss`, `venue-editor.scss`). **There is no shared
+stays SCSS on purpose — and `operator-console.scss`; `venue-editor.scss` retired with its
+page at #278). **There is no shared
 SCSS left**: `shared/_glass.scss` was retired at #477 when its last recipe, `status-chip`, became
 `shared/status-chip.ts` — so step 1's inventory now finds a shared recipe only if a new one has
 been added since.

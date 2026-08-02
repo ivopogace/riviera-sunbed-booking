@@ -239,7 +239,7 @@ grandfathered debt table?
 > a one-level pattern silently undercounts):
 >
 > ```
-> grep -rn "from '\(\.\./\)\+\(admin\|auth\|booking\|operator\|pages\|venue\|venue-admin\)/" \
+> grep -rn "from '\(\.\./\)\+\(admin\|auth\|booking\|operator\|pages\|venue\)/" \
 >   --include=*.ts frontend/src/app | grep -v "\.spec\.ts"
 > ```
 
