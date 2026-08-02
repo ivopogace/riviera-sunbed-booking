@@ -199,18 +199,18 @@ their shapes; `GET /api/venues/mine` consumed unchanged.
 > Session-recovery anchor: re-read this section (plus the current stage's `riviera-sdlc`
 > reference) after any compaction or fresh-session pickup, before acting.
 
-**Stage pointer:** implement (phase 4)
+**Stage pointer:** implement (phase 5 — e2e sweep)
 
-**Next action:** phase 4 — failing app.routes.spec for the /venue-admin redirect, then
-delete venue-admin/ and swap the route.
+**Next action:** phase 5 — load `playwright-cli`, author operator-onboarding.e2e.ts,
+sweep the /venue-admin entry points.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc committed | ✅ | `aafcc28` |
 | 1 — `VenueCreateCard` + relocated service/model (red-green) | ✅ | `05333cb` |
 | 2 — `OperatorHome` zero-state + `?create=1` + landing flip | ✅ | `20b6073` |
-| 3 — Link repoints (chrome, console, picker) | ✅ | phase-3 commit (sha recorded next window) |
-| 4 — Delete `venue-admin/`, redirect route, inventory updates | | |
+| 3 — Link repoints (chrome, console, picker) | ✅ | `0f3eca5` |
+| 4 — Delete `venue-admin/`, redirect route, inventory updates | ✅ | phase-4 commit (sha recorded next window) |
 | 5 — e2e sweep (mocked new+updated; real-backend repoint) | | |
 | 6 — Close-out (docs-freshness, final plan state) | | |
 

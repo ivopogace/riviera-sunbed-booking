@@ -4,9 +4,10 @@ import { CanActivateFn, Router } from '@angular/router';
 import { OperatorAuth } from './operator-auth';
 
 /**
- * Gate for every operator surface (S9 #277): `/operator`, `/operator/:venueId/**` and
- * `/venue-admin`. A signed-in operator passes; anyone else is redirected to the unified auth page
- * with the operator audience preselected and a `returnUrl` back to where they were headed.
+ * Gate for every operator surface (S9 #277): `/operator` (incl. its #278 create state),
+ * `/operator/:venueId/**` and the operator password page. A signed-in operator passes; anyone else
+ * is redirected to the unified auth page with the operator audience preselected and a `returnUrl`
+ * back to where they were headed.
  *
  * It **awaits `whenReady()` before deciding** — the whole reason this is async. The session restore
  * (`GET /api/auth/me`) is in flight on every fresh page load, and `signedIn()` reads `false` until it

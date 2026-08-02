@@ -45,8 +45,8 @@ const consoleTabRoutes: Routes = [
   },
   {
     // O8 (#177): the real Venue & commodities tab — details form + amenity toggle-chips + photo
-    // placeholders — replacing the last placeholder. Closes epic #141 and retires the legacy
-    // /venue-admin in-page editor (now onboarding-only).
+    // placeholders — replacing the last placeholder. Closes epic #141; the legacy editor's last
+    // job, venue creation, moved into the operator home's create state (#278).
     path: 'venue',
     loadComponent: () => import('./operator/venue-tab').then((m) => m.VenueTab),
     title: 'Venue & commodities — Operator console',
@@ -128,16 +128,11 @@ export const routes: Routes = [
     title: 'Terms of service — Riviera',
   },
   {
-    // Venue onboarding (create a venue), reached from the console header. O8 (#177) retired this
-    // page's in-page editing — layout/pricing/details/commodities are console tabs now — so it is no
-    // longer a legacy compat surface: the `legacySurface` flag is dropped (its self-styled form
-    // renders on the bare themed background). Onboarding stays here, where O1 placed it.
+    // #278: the retired onboarding page → the operator home's create state; kept one release for
+    // existing links. ?create=1 preserves the bookmark's CREATE intent for a multi-venue owner.
     path: 'venue-admin',
-    loadComponent: () => import('./venue-admin/venue-editor').then((m) => m.VenueEditor),
-    title: 'Create a venue — Riviera',
-    canActivate: [operatorSessionGuard],
-    // Operator surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
+    redirectTo: () => inject(Router).parseUrl('/operator?create=1'),
+    pathMatch: 'full',
   },
   {
     // O6 (#176): the retired /venue-admin/daily/:venueId StaffDaily page forwards to the console's
@@ -153,7 +148,8 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
-    // S9 (#277): operator landing — 0 → onboarding, 1 → that console, 2+ → picker. Above ':venueId'.
+    // S9 (#277): operator landing — 0 → inline create (#278), 1 → that console, 2+ → picker.
+    // MUST stay above 'operator/:venueId'.
     path: 'operator',
     loadComponent: () => import('./operator/operator-home').then((m) => m.OperatorHome),
     title: 'Your venues — Riviera',
@@ -191,7 +187,7 @@ export const routes: Routes = [
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the shell
     // (app.ts) suppresses all of its own chrome here via `data.operatorConsole`, so the console
     // owns a full-bleed porcelain surface. Each tab is a child route (all graduated, O1–O8);
-    // the /venue-admin editor above survives as onboarding only (#177).
+    // venue creation lives in the operator home's create state (#278).
     path: 'operator/:venueId',
     loadComponent: () => import('./operator/operator-console').then((m) => m.OperatorConsole),
     title: 'Operator console — Riviera',
