@@ -9,6 +9,7 @@ import { CardGlass } from '../shared/card-glass';
 import { eurosToMinorUnits, formatMoney, minorUnitsToEuros, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { todayBookingDate } from '../shared/booking-date';
+import { tierLabel } from '../shared/set-label';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { RepriceErrorCode } from './operator-console.model';
@@ -86,7 +87,7 @@ export class PricingTab {
       const uniform = sets.every((s) => s.price.minorUnits === sets[0].price.minorUnits);
       return {
         label,
-        desc: `${sets.some((s) => s.tier === 'PREMIUM') ? 'Front row' : 'Standard'} · ${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`,
+        desc: `${tierLabel(sets.some((s) => s.tier === 'PREMIUM') ? 'PREMIUM' : 'STANDARD')} · ${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`,
         // Blank the input for a heterogeneous row so it isn't shown as one price; editing unifies it.
         priceEur: uniform ? minorUnitsToEuros(sets[0].price.minorUnits) : '',
         currency: sets[0].price.currency,

@@ -25,6 +25,7 @@ import { isRated, ratingScore } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
 import { defaultBookingDate, isIsoDate } from '../shared/booking-date';
 import { routeIdParam } from '../shared/parent-venue-id';
+import { tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from './venue.service';
 
@@ -287,7 +288,7 @@ export class VenueMap {
 
   /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */
   private toTile(set: SetView, code: string, descriptiveLabel: string): MapTile {
-    const tier = set.tier === 'PREMIUM' ? 'front row' : 'standard';
+    const tier = tierSentenceLabel(set.tier);
     const state = set.availability === 'TAKEN' ? 'taken' : 'available';
     const seat = `${code}${set.positionNo}`;
     const bookable = set.availability === 'FREE' && set.pool === 'ONLINE';

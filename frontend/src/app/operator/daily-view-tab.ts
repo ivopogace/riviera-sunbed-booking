@@ -16,6 +16,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatMoney, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
+import { setLabel, setsById, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
 import { BeachGridFrame } from './beach-grid-frame';
@@ -131,12 +132,8 @@ export class DailyViewTab {
 
   /** The arrivals rows, each labelled with its set's position (else the raw set id). */
   protected readonly arrivals = computed<readonly ArrivalRow[]>(() => {
-    const byId = new Map(this.venue()?.sets.map((s) => [s.id, s]) ?? []);
-    return this.bookings().map((b) => {
-      const set = byId.get(b.setId);
-      const label = set ? `${set.rowLabel} · ${set.positionNo}` : `Set ${b.setId}`;
-      return { setId: b.setId, code: b.code, label };
-    });
+    const byId = setsById(this.venue()?.sets);
+    return this.bookings().map((b) => ({ setId: b.setId, code: b.code, label: setLabel(byId, b.setId) }));
   });
 
   protected readonly markedCount = computed(
@@ -366,7 +363,7 @@ export class DailyViewTab {
 
   /** Accessible name so tile state is not conveyed by colour alone (WCAG AA). */
   protected tileLabel(set: SetView): string {
-    const tier = set.tier === 'PREMIUM' ? 'front row' : 'standard';
+    const tier = tierSentenceLabel(set.tier);
     return `Set ${set.rowLabel} ${set.positionNo}, ${tier}, ${this.money(set.price)}, ${tileAction(this.stateOf(set))}`;
   }
 }

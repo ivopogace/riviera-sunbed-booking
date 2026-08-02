@@ -15,6 +15,7 @@ import { firstValueFrom } from 'rxjs';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { trapFocusWithin } from '../shared/focus-trap';
 import { formatMoney } from '../shared/money';
+import { touristTierLabel } from '../shared/set-label';
 import { BookingMode, SetView } from '../shared/venue-views';
 import {
   AwaitingPayment,
@@ -214,7 +215,7 @@ export class BookingDialog implements OnInit {
   private readonly errorCode = signal<BookingErrorCode | undefined>(undefined);
 
   protected readonly isRequest = computed(() => this.mode() === 'REQUEST');
-  protected readonly tierLabel = computed(() => (this.set().tier === 'PREMIUM' ? 'Premium' : 'Standard'));
+  protected readonly tierLabel = computed(() => touristTierLabel(this.set().tier));
   protected readonly dateLabel = computed(() => formatBookingDate(this.date()));
   protected readonly primaryLabel = computed(() => {
     if (this.step() === 1) {

@@ -8,7 +8,8 @@ import { formatDeadline, isUrgent, timeLeftLabel } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
-import { SetView, VenueMapView } from '../shared/venue-views';
+import { setLabel, setsById, tierLabel } from '../shared/set-label';
+import { VenueMapView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { PendingRequestItem, RequestErrorCode } from './operator-console.model';
 import { OperatorConsoleService, requestErrorOf } from './operator-console.service';
@@ -125,15 +126,15 @@ export class RequestsTab {
 
   /** The pending-request rows, each resolved to a set label + tier from the loaded map (else the raw id). */
   protected readonly rows = computed<readonly RequestRow[]>(() => {
-    const byId = new Map(this.venue()?.sets.map((s) => [s.id, s]) ?? []);
+    const byId = setsById(this.venue()?.sets);
     const now = this.nowMs();
     return this.requests().map((r) => {
       const set = byId.get(r.setId);
       return {
         bookingId: r.bookingId,
         guest: r.guestName,
-        setLabel: set ? `${set.rowLabel} · ${set.positionNo}` : `Set ${r.setId}`,
-        tierName: set ? tierName(set) : 'Standard',
+        setLabel: setLabel(byId, r.setId),
+        tierName: tierLabel(set?.tier ?? 'STANDARD'),
         dateLabel: formatCivilDate(r.bookingDate),
         priceStr: formatMoney(r.amount),
         respondByStr: formatDeadline(r.requestExpiresAt),
@@ -340,10 +341,6 @@ export class RequestsTab {
 
 /** How often the open Requests tab re-reads the queue + refreshes the urgency clock (60s). */
 const REFRESH_MS = 60_000;
-
-function tierName(set: SetView): string {
-  return set.tier === 'PREMIUM' ? 'Front row' : 'Standard';
-}
 
 /** A new set with `id` removed (signals are replaced, never mutated). */
 function without(set: ReadonlySet<number>, id: number): ReadonlySet<number> {
