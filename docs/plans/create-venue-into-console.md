@@ -206,10 +206,9 @@ their shapes; `GET /api/venues/mine` consumed unchanged.
 > Session-recovery anchor: re-read this section (plus the current stage's `riviera-sdlc`
 > reference) after any compaction or fresh-session pickup, before acting.
 
-**Stage pointer:** review gate — fixes pushed; re-verify CI + Sonar, then merge close-out
+**Stage pointer:** DONE — merged via PR #505
 
-**Next action:** confirm CI + Sonar green on the review-fix push, post the review comment,
-merge PR #505, run close-out (pr-gates.md §3).
+**Next action:** none — slice complete. Post-merge GitHub-only items: issue #278 closed by the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -219,7 +218,7 @@ merge PR #505, run close-out (pr-gates.md §3).
 | 3 — Link repoints (chrome, console, picker) | ✅ | `0f3eca5` |
 | 4 — Delete `venue-admin/`, redirect route, inventory updates | ✅ | `f6b36d3` |
 | 5 — e2e sweep (mocked new+updated; real-backend repoint) | ✅ | `70bb02e` |
-| 6 — Close-out (docs-freshness ran; final plan state lands with the gate results) | ⏳ | |
+| 6 — Close-out (docs-freshness ran; review-fix round `fe00cdf`) | ✅ | `de59831`, `fe00cdf` + this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -229,9 +228,24 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (run 30738419981, on `f6b36d3`) | The phase-4 push predated the e2e sweep: `unified-auth` still asserted the `/venue-admin$` landing URL and `operator-registration` the retired "venue-created" card — 2 failures in the mocked suite | fixed by the phase-5 sweep (`70bb02e`); full mocked suite 120/120 locally |
-| F-2 | review (`/code-review` agent #4, scored 100) | Picker → "Add another venue" is a param-only navigation: the focused link unmounts with the `@if` branch swap and keyboard/AT focus falls to `document.body` — WCAG 2.4.3, the recurring #148/#351/#462 stranded-focus class | fixed in the review-fix commit: focus re-anchors on the swapped-in `#operator-home-title` (`tabindex="-1"`) via `afterNextRender`; pinned by a new unit spec + the e2e now clicks the real link and asserts `toBeFocused` |
-| F-3 | review (agent #5, scored 50) | Plan doc self-contradiction: claimed `CardGlass + FieldGlass` while the shipped card follows the venue-tab idiom (no FieldGlass) | fixed in the review-fix commit (this doc) |
-| F-4 | review (overlay RV-STYLE-1, Minor ×5; + agent #3's latent-contract note, scored 50) | Five multi-line inline comments introduced by the diff; and `decide()` silently outranked a (currently unreachable) `returnUrl` with the create param, contradicting `landingRouteFor`'s documented "returnUrl wins" contract | fixed in the review-fix commit: comments trimmed to one line; `decide()` now lets a safe `returnUrl` outrank the create state, pinned by a new unit spec |
+| F-2 | review (`/code-review` agent #4, scored 100) | Picker → "Add another venue" is a param-only navigation: the focused link unmounts with the `@if` branch swap and keyboard/AT focus falls to `document.body` — WCAG 2.4.3, the recurring #148/#351/#462 stranded-focus class | fixed-in-`fe00cdf`: focus re-anchors on the swapped-in `#operator-home-title` (`tabindex="-1"`) via `afterNextRender`; pinned by a new unit spec + the e2e now clicks the real link and asserts `toBeFocused` |
+| F-3 | review (agent #5, scored 50) | Plan doc self-contradiction: claimed `CardGlass + FieldGlass` while the shipped card follows the venue-tab idiom (no FieldGlass) | fixed-in-`fe00cdf` (this doc) |
+| F-4 | review (overlay RV-STYLE-1, Minor ×5; + agent #3's latent-contract note, scored 50) | Five multi-line inline comments introduced by the diff; and `decide()` silently outranked a (currently unreachable) `returnUrl` with the create param, contradicting `landingRouteFor`'s documented "returnUrl wins" contract | fixed-in-`fe00cdf`: comments trimmed to one line; `decide()` now lets a safe `returnUrl` outrank the create state, pinned by a new unit spec |
+
+**Gate record (all three green on `fe00cdf`):**
+
+- **CI** — Backend (build + test), Frontend (lint + test + build), CodeQL: all `success`
+  (run 30739287959). The one red round (F-1) is registered above.
+- **Review gate** — `/code-review` ran at invocation-ladder rung 2 (the installed plugin's
+  command file, executed directly — `Skill("code-review")` is human-invoke-only): eligibility
+  + CLAUDE.md-map + summary scouts, then a 6-way reviewer fan-out (CLAUDE.md adherence, shallow
+  bug scan, git-history context, prior-PR comments, in-code guidance, plus the
+  `riviera-review-overlay` RV-FE bank walk), then per-finding confidence scoring. One finding
+  scored ≥80 (F-2, scored 100) and was fixed in-PR; F-3/F-4 scored 50 and were fixed anyway.
+  Review comment: PR #505 comment 5156452401. The overlay was re-walked on the fix diff.
+- **Sonar gate** — quality gate passed AND the reported list pulled from the API and verified
+  genuinely empty (analysis exists: `new_lines` 449 pre-fix / non-empty measures post-fix;
+  0 issues, 0 security hotspots, 0 duplicated blocks, new-code coverage 97.0%).
 
 ---
 
@@ -266,57 +280,58 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Create `operator/venue-create-card.*` · Move `venue-admin.{service,model}.ts` +
 service spec · Test `venue-create-card.spec.ts` first
 
-- [ ] Step 1: Write failing specs — one per `preserved` ledger row + the changed success
+- [x] Step 1: Write failing specs — one per `preserved` ledger row + the changed success
       path (create → `reset()` → `navigateByUrl('/operator/31/beach-map')`).
-- [ ] Step 2: Run `npm test -- venue-create-card` → FAIL (component absent).
-- [ ] Step 3: Implement the card: template from `venue-editor.html` restructured onto
+- [x] Step 2: Run `npm test -- venue-create-card` → FAIL (component absent).
+- [x] Step 3: Implement the card: template from `venue-editor.html` restructured onto
       CardGlass + the venue-tab field classes (the nearest exemplar — FieldGlass's
       `--riv-field-*` idiom deliberately not used); logic from `VenueEditor` minus the
       success-card state, plus router navigation. Relocate service/model (git mv).
-- [ ] Step 4: Run `npm test -- venue-create-card venue-admin.service` → PASS; a11y +
+- [x] Step 4: Run `npm test -- venue-create-card venue-admin.service` → PASS; a11y +
       contrast specs green.
-- [ ] Step 5: Generalization audit — due only if a bug is fixed / pattern introduced.
-- [ ] Step 6: Commit (`… (#278)`), Step 7: update Execution status in the same window.
+- [x] Step 5: Generalization audit — due only if a bug is fixed / pattern introduced.
+- [x] Step 6: Commit (`… (#278)`), Step 7: update Execution status in the same window.
 
 ## Phase 2 — OperatorHome integration
 
-- [ ] Failing specs first: 0 venues renders card (no navigation); `?create=1` renders card
+- [x] Failing specs first: 0 venues renders card (no navigation); `?create=1` renders card
       for a 1-venue operator; failure state unchanged; `auth-landing.spec.ts` flips to
       `/operator`.
-- [ ] Implement: `landingRouteFor` one-line change; `OperatorHome` reads the create param
+- [x] Implement: `landingRouteFor` one-line change; `OperatorHome` reads the create param
       reactively, renders `VenueCreateCard`, keeps retry state.
-- [ ] `npm test -- operator-home auth-landing` → PASS. Commit + status update.
+- [x] `npm test -- operator-home auth-landing` → PASS. Commit + status update.
 
 ## Phase 3 — Link repoints
 
-- [ ] Update `operator-chrome.spec.ts`, `operator-console.spec.ts` expectations →
+- [x] Update `operator-chrome.spec.ts`, `operator-console.spec.ts` expectations →
       `/operator?create=1`; picker spec gains "Add another venue".
-- [ ] Implement repoints (chrome `[queryParams]`, console html, picker entry).
-- [ ] `npm test -- operator-chrome operator-console operator-home` → PASS. Commit + status.
+- [x] Implement repoints (chrome `[queryParams]`, console html, picker entry).
+- [x] `npm test -- operator-chrome operator-console operator-home` → PASS. Commit + status.
 
 ## Phase 4 — Retirement
 
-- [ ] `app.routes.spec.ts` failing spec: `/venue-admin` lands on `/operator?create=1`.
-- [ ] Swap route to `redirectTo` + delete `venue-admin/` (editor, 3 specs, scss); update
+- [x] `app.routes.spec.ts` failing spec: `/venue-admin` lands on `/operator?create=1`.
+- [x] Swap route to `redirectTo` + delete `venue-admin/` (editor, 3 specs, scss); update
       `app.spec.ts` chrome inventory; grep: no non-redirect `/venue-admin` reference
       remains in `src/`.
-- [ ] Full `npm run lint` + `npm test` → PASS. Commit + status.
+- [x] Full `npm run lint` + `npm test` → PASS. Commit + status.
 
 ## Phase 5 — e2e sweep
 
-- [ ] Load `playwright-cli` first (routing gate).
-- [ ] New `operator-onboarding.e2e.ts` (mocked): 0-venue sign-in → inline form → POST 201 →
+- [x] Load `playwright-cli` first (routing gate).
+- [x] New `operator-onboarding.e2e.ts` (mocked): 0-venue sign-in → inline form → POST 201 →
       beach-map tab; axe on the form state.
-- [ ] Repoint mocked-suite entry points + `unified-auth` URL assertion; keep one
+- [x] Repoint mocked-suite entry points + `unified-auth` URL assertion; keep one
       redirect-assertion spec.
-- [ ] Repoint `real-backend/support/operator.ts#createVenue` (id from URL) +
+- [x] Repoint `real-backend/support/operator.ts#createVenue` (id from URL) +
       `venue-editor.e2e.ts` (guard redirect via `/operator`, form on zero state).
-- [ ] `npm run test:e2e:a11y` → PASS. Commit + status.
+- [x] `npm run test:e2e:a11y` → PASS. Commit + status.
 
 ## Phase 6 — Close-out
 
-- [ ] `riviera-docs-freshness` over `main..HEAD`; patch or flag findings.
-- [ ] Final plan state in the PR's own last commit, citing `merged via PR #NN`.
+- [x] `riviera-docs-freshness` over `origin/main...HEAD` — 6 findings, all patched (`de59831`).
+- [x] Review-fix round (`fe00cdf`) re-entered at Implement per the re-entry rule.
+- [x] Final plan state in the PR's own last commit, citing `merged via PR #505`.
 
 ---
 
@@ -330,26 +345,26 @@ service spec · Test `venue-create-card.spec.ts` first
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1..AC-6:** `npm test` (full unit run incl. a11y/contrast specs) → 1087 PASS. Verified at `f6b36d3`/`70bb02e`.
-- [x] **AC-7:** `npm run test:e2e:a11y` → 120 PASS locally (real-backend repoint static — R-2). Verified at `70bb02e`.
+- [x] **AC-1..AC-6:** `npm test` (full unit run incl. a11y/contrast specs) → 1089 PASS. Verified at `fe00cdf`.
+- [x] **AC-7:** `npm run test:e2e:a11y` → 120 PASS locally at `70bb02e`; the fix round's affected specs re-run green at `fe00cdf` (real-backend repoint static — R-2).
 - [x] **AC-8:** `git ls-files 'frontend/src/app/venue-admin/*'` → empty. Verified at `f6b36d3`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] No JPA introduced (invariant #1 — no backend code at all).
-- [ ] Availability section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] Modulith section justified N/A; FE import direction clean (invariant #11 mirror).
-- [ ] Payment/payout N/A (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6) — cutoff field remains an opaque `HH:mm` string.
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change → no Flyway migration (invariant #12).
-- [ ] Frontend standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] Close-out written in THIS PR, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (invocation ladder, `references/pr-gates.md` §1).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] No JPA introduced (invariant #1 — no backend code at all).
+- [x] Availability section justified N/A (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] Modulith section justified N/A; FE import direction clean (invariant #11 mirror — RV-FE-8 ✅).
+- [x] Payment/payout N/A (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6) — cutoff field remains an opaque `HH:mm` string.
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change → no Flyway migration (invariant #12).
+- [x] Frontend standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (all resolved).
+- [x] Close-out written in THIS PR, citing `merged via PR #505`.
+- [x] The review gate ran in full (invocation ladder rung 2 — see the Gate record above).
