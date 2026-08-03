@@ -1,6 +1,7 @@
 # ADR-0013: Venue-photo moderation is report-and-remove, not pre-publication review
 
-- **Status:** Proposed (decided by #230; the "remove" half shipped ahead of it in #504/PR #506)
+- **Status:** Accepted (the posture was chosen by the maintainer in #230, who directed this stance be
+  written up and ratified it at merge; the "remove" half shipped ahead of it in #504/PR #506)
 - **Date:** 2026-08-03
 - **Relates to:** ADR-0008 (venue photo storage — the single-transaction delete and the immutable
   content-addressed serving URL this decision leans on), #142 (venue photos end-to-end, which shipped
