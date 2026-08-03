@@ -94,7 +94,14 @@ ADR-0004 applied to EU-sovereign hosting for dummy data.
   bucket to mock** — the in-memory fake covers the application-service unit tests.
 - Upload/replace/delete are **venue-scoped** (`/api/venues/{venueId}/**`): `assertOwns` runs
   first in the application service (invariant #13, BOLA), pinned by `CrossVenueDenialIT`. The
-  tourist photo read is **public**.
+  tourist photo read is **public**. **Amended by #504:** deletion additionally has a second,
+  **ownership-free** caller — the platform-admin takedown
+  `DELETE /api/admin/venues/{venueId}/photos/{slot}`, role-gated on `is_admin` and exempt from
+  invariant #13 like every `/api/admin/**` surface, because a reported photo belongs by
+  definition to a venue the admin does not own. It is a separate port
+  (`VenuePhotoTakedown`) so the venue-scoped `VenuePhotos` contract stays uniformly
+  ownership-asserting, and it drives this ADR's same single cascading `DELETE`. The storage
+  decision below is unchanged.
 - Re-rendering trade-off: because we discard the original, changing the resize targets later
   means operators re-upload (acceptable for a handful of venues) rather than a server-side
   re-render from a stored master. Recorded so it is a conscious cost, not a surprise.

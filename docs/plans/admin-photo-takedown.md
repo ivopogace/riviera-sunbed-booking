@@ -35,9 +35,12 @@ provisioned to prove the 403; and that the "serving URLs 404" AC has a duplicate
 R-3) · `riviera-plan-doc` (this template — forced the Module-ownership table and the parity ledger
 that pinned "the operator delete stays byte-for-byte") · `tdd` (each phase is a failing test first:
 port-level unit spec before the service method, IT before the controller) ·
-`riviera-review-overlay` (review gate — ran at ready-for-review; see the findings register) ·
-`riviera-docs-freshness` (ran at merge close-out over this slice's range — see the findings
-register) · `riviera-modulith` (placed the new port in `venue/application/` not `api/` — no sibling
+`riviera-review-overlay` (review gate — ran at ready-for-review, backend bank + the wire-shape half
+of the contract bank; 2 findings, both fixed — see the findings register and the review-gate note) ·
+`riviera-docs-freshness` (**ran** pre-merge over `origin/main...HEAD`, folded into this PR rather
+than a docs-only follow-up: rename grep clean, counting sweep clean (18 hits read, every "two/three"
+a different subject), **2 findings from the top-down walk, both patched** — see the docs-freshness
+note) · `riviera-modulith` (placed the new port in `venue/application/` not `api/` — no sibling
 module calls it — and the controller in `venue/adapter/in/`, the #391 host-it-in-the-module
 precedent; confirmed no `allowedDependencies` change) · `riviera-java-conventions` (package-private
 controller + constructor injection, `ApiProblem.response` for the 404 rather than a per-controller
@@ -56,43 +59,45 @@ reused verbatim) · `riviera-frontend` / `angular-developer` / `playwright-cli` 
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue holding a photo in a slot, when the platform admin drives
+- [x] **AC-1:** Given a venue holding a photo in a slot, when the platform admin drives
       `VenuePhotoTakedown#takedown(venueId, slot)`, then the port answers `true`, the slot's metadata
       is gone and every variant of it is gone — with **no ownership consulted at all**.
       *Pinned by:* `VenuePhotoServiceTest.takedownRemovesAPhotoWithoutConsultingOwnership`
-- [ ] **AC-2:** Given a venue whose photo an admin has taken down, when the public serving read is
+- [x] **AC-2:** Given a venue whose photo an admin has taken down, when the public serving read is
       driven for that photo's variant hash, then it is absent; and the venue's tourist read models
       (Discover card + beach-map banner) carry no cover.
       *Pinned by:* `AdminPhotoTakedownIT.takenDownPhotoStopsServingAndDropsOutOfTheTouristReads`
-- [ ] **AC-3:** Given a venue the admin does **not** own, when the admin takes its photo down, then it
+- [x] **AC-3:** Given a venue the admin does **not** own, when the admin takes its photo down, then it
       succeeds — the `/api/admin/**` surface is exempt from the per-venue ownership check (invariant
       #13), so no `NOT_VENUE_OWNER` is raised.
       *Pinned by:* `AdminPhotoTakedownIT.adminTakesDownAPhotoOfAVenueItDoesNotOwn`
-- [ ] **AC-4:** Given a plain ACTIVE operator (`is_admin` false), when it calls the takedown endpoint,
+- [x] **AC-4:** Given a plain ACTIVE operator (`is_admin` false), when it calls the takedown endpoint,
       then `403`; given no session at all, then `401`.
       *Pinned by:* `AdminPhotoTakedownIT.takedownIsAdminOnly`
-- [ ] **AC-5:** Given an empty slot, an unknown venue, or a venue with no photos, when the admin takes
+- [x] **AC-5:** Given an empty slot, an unknown venue, or a venue with no photos, when the admin takes
       it down, then a single RFC-7807 `404 NO_SUCH_PHOTO` — one answer for all three, so the surface
       never distinguishes "no such venue" from "no such photo", and never a `500`.
       *Pinned by:* `AdminPhotoTakedownIT.takedownOfSomethingThatIsNotThereIs404`
-- [ ] **AC-6:** Given an unknown slot name in the path, when the admin calls the endpoint, then
+- [x] **AC-6:** Given an unknown slot name in the path, when the admin calls the endpoint, then
       `400 INVALID_REQUEST` from the shared advice (not a `500`, not an enum-parse stack trace).
-      *Pinned by:* `AdminPhotoTakedownIT.unknownSlotIs400`
-- [ ] **AC-7:** Given the operator's own delete/replace flow, when this slice ships, then it is
+      *Pinned by:* `AdminPhotoTakedownIT.unknownSlotIs400` at the HTTP edge, and — after review
+      finding F-2 — `PhotoSlotsTest` at the shared parser's own seam, which is what covers the
+      operator endpoints that route through the same rule.
+- [x] **AC-7:** Given the operator's own delete/replace flow, when this slice ships, then it is
       unchanged — a non-owner operator `DELETE /api/venues/{v}/photos/{slot}` is still `403
       NOT_VENUE_OWNER` (denied before the slot is looked at), and the owner's delete still `204`s.
       *Pinned by:* existing `CrossVenueDenialIT.photoDeleteByNonOwnerIs403` +
       `CrossVenueDenialIT.ownerCanUploadAndDeleteItsOwnPhoto`, unmodified.
-- [ ] **AC-8:** Given the new endpoint, when the endpoint inventory is probed by a principal holding a
+- [x] **AC-8:** Given the new endpoint, when the endpoint inventory is probed by a principal holding a
       role the application grants nobody, then the filter chain rejects it — i.e. the endpoint has an
       explicit `SecurityConfig` rule and is not on the declared-reachable list.
       *Pinned by:* existing `EndpointRoleGateCoverageTest.everyMappedEndpointIsGated` (no edit to its
       `DECLARED_REACHABLE` set).
-- [ ] **AC-9:** Given the structural net, when the slice is built, then `ModularityTests`,
+- [x] **AC-9:** Given the structural net, when the slice is built, then `ModularityTests`,
       `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`,
       `PublishedSurfacePlacementArchitectureTests` and `ErrorContractArchitectureTests` stay green.
       *Pinned by:* those classes.
-- [ ] **AC-10:** `RESPONSIBILITIES.md` §`venue` names the admin takedown surface, and `CONTEXT.md`
+- [x] **AC-10:** `RESPONSIBILITIES.md` §`venue` names the admin takedown surface, and `CONTEXT.md`
       defines **photo takedown** as domain vocabulary.
       *Pinned by:* review (docs), not a test.
 
@@ -116,7 +121,7 @@ reused verbatim) · `riviera-frontend` / `angular-developer` / `playwright-cli` 
 | Old-surface behavior | Verdict (preserved / changed / dropped) | How the new surface does it, or why it's gone |
 |---|---|---|
 | Operator `DELETE /api/venues/{v}/photos/{slot}` — asserts ownership first, `403 NOT_VENUE_OWNER` for a non-owner | **preserved, untouched** | The slice adds a second port beside `VenuePhotos`; `VenuePhotos#delete` and its controller method are not edited. AC-7 pins both directions with the pre-existing `CrossVenueDenialIT` cases. |
-| `VenuePhotoController.parseSlot` — lower-case REST slot → `PhotoSlot`, unknown → `400` via the advice | **changed (moved, same behavior)** | Extracted verbatim to a package-private `PhotoSlots.parse` in the same package, now shared by both controllers. Same `InvalidApiRequestException.parsing` call, same `Locale.ROOT`, same `400`. |
+| `VenuePhotoController.parseSlot` — lower-case REST slot → `PhotoSlot`, unknown → `400` via the advice | **changed (moved, same behavior) — now pinned** | Extracted verbatim to a package-private `PhotoSlots.parse` in the same package, now shared by both controllers. Same `InvalidApiRequestException.parsing` call, same `Locale.ROOT`, same `400`. Review finding F-2 caught that this row was *asserted, not proven* — no test anywhere covered the unknown-slot `400` on the operator path — so `PhotoSlotsTest` now pins the rule at the seam all three endpoints share. |
 
 > Nothing else is retired or replaced: this slice is additive. The ledger is filled rather than
 > `N/A`'d because the plan *does* move one existing private method, and "just extracting a helper" is
@@ -126,24 +131,34 @@ reused verbatim) · `riviera-frontend` / `angular-developer` / `playwright-cli` 
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | An ownership-free delete on the photo port gets called from the **operator** adapter (now or later), silently bypassing invariant #13 | med | high | The ownership-free path is its own port, `VenuePhotoTakedown`, named for what it is; `VenuePhotos` keeps its uniform "asserts ownership first" contract. The operator controller depends only on `VenuePhotos`. `CrossVenueDenialIT` (AC-7) pins the operator path from the outside, so a mis-wiring fails a test rather than a review read. | claude | open |
-| R-2 | The new endpoint has no explicit `SecurityConfig` rule and falls through to `anyRequest().authenticated()` — the #316/#317/#328 defect class, where *any* authenticated principal (a signed-in tourist included) passes | med | high | Explicit `.requestMatchers(HttpMethod.DELETE, ADMIN_VENUE_PHOTO_PATH).hasRole(ADMIN_ROLE)`, and `EndpointRoleGateCoverageTest` fails the build if it is missing (AC-8). AC-4 checks the gate from the outside with a real plain-operator session. | claude | open |
-| R-3 | **Duplicate-hash survival:** the pipeline is deterministic, so one image uploaded to two slots yields byte-identical variants sharing `(venue_id, content_hash)`, and the serving read is `LIMIT 1` over that pair (V24's deliberate non-unique index, #142 F-2). Taking down one slot therefore leaves the bytes servable from the surviving slot's row — so AC-2's "the URL 404s" is true only when no other slot still holds that image | low | med | Correct behavior, not a defect: the surviving slot is still a *published* photo, and un-publishing it is its own takedown. Documented on `VenuePhotoTakedown`'s javadoc and in `CONTEXT.md`, and AC-2's IT seeds a single-slot photo so the assertion is honest about what it proves. Cascading is a Non-goal; if moderation ever needs "remove these bytes everywhere", that is a follow-up issue, not a silent widening here. | claude | open |
-| R-4 | Error-contract drift — a hand-rolled `{"error": …}` body or a per-controller `@ExceptionHandler` on the new controller | low | med | `ApiProblem.response(NOT_FOUND, "NO_SUCH_PHOTO", …)` only, mirroring `VenuePhotoController`; the unknown-slot path rides the shared advice via `InvalidApiRequestException`. `ErrorContractArchitectureTests` forbids the per-controller handler (AC-9); AC-5/AC-6 assert the wire shape. | claude | open |
+| R-1 | An ownership-free delete on the photo port gets called from the **operator** adapter (now or later), silently bypassing invariant #13 | med | high | The ownership-free path is its own port, `VenuePhotoTakedown`, named for what it is; `VenuePhotos` keeps its uniform "asserts ownership first" contract. The operator controller depends only on `VenuePhotos`. `CrossVenueDenialIT` (AC-7) pins the operator path from the outside, so a mis-wiring fails a test rather than a review read. | claude | **closed** — shipped as designed. Containment is stronger than planned: `application/` is not a named interface, so Modulith confines the ownership-free port to the `venue` module outright — no sibling can reach it even though it must be `public` for `adapter/in`. |
+| R-2 | The new endpoint has no explicit `SecurityConfig` rule and falls through to `anyRequest().authenticated()` — the #316/#317/#328 defect class, where *any* authenticated principal (a signed-in tourist included) passes | med | high | Explicit `.requestMatchers(HttpMethod.DELETE, ADMIN_VENUE_PHOTO_PATH).hasRole(ADMIN_ROLE)`, and `EndpointRoleGateCoverageTest` fails the build if it is missing (AC-8). AC-4 checks the gate from the outside with a real plain-operator session. | claude | **closed** — matcher shipped; `EndpointRoleGateCoverageTest` green with `DECLARED_REACHABLE` unmodified, and AC-4 passes with a genuinely non-admin session. CSRF also verified enforced (the `ignoringRequestMatchers` list covers only the four stateless booking/webhook paths). |
+| R-3 | **Duplicate-hash survival:** the pipeline is deterministic, so one image uploaded to two slots yields byte-identical variants sharing `(venue_id, content_hash)`, and the serving read is `LIMIT 1` over that pair (V24's deliberate non-unique index, #142 F-2). Taking down one slot therefore leaves the bytes servable from the surviving slot's row — so AC-2's "the URL 404s" is true only when no other slot still holds that image | low | med | Correct behavior, not a defect: the surviving slot is still a *published* photo, and un-publishing it is its own takedown. Documented on `VenuePhotoTakedown`'s javadoc and in `CONTEXT.md`, and AC-2's IT seeds a single-slot photo so the assertion is honest about what it proves. Cascading is a Non-goal; if moderation ever needs "remove these bytes everywhere", that is a follow-up issue, not a silent widening here. | claude | **closed** — documented on the port, in `CONTEXT.md`, and in the PR's scope notes; AC-2's IT seeds a single-slot photo so its assertion proves what it claims. |
+| R-4 | Error-contract drift — a hand-rolled `{"error": …}` body or a per-controller `@ExceptionHandler` on the new controller | low | med | `ApiProblem.response(NOT_FOUND, "NO_SUCH_PHOTO", …)` only, mirroring `VenuePhotoController`; the unknown-slot path rides the shared advice via `InvalidApiRequestException`. `ErrorContractArchitectureTests` forbids the per-controller handler (AC-9); AC-5/AC-6 assert the wire shape. | claude | **closed** — `ApiProblem` only, no per-controller handler; `ErrorContractArchitectureTests` green and both wire-shape ACs pass. |
 | R-5 | The `@WebMvcTest` slice (`EndpointRoleGateCoverageTest`) fails to start because the new controller's port has no bean | med | low | Add a `VenuePhotoTakedown` stub bean to `WebSliceStubs` beside the existing `VenuePhotos` one, returning `false` (inert not-found), in the same commit as the controller. | claude | **closed** — stub added in phase 1; `EndpointRoleGateCoverageTest` green |
 | R-6 | Flyway version collision | none | — | **No migration in this slice** (V24's cascade already does the work), so no `V<n>` is claimed and nothing can collide. The only open PRs are Dependabot bumps — none touch `db/migration`. | claude | closed at plan time |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `403` for a plain operator and `404 NO_SUCH_PHOTO` for a missing photo satisfy the
-  issue's "clean, non-enumerating client error". An admin is a trusted principal that can already
-  list every operator account, so distinguishing "no such photo" from "no such venue" would leak
-  nothing — the endpoint collapses them to one answer anyway, which is strictly the safer shape.
-  *Owner:* claude · *Resolves by:* phase 1 (AC-5).
-- **Open question:** should a destructive platform-admin action leave an audit record? Out of scope
-  here (Non-goals) because no admin surface in this repo logs today and this slice should not invent
-  the policy alone. *Owner:* claude · *Resolves by:* raise a follow-up issue at close-out if the
-  moderation stance (#230 / ADR-0013) wants one.
+*(Empty — both entries resolved below.)*
+
+### Resolved
+
+- **Assumption (resolved, `c0ac3d1`):** `403` for a plain operator and `404 NO_SUCH_PHOTO` for a
+  missing photo satisfy the issue's "clean, non-enumerating client error". **Outcome: held, and
+  shipped stronger than assumed** — the endpoint returns the *same* `404 NO_SUCH_PHOTO` for an empty
+  slot, a photo-less venue, and a venue id that does not exist, so it distinguishes none of them.
+  Pinned by `AdminPhotoTakedownIT.takedownOfSomethingThatIsNotThereIs404`, which drives a real and a
+  nonexistent venue through one loop and asserts an identical response for both (AC-5).
+- **Open question (resolved — deferred with a home):** should a destructive platform-admin action
+  leave an audit record? **Outcome: out of scope for this slice, and now written down where the
+  decision belongs rather than only here.** No admin surface in this repo logs its action today
+  (`AdminErasureController`, `AdminOperatorController`, `AdminMailOutboxController` are all silent),
+  so inventing an audit policy inside a photo slice would create a lone precedent instead of a
+  policy. Carried to the parent moderation-stance issue **#230 / ADR-0013**, which is where the
+  report-and-remove posture — and therefore whether takedowns need an audit trail — is actually
+  decided. Propagated per close-out step 3 (a deferred finding that lives only in a review
+  transcript is lost by the next session).
 
 ## Availability & concurrency (invariant #2)
 
@@ -228,18 +243,28 @@ record, the surface added is:
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — all phases done; next is the PR ready-for-review + the Review and Sonar gates`
+**Stage pointer:** `merge close-out — all gates run; awaiting merge of PR #506`
 
-**Next action:** Mark PR #506 ready for review, then run the Review gate (`/code-review` per the
-invocation ladder + `riviera-review-overlay`) and the Sonar gate's issue-list pull.
+**Next action:** Merge PR #506. Post-merge, only two GitHub-side items remain (no repo commit):
+confirm #504 closed, and note the slice on parent epic #230.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The takedown port + service method | ✅ | `23f3a76` |
 | 1 — The admin endpoint + role gate | ✅ | `c0ac3d1` |
-| 2 — Substrate docs (RESPONSIBILITIES.md, CONTEXT.md) | ✅ | (this commit) |
+| 2 — Substrate docs (RESPONSIBILITIES.md, CONTEXT.md) | ✅ | `1353a94` |
+| 3 — Review-gate fixes + docs-freshness patches + close-out | ✅ | (this commit) |
 
-**PR:** #506 (draft; opened at the first phase commit so every push gets CI).
+**Merged via PR #506.**
+
+**Gate results:** CI green (backend build+test, frontend, CodeQL — all `success`). Testcontainers
+ITs **ran, not skipped** — proven by Sonar reporting 100% new-code coverage on
+`AdminVenuePhotoController.java` (51 new lines, 0 uncovered), a class reachable only from
+`AdminPhotoTakedownIT`. Sonar gate green **and its list pulled and empty**: 0 new issues, 0 bugs,
+0 vulnerabilities, 0 code smells, 0 duplicated blocks, new-code coverage 88.2% (≥80% bar; every
+changed file has **0 uncovered new lines** — the aggregate is the line-vs-branch mix). The zero is
+real, not the false-clean read: `new_lines: 143` is populated and the `SonarCloud Code Analysis`
+check-run concluded `success`. Review gate ran **degraded** — see the review-gate note.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -249,7 +274,48 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (RV-STYLE-1) | Two inline comments added by the slice run to 2 and 3 lines — `AdminPhotoTakedownIT.adminTakesDownAPhotoOfAVenueItDoesNotOwn` and `VenuePhotoServiceTest.takedownReachesAVenueTheCallerCouldNeverOwn`. The bank is one line or none; the long form belongs in Javadoc, which is exempt. | **fixed** — the first shortened to one line, the second promoted to a method Javadoc (where the reasoning is discoverable rather than buried mid-body). |
+| F-2 | review | `PhotoSlots`, the helper this slice extracts, had **no test at its own seam**: its contract was pinned only incidentally through `AdminPhotoTakedownIT.unknownSlotIs400`, and a repo-wide grep found no test anywhere asserting the operator photo path's unknown-slot `400`. So the Behavior-parity ledger's "moved, same behavior" row was *asserted, not proven* — exactly the claim the ledger exists to make someone verify. | **fixed** — added `PhotoSlotsTest` (every slot name round-trips, case-insensitivity, unknown + empty → `InvalidApiRequestException`), so the one parse rule serving three endpoints is pinned where it lives. Parity ledger row updated from asserted to pinned. |
+| F-3 | review (RV-PROC-1 self-check) | The *Skills consulted* line stated `riviera-docs-freshness` "ran at merge close-out" while the run had not happened — a forward-dated claim reads identically to a completed one in a diff. | **fixed** — the parenthesis now records the actual run: range, mode, and findings. |
+
+**Docs-freshness note** — run pre-merge over `origin/main...HEAD` (`riviera-sdlc` close-out step 5,
+folded into this PR per its "nothing here is inherently post-merge any more" rule).
+
+- *Step 2a, rename/removal grep:* **clean.** The one identifier that moved (`parseSlot`, private)
+  is cited by no substrate doc.
+- *Step 2b, counting sweep:* **clean.** This slice does make the Nth of several things (admin
+  surface, venue-module driving port), so the sweep was run: 18 hits on the count phrasings
+  narrowed to photo/admin/port vocabulary, each read. Every one has a different subject and stays
+  true — `PhotoSlot`'s "three designed slots", `JdbcVenueCatalog`'s "three role-split read ports"
+  (this slice publishes no `api/` port), `AdminEmailSuppressionController`'s "two admin surfaces
+  that take an address" (this one takes venue + slot).
+- *Step 3, top-down walk:* **2 findings, both patched.**
+  - `docs/adr/ADR-0008-venue-photo-storage.md:95` — stated "Upload/replace/delete are
+    **venue-scoped** … `assertOwns` runs first". Contradicted: deletion now has a second,
+    ownership-free caller. Patched as an explicit **"Amended by #504"** clause rather than a
+    rewrite — the ADR's actual decision (bytea behind a swappable port) is untouched, and step 4
+    forbids silently rewriting a decision's substance.
+  - `CLAUDE.md:158` — the `venue` module row enumerates the module's surfaces down to individual
+    endpoints, so a new write surface with an unusual authorization posture belongs in it. Patched
+    with a short clause naming the endpoint and the separate port.
+- *Step 6, graph refresh:* skipped — `graphify-out/` is absent in this cloud clone (gitignored,
+  regenerable), so there is no graph to refresh and nothing to commit.
+
+**Review-gate note.** Run at ready-for-review over `origin/main...HEAD` with
+`riviera-review-overlay` layered on. **The `/code-review` subagent fan-out did not run** — this
+session carries a standing instruction withholding the Agent tool, so the invocation ladder's
+rung 3 applied and the review ran inline (`/review 506`) as a **declared degraded mode**. Stated in
+the PR, and the PR's review checkbox is left **unticked** accordingly (`references/pr-gates.md` §1:
+never tick a box for a review that did not fully run). Banks walked: the generic correctness pass
+plus `references/backend-conventions.md` (backend scope) and the wire-shape half of
+`references/fe-be-contract.md` (a new endpoint). Blocker items with a touched domain: **RV-BE-9**
+(authorization) — checked and clean, see the AC-3/AC-4/AC-7 pins; **RV-BE-1** and **RV-BE-7** have
+no touched domain here. Verified along the way: CSRF is enforced on the new `DELETE` (the
+`ignoringRequestMatchers` list covers only the four stateless booking/webhook paths), a
+non-numeric `venueId` lands on the framework's `INVALID_REQUEST` mapping rather than a 500, and
+`VenuePhotoTakedown`'s blast radius is confined to the `venue` module by Modulith, since
+`application/` is not a named interface — no sibling module can reach the ownership-free port even
+though it must be `public` for the adapter package.
 
 ---
 
@@ -287,7 +353,7 @@ Skill-routing gate for what the fix touches *before* editing).
 `venue/application/VenuePhotoService.java` · Test
 `venue/application/VenuePhotoServiceTest.java`
 
-- [ ] **Step 1: Write the failing test** — appended to `VenuePhotoServiceTest`. The class's existing
+- [x] **Step 1: Write the failing test** — appended to `VenuePhotoServiceTest`. The class's existing
       fixture wires `FakeVenueOwnership(OPERATOR, VENUE)`, so "a venue the caller does not own" is
       simply any other venue id: the fake throws `NotVenueOwnerException` for it, which is exactly
       what makes the second test a real proof that ownership is never consulted.
@@ -325,12 +391,12 @@ Skill-routing gate for what the fix touches *before* editing).
 > `VenuePhotoServingIT` seeds with); add it beside the existing `jpeg(...)` helper if the class has no
 > equivalent. Read the class's existing helpers first and reuse rather than duplicate.
 
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*VenuePhotoServiceTest*"` →
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*VenuePhotoServiceTest*"` →
       FAIL: `cannot find symbol: method takedown(VenueId, PhotoSlot)`.
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 `venue/application/VenuePhotoTakedown.java`:
 
@@ -382,20 +448,20 @@ the second port and why it skips ownership):
 	}
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `gradle test --tests "*VenuePhotoServiceTest*"` → PASS.
+- [x] **Step 4: Run it, verify it passes** — `gradle test --tests "*VenuePhotoServiceTest*"` → PASS.
 
 > Scope (end-of-phase regression): `gradle test --tests "*venue*"` plus
 > `--tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"`.
 
-- [ ] **Step 5: Generalization-audit pass** — search for any other place a `/api/admin/**` surface
+- [x] **Step 5: Generalization-audit pass** — search for any other place a `/api/admin/**` surface
       reuses a venue-scoped application service, to check none of them took the "add an unauthorized
       method to the scoped port" shortcut this phase deliberately avoided.
       `grep -rn "api/admin" platform/src/main/java --include=*.java -l` → inspect each controller's port.
       Append the result to the Generalization-audit log.
 
-- [ ] **Step 6: Commit** — `git commit -m "Add the ownership-free venue-photo takedown port (#504)"`
+- [x] **Step 6: Commit** — `git commit -m "Add the ownership-free venue-photo takedown port (#504)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -405,7 +471,7 @@ the second port and why it skips ownership):
 `test/.../venue/AdminPhotoTakedownIT.java` · Modify `venue/adapter/in/VenuePhotoController.java`,
 `SecurityConfig.java`, `test/.../WebSliceStubs.java`
 
-- [ ] **Step 1: Write the failing test** — `AdminPhotoTakedownIT`. It seeds a venue + a
+- [x] **Step 1: Write the failing test** — `AdminPhotoTakedownIT`. It seeds a venue + a
       single-slot cover through the real `PhotoStorage` adapter (the `VenuePhotoServingIT` pattern),
       provisions a plain non-admin operator through the real `OperatorProvisioning` (the
       `PerOperatorLoginIT` pattern), and drives the endpoint over MockMvc against Testcontainers
@@ -481,10 +547,10 @@ the second port and why it skips ownership):
 > writing the assertion, and confirm the tourist venue read's cover field name (`coverPhoto`) against
 > `VenueMapView` — both are one grep each, and a guessed literal is a false-green waiting to happen.
 
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*AdminPhotoTakedownIT*"` →
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*AdminPhotoTakedownIT*"` →
       FAIL: `404` on the admin path (no such mapping) / the class does not compile.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 `venue/adapter/in/PhotoSlots.java` — the extracted parser (behavior identical to the private method it
 replaces; see the parity ledger):
@@ -590,21 +656,21 @@ class AdminVenuePhotoController {
 	}
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `gradle test --tests "*AdminPhotoTakedownIT*"` → PASS
+- [x] **Step 4: Run it, verify it passes** — `gradle test --tests "*AdminPhotoTakedownIT*"` → PASS
       (or a clean Docker-absent skip; then rely on CI for this class — say so in the commit).
 
 > Scope (end-of-phase regression): `gradle test --tests "*venue*" --tests "*EndpointRoleGateCoverageTest*"
 > --tests "*CrossVenueDenialIT*" --tests "*ErrorContractArchitectureTests*" --tests "*ModularityTests*"`.
 > `CrossVenueDenialIT` is in that list on purpose: it is AC-7's proof that the operator path is untouched.
 
-- [ ] **Step 5: Generalization-audit pass** — the `PhotoSlots` extraction is the new pattern; search
+- [x] **Step 5: Generalization-audit pass** — the `PhotoSlots` extraction is the new pattern; search
       for other enum-from-path parsers that inline the same `valueOf(upper)` idiom
       (`grep -rn "valueOf(.*toUpperCase" platform/src/main/java --include=*.java`) and decide whether
       they warrant the same treatment or are single-call-site. Append to the log.
 
-- [ ] **Step 6: Commit** — `git commit -m "Expose the admin photo takedown endpoint under /api/admin (#504)"`
+- [x] **Step 6: Commit** — `git commit -m "Expose the admin photo takedown endpoint under /api/admin (#504)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -612,16 +678,16 @@ class AdminVenuePhotoController {
 
 **Files:** Modify `RESPONSIBILITIES.md` (§`venue`) · `CONTEXT.md` (glossary)
 
-- [ ] **Step 1** — `RESPONSIBILITIES.md` §`venue` **Job**: extend the photo clause so it names the
+- [x] **Step 1** — `RESPONSIBILITIES.md` §`venue` **Job**: extend the photo clause so it names the
       admin takedown as a second, role-gated writer of the same deletion, and says the module owns it
       because it owns photos while the *authority* is the edge's role gate. Keep the Not-My-Job list
       unchanged — nothing moved out.
-- [ ] **Step 2** — `CONTEXT.md`: add **photo takedown** after the **Photo slot** entry — the
+- [x] **Step 2** — `CONTEXT.md`: add **photo takedown** after the **Photo slot** entry — the
       platform-admin removal of any venue's photo by `(venue, slot)`, role-gated on `is_admin` and
       exempt from per-venue ownership; same single-transaction erase as the operator's delete; scoped
       to one slot, not one image (R-3).
-- [ ] **Step 3: Commit** — `git commit -m "Document the admin photo takedown in the substrate docs (#504)"`
-- [ ] **Step 4: Update plan-doc execution status** in the same commit window.
+- [x] **Step 3: Commit** — `git commit -m "Document the admin photo takedown in the substrate docs (#504)"`
+- [x] **Step 4: Update plan-doc execution status** in the same commit window.
 
 > `riviera-docs-freshness` runs at merge close-out over this slice's range and may add more — these
 > two are the ones the slice's own ACs require (AC-10).
@@ -641,46 +707,56 @@ class AdminVenuePhotoController {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `gradle test --tests "*VenuePhotoServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** `gradle test --tests "*AdminPhotoTakedownIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** same run → `adminTakesDownAPhotoOfAVenueItDoesNotOwn` PASS. Verified at `<sha>`.
-- [ ] **AC-4:** same run → `takedownIsAdminOnly` PASS. Verified at `<sha>`.
-- [ ] **AC-5:** same run → `takedownOfSomethingThatIsNotThereIs404` PASS. Verified at `<sha>`.
-- [ ] **AC-6:** same run → `unknownSlotIs400` PASS. Verified at `<sha>`.
-- [ ] **AC-7:** `gradle test --tests "*CrossVenueDenialIT*"` → PASS, with the class unmodified in the
-      diff (`git diff --stat` shows no change to it). Verified at `<sha>`.
-- [ ] **AC-8:** `gradle test --tests "*EndpointRoleGateCoverageTest*"` → PASS with
-      `DECLARED_REACHABLE` unmodified in the diff. Verified at `<sha>`.
-- [ ] **AC-9:** `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*"
+- [x] **AC-1 / AC-7 (service half):** `gradle test --tests "*VenuePhotoServiceTest*"` → PASS
+      (`takedownRemovesAPhotoWithoutConsultingOwnership`, `takedownReachesAVenueTheCallerCouldNeverOwn`,
+      `takedownOfAnEmptySlotIsFalse`), verified at `c0ac3d1` and re-run after the F-1/F-2 fixes.
+- [x] **AC-2 / AC-3 / AC-4 / AC-5 / AC-6:** `gradle test --tests "*AdminPhotoTakedownIT*"` → PASS,
+      locally against Testcontainers Postgres **and** in CI (proven un-skipped by the 100%
+      new-code coverage on `AdminVenuePhotoController`). Verified at `c0ac3d1`.
+- [x] **AC-6 (parser seam, added by finding F-2):** `gradle test --tests "*PhotoSlotsTest*"` → PASS.
+- [x] **AC-7:** `gradle test --tests "*CrossVenueDenialIT*"` → PASS, and `git diff origin/main...HEAD
+      --stat` shows the class is **not in the diff** — the operator path is proven unchanged by a test
+      this slice did not touch.
+- [x] **AC-8:** `gradle test --tests "*EndpointRoleGateCoverageTest*"` → PASS with
+      `DECLARED_REACHABLE` unmodified in the diff.
+- [x] **AC-9:** `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*"
       --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"
-      --tests "*ErrorContractArchitectureTests*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-10:** review reads the two doc diffs. Verified at `<sha>`.
+      --tests "*ErrorContractArchitectureTests*"` → PASS, plus the full suite green in CI.
+- [x] **AC-10:** `RESPONSIBILITIES.md` §`venue` and the `CONTEXT.md` **photo takedown** entry shipped
+      in `1353a94`; the docs-freshness run then added the ADR-0008 amendment and the `CLAUDE.md`
+      module-row clause.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND
       findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
       If tooling blocked the review, that is stated in the PR and its checkbox is left
       unticked.
+      → **Deliberately left unticked.** The ladder's rung 1 probe *succeeded* (the
+      `code-review` workflow loaded), but the workflow is a subagent fan-out and this session
+      carries a standing instruction withholding the Agent tool, so rung 3 applied: the review
+      ran inline via `/review 506` with the overlay layered on, as a **declared degraded mode**.
+      Two findings, both fixed (F-1, F-2). Ticking this box would make the PR record claim a
+      fan-out that did not happen — the exact failure of PR #353/#355. Stated in the PR body too.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

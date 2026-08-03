@@ -137,8 +137,7 @@ class AdminPhotoTakedownIT {
 
 	@Test
 	void adminTakesDownAPhotoOfAVenueItDoesNotOwn() throws Exception {
-		// The point of the slice: no operator_venue row ties the admin to this venue, so the venue-scoped
-		// route would answer 403 NOT_VENUE_OWNER. The /api/admin/** twin is exempt (invariant #13) → 204.
+		// The point of the slice: the venue-scoped route denies, its /api/admin/** twin does not.
 		VenueId unowned = newVenueWithCover("b0c1", "b0b1");
 
 		mvc.perform(delete("/api/venues/{v}/photos/{slot}", unowned.value(), "cover")

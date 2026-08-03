@@ -108,11 +108,14 @@ class VenuePhotoServiceTest {
 		assertTrue(storage.listMetadata(new VenueId(VENUE)).isEmpty(), "metadata + variants are gone");
 	}
 
+	/**
+	 * The platform-admin case (#504). The fake ownership port throws for every venue but {@code VENUE},
+	 * so a takedown of another venue <em>succeeding</em> is itself the proof that no ownership check
+	 * runs — the invariant-#13 exemption that {@code /api/admin/**} carries. The operator-scoped delete
+	 * over the very same slot still throws, which is what keeps the two ports' contracts distinguishable.
+	 */
 	@Test
 	void takedownReachesAVenueTheCallerCouldNeverOwn() {
-		// The platform-admin case (#504): the fake ownership port throws for every venue but VENUE, so a
-		// takedown of OTHER_VENUE succeeding IS the proof that no ownership check runs — the invariant-#13
-		// exemption /api/admin/** carries. The operator-scoped delete over the same slot still throws.
 		VenueId other = new VenueId(VENUE + 1);
 		storage.replace(other, PhotoSlot.BAR, oneVariant("f00d01"));
 
