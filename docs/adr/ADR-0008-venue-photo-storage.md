@@ -99,7 +99,7 @@ ADR-0004 applied to EU-sovereign hosting for dummy data.
   `DELETE /api/admin/venues/{venueId}/photos/{slot}`, role-gated on `is_admin` and exempt from
   invariant #13 like every `/api/admin/**` surface, because a reported photo belongs by
   definition to a venue the admin does not own. It is a separate port
-  (`VenuePhotoTakedown`) so the venue-scoped `VenuePhotos` contract stays uniformly
+  (`VenuePhotoModeration`) so the venue-scoped `VenuePhotos` contract stays uniformly
   ownership-asserting, and it drives this ADR's same single cascading `DELETE`. The storage
   decision below is unchanged.
 - Re-rendering trade-off: because we discard the original, changing the resize targets later

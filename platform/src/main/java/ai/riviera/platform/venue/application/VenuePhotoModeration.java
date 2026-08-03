@@ -4,12 +4,17 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The platform-admin photo takedown (#504) — the "remove" half of the report-and-remove moderation
- * stance (#230). Deliberately a <strong>separate port from {@link VenuePhotos}</strong> rather than a
- * fourth method on it: {@code VenuePhotos} promises that its writes assert per-venue ownership
- * <em>first</em> (invariant #13), and an ownership-free method hung off it would turn that promise
- * into a per-method detail every caller has to re-read. It is also a different conversation —
+ * Platform moderation of venue photos (#504) — the "remove" half of the report-and-remove
+ * moderation stance (#230). Deliberately a <strong>separate port from {@link VenuePhotos}</strong>
+ * rather than extra methods on it: {@code VenuePhotos} promises that its writes assert per-venue
+ * ownership <em>first</em> (invariant #13), and an ownership-free method hung off it would turn that
+ * promise into a per-method detail every caller has to re-read. It is also a different conversation —
  * platform moderation by an actor who owns nothing, not a venue managing its own profile.
+ *
+ * <p><strong>The contract is the port's, not any one method's: every method here is ownership-free
+ * by design.</strong> Naming the port for that posture rather than for its one action is what lets
+ * the moderation read join it (#511) without re-arguing the case — a moderator looks at a reported
+ * photo and then removes it, one conversation with one actor and one authorization posture.
  *
  * <p>The driving adapter is {@code AdminVenuePhotoController}, gated to the {@code ADMIN} role in
  * {@code SecurityConfig}: that role gate is the <strong>whole</strong> authorization for this port,
@@ -25,7 +30,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * still publishes them; each published slot is its own takedown. Removing an image everywhere is not
  * this port's job.
  */
-public interface VenuePhotoTakedown {
+public interface VenuePhotoModeration {
 
 	/**
 	 * Remove the photo in {@code slot} of {@code venueId} — metadata and every variant, one statement

@@ -18,13 +18,13 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * {@link #serve} read skips ownership. Package-private {@code @Service}; callers depend on the ports
  * (invariant #11). No JPA — persistence is entirely behind {@code PhotoStorage} (invariant #1).
  *
- * <p>It also implements the second, deliberately ownership-free port {@link VenuePhotoTakedown}
+ * <p>It also implements the second, deliberately ownership-free port {@link VenuePhotoModeration}
  * (#504), so the platform-admin removal reuses this class's one call into {@code PhotoStorage#delete}
- * instead of duplicating the deletion. Why that is a separate port rather than a fourth
- * {@code VenuePhotos} method — and what authorizes it instead of ownership — is on the port itself.
+ * instead of duplicating the deletion. Why that is a separate port rather than more
+ * {@code VenuePhotos} methods — and what authorizes it instead of ownership — is on the port itself.
  */
 @Service
-class VenuePhotoService implements VenuePhotos, VenuePhotoTakedown {
+class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {
 
 	private final VenueOwnership ownership;
 	private final PhotoProcessor processor;

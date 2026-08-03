@@ -312,16 +312,16 @@ All confirmed against the angular-cli MCP's `get_best_practices` for this worksp
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 — rename `VenuePhotoTakedown` → `VenuePhotoModeration` across
-`main`/`test`/`docs` and prove the existing `AdminPhotoTakedownIT` + `VenuePhotoServiceTest`
-stay green before adding anything.
+**Next action:** Phase 1 — write the failing
+`VenuePhotoServiceTest.moderationReadListsEverySlotWithoutOwnershipCheck`, then add
+`slotsOf(VenueId)` to the port backed by `PhotoStorage#listMetadata`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Rename the port to name its posture | | |
-| 1 — The moderation read (service + port method) | | |
+| 0 — Rename the port to name its posture | ✅ | see "Rename VenuePhotoTakedown…" |
+| 1 — The moderation read (service + port method) | ⏳ | |
 | 2 — The admin GET endpoint + role gate | | |
 | 3 — The Photos tab (service, component, tab, route) | | |
 | 4 — a11y spec + CI-safe e2e | | |

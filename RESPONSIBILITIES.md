@@ -82,7 +82,7 @@ upload/replace/delete, processing, `bytea` storage behind the module-internal `P
 port, and the public content-hash serving read — ADR-0008) **including the platform-admin
 takedown** (#504, the "remove" half of #230's report-and-remove stance): I own it because I own
 photos, but it is the one photo write with **no ownership check** — a second port,
-`VenuePhotoTakedown`, deliberately kept apart from the ownership-asserting `VenuePhotos` so that
+`VenuePhotoModeration`, deliberately kept apart from the ownership-asserting `VenuePhotos` so that
 port's "asserts `assertOwns` first" contract stays uniform rather than becoming per-method. The
 *authority* is not mine: the `ADMIN` role gate on `DELETE /api/admin/venues/{venueId}/photos/{slot}`
 is the whole authorization (invariant #13 exempts `/api/admin/**`), which is the point — the

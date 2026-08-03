@@ -116,7 +116,7 @@ import ai.riviera.platform.venue.application.ReplaceRejection;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
 import ai.riviera.platform.venue.application.StoredBytes;
-import ai.riviera.platform.venue.application.VenuePhotoTakedown;
+import ai.riviera.platform.venue.application.VenuePhotoModeration;
 import ai.riviera.platform.venue.application.VenuePhotos;
 import ai.riviera.platform.venue.application.ViewDailyAvailability;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
@@ -795,9 +795,9 @@ class WebSliceStubs {
 		};
 	}
 
-	/** #504: the takedown port {@code AdminVenuePhotoController} registers with — inert not-found. */
+	/** #504: the moderation port {@code AdminVenuePhotoController} registers with — inert not-found. */
 	@Bean
-	VenuePhotoTakedown venuePhotoTakedown() {
+	VenuePhotoModeration venuePhotoModeration() {
 		return (_, _) -> false;
 	}
 }

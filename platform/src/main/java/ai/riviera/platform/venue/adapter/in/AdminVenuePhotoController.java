@@ -8,14 +8,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.venue.application.VenuePhotoTakedown;
+import ai.riviera.platform.venue.application.VenuePhotoModeration;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The platform-admin photo takedown surface (#504) — the "remove" half of the report-and-remove
- * moderation stance (#230). Driving adapter depending only on the module's {@link VenuePhotoTakedown}
- * port; hosted in the module rather than at the composition root, like the other module-owned admin
- * surfaces (#391/#405/#454).
+ * The platform-admin photo moderation surface (#504) — the "remove" half of the report-and-remove
+ * moderation stance (#230). Driving adapter depending only on the module's
+ * {@link VenuePhotoModeration} port; hosted in the module rather than at the composition root, like
+ * the other module-owned admin surfaces (#391/#405/#454).
  *
  * <p><strong>Role-gated, not venue-scoped</strong> — and this endpoint is why that exemption matters.
  * A reported photo belongs to a venue the admin does not own, so the ownership assertion guarding
@@ -35,15 +35,15 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 @RequestMapping("/api/admin/venues")
 class AdminVenuePhotoController {
 
-	private final VenuePhotoTakedown takedown;
+	private final VenuePhotoModeration moderation;
 
-	AdminVenuePhotoController(VenuePhotoTakedown takedown) {
-		this.takedown = takedown;
+	AdminVenuePhotoController(VenuePhotoModeration moderation) {
+		this.moderation = moderation;
 	}
 
 	@DeleteMapping("/{venueId}/photos/{slot}")
 	ResponseEntity<?> remove(@PathVariable long venueId, @PathVariable String slot) {
-		return takedown.takedown(new VenueId(venueId), PhotoSlots.parse(slot))
+		return moderation.takedown(new VenueId(venueId), PhotoSlots.parse(slot))
 				? ResponseEntity.noContent().build()
 				: ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_PHOTO", "No photo in this slot.");
 	}
