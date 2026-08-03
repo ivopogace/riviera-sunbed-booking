@@ -1,5 +1,9 @@
 package ai.riviera.platform.venue.application;
 
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -9,6 +13,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
+import ai.riviera.platform.venue.vocabulary.PhotoSurface;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -57,6 +62,23 @@ class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {
 		ownership.assertOwns(operator, new VenueRef(venueId.value())); // invariant #13 — FIRST
 		// No tx needed here: the adapter's delete is one cascading DELETE statement (atomic on its own).
 		return storage.delete(venueId, slot);
+	}
+
+	@Override
+	public List<PhotoSlotView> slotsOf(VenueId venueId) {
+		// No ownership check by design (#511): the ADMIN role gate is this path's whole authorization.
+		Map<PhotoSlot, String> previewBySlot = new EnumMap<>(PhotoSlot.class);
+		for (PhotoMetadata photo : storage.listMetadata(venueId)) {
+			photo.variants().stream()
+					.filter(variant -> variant.surface() == PhotoSurface.PREVIEW)
+					.findFirst()
+					.ifPresent(variant -> previewBySlot.put(photo.slot(),
+							PhotoServingUrls.servingUrl(venueId.value(), variant.hash())));
+		}
+		// Every slot, occupied or not, so the console renders a stable grid (#142 F-11: null IS empty).
+		return Arrays.stream(PhotoSlot.values())
+				.map(slot -> new PhotoSlotView(slot, previewBySlot.get(slot)))
+				.toList();
 	}
 
 	@Override

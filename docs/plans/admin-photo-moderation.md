@@ -312,17 +312,19 @@ All confirmed against the angular-cli MCP's `get_best_practices` for this worksp
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phase 1 done, entering phase 2`
 
-**Next action:** Phase 1 — write the failing
-`VenuePhotoServiceTest.moderationReadListsEverySlotWithoutOwnershipCheck`, then add
-`slotsOf(VenueId)` to the port backed by `PhotoStorage#listMetadata`.
+**Next action:** Phase 2 — write the failing `AdminPhotoModerationIT` (AC-2/3/4), then add the
+`@GetMapping("/{venueId}/photos")` and its `SecurityConfig` matcher.
+
+Draft **PR #512** is open (opened after phase 0 per riviera-sdlc rule 3 — CI fires on the
+`pull_request` event only, so the draft is what makes "CI per push" true).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Rename the port to name its posture | ✅ | see "Rename VenuePhotoTakedown…" |
-| 1 — The moderation read (service + port method) | ⏳ | |
-| 2 — The admin GET endpoint + role gate | | |
+| 1 — The moderation read (service + port method) | ✅ | see "Add the ownership-free venue-photo moderation read" |
+| 2 — The admin GET endpoint + role gate | ⏳ | |
 | 3 — The Photos tab (service, component, tab, route) | | |
 | 4 — a11y spec + CI-safe e2e | | |
 | 5 — Docs freshness + close-out | | |
@@ -515,6 +517,7 @@ Modify `VenuePhotoService.java`, `AdminVenuePhotoController.java`, `WebSliceStub
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-03 | Phase 1 — new "project photo metadata across every `PhotoSlot`" pattern | Other places that turn stored photos into a full three-slot grid | `grep -rn "PhotoSlot.values()" platform/src/main` | 2 — `JdbcVenues.slotPhotos` (operator profile read) and the new `VenuePhotoService.slotsOf` | **Skip converging, deliberately.** They share a *shape*, not a source: `slotPhotos` runs its own SQL join against `venue_photo`/`venue_photo_variant` inside the profile read model, while `slotsOf` projects from the `PhotoStorage` port. Converging would push the profile read through `PhotoStorage`, changing an unrelated shipped read path for cosmetic reuse — a bigger, riskier diff than the duplication costs. Both already funnel through the one `PhotoServingUrls.servingUrl`, which is the part that would actually hurt if it drifted. Revisit only if a third site appears. |
 
 ---
 

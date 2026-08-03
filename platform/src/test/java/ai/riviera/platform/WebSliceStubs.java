@@ -109,6 +109,7 @@ import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ListOwnedVenues;
 import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.PhotoProcessingResult;
+import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.PhotoUploadResult;
 import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
@@ -795,9 +796,24 @@ class WebSliceStubs {
 		};
 	}
 
-	/** #504: the moderation port {@code AdminVenuePhotoController} registers with — inert not-found. */
+	/**
+	 * #504/#511: the moderation port {@code AdminVenuePhotoController} registers with — inert, so the
+	 * web slice exercises routing and the role gate, never storage. No longer a lambda: the port grew
+	 * a second method when the read joined the takedown.
+	 */
 	@Bean
 	VenuePhotoModeration venuePhotoModeration() {
-		return (_, _) -> false;
+		return new VenuePhotoModeration() {
+
+			@Override
+			public List<PhotoSlotView> slotsOf(VenueId venueId) {
+				return List.of();
+			}
+
+			@Override
+			public boolean takedown(VenueId venueId, PhotoSlot slot) {
+				return false;
+			}
+		};
 	}
 }

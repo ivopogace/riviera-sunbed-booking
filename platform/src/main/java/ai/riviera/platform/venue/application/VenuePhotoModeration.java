@@ -1,5 +1,7 @@
 package ai.riviera.platform.venue.application;
 
+import java.util.List;
+
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -31,6 +33,21 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * this port's job.
  */
 public interface VenuePhotoModeration {
+
+	/**
+	 * Every {@link PhotoSlot} of {@code venueId} in declaration order — an occupied slot carrying its
+	 * PREVIEW variant's serving URL, an empty one carrying {@code null} — <strong>without any
+	 * ownership check</strong> (#511). Emptiness IS the null URL (#142 review F-11), so the caller
+	 * gets a stable three-slot grid rather than a list it has to reconcile against the slot vocabulary.
+	 *
+	 * <p>This read exists because the only other per-slot view is the venue-scoped operator profile,
+	 * which answers {@code 403 NOT_VENUE_OWNER} to a non-owner — refusing exactly the case moderation
+	 * exists for. Without it an admin could delete a photo it had no way to look at first.
+	 *
+	 * <p>A venue with no photos and an unknown venue both answer three empty slots: the same
+	 * deliberate blank {@link #takedown} draws, so the surface leaks no venue-existence signal.
+	 */
+	List<PhotoSlotView> slotsOf(VenueId venueId);
 
 	/**
 	 * Remove the photo in {@code slot} of {@code venueId} — metadata and every variant, one statement
