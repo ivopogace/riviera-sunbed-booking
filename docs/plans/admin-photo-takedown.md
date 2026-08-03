@@ -228,15 +228,16 @@ record, the surface added is:
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phase 1 done, entering phase 2`
+**Stage pointer:** `implement — all phases done; next is the PR ready-for-review + the Review and Sonar gates`
 
-**Next action:** Phase 2 — `RESPONSIBILITIES.md` §`venue` + the `CONTEXT.md` glossary entry (AC-10).
+**Next action:** Mark PR #506 ready for review, then run the Review gate (`/code-review` per the
+invocation ladder + `riviera-review-overlay`) and the Sonar gate's issue-list pull.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The takedown port + service method | ✅ | `23f3a76` |
-| 1 — The admin endpoint + role gate | ✅ | (this commit) |
-| 2 — Substrate docs (RESPONSIBILITIES.md, CONTEXT.md) | | |
+| 1 — The admin endpoint + role gate | ✅ | `c0ac3d1` |
+| 2 — Substrate docs (RESPONSIBILITIES.md, CONTEXT.md) | ✅ | (this commit) |
 
 **PR:** #506 (draft; opened at the first phase commit so every push gets CI).
 
