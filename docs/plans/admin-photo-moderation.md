@@ -626,18 +626,20 @@ present-tense facts only). `graphify-out/` is absent in this cloud clone, so ste
 ## Sonar gate note (PR #512)
 
 Pulled the **reported list**, not just the gate conclusion — a green gate can coexist with new issues
-below its fail thresholds (`pr-gates.md` §2, case history #158).
+below its fail thresholds (`pr-gates.md` §2, case history #158). Read **after the final fix push**
+(e310eb8), so it covers both review-fix rounds.
 
 | Check | Value |
 |---|---|
 | `api/issues/search` total (unresolved, PR 512) | **0** — issues array empty |
 | `new_bugs` / `new_vulnerabilities` / `new_code_smells` | 0 / 0 / 0 |
-| `new_duplicated_lines_density` / `new_duplicated_blocks` | 0.0% / 0 |
-| `new_coverage` | **86.08%** (bar: ≥80%) |
-| Security hotspots | 0 |
+| `new_duplicated_blocks` / density | 0 / 0.0% |
+| `new_security_hotspots` | 0 |
+| `new_coverage` | **87.24%** (bar: ≥80%) |
 
-**Guarded against the false-clean read.** `api/issues/search` returns `"total": 0` for an
-*unanalyzed* PR byte-identically to a clean one (case history: PR #318), so the zero was only
-accepted after confirming `measures` is **non-empty** with `new_lines: 648` — an analysis genuinely
-ran against this head — and that the `SonarCloud Code Analysis` check-run concluded `success`. Read
-after the review-fix push (d6433e9), not before it, so it covers the fixes too.
+**Guarded against the false-clean read** (case history: PR #318). `api/issues/search` returns
+`"total": 0` for an *unanalyzed* PR byte-identically to a clean one, so the zero was accepted only
+after three independent confirmations: `measures` is **non-empty**; `new_lines` is **670**, having
+moved from 648 on the previous read — proof this is a *fresh* analysis and not `WebFetch`'s 15-minute
+cache answering with the old one; and the `SonarCloud Code Analysis` check-run concluded `success`.
+The re-read was cache-busted with a differing query param for the same reason.
