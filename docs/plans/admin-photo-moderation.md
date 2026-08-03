@@ -40,8 +40,9 @@ canvas's Privacy tab is scoped to GDPR data-subject erasure only, killing the is
 `riviera-plan-doc` (this template — forced the Behavior-parity ledger that pinned the
 `VenuePhotoTakedown` rename's blast radius, and the Module-ownership table) · `tdd` (every
 phase is red→green: the backend port/controller ITs before the endpoint, the Vitest specs
-before the component) · `riviera-review-overlay` (review gate — due at ready-for-review;
-RV-FE-8 consulted at plan time, see the cross-feature-import decision below) ·
+before the component) · `riviera-review-overlay` (review gate — **ran** on PR #512 at high effort via the `/code-review`
+subagent fan-out, 5 independent reviewers + the overlay bank; **8 findings, all fixed** — see the
+findings register. RV-FE-8 was consulted at plan time and drove the `PhotoSlotKey` promotion) ·
 `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, **7 findings, all patched** — see the
 Docs-freshness report below; the counting sweep found 3 of them in files this slice never touched) · `riviera-modulith` (settled that the
 moderation port stays **internal in `application/`**, not `api/`/`spi/` — no sibling module
@@ -251,7 +252,7 @@ Tailwind-only styling on the porcelain-glass tokens, and AXE/WCAG-AA as a hard g
 All confirmed against the angular-cli MCP's `get_best_practices` for this workspace
 (frameworkVersion **22**, unit framework **Vitest**, via `list_projects`).
 
-**Two documented deviations, both deliberate:**
+**One documented deviation** (a second was withdrawn at the review gate — see below):
 
 1. **`httpResource`/`resource` not adopted.** The MCP's `search_documentation` (v22) surfaced
    `httpResource` (`angular.dev/guide/http/http-resource`) and the Resources API
@@ -261,12 +262,16 @@ All confirmed against the angular-cli MCP's `get_best_practices` for this worksp
    signals. Introducing a second data-loading idiom in the fourth tab of a four-tab console
    would make the console read as two codebases; consistency wins here, and a console-wide
    migration is a legitimate separate slice.
-2. **`NgOptimizedImage` not used for the slot previews.** The best-practices guide says to use
-   it "for all static images"; these are **dynamic, content-addressed** URLs whose dimensions
-   vary per upload, rendered at most three at a time, below the fold, behind an admin gate —
-   none of the LCP/preconnect/priority machinery applies, and `ngSrc` would demand
-   `width`/`height` the read does not carry. The operator console's own photo slots (#142) made
-   the same call. Plain `<img loading="lazy" alt="…">`.
+2. ~~**`NgOptimizedImage` not used for the slot previews.**~~ **Withdrawn at the review gate — the
+   justification was factually wrong.** It claimed "the operator console's own photo slots (#142)
+   made the same call"; the operator tab does the **opposite** (`venue-tab.html` uses
+   `[ngSrc]` with fixed dimensions), *because* PR #241's review finding **F-9** required it. The
+   claim that `ngSrc` "would demand `width`/`height` the read does not carry" was also wrong:
+   **fill mode** exists for exactly the case where the container has a known size and the image
+   does not. Now shipped as `[ngSrc] fill disableOptimizedSrcset` inside a `relative` aspect-ratio
+   box. `disableOptimizedSrcset` is deliberate, not laziness: the serving URL is
+   **content-addressed and ignores width**, so an auto-generated `srcset` would list the identical
+   URL at every breakpoint. (Confirmed against the v22 docs via the angular-cli MCP.)
 
 ## FE↔BE contract
 
@@ -335,6 +340,14 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | **Review** (bug scan) | **Stale-response race in `loadSlots`.** Pick venue A, switch to B before A answers → A's late response paints A's photos under B's name. On a surface whose confirmation names a venue, the moderator would be looking at one venue's image while approving a removal described as another's. | **fixed** — the response is discarded unless its venue is still selected; pinned by *ignores a slots response that lands after the admin moved to another venue*. |
+| F-3 | **Review** (bug scan) | **Stale-completion race in `remove`.** A takedown settling after a venue switch applied `previewUrl: null` to the **new** venue's same-named slot — showing a live photo as deleted — and narrated the old venue's name under the new venue's UI. | **fixed** — outcome applied only while its own venue is on screen (`reportOnlyIfStillViewing`); pinned by *does not empty a slot on the venue switched to while a takedown was in flight*. |
+| F-4 | **Review** (CLAUDE.md compliance) | **RV-STYLE-1 ×3** — multi-line inline comments in `SecurityConfig`, `AdminPhotoModerationIT` and `app.routes.ts`. The SecurityConfig one restated its own field Javadoc verbatim. | **fixed** — all three cut to one line; the SecurityConfig reasoning already lived on the field's Javadoc. |
+| F-5 | **Review** (prior-PR comments) | **Repeat of PR #241 finding F-9** — plain `<img [src]>` instead of `NgOptimizedImage`, and **the plan doc's stated justification was factually false**: it claimed the operator console made the same call, when `venue-tab.html` uses `[ngSrc]` *because* F-9 required it. | **fixed** — now `[ngSrc] fill disableOptimizedSrcset`; the plan doc's deviation note is struck through and corrected rather than quietly deleted. |
+| F-6 | **Review** (prior-PR comments) | **Copy overclaimed erasure** — "the image and every stored size are deleted" contradicts the documented duplicate-hash carve-out (#504 R-3, rooted in #142 F-2): a slot takedown leaves bytes still published by another slot. Precisely the wrong message on a moderation surface. | **fixed** — copy now states it removes one **slot**, not one picture, and that a copy in another slot keeps serving. |
+| F-7 | **Review** (prior-PR comments) | **Stranded focus, WCAG 2.4.3** — each confirm/cancel swap destroys the control just activated, leaving focus on `<body>`. The recurring #148/#351/#462 class, fixed in #505 and re-shipped here. | **fixed** — focus moves to the confirmation, back to Remove on dismiss, and to the slot card once the photo is gone (the Remove button no longer exists). Three focus assertions added. |
+| F-8 | **Review** (git history) | **ADR-0013's risk acceptance was silently invalidated by this slice.** It accepted shipping the takedown with no audit trail *because* takedowns were "rare-to-never" and hard to invoke — "the first thing to fix if takedowns stop being hypothetical". This slice exists to remove exactly that friction, and the docs-freshness sweep never re-opened ADR-0013 despite it being the slice's own Source of intent. | **fixed** — ADR-0013 amended with an "Amended by #511" note stating the trigger is now met and that **#507 should be re-triaged off `needs-triage`**. Propagated to #507 at close-out step 3. |
+| F-9 | **Review** (git history, secondary) | Pre-existing Javadoc on `PhotoMetadata` / `PhotoStorage#listMetadata` claimed it already drives "the tourist + operator read models" — false; both run their own SQL. It also contradicted this PR's "first production caller" claim. | **fixed** — both Javadocs corrected to name the moderation read as the one caller and to say the tourist/operator models run their own SQL. |
 | F-1 | **CI** (Frontend lint + test + build, run 30836527296) | `app.spec.ts` › *marks every not-yet-restyled tourist route with the compat surface* failed: the new `admin/photos` route was absent from `OPERATOR_SURFACE_PATHS`, so the spec judged it a **tourist** route and demanded a `legacySurface` flag. Textbook **full-suite-only failure** (`riviera-local-debug`): every scoped run passed, because the assertion lives in a spec no scoped filter selected. | **fixed** — `admin/photos` added to `OPERATOR_SURFACE_PATHS`, the third category the spec documents for operator/admin surfaces. Full suite now 1097/1097; full mocked e2e 125/125. |
 
 ---

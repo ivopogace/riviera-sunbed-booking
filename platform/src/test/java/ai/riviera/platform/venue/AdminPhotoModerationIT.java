@@ -157,8 +157,7 @@ class AdminPhotoModerationIT {
 		VenueId venue = venueOwnedByThePlainOperator("ad01");
 		Cookie admin = adminSession();
 
-		// A venue that does not exist and a real venue with no photos answer identically — the same
-		// deliberate blank the takedown draws (404 for both), so neither leaks venue existence.
+		// An unknown venue and a photoless one answer identically, so neither leaks venue existence.
 		for (long target : List.of(venue.value() + 9_999, emptyVenue())) {
 			mvc.perform(get(MODERATION_PATH, target).cookie(admin))
 					.andExpect(status().isOk())

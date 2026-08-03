@@ -33,12 +33,12 @@ const VENUES = [
   { id: 9, name: 'Folie Marine', beach: 'Gjipe' },
 ];
 
-function photosOf(coverUrl: string | null): AdminVenuePhotosView {
+function photosOf(coverUrl: string | null, venueId = 7): AdminVenuePhotosView {
   return {
-    venueId: 7,
+    venueId,
     slots: [
       { slot: 'cover', previewUrl: coverUrl },
-      { slot: 'sunbeds', previewUrl: '/api/venues/7/photos/beef02' },
+      { slot: 'sunbeds', previewUrl: `/api/venues/${venueId}/photos/beef02` },
       { slot: 'bar', previewUrl: null },
     ],
   };
@@ -51,9 +51,20 @@ function serviceStub(): {
 } {
   return {
     venues: vi.fn(async () => VENUES),
-    slots: vi.fn(async () => photosOf('/api/venues/7/photos/beef01')),
+    slots: vi.fn(async (venueId: number) =>
+      photosOf(`/api/venues/${venueId}/photos/beef01`, venueId),
+    ),
     takedown: vi.fn(async () => undefined),
   };
+}
+
+/** A promise plus the handle that settles it — for driving out-of-order responses. */
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
 }
 
 async function settle(fixture: ComponentFixture<AdminVenuePhotos>): Promise<void> {
@@ -160,6 +171,96 @@ describe('AdminVenuePhotos', () => {
     expect(service.takedown).not.toHaveBeenCalled();
     expect(byTestId(fixture, 'admin-photo-confirm-prompt-cover')).toBeNull();
     expect(byTestId(fixture, 'admin-photo-preview-cover')).not.toBeNull();
+  });
+
+  /**
+   * Two out-of-order-response races, both found at the review gate. They matter more here than on a
+   * read-only surface: the moderator's decision to destroy bytes rests on the image in front of them
+   * matching the venue the confirmation names, so a late response painting one venue's photos under
+   * another venue's name is the exact failure the confirmation exists to prevent.
+   */
+  it('ignores a slots response that lands after the admin moved to another venue', async () => {
+    const service = serviceStub();
+    const slow = deferred<AdminVenuePhotosView>();
+    service.slots.mockImplementation((venueId: number) =>
+      venueId === 7 ? slow.promise : Promise.resolve(photosOf(null, venueId)),
+    );
+    const fixture = await render(authStub(), service);
+
+    await pickVenue(fixture, 7); // still in flight
+    await pickVenue(fixture, 9); // resolves first — venue 9 has no cover
+
+    slow.resolve(photosOf('/api/venues/7/photos/beef01', 7)); // venue 7 answers late
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'admin-photo-preview-cover')).toBeNull();
+    expect(byTestId(fixture, 'admin-photo-empty-cover')).not.toBeNull();
+  });
+
+  it('does not empty a slot on the venue switched to while a takedown was in flight', async () => {
+    const service = serviceStub();
+    const slow = deferred<void>();
+    service.takedown.mockImplementation(() => slow.promise);
+    const fixture = await render(authStub(), service);
+    await pickVenue(fixture, 7);
+
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-remove-cover')!.click();
+    fixture.detectChanges();
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-confirm-cover')!.click();
+    fixture.detectChanges();
+
+    await pickVenue(fixture, 9); // switch away before the DELETE settles
+    slow.resolve();
+    await settle(fixture);
+
+    // Venue 9's cover is untouched, and its outcome is not narrated under venue 9's name.
+    expect(byTestId(fixture, 'admin-photo-preview-cover')).not.toBeNull();
+    expect(byTestId(fixture, 'admin-photos-notice')?.textContent).not.toContain('Bora Bora Beach');
+  });
+
+  /**
+   * WCAG 2.4.3 — the recurring #148/#351/#462 stranded-focus class. Each transition destroys the
+   * control that was just activated, so without a deliberate move focus falls back to `<body>` and a
+   * keyboard user loses their place mid-decision on an irreversible action.
+   */
+  it('moves focus onto the confirmation rather than stranding it', async () => {
+    const fixture = await render(authStub(), serviceStub());
+    await pickVenue(fixture, 7);
+
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-remove-cover')!.click();
+    fixture.detectChanges();
+    await settle(fixture);
+
+    expect(document.activeElement).toBe(byTestId(fixture, 'admin-photo-confirm-cover'));
+  });
+
+  it('returns focus to Remove when the confirmation is dismissed', async () => {
+    const fixture = await render(authStub(), serviceStub());
+    await pickVenue(fixture, 7);
+
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-remove-cover')!.click();
+    fixture.detectChanges();
+    await settle(fixture);
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-cancel-cover')!.click();
+    fixture.detectChanges();
+    await settle(fixture);
+
+    expect(document.activeElement).toBe(byTestId(fixture, 'admin-photo-remove-cover'));
+  });
+
+  it('parks focus on the slot card once the photo is gone', async () => {
+    // The Remove button it was on no longer exists, so there is nothing to return focus to.
+    const fixture = await render(authStub(), serviceStub());
+    await pickVenue(fixture, 7);
+
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-remove-cover')!.click();
+    fixture.detectChanges();
+    await settle(fixture);
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-confirm-cover')!.click();
+    fixture.detectChanges();
+    await settle(fixture);
+
+    expect(document.activeElement).toBe(byTestId(fixture, 'admin-photo-slot-cover'));
   });
 
   it('self-gates on the admin session', async () => {

@@ -182,8 +182,7 @@ export const routes: Routes = [
     data: { operatorChrome: true },
   },
   {
-    // Admin console Photos tab (#511) — venue-photo moderation: the read that makes #504's
-    // ownership-free takedown usable. ADMIN-gated server-side.
+    // Admin console Photos tab (#511) — venue-photo moderation; ADMIN-gated server-side.
     path: 'admin/photos',
     loadComponent: () => import('./admin/admin-venue-photos').then((m) => m.AdminVenuePhotos),
     title: 'Photos — Riviera',

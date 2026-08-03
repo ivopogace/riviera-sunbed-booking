@@ -1,4 +1,14 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  Injector,
+  signal,
+} from '@angular/core';
+import { NgOptimizedImage } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -38,7 +48,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
  */
 @Component({
   selector: 'app-admin-venue-photos',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs],
+  imports: [RouterLink, NgOptimizedImage, CardGlass, AdminConsoleTabs],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[860px] px-4 py-10" aria-labelledby="admin-photos-title">
@@ -66,7 +76,9 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
         <app-admin-console-tabs label="Admin console sections" />
 
         <p class="mt-5 max-w-[62ch] text-[15px] text-(--riv-ink-soft)">
-          Removing a photo is immediate and permanent — the image and every stored size are deleted.
+          Removing a photo is immediate and permanent — that slot's image and every stored size are
+          deleted. It removes one <strong>slot</strong>, not one picture: the same image published in
+          another slot keeps serving from there, so each published slot is its own removal.
         </p>
 
         <div class="mt-5">
@@ -111,6 +123,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
               <li
                 appCardGlass
                 class="rounded-[14px] p-4"
+                tabindex="-1"
                 [attr.data-testid]="'admin-photo-slot-' + slot.slot"
               >
                 <h2 class="text-[15px] font-semibold text-(--riv-card-ink)">
@@ -118,13 +131,16 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
                 </h2>
 
                 @if (slot.previewUrl; as url) {
-                  <img
-                    [src]="url"
-                    [alt]="label(slot.slot) + ' photo of ' + venue.name"
-                    loading="lazy"
-                    class="mt-2 aspect-[3/2] w-full rounded-[10px] object-cover"
-                    [attr.data-testid]="'admin-photo-preview-' + slot.slot"
-                  />
+                  <div class="relative mt-2 aspect-[3/2] w-full overflow-hidden rounded-[10px]">
+                    <img
+                      [ngSrc]="url"
+                      [alt]="'Current upload in the ' + slot.slot + ' slot of ' + venue.name"
+                      fill
+                      disableOptimizedSrcset
+                      class="object-cover"
+                      [attr.data-testid]="'admin-photo-preview-' + slot.slot"
+                    />
+                  </div>
 
                   @if (confirming() === slot.slot) {
                     <p
@@ -147,7 +163,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
                       <button
                         type="button"
                         [attr.data-testid]="'admin-photo-cancel-' + slot.slot"
-                        (click)="confirming.set(undefined)"
+                        (click)="keepIt(slot.slot)"
                         class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink-soft)"
                       >
                         Keep it
@@ -158,7 +174,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
                       type="button"
                       [attr.data-testid]="'admin-photo-remove-' + slot.slot"
                       [disabled]="busy()"
-                      (click)="confirming.set(slot.slot)"
+                      (click)="askToRemove(slot.slot)"
                       class="mt-3 rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Remove {{ label(slot.slot) }} photo
@@ -192,6 +208,8 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
 export class AdminVenuePhotos {
   protected readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminVenuePhotosService);
+  private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   protected readonly venues = signal<readonly ModerationVenue[]>([]);
   protected readonly selectedVenueId = signal<number | undefined>(undefined);
@@ -222,6 +240,23 @@ export class AdminVenuePhotos {
     return SLOT_LABELS[slot];
   }
 
+  /**
+   * Open the confirmation and put focus on it. Each of the three transitions below destroys the
+   * element that was just activated, which strands keyboard/AT focus on `<body>` unless focus is
+   * moved deliberately (WCAG 2.4.3 — the recurring #148/#351/#462 class, fixed the same way in
+   * #505). Asking moves focus to the confirm button; keeping it returns focus to Remove; a completed
+   * removal has no Remove button left to return to, so focus parks on the slot card itself.
+   */
+  protected askToRemove(slot: PhotoSlotKey): void {
+    this.confirming.set(slot);
+    this.focusAfterRender(`admin-photo-confirm-${slot}`);
+  }
+
+  protected keepIt(slot: PhotoSlotKey): void {
+    this.confirming.set(undefined);
+    this.focusAfterRender(`admin-photo-remove-${slot}`);
+  }
+
   protected onVenuePicked(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     this.selectedVenueId.set(value === '' ? undefined : Number(value));
@@ -241,11 +276,20 @@ export class AdminVenuePhotos {
     this.loading.set(true);
     this.loadError.set(false);
     try {
-      this.slots.set((await this.service.slots(venueId)).slots);
+      const loaded = await this.service.slots(venueId);
+      // A response for a venue the admin has since left must never paint the current one.
+      if (this.selectedVenueId() !== venueId) {
+        return;
+      }
+      this.slots.set(loaded.slots);
     } catch {
-      this.loadError.set(true);
+      if (this.selectedVenueId() === venueId) {
+        this.loadError.set(true);
+      }
     } finally {
-      this.loading.set(false);
+      if (this.selectedVenueId() === venueId) {
+        this.loading.set(false);
+      }
     }
   }
 
@@ -253,17 +297,44 @@ export class AdminVenuePhotos {
     this.busy.set(true);
     try {
       await this.service.takedown(venue.id, slot);
-      // Empty the slot in place: the read model already says emptiness is the null URL.
-      this.slots.update((slots) =>
-        slots.map((each) => (each.slot === slot ? { ...each, previewUrl: null } : each)),
-      );
-      this.notice.set(`Removed the ${this.label(slot)} photo from ${venue.name}.`);
+      this.reportOnlyIfStillViewing(venue, () => {
+        // Empty the slot in place: the read model already says emptiness is the null URL.
+        this.slots.update((slots) =>
+          slots.map((each) => (each.slot === slot ? { ...each, previewUrl: null } : each)),
+        );
+        this.notice.set(`Removed the ${this.label(slot)} photo from ${venue.name}.`);
+        this.focusAfterRender(`admin-photo-slot-${slot}`);
+      });
     } catch {
-      this.notice.set(`Could not remove the ${this.label(slot)} photo. Nothing was changed.`);
+      this.reportOnlyIfStillViewing(venue, () =>
+        this.notice.set(`Could not remove the ${this.label(slot)} photo. Nothing was changed.`),
+      );
     } finally {
       this.confirming.set(undefined);
       this.busy.set(false);
     }
+  }
+
+  /**
+   * Apply a takedown's outcome only while its own venue is still on screen. Without this guard a
+   * removal that settles after the admin switched venues would blank the *new* venue's same-named
+   * slot — showing a live photo as gone — and narrate the old venue's name under the new venue's UI.
+   */
+  private reportOnlyIfStillViewing(venue: ModerationVenue, apply: () => void): void {
+    if (this.selectedVenueId() === venue.id) {
+      apply();
+    }
+  }
+
+  /** Move focus to a test-id'd element once the swap it belongs to has actually rendered. */
+  private focusAfterRender(testId: string): void {
+    afterNextRender(
+      () =>
+        this.hostRef.nativeElement
+          .querySelector<HTMLElement>(`[data-testid="${testId}"]`)
+          ?.focus(),
+      { injector: this.injector },
+    );
   }
 
   private async loadVenues(): Promise<void> {

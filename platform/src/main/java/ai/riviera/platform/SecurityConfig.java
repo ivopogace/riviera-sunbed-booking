@@ -380,10 +380,7 @@ class SecurityConfig {
 						// Per-booking mail delivery + resend (#380) — same ADMIN gate, platform-wide state.
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_LOOKUP_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_RESEND_PATH).hasRole(ADMIN_ROLE)
-						// Venue-photo moderation (#504 takedown, #511 read) — ADMIN only; reaches any
-						// venue, owned or not. Both sit above the permitAll GET /api/venues/** rule
-						// below: first match wins, and the read's path is NOT under it anyway
-						// (/api/admin/…), but keeping the pair adjacent keeps that reasoning local.
+						// Venue-photo moderation (#504 takedown, #511 read) — ADMIN only; any venue, owned or not.
 						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_PHOTOS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.DELETE, ADMIN_VENUE_PHOTO_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()

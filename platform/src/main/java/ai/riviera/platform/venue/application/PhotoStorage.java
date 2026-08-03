@@ -46,7 +46,8 @@ public interface PhotoStorage {
 
 	/**
 	 * The venue's stored photos, <strong>blob-free</strong> — one {@link PhotoMetadata} per occupied
-	 * slot, for the tourist + operator read models. Never selects the {@code bytea} column.
+	 * slot, for the platform-admin moderation read (#511) — its one caller. Never selects the
+	 * {@code bytea} column. The tourist and operator read models run their own SQL in the adapters.
 	 */
 	List<PhotoMetadata> listMetadata(VenueId venueId);
 }
