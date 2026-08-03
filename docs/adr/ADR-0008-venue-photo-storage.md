@@ -99,9 +99,12 @@ ADR-0004 applied to EU-sovereign hosting for dummy data.
   `DELETE /api/admin/venues/{venueId}/photos/{slot}`, role-gated on `is_admin` and exempt from
   invariant #13 like every `/api/admin/**` surface, because a reported photo belongs by
   definition to a venue the admin does not own. It is a separate port
-  (`VenuePhotoTakedown`) so the venue-scoped `VenuePhotos` contract stays uniformly
-  ownership-asserting, and it drives this ADR's same single cascading `DELETE`. The storage
-  decision below is unchanged.
+  (`VenuePhotoModeration`) so the venue-scoped `VenuePhotos` contract stays uniformly
+  ownership-asserting, and it drives this ADR's same single cascading `DELETE`. **Extended by
+  #511:** the blob-free `PhotoStorage#listMetadata` gains an ownership-free caller on the same port
+  (`GET /api/admin/venues/{venueId}/photos`) — its first production caller of any kind — so an admin
+  can see the photo it is authorized to remove. The storage decision below is unchanged: both
+  moderation operations go through the existing port, and neither reads the `bytea` column.
 - Re-rendering trade-off: because we discard the original, changing the resize targets later
   means operators re-upload (acceptable for a handful of venues) rather than a server-side
   re-render from a stored master. Recorded so it is a conscious cost, not a surprise.

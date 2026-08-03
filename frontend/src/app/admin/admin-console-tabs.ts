@@ -8,11 +8,13 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
  * <p><strong>Routed tabs, not local state.</strong> The canvas models tabs as a `tab` state field
  * because it is a single demo page; here each tab is its own lazy route, so it is deep-linkable,
  * back-button-correct, and only the tab you opened is downloaded — the operator console's shape
- * (#170), minus the layout component, which the tab count (three, as of #460) does not yet justify.
+ * (#170), minus the layout component, which the tab count (four, as of #511) does not yet justify.
  *
  * <p><strong>Which tabs exist is a backend question.</strong> The canvas draws five; three of them
  * (Commissions, Payouts, and Privacy's erasure flow) are out of this slice — the canvas itself
- * documents that the first two have no endpoints at all. This strip lists what ships.
+ * documents that the first two have no endpoints at all. This strip lists what ships, which is why
+ * Photos (#511) appears here without appearing on the canvas at all: the canvas's Privacy tab is
+ * scoped to GDPR data-subject erasure, and content moderation is a different job.
  *
  * <p>Rendered only inside each page's admin-authorized branch, so a signed-out visitor is never told
  * which admin surfaces exist. The active tab carries `aria-current="page"`, which is what makes the
@@ -45,5 +47,6 @@ export class AdminConsoleTabs {
     { path: '/admin', label: 'Operators', testId: 'admin-tab-operators' },
     { path: '/admin/email', label: 'Email', testId: 'admin-tab-email' },
     { path: '/admin/refunds', label: 'Refunds', testId: 'admin-tab-refunds' },
+    { path: '/admin/photos', label: 'Photos', testId: 'admin-tab-photos' },
   ];
 }

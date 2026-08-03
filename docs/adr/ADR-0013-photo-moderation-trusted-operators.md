@@ -76,6 +76,17 @@ column, any pre-publication gating, a vision-API screening call at upload, and a
   tracked deficiency.** The takedown is live and unattributable until #507 lands. That is an accepted
   Phase-1 risk (takedowns are expected to be rare-to-never at current scale), not an oversight, and
   it is the first thing to fix if takedowns stop being hypothetical.
+
+  > **Amended by #511 — that trigger condition is now met, and this is stated rather than left
+  > implicit.** The acceptance above leaned on real friction: #504's only interface was a
+  > hand-crafted authenticated `curl DELETE`, which kept an unattributable destructive action rare
+  > by making it awkward. #511 deliberately removes that friction — a Photos tab in the admin
+  > console turns takedown into a two-click action from a phone, which is the whole point of the
+  > slice. The *frequency* assumption the risk acceptance rested on therefore no longer holds, so
+  > **#507 (the platform-wide admin audit trail) should be re-triaged off `needs-triage`**: it is no
+  > longer "the first thing to fix *if* takedowns stop being hypothetical" but the first thing to
+  > fix, full stop. Nothing else in this stance changes; the deficiency was always tracked, and what
+  > #511 changes is its priority, not its nature.
 - **A takedown does not un-cache an already-served image — and a CDN would make that a real hole
   (#508).** ADR-0008's serving GET returns `Cache-Control: public, max-age=31536000, immutable` —
   sound for a *replace*, which mints a new hash and therefore a new URL, but a takedown mints

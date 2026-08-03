@@ -79,13 +79,16 @@ review-only.
 ## `venue`
 **Job:** Own venue profiles (incl. amenities + distance-to-water), venue photos (#142: per-slot
 upload/replace/delete, processing, `bytea` storage behind the module-internal `PhotoStorage`
-port, and the public content-hash serving read — ADR-0008) **including the platform-admin
-takedown** (#504, the "remove" half of #230's report-and-remove stance): I own it because I own
-photos, but it is the one photo write with **no ownership check** — a second port,
-`VenuePhotoTakedown`, deliberately kept apart from the ownership-asserting `VenuePhotos` so that
-port's "asserts `assertOwns` first" contract stays uniform rather than becoming per-method. The
-*authority* is not mine: the `ADMIN` role gate on `DELETE /api/admin/venues/{venueId}/photos/{slot}`
-is the whole authorization (invariant #13 exempts `/api/admin/**`), which is the point — the
+port, and the public content-hash serving read — ADR-0008) **including platform-admin photo
+moderation** (#504's takedown, the "remove" half of #230's report-and-remove stance, plus #511's
+read): I own it because I own photos, but these are my only photo operations with **no ownership
+check** — a second port, `VenuePhotoModeration`, deliberately kept apart from the ownership-asserting
+`VenuePhotos` so that port's "asserts `assertOwns` first" contract stays uniform rather than becoming
+per-method. The port is named for the **posture** every one of its methods shares, which is why the
+read joined it rather than minting a third port: reading a reported photo and removing it is one
+conversation, one actor, one authorization posture. The
+*authority* is not mine: the `ADMIN` role gate on `GET /api/admin/venues/{venueId}/photos` and
+`DELETE /api/admin/venues/{venueId}/photos/{slot}` is the whole authorization (invariant #13 exempts `/api/admin/**`), which is the point — the
 venue-scoped twin refuses a non-owner `403` before it looks at the slot, i.e. refuses exactly the
 case moderation exists for. Both ports run the same single cascading delete, and takedown removes
 one **slot**, not one image (byte-identical variants in another slot keep serving; each published

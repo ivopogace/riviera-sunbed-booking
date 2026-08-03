@@ -1,5 +1,13 @@
 # Admin Photo Takedown Implementation Plan
 
+> **Historical record — one name has since changed.** This plan shipped the port as
+> `VenuePhotoTakedown`; **#511 renamed it to `VenuePhotoModeration`** when it added the matching
+> ownership-free *read* (`GET /api/admin/venues/{venueId}/photos`) to the same port, so the name
+> describes the port's posture rather than its one action. Every argument below still holds
+> verbatim — read `VenuePhotoTakedown` as `VenuePhotoModeration` throughout. The text is left as
+> written on purpose: it records what this slice decided, not what the code looks like today.
+> Current state: `docs/plans/admin-photo-moderation.md`.
+
 > **For agentic workers:** to implement this plan use `implement` + `tdd` (installed),
 > or the superpowers `subagent-driven-development`/`executing-plans` skills if present
 > task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

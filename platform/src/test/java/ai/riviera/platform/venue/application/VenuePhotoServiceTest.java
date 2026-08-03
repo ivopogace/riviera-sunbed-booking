@@ -27,6 +27,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -130,6 +132,57 @@ class VenuePhotoServiceTest {
 		assertFalse(service.takedown(new VenueId(VENUE), PhotoSlot.SUNBEDS), "nothing to remove");
 	}
 
+	/**
+	 * The moderation read (#511) — the takedown's companion, and the reason an admin can now see what
+	 * it is authorized to remove. Every slot comes back in declaration order so the console renders a
+	 * stable grid; emptiness IS the null URL (#142 review F-11), and an occupied slot carries the
+	 * PREVIEW variant's URL — the surface sized for exactly this job.
+	 */
+	@Test
+	void moderationReadListsEverySlotWithoutOwnershipCheck() throws IOException {
+		service.upload(new OperatorId(OPERATOR), new VenueId(VENUE), PhotoSlot.COVER, jpeg(1600, 1200));
+
+		List<PhotoSlotView> slots = service.slotsOf(new VenueId(VENUE));
+
+		assertEquals(List.of(PhotoSlot.COVER, PhotoSlot.SUNBEDS, PhotoSlot.BAR),
+				slots.stream().map(PhotoSlotView::slot).toList(), "every slot, declaration order");
+		assertNotNull(slots.get(0).previewUrl(), "the occupied slot carries its PREVIEW url");
+		assertTrue(slots.get(0).previewUrl().startsWith("/api/venues/" + VENUE + "/photos/"),
+				"built through PhotoServingUrls, so the route cannot drift");
+		assertNull(slots.get(1).previewUrl(), "emptiness IS the null url");
+		assertNull(slots.get(2).previewUrl());
+	}
+
+	/**
+	 * The platform-admin case, mirroring {@link #takedownReachesAVenueTheCallerCouldNeverOwn}: the fake
+	 * ownership port refuses every venue but {@code VENUE}, so reading another venue's slots at all is
+	 * itself the proof that no ownership check runs. This is precisely the case the venue-scoped
+	 * profile read answers {@code 403 NOT_VENUE_OWNER} — the gap that made the takedown unusable.
+	 */
+	@Test
+	void moderationReadReachesAVenueTheCallerCouldNeverOwn() {
+		VenueId other = new VenueId(VENUE + 1);
+		storage.replace(other, PhotoSlot.BAR, previewOnly("f00d02"));
+
+		List<PhotoSlotView> slots = service.slotsOf(other);
+
+		assertEquals("/api/venues/" + other.value() + "/photos/f00d02", slots.get(2).previewUrl(),
+				"BAR is the third slot");
+		assertNull(slots.get(0).previewUrl(), "COVER is empty on this venue");
+		assertThrows(NotVenueOwnerException.class,
+				() -> service.delete(new OperatorId(OPERATOR), other, PhotoSlot.BAR),
+				"the venue-scoped twin still refuses — the two ports stay distinguishable");
+	}
+
+	@Test
+	void moderationReadOfAVenueWithNoPhotosIsThreeEmptySlots() {
+		// An unknown venue is deliberately indistinguishable from one with no photos (like takedown).
+		List<PhotoSlotView> slots = service.slotsOf(new VenueId(4242L));
+
+		assertEquals(3, slots.size());
+		assertTrue(slots.stream().allMatch(slot -> slot.previewUrl() == null));
+	}
+
 	@Test
 	void serveIsPublicAndReturnsBytesByHash() throws IOException {
 		PhotoUploadResult.Stored stored = assertInstanceOf(PhotoUploadResult.Stored.class,
@@ -142,6 +195,12 @@ class VenuePhotoServiceTest {
 		assertTrue(served.isPresent());
 		assertEquals("image/jpeg", served.get().contentType());
 		assertTrue(service.serve(new VenueId(VENUE), new ContentHash("deadbeef")).isEmpty(), "unknown hash → empty");
+	}
+
+	/** A stored photo carrying only the PREVIEW variant — the surface the moderation read serves. */
+	private static ProcessedPhoto previewOnly(String hashHex) {
+		return new ProcessedPhoto(List.of(new StoredVariant(PhotoSurface.PREVIEW, new ContentHash(hashHex),
+				"image/jpeg", 480, 320, new byte[] {1, 2, 3})));
 	}
 
 	/** A one-variant stored photo, for seeding a venue the fake ownership port refuses. */

@@ -182,6 +182,14 @@ export const routes: Routes = [
     data: { operatorChrome: true },
   },
   {
+    // Admin console Photos tab (#511) — venue-photo moderation; ADMIN-gated server-side.
+    path: 'admin/photos',
+    loadComponent: () => import('./admin/admin-venue-photos').then((m) => m.AdminVenuePhotos),
+    title: 'Photos — Riviera',
+    // Admin surface: the shared operator header/footer, never the tourist ones.
+    data: { operatorChrome: true },
+  },
+  {
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the shell
     // (app.ts) suppresses all of its own chrome here via `data.operatorConsole`, so the console
     // owns a full-bleed porcelain surface. Each tab is a child route (all graduated, O1–O8);

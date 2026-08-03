@@ -20,8 +20,9 @@ model in `docs/architecture/domain-model.md`.
   guard), EXIF-stripped, and persisted only as its resized variants (the full-res upload is
   discarded — ADR-0008). Only the **cover** slot is tourist-surfaced.
 - **Photo slot** — one of a venue's three fixed photo positions: `COVER` (shown on the Discover
-  card + beach-map banner), `SUNBEDS`, `BAR` (stored, operator-preview only). At most one photo
-  per `(venue, slot)`; uploading again replaces the slot; deleting erases metadata + bytes in one
+  card + beach-map banner), `SUNBEDS`, `BAR` (never tourist-surfaced — visible to the venue's own
+  operator and, since #511, to a platform admin moderating them). At most one photo per
+  `(venue, slot)`; uploading again replaces the slot; deleting erases metadata + bytes in one
   transaction.
 - **Photo takedown** — the **platform admin's** removal of any venue's photo by `(venue, slot)`
   (#504) — the "remove" half of the report-and-remove moderation stance (ADR-0013, #230). Same
@@ -30,6 +31,13 @@ model in `docs/architecture/domain-model.md`.
   to reach a venue the actor does **not** own, which the venue-scoped delete refuses with `403
   NOT_VENUE_OWNER`. Scoped to one **slot**, not one image — the same picture published in a second
   slot keeps serving from that slot's variants, so each published slot is its own takedown.
+- **Photo moderation** — the platform admin's read-then-remove pair over any venue's photos (#511):
+  the **Photo takedown** above plus the slot read that makes it operable
+  (`GET /api/admin/venues/{venueId}/photos`). Both are ownership-free by design and share one port
+  named for that posture. The read exists because the only other per-slot view is the venue-scoped
+  operator profile, which answers a non-owner `403 NOT_VENUE_OWNER` — so before #511 an admin could
+  delete a photo it had no way to look at. It answers **every** slot, empty ones as a null preview
+  URL, and answers identically for an unknown venue, so it reports nothing about which venues exist.
 - **Photo variant** — one stored rendition of a venue photo for a display surface: `CARD`
   (≤640×384), `BANNER` (≤1280×480), `PREVIEW` (≤480×360) — fit-within-resized progressive JPEGs,
   each served by its **content hash** at an immutable, long-cached public URL

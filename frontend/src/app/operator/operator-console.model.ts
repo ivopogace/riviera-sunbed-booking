@@ -1,7 +1,7 @@
 import { Amenity } from '../shared/amenities';
 import { HeldSetState } from '../shared/availability-grid';
 import { MoneyView } from '../shared/money';
-import { BookingMode, Pool, Tier } from '../shared/venue-views';
+import { BookingMode, PhotoSlotKey, Pool, Tier } from '../shared/venue-views';
 
 /**
  * The operator console's "online takings today" read (`GET /api/venues/{id}/takings`, #171). Mirrors
@@ -263,9 +263,6 @@ export interface VenueProfileView {
   /** Every photo slot's presence + preview URL (#142) — always all three keys, occupied or not. */
   readonly photos: Readonly<Record<PhotoSlotKey, SlotPhotoView>>;
 }
-
-/** A photo slot key as the REST path + the profile's `photos` map speak it (#142). */
-export type PhotoSlotKey = 'cover' | 'sunbeds' | 'bar';
 
 /**
  * One slot on the owner profile (#142): the PREVIEW variant's content-addressed serving URL, or

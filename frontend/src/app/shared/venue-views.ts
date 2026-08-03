@@ -105,3 +105,11 @@ export interface VenueSummary {
   /** The cover photo's serving URLs (#142), or `null`/absent — the card then keeps its gradient. */
   readonly coverPhoto?: CoverPhotoView | null;
 }
+
+/**
+ * A photo slot key as the REST path and every `photos` map speak it (#142) — the FE mirror of the
+ * backend `venue.vocabulary.PhotoSlot`. Lives here rather than in a feature because two features now
+ * speak it: the operator's own venue tab and the admin console's moderation surface (#511), and a
+ * feature-to-feature import is exactly the edge RV-FE-8 freezes.
+ */
+export type PhotoSlotKey = 'cover' | 'sunbeds' | 'bar';
