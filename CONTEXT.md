@@ -23,6 +23,13 @@ model in `docs/architecture/domain-model.md`.
   card + beach-map banner), `SUNBEDS`, `BAR` (stored, operator-preview only). At most one photo
   per `(venue, slot)`; uploading again replaces the slot; deleting erases metadata + bytes in one
   transaction.
+- **Photo takedown** — the **platform admin's** removal of any venue's photo by `(venue, slot)`
+  (#504) — the "remove" half of the report-and-remove moderation stance (#230). Same
+  single-transaction erase as the operator's own delete, driven through the same storage call, but
+  role-gated on the platform-admin flag (`is_admin`) instead of venue ownership: it exists precisely
+  to reach a venue the actor does **not** own, which the venue-scoped delete refuses with `403
+  NOT_VENUE_OWNER`. Scoped to one **slot**, not one image — the same picture published in a second
+  slot keeps serving from that slot's variants, so each published slot is its own takedown.
 - **Photo variant** — one stored rendition of a venue photo for a display surface: `CARD`
   (≤640×384), `BANNER` (≤1280×480), `PREVIEW` (≤480×360) — fit-within-resized progressive JPEGs,
   each served by its **content hash** at an immutable, long-cached public URL

@@ -184,6 +184,16 @@ class SecurityConfig {
 	 */
 	private static final String ADMIN_MAIL_DELIVERY_LOOKUP_PATH = "/api/admin/mail-deliveries/lookup";
 	private static final String ADMIN_MAIL_DELIVERY_RESEND_PATH = "/api/admin/mail-deliveries/*/resend";
+	/**
+	 * Platform-admin venue-photo takedown (#504) — the same ADMIN gate and the same
+	 * {@code /api/admin/**} exemption from invariant #13 as the operator-approval surface. Unlike the
+	 * admin surfaces above it is <em>not</em> platform-wide state: it acts on one venue's data, and the
+	 * exemption is the whole point. The venue-scoped {@code PHOTO_ITEM_PATH} DELETE below answers a
+	 * non-owner {@code 403 NOT_VENUE_OWNER}, which is exactly the case moderation exists for, so the
+	 * takedown takes a role gate instead of an ownership check — object-level authorization has nothing
+	 * to check when the actor is the platform. Two single-segment wildcards: venue id, then slot.
+	 */
+	private static final String ADMIN_VENUE_PHOTO_PATH = "/api/admin/venues/*/photos/*";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	/**
@@ -361,6 +371,8 @@ class SecurityConfig {
 						// Per-booking mail delivery + resend (#380) — same ADMIN gate, platform-wide state.
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_LOOKUP_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_RESEND_PATH).hasRole(ADMIN_ROLE)
+						// Venue-photo takedown (#504) — ADMIN only; reaches any venue, owned or not.
+						.requestMatchers(HttpMethod.DELETE, ADMIN_VENUE_PHOTO_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)

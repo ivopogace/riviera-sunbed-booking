@@ -79,7 +79,17 @@ review-only.
 ## `venue`
 **Job:** Own venue profiles (incl. amenities + distance-to-water), venue photos (#142: per-slot
 upload/replace/delete, processing, `bytea` storage behind the module-internal `PhotoStorage`
-port, and the public content-hash serving read — ADR-0008), the beach map / layout, set
+port, and the public content-hash serving read — ADR-0008) **including the platform-admin
+takedown** (#504, the "remove" half of #230's report-and-remove stance): I own it because I own
+photos, but it is the one photo write with **no ownership check** — a second port,
+`VenuePhotoTakedown`, deliberately kept apart from the ownership-asserting `VenuePhotos` so that
+port's "asserts `assertOwns` first" contract stays uniform rather than becoming per-method. The
+*authority* is not mine: the `ADMIN` role gate on `DELETE /api/admin/venues/{venueId}/photos/{slot}`
+is the whole authorization (invariant #13 exempts `/api/admin/**`), which is the point — the
+venue-scoped twin refuses a non-owner `403` before it looks at the slot, i.e. refuses exactly the
+case moderation exists for. Both ports run the same single cascading delete, and takedown removes
+one **slot**, not one image (byte-identical variants in another slot keep serving; each published
+slot is its own takedown). Also own the beach map / layout, set
 positions, the online-vs-walk-in pool assignment for each set, pricing, and the booking mode
 (Instant / Request). Since S9 (#277) also **assemble the signed-in operator's own-venues read model**
 (`GET /api/venues/mine`): I ask `operator::api` for the ownership set and join the names, because
