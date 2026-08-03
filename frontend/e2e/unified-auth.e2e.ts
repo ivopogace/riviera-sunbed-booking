@@ -135,14 +135,15 @@ test('a multi-venue operator picks a venue on the /operator home', async ({ page
   await expect(page).toHaveURL(/\/operator\/12/);
 });
 
-test('an operator with no venue is sent to onboarding', async ({ page }) => {
+test('an operator with no venue lands on the inline create form (#278)', async ({ page }) => {
   await mockAuthApi(page, { validPassword: 'good-pw', venues: [] });
   const signIn = new OperatorSignInPage(page);
 
   await signIn.goto();
   await signIn.signIn('operator', 'good-pw');
 
-  await expect(page).toHaveURL(/\/venue-admin$/);
+  await expect(page).toHaveURL(/\/operator$/);
+  await expect(page.getByTestId('venue-create-card')).toBeVisible();
 });
 
 test('a returnUrl outranks the venue-count rule', async ({ page }) => {

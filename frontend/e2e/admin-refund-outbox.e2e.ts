@@ -51,7 +51,7 @@ async function mockRefundOutbox(page: Page, options: { outstanding: number }): P
 
 /** Sign in as the platform admin and open the Refunds tab. */
 async function openRefundsTab(page: Page): Promise<void> {
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
   await page.goto('/admin/refunds');
 }

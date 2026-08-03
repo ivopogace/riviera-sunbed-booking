@@ -52,7 +52,7 @@ test.describe('O5 daily view — real backend, real Postgres', () => {
     page,
   }) => {
     // Lay out a venue with one ONLINE set via the legacy editor (bootstrap operator session).
-    await page.goto('/venue-admin');
+    await page.goto('/operator');
     await signIn(page);
     const id = await createVenue(page, venueName('daily'));
     await addOnlineSet(page);

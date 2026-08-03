@@ -19,7 +19,10 @@ describe('app.routes — retired auth surfaces', () => {
     // A blank destination: this asserts the redirect TARGET, not that the real page boots.
     const redirectRoutes: Routes = routes
       .filter((route) => route.redirectTo !== undefined)
-      .concat([{ path: 'account/sign-in', component: BlankPage }]);
+      .concat([
+        { path: 'account/sign-in', component: BlankPage },
+        { path: 'operator', component: BlankPage },
+      ]);
     TestBed.configureTestingModule({ providers: [provideRouter(redirectRoutes)] });
     router = TestBed.inject(Router);
   });
@@ -32,6 +35,12 @@ describe('app.routes — retired auth surfaces', () => {
   it('forwards /operator/register into the operator tab in register mode', async () => {
     await router.navigateByUrl('/operator/register');
     expect(router.url).toBe('/account/sign-in?audience=operator&mode=register');
+  });
+
+  it('forwards retired /venue-admin into the operator home in create mode (#278)', async () => {
+    // One-release window like the auth redirects above; ?create=1 keeps the bookmark's create intent.
+    await router.navigateByUrl('/venue-admin');
+    expect(router.url).toBe('/operator?create=1');
   });
 
   it('registers the two lazy legal routes with titles (#101 Slice 3)', () => {

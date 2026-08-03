@@ -25,7 +25,7 @@ async function seedApprovedOperator(page: import('@playwright/test').Page): Prom
   await page.getByRole('button', { name: /^(Request account|Submitting)/ }).click();
   await expect(page.getByTestId('auth-pending')).toBeVisible();
 
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
   await page.goto('/admin');
   await page.getByRole('button', { name: 'Approve' }).click();
@@ -55,7 +55,7 @@ test('an admin suspends an operator, which blocks its sign-in, then reinstates i
   await expect(row.getByRole('button', { name: 'Reinstate' })).toBeVisible();
 
   // A suspended operator cannot sign in — generic failure, no enumeration (D-8).
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await signIn.signOut();
   await signIn.signIn(OP.username, OP.password);
   await expect(signIn.error).toContainText('Sign-in failed');
@@ -67,7 +67,7 @@ test('an admin suspends an operator, which blocks its sign-in, then reinstates i
   await row.getByRole('button', { name: 'Reinstate' }).click();
   await expect(row.getByText('Suspended')).toBeHidden();
 
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await signIn.signOut();
   await signIn.signIn(OP.username, OP.password);
   await signIn.expectSignedInAs(OP.username);
@@ -75,7 +75,7 @@ test('an admin suspends an operator, which blocks its sign-in, then reinstates i
 
 test('the admin is offered no way to suspend its own account', async ({ page }) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
   await page.goto('/admin');
 
@@ -87,7 +87,7 @@ test('the admin is offered no way to suspend its own account', async ({ page }) 
 
 test('a sign-out that never reaches the server warns, and the retry clears it', async ({ page }) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   const signIn = new OperatorSignInPage(page);
   await signIn.signIn(ADMIN.username, ADMIN.password);
 

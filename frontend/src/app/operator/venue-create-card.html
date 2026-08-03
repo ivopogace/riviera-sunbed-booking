@@ -1,0 +1,159 @@
+<section
+  appCardGlass
+  class="rounded-[24px] px-[22px] py-5"
+  aria-labelledby="venue-create-title"
+  data-testid="venue-create-card"
+>
+  <h2 id="venue-create-title" class="m-0 text-[16px] font-bold text-(--riv-card-ink)">
+    Venue details
+  </h2>
+  <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+    What tourists see on your venue card. You’ll lay out the beach map right after.
+  </p>
+
+  @if (errorMessage(); as msg) {
+    <p
+      class="mb-3 text-[12.5px] font-semibold text-[#a3160e]"
+      role="alert"
+      data-testid="venue-create-error"
+    >
+      {{ msg }}
+    </p>
+  }
+
+  @if (operator.signedIn()) {
+    <form class="flex flex-col gap-3" (submit)="onCreateVenue(); $event.preventDefault()" novalidate>
+      <label class="field flex flex-col gap-1">
+        <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Name</span>
+        <input
+          type="text"
+          [formField]="venueForm.name"
+          data-testid="venue-create-name"
+          class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+        />
+        @if (venueForm.name().touched() && venueForm.name().errors().length) {
+          <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
+            venueForm.name().errors()[0].message
+          }}</span>
+        }
+      </label>
+
+      <div class="grid grid-cols-2 gap-3">
+        <label class="field flex flex-col gap-1">
+          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Beach</span>
+          <input
+            type="text"
+            [formField]="venueForm.beach"
+            data-testid="venue-create-beach"
+            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+          />
+          @if (venueForm.beach().touched() && venueForm.beach().errors().length) {
+            <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
+              venueForm.beach().errors()[0].message
+            }}</span>
+          }
+        </label>
+        <label class="field flex flex-col gap-1">
+          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Region</span>
+          <input
+            type="text"
+            [formField]="venueForm.region"
+            data-testid="venue-create-region"
+            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+          />
+          @if (venueForm.region().touched() && venueForm.region().errors().length) {
+            <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
+              venueForm.region().errors()[0].message
+            }}</span>
+          }
+        </label>
+      </div>
+
+      <label class="field flex flex-col gap-1">
+        <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Description</span>
+        <input
+          type="text"
+          [formField]="venueForm.description"
+          data-testid="venue-create-description"
+          class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+        />
+      </label>
+
+      <div class="grid grid-cols-2 gap-3">
+        <label class="field flex flex-col gap-1">
+          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Booking mode</span>
+          <select
+            [formField]="venueForm.bookingMode"
+            data-testid="venue-create-booking-mode"
+            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+          >
+            <option value="INSTANT">Instant Book</option>
+            <option value="REQUEST">Request to Book</option>
+          </select>
+        </label>
+        <label class="field flex flex-col gap-1">
+          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
+            >Commission (basis points)</span
+          >
+          <input
+            type="text"
+            inputmode="numeric"
+            [formField]="venueForm.commissionBps"
+            data-testid="venue-create-commission"
+            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+          />
+          @if (venueForm.commissionBps().touched() && venueForm.commissionBps().errors().length) {
+            <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
+              venueForm.commissionBps().errors()[0].message
+            }}</span>
+          }
+        </label>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <label class="field flex flex-col gap-1">
+          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
+            >Payout currency (ISO 4217)</span
+          >
+          <input
+            type="text"
+            autocomplete="off"
+            [formField]="venueForm.payoutCurrency"
+            data-testid="venue-create-currency"
+            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+          />
+          @if (venueForm.payoutCurrency().touched() && venueForm.payoutCurrency().errors().length) {
+            <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
+              venueForm.payoutCurrency().errors()[0].message
+            }}</span>
+          }
+        </label>
+        <label class="field flex flex-col gap-1">
+          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
+            >Booking cutoff (Europe/Tirane)</span
+          >
+          <input
+            type="time"
+            [formField]="venueForm.bookingCutoff"
+            data-testid="venue-create-cutoff"
+            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+          />
+          @if (venueForm.bookingCutoff().touched() && venueForm.bookingCutoff().errors().length) {
+            <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
+              venueForm.bookingCutoff().errors()[0].message
+            }}</span>
+          }
+        </label>
+      </div>
+
+      <button
+        type="submit"
+        class="mt-1 self-start rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50"
+        data-testid="venue-create-submit"
+        [disabled]="venueForm().invalid() || saving()"
+      >
+        {{ saving() ? 'Creating…' : 'Create venue' }}
+      </button>
+    </form>
+  }
+</section>

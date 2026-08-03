@@ -16,7 +16,7 @@ test('edits venue details + commodities via the console tab → tourist beach-ma
   page,
 }) => {
   // Onboard a fresh venue (INSTANT, 15% commission by default), then open its Venue tab in the console.
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await signInOperator(page);
   const id = await createVenue(page, venueName('venue-tab'));
 
@@ -58,7 +58,7 @@ test('a stale-tab save is rejected with the 409 banner, and Reload recovers (#22
   context,
 }) => {
   // Onboard a fresh venue and open its tab (loads at version 0) — this is the "stale" tab.
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await signInOperator(page);
   const id = await createVenue(page, venueName('stale'));
   await page.goto(`/operator/${id}/venue`);

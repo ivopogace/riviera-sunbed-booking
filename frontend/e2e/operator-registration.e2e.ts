@@ -33,7 +33,7 @@ test('operator registers, is approved by an admin, then signs in and creates a v
   await expectNoSeriousAxeViolations(page, 'operator registration pending');
 
   // 2. A PENDING operator cannot sign in yet — approval is required (generic failure, D-8).
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await signIn.signIn(NEW_OP.username, NEW_OP.password);
   await expect(signIn.error).toContainText('Sign-in failed');
   await signIn.expectSignedOut();
@@ -51,17 +51,17 @@ test('operator registers, is approved by an admin, then signs in and creates a v
   await expect(page.getByTestId('admin-ops-empty')).toBeVisible();
 
   // 4. The admin signs out; the newly-approved operator can now sign in (approval enabled its login).
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await signIn.signOut();
   await signIn.expectSignedOut();
   await signIn.signIn(NEW_OP.username, NEW_OP.password);
   await signIn.expectSignedInAs(NEW_OP.username);
 
-  // 5. The approved operator creates a venue (creator-owns-on-create on the backend) → a created id.
+  // 5. The approved operator creates a venue on the inline /operator form and lands in its console (#278).
   await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
   await page.getByLabel('Name', { exact: true }).fill('Sunset Club');
   await page.getByLabel('Beach', { exact: true }).fill('Ksamil');
   await page.getByLabel('Region', { exact: true }).fill('Albanian Riviera');
   await page.getByRole('button', { name: 'Create venue' }).click();
-  await expect(page.getByTestId('venue-created')).toBeVisible();
+  await expect(page).toHaveURL(/\/operator\/100\/beach-map/);
 });

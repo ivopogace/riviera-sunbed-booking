@@ -529,7 +529,6 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'operator/:venueId',
     'operator',
     'account/operator-password',
-    'venue-admin',
     'admin',
     'admin/email',
     'admin/refunds',

@@ -18,8 +18,8 @@ describe('landingRouteFor', () => {
     expect(landingRouteFor(MANY, undefined)).toBe('/operator');
   });
 
-  it('sends an operator with no venue to onboarding', () => {
-    expect(landingRouteFor([], undefined)).toBe('/venue-admin');
+  it('keeps an operator with no venue on the operator home, where creation lives (#278)', () => {
+    expect(landingRouteFor([], undefined)).toBe('/operator');
   });
 });
 
@@ -54,7 +54,7 @@ describe('safeReturnUrl', () => {
   it('is the gate the landing resolvers use', () => {
     // An unsafe returnUrl must fall through to the normal rule, never be returned.
     expect(landingRouteFor(ONE, 'https://evil.example/steal')).toBe('/operator/12');
-    expect(landingRouteFor([], '//evil.example')).toBe('/venue-admin');
+    expect(landingRouteFor([], '//evil.example')).toBe('/operator');
     expect(touristLandingRoute('https://evil.example')).toBe('/');
   });
 });

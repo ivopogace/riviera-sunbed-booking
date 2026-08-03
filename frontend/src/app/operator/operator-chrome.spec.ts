@@ -45,7 +45,7 @@ describe('OperatorChrome', () => {
     ).toBe('/operator');
     expect(
       el.querySelector<HTMLAnchorElement>('[data-testid="opc-create-venue"]')?.getAttribute('href'),
-    ).toBe('/venue-admin');
+    ).toBe('/operator?create=1');
     expect(
       el
         .querySelector<HTMLAnchorElement>('[data-testid="opc-change-password"]')

@@ -49,7 +49,7 @@ async function mockMailOutbox(page: Page, options: { outstanding: number }): Pro
 
 /** Sign in as the platform admin and open the Email tab. */
 async function openEmailTab(page: Page): Promise<void> {
-  await page.goto('/venue-admin');
+  await page.goto('/operator');
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
   await page.goto('/admin/email');
 }

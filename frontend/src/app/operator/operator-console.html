@@ -4,7 +4,9 @@
       <h1 class="oc-signin-title" data-testid="oc-invalid-venue">Venue not found</h1>
       <p class="oc-signin-intro">
         This operator console link isn’t valid. Check the address, or
-        <a class="oc-create-venue" routerLink="/venue-admin">create a venue</a>.
+        <a class="oc-create-venue" routerLink="/operator" [queryParams]="{ create: '1' }"
+          >create a venue</a
+        >.
       </p>
     </div>
   </main>
@@ -21,9 +23,12 @@
           }}</span>
         </div>
         <div class="oc-header-right">
-          <!-- Onboarding (create a venue) has no console tab; it stays at the /venue-admin page where
-               O1 placed it (operator self-registration is #115). Keep it reachable (AC-5). -->
-          <a class="oc-create-venue" data-testid="oc-create-venue" routerLink="/venue-admin"
+          <!-- Venue creation lives in the operator home's create state (#278); keep it reachable here. -->
+          <a
+            class="oc-create-venue"
+            data-testid="oc-create-venue"
+            routerLink="/operator"
+            [queryParams]="{ create: '1' }"
             >Create a venue</a
           >
           @if (operator.isAdmin()) {

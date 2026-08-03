@@ -35,8 +35,8 @@ export function safeReturnUrl(returnUrl: string | undefined): string | undefined
 /**
  * The route a signed-in **operator** lands on: an explicit (safe) `returnUrl` wins over everything —
  * it is the page they were trying to reach — otherwise the owned-venue count decides. Exactly one
- * venue skips the picker entirely; several render it; none means the account has no venue yet, so it
- * goes to venue onboarding (folding creation into the console is #278).
+ * venue skips the picker entirely; several render the picker at `/operator`; none also lands on
+ * `/operator`, whose zero state renders the create-venue form inline (#278).
  */
 export function landingRouteFor(
   venues: readonly LandingVenue[],
@@ -49,7 +49,8 @@ export function landingRouteFor(
   if (venues.length === 1) {
     return `/operator/${venues[0].id}`;
   }
-  return venues.length === 0 ? '/venue-admin' : '/operator';
+  // 0 venues → still '/operator': the home renders the create form inline there (#278).
+  return '/operator';
 }
 
 /**
