@@ -12,14 +12,19 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Orchestrates the venue-photo use cases: for the two writes it asserts per-venue ownership
- * <strong>first</strong> (invariant #13, so no driving adapter can bypass it), then runs the pure
- * {@link PhotoProcessor} and persists via the {@link PhotoStorage} port; the public {@link #serve}
- * read skips ownership. Package-private {@code @Service}; callers depend on the {@link VenuePhotos}
- * port (invariant #11). No JPA — persistence is entirely behind {@code PhotoStorage} (invariant #1).
+ * Orchestrates the venue-photo use cases: for the two {@link VenuePhotos} writes it asserts per-venue
+ * ownership <strong>first</strong> (invariant #13, so no driving adapter can bypass it), then runs the
+ * pure {@link PhotoProcessor} and persists via the {@link PhotoStorage} port; the public
+ * {@link #serve} read skips ownership. Package-private {@code @Service}; callers depend on the ports
+ * (invariant #11). No JPA — persistence is entirely behind {@code PhotoStorage} (invariant #1).
+ *
+ * <p>It also implements the second, deliberately ownership-free port {@link VenuePhotoTakedown}
+ * (#504), so the platform-admin removal reuses this class's one call into {@code PhotoStorage#delete}
+ * instead of duplicating the deletion. Why that is a separate port rather than a fourth
+ * {@code VenuePhotos} method — and what authorizes it instead of ownership — is on the port itself.
  */
 @Service
-class VenuePhotoService implements VenuePhotos {
+class VenuePhotoService implements VenuePhotos, VenuePhotoTakedown {
 
 	private final VenueOwnership ownership;
 	private final PhotoProcessor processor;
@@ -51,6 +56,12 @@ class VenuePhotoService implements VenuePhotos {
 	public boolean delete(OperatorId operator, VenueId venueId, PhotoSlot slot) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value())); // invariant #13 — FIRST
 		// No tx needed here: the adapter's delete is one cascading DELETE statement (atomic on its own).
+		return storage.delete(venueId, slot);
+	}
+
+	@Override
+	public boolean takedown(VenueId venueId, PhotoSlot slot) {
+		// No ownership check by design (#504): the ADMIN role gate is this path's whole authorization.
 		return storage.delete(venueId, slot);
 	}
 

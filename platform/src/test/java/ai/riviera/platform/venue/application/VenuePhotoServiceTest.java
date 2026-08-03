@@ -6,6 +6,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -20,6 +21,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.application.PhotoProcessingResult.Reason;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
+import ai.riviera.platform.venue.vocabulary.PhotoSurface;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -99,6 +101,33 @@ class VenuePhotoServiceTest {
 	}
 
 	@Test
+	void takedownRemovesAPhotoWithoutConsultingOwnership() throws IOException {
+		service.upload(new OperatorId(OPERATOR), new VenueId(VENUE), PhotoSlot.COVER, jpeg(1600, 1200));
+
+		assertTrue(service.takedown(new VenueId(VENUE), PhotoSlot.COVER), "a photo was there");
+		assertTrue(storage.listMetadata(new VenueId(VENUE)).isEmpty(), "metadata + variants are gone");
+	}
+
+	@Test
+	void takedownReachesAVenueTheCallerCouldNeverOwn() {
+		// The platform-admin case (#504): the fake ownership port throws for every venue but VENUE, so a
+		// takedown of OTHER_VENUE succeeding IS the proof that no ownership check runs — the invariant-#13
+		// exemption /api/admin/** carries. The operator-scoped delete over the same slot still throws.
+		VenueId other = new VenueId(VENUE + 1);
+		storage.replace(other, PhotoSlot.BAR, oneVariant("f00d01"));
+
+		assertTrue(service.takedown(other, PhotoSlot.BAR));
+		assertTrue(storage.listMetadata(other).isEmpty());
+		assertThrows(NotVenueOwnerException.class,
+				() -> service.delete(new OperatorId(OPERATOR), other, PhotoSlot.BAR));
+	}
+
+	@Test
+	void takedownOfAnEmptySlotIsFalse() {
+		assertFalse(service.takedown(new VenueId(VENUE), PhotoSlot.SUNBEDS), "nothing to remove");
+	}
+
+	@Test
 	void serveIsPublicAndReturnsBytesByHash() throws IOException {
 		PhotoUploadResult.Stored stored = assertInstanceOf(PhotoUploadResult.Stored.class,
 				service.upload(new OperatorId(OPERATOR), new VenueId(VENUE), PhotoSlot.COVER, jpeg(1600, 1200)));
@@ -110,6 +139,12 @@ class VenuePhotoServiceTest {
 		assertTrue(served.isPresent());
 		assertEquals("image/jpeg", served.get().contentType());
 		assertTrue(service.serve(new VenueId(VENUE), new ContentHash("deadbeef")).isEmpty(), "unknown hash → empty");
+	}
+
+	/** A one-variant stored photo, for seeding a venue the fake ownership port refuses. */
+	private static ProcessedPhoto oneVariant(String hashHex) {
+		return new ProcessedPhoto(List.of(new StoredVariant(PhotoSurface.CARD, new ContentHash(hashHex),
+				"image/jpeg", 640, 384, new byte[] {1, 2, 3})));
 	}
 
 	private static byte[] jpeg(int w, int h) throws IOException {

@@ -228,13 +228,13 @@ record, the surface added is:
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `plan — complete, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 — write the failing `VenuePhotoServiceTest.takedownRemovesAPhotoWithoutConsultingOwnership`.
+**Next action:** Phase 1 — write the failing `AdminPhotoTakedownIT`, then the controller + role gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The takedown port + service method | | |
+| 0 — The takedown port + service method | ✅ | (this commit) |
 | 1 — The admin endpoint + role gate | | |
 | 2 — Substrate docs (RESPONSIBILITIES.md, CONTEXT.md) | | |
 
@@ -631,6 +631,7 @@ class AdminVenuePhotoController {
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-03 | Phase 0 — introduced "a separate unscoped port beside the venue-scoped one" | Other `/api/admin/**` controllers reusing a venue-scoped application service, i.e. taking the "add an unauthorized method to the scoped port" shortcut this phase avoided | `grep -rn "api/admin" platform/src/main/java --include=*.java -l`, then each controller's injected port | 6 admin controllers. Five (`AdminErasureController`, `AdminOperatorController`, `AdminMailDeliveryController`, `AdminEmailSuppressionController`, `AdminMailOutboxController`, `AdminRefundOutboxController`) operate on platform-wide state with no venue-scoped sibling port to short-cut. `AdminPayoutBatchController` is the one that *could* have: `payout` owns both venue-scoped services (`PayoutLedgerQueryService`, `DailyTakingsService` — both `assertOwns`) and the cross-venue batch report, and it already keeps them apart behind a distinct `PayoutReport` port. | **Skip — nothing to fix.** The separate-port shape is existing precedent rather than a new pattern, which strengthens the R-1 mitigation: #504 follows the house answer instead of inventing one. |
 
 ---
 
