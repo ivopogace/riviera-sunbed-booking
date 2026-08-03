@@ -6,7 +6,8 @@
   content-addressed serving URL this decision leans on), #142 (venue photos end-to-end, which shipped
   with moderation explicitly out of scope), #230 (this decision's issue), #504 (the platform-admin
   takedown surface), #115 (operator self-registration + admin approval — the vetting gate this rests
-  on), invariant #13 (`/api/admin/**` is role-gated and exempt from per-venue ownership)
+  on), **#507** (the admin audit trail this decision requires), **#508** (the CDN purge this decision
+  will require), invariant #13 (`/api/admin/**` is role-gated and exempt from per-venue ownership)
 
 ## Context
 
@@ -62,22 +63,29 @@ column, any pre-publication gating, a vision-API screening call at upload, and a
 - **A bad photo is visible until someone acts.** That is the accepted cost, and it is the honest
   characterization of this posture — not "photos are moderated." The exposure window is
   report-latency plus admin-response time, both unbounded and unmonitored at Phase 1.
-- **No audit record of a takedown.** #504 ships none, deliberately: no admin surface in this repo
-  logs its action today (`AdminErasureController`, `AdminOperatorController`,
-  `AdminMailOutboxController` are all silent), so adding one there would have been a lone precedent
-  rather than a policy. This ADR does not settle it either — it is recorded as an open consequence.
-  A destructive, irreversible action with no record of who did it or why is a real gap the moment
-  takedowns stop being hypothetical, and the first genuine dispute ("who removed my cover photo?")
-  is the trigger to build it.
-- **A takedown does not un-cache an already-served image.** ADR-0008's serving GET returns
-  `Cache-Control: public, max-age=31536000, immutable` — sound for a *replace*, which mints a new
-  hash and therefore a new URL, but a takedown mints nothing. Today the exposure is bounded: the
-  tourist read models stop advertising the URL, so a new requester gets `404`, and there is no CDN
-  in front of the API (the backend serves the SPA same-origin, #110). **The day ADR-0008's deferred
-  object-storage + CDN lands, this becomes a real hole** — a year-long `immutable` TTL would keep a
-  taken-down image served to *new* requesters until someone purges it, defeating the removal. Whoever
-  implements that migration must pair it with an explicit purge step, or reconsider `immutable` for
-  this route. This is the single most likely way this decision silently stops working.
+- **A takedown must leave an audit record — required, not yet built (#507).** This ADR *decides*
+  the question rather than parking it, because the requirement is load-bearing for the stance and
+  not an adjacent nicety: "reactive removal by a trusted admin" is only a defensible posture if the
+  removal is attributable. An irreversible action with no record of who acted, when, or on what
+  grounds is not accountable, and report-and-remove without accountability is just remove.
+  The mechanism is deliberately **not** photo-specific: no admin surface in this repo logs today
+  (`AdminErasureController`, `AdminOperatorController`, `AdminMailOutboxController` are all silent),
+  so a log added to the takedown alone would be a lone precedent rather than a policy — hence #507,
+  platform-wide, at `needs-triage`. **Consequence to state plainly: this stance ships with a known,
+  tracked deficiency.** The takedown is live and unattributable until #507 lands. That is an accepted
+  Phase-1 risk (takedowns are expected to be rare-to-never at current scale), not an oversight, and
+  it is the first thing to fix if takedowns stop being hypothetical.
+- **A takedown does not un-cache an already-served image — and a CDN would make that a real hole
+  (#508).** ADR-0008's serving GET returns `Cache-Control: public, max-age=31536000, immutable` —
+  sound for a *replace*, which mints a new hash and therefore a new URL, but a takedown mints
+  nothing. Today the exposure is bounded: the tourist read models stop advertising the URL, so a new
+  requester gets `404`, and there is no CDN in front of the API (the backend serves the SPA
+  same-origin, #110). **The day ADR-0008's deferred object-storage + CDN lands, a year-long
+  `immutable` TTL would keep a taken-down image served to *new* requesters until purged**, defeating
+  the removal this whole stance rests on. #508 records the two acceptable answers (purge-on-takedown,
+  or drop `immutable`) and is marked a **blocker on that migration**, not a follow-up to it — because
+  the failure is silent: nothing breaks, the photo simply stays visible. This is the single most
+  likely way this decision stops working without anyone noticing.
 - **Takedown is scoped to one slot, not one image.** The variant pipeline is deterministic, so the
   same picture uploaded into two slots shares a `(venue, content_hash)` and the serving read takes
   either. Removing one slot leaves the bytes reachable while another slot still publishes them.
