@@ -2,7 +2,6 @@ package ai.riviera.platform.venue.adapter.in;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Locale;
 import java.util.Optional;
 
 import org.springframework.http.CacheControl;
@@ -24,7 +23,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.CurrentOperator;
-import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.application.PhotoProcessingResult.Reason;
 import ai.riviera.platform.venue.application.PhotoUploadResult;
@@ -67,7 +65,7 @@ class VenuePhotoController {
 	ResponseEntity<?> upload(Authentication authentication, @PathVariable long venueId,
 			@PathVariable String slot, @RequestPart("file") MultipartFile file) throws IOException {
 		OperatorId operator = currentOperator.require(authentication);
-		return switch (photos.upload(operator, new VenueId(venueId), parseSlot(slot), file.getBytes())) {
+		return switch (photos.upload(operator, new VenueId(venueId), PhotoSlots.parse(slot), file.getBytes())) {
 			case PhotoUploadResult.Stored(var metadata) ->
 					ResponseEntity.ok(PhotoUploadResponse.from(venueId, metadata));
 			case PhotoUploadResult.Rejected(var reason) -> reject(reason);
@@ -78,7 +76,7 @@ class VenuePhotoController {
 	ResponseEntity<?> delete(Authentication authentication, @PathVariable long venueId,
 			@PathVariable String slot) {
 		OperatorId operator = currentOperator.require(authentication);
-		return photos.delete(operator, new VenueId(venueId), parseSlot(slot))
+		return photos.delete(operator, new VenueId(venueId), PhotoSlots.parse(slot))
 				? ResponseEntity.noContent().build()
 				: ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_PHOTO", "No photo in this slot.");
 	}
@@ -109,11 +107,6 @@ class VenuePhotoController {
 				.cacheControl(IMMUTABLE)
 				.header(HttpHeaders.ETAG, etag)
 				.body(bytes.bytes());
-	}
-
-	/** Map the lower-case REST slot to the {@link PhotoSlot} enum; an unknown value → 400 via the advice. */
-	private static PhotoSlot parseSlot(String slot) {
-		return InvalidApiRequestException.parsing(() -> PhotoSlot.valueOf(slot.toUpperCase(Locale.ROOT)));
 	}
 
 	private static ResponseEntity<ProblemDetail> reject(Reason reason) {

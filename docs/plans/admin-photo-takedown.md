@@ -130,7 +130,7 @@ reused verbatim) · `riviera-frontend` / `angular-developer` / `playwright-cli` 
 | R-2 | The new endpoint has no explicit `SecurityConfig` rule and falls through to `anyRequest().authenticated()` — the #316/#317/#328 defect class, where *any* authenticated principal (a signed-in tourist included) passes | med | high | Explicit `.requestMatchers(HttpMethod.DELETE, ADMIN_VENUE_PHOTO_PATH).hasRole(ADMIN_ROLE)`, and `EndpointRoleGateCoverageTest` fails the build if it is missing (AC-8). AC-4 checks the gate from the outside with a real plain-operator session. | claude | open |
 | R-3 | **Duplicate-hash survival:** the pipeline is deterministic, so one image uploaded to two slots yields byte-identical variants sharing `(venue_id, content_hash)`, and the serving read is `LIMIT 1` over that pair (V24's deliberate non-unique index, #142 F-2). Taking down one slot therefore leaves the bytes servable from the surviving slot's row — so AC-2's "the URL 404s" is true only when no other slot still holds that image | low | med | Correct behavior, not a defect: the surviving slot is still a *published* photo, and un-publishing it is its own takedown. Documented on `VenuePhotoTakedown`'s javadoc and in `CONTEXT.md`, and AC-2's IT seeds a single-slot photo so the assertion is honest about what it proves. Cascading is a Non-goal; if moderation ever needs "remove these bytes everywhere", that is a follow-up issue, not a silent widening here. | claude | open |
 | R-4 | Error-contract drift — a hand-rolled `{"error": …}` body or a per-controller `@ExceptionHandler` on the new controller | low | med | `ApiProblem.response(NOT_FOUND, "NO_SUCH_PHOTO", …)` only, mirroring `VenuePhotoController`; the unknown-slot path rides the shared advice via `InvalidApiRequestException`. `ErrorContractArchitectureTests` forbids the per-controller handler (AC-9); AC-5/AC-6 assert the wire shape. | claude | open |
-| R-5 | The `@WebMvcTest` slice (`EndpointRoleGateCoverageTest`) fails to start because the new controller's port has no bean | med | low | Add a `VenuePhotoTakedown` stub bean to `WebSliceStubs` beside the existing `VenuePhotos` one, returning `false` (inert not-found), in the same commit as the controller. | claude | open |
+| R-5 | The `@WebMvcTest` slice (`EndpointRoleGateCoverageTest`) fails to start because the new controller's port has no bean | med | low | Add a `VenuePhotoTakedown` stub bean to `WebSliceStubs` beside the existing `VenuePhotos` one, returning `false` (inert not-found), in the same commit as the controller. | claude | **closed** — stub added in phase 1; `EndpointRoleGateCoverageTest` green |
 | R-6 | Flyway version collision | none | — | **No migration in this slice** (V24's cascade already does the work), so no `V<n>` is claimed and nothing can collide. The only open PRs are Dependabot bumps — none touch `db/migration`. | claude | closed at plan time |
 
 ## Open questions / Assumptions
@@ -228,15 +228,17 @@ record, the surface added is:
 > or whenever unsure where the work stands: re-read this section (plus the current stage's
 > `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phase 1 done, entering phase 2`
 
-**Next action:** Phase 1 — write the failing `AdminPhotoTakedownIT`, then the controller + role gate.
+**Next action:** Phase 2 — `RESPONSIBILITIES.md` §`venue` + the `CONTEXT.md` glossary entry (AC-10).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The takedown port + service method | ✅ | (this commit) |
-| 1 — The admin endpoint + role gate | | |
+| 0 — The takedown port + service method | ✅ | `23f3a76` |
+| 1 — The admin endpoint + role gate | ✅ | (this commit) |
 | 2 — Substrate docs (RESPONSIBILITIES.md, CONTEXT.md) | | |
+
+**PR:** #506 (draft; opened at the first phase commit so every push gets CI).
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -632,6 +634,7 @@ class AdminVenuePhotoController {
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-03 | Phase 0 — introduced "a separate unscoped port beside the venue-scoped one" | Other `/api/admin/**` controllers reusing a venue-scoped application service, i.e. taking the "add an unauthorized method to the scoped port" shortcut this phase avoided | `grep -rn "api/admin" platform/src/main/java --include=*.java -l`, then each controller's injected port | 6 admin controllers. Five (`AdminErasureController`, `AdminOperatorController`, `AdminMailDeliveryController`, `AdminEmailSuppressionController`, `AdminMailOutboxController`, `AdminRefundOutboxController`) operate on platform-wide state with no venue-scoped sibling port to short-cut. `AdminPayoutBatchController` is the one that *could* have: `payout` owns both venue-scoped services (`PayoutLedgerQueryService`, `DailyTakingsService` — both `assertOwns`) and the cross-venue batch report, and it already keeps them apart behind a distinct `PayoutReport` port. | **Skip — nothing to fix.** The separate-port shape is existing precedent rather than a new pattern, which strengthens the R-1 mitigation: #504 follows the house answer instead of inventing one. |
+| 2026-08-03 | Phase 1 — extracted `PhotoSlots`, an edge helper turning a path segment into an enum with `400` on unknown | Other enum-from-path parsers inlining the same `valueOf(upper)` idiom, which would want the same treatment | `grep -rn "valueOf(.*toUpperCase" platform/src/main/java --include=*.java` | 2 — the new `PhotoSlots`, and `SsoProviders` (root package, `google`/`apple` slug → `SsoProvider`), which is the *same* shape already: package-private final helper, static `parse`, unknown → `InvalidApiRequestException` → `400 INVALID_REQUEST`. | **Skip — nothing to fix.** `PhotoSlots` conforms to an existing house pattern rather than introducing one. `SsoProviders` hand-rolls the try/catch where `PhotoSlots` uses the newer `InvalidApiRequestException.parsing` helper, but the two are behavior-equivalent and `SsoProviders` carries a custom message; rewriting it is unrelated churn in a slice that must leave the auth edge alone. |
 
 ---
 
