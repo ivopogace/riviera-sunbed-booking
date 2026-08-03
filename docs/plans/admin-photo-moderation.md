@@ -70,44 +70,44 @@ session addendum). The literal `feature/…` branch is deliberately not created.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue with a photo in `COVER` and none in `SUNBEDS`/`BAR`, when the
+- [x] **AC-1:** Given a venue with a photo in `COVER` and none in `SUNBEDS`/`BAR`, when the
       platform-admin moderation read is asked for that venue's slots, then it answers all three
       slots in `PhotoSlot` declaration order, `COVER` carrying its PREVIEW serving URL and the
       other two carrying `null` — **with no ownership check anywhere on the path**.
       *Pinned by:* `VenuePhotoServiceTest.moderationReadListsEverySlotWithoutOwnershipCheck`
-- [ ] **AC-2:** Given an admin session and a venue owned by **another** operator, when
+- [x] **AC-2:** Given an admin session and a venue owned by **another** operator, when
       `GET /api/admin/venues/{venueId}/photos` is called, then it answers `200` with that
       venue's slots — the case the venue-scoped profile read answers `403 NOT_VENUE_OWNER`.
       *Pinned by:* `AdminPhotoModerationIT.adminReadsAnotherOperatorsVenuePhotos`
-- [ ] **AC-3:** Given a plain `OPERATOR` session, when the same read is called, then it is
+- [x] **AC-3:** Given a plain `OPERATOR` session, when the same read is called, then it is
       `403`; given no session, `401`. *Pinned by:*
       `AdminPhotoModerationIT.readIsForbiddenForOperatorAndUnauthenticatedAnonymously`
-- [ ] **AC-4:** Given an unknown venue id, when the read is called, then it answers `200` with
+- [x] **AC-4:** Given an unknown venue id, when the read is called, then it answers `200` with
       three empty slots — an unknown venue is deliberately indistinguishable from a venue with
       no photos, matching #504's takedown, which answers `404 NO_SUCH_PHOTO` to both.
       *Pinned by:* `AdminPhotoModerationIT.unknownVenueReadsAsAllSlotsEmpty`
-- [ ] **AC-5:** Given the full controller set, when `EndpointRoleGateCoverageTest` runs, then it
+- [x] **AC-5:** Given the full controller set, when `EndpointRoleGateCoverageTest` runs, then it
       is green with `DECLARED_REACHABLE` **unmodified** — the new GET is explicitly gated in
       `SecurityConfig`, not fallen through. *Pinned by:* `EndpointRoleGateCoverageTest.everyEndpointIsGated`
-- [ ] **AC-6:** Given the backend structural net, when it runs, then `ModularityTests`,
+- [x] **AC-6:** Given the backend structural net, when it runs, then `ModularityTests`,
       `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests` and
       `PublishedSurfacePlacementArchitectureTests` are all green. *Pinned by:* those four classes.
-- [ ] **AC-7:** Given an admin on `/admin/photos` who has picked a venue, when the slots load,
+- [x] **AC-7:** Given an admin on `/admin/photos` who has picked a venue, when the slots load,
       then each occupied slot renders its preview and each empty slot renders an empty state.
       *Pinned by:* `admin-venue-photos.spec.ts` › `renders every slot, occupied and empty`
-- [ ] **AC-8:** Given a rendered occupied slot, when Remove is pressed once, then **nothing is
+- [x] **AC-8:** Given a rendered occupied slot, when Remove is pressed once, then **nothing is
       sent** and an inline confirmation naming **both the venue and the slot** appears; when the
       confirm is pressed, then the `DELETE` fires and that slot switches to its empty state
       **without a re-fetch of the whole page**. *Pinned by:*
       `admin-venue-photos.spec.ts` › `requires a second, target-naming confirmation before removing`
-- [ ] **AC-9:** Given a non-admin (signed-out, or signed-in without `ROLE_ADMIN`), when
+- [x] **AC-9:** Given a non-admin (signed-out, or signed-in without `ROLE_ADMIN`), when
       `/admin/photos` is opened, then the tab strip and the moderation surface are never
       rendered — the page self-gates exactly like `/admin/refunds`. *Pinned by:*
       `admin-venue-photos.spec.ts` › `self-gates on the admin session`
-- [ ] **AC-10:** Given the Photos tab open with a venue selected and its confirmation showing,
+- [x] **AC-10:** Given the Photos tab open with a venue selected and its confirmation showing,
       when axe runs, then there are no serious violations. *Pinned by:*
       `admin-venue-photos.a11y.spec.ts`
-- [ ] **AC-11:** Given the CI-safe mocked e2e suite, when it drives pick-venue → remove →
+- [x] **AC-11:** Given the CI-safe mocked e2e suite, when it drives pick-venue → remove →
       confirm, then the slot empties in the browser and `expectNoSeriousAxeViolations` passes.
       *Pinned by:* `frontend/e2e/admin-venue-photos.e2e.ts`
 
@@ -146,32 +146,30 @@ session addendum). The literal `feature/…` branch is deliberately not created.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The rename misses a reference and the build breaks late (or worse, a doc keeps the old name and the next session trusts it) | med | low | Rename via a single grep-verified sweep across `main`+`test`+`docs`; `riviera-docs-freshness` at close-out is the second net | agent | open |
-| R-2 | **BOLA inversion (invariant #13):** the new read is ownership-free *by design*, so a copy-paste of its controller into a `/api/venues/**` path would leak another operator's data | low | high | The endpoint lives **only** under `/api/admin/**` (the invariant-#13 exemption), is gated `hasRole(ADMIN)` by an explicit `SecurityConfig` matcher, and AC-3 pins `403`/`401`; `EndpointRoleGateCoverageTest` (AC-5) fails if it ever falls through | agent | open |
-| R-3 | The new `GET /api/admin/venues/*/photos` accidentally shadows, or is shadowed by, #504's `DELETE /api/admin/venues/*/photos/*` matcher | low | high | Different segment count **and** different verb; both matchers are `HttpMethod`-qualified; AC-3 + the existing `AdminPhotoTakedownIT` run together | agent | open |
-| R-4 | The picker's public `GET /api/venues` is a heavyweight read (per-venue availability join, cover photos, prices) used only for id+name | high | low | Accepted deliberately: it is public data, lists **every** venue with no publish filter, and costs zero new backend surface. Revisit only if a venue count makes it slow — noted in Open Questions | agent | open |
-| R-5 | `admin/` importing `venue/venue.service` would create a **new** cross-feature edge — RV-FE-8 Major (Blocker if `shared/`-directed) | med | med | The admin feature's own service issues the catalogue request; only **types** are shared, via `shared/venue-views.ts`, which every stratum may import | agent | open |
-| R-6 | A single misclick destroys bytes irreversibly (no undo, no audit until #507) | med | high | Two-step inline confirmation naming venue **and** slot (AC-8), reusing the `admin-operators` `confirmingId` precedent; no modal, so nothing to focus-trap | agent | open |
-| R-7 | Error-contract drift — a per-controller `{"error": …}` body instead of the centralized RFC-7807 `ProblemDetail` (#97, `riviera-java-conventions` §6b) | low | med | The read's only non-200 outcomes are the filter-chain's `401`/`403`; it introduces **no** new error body. The DELETE's `404 NO_SUCH_PHOTO` is #504's, unchanged | agent | open |
-| R-8 | The frozen Vitest clock (Mon 2026-06-15, `src/test-setup.ts`) trips a spec that assumes the real calendar | low | low | No date logic in this slice; the picker sends no `date` param and lets the server default to tomorrow-in-Tirane | agent | open |
+| R-1 | The rename misses a reference and the build breaks late (or worse, a doc keeps the old name and the next session trusts it) | med | low | Rename via a single grep-verified sweep across `main`+`test`+`docs`; `riviera-docs-freshness` at close-out is the second net | agent | **closed** — swept to zero: `grep -rn "VenuePhotoTakedown"` over `platform/ docs/ *.md` returns only this plan and #504's historical record (which gained a forward pointer instead of a rewrite). docs-freshness re-swept after the fix round. |
+| R-2 | **BOLA inversion (invariant #13):** the new read is ownership-free *by design*, so a copy-paste of its controller into a `/api/venues/**` path would leak another operator's data | low | high | The endpoint lives **only** under `/api/admin/**` (the invariant-#13 exemption), is gated `hasRole(ADMIN)` by an explicit `SecurityConfig` matcher, and AC-3 pins `403`/`401`; `EndpointRoleGateCoverageTest` (AC-5) fails if it ever falls through | agent | **closed** — the endpoint exists only under `/api/admin/**`, gated by an explicit `HttpMethod.GET … hasRole(ADMIN)` matcher; AC-3 pins `403`/`401` and `EndpointRoleGateCoverageTest` passes with `DECLARED_REACHABLE` unmodified. `CrossVenueDenialIT` still green, so the venue-scoped twin is untouched. |
+| R-3 | The new `GET /api/admin/venues/*/photos` accidentally shadows, or is shadowed by, #504's `DELETE /api/admin/venues/*/photos/*` matcher | low | high | Different segment count **and** different verb; both matchers are `HttpMethod`-qualified; AC-3 + the existing `AdminPhotoTakedownIT` run together | agent | **closed** — different verb *and* different segment count; both matchers are `HttpMethod`-qualified. `AdminPhotoModerationIT` and `AdminPhotoTakedownIT` pass together. |
+| R-4 | The picker's public `GET /api/venues` is a heavyweight read (per-venue availability join, cover photos, prices) used only for id+name | high | low | Accepted deliberately: it is public data, lists **every** venue with no publish filter, and costs zero new backend surface. Revisit only if a venue count makes it slow — noted in Open Questions | agent | **accepted, closed** — the catalogue read stays the picker source. Public data, every venue, no publish filter, zero new backend surface. Revisit if venue count makes it slow; not a defect today. |
+| R-5 | `admin/` importing `venue/venue.service` would create a **new** cross-feature edge — RV-FE-8 Major (Blocker if `shared/`-directed) | med | med | The admin feature's own service issues the catalogue request; only **types** are shared, via `shared/venue-views.ts`, which every stratum may import | agent | **closed** — and *improved on*: rather than merely avoiding the edge, `PhotoSlotKey` moved `operator/` → `shared/venue-views.ts`, so the count of cross-feature edges went **down**, not sideways. `admin/` imports only `core/` and `shared/`. |
+| R-6 | A single misclick destroys bytes irreversibly (no undo, no audit until #507) | med | high | Two-step inline confirmation naming venue **and** slot (AC-8), reusing the `admin-operators` `confirmingId` precedent; no modal, so nothing to focus-trap | agent | **closed** — two-step inline confirmation naming venue and slot, pinned by a unit spec (no request on the first press) and by the e2e. Dismissing it sends nothing. |
+| R-7 | Error-contract drift — a per-controller `{"error": …}` body instead of the centralized RFC-7807 `ProblemDetail` (#97, `riviera-java-conventions` §6b) | low | med | The read's only non-200 outcomes are the filter-chain's `401`/`403`; it introduces **no** new error body. The DELETE's `404 NO_SUCH_PHOTO` is #504's, unchanged | agent | **closed** — the read introduces no error body at all; its only non-200 outcomes are the filter chain's `401`/`403`. #504's `404 NO_SUCH_PHOTO` is unchanged. |
+| R-8 | The frozen Vitest clock (Mon 2026-06-15, `src/test-setup.ts`) trips a spec that assumes the real calendar | low | low | No date logic in this slice; the picker sends no `date` param and lets the server default to tomorrow-in-Tirane | agent | **closed** — no date logic in the slice; the picker sends no `date` param. |
 
 ## Open questions / Assumptions
 
-- **Assumption:** The moderation read returns **all three slots** (empty ones as
-  `previewUrl: null`), not "each occupied slot" as #511's desired-behavior text says. Rationale:
-  it mirrors the already-shipped `PhotoSlotView` / `VenueProfileResponse.photos` contract, whose
-  #142 review decision **F-11** was explicitly *"emptiness IS the null URL; a separate boolean
-  would be derivable lock-step state"* — and it makes AC-8's "reflects the now-empty slot
-  without a full reload" a one-line local update instead of a list splice. Deviation is
-  deliberate and recorded here. — *Owner:* agent · *Resolves by:* phase 1 (review may overrule)
-- **Assumption:** The venue picker may load the whole catalogue unpaginated (R-4). At the
-  current venue count this is a non-issue; a search/paginate pass is a follow-up, not this
-  slice. — *Owner:* agent · *Resolves by:* phase 4
-- **Assumption:** The preview uses the **PREVIEW** surface variant (the operator-slot variant),
-  not CARD or BANNER — it is the one sized for exactly this job. — *Owner:* agent · *Resolves by:* phase 1
+*(empty — every entry below was resolved before the close-out.)*
 
 ### Resolved
 
+- **Assumption → confirmed:** the moderation read returns **all three slots** (empty ones as
+  `previewUrl: null`), not "each occupied slot" as #511's text said. It mirrors the shipped
+  `VenueProfileResponse.photos` contract (#142 review **F-11**: *"emptiness IS the null URL"*), and it
+  made AC-8's "reflects the now-empty slot without a full reload" a one-line local update. Shipped in
+  `VenuePhotoModeration#slotsOf`; pinned by `VenuePhotoServiceTest.moderationReadListsEverySlotWithoutOwnershipCheck`.
+- **Assumption → accepted:** the picker loads the public catalogue unpaginated. Risk R-4, closed as an
+  accepted trade, not a defect. A search/paginate pass is a follow-up if venue count grows.
+- **Assumption → confirmed:** the preview uses the **PREVIEW** surface variant. Shipped; the service
+  filters `variant.surface() == PhotoSurface.PREVIEW` and the IT asserts the exact serving URL.
 - **Open question:** Standalone tab vs folding into the canvas's Privacy tab (#511's "one
   genuine design call"). — **Resolved: a standalone `Photos` tab.** The grill established that
   the canvas's Privacy tab is scoped entirely to GDPR **data-subject erasure**
@@ -527,13 +525,13 @@ Modify `VenuePhotoService.java`, `AdminVenuePhotoController.java`, `WebSliceStub
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `gradle test --tests "*VenuePhotoServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2/3/4:** `gradle test --tests "*AdminPhotoModerationIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** `gradle test --tests "*EndpointRoleGateCoverageTest*"` → PASS, `DECLARED_REACHABLE` unmodified in the diff. Verified at commit `<sha>`.
-- [ ] **AC-6:** `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7/8/9:** `npm test -- admin-venue-photos` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-10:** `npm run test:a11y` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-11:** `npm run test:e2e:a11y` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1:** `gradle test --tests "*VenuePhotoServiceTest*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-2/3/4:** `gradle test --tests "*AdminPhotoModerationIT*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-5:** `gradle test --tests "*EndpointRoleGateCoverageTest*"` → PASS, `DECLARED_REACHABLE` unmodified in the diff. Verified at commit `<sha>`.
+- [x] **AC-6:** `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-7/8/9:** `npm test -- admin-venue-photos` → PASS. Verified at commit `<sha>`.
+- [x] **AC-10:** `npm run test:a11y` → PASS. Verified at commit `<sha>`.
+- [x] **AC-11:** `npm run test:e2e:a11y` → PASS. Verified at commit `<sha>`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
