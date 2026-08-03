@@ -49,8 +49,12 @@ deletion test: collapsing `VenuePhotoTakedown` into `VenuePhotos` removes one in
 "which methods authorize?" into every caller, so the seam earns its keep) · `postgres` —
 `N/A — no migration, no schema change, no new query` (the existing `PhotoStorage#delete` statement is
 reused verbatim) · `riviera-frontend` / `angular-developer` / `playwright-cli` —
-`N/A — API-only at Phase 1, no frontend surface (issue #504 Out of scope)` ·
-`riviera-local-debug` (scoped `gradle test --tests` recipe for this session's runs)
+`N/A — API-only at Phase 1, no frontend surface (issue #504 Out of scope)`; the **angular-cli MCP**
+was nonetheless consulted at close-out (`list_projects` → v22, `search_documentation` →
+`NgOptimizedImage`) to check the frontend consumers of the photo URLs, which is what surfaced R-7:
+the components feed these URLs to `NgOptimizedImage`, which adds no caching semantics of its own, so
+a taken-down image's persistence is purely the server's `immutable` header · `riviera-local-debug`
+(scoped `gradle test --tests` recipe for this session's runs)
 
 **Branch:** `claude/sdlc-504-fm0ah8` — the cloud session's designated remote branch, standing in for
 `feature/admin-photo-takedown` per the `riviera-sdlc` remote-session addendum.
@@ -137,6 +141,7 @@ reused verbatim) · `riviera-frontend` / `angular-developer` / `playwright-cli` 
 | R-4 | Error-contract drift — a hand-rolled `{"error": …}` body or a per-controller `@ExceptionHandler` on the new controller | low | med | `ApiProblem.response(NOT_FOUND, "NO_SUCH_PHOTO", …)` only, mirroring `VenuePhotoController`; the unknown-slot path rides the shared advice via `InvalidApiRequestException`. `ErrorContractArchitectureTests` forbids the per-controller handler (AC-9); AC-5/AC-6 assert the wire shape. | claude | **closed** — `ApiProblem` only, no per-controller handler; `ErrorContractArchitectureTests` green and both wire-shape ACs pass. |
 | R-5 | The `@WebMvcTest` slice (`EndpointRoleGateCoverageTest`) fails to start because the new controller's port has no bean | med | low | Add a `VenuePhotoTakedown` stub bean to `WebSliceStubs` beside the existing `VenuePhotos` one, returning `false` (inert not-found), in the same commit as the controller. | claude | **closed** — stub added in phase 1; `EndpointRoleGateCoverageTest` green |
 | R-6 | Flyway version collision | none | — | **No migration in this slice** (V24's cascade already does the work), so no `V<n>` is claimed and nothing can collide. The only open PRs are Dependabot bumps — none touch `db/migration`. | claude | closed at plan time |
+| R-7 | **A takedown does not un-cache an already-served image.** The serving GET returns `Cache-Control: public, max-age=31536000, immutable` — safe for a *replace* (a new hash mints a new URL, ADR-0008) but a takedown mints nothing, and `immutable` suppresses revalidation entirely. Surfaced late, while checking the frontend consumers of these URLs (they feed `NgOptimizedImage`, which adds no caching semantics of its own — freshness is purely the server header) | low today, **med once a CDN lands** | med | **Bounded today, not fixed here.** The tourist read models drop `coverPhoto` immediately, so the URL stops being advertised and a new requester gets `404`; what survives is a client that already holds the bytes, and there is no CDN in front of the API today (the backend serves the SPA same-origin, #110). ADR-0008 defers object storage + CDN behind the `PhotoStorage` port, and on that day a year-long `immutable` TTL would keep a taken-down image served **to new requesters** until purged — the exact failure a moderation feature exists to prevent. | claude | **closed — deferred with a home.** Not a defect in this slice as scoped (origin removal and read-model removal both work, pinned by `AdminPhotoTakedownIT`); it is a stance-level choice. Propagated to **#230** ([comment](https://github.com/ivopogace/riviera-sunbed-booking/issues/230#issuecomment-5166200914)) alongside the audit-log question, flagged to pair a CDN with an explicit purge step or reconsider `immutable` for this route. |
 
 ## Open questions / Assumptions
 
@@ -157,8 +162,9 @@ reused verbatim) · `riviera-frontend` / `angular-developer` / `playwright-cli` 
   so inventing an audit policy inside a photo slice would create a lone precedent instead of a
   policy. Carried to the parent moderation-stance issue **#230 / ADR-0013**, which is where the
   report-and-remove posture — and therefore whether takedowns need an audit trail — is actually
-  decided. Propagated per close-out step 3 (a deferred finding that lives only in a review
-  transcript is lost by the next session).
+  decided. **Written onto #230** per close-out step 3
+  ([comment](https://github.com/ivopogace/riviera-sunbed-booking/issues/230#issuecomment-5166200914)),
+  together with R-7, rather than left in a review transcript for the next session to lose.
 
 ## Availability & concurrency (invariant #2)
 
