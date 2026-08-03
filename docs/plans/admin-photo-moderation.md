@@ -42,9 +42,8 @@ canvas's Privacy tab is scoped to GDPR data-subject erasure only, killing the is
 phase is red→green: the backend port/controller ITs before the endpoint, the Vitest specs
 before the component) · `riviera-review-overlay` (review gate — due at ready-for-review;
 RV-FE-8 consulted at plan time, see the cross-feature-import decision below) ·
-`riviera-docs-freshness` (N/A at plan time — **due at merge close-out step 5** over this
-PR's range, and it is non-optional here because the rename invalidates stated facts in
-`CLAUDE.md`, `CONTEXT.md` and `RESPONSIBILITIES.md`) · `riviera-modulith` (settled that the
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD`, **7 findings, all patched** — see the
+Docs-freshness report below; the counting sweep found 3 of them in files this slice never touched) · `riviera-modulith` (settled that the
 moderation port stays **internal in `application/`**, not `api/`/`spi/` — no sibling module
 calls it, `VenuePhotoService` implements it, `AdminVenuePhotoController` consumes it; also
 supplied the "one purposeful conversation" rule behind the rename) · `riviera-java-conventions`
@@ -312,11 +311,10 @@ All confirmed against the angular-cli MCP's `get_best_practices` for this worksp
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `implement — phase 4 done, entering phase 5 (docs freshness + close-out)`
+**Stage pointer:** `review gate — PR #512 marked ready, running /code-review`
 
-**Next action:** Phase 5 — run `riviera-docs-freshness` over this PR's range, patch the stale
-substrate-doc statements (especially the counting sweep on "the module's *one* ownership-free photo
-write"), then finalize this section and mark PR #512 ready for review.
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then re-pull the
+Sonar new-issue list, fix findings through the loop, and finalize this section.
 
 Draft **PR #512** is open (opened after phase 0 per riviera-sdlc rule 3 — CI fires on the
 `pull_request` event only, so the draft is what makes "CI per push" true). Sonar on the phase-0/1
@@ -329,7 +327,7 @@ push: **gate passed, 0 new issues, 0 duplication, 100% coverage on new code**.
 | 2 — The admin GET endpoint + role gate | ✅ | see "Expose GET /api/admin/venues/{venueId}/photos" |
 | 3 — The Photos tab (service, component, tab, route) | ✅ | see "Add the admin console's Photos moderation tab" |
 | 4 — a11y spec + CI-safe e2e | ✅ | see "Cover the Photos moderation tab with a11y + e2e specs" |
-| 5 — Docs freshness + close-out | ⏳ | |
+| 5 — Docs freshness + close-out | ⏳ | docs patched; close-out pending the review + Sonar gates |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -566,3 +564,28 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
+
+
+---
+
+## Docs-freshness report (`origin/main...HEAD`)
+
+Run at phase 5 per `riviera-sdlc` merge close-out step 5. **7 findings, all patched.** Step 2a (the
+rename grep) found 3; **step 2b (the counting sweep) found 3 more in files this slice never
+touched** — invisible to any review of the diff, which is the whole argument for that step. The
+re-sweep after the fix round found nothing further.
+
+| # | Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|---|
+| D-1 | `CLAUDE.md:158` | the `venue` row named only the takedown as the module's "one **ownership-free** photo write" | the module now owns an ownership-free **read** too, and the row did not mention the endpoint at all | patched — names both operations and the port's posture |
+| D-2 | `RESPONSIBILITIES.md:84` | "it is the one photo write with **no ownership check** — a second port, …" | still literally true of *writes*, but now half the Job: the read shares the port and the posture | patched — Job now covers both, and says why the read joined the port instead of minting a third |
+| D-3 | `docs/adr/ADR-0008:98` | "#504 amended: **deletion** additionally has a second, ownership-free caller" | `PhotoStorage#listMetadata` now has one as well — and its *first* production caller of any kind | patched — "Extended by #511" note; the storage decision itself is restated as unchanged |
+| D-4 | `CONTEXT.md` (glossary) | no term for the read-then-remove pair | #511 introduces a domain concept the glossary lacked | patched — new **Photo moderation** entry |
+| D-5 | `CONTEXT.md:23` | `SUNBEDS`, `BAR` are "stored, **operator-preview only**" | a platform admin now sees them on the moderation surface | patched — "never tourist-surfaced", with both audiences named |
+| D-6 | `venue/vocabulary/PhotoSlot.java:5` | `SUNBEDS` and `BAR` "shown **only in the operator console**" | same contradiction, in the Javadoc the next reader believes | patched |
+| D-7 | `venue/application/PhotoSlotView.java:6` | "One photo slot as **the operator console's Venue tab** needs it" | two consumers now share the record — the venue-scoped profile and the ownership-free moderation read | patched — both named, with the note that only the authority differs |
+
+**Not patched, deliberately:** `docs/plans/admin-photo-takedown.md` keeps #504's original
+`VenuePhotoTakedown` prose and gains a forward pointer instead. A merged slice's plan doc is a record
+of what that slice decided, not a living description of today's code (the skill's *Scope discipline*:
+present-tense facts only). `graphify-out/` is absent in this cloud clone, so step 6 does not apply.
