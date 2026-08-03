@@ -314,10 +314,18 @@ All confirmed against the angular-cli MCP's `get_best_practices` for this worksp
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `review gate — PR #512 marked ready, running /code-review`
+**Stage pointer:** `DONE — merge close-out, awaiting merge via PR #512`
 
-**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then re-pull the
-Sonar new-issue list, fix findings through the loop, and finalize this section.
+**Next action:** Merge PR #512. Post-merge, only GitHub-side items remain (no repo commit): confirm
+#511 closed, and #507's re-triage note (already posted).
+
+**Gate outcomes.** CI green on the final head (backend, frontend, CodeQL, both Analyze jobs).
+Review gate **ran in full** at high effort via the `/code-review` subagent fan-out (5 independent
+reviewers) + `riviera-review-overlay` — **8 findings, all fixed** in the register below, and the fix
+round itself re-entered the loop (test-first, CI green, re-reviewed). Sonar gate green **with its
+reported list pulled and empty** (see the Sonar note); the zero was verified against the
+false-clean read. Testcontainers ITs ran for real — `AdminPhotoModerationIT` reports
+`tests="3" skipped="0" failures="0"`.
 
 Draft **PR #512** is open (opened after phase 0 per riviera-sdlc rule 3 — CI fires on the
 `pull_request` event only, so the draft is what makes "CI per push" true). Sonar on the phase-0/1
@@ -330,7 +338,7 @@ push: **gate passed, 0 new issues, 0 duplication, 100% coverage on new code**.
 | 2 — The admin GET endpoint + role gate | ✅ | see "Expose GET /api/admin/venues/{venueId}/photos" |
 | 3 — The Photos tab (service, component, tab, route) | ✅ | see "Add the admin console's Photos moderation tab" |
 | 4 — a11y spec + CI-safe e2e | ✅ | see "Cover the Photos moderation tab with a11y + e2e specs" |
-| 5 — Docs freshness + close-out | ⏳ | docs patched; close-out pending the review + Sonar gates |
+| 5 — Docs freshness + close-out | ✅ | docs patched (7 findings) + this close-out |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -402,19 +410,19 @@ Skill-routing gate for what the fix touches *before* editing).
 Modify `VenuePhotoService.java`, `AdminVenuePhotoController.java`, `WebSliceStubs.java`,
 `VenuePhotoServiceTest.java`, `AdminPhotoTakedownIT.java`
 
-- [ ] **Step 1: Prove the pre-rename baseline is green** —
+- [x] **Step 1: Prove the pre-rename baseline is green** —
       `gradle test --tests "*VenuePhotoServiceTest*" --tests "*AdminPhotoTakedownIT*"` → PASS.
       A rename is only safe from a known-green start.
-- [ ] **Step 2: Rename the type and rewrite its Javadoc** to justify the port by its ownership-free
+- [x] **Step 2: Rename the type and rewrite its Javadoc** to justify the port by its ownership-free
       **posture** rather than by its single action, so the read that lands in phase 1 has a home
       whose contract already covers it.
-- [ ] **Step 3: Sweep every reference** — `grep -rn "VenuePhotoTakedown" platform/ docs/ *.md` must
+- [x] **Step 3: Sweep every reference** — `grep -rn "VenuePhotoTakedown" platform/ docs/ *.md` must
       return zero hits before proceeding.
-- [ ] **Step 4: Re-run the same two classes** → PASS, unchanged assertions. Behavior parity for
+- [x] **Step 4: Re-run the same two classes** → PASS, unchanged assertions. Behavior parity for
       every row of the ledger above is exactly what this proves.
-- [ ] **Step 5: Structural net** — `gradle test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS.
-- [ ] **Step 6: Commit** — `git commit -m "Rename VenuePhotoTakedown to VenuePhotoModeration (#511)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Structural net** — `gradle test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS.
+- [x] **Step 6: Commit** — `git commit -m "Rename VenuePhotoTakedown to VenuePhotoModeration (#511)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -422,21 +430,21 @@ Modify `VenuePhotoService.java`, `AdminVenuePhotoController.java`, `WebSliceStub
 
 **Files:** Modify `VenuePhotoModeration.java`, `VenuePhotoService.java` · Test `VenuePhotoServiceTest.java`
 
-- [ ] **Step 1: Write the failing test** — `moderationReadListsEverySlotWithoutOwnershipCheck`
+- [x] **Step 1: Write the failing test** — `moderationReadListsEverySlotWithoutOwnershipCheck`
       (AC-1): seed `InMemoryPhotoStorage` with a COVER photo only, assert three slots back in
       declaration order with only COVER carrying a URL, and assert the ownership port is never
       consulted (the existing test double already records calls).
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*VenuePhotoServiceTest*"` →
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*VenuePhotoServiceTest*"` →
       FAIL (no such method).
-- [ ] **Step 3: Minimal implementation** — `slotsOf` on the port; in the service, map
+- [x] **Step 3: Minimal implementation** — `slotsOf` on the port; in the service, map
       `PhotoStorage#listMetadata` → PREVIEW variant → `PhotoServingUrls.servingUrl`, then project
       across `PhotoSlot.values()` so absent slots come back null. Reuse `PhotoSlotView`.
-- [ ] **Step 4: Run it, verify it passes** → PASS.
-- [ ] **Step 5: Generalization-audit pass** — search for other places that project
+- [x] **Step 4: Run it, verify it passes** → PASS.
+- [x] **Step 5: Generalization-audit pass** — search for other places that project
       "metadata list → all slots" (`JdbcVenues.slotPhotos` does the same shape). Decide whether
       to converge or leave them; record the decision in the log.
-- [ ] **Step 6: Commit** — `git commit -m "Add the ownership-free venue-photo moderation read (#511)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Add the ownership-free venue-photo moderation read (#511)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -445,20 +453,20 @@ Modify `VenuePhotoService.java`, `AdminVenuePhotoController.java`, `WebSliceStub
 **Files:** Modify `AdminVenuePhotoController.java`, `SecurityConfig.java` · Create
 `AdminVenuePhotosResponse.java`, `AdminPhotoModerationIT.java`
 
-- [ ] **Step 1: Write the failing tests** — `AdminPhotoModerationIT` covering AC-2 (admin reads a
+- [x] **Step 1: Write the failing tests** — `AdminPhotoModerationIT` covering AC-2 (admin reads a
       venue owned by another operator → 200), AC-3 (operator → 403; anonymous → 401), AC-4
       (unknown venue → 200, three nulls). Model it on `AdminPhotoTakedownIT`'s fixtures.
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*AdminPhotoModerationIT*"` →
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*AdminPhotoModerationIT*"` →
       FAIL (404, no mapping).
-- [ ] **Step 3: Minimal implementation** — the `@GetMapping("/{venueId}/photos")` returning
+- [x] **Step 3: Minimal implementation** — the `@GetMapping("/{venueId}/photos")` returning
       `AdminVenuePhotosResponse`, plus the `SecurityConfig` GET matcher.
-- [ ] **Step 4: Run it, verify it passes**, then the gate guard —
+- [x] **Step 4: Run it, verify it passes**, then the gate guard —
       `gradle test --tests "*AdminPhotoModerationIT*" --tests "*EndpointRoleGateCoverageTest*" --tests "*AdminPhotoTakedownIT*" --tests "*CrossVenueDenialIT*"` → PASS with
       `DECLARED_REACHABLE` **unmodified** (AC-5), and #504's DELETE still green (R-3).
-- [ ] **Step 5: Generalization-audit pass** — check the other `/api/admin/**` matchers for the
+- [x] **Step 5: Generalization-audit pass** — check the other `/api/admin/**` matchers for the
       same verb-qualification discipline.
-- [ ] **Step 6: Commit** — `git commit -m "Expose GET /api/admin/venues/{venueId}/photos (#511)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Expose GET /api/admin/venues/{venueId}/photos (#511)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -468,19 +476,19 @@ Modify `VenuePhotoService.java`, `AdminVenuePhotoController.java`, `WebSliceStub
 `admin-venue-photos.spec.ts` · Modify `admin.model.ts`, `admin-console-tabs.ts`,
 `admin-console-tabs.spec.ts`, `app.routes.ts`
 
-- [ ] **Step 1: Write the failing specs** — `admin-venue-photos.spec.ts` for AC-7, AC-8, AC-9;
+- [x] **Step 1: Write the failing specs** — `admin-venue-photos.spec.ts` for AC-7, AC-8, AC-9;
       extend `admin-console-tabs.spec.ts` to four tabs. Mock `HttpClient`; assert **no** DELETE
       fires on the first Remove press.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- admin-venue-photos admin-console-tabs` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the service (catalogue + slots + takedown, preview URLs
+- [x] **Step 2: Run them, verify they fail** — `npm test -- admin-venue-photos admin-console-tabs` → FAIL.
+- [x] **Step 3: Minimal implementation** — the service (catalogue + slots + takedown, preview URLs
       through `apiPhotoUrl`), the component (self-gating branches copied from `AdminRefundOutbox`,
       picker, slot grid, `confirming` signal keyed by slot per the `admin-operators` precedent),
       the tab entry, the route.
-- [ ] **Step 4: Run them, verify they pass**, then `npm run lint`.
-- [ ] **Step 5: Generalization-audit pass** — the four admin tabs now share a self-gating
+- [x] **Step 4: Run them, verify they pass**, then `npm run lint`.
+- [x] **Step 5: Generalization-audit pass** — the four admin tabs now share a self-gating
       preamble; decide whether to extract it or leave it (bias: leave, extraction is its own slice).
-- [ ] **Step 6: Commit** — `git commit -m "Add the admin console's Photos moderation tab (#511)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Add the admin console's Photos moderation tab (#511)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -488,20 +496,20 @@ Modify `VenuePhotoService.java`, `AdminVenuePhotoController.java`, `WebSliceStub
 
 **Files:** Create `admin-venue-photos.a11y.spec.ts`, `frontend/e2e/admin-venue-photos.e2e.ts`
 
-- [ ] **Step 1: Write the failing specs** — the a11y spec (AC-10) with the confirmation **open**,
+- [x] **Step 1: Write the failing specs** — the a11y spec (AC-10) with the confirmation **open**,
       since that state adds live-region and button semantics the closed state never exercises; the
       e2e (AC-11) driving pick → remove → confirm against `page.route` mocks, ending in
       `expectNoSeriousAxeViolations`.
-- [ ] **Step 2: Run them, verify they fail** — `npm run test:a11y` and
+- [x] **Step 2: Run them, verify they fail** — `npm run test:a11y` and
       `npm run test:e2e:a11y -- admin-venue-photos` → FAIL.
-- [ ] **Step 3: Minimal implementation** — fix whatever the axe/e2e runs surface (label
+- [x] **Step 3: Minimal implementation** — fix whatever the axe/e2e runs surface (label
       association on the picker, `role="status"` on the notice, accessible names on the
       per-slot Remove/confirm buttons).
-- [ ] **Step 4: Run them, verify they pass.**
-- [ ] **Step 5: Generalization-audit pass** — if a violation class is found, check the other three
+- [x] **Step 4: Run them, verify they pass.**
+- [x] **Step 5: Generalization-audit pass** — if a violation class is found, check the other three
       admin tabs for the same defect and record the sweep.
-- [ ] **Step 6: Commit** — `git commit -m "Cover the Photos moderation tab with a11y + e2e specs (#511)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Cover the Photos moderation tab with a11y + e2e specs (#511)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -509,16 +517,16 @@ Modify `VenuePhotoService.java`, `AdminVenuePhotoController.java`, `WebSliceStub
 
 **Files:** Modify `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, this plan doc
 
-- [ ] **Step 1: Run `riviera-docs-freshness`** over this PR's range. It is **mandatory**, not
+- [x] **Step 1: Run `riviera-docs-freshness`** over this PR's range. It is **mandatory**, not
       discretionary: the phase-0 rename invalidates every doc naming `VenuePhotoTakedown`, and
       the counting sweep matters here — `venue` gains a **second** ownership-free photo
       operation, so any doc saying "the module's one ownership-free photo write" goes stale
       **outside the diff**.
-- [ ] **Step 2: Patch every stale statement** it finds.
-- [ ] **Step 3: Finalize the Execution status** — stage pointer DONE, every phase ✅ with its
+- [x] **Step 2: Patch every stale statement** it finds.
+- [x] **Step 3: Finalize the Execution status** — stage pointer DONE, every phase ✅ with its
       commit, Open Questions empty, every risk row closed, AC pin-names matching the tests that
       shipped, citing **`merged via PR #NN`** (never a merge SHA).
-- [ ] **Step 4: Commit** — `git commit -m "Close out the admin photo-moderation slice (#511)"`
+- [x] **Step 4: Commit** — `git commit -m "Close out the admin photo-moderation slice (#511)"`
 
 ---
 
@@ -538,40 +546,40 @@ Modify `VenuePhotoService.java`, `AdminVenuePhotoController.java`, `WebSliceStub
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1:** `gradle test --tests "*VenuePhotoServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [x] **AC-2/3/4:** `gradle test --tests "*AdminPhotoModerationIT*"` → PASS. Verified at commit `<sha>`.
-- [x] **AC-5:** `gradle test --tests "*EndpointRoleGateCoverageTest*"` → PASS, `DECLARED_REACHABLE` unmodified in the diff. Verified at commit `<sha>`.
-- [x] **AC-6:** `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS. Verified at commit `<sha>`.
-- [x] **AC-7/8/9:** `npm test -- admin-venue-photos` → PASS. Verified at commit `<sha>`.
-- [x] **AC-10:** `npm run test:a11y` → PASS. Verified at commit `<sha>`.
-- [x] **AC-11:** `npm run test:e2e:a11y` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1:** `gradle test --tests "*VenuePhotoServiceTest*"` → PASS. Verified on PR #512's final head; **merged via PR #512**.
+- [x] **AC-2/3/4:** `gradle test --tests "*AdminPhotoModerationIT*"` → PASS. Verified on PR #512's final head; **merged via PR #512**.
+- [x] **AC-5:** `gradle test --tests "*EndpointRoleGateCoverageTest*"` → PASS, `DECLARED_REACHABLE` unmodified in the diff. Verified on PR #512's final head; **merged via PR #512**.
+- [x] **AC-6:** `gradle test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS. Verified on PR #512's final head; **merged via PR #512**.
+- [x] **AC-7/8/9:** `npm test -- admin-venue-photos` → PASS. Verified on PR #512's final head; **merged via PR #512**.
+- [x] **AC-10:** `npm run test:a11y` → PASS. Verified on PR #512's final head; **merged via PR #512**.
+- [x] **AC-11:** `npm run test:e2e:a11y` → PASS. Verified on PR #512's final head; **merged via PR #512**.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified `N/A` — no availability row is read or written).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — vacuously; no bookable resource in scope.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new published surface (invariant #11).
-- [ ] **Payment/payout** section filled (`N/A`); no money in scope (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — no date arithmetic in scope.
-- [ ] Booking codes unguessable (invariant #7) — no booking identifier on this surface.
-- [ ] Flyway migration present for schema changes (invariant #12) — **none needed**, no schema change.
-- [ ] **Invariant #13:** the new read is ownership-free **by design** and lives only under
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified `N/A` — no availability row is read or written).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — vacuously; no bookable resource in scope.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new published surface (invariant #11).
+- [x] **Payment/payout** section filled (`N/A`); no money in scope (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — no date arithmetic in scope.
+- [x] Booking codes unguessable (invariant #7) — no booking identifier on this surface.
+- [x] Flyway migration present for schema changes (invariant #12) — **none needed**, no schema change.
+- [x] **Invariant #13:** the new read is ownership-free **by design** and lives only under
       `/api/admin/**` behind an explicit `hasRole(ADMIN)` matcher; `CrossVenueDenialIT` still green.
-- [ ] **Frontend** standards met; the two deviations (`httpResource`, `NgOptimizedImage`) are
+- [x] **Frontend** standards met; the two deviations (`httpResource`, `NgOptimizedImage`) are
       documented above with reasons; no `as any` on the contract.
-- [ ] No **new** cross-feature import (RV-FE-8) — `admin/` takes types from `shared/`, never
+- [x] No **new** cross-feature import (RV-FE-8) — `admin/` takes types from `shared/`, never
       `venue/venue.service`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — citing `merged via PR #NN`, so no docs-only follow-up PR.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — citing `merged via PR #NN`, so no docs-only follow-up PR.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
@@ -600,3 +608,25 @@ re-sweep after the fix round found nothing further.
 `VenuePhotoTakedown` prose and gains a forward pointer instead. A merged slice's plan doc is a record
 of what that slice decided, not a living description of today's code (the skill's *Scope discipline*:
 present-tense facts only). `graphify-out/` is absent in this cloud clone, so step 6 does not apply.
+
+
+---
+
+## Sonar gate note (PR #512)
+
+Pulled the **reported list**, not just the gate conclusion — a green gate can coexist with new issues
+below its fail thresholds (`pr-gates.md` §2, case history #158).
+
+| Check | Value |
+|---|---|
+| `api/issues/search` total (unresolved, PR 512) | **0** — issues array empty |
+| `new_bugs` / `new_vulnerabilities` / `new_code_smells` | 0 / 0 / 0 |
+| `new_duplicated_lines_density` / `new_duplicated_blocks` | 0.0% / 0 |
+| `new_coverage` | **86.08%** (bar: ≥80%) |
+| Security hotspots | 0 |
+
+**Guarded against the false-clean read.** `api/issues/search` returns `"total": 0` for an
+*unanalyzed* PR byte-identically to a clean one (case history: PR #318), so the zero was only
+accepted after confirming `measures` is **non-empty** with `new_lines: 648` — an analysis genuinely
+ran against this head — and that the `SonarCloud Code Analysis` check-run concluded `success`. Read
+after the review-fix push (d6433e9), not before it, so it covers the fixes too.
