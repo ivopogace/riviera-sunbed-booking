@@ -104,7 +104,7 @@ async function pickVenue(
   venueId: number,
 ): Promise<void> {
   const select = byTestId<HTMLSelectElement>(fixture, 'admin-photos-venue')!;
-  select.value = String(venueId);
+  select.value = Number.isNaN(venueId) ? '' : String(venueId);
   select.dispatchEvent(new Event('change'));
   fixture.detectChanges();
   await settle(fixture);
@@ -216,6 +216,45 @@ describe('AdminVenuePhotos', () => {
     // Venue 9's cover is untouched, and its outcome is not narrated under venue 9's name.
     expect(byTestId(fixture, 'admin-photo-preview-cover')).not.toBeNull();
     expect(byTestId(fixture, 'admin-photos-notice')?.textContent).not.toContain('Bora Bora Beach');
+  });
+
+  it('stops loading when the admin deselects back to no venue mid-flight', async () => {
+    // Deselecting issues no new request, so nothing else would ever turn the spinner off.
+    const service = serviceStub();
+    const slow = deferred<AdminVenuePhotosView>();
+    service.slots.mockImplementation(() => slow.promise);
+    const fixture = await render(authStub(), service);
+
+    await pickVenue(fixture, 7);
+    await pickVenue(fixture, Number.NaN); // the blank "Choose a venue…" option
+    slow.resolve(photosOf('/api/venues/7/photos/beef01', 7));
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'admin-photos-loading')).toBeNull();
+    expect(byTestId(fixture, 'admin-photo-slot-cover')).toBeNull();
+  });
+
+  it('keeps the newest answer when the same venue is re-requested out of order', async () => {
+    // Leaving a venue and returning re-requests it, so "is this venue still selected" is not a
+    // staleness test — both answers pass it. Only "is this the newest request" is monotonic.
+    const service = serviceStub();
+    const first = deferred<AdminVenuePhotosView>();
+    const second = deferred<AdminVenuePhotosView>();
+    const answers = [first.promise, second.promise];
+    service.slots.mockImplementation(() => answers.shift() ?? Promise.resolve(photosOf(null, 7)));
+    const fixture = await render(authStub(), service);
+
+    await pickVenue(fixture, 7); // request #1
+    await pickVenue(fixture, 9);
+    await pickVenue(fixture, 7); // request #2, same venue
+
+    second.resolve(photosOf(null, 7)); // the newest answer: cover now empty
+    await settle(fixture);
+    first.resolve(photosOf('/api/venues/7/photos/stale', 7)); // the older answer lands last
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'admin-photo-empty-cover')).not.toBeNull();
+    expect(byTestId(fixture, 'admin-photo-preview-cover')).toBeNull();
   });
 
   /**

@@ -225,6 +225,7 @@ export class AdminVenuePhotos {
   );
 
   private loaded = false;
+  private loadGeneration = 0;
 
   constructor() {
     // Load the catalogue once the admin session is confirmed (restore settled + ROLE_ADMIN present).
@@ -259,6 +260,7 @@ export class AdminVenuePhotos {
 
   protected onVenuePicked(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
+    this.abandonInFlightLoad();
     this.selectedVenueId.set(value === '' ? undefined : Number(value));
     this.confirming.set(undefined);
     this.notice.set('');
@@ -273,24 +275,40 @@ export class AdminVenuePhotos {
     if (venueId === undefined) {
       return;
     }
+    const generation = ++this.loadGeneration;
     this.loading.set(true);
     this.loadError.set(false);
     try {
       const loaded = await this.service.slots(venueId);
-      // A response for a venue the admin has since left must never paint the current one.
-      if (this.selectedVenueId() !== venueId) {
+      if (generation !== this.loadGeneration) {
         return;
       }
       this.slots.set(loaded.slots);
     } catch {
-      if (this.selectedVenueId() === venueId) {
+      if (generation === this.loadGeneration) {
         this.loadError.set(true);
       }
     } finally {
-      if (this.selectedVenueId() === venueId) {
+      if (generation === this.loadGeneration) {
         this.loading.set(false);
       }
     }
+  }
+
+  /**
+   * Retire whatever load is in flight and clear its pending state.
+   *
+   * <p>The staleness test is a <strong>generation counter, not the selected venue id</strong>, and the
+   * difference is not academic: an id check calls a response current whenever its venue is on screen,
+   * so leaving venue 7 and coming back re-requests it and the *older* of the two answers can land
+   * last and win. Only "is this the newest request I issued" is actually monotonic. Clearing
+   * `loading` here is the other half — deselecting back to "Choose a venue…" issues no new request,
+   * so nothing else would ever turn the spinner off.
+   */
+  private abandonInFlightLoad(): void {
+    this.loadGeneration++;
+    this.loading.set(false);
+    this.loadError.set(false);
   }
 
   protected async remove(venue: ModerationVenue, slot: PhotoSlotKey): Promise<void> {

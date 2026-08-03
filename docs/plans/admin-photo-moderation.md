@@ -57,7 +57,7 @@ the picker fetches the public catalogue through the admin feature's own service)
 Vitest; `get_best_practices` → `@Service`, `inject()`, signals, `@if`/`@for`, no explicit
 `OnPush`, AXE/WCAG-AA mandatory; `search_documentation` v22 → `httpResource`/`resource`
 reviewed and **deliberately not adopted**, see FE-2 note, plus `NgOptimizedImage` and the a11y
-guide) · `riviera-tailwind` (porcelain-glass token usage for the new tab, no `@apply`) ·
+guide) · `riviera-tailwind` (porcelain-glass token usage for the new tab, no `@apply`) · `domain-modeling` (owns changes to `CONTEXT.md` and ADRs — added the **Photo moderation** glossary entry and wrote ADR-0013's "Amended by #511" note; added to this line at the re-review, which flagged its absence as an RV-PROC-1 gap) ·
 `playwright-cli` (the CI-safe mocked e2e spec) · `riviera-local-debug` (scoped Gradle/Vitest
 runs; system `gradle` + JDK-25 toolchain in this cloud session, never the bare `test` task) ·
 `postgres` (**N/A — no migration, no new SQL**; the two statements this slice runs both
@@ -269,9 +269,15 @@ All confirmed against the angular-cli MCP's `get_best_practices` for this worksp
    claim that `ngSrc` "would demand `width`/`height` the read does not carry" was also wrong:
    **fill mode** exists for exactly the case where the container has a known size and the image
    does not. Now shipped as `[ngSrc] fill disableOptimizedSrcset` inside a `relative` aspect-ratio
-   box. `disableOptimizedSrcset` is deliberate, not laziness: the serving URL is
-   **content-addressed and ignores width**, so an auto-generated `srcset` would list the identical
-   URL at every breakpoint. (Confirmed against the v22 docs via the angular-cli MCP.)
+   box. `disableOptimizedSrcset` is kept as an **explicit
+   guard, and is a no-op today** — the re-review traced `NgOptimizedImage`'s
+   `shouldGenerateAutomaticSrcset()` and found it already skips generation whenever the loader is the
+   noop one, which is this app's case (no `IMAGE_LOADER` is registered anywhere). The first draft of
+   this note claimed a srcset "would list the identical URL at every breakpoint" without it; that was
+   an unverified assertion about loader behavior — the same species of error as F-5/F-9 — and it is
+   corrected here rather than quietly dropped. The flag stays because ADR-0008 documents a *tracked*
+   object-store + CDN migration (#508 is a blocker on it), and a content-addressed URL that ignores
+   width must not gain a width-keyed srcset the day a loader appears.
 
 ## FE↔BE contract
 
@@ -348,6 +354,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-10 | **Re-review** (fix round) | **`loading` could stick `true` forever.** Deselecting back to "Choose a venue…" mid-load left the guard unsatisfiable (`selectedVenueId()` is now `undefined`, never equal to the in-flight id) and issued no new request to clear it — a permanent spinner under an empty picker. Verified by the reviewer with a throwaway spec before reporting. | **fixed** — `abandonInFlightLoad()` retires the request and clears `loading`/`loadError`; pinned by *stops loading when the admin deselects back to no venue mid-flight*. |
+| F-11 | **Re-review** (fix round) | **The venue-id guard was necessary but not sufficient.** It asked "is this response's venue still selected", not "is this the newest request" — so leaving venue 7 and returning re-requests it and the *older* answer can land last and win, silently overwriting fresh data. My own F-2 fix was incomplete, and its test only covered the cross-venue case. | **fixed** — replaced with a monotonic generation counter; pinned by *keeps the newest answer when the same venue is re-requested out of order*. |
+| F-12 | **Re-review** (fix round) | **The `disableOptimizedSrcset` rationale was itself an unverified claim** — `NgOptimizedImage` already skips srcset generation under the noop loader, which is this app's config, so the flag is a no-op and my stated reason was wrong. The same species of error as F-5/F-9, committed *in the commit that fixed them*. | **fixed** — rationale corrected in place (struck, not deleted); the flag is kept as an explicit guard for ADR-0008's tracked CDN migration, which is now the honest reason. |
+| F-13 | **Re-review** (fix round) | **F-9's fix undercounted by one** — `VariantMeta`'s Javadoc carried the identical false "Discover cards / beach-map banner / operator slots" claim about `listMetadata`, and survived verbatim. | **fixed** — third instance corrected. |
+| F-14 | **Re-review** (RV-PROC-1) | The slice amended an ADR and added a `CONTEXT.md` glossary entry, but **`domain-modeling`** — whose remit is exactly that — was absent from *Skills consulted*. | **fixed** — added to the line with what it covered. |
 | F-2 | **Review** (bug scan) | **Stale-response race in `loadSlots`.** Pick venue A, switch to B before A answers → A's late response paints A's photos under B's name. On a surface whose confirmation names a venue, the moderator would be looking at one venue's image while approving a removal described as another's. | **fixed** — the response is discarded unless its venue is still selected; pinned by *ignores a slots response that lands after the admin moved to another venue*. |
 | F-3 | **Review** (bug scan) | **Stale-completion race in `remove`.** A takedown settling after a venue switch applied `previewUrl: null` to the **new** venue's same-named slot — showing a live photo as deleted — and narrated the old venue's name under the new venue's UI. | **fixed** — outcome applied only while its own venue is on screen (`reportOnlyIfStillViewing`); pinned by *does not empty a slot on the venue switched to while a takedown was in flight*. |
 | F-4 | **Review** (CLAUDE.md compliance) | **RV-STYLE-1 ×3** — multi-line inline comments in `SecurityConfig`, `AdminPhotoModerationIT` and `app.routes.ts`. The SecurityConfig one restated its own field Javadoc verbatim. | **fixed** — all three cut to one line; the SecurityConfig reasoning already lived on the field's Javadoc. |
