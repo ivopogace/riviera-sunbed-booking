@@ -3,6 +3,7 @@ package ai.riviera.platform.venue.adapter.in;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,6 +40,16 @@ class AdminVenuePhotoController {
 
 	AdminVenuePhotoController(VenuePhotoModeration moderation) {
 		this.moderation = moderation;
+	}
+
+	/**
+	 * The read that makes the takedown below operable (#511) — every slot of any venue, ownership-free.
+	 * Always {@code 200}: an unknown venue answers three empty slots rather than {@code 404}, matching
+	 * the takedown's refusal to distinguish an unknown venue from an empty slot.
+	 */
+	@GetMapping("/{venueId}/photos")
+	AdminVenuePhotosResponse photos(@PathVariable long venueId) {
+		return AdminVenuePhotosResponse.from(venueId, moderation.slotsOf(new VenueId(venueId)));
 	}
 
 	@DeleteMapping("/{venueId}/photos/{slot}")

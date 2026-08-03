@@ -312,20 +312,21 @@ All confirmed against the angular-cli MCP's `get_best_practices` for this worksp
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `implement — phase 1 done, entering phase 2`
+**Stage pointer:** `implement — phase 2 done (backend complete), entering phase 3 (frontend)`
 
-**Next action:** Phase 2 — write the failing `AdminPhotoModerationIT` (AC-2/3/4), then add the
-`@GetMapping("/{venueId}/photos")` and its `SecurityConfig` matcher.
+**Next action:** Phase 3 — write the failing `admin-venue-photos.spec.ts` (AC-7/8/9), then build the
+service, component, tab entry and route.
 
 Draft **PR #512** is open (opened after phase 0 per riviera-sdlc rule 3 — CI fires on the
-`pull_request` event only, so the draft is what makes "CI per push" true).
+`pull_request` event only, so the draft is what makes "CI per push" true). Sonar on the phase-0/1
+push: **gate passed, 0 new issues, 0 duplication, 100% coverage on new code**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Rename the port to name its posture | ✅ | see "Rename VenuePhotoTakedown…" |
 | 1 — The moderation read (service + port method) | ✅ | see "Add the ownership-free venue-photo moderation read" |
-| 2 — The admin GET endpoint + role gate | ⏳ | |
-| 3 — The Photos tab (service, component, tab, route) | | |
+| 2 — The admin GET endpoint + role gate | ✅ | see "Expose GET /api/admin/venues/{venueId}/photos" |
+| 3 — The Photos tab (service, component, tab, route) | ⏳ | |
 | 4 — a11y spec + CI-safe e2e | | |
 | 5 — Docs freshness + close-out | | |
 
@@ -517,6 +518,7 @@ Modify `VenuePhotoService.java`, `AdminVenuePhotoController.java`, `WebSliceStub
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-03 | Phase 2 — new `/api/admin/**` matcher | Do the sibling admin matchers all qualify their HTTP verb, so a new path cannot widen an existing rule? | `grep -n "requestMatchers(HttpMethod" platform/src/main/java/ai/riviera/platform/SecurityConfig.java` | 12 admin matchers, **all** already `HttpMethod`-qualified | **No change needed** — the discipline is already uniform, and this slice follows it. The verb qualification is what keeps the new `GET …/photos` and #504's `DELETE …/photos/{slot}` from ever matching each other (risk R-3), on top of their differing segment counts. |
 | 2026-08-03 | Phase 1 — new "project photo metadata across every `PhotoSlot`" pattern | Other places that turn stored photos into a full three-slot grid | `grep -rn "PhotoSlot.values()" platform/src/main` | 2 — `JdbcVenues.slotPhotos` (operator profile read) and the new `VenuePhotoService.slotsOf` | **Skip converging, deliberately.** They share a *shape*, not a source: `slotPhotos` runs its own SQL join against `venue_photo`/`venue_photo_variant` inside the profile read model, while `slotsOf` projects from the `PhotoStorage` port. Converging would push the profile read through `PhotoStorage`, changing an unrelated shipped read path for cosmetic reuse — a bigger, riskier diff than the duplication costs. Both already funnel through the one `PhotoServingUrls.servingUrl`, which is the part that would actually hurt if it drifted. Revisit only if a third site appears. |
 
 ---

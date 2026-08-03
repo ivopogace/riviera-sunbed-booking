@@ -194,6 +194,15 @@ class SecurityConfig {
 	 * to check when the actor is the platform. Two single-segment wildcards: venue id, then slot.
 	 */
 	private static final String ADMIN_VENUE_PHOTO_PATH = "/api/admin/venues/*/photos/*";
+	/**
+	 * The moderation <em>read</em> that makes the takedown above usable (#511) — same ADMIN gate, same
+	 * invariant-#13 exemption, and the same deliberate ownership-freedom: the venue-scoped
+	 * {@code GET /api/venues/{venueId}/profile} is the only other per-slot view and it answers a
+	 * non-owner {@code 403 NOT_VENUE_OWNER}, so an admin could delete a photo it could not see. One
+	 * wildcard, not two: this path ends at {@code /photos}, which is what keeps it and the
+	 * slot-addressed {@code DELETE} above from ever matching each other.
+	 */
+	private static final String ADMIN_VENUE_PHOTOS_PATH = "/api/admin/venues/*/photos";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	/**
@@ -371,7 +380,11 @@ class SecurityConfig {
 						// Per-booking mail delivery + resend (#380) — same ADMIN gate, platform-wide state.
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_LOOKUP_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_RESEND_PATH).hasRole(ADMIN_ROLE)
-						// Venue-photo takedown (#504) — ADMIN only; reaches any venue, owned or not.
+						// Venue-photo moderation (#504 takedown, #511 read) — ADMIN only; reaches any
+						// venue, owned or not. Both sit above the permitAll GET /api/venues/** rule
+						// below: first match wins, and the read's path is NOT under it anyway
+						// (/api/admin/…), but keeping the pair adjacent keeps that reasoning local.
+						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_PHOTOS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.DELETE, ADMIN_VENUE_PHOTO_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
