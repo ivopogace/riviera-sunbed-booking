@@ -1,3 +1,5 @@
+import { PhotoSlotKey } from '../shared/venue-views';
+
 /**
  * A pending operator registration as the admin approval surface reports it (S6 #115) — mirrors the
  * backend `AdminOperatorController.PendingOperatorResponse`. `registeredAt` is an ISO instant string,
@@ -94,4 +96,25 @@ export interface MailResendResultView {
     | 'NO_SUCH_BOOKING'
     | 'NOT_CONFIRMED'
     | 'MISSING_FACTS';
+}
+
+/**
+ * One photo slot in the admin moderation view (#511); mirrors the backend
+ * `AdminVenuePhotosResponse.SlotPhoto`. `previewUrl` is `null` exactly when the slot is empty —
+ * emptiness IS the null URL (#142 review F-11), so there is no derivable boolean to keep in step.
+ */
+export interface AdminPhotoSlotView {
+  readonly slot: PhotoSlotKey;
+  readonly previewUrl: string | null;
+}
+
+/**
+ * A venue's photo slots as the moderation surface reads them (#511); mirrors the backend
+ * `AdminVenuePhotosResponse`. Always all three slots, occupied or not, so the tab renders a stable
+ * grid. An unknown venue answers three empty slots rather than a 404 — the same deliberate blank the
+ * takedown draws, so neither surface reports whether a venue exists.
+ */
+export interface AdminVenuePhotosView {
+  readonly venueId: number;
+  readonly slots: readonly AdminPhotoSlotView[];
 }

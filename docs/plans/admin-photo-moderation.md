@@ -312,10 +312,10 @@ All confirmed against the angular-cli MCP's `get_best_practices` for this worksp
 > as the change it records — at every phase boundary AND every SDLC stage
 > transition (plan → implement → CI → PR → review → sonar → merge).
 
-**Stage pointer:** `implement — phase 2 done (backend complete), entering phase 3 (frontend)`
+**Stage pointer:** `implement — phase 3 done, entering phase 4 (a11y + e2e)`
 
-**Next action:** Phase 3 — write the failing `admin-venue-photos.spec.ts` (AC-7/8/9), then build the
-service, component, tab entry and route.
+**Next action:** Phase 4 — write the failing `admin-venue-photos.a11y.spec.ts` (with the
+confirmation open) and `frontend/e2e/admin-venue-photos.e2e.ts`, then fix what they surface.
 
 Draft **PR #512** is open (opened after phase 0 per riviera-sdlc rule 3 — CI fires on the
 `pull_request` event only, so the draft is what makes "CI per push" true). Sonar on the phase-0/1
@@ -326,8 +326,8 @@ push: **gate passed, 0 new issues, 0 duplication, 100% coverage on new code**.
 | 0 — Rename the port to name its posture | ✅ | see "Rename VenuePhotoTakedown…" |
 | 1 — The moderation read (service + port method) | ✅ | see "Add the ownership-free venue-photo moderation read" |
 | 2 — The admin GET endpoint + role gate | ✅ | see "Expose GET /api/admin/venues/{venueId}/photos" |
-| 3 — The Photos tab (service, component, tab, route) | ⏳ | |
-| 4 — a11y spec + CI-safe e2e | | |
+| 3 — The Photos tab (service, component, tab, route) | ✅ | see "Add the admin console's Photos moderation tab" |
+| 4 — a11y spec + CI-safe e2e | ⏳ | |
 | 5 — Docs freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -518,6 +518,8 @@ Modify `VenuePhotoService.java`, `AdminVenuePhotoController.java`, `WebSliceStub
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-03 | Phase 3 — `admin/` needed `PhotoSlotKey`, which lived in `operator/` | Where does a type two features both need belong? | `grep -rln "PhotoSlotKey" frontend/src/app` | 3 files, all in `operator/` | **Promoted to `shared/venue-views.ts`** and repointed the three operator imports. Importing it from `admin/` would have created a *new* `admin/ → operator/` cross-feature edge — RV-FE-8 Major — and duplicating the union would leave two definitions of one backend enum free to drift. `shared/venue-views.ts` is precisely where #489 put the venue-owned API-view vocabulary. Net effect: −1 potential debt edge, no new one. |
+| 2026-08-03 | Phase 3 — the fourth admin tab repeats the self-gating preamble | Should the `restoring / signed-out / not-admin` branch set be extracted? | Read all four `admin/admin-*.ts` components | 4 sites, near-identical | **Skip, deliberately.** The four differ in their copy, their `returnUrl` and their test ids, so the extraction is a component taking three inputs and projecting content — more indirection than the duplication costs, and it would touch three shipped tabs for no behavior change. It is a legitimate standalone refactor if a fifth tab lands; noted, not done here. |
 | 2026-08-03 | Phase 2 — new `/api/admin/**` matcher | Do the sibling admin matchers all qualify their HTTP verb, so a new path cannot widen an existing rule? | `grep -n "requestMatchers(HttpMethod" platform/src/main/java/ai/riviera/platform/SecurityConfig.java` | 12 admin matchers, **all** already `HttpMethod`-qualified | **No change needed** — the discipline is already uniform, and this slice follows it. The verb qualification is what keeps the new `GET …/photos` and #504's `DELETE …/photos/{slot}` from ever matching each other (risk R-3), on top of their differing segment counts. |
 | 2026-08-03 | Phase 1 — new "project photo metadata across every `PhotoSlot`" pattern | Other places that turn stored photos into a full three-slot grid | `grep -rn "PhotoSlot.values()" platform/src/main` | 2 — `JdbcVenues.slotPhotos` (operator profile read) and the new `VenuePhotoService.slotsOf` | **Skip converging, deliberately.** They share a *shape*, not a source: `slotPhotos` runs its own SQL join against `venue_photo`/`venue_photo_variant` inside the profile read model, while `slotsOf` projects from the `PhotoStorage` port. Converging would push the profile read through `PhotoStorage`, changing an unrelated shipped read path for cosmetic reuse — a bigger, riskier diff than the duplication costs. Both already funnel through the one `PhotoServingUrls.servingUrl`, which is the part that would actually hurt if it drifted. Revisit only if a third site appears. |
 
