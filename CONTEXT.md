@@ -24,7 +24,7 @@ model in `docs/architecture/domain-model.md`.
   per `(venue, slot)`; uploading again replaces the slot; deleting erases metadata + bytes in one
   transaction.
 - **Photo takedown** — the **platform admin's** removal of any venue's photo by `(venue, slot)`
-  (#504) — the "remove" half of the report-and-remove moderation stance (#230). Same
+  (#504) — the "remove" half of the report-and-remove moderation stance (ADR-0013, #230). Same
   single-transaction erase as the operator's own delete, driven through the same storage call, but
   role-gated on the platform-admin flag (`is_admin`) instead of venue ownership: it exists precisely
   to reach a venue the actor does **not** own, which the venue-scoped delete refuses with `403
