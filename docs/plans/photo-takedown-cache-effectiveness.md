@@ -192,7 +192,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *(none yet — gates run at ready-for-review)* | — |
+| F-1 | review gate (CLAUDE.md-compliance reviewer) | `CONTEXT.md:43` still defined a **photo variant** as served "at an immutable, long-cached public URL" — a stated present-tense fact this slice falsifies. **My own docs-freshness sweep missed it**: the grep patterns were `immutable cache` / `immutable URLs`, and the actual wording is `immutable, long-cached` | **fixed** — CONTEXT.md now states the revalidated contract; the lesson is that a substring grep for a *phrase* is weaker than one for the bare keyword (`immutable`), which is what caught it |
+| F-2 | sonar gate | Quality gate passed; list pulled from the API per gate step 2 rather than trusted from the badge: `new_lines: 65` (so the analysis really ran — not a false-clean zero), issues `total: 0`, `new_duplicated_blocks: 0`, `new_coverage: 100.0` | **closed — nothing to fix** |
 
 ---
 
