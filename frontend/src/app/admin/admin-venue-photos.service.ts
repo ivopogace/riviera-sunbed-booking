@@ -10,6 +10,9 @@ import { AdminPhotoSlotView, AdminVenuePhotosView } from './admin.model';
 /** The slot order the surface renders — the backend's `PhotoSlot` declaration order (#142). */
 const SLOT_ORDER: readonly PhotoSlotKey[] = ['cover', 'sunbeds', 'bar'];
 
+/** The optional grounds an admin action may carry into the audit trail (#507); sanitized server-side. */
+const AUDIT_REASON_HEADER = 'X-Audit-Reason';
+
 /** The wire shape of `GET /api/admin/venues/{venueId}/photos` — a slot-keyed map, like the profile read. */
 interface AdminVenuePhotosResponse {
   readonly venueId: number;
@@ -63,10 +66,17 @@ export class AdminVenuePhotosService {
     );
   }
 
-  /** Remove one slot's photo — irreversible, and the bytes are gone (#504). `204`; `404` when empty. */
-  takedown(venueId: number, slot: PhotoSlotKey): Promise<void> {
+  /**
+   * Remove one slot's photo — irreversible, and the bytes are gone (#504). `204`; `404` when empty.
+   * A non-blank `reason` rides the {@link AUDIT_REASON_HEADER} into the audit trail (#507); header
+   * values must be Latin-1, so anything outside it becomes a space rather than an aborted request.
+   */
+  takedown(venueId: number, slot: PhotoSlotKey, reason?: string): Promise<void> {
+    const grounds = reason?.replace(/[^\x20-\x7e\xa0-\xff]/g, ' ').trim();
     return firstValueFrom(
-      this.http.delete<void>(`${this.base}/api/admin/venues/${venueId}/photos/${slot}`),
+      this.http.delete<void>(`${this.base}/api/admin/venues/${venueId}/photos/${slot}`, {
+        headers: grounds ? { [AUDIT_REASON_HEADER]: grounds } : {},
+      }),
     );
   }
 }

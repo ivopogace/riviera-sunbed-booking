@@ -39,9 +39,10 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
  * reflows under the moderator mid-decision.
  *
  * <p><strong>The confirmation is the whole safety story.</strong> A takedown destroys bytes and there
- * is no undo (an audit record is #507, deliberately out of scope), so Remove only *asks*, and the
- * question names the venue and the slot — the {@code admin-operators} suspend precedent, inline
- * rather than modal, so there is nothing to focus-trap and the action stays where it was clicked.
+ * is no undo, so Remove only *asks*, and the question names the venue and the slot — the
+ * {@code admin-operators} suspend precedent, inline rather than modal, so there is nothing to
+ * focus-trap and the action stays where it was clicked. Since #507 the confirmation also collects
+ * optional grounds, which ride the `X-Audit-Reason` header into the platform's admin audit trail.
  *
  * <p>Like every admin tab, the page self-gates on {@link OperatorAuth} for UX while the backend
  * `/api/admin/**` role gate does the enforcing. Porcelain-themed to match the operator console.
@@ -150,6 +151,21 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
                       Remove the {{ label(slot.slot) }} photo from {{ venue.name }}? This cannot be
                       undone.
                     </p>
+                    <label
+                      [attr.for]="'admin-photo-reason-' + slot.slot"
+                      class="mt-2 block text-[13.5px] font-semibold text-(--riv-card-ink)"
+                      >Reason (optional)</label
+                    >
+                    <input
+                      type="text"
+                      maxlength="500"
+                      [attr.id]="'admin-photo-reason-' + slot.slot"
+                      [attr.data-testid]="'admin-photo-reason-' + slot.slot"
+                      [value]="reason()"
+                      (input)="onReasonTyped($event)"
+                      placeholder="e.g. reported by email — off-topic image"
+                      class="mt-1 w-full rounded-[10px] border border-(--riv-field-border) bg-white/70 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+                    />
                     <div class="mt-2 flex flex-wrap items-center gap-2">
                       <button
                         type="button"
@@ -215,6 +231,7 @@ export class AdminVenuePhotos {
   protected readonly selectedVenueId = signal<number | undefined>(undefined);
   protected readonly slots = signal<readonly AdminPhotoSlotView[]>([]);
   protected readonly confirming = signal<PhotoSlotKey | undefined>(undefined);
+  protected readonly reason = signal('');
   protected readonly loading = signal(false);
   protected readonly loadError = signal(false);
   protected readonly busy = signal(false);
@@ -250,12 +267,18 @@ export class AdminVenuePhotos {
    */
   protected askToRemove(slot: PhotoSlotKey): void {
     this.confirming.set(slot);
+    this.reason.set('');
     this.focusAfterRender(`admin-photo-confirm-${slot}`);
   }
 
   protected keepIt(slot: PhotoSlotKey): void {
     this.confirming.set(undefined);
+    this.reason.set('');
     this.focusAfterRender(`admin-photo-remove-${slot}`);
+  }
+
+  protected onReasonTyped(event: Event): void {
+    this.reason.set((event.target as HTMLInputElement).value);
   }
 
   protected onVenuePicked(event: Event): void {
@@ -313,8 +336,12 @@ export class AdminVenuePhotos {
 
   protected async remove(venue: ModerationVenue, slot: PhotoSlotKey): Promise<void> {
     this.busy.set(true);
+    // #507: typed grounds ride the takedown into the audit trail; no reason → the two-argument call.
+    const grounds = this.reason().trim();
     try {
-      await this.service.takedown(venue.id, slot);
+      await (grounds === ''
+        ? this.service.takedown(venue.id, slot)
+        : this.service.takedown(venue.id, slot, grounds));
       this.reportOnlyIfStillViewing(venue, () => {
         // Empty the slot in place: the read model already says emptiness is the null URL.
         this.slots.update((slots) =>
@@ -329,6 +356,7 @@ export class AdminVenuePhotos {
       );
     } finally {
       this.confirming.set(undefined);
+      this.reason.set('');
       this.busy.set(false);
     }
   }

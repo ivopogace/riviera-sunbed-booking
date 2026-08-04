@@ -64,7 +64,11 @@ column, any pre-publication gating, a vision-API screening call at upload, and a
 - **A bad photo is visible until someone acts.** That is the accepted cost, and it is the honest
   characterization of this posture — not "photos are moderated." The exposure window is
   report-latency plus admin-response time, both unbounded and unmonitored at Phase 1.
-- **A takedown must leave an audit record — required, not yet built (#507).** This ADR *decides*
+- **~~A takedown must leave an audit record — required, not yet built (#507)~~ — CLOSED by #507
+  (PR #516):** every mutating `/api/admin/**` action past the security gate now writes an
+  `admin_audit_record` row (actor, action, outcome, UTC instant, optional `X-Audit-Reason`
+  grounds collected by the takedown confirmation), readable in the admin console's Audit tab.
+  The original consequence, kept for the record: this ADR *decided*
   the question rather than parking it, because the requirement is load-bearing for the stance and
   not an adjacent nicety: "reactive removal by a trusted admin" is only a defensible posture if the
   removal is attributable. An irreversible action with no record of who acted, when, or on what
@@ -75,7 +79,8 @@ column, any pre-publication gating, a vision-API screening call at upload, and a
   platform-wide, at `needs-triage`. **Consequence to state plainly: this stance ships with a known,
   tracked deficiency.** The takedown is live and unattributable until #507 lands. That is an accepted
   Phase-1 risk (takedowns are expected to be rare-to-never at current scale), not an oversight, and
-  it is the first thing to fix if takedowns stop being hypothetical.
+  it is the first thing to fix if takedowns stop being hypothetical. *(The "no admin surface logs"
+  sentence above describes the pre-#507 world; it is what #507's blanket edge filter fixed.)*
 
   > **Amended by #511 — that trigger condition is now met, and this is stated rather than left
   > implicit.** The acceptance above leaned on real friction: #504's only interface was a

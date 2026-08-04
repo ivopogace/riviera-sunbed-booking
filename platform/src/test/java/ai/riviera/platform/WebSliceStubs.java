@@ -802,6 +802,24 @@ class WebSliceStubs {
 	}
 
 	/**
+	 * #507: the audit trail {@code SecurityConfig}'s {@code AdminAuditFilter} + {@code AdminAuditController}
+	 * register with — inert, so the web slices exercise routing and the role gate, never the table.
+	 */
+	@Bean
+	AdminAuditLog adminAuditLog() {
+		return new AdminAuditLog() {
+			@Override
+			public void append(String actor, String method, String path, int status, String reason) {
+			}
+
+			@Override
+			public List<Entry> latest(int limit) {
+				return List.of();
+			}
+		};
+	}
+
+	/**
 	 * #504/#511: the moderation port {@code AdminVenuePhotoController} registers with — inert, so the
 	 * web slice exercises routing and the role gate, never storage. No longer a lambda: the port grew
 	 * a second method when the read joined the takedown.
