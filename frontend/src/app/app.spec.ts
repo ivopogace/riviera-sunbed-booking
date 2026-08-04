@@ -533,6 +533,7 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'admin/email',
     'admin/refunds',
     'admin/photos',
+    'admin/audit',
   ];
 
   it('marks every not-yet-restyled tourist route with the compat surface (flipped per slice)', () => {

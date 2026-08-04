@@ -190,6 +190,14 @@ export const routes: Routes = [
     data: { operatorChrome: true },
   },
   {
+    // Admin console Audit tab (#507) — the recorded admin actions; ADMIN-gated server-side.
+    path: 'admin/audit',
+    loadComponent: () => import('./admin/admin-audit').then((m) => m.AdminAudit),
+    title: 'Audit — Riviera',
+    // Admin surface: the shared operator header/footer, never the tourist ones.
+    data: { operatorChrome: true },
+  },
+  {
     // Liquid Glass operator console (epic #141, foundation slice O1 #170). Chromeless: the shell
     // (app.ts) suppresses all of its own chrome here via `data.operatorConsole`, so the console
     // owns a full-bleed porcelain surface. Each tab is a child route (all graduated, O1–O8);

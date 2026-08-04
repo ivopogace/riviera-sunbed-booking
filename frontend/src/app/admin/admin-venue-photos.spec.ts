@@ -158,6 +158,50 @@ describe('AdminVenuePhotos', () => {
     expect(byTestId(fixture, 'admin-photo-preview-sunbeds')).not.toBeNull();
   });
 
+  /** #507 (AC-6): grounds typed into the confirmation ride the takedown into the audit trail. */
+  it('passes a typed reason to the takedown', async () => {
+    const service = serviceStub();
+    const fixture = await render(authStub(), service);
+    await pickVenue(fixture, 7);
+
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-remove-cover')!.click();
+    fixture.detectChanges();
+    const input = byTestId<HTMLInputElement>(fixture, 'admin-photo-reason-cover')!;
+    input.value = '  reported by email  ';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-confirm-cover')!.click();
+    fixture.detectChanges();
+    await settle(fixture);
+
+    expect(service.takedown).toHaveBeenCalledWith(7, 'cover', 'reported by email');
+  });
+
+  it('does not carry a reason typed for one takedown into the next (AC-6)', async () => {
+    const service = serviceStub();
+    const fixture = await render(authStub(), service);
+    await pickVenue(fixture, 7);
+
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-remove-cover')!.click();
+    fixture.detectChanges();
+    const input = byTestId<HTMLInputElement>(fixture, 'admin-photo-reason-cover')!;
+    input.value = 'first grounds';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-cancel-cover')!.click();
+    fixture.detectChanges();
+
+    // Re-opened after a dismissal, the field is blank and an unstated reason stays unstated.
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-remove-cover')!.click();
+    fixture.detectChanges();
+    expect(byTestId<HTMLInputElement>(fixture, 'admin-photo-reason-cover')!.value).toBe('');
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-confirm-cover')!.click();
+    fixture.detectChanges();
+    await settle(fixture);
+
+    expect(service.takedown).toHaveBeenCalledWith(7, 'cover');
+  });
+
   it('abandons a removal when the confirmation is dismissed', async () => {
     const service = serviceStub();
     const fixture = await render(authStub(), service);

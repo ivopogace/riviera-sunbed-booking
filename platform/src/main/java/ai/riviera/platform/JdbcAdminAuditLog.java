@@ -25,7 +25,7 @@ class JdbcAdminAuditLog implements AdminAuditLog {
 	}
 
 	@Override
-	public void record(String actor, String method, String path, int status, String reason) {
+	public void append(String actor, String method, String path, int status, String reason) {
 		jdbc.sql("""
 				INSERT INTO admin_audit_record (actor, method, path, status, reason, occurred_at)
 				VALUES (:actor, :method, :path, :status, :reason, :occurredAt)

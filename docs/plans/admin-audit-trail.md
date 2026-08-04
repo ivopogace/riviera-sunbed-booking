@@ -219,20 +219,20 @@ the reason input, `aria-live` notices, table semantics). Angular-cli MCP
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3 — console Audit tab)
+**Stage pointer:** PR #516 — ready-for-review gates (review gate + Sonar re-check)
 
-**Next action:** Phase 3 — `admin-audit.spec.ts` (red) → service + component + tab + route
-(green); frontend skills already routed (riviera-frontend, riviera-tailwind,
-angular-developer + MCP loaded; load playwright-cli before the e2e spec).
+**Next action:** mark PR #516 ready, run `/code-review` per the invocation ladder, re-pull
+the Sonar issue list after the fix push, then close-out (docs-freshness patches ride this
+PR).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 2728fd1 |
-| 1 — V38 + filter + writer (record path) | ✅ | (with phase 2, one commit) |
-| 2 — read API + role gate | ✅ | see below |
-| 3 — console Audit tab | | |
-| 4 — takedown reason + e2e | | |
-| 5 — close-out | | |
+| 1 — V38 + filter + writer (record path) | ✅ | 779d4a8 |
+| 2 — read API + role gate | ✅ | 779d4a8 |
+| 3 — console Audit tab | ✅ | (this commit) |
+| 4 — takedown reason + e2e | ✅ | (this commit) |
+| 5 — close-out | ⏳ | |
 
 Implementation note (phases 1–2): `AdminAuditLog` landed as an edge-internal *interface*
 with a package-private `JdbcAdminAuditLog` implementation — the `@WebMvcTest` slices
@@ -247,7 +247,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| *(none yet)* | | | |
+| F-1 | sonar (java:S6213 ×3) | Methods named `record` shadow the restricted identifier (`AdminAuditLog`, `JdbcAdminAuditLog`, `AdminAuditFilter`) | fixed — renamed to `append` (re-entered at Implement; backend skills already loaded) |
+| F-2 | sonar (java:S1075) | Hardcoded `/api/admin/` URI constant in `AdminAuditFilter` | fixed — the audited prefix is now a constructor parameter supplied by `SecurityConfig` (the rule's customizable-parameter fix, and a real testability win) |
 
 ---
 

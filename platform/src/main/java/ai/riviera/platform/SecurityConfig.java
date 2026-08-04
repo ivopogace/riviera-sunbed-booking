@@ -212,6 +212,8 @@ class SecurityConfig {
 	 * authorization filter below so only actions past the gate leave a row.
 	 */
 	private static final String ADMIN_AUDIT_PATH = "/api/admin/audit";
+	/** The namespace {@link AdminAuditFilter} audits — every mutating request under it leaves a row. */
+	private static final String ADMIN_AUDIT_NAMESPACE = "/api/admin/";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	/**
@@ -295,7 +297,7 @@ class SecurityConfig {
 				// authorization filter admitted it — an anonymous 401 or wrong-role/CSRF 403 is
 				// rejected upstream and leaves no row (the audit answers "what did a principal do
 				// past the gate", not "who knocked"). App-level edge concern, not a module.
-				.addFilterAfter(new AdminAuditFilter(adminAuditLog), AuthorizationFilter.class)
+				.addFilterAfter(new AdminAuditFilter(adminAuditLog, ADMIN_AUDIT_NAMESPACE), AuthorizationFilter.class)
 				// CSRF (issue #109, D-1 layer 2): the operator surface now rides a SESSION cookie,
 				// so its writes REQUIRE the cookie-to-header token. `.spa()` is Spring Security 7's
 				// native single-page-app posture: CookieCsrfTokenRepository issues the JS-readable

@@ -45,21 +45,22 @@ final class AdminAuditFilter extends OncePerRequestFilter {
 
 	private static final Logger log = LoggerFactory.getLogger(AdminAuditFilter.class);
 
-	/** The audited namespace; role-gated in {@link SecurityConfig}, exempt from invariant #13. */
-	private static final String ADMIN_PATH_PREFIX = "/api/admin/";
-
 	/** Reads are never audited — the record is action-level, not a request log (#507 decision 1). */
 	private static final Set<String> MUTATING_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
 
 	private final AdminAuditLog auditLog;
 
-	AdminAuditFilter(AdminAuditLog auditLog) {
+	/** The audited namespace, a path prefix; {@link SecurityConfig} supplies its role-gated one. */
+	private final String auditedPathPrefix;
+
+	AdminAuditFilter(AdminAuditLog auditLog, String auditedPathPrefix) {
 		this.auditLog = auditLog;
+		this.auditedPathPrefix = auditedPathPrefix;
 	}
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		return !(request.getRequestURI().startsWith(ADMIN_PATH_PREFIX)
+		return !(request.getRequestURI().startsWith(auditedPathPrefix)
 				&& MUTATING_METHODS.contains(request.getMethod()));
 	}
 
@@ -71,20 +72,20 @@ final class AdminAuditFilter extends OncePerRequestFilter {
 		}
 		catch (ServletException | IOException | RuntimeException e) {
 			// Unwinding past the advice becomes the container's 500; record that, not the stale status.
-			record(request, HttpStatus.INTERNAL_SERVER_ERROR.value());
+			append(request, HttpStatus.INTERNAL_SERVER_ERROR.value());
 			throw e;
 		}
-		record(request, response.getStatus());
+		append(request, response.getStatus());
 	}
 
-	private void record(HttpServletRequest request, int status) {
+	private void append(HttpServletRequest request, int status) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null || !authentication.isAuthenticated()
 				|| authentication instanceof AnonymousAuthenticationToken) {
 			return;
 		}
 		try {
-			auditLog.record(authentication.getName(), request.getMethod(), request.getRequestURI(), status,
+			auditLog.append(authentication.getName(), request.getMethod(), request.getRequestURI(), status,
 					AdminAuditReasons.sanitize(request.getHeader(AdminAuditReasons.HEADER)));
 		}
 		catch (DataAccessException e) {

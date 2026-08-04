@@ -99,6 +99,22 @@ export interface MailResendResultView {
 }
 
 /**
+ * One recorded admin action (#507); mirrors the backend `AdminAuditController.AuditEntryView`.
+ * `occurredAt` is an ISO instant, rendered in Europe/Tirane; `reason` is the sanitized
+ * `X-Audit-Reason` grounds, `null` when none were offered; `status` is the HTTP status the action
+ * answered — a 4xx row is a recorded *attempt*, which is signal, not noise.
+ */
+export interface AdminAuditEntryView {
+  readonly id: number;
+  readonly occurredAt: string;
+  readonly actor: string;
+  readonly method: string;
+  readonly path: string;
+  readonly status: number;
+  readonly reason: string | null;
+}
+
+/**
  * One photo slot in the admin moderation view (#511); mirrors the backend
  * `AdminVenuePhotosResponse.SlotPhoto`. `previewUrl` is `null` exactly when the slot is empty —
  * emptiness IS the null URL (#142 review F-11), so there is no derivable boolean to keep in step.

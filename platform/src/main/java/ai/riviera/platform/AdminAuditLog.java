@@ -23,7 +23,7 @@ interface AdminAuditLog {
 	record Entry(long id, Instant occurredAt, String actor, String method, String path, int status, String reason) {
 	}
 
-	void record(String actor, String method, String path, int status, String reason);
+	void append(String actor, String method, String path, int status, String reason);
 
 	/** The latest {@code limit} actions, newest first (timestamp ties broken by id). */
 	List<Entry> latest(int limit);

@@ -809,7 +809,7 @@ class WebSliceStubs {
 	AdminAuditLog adminAuditLog() {
 		return new AdminAuditLog() {
 			@Override
-			public void record(String actor, String method, String path, int status, String reason) {
+			public void append(String actor, String method, String path, int status, String reason) {
 			}
 
 			@Override
