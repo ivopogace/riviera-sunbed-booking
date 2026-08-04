@@ -219,19 +219,27 @@ the reason input, `aria-live` notices, table semantics). Angular-cli MCP
 
 ## Execution status
 
-**Stage pointer:** plan committed → implement (phase 1)
+**Stage pointer:** implement (phase 3 — console Audit tab)
 
-**Next action:** Phase 1 — write `AdminAuditReasonsTest` (red), then V38 + `AdminAuditLog`
-+ `AdminAuditFilter` (green); load `riviera-local-debug` before the first gradle run.
+**Next action:** Phase 3 — `admin-audit.spec.ts` (red) → service + component + tab + route
+(green); frontend skills already routed (riviera-frontend, riviera-tailwind,
+angular-developer + MCP loaded; load playwright-cli before the e2e spec).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ⏳ | |
-| 1 — V38 + filter + writer (record path) | | |
-| 2 — read API + role gate | | |
+| 0 — plan doc | ✅ | 2728fd1 |
+| 1 — V38 + filter + writer (record path) | ✅ | (with phase 2, one commit) |
+| 2 — read API + role gate | ✅ | see below |
 | 3 — console Audit tab | | |
 | 4 — takedown reason + e2e | | |
 | 5 — close-out | | |
+
+Implementation note (phases 1–2): `AdminAuditLog` landed as an edge-internal *interface*
+with a package-private `JdbcAdminAuditLog` implementation — the `@WebMvcTest` slices
+(`WebSliceStubs`) stub it inertly like every other controller collaborator. The IT's
+CRLF-reason case was moved to a tab: `StrictHttpFirewall` rejects raw CR/LF header values
+before the app, so the CRLF path is pinned in `AdminAuditReasonsTest` (defense-in-depth)
+and the IT exercises the control character a request can actually carry.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

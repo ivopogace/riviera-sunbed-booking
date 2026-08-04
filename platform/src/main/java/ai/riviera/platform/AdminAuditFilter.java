@@ -1,0 +1,95 @@
+package ai.riviera.platform;
+
+import java.io.IOException;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+/**
+ * Records every mutating {@code /api/admin/**} action in the {@link AdminAuditLog} (#507, required
+ * by ADR-0013): actor, method, path, outcome status, and the optional sanitized
+ * {@link AdminAuditReasons#HEADER} grounds. Blanket coverage by construction — a new admin surface
+ * is audited the day it ships, with no per-controller instrumentation to forget.
+ *
+ * <p><strong>Positioned after {@code AuthorizationFilter}, inside the API security chain</strong>
+ * ({@link SecurityConfig}), so only requests that passed authentication <em>and</em> authorization
+ * reach it: the audit answers "what did an authenticated principal do past the gate", never "who
+ * knocked" — anonymous 401s, CSRF 403s and wrong-role 403s are rejected upstream and leave no row.
+ * The belt-and-braces principal check below keeps that contract even if the chain order drifts.
+ * Recording happens <em>after</em> the action with its real outcome status (including
+ * application-level 4xx — a failed destructive attempt is signal); an exception unwinding past the
+ * handler advice is recorded as the 500 it becomes.
+ *
+ * <p><strong>The actor is whoever the namespace admitted</strong> — almost always the platform
+ * ADMIN, but {@code /api/admin/payout-batches} is OPERATOR-gated, and those presses are deliberately
+ * recorded too (the read surface stays ADMIN-only).
+ *
+ * <p><strong>A failed audit insert never fails the admin action</strong> (logged at ERROR instead):
+ * write-after cannot un-do the action it records, and the audited actions are themselves writes on
+ * the same database, so an audit-lost-while-action-succeeded window needs a mid-request DB failure.
+ * Accepted Phase-1 risk, documented in the plan doc's register (R-1).
+ */
+final class AdminAuditFilter extends OncePerRequestFilter {
+
+	private static final Logger log = LoggerFactory.getLogger(AdminAuditFilter.class);
+
+	/** The audited namespace; role-gated in {@link SecurityConfig}, exempt from invariant #13. */
+	private static final String ADMIN_PATH_PREFIX = "/api/admin/";
+
+	/** Reads are never audited — the record is action-level, not a request log (#507 decision 1). */
+	private static final Set<String> MUTATING_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
+
+	private final AdminAuditLog auditLog;
+
+	AdminAuditFilter(AdminAuditLog auditLog) {
+		this.auditLog = auditLog;
+	}
+
+	@Override
+	protected boolean shouldNotFilter(HttpServletRequest request) {
+		return !(request.getRequestURI().startsWith(ADMIN_PATH_PREFIX)
+				&& MUTATING_METHODS.contains(request.getMethod()));
+	}
+
+	@Override
+	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+			throws ServletException, IOException {
+		try {
+			chain.doFilter(request, response);
+		}
+		catch (ServletException | IOException | RuntimeException e) {
+			// Unwinding past the advice becomes the container's 500; record that, not the stale status.
+			record(request, HttpStatus.INTERNAL_SERVER_ERROR.value());
+			throw e;
+		}
+		record(request, response.getStatus());
+	}
+
+	private void record(HttpServletRequest request, int status) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || !authentication.isAuthenticated()
+				|| authentication instanceof AnonymousAuthenticationToken) {
+			return;
+		}
+		try {
+			auditLog.record(authentication.getName(), request.getMethod(), request.getRequestURI(), status,
+					AdminAuditReasons.sanitize(request.getHeader(AdminAuditReasons.HEADER)));
+		}
+		catch (DataAccessException e) {
+			log.error("Admin audit record lost for {} {} by {} (status {})", request.getMethod(),
+					request.getRequestURI(), authentication.getName(), status, e);
+		}
+	}
+}

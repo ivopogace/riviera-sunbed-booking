@@ -23,6 +23,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -203,6 +204,14 @@ class SecurityConfig {
 	 * slot-addressed {@code DELETE} above from ever matching each other.
 	 */
 	private static final String ADMIN_VENUE_PHOTOS_PATH = "/api/admin/venues/*/photos";
+	/**
+	 * The platform-admin audit-trail read (#507, required by ADR-0013) — the latest recorded mutating
+	 * {@code /api/admin/**} actions, newest first. Same ADMIN gate and the same {@code /api/admin/**}
+	 * exemption from invariant #13: platform accountability state, owned by no venue. The
+	 * <em>writes</em> it reads are recorded by {@link AdminAuditFilter}, registered after the
+	 * authorization filter below so only actions past the gate leave a row.
+	 */
+	private static final String ADMIN_AUDIT_PATH = "/api/admin/audit";
 	/** The session login (issue #109, D-2 principal-typed path); anonymous by definition. */
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	/**
@@ -263,7 +272,7 @@ class SecurityConfig {
 	@Bean
 	@Order(1)
 	SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
-			Clock clock, ObjectMapper objectMapper) {
+			Clock clock, ObjectMapper objectMapper, AdminAuditLog adminAuditLog) {
 		// One shared CSRF cookie repository instance: the filter chain issues/reads the XSRF-TOKEN
 		// cookie through it, and the logout success handler (#247) re-issues a fresh one through the
 		// SAME hardened config, so both stay in lockstep.
@@ -282,6 +291,11 @@ class SecurityConfig {
 				// and before authorization — the booking endpoints are permitAll, so the code IS the
 				// authorization and the 200/404 oracle must be throttled. App-level concern, not a module.
 				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock, objectMapper), CorsFilter.class)
+				// The admin audit trail (#507): records every mutating /api/admin/** action AFTER the
+				// authorization filter admitted it — an anonymous 401 or wrong-role/CSRF 403 is
+				// rejected upstream and leaves no row (the audit answers "what did a principal do
+				// past the gate", not "who knocked"). App-level edge concern, not a module.
+				.addFilterAfter(new AdminAuditFilter(adminAuditLog), AuthorizationFilter.class)
 				// CSRF (issue #109, D-1 layer 2): the operator surface now rides a SESSION cookie,
 				// so its writes REQUIRE the cookie-to-header token. `.spa()` is Spring Security 7's
 				// native single-page-app posture: CookieCsrfTokenRepository issues the JS-readable
@@ -383,6 +397,8 @@ class SecurityConfig {
 						// Venue-photo moderation (#504 takedown, #511 read) — ADMIN only; any venue, owned or not.
 						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_PHOTOS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.DELETE, ADMIN_VENUE_PHOTO_PATH).hasRole(ADMIN_ROLE)
+						// The admin audit trail (#507) — same ADMIN gate; platform accountability state.
+						.requestMatchers(HttpMethod.GET, ADMIN_AUDIT_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
 						// Staff tap-to-mark walk-in (U8) — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
