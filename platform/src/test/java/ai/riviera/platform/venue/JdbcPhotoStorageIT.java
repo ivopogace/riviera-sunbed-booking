@@ -148,8 +148,7 @@ class JdbcPhotoStorageIT {
 
 	@Test
 	void existsTracksTheVariantRowWithoutReadingBytes() {
-		// #508: the conditional-GET path asks this instead of loadBytes, so a revalidation costs an
-		// index probe on venue_photo_variant_serving_idx rather than a bytea read.
+		// #508: the conditional-GET path asks this, so a revalidation is an index probe, not a blob read.
 		VenueId v = newVenue();
 		storage.replace(v, PhotoSlot.COVER, new ProcessedPhoto(List.of(
 				variant(PhotoSurface.CARD, "7a7a", new byte[] {8, 8}))));

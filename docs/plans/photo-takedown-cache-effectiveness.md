@@ -4,10 +4,18 @@
 > or the superpowers `subagent-driven-development`/`executing-plans` skills if present
 > task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A photo removed by an owner delete or a platform-admin takedown stops being served
-to **every** class of requester — new ones, clients holding the ETag, and shared caches —
-instead of surviving for up to a year behind `Cache-Control: immutable` and an
-existence-blind `304`.
+**Goal:** Once a photo's variant rows are gone, it stops being served to **every** class of
+requester — new ones, clients holding the ETag, and shared caches — instead of surviving for up to
+a year behind `Cache-Control: immutable` and an existence-blind `304`.
+
+> **Precisely scoped, on purpose.** "Once the variant rows are gone" is doing real work in that
+> sentence: a takedown is **slot-scoped**, and ADR-0013's accepted R-3 caveat still holds — if the
+> same image occupies two slots of one venue, removing one slot leaves the other publishing
+> byte-identical variants under the same content hash, so `exists` legitimately still answers
+> `true`. That is inherited, documented behaviour (`venue_photo_variant_serving_idx` is
+> deliberately non-unique, #142 F-2), **not** something this slice changes or regresses. This slice
+> fixes the *cache* half only: given a removal that did happen, no cache and no ETag holder
+> outlives it.
 
 **Architecture:** The single most significant decision is **adding a blob-free existence check
 to the conditional-GET path** rather than reusing `loadBytes`. The `304` branch currently answers
@@ -31,14 +39,26 @@ Render's zone and therefore unpurgeable by us, and that a green test *pinned* th
 `riviera-plan-doc` (this template — forced the behavior-parity ledger, which is what turned "flip a
 header" into "flip a header **and** fix the 304 branch") · `tdd` (each phase red-first: the
 takedown-then-revalidate IT failed with `304` before the fix) · `riviera-review-overlay` (review
-gate — run at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` —
-**4 findings, all patched**: CLAUDE.md's `venue` row, ADR-0013's cache-deficiency bullet (two of
-whose stated premises were false), `VenuePhotos`' "two of the three" method count, and
-`PhotoServingUrls`' "immutable cache headers" javadoc — see the audit note below) · `riviera-modulith` (kept `exists` as a module-internal driven-port method on
+gate — 6 findings, all fixed) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` —
+**10 stale statements, all patched, but only 4 of them by this sweep**: it caught CLAUDE.md's
+`venue` row, ADR-0013's cache-deficiency bullet (two of whose stated premises were false),
+`VenuePhotos`' "two of the three" method count and `PhotoServingUrls`' javadoc — and **missed six
+more** that the review gate then found, because I grepped phrases (`immutable cache`) instead of
+the bare keyword (`immutable`). Full accounting + the lesson: the audit note below) · `riviera-modulith` (kept `exists` as a module-internal driven-port method on
 `PhotoStorage` in `application/` — **not** a new published `api/` surface, since only `venue`'s own
 adapter calls it; same "purposeful conversation" as persist/serve/delete rather than a fifth port) ·
 `riviera-java-conventions` (`Optional`-free `boolean` typed outcome, package-private adapter,
-text-block SQL with named params, one-line-or-no comments) · `postgres` (confirmed the existence
+text-block SQL with named params, one-line-or-no comments — its §6c is what the review gate then
+caught me violating in three test comments) · `codebase-design` (**loaded late, at the review gate's
+RV-PROC-1 finding** — its deletion test is what justifies the shape: delete `PhotoStorage#exists`
+and the complexity reappears at the caller as either a blob read or the bug, so it earns its keep;
+it also names `VenuePhotos#exists` honestly as a **pass-through** that earns its keep structurally,
+not by depth — without it the controller would have to reach past the inbound port to the driven
+one) · `domain-modeling` (**also loaded late, same finding** — and it changed the diff: my
+`CONTEXT.md` fix had put `Cache-Control: public, no-cache` into the *glossary*, which the skill
+forbids outright ("totally devoid of implementation details… a glossary and nothing else"), so the
+entry was rewritten in domain language. It also confirms amending ADR-0008/0013 was right rather
+than minting a new ADR) · `postgres` (confirmed the existence
 query is index-only on the **existing** `(venue_id, content_hash)` index — no new index, no
 migration; `EXISTS(SELECT 1 …)` over `COUNT(*)`) · `riviera-local-debug` (scoped
 `gradle test --tests` recipe for this session's runs)
@@ -174,15 +194,16 @@ removed photo — which is the fix, and which every HTTP client already handles.
 
 ## Execution status
 
-**Stage pointer:** `PR #514 (draft) — both phases built; CI gate, then ready-for-review`
+**Stage pointer:** `review + sonar gates run; all 6 findings fixed — awaiting the fix round's CI/Sonar re-run, then merge`
 
-**Next action:** Confirm CI green on PR #514, mark it ready for review, then run the review gate
-(`riviera-sdlc` `references/pr-gates.md` §1) and the Sonar gate.
+**Next action:** Confirm CI + Sonar green on the fix commit, then merge PR #514 and close #508 with
+the premise-correction comment (close-out step 3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Existence-checked 304 + revalidating cache header | ✅ | `4174dfb` |
-| 1 — ADR-0008 amendment + substrate-doc refresh | ✅ | *(this commit)* |
+| 1 — ADR-0008 amendment + substrate-doc refresh | ✅ | `9247692` |
+| 2 — Review-gate fix round (F-1, F-3…F-6) | ✅ | `bf7c7c8` + *(this commit)* |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -194,6 +215,10 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | review gate (CLAUDE.md-compliance reviewer) | `CONTEXT.md:43` still defined a **photo variant** as served "at an immutable, long-cached public URL" — a stated present-tense fact this slice falsifies. **My own docs-freshness sweep missed it**: the grep patterns were `immutable cache` / `immutable URLs`, and the actual wording is `immutable, long-cached` | **fixed** — CONTEXT.md now states the revalidated contract; the lesson is that a substring grep for a *phrase* is weaker than one for the bare keyword (`immutable`), which is what caught it |
 | F-2 | sonar gate | Quality gate passed; list pulled from the API per gate step 2 rather than trusted from the badge: `new_lines: 65` (so the analysis really ran — not a false-clean zero), issues `total: 0`, `new_duplicated_blocks: 0`, `new_coverage: 100.0` | **closed — nothing to fix** |
+| F-3 | review gate (**RV-PROC-1**, overlay reviewer) | *Skills consulted* named only `riviera-modulith` for a diff touching an application service, a JDBC adapter and a controller — the routing table's backend-structure row also requires **`codebase-design`** and **`domain-modeling`**, and two ADR amendments are `domain-modeling`'s own trigger | **fixed** — both skills **loaded** (not just listed) and the line records what each actually changed. `domain-modeling` changed the diff: it forced the `CONTEXT.md` entry back to glossary language after my F-1 fix had put HTTP header syntax into it |
+| F-4 | review gate (**RV-STYLE-1**, flagged independently by the comment reviewer *and* the prior-PR reviewer) | Three new two-line inline `//` comments in the ITs, violating `riviera-java-conventions` §6c. Precedent: PR #512 fixed this same class one day earlier in this same feature area | **fixed** — each shortened to one line |
+| F-5 | review gate (comment reviewer) | Five Javadocs **outside the diff** still asserted the `immutable` cache contract: `ContentHash`, `StoredBytes`, `CoverPhotoView`, `PhotoUploadResponse`, `VariantMeta`. `ContentHash` quoted the exact header ADR-0008 had just been amended to change | **fixed** — all five; folded into the docs-freshness audit above, which now reports 10 findings, not 4 |
+| F-6 | review gate (prior-PR reviewer) | This plan's Goal claimed a removal "stops being served to **every** class of requester" without cross-referencing ADR-0013's still-true R-3 caveat — a takedown is **slot-scoped**, so the same image in a second slot keeps the hash servable. Not a regression (inherited #142 F-2 behaviour), but the framing overclaimed | **fixed** — the Goal is now explicitly scoped to "once the variant rows are gone", with the caveat named |
 
 ---
 
@@ -244,8 +269,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Docs-freshness audit (close-out step 5)
 
-Range `origin/main...HEAD`. **4 findings, all patched in phase 1** — none flagged for a human,
-because none re-decided anything: each was a stated fact the diff falsified.
+Range `origin/main...HEAD`. **10 stale statements in total — 4 found by my sweep, 6 more found
+afterwards by the review gate.** All patched; none flagged for a human, because none re-decided
+anything: each was a stated fact the diff falsified. The 4-vs-6 split is the honest headline and is
+recorded below rather than smoothed over — it repeats #447's shape almost exactly (six found by
+reading the change, ten more only by grepping the substrate).
 
 | Doc:line | Stated fact | Contradicted by | Action |
 |---|---|---|---|
@@ -254,12 +282,35 @@ because none re-decided anything: each was a stated fact the diff falsified.
 | `VenuePhotos` javadoc | "**Two of the three** are venue-scoped writes" | the port now has **four** methods (`exists` added) — the counting sweep's exact class | patched → "the two writes … the two reads" |
 | `PhotoServingUrls` javadoc | "with the **immutable** cache headers (ADR-0008)" | the directive is now `public, no-cache` | patched |
 
-The counting-sweep finding is the one worth recording: `git diff` **could not** have shown it —
-`VenuePhotos`'s class javadoc sits above the method the slice added, so a careful review of the
-changed hunks still reads a sentence that silently became false. The first filtered grep also
-missed it (the count sentence and the topic words are on different lines); it took reading the
-file. **Deliberately not patched:** `docs/plans/admin-photo-takedown.md` R-7, which recorded this
-as deferred — historical plan docs are records, not living docs (skill §Scope discipline).
+### The six my sweep missed (found by the review gate, patched in the fix round)
+
+| Doc:line | Stated fact | Action |
+|---|---|---|
+| `CONTEXT.md:43` | a photo variant is served "at an **immutable, long-cached** public URL" | patched (twice — see the lesson below) |
+| `ContentHash.java:5` | "the cache key in the immutable serving URL (ADR-0008: `Cache-Control: immutable` + `ETag`)" — quotes the exact header ADR-0008 was just amended to change | patched → content-addressed |
+| `StoredBytes.java:11` | "The controller returns these with an **immutable** `Cache-Control`" | patched → revalidating |
+| `CoverPhotoView.java:6` | "**immutable** per ADR-0008" | patched → content-addressed |
+| `PhotoUploadResponse.java:12` | "(**immutable** per ADR-0008)" | patched → content-addressed |
+| `VariantMeta.java:9` | "build the **immutable** serving URL" | patched → content-addressed |
+
+**Why they survived a sweep that was actually run — two distinct causes, both worth keeping:**
+
+1. **A phrase grep is weaker than a keyword grep.** I grepped `immutable cache` and `immutable URLs`.
+   The live wording was `immutable, long-cached`, `immutable per ADR-0008`, `an immutable
+   Cache-Control`, `Cache-Control: immutable`. Prose varies; the keyword does not. **Grep the bare
+   keyword (`immutable`) and read the hits** — the skill's own step 2b says exactly this ("grep the
+   **words**, not the new identifier"), and I narrowed too early.
+2. **Worse: five of the six were in my very first survey's output**, in the opening grep of the
+   session, and I read past them because I was hunting the header constant. Seeing a hit is not
+   triaging it.
+
+The counting-sweep finding (`VenuePhotos`, "two of the three") is worth recording for the opposite
+reason: `git diff` **could not** have shown it — the sentence sits above the method the slice added,
+so reviewing the changed hunks reads correctly.
+
+**Deliberately not patched:** `docs/plans/admin-photo-takedown.md` R-7, which recorded this as
+deferred — historical plan docs are records, not living docs (skill §Scope discipline). Likewise
+`V24__venue_photo.sql`'s comment: a historical migration must not be edited.
 
 ## Generalization-audit log
 
@@ -307,5 +358,8 @@ stub). CI owns the full suite.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
 - [x] **Close-out written in THIS PR** — this section is finalized here; **merged via PR #514** (no docs-only follow-up needed).
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] **The review gate ran in full** — `/code-review`'s subagent fan-out (human-authorized, per
+      the ladder's note that a standing no-subagents instruction is not grounds to skip) — CLAUDE.md
+      compliance, shallow bug scan, git-history context, prior-PR comments, comment/Javadoc
+      compliance — **plus** a dedicated `riviera-review-overlay` bank walk, not the overlay alone.
+      6 findings, all fixed (see the findings register); the fix round re-entered at Implement.

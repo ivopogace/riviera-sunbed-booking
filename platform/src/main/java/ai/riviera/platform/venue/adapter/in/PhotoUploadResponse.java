@@ -9,8 +9,8 @@ import ai.riviera.platform.venue.application.PhotoServingUrls;
 /**
  * Wire response for a successful photo upload (#142): the slot plus each stored variant's serving URL
  * and dimensions, so the operator UI can show the new preview immediately without a re-fetch. URLs are
- * the content-addressed serving path (immutable per ADR-0008). Slot / surface are rendered lower-case
- * to match the REST + frontend vocabulary.
+ * the content-addressed serving path (ADR-0008; revalidated rather than {@code immutable} since #508).
+ * Slot / surface are rendered lower-case to match the REST + frontend vocabulary.
  */
 record PhotoUploadResponse(String slot, List<Variant> variants) {
 

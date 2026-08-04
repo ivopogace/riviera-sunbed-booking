@@ -74,8 +74,7 @@ class VenuePhotoServingIT {
 	@Test
 	void servesBytesWithRevalidatingCacheAndStrongEtag() throws Exception {
 		// AC-7 happy path — and public by construction: no session cookie is sent anywhere here.
-		// #508: the client may still STORE the bytes (so a 304 reuses them), but must revalidate,
-		// which is what lets a takedown reach a shared cache instead of outliving it by a year.
+		// #508: still stored and reused via 304, but revalidated, so a takedown reaches shared caches.
 		byte[] payload = {21, 42, 63, 84};
 		VenueId venue = newVenueWithCover("a11a01", payload);
 
@@ -105,8 +104,7 @@ class VenuePhotoServingIT {
 
 	@Test
 	void revalidationAfterRemovalIs404() throws Exception {
-		// #508: the takedown must reach the client that already holds the bytes. Answering 304 from
-		// the URL alone let a removed photo keep rendering forever on any client holding the ETag.
+		// #508: answered from the URL alone, this 304'd forever for any client holding the ETag.
 		VenueId venue = newVenueWithCover("b22b03", new byte[] {1, 2, 3});
 
 		jdbc.sql("DELETE FROM venue_photo WHERE venue_id = :v").param("v", venue.value()).update();

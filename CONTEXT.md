@@ -40,10 +40,9 @@ model in `docs/architecture/domain-model.md`.
   URL, and answers identically for an unknown venue, so it reports nothing about which venues exist.
 - **Photo variant** — one stored rendition of a venue photo for a display surface: `CARD`
   (≤640×384), `BANNER` (≤1280×480), `PREVIEW` (≤480×360) — fit-within-resized progressive JPEGs,
-  each served by its **content hash** at a public, **revalidated** URL
-  (`/api/venues/{venueId}/photos/{hash}` — `Cache-Control: public, no-cache` + a strong `ETag`,
-  and a `304` only while the variant still exists, #508); a replace mints new hashes → new URLs,
-  and a takedown stops being served instead of being outlived by the cache.
+  each served by its **content hash** at a public URL (`/api/venues/{venueId}/photos/{hash}`);
+  a replace mints new hashes → new URLs, and a removed variant stops being served rather than
+  outliving its removal in caches.
 - **Beach map** — a venue's visual layout: rows and individual set positions.
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged
   by tier and pool, with its own price.
