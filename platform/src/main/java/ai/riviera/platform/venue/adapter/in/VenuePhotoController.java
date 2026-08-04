@@ -1,7 +1,6 @@
 package ai.riviera.platform.venue.adapter.in;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.Optional;
 
 import org.springframework.http.CacheControl;
@@ -41,17 +40,19 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  *
  * <p>Upload is <strong>POST</strong> (not PUT): multipart parsing is reliable on POST across servlet
  * containers, and a slot upload is an idempotent replace regardless. The serving GET is
- * content-addressed by the variant hash and returned with a long-lived immutable cache + {@code ETag}
- * (ADR-0008), so the browser/CDN caches it and the DB is read ≈once per image; a matching
- * {@code If-None-Match} short-circuits to {@code 304}.
+ * content-addressed by the variant hash and returned with a strong {@code ETag} under a
+ * <strong>revalidating</strong> cache directive (ADR-0008 as amended by #508): the client still
+ * stores and reuses the bytes via {@code 304}, so the DB is read ≈once per image, but every cache —
+ * including a shared one we do not control — has to ask before serving again, so a takedown takes
+ * effect instead of outliving the removal. The {@code 304} short-circuit is therefore gated on the
+ * variant still existing, which is a blob-free index probe, not a byte read.
  */
 @RestController
 @RequestMapping("/api/venues")
 class VenuePhotoController {
 
-	/** One year, public, immutable — a replaced photo gets a new hash → a new URL (ADR-0008). */
-	private static final CacheControl IMMUTABLE = CacheControl.maxAge(Duration.ofDays(365))
-			.cachePublic().immutable();
+	/** Public but always revalidated — a removal has to reach shared caches too (#508, ADR-0008). */
+	private static final CacheControl REVALIDATE = CacheControl.noCache().cachePublic();
 
 	private final VenuePhotos photos;
 	private final CurrentOperator currentOperator;
@@ -92,10 +93,13 @@ class VenuePhotoController {
 		}
 		String etag = "\"" + hash + "\"";
 		if (etag.equals(ifNoneMatch)) {
-			return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
-					.cacheControl(IMMUTABLE)
-					.header(HttpHeaders.ETAG, etag)
-					.build();
+			// #508: answered from the URL alone, a taken-down photo revalidated as 304 forever.
+			return photos.exists(new VenueId(venueId), contentHash)
+					? ResponseEntity.status(HttpStatus.NOT_MODIFIED)
+							.cacheControl(REVALIDATE)
+							.header(HttpHeaders.ETAG, etag)
+							.build()
+					: ResponseEntity.notFound().build();
 		}
 		Optional<StoredBytes> found = photos.serve(new VenueId(venueId), contentHash);
 		if (found.isEmpty()) {
@@ -104,7 +108,7 @@ class VenuePhotoController {
 		StoredBytes bytes = found.get();
 		return ResponseEntity.ok()
 				.contentType(MediaType.parseMediaType(bytes.contentType()))
-				.cacheControl(IMMUTABLE)
+				.cacheControl(REVALIDATE)
 				.header(HttpHeaders.ETAG, etag)
 				.body(bytes.bytes());
 	}

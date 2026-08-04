@@ -25,7 +25,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * The Postgres {@code bytea} adapter behind {@link PhotoStorage} (ADR-0008) — explicit text-block SQL
  * via {@link JdbcClient}, no JPA (invariant #1); package-private, so callers depend on the port
  * (invariant #11). The blob is isolated in {@code venue_photo_variant} and read only on the serving
- * path ({@link #loadBytes}) — never by {@link #listMetadata}.
+ * path ({@link #loadBytes}) — never by {@link #listMetadata}, and never by {@link #exists}, which
+ * answers the conditional-GET question on the {@code (venue_id, content_hash)} index alone (#508).
  */
 @Repository
 class JdbcPhotoStorage implements PhotoStorage {
@@ -106,6 +107,22 @@ class JdbcPhotoStorage implements PhotoStorage {
 						rs.getString("content_type"),
 						rs.getBytes("bytes")))
 				.optional();
+	}
+
+	@Override
+	public boolean exists(VenueId venueId, ContentHash hash) {
+		// loadBytes' WHERE minus the bytea column — a revalidation must not pull bytes it won't send.
+		return Boolean.TRUE.equals(jdbc.sql("""
+				SELECT EXISTS (
+				    SELECT 1
+				    FROM venue_photo_variant
+				    WHERE venue_id = :venue AND content_hash = :hash
+				)
+				""")
+				.param(P_VENUE, venueId.value())
+				.param("hash", hash.value())
+				.query(Boolean.class)
+				.single());
 	}
 
 	@Override

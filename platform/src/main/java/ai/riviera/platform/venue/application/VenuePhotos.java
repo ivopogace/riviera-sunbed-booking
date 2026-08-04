@@ -33,4 +33,12 @@ public interface VenuePhotos {
 	 * (tourist reads are public). {@link Optional#empty()} for an unknown hash (→ 404).
 	 */
 	Optional<StoredBytes> serve(VenueId venueId, ContentHash hash);
+
+	/**
+	 * Whether {@code hash} still names a servable variant of {@code venueId} — the public
+	 * conditional-GET question (#508), answered without reading the bytes. No ownership check, like
+	 * {@link #serve}. Turns {@code false} the moment the photo is deleted or taken down, which is
+	 * what makes a removal reach a client that already holds the bytes and the {@code ETag}.
+	 */
+	boolean exists(VenueId venueId, ContentHash hash);
 }

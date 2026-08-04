@@ -45,6 +45,15 @@ public interface PhotoStorage {
 	Optional<StoredBytes> loadBytes(VenueId venueId, ContentHash hash);
 
 	/**
+	 * Whether {@code (venueId, hash)} still names a stored variant — the <strong>blob-free</strong>
+	 * question the conditional-GET path asks (#508). An index probe on
+	 * {@code venue_photo_variant_serving_idx}; it never selects the {@code bytea} column, so a
+	 * revalidation stays off the blob path even when every view revalidates. Answering this from the
+	 * URL alone is what let a taken-down photo keep revalidating as {@code 304} indefinitely.
+	 */
+	boolean exists(VenueId venueId, ContentHash hash);
+
+	/**
 	 * The venue's stored photos, <strong>blob-free</strong> — one {@link PhotoMetadata} per occupied
 	 * slot, for the platform-admin moderation read (#511) — its one caller. Never selects the
 	 * {@code bytea} column. The tourist and operator read models run their own SQL in the adapters.

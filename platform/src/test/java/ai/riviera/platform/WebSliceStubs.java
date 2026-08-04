@@ -790,6 +790,11 @@ class WebSliceStubs {
 			}
 
 			@Override
+			public boolean exists(VenueId venueId, ContentHash hash) {
+				return false;
+			}
+
+			@Override
 			public Optional<StoredBytes> serve(VenueId venueId, ContentHash hash) {
 				return Optional.empty();
 			}

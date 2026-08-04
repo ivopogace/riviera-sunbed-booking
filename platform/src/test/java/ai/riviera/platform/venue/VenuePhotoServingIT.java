@@ -24,6 +24,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -31,11 +32,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Verifies the public venue-photo serving endpoint ({@code GET /api/venues/{venueId}/photos/{hash}},
- * issue #142, AC-7) at the HTTP level: the bytes come back with the long-lived immutable cache
- * headers + a strong {@code ETag}, a matching {@code If-None-Match} short-circuits to {@code 304}
- * <em>without touching storage</em>, and the route is venue-scoped, hex-guarded, and public (no
- * session anywhere in this class). Photos are seeded through the real {@link PhotoStorage} adapter
- * against Testcontainers Postgres; skipped where Docker is absent (CI runs it).
+ * issue #142, AC-7) at the HTTP level: the bytes come back with a <strong>revalidating</strong>
+ * cache directive + a strong {@code ETag}, a matching {@code If-None-Match} short-circuits to
+ * {@code 304} <em>without a blob read</em> while the variant exists but {@code 404}s once it is
+ * removed, and the route is venue-scoped, hex-guarded, and public (no session anywhere in this
+ * class). Photos are seeded through the real {@link PhotoStorage} adapter against Testcontainers
+ * Postgres; skipped where Docker is absent (CI runs it).
+ *
+ * <p><strong>#508:</strong> this class previously asserted the opposite of its two cache cases — a
+ * one-year {@code immutable} directive, and a {@code 304} that survived deleting the rows outright.
+ * Both were sound for a <em>replace</em> (content-addressing mints a new URL) and wrong for a
+ * <em>takedown</em>, which mints nothing; the assertions are rewritten, not dropped.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -65,8 +72,10 @@ class VenuePhotoServingIT {
 	}
 
 	@Test
-	void servesBytesWithImmutableCacheAndStrongEtag() throws Exception {
+	void servesBytesWithRevalidatingCacheAndStrongEtag() throws Exception {
 		// AC-7 happy path — and public by construction: no session cookie is sent anywhere here.
+		// #508: the client may still STORE the bytes (so a 304 reuses them), but must revalidate,
+		// which is what lets a takedown reach a shared cache instead of outliving it by a year.
 		byte[] payload = {21, 42, 63, 84};
 		VenueId venue = newVenueWithCover("a11a01", payload);
 
@@ -76,29 +85,35 @@ class VenuePhotoServingIT {
 				.andExpect(content().bytes(payload))
 				.andExpect(header().string(HttpHeaders.ETAG, "\"a11a01\""))
 				.andExpect(header().string(HttpHeaders.CACHE_CONTROL, allOf(
-						containsString("max-age=31536000"),
+						containsString("no-cache"),
 						containsString("public"),
-						containsString("immutable"))));
+						not(containsString("immutable")),
+						not(containsString("max-age=31536000")))));
 	}
 
 	@Test
-	void matchingIfNoneMatchIs304WithoutABlobRead() throws Exception {
-		// AC-7 conditional path. The second half is the "without a blob read" proof: after the
-		// photo rows are deleted outright, a matching If-None-Match STILL returns 304 — the
-		// content-addressed URL is immutable, so the revalidation never needs storage.
+	void matchingIfNoneMatchIs304WhileTheVariantExists() throws Exception {
+		// AC-7 conditional path: the revalidation costs an index probe, never a bytea read.
 		VenueId venue = newVenueWithCover("b22b02", new byte[] {1, 2, 3});
 
 		mvc.perform(get("/api/venues/{v}/photos/{h}", venue.value(), "b22b02")
 						.header(HttpHeaders.IF_NONE_MATCH, "\"b22b02\""))
 				.andExpect(status().isNotModified())
 				.andExpect(header().string(HttpHeaders.ETAG, "\"b22b02\""))
-				.andExpect(header().string(HttpHeaders.CACHE_CONTROL, containsString("immutable")));
+				.andExpect(header().string(HttpHeaders.CACHE_CONTROL, containsString("no-cache")));
+	}
+
+	@Test
+	void revalidationAfterRemovalIs404() throws Exception {
+		// #508: the takedown must reach the client that already holds the bytes. Answering 304 from
+		// the URL alone let a removed photo keep rendering forever on any client holding the ETag.
+		VenueId venue = newVenueWithCover("b22b03", new byte[] {1, 2, 3});
 
 		jdbc.sql("DELETE FROM venue_photo WHERE venue_id = :v").param("v", venue.value()).update();
 
-		mvc.perform(get("/api/venues/{v}/photos/{h}", venue.value(), "b22b02")
-						.header(HttpHeaders.IF_NONE_MATCH, "\"b22b02\""))
-				.andExpect(status().isNotModified());
+		mvc.perform(get("/api/venues/{v}/photos/{h}", venue.value(), "b22b03")
+						.header(HttpHeaders.IF_NONE_MATCH, "\"b22b03\""))
+				.andExpect(status().isNotFound());
 	}
 
 	@Test
