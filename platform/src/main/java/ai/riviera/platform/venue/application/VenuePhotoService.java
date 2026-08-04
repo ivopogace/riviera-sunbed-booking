@@ -93,6 +93,12 @@ class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {
 		return storage.loadBytes(venueId, hash);
 	}
 
+	@Override
+	public boolean exists(VenueId venueId, ContentHash hash) {
+		// Public like serve(); kept off the blob so revalidating on every view stays cheap (#508).
+		return storage.exists(venueId, hash);
+	}
+
 	/** The stored photo's blob-free metadata (for the operator's immediate preview after upload). */
 	private static PhotoMetadata metadataOf(PhotoSlot slot, ProcessedPhoto photo) {
 		return new PhotoMetadata(slot, photo.variants().stream()

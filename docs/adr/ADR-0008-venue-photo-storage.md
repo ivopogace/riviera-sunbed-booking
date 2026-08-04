@@ -59,10 +59,14 @@ optimisation to add later):
   and operator preview are distinct capped targets; the full-res original is never served and
   never stored. Hard **byte + dimension caps** on every stored+served variant; a
   **≈50 MP / 12,000-px decode guard** rejects decompression bombs regardless of byte size.
-- **Content-hash immutable URLs.** The serving endpoint is keyed by the variant's content
-  hash and returns `Cache-Control: public, max-age=31536000, immutable` + a strong `ETag`, so
-  the browser/CDN caches the bytes and the database is hit **≈once per image**, not per view.
-  A replaced photo gets a new hash → a new URL; the old URL stays immutable.
+- **Content-hash URLs, revalidated.** The serving endpoint is keyed by the variant's content
+  hash and returns a strong `ETag`, so a client stores the bytes once and thereafter reuses
+  them via `304` — the database is hit **≈once per image**, not per view. A replaced photo
+  gets a new hash → a new URL. **Amended by #508:** the directive is
+  `Cache-Control: public, no-cache`, **not** the original `public, max-age=31536000,
+  immutable`, and the `304` short-circuit is gated on the variant still existing. See the
+  #508 amendment under *Consequences* for why a year-long `immutable` TTL is incompatible
+  with the takedown ADR-0013 requires.
 - **The `bytea` column never appears in metadata/list queries.** Discovery and the operator
   console select only metadata (ids, slot, dimensions, hash, content-type); the blob is
   `SELECT`ed **only** on the content-hashed serving path — never `SELECT *`.
@@ -82,6 +86,15 @@ Move to an object-store + CDN adapter (the port already isolates the change) whe
 
 Until one of these is true, adding object storage is over-engineering — the same judgment
 ADR-0004 applied to EU-sovereign hosting for dummy data.
+
+**Precondition on the flip (#508).** Whichever migration crosses this threshold ships a
+**purge on takedown** in the same slice: the storage port's delete path must invalidate the
+removed variants' URLs at the CDN. Today the serving header alone controls every cache
+(below), which works precisely because no cache we could purge is under our control. A
+self-owned CDN changes that — and a cache holding bytes we can purge but don't is a
+regression of the guarantee, not a performance win. Treat it as a blocker on the migration,
+not a follow-up to it; it is also the point at which a longer TTL becomes affordable again,
+since purge would then be the removal mechanism.
 
 ## Consequences
 
@@ -105,6 +118,29 @@ ADR-0004 applied to EU-sovereign hosting for dummy data.
   (`GET /api/admin/venues/{venueId}/photos`) — its first production caller of any kind — so an admin
   can see the photo it is authorized to remove. The storage decision below is unchanged: both
   moderation operations go through the existing port, and neither reads the `bytea` column.
+- **Amended by #508 — the serving cache directive is `public, no-cache`, and the `304` is
+  existence-checked.** The original `public, max-age=31536000, immutable` was reasoned about
+  a **replace**, where content addressing mints a new URL and the old one is simply no longer
+  referenced. A **takedown** (#504) mints nothing; it deletes. Two things followed from that
+  gap, both now closed:
+  - *A shared cache outlived the removal.* This ADR assumed no CDN in front of the API. That
+    assumption was already false: `*.onrender.com` is **Cloudflare-fronted** (measured in
+    #286; `ClientIpResolver` and `docs/deploy/cd-pipeline.md` depend on the same fact). The
+    zone is **Render's**, so we hold no purge credential for it — the origin header is the
+    only lever we actually have over that edge, which is why the directive changed rather
+    than a purge being added.
+  - *A client holding the `ETag` outlived it too.* The `304` was answered from the URL path
+    alone, so a removed variant kept revalidating successfully — forever, on any host, CDN or
+    not. This half was pure application logic and independent of the hosting question. It is
+    now gated on `PhotoStorage#exists`, a blob-free probe on the existing
+    `venue_photo_variant_serving_idx`.
+
+  **What this ADR's performance intent costs:** nothing on the database. Revalidation resolves
+  on an index probe and returns an empty body, so "the DB is hit ≈once per image, not per
+  view" still holds and the `bytea` column is still read only on a genuine `200`. What is
+  traded is the zero-RTT window — one conditional request per image per view. At this
+  catalogue size that is the right side of the trade against a moderation guarantee
+  (ADR-0013) that would otherwise take up to a year to take effect.
 - Re-rendering trade-off: because we discard the original, changing the resize targets later
   means operators re-upload (acceptable for a handful of venues) rather than a server-side
   re-render from a stored master. Recorded so it is a conscious cost, not a surprise.

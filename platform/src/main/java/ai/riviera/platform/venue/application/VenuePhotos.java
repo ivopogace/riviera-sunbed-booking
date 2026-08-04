@@ -8,10 +8,11 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The venue-photo use cases the driving adapter calls (inbound port, invariant #11). Two of the
- * three are venue-scoped writes that assert the operator owns the venue <strong>first</strong>
- * (invariant #13, BOLA); {@link #serve} is the <strong>public</strong> tourist read (no ownership
- * check). Implemented by {@code VenuePhotoService}.
+ * The venue-photo use cases the driving adapter calls (inbound port, invariant #11). The two writes
+ * ({@link #upload}, {@link #delete}) are venue-scoped and assert the operator owns the venue
+ * <strong>first</strong> (invariant #13, BOLA); the two reads ({@link #serve}, {@link #exists}) are
+ * the <strong>public</strong> tourist serving path and carry no ownership check.
+ * Implemented by {@code VenuePhotoService}.
  */
 public interface VenuePhotos {
 
@@ -33,4 +34,12 @@ public interface VenuePhotos {
 	 * (tourist reads are public). {@link Optional#empty()} for an unknown hash (→ 404).
 	 */
 	Optional<StoredBytes> serve(VenueId venueId, ContentHash hash);
+
+	/**
+	 * Whether {@code hash} still names a servable variant of {@code venueId} — the public
+	 * conditional-GET question (#508), answered without reading the bytes. No ownership check, like
+	 * {@link #serve}. Turns {@code false} the moment the photo is deleted or taken down, which is
+	 * what makes a removal reach a client that already holds the bytes and the {@code ETag}.
+	 */
+	boolean exists(VenueId venueId, ContentHash hash);
 }

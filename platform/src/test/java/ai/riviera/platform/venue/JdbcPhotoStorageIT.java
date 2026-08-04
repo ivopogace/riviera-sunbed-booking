@@ -28,9 +28,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies the {@code venue} photo-storage adapter against real Postgres (Testcontainers): variants
- * round-trip, {@code listMetadata} is blob-free, {@code loadBytes} finds by hash, a re-upload
- * replaces the slot (at most one photo per {@code (venue, slot)}), and delete erases metadata + bytes
- * in one shot. JDBC-only (invariant #1); skipped where Docker is absent (CI runs it).
+ * round-trip, {@code listMetadata} is blob-free, {@code loadBytes} finds by hash, {@code exists}
+ * answers the same question blob-free (#508), a re-upload replaces the slot (at most one photo per
+ * {@code (venue, slot)}), and delete erases metadata + bytes in one shot. JDBC-only (invariant #1);
+ * skipped where Docker is absent (CI runs it).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -143,6 +144,23 @@ class JdbcPhotoStorageIT {
 		int photoRows = jdbc.sql("SELECT COUNT(*) FROM venue_photo WHERE venue_id = :v AND slot = 'COVER'")
 				.param("v", v.value()).query(Integer.class).single();
 		assertEquals(1, photoRows, "concurrent replaces serialized to exactly one photo row");
+	}
+
+	@Test
+	void existsTracksTheVariantRowWithoutReadingBytes() {
+		// #508: the conditional-GET path asks this, so a revalidation is an index probe, not a blob read.
+		VenueId v = newVenue();
+		storage.replace(v, PhotoSlot.COVER, new ProcessedPhoto(List.of(
+				variant(PhotoSurface.CARD, "7a7a", new byte[] {8, 8}))));
+
+		assertTrue(storage.exists(v, new ContentHash("7a7a")), "the stored variant is servable");
+		assertFalse(storage.exists(v, new ContentHash("dead")), "unknown hash -> not servable (404)");
+		assertFalse(storage.exists(new VenueId(v.value() + 999), new ContentHash("7a7a")),
+				"venue-scoped, like the serving read");
+
+		storage.delete(v, PhotoSlot.COVER);
+
+		assertFalse(storage.exists(v, new ContentHash("7a7a")), "removal is visible to a revalidation");
 	}
 
 	@Test

@@ -45,6 +45,11 @@ class InMemoryPhotoStorage implements PhotoStorage {
 	}
 
 	@Override
+	public boolean exists(VenueId venueId, ContentHash hash) {
+		return loadBytes(venueId, hash).isPresent();
+	}
+
+	@Override
 	public List<PhotoMetadata> listMetadata(VenueId venueId) {
 		List<PhotoMetadata> out = new ArrayList<>();
 		store.forEach((key, photo) -> {
