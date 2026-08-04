@@ -1,4 +1,12 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  effect,
+  ElementRef,
+  inject,
+  Injector,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -60,7 +68,7 @@ import { AdminAuditEntryView } from './admin.model';
               type="button"
               class="font-semibold underline"
               data-testid="admin-audit-retry"
-              (click)="load()"
+              (click)="retry()"
             >
               Retry
             </button>
@@ -71,6 +79,7 @@ import { AdminAuditEntryView } from './admin.model';
             class="mt-6 rounded-[14px] p-5"
             data-testid="admin-audit-card"
             aria-labelledby="admin-audit-heading"
+            tabindex="-1"
           >
             <h2 id="admin-audit-heading" class="text-[16px] font-semibold text-(--riv-card-ink)">
               Latest admin actions
@@ -126,6 +135,8 @@ import { AdminAuditEntryView } from './admin.model';
 export class AdminAudit {
   protected readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminAuditService);
+  private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   protected readonly entries = signal<readonly AdminAuditEntryView[]>([]);
   protected readonly loading = signal(false);
@@ -152,6 +163,25 @@ export class AdminAudit {
       this.loadError.set(true);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  /**
+   * Retry from the error banner. A successful retry destroys the banner — and the Retry button the
+   * user just activated — so focus is parked on the card that replaces it (WCAG 2.4.3, the recurring
+   * #148/#351/#462 stranded-focus class, same cure as the Photos tab's confirmation swaps). The
+   * initial automatic load never moves focus: only a user-initiated retry does.
+   */
+  protected async retry(): Promise<void> {
+    await this.load();
+    if (!this.loadError()) {
+      afterNextRender(
+        () =>
+          this.hostRef.nativeElement
+            .querySelector<HTMLElement>('[data-testid="admin-audit-card"]')
+            ?.focus(),
+        { injector: this.injector },
+      );
     }
   }
 

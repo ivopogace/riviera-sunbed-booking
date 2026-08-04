@@ -88,7 +88,8 @@ final class AdminAuditFilter extends OncePerRequestFilter {
 			auditLog.append(authentication.getName(), request.getMethod(), request.getRequestURI(), status,
 					AdminAuditReasons.sanitize(request.getHeader(AdminAuditReasons.HEADER)));
 		}
-		catch (DataAccessException e) {
+		catch (RuntimeException e) {
+			// Broad by contract (class Javadoc): a lost row must never fail or mask the performed action.
 			log.error("Admin audit record lost for {} {} by {} (status {})", request.getMethod(),
 					request.getRequestURI(), authentication.getName(), status, e);
 		}

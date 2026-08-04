@@ -105,8 +105,7 @@ class AdminAuditTrailIT {
 	void recordsSanitizedReason() throws Exception {
 		Cookie admin = adminSession();
 
-		// A raw CRLF never arrives (StrictHttpFirewall rejects it pre-app); a tab is the control
-		// character a real request CAN carry, and the sanitizer flattens it the same way.
+		// Tab, not CRLF: StrictHttpFirewall rejects raw CRLF pre-app (the CRLF case is unit-pinned).
 		mvc.perform(post(ERASURE_PATH).cookie(admin).with(csrf())
 				.header(AdminAuditReasons.HEADER, "reported\tby guest")
 				.contentType(MediaType.APPLICATION_JSON).content(ERASURE_BODY))

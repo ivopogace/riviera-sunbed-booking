@@ -48,7 +48,12 @@ text-block SQL, §10 log/CRLF-injection guard for the reason header, §6b error 
 **angular-cli MCP** (`list_projects` + `get_best_practices` for the v22 workspace —
 signals, `@Service`, native control flow; the MCP was enabled mid-session at the user's
 direction) · `playwright-cli` (mocked-suite e2e spec authoring; suite placement per
-RV-FE-E2E).
+RV-FE-E2E) · `codebase-design` (loaded at the review-fix round per the re-entry rule —
+re-vetted the `AdminAuditLog` seam: two real adapters (JDBC + the web-slice stub) make it
+a real seam, small two-method interface, dependencies injected) · `domain-modeling`
+(same round — the ADR-0013 amendment follows that ADR's own CLOSED-by pattern; no new
+ADR (the placement trade-off lives here and in ADR-0013's requirement); no CONTEXT.md
+term, audit is platform vocabulary, not the booking domain's).
 
 **Branch:** `claude/angular-mcp-admin-dashboard-wwwjnc` — the cloud session's designated
 remote branch stands in for `feature/admin-audit-trail` (riviera-sdlc remote addendum).
@@ -85,27 +90,27 @@ proceed; these will be posted back to #507 at PR time.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given an authenticated admin session, when a mutating `/api/admin/**`
+- [x] **AC-1:** Given an authenticated admin session, when a mutating `/api/admin/**`
   action completes (any outcome status), then an `admin_audit_record` row exists with
   the acting principal's username, HTTP method, request path, response status, and a UTC
   `occurred_at`. *Pinned by:* `AdminAuditTrailIT.recordsMutatingAdminActionWithOutcome`
-- [ ] **AC-2:** Given the request carries `X-Audit-Reason`, when the record is written,
+- [x] **AC-2:** Given the request carries `X-Audit-Reason`, when the record is written,
   then the stored reason is sanitized — CR/LF and control characters stripped, trimmed,
   capped at 500 chars; a blank/absent header stores NULL. *Pinned by:*
   `AdminAuditReasonsTest.sanitizesReasons` + `AdminAuditTrailIT.recordsSanitizedReason`
-- [ ] **AC-3:** Given an anonymous or security-rejected mutating request to
+- [x] **AC-3:** Given an anonymous or security-rejected mutating request to
   `/api/admin/**`, then **no** audit record is written; given an authenticated admin
   `GET` under `/api/admin/**`, then no record is written either (reads are not audited).
   *Pinned by:* `AdminAuditTrailIT.doesNotRecordAnonymousOrReadRequests`
-- [ ] **AC-4:** Given recorded actions, when an admin calls `GET /api/admin/audit`, then
+- [x] **AC-4:** Given recorded actions, when an admin calls `GET /api/admin/audit`, then
   entries return newest-first with actor/method/path/status/reason/occurredAt; a plain
   `OPERATOR` gets `403`; anonymous gets `401`. *Pinned by:*
   `AdminAuditTrailIT.adminReadsAuditNewestFirst` + `EndpointRoleGateCoverageTest`
-- [ ] **AC-5:** Given the admin opens the console's **Audit** tab, then entries render
+- [x] **AC-5:** Given the admin opens the console's **Audit** tab, then entries render
   (actor, action, outcome, time, reason) with loading/error/empty states and the same
   self-gating as sibling tabs (restoring / signed-out / non-admin). *Pinned by:*
   `admin-audit.spec.ts` + `admin-audit.a11y.spec.ts` + `e2e/admin-audit.e2e.ts`
-- [ ] **AC-6:** Given the admin confirms a photo takedown having typed a reason, then the
+- [x] **AC-6:** Given the admin confirms a photo takedown having typed a reason, then the
   `DELETE` carries that reason in `X-Audit-Reason`; with the field left empty, no header
   is sent. *Pinned by:* `admin-venue-photos.spec.ts` (service + confirm-flow cases)
 
@@ -135,7 +140,7 @@ except for the new field.)
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Audit insert fails after the action succeeded (write-after design) → action without record | low | med | Insert failure is caught narrowly (`DataAccessException`), logged at ERROR; accepted Phase-1: the audited actions are themselves writes on the same database, so audit-fails-while-action-succeeds needs a mid-request DB failure window. Write-ahead + outcome-update rejected as Phase-1 overkill; noted for a tamper-evidence follow-up if ever built. | edge | accepted (documented here + in the filter Javadoc) |
-| R-2 | Filter ordering wrong → runs before security, records anonymous noise / misses principal | low | high | Registered via `FilterRegistrationBean` with an order **after** the security chain (`SecurityProperties.DEFAULT_FILTER_ORDER` is -100; ours is positive); `AdminAuditTrailIT` pins both directions (records admin, skips anonymous). | edge | closed by AC-1/AC-3 tests |
+| R-2 | Filter ordering wrong → runs before security, records anonymous noise / misses principal | low | high | Shipped stronger than planned: registered **inside** the API security chain via `HttpSecurity.addFilterAfter(…, AuthorizationFilter.class)` (not the originally-sketched `FilterRegistrationBean`), so it runs only for requests past authentication *and* authorization, with `SecurityContextHolder` reliably populated; `AdminAuditTrailIT` pins both directions (records admin, skips anonymous/denied). | edge | closed by AC-1/AC-3 tests |
 | R-3 | Reason header is an injection vector (CRLF into logs/UI, oversized payload) | med | med | §10 guard: strip control chars, trim, cap 500 before persisting; never logged raw; Angular templates escape on render. `AdminAuditReasonsTest` pins the sanitizer. | edge | closed by AC-2 |
 | R-4 | V38 collision with an in-flight PR | low | med | Verified: all open PRs are Dependabot; V38 free on `main`. If a parallel slice appears, whoever merges second renumbers. | plan | closed at grill gate |
 | R-5 | `/api/admin/payout-batches` is OPERATOR-gated (not ADMIN) — blanket recording captures operator-actor rows | med | low | Deliberate: the record stores the *actor*, whoever the namespace admitted; the read surface stays ADMIN-only. Documented in the filter Javadoc. | edge | accepted |
@@ -219,20 +224,28 @@ the reason input, `aria-live` notices, table semantics). Angular-cli MCP
 
 ## Execution status
 
-**Stage pointer:** PR #516 — ready-for-review gates (review gate + Sonar re-check)
+**Stage pointer:** DONE — merged via PR #516 (merge close-out)
 
-**Next action:** mark PR #516 ready, run `/code-review` per the invocation ladder, re-pull
-the Sonar issue list after the fix push, then close-out (docs-freshness patches ride this
-PR).
+**Next action:** none — slice complete; post-merge GitHub-only items (issue #507 comment +
+labels, subscription end) run at close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 2728fd1 |
 | 1 — V38 + filter + writer (record path) | ✅ | 779d4a8 |
 | 2 — read API + role gate | ✅ | 779d4a8 |
-| 3 — console Audit tab | ✅ | (this commit) |
-| 4 — takedown reason + e2e | ✅ | (this commit) |
-| 5 — close-out | ⏳ | |
+| 3 — console Audit tab | ✅ | 2672dfd |
+| 4 — takedown reason + e2e | ✅ | 2672dfd |
+| 5 — close-out (docs-freshness cbed9c1; review-gate fixes F-3..F-9 in the PR's last commit) | ✅ | merged via PR #516 |
+
+Review gate: `/code-review` ran at ready-for-review via the plugin workflow's five-agent
+fan-out (+ `riviera-review-overlay` bank walked by the conventions agent); its seven
+findings are F-3..F-9 below, all fixed through the re-entry rule. Sonar: round-1 list
+(4 issues) fixed as F-1/F-2; the re-analysis reported **0 new issues, 92.3% new-code
+coverage, 0 duplication**; the final head's list re-checked before merge.
+`riviera-docs-freshness` ran over `origin/main...HEAD`: 4 findings, all patched in-PR
+(ADR-0013 consequence closed, CLAUDE.md venue row, Photos-tab Javadoc, tab-count
+comment).
 
 Implementation note (phases 1–2): `AdminAuditLog` landed as an edge-internal *interface*
 with a package-private `JdbcAdminAuditLog` implementation — the `@WebMvcTest` slices
@@ -249,6 +262,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | sonar (java:S6213 ×3) | Methods named `record` shadow the restricted identifier (`AdminAuditLog`, `JdbcAdminAuditLog`, `AdminAuditFilter`) | fixed — renamed to `append` (re-entered at Implement; backend skills already loaded) |
 | F-2 | sonar (java:S1075) | Hardcoded `/api/admin/` URI constant in `AdminAuditFilter` | fixed — the audited prefix is now a constructor parameter supplied by `SecurityConfig` (the rule's customizable-parameter fix, and a real testability win) |
+| F-3 | review (/code-review, prior-PR agent) | Audit tab's retry→success swap stranded keyboard focus (WCAG 2.4.3, the recurring #148/#351/#462 class) | fixed — user-initiated `retry()` parks focus on the card after a successful reload (initial auto-load never moves focus); pinned by a new `admin-audit.spec.ts` case |
+| F-4 | review (/code-review, ×2 agents; RV-PROC-1) | `codebase-design`/`domain-modeling` missing from Skills consulted though the slice designed a new seam and amended an ADR (the #447/#459 recurrence) | fixed — both loaded at the fix round, seam + amendment re-vetted (see Skills consulted), line updated |
+| F-5 | review (/code-review, bug-scan agent) | `AdminAuditFilter`'s catch (`DataAccessException`) narrower than its Javadoc contract; a non-DB `RuntimeException` from the audit write could mask the original exception on the error path | fixed — catch broadened to `RuntimeException` with a one-line contract comment (deliberate §6 exception) |
+| F-6 | review (/code-review, ×2 agents) | `AdminAuditReasonsTest.java` contained raw NUL/BEL bytes → git treated the file as binary, hiding it from every diff view | fixed — the control-run case now uses the standard `\f` escape; file diffs as text |
+| F-7 | review (/code-review, git-history agent) | `admin-console-tabs.spec.ts` not extended for the new tab — every prior tab addition (#405/#460/#511) updated it | fixed — route registered in the spec's router, href assertion + aria-current case added |
+| F-8 | review (/code-review, comment-guidance agent) | Plan doc R-2 mitigation + File structure described the unshipped `FilterRegistrationBean` mechanism | fixed — both now describe the shipped in-chain `addFilterAfter` registration |
+| F-9 | review (/code-review; RV-STYLE-1) | Three multi-line inline comments (SecurityConfig, AdminAuditTrailIT, admin-venue-photos.ts) | fixed — each collapsed to one line |
 
 ---
 
@@ -260,7 +280,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   stays internal — no module calls it)
 - `AdminAuditFilter.java` — OncePerRequestFilter; match + sanitize + record-after
 - `AdminAuditController.java` — `GET /api/admin/audit`
-- `ObservabilityConfig.java` *(or a small `AdminAuditConfig`)* — filter registration after the security chain
+- `SecurityConfig.java` — filter registration inside the API chain (`addFilterAfter(…, AuthorizationFilter.class)`); no separate config class needed
 - `SecurityConfig.java` — the ADMIN rule for `/api/admin/audit`
 - Tests: `AdminAuditReasonsTest.java` (sanitizer, no context),
   `AdminAuditTrailIT.java` (Testcontainers end-to-end), `EndpointRoleGateCoverageTest` row
@@ -280,19 +300,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 > code → scoped run → commit), with the exact test/code in the diff rather than
 > duplicated here; scoped commands per `riviera-local-debug`.
 
-- [ ] **Phase 0 — plan doc:** commit this document.
-- [ ] **Phase 1 — record path:** V38; `AdminAuditReasonsTest` (sanitizer red→green);
+- [x] **Phase 0 — plan doc:** commit this document.
+- [x] **Phase 1 — record path:** V38; `AdminAuditReasonsTest` (sanitizer red→green);
   `AdminAuditTrailIT` cases AC-1/AC-2/AC-3 (red) → `AdminAuditLog` + `AdminAuditFilter`
   + registration (green). Scoped: `--tests "*AdminAudit*"`.
-- [ ] **Phase 2 — read path:** `AdminAuditTrailIT` AC-4 (red) → `AdminAuditController`
+- [x] **Phase 2 — read path:** `AdminAuditTrailIT` AC-4 (red) → `AdminAuditController`
   + `SecurityConfig` rule (green); `EndpointRoleGateCoverageTest` updated. Scoped:
   `--tests "*AdminAudit*" --tests "*EndpointRoleGate*"` + the structural net.
-- [ ] **Phase 3 — Audit tab:** `admin-audit.spec.ts` + a11y spec (red) → service,
+- [x] **Phase 3 — Audit tab:** `admin-audit.spec.ts` + a11y spec (red) → service,
   component, tab row, route (green). Scoped: `npx vitest run src/app/admin`.
-- [ ] **Phase 4 — takedown reason + e2e:** `admin-venue-photos.spec.ts` new cases (red)
+- [x] **Phase 4 — takedown reason + e2e:** `admin-venue-photos.spec.ts` new cases (red)
   → reason field + header (green); `e2e/admin-audit.e2e.ts` (mocked suite, axe). Full
   FE lint+test+build.
-- [ ] **Phase 5 — close-out:** docs freshness (RESPONSIBILITIES.md §root note,
+- [x] **Phase 5 — close-out:** docs freshness (RESPONSIBILITIES.md §root note,
   CLAUDE.md's "#507 tracked" wording, ADR-0013's open-consequence row), issue #507
   labels + triage comment, execution-status final state.
 
@@ -304,29 +324,29 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-4:** `gradle test --tests "*AdminAudit*" --tests "*EndpointRoleGate*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** admin Vitest specs + mocked-suite e2e → PASS.
-- [ ] **AC-6:** `admin-venue-photos.spec.ts` reason cases → PASS.
+- [x] **AC-1..AC-4:** `gradle test --tests "*AdminAudit*" --tests "*EndpointRoleGate*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-5:** admin Vitest specs + mocked-suite e2e → PASS.
+- [x] **AC-6:** `admin-venue-photos.spec.ts` reason cases → PASS.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A (invariant #2 untouched).
-- [ ] Pool + cutoff rules honored (invariants #3, #4 — untouched).
-- [ ] **Modulith** section filled; no cross-module imports added; composition-root
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A (invariant #2 untouched).
+- [x] Pool + cutoff rules honored (invariants #3, #4 — untouched).
+- [x] **Modulith** section filled; no cross-module imports added; composition-root
       discipline pinned by existing architecture tests (invariant #11).
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone correct: `occurred_at TIMESTAMPTZ`, UTC instant (invariant #6).
-- [ ] Booking codes never appear in audit paths recorded (admin namespace only,
+- [x] **Payment/payout** N/A.
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone correct: `occurred_at TIMESTAMPTZ`, UTC instant (invariant #6).
+- [x] Booking codes never appear in audit paths recorded (admin namespace only,
       invariant #7).
-- [ ] Flyway V38 present; constraints tested via `AdminAuditTrailIT` (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] Flyway V38 present; constraints tested via `AdminAuditTrailIT` (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — cites `merged via PR #516`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 plus `riviera-review-overlay`, not the overlay alone.

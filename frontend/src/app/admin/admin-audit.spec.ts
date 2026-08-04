@@ -130,6 +130,27 @@ describe('AdminAudit', () => {
     expect(byTestId(fixture, 'admin-audit-row-12')).not.toBeNull();
   });
 
+  /**
+   * WCAG 2.4.3 — the recurring #148/#351/#462 stranded-focus class: a successful retry destroys
+   * the error banner and the Retry button the user just activated, so focus must be parked on the
+   * card that replaces it rather than falling back to `<body>`.
+   */
+  it('parks focus on the card after a successful retry', async () => {
+    const service = serviceStub();
+    service.latest.mockRejectedValueOnce(new Error('boom'));
+    const fixture = await render(authStub(), service);
+
+    byTestId<HTMLButtonElement>(fixture, 'admin-audit-retry')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(byTestId(fixture, 'admin-audit-card'));
+  });
+
   it('shows nothing to a non-admin operator (AC-5)', async () => {
     const service = serviceStub();
 

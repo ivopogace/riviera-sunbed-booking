@@ -336,8 +336,7 @@ export class AdminVenuePhotos {
 
   protected async remove(venue: ModerationVenue, slot: PhotoSlotKey): Promise<void> {
     this.busy.set(true);
-    // Grounds typed into the confirmation ride the takedown into the audit trail (#507); the
-    // two-argument call is kept for the no-reason case so "no grounds offered" stays absent.
+    // #507: typed grounds ride the takedown into the audit trail; no reason → the two-argument call.
     const grounds = this.reason().trim();
     try {
       await (grounds === ''

@@ -293,10 +293,7 @@ class SecurityConfig {
 				// and before authorization — the booking endpoints are permitAll, so the code IS the
 				// authorization and the 200/404 oracle must be throttled. App-level concern, not a module.
 				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock, objectMapper), CorsFilter.class)
-				// The admin audit trail (#507): records every mutating /api/admin/** action AFTER the
-				// authorization filter admitted it — an anonymous 401 or wrong-role/CSRF 403 is
-				// rejected upstream and leaves no row (the audit answers "what did a principal do
-				// past the gate", not "who knocked"). App-level edge concern, not a module.
+				// #507 audit trail: after AuthorizationFilter, so only actions past the gate leave a row.
 				.addFilterAfter(new AdminAuditFilter(adminAuditLog, ADMIN_AUDIT_NAMESPACE), AuthorizationFilter.class)
 				// CSRF (issue #109, D-1 layer 2): the operator surface now rides a SESSION cookie,
 				// so its writes REQUIRE the cookie-to-header token. `.spa()` is Spring Security 7's
