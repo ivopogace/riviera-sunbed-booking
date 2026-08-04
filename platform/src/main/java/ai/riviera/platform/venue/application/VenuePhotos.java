@@ -8,10 +8,11 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The venue-photo use cases the driving adapter calls (inbound port, invariant #11). Two of the
- * three are venue-scoped writes that assert the operator owns the venue <strong>first</strong>
- * (invariant #13, BOLA); {@link #serve} is the <strong>public</strong> tourist read (no ownership
- * check). Implemented by {@code VenuePhotoService}.
+ * The venue-photo use cases the driving adapter calls (inbound port, invariant #11). The two writes
+ * ({@link #upload}, {@link #delete}) are venue-scoped and assert the operator owns the venue
+ * <strong>first</strong> (invariant #13, BOLA); the two reads ({@link #serve}, {@link #exists}) are
+ * the <strong>public</strong> tourist serving path and carry no ownership check.
+ * Implemented by {@code VenuePhotoService}.
  */
 public interface VenuePhotos {
 

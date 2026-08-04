@@ -87,17 +87,26 @@ column, any pre-publication gating, a vision-API screening call at upload, and a
   > longer "the first thing to fix *if* takedowns stop being hypothetical" but the first thing to
   > fix, full stop. Nothing else in this stance changes; the deficiency was always tracked, and what
   > #511 changes is its priority, not its nature.
-- **A takedown does not un-cache an already-served image — and a CDN would make that a real hole
-  (#508).** ADR-0008's serving GET returns `Cache-Control: public, max-age=31536000, immutable` —
-  sound for a *replace*, which mints a new hash and therefore a new URL, but a takedown mints
-  nothing. Today the exposure is bounded: the tourist read models stop advertising the URL, so a new
-  requester gets `404`, and there is no CDN in front of the API (the backend serves the SPA
-  same-origin, #110). **The day ADR-0008's deferred object-storage + CDN lands, a year-long
-  `immutable` TTL would keep a taken-down image served to *new* requesters until purged**, defeating
-  the removal this whole stance rests on. #508 records the two acceptable answers (purge-on-takedown,
-  or drop `immutable`) and is marked a **blocker on that migration**, not a follow-up to it — because
-  the failure is silent: nothing breaks, the photo simply stays visible. This is the single most
-  likely way this decision stops working without anyone noticing.
+- **~~A takedown does not un-cache an already-served image~~ — CLOSED by #508.** This was recorded
+  as the single most likely way this decision stops working without anyone noticing, on the
+  reasoning that ADR-0008's `Cache-Control: public, max-age=31536000, immutable` is sound for a
+  *replace* (which mints a new hash → a new URL) but not for a takedown, which mints nothing.
+
+  Two of the premises stated here turned out to be **wrong**, which is why it was fixed rather than
+  left pending a CDN:
+  - *"There is no CDN in front of the API."* `*.onrender.com` is **Cloudflare-fronted** — measured
+    in #286, and `ClientIpResolver` plus `docs/deploy/cd-pipeline.md` already depended on that fact.
+    A shared cache was in front of the serving GET the whole time. It is **Render's** zone, so
+    purge-on-takedown — one of the "two acceptable answers" — was never available for it; the origin
+    header is the only lever over that edge.
+  - *"The exposure is bounded to clients already holding the bytes."* It was worse: the `304`
+    short-circuit was answered from the URL path alone, so **any** client holding the `ETag` kept
+    revalidating a deleted photo successfully, indefinitely, independently of any CDN.
+
+  Both are closed: the serving GET now returns `Cache-Control: public, no-cache` and gates its
+  `304` on the variant still existing (ADR-0008's #508 amendment). A takedown therefore reaches
+  shared caches and `ETag` holders alike. The purge step remains the right answer for a **future
+  self-owned** CDN and is recorded as a precondition on ADR-0008's object-storage flip.
 - **Takedown is scoped to one slot, not one image.** The variant pipeline is deterministic, so the
   same picture uploaded into two slots shares a `(venue, content_hash)` and the serving read takes
   either. Removing one slot leaves the bytes reachable while another slot still publishes them.

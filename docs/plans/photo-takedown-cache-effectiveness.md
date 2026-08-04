@@ -31,9 +31,10 @@ Render's zone and therefore unpurgeable by us, and that a green test *pinned* th
 `riviera-plan-doc` (this template — forced the behavior-parity ledger, which is what turned "flip a
 header" into "flip a header **and** fix the 304 branch") · `tdd` (each phase red-first: the
 takedown-then-revalidate IT failed with `304` before the fix) · `riviera-review-overlay` (review
-gate — run at ready-for-review) · `riviera-docs-freshness` (ran over this slice's range at
-close-out — CLAUDE.md's `venue` row cites #508 as a *future* CDN-purge item, which this slice
-changes) · `riviera-modulith` (kept `exists` as a module-internal driven-port method on
+gate — run at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` —
+**4 findings, all patched**: CLAUDE.md's `venue` row, ADR-0013's cache-deficiency bullet (two of
+whose stated premises were false), `VenuePhotos`' "two of the three" method count, and
+`PhotoServingUrls`' "immutable cache headers" javadoc — see the audit note below) · `riviera-modulith` (kept `exists` as a module-internal driven-port method on
 `PhotoStorage` in `application/` — **not** a new published `api/` surface, since only `venue`'s own
 adapter calls it; same "purposeful conversation" as persist/serve/delete rather than a fifth port) ·
 `riviera-java-conventions` (`Optional`-free `boolean` typed outcome, package-private adapter,
@@ -49,17 +50,17 @@ for `bugfix/photo-takedown-cache-effectiveness` per the `riviera-sdlc` remote-se
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a stored variant, when a client revalidates with a matching `If-None-Match`,
+- [x] **AC-1:** Given a stored variant, when a client revalidates with a matching `If-None-Match`,
       then the response is `304` and no blob is read. *Pinned by:*
       `VenuePhotoServingIT.matchingIfNoneMatchIs304WhileTheVariantExists`
-- [ ] **AC-2:** Given a photo that has since been removed (owner delete or admin takedown), when a
+- [x] **AC-2:** Given a photo that has since been removed (owner delete or admin takedown), when a
       client revalidates with the still-matching `If-None-Match`, then the response is **`404`,
       not `304`** — the removal reaches the client that already holds the bytes. *Pinned by:*
       `VenuePhotoServingIT.revalidationAfterRemovalIs404`
-- [ ] **AC-3:** Given any successful serve, then the response carries a **revalidating** cache
+- [x] **AC-3:** Given any successful serve, then the response carries a **revalidating** cache
       directive (`no-cache`, `public`) plus the strong `ETag`, and carries neither `immutable` nor
       `max-age=31536000`. *Pinned by:* `VenuePhotoServingIT.servesBytesWithRevalidatingCacheAndStrongEtag`
-- [ ] **AC-4:** Given a venue and a content hash, when `PhotoStorage#exists` is asked, then it
+- [x] **AC-4:** Given a venue and a content hash, when `PhotoStorage#exists` is asked, then it
       answers `true` while any variant row carries that `(venue_id, content_hash)` and `false`
       once the photo is deleted — without selecting the `bytea` column. *Pinned by:*
       `JdbcPhotoStorageIT.existsTracksTheVariantRowWithoutReadingBytes`
@@ -96,12 +97,12 @@ Applies: this slice **replaces** the serving endpoint's caching contract.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **Revalidation traffic on the tourist hot path.** `no-cache` means every image on every view issues a conditional request, where `immutable` issued none | high (by design) | low | The `304` path is blob-free (AC-1/AC-4) — an index-only probe on `venue_photo_variant_serving_idx`, no `bytea`, no join — and returns an empty body. ADR-0008's stated intent ("keep Neon out of the tourist hot path") is preserved; what is traded is one cheap RTT per image per view, at a Phase-1 catalogue of a handful of venues | claude | open |
-| R-2 | **The header alone would not have fixed anything.** #508's option-2 rationale ("revalidation against a deleted variant naturally 404s") is false in this codebase — the `304` is answered before any lookup | certain (verified) | high | This is why the slice ships **both** halves; AC-2 is the pin. Recorded as a correction on #508 at close-out | claude | open |
-| R-3 | Shared-kernel / boundary drift from a new port method | low | med | `exists` is added to the **existing module-internal** `PhotoStorage` port in `application/` (invariant #11), not to a published `api/` surface — no `allowedDependencies` change, no new named interface. `ModularityTests` + `PackageShapeArchitectureTests` re-run | claude | open |
-| R-4 | Test doubles drift out of sync with the widened ports (`InMemoryPhotoStorage`, `WebSliceStubs`) | med | low | Both are updated in the same commit as the port change; the compiler enforces it for the fake, and `EndpointRoleGateCoverageTest` for the stub | claude | open |
+| R-1 | **Revalidation traffic on the tourist hot path.** `no-cache` means every image on every view issues a conditional request, where `immutable` issued none | high (by design) | low | The `304` path is blob-free (AC-1/AC-4) — an index-only probe on `venue_photo_variant_serving_idx`, no `bytea`, no join — and returns an empty body. ADR-0008's stated intent ("keep Neon out of the tourist hot path") is preserved; what is traded is one cheap RTT per image per view, at a Phase-1 catalogue of a handful of venues | claude | **closed** — accepted, and cheaper than planned: the `304` returns an empty body off an index probe, so the traded cost is one RTT, not a DB read |
+| R-2 | **The header alone would not have fixed anything.** #508's option-2 rationale ("revalidation against a deleted variant naturally 404s") is false in this codebase — the `304` is answered before any lookup | certain (verified) | high | This is why the slice ships **both** halves; AC-2 is the pin. Recorded as a correction on #508 at close-out | claude | **closed** — both halves shipped in `4174dfb`; AC-2 is the regression pin |
+| R-3 | Shared-kernel / boundary drift from a new port method | low | med | `exists` is added to the **existing module-internal** `PhotoStorage` port in `application/` (invariant #11), not to a published `api/` surface — no `allowedDependencies` change, no new named interface. `ModularityTests` + `PackageShapeArchitectureTests` re-run | claude | **closed** — no published surface touched; the structural net is green |
+| R-4 | Test doubles drift out of sync with the widened ports (`InMemoryPhotoStorage`, `WebSliceStubs`) | med | low | Both are updated in the same commit as the port change; the compiler enforces it for the fake, and `EndpointRoleGateCoverageTest` for the stub | claude | **closed** — `InMemoryPhotoStorage` and `WebSliceStubs` updated in `4174dfb`; `EndpointRoleGateCoverageTest` green |
 | R-5 | Flyway version collision | none | — | **No migration in this slice** — the existence query reuses `V24`'s existing index. No `V<n>` claimed | claude | closed at plan time |
-| R-6 | The `304`-path blob-freeness (AC-1) is guaranteed by construction (the controller calls `exists`, never `serve`) rather than asserted at runtime | low | low | Same standard already applied to `PhotoStorage#listMetadata`, whose blob-freeness is likewise carried by explicit SQL + javadoc. Adapter-level correctness **is** pinned (AC-4); a runtime "never read bytes" assertion would need a spy bean wrapping a `@Transactional` proxy, which buys less than it risks | claude | open |
+| R-6 | The `304`-path blob-freeness (AC-1) is guaranteed by construction (the controller calls `exists`, never `serve`) rather than asserted at runtime | low | low | Same standard already applied to `PhotoStorage#listMetadata`, whose blob-freeness is likewise carried by explicit SQL + javadoc. Adapter-level correctness **is** pinned (AC-4); a runtime "never read bytes" assertion would need a spy bean wrapping a `@Transactional` proxy, which buys less than it risks | claude | **closed** — accepted; AC-4 pins the adapter, and the controller's `304` branch calls `exists` and never `serve` |
 
 ## Open questions / Assumptions
 
@@ -173,15 +174,15 @@ removed photo — which is the fix, and which every HTTP client already handles.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, phase 1 next`
+**Stage pointer:** `PR #514 (draft) — both phases built; CI gate, then ready-for-review`
 
-**Next action:** Amend ADR-0008 with the chosen posture + the unpurgeable-edge finding, refresh
-CLAUDE.md's `venue` row, then open the draft PR so CI runs.
+**Next action:** Confirm CI green on PR #514, mark it ready for review, then run the review gate
+(`riviera-sdlc` `references/pr-gates.md` §1) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Existence-checked 304 + revalidating cache header | ✅ | *(this commit — SHA recorded in phase 1)* |
-| 1 — ADR-0008 amendment + substrate-doc refresh | | |
+| 0 — Existence-checked 304 + revalidating cache header | ✅ | `4174dfb` |
+| 1 — ADR-0008 amendment + substrate-doc refresh | ✅ | *(this commit)* |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -232,13 +233,32 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `docs/adr/ADR-0008-venue-photo-storage.md` · `CLAUDE.md` · this plan doc
 
-- [ ] **Step 1:** Amend ADR-0008's serving-discipline bullet and add the #508 amendment section —
+- [x] **Step 1:** Amend ADR-0008's serving-discipline bullet and add the #508 amendment section —
       the decision, the Cloudflare finding, and the purge clause moved onto the flip threshold.
-- [ ] **Step 2:** Refresh the `venue` module row in `CLAUDE.md` (it cites #508 as a *future*
+- [x] **Step 2:** Refresh the `venue` module row in `CLAUDE.md` (it cites #508 as a *future*
       CDN-purge requirement).
-- [ ] **Step 3:** Commit; finalize the execution status in this PR.
+- [x] **Step 3:** Commit; finalize the execution status in this PR.
 
 ---
+
+## Docs-freshness audit (close-out step 5)
+
+Range `origin/main...HEAD`. **4 findings, all patched in phase 1** — none flagged for a human,
+because none re-decided anything: each was a stated fact the diff falsified.
+
+| Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `CLAUDE.md` `venue` row | "the CDN-purge it will require as #508" — an open future item | #508's removal-effectiveness half is closed here; the purge is now a precondition on ADR-0008's flip | patched |
+| `docs/adr/ADR-0013:90-96` | "ADR-0008's serving GET returns `…immutable`"; "there is no CDN in front of the API"; "#508 records the two acceptable answers" | the header changed; `*.onrender.com` **is** Cloudflare-fronted (#286); purge was never available for Render's zone | patched — the deficiency is marked CLOSED, and both false premises are named rather than quietly deleted |
+| `VenuePhotos` javadoc | "**Two of the three** are venue-scoped writes" | the port now has **four** methods (`exists` added) — the counting sweep's exact class | patched → "the two writes … the two reads" |
+| `PhotoServingUrls` javadoc | "with the **immutable** cache headers (ADR-0008)" | the directive is now `public, no-cache` | patched |
+
+The counting-sweep finding is the one worth recording: `git diff` **could not** have shown it —
+`VenuePhotos`'s class javadoc sits above the method the slice added, so a careful review of the
+changed hunks still reads a sentence that silently became false. The first filtered grep also
+missed it (the count sentence and the topic words are on different lines); it took reading the
+file. **Deliberately not patched:** `docs/plans/admin-photo-takedown.md` R-7, which recorded this
+as deferred — historical plan docs are records, not living docs (skill §Scope discipline).
 
 ## Generalization-audit log
 
@@ -285,6 +305,6 @@ stub). CI owns the full suite.
 - [x] **Frontend** standards met or deviation documented — `N/A — backend-only`, recorded above.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — final state committed here citing `merged via PR #NN`.
+- [x] **Close-out written in THIS PR** — this section is finalized here; **merged via PR #514** (no docs-only follow-up needed).
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
