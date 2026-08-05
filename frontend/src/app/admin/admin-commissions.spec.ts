@@ -260,6 +260,24 @@ describe('AdminCommissions', () => {
   });
 
   /**
+   * The fourth focus transition, and the one the other three hide: disabling Save while the write is
+   * in flight blurs it to `<body>`, and re-enabling it afterwards does not bring focus back. Success
+   * and dismissal both move focus deliberately; a failure left it stranded on the one path where the
+   * admin most needs to act next (WCAG 2.4.3 — the recurring #148/#351/#462/#505 class).
+   */
+  it('returns focus to Save when the write fails, rather than stranding it', async () => {
+    const service = serviceStub();
+    service.setCommission.mockRejectedValueOnce(new Error('boom'));
+    const fixture = await render(authStub(), service);
+
+    await typeRate(fixture, 7, '12.5');
+    await save(fixture, 7);
+
+    expect(document.activeElement).toBe(byTestId(fixture, 'admin-commission-save-7'));
+    expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-save-7')!.disabled).toBe(false);
+  });
+
+  /**
    * Cancel is locked while the write is in flight, not just Save. Leaving it live let an admin
    * dismiss the editor mid-request and then watch the row change anyway when the response landed —
    * the server had taken the write, so undoing it locally would have been the worse lie.

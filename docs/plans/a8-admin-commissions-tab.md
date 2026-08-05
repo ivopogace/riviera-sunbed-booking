@@ -88,7 +88,10 @@ stands in for `feature/<slug>` (`riviera-sdlc` remote-session addendum). Exists 
 - [ ] **AC-11:** Given the editor opens, is dismissed, and a save completes, then focus lands on the
   percent field, returns to Edit, and returns to Edit respectively — never stranded on `<body>`
   (WCAG 2.4.3, the recurring #148/#351/#462/#505 class).
-  *Pinned by:* `admin-commissions.spec.ts` › the three `moves focus…` cases
+  *Pinned by:* `admin-commissions.spec.ts` › the three `moves focus…` cases, plus
+  › `returns focus to Save when the write fails, rather than stranding it` (the fourth transition,
+  added by review finding F-3b) and `e2e/admin-commissions.e2e.ts` ›
+  `a failed write leaves focus on Save, not on the body`
 - [ ] **AC-12:** Given the page rendered — list, open editor, and post-save — then axe reports no
   violations. *Pinned by:* `admin-commissions.a11y.spec.ts` (both cases) and
   `e2e/admin-commissions.e2e.ts` (`expectNoSeriousAxeViolations` at 360px)
@@ -279,6 +282,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-1 | review — overlay walk (RV-FE-1, self) | Cancel stayed enabled while a write was in flight, so an admin could dismiss the editor mid-request and then watch the row change anyway when the response landed. Undoing it locally would be the worse lie — the server had taken the write — so the fix is to lock the editor, not to revert. | fixed-in-`35733a8` |
 | F-2 | review — overlay walk (a11y, self) | The explainer panel was a `<div>` carrying `aria-labelledby`, which names nothing on a role-less element. | fixed-in-`35733a8` (`<section>`, so the name lands on a real region) |
 | F-3 | sonar gate | Quality Gate passed — 0 new issues, 0 accepted issues, 0 security hotspots, **0.0% duplication**, **90.6% coverage on new code** (bar: 0/0/≥80%). Issue list pulled, nothing to triage. | closed — no action |
+| F-3b | review — `/code-review` fan-out, bug scan (reviewer 2/5) | **Stranded focus on a failed save.** Disabling Save while the write is in flight blurs it to `<body>`; re-enabling it afterwards does not bring focus back. Open, dismiss and save-success all moved focus deliberately — the failure path, where the admin most needs to retry, was the one of four transitions left unhandled (WCAG 2.4.3, the recurring #148/#351/#462/#505 class). Shipped untested: the existing failure spec asserted the message and the retained draft, never `document.activeElement`. | fixed-in-`bfe6db6` (focus returns to Save; guard proven red-first in the unit spec, plus a real-browser e2e because jsdom does not reproduce the disabled-element blur) |
 | F-4 | CI gate | All 7 checks green on `a78d466`: backend build+test, frontend lint+test+build, e2e, CodeQL (java-kotlin + javascript-typescript), SonarCloud. | closed — no action |
 
 ---

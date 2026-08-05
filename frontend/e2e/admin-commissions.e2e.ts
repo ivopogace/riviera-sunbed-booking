@@ -149,6 +149,29 @@ test('no grounds are sent when the reason is left blank', async ({ page }) => {
   expect(await writesSoFar(page)).toEqual([{ venueId: 7, commissionBps: 900, reason: null }]);
 });
 
+/**
+ * The focus transition jsdom cannot show. Disabling a focused button blurs it to `<body>` in a real
+ * browser but not under jsdom, so the unit spec pins the intended target while this proves the
+ * behaviour that made it a bug — a failed save leaving a keyboard user with nowhere to go, on the one
+ * path where they most need to retry (WCAG 2.4.3).
+ */
+test('a failed write leaves focus on Save, not on the body', async ({ page }) => {
+  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await mockCommissions(page);
+  await openCommissionsTab(page);
+
+  await page.getByTestId('admin-commission-edit-7').click();
+  await page.getByTestId('admin-commission-percent-7').fill('11');
+  await page.route(/\/api\/admin\/venues\/\d+\/commission$/, (route) =>
+    route.fulfill({ status: 500, body: '' }),
+  );
+  await page.getByTestId('admin-commission-save-7').click();
+
+  await expect(page.getByTestId('admin-commission-error-7')).toContainText('Nothing was changed');
+  await expect(page.getByTestId('admin-commission-save-7')).toBeFocused();
+  await expect(page.getByTestId('admin-commission-rate-7')).toHaveText('15%');
+});
+
 test('the tab strip marks Commissions in slot 2 and never scrolls sideways at 360px', async ({
   page,
 }) => {
