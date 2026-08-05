@@ -251,19 +251,18 @@ is the shared parse, not a validator.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`.
+**Stage pointer:** `PR` — draft open, all phases built and green locally.
 
-**Next action:** add `VenueCommissionView` to `admin.model.ts` and write
-`admin-commissions.service.ts` — one type, one parse, sanitized grounds header.
+**Next action:** mark the PR ready for review, then run the Review gate and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | `4781a50` |
-| 1 — shared percent↔bps helper + operator call sites | ⏳ | |
-| 2 — model + service (one type, one parse, grounds header) | | |
-| 3 — the tab component (list, editor, explainer, focus) | | |
-| 4 — tab slot 2 + lazy route + Photos TSDoc correction | | |
-| 5 — a11y spec + mocked e2e at 360px | | |
+| 1 — shared percent↔bps helper + operator call sites | ✅ | `ef60894` |
+| 2 — model + service (one type, one parse, grounds header) | ✅ | `a987f0a` |
+| 3 — the tab component (list, editor, explainer, focus) | ✅ | `a987f0a` |
+| 4 — tab slot 2 + lazy route + Photos TSDoc correction | ✅ | `a987f0a` |
+| 5 — a11y spec + mocked e2e at 360px | ✅ | `a987f0a` |
 | 6 — review gate + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -322,43 +321,44 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `frontend/src/app/admin/admin.model.ts` · Create
 `frontend/src/app/admin/admin-commissions.service.ts`
 
-- [ ] `VenueCommissionView` mirrors `AdminVenueCommissionsResponse.VenueCommission` exactly.
-- [ ] `venues()` reads the wrapper object and maps through `toVenueCommission`.
-- [ ] `setCommission(venueId, commissionBps, reason?)` is a plain `HttpClient.put`, maps the response
+- [x] `VenueCommissionView` mirrors `AdminVenueCommissionsResponse.VenueCommission` exactly.
+- [x] `venues()` reads the wrapper object and maps through `toVenueCommission`.
+- [x] `setCommission(venueId, commissionBps, reason?)` is a plain `HttpClient.put`, maps the response
       through the **same** `toVenueCommission`, and attaches the sanitized `X-Audit-Reason` header
       only when the grounds are non-blank.
-- [ ] Commit + status update.
+- [x] Commit + status update.
 
 ## Phase 3 — The tab component
 
 **Files:** Create `frontend/src/app/admin/admin-commissions.ts`,
 `frontend/src/app/admin/admin-commissions.spec.ts`
 
-- [ ] The three-branch auth gate (restoring / signed-out / not-admin), matching its siblings.
-- [ ] One `appCardGlass` card per venue: name + beach, rate as percent with the exact bps beneath,
+- [x] The three-branch auth gate (restoring / signed-out / not-admin), matching its siblings.
+- [x] One `appCardGlass` card per venue: name + beach, rate as percent with the exact bps beneath,
       payout currency, and an Edit button.
-- [ ] The inline editor: percent field, live "stores N bps" preview, "was X% (N bps)", optional
+- [x] The inline editor: percent field, live "stores N bps" preview, "was X% (N bps)", optional
       grounds, Save + Cancel, a one-line timing note, and an always-present assertive error region.
-- [ ] The forward-only explainer panel — five short cards, carrying R-1's and R-2's exact claims.
-- [ ] Splice, never re-fetch. Focus moves on open / dismiss / save.
-- [ ] Commit + status update.
+- [x] The forward-only explainer panel — five short cards, carrying R-1's and R-2's exact claims.
+- [x] Splice, never re-fetch. Focus moves on open / dismiss / save.
+- [x] Commit + status update.
 
 ## Phase 4 — Tab slot + route + the stale TSDoc
 
 **Files:** Modify `frontend/src/app/admin/admin-console-tabs.ts`, `frontend/src/app/app.routes.ts`,
 `frontend/src/app/admin/admin-venue-photos.service.ts`
 
-- [ ] Insert `Commissions` at **index 1** of `tabs`; run `admin-console-tabs.spec.ts` **unmodified**.
-- [ ] Lazy route at `/admin/commissions` with `data: { operatorChrome: true }`, matching the five siblings.
-- [ ] Rewrite the Photos service's stale TSDoc paragraph with the decision recorded above.
+- [x] Insert `Commissions` at **index 1** of `tabs`; run `admin-console-tabs.spec.ts` **unmodified**.
+- [x] Lazy route at `/admin/commissions` with `data: { operatorChrome: true }`, matching the five siblings.
+- [x] Rewrite the Photos service's stale TSDoc paragraph with the decision recorded above.
 
 ## Phase 5 — a11y spec + mocked e2e
 
 **Files:** Create `frontend/src/app/admin/admin-commissions.a11y.spec.ts`,
-`frontend/e2e/admin-commissions.e2e.ts`
+`frontend/e2e/admin-commissions.e2e.ts` · Modify `frontend/src/app/app.spec.ts` (the route table's
+operator/admin-surface list, which enumerates every `operatorChrome` path)
 
-- [ ] axe over the list and over an open editor.
-- [ ] Playwright at 360px against a **stateful** mock, so "the new rate stuck" is the server's answer.
+- [x] axe over the list and over an open editor.
+- [x] Playwright at 360px against a **stateful** mock, so "the new rate stuck" is the server's answer.
 
 ---
 

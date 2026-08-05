@@ -530,6 +530,7 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'operator',
     'account/operator-password',
     'admin',
+    'admin/commissions',
     'admin/email',
     'admin/refunds',
     'admin/photos',

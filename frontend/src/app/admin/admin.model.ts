@@ -115,6 +115,27 @@ export interface AdminAuditEntryView {
 }
 
 /**
+ * One venue's commission rate as the admin surface reads it (A8, epic #348); mirrors the backend
+ * `AdminVenueCommissionsResponse.VenueCommission`.
+ *
+ * <p><strong>One type for two calls.</strong> `PUT /api/admin/venues/{venueId}/commission` answers
+ * exactly this shape — one element, not a list — so the write's response is spliced into the list the
+ * page already holds instead of triggering a second read.
+ *
+ * <p>`commissionBps` is the exact stored integer (1500 = 15.00%, invariant #5). The percent an admin
+ * types is the console's rendering and never the contract's, so no rounding can enter through the
+ * wire. No owner travels: which operator owns a venue is the `operator` module's answer and is not
+ * what a rate decision turns on.
+ */
+export interface VenueCommissionView {
+  readonly venueId: number;
+  readonly name: string;
+  readonly beach: string;
+  readonly commissionBps: number;
+  readonly payoutCurrency: string;
+}
+
+/**
  * One photo slot in the admin moderation view (#511); mirrors the backend
  * `AdminVenuePhotosResponse.SlotPhoto`. `previewUrl` is `null` exactly when the slot is empty —
  * emptiness IS the null URL (#142 review F-11), so there is no derivable boolean to keep in step.

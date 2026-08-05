@@ -166,6 +166,14 @@ export const routes: Routes = [
     data: { operatorChrome: true },
   },
   {
+    // Admin console Commissions tab (A8, #348) — venue rates + the forward-only rate write.
+    path: 'admin/commissions',
+    loadComponent: () => import('./admin/admin-commissions').then((m) => m.AdminCommissions),
+    title: 'Commissions — Riviera',
+    // Admin surface: the shared operator header/footer, never the tourist ones.
+    data: { operatorChrome: true },
+  },
+  {
     // Admin console Email tab (#405) — the outstanding-mail lever; ADMIN-gated server-side.
     path: 'admin/email',
     loadComponent: () => import('./admin/admin-mail-outbox').then((m) => m.AdminMailOutbox),

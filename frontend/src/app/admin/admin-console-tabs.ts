@@ -81,6 +81,7 @@ export class AdminConsoleTabs {
 
   protected readonly tabs = [
     { path: '/admin', label: 'Operators', testId: 'admin-tab-operators' },
+    { path: '/admin/commissions', label: 'Commissions', testId: 'admin-tab-commissions' },
     { path: '/admin/email', label: 'Email', testId: 'admin-tab-email' },
     { path: '/admin/refunds', label: 'Refunds', testId: 'admin-tab-refunds' },
     { path: '/admin/photos', label: 'Photos', testId: 'admin-tab-photos' },
