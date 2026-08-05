@@ -26,11 +26,17 @@ import ai.riviera.platform.payout.domain.PeriodKey;
  * for an ISO-week period and advance a batch's status. Driving adapter depending only on the payout
  * module's {@link PayoutReport} port (invariant #11).
  *
- * <p><strong>Operator-gated</strong> — venue financial data + money lifecycle, never public.
- * {@code SecurityConfig} matches {@code /api/admin/payout-batches} to role {@code OPERATOR}; the POST/PATCH
- * are token-less and CSRF-exempt like the other operator writes. A malformed {@code period} or
- * {@code status} is a {@code 400 INVALID_REQUEST} via {@code ApiErrorHandler}; errors are RFC-7807
- * {@link ProblemDetail} built by {@link ApiProblem} (issue #97).
+ * <p><strong>Platform-admin gated</strong> — {@code SecurityConfig} matches
+ * {@code /api/admin/payout-batches} (and the item path) to role {@code ADMIN}, tightened from
+ * {@code OPERATOR} by #348 A4. That gate is the <em>whole</em> authorization: nothing here is venue-scoped,
+ * because nothing here belongs to one venue — the GET reports every venue's gross/commission/net for the
+ * period and the PATCH addresses a batch by id. Invariant #13 exempts {@code /api/admin/**} from per-venue
+ * ownership (an admin does not <em>own</em> a payout run), which is exactly why the role must be the
+ * strict one: under {@code OPERATOR} any approved operator in this multi-tenant marketplace could read
+ * competitors' payout figures and mark their batches settled. The POST/PATCH are session writes and
+ * require a CSRF token like every other non-exempt write. A malformed {@code period} or {@code status} is
+ * a {@code 400 INVALID_REQUEST} via {@code ApiErrorHandler}; errors are RFC-7807 {@link ProblemDetail}
+ * built by {@link ApiProblem} (issue #97).
  */
 @RestController
 @RequestMapping("/api/admin/payout-batches")

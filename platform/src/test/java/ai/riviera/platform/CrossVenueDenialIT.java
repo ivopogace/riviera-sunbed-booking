@@ -423,12 +423,32 @@ class CrossVenueDenialIT {
 
 	// ---- Exemptions: platform-wide admin + venue creation are role-gated only (no ownership) ----
 
+	/**
+	 * Invariant #13's {@code /api/admin/**} exemption, on the payout-batch surface: the acting
+	 * principal owns none of the venues in the report, and is still not refused — because an admin does
+	 * not <em>own</em> a payout run. Both methods are covered; the PATCH's {@code 404 NO_SUCH_BATCH} is
+	 * a handler answer for an absent id, which is the proof it passed the gate rather than being
+	 * refused ahead of it.
+	 *
+	 * <p><strong>The actor here is the bootstrap admin, deliberately, and no {@code actingAs} stub
+	 * applies.</strong> Every request in this class rides one real login as {@code operator}, which V29
+	 * demoted to the platform admin ({@code is_admin}) — so the session carries {@code ROLE_ADMIN},
+	 * whatever the mocked {@link CurrentOperator} says. {@code actingAs} swaps the <em>ownership</em>
+	 * identity the application services resolve, not the session's authorities, and this path consults
+	 * no ownership at all; stubbing it here only ever implied an actor the request did not have. Since
+	 * #348 A4 the surface is ADMIN-gated, so a plain operator is refused outright — pinned by
+	 * {@code AdminPayoutSecurityIT}, which provisions a genuinely non-admin operator to prove it.
+	 */
 	@Test
-	void adminPayoutBatchesIsNotOwnershipChecked() throws Exception {
-		actingAs(operatorA); // A owns no Miramar data, yet the platform-wide admin report is reachable
+	void adminPayoutBatchesAreRoleGatedNotOwnershipChecked() throws Exception {
 		mvc.perform(get("/api/admin/payout-batches").cookie(operatorSession)
 						.param("period", "2026-W01"))
 				.andExpect(status().isOk());
+		mvc.perform(patch("/api/admin/payout-batches/{id}", Long.MAX_VALUE).cookie(operatorSession)
+						.with(csrf()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"status\":\"REPORTED\"}"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("NO_SUCH_BATCH"));
 	}
 
 	@Test

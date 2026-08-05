@@ -32,9 +32,11 @@ import jakarta.servlet.http.HttpServletResponse;
  * application-level 4xx — a failed destructive attempt is signal); an exception unwinding past the
  * handler advice is recorded as the 500 it becomes.
  *
- * <p><strong>The actor is whoever the namespace admitted</strong> — almost always the platform
- * ADMIN, but {@code /api/admin/payout-batches} is OPERATOR-gated, and those presses are deliberately
- * recorded too (the read surface stays ADMIN-only).
+ * <p><strong>The actor is whoever the namespace admitted</strong> — since #348 A4 tightened the last
+ * carve-out ({@code /api/admin/payout-batches}, then OPERATOR-gated), every path in the namespace is
+ * gated to the platform ADMIN, so the actor is that admin. The filter does not depend on this: it keys
+ * on the path prefix and records whatever principal got past the gate, so a future surface admitted on
+ * some other authority is audited the day it ships without touching this class.
  *
  * <p><strong>A failed audit insert never fails the admin action</strong> (logged at ERROR instead):
  * write-after cannot un-do the action it records, and the audited actions are themselves writes on

@@ -51,7 +51,7 @@
   driven settlement port in the payout module. What ships today is phase 1 — weekly ISO-week batches
   (PeriodKey "IYYY-Www") generated and marked by hand:
 
-                POST  /api/admin/payout-batches?period=  (#12 U9)  ROLE_OPERATOR
+                POST  /api/admin/payout-batches?period=  (#12 U9)  ROLE_ADMIN
                 GET   /api/admin/payout-batches?period=
                 PATCH /api/admin/payout-batches/{id}     DRAFT -> REPORTED -> SETTLED
 
@@ -61,8 +61,10 @@
     2. The batch lifecycle changes shape. DRAFT/REPORTED/SETTLED describes a human sending a bank file;
        an automated run needs a per-venue TRANSFER state (scheduled / sent / paid / failed / held),
        because the admin's job stops being "send the money" and becomes "fix the ones that bounced".
-    3. /api/admin/payout-batches is gated to ROLE_OPERATOR today, not ROLE_ADMIN. Putting settlement on
-       an admin-only page implies tightening that matcher.
+    3. DONE — shipped ahead of this tab as slice A4 (#348). /api/admin/payout-batches was gated to
+       ROLE_OPERATOR, not ROLE_ADMIN, and the surface has no venue scoping, so any approved operator
+       could read every venue's payout figures and mark any venue's batch settled. Tightened to
+       ROLE_ADMIN; the whole /api/admin/** namespace is now uniformly admin-gated.
     4. A venue with no EUR IBAN on file cannot be paid. Nothing models that today. Held-and-rolled-into-
        the-next-run is this design's answer; the alternative (block the venue from selling) is worse.
 
