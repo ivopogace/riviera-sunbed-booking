@@ -20,6 +20,32 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
  * which admin surfaces exist. The active tab carries `aria-current="page"`, which is what makes the
  * lift visible to assistive tech rather than to sighted users alone.
  */
+/**
+ * The console's canonical tab order, answering epic #348's open question Q1 — the strip's
+ * information architecture is an ORDER, not a layout (see {@link AdminConsoleTabs}).
+ *
+ * <p>Ordered by what each tab <em>is</em>, not by when it shipped: the console home, then the money
+ * the platform sets and pays, then the two outbox re-drive levers (Email and Refunds share
+ * `AdminOutboxLever`), then moderation, then erasure, and Audit last because it is the record of
+ * all of the above. Three slots are reserved for tabs that do not exist yet — **Commissions (A8)**,
+ * **Payouts (A6)** and **Privacy (A3)**; the five that ship today already sit in this order, so
+ * nothing moved when it was written down.
+ *
+ * <p>This is the contract, not a snapshot: `admin-console-tabs.spec.ts` pins that the rendered tabs
+ * are a <em>subsequence</em> of it, so adding a tab in its slot needs no spec edit while appending
+ * one out of slot fails.
+ */
+export const ADMIN_CONSOLE_TAB_ORDER = [
+  'Operators',
+  'Commissions',
+  'Payouts',
+  'Email',
+  'Refunds',
+  'Photos',
+  'Privacy',
+  'Audit',
+] as const;
+
 @Component({
   selector: 'app-admin-console-tabs',
   imports: [RouterLink, RouterLinkActive],

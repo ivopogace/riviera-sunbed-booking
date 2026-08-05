@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 
-import { AdminConsoleTabs } from './admin-console-tabs';
+import { ADMIN_CONSOLE_TAB_ORDER, AdminConsoleTabs } from './admin-console-tabs';
 
 /** A host that renders the strip under a real router, so `routerLinkActive` resolves for real. */
 @Component({
@@ -37,6 +37,18 @@ async function renderAt(url: string): Promise<ComponentFixture<TabsHost>> {
 
 function tab(fixture: ComponentFixture<TabsHost>, testId: string): HTMLElement {
   return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+}
+
+/** The rendered pill labels, in DOM order. */
+function labels(fixture: ComponentFixture<TabsHost>): string[] {
+  return [...fixture.nativeElement.querySelectorAll('nav a')].map((a) =>
+    (a as HTMLElement).textContent!.trim(),
+  );
+}
+
+/** The canonical order restricted to the tabs present — what a correctly-ordered strip must equal. */
+function canonicalOrderOf(present: readonly string[]): string[] {
+  return ADMIN_CONSOLE_TAB_ORDER.filter((label) => present.includes(label));
 }
 
 describe('AdminConsoleTabs', () => {
@@ -96,6 +108,25 @@ describe('AdminConsoleTabs', () => {
 
     expect(tab(fixture, 'admin-tab-operators').className).not.toContain('riv-tab-active');
     expect(tab(fixture, 'admin-tab-email').className).toContain('riv-tab-active');
+  });
+
+  /**
+   * Q1 (#348) settled the strip's information architecture as an ORDER rather than a layout: one
+   * flat wrapping strip of at most eight tabs, in the canonical order. The five that ship today
+   * already sit in it, so this pins a rule rather than a snapshot — a subset in canonical order
+   * passes, which is what lets A8/A3/A6 add their tab without editing this spec.
+   */
+  it('renders tabs in the canonical console order (Q1, #348)', async () => {
+    const rendered = labels(await renderAt('/admin'));
+
+    expect(rendered).toEqual(canonicalOrderOf(rendered));
+  });
+
+  /** The guard above is only worth having if it fails on the mistake it exists to catch. */
+  it('rejects a tab appended out of its canonical slot', async () => {
+    const appendedByShipDate = ['Operators', 'Email', 'Audit', 'Commissions'];
+
+    expect(appendedByShipDate).not.toEqual(canonicalOrderOf(appendedByShipDate));
   });
 
   it('is a labelled landmark, so two navs never read alike', async () => {

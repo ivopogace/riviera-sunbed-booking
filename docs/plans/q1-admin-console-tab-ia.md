@@ -237,14 +237,14 @@ edge added — RV-FE-8 clean); the e2e spec is API-mocked, so it belongs in `fro
 
 ## Execution status
 
-**Stage pointer:** `plan — complete, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 1 (360px e2e guard)`
 
-**Next action:** Phase 0 — write the failing subsequence spec (AC-3/AC-4) before exporting the const.
+**Next action:** Write `frontend/e2e/admin-console-tabs.e2e.ts` — the row-budget + no-horizontal-scroll guard (AC-1/AC-2).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Canonical order: red spec → exported const | | |
-| 1 — 360px e2e guard (AC-1/AC-2) | | |
+| 0 — Canonical order: red spec → exported const | ✅ | `da4ec63` |
+| 1 — 360px e2e guard (AC-1/AC-2) | ⏳ | |
 | 2 — TSDoc: replace the stale five-tab clause with the measured decision | | |
 | 3 — Docs sweep + epic #348 decision comment | | |
 
@@ -393,6 +393,7 @@ eight consecutive PRs touching these files — this slice must not make it nine)
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-05 | Phase 0 — the canonical-order rule | Other tab strips that could append by ship date | `grep -rln "routerLinkActive" src/app --include=*.ts \| grep -v spec` | 1 other: the operator console's six tabs (`operator-console.ts:58`, rendered by `operator-console.html:62`) | **No change.** Its array is already documented as "in design order" — a closed set of six drawn from the O1–O8 design up front, not accreted per slice, so it never had the failure mode Q1 fixes. The `admin` strip was the only one ordered by ship date |
 
 ---
 
