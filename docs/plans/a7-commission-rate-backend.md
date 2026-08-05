@@ -50,7 +50,7 @@ regrowing `VenueCatalog`, and confirmed no new `allowedDependencies` grant is ne
 index; `DATE` not `TIMESTAMPTZ` because a service date is a civil date; CHECK mirrors
 `venue_commission_bps_check`) · `riviera-stripe-payments` (confirmed the commission split stays
 `payout`'s `CommissionSplit` — collect-only, no Connect, nothing about settlement moves here) ·
-`riviera-local-debug` (system `gradle` + JDK-25 toolchain, scoped tests only — the wrapper
+angular-cli MCP `search_documentation` (Angular 22 — confirmed the list's object envelope suits `httpResource` and that its `parse` option covers validation, and that the rate write must be a plain `HttpClient.put` since the guide forbids `httpResource` for mutations; recorded for A8 in the FE↔BE contract section, no backend change) · `riviera-local-debug` (system `gradle` + JDK-25 toolchain, scoped tests only — the wrapper
 cannot self-provision in this cloud session and the bare `test` task OOMs)
 
 **Branch:** `claude/commission-rate-backend-a7-5wwz58` — the cloud session's **designated remote
@@ -312,8 +312,19 @@ epic's Q1 (tab information architecture); the task brief scopes A7 to the backen
     CSRF-protected like every mutating SPA call.
 - **Changed endpoints:** none in shape. `GET /api/venues/{venueId}/takings?date=` keeps its
   response contract exactly; only which rate feeds `commissionBps` changes.
-- **Client typing:** no client in this slice (see Non-goals). A8 will type it as a hand-written
-  typed service per `riviera-frontend`; never `as any`.
+- **Client typing:** no client in this slice (see Non-goals). A8 will type it as a hand-written typed
+  service per `riviera-frontend`; never `as any`. Two notes checked against the Angular 22 docs
+  (angular-cli MCP `search_documentation`, `frameworkVersion: 22`) so the contract shipped here suits
+  the client that will consume it:
+  - The **list** is a plain JSON object envelope, which `httpResource` reads directly, and its `parse`
+    option can validate it if A8 wants a schema
+    ([httpResource: response parsing and validation](https://angular.dev/guide/http/http-resource#response-parsing-and-validation)).
+  - The **write must not** use `httpResource` — the guide is explicit: *"Avoid using httpResource for
+    mutations like POST or PUT. Instead, prefer directly using the underlying HttpClient APIs."* So the
+    rate write is an `HttpClient.put` call in A8, not a resource.
+  - Deliberate contract symmetry that pays off there: the `PUT` answers **the same object shape** as one
+    element of the list, so A8 needs one type and one parse for both, and can splice the response
+    straight back into the list it already holds instead of re-fetching.
 - **Money/date on the wire:** commission as exact-integer basis points (never a float, never a
   percent string); no amounts and no dates cross this contract, so there is nothing else to agree.
 
