@@ -34,8 +34,9 @@ decision list); `docs/plans/a7-commission-rate-backend.md` (the wire contract);
 canvas's Owner/Last-changed columns have no wire source, so the table it draws cannot be built as
 drawn) · `riviera-plan-doc` (this template — forced the behavior-parity ledger, which is what caught
 the two operator call sites the shared helper must not change) · `tdd` (each phase writes the failing
-spec before the component) · `riviera-review-overlay` (review gate — run at ready-for-review; read
-**up front** for RV-STYLE-1, which has been raised on eight consecutive PRs touching these files) ·
+spec before the component) · `riviera-review-overlay` (review gate — read **up front**, not after, for RV-STYLE-1: it had been
+raised on eight consecutive PRs touching these files, and every inline comment this diff adds is a
+one-liner; layered onto the `code-review` fan-out at ready-for-review) ·
 `riviera-docs-freshness` (**ran** over `origin/main...HEAD` — 5 findings, all from the counting
 sweep and all patched: this slice makes the **sixth** console tab, and three TSDoc/spec comments plus
 the tab e2e's header still said the strip ships five) ·
@@ -57,35 +58,35 @@ stands in for `feature/<slug>` (`riviera-sdlc` remote-session addendum). Exists 
 > service against A7's wire contract. The backend behaviour these criteria ride on
 > (forward-only scheduling, 0..10000 validation, ADMIN gating) is A7's and is pinned by A7's tests.
 
-- [ ] **AC-1:** Given an admin on `/admin/commissions`, when the venues read answers, then every
+- [x] **AC-1:** Given an admin on `/admin/commissions`, when the venues read answers, then every
   venue renders with its rate as a percentage **and** the exact stored basis points beside it.
   *Pinned by:* `admin-commissions.spec.ts` › `lists every venue with its rate in percent and basis points`
-- [ ] **AC-2:** Given a venue at 1500 bps, when the admin opens its editor and types `12.5`, then the
+- [x] **AC-2:** Given a venue at 1500 bps, when the admin opens its editor and types `12.5`, then the
   surface shows `1250 bps` as the value it will store, before anything is sent.
   *Pinned by:* `admin-commissions.spec.ts` › `shows the exact basis points a typed percent will store`
-- [ ] **AC-3:** Given an open editor, when the admin saves `12.5`, then the service is called with
+- [x] **AC-3:** Given an open editor, when the admin saves `12.5`, then the service is called with
   `commissionBps: 1250` — never a percent — and the row shows the **response's** rate without a
   second list read. *Pinned by:* `admin-commissions.spec.ts` › `sends basis points and splices the response back into the list`
-- [ ] **AC-4:** Given an open editor with grounds typed, when the admin saves, then the grounds reach
+- [x] **AC-4:** Given an open editor with grounds typed, when the admin saves, then the grounds reach
   the service as a third argument (trimmed); given no grounds, the two-argument call is made so no
   blank header is sent. *Pinned by:* `admin-commissions.spec.ts` › `passes typed grounds to the write` and › `sends no grounds when the field is blank`
-- [ ] **AC-5:** Given grounds typed for one venue and then dismissed, when the admin opens any
+- [x] **AC-5:** Given grounds typed for one venue and then dismissed, when the admin opens any
   editor again, then the field is blank — an unstated reason stays unstated.
   *Pinned by:* `admin-commissions.spec.ts` › `does not carry a reason typed for one change into the next`
-- [ ] **AC-6:** Given a percent outside 0..100 or not a number, when the admin saves, then nothing is
+- [x] **AC-6:** Given a percent outside 0..100 or not a number, when the admin saves, then nothing is
   sent and the editor states why. *Pinned by:* `admin-commissions.spec.ts` › `refuses a rate outside 0–100% without sending anything`
-- [ ] **AC-7:** Given a rate equal to the venue's current one, when the admin saves, then nothing is
+- [x] **AC-7:** Given a rate equal to the venue's current one, when the admin saves, then nothing is
   sent — a no-op write would still schedule a superseding row and record an audit entry.
   *Pinned by:* `admin-commissions.spec.ts` › `refuses a change that is already the venue's rate`
-- [ ] **AC-8:** Given the write fails, when the response lands, then the row keeps its old rate, the
+- [x] **AC-8:** Given the write fails, when the response lands, then the row keeps its old rate, the
   editor stays open with what was typed, and the failure is announced.
   *Pinned by:* `admin-commissions.spec.ts` › `keeps the old rate and the typed draft when the write fails`
-- [ ] **AC-9:** Given the write answers `404`, when it lands, then the message says the venue is gone
+- [x] **AC-9:** Given the write answers `404`, when it lands, then the message says the venue is gone
   rather than the generic failure — a mistyped/stale id must fail loudly (A7 chose not to blur venue
   existence). *Pinned by:* `admin-commissions.spec.ts` › `reports a vanished venue distinctly from a generic failure`
-- [ ] **AC-10:** Given a non-admin (or signed-out) principal, when the page renders, then no venue
+- [x] **AC-10:** Given a non-admin (or signed-out) principal, when the page renders, then no venue
   list, no tab strip and no read at all. *Pinned by:* `admin-commissions.spec.ts` › `self-gates on the admin session`
-- [ ] **AC-11:** Given the editor opens, is dismissed, and a save completes, then focus lands on the
+- [x] **AC-11:** Given the editor opens, is dismissed, and a save completes, then focus lands on the
   percent field, returns to Edit, and returns to Edit respectively — never stranded on `<body>`
   (WCAG 2.4.3, the recurring #148/#351/#462/#505 class).
   *Pinned by:* `admin-commissions.spec.ts` › the three `moves focus…` cases, plus
@@ -94,17 +95,17 @@ stands in for `feature/<slug>` (`riviera-sdlc` remote-session addendum). Exists 
   `a failed write leaves focus on Save, not on the body`, and the three Retry-path cases added by
   F-3d (`offers a retry…`, `keeps focus on Retry when the retried load fails again`, `lands focus on
   the empty notice when the retry finds no venues`)
-- [ ] **AC-12:** Given the page rendered — list, open editor, and post-save — then axe reports no
+- [x] **AC-12:** Given the page rendered — list, open editor, and post-save — then axe reports no
   violations. *Pinned by:* `admin-commissions.a11y.spec.ts` (both cases) and
   `e2e/admin-commissions.e2e.ts` (`expectNoSeriousAxeViolations` at 360px)
-- [ ] **AC-13:** Given a real render at 360px, when an admin changes a rate, then the change survives
+- [x] **AC-13:** Given a real render at 360px, when an admin changes a rate, then the change survives
   a re-read of the list (the server really took it), the page never scrolls sideways, and the
   Commissions pill is the only one marked `aria-current`.
   *Pinned by:* `e2e/admin-commissions.e2e.ts`
-- [ ] **AC-14:** Given the console tab strip, when it renders, then `Commissions` appears in slot 2
+- [x] **AC-14:** Given the console tab strip, when it renders, then `Commissions` appears in slot 2
   and the rendered tabs remain a subsequence of `ADMIN_CONSOLE_TAB_ORDER`.
   *Pinned by:* the **unedited** `admin-console-tabs.spec.ts` › `renders tabs in the canonical console order (Q1, #348)`
-- [ ] **AC-15:** Given the promoted percent helper, when the two operator surfaces render a rate,
+- [x] **AC-15:** Given the promoted percent helper, when the two operator surfaces render a rate,
   then the output is byte-identical to the inline expressions they replace.
   *Pinned by:* `shared/commission-rate.spec.ts` plus the untouched `venue-tab.spec.ts` /
   `console-stats-strip.spec.ts` continuing to pass.
@@ -144,15 +145,15 @@ stands in for `feature/<slug>` (`riviera-sdlc` remote-session addendum). Exists 
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The explainer promises the takings strip agrees with the ledger — it does not (hand-off note 1: the ledger prices each **booking** at accrual, the strip applies one rate to a service date's aggregate) | high (it is the intuitive copy) | high — a false guarantee on a money surface | copy states the narrow guarantee (*a past service date never re-prices*) and names the divergence explicitly; a unit spec asserts the divergence sentence is present, so a later copy edit cannot silently drop it | this slice | open |
-| R-2 | The copy presents "reporting moves tomorrow" and "the list shows the new number now" as a contradiction (hand-off note 2) | med | med — an admin distrusts the surface | one paragraph holds both: the **live** rate moves immediately and is what the next accrual uses; **reporting** moves from tomorrow because invariant #4 closed today's bookings the evening before | this slice | open |
-| R-3 | Rounding enters through the wire (a percent, or a rounded bps, sent unseen) | med | high — invariant #5 | the wire value is always the integer bps; the editor renders the exact integer it will store as the admin types, so any rounding is visible before it is sent; `commissionPercentToBps` returns `null` (not a coerced 0) for junk | this slice | open |
-| R-4 | The `X-Audit-Reason` header carries a non-Latin-1 character and the browser aborts the request | med (Albanian/Greek text is natural here) | med — the write silently fails | sanitize `/[^\x20-\x7e\xa0-\xff]/g → ' '`, trim, and send the header **only** when non-blank — copied in spirit from `admin-venue-photos.service.ts` | this slice | open |
-| R-5 | A no-op save writes a superseding schedule row and an audit record for nothing | med | low | the editor refuses a rate equal to the venue's current one (AC-7) | this slice | open |
-| R-6 | An out-of-order write response paints one venue's rate onto another row | low (the write is per-row and keyed by id) | med | the splice matches on `venueId`, so a late response updates its own row or none; there is no shared "selected venue" the way the Photos tab has | this slice | open |
-| R-7 | The tab is appended out of slot and the Q1 order guard has to be edited | low | med — the guard exists to catch exactly this | insert at index 1 of `tabs`; **if `admin-console-tabs.spec.ts` needs an edit, the insertion is wrong** | this slice | open |
-| R-8 | RV-STYLE-1 (multi-line inline comments) — raised on eight consecutive PRs touching these files | high | low individually, but it is the repo's most recurrent finding | the rule was read **before** authoring; every explanation goes in TSDoc, inline comments are one line or absent | this slice | open |
-| R-9 | Promoting the percent helper changes operator-console output | low | med | the helper's body is the replaced expression verbatim; the parity ledger enumerates each call site; the two operator specs are left untouched so they act as the regression proof | this slice | open |
+| R-1 | The explainer promises the takings strip agrees with the ledger — it does not (hand-off note 1: the ledger prices each **booking** at accrual, the strip applies one rate to a service date's aggregate) | high (it is the intuitive copy) | high — a false guarantee on a money surface | copy states the narrow guarantee (*a past service date never re-prices*) and names the divergence explicitly; a unit spec asserts the divergence sentence is present, so a later copy edit cannot silently drop it | this slice | closed |
+| R-2 | The copy presents "reporting moves tomorrow" and "the list shows the new number now" as a contradiction (hand-off note 2) | med | med — an admin distrusts the surface | one paragraph holds both: the **live** rate moves immediately and is what the next accrual uses; **reporting** moves from tomorrow because invariant #4 closed today's bookings the evening before | this slice | closed |
+| R-3 | Rounding enters through the wire (a percent, or a rounded bps, sent unseen) | med | high — invariant #5 | the wire value is always the integer bps; the editor renders the exact integer it will store as the admin types, so any rounding is visible before it is sent; `commissionPercentToBps` returns `null` (not a coerced 0) for junk | this slice | closed |
+| R-4 | The `X-Audit-Reason` header carries a non-Latin-1 character and the browser aborts the request | med (Albanian/Greek text is natural here) | med — the write silently fails | sanitize `/[^\x20-\x7e\xa0-\xff]/g → ' '`, trim, and send the header **only** when non-blank — copied in spirit from `admin-venue-photos.service.ts` | this slice | closed |
+| R-5 | A no-op save writes a superseding schedule row and an audit record for nothing | med | low | the editor refuses a rate equal to the venue's current one (AC-7) | this slice | closed |
+| R-6 | An out-of-order write response paints one venue's rate onto another row | low (the write is per-row and keyed by id) | med | the splice matches on `venueId`, so a late response updates its own row or none; there is no shared "selected venue" the way the Photos tab has | this slice | closed |
+| R-7 | The tab is appended out of slot and the Q1 order guard has to be edited | low | med — the guard exists to catch exactly this | insert at index 1 of `tabs`; **if `admin-console-tabs.spec.ts` needs an edit, the insertion is wrong** | this slice | closed |
+| R-8 | RV-STYLE-1 (multi-line inline comments) — raised on eight consecutive PRs touching these files | high | low individually, but it is the repo's most recurrent finding | the rule was read **before** authoring; every explanation goes in TSDoc, inline comments are one line or absent | this slice | closed |
+| R-9 | Promoting the percent helper changes operator-console output | low | med | the helper's body is the replaced expression verbatim; the parity ledger enumerates each call site; the two operator specs are left untouched so they act as the regression proof | this slice | closed |
 
 ## Open questions / Assumptions
 
@@ -257,11 +258,9 @@ is the shared parse, not a validator.
 
 ## Execution status
 
-**Stage pointer:** `review gate` — CI green (7/7), Sonar gate green (0 new issues, 0 duplication,
-90.6% new-code coverage), overlay bank walked; the `/code-review` subagent fan-out is pending human
-authorization (this session's config blocks the Agent tool by default).
+**Stage pointer:** `merge close-out` — all gates run and clear. Merged via PR #525.
 
-**Next action:** get the `/code-review` run authorized, then close out the plan doc and merge.
+**Next action:** none — tick A8 on epic #348's checklist with PR #525.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -271,7 +270,7 @@ authorization (this session's config blocks the Agent tool by default).
 | 3 — the tab component (list, editor, explainer, focus) | ✅ | `29ac2eb` |
 | 4 — tab slot 2 + lazy route + Photos TSDoc correction | ✅ | `29ac2eb` |
 | 5 — a11y spec + mocked e2e at 360px | ✅ | `29ac2eb` |
-| 6 — review gate + close-out | ⏳ | `35733a8` |
+| 6 — review gate + close-out | ✅ | `35733a8`, `4902db5`, `e2dce3f`, `2dc384e`, `9505073` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -285,10 +284,10 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-2 | review — overlay walk (a11y, self) | The explainer panel was a `<div>` carrying `aria-labelledby`, which names nothing on a role-less element. | fixed-in-`35733a8` (`<section>`, so the name lands on a real region) |
 | F-3 | sonar gate | Quality Gate passed — 0 new issues, 0 accepted issues, 0 security hotspots, **0.0% duplication**, **90.6% coverage on new code** (bar: 0/0/≥80%). Issue list pulled, nothing to triage. | closed — no action |
 | F-3b | review — `/code-review` fan-out, bug scan (reviewer 2/5) | **Stranded focus on a failed save.** Disabling Save while the write is in flight blurs it to `<body>`; re-enabling it afterwards does not bring focus back. Open, dismiss and save-success all moved focus deliberately — the failure path, where the admin most needs to retry, was the one of four transitions left unhandled (WCAG 2.4.3, the recurring #148/#351/#462/#505 class). Shipped untested: the existing failure spec asserted the message and the retained draft, never `document.activeElement`. | fixed-in-`e2dce3f` (focus returns to Save; guard proven red-first in the unit spec, plus a real-browser e2e because jsdom does not reproduce the disabled-element blur) |
-| F-3c | review — `/code-review` fan-out, git-history reviewer (3/5) | **F-1's lock was half-applied.** Disabling Save and Cancel left both editor *fields* live, so a percent or reason typed while the request was in flight was silently discarded by the `closeEditor()` on success — the same "watch it change anyway" surprise F-1 set out to remove. `operator/pricing-tab.html` has disabled its own money input during a save since that file's first commit, so the shape was established, not invented; the Commissions editor was the only in-place numeric editor in the repo without it. F-1's own regression guard asserted the buttons only, so nothing would have caught a recurrence. | fixed-in-`FIELDLOCK` (both fields carry `[disabled]="busy()"`; the guard now asserts fields as well as buttons) |
-| F-3d | review — `/code-review` fan-out, prior-findings reviewer (4/5) | **A second stranded-focus site: Retry.** Pressing Retry after a failed list load sets `loading`, which swaps the branch and unmounts the button that was just activated, dropping focus to `<body>`. Unlike F-3b this one reproduces in jsdom, yet the existing retry spec asserted only the reloaded content. Same class as `create-venue-into-console.md` F-2. | fixed-in-`RETRYFIX` (a `retry()` handler lands focus on what the retry produced — the list, the empty notice, or Retry itself if it failed again; all three proven red-first) |
-| F-3e | review — `/code-review` fan-out, prior-findings reviewer (4/5) | **The plan doc's File-structure section under-counted the diff** (13 of 20 paths — the three committed screenshots, `app.spec.ts`, and the two comment-only sweep edits were absent). A documented recurring class: raised on #438, on #522 as F-5, and on Q1 as F-3. | fixed-in-`RETRYFIX` (all 20 paths listed with a one-line reason; the section's blockquote now states the rule and its four sightings, so the next slice inherits it) |
-| F-4 | CI gate | All 7 checks green on `a78d466`: backend build+test, frontend lint+test+build, e2e, CodeQL (java-kotlin + javascript-typescript), SonarCloud. | closed — no action |
+| F-3c | review — `/code-review` fan-out, git-history reviewer (3/5) | **F-1's lock was half-applied.** Disabling Save and Cancel left both editor *fields* live, so a percent or reason typed while the request was in flight was silently discarded by the `closeEditor()` on success — the same "watch it change anyway" surprise F-1 set out to remove. `operator/pricing-tab.html` has disabled its own money input during a save since that file's first commit, so the shape was established, not invented; the Commissions editor was the only in-place numeric editor in the repo without it. F-1's own regression guard asserted the buttons only, so nothing would have caught a recurrence. | fixed-in-`2dc384e` (both fields carry `[disabled]="busy()"`; the guard now asserts fields as well as buttons) |
+| F-3d | review — `/code-review` fan-out, prior-findings reviewer (4/5) | **A second stranded-focus site: Retry.** Pressing Retry after a failed list load sets `loading`, which swaps the branch and unmounts the button that was just activated, dropping focus to `<body>`. Unlike F-3b this one reproduces in jsdom, yet the existing retry spec asserted only the reloaded content. Same class as `create-venue-into-console.md` F-2. | fixed-in-`9505073` (a `retry()` handler lands focus on what the retry produced — the list, the empty notice, or Retry itself if it failed again; all three proven red-first) |
+| F-3e | review — `/code-review` fan-out, prior-findings reviewer (4/5) | **The plan doc's File-structure section under-counted the diff** (13 of 20 paths — the three committed screenshots, `app.spec.ts`, and the two comment-only sweep edits were absent). A documented recurring class: raised on #438, on #522 as F-5, and on Q1 as F-3. | fixed-in-`9505073` (all 20 paths listed with a one-line reason; the section's blockquote now states the rule and its four sightings, so the next slice inherits it) |
+| F-4 | CI gate | All 7 checks green on `a78d466`, and re-green on each later push: backend build+test, frontend lint+test+build, e2e, CodeQL (java-kotlin + javascript-typescript), SonarCloud. | closed — no action |
 
 ---
 
@@ -403,36 +402,47 @@ operator/admin-surface list, which enumerates every `operatorChrome` path)
 
 ## Acceptance-criteria verification (final)
 
-> Filled at close-out with the exact command and its result. Not a wish.
+Commands run at `9505073`, on Node 26 in `frontend/`:
 
-- [ ] **AC-1..AC-11:** `npx vitest run src/app/admin/admin-commissions.spec.ts`
-- [ ] **AC-12:** `npx vitest run src/app/admin/admin-commissions.a11y.spec.ts` + the e2e's axe calls
-- [ ] **AC-13:** `npx playwright test admin-commissions`
-- [ ] **AC-14:** `npx vitest run src/app/admin/admin-console-tabs.spec.ts` — file unmodified
-- [ ] **AC-15:** `npx vitest run src/app/shared/commission-rate.spec.ts src/app/operator/venue-tab.spec.ts`
-
-If any AC isn't verified by a passing test, write the test or admit it's not done.
+- [x] **AC-1..AC-11:** `npx ng test --watch=false --include="src/app/admin/admin-commissions.spec.ts"`
+  → **25 passed**. Three of them (the Retry-focus trio) and the save-failure focus guard were each
+  verified to FAIL with their fix reverted, so they pin behaviour rather than describe it.
+- [x] **AC-12:** `npx ng test --watch=false --include="src/app/admin/admin-commissions.a11y.spec.ts"`
+  → 2 passed; plus four `expectNoSeriousAxeViolations` calls at 360px in the e2e.
+- [x] **AC-13:** `npx playwright test --config playwright.a11y.config.ts admin-commissions`
+  → **6 passed** at 360px against a stateful mock.
+- [x] **AC-14:** `npx ng test --watch=false --include="src/app/admin/admin-console-tabs.spec.ts"`
+  → 9 passed. **No assertion in that file was touched** — the only edit is a comment the
+  docs-freshness sweep corrected (see F-3e's row and the File-structure note).
+- [x] **AC-15:** `commission-rate.spec.ts` (10) + the untouched `venue-tab.spec.ts` /
+  `console-stats-strip.spec.ts` → passed, which is the parity proof.
+- [x] **Whole suite, unscoped:** `npm test` → **1165 passed / 139 files**; `npm run test:a11y` →
+  **321 passed / 54 files**; the full mocked e2e suite → **138 passed**; `npm run lint` clean.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — frontend-only slice, no `platform/` file touched.
-- [ ] **Availability** section filled — justified `N/A`, with the reason.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — invariant #4 is *cited* by the explainer copy
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — frontend-only slice, no `platform/` file touched.
+- [x] **Availability** section filled — justified `N/A`, with the reason.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — invariant #4 is *cited* by the explainer copy
       as the reason reporting moves tomorrow; no cutoff arithmetic runs on the client.
-- [ ] **Modulith** section filled — `N/A — frontend-only`.
-- [ ] **Payment/payout** section filled — no money moves; the rate travels as exact integer bps.
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — no client-side date arithmetic; the copy names
+- [x] **Modulith** section filled — `N/A — frontend-only`.
+- [x] **Payment/payout** section filled — no money moves; the rate travels as exact integer bps.
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — no client-side date arithmetic; the copy names
       `Europe/Tirane` because the *server's* schedule boundary is in that zone.
-- [ ] Booking codes unguessable (invariant #7) — no booking code on this surface.
-- [ ] Flyway migration present for schema changes (invariant #12) — none in scope.
-- [ ] **Frontend** standards met; the Signal-Forms deviation is documented above; no `as any`.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` plus `riviera-review-overlay`.
+- [x] Booking codes unguessable (invariant #7) — no booking code on this surface.
+- [x] Flyway migration present for schema changes (invariant #12) — none in scope.
+- [x] **Frontend** standards met; the Signal-Forms deviation is documented above; no `as any`.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — citing `merged via PR #525`.
+- [x] **The review gate ran in full** — `riviera-review-overlay` layered onto the `code-review`
+      plugin's workflow, run at ladder rung 1 after the maintainer authorized the subagents: five
+      independent reviewers (CLAUDE.md adherence, bug scan, git-history context, prior-PR findings,
+      comment compliance). Four findings, all fixed and re-verified; two of the five reviewers
+      independently found the save-failure focus bug, which is the fan-out earning its cost.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
