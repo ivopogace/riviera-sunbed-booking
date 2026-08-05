@@ -7,7 +7,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
  *
  * <p>Ordered by what each tab <em>is</em>, not by when it shipped: the console home, then the money
  * the platform sets and pays, then the two outbox re-drive levers (Email and Refunds share
- * `AdminOutboxLever`), then moderation, then erasure, and Audit last because it is the record of
+ * `OutboxLever`), then moderation, then erasure, and Audit last because it is the record of
  * all of the above. Three slots are reserved for tabs that do not exist yet — <strong>Commissions
  * (A8)</strong>, <strong>Payouts (A6)</strong> and <strong>Privacy (A3)</strong>; the five that ship
  * today already sat in this order, so writing it down moved nothing.

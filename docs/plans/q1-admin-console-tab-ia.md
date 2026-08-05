@@ -109,7 +109,7 @@ The canonical order, derived from what each tab *is* rather than when it shipped
 | 2 | Commissions | money the platform **sets** | **A8** |
 | 3 | Payouts | money the platform **pays** | **A6** |
 | 4 | Email | outbox re-drive lever | shipped |
-| 5 | Refunds | outbox re-drive lever (shares `AdminOutboxLever` with Email) | shipped |
+| 5 | Refunds | outbox re-drive lever (shares `OutboxLever` with Email) | shipped |
 | 6 | Photos | content moderation (ADR-0013) | shipped |
 | 7 | Privacy | data-subject erasure | **A3** |
 | 8 | Audit | the record of all of the above; last because it is the meta-tab | shipped |
@@ -304,6 +304,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | review — RV-FE-E2E | The new guard spec located the strip with a CSS selector (`nav[aria-label=…] a`) and reached into `page.evaluate` with `document.querySelectorAll`, where the bank calls for role/label locators | **fixed** — one `tabPills()` helper on `getByRole('navigation', {name}).getByRole('link')`, reused by both assertions via `evaluateAll`. Re-ran lint + the 3 specs: green |
+| F-2 | review — `/code-review` fan-out (reviewers #1 and #5, independently) | The new `ADMIN_CONSOLE_TAB_ORDER` TSDoc named the shared Email/Refunds class `AdminOutboxLever`. **No such symbol exists** — that is the *filename* stem; the exported class is `OutboxLever` (`admin-outbox-lever.ts:31`), which every sibling references correctly. A freshly-introduced factual error in the one place this repo treats as load-bearing documentation, and invisible to lint/tsc because it sat in backticks rather than a `{@link}` | **fixed** `428f569` — corrected to `OutboxLever` in the TSDoc **and** in this plan's canonical-order table (the same wrong name had propagated to both). Left as backticks rather than `{@link}`: this component does not import `OutboxLever`, so the link would not resolve |
 
 ---
 
