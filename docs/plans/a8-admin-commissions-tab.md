@@ -251,14 +251,15 @@ is the shared parse, not a validator.
 
 ## Execution status
 
-**Stage pointer:** `plan` — plan doc authored, phases not started.
+**Stage pointer:** `implement (phase 2)`.
 
-**Next action:** phase 1 — write `shared/commission-rate.spec.ts` red, then the helper.
+**Next action:** add `VenueCommissionView` to `admin.model.ts` and write
+`admin-commissions.service.ts` — one type, one parse, sanitized grounds header.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ⏳ | |
-| 1 — shared percent↔bps helper + operator call sites | | |
+| 0 — plan doc | ✅ | `4781a50` |
+| 1 — shared percent↔bps helper + operator call sites | ⏳ | |
 | 2 — model + service (one type, one parse, grounds header) | | |
 | 3 — the tab component (list, editor, explainer, focus) | | |
 | 4 — tab slot 2 + lazy route + Photos TSDoc correction | | |
@@ -305,15 +306,16 @@ Skill-routing gate for what the fix touches *before* editing).
 `frontend/src/app/shared/commission-rate.spec.ts` · Modify
 `frontend/src/app/operator/console-stats-strip.ts`, `frontend/src/app/operator/venue-tab.ts`
 
-- [ ] **Step 1: Write the failing spec** — format is the two operator expressions verbatim; parse
+- [x] **Step 1: Write the failing spec** — format is the two operator expressions verbatim; parse
   rejects junk, blank, and out-of-range without coercing, and rounds to whole basis points.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/shared/commission-rate.spec.ts`
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include="src/app/shared/commission-rate.spec.ts"`
   → FAIL, module not found.
-- [ ] **Step 3: Minimal implementation** — the three functions.
-- [ ] **Step 4: Run it, verify it passes** — plus the two untouched operator specs as the parity proof.
-- [ ] **Step 5: Generalization-audit pass** — searched every `bps / 100` / `* 100` site.
-- [ ] **Step 6: Commit**
-- [ ] **Step 7: Update plan-doc execution status**
+- [x] **Step 3: Minimal implementation** — the three functions.
+- [x] **Step 4: Run it, verify it passes** — 39 passed across `commission-rate`, `venue-tab` and
+  `console-stats-strip`, the latter two untouched, which is the parity proof.
+- [x] **Step 5: Generalization-audit pass** — searched every `bps / 100` site; see the log.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status**
 
 ## Phase 2 — Model + service
 
