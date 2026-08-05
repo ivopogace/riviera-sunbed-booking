@@ -71,11 +71,31 @@ function buildView(b: MyBookingSummary): RowView {
   };
 }
 
-/** One list row: still fetching, loaded (its view-model ready), or a transient fetch failure. */
+/**
+ * One list row: still fetching, loaded (its view-model ready), or a transient fetch failure. A
+ * loaded row carries its raw ISO `bookingDate` — the chronological sort key (F4 #246) — separate
+ * from the presentation-only {@link RowView}.
+ */
 type Row =
   | { readonly code: string; readonly state: 'loading' }
-  | { readonly code: string; readonly state: 'loaded'; readonly view: RowView }
+  | { readonly code: string; readonly state: 'loaded'; readonly view: RowView; readonly bookingDate: string }
   | { readonly code: string; readonly state: 'failed' };
+
+/**
+ * Display order (F4 #246): loaded rows by booking date, newest first — the same key and direction
+ * as the backend account list (`booking_date DESC`) — with still-loading/failed rows (date not yet
+ * known) last, keeping their relative order (the sort is stable). Applied on every row resolution
+ * and merge, so async device rows move into place as their dates arrive; the F2 rule is untouched
+ * (rows still render immediately, then sort). ISO `YYYY-MM-DD` compares correctly as a string.
+ */
+function inDisplayOrder(rows: readonly Row[]): readonly Row[] {
+  const dateOf = (r: Row): string => (r.state === 'loaded' ? r.bookingDate : '');
+  return [...rows].sort((a, b) => {
+    const da = dateOf(a);
+    const db = dateOf(b);
+    return da < db ? 1 : da > db ? -1 : 0;
+  });
+}
 
 /**
  * How many per-code lookups may be in flight at once (#164). Under the ~6-connections-per-host
@@ -115,7 +135,9 @@ function isNotFound(error: unknown): boolean {
  * just vouched for. The stored code list itself is deliberately uncapped and unpruned — see
  * {@link DeviceLocalBookings#forget}.
  *
- * <p>Each row loads independently into a precomputed {@link RowView}. Rows link to the T5
+ * <p>Each row loads independently into a precomputed {@link RowView}, and the list stays
+ * chronologically sorted — newest booking date first, undated (still-loading/failed) rows last —
+ * re-sorting as each async row resolves ({@link inDisplayOrder}, F4 #246). Rows link to the T5
  * `/booking/:code` detail view. Money renders from integer minor units via {@link formatMoney}
  * (invariant #5); the PENDING_REQUEST deadline via {@link formatDeadline} (Europe/Tirane, invariant
  * #6). On a `404` a device-local row is dropped from view but the code is kept (invariant #7 — a 404
@@ -306,7 +328,12 @@ export class MyBookings {
         next: (account) => {
           account.forEach((b) => this.accountResolved.add(b.code));
           this.merge(
-            account.map((b) => ({ code: b.code, state: 'loaded' as const, view: buildView(b) })),
+            account.map((b) => ({
+              code: b.code,
+              state: 'loaded' as const,
+              view: buildView(b),
+              bookingDate: b.bookingDate,
+            })),
           );
         },
         error: () => this.accountError.set(true),
@@ -314,19 +341,20 @@ export class MyBookings {
   }
 
   /**
-   * Merge server rows in: replace the row for a code already listed, append the rest. Both branches
-   * earn their keep — <em>replace</em> answers a code still queued (its row is listed, loading),
-   * <em>append</em> restores one a transient 404 had removed from the list entirely. Either way the
-   * row comes from the same {@link buildView}, so it renders identically to a per-code fetch.
+   * Merge server rows in: replace the row for a code already listed, append the rest, then re-sort
+   * chronologically ({@link inDisplayOrder}, F4 #246). Both branches earn their keep —
+   * <em>replace</em> answers a code still queued (its row is listed, loading), <em>append</em>
+   * restores one a transient 404 had removed from the list entirely. Either way the row comes from
+   * the same {@link buildView}, so it renders identically to a per-code fetch.
    */
   private merge(incoming: readonly Row[]): void {
     this.rows.update((rows) => {
       const byCode = new Map(incoming.map((r) => [r.code, r]));
       const listed = new Set(rows.map((r) => r.code));
-      return [
+      return inDisplayOrder([
         ...rows.map((r) => byCode.get(r.code) ?? r),
         ...incoming.filter((r) => !listed.has(r.code)),
-      ];
+      ]);
     });
   }
 
@@ -344,7 +372,9 @@ export class MyBookings {
   private fetch(code: string): Observable<unknown> {
     this.setRow({ code, state: 'loading' });
     return this.bookings.getByCode(code).pipe(
-      tap((detail) => this.setRow({ code, state: 'loaded', view: buildView(detail) })),
+      tap((detail) =>
+        this.setRow({ code, state: 'loaded', view: buildView(detail), bookingDate: detail.bookingDate }),
+      ),
       catchError((e: unknown) => {
         if (this.accountResolved.has(code)) {
           // The account list already vouched for this booking — a failed lookup must not retract it.
@@ -363,6 +393,6 @@ export class MyBookings {
   }
 
   private setRow(row: Row): void {
-    this.rows.update((rows) => rows.map((r) => (r.code === row.code ? row : r)));
+    this.rows.update((rows) => inDisplayOrder(rows.map((r) => (r.code === row.code ? row : r))));
   }
 }

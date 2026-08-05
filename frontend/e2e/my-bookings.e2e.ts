@@ -159,7 +159,7 @@ const ACCOUNT_ROWS = [
   },
 ];
 
-function deviceDetail(code: string, venueName: string, positionNo: number) {
+function deviceDetail(code: string, venueName: string, positionNo: number, bookingDate = '2026-12-01') {
   return {
     code,
     status: 'CONFIRMED',
@@ -167,7 +167,7 @@ function deviceDetail(code: string, venueName: string, positionNo: number) {
     venueName,
     rowLabel: 'Front row · Sea view',
     positionNo,
-    bookingDate: '2026-12-01',
+    bookingDate,
     amount: { minorUnits: 4500, currency: 'EUR' },
     cancellable: true,
     beforeCutoff: true,
@@ -188,8 +188,10 @@ test('signed in: My bookings unions the account list with this device\'s codes, 
   // The account's server list: SHARED_CODE (also on this device) + ACCT_CODE (only on the account).
   await page.route(/\/api\/me\/bookings(\?.*)?$/, (route) => route.fulfill({ json: ACCOUNT_ROWS }));
   // This device's codes, fetched live by code.
+  // The device-only booking is the OLDEST (2026-11-20), so the chronological sort (F4 #246) must
+  // place the account-only row (2026-12-05) above both device rows.
   await page.route(new RegExp(`/api/bookings/${DEVICE_CODE}(\\?.*)?$`), (route) =>
-    route.fulfill({ json: deviceDetail(DEVICE_CODE, 'Device Bar', 9) }),
+    route.fulfill({ json: deviceDetail(DEVICE_CODE, 'Device Bar', 9, '2026-11-20') }),
   );
   await page.route(new RegExp(`/api/bookings/${SHARED_CODE}(\\?.*)?$`), (route) =>
     route.fulfill({ json: deviceDetail(SHARED_CODE, 'Miramar Beach Club', 2) }),
@@ -209,6 +211,11 @@ test('signed in: My bookings unions the account list with this device\'s codes, 
   await expect(rows.filter({ hasText: DEVICE_CODE })).toHaveCount(1);
   await expect(rows.filter({ hasText: ACCT_CODE })).toHaveCount(1); // account-only, merged in
   await expect(page.getByText('Sunset Bar')).toBeVisible();
+  // Chronological order, newest booking date first (F4 #246): the account-only row (12-05) sorts
+  // above the shared (12-01) and device-only (11-20) rows — global order, not device-then-account.
+  await expect(rows.nth(0)).toContainText(ACCT_CODE);
+  await expect(rows.nth(1)).toContainText(SHARED_CODE);
+  await expect(rows.nth(2)).toContainText(DEVICE_CODE);
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'my bookings signed-in union');
 });

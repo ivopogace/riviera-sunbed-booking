@@ -321,6 +321,37 @@ describe('MyBookings (device-local list, issue #139)', () => {
       expect(service.asked).toEqual(codes);
     });
 
+    it('re-sorts a device row into place when its date resolves, keeping undated rows last (F4 #246)', async () => {
+      seedCodes(['SLOW0001', 'FAST0001']);
+      const service = pendingService();
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+
+      // FAST resolves first: the still-loading SLOW row (date unknown) sits BELOW the dated row.
+      const fast = service.inFlight.get('FAST0001')!;
+      fast.next(detail('FAST0001', 'CONFIRMED', { bookingDate: '2026-11-15' }));
+      fast.complete();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const interim = [
+        ...host.querySelectorAll('[data-testid="booking-row"], [data-testid="booking-row-loading"]'),
+      ];
+      expect(interim[0].getAttribute('data-testid')).toBe('booking-row');
+      expect(interim[0].textContent).toContain('FAST0001');
+      expect(interim[1].getAttribute('data-testid')).toBe('booking-row-loading');
+
+      // SLOW then resolves with a NEWER date — it moves above FAST (re-sort on resolution).
+      const slow = service.inFlight.get('SLOW0001')!;
+      slow.next(detail('SLOW0001', 'CONFIRMED', { bookingDate: '2026-12-20' }));
+      slow.complete();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const codes = [...host.querySelectorAll('[data-testid="booking-row"] .code')].map((el) =>
+        el.textContent?.trim(),
+      );
+      expect(codes).toEqual(['SLOW0001', 'FAST0001']);
+    });
+
     it('issues no further per-code fetches after destroy', async () => {
       const codes = many('GONE');
       seedCodes(codes);
@@ -495,6 +526,25 @@ describe('MyBookings (device-local list, issue #139)', () => {
         expect(host.querySelector('[data-testid="booking-row-failed"]')).toBeNull();
       },
     );
+
+    it('orders the merged list chronologically (newest booking date first), account and device rows interleaved (F4 #246)', async () => {
+      seedCodes(['OLD00001', 'NEW00001']);
+      const service: Partial<BookingService> = {
+        ...stubService({
+          OLD00001: detail('OLD00001', 'CONFIRMED', { bookingDate: '2026-11-01' }),
+          NEW00001: detail('NEW00001', 'CONFIRMED', { bookingDate: '2026-12-10' }),
+        }),
+        myBookings: () => of([summary('MID00001', { bookingDate: '2026-12-01' })]),
+      };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+
+      // The account row sorts BETWEEN the device rows — global order, not device-then-account.
+      const codes = [...host.querySelectorAll('[data-testid="booking-row"] .code')].map((el) =>
+        el.textContent?.trim(),
+      );
+      expect(codes).toEqual(['NEW00001', 'MID00001', 'OLD00001']);
+    });
 
     it('retry re-loads the account list after a failure', async () => {
       seedCodes([]);
