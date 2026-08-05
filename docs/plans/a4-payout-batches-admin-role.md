@@ -54,30 +54,30 @@ remote branch stands in for `feature/a4-payout-batches-admin-role`** (`riviera-s
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given an authenticated operator that is **not** a platform admin, when it
+- [x] **AC-1:** Given an authenticated operator that is **not** a platform admin, when it
   calls `GET /api/admin/payout-batches?period=`, then the platform edge refuses it with
   `403` before the request reaches `PayoutReport#forPeriod` — no other venue's gross /
   commission / net is disclosed. *Pinned by:*
   `AdminPayoutSecurityIT.plainOperatorIsRefusedTheBatchReport`
-- [ ] **AC-2:** Given the same non-admin operator, when it calls
+- [x] **AC-2:** Given the same non-admin operator, when it calls
   `PATCH /api/admin/payout-batches/{id}` with a legal target status, then it is refused
   `403` before `PayoutReport#mark` runs — no venue's settlement state is advanced.
   *Pinned by:* `AdminPayoutSecurityIT.plainOperatorIsRefusedTheBatchStatusPatch`
-- [ ] **AC-3:** Given the same non-admin operator, when it calls
+- [x] **AC-3:** Given the same non-admin operator, when it calls
   `POST /api/admin/payout-batches?period=` (batch generation), then it is refused `403`.
   *Pinned by:* `AdminPayoutSecurityIT.plainOperatorIsRefusedBatchGeneration`
-- [ ] **AC-4:** Given a platform admin, when it calls the batch report for a period,
+- [x] **AC-4:** Given a platform admin, when it calls the batch report for a period,
   then it still succeeds (`200`) — the tightening denies the operator, it does not break
   the admin. *Pinned by:* `AdminPayoutSecurityIT.adminReadsTheBatchReport`
-- [ ] **AC-5:** Given a platform admin that owns none of the venues in the report, when it
+- [x] **AC-5:** Given a platform admin that owns none of the venues in the report, when it
   reads the report and patches a batch id, then neither call is refused on **ownership**
   grounds (`200`; `404 NO_SUCH_BATCH` for an absent id — a handler answer, not a gate
   answer) — invariant #13's `/api/admin/**` exemption still holds after the tightening.
   *Pinned by:* `CrossVenueDenialIT.adminPayoutBatchesAreRoleGatedNotOwnershipChecked`
-- [ ] **AC-6:** Given the whole repo, when `frontend/src` and `frontend/e2e` are searched
+- [x] **AC-6:** Given the whole repo, when `frontend/src` and `frontend/e2e` are searched
   for a caller of `/api/admin/payout-batches`, then there is none — so the tightening
   strands no UI. *Pinned by:* the AC-verification grep (no test; there is no code to test).
-- [ ] **AC-7:** Given the backend after the change, when the structural net runs
+- [x] **AC-7:** Given the backend after the change, when the structural net runs
   (`ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`), then
   it is green — the slice introduces no module-boundary or package-shape drift.
   *Pinned by:* those three classes.
@@ -122,11 +122,11 @@ remote branch stands in for `feature/a4-payout-batches-admin-role`** (`riviera-s
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **The tests stay green without proving anything.** The bootstrap `operator` account is the platform admin (V29 `UPDATE operator SET is_admin = TRUE`), so its session carries `ROLE_ADMIN` *and* `ROLE_OPERATOR`; every existing assertion on this surface rides that session and is invariant under the change. | **high** (confirmed) | high — ships an unproven security fix | Verified empirically before writing a line (§"The test trap"). Proof re-based onto a genuinely non-admin operator provisioned through the real `OperatorProvisioning`, the `AdminPhotoModerationIT`/`AdminPhotoTakedownIT` precedent. | agent | open |
-| R-2 | A caller outside `frontend/` (a script, a runbook, a deploy check) breaks on the new `403`. | low | med | AC-6 greps `frontend/src` + `frontend/e2e`; the wider tree grep in the docs sweep found only prose, no client. The only human caller is a platform admin with `curl`, who keeps access. | agent | open |
+| R-1 | **The tests stay green without proving anything.** The bootstrap `operator` account is the platform admin (V29 `UPDATE operator SET is_admin = TRUE`), so its session carries `ROLE_ADMIN` *and* `ROLE_OPERATOR`; every existing assertion on this surface rides that session and is invariant under the change. | **high** (confirmed) | high — ships an unproven security fix | Verified empirically before writing a line (§"The test trap"). Proof re-based onto a genuinely non-admin operator provisioned through the real `OperatorProvisioning`, the `AdminPhotoModerationIT`/`AdminPhotoTakedownIT` precedent. | agent | **closed** — the three new tests failed red (403 vs 200/200/404) and pass green; the six pre-existing ones never moved, which is the risk, demonstrated. |
+| R-2 | A caller outside `frontend/` (a script, a runbook, a deploy check) breaks on the new `403`. | low | med | AC-6 greps `frontend/src` + `frontend/e2e`; the wider tree grep in the docs sweep found only prose, no client. The only human caller is a platform admin with `curl`, who keeps access. | agent | **closed** — re-verified at implementation time: zero matches in either tree. |
 | R-3 | **Full-suite-only failure: the per-username login budget.** `riviera.ratelimit.username.capacity=15 / PT15M` is keyed on the submitted username in the *cached* Spring context, and 15 IT classes share the `test-operator-pw` context (`riviera-local-debug` §"full-suite-only failure class", #127). Adding logins can only be verified by CI. | med | med | The new plain operator gets its **own** username (`payout-plain-op`) → its own bucket. And `AdminPayoutSecurityIT`'s admin login moves from `@BeforeEach` (one per test) to on-demand per test, which **reduces** the shared `operator` bucket's pressure rather than adding to it. Verified by the PR's CI run, not locally. | agent | open |
-| R-4 | The new `PATCH` leg in `CrossVenueDenialIT` writes an `admin_audit_record` row (it is a mutating `/api/admin/**` action past the gate) and pollutes a sibling IT. | low | low | `AdminAuditTrailIT` truncates `admin_audit_record` in its own `@BeforeEach`; no other test asserts on a global row count. | agent | open |
-| R-5 | `CrossVenueDenialIT` mocks `CurrentOperator`; dropping the `actingAs(...)` stub from the payout test could NPE if some filter resolves the operator eagerly. | low | low | The payout-batch path performs no ownership check, so `CurrentOperator` is never consulted — confirmed by running the class scoped. | agent | open |
+| R-4 | The new `PATCH` leg in `CrossVenueDenialIT` writes an `admin_audit_record` row (it is a mutating `/api/admin/**` action past the gate) and pollutes a sibling IT. | low | low | `AdminAuditTrailIT` truncates `admin_audit_record` in its own `@BeforeEach`; no other test asserts on a global row count. | agent | **closed** — `AdminAuditTrailIT` green (4/4) alongside the new PATCH leg. |
+| R-5 | `CrossVenueDenialIT` mocks `CurrentOperator`; dropping the `actingAs(...)` stub from the payout test could NPE if some filter resolves the operator eagerly. | low | low | The payout-batch path performs no ownership check, so `CurrentOperator` is never consulted — confirmed by running the class scoped. | agent | **closed** — `CrossVenueDenialIT` green 25/25 with the `actingAs` stub dropped; no NPE. |
 
 ## Open questions / Assumptions
 
@@ -298,16 +298,32 @@ authenticated caller receives: `200`/`404`/`409` → `403`. There is no client t
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 green, entering phase 2`
+**Stage pointer:** `PR — draft #521 open, slice built; marking ready for review → review gate → sonar gate`
 
-**Next action:** Phase 2 — correct `CrossVenueDenialIT`'s exemption assertion onto its real
-actor, add the `PATCH` leg, patch the design canvas (D-6), run the scoped set + structural net.
+**Next action:** Mark PR #521 ready for review, then run the review gate per `riviera-sdlc`
+`references/pr-gates.md` §1 (the `/code-review` ladder + `riviera-review-overlay`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Red: the plain-operator refusal | ✅ | `4bf31d9` |
-| 1 — Green: the matcher + the Javadoc that described it | ⏳ | |
-| 2 — The ownership-exemption assertion + docs sweep | | |
+| 1 — Green: the matcher + the Javadoc that described it | ✅ | `17e7b12` |
+| 2 — The ownership-exemption assertion + docs sweep | ✅ | `2e81eb1` |
+
+**Scoped verification** (`gradle test`, Docker present so no IT was skipped):
+
+```
+AdminPayoutSecurityIT          tests=9  failures=0 errors=0 skipped=0
+CrossVenueDenialIT             tests=25 failures=0 errors=0 skipped=0
+AdminPayoutBatchControllerTest tests=4  failures=0 errors=0 skipped=0
+AdminAuditTrailIT              tests=4  failures=0 errors=0 skipped=0
+ModularityTests                tests=1  failures=0 errors=0 skipped=0
+JdbcOnlyArchitectureTests      tests=2  failures=0 errors=0 skipped=0
+PackageShapeArchitectureTests  tests=4  failures=0 errors=0 skipped=0
+```
+
+Those three are every test file in the tree that references `payout-batches`
+(`grep -rln "payout-batches" platform/src/test`), so the endpoint's coverage is fully
+re-run. The full suite — and R-3's per-username budget in particular — is CI's job.
 
 **Phase 0 red evidence** (`gradle test --tests "*AdminPayoutSecurityIT*"`, 9 tests, 3
 failed — the six pre-existing tests pass unchanged, confirming R-1 once more):
@@ -356,24 +372,24 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `platform/src/test/java/ai/riviera/platform/payout/AdminPayoutSecurityIT.java`
 
-- [ ] **Step 1: Write the failing tests** — provision a genuinely non-admin operator
+- [x] **Step 1: Write the failing tests** — provision a genuinely non-admin operator
   (`OperatorProvisioning` + `PasswordEncoder`, the `AdminPhotoModerationIT` pattern), give
   it a session of its own, and assert `403` on the GET, the POST and the PATCH. Rename the
   four tests whose names claim the wrong role, and make the admin session on-demand rather
   than `@BeforeEach` (R-3).
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `gradle --no-daemon --console=plain test --tests "*AdminPayoutSecurityIT*"` → the three
   new tests FAIL, each expecting `403` and receiving the pre-change success status
   (`200` for the GET/POST, `404 NO_SUCH_BATCH` for the PATCH).
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Commit the red phase** —
+- [x] **Step 3: Commit the red phase** —
   `git commit -m "Pin the plain-operator refusal on the payout-batch admin surface (#348)"`,
   labelled as a deliberate red-TDD push in the PR (the `riviera-sdlc` CI-gate exemption).
 
-- [ ] **Step 4: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -381,7 +397,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `SecurityConfig.java:133,139-142,369-372` · `AdminPayoutBatchController.java:24-34` · `AdminAuditFilter.java:35-37`
 
-- [ ] **Step 1: Flip the matcher**
+- [x] **Step 1: Flip the matcher**
 
 ```java
 // The weekly BKT payout-batch report (U9) — ADMIN-only across all methods
@@ -391,23 +407,23 @@ Skill-routing gate for what the fix touches *before* editing).
 .requestMatchers(PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH).hasRole(ADMIN_ROLE)
 ```
 
-- [ ] **Step 2: Correct the three Javadoc sites** — D-1/D-3 on the `SecurityConfig`
+- [x] **Step 2: Correct the three Javadoc sites** — D-1/D-3 on the `SecurityConfig`
   constants, D-4 on the controller (including the false CSRF-exempt clause), D-5 on
   `AdminAuditFilter` (delete the carve-out; the namespace is now uniformly ADMIN-gated).
 
-- [ ] **Step 3: Run it, verify it passes** —
+- [x] **Step 3: Run it, verify it passes** —
   `gradle --no-daemon --console=plain test --tests "*AdminPayoutSecurityIT*"` → PASS.
 
 > Scope (end-of-phase regression): broaden to the touched module's package.
 
-- [ ] **Step 4: Generalization-audit pass** — the pattern is "a stated role that the code
+- [x] **Step 4: Generalization-audit pass** — the pattern is "a stated role that the code
   no longer has". Search the tree for every assertion of this endpoint's gate; decide
   patch-vs-leave per `riviera-docs-freshness` scope discipline. Record in the log below.
 
-- [ ] **Step 5: Commit** —
+- [x] **Step 5: Commit** —
   `git commit -m "Gate /api/admin/payout-batches to ROLE_ADMIN (#348)"`
 
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -415,16 +431,16 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `CrossVenueDenialIT.java:~425-432` · `docs/design/riviera-admin-console.dc.html:54,64`
 
-- [ ] **Step 1: Correct and extend the exemption assertion** — rename
+- [x] **Step 1: Correct and extend the exemption assertion** — rename
   `adminPayoutBatchesIsNotOwnershipChecked` →
   `adminPayoutBatchesAreRoleGatedNotOwnershipChecked`, drop the misleading
   `actingAs(operatorA)` framing (the session is and always was the bootstrap admin's), add
   the `PATCH` leg, and point at `AdminPayoutSecurityIT` for the plain-operator refusal.
 
-- [ ] **Step 2: Patch the design canvas** (D-6) — the endpoint map's role label, and
+- [x] **Step 2: Patch the design canvas** (D-6) — the endpoint map's role label, and
   header decision 3 marked done by A4 rather than deleted.
 
-- [ ] **Step 3: Run the scoped set + the structural net** —
+- [x] **Step 3: Run the scoped set + the structural net** —
 
 ```bash
 gradle --no-daemon --console=plain test \
@@ -434,10 +450,10 @@ gradle --no-daemon --console=plain test \
   --tests "*PackageShapeArchitectureTests*"
 ```
 
-- [ ] **Step 4: Commit** —
+- [x] **Step 4: Commit** —
   `git commit -m "Re-base the payout-batch exemption test on the admin actor + docs sweep (#348)"`
 
-- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -454,30 +470,30 @@ gradle --no-daemon --console=plain test \
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/2/3:** Run `gradle test --tests "*AdminPayoutSecurityIT*"` → `plainOperatorIsRefusedTheBatchReport`, `plainOperatorIsRefusedTheBatchStatusPatch`, `plainOperatorIsRefusedBatchGeneration` pass.
-- [ ] **AC-4:** same run → `adminReadsTheBatchReport` passes.
-- [ ] **AC-5:** Run `gradle test --tests "*CrossVenueDenialIT*"` → `adminPayoutBatchesAreRoleGatedNotOwnershipChecked` passes.
-- [ ] **AC-6:** Run `grep -rn "payout-batches\|payoutBatch" frontend/src frontend/e2e` → no matches.
-- [ ] **AC-7:** Run the structural net → green.
+- [x] **AC-1/2/3:** Ran `gradle test --tests "*AdminPayoutSecurityIT*"` → 9 tests, 0 failures, 0 skipped; `plainOperatorIsRefusedTheBatchReport`, `plainOperatorIsRefusedTheBatchStatusPatch`, `plainOperatorIsRefusedBatchGeneration` pass (they failed 403-vs-200/200/404 at `4bf31d9`). Verified at `17e7b12`.
+- [x] **AC-4:** same run → `adminReadsTheBatchReport` passes.
+- [x] **AC-5:** Run `gradle test --tests "*CrossVenueDenialIT*"` → `adminPayoutBatchesAreRoleGatedNotOwnershipChecked` passes.
+- [x] **AC-6:** Run `grep -rn "payout-batches\|payoutBatch" frontend/src frontend/e2e` → no matches.
+- [x] **AC-7:** Run the structural net → green.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (`N/A` justified); no availability path touched (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module imports added; no event payload changed (invariant #11).
-- [ ] **Payment/payout** section filled (`N/A` justified); ledger arithmetic and exactly-once accrual untouched (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — untouched.
-- [ ] Booking codes unguessable (invariant #7) — untouched.
-- [ ] No schema change, so no Flyway migration is due (invariant #12).
-- [ ] **Frontend** — no surface touched; the no-caller claim is verified, not assumed (AC-6).
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with a reason).
-- [ ] **Close-out written in THIS PR** — final plan state committed here citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (`N/A` justified); no availability path touched (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module imports added; no event payload changed (invariant #11).
+- [x] **Payment/payout** section filled (`N/A` justified); ledger arithmetic and exactly-once accrual untouched (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — untouched.
+- [x] Booking codes unguessable (invariant #7) — untouched.
+- [x] No schema change, so no Flyway migration is due (invariant #12).
+- [x] **Frontend** — no surface touched; the no-caller claim is verified, not assumed (AC-6).
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with a reason).
+- [x] **Close-out written in THIS PR** — final plan state committed here, **merged via PR #521**; no docs-only follow-up needed.
 - [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
