@@ -259,6 +259,34 @@ describe('AdminCommissions', () => {
     expect(text(fixture, 'admin-commission-error-7')).toContain('Nothing was changed');
   });
 
+  /**
+   * Cancel is locked while the write is in flight, not just Save. Leaving it live let an admin
+   * dismiss the editor mid-request and then watch the row change anyway when the response landed —
+   * the server had taken the write, so undoing it locally would have been the worse lie.
+   */
+  it('locks the editor while a write is in flight', async () => {
+    const service = serviceStub();
+    let resolveWrite!: (value: VenueCommissionView) => void;
+    service.setCommission.mockImplementation(
+      () => new Promise<VenueCommissionView>((resolve) => (resolveWrite = resolve)),
+    );
+    const fixture = await render(authStub(), service);
+
+    await typeRate(fixture, 7, '12.5');
+    byTestId<HTMLButtonElement>(fixture, 'admin-commission-save-7')!.click();
+    fixture.detectChanges();
+
+    expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-cancel-7')!.disabled).toBe(true);
+    expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-save-7')!.disabled).toBe(true);
+    expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-edit-9')!.disabled).toBe(true);
+
+    resolveWrite({ ...VENUES[0], commissionBps: 1250 });
+    await settle(fixture);
+
+    expect(text(fixture, 'admin-commission-rate-7')).toBe('12.5%');
+    expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-edit-9')!.disabled).toBe(false);
+  });
+
   it('reports a vanished venue distinctly from a generic failure', async () => {
     const service = serviceStub();
     service.setCommission.mockRejectedValueOnce(problem(404, 'NO_SUCH_VENUE'));

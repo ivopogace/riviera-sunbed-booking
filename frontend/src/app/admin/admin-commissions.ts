@@ -221,8 +221,9 @@ import { VenueCommissionView } from './admin.model';
                         type="button"
                         [attr.data-testid]="'admin-commission-cancel-' + venue.venueId"
                         [attr.aria-label]="'Cancel the rate change for ' + venue.name"
+                        [disabled]="busy()"
                         (click)="cancelEdit(venue)"
-                        class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink-soft)"
+                        class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink-soft) disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         Cancel
                       </button>
@@ -262,7 +263,7 @@ import { VenueCommissionView } from './admin.model';
           {{ notice() }}
         </p>
 
-        <div
+        <section
           appCardGlass
           class="mt-2 grid gap-5 rounded-[14px] p-5 sm:grid-cols-2"
           data-testid="admin-commissions-explainer"
@@ -338,7 +339,7 @@ import { VenueCommissionView } from './admin.model';
               just doesn't offer a way to move it.
             </p>
           </section>
-        </div>
+        </section>
       }
     </section>
   `,

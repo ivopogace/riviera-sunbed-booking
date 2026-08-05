@@ -251,9 +251,11 @@ is the shared parse, not a validator.
 
 ## Execution status
 
-**Stage pointer:** `PR` — draft open, all phases built and green locally.
+**Stage pointer:** `review gate` — CI green (7/7), Sonar gate green (0 new issues, 0 duplication,
+90.6% new-code coverage), overlay bank walked; the `/code-review` subagent fan-out is pending human
+authorization (this session's config blocks the Agent tool by default).
 
-**Next action:** mark the PR ready for review, then run the Review gate and the Sonar gate.
+**Next action:** get the `/code-review` run authorized, then close out the plan doc and merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -263,7 +265,7 @@ is the shared parse, not a validator.
 | 3 — the tab component (list, editor, explainer, focus) | ✅ | `29ac2eb` |
 | 4 — tab slot 2 + lazy route + Photos TSDoc correction | ✅ | `29ac2eb` |
 | 5 — a11y spec + mocked e2e at 360px | ✅ | `29ac2eb` |
-| 6 — review gate + close-out | | |
+| 6 — review gate + close-out | ⏳ | `198433c` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -273,7 +275,10 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review — overlay walk (RV-FE-1, self) | Cancel stayed enabled while a write was in flight, so an admin could dismiss the editor mid-request and then watch the row change anyway when the response landed. Undoing it locally would be the worse lie — the server had taken the write — so the fix is to lock the editor, not to revert. | fixed-in-`198433c` |
+| F-2 | review — overlay walk (a11y, self) | The explainer panel was a `<div>` carrying `aria-labelledby`, which names nothing on a role-less element. | fixed-in-`198433c` (`<section>`, so the name lands on a real region) |
+| F-3 | sonar gate | Quality Gate passed — 0 new issues, 0 accepted issues, 0 security hotspots, **0.0% duplication**, **90.6% coverage on new code** (bar: 0/0/≥80%). Issue list pulled, nothing to triage. | closed — no action |
+| F-4 | CI gate | All 7 checks green on `a78d466`: backend build+test, frontend lint+test+build, e2e, CodeQL (java-kotlin + javascript-typescript), SonarCloud. | closed — no action |
 
 ---
 
