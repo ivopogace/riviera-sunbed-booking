@@ -56,7 +56,10 @@ query) · `angular-developer` + `frontend/.claude/CLAUDE.md` + the **angular-cli
 documented shape for read-then-write DOM work, per A8 hand-off note 4; Signal Forms for the one
 email field, matching `booking-dialog`/`forgot-password`) · `playwright-cli` (the CI-safe mocked
 spec, `page.route` recording every request so "no second POST" and "the 204 told us nothing" are
-assertions about the wire, not about local UI).
+assertions about the wire, not about local UI) · `riviera-local-debug` (scoped `ng test --include`
+per spec rather than the bare task, and the pre-installed-Chromium recipe — this environment's
+browser revision does not match the pinned one, so the e2e runs under the config's own
+`PW_CHROMIUM_EXECUTABLE` escape hatch instead of re-downloading).
 
 **Branch:** `claude/admin-privacy-tab-a3-57rcu4` — the cloud session's designated remote branch
 stands in for `feature/<slug>` (`riviera-sdlc` remote-session addendum). Exists before phase 0.
@@ -253,6 +256,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-1 | docs-freshness (counting sweep) | `e2e/admin-console-tabs.e2e.ts` header still said "A8 has since landed the sixth" — this slice lands the seventh | fixed |
 | F-2 | docs-freshness (counting sweep) | `admin-console-tabs.spec.ts` TSDoc still predicted "will do the same for A3 and A6"; A3 has now done it | fixed |
 | F-3 | full unit suite | `app.spec.ts`'s `OPERATOR_SURFACE_PATHS` registry must list every admin route — `admin/privacy` was missing, so the legacy-surface assertion failed. The same edit A8 made for `admin/commissions` | fixed |
+| F-4 | review gate (RV-PROC-1, self-caught on the overlay walk) | `riviera-local-debug` was loaded and its recipes used (scoped `ng test --include`, the `PW_CHROMIUM_EXECUTABLE` escape hatch for a browser revision that does not match the pinned one) but was absent from *Skills consulted* — the exact omission class RV-PROC-1 exists for | fixed |
 
 ---
 
