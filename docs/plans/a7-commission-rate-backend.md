@@ -39,7 +39,7 @@ epic's scope note 3 is the real design work and that A8/Q1 make this slice backe
 open-questions register instead of a one-line "add rate history") · `tdd` (each phase is
 red→green: the failing takings/rate-schedule test before the migration and the service) ·
 `riviera-review-overlay` (review gate — ran at ready-for-review over PR #522; contributed RV-STYLE-1 and RV-PROC-1, and RV-BE-9/#13's admin-exemption check) · `riviera-docs-freshness`
-(**ran** over `origin/main..HEAD` at phase 4 — patched the `VenueRates` Javadoc, the two "display-only" notes, `RESPONSIBILITIES.md` §`venue`/§`payout` and `CLAUDE.md`'s venue row; the row's length was then cut again as F-4) ·
+(**ran** over `origin/main..HEAD` at phase 4 — patched the `VenueRates` Javadoc, the two "display-only" notes, `RESPONSIBILITIES.md` §`venue`/§`payout` and `CLAUDE.md`'s venue row; the row's length was then cut again as F-4). **Counting sweep** (procedure step 2b) then found one statement the diff could not show: `CONTEXT.md`'s `Commission` glossary entry said only "rate stored per venue", with no notion of *when* a rate applied — incomplete once the domain gained an effective-dated schedule. Extended, plus a new `Rate schedule` entry. Checked and cleared: `CONTEXT.md`'s "both … share one port" (photo-scoped, still true), ADR-0008's ownership-free notes (photo-scoped), and every doc citing V38 as the highest migration (only plan docs, which are historical records) ·
 `riviera-modulith` (placed the ownership-free operations on their own `VenueCommissionAdministration`
 port per the #511 precedent, kept `commissionBpsOn` on the role-split `VenueRates` rather than
 regrowing `VenueCatalog`, and confirmed no new `allowedDependencies` grant is needed) ·
@@ -330,10 +330,11 @@ epic's Q1 (tab information architecture); the task brief scopes A7 to the backen
 
 ## Execution status
 
-**Stage pointer:** `merge close-out` — review gate run (3 findings, all fixed), Sonar gate green with an empty issue list
+**Stage pointer:** `DONE` — **merged via PR #522**. CI green on `f80076e` (run 31017941010, all 7 checks), review gate run (6 findings: 5 fixed, 1 declined with reasons), Sonar gate green with a verified-empty issue list (`new_lines: 601`, so the zero is a real analysis, not the false-clean read).
 
-**Next action:** Confirm CI green on the review-fix push, then merge PR #522 and tick A7 on epic
-#348's checklist with the PR number.
+**Next action:** None — slice complete. Post-merge, GitHub-only: tick A7 on epic #348's checklist
+citing PR #522, and (optionally) open the follow-up issue F-3 suggests for an authoring-time
+RV-STYLE-1 guard.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -342,7 +343,8 @@ epic's Q1 (tab information architecture); the task brief scopes A7 to the backen
 | 2 — `VenueCommissionAdministration` port + service (venue) | ✅ | `7d89c0b` |
 | 3 — Admin endpoints + ADMIN gate + wire contract | ✅ | `7d89c0b` |
 | 4 — Docs sweep (`riviera-docs-freshness`) + close-out | ✅ | `7d89c0b` |
-| 5 — Review-gate fixes (F-2 timezone, F-3 RV-STYLE-1, F-4 CLAUDE.md row) | ✅ | `HEAD` |
+| 5 — Review-gate fixes (F-2 timezone, F-3 RV-STYLE-1, F-4 CLAUDE.md row) | ✅ | `d4b034d` |
+| 6 — Plan-doc staleness (F-5) + Angular client notes + `CONTEXT.md` glossary | ✅ | `5d69a1b`, `f80076e`, close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

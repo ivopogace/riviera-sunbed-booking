@@ -91,7 +91,17 @@ model in `docs/architecture/domain-model.md`.
 
 ## Money
 
-- **Commission** — the platform's per-booking cut; rate stored per venue.
+- **Commission** — the platform's per-booking cut; rate stored per venue, in exact-integer basis
+  points. Two readings of "the rate", and which one applies depends on the question (A7 #348):
+  the **live rate** governs every *decision* made from now on (an accrual, a refund computation),
+  while the **rate schedule** records which service dates a rate applied to, for figures that
+  describe days already sold. Only the platform admin may change it — a venue does not set its own
+  commission (O8 #177).
+- **Rate schedule** — the per-venue record of which commission rate applied to bookings served on
+  which dates. A change is **forward-only**: it pins the rate it supersedes and takes effect for
+  reporting from the next service date, so a day already sold never re-prices and the payout ledger
+  it must agree with is never rewritten (invariant #9). A venue whose rate has never changed has no
+  schedule at all — its live rate is what applied throughout.
 - **Payout ledger** — the per-venue record of what is owed (booking amounts minus
   commission), entry-per-booking, reversed on refund.
 - **Accrual** — a payout-ledger entry that adds what the platform owes a venue for a
