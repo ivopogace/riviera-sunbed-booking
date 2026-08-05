@@ -23,8 +23,10 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
  *
  * <p>Suspension is destructive and easy to misclick, so it takes a deliberate second step: the row's
  * Suspend button becomes an inline `Suspend <username>?` confirmation in place — no modal, so nothing
- * to focus-trap and no context switch away from the row being acted on. Suspended accounts stay in the
- * list (badged) with a Reinstate action, so suspension is never a one-way door.
+ * to focus-trap and no context switch away from the row being acted on. Since #519 the confirmation
+ * also collects optional grounds, which ride the `X-Audit-Reason` header into the platform's admin
+ * audit trail (#507). Suspended accounts stay in the list (badged) with a Reinstate action, so
+ * suspension is never a one-way door.
  *
  * <p>The signed-in admin's own row offers no Suspend at all: the server refuses a self-suspend with
  * {@code 409 CANNOT_SUSPEND_SELF} and that refusal is the real authority — this just avoids offering
@@ -311,7 +313,9 @@ export class AdminOperators {
   /**
    * Arm the confirmation and put focus on it. Arming and dismissing each destroy the element that
    * was just activated, which strands keyboard/AT focus on `<body>` unless it is moved deliberately
-   * (WCAG 2.4.3 — the recurring #148/#351/#462 class, fixed the same way in #505).
+   * (WCAG 2.4.3 — the recurring #148/#351/#462 class, handled as in #505). Only these two
+   * transitions are covered here: #505's third — parking focus once the action settles — spans all
+   * four row actions on this page and is deferred with that class (#519 plan, Non-goals).
    */
   protected askToSuspend(id: number): void {
     this.confirmingId.set(id);

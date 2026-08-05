@@ -189,6 +189,7 @@ describe('AdminOperators', () => {
     (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(document.activeElement).toBe(
       host.querySelector('[data-testid="admin-suspend-confirm-7"]'),
@@ -204,6 +205,7 @@ describe('AdminOperators', () => {
     (host.querySelector('[data-testid="admin-suspend-cancel-7"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(document.activeElement).toBe(host.querySelector('[data-testid="admin-suspend-7"]'));
   });

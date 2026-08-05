@@ -25,7 +25,12 @@ describe('AdminOperatorsService', () => {
     const req = http.expectOne(base);
     expect(req.request.method).toBe('GET');
     req.flush([
-      { id: 7, username: 'alice', contactEmail: 'a@v.example', registeredAt: '2026-07-18T00:00:00Z' },
+      {
+        id: 7,
+        username: 'alice',
+        contactEmail: 'a@v.example',
+        registeredAt: '2026-07-18T00:00:00Z',
+      },
     ]);
 
     const result = await promise;
@@ -61,7 +66,9 @@ describe('AdminOperatorsService', () => {
 
   it('sends no header when the grounds are blank or absent (AC-2)', async () => {
     const withoutReason = service.suspend(7);
-    http.expectOne(`${base}/7/suspend`).flush(null);
+    const bare = http.expectOne(`${base}/7/suspend`);
+    expect(bare.request.headers.has('X-Audit-Reason')).toBe(false);
+    bare.flush(null);
     await withoutReason;
 
     const blankReason = service.suspend(7, '   ');

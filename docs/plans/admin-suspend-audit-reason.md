@@ -86,7 +86,7 @@ The confirmation cluster is *modified*, not replaced; the ledger keeps its behav
 | First Suspend click only arms; no server call | preserved | `confirmingId` arming unchanged; spec re-asserts |
 | Confirm click calls `suspend(id)` then reconciles both lists | preserved (signature widens) | `act()` unchanged; service gains optional 2nd arg |
 | Cancel disarms without a server call, Suspend button returns | preserved | unchanged; spec re-asserts |
-| Buttons disable while any action is in flight (`actingId`) | preserved | input is not disabled mid-flight — it is gone (cluster closes on confirm), matching photos |
+| Buttons disable while any action is in flight (`actingId`) | preserved | the cluster (incl. the input) closes the instant confirm is clicked — pre-existing `act()` behavior from #128, **diverging from photos**, which keeps its cluster visible-disabled through the round trip; both clear the grounds after settle, so a failed request loses the typed text in either pattern. Accepted: matching photos means reordering the shared `act()` path used by all four actions (review F-3) |
 | Focus after arm/cancel | changed (was: stranded on `<body>`) | #505 `focusAfterRender` pattern — arm → confirm button, cancel → Suspend button |
 
 ## Risk register
@@ -164,6 +164,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | review (code-review fan-out, CLAUDE.md-compliance agent) | AC-5 assertion line exceeds Prettier printWidth 100 in `admin-operators.spec.ts` | fixed — wrapped; `prettier --check` clean, spec green |
+| F-2 | review (git-history agent) | `askToSuspend` docstring cited #505 without noting the deferred third (post-settle) transition | fixed — docstring names the deferral and its home (Non-goals) |
+| F-3 | review (git-history agent) | Behavior-parity ledger claimed the instant cluster-close "matches photos" — photos keeps its cluster visible-disabled mid-flight | fixed — ledger row corrected; behavior itself pre-existing (#128) and deliberately unchanged |
+| F-4 | review (code-comment agent) | Class TSDoc omitted the new grounds capability (photos documents it at class level) | fixed — class doc sentence added |
+| F-5 | review (code-comment agent) | AC-2 spec's "absent" branch flushed without asserting the header's absence | fixed — assertion added on the bare request |
+| F-6 | review (code-comment agent) | AC-5 focus specs skipped the file's `whenStable` + `detectChanges` settling convention | fixed — trailing `detectChanges()` added |
 
 ---
 
