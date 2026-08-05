@@ -1,7 +1,10 @@
 package ai.riviera.platform.venue;
 
 import java.time.LocalTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,6 +71,37 @@ class SetBookingInfoIT {
 	@Test
 	void emptyForUnknownSet() {
 		assertTrue(catalog.setBookingInfo(new SetId(999_999L)).isEmpty());
+	}
+
+	@Test
+	void resolvesBatchBookingInfoInOneCall() {
+		// #246 F3: every Miramar ONLINE set resolves in one map, each entry equal to the single-id read.
+		List<Long> setIds = jdbc.sql("""
+				SELECT sp.id FROM set_position sp JOIN venue v ON v.id = sp.venue_id
+				WHERE sp.pool = 'ONLINE' AND v.name = 'Miramar Beach Club'
+				""")
+				.query(Long.class).list();
+		assertTrue(setIds.size() >= 2, "the seed must provide at least two ONLINE Miramar sets");
+		Set<SetId> ids = setIds.stream().map(SetId::new).collect(java.util.stream.Collectors.toSet());
+
+		Map<SetId, SetBookingInfo> batch = catalog.setBookingInfos(ids);
+
+		assertEquals(ids, batch.keySet(), "every requested existing set resolves exactly once");
+		for (SetId id : ids) {
+			assertEquals(catalog.setBookingInfo(id).orElseThrow(), batch.get(id),
+					"the batch entry must equal the single-id read for the same set");
+		}
+	}
+
+	@Test
+	void batchOmitsUnknownSetsAndAnswersEmptyInputEmpty() {
+		long known = jdbc.sql("SELECT id FROM set_position ORDER BY id LIMIT 1").query(Long.class).single();
+
+		Map<SetId, SetBookingInfo> batch = catalog.setBookingInfos(
+				Set.of(new SetId(known), new SetId(999_999L)));
+
+		assertEquals(Set.of(new SetId(known)), batch.keySet(), "an unknown id is absent, not an error");
+		assertTrue(catalog.setBookingInfos(Set.of()).isEmpty(), "an empty request is an empty map");
 	}
 
 	@Test

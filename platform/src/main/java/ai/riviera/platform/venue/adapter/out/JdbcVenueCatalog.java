@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue.adapter.out;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -286,25 +287,44 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.optional();
 	}
 
+	/** The set-facts row shared by the single-id and batch reads (#246) — one SQL shape, one mapper. */
+	private static final String SET_BOOKING_INFO_SELECT = """
+			SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
+			       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff,
+			       v.booking_mode
+			FROM set_position sp
+			JOIN venue v ON v.id = sp.venue_id
+			""";
+
 	@Override
 	public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
-		return jdbc.sql("""
-				SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
-				       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff,
-				       v.booking_mode
-				FROM set_position sp
-				JOIN venue v ON v.id = sp.venue_id
-				WHERE sp.id = :id
-				""")
+		return jdbc.sql(SET_BOOKING_INFO_SELECT + "WHERE sp.id = :id")
 				.param("id", setId.value())
-				.query((rs, rowNum) -> new SetBookingInfo(
-						new SetId(rs.getLong("set_id")), new VenueId(rs.getLong(COL_VENUE_ID)),
-						rs.getString("venue_name"), rs.getString("row_label"),
-						rs.getInt("position_no"), rs.getString("pool"),
-						new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
-						rs.getObject("booking_cutoff", java.time.LocalTime.class),
-						BookingMode.valueOf(rs.getString(COL_BOOKING_MODE))))
+				.query(JdbcVenueCatalog::mapSetBookingInfo)
 				.optional();
+	}
+
+	@Override
+	public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
+		if (setIds.isEmpty()) {
+			return Map.of();
+		}
+		return jdbc.sql(SET_BOOKING_INFO_SELECT + "WHERE sp.id IN (:setIds)")
+				.param("setIds", setIds.stream().map(SetId::value).toList())
+				.query(JdbcVenueCatalog::mapSetBookingInfo)
+				.list().stream()
+				.collect(Collectors.toMap(SetBookingInfo::setId, info -> info));
+	}
+
+	private static SetBookingInfo mapSetBookingInfo(java.sql.ResultSet rs, int rowNum)
+			throws java.sql.SQLException {
+		return new SetBookingInfo(
+				new SetId(rs.getLong("set_id")), new VenueId(rs.getLong(COL_VENUE_ID)),
+				rs.getString("venue_name"), rs.getString("row_label"),
+				rs.getInt("position_no"), rs.getString("pool"),
+				new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
+				rs.getObject("booking_cutoff", java.time.LocalTime.class),
+				BookingMode.valueOf(rs.getString(COL_BOOKING_MODE)));
 	}
 
 	private record VenueRow(long id, String name, String beach, String region,

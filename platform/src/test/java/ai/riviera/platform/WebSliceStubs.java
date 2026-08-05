@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -647,6 +648,11 @@ class WebSliceStubs {
 			@Override
 			public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
 				return Optional.empty();
+			}
+
+			@Override
+			public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
+				return Map.of();
 			}
 		};
 	}

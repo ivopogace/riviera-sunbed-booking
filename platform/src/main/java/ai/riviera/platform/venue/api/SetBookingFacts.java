@@ -1,5 +1,7 @@
 package ai.riviera.platform.venue.api;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
@@ -31,4 +33,14 @@ public interface SetBookingFacts {
 	 * #11).
 	 */
 	Optional<SetBookingInfo> setBookingInfo(SetId setId);
+
+	/**
+	 * The batch form of {@link #setBookingInfo(SetId)} (#246): the same facts for every requested
+	 * set, resolved in one lookup, keyed by id. An unknown id is simply absent from the map; an
+	 * empty request yields an empty map. Consumed by the {@code booking} module's my-bookings list
+	 * so N bookings cost one venue-module query, not N. Deliberately no default implementation —
+	 * every adapter must decide batch semantics explicitly, so the N+1 cannot reappear behind a
+	 * defaulted per-id loop.
+	 */
+	Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds);
 }
