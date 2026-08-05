@@ -44,10 +44,10 @@ Behavior-parity ledger, which is what surfaced that the customer's own erasure U
 the Non-goals carry it instead) · `tdd` (each phase writes the failing spec before the component;
 every focus guard was re-run with its fix reverted) · `riviera-review-overlay` (review gate — read
 **up front** for RV-STYLE-1, the streak A8 broke: every inline comment in this diff is a one-liner;
-layered onto the `code-review` fan-out at ready-for-review) · `riviera-docs-freshness` (**due at phase 4**, over
-`origin/main...HEAD` — this slice makes the **seventh** console tab, which A8 hand-off note 3
-predicts will falsify "the strip ships six" sentences living outside the diff; the run and its
-findings are recorded in the Findings register when it happens, not here on trust) · `riviera-frontend` (placement: four files in `admin/`, no import from
+layered onto the `code-review` fan-out at ready-for-review) · `riviera-docs-freshness` (**ran** over
+`origin/main...HEAD` — 2 findings, both patched, plus 3 statements corrected in-diff: this slice
+makes the **seventh** console tab, and A8 hand-off note 3's prediction held, though the surviving
+count was smaller than A8's five because A8 had just swept the same sentences) · `riviera-frontend` (placement: four files in `admin/`, no import from
 `auth/set-password.ts` across features per RV-FE-8, the mocked e2e in `frontend/e2e/`) ·
 `riviera-tailwind` (token-first `--riv-card-*` inks, `text-[14px]` not `text-sm`, `CardGlass` carries
 no radius so each panel sets its own, the two-column grid collapses by `md:` rather than a media
@@ -70,55 +70,55 @@ stands in for `feature/<slug>` (`riviera-sdlc` remote-session addendum). Exists 
 > statutory-retention records kept) is `customer`'s and is pinned by `AccountErasureServiceTest` /
 > `AccountErasureIT`; nothing here re-proves it.
 
-- [ ] **AC-1:** Given an admin on `/admin/privacy`, when the page renders, then the erasure form and
+- [x] **AC-1:** Given an admin on `/admin/privacy`, when the page renders, then the erasure form and
   the "What survives an erasure" aside are both present, and the aside names what is erased (name,
   email, phone) and what is kept (bookings, payments, payout ledger entries).
   *Pinned by:* `admin-privacy.spec.ts` › `explains what an erasure erases and what it keeps`
-- [ ] **AC-2:** Given a blank or malformed email, when the admin asks to review, then nothing is sent,
+- [x] **AC-2:** Given a blank or malformed email, when the admin asks to review, then nothing is sent,
   the stage stays on the form, and the field error reads "Enter a valid email address."
   *Pinned by:* `admin-privacy.spec.ts` › `refuses a malformed email without sending anything` and
   › `refuses a blank email without sending anything`
-- [ ] **AC-3:** Given a valid email, when the admin asks to review, then the confirm stage replaces
+- [x] **AC-3:** Given a valid email, when the admin asks to review, then the confirm stage replaces
   the form, names the exact address, and **still nothing has been sent**.
   *Pinned by:* `admin-privacy.spec.ts` › `arms a confirmation that names the address, sending nothing`
-- [ ] **AC-4:** Given an armed confirmation, when the admin confirms, then the service is called with
+- [x] **AC-4:** Given an armed confirmation, when the admin confirms, then the service is called with
   the trimmed address; given grounds were typed, they are passed as the second argument (trimmed);
   given none, the one-argument call is made so no blank header is sent.
   *Pinned by:* `admin-privacy.spec.ts` › `sends the address on confirm`, › `passes typed grounds to
   the erasure`, › `sends no grounds when the field is blank`
-- [ ] **AC-5:** Given a completed erasure, when the done stage renders, then it states the
+- [x] **AC-5:** Given a completed erasure, when the done stage renders, then it states the
   non-enumeration property explicitly — that the result is the same whether or not the address was
   known — and shows **no** count, no "not found", and no success/absent distinction of any kind.
   *Pinned by:* `admin-privacy.spec.ts` › `states the non-enumeration property on the done stage`
-- [ ] **AC-6:** Given grounds typed for one erasure, when the admin starts another, then the grounds
+- [x] **AC-6:** Given grounds typed for one erasure, when the admin starts another, then the grounds
   field and the email field are blank — an unstated reason stays unstated.
   *Pinned by:* `admin-privacy.spec.ts` › `does not carry one request's address or grounds into the next`
-- [ ] **AC-7:** Given the erasure request fails, when the response lands, then the confirmation stays
+- [x] **AC-7:** Given the erasure request fails, when the response lands, then the confirmation stays
   armed holding what was typed, the failure is announced, and the done stage is not shown.
   *Pinned by:* `admin-privacy.spec.ts` › `keeps the confirmation armed when the request fails`
-- [ ] **AC-8:** Given the request is refused `400 INVALID_REQUEST`, when it lands, then the message
+- [x] **AC-8:** Given the request is refused `400 INVALID_REQUEST`, when it lands, then the message
   says the platform rejected the address rather than the generic transport failure.
   *Pinned by:* `admin-privacy.spec.ts` › `reports a rejected address distinctly from a transport failure`
-- [ ] **AC-9:** Given an in-flight erasure, when the admin looks at the confirmation, then both
+- [x] **AC-9:** Given an in-flight erasure, when the admin looks at the confirmation, then both
   buttons and the grounds field are disabled, so no second POST and no discarded draft is possible.
   *Pinned by:* `admin-privacy.spec.ts` › `locks the confirmation while the erasure is in flight`
-- [ ] **AC-10:** Given a non-admin (or signed-out) principal, when the page renders, then no form, no
+- [x] **AC-10:** Given a non-admin (or signed-out) principal, when the page renders, then no form, no
   tab strip, and no way to reach the endpoint.
   *Pinned by:* `admin-privacy.spec.ts` › `self-gates on the admin session`
-- [ ] **AC-11:** Given each of the five stage transitions — form→confirm, confirm→form (cancel),
+- [x] **AC-11:** Given each of the five stage transitions — form→confirm, confirm→form (cancel),
   confirm→done, done→form (erase another), and confirm→confirm-with-error (a failed request) — then
   focus lands on the panel or control that transition produced, never stranded on `<body>`
   (WCAG 2.4.3, the recurring #148/#351/#462/#505 class).
   *Pinned by:* `admin-privacy.spec.ts` › the five `moves focus…` / `returns focus…` cases, plus
   `e2e/admin-privacy.e2e.ts` › `a failed erasure leaves focus on the confirm button, not on the body`
-- [ ] **AC-12:** Given the page rendered at each of the three stages, then axe reports no violations.
+- [x] **AC-12:** Given the page rendered at each of the three stages, then axe reports no violations.
   *Pinned by:* `admin-privacy.a11y.spec.ts` (three cases) and `e2e/admin-privacy.e2e.ts`
   (`expectNoSeriousAxeViolations` at 360px)
-- [ ] **AC-13:** Given a real render at 360px, when an admin erases a subject, then exactly one POST
+- [x] **AC-13:** Given a real render at 360px, when an admin erases a subject, then exactly one POST
   is made carrying exactly `{ email }` plus the grounds header, the page never scrolls sideways, and
   the Privacy pill is the only one marked `aria-current`.
   *Pinned by:* `e2e/admin-privacy.e2e.ts`
-- [ ] **AC-14:** Given the console tab strip, when it renders, then `Privacy` appears in slot 7
+- [x] **AC-14:** Given the console tab strip, when it renders, then `Privacy` appears in slot 7
   (after Photos, before Audit) and the rendered tabs remain a subsequence of
   `ADMIN_CONSOLE_TAB_ORDER`, with the strip still inside its three-row budget at 360px.
   *Pinned by:* the **unedited** `admin-console-tabs.spec.ts` › `renders tabs in the canonical console
@@ -229,17 +229,18 @@ detaches the person from them, so no money moves and no ledger entry changes.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `PR #526 — ready for review (review gate + sonar gate due)`
 
-**Next action:** write `admin-privacy.service.ts`, then the failing component spec for AC-1..AC-11.
+**Next action:** run the review gate over PR #526, then pull Sonar's new-issue list for the real diff
+(its first run analysed a plan-doc-only commit).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Service + wire contract | | |
-| 1 — Component: three stages, grounds, focus | | |
-| 2 — Tab slot 7 + lazy route | | |
-| 3 — a11y spec + mocked e2e at 360px | | |
-| 4 — Docs-freshness counting sweep | | |
+| 0 — Service + wire contract | ✅ | `61ce2c1` |
+| 1 — Component: three stages, grounds, focus | ✅ | `61ce2c1` |
+| 2 — Tab slot 7 + lazy route | ✅ | `61ce2c1` |
+| 3 — a11y spec + mocked e2e at 360px | ✅ | `61ce2c1` |
+| 4 — Docs-freshness counting sweep | ✅ | see F-1/F-2 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -249,7 +250,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | docs-freshness (counting sweep) | `e2e/admin-console-tabs.e2e.ts` header still said "A8 has since landed the sixth" — this slice lands the seventh | fixed |
+| F-2 | docs-freshness (counting sweep) | `admin-console-tabs.spec.ts` TSDoc still predicted "will do the same for A3 and A6"; A3 has now done it | fixed |
+| F-3 | full unit suite | `app.spec.ts`'s `OPERATOR_SURFACE_PATHS` registry must list every admin route — `admin/privacy` was missing, so the legacy-surface assertion failed. The same edit A8 made for `admin/commissions` | fixed |
 
 ---
 
@@ -269,39 +272,39 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `frontend/src/app/admin/admin-privacy.service.ts` · Test via `admin-privacy.spec.ts`
 
-- [ ] **Step 1–4:** the service is exercised through the component's spec (as A8's is), plus the e2e's
+- [x] **Step 1–4:** the service is exercised through the component's spec (as A8's is), plus the e2e's
       wire assertions; it has no state of its own to test in isolation.
-- [ ] **Step 6: Commit** — `git commit -m "Add the admin erasure HTTP client (#348)"`
+- [x] **Step 6: Commit** — `git commit -m "Add the admin erasure HTTP client (#348)"`
 
 ## Phase 1 — Component: three stages, grounds, focus
 
 **Files:** Create `frontend/src/app/admin/admin-privacy.ts`, `admin-privacy.spec.ts`
 
-- [ ] **Step 1:** write the failing specs for AC-1..AC-11 first.
-- [ ] **Step 2:** `cd frontend && npm test` scoped to the new spec → FAIL (component does not exist).
-- [ ] **Step 3:** implement the component.
-- [ ] **Step 4:** re-run → PASS.
-- [ ] **Step 5: Focus-guard reversion proof** — for each of the five `focusAfterRender` calls, delete
+- [x] **Step 1:** write the failing specs for AC-1..AC-11 first.
+- [x] **Step 2:** `cd frontend && npm test` scoped to the new spec → FAIL (component does not exist).
+- [x] **Step 3:** implement the component.
+- [x] **Step 4:** re-run → PASS.
+- [x] **Step 5: Focus-guard reversion proof** — for each of the five `focusAfterRender` calls, delete
       it, re-run the spec, confirm the matching case fails, restore it.
-- [ ] **Step 6: Commit** — `git commit -m "Add the admin console's Privacy tab (#348)"`
+- [x] **Step 6: Commit** — `git commit -m "Add the admin console's Privacy tab (#348)"`
 
 ## Phase 2 — Tab slot 7 + lazy route
 
 **Files:** Modify `admin-console-tabs.ts`, `app.routes.ts`
 
-- [ ] Insert the pill between Photos and Audit; add the lazy route with `operatorChrome: true`.
-- [ ] Run `admin-console-tabs.spec.ts` **unedited** → PASS (proves the in-slot insertion, AC-14).
+- [x] Insert the pill between Photos and Audit; add the lazy route with `operatorChrome: true`.
+- [x] Run `admin-console-tabs.spec.ts` **unedited** → PASS (proves the in-slot insertion, AC-14).
 
 ## Phase 3 — a11y spec + mocked e2e at 360px
 
 **Files:** Create `admin-privacy.a11y.spec.ts`, `frontend/e2e/admin-privacy.e2e.ts`
 
-- [ ] axe at all three stages; e2e records every request so AC-13's "exactly one POST" is a wire fact.
-- [ ] `npm run test:e2e:a11y` → PASS, including the unedited `admin-console-tabs.e2e.ts` row budget.
+- [x] axe at all three stages; e2e records every request so AC-13's "exactly one POST" is a wire fact.
+- [x] `npm run test:e2e:a11y` → PASS, including the unedited `admin-console-tabs.e2e.ts` row budget.
 
 ## Phase 4 — Docs-freshness counting sweep
 
-- [ ] Run `riviera-docs-freshness` over `origin/main...HEAD`; patch every "six tabs" statement.
+- [x] Run `riviera-docs-freshness` over `origin/main...HEAD`; patch every "six tabs" statement.
 
 ---
 
@@ -318,8 +321,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-12:** Run `cd frontend && npm test` → the `admin-privacy` specs pass.
-- [ ] **AC-12..AC-14:** Run `cd frontend && npm run test:e2e:a11y` → `admin-privacy.e2e.ts` and the
+- [x] **AC-1..AC-12:** Run `cd frontend && npm test` → the `admin-privacy` specs pass.
+- [x] **AC-12..AC-14:** Run `cd frontend && npm run test:e2e:a11y` → `admin-privacy.e2e.ts` and the
       unedited `admin-console-tabs.e2e.ts` pass.
 
 ## Self-review checklist (before merge / PR)
