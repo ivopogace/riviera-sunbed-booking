@@ -237,16 +237,27 @@ edge added — RV-FE-8 clean); the e2e spec is API-mocked, so it belongs in `fro
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 (360px e2e guard)`
+**Stage pointer:** `implement — phase 3 (docs sweep + epic decision comment)`
 
-**Next action:** Write `frontend/e2e/admin-console-tabs.e2e.ts` — the row-budget + no-horizontal-scroll guard (AC-1/AC-2).
+**Next action:** Run `riviera-docs-freshness` over `377599a..HEAD`, add the canvas header correction note, then post the Q1 decision comment on #348 and tick its checklist box.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Canonical order: red spec → exported const | ✅ | `da4ec63` |
-| 1 — 360px e2e guard (AC-1/AC-2) | ⏳ | |
-| 2 — TSDoc: replace the stale five-tab clause with the measured decision | | |
-| 3 — Docs sweep + epic #348 decision comment | | |
+| 0 — Canonical order: red spec → exported const | ✅ | `ed3034d` |
+| 1 — 360px e2e guard (AC-1/AC-2) | ✅ | `c4510ae` |
+| 2 — TSDoc: replace the stale five-tab clause with the measured decision | ✅ | `95f272b` |
+| 3 — Docs sweep + epic #348 decision comment | ⏳ | |
+
+**Guard-teeth verification (both guards proven to fail on the mistake they exist to catch):**
+
+| Guard | Simulated mistake | Result |
+|---|---|---|
+| AC-3 order (unit) | A8 appends `Commissions` after `Audit` | **FAIL** — `expected [ 'Operators', 'Email', …(4) ] to deeply equal [ 'Operators', 'Commissions', …(4) ]` |
+| AC-2 budget (e2e) | a **ninth** tab at 360px | **FAIL** — 4 rows exceeds the 3-row budget |
+| AC-1/AC-2 at the real endstate | all **eight** canonical tabs rendered at 360px | **PASS** — 3 rows, no horizontal scroll, no serious axe violations |
+
+The third row is the one that matters: the decision's central claim ("eight fits") is verified
+against the actual eight-tab strip, not extrapolated from today's five.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
