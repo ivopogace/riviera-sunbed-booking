@@ -10,6 +10,23 @@
   chrome, not tourist chrome). Demo logic only: fake data, fake decisions. Look/layout/copy is the
   spec; behaviour stays server-side.
 
+  ⚠ CORRECTION (2026-08-05, #348 Q1) — THE TAB STRIP BELOW IS NOT THE TARGET IA.
+  This canvas was drawn before Email, Refunds, Photos and Audit existed, so four of the five tabs it
+  draws are not the console's tabs. Q1 settled the real information architecture and it is NOT a
+  drawing decision: ONE FLAT WRAPPING STRIP of at most EIGHT tabs, in the canonical order
+
+      Operators -> Commissions -> Payouts -> Email -> Refunds -> Photos -> Privacy -> Audit
+
+  held by ADMIN_CONSOLE_TAB_ORDER in frontend/src/app/admin/admin-console-tabs.ts, which is the
+  source of truth. Grouping and an overflow menu were both considered and rejected — measured at
+  360px the wrap costs 3 rows at seven tabs AND at eight, never clipping, so absorbing every planned
+  tab is free while the alternatives cost a navigation level, a hidden surface, or touch target the
+  40px pills do not have to spare. Full reasoning: the Q1 comment on #348 and
+  docs/plans/q1-admin-console-tab-ia.md.
+
+  EVERYTHING ELSE IN THIS HEADER STILL STANDS — the endpoint map and the commission/payout decision
+  lists below are binding.
+
   Every screen here is backed by a shipped endpoint — nothing invented:
 
     Approvals   GET  /api/admin/operators                 (#115 S6)   ROLE_ADMIN
@@ -36,10 +53,17 @@
 
   The rate change is FORWARD-ONLY, and the reason is invariant #9: a payout-ledger entry persists its
   own commissionMinor at accrual, so past entries keep the rate they were accrued at and no repricing
-  of history is possible. One inconsistency the implementing slice MUST resolve, found while drawing
-  this: DailyTakingsService reads rates.commissionBps(venueId) LIVE at query time, so the operator
-  console's takings strip would re-split PAST days at the NEW rate while the ledger for those same days
-  keeps the old one. The ledger is right; the view needs the rate that applied on that date.
+  of history is possible.
+
+  The inconsistency this canvas found while being drawn — DailyTakingsService reading
+  rates.commissionBps(venueId) LIVE at query time, so the operator console's takings strip re-split
+  PAST days at the NEW rate while the ledger for those days kept the old one — is RESOLVED by A7
+  (PR #522): an effective-dated schedule (venue_commission_rate, V39) read through
+  VenueRates#commissionBpsOn(venueId, serviceDate), so no past service date re-prices. Note what is
+  and is not guaranteed: the ledger's commission is per BOOKING at ACCRUAL while the strip applies one
+  rate to a service date's aggregate, so a booking confirmed before a change but served after it
+  accrued at the old rate while the strip shows the new one. A8's forward-only explainer should say
+  that rather than promise exactness.
 
   Venue CREATION is deliberately NOT here. An operator creates its own venue (creator-owns-on-create,
   #115) and #278 folds that into the operator console; POST /api/venues owns-to-the-caller, so an admin
