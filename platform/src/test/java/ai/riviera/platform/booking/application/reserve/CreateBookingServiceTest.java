@@ -4,8 +4,11 @@ import ai.riviera.platform.booking.application.cancel.BookingCutoff;
 
 import java.time.*;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.venue.vocabulary.*;
@@ -592,6 +595,12 @@ class CreateBookingServiceTest {
 		@Override
 		public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
 			return Optional.ofNullable(info);
+		}
+
+		@Override
+		public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
+			return info == null ? Map.of()
+					: setIds.stream().distinct().collect(Collectors.toMap(id -> id, id -> info));
 		}
 	}
 
