@@ -270,6 +270,25 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	}
 
 	@Override
+	public OptionalInt commissionBpsOn(VenueId id, LocalDate serviceDate) {
+		// The latest scheduled rate at or before the service date (A7, #348). The composite PK
+		// (venue_id, effective_from) serves this on its leftmost prefix + range — no second index.
+		return jdbc.sql("""
+				SELECT commission_bps
+				  FROM venue_commission_rate
+				 WHERE venue_id = :id AND effective_from <= :serviceDate
+				 ORDER BY effective_from DESC
+				 LIMIT 1
+				""")
+				.param("id", id.value())
+				.param("serviceDate", serviceDate)
+				.query(Integer.class)
+				.optional()
+				.map(OptionalInt::of)
+				.orElseGet(OptionalInt::empty);
+	}
+
+	@Override
 	public OptionalInt lateCancelRefundBps(VenueId id) {
 		return jdbc.sql("SELECT late_cancel_refund_bps FROM venue WHERE id = :id")
 				.param("id", id.value())

@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 
 import ai.riviera.platform.venue.vocabulary.Amenity;
@@ -19,25 +20,31 @@ import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.application.CommissionRateStore;
 import ai.riviera.platform.venue.application.NewVenueCommand;
 import ai.riviera.platform.venue.application.OwnedVenueView;
 import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetCommand;
+import ai.riviera.platform.venue.application.VenueCommissionView;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 import ai.riviera.platform.venue.application.VenueProfileView;
 import ai.riviera.platform.venue.application.Venues;
 
 /**
- * JDBC adapter implementing the {@link Venues} write port (invariant #1 — no JPA). Explicit
- * text-block SQL via {@link JdbcClient} with named params; package-private, so callers depend on
- * the port, not this class (invariant #11). Inserts use {@code RETURNING id} to surface the
- * identity PK. Rating/reviews/refund-policy columns take their DB defaults on insert (a new
- * venue has none).
+ * JDBC adapter implementing the {@link Venues} write port and the {@link CommissionRateStore}
+ * (invariant #1 — no JPA). Explicit text-block SQL via {@link JdbcClient} with named params;
+ * package-private, so callers depend on the port, not this class (invariant #11). Inserts use
+ * {@code RETURNING id} to surface the identity PK. Rating/reviews/refund-policy columns take their
+ * DB defaults on insert (a new venue has none).
+ *
+ * <p>One adapter serves both ports because both write the same {@code venue} row (and its rate
+ * schedule) — the ports are split by the conversation their callers are having, not by table, so
+ * splitting the SQL too would duplicate the epoch-floor seed {@link #insertVenue} needs.
  */
 @Repository
-class JdbcVenues implements Venues {
+class JdbcVenues implements Venues, CommissionRateStore {
 
 	/** Named-parameter keys reused across the set queries (must match the {@code :name} SQL refs). */
 	private static final String P_SET_ID = "setId";
@@ -49,6 +56,12 @@ class JdbcVenues implements Venues {
 	private static final String COL_BEACH = "beach";
 	private static final String COL_REGION = "region";
 	private static final String COL_DESCRIPTION = "description";
+	/**
+	 * The floor every venue's commission schedule starts at (A7 #348) — matching the V39 backfill.
+	 * It predates the platform, so the "latest rate at or before this service date" read always
+	 * resolves and can never fall through to the live rate for a day already sold.
+	 */
+	private static final LocalDate EPOCH_FLOOR = LocalDate.of(1970, 1, 1);
 
 	/** The set-position INSERT column/values, shared by the single-row and bulk paths (one column list). */
 	private static final String INSERT_SET_SQL = """
@@ -66,7 +79,7 @@ class JdbcVenues implements Venues {
 
 	@Override
 	public long insertVenue(NewVenueCommand c) {
-		return jdbc.sql("""
+		long id = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, description, booking_mode,
 				                   commission_bps, payout_currency, booking_cutoff)
 				VALUES (:name, :beach, :region, :description, :mode, :bps, :currency, :cutoff)
@@ -82,6 +95,47 @@ class JdbcVenues implements Venues {
 				.param("cutoff", c.bookingCutoff())
 				.query(Long.class)
 				.single();
+		// Seed the commission schedule from the epoch floor (A7 #348) so the per-service-date read is
+		// total for this venue too — the V39 backfill only covers venues that already existed.
+		schedule(new VenueId(id), EPOCH_FLOOR, c.commissionBps());
+		return id;
+	}
+
+	@Override
+	public void schedule(VenueId venueId, LocalDate effectiveFrom, int commissionBps) {
+		jdbc.sql("""
+				INSERT INTO venue_commission_rate (venue_id, effective_from, commission_bps)
+				VALUES (:venue, :effectiveFrom, :bps)
+				ON CONFLICT (venue_id, effective_from)
+				DO UPDATE SET commission_bps = EXCLUDED.commission_bps, recorded_at = NOW()
+				""")
+				.param(P_VENUE, venueId.value())
+				.param("effectiveFrom", effectiveFrom)
+				.param("bps", commissionBps)
+				.update();
+	}
+
+	@Override
+	public int updateLiveRate(VenueId venueId, int commissionBps) {
+		return jdbc.sql("UPDATE venue SET commission_bps = :bps WHERE id = :id")
+				.param("bps", commissionBps)
+				.param("id", venueId.value())
+				.update();
+	}
+
+	@Override
+	public List<VenueCommissionView> findAll() {
+		// Platform-wide by design (ADMIN-gated caller): no ownership filter, no id set. ORDER BY
+		// name, id keeps the admin list stable across reads when two venues share a name.
+		return jdbc.sql("""
+				SELECT id, name, beach, commission_bps, payout_currency
+				  FROM venue
+				 ORDER BY name, id
+				""")
+				.query((rs, rowNum) -> new VenueCommissionView(
+						rs.getLong("id"), rs.getString(COL_NAME), rs.getString(COL_BEACH),
+						rs.getInt("commission_bps"), rs.getString("payout_currency")))
+				.list();
 	}
 
 	@Override

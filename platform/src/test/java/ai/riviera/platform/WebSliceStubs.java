@@ -667,6 +667,11 @@ class WebSliceStubs {
 			}
 
 			@Override
+			public OptionalInt commissionBpsOn(VenueId id, LocalDate serviceDate) {
+				return OptionalInt.empty();
+			}
+
+			@Override
 			public OptionalInt lateCancelRefundBps(VenueId id) {
 				return OptionalInt.empty();
 			}

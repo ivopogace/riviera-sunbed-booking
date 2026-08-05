@@ -16,8 +16,27 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  */
 public interface Venues {
 
-	/** Insert a venue and return its generated id. */
+	/**
+	 * Insert a venue and return its generated id. Also seeds the venue's
+	 * {@link CommissionRateStore commission schedule} at the epoch floor with the command's rate
+	 * (A7, #348), so the per-service-date rate read is total for the new venue from the start —
+	 * the V39 backfill only covers venues that already existed. Without that seed the read would fall
+	 * through for every post-V39 venue the first time its rate changed, and answer the new rate for a
+	 * day already sold, which is the defect the schedule exists to prevent.
+	 */
 	long insertVenue(NewVenueCommand command);
+	/**
+	 * Record that {@code commissionBps} applies to the venue's bookings served on or after
+	 * {@code effectiveFrom} (A7, #348) — a civil date in {@code Europe/Tirane} (invariant #6).
+	 * Idempotent per {@code (venue, effectiveFrom)}: a second write for the same date overwrites the
+	 * rate rather than erroring or duplicating, so two admins acting the same day collapse onto one
+	 * row with the last value.
+	 *
+	 * <p>Only ever called with a date the service computed as <em>tomorrow</em>, never a caller-supplied
+	 * one: the schedule is forward-only, so no write can reprice a service date already past
+	 * (invariant #9). It does <strong>not</strong> touch {@code venue.commission_bps} — the live rate
+	 * the accrual path reads — which is the caller's separate {@link #updateCommission} write.
+	 */
 
 	/** Whether a venue with this id exists. */
 	boolean venueExists(VenueId venueId);
