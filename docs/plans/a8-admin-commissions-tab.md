@@ -90,8 +90,10 @@ stands in for `feature/<slug>` (`riviera-sdlc` remote-session addendum). Exists 
   (WCAG 2.4.3, the recurring #148/#351/#462/#505 class).
   *Pinned by:* `admin-commissions.spec.ts` › the three `moves focus…` cases, plus
   › `returns focus to Save when the write fails, rather than stranding it` (the fourth transition,
-  added by review finding F-3b) and `e2e/admin-commissions.e2e.ts` ›
-  `a failed write leaves focus on Save, not on the body`
+  added by review finding F-3b), `e2e/admin-commissions.e2e.ts` ›
+  `a failed write leaves focus on Save, not on the body`, and the three Retry-path cases added by
+  F-3d (`offers a retry…`, `keeps focus on Retry when the retried load fails again`, `lands focus on
+  the empty notice when the retry finds no venues`)
 - [ ] **AC-12:** Given the page rendered — list, open editor, and post-save — then axe reports no
   violations. *Pinned by:* `admin-commissions.a11y.spec.ts` (both cases) and
   `e2e/admin-commissions.e2e.ts` (`expectNoSeriousAxeViolations` at 360px)
@@ -284,6 +286,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-3 | sonar gate | Quality Gate passed — 0 new issues, 0 accepted issues, 0 security hotspots, **0.0% duplication**, **90.6% coverage on new code** (bar: 0/0/≥80%). Issue list pulled, nothing to triage. | closed — no action |
 | F-3b | review — `/code-review` fan-out, bug scan (reviewer 2/5) | **Stranded focus on a failed save.** Disabling Save while the write is in flight blurs it to `<body>`; re-enabling it afterwards does not bring focus back. Open, dismiss and save-success all moved focus deliberately — the failure path, where the admin most needs to retry, was the one of four transitions left unhandled (WCAG 2.4.3, the recurring #148/#351/#462/#505 class). Shipped untested: the existing failure spec asserted the message and the retained draft, never `document.activeElement`. | fixed-in-`e2dce3f` (focus returns to Save; guard proven red-first in the unit spec, plus a real-browser e2e because jsdom does not reproduce the disabled-element blur) |
 | F-3c | review — `/code-review` fan-out, git-history reviewer (3/5) | **F-1's lock was half-applied.** Disabling Save and Cancel left both editor *fields* live, so a percent or reason typed while the request was in flight was silently discarded by the `closeEditor()` on success — the same "watch it change anyway" surprise F-1 set out to remove. `operator/pricing-tab.html` has disabled its own money input during a save since that file's first commit, so the shape was established, not invented; the Commissions editor was the only in-place numeric editor in the repo without it. F-1's own regression guard asserted the buttons only, so nothing would have caught a recurrence. | fixed-in-`FIELDLOCK` (both fields carry `[disabled]="busy()"`; the guard now asserts fields as well as buttons) |
+| F-3d | review — `/code-review` fan-out, prior-findings reviewer (4/5) | **A second stranded-focus site: Retry.** Pressing Retry after a failed list load sets `loading`, which swaps the branch and unmounts the button that was just activated, dropping focus to `<body>`. Unlike F-3b this one reproduces in jsdom, yet the existing retry spec asserted only the reloaded content. Same class as `create-venue-into-console.md` F-2. | fixed-in-`RETRYFIX` (a `retry()` handler lands focus on what the retry produced — the list, the empty notice, or Retry itself if it failed again; all three proven red-first) |
+| F-3e | review — `/code-review` fan-out, prior-findings reviewer (4/5) | **The plan doc's File-structure section under-counted the diff** (13 of 20 paths — the three committed screenshots, `app.spec.ts`, and the two comment-only sweep edits were absent). A documented recurring class: raised on #438, on #522 as F-5, and on Q1 as F-3. | fixed-in-`RETRYFIX` (all 20 paths listed with a one-line reason; the section's blockquote now states the rule and its four sightings, so the next slice inherits it) |
 | F-4 | CI gate | All 7 checks green on `a78d466`: backend build+test, frontend lint+test+build, e2e, CodeQL (java-kotlin + javascript-typescript), SonarCloud. | closed — no action |
 
 ---
@@ -307,6 +311,21 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/operator/console-stats-strip.ts`, `frontend/src/app/operator/venue-tab.ts` —
   **modify:** call the promoted helper.
 - `frontend/e2e/admin-commissions.e2e.ts` — the CI-safe mocked spec at 360px (AC-13).
+- `frontend/src/app/admin/admin-console-tabs.spec.ts` — **modify: comment only.** The insertion needs
+  no spec change (that is the Q1 guard working); the docs-freshness counting sweep found its
+  explanation still said "the five that ship today", which the sixth tab falsified. No assertion moves.
+- `frontend/e2e/admin-console-tabs.e2e.ts` — **modify: comment only**, same sweep — its header framed
+  Q1 as taking the strip "from five tabs to eight" and skipped six in the measured row budget.
+- `frontend/src/app/app.spec.ts` — **modify:** the route table's `OPERATOR_SURFACE_PATHS` list, which
+  enumerates every `operatorChrome` path; a new admin route that is not in it fails the
+  legacy-surface assertion.
+- `docs/plans/a8-admin-commissions-tab/commissions-list-360.png` — the resting state at the 360px bar:
+  evidence the card-per-venue layout fits the width the project gates on.
+- `docs/plans/a8-admin-commissions-tab/commissions-editor-360.png` — the editor open at 360px, showing
+  the bps preview and the grounds field in the width where they are tightest.
+- `docs/plans/a8-admin-commissions-tab/commissions-editor-1280.png` — the desktop render: the evidence
+  for the one decision that departs from the design canvas (card list, not its five-column table), so
+  the departure outlives the session that made it.
 
 ---
 

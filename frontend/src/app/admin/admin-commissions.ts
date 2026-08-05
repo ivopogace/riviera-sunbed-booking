@@ -112,17 +112,26 @@ import { VenueCommissionView } from './admin.model';
               type="button"
               class="font-semibold underline"
               data-testid="admin-commissions-retry"
-              (click)="loadVenues()"
+              (click)="retry()"
             >
               Retry
             </button>
           </p>
         } @else if (venues().length === 0) {
-          <p class="mt-6 text-[15px] text-(--riv-ink-soft)" data-testid="admin-commissions-empty">
+          <p
+            class="mt-6 text-[15px] text-(--riv-ink-soft)"
+            data-testid="admin-commissions-empty"
+            tabindex="-1"
+          >
             No venues have been created yet.
           </p>
         } @else {
-          <ul role="list" class="mt-6 grid gap-4" data-testid="admin-commissions-list">
+          <ul
+            role="list"
+            class="mt-6 grid gap-4"
+            data-testid="admin-commissions-list"
+            tabindex="-1"
+          >
             @for (venue of venues(); track venue.venueId) {
               <li
                 appCardGlass
@@ -454,6 +463,25 @@ export class AdminCommissions {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /**
+   * Re-read the list after a failed load, then put focus where the retried content landed. Pressing
+   * Retry unmounts the button itself — `loading` swaps the branch — so without a deliberate move
+   * focus falls back to `<body>` (WCAG 2.4.3, the same class as the editor's transitions). The
+   * initial load deliberately does NOT go through here: nothing was activated, so there is no focus
+   * to restore, and stealing it on page load would be its own bug.
+   */
+  protected async retry(): Promise<void> {
+    await this.loadVenues();
+    this.focusAfterRender(this.retryLandingTestId());
+  }
+
+  private retryLandingTestId(): string {
+    if (this.loadError()) {
+      return 'admin-commissions-retry';
+    }
+    return this.venues().length === 0 ? 'admin-commissions-empty' : 'admin-commissions-list';
   }
 
   protected async loadVenues(): Promise<void> {

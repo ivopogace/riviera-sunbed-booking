@@ -401,6 +401,33 @@ describe('AdminCommissions', () => {
 
     expect(byTestId(fixture, 'admin-commissions-error')).toBeNull();
     expect(byTestId(fixture, 'admin-commission-row-7')).not.toBeNull();
+    // Retry unmounts itself with the branch swap, so focus lands on what the retry produced.
+    expect(document.activeElement).toBe(byTestId(fixture, 'admin-commissions-list'));
+  });
+
+  it('keeps focus on Retry when the retried load fails again', async () => {
+    const service = serviceStub();
+    service.venues.mockRejectedValueOnce(new Error('boom')).mockRejectedValueOnce(new Error('boom'));
+    const fixture = await render(authStub(), service);
+
+    byTestId<HTMLButtonElement>(fixture, 'admin-commissions-retry')!.click();
+    fixture.detectChanges();
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'admin-commissions-error')).not.toBeNull();
+    expect(document.activeElement).toBe(byTestId(fixture, 'admin-commissions-retry'));
+  });
+
+  it('lands focus on the empty notice when the retry finds no venues', async () => {
+    const service = serviceStub();
+    service.venues.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce([]);
+    const fixture = await render(authStub(), service);
+
+    byTestId<HTMLButtonElement>(fixture, 'admin-commissions-retry')!.click();
+    fixture.detectChanges();
+    await settle(fixture);
+
+    expect(document.activeElement).toBe(byTestId(fixture, 'admin-commissions-empty'));
   });
 
   it('says so when the platform has no venues yet', async () => {
