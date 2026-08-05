@@ -110,9 +110,12 @@ class CustomerRecovery {
 		recovery.setPassword(accountId, encodedNewPassword);
 	}
 
-	/** Whether the account's email is verified (for the signed-in "please verify" nudge). */
-	boolean isVerified(CustomerAccountId accountId) {
-		return recovery.isEmailVerified(accountId);
+	/**
+	 * Whether the email's account is verified (the signed-in "please verify" nudge), or empty when no
+	 * account exists — one read per {@code /api/auth/me} restore instead of the old id-then-flag pair (#256).
+	 */
+	Optional<Boolean> verifiedFor(String email) {
+		return recovery.emailVerifiedFor(email);
 	}
 
 	private URI link(String path, String rawToken) {

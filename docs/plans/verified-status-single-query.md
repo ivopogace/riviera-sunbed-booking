@@ -50,25 +50,25 @@ remote addendum; branched from `main` @ `96601fa`).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a fresh (unverified) customer account, when the module is asked
+- [x] **AC-1:** Given a fresh (unverified) customer account, when the module is asked
   `emailVerifiedFor` with its email, then it answers `Optional.of(false)`; after the
   account's email is verified it answers `Optional.of(true)`. *Pinned by:*
   `CustomerAccountRecoveryIT` (re-pointed verified-state assertions).
-- [ ] **AC-2:** Given no customer account exists for an email, when asked
+- [x] **AC-2:** Given no customer account exists for an email, when asked
   `emailVerifiedFor`, then the answer is `Optional.empty()` (the edge renders it as
   `emailVerified: null`, exactly as the old two-hop path did). *Pinned by:*
   `CustomerAccountServiceTest` (unknown-email case).
-- [ ] **AC-3:** Given a differently-cased, space-padded form of a registered email, when
+- [x] **AC-3:** Given a differently-cased, space-padded form of a registered email, when
   asked `emailVerifiedFor("  Alice@EXAMPLE.com ")`, then the module normalizes before
   lookup and answers the account's state (the #390 G-4 lesson — byte-different input in
   the test, so dropping `Emails.normalize` fails). *Pinned by:*
   `CustomerAccountServiceTest` (normalization case).
-- [ ] **AC-4:** Given a signed-in customer session, when the SPA restores via
+- [x] **AC-4:** Given a signed-in customer session, when the SPA restores via
   `GET /api/auth/me`, then `emailVerified` reports `false` before and `true` after the
   verification link is redeemed — the end-to-end wire contract, unchanged. *Pinned by:*
   `EmailVerificationIT.registerSignsInSendsVerification_thenVerifyingFlipsMeVerified`
   (existing, must stay green).
-- [ ] **AC-5:** Given an operator session, when `GET /api/auth/me` answers, then
+- [x] **AC-5:** Given an operator session, when `GET /api/auth/me` answers, then
   `emailVerified` is `null` (non-customer) — the in-memory role check short-circuits
   before any customer lookup. *Pinned by:* existing auth/web-slice tests staying green.
 
@@ -96,9 +96,9 @@ The slice replaces a published port method and rewires one edge helper:
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Semantics drift on the unknown-account case (`false` vs `null` on the wire) | low | med | parity ledger row + AC-2; the edge maps `empty→null` exactly as `orElse(null)` did | session | open |
-| R-2 | Dropping normalization silently works in tests that use already-canonical emails (#390 G-4) | low | med | AC-3 uses a byte-different cased/padded input | session | open |
-| R-3 | Removing the by-id port method breaks an unseen consumer | low | low | grep'd `isEmailVerified`/`isVerified` across `src/main`: only `CustomerRecovery.isVerified` → `AuthController.verifiedStatus`; tests re-pointed in the same commit; compile + `ModularityTests` prove it | session | open |
+| R-1 | Semantics drift on the unknown-account case (`false` vs `null` on the wire) | low | med | parity ledger row + AC-2; the edge maps `empty→null` exactly as `orElse(null)` did | session | closed — pinned by `CustomerAccountServiceTest` + `AuthSessionIT` |
+| R-2 | Dropping normalization silently works in tests that use already-canonical emails (#390 G-4) | low | med | AC-3 uses a byte-different cased/padded input | session | closed — pinned by `emailVerifiedForNormalizesTheEmail` |
+| R-3 | Removing the by-id port method breaks an unseen consumer | low | low | grep'd `isEmailVerified`/`isVerified` across `src/main`: only `CustomerRecovery.isVerified` → `AuthController.verifiedStatus`; tests re-pointed in the same commit; compile + `ModularityTests` prove it | session | closed — full grep clean, structural net green |
 | R-4 | Full-suite-only failure (shared-state beans; #122/#127 class) | low | low | slice adds no filter/limiter/scheduled bean — read-only query swap; verified by the PR's CI run | session | open |
 
 ## Open questions / Assumptions
@@ -158,17 +158,17 @@ identical).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** CI gate (phases 1–2 implemented, scoped tests green locally)
 
-**Next action:** Phase 1 step 1 — re-point `CustomerAccountServiceTest` to
-`emailVerifiedFor` (+ AC-2/AC-3 cases) and watch it fail to compile/run.
+**Next action:** push, verify the PR's CI run is green, then mark ready-for-review and
+run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + draft PR | ⏳ | |
-| 1 — module: port/service/store/adapter swap (red→green) | | |
-| 2 — edge: `CustomerRecovery` + `AuthController` rewire (red→green) | | |
-| 3 — CI green → ready-for-review → review gate → sonar gate | | |
+| 0 — plan doc + draft PR (#518) | ✅ | `68e11a8` |
+| 1 — module: port/service/store/adapter swap (red→green) | ✅ | this commit |
+| 2 — edge: `CustomerRecovery` + `AuthController` rewire (red→green) | ✅ | this commit |
+| 3 — CI green → ready-for-review → review gate → sonar gate | ⏳ | |
 | 4 — merge + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -235,15 +235,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-05 | Phase 2 (the double-read fix) | other edge call sites chaining `accountFor` into a second by-id read | `grep -rn "currentCustomer" platform/src/main/java` | `MyAccountController` (x2), `MyErasureController`, `BookingController`, `MyBookingsController` | skip — each needs the `CustomerAccountId` itself (passed into module ports), not a second lookup by it; only `verifiedStatus` discarded the id. No other redundant chain. |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-2/AC-3:** scoped gradle run on `CustomerAccountServiceTest` +
-  `CustomerAccountRecoveryIT` → PASS.
-- [ ] **AC-4:** `EmailVerificationIT` → PASS (locally if Docker, else CI).
-- [ ] **AC-5:** auth web-slice tests → PASS.
+- [x] **AC-1/AC-2/AC-3:** scoped gradle run on `CustomerAccountServiceTest` (12/12) +
+  `CustomerAccountRecoveryIT` (5/5, skipped=0, real Postgres) → PASS.
+- [x] **AC-4:** `EmailVerificationIT` → PASS (4/4, skipped=0, in-session Docker).
+- [x] **AC-5:** `AuthSessionIT` (6/6) — operator `/me` now pins `emailVerified: null`;
+  `CustomerLoginIT` (3/3), `SsoAccountVerifiedIT` (3/3) → PASS.
 
 ## Self-review checklist (before merge / PR)
 

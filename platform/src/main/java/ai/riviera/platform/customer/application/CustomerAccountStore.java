@@ -65,8 +65,8 @@ public interface CustomerAccountStore {
 	 */
 	void updatePasswordHash(CustomerAccountId accountId, String passwordHash);
 
-	/** Whether the account's email is verified (S8 #113); {@code false} if the account is unknown. */
-	boolean isEmailVerified(CustomerAccountId accountId);
+	/** Whether the email's account is verified (#256, was by-id S8 #113); empty if no account exists. */
+	Optional<Boolean> emailVerifiedFor(String normalizedEmail);
 
 	/** The account's (normalized) email — its session principal name (S8 #113, for reset session revocation). */
 	String emailOf(CustomerAccountId accountId);

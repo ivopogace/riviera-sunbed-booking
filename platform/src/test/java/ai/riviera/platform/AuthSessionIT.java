@@ -21,6 +21,7 @@ import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import jakarta.servlet.http.Cookie;
 
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -242,7 +243,9 @@ class AuthSessionIT {
 		mvc.perform(get("/api/auth/me").cookie(session))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.username").value("op-a"))
-				.andExpect(jsonPath("$.principalType").value("OPERATOR"));
+				.andExpect(jsonPath("$.principalType").value("OPERATOR"))
+				// #256 (AC-5): not a customer concept — the role check answers null with no customer lookup.
+				.andExpect(jsonPath("$.emailVerified").value(nullValue()));
 
 		// Anonymous → the entry point's hand-mirrored RFC-7807 401 (same pattern as RATE_LIMITED).
 		mvc.perform(get("/api/auth/me"))

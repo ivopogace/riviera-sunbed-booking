@@ -55,6 +55,11 @@ public interface CustomerAccountRecovery {
 	 */
 	void setPassword(CustomerAccountId accountId, String newPasswordHash);
 
-	/** Whether the account's email is verified (for the signed-in "please verify" nudge on {@code /api/auth/me}). */
-	boolean isEmailVerified(CustomerAccountId accountId);
+	/**
+	 * Whether the email's account is verified (the signed-in "please verify" nudge on {@code /api/auth/me}),
+	 * or empty when no account exists for it. Keyed by email — the session principal's name — so the edge
+	 * resolves the flag in <strong>one</strong> read instead of an id lookup plus a by-id read (#256); the
+	 * module normalizes the email before lookup (same contract as {@link CustomerAccountDirectory#accountFor}).
+	 */
+	Optional<Boolean> emailVerifiedFor(String email);
 }
