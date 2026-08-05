@@ -298,15 +298,15 @@ authenticated caller receives: `200`/`404`/`409` → `403`. There is no client t
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 red, entering phase 1`
+**Stage pointer:** `implement — phase 1 green, entering phase 2`
 
-**Next action:** Phase 1 — flip the matcher to `hasRole(ADMIN_ROLE)` and correct the three
-Javadoc sites (D-1/D-3 `SecurityConfig`, D-4 controller, D-5 `AdminAuditFilter`).
+**Next action:** Phase 2 — correct `CrossVenueDenialIT`'s exemption assertion onto its real
+actor, add the `PATCH` leg, patch the design canvas (D-6), run the scoped set + structural net.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Red: the plain-operator refusal | ⏳ red pinned | |
-| 1 — Green: the matcher + the Javadoc that described it | | |
+| 0 — Red: the plain-operator refusal | ✅ | `4bf31d9` |
+| 1 — Green: the matcher + the Javadoc that described it | ⏳ | |
 | 2 — The ownership-exemption assertion + docs sweep | | |
 
 **Phase 0 red evidence** (`gradle test --tests "*AdminPayoutSecurityIT*"`, 9 tests, 3
@@ -447,6 +447,8 @@ gradle --no-daemon --console=plain test \
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-05 | Phase 1 — a stated role the code no longer has | Every assertion, in code or prose, that this endpoint is OPERATOR-gated | `grep -rniE "payout.?batch" --include=*.java --include=*.md --include=*.html --include=*.sql . \| grep -i operator` | 3 live sites + 5 historical + 2 irrelevant. **Live:** `AdminAuditFilter` (patched, D-5), `CrossVenueDenialIT:429` (phase 2), `riviera-admin-console.dc.html:54,64` (phase 2). **Historical:** `operator-per-venue-auth.md`, `s6-operator-self-registration.md` ×3, `admin-audit-trail.md` R-5, `admin-photo-takedown.md`, `s9-unified-auth-page.md` audit rows. **Irrelevant:** `V16__operator.sql` (a `payout_batch` FK comment). | Patched the 3 live sites; left the historical plan docs per `riviera-docs-freshness` §Scope discipline. |
+| 2026-08-05 | Phase 1 — the inverse search (what the tightening makes newly true) | Any `/api/admin/**` matcher still on a non-ADMIN role | `grep -n "requestMatchers" SecurityConfig.java \| grep -iE "ADMIN_\|PAYOUT_BATCH"` | **Zero.** All 15 admin matchers are now `hasRole(ADMIN_ROLE)` — payout-batches was the namespace's last carve-out. | No code change. The new property is stated where it is load-bearing (`AdminAuditFilter`'s actor paragraph, `ADMIN_OPERATORS_PATH`'s Javadoc) and a machine guard for it is recorded as a deliberate deferral (Non-goals). |
 
 ---
 

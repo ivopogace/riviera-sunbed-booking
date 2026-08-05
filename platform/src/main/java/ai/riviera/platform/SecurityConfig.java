@@ -130,15 +130,15 @@ class SecurityConfig {
 	/** Accept/decline a pending request (#98); operator-session POSTs, CSRF token required (issue #109). */
 	private static final String BOOKING_REQUEST_ACCEPT_PATH = "/api/venues/*/booking-requests/*/accept";
 	private static final String BOOKING_REQUEST_DECLINE_PATH = "/api/venues/*/booking-requests/*/decline";
-	/** The operator-only weekly BKT payout-batch report (U9): generate (POST) / list (GET). */
+	/** The platform-admin weekly BKT payout-batch report (U9): generate (POST) / list (GET). */
 	private static final String PAYOUT_BATCHES_PATH = "/api/admin/payout-batches";
 	/** A single payout batch (U9): status transition (PATCH). Session + CSRF token required. */
 	private static final String PAYOUT_BATCH_ITEM_PATH = "/api/admin/payout-batches/*";
 	/**
 	 * The platform-admin operator-approval surface (S6 #115, design D-5): list pending registrations
 	 * (GET) and approve/reject them (POST). Role-gated to {@code ADMIN} and NOT venue-scoped — a
-	 * platform-wide admin action, exempt from the per-venue authorization of invariant #13 (the same
-	 * {@code /api/admin/**} exemption as the payout batches, but gated to the stricter ADMIN role).
+	 * platform-wide admin action, exempt from the per-venue authorization of invariant #13, like every
+	 * other {@code /api/admin/**} path (uniformly since #348 A4 retired the payout-batch carve-out).
 	 */
 	private static final String ADMIN_OPERATORS_PATH = "/api/admin/operators";
 	private static final String ADMIN_OPERATOR_APPROVE_PATH = "/api/admin/operators/*/approve";
@@ -367,9 +367,12 @@ class SecurityConfig {
 						// Admin weather refund (U9) — operator-only: it issues real refunds + payout
 						// reversals for a washed-out venue+date (invariant #10).
 						.requestMatchers(HttpMethod.POST, WEATHER_REFUND_PATH).hasRole(OPERATOR_ROLE)
-						// Weekly BKT payout-batch report (U9) — operator-only across all methods
-						// (generate/list/transition). A new /api/admin namespace, gated explicitly.
-						.requestMatchers(PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH).hasRole(OPERATOR_ROLE)
+						// Weekly BKT payout-batch report (U9) — ADMIN-only across all methods
+						// (generate/list/transition). Tightened from OPERATOR by #348 A4: the surface is
+						// platform-wide with no venue scoping, so the OPERATOR gate let any approved
+						// operator read every venue's payout figures and mark any venue's batch settled
+						// (object-level authorization by role alone — OWASP API #1).
+						.requestMatchers(PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH).hasRole(ADMIN_ROLE)
 						// Operator-approval surface (S6 #115) — platform-admin only, NOT venue-scoped
 						// (invariant #13's /api/admin/** exemption). Gated to the stricter ADMIN role: a
 						// plain OPERATOR reaching these is 403 (authenticated, wrong role). The GET is
