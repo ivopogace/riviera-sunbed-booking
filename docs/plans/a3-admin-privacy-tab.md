@@ -257,18 +257,34 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-2 | docs-freshness (counting sweep) | `admin-console-tabs.spec.ts` TSDoc still predicted "will do the same for A3 and A6"; A3 has now done it | fixed |
 | F-3 | full unit suite | `app.spec.ts`'s `OPERATOR_SURFACE_PATHS` registry must list every admin route — `admin/privacy` was missing, so the legacy-surface assertion failed. The same edit A8 made for `admin/commissions` | fixed |
 | F-4 | review gate (RV-PROC-1, self-caught on the overlay walk) | `riviera-local-debug` was loaded and its recipes used (scoped `ng test --include`, the `PW_CHROMIUM_EXECUTABLE` escape hatch for a browser revision that does not match the pinned one) but was absent from *Skills consulted* — the exact omission class RV-PROC-1 exists for | fixed |
+| F-5 | review gate (prior-PR-comment agent) | The File structure section listed 7 of the diff's 11 paths, dropping the registry entry, the two comment-only freshness fixes and the plan doc itself — the **fifth** consecutive recurrence of a finding raised on #438, #522, #524 and #525. Fixed, and the section now carries the `--stat` check that would have caught it | fixed |
 
 ---
 
 ## File structure
 
+> **Every path in the diff, including the one-line ones.** Listing only the interesting files is a
+> finding raised on #438, #522 (F-5), Q1/#524 (F-3) and A8/#525 (finding 4) — four consecutive
+> slices — and the paths that fall out are always the same shape: a registry entry, a comment-only
+> freshness fix, and the plan doc itself. `git diff origin/main...HEAD --stat` is the check.
+
+**New (5)**
+
+- `docs/plans/a3-admin-privacy-tab.md` — this plan
 - `frontend/src/app/admin/admin-privacy.service.ts` — the one call, grounds sanitization, error narrowing
 - `frontend/src/app/admin/admin-privacy.ts` — the three-stage panel + the aside
 - `frontend/src/app/admin/admin-privacy.spec.ts` — behaviour + the five focus guards
 - `frontend/src/app/admin/admin-privacy.a11y.spec.ts` — axe at each stage
 - `frontend/e2e/admin-privacy.e2e.ts` — real render at 360px, wire assertions, the focus bug jsdom can't show
-- `frontend/src/app/admin/admin-console-tabs.ts` — Privacy inserted at slot 7
+
+**Modified (5)**
+
+- `frontend/src/app/admin/admin-console-tabs.ts` — Privacy inserted at slot 7, + three TSDoc counts
 - `frontend/src/app/app.routes.ts` — the lazy `/admin/privacy` route
+- `frontend/src/app/app.spec.ts` — one line: `admin/privacy` joins the `OPERATOR_SURFACE_PATHS`
+  registry, without which the legacy-surface assertion fails (F-3)
+- `frontend/src/app/admin/admin-console-tabs.spec.ts` — **comment only**, zero assertion changes (F-2)
+- `frontend/e2e/admin-console-tabs.e2e.ts` — **comment only**, zero assertion changes (F-1)
 
 ---
 
