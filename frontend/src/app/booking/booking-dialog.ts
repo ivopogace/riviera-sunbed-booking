@@ -245,7 +245,10 @@ export class BookingDialog implements OnInit {
 
   constructor() {
     // Move focus into the dialog when it opens (modal a11y).
-    afterNextRender(() => this.hostRef.nativeElement.querySelector('input')?.focus());
+    afterNextRender({
+      earlyRead: () => this.hostRef.nativeElement.querySelector('input'),
+      write: (first) => first?.focus(),
+    });
   }
 
   ngOnInit(): void {

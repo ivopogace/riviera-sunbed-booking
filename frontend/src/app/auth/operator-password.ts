@@ -121,7 +121,10 @@ export class OperatorPassword {
   protected readonly changeForm = form(this.model);
 
   constructor() {
-    afterNextRender(() => this.hostRef.nativeElement.querySelector('input')?.focus());
+    afterNextRender({
+      earlyRead: () => this.hostRef.nativeElement.querySelector('input'),
+      write: (first) => first?.focus(),
+    });
   }
 
   protected async onSubmit(): Promise<void> {
@@ -180,13 +183,16 @@ export class OperatorPassword {
     // afterNextRender, not queueMicrotask: it is bound to this component's injector, so a pending
     // callback cannot outlive the component and move focus somewhere else later.
     afterNextRender(
-      () => {
-        const outcome = this.hostRef.nativeElement.querySelector<HTMLElement>(
-          '[data-testid="oppw-notice"]:not(:empty), [data-testid="oppw-error"]:not(:empty)',
-        );
-        // Optional-called: jsdom implements neither, and neither is worth failing a submit over.
-        outcome?.scrollIntoView?.({ block: 'nearest' });
-        outcome?.focus?.({ preventScroll: true });
+      {
+        earlyRead: () =>
+          this.hostRef.nativeElement.querySelector<HTMLElement>(
+            '[data-testid="oppw-notice"]:not(:empty), [data-testid="oppw-error"]:not(:empty)',
+          ),
+        write: (outcome) => {
+          // Optional-called: jsdom implements neither, and neither is worth failing a submit over.
+          outcome?.scrollIntoView?.({ block: 'nearest' });
+          outcome?.focus?.({ preventScroll: true });
+        },
       },
       { injector: this.injector },
     );

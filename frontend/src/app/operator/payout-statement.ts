@@ -153,9 +153,11 @@ export class PayoutStatement {
 
   constructor() {
     // Move focus into the modal when it opens (modal a11y) — the Close button is always present.
-    afterNextRender(() =>
-      this.hostRef.nativeElement.querySelector<HTMLElement>('[data-testid="statement-close"]')?.focus(),
-    );
+    afterNextRender({
+      earlyRead: () =>
+        this.hostRef.nativeElement.querySelector<HTMLElement>('[data-testid="statement-close"]'),
+      write: (close) => close?.focus(),
+    });
   }
 
   /** Keep keyboard focus inside the dialog (WCAG 2.4.3 / 2.1.2) — shared trap, see {@link trapFocusWithin}. */

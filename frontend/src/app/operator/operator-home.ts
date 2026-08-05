@@ -145,7 +145,10 @@ export class OperatorHome implements OnInit {
     this.route.queryParamMap.pipe(skip(1), takeUntilDestroyed()).subscribe(() => {
       void this.decide();
       afterNextRender(
-        { read: () => this.document.getElementById('operator-home-title')?.focus() },
+        {
+          earlyRead: () => this.document.getElementById('operator-home-title'),
+          write: (title) => title?.focus(),
+        },
         { injector: this.injector },
       );
     });

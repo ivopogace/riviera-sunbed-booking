@@ -375,10 +375,11 @@ export class AdminVenuePhotos {
   /** Move focus to a test-id'd element once the swap it belongs to has actually rendered. */
   private focusAfterRender(testId: string): void {
     afterNextRender(
-      () =>
-        this.hostRef.nativeElement
-          .querySelector<HTMLElement>(`[data-testid="${testId}"]`)
-          ?.focus(),
+      {
+        earlyRead: () =>
+          this.hostRef.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`),
+        write: (target) => target?.focus(),
+      },
       { injector: this.injector },
     );
   }

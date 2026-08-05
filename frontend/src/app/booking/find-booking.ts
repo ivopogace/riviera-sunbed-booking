@@ -140,7 +140,10 @@ export class FindBooking {
 
   constructor() {
     // Move focus into the code input when the modal opens (modal a11y).
-    afterNextRender(() => this.hostRef.nativeElement.querySelector('input')?.focus());
+    afterNextRender({
+      earlyRead: () => this.hostRef.nativeElement.querySelector('input'),
+      write: (first) => first?.focus(),
+    });
   }
 
   protected async onSubmit(): Promise<void> {

@@ -61,7 +61,8 @@ export class VerifyEmail {
   protected readonly state = signal<VerifyState>('verifying');
 
   constructor() {
-    afterNextRender(() => void this.verify()); // POST-on-load runs in the browser only (scanner-safe, R-6)
+    // No DOM access, so no render phase applies — this is POST-on-load, browser-only (scanner-safe, R-6).
+    afterNextRender(() => void this.verify());
   }
 
   private async verify(): Promise<void> {
