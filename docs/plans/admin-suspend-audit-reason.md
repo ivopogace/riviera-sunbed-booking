@@ -26,9 +26,7 @@ issue's reinstate judgment-call to suspend-only, surfaced the stranded-focus cla
 missed, confirmed no in-flight overlap) · `riviera-plan-doc` (this template — forced the
 behavior-parity ledger over the confirmation cluster) · `tdd` (each phase red→green:
 service spec, component specs, e2e) · `riviera-review-overlay` (review gate — after
-ready-for-review) · `riviera-docs-freshness` (ran over the slice diff — 0 findings: no
-substrate doc states "only the photo takedown collects grounds"; CLAUDE.md's takedown
-sentence stays true) · `riviera-frontend` (placement: all files stay in `admin/`; e2e in the
+ready-for-review) · `riviera-docs-freshness` (ran over `e5d9724..e203665` incl. the counting sweep (grounds-collecting surfaces 1→2) — 0 findings: CLAUDE.md:158 + ADR-0013 describe the takedown without exclusivity; `AdminAuditReasons` Javadoc is generic) · `riviera-frontend` (placement: all files stay in `admin/`; e2e in the
 CI-safe mocked suite) · `angular-developer` + angular-cli MCP (`list_projects` +
 `get_best_practices`: v22, signals, native control flow; single optional input handled as a
 plain input like the photos precedent, not Signal Forms) · `riviera-tailwind` (the input
@@ -44,24 +42,24 @@ branch stands in for `feature/admin-suspend-audit-reason` (cloud-session addendu
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given an armed suspend confirmation with grounds typed, when the admin
+- [x] **AC-1:** Given an armed suspend confirmation with grounds typed, when the admin
   confirms, then the suspend command carries the trimmed grounds and the HTTP request
   carries them as `X-Audit-Reason`. *Pinned by:*
   `admin-operators.spec.ts` "passes typed grounds to the suspend" +
   `admin-operators.service.spec.ts` "sends typed grounds as the X-Audit-Reason header".
-- [ ] **AC-2:** Given no grounds (or blank/whitespace-only), when the admin confirms, then
+- [x] **AC-2:** Given no grounds (or blank/whitespace-only), when the admin confirms, then
   the request carries **no** `X-Audit-Reason` header. *Pinned by:*
   `admin-operators.service.spec.ts` "sends no header when the grounds are blank".
-- [ ] **AC-3:** Given grounds containing non-Latin-1 characters, when sent, then each such
+- [x] **AC-3:** Given grounds containing non-Latin-1 characters, when sent, then each such
   character becomes a space (header values must be Latin-1; the request must not abort).
   *Pinned by:* `admin-operators.service.spec.ts` "replaces non-Latin-1 characters".
-- [ ] **AC-4:** Given grounds typed and the confirmation dismissed, when it is re-armed,
+- [x] **AC-4:** Given grounds typed and the confirmation dismissed, when it is re-armed,
   then the field is blank and an unstated reason stays unstated (no header). *Pinned by:*
   `admin-operators.spec.ts` "does not carry grounds typed for one suspension into the next".
-- [ ] **AC-5:** Given the confirmation arms, then focus moves onto the confirm button;
+- [x] **AC-5:** Given the confirmation arms, then focus moves onto the confirm button;
   given it is dismissed, focus returns to the row's Suspend button (WCAG 2.4.3). *Pinned
   by:* `admin-operators.spec.ts` focus cases.
-- [ ] **AC-6:** Given the full console flow, when an admin suspends with typed grounds,
+- [x] **AC-6:** Given the full console flow, when an admin suspends with typed grounds,
   then the browser's suspend request observably carries the header, and the armed
   confirmation (now containing a labelled input) is axe-clean. *Pinned by:*
   `admin-operator-suspension.e2e.ts` (extended first test).
@@ -95,10 +93,10 @@ The confirmation cluster is *modified*, not replaced; the ledger keeps its behav
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Non-Latin-1 grounds abort the whole request (fetch rejects non-ISO-8859-1 header values) | med | high | mirror the photos sanitize: `replace(/[^\x20-\x7e\xa0-\xff]/g, ' ')` + trim; header only when non-blank; AC-3 pins | session | open |
-| R-2 | Grounds leak from one confirmation into the next (stale signal) | med | med | single `suspendReason` signal cleared on arm, cancel, and settle; AC-4 pins | session | open |
-| R-3 | e2e header assertion races the stateful lifecycle mock (a second `page.route` would shadow it) | med | low | observe via `page.waitForRequest` predicate — reads the request without touching routing | session | open |
-| R-4 | Sonar new-code coverage: service header logic untested if only component specs (which stub the service) are added | med | med | dedicated `admin-operators.service.spec.ts` with `HttpTestingController` | session | open |
+| R-1 | Non-Latin-1 grounds abort the whole request (fetch rejects non-ISO-8859-1 header values) | med | high | mirror the photos sanitize: `replace(/[^\x20-\x7e\xa0-\xff]/g, ' ')` + trim; header only when non-blank; AC-3 pins | session | closed — b3ea6d6 (service spec green) |
+| R-2 | Grounds leak from one confirmation into the next (stale signal) | med | med | single `suspendReason` signal cleared on arm, cancel, and settle; AC-4 pins | session | closed — b98bbee (AC-4 spec green) |
+| R-3 | e2e header assertion races the stateful lifecycle mock (a second `page.route` would shadow it) | med | low | observe via `page.waitForRequest` predicate — reads the request without touching routing | session | closed — e203665 (e2e green) |
+| R-4 | Sonar new-code coverage: service header logic untested if only component specs (which stub the service) are added | med | med | dedicated `admin-operators.service.spec.ts` with `HttpTestingController` | session | closed — b3ea6d6 (spec ships) |
 
 ## Open questions / Assumptions
 
@@ -147,17 +145,17 @@ the #507 edge filter (sanitized server-side by `AdminAuditReasons`, ≤500 chars
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3 green, committing)
+**Stage pointer:** merge close-out — plan finalized in the PR
 
-**Next action:** Phase 4 — lint, docs freshness, close-out, ready-for-review.
+**Next action:** none — merged via PR #520.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | e5d9724 |
 | 1 — service: optional grounds → header | ✅ | b3ea6d6 |
 | 2 — component: input + clearing + focus | ✅ | b98bbee |
-| 3 — e2e: header on the wire + axe | ⏳ | |
-| 4 — close-out | | |
+| 3 — e2e: header on the wire + axe | ✅ | e203665 |
+| 4 — close-out | ✅ | this commit (merged via PR #520) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -209,20 +207,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..5:** scoped Vitest runs green at the phase commits.
-- [ ] **AC-6:** scoped Playwright run green at the phase-3 commit.
+- [x] **AC-1..5:** `npm test -- --include='**/admin-operators*.spec.ts'` → 22 passed (b3ea6d6, b98bbee).
+- [x] **AC-6:** scoped Playwright run green at the phase-3 commit.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1 — no backend code at all).
-- [ ] **Availability** N/A justified (invariant #2).
-- [ ] **Modulith** N/A justified (invariant #11).
-- [ ] **Payment/payout** N/A justified.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1 — no backend code at all).
+- [x] **Availability** N/A justified (invariant #2).
+- [x] **Modulith** N/A justified (invariant #11).
+- [x] **Payment/payout** N/A justified.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** per `references/pr-gates.md` §1 + `riviera-review-overlay`.
