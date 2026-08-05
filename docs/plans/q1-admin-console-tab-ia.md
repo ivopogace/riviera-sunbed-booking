@@ -26,7 +26,7 @@ A3/A6/A8's *visual design* only, which is what let A9 be unblocked separately) �
 (this template — forced the Behavior-parity ledger, which is what surfaced that the five shipped
 tabs do **not** move) · `tdd` (the subsequence spec is written red-first against a deliberately
 mis-ordered array) · `riviera-review-overlay` (review gate — RV-FE-*, run at ready-for-review) ·
-`riviera-docs-freshness` (**ran** over `377599a..HEAD`, findings in §Docs sweep) ·
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD` + the counting sweep — 2 findings, both patched; see §Docs sweep) ·
 `riviera-frontend` (placement: **no** layout component, no new folder; the guard spec belongs in
 the CI-safe `frontend/e2e/`) · `riviera-tailwind` (no new utilities — the decision is to *not*
 restyle the pills; the touch-target argument below is why) · `playwright-cli` (the 360px guard
@@ -184,23 +184,28 @@ row is the shape that fits; that is advice for A9, not a gate on it.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The row-budget e2e assertion is brittle across font rendering / CI Chromium | med | med | Assert **row count** (distinct pill-top offsets), not a pixel height — tolerant of font metrics while still catching a real extra row | claude | open |
-| R-2 | The subsequence guard is tautological if the component derives `tabs` by filtering the canonical const | low | med | Component keeps a hand-written `tabs` array; the const is the *contract*, the spec is the independent check. AC-4 proves the guard fails on a bad order | claude | open |
-| R-3 | Reordering churns the six admin e2e specs' selectors | low | high | Nothing reorders today (parity ledger row 1); every `data-testid` is preserved. Verified by running the mocked suite | claude | open |
-| R-4 | `ADMIN_CONSOLE_TAB_ORDER` carries labels for tabs that do not exist, and reads as dead code | med | low | It is consumed by the spec, so it is live contract, not dead data; its TSDoc states each unshipped slot's owning slice (A8/A3/A6) | claude | open |
-| R-5 | A8 ships "Commission rates" (a longer label) and quietly pushes 360px to 4 rows | med | med | AC-2's budget guard fails CI on the 4th row, which is exactly the intended forcing function | claude | open |
-| R-6 | 320px with eight tabs is 4 rows / 185px | med | low | Below the project's stated 360px bar and still non-clipping, non-scrolling. Recorded here rather than hidden; revisit only if 320px becomes a support target | claude | open |
+| R-1 | The row-budget e2e assertion is brittle across font rendering / CI Chromium | med | med | Assert **row count** (distinct pill-top offsets), not a pixel height — tolerant of font metrics while still catching a real extra row | claude | **closed** `c4510ae` — row-count assertion shipped; no pixel literal in the spec |
+| R-2 | The subsequence guard is tautological if the component derives `tabs` by filtering the canonical const | low | med | Component keeps a hand-written `tabs` array; the const is the *contract*, the spec is the independent check. AC-4 proves the guard fails on a bad order | claude | **closed** `ed3034d` — verified empirically: appending `Commissions` after `Audit` in the component made the spec FAIL |
+| R-3 | Reordering churns the six admin e2e specs' selectors | low | high | Nothing reorders today (parity ledger row 1); every `data-testid` is preserved. Verified by running the mocked suite | claude | **closed** — full mocked suite **132 passed**; no admin spec touched |
+| R-4 | `ADMIN_CONSOLE_TAB_ORDER` carries labels for tabs that do not exist, and reads as dead code | med | low | It is consumed by the spec, so it is live contract, not dead data; its TSDoc states each unshipped slot's owning slice (A8/A3/A6) | claude | **closed** `95f272b` — TSDoc names A8/A3/A6 against their slots |
+| R-5 | A8 ships "Commission rates" (a longer label) and quietly pushes 360px to 4 rows | med | med | AC-2's budget guard fails CI on the 4th row, which is exactly the intended forcing function | claude | **closed** — verified: a ninth tab makes the budget spec FAIL, an eighth PASSES |
+| R-6 | 320px with eight tabs is 4 rows / 185px | med | low | Below the project's stated 360px bar and still non-clipping, non-scrolling. Recorded here rather than hidden; revisit only if 320px becomes a support target | claude | **closed — accepted and recorded** in the decision comment on #348 and §Decision; no action |
 
 ## Open questions / Assumptions
 
-- **Assumption:** eight is the ceiling — the epic's slice table closes at eight, and admin-side
-  venue creation and owner re-assignment are explicit Non-goals of #348. *Owner:* claude ·
-  *Resolves by:* recorded as the layout-component trigger below, not left implicit.
-- **Open question → converted to a documented trigger, not left open:** at what count *would* a
-  layout component / grouping be right? **A ninth tab.** At nine the 360px strip reaches 4 rows and
-  the singleton-group objection (D-1) dissolves, since new tabs would join existing clusters rather
-  than form new ones. Written into the component TSDoc so the next author inherits the threshold
-  instead of re-deriving it. *Owner:* claude · *Resolves by:* phase 2 (TSDoc).
+**None open.** Both entries resolved below.
+
+### Resolved
+
+- **Assumption (confirmed):** eight is the ceiling — the epic's slice table closes at eight, and
+  admin-side venue creation and owner re-assignment are explicit Non-goals of #348. Rather than rest
+  on the assumption, the *consequence* of it being wrong is now guarded: a ninth tab fails the
+  budget spec. Resolved `c4510ae`.
+- **Open question (converted to a documented trigger):** at what count *would* a layout component /
+  grouping be right? **A ninth tab** — where the 360px strip reaches 4 rows *and* the singleton-group
+  objection (D-1) dissolves, since new tabs would then join existing clusters rather than form new
+  ones. Written into the component TSDoc so the next author inherits the threshold instead of
+  re-deriving it. Resolved `95f272b`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -235,18 +240,42 @@ edge added — RV-FE-8 clean); the e2e spec is API-mocked, so it belongs in `fro
 
 `N/A — no contract change.` No endpoint is added, called, or altered.
 
+## Docs sweep (`riviera-docs-freshness`)
+
+**Ran over `origin/main...HEAD`** (this slice's own diff, pre-merge smoke), plus the counting sweep.
+
+*Fact-changes in the diff:* the strip's Javadoc no longer defers the layout component on tab count;
+a new export (`ADMIN_CONSOLE_TAB_ORDER`) exists; the CI-safe e2e suite grew by one spec. The tab
+**count** did not change (still five rendered), so every "five tabs" statement stays true.
+
+| Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `docs/design/riviera-admin-console.dc.html` header | Draws a five-tab strip and presents it as the spec; the epic warned about it but the canvas itself carried no note | Q1's answer — the canonical eight-slot order is now the source of truth | **patched** — correction note added at the top of the header, pointing at `ADMIN_CONSOLE_TAB_ORDER`; the endpoint map and decision lists explicitly left binding |
+| `docs/design/riviera-admin-console.dc.html` header | *"One inconsistency the implementing slice MUST resolve … `DailyTakingsService` reads `rates.commissionBps(venueId)` LIVE at query time"* | **A7 / PR #522** — `DailyTakingsService.java:54` now reads `rates.commissionBpsOn(venueId, date)` | **patched** — rewritten as resolved, carrying A7's narrower-than-exact guarantee forward for A8's explainer |
+
+Out-of-range but found and fixed: the second row is #522's staleness, not this slice's. Recorded
+here rather than deferred, since it sits in the same header this slice was already correcting.
+
+Counting sweep (2b): grepped `the/both/only two|three|…|of the five|six` across `CLAUDE.md`,
+`RESPONSIBILITIES.md`, `docs/design`, `.claude/skills` narrowed to `tab|e2e|spec|admin|console` —
+**no findings.** Nothing counts the admin tabs or the e2e specs in a way this slice falsifies.
+Rename/removal grep (2a) for `does not yet justify|tab count|five tabs|five-tab` — the only live hit
+is the correction note this slice added.
+
+`graphify-out/` is absent (cloud clone, gitignored), so step 6 does not apply.
+
 ## Execution status
 
-**Stage pointer:** `implement — phase 3 (docs sweep + epic decision comment)`
+**Stage pointer:** `review gate run → awaiting CI green, then merge`
 
-**Next action:** Run `riviera-docs-freshness` over `377599a..HEAD`, add the canvas header correction note, then post the Q1 decision comment on #348 and tick its checklist box.
+**Next action:** Confirm PR #524's CI is green, then merge. Nothing else is outstanding.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Canonical order: red spec → exported const | ✅ | `ed3034d` |
 | 1 — 360px e2e guard (AC-1/AC-2) | ✅ | `c4510ae` |
 | 2 — TSDoc: replace the stale five-tab clause with the measured decision | ✅ | `95f272b` |
-| 3 — Docs sweep + epic #348 decision comment | ⏳ | |
+| 3 — Docs sweep + epic #348 decision comment | ✅ | `d10c8f1` + [decision comment](https://github.com/ivopogace/riviera-sunbed-booking/issues/348#issuecomment-5194927292) |
 
 **Guard-teeth verification (both guards proven to fail on the mistake they exist to catch):**
 
@@ -265,7 +294,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review — RV-FE-E2E | The new guard spec located the strip with a CSS selector (`nav[aria-label=…] a`) and reached into `page.evaluate` with `document.querySelectorAll`, where the bank calls for role/label locators | **fixed** — one `tabPills()` helper on `getByRole('navigation', {name}).getByRole('link')`, reused by both assertions via `evaluateAll`. Re-ran lint + the 3 specs: green |
 
 ---
 
@@ -389,7 +418,7 @@ eight consecutive PRs touching these files — this slice must not make it nine)
 
 **Files:** Modify `docs/design/riviera-admin-console.dc.html` · comment on #348 · tick Q1
 
-- [ ] **Step 1:** `riviera-docs-freshness` over `377599a..HEAD`.
+- [ ] **Step 1:** `riviera-docs-freshness` over `origin/main...HEAD` + the counting sweep. ✅ 2 findings, both patched — see §Docs sweep.
 - [ ] **Step 2:** Canvas header correction note — Q1 resolved, the canvas's five-tab strip is
   superseded by the eight-slot order; its endpoint map and decision lists remain binding.
 - [ ] **Step 3:** Post the Q1 decision comment on #348 (decision, rejected alternatives, the
@@ -410,29 +439,29 @@ eight consecutive PRs touching these files — this slice must not make it nine)
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm run test:e2e:a11y -- admin-console-tabs` → PASS. Verified at `<sha>`.
-- [ ] **AC-2:** same run, row-budget case → PASS. Verified at `<sha>`.
-- [ ] **AC-3:** `npm test -- admin-console-tabs` → PASS. Verified at `<sha>`.
-- [ ] **AC-4:** same run, teeth case → PASS. Verified at `<sha>`.
-- [ ] **AC-5:** same run (aria-current cases) + `npm run test:e2e:a11y` (six admin specs) → PASS.
+- [x] **AC-1:** `npx playwright test --config playwright.a11y.config.ts admin-console-tabs` → **3 passed**, incl. axe at 360px. Verified after the F-1 locator fix.
+- [x] **AC-2:** same run, row-budget case → PASS at 5 tabs and (simulated) 8; **FAIL at 9**, as intended.
+- [x] **AC-3:** `npm test -- --watch=false --include="src/app/admin/admin-console-tabs.spec.ts"` → **9 passed**.
+- [x] **AC-4:** same run, teeth case → PASS; and empirically, an out-of-slot append in the component made AC-3 FAIL.
+- [x] **AC-5:** full suites → unit **1130 passed** (136 files), a11y **319 passed** (53 files), mocked e2e **132 passed** — the six admin specs untouched and green.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] **RV-STYLE-1:** no multi-line inline comments added — the explanation lives in TSDoc.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** per `references/pr-gates.md` §1 + `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only; no backend file in the diff.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11). FE mirror: RV-FE-8 grep returns **5**, the frozen set — no new cross-feature edge.
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; no `as any` on the contract. RV-FE-1 grep for obsolete idioms in the diff → none.
+- [x] **RV-STYLE-1:** no inline comments added at all — every explanation is TSDoc or the spec's file-level block. (The epic notes this was raised on eight consecutive PRs touching these files; this one does not make it nine.)
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows (all six closed with outcomes); Open Questions empty.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #524`.
+- [ ] **The review gate ran in full** — **left unticked deliberately.** The `riviera-review-overlay` bank was walked in full (RV-FE-1/2/3/4/5/6/7/8, RV-FE-E2E, RV-STYLE-1, RV-PROC-1) and produced F-1, which is fixed. The `/code-review` subagent fan-out was **not** run: this session was explicitly instructed not to spawn agents. Per `references/pr-gates.md` §1 the overlay alone is not the review, so this box stays unticked and the gap is stated in the PR rather than papered over.

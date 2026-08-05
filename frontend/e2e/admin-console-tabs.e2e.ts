@@ -36,18 +36,22 @@ async function openConsole(page: Page): Promise<void> {
   await page.getByTestId('admin-tab-operators').waitFor();
 }
 
+/** The strip's pills, located the way assistive tech finds them — by landmark role and its name. */
+function tabPills(page: Page) {
+  return page.getByRole('navigation', { name: 'Admin console sections' }).getByRole('link');
+}
+
 /** Distinct pill top-offsets = the number of wrapped rows the strip occupies. */
 function tabRows(page: Page): Promise<number> {
-  return page.evaluate(() => {
-    const pills = document.querySelectorAll('nav[aria-label="Admin console sections"] a');
-    return new Set([...pills].map((p) => Math.round(p.getBoundingClientRect().top))).size;
-  });
+  return tabPills(page).evaluateAll(
+    (pills) => new Set(pills.map((p) => Math.round(p.getBoundingClientRect().top))).size,
+  );
 }
 
 test('every console tab is reachable at 360px without a horizontal scroll', async ({ page }) => {
   await openConsole(page);
 
-  const pills = page.locator('nav[aria-label="Admin console sections"] a');
+  const pills = tabPills(page);
   await expect(pills).not.toHaveCount(0);
   for (const pill of await pills.all()) {
     await expect(pill).toBeVisible();
