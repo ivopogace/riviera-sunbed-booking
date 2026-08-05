@@ -295,13 +295,57 @@ authenticated caller receives: `200`/`404`/`409` → `403`. There is no client t
   what #507 accepted *at the time*, and its mitigation pointed at the filter Javadoc — which
   D-5 patches. Left as-is on purpose.
 - `.claude/skills/riviera-*` — no skill cites this endpoint's role.
+- `EndpointRoleGateCoverageTest` — the #316/#317/#328 fall-through guard. Deliberately
+  **role-agnostic**: it probes every mapping with a principal holding a role the application
+  grants to nobody (`PROBE_ROLE`) and requires the chain to refuse, so it pins *that a gate
+  exists*, never *which role it names*. A tightening cannot make it stale. Re-run anyway →
+  green.
+
+**Re-sweep after the fix round** (the skill's own step 2b warning — #373's fix made a
+test's Javadoc stale within the hour). Re-ran both greps at `e2dd658`: **zero** surviving
+present-tense OPERATOR claims on this surface. The three remaining `payout.?batch` +
+`operator` hits are benign — two are `CrossVenueDenialIT`'s `operatorSession` *field name*
+(the session genuinely is the bootstrap operator account; that it carries `ROLE_ADMIN` is
+what the test's new Javadoc exists to say, and renaming a field 25 tests share is churn
+this slice should not spend), and one is `AdminAuditFilter`'s own new sentence naming the
+carve-out in the **past** tense. The counting sweep's `carve-out`/`the one exception` hits
+are all `notification`'s mail-listener carve-out — a different subject, untouched.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft #521 open, slice built; marking ready for review → review gate → sonar gate`
+**Stage pointer:** `sonar gate — review gate run (1 finding, fixed); awaiting SonarCloud analysis on PR #521`
 
-**Next action:** Mark PR #521 ready for review, then run the review gate per `riviera-sdlc`
-`references/pr-gates.md` §1 (the `/code-review` ladder + `riviera-review-overlay`).
+**Next action:** Pull the SonarCloud issue + duplication list for PR #521 (`pr-gates.md` §2 —
+the *list*, never the gate conclusion alone) and clear every entry; then merge close-out.
+
+**Review gate — ran in full** at `3ab9f8d`, via the `code-review` plugin's fan-out (five
+independent agents: CLAUDE.md compliance, shallow bug scan, git-history context, prior-PR
+comment recurrence, code-comment accuracy) with `riviera-review-overlay` layered on. `gh` is
+absent in this cloud session, so the GitHub MCP tools were the declared substitute
+(`pr-gates.md` §1). **One finding (F-1, Minor), fixed in `e2dd658`** — reached independently
+by two agents and by the overlay walk. Notable corroborations:
+
+- Two agents independently enumerated all 15 `/api/admin/**` matchers and confirmed every one
+  is `ADMIN_ROLE`, which is what makes `AdminAuditFilter`'s new "no carve-out left" sentence
+  true rather than aspirational.
+- One agent traced the gate to `27d998e` (#70, U9): `OPERATOR` was correct when written —
+  `is_admin` did not exist yet. The hole opened when **#115** made the marketplace genuinely
+  multi-tenant, which is the real provenance of this slice.
+- **One agent claim was checked and rejected.** It reported that the controller's
+  "CSRF-exempt" line became false at `57bb03b` (#109) when the ignore list allegedly dropped
+  these paths. Scanning *every* revision of `SecurityConfig` for `payout-batches` inside
+  `ignoringRequestMatchers(...)` returns **no** such commit — the claim was never true, which
+  is what D-4 says. Left as written.
+
+**Overlay walk** (`references/backend-conventions.md`): RV-BE-9 (the on-point item) ✅ — the
+touched surface is `/api/admin/**`, invariant #13-exempt from ownership by design, and the
+slice strengthens the role gate that is therefore the whole authorization; `CrossVenueDenialIT`,
+RV-BE-9's own pinning test, stays green at 25/25. RV-BE-11 ✅ — role gating is on `operator`'s
+Not-My-Job list and lands at the edge. RV-BE-1/2/4/5/6/7/8/13/14/15/16/17/18 ➖ (no
+availability, persistence, event, money, time, Stripe, ledger, SQL, booking-code, pool/cutoff,
+refund, schema, or session-lifecycle change). RV-BE-3/3b/3c/12 ✅ via the green structural net.
+RV-BE-10 ➖ (the `403` is the chain's existing handler; no new error body). RV-CT ➖ (no DTO or
+wire-shape change and no client). RV-STYLE-1 ⛔→✅ (F-1). RV-PROC-1 ✅.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -496,4 +540,4 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with a reason).
 - [x] **Close-out written in THIS PR** — final plan state committed here, **merged via PR #521**; no docs-only follow-up needed.
-- [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
+- [x] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder (the `code-review` plugin's five-agent fan-out, GitHub MCP substituted for the absent `gh`) *plus* `riviera-review-overlay`. One finding, fixed in `e2dd658`.
