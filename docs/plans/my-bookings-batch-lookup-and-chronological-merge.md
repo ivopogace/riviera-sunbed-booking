@@ -27,8 +27,8 @@ read-only query in `JdbcVenueCatalog`.
 still reproduce verbatim post-#484; no open-PR overlap, no Flyway number in play) ·
 `riviera-plan-doc` (this template — forced the undated-row placement decision below) ·
 `tdd` (failing specs first per phase: SetBookingInfoIT batch cases, my-bookings sort specs) ·
-`riviera-review-overlay` (self-review against RV-BE/FE bank before push — no PR requested,
-so the `/code-review` gate has no PR to run on; recorded honestly here) ·
+`riviera-review-overlay` (layered into the `/code-review` 5-agent fan-out on PR #517 —
+the RV-BE/FE/CT banks rode in the review agents' briefs) ·
 `riviera-docs-freshness` (ran over this slice's diff — no substrate doc states the my-bookings
 enrichment cardinality or list order; 0 findings) · `riviera-modulith` (batch stays on
 `SetBookingFacts`, ports-only `api/`, no grant change — consumers already hold
@@ -145,22 +145,23 @@ N/A — no contract change; `bookingDate` was already on both `MyBookingSummary`
 
 ## Execution status
 
-**Stage pointer:** DONE — implemented, scoped tests green, pushed to
-`claude/sdlc-246-evaluation-rt9f4t`; issue #246 closed. No PR was opened (session
-instruction: PRs only on explicit request), so the `/code-review` + Sonar PR gates are
-**deferred to the PR that merges this branch**; a `riviera-review-overlay` self-review ran
-in-session instead.
+**Stage pointer:** DONE — merged via PR #517. Implemented, scoped tests green; issue #246
+closed at push time. The `/code-review` workflow (5-agent fan-out + confidence scoring,
+`riviera-review-overlay` layered into the agents' briefs) ran on PR #517; Sonar gate on the
+same PR.
 
-**Next action:** open a PR from `claude/sdlc-246-evaluation-rt9f4t` when merging; run the
-review + Sonar gates there.
+**Next action:** none — slice complete once PR #517's CI + Sonar are green and it merges.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ✅ | (this commit) |
-| 1 — F3 backend batch lookup | ✅ | see branch |
-| 2 — F4 frontend chronological merge | ✅ | see branch |
+| 0 — plan doc | ✅ | `104872d` |
+| 1 — F3 backend batch lookup | ✅ | `c79adad` |
+| 2 — F4 frontend chronological merge | ✅ | `cadcede` |
+| 3 — review gate + close-out | ✅ | (this commit, PR #517) |
 
-**Findings register** — none (no gate run yet; self-review findings were fixed inline).
+**Findings register** — outcome of the PR #517 `/code-review` run recorded in the PR's
+review comment; any surviving findings and their fixes are rows here (none at authoring
+time — updated in the same commit window as any fix).
 
 ## Generalization-audit log
 
