@@ -90,15 +90,30 @@ class CustomerAccountServiceTest {
 	void verifyEmailRedeemsTokenSingleUseAndMarksVerified() {
 		CustomerAccountId id = registeredId("verify@example.com");
 		service.issueEmailVerificationToken(id, "hash-v", FUTURE);
-		assertThat(service.isEmailVerified(id)).isFalse();
+		assertThat(service.emailVerifiedFor("verify@example.com")).contains(false);
 
 		VerifyEmailOutcome outcome = service.verifyEmail("hash-v");
 
 		assertThat(outcome).isEqualTo(new VerifyEmailOutcome.Verified(id));
-		assertThat(service.isEmailVerified(id)).isTrue();
+		assertThat(service.emailVerifiedFor("verify@example.com")).contains(true);
 		assertThat(service.verifyEmail("hash-v"))
 				.as("single-use: a second redemption of the same token fails")
 				.isInstanceOf(VerifyEmailOutcome.InvalidOrExpired.class);
+	}
+
+	@Test
+	void emailVerifiedForUnknownEmailIsEmpty() {
+		assertThat(service.emailVerifiedFor("nobody@example.com"))
+				.as("no account → empty, so the edge can render null exactly as the old two-hop did (#256)")
+				.isEmpty();
+	}
+
+	@Test
+	void emailVerifiedForNormalizesTheEmail() {
+		registeredId("alice@example.com");
+
+		assertThat(service.emailVerifiedFor("  Alice@EXAMPLE.com ")) // byte-different input (#390 G-4)
+				.contains(false);
 	}
 
 	@Test
@@ -202,8 +217,8 @@ class CustomerAccountServiceTest {
 		}
 
 		@Override
-		public boolean isEmailVerified(CustomerAccountId accountId) {
-			return verified.contains(accountId.value());
+		public Optional<Boolean> emailVerifiedFor(String normalizedEmail) {
+			return Optional.ofNullable(idByEmail.get(normalizedEmail)).map(verified::contains);
 		}
 
 		@Override

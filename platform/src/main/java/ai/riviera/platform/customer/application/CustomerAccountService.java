@@ -115,8 +115,8 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	}
 
 	@Override
-	public boolean isEmailVerified(CustomerAccountId accountId) {
-		return store.isEmailVerified(accountId);
+	public Optional<Boolean> emailVerifiedFor(String email) {
+		return store.emailVerifiedFor(Emails.normalize(email));
 	}
 
 }

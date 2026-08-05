@@ -54,13 +54,13 @@ class CustomerAccountRecoveryIT {
 	@Test
 	void verifyEmail_firstRedeemsMarksVerified_secondAndExpiredFail() {
 		CustomerAccountId id = register("verify@example.com");
-		assertThat(recovery.isEmailVerified(id)).as("a fresh account is unverified").isFalse();
+		assertThat(recovery.emailVerifiedFor("verify@example.com")).as("a fresh account is unverified").contains(false);
 		recovery.issueEmailVerificationToken(id, "vh-valid", FUTURE);
 
 		VerifyEmailOutcome first = recovery.verifyEmail("vh-valid");
 
 		assertThat(first).isEqualTo(new VerifyEmailOutcome.Verified(id));
-		assertThat(recovery.isEmailVerified(id)).isTrue();
+		assertThat(recovery.emailVerifiedFor("verify@example.com")).contains(true);
 		assertThat(verifiedAtRows(id)).as("email_verified_at is stamped").isEqualTo(1);
 
 		assertThat(recovery.verifyEmail("vh-valid"))
@@ -71,7 +71,7 @@ class CustomerAccountRecoveryIT {
 		recovery.issueEmailVerificationToken(other, "vh-expired", PAST);
 		assertThat(recovery.verifyEmail("vh-expired"))
 				.as("an expired token cannot verify").isInstanceOf(VerifyEmailOutcome.InvalidOrExpired.class);
-		assertThat(recovery.isEmailVerified(other)).isFalse();
+		assertThat(recovery.emailVerifiedFor("verify-expired@example.com")).contains(false);
 	}
 
 	@Test

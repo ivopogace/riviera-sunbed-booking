@@ -41,22 +41,25 @@ class SsoAccountVerifiedIT {
 
 	@Test
 	void firstSsoSignInCreatesAVerifiedAccount() {
-		CustomerAccountId id = sso.resolveOrCreate(SsoProvider.GOOGLE, "verified-sub-1", "sso-verified@example.com");
+		sso.resolveOrCreate(SsoProvider.GOOGLE, "verified-sub-1", "sso-verified@example.com");
 
-		assertThat(recovery.isEmailVerified(id)).as("an SSO email is provider-verified (D-6)").isTrue();
+		assertThat(recovery.emailVerifiedFor("sso-verified@example.com"))
+				.as("an SSO email is provider-verified (D-6)").contains(true);
 	}
 
 	@Test
 	void autoLinkingSsoToAnExistingPasswordAccountMarksItVerified() {
 		RegistrationOutcome registered = provisioning.register("link-verified@example.com", "{bcrypt}pw");
 		CustomerAccountId account = ((RegistrationOutcome.Registered) registered).accountId();
-		assertThat(recovery.isEmailVerified(account)).as("a password account starts unverified").isFalse();
+		assertThat(recovery.emailVerifiedFor("link-verified@example.com"))
+				.as("a password account starts unverified").contains(false);
 
 		CustomerAccountId linked =
 				sso.resolveOrCreate(SsoProvider.APPLE, "verified-sub-2", "link-verified@example.com");
 
 		assertThat(linked).isEqualTo(account);
-		assertThat(recovery.isEmailVerified(account)).as("auto-link marks the existing account verified").isTrue();
+		assertThat(recovery.emailVerifiedFor("link-verified@example.com"))
+				.as("auto-link marks the existing account verified").contains(true);
 	}
 
 	@Test

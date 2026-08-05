@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentCustomer;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -71,7 +70,6 @@ class AuthController {
 	private final CustomerAccountProvisioning customerAccounts;
 	private final OperatorRegistration operatorRegistration;
 	private final CustomerRecovery recovery;
-	private final CurrentCustomer currentCustomer;
 
 	AuthController(@Qualifier("authenticationManager") AuthenticationManager operatorManager,
 			@Qualifier("customerAuthenticationManager") AuthenticationManager customerManager,
@@ -79,8 +77,7 @@ class AuthController {
 			PasswordEncoder passwordEncoder,
 			CustomerAccountProvisioning customerAccounts,
 			OperatorRegistration operatorRegistration,
-			CustomerRecovery recovery,
-			CurrentCustomer currentCustomer) {
+			CustomerRecovery recovery) {
 		this.operatorManager = operatorManager;
 		this.customerManager = customerManager;
 		this.securityContextRepository = securityContextRepository;
@@ -88,7 +85,6 @@ class AuthController {
 		this.customerAccounts = customerAccounts;
 		this.operatorRegistration = operatorRegistration;
 		this.recovery = recovery;
-		this.currentCustomer = currentCustomer;
 		this.timingEqualizerHash = passwordEncoder.encode("timing-equalizer-not-a-credential");
 	}
 
@@ -269,8 +265,15 @@ class AuthController {
 				.anyMatch(authority -> ADMIN_ROLE_AUTHORITY.equals(authority.getAuthority()));
 	}
 
-	/** The signed-in principal's soft email-verified state, or {@code null} for a non-customer (S8 #113). */
+	/**
+	 * The signed-in principal's soft email-verified state, or {@code null} for a non-customer (S8 #113).
+	 * The role check is in-memory and the customer branch is a single by-email read (#256) — the principal
+	 * name IS the account email, so the old resolve-id-then-read-flag pair was a second round trip for free.
+	 */
 	private Boolean verifiedStatus(Authentication authentication) {
-		return currentCustomer.optional(authentication).map(recovery::isVerified).orElse(null);
+		if (!CUSTOMER_PRINCIPAL_TYPE.equals(principalTypeOf(authentication))) {
+			return null;
+		}
+		return recovery.verifiedFor(authentication.getName()).orElse(null);
 	}
 }

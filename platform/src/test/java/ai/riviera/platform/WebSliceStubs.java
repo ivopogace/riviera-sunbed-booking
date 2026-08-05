@@ -502,8 +502,9 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public boolean isEmailVerified(CustomerAccountId accountId) {
-				return false;
+			public Optional<Boolean> emailVerifiedFor(String email) {
+				// Empty = no account, mirroring the pre-#256 stub world (/me answered emailVerified: null).
+				return Optional.empty();
 			}
 		};
 	}

@@ -145,12 +145,11 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 	}
 
 	@Override
-	public boolean isEmailVerified(CustomerAccountId accountId) {
-		return jdbc.sql("SELECT email_verified FROM customer_account WHERE id = :id")
-				.param(ID, accountId.value())
+	public Optional<Boolean> emailVerifiedFor(String normalizedEmail) {
+		return jdbc.sql("SELECT email_verified FROM customer_account WHERE email = :email")
+				.param(EMAIL, normalizedEmail)
 				.query(Boolean.class)
-				.optional()
-				.orElse(false);
+				.optional();
 	}
 
 	@Override
