@@ -169,6 +169,7 @@ import { VenueCommissionView } from './admin.model';
                       [attr.id]="'admin-commission-percent-' + venue.venueId"
                       [attr.data-testid]="'admin-commission-percent-' + venue.venueId"
                       [value]="draftPercent()"
+                      [disabled]="busy()"
                       (input)="onPercentTyped($event)"
                       class="mt-1 w-full max-w-[160px] rounded-[10px] border border-(--riv-field-border) bg-white/70 px-3 py-2 text-[15px] text-(--riv-card-ink)"
                     />
@@ -195,6 +196,7 @@ import { VenueCommissionView } from './admin.model';
                       [attr.id]="'admin-commission-reason-' + venue.venueId"
                       [attr.data-testid]="'admin-commission-reason-' + venue.venueId"
                       [value]="reason()"
+                      [disabled]="busy()"
                       (input)="onReasonTyped($event)"
                       placeholder="e.g. renegotiated for the 2026 season"
                       class="mt-1 w-full rounded-[10px] border border-(--riv-field-border) bg-white/70 px-3 py-2 text-[14px] text-(--riv-card-ink)"

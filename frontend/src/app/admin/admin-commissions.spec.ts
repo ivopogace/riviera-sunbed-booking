@@ -278,9 +278,13 @@ describe('AdminCommissions', () => {
   });
 
   /**
-   * Cancel is locked while the write is in flight, not just Save. Leaving it live let an admin
-   * dismiss the editor mid-request and then watch the row change anyway when the response landed —
-   * the server had taken the write, so undoing it locally would have been the worse lie.
+   * The whole editor is locked while the write is in flight — both buttons AND both fields, plus
+   * every other row's Edit. Leaving Cancel live let an admin dismiss the editor mid-request and then
+   * watch the row change anyway when the response landed; the server had taken the write, so undoing
+   * it locally would have been the worse lie. Leaving the *fields* live was the same bug half-fixed:
+   * a percent or reason typed while the request was in flight is silently discarded by the
+   * `closeEditor()` on success. `pricing-tab` has disabled its own money input during a save since
+   * that file's first commit — this is the established shape, not a new one.
    */
   it('locks the editor while a write is in flight', async () => {
     const service = serviceStub();
@@ -297,6 +301,9 @@ describe('AdminCommissions', () => {
     expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-cancel-7')!.disabled).toBe(true);
     expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-save-7')!.disabled).toBe(true);
     expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-edit-9')!.disabled).toBe(true);
+    // The fields too, not just the buttons — a draft typed mid-flight is wiped when the write lands.
+    expect(byTestId<HTMLInputElement>(fixture, 'admin-commission-percent-7')!.disabled).toBe(true);
+    expect(byTestId<HTMLInputElement>(fixture, 'admin-commission-reason-7')!.disabled).toBe(true);
 
     resolveWrite({ ...VENUES[0], commissionBps: 1250 });
     await settle(fixture);
