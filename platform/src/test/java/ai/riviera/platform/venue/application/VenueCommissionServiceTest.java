@@ -77,10 +77,12 @@ class VenueCommissionServiceTest {
 				"22:30 UTC is already the 6th in Tirane, so tomorrow is the 7th (invariant #6)");
 	}
 
+	/**
+	 * The ordering IS the invariant: pin after the update and the floor would hold the NEW rate, so
+	 * every past service date would silently reprice — the defect this slice fixes (invariant #9).
+	 */
 	@Test
 	void thePreviousRateIsPinnedBeforeTheLiveColumnMoves() {
-		// The ordering IS the invariant: pin after the update and the floor would hold the NEW rate, so
-		// every past service date would silently reprice — the defect this slice fixes (invariant #9).
 		FakeCommissionRateStore store = storeWith(VENUE, 1500);
 		VenueCommissionService service = new VenueCommissionService(store, MIDDAY);
 
@@ -116,10 +118,12 @@ class VenueCommissionServiceTest {
 		assertTrue(store.pinnedFloors.isEmpty(), "and neither would a pinned floor");
 	}
 
+	/**
+	 * Idempotent-looking writes still record the schedule row: the store collapses same-day writes on
+	 * {@code (venue, effective_from)}, so re-asserting the current rate must not be special-cased here.
+	 */
 	@Test
 	void aRateWriteAtTheSameValueIsStillScheduled() {
-		// Idempotent-looking writes still record the schedule row: the store collapses same-day writes
-		// on (venue, effective_from), so re-asserting the current rate must not be special-cased here.
 		FakeCommissionRateStore store = storeWith(VENUE, 1500);
 		VenueCommissionService service = new VenueCommissionService(store, MIDDAY);
 

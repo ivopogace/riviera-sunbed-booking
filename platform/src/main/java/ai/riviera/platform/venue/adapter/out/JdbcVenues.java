@@ -104,10 +104,13 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.single();
 	}
 
+	/**
+	 * Reads {@code commission_bps} from the venue row, so it must run <strong>before</strong>
+	 * {@link #updateLiveRate} overwrites it. {@code DO NOTHING}, never {@code DO UPDATE}: the floor
+	 * holds the oldest rate we know of and must never move.
+	 */
 	@Override
 	public void ensureFloorRate(VenueId venueId) {
-		// Reads commission_bps from the venue row, so it must run BEFORE updateLiveRate overwrites it.
-		// DO NOTHING, never DO UPDATE: the floor holds the oldest rate we know of and must never move.
 		jdbc.sql("""
 				INSERT INTO venue_commission_rate (venue_id, effective_from, commission_bps)
 				SELECT id, :floor, commission_bps FROM venue WHERE id = :id
@@ -132,10 +135,12 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.update();
 	}
 
+	/**
+	 * {@code RETURNING} yields the rows-affected signal and the updated view in one statement, so the
+	 * view cannot describe a row a concurrent writer changed between a write and a separate re-read.
+	 */
 	@Override
 	public Optional<VenueCommissionView> updateLiveRate(VenueId venueId, int commissionBps) {
-		// RETURNING gives the rows-affected signal and the updated view in one statement, so the view
-		// cannot describe a row a concurrent writer changed between a write and a re-read.
 		return jdbc.sql("""
 				UPDATE venue
 				   SET commission_bps = :bps
@@ -148,10 +153,12 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.optional();
 	}
 
+	/**
+	 * Platform-wide by design (ADMIN-gated caller): no ownership filter, no id set. {@code ORDER BY
+	 * name, id} keeps the admin list stable across reads when two venues share a name.
+	 */
 	@Override
 	public List<VenueCommissionView> findAll() {
-		// Platform-wide by design (ADMIN-gated caller): no ownership filter, no id set. ORDER BY
-		// name, id keeps the admin list stable across reads when two venues share a name.
 		return jdbc.sql("""
 				SELECT id, name, beach, commission_bps, payout_currency
 				  FROM venue
@@ -345,8 +352,8 @@ class JdbcVenues implements Venues, CommissionRateStore {
 		//
 		// commission_bps and payout_currency are NOT in the SET clause — they are read-only for
 		// operators (invariant #9 / provisional payout currency), and the command carries no such
-		// field, so a crafted request cannot reach them (O8, issue #177). The admin rate write is
-		// updateLiveRate, a separate statement on a separate surface (A7 #348).
+		// field, so a crafted request cannot reach them (O8, issue #177).
+		// The admin rate write is updateLiveRate — a separate statement, separate surface (A7 #348).
 		int rows = jdbc.sql("""
 				UPDATE venue
 				SET name = :name, beach = :beach, region = :region, description = :description,

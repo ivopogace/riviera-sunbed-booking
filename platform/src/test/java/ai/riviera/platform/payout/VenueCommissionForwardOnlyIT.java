@@ -1,6 +1,7 @@
 package ai.riviera.platform.payout;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,13 @@ class VenueCommissionForwardOnlyIT {
 	private static final String ADMIN_PW = "test-operator-pw";
 	private static final String OWNER = "forward-only-owner";
 	private static final String OWNER_PW = "owner-pw";
+	/**
+	 * Invariant #6: a service date is a civil date in this zone. The service computes "tomorrow" in
+	 * Tirane off a UTC clock, so a test reckoning it in the JVM default zone disagrees for the ~2 hours
+	 * each evening when Tirane has already rolled over and UTC has not — the assertion would then
+	 * demand the new rate for a date the schedule correctly still governs at the old one.
+	 */
+	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	private static final int OLD_BPS = 1500;
 	private static final int NEW_BPS = 2500;
@@ -88,7 +96,7 @@ class VenueCommissionForwardOnlyIT {
 
 	@Test
 	void aRateChangeDoesNotResplitPastServiceDatesNorTouchTheLedger() throws Exception {
-		LocalDate soldOn = LocalDate.now().minusDays(3);
+		LocalDate soldOn = LocalDate.now(TIRANE).minusDays(3);
 		long venueId = ownedVenue();
 		long bookingId = confirmedBooking(venueId, soldOn);
 		accrue(venueId, bookingId);
@@ -112,7 +120,7 @@ class VenueCommissionForwardOnlyIT {
 
 	@Test
 	void theNewRateGovernsServiceDatesFromTomorrowOnward() throws Exception {
-		LocalDate tomorrow = LocalDate.now().plusDays(1);
+		LocalDate tomorrow = LocalDate.now(TIRANE).plusDays(1);
 		long venueId = ownedVenue();
 
 		raiseTheRate(venueId);

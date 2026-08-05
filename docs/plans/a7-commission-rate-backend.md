@@ -38,8 +38,8 @@ epic's scope note 3 is the real design work and that A8/Q1 make this slice backe
 `riviera-plan-doc` (this template — forced the alternatives for scope note 3 into the
 open-questions register instead of a one-line "add rate history") · `tdd` (each phase is
 red→green: the failing takings/rate-schedule test before the migration and the service) ·
-`riviera-review-overlay` (review gate — run at ready-for-review) · `riviera-docs-freshness`
-(**ran** over this PR's range at close-out; findings recorded in the Findings register) ·
+`riviera-review-overlay` (review gate — ran at ready-for-review over PR #522; contributed RV-STYLE-1 and RV-PROC-1, and RV-BE-9/#13's admin-exemption check) · `riviera-docs-freshness`
+(**ran** over `origin/main..HEAD` at phase 4 — patched the `VenueRates` Javadoc, the two "display-only" notes, `RESPONSIBILITIES.md` §`venue`/§`payout` and `CLAUDE.md`'s venue row; the row's length was then cut again as F-4) ·
 `riviera-modulith` (placed the ownership-free operations on their own `VenueCommissionAdministration`
 port per the #511 precedent, kept `commissionBpsOn` on the role-split `VenueRates` rather than
 regrowing `VenueCatalog`, and confirmed no new `allowedDependencies` grant is needed) ·
@@ -319,18 +319,19 @@ epic's Q1 (tab information architecture); the task brief scopes A7 to the backen
 
 ## Execution status
 
-**Stage pointer:** `PR — ready for review` (implement complete; review + sonar gates next)
+**Stage pointer:** `merge close-out` — review gate run (3 findings, all fixed), Sonar gate green with an empty issue list
 
-**Next action:** Mark PR #522 ready for review, then run the review gate (`/code-review` +
-`riviera-review-overlay`) and pull the SonarCloud new-issue list.
+**Next action:** Confirm CI green on the review-fix push, then merge PR #522 and tick A7 on epic
+#348's checklist with the PR number.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V39 schedule table + `CommissionRateStore` + `commissionBpsOn` (venue storage) | ✅ | `db73e56` |
 | 1 — Takings view reads the service-date rate (payout) | ✅ | `db73e56` (same commit — the port method and its one consumer) |
-| 2 — `VenueCommissionAdministration` port + service (venue) | ✅ | `HEAD` |
-| 3 — Admin endpoints + ADMIN gate + wire contract | ✅ | `HEAD` |
-| 4 — Docs sweep (`riviera-docs-freshness`) + close-out | ✅ | `HEAD` |
+| 2 — `VenueCommissionAdministration` port + service (venue) | ✅ | `7d89c0b` |
+| 3 — Admin endpoints + ADMIN gate + wire contract | ✅ | `7d89c0b` |
+| 4 — Docs sweep (`riviera-docs-freshness`) + close-out | ✅ | `7d89c0b` |
+| 5 — Review-gate fixes (F-2 timezone, F-3 RV-STYLE-1, F-4 CLAUDE.md row) | ✅ | `HEAD` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -341,6 +342,9 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (run 31014457784, `Backend (build + test)`) | `VenueCommissionScheduleMigrationIT.backfillsEveryVenueAtTheEpochFloor` failed in the full suite: it asserted *every* venue has an epoch-floor schedule row, but the shared Testcontainers DB accumulates venues from every other IT, most inserted with raw SQL that bypasses `Venues#insertVenue`. Exactly the full-suite-only class `riviera-local-debug` documents — and a genuine design flaw, not a test artifact: the schedule's totality depended on every creation path cooperating, which nothing enforces. | fixed-in-`HEAD` — redesigned rather than re-scoped. Dropped the V39 backfill and the create-time seed; a rate change now pins the superseded rate at the floor itself (`ON CONFLICT DO NOTHING`) and the read falls back to the live rate only for a venue with no schedule at all. Totality became a property of the write. `JdbcVenueCommissionScheduleIT` now inserts venues with raw SQL deliberately, as the regression guard. AC-8 and R-2 revised accordingly. |
+| F-2 | review gate (`/code-review` fan-out, CLAUDE.md-compliance agent) | `VenueCommissionForwardOnlyIT` computed "tomorrow"/"three days ago" with `LocalDate.now()` — the **JVM default zone** — while the service it asserts against reckons the effective date in `Europe/Tirane` off a UTC clock. Between ~22:00 UTC and midnight the two disagree by a day, so `theNewRateGovernsServiceDatesFromTomorrowOnward` would demand the new rate for a date the schedule correctly still governs at the old one: a genuine CI flake, in the very test meant to pin the Tirane reckoning. Invariant #6 ("Never rely on the JVM default timezone"). The sibling `AdminVenueCommissionIT` already used `LocalDate.now(TIRANE)`, so the pattern was known and applied inconsistently. | fixed — both call sites now use `LocalDate.now(TIRANE)`, with the zone constant carrying why on its Javadoc |
+| F-3 | review gate (prior-PR-comment agent) | **RV-STYLE-1**: ten multi-line inline `//` comments added across `SecurityConfig`, `JdbcVenues`, `JdbcVenueCatalog`, `VenueCommissionService` and three tests. `riviera-java-conventions` §6c: an inline comment must fit on one line; Javadoc on the declaring member is exempt. Raised on seven consecutive PRs touching these same files (#438, #480, #506, #512, #514, #516, #521) — #521 had just fixed the exact `SecurityConfig` matcher block this PR re-broke. | fixed — every site either shortened to one line or moved to Javadoc on the declaring method/test; verified none remain by scanning the working-tree diff for runs of consecutive added `//` lines |
+| F-4 | review gate (prior-PR-comment agent) | The `venue` row of `CLAUDE.md`'s module table grew ~100 words of A7-specific mechanics, against that file's own rule ("Keep this file short and stable; detailed, situational guidance lives in the skills, not here") and on the table's already-longest row. Same finding as #438 raised against the `notification` row. | fixed — the row's addition cut to ~55 words ending in a pointer to `RESPONSIBILITIES.md` §`venue`, which this PR updates with the full mechanics |
 
 ---
 
@@ -531,6 +535,6 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR** — citing `merged via PR #NN`, so no docs-only follow-up PR is needed.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

@@ -57,12 +57,10 @@ class VenueCommissionService implements VenueCommissionAdministration {
 	@Override
 	@Transactional
 	public Optional<VenueCommissionView> setCommission(VenueId venueId, CommissionRateCommand command) {
-		// Before the live column moves, while it still holds the rate being superseded (a no-op after
-		// the venue's first change, and for an unknown venue).
+		// Before the live column moves, while it still holds the rate being superseded.
 		rates.ensureFloorRate(venueId);
 		Optional<VenueCommissionView> updated = rates.updateLiveRate(venueId, command.commissionBps());
-		// Only schedule once the live write proved the venue exists — otherwise a mistyped id would
-		// leave a schedule row for a venue that has none, outliving a write that reported 404.
+		// Schedule only once the live write proved the venue exists, so a 404 leaves no orphan row.
 		updated.ifPresent(venue ->
 				rates.schedule(venueId, nextServiceDate(), command.commissionBps()));
 		return updated;

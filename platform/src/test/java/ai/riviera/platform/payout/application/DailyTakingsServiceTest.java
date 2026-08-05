@@ -73,11 +73,13 @@ class DailyTakingsServiceTest {
 		assertEquals(0, view.commissionBps());
 	}
 
+	/**
+	 * The venue's rate rose 15% → 20% with effect from the day after {@link #DAY} (A7, #348). DAY's
+	 * bookings were sold — and their ledger entries accrued — at 15%, so DAY must still split at 15%;
+	 * reading the live rate here would silently reprice a day already reported (invariant #9).
+	 */
 	@Test
 	void pastServiceDatesKeepTheRateTheyWereSoldAt() {
-		// The venue's rate rose 15% -> 20% with effect from the day after DAY (A7, #348). DAY's
-		// bookings were sold — and their ledger entries accrued — at 15%, so DAY must still split at
-		// 15%; reading the live rate here would silently reprice a day already reported (invariant #9).
 		LocalDate effectiveFrom = DAY.plusDays(1);
 		DailyTakingsService service = new DailyTakingsService((venue, date) -> new OnlineTakings(11000, "EUR"),
 				ratesChanging(1500, 2000, effectiveFrom), allowAll());

@@ -269,12 +269,15 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.orElseGet(OptionalInt::empty);
 	}
 
+	/**
+	 * The latest scheduled rate at or before the service date, falling back to the live rate when the
+	 * venue has no schedule at all — which means its rate has never changed, so the live rate IS what
+	 * applied (A7, #348). Driven off the {@code venue} row rather than the schedule, so an unknown
+	 * venue answers empty instead of a rate; the subquery rides the composite PK's leftmost prefix +
+	 * range, so it needs no index of its own.
+	 */
 	@Override
 	public OptionalInt commissionBpsOn(VenueId id, LocalDate serviceDate) {
-		// The latest scheduled rate at or before the service date, falling back to the live rate when
-		// the venue has no schedule at all — which means its rate has never changed, so the live rate
-		// IS what applied (A7, #348). Driven off the venue row so a missing venue stays empty rather
-		// than answering a rate. The subquery rides the composite PK's leftmost prefix + range.
 		return jdbc.sql("""
 				SELECT COALESCE(
 				         (SELECT commission_bps

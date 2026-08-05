@@ -153,8 +153,7 @@ class AdminVenueCommissionIT {
 						.contentType(MediaType.APPLICATION_JSON).content("{\"commissionBps\":100}"))
 				.andExpect(status().isForbidden());
 
-		// And its own profile PATCH still ignores the field entirely (O8 #177) — the request DTO has no
-		// commissionBps at all, so a crafted body carrying one cannot reach the column.
+		// And its own profile PATCH still ignores the field entirely (O8 #177) — the DTO has none.
 		mvc.perform(patch("/api/venues/{v}", venueId).cookie(owner).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""

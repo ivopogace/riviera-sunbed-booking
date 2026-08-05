@@ -419,8 +419,7 @@ class SecurityConfig {
 						// Venue-photo moderation (#504 takedown, #511 read) — ADMIN only; any venue, owned or not.
 						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_PHOTOS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.DELETE, ADMIN_VENUE_PHOTO_PATH).hasRole(ADMIN_ROLE)
-						// Venue commission rates (A7 #348) — ADMIN only; the platform sets the commercial
-						// term, not the venue (rationale on the constants).
+						// Venue commission rates (A7 #348) — ADMIN only; rationale on the constants.
 						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_COMMISSIONS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.PUT, ADMIN_VENUE_COMMISSION_ITEM_PATH).hasRole(ADMIN_ROLE)
 						// The admin audit trail (#507) — same ADMIN gate; platform accountability state.
