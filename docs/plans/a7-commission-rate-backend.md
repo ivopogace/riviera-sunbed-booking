@@ -128,7 +128,7 @@ change".
 
 | Old-surface behavior | Verdict (preserved / changed / dropped) | How the new surface does it, or why it's gone |
 |---|---|---|
-| `DailyTakingsService` reads `rates.commissionBps(venueId)` — the **live** rate — and applies it to the requested service date's gross | **changed** | now reads `rates.commissionBpsOn(venueId, date)` — the rate scheduled for that service date. Identical output for every venue whose rate never changed (the V39 backfill puts one epoch-floor row per venue), which is every venue today; it diverges only after a rate write, which is the point |
+| `DailyTakingsService` reads `rates.commissionBps(venueId)` — the **live** rate — and applies it to the requested service date's gross | **changed** | now reads `rates.commissionBpsOn(venueId, date)` — the rate scheduled for that service date. Identical output for every venue whose rate has never changed — such a venue has **no** schedule rows, and the read's `COALESCE` falls back to the live column, which is exactly what applied. It diverges only after a rate write, which is the point |
 | `DailyTakingsView.commissionBps` reports the rate applied | **preserved** | still the single rate applied to the aggregate; its value is now the service-date rate rather than the live one |
 | A venue with no rate at all yields `0` bps and net == gross (no exception) | **preserved** | `commissionBpsOn` returns `OptionalInt.empty()` for an unknown venue exactly as `commissionBps` does; the service keeps `.orElse(0)` |
 | Ownership asserted **before** any financial read (invariant #13) | **preserved** | `assertOwns` remains the first statement of `forVenueOn`; the rate read moves but stays after it |
@@ -248,8 +248,8 @@ No new `allowedDependencies` grant: `payout` already depends on `venue::api` +
 > going to be three more methods on `Venues`. Adding them broke `VenueAdminServiceTest.FakeVenues` —
 > a ~130-line fake of an already 17-method port — which is the same god-port strain #94 split
 > `VenueCatalog` for, and `riviera-modulith` warns against directly. They moved to their own
-> purpose-named driven port, `CommissionRateStore`: `Venues` keeps its signature (only
-> `insertVenue`'s *behavior* gains the schedule seed, an adapter-internal detail), the commission
+> purpose-named driven port, `CommissionRateStore`: `Venues` keeps its signature **and** its
+> behavior (an interim version had `insertVenue` seed the schedule; F-1 removed that), the commission
 > service's test fake is three methods rather than seventeen, and a caller that only administers
 > rates cannot reach the beach-map writes. One adapter implements both ports, because both write the
 > same venue row and splitting the SQL would duplicate the seed.
@@ -345,6 +345,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-2 | review gate (`/code-review` fan-out, CLAUDE.md-compliance agent) | `VenueCommissionForwardOnlyIT` computed "tomorrow"/"three days ago" with `LocalDate.now()` — the **JVM default zone** — while the service it asserts against reckons the effective date in `Europe/Tirane` off a UTC clock. Between ~22:00 UTC and midnight the two disagree by a day, so `theNewRateGovernsServiceDatesFromTomorrowOnward` would demand the new rate for a date the schedule correctly still governs at the old one: a genuine CI flake, in the very test meant to pin the Tirane reckoning. Invariant #6 ("Never rely on the JVM default timezone"). The sibling `AdminVenueCommissionIT` already used `LocalDate.now(TIRANE)`, so the pattern was known and applied inconsistently. | fixed — both call sites now use `LocalDate.now(TIRANE)`, with the zone constant carrying why on its Javadoc |
 | F-3 | review gate (prior-PR-comment agent) | **RV-STYLE-1**: ten multi-line inline `//` comments added across `SecurityConfig`, `JdbcVenues`, `JdbcVenueCatalog`, `VenueCommissionService` and three tests. `riviera-java-conventions` §6c: an inline comment must fit on one line; Javadoc on the declaring member is exempt. Raised on seven consecutive PRs touching these same files (#438, #480, #506, #512, #514, #516, #521) — #521 had just fixed the exact `SecurityConfig` matcher block this PR re-broke. | fixed — every site either shortened to one line or moved to Javadoc on the declaring method/test; verified none remain by scanning the working-tree diff for runs of consecutive added `//` lines |
 | F-4 | review gate (prior-PR-comment agent) | The `venue` row of `CLAUDE.md`'s module table grew ~100 words of A7-specific mechanics, against that file's own rule ("Keep this file short and stable; detailed, situational guidance lives in the skills, not here") and on the table's already-longest row. Same finding as #438 raised against the `notification` row. | fixed — the row's addition cut to ~55 words ending in a pointer to `RESPONSIBILITIES.md` §`venue`, which this PR updates with the full mechanics |
+| F-5 | review gate (code-comment agent) | Seven sentences in **this plan doc** still described the design F-1 abandoned — the behavior-parity ledger row and the File-structure list claimed a V39 backfill and a `insertVenue` schedule seed, the Modulith deviation callout said `insertVenue`'s behavior "gains the schedule seed", and two phase-0 steps still specified the backfill SQL. Each contradicted the shipped code *and* other rows of the same doc. The plan doc is the source-of-intent artifact (`riviera-sdlc` rules 10–11), so a stale one misinforms the next session more than no doc would. Notably the migration header and both storage ITs described the abandonment correctly — the doc was the only thing left behind. | fixed — all seven rewritten against the shipped design; every surviving mention of "backfill" is now an explicit F-1 reference to the abandoned one |
+| F-6 | review gate (code-comment agent, judgment call) | The 6-line `--` comment block inside V39's `CREATE TABLE` body, between the column list and `PRIMARY KEY`. | **no change — not a violation.** RV-STYLE-1's scope names `//`, `#`, `/* */` and `<!-- -->`, not SQL `--`, and `V9__payout_ledger.sql` already carries exactly this shape (a two-line `--` rationale immediately above `CONSTRAINT payout_once_per_booking`). The migrations' explain-the-invariant-at-the-constraint style is house convention, and reflowing it here would make V39 the odd one out |
 
 ---
 
@@ -353,7 +355,8 @@ Skill-routing gate for what the fix touches *before* editing).
 **Created**
 
 - `platform/src/main/resources/db/migration/V39__venue_commission_rate_schedule.sql` — the
-  effective-dated schedule table + the epoch-floor backfill for every existing venue.
+  effective-dated schedule table. Deliberately **empty at migration** — it is a change log, and the
+  write is what keeps the read total (see F-1).
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueCommissionAdministration.java` —
   the ownership-free admin port (list + write), named for the posture its methods share.
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueCommissionService.java` —
@@ -383,9 +386,10 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — implement
   `commissionBpsOn`.
 - `platform/src/main/java/ai/riviera/platform/venue/application/Venues.java` — `insertVenue`'s
-  Javadoc records the schedule seed; **no signature change**.
+  `findProfile` Javadoc points at the admin write for the rate; `insertVenue` is untouched, signature
+  **and** behavior.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — implements
-  `CommissionRateStore` too; seeds the schedule row on `insertVenue`.
+  `CommissionRateStore` too (`ensureFloorRate`/`updateLiveRate`/`schedule`); `insertVenue` unchanged.
 - `platform/src/main/java/ai/riviera/platform/payout/application/DailyTakingsService.java` — read the
   service-date rate; Javadoc says why.
 - `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — two matcher constants + rules.
@@ -405,17 +409,19 @@ Skill-routing gate for what the fix touches *before* editing).
 `venue/adapter/out/JdbcVenueCatalog.java`, `venue/application/Venues.java`,
 `venue/adapter/out/JdbcVenues.java`, `WebSliceStubs`, `DailyTakingsServiceTest`
 
-- [x] **Step 1: Write the failing tests** — the migration backfills one epoch-floor row per venue;
-      `commissionBpsOn` answers the scheduled rate for a covered date, the *latest* row at or before
-      the date when several exist, and empty for an unknown venue; `insertVenue` seeds a schedule row.
+- [x] **Step 1: Write the failing tests** — `commissionBpsOn` answers the *latest* row at or before the
+      service date when several exist, the live rate when the venue has no schedule, and empty for an
+      unknown venue; a first rate change pins the superseded rate at the floor.
+      *(As first written these tests asserted a migration backfill and a create-time seed instead; CI
+      falsified that design — see F-1 — and they were rewritten against the shipped one.)*
 - [x] **Step 2: Run them, verify they fail** —
       `gradle test --tests "*VenueCommissionScheduleMigrationIT*" --tests "*JdbcVenueCommissionScheduleIT*"`
       → FAIL (relation `venue_commission_rate` does not exist / method missing).
 - [x] **Step 3: Minimal implementation** — V39 (composite PK `(venue_id, effective_from)`, CHECK
-      mirroring `venue_commission_bps_check`, `ON DELETE CASCADE` like `set_position`, backfill
-      `SELECT id, DATE '1970-01-01', commission_bps FROM venue`); `commissionBpsOn` as
-      `WHERE venue_id = :id AND effective_from <= :date ORDER BY effective_from DESC LIMIT 1`
-      (served by the PK index, no second index); the seed insert in `JdbcVenues#insertVenue`.
+      mirroring `venue_commission_bps_check`, `ON DELETE CASCADE` like `set_position`; **no backfill**);
+      `commissionBpsOn` as the latest-row-at-or-before subquery wrapped in `COALESCE` over
+      `venue.commission_bps` (served by the PK index, no second index); `ensureFloorRate` as
+      `INSERT … SELECT commission_bps FROM venue … ON CONFLICT DO NOTHING`, called by the rate write.
 - [x] **Step 4: Run them, verify they pass** — same command → PASS.
 - [x] **Step 5: Generalization-audit pass** — search for every implementor of `VenueRates` and every
       caller of `commissionBps`; decide per site whether it wants the live or the dated read.
