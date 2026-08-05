@@ -35,8 +35,9 @@ import { VenueCommissionView } from './admin.model';
  *
  * <p><strong>The write splices, it does not re-fetch.</strong> `PUT …/commission` answers the same
  * object shape as one list element, so the response replaces its row and the list read happens once
- * per visit. It is a plain `HttpClient.put`: `httpResource` models a reactive read and is explicitly
- * not for mutations.
+ * per visit. It is a plain `HttpClient.put`: `httpResource` models a reactive read, and the guide's
+ * own tip is to <em>"avoid using httpResource for mutations like POST or PUT"</em>
+ * (angular.dev/guide/http/http-resource — <em>Using httpResource</em>).
  *
  * <p><strong>Percent in, basis points out.</strong> The editor takes a percentage because that is how
  * a commercial deal is described, and renders the exact integer it will store as the admin types —
@@ -503,10 +504,20 @@ export class AdminCommissions {
     this.editorError.set('');
   }
 
-  /** Move focus to a test-id'd element once the swap it belongs to has actually rendered. */
+  /**
+   * Move focus to a test-id'd element once the swap it belongs to has actually rendered.
+   *
+   * <p>The phases are split rather than passing a bare callback, which Angular runs in
+   * `mixedReadWrite` — a phase its own docs say never to use when the work divides, and warn costs
+   * DOM reflows. Here it divides exactly: finding the element is a read, focusing it is a write.
+   */
   private focusAfterRender(testId: string): void {
     afterNextRender(
-      () => this.hostRef.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`)?.focus(),
+      {
+        earlyRead: () =>
+          this.hostRef.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`),
+        write: (target) => target?.focus(),
+      },
       { injector: this.injector },
     );
   }

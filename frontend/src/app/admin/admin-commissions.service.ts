@@ -28,9 +28,10 @@ interface AdminVenueCommissionsResponse {
  * a listed row cannot diverge in shape — and an added wire field is dropped here rather than leaking
  * into the page as an untyped extra.
  *
- * <p><strong>The write is a plain `put`, deliberately.</strong> `httpResource` models a reactive read
- * and is explicitly not for mutations
- * (angular.dev/guide/http/http-resource — <em>Response parsing and validation</em>).
+ * <p><strong>The write is a plain `put`, deliberately.</strong> `httpResource` models a reactive read;
+ * the guide's own tip is to <em>"avoid using httpResource for mutations like POST or PUT. Instead,
+ * prefer directly using the underlying HttpClient APIs"</em>
+ * (angular.dev/guide/http/http-resource — <em>Using httpResource</em>).
  *
  * <p>Unlike the photo-moderation twin, this surface does not blur venue existence: an unknown id
  * answers `404 NO_SUCH_VENUE` and the caller reports it distinctly, because an admin correcting a
