@@ -266,9 +266,18 @@ is the correction note this slice added.
 
 ## Execution status
 
-**Stage pointer:** `review gate run → awaiting CI green, then merge`
+**Stage pointer:** `merge close-out — CI green, Sonar green, awaiting merge`
 
-**Next action:** Confirm PR #524's CI is green, then merge. Nothing else is outstanding.
+**Next action:** Merge PR #524. Nothing is outstanding except the one gate deliberately left unticked
+(the `/code-review` fan-out — see the Self-review checklist's last row for why).
+
+**Gate results on PR #524:**
+
+| Gate | Result |
+|---|---|
+| CI | ✅ all 7 checks green — Backend (build + test), Frontend (lint + test + build), CodeQL, Analyze (java-kotlin), Analyze (javascript-typescript), SonarCloud scan, SonarCloud Code Analysis |
+| Sonar merge bar (0 new issues / 0 duplicated blocks / ≥80% new-code coverage) | ✅ **0 new issues, 0 accepted issues, 0 security hotspots, 0.0% duplication, 100.0% coverage on new code** — the reported issue list is empty, so nothing to triage |
+| Review gate | ⚠️ **partial** — `riviera-review-overlay` walked in full (1 finding, F-1, fixed); the `/code-review` subagent fan-out did not run (session instructed not to spawn agents). Stated in the PR, box left unticked |
 
 | Phase | Status | Commits |
 |-------|--------|---------|
