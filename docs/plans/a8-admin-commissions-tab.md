@@ -259,10 +259,10 @@ is the shared parse, not a validator.
 |-------|--------|---------|
 | 0 — plan doc | ✅ | `4781a50` |
 | 1 — shared percent↔bps helper + operator call sites | ✅ | `ef60894` |
-| 2 — model + service (one type, one parse, grounds header) | ✅ | `a987f0a` |
-| 3 — the tab component (list, editor, explainer, focus) | ✅ | `a987f0a` |
-| 4 — tab slot 2 + lazy route + Photos TSDoc correction | ✅ | `a987f0a` |
-| 5 — a11y spec + mocked e2e at 360px | ✅ | `a987f0a` |
+| 2 — model + service (one type, one parse, grounds header) | ✅ | `29ac2eb` |
+| 3 — the tab component (list, editor, explainer, focus) | ✅ | `29ac2eb` |
+| 4 — tab slot 2 + lazy route + Photos TSDoc correction | ✅ | `29ac2eb` |
+| 5 — a11y spec + mocked e2e at 360px | ✅ | `29ac2eb` |
 | 6 — review gate + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
