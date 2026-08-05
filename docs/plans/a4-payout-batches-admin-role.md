@@ -298,16 +298,30 @@ authenticated caller receives: `200`/`404`/`409` → `403`. There is no client t
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 red, entering phase 1`
 
-**Next action:** Phase 0 — write the plain-operator `403` legs in `AdminPayoutSecurityIT`
-and watch them fail against the un-tightened matcher.
+**Next action:** Phase 1 — flip the matcher to `hasRole(ADMIN_ROLE)` and correct the three
+Javadoc sites (D-1/D-3 `SecurityConfig`, D-4 controller, D-5 `AdminAuditFilter`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Red: the plain-operator refusal | | |
+| 0 — Red: the plain-operator refusal | ⏳ red pinned | |
 | 1 — Green: the matcher + the Javadoc that described it | | |
 | 2 — The ownership-exemption assertion + docs sweep | | |
+
+**Phase 0 red evidence** (`gradle test --tests "*AdminPayoutSecurityIT*"`, 9 tests, 3
+failed — the six pre-existing tests pass unchanged, confirming R-1 once more):
+
+```
+plainOperatorIsRefusedTheBatchReport      FAILED  Status expected:<403> but was:<200>
+plainOperatorIsRefusedBatchGeneration     FAILED  Status expected:<403> but was:<200>
+plainOperatorIsRefusedTheBatchStatusPatch FAILED  Status expected:<403> but was:<404>
+```
+
+The `404` on the PATCH leg is the sharpest statement of the hole: pre-change the request
+passed the gate and reached `PayoutReport#mark`, which answered `NO_SUCH_BATCH` for id 1 —
+i.e. the only thing standing between a plain operator and another venue's settlement state
+was whether that batch happened to exist.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
