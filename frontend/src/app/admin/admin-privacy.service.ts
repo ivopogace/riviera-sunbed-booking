@@ -49,11 +49,16 @@ export class AdminPrivacyService {
  * Map an erasure failure to an {@link ErasureError}. Kept beside the call, mirroring
  * `commissionWriteErrorOf`, so the page never handles an `HttpErrorResponse` itself.
  *
- * <p>`INVALID_REQUEST` earns its own value because it is the one refusal that is about the *address*
- * rather than about the request failing: the client checks the format first, so reaching it means
- * the platform disagreed, and telling the admin to fix the address is different advice from telling
- * them to try again. Note what is deliberately absent — there is no "not found" to map, at any
- * status, because the endpoint never answers one.
+ * <p>`INVALID_REQUEST` earns its own value as a **defensive branch, not a reachable one**. The
+ * endpoint's only refusal is a *blank* address — `AdminErasureController` checks null-or-blank and
+ * nothing else, and `customer.vocabulary.Emails#normalize` documents that it deliberately does not
+ * validate shape — so a malformed-but-non-blank address is accepted and scrubs nothing. The form's
+ * own check already excludes blank, which means the shipped UI cannot reach this value at all. It
+ * exists so that a regression in that check surfaces as "fix the address" rather than as the generic
+ * "try again", which would send the admin retrying a request that can never succeed.
+ *
+ * <p>Note what is deliberately absent — there is no "not found" to map, at any status, because the
+ * endpoint never answers one.
  */
 export function erasureErrorOf(error: unknown): ErasureError {
   if (!(error instanceof HttpErrorResponse)) {

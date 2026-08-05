@@ -157,20 +157,18 @@ untouched by this slice (see Non-goals).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Copy invents a success/not-found distinction the `204` cannot support, re-opening the enumeration oracle (design D-8) | med | high | One outcome path in the component — there is no not-found branch to write; AC-5 pins the non-enumeration sentence and asserts no count is rendered | A3 | open |
-| R-2 | Stranded focus on a stage swap — the #148/#351/#462/#505 class, which A8's review fan-out hit **three times**, one of them a half-applied fix | high | med | Five transitions enumerated in AC-11, each with its own spec, and **each guard re-run with its fix reverted** before the phase is called done | A3 | open |
-| R-3 | `afterNextRender` written as a bare callback runs in `mixedReadWrite`, which Angular's own docs say never to use when the work divides (A8 hand-off note 4) | med | low | `focusAfterRender` declares `earlyRead` (query) + `write` (focus), copied from `admin-commissions.ts`; verified against the v22 docs via the angular-cli MCP | A3 | open |
-| R-4 | A non-Latin-1 character in the grounds aborts the request at the header layer instead of reaching the audit trail | low | med | Sanitize `/[^\x20-\x7e\xa0-\xff]/g → ' '` then trim, and send the header only when non-blank — copied verbatim from `admin-venue-photos.service.ts` | A3 | open |
-| R-5 | Double-submit: a second POST for the same address while the first is in flight | low | med | The whole confirmation is disabled while busy (AC-9), matching A8's editor lock | A3 | open |
-| R-6 | Inserting the tab out of slot, or pushing the 360px strip to a fourth row | low | med | Insert at slot 7 in `AdminConsoleTabs.tabs`; **no** edit to `admin-console-tabs.spec.ts` or `admin-console-tabs.e2e.ts` — needing one means the insertion is wrong (A8 hand-off note 2) | A3 | open |
-| R-7 | The aside's copy drifts from ADR-0010's actual model (pseudonymize-in-place, statutory records retained) | med | med | Copy checked against `AccountErasureService` + ADR-0010 at plan time, and AC-1 pins the two halves so a later copy edit cannot silently drop one | A3 | open |
-| R-8 | Docs elsewhere still say the strip ships six tabs — the class A8 hand-off note 3 says lives outside the diff by definition | high | low | Run `riviera-docs-freshness`'s counting sweep over the merge range and patch every site | A3 | open |
+| R-1 | Copy invents a success/not-found distinction the `204` cannot support, re-opening the enumeration oracle (design D-8) | med | high | One outcome path in the component — there is no not-found branch to write; AC-5 pins the non-enumeration sentence and asserts no count is rendered | A3 | closed |
+| R-2 | Stranded focus on a stage swap — the #148/#351/#462/#505 class, which A8's review fan-out hit **three times**, one of them a half-applied fix | high | med | Five transitions enumerated in AC-11, each with its own spec, and **each guard re-run with its fix reverted** before the phase is called done | A3 | closed |
+| R-3 | `afterNextRender` written as a bare callback runs in `mixedReadWrite`, which Angular's own docs say never to use when the work divides (A8 hand-off note 4) | med | low | `focusAfterRender` declares `earlyRead` (query) + `write` (focus), copied from `admin-commissions.ts`; verified against the v22 docs via the angular-cli MCP | A3 | closed |
+| R-4 | A non-Latin-1 character in the grounds aborts the request at the header layer instead of reaching the audit trail | low | med | Sanitize `/[^\x20-\x7e\xa0-\xff]/g → ' '` then trim, and send the header only when non-blank — copied verbatim from `admin-venue-photos.service.ts` | A3 | closed |
+| R-5 | Double-submit: a second POST for the same address while the first is in flight | low | med | The whole confirmation is disabled while busy (AC-9), matching A8's editor lock | A3 | closed |
+| R-6 | Inserting the tab out of slot, or pushing the 360px strip to a fourth row | low | med | Insert at slot 7 in `AdminConsoleTabs.tabs`; **no** edit to `admin-console-tabs.spec.ts` or `admin-console-tabs.e2e.ts` — needing one means the insertion is wrong (A8 hand-off note 2) | A3 | closed |
+| R-7 | The aside's copy drifts from ADR-0010's actual model (pseudonymize-in-place, statutory records retained) | med | med | Copy checked against `AccountErasureService` + ADR-0010 at plan time, and AC-1 pins the two halves so a later copy edit cannot silently drop one | A3 | closed |
+| R-8 | Docs elsewhere still say the strip ships six tabs — the class A8 hand-off note 3 says lives outside the diff by definition | high | low | Run `riviera-docs-freshness`'s counting sweep over the merge range and patch every site | A3 | closed |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the client-side format check is a *convenience*, not a security boundary — the
-  server still validates and the `400 INVALID_REQUEST` path is handled. — *Owner:* A3 · *Resolves
-  by:* phase 1 (AC-8 pins the server path independently of the client check).
+*(empty — every entry resolved below.)*
 
 ### Resolved
 
@@ -183,6 +181,17 @@ untouched by this slice (see Non-goals).
   irreversible? — **No.** #519 and A8 both collect grounds as *optional*, and #507's audit record
   captures actor/method/path/outcome regardless; making it mandatory here would make this one admin
   action stricter than suspension and rate changes for no stated reason.
+- **Assumption (corrected at the review gate, F-6):** the plan first assumed "the client format check
+  is a convenience — the server still validates". **The server validates *blankness only*.**
+  `AdminErasureController` checks null-or-blank and nothing else, and `Emails#normalize` documents
+  that it deliberately does not validate shape, so a malformed-but-non-blank address is accepted and
+  scrubs nothing. Two consequences the slice now states rather than assumes: the client check is the
+  *only* format check anywhere, which is why AC-2 pins it; and `INVALID_REQUEST` is a **defensive
+  branch the shipped UI cannot reach**, kept so a regression in that check reads as "fix the address"
+  instead of sending the admin to retry a request that can never succeed. Raised as a **backend**
+  question — should the endpoint reject a malformed address? — and deliberately left alone: it would
+  change #101's wire contract, and rejecting shape is exactly the kind of refusal that risks leaking
+  which addresses the platform considers real. Frontend-only is the slice's scope.
 
 ## Availability & concurrency (invariant #2)
 
@@ -232,10 +241,9 @@ detaches the person from them, so no money moves and no ledger entry changes.
 
 ## Execution status
 
-**Stage pointer:** `PR #526 — ready for review (review gate + sonar gate due)`
+**Stage pointer:** `merge close-out — merged via PR #526`
 
-**Next action:** run the review gate over PR #526, then pull Sonar's new-issue list for the real diff
-(its first run analysed a plan-doc-only commit).
+**Next action:** none — tick A3 on epic #348's checklist with the PR number.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -243,7 +251,8 @@ detaches the person from them, so no money moves and no ledger entry changes.
 | 1 — Component: three stages, grounds, focus | ✅ | `61ce2c1` |
 | 2 — Tab slot 7 + lazy route | ✅ | `61ce2c1` |
 | 3 — a11y spec + mocked e2e at 360px | ✅ | `61ce2c1` |
-| 4 — Docs-freshness counting sweep | ✅ | see F-1/F-2 |
+| 4 — Docs-freshness counting sweep | ✅ | `666864c` |
+| 5 — Review-gate findings (F-4..F-6) | ✅ | `60de01e`, `9d3a7ea`, this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -258,6 +267,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-3 | full unit suite | `app.spec.ts`'s `OPERATOR_SURFACE_PATHS` registry must list every admin route — `admin/privacy` was missing, so the legacy-surface assertion failed. The same edit A8 made for `admin/commissions` | fixed |
 | F-4 | review gate (RV-PROC-1, self-caught on the overlay walk) | `riviera-local-debug` was loaded and its recipes used (scoped `ng test --include`, the `PW_CHROMIUM_EXECUTABLE` escape hatch for a browser revision that does not match the pinned one) but was absent from *Skills consulted* — the exact omission class RV-PROC-1 exists for | fixed |
 | F-5 | review gate (prior-PR-comment agent) | The File structure section listed 7 of the diff's 11 paths, dropping the registry entry, the two comment-only freshness fixes and the plan doc itself — the **fifth** consecutive recurrence of a finding raised on #438, #522, #524 and #525. Fixed, and the section now carries the `--stat` check that would have caught it | fixed |
+| F-6 | review gate (code-comment agent) | `admin-privacy.service.ts`'s `erasureErrorOf` TSDoc and this plan's assumption both claimed the server validates the *address*; it validates **blankness only** (`Emails#normalize` explicitly does not validate shape), which also makes `INVALID_REQUEST` unreachable through the shipped form. Both statements corrected to say what the backend does, and to name the branch as defensive | fixed |
 
 ---
 
@@ -347,20 +357,20 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A) (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section filled (justified N/A, frontend-only) (invariant #11).
-- [ ] **Payment/payout** section filled (justified N/A) (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A, no dates on this surface.
-- [ ] Booking codes unguessable (invariant #7) — N/A, none rendered.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** per `references/pr-gates.md` §1 plus `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A) (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section filled (justified N/A, frontend-only) (invariant #11).
+- [x] **Payment/payout** section filled (justified N/A) (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A, no dates on this surface.
+- [x] Booking codes unguessable (invariant #7) — N/A, none rendered.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** per `references/pr-gates.md` §1 plus `riviera-review-overlay`.
