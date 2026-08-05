@@ -352,6 +352,25 @@ describe('MyBookings (device-local list, issue #139)', () => {
       expect(codes).toEqual(['SLOW0001', 'FAST0001']);
     });
 
+    it('keeps same-date rows in device-store order regardless of fetch completion order (F4 tie-break)', async () => {
+      seedCodes(['TIEA0001', 'TIEB0001']);
+      const service = pendingService();
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+
+      // B resolves BEFORE A with the same bookingDate — completion order must not win the tie.
+      resolve(service, 'TIEB0001');
+      await fixture.whenStable();
+      resolve(service, 'TIEA0001');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const codes = [...host.querySelectorAll('[data-testid="booking-row"] .code')].map((el) =>
+        el.textContent?.trim(),
+      );
+      expect(codes).toEqual(['TIEA0001', 'TIEB0001']);
+    });
+
     it('issues no further per-code fetches after destroy', async () => {
       const codes = many('GONE');
       seedCodes(codes);

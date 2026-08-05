@@ -75,8 +75,7 @@ class SetBookingInfoIT {
 
 	@Test
 	void resolvesBatchBookingInfoInOneCall() {
-		// The my-bookings batch read (#246 F3): all of Miramar's ONLINE sets resolved in one map,
-		// each entry carrying the same facts the single-id read returns.
+		// #246 F3: every Miramar ONLINE set resolves in one map, each entry equal to the single-id read.
 		List<Long> setIds = jdbc.sql("""
 				SELECT sp.id FROM set_position sp JOIN venue v ON v.id = sp.venue_id
 				WHERE sp.pool = 'ONLINE' AND v.name = 'Miramar Beach Club'

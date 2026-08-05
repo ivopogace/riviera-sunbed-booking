@@ -34,7 +34,9 @@ enrichment cardinality or list order; 0 findings) · `riviera-modulith` (batch s
 `SetBookingFacts`, ports-only `api/`, no grant change — consumers already hold
 `venue::api` + `::vocabulary`) · `riviera-java-conventions` (text-block SQL, `Map`-returning
 port, no default-method logic on the port, `.toList()`/records) · `riviera-local-debug`
-(system `gradle` + JDK-25 toolchain, scoped tests only) · `riviera-frontend` (all F4 files stay
+(system `gradle` + JDK-25 toolchain, scoped tests only) · `postgres` (the batch `IN (:ids)`
+query-pattern vet — PK-served, no new index, empty-list guard; loaded at the review-gate
+re-entry after RV-PROC-1 flagged its omission) · `riviera-frontend` (all F4 files stay
 in `booking/`; no cross-feature edge) · `angular-developer` + angular-cli MCP
 (signals `update` + pure sort helper; best-practices check) · `playwright-cli` (mocked-suite
 e2e order assertion in `frontend/e2e/my-bookings.e2e.ts` — CI-safe suite, RV-FE-E2E placement).
@@ -159,9 +161,17 @@ same PR.
 | 2 — F4 frontend chronological merge | ✅ | `cadcede` |
 | 3 — review gate + close-out | ✅ | (this commit, PR #517) |
 
-**Findings register** — outcome of the PR #517 `/code-review` run recorded in the PR's
-review comment; any surviving findings and their fixes are rows here (none at authoring
-time — updated in the same commit window as any fix).
+**Findings register** — outcome of the PR #517 `/code-review` run (5-agent fan-out; agents
+2/4/5 clean, agent 1 four findings, agent 3 one) + the Sonar list:
+
+| # | Source (review / sonar / CI) | Finding | Status |
+|---|---|---|---|
+| F-1 | review (RV-PROC-1, Major) | `postgres` missing from Skills consulted though the diff adds a SQL query shape | fixed — skill loaded at re-entry, query re-vetted (PK-served `IN (:ids)`, empty guard), line updated |
+| F-2 | review (RV-STYLE-1, Minor) | two-line inline comment in `e2e/my-bookings.e2e.ts` (route mock) | fixed — one line |
+| F-3 | review (RV-STYLE-1, Minor) | two-line inline comment in `e2e/my-bookings.e2e.ts` (order assertions) | fixed — one line |
+| F-4 | review (RV-STYLE-1, Minor) | two-line inline comment in `SetBookingInfoIT.resolvesBatchBookingInfoInOneCall` | fixed — one line (scored 75, below the report filter; fixed anyway) |
+| F-5 | review (agent 3, git-history) | same-date rows order by fetch-completion order (nondeterministic across loads) — the date-only comparator ties at 0 and the incremental re-sort freezes network order | fixed — `displayRank` first-seen tie-break (device-store order, then account-list order) + pinning spec |
+| F-6 | sonar (typescript:S3358, Major smell) | nested ternary in the `inDisplayOrder` comparator | fixed — removed by the F-5 comparator rewrite |
 
 ## Generalization-audit log
 

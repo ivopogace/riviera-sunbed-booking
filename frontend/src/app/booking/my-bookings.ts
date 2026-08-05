@@ -84,16 +84,22 @@ type Row =
 /**
  * Display order (F4 #246): loaded rows by booking date, newest first — the same key and direction
  * as the backend account list (`booking_date DESC`) — with still-loading/failed rows (date not yet
- * known) last, keeping their relative order (the sort is stable). Applied on every row resolution
- * and merge, so async device rows move into place as their dates arrive; the F2 rule is untouched
- * (rows still render immediately, then sort). ISO `YYYY-MM-DD` compares correctly as a string.
+ * known) last. Ties (same date, or both undated) fall back to `rankOf`, each code's first-seen
+ * position (device-store order, then the account list's own order), so same-date rows keep a
+ * DETERMINISTIC order instead of freezing whichever fetch happened to resolve first — sorting is
+ * re-applied incrementally on every resolution, so a date-only comparator would bake the network's
+ * completion order into the list. The F2 rule is untouched (rows still render immediately, then
+ * sort). ISO `YYYY-MM-DD` compares correctly as a string.
  */
-function inDisplayOrder(rows: readonly Row[]): readonly Row[] {
+function inDisplayOrder(rows: readonly Row[], rankOf: ReadonlyMap<string, number>): readonly Row[] {
   const dateOf = (r: Row): string => (r.state === 'loaded' ? r.bookingDate : '');
   return [...rows].sort((a, b) => {
     const da = dateOf(a);
     const db = dateOf(b);
-    return da < db ? 1 : da > db ? -1 : 0;
+    if (da !== db) {
+      return da < db ? 1 : -1;
+    }
+    return (rankOf.get(a.code) ?? 0) - (rankOf.get(b.code) ?? 0);
   });
 }
 
@@ -263,6 +269,8 @@ export class MyBookings {
    * is DEQUEUED — never as a barrier, so device rows are still issued immediately (review F2).
    */
   private readonly accountResolved = new Set<string>();
+  /** Each code's first-seen position — the {@link inDisplayOrder} tie-break for same-date rows. */
+  private readonly displayRank = new Map<string, number>();
 
   constructor() {
     // Kick the load once the session restore has settled — signed-in vs guest is only known then.
@@ -292,6 +300,7 @@ export class MyBookings {
 
   /** Render this device's remembered codes (issue #139), each fetched live by code, K at a time. */
   private loadDeviceLocal(codes: readonly string[]): void {
+    codes.forEach((code, i) => this.displayRank.set(code, i));
     this.rows.set(codes.map((code) => ({ code, state: 'loading' as const })));
     this.loading.set(false);
     from(codes)
@@ -348,13 +357,16 @@ export class MyBookings {
    * the same {@link buildView}, so it renders identically to a per-code fetch.
    */
   private merge(incoming: readonly Row[]): void {
+    incoming
+      .filter((r) => !this.displayRank.has(r.code))
+      .forEach((r) => this.displayRank.set(r.code, this.displayRank.size));
     this.rows.update((rows) => {
       const byCode = new Map(incoming.map((r) => [r.code, r]));
       const listed = new Set(rows.map((r) => r.code));
-      return inDisplayOrder([
-        ...rows.map((r) => byCode.get(r.code) ?? r),
-        ...incoming.filter((r) => !listed.has(r.code)),
-      ]);
+      return inDisplayOrder(
+        [...rows.map((r) => byCode.get(r.code) ?? r), ...incoming.filter((r) => !listed.has(r.code))],
+        this.displayRank,
+      );
     });
   }
 
@@ -393,6 +405,8 @@ export class MyBookings {
   }
 
   private setRow(row: Row): void {
-    this.rows.update((rows) => inDisplayOrder(rows.map((r) => (r.code === row.code ? row : r))));
+    this.rows.update((rows) =>
+      inDisplayOrder(rows.map((r) => (r.code === row.code ? row : r)), this.displayRank),
+    );
   }
 }
