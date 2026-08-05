@@ -163,6 +163,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (code-review fan-out, CLAUDE.md-compliance agent) | AC-5 assertion line exceeds Prettier printWidth 100 in `admin-operators.spec.ts` | fixed — wrapped; `prettier --check` clean, spec green |
 
 ---
 

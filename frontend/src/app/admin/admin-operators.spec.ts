@@ -190,7 +190,9 @@ describe('AdminOperators', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(document.activeElement).toBe(host.querySelector('[data-testid="admin-suspend-confirm-7"]'));
+    expect(document.activeElement).toBe(
+      host.querySelector('[data-testid="admin-suspend-confirm-7"]'),
+    );
   });
 
   it('returns focus to Suspend when the confirmation is dismissed (AC-5)', async () => {
