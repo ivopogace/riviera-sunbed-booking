@@ -1,4 +1,12 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  effect,
+  ElementRef,
+  inject,
+  Injector,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -180,34 +188,49 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
                       Reinstate
                     </button>
                   } @else if (confirmingId() === op.id) {
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span class="text-[14px] text-(--riv-card-ink)"
-                        >Suspend {{ op.username }}?</span
+                    <div class="w-full">
+                      <p class="text-[14px] text-(--riv-card-ink)">Suspend {{ op.username }}?</p>
+                      <label
+                        [attr.for]="'admin-suspend-reason-' + op.id"
+                        class="mt-2 block text-[13.5px] font-semibold text-(--riv-card-ink)"
+                        >Reason (optional)</label
                       >
-                      <button
-                        type="button"
-                        [attr.data-testid]="'admin-suspend-confirm-' + op.id"
-                        [disabled]="actingId() !== undefined"
-                        (click)="suspend(op.id)"
-                        class="rounded-[10px] border border-[#b3261e] px-4 py-2 text-[14px] font-semibold text-[#b3261e] disabled:opacity-60"
-                      >
-                        Suspend
-                      </button>
-                      <button
-                        type="button"
-                        [attr.data-testid]="'admin-suspend-cancel-' + op.id"
-                        (click)="confirmingId.set(undefined)"
-                        class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink-soft)"
-                      >
-                        Cancel
-                      </button>
+                      <input
+                        type="text"
+                        maxlength="500"
+                        [attr.id]="'admin-suspend-reason-' + op.id"
+                        [attr.data-testid]="'admin-suspend-reason-' + op.id"
+                        [value]="suspendReason()"
+                        (input)="onSuspendReasonTyped($event)"
+                        placeholder="e.g. repeated guest reports — sets not honored"
+                        class="mt-1 w-full rounded-[10px] border border-(--riv-field-border) bg-white/70 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+                      />
+                      <div class="mt-2 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          [attr.data-testid]="'admin-suspend-confirm-' + op.id"
+                          [disabled]="actingId() !== undefined"
+                          (click)="suspend(op.id)"
+                          class="rounded-[10px] border border-[#b3261e] px-4 py-2 text-[14px] font-semibold text-[#b3261e] disabled:opacity-60"
+                        >
+                          Suspend
+                        </button>
+                        <button
+                          type="button"
+                          [attr.data-testid]="'admin-suspend-cancel-' + op.id"
+                          (click)="cancelSuspend(op.id)"
+                          class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink-soft)"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   } @else {
                     <button
                       type="button"
                       [attr.data-testid]="'admin-suspend-' + op.id"
                       [disabled]="actingId() !== undefined"
-                      (click)="confirmingId.set(op.id)"
+                      (click)="askToSuspend(op.id)"
                       class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) disabled:opacity-60"
                     >
                       Suspend
@@ -225,6 +248,8 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
 export class AdminOperators {
   protected readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminOperatorsService);
+  private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   protected readonly pending = signal<PendingOperatorView[]>([]);
   protected readonly accounts = signal<OperatorAccountView[]>([]);
@@ -234,6 +259,8 @@ export class AdminOperators {
   protected readonly actingId = signal<number | undefined>(undefined);
   /** The row awaiting a second click to confirm suspension — inline, so the action stays in place. */
   protected readonly confirmingId = signal<number | undefined>(undefined);
+  /** The armed confirmation's optional grounds (#519); cleared on arm, dismiss, and confirm. */
+  protected readonly suspendReason = signal('');
 
   private loaded = false;
 
@@ -281,8 +308,34 @@ export class AdminOperators {
     await this.act(id, () => this.service.reject(id));
   }
 
+  /**
+   * Arm the confirmation and put focus on it. Arming and dismissing each destroy the element that
+   * was just activated, which strands keyboard/AT focus on `<body>` unless it is moved deliberately
+   * (WCAG 2.4.3 — the recurring #148/#351/#462 class, fixed the same way in #505).
+   */
+  protected askToSuspend(id: number): void {
+    this.confirmingId.set(id);
+    this.suspendReason.set('');
+    this.focusAfterRender(`admin-suspend-confirm-${id}`);
+  }
+
+  protected cancelSuspend(id: number): void {
+    this.confirmingId.set(undefined);
+    this.suspendReason.set('');
+    this.focusAfterRender(`admin-suspend-${id}`);
+  }
+
+  protected onSuspendReasonTyped(event: Event): void {
+    this.suspendReason.set((event.target as HTMLInputElement).value);
+  }
+
   protected async suspend(id: number): Promise<void> {
-    await this.act(id, () => this.service.suspend(id));
+    // #519: typed grounds ride the suspension into the audit trail; no grounds → the 1-arg call.
+    const grounds = this.suspendReason().trim();
+    this.suspendReason.set('');
+    await this.act(id, () =>
+      grounds === '' ? this.service.suspend(id) : this.service.suspend(id, grounds),
+    );
   }
 
   protected async reinstate(id: number): Promise<void> {
@@ -305,5 +358,14 @@ export class AdminOperators {
       this.actingId.set(undefined);
       await this.load();
     }
+  }
+
+  /** Move focus to a test-id'd element once the swap it belongs to has actually rendered. */
+  private focusAfterRender(testId: string): void {
+    afterNextRender(
+      () =>
+        this.hostRef.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`)?.focus(),
+      { injector: this.injector },
+    );
   }
 }

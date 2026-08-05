@@ -147,15 +147,15 @@ the #507 edge filter (sanitized server-side by `AdminAuditReasons`, ≤500 chars
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1 green, committing)
+**Stage pointer:** implement (phase 2 green, committing)
 
-**Next action:** Phase 2 — failing component specs (grounds passed / cleared / focus).
+**Next action:** Phase 3 — extend the e2e (grounds on the wire + axe).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | e5d9724 |
-| 1 — service: optional grounds → header | ⏳ | |
-| 2 — component: input + clearing + focus | | |
+| 1 — service: optional grounds → header | ✅ | b3ea6d6 |
+| 2 — component: input + clearing + focus | ⏳ | |
 | 3 — e2e: header on the wire + axe | | |
 | 4 — close-out | | |
 

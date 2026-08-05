@@ -132,6 +132,80 @@ describe('AdminOperators', () => {
     expect(service.accounts).toHaveBeenCalledTimes(2); // initial load + reconcile, never a local removal
   });
 
+  /** #519 (AC-1): grounds typed into the confirmation ride the suspension into the audit trail. */
+  it('passes typed grounds to the suspend', async () => {
+    const service = serviceStub(rows, accounts);
+    const fixture = await render(authStub({ isAdmin: true }), service);
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const input = host.querySelector('[data-testid="admin-suspend-reason-7"]') as HTMLInputElement;
+    input.value = '  repeated guest reports  ';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="admin-suspend-confirm-7"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(service.suspend).toHaveBeenCalledWith(7, 'repeated guest reports');
+  });
+
+  it('does not carry grounds typed for one suspension into the next (AC-4)', async () => {
+    const service = serviceStub(rows, accounts);
+    const fixture = await render(authStub({ isAdmin: true }), service);
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const input = host.querySelector('[data-testid="admin-suspend-reason-7"]') as HTMLInputElement;
+    input.value = 'first grounds';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="admin-suspend-cancel-7"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    // Re-armed after a dismissal, the field is blank and an unstated reason stays unstated.
+    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(
+      (host.querySelector('[data-testid="admin-suspend-reason-7"]') as HTMLInputElement).value,
+    ).toBe('');
+    (host.querySelector('[data-testid="admin-suspend-confirm-7"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(service.suspend).toHaveBeenCalledWith(7);
+  });
+
+  /**
+   * WCAG 2.4.3 — the recurring #148/#351/#462/#505 stranded-focus class. Arming and dismissing
+   * each destroy the control that was just activated, so focus must be moved deliberately.
+   */
+  it('moves focus onto the confirmation when armed rather than stranding it (AC-5)', async () => {
+    const fixture = await render(authStub({ isAdmin: true }), serviceStub(rows, accounts));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="admin-suspend-confirm-7"]'));
+  });
+
+  it('returns focus to Suspend when the confirmation is dismissed (AC-5)', async () => {
+    const fixture = await render(authStub({ isAdmin: true }), serviceStub(rows, accounts));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="admin-suspend-cancel-7"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="admin-suspend-7"]'));
+  });
+
   it('cancels an armed suspension without calling the server', async () => {
     const service = serviceStub(rows, accounts);
     const fixture = await render(authStub({ isAdmin: true }), service);
