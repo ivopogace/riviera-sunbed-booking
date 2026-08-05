@@ -36,8 +36,9 @@ drawn) · `riviera-plan-doc` (this template — forced the behavior-parity ledge
 the two operator call sites the shared helper must not change) · `tdd` (each phase writes the failing
 spec before the component) · `riviera-review-overlay` (review gate — run at ready-for-review; read
 **up front** for RV-STYLE-1, which has been raised on eight consecutive PRs touching these files) ·
-`riviera-docs-freshness` (due at merge close-out over this slice's range — this line is rewritten
-there with the range and the finding count) ·
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD` — 5 findings, all from the counting
+sweep and all patched: this slice makes the **sixth** console tab, and three TSDoc/spec comments plus
+the tab e2e's header still said the strip ships five) ·
 `riviera-frontend` (placement: four files in `admin/`, the percent helper promoted to `shared/` rather
 than imported across features, the mocked e2e in `frontend/e2e/`) · `riviera-tailwind` (token-first
 `--riv-card-*` inks, `text-[14px]` not `text-sm`, `CardGlass` carries no radius so each card sets its
