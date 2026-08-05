@@ -232,8 +232,19 @@ No new `allowedDependencies` grant: `payout` already depends on `venue::api` +
 
 | Port | Package | Implemented by | Consumed by |
 |---|---|---|---|
-| `VenueCommissionAdministration` (new, **ownership-free**) | `venue.application` | `VenueCommissionService` (package-private `@Service`) | `AdminVenueCommissionController` (`venue.adapter.in`) |
-| `Venues` (existing driven port, extended) | `venue.application` | `JdbcVenues` (`venue.adapter.out`) | `VenueCommissionService`, `VenueAdminService` |
+| `VenueCommissionAdministration` (new, **ownership-free** driving port) | `venue.application` | `VenueCommissionService` (package-private `@Service`) | `AdminVenueCommissionController` (`venue.adapter.in`) |
+| `CommissionRateStore` (new **driven** port — the schedule + live rate + the platform-wide list) | `venue.application` | `JdbcVenues` (`venue.adapter.out`, now implementing both ports) | `VenueCommissionService` |
+| `Venues` (existing driven port, **signature-unchanged**) | `venue.application` | `JdbcVenues` | `VenueAdminService` |
+
+> **Deviation from the plan as drafted, resolved during phase 0.** The three storage operations were
+> going to be three more methods on `Venues`. Adding them broke `VenueAdminServiceTest.FakeVenues` —
+> a ~130-line fake of an already 17-method port — which is the same god-port strain #94 split
+> `VenueCatalog` for, and `riviera-modulith` warns against directly. They moved to their own
+> purpose-named driven port, `CommissionRateStore`: `Venues` keeps its signature (only
+> `insertVenue`'s *behavior* gains the schedule seed, an adapter-internal detail), the commission
+> service's test fake is three methods rather than seventeen, and a caller that only administers
+> rates cannot reach the beach-map writes. One adapter implements both ports, because both write the
+> same venue row and splitting the SQL would duplicate the seed.
 
 **Domain events (id-based payloads, invariant #11)**
 
@@ -300,16 +311,17 @@ epic's Q1 (tab information architecture); the task brief scopes A7 to the backen
 
 ## Execution status
 
-**Stage pointer:** `plan — complete, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 2)` — draft PR open as the CI vehicle
 
-**Next action:** Phase 0 — write the failing `VenueCommissionScheduleMigrationIT` /
-`JdbcVenueCommissionScheduleIT`, then add V39 and the schedule read/write SQL.
+**Next action:** Phase 2 — write the failing `VenueCommissionServiceTest` (the write sets the live
+rate *and* schedules the same bps from tomorrow in `Europe/Tirane`; an unknown venue schedules
+nothing), then the `VenueCommissionAdministration` port and its service.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V39 schedule table + `commissionBpsOn` (venue storage) | | |
-| 1 — Takings view reads the service-date rate (payout) | | |
-| 2 — `VenueCommissionAdministration` port + service (venue) | | |
+| 0 — V39 schedule table + `CommissionRateStore` + `commissionBpsOn` (venue storage) | ✅ | `db73e56` |
+| 1 — Takings view reads the service-date rate (payout) | ✅ | `db73e56` (same commit — the port method and its one consumer) |
+| 2 — `VenueCommissionAdministration` port + service (venue) | ⏳ | |
 | 3 — Admin endpoints + ADMIN gate + wire contract | | |
 | 4 — Docs sweep (`riviera-docs-freshness`) + close-out | | |
 
@@ -335,6 +347,8 @@ Skill-routing gate for what the fix touches *before* editing).
   the ownership-free admin port (list + write), named for the posture its methods share.
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueCommissionService.java` —
   package-private `@Service` implementing it; owns the forward-only rule and the transaction.
+- `platform/src/main/java/ai/riviera/platform/venue/application/CommissionRateStore.java` — the
+  driven port for the schedule write, the live-rate write and the platform-wide list.
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueCommissionView.java` — the
   per-venue commission read model.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/AdminVenueCommissionController.java` —
@@ -357,12 +371,10 @@ Skill-routing gate for what the fix touches *before* editing).
   becomes explicit about the per-service-date read).
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — implement
   `commissionBpsOn`.
-- `platform/src/main/java/ai/riviera/platform/venue/application/Venues.java` +
-  `venue/adapter/out/JdbcVenues.java` — the schedule/commission reads and writes; seed the schedule
-  row on `insertVenue`.
-- `platform/src/main/java/ai/riviera/platform/venue/application/VenueFieldValidation.java` — widen
-  visibility of nothing; reuse `requireCommissionBps` as-is (touched only if the new command record
-  needs it exported within the package — it does not).
+- `platform/src/main/java/ai/riviera/platform/venue/application/Venues.java` — `insertVenue`'s
+  Javadoc records the schedule seed; **no signature change**.
+- `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — implements
+  `CommissionRateStore` too; seeds the schedule row on `insertVenue`.
 - `platform/src/main/java/ai/riviera/platform/payout/application/DailyTakingsService.java` — read the
   service-date rate; Javadoc says why.
 - `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — two matcher constants + rules.
@@ -427,8 +439,8 @@ Skill-routing gate for what the fix touches *before* editing).
       the UTC/Tirane boundary); an unknown venue schedules nothing and reports not-found; the list
       returns what the port returns.
 - [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*VenueCommissionServiceTest*"` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the port, the `@Transactional` service, the two `Venues`
-      methods (`findAllCommissions`, `updateCommission`, `scheduleCommission`).
+- [ ] **Step 3: Minimal implementation** — the `VenueCommissionAdministration` port and the
+      `@Transactional` service over `CommissionRateStore` (whose three methods landed in phase 0).
 - [ ] **Step 4: Run it, verify it passes.**
 - [ ] **Step 5: Generalization-audit pass.**
 - [ ] **Step 6: Commit** — `git commit -m "Add the ownership-free venue commission administration port (#348)"`
