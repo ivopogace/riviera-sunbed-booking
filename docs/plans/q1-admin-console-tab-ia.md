@@ -304,7 +304,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | review — RV-FE-E2E | The new guard spec located the strip with a CSS selector (`nav[aria-label=…] a`) and reached into `page.evaluate` with `document.querySelectorAll`, where the bank calls for role/label locators | **fixed** — one `tabPills()` helper on `getByRole('navigation', {name}).getByRole('link')`, reused by both assertions via `evaluateAll`. Re-ran lint + the 3 specs: green |
-| F-2 | review — `/code-review` fan-out (reviewers #1 and #5, independently) | The new `ADMIN_CONSOLE_TAB_ORDER` TSDoc named the shared Email/Refunds class `AdminOutboxLever`. **No such symbol exists** — that is the *filename* stem; the exported class is `OutboxLever` (`admin-outbox-lever.ts:31`), which every sibling references correctly. A freshly-introduced factual error in the one place this repo treats as load-bearing documentation, and invisible to lint/tsc because it sat in backticks rather than a `{@link}` | **fixed** `428f569` — corrected to `OutboxLever` in the TSDoc **and** in this plan's canonical-order table (the same wrong name had propagated to both). Left as backticks rather than `{@link}`: this component does not import `OutboxLever`, so the link would not resolve |
+| F-2 | review — `/code-review` fan-out (reviewers #1, #3 and #5, independently) | The new `ADMIN_CONSOLE_TAB_ORDER` TSDoc named the shared Email/Refunds class `AdminOutboxLever`. **No such symbol exists** — that is the *filename* stem; the exported class is `OutboxLever` (`admin-outbox-lever.ts:31`), which every sibling references correctly. A freshly-introduced factual error in the one place this repo treats as load-bearing documentation, and invisible to lint/tsc because it sat in backticks rather than a `{@link}` | **fixed** `484338e` — corrected to `OutboxLever` in the TSDoc **and** in this plan's canonical-order table (the same wrong name had propagated to both). Left as backticks rather than `{@link}`: this component does not import `OutboxLever`, so the link would not resolve |
+| F-3 | review — `/code-review` fan-out (reviewer #4, prior-PR recurrence) | This plan's **File structure** section listed 5 files while the diff touches **7** — the two committed screenshots were referenced in prose but never enumerated. The same class of gap was raised on **#438** (confidence 100) and again as **#522 F-5**: the plan doc is the SDLC's living record, so a File-structure list that under-counts the diff is a factual gap, not a formatting one | **fixed** in this PR (the commit carrying this row) — both PNGs added to File structure, each with why it exists and a note that they are the first images committed under `docs/` (a deliberate precedent) |
 
 ---
 
@@ -318,6 +319,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/admin-console-tabs.e2e.ts` — **create**: the 360px guard (AC-1/AC-2).
 - `docs/design/riviera-admin-console.dc.html` — **modify**: header correction note (Q1 resolved).
 - `docs/plans/q1-admin-console-tab-ia.md` — this doc; execution status kept live.
+- `docs/plans/q1-admin-console-tab-ia/before-5-tabs-360.png` — **create**: the 360px "before"
+  screenshot (today's five tabs, 2 rows), committed rather than left in the session so the decision's
+  evidence survives it (SDLC rule 10).
+- `docs/plans/q1-admin-console-tab-ia/after-8-tabs-360.png` — **create**: the 360px "after"
+  screenshot (all eight in canonical order, 3 rows). Both are linked SHA-pinned from the Q1 decision
+  comment on #348. **First images committed under `docs/`** — a deliberate new precedent, taken
+  because the measurement table alone cannot show that content still clears the fold.
 
 ---
 
