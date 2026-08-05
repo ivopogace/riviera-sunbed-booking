@@ -307,7 +307,7 @@ authenticated caller receives: `200`/`404`/`409` → `403`. There is no client t
 |-------|--------|---------|
 | 0 — Red: the plain-operator refusal | ✅ | `4bf31d9` |
 | 1 — Green: the matcher + the Javadoc that described it | ✅ | `17e7b12` |
-| 2 — The ownership-exemption assertion + docs sweep | ✅ | `2e81eb1` |
+| 2 — The ownership-exemption assertion + docs sweep | ✅ | `4d1dcd7` |
 
 **Scoped verification** (`gradle test`, Docker present so no IT was skipped):
 
