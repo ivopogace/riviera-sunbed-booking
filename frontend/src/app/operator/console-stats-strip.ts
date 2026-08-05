@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 
 import { CardGlass } from '../shared/card-glass';
+import { formatCommissionPercent } from '../shared/commission-rate';
 import { formatMoney, MoneyView } from '../shared/money';
 import { VenueMapView } from '../shared/venue-views';
 import { todayBookingDate } from '../shared/booking-date';
@@ -87,7 +88,7 @@ export class ConsoleStatsStrip {
 
   /** The venue's commission rate as a percent for the "after {pct} commission" label (rate, not money). */
   protected commissionPct(bps: number): string {
-    return `${bps / 100}%`;
+    return formatCommissionPercent(bps);
   }
 
   private load(venueId: number): void {

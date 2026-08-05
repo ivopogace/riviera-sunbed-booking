@@ -30,11 +30,15 @@ export interface ModerationVenue {
  * HTTP client for the admin console's Photos tab (#511). Stateless: the session cookie + CSRF header
  * are added by {@link apiSessionInterceptor}, and the component holds the page state.
  *
- * <p>The venue list comes from the **public** catalogue (`GET /api/venues`) rather than an admin
- * venue endpoint, which does not exist and which this slice deliberately does not add: the catalogue
- * is public data, lists every venue with no publish filter, and so costs no new backend surface. It
- * is requested here rather than through the `venue` feature's own service because `admin/` may not
- * import another feature (RV-FE-8) — only the *types* are shared, from `shared/venue-views`.
+ * <p>The venue list comes from the **public** catalogue (`GET /api/venues`), and stays there now that
+ * an admin venue read does exist (A7, #348 — `GET /api/admin/venues`, which the Commissions tab uses).
+ * Keeping this picker on the catalogue is a need-to-know call, not inertia: the admin read carries
+ * each venue's `commissionBps`, a commercial term a photo moderator has no business reading, and
+ * routing moderation through it would put the platform's cut on a content-moderation surface for no
+ * gain. The catalogue is also complete — public data, every venue, no publish filter — so nothing is
+ * hidden from a moderator by staying on it. It is requested here rather than through the `venue`
+ * feature's own service because `admin/` may not import another feature (RV-FE-8) — only the *types*
+ * are shared, from `shared/venue-views`.
  *
  * <p>The two moderation calls are ADMIN-gated server-side and deliberately ownership-free: they are
  * the only reads/writes on a venue's photos that answer for a venue the caller does not own.

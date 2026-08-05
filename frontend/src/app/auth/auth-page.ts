@@ -387,7 +387,7 @@ export class AuthPage {
       previousAudience = audience;
       this.error.set(undefined);
     });
-    afterNextRender(() => this.focusFirstField());
+    afterNextRender({ write: () => this.focusFirstField() });
   }
 
   protected onAudienceChange(next: Audience): void {
@@ -511,7 +511,7 @@ export class AuthPage {
   }
 
   private refocusAfterRender(): void {
-    afterNextRender(() => this.focusFirstField(), { injector: this.injector });
+    afterNextRender({ write: () => this.focusFirstField() }, { injector: this.injector });
   }
 
   private focusFirstField(): void {

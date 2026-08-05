@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { OperatorAuth } from '../core/operator-auth';
 import { Amenity, AMENITY_CATALOGUE, amenityLabel } from '../shared/amenities';
 import { CardGlass } from '../shared/card-glass';
+import { formatCommissionPercent } from '../shared/commission-rate';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { parseWholeNumber } from '../shared/whole-number';
 import { BookingMode, PhotoSlotKey } from '../shared/venue-views';
@@ -118,7 +119,7 @@ export class VenueTab {
   /** Commission as a percentage for display, e.g. 1500 bps → "15%", 1550 → "15.5%". */
   protected readonly commissionPct = computed(() => {
     const bps = this.commissionBps();
-    return bps === null ? '—' : `${bps / 100}%`;
+    return bps === null ? '—' : formatCommissionPercent(bps);
   });
 
   /** The editable details, bound to the Signal Form; seeded from the loaded profile. */

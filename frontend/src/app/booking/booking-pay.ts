@@ -270,18 +270,22 @@ export class BookingPay {
       return;
     }
     // Mount once the host element is in the DOM. The real gateway loads Stripe.js here.
-    afterNextRender(async () => {
-      try {
-        this.checkout = await this.gateway.mountPaymentElement(
-          this.peHost()!.nativeElement,
-          this.booking!.clientSecret,
-        );
-        this.state.set('ready');
-      } catch (error) {
-        this.failCardStep(
-          error instanceof Error ? error.message : 'Could not load the payment form. Please try again.',
-        );
-      }
+    afterNextRender({
+      write: async () => {
+        try {
+          this.checkout = await this.gateway.mountPaymentElement(
+            this.peHost()!.nativeElement,
+            this.booking!.clientSecret,
+          );
+          this.state.set('ready');
+        } catch (error) {
+          this.failCardStep(
+            error instanceof Error
+              ? error.message
+              : 'Could not load the payment form. Please try again.',
+          );
+        }
+      },
     });
   }
 

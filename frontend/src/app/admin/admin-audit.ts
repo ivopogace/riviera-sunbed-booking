@@ -176,10 +176,11 @@ export class AdminAudit {
     await this.load();
     if (!this.loadError()) {
       afterNextRender(
-        () =>
-          this.hostRef.nativeElement
-            .querySelector<HTMLElement>('[data-testid="admin-audit-card"]')
-            ?.focus(),
+        {
+          earlyRead: () =>
+            this.hostRef.nativeElement.querySelector<HTMLElement>('[data-testid="admin-audit-card"]'),
+          write: (card) => card?.focus(),
+        },
         { injector: this.injector },
       );
     }

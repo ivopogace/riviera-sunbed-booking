@@ -8,9 +8,9 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
  * <p>Ordered by what each tab <em>is</em>, not by when it shipped: the console home, then the money
  * the platform sets and pays, then the two outbox re-drive levers (Email and Refunds share
  * `OutboxLever`), then moderation, then erasure, and Audit last because it is the record of
- * all of the above. Three slots are reserved for tabs that do not exist yet — <strong>Commissions
- * (A8)</strong>, <strong>Payouts (A6)</strong> and <strong>Privacy (A3)</strong>; the five that ship
- * today already sat in this order, so writing it down moved nothing.
+ * all of the above. Two slots are still reserved for tabs that do not exist yet —
+ * <strong>Payouts (A6)</strong> and <strong>Privacy (A3)</strong>; every tab that ships has landed
+ * in its slot without the order being renegotiated, which is what writing it down bought.
  *
  * <p>This is the contract, not a snapshot: `admin-console-tabs.spec.ts` pins that the rendered tabs
  * are a <em>subsequence</em> of it, so adding a tab in its slot needs no spec edit while appending
@@ -37,9 +37,10 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
  * (#170), minus the layout component.
  *
  * <p><strong>Why still no layout component, and no grouping (Q1, #348).</strong> Measured at 360px
- * against the real pills, the wrap costs 2 rows at five tabs and 3 rows at <em>both</em> seven and
- * eight, never clipping and never scrolling sideways at any width — so absorbing every planned tab
- * is free, and the alternatives all cost more than they save. Grouping degenerates: the natural
+ * against the real pills, the wrap costs 2 rows at five tabs and 3 rows at <em>six</em> (today,
+ * since A8) as well as at seven and eight alike, never clipping and never scrolling sideways at any
+ * width — so absorbing every planned tab is free, and the alternatives all cost more than they save.
+ * Grouping degenerates: the natural
  * clusters put Operators and Privacy alone in groups of one. An overflow menu buys ~48px by hiding
  * admin surfaces and can strand `aria-current` inside a collapsed menu. Shrinking the pills trades
  * away touch target they do not have to spare — they are 40px, already under WCAG 2.5.5's 44px.
@@ -50,7 +51,7 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
  * <p><strong>Which tabs exist is a backend question.</strong> This strip lists what ships, which is
  * why Photos (#511) appears here without appearing on the canvas at all: the canvas's Privacy tab
  * is scoped to GDPR data-subject erasure, and content moderation is a different job. The canvas's
- * own five-tab strip predates four of today's five and is not the target IA.
+ * own five-tab strip predates four of the tabs that ship and is not the target IA.
  *
  * <p>Rendered only inside each page's admin-authorized branch, so a signed-out visitor is never told
  * which admin surfaces exist. The active tab carries `aria-current="page"`, which is what makes the
@@ -81,6 +82,7 @@ export class AdminConsoleTabs {
 
   protected readonly tabs = [
     { path: '/admin', label: 'Operators', testId: 'admin-tab-operators' },
+    { path: '/admin/commissions', label: 'Commissions', testId: 'admin-tab-commissions' },
     { path: '/admin/email', label: 'Email', testId: 'admin-tab-email' },
     { path: '/admin/refunds', label: 'Refunds', testId: 'admin-tab-refunds' },
     { path: '/admin/photos', label: 'Photos', testId: 'admin-tab-photos' },
