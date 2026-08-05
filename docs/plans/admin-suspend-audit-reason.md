@@ -147,14 +147,14 @@ the #507 edge filter (sanitized server-side by `AdminAuditReasons`, ≤500 chars
 
 ## Execution status
 
-**Stage pointer:** plan committed → implement (phase 1)
+**Stage pointer:** implement (phase 1 green, committing)
 
-**Next action:** Phase 1 — write the failing `admin-operators.service.spec.ts`.
+**Next action:** Phase 2 — failing component specs (grounds passed / cleared / focus).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ⏳ | |
-| 1 — service: optional grounds → header | | |
+| 0 — plan doc | ✅ | e5d9724 |
+| 1 — service: optional grounds → header | ⏳ | |
 | 2 — component: input + clearing + focus | | |
 | 3 — e2e: header on the wire + axe | | |
 | 4 — close-out | | |
