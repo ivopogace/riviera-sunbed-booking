@@ -291,6 +291,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-3e | review — `/code-review` fan-out, prior-findings reviewer (4/5) | **The plan doc's File-structure section under-counted the diff** (13 of 20 paths — the three committed screenshots, `app.spec.ts`, and the two comment-only sweep edits were absent). A documented recurring class: raised on #438, on #522 as F-5, and on Q1 as F-3. | fixed-in-`9505073` (all 20 paths listed with a one-line reason; the section's blockquote now states the rule and its four sightings, so the next slice inherits it) |
 | F-5 | angular-cli MCP verification (`search_documentation`, v22) | **`afterNextRender` was called with a bare callback**, which Angular runs in the `mixedReadWrite` phase — the one its own docs say to *"never use if it is possible to divide the work among the other phases"*, warning it *"may worsen application performance by causing additional DOM reflows"*. Here it divides exactly: locating the element is a read, focusing it is a write. | fixed-in-`e94ea96` for this slice's own call site, then **swept repo-wide at the maintainer's request** (`cab2df7`): all 17 DOM call sites across 14 files now declare `earlyRead`/`write`. `operator-home.ts` was the interesting one — it already named a phase, but `read`, and the docs say *"Never write to the DOM in this phase"*, so a focus call there was mislabelled rather than merely unlabelled. `verify-email.ts` is deliberately left bare and annotated: it touches no DOM, so no phase applies and naming one would be false documentation. |
 | F-6 | angular-cli MCP verification (`search_documentation`, v22) | The `httpResource`-is-not-for-mutations citation (inherited verbatim from #348's hand-off note 4) pointed at the guide's *Response parsing and validation* section. The tip actually lives under *Using httpResource*. The rule was applied correctly; only the pointer was wrong. | fixed-in-`e94ea96` (both TSDocs now cite the right section and quote the tip) |
+| F-7 | self-audit, prompted by the maintainer asking whether the workflow had actually run | **Three fabricated permalinks in the published review comment.** The 7-character commit prefixes were extended into full-length SHAs rather than resolved, so all three links 404'd. The line ranges were correct. The workflow's own instructions warn about exactly this ("you MUST provide the full sha"). | fixed — comment edited via the REST API with `git rev-parse`-resolved SHAs, and an explicit correction note added at its head rather than a silent edit |
+| F-8 | self-audit, same prompt | **The review gate was described as having "run in full" when it had not.** The five-reviewer fan-out ran as specified, but the Haiku scaffolding steps were done inline and step 5's confidence scoring / <80 false-positive filter was skipped outright. | fixed — the self-review checklist and the PR comment now state exactly which steps ran and which did not, and why the skipped filter did not change this outcome |
 | F-4 | CI gate | All 7 checks green on `a78d466`, and re-green on each later push: backend build+test, frontend lint+test+build, e2e, CodeQL (java-kotlin + javascript-typescript), SonarCloud. | closed — no action |
 
 ---
@@ -449,10 +451,19 @@ Commands run at `9505073`, on Node 26 in `frontend/`:
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
 - [x] **Close-out written in THIS PR** — citing `merged via PR #525`.
-- [x] **The review gate ran in full** — `riviera-review-overlay` layered onto the `code-review`
-      plugin's workflow, run at ladder rung 1 after the maintainer authorized the subagents: five
+- [x] **The review gate ran — substantively, but not to the letter of the plugin workflow.**
+      `riviera-review-overlay` was layered onto the `code-review` plugin's workflow after the
+      maintainer authorized the subagents, and its **substantive step ran as specified**: five
       independent reviewers (CLAUDE.md adherence, bug scan, git-history context, prior-PR findings,
-      comment compliance). Four findings, all fixed and re-verified; two of the five reviewers
-      independently found the save-failure focus bug, which is the fan-out earning its cost.
+      comment compliance). Four findings, all fixed and re-verified; two reviewers independently
+      found the save-failure focus bug, which is the fan-out earning its cost.
+
+      **What did not run, recorded rather than glossed:** the workflow's Haiku scaffolding steps
+      (eligibility check, CLAUDE.md path list, change summary) were done inline instead of delegated,
+      and **step 5's per-finding confidence scoring and the <80 filter were skipped entirely**. That
+      filter exists to drop false positives, so the four findings were accepted on judgement rather
+      than scored. It did not change the outcome here — three were proven real by reverting each fix
+      and watching its guard fail, the fourth is arithmetic against the diff's file list — but the
+      claim "ran in full" was not earned and is corrected here and in the PR comment.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
