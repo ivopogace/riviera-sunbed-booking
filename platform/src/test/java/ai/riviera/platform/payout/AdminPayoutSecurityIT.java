@@ -116,11 +116,13 @@ class AdminPayoutSecurityIT {
 				.andExpect(status().isUnauthorized());
 	}
 
+	/**
+	 * The PATCH item path is a distinct matcher ({@code PAYOUT_BATCH_ITEM_PATH}) and it advances a batch
+	 * toward {@code SETTLED}, so it must be gated too — unauthenticated is {@code 401}. A valid CSRF
+	 * token is supplied so the rejection pins the auth gate, not the {@code CsrfFilter}'s {@code 403}.
+	 */
 	@Test
 	void batchStatusPatchRequiresAdmin() throws Exception {
-		// The PATCH item path is a distinct matcher (PAYOUT_BATCH_ITEM_PATH); it advances a batch toward
-		// SETTLED, so it must be gated too — unauthenticated is 401. A valid CSRF token is supplied so
-		// the rejection pins the auth gate, not the CsrfFilter's 403.
 		mvc.perform(patch(BATCHES_PATH + "/{id}", 1L).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(REPORTED_BODY))
 				.andExpect(status().isUnauthorized());

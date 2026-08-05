@@ -130,7 +130,17 @@ class SecurityConfig {
 	/** Accept/decline a pending request (#98); operator-session POSTs, CSRF token required (issue #109). */
 	private static final String BOOKING_REQUEST_ACCEPT_PATH = "/api/venues/*/booking-requests/*/accept";
 	private static final String BOOKING_REQUEST_DECLINE_PATH = "/api/venues/*/booking-requests/*/decline";
-	/** The platform-admin weekly BKT payout-batch report (U9): generate (POST) / list (GET). */
+	/**
+	 * The platform-admin weekly BKT payout-batch report (U9): generate (POST) / list (GET).
+	 *
+	 * <p>Tightened from {@code OPERATOR} to {@code ADMIN} by #348 A4. Neither this path nor
+	 * {@link #PAYOUT_BATCH_ITEM_PATH} is venue-scoped — the GET reports every venue's
+	 * gross/commission/net for the period and the PATCH addresses a batch by id — so under the
+	 * {@code OPERATOR} gate any approved operator could read competitors' payout figures and mark
+	 * their batches settled (object-level authorization by role alone, OWASP API #1). Invariant #13
+	 * exempts {@code /api/admin/**} from per-venue ownership, which is why the role has to be the
+	 * strict one: the gate is the whole authorization.
+	 */
 	private static final String PAYOUT_BATCHES_PATH = "/api/admin/payout-batches";
 	/** A single payout batch (U9): status transition (PATCH). Session + CSRF token required. */
 	private static final String PAYOUT_BATCH_ITEM_PATH = "/api/admin/payout-batches/*";
@@ -367,11 +377,7 @@ class SecurityConfig {
 						// Admin weather refund (U9) — operator-only: it issues real refunds + payout
 						// reversals for a washed-out venue+date (invariant #10).
 						.requestMatchers(HttpMethod.POST, WEATHER_REFUND_PATH).hasRole(OPERATOR_ROLE)
-						// Weekly BKT payout-batch report (U9) — ADMIN-only across all methods
-						// (generate/list/transition). Tightened from OPERATOR by #348 A4: the surface is
-						// platform-wide with no venue scoping, so the OPERATOR gate let any approved
-						// operator read every venue's payout figures and mark any venue's batch settled
-						// (object-level authorization by role alone — OWASP API #1).
+						// Weekly BKT payout-batch report (U9) — ADMIN across all methods (rationale on the constant).
 						.requestMatchers(PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH).hasRole(ADMIN_ROLE)
 						// Operator-approval surface (S6 #115) — platform-admin only, NOT venue-scoped
 						// (invariant #13's /api/admin/** exemption). Gated to the stricter ADMIN role: a
