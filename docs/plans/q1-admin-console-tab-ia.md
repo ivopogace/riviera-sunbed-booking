@@ -266,10 +266,10 @@ is the correction note this slice added.
 
 ## Execution status
 
-**Stage pointer:** `merge close-out — CI green, Sonar green, awaiting merge`
+**Stage pointer:** `merge close-out — CI green, Sonar green, review gate run in full, awaiting merge`
 
-**Next action:** Merge PR #524. Nothing is outstanding except the one gate deliberately left unticked
-(the `/code-review` fan-out — see the Self-review checklist's last row for why).
+**Next action:** Merge PR #524 once the CI run for the review-fix commits (`484338e`, `411f793`) is green.
+All three gates have now run; nothing is outstanding.
 
 **Gate results on PR #524:**
 
@@ -277,7 +277,7 @@ is the correction note this slice added.
 |---|---|
 | CI | ✅ all 7 checks green — Backend (build + test), Frontend (lint + test + build), CodeQL, Analyze (java-kotlin), Analyze (javascript-typescript), SonarCloud scan, SonarCloud Code Analysis |
 | Sonar merge bar (0 new issues / 0 duplicated blocks / ≥80% new-code coverage) | ✅ **0 new issues, 0 accepted issues, 0 security hotspots, 0.0% duplication, 100.0% coverage on new code** — the reported issue list is empty, so nothing to triage |
-| Review gate | ⚠️ **partial** — `riviera-review-overlay` walked in full (1 finding, F-1, fixed); the `/code-review` subagent fan-out did not run (session instructed not to spawn agents). Stated in the PR, box left unticked |
+| Review gate | ✅ **ran in full** — `riviera-review-overlay` bank walked (finding F-1) **plus** the `/code-review` subagent fan-out via the `references/pr-gates.md` §1 ladder, rung 1 (5 parallel reviewers + per-issue confidence scoring). Findings F-2 and F-3, both fixed. Verdict posted: [#issuecomment-5195225200](https://github.com/ivopogace/riviera-sunbed-booking/pull/524#issuecomment-5195225200) |
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -482,4 +482,4 @@ eight consecutive PRs touching these files — this slice must not make it nine)
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows (all six closed with outcomes); Open Questions empty.
 - [x] **Close-out written in THIS PR**, citing `merged via PR #524`.
-- [ ] **The review gate ran in full** — **left unticked deliberately.** The `riviera-review-overlay` bank was walked in full (RV-FE-1/2/3/4/5/6/7/8, RV-FE-E2E, RV-STYLE-1, RV-PROC-1) and produced F-1, which is fixed. The `/code-review` subagent fan-out was **not** run: this session was explicitly instructed not to spawn agents. Per `references/pr-gates.md` §1 the overlay alone is not the review, so this box stays unticked and the gap is stated in the PR rather than papered over.
+- [x] **The review gate ran in full** — `riviera-review-overlay` (RV-FE-1/2/3/4/5/6/7/8, RV-FE-E2E, RV-STYLE-1, RV-PROC-1) **plus** the `/code-review` plugin workflow: eligibility check, 5 parallel Sonnet reviewers (CLAUDE.md adherence, shallow bug scan, git history, prior-PR recurrence, code-comment compliance), then per-issue Haiku confidence scoring on the 0–100 rubric. **No issue scored ≥80**, so nothing was reportable; the two real sub-threshold findings (both 75) were fixed during the review — F-2 `484338e`, F-3 `411f793`.
