@@ -215,6 +215,20 @@ class SecurityConfig {
 	 */
 	private static final String ADMIN_VENUE_PHOTOS_PATH = "/api/admin/venues/*/photos";
 	/**
+	 * The platform-admin commission surface (A7, epic #348) — the venues-with-commission list and the
+	 * rate write. Same ADMIN gate and the same {@code /api/admin/**} exemption from invariant #13 as the
+	 * photo moderation paths above, and for the same reason: an admin does not <em>own</em> a rate, so
+	 * object-level authorization has nothing to check, while the venue-scoped alternative
+	 * ({@code PATCH /api/venues/{id}}) both answers a non-owner {@code 403 NOT_VENUE_OWNER} and treats
+	 * the rate as read-only on purpose (O8 #177 — a venue does not set its own commission).
+	 *
+	 * <p>The list path is the bare namespace root, so it cannot collide with the slot- and
+	 * photos-addressed patterns above; the write ends at the literal {@code /commission} segment after a
+	 * single-segment venue wildcard, so it cannot shadow them either.
+	 */
+	private static final String ADMIN_VENUE_COMMISSIONS_PATH = "/api/admin/venues";
+	private static final String ADMIN_VENUE_COMMISSION_ITEM_PATH = "/api/admin/venues/*/commission";
+	/**
 	 * The platform-admin audit-trail read (#507, required by ADR-0013) — the latest recorded mutating
 	 * {@code /api/admin/**} actions, newest first. Same ADMIN gate and the same {@code /api/admin/**}
 	 * exemption from invariant #13: platform accountability state, owned by no venue. The
@@ -405,6 +419,10 @@ class SecurityConfig {
 						// Venue-photo moderation (#504 takedown, #511 read) — ADMIN only; any venue, owned or not.
 						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_PHOTOS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.DELETE, ADMIN_VENUE_PHOTO_PATH).hasRole(ADMIN_ROLE)
+						// Venue commission rates (A7 #348) — ADMIN only; the platform sets the commercial
+						// term, not the venue (rationale on the constants).
+						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_COMMISSIONS_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.PUT, ADMIN_VENUE_COMMISSION_ITEM_PATH).hasRole(ADMIN_ROLE)
 						// The admin audit trail (#507) — same ADMIN gate; platform accountability state.
 						.requestMatchers(HttpMethod.GET, ADMIN_AUDIT_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()

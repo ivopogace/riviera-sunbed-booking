@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -39,9 +40,10 @@ import ai.riviera.platform.venue.application.Venues;
  * {@code RETURNING id} to surface the identity PK. Rating/reviews/refund-policy columns take their
  * DB defaults on insert (a new venue has none).
  *
- * <p>One adapter serves both ports because both write the same {@code venue} row (and its rate
- * schedule) — the ports are split by the conversation their callers are having, not by table, so
- * splitting the SQL too would duplicate the epoch-floor seed {@link #insertVenue} needs.
+ * <p>One adapter serves both ports because both write the {@code venue} row: the ports are split by
+ * the conversation their callers are having (an owner editing their venue vs the platform setting a
+ * commercial term), not by table, and {@link #updateLiveRate} and {@link #updateVenueProfile} write
+ * columns of the same row.
  */
 @Repository
 class JdbcVenues implements Venues, CommissionRateStore {
@@ -57,11 +59,16 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	private static final String COL_REGION = "region";
 	private static final String COL_DESCRIPTION = "description";
 	/**
-	 * The floor every venue's commission schedule starts at (A7 #348) — matching the V39 backfill.
-	 * It predates the platform, so the "latest rate at or before this service date" read always
-	 * resolves and can never fall through to the live rate for a day already sold.
+	 * The date a venue's first rate change pins its previous rate at (A7 #348). It predates the
+	 * platform, so once a venue has changed rate every service date it could have sold on is covered,
+	 * and the "latest rate at or before this date" read can never fall through to the live rate for a
+	 * day already sold.
 	 */
 	private static final LocalDate EPOCH_FLOOR = LocalDate.of(1970, 1, 1);
+	/** One mapper for the commission columns, shared by the list read and the write's RETURNING. */
+	private static final RowMapper<VenueCommissionView> COMMISSION_ROW = (rs, rowNum) ->
+			new VenueCommissionView(rs.getLong("id"), rs.getString(COL_NAME), rs.getString(COL_BEACH),
+					rs.getInt("commission_bps"), rs.getString("payout_currency"));
 
 	/** The set-position INSERT column/values, shared by the single-row and bulk paths (one column list). */
 	private static final String INSERT_SET_SQL = """
@@ -79,7 +86,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 
 	@Override
 	public long insertVenue(NewVenueCommand c) {
-		long id = jdbc.sql("""
+		return jdbc.sql("""
 				INSERT INTO venue (name, beach, region, description, booking_mode,
 				                   commission_bps, payout_currency, booking_cutoff)
 				VALUES (:name, :beach, :region, :description, :mode, :bps, :currency, :cutoff)
@@ -95,10 +102,20 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.param("cutoff", c.bookingCutoff())
 				.query(Long.class)
 				.single();
-		// Seed the commission schedule from the epoch floor (A7 #348) so the per-service-date read is
-		// total for this venue too — the V39 backfill only covers venues that already existed.
-		schedule(new VenueId(id), EPOCH_FLOOR, c.commissionBps());
-		return id;
+	}
+
+	@Override
+	public void ensureFloorRate(VenueId venueId) {
+		// Reads commission_bps from the venue row, so it must run BEFORE updateLiveRate overwrites it.
+		// DO NOTHING, never DO UPDATE: the floor holds the oldest rate we know of and must never move.
+		jdbc.sql("""
+				INSERT INTO venue_commission_rate (venue_id, effective_from, commission_bps)
+				SELECT id, :floor, commission_bps FROM venue WHERE id = :id
+				ON CONFLICT (venue_id, effective_from) DO NOTHING
+				""")
+				.param("floor", EPOCH_FLOOR)
+				.param("id", venueId.value())
+				.update();
 	}
 
 	@Override
@@ -116,11 +133,19 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	@Override
-	public int updateLiveRate(VenueId venueId, int commissionBps) {
-		return jdbc.sql("UPDATE venue SET commission_bps = :bps WHERE id = :id")
+	public Optional<VenueCommissionView> updateLiveRate(VenueId venueId, int commissionBps) {
+		// RETURNING gives the rows-affected signal and the updated view in one statement, so the view
+		// cannot describe a row a concurrent writer changed between a write and a re-read.
+		return jdbc.sql("""
+				UPDATE venue
+				   SET commission_bps = :bps
+				 WHERE id = :id
+				RETURNING id, name, beach, commission_bps, payout_currency
+				""")
 				.param("bps", commissionBps)
 				.param("id", venueId.value())
-				.update();
+				.query(COMMISSION_ROW)
+				.optional();
 	}
 
 	@Override
@@ -132,9 +157,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				  FROM venue
 				 ORDER BY name, id
 				""")
-				.query((rs, rowNum) -> new VenueCommissionView(
-						rs.getLong("id"), rs.getString(COL_NAME), rs.getString(COL_BEACH),
-						rs.getInt("commission_bps"), rs.getString("payout_currency")))
+				.query(COMMISSION_ROW)
 				.list();
 	}
 
@@ -322,7 +345,8 @@ class JdbcVenues implements Venues, CommissionRateStore {
 		//
 		// commission_bps and payout_currency are NOT in the SET clause — they are read-only for
 		// operators (invariant #9 / provisional payout currency), and the command carries no such
-		// field, so a crafted request cannot reach them (O8, issue #177).
+		// field, so a crafted request cannot reach them (O8, issue #177). The admin rate write is
+		// updateLiveRate, a separate statement on a separate surface (A7 #348).
 		int rows = jdbc.sql("""
 				UPDATE venue
 				SET name = :name, beach = :beach, region = :region, description = :description,

@@ -18,9 +18,10 @@ history**: `venue` grows an **effective-dated commission schedule** (`venue_comm
 V39) alongside the existing live `venue.commission_bps`, and `venue::api VenueRates` grows
 `commissionBpsOn(VenueId, LocalDate)` for the per-service-date read. The **accrual path is
 untouched** — it keeps reading the live `commissionBps(VenueId)` at decision time, which is
-what invariant #9 requires. A rate write is **forward-only**: it updates the live rate (so new
-accruals use it immediately) and schedules the same value from **tomorrow** in `Europe/Tirane`,
-so every service date already in the past keeps the rate it was sold at. The two admin
+what invariant #9 requires. A rate write is **forward-only**, in three ordered steps: it pins the
+rate being superseded at an epoch floor (so past dates keep it), moves the live rate (so new accruals
+use it immediately), then schedules the same value from **tomorrow** in `Europe/Tirane`. Every
+service date already in the past therefore keeps the rate it was sold at. The two admin
 endpoints live on their own **ownership-free** port in `venue` (`VenueCommissionAdministration`),
 following the #511 precedent that keeps the venue-scoped contracts uniformly `assertOwns`-first.
 
@@ -60,39 +61,43 @@ branch stands in for `feature/<slug>`** (`riviera-sdlc` §Remote/cloud addendum)
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given venues exist with their commission rates, when the platform admin reads the
+- [x] **AC-1:** Given venues exist with their commission rates, when the platform admin reads the
       venues-with-commission list, then every venue is returned with its id, name, beach,
       `commissionBps` and `payoutCurrency`, ordered by name then id. *Pinned by:*
       `AdminVenueCommissionIT.adminListsEveryVenueWithItsCommissionRate`
-- [ ] **AC-2:** Given a venue with `commissionBps = 1500`, when the platform admin writes
+- [x] **AC-2:** Given a venue with `commissionBps = 1500`, when the platform admin writes
       `commissionBps = 2000`, then the venue's live rate is 2000 (so the next accrual uses it) and
       the write answers the updated view. *Pinned by:*
       `VenueCommissionServiceTest.writeUpdatesTheLiveRateAndSchedulesItFromTomorrow`,
-      `AdminVenueCommissionIT.adminChangesAVenuesRate`
-- [ ] **AC-3:** Given a venue whose rate changed from 1500 to 2000 bps today, when the daily
+      `AdminVenueCommissionIT.adminChangesAVenuesRateForwardOnly`
+- [x] **AC-3:** Given a venue whose rate changed from 1500 to 2000 bps today, when the daily
       takings for a service date **before** the change's effective date are read, then the split
       still uses 1500 bps — history is never repriced (invariant #9). *Pinned by:*
       `DailyTakingsServiceTest.pastServiceDatesKeepTheRateTheyWereSoldAt`,
-      `VenueCommissionForwardOnlyIT.aRateChangeDoesNotResplitPastServiceDates`
-- [ ] **AC-4:** Given a rate write, when `commissionBps` is absent, negative, or greater than
+      `VenueCommissionForwardOnlyIT.aRateChangeDoesNotResplitPastServiceDatesNorTouchTheLedger`
+- [x] **AC-4:** Given a rate write, when `commissionBps` is absent, negative, or greater than
       10000, then the write is rejected with `400 INVALID_REQUEST` and no rate changes. *Pinned by:*
       `AdminVenueCommissionControllerTest.rejectsOutOfRangeAndMissingBasisPoints`
-- [ ] **AC-5:** Given a venue id that no venue has, when the platform admin writes a rate, then the
+- [x] **AC-5:** Given a venue id that no venue has, when the platform admin writes a rate, then the
       write answers `404 NO_SUCH_VENUE` and nothing is scheduled. *Pinned by:*
       `VenueCommissionServiceTest.anUnknownVenueSchedulesNothing`,
       `AdminVenueCommissionIT.unknownVenueIsNotFound`
-- [ ] **AC-6:** Given a genuinely non-admin `ACTIVE` operator with a session, when it reads the
+- [x] **AC-6:** Given a genuinely non-admin `ACTIVE` operator with a session, when it reads the
       venues-with-commission list or writes a rate, then both answer `403`; anonymous answers
       `401`; and the admin still succeeds (so the gate held rather than merely answering).
       *Pinned by:* `AdminVenueCommissionIT.commissionSurfaceIsAdminOnly`
-- [ ] **AC-7:** Given the operator's own venue-profile `PATCH`, when it is submitted by the owner,
+- [x] **AC-7:** Given the operator's own venue-profile `PATCH`, when it is submitted by the owner,
       then `commissionBps` is still unwritable through it (O8 #177 stands). *Pinned by:*
       the existing `VenueAdminServiceTest` / `VenueProfileConcurrencyIT` plus
-      `AdminVenueCommissionIT.theOperatorProfilePatchStillCannotChangeTheRate`
-- [ ] **AC-8:** Given the V39 migration on a database with existing venues, when it runs, then every
-      venue has exactly one schedule row at the epoch floor carrying its current rate, so
-      `commissionBpsOn` answers for every date. *Pinned by:*
-      `VenueCommissionScheduleMigrationIT.backfillsEveryVenueAtTheEpochFloor`
+      `AdminVenueCommissionIT.theOwnerCannotChangeItsOwnRateThroughEitherSurface`
+- [x] **AC-8:** Given a venue created by **any** path — including raw SQL, not only
+      `Venues#insertVenue` — when its rate is changed for the first time, then the superseded rate is
+      pinned at the epoch floor so every past service date still resolves to it, and a venue whose rate
+      never changed needs no schedule row at all. *Pinned by:*
+      `JdbcVenueCommissionScheduleIT.aRateChangeLeavesEveryPastServiceDateAtTheRateItWasSoldAt`,
+      `JdbcVenueCommissionScheduleIT.aVenueThatNeverChangedRateNeedsNoScheduleAtAll`,
+      `VenueCommissionServiceTest.thePreviousRateIsPinnedBeforeTheLiveColumnMoves`
+      *(revised from a migration-backfill claim — see the Findings register, F-1)*
 
 ## Non-goals
 
@@ -129,23 +134,23 @@ change".
 | Ownership asserted **before** any financial read (invariant #13) | **preserved** | `assertOwns` remains the first statement of `forVenueOn`; the rate read moves but stays after it |
 | Ledger accrual reads the live rate at accrual time (`BookingConfirmedPayoutListener`) | **preserved — deliberately untouched** | no change to the listener, the port method it calls, or `CommissionSplit`; verified by leaving `PayoutAccrualIT`/`PayoutModuleTest` unmodified |
 | `venue.commission_bps` is the one column the profile `PATCH` may not write | **preserved** | `updateVenueProfile`'s SET clause is unchanged; the new write is a different statement on a different surface |
-| Venue creation writes `commission_bps` from `NewVenueCommand` | **changed (additive)** | still writes the column, and now also seeds the venue's schedule row at the epoch floor in the same transaction |
+| Venue creation writes `commission_bps` from `NewVenueCommand` | **preserved — unchanged after all** | an interim design seeded a schedule row here; CI showed that made coverage depend on every insert path (F-1), so the seed moved into the rate write and `insertVenue` is byte-for-byte as it was |
 
 ## Risk register
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **Two sources for "the commission rate"** (`venue.commission_bps` live vs the schedule) drift, so accrual and the view disagree permanently | med | high | One transaction writes both, always with the same bps value; the schedule never carries a value the live column doesn't also hold. The divergence is *temporal only* (which dates the value applies to), never in value. Pinned by `VenueCommissionServiceTest.writeUpdatesTheLiveRateAndSchedulesItFromTomorrow` and `VenueCommissionForwardOnlyIT` | claude | open |
-| R-2 | A gap in the schedule makes `commissionBpsOn` fall through and silently return the **new** rate for a past date — the exact bug being fixed | med | high | The schedule is **total** by construction: V39 backfills every existing venue at the epoch floor `1970-01-01`, and `insertVenue` seeds the same row for every new venue inside the create transaction. `commissionBpsOn` therefore always finds a row for any real service date; it returns empty only for an unknown venue. Pinned by `VenueCommissionScheduleMigrationIT` + `JdbcVenueCommissionScheduleIT` | claude | open |
-| R-3 | **History repriced** (invariant #9) by a write that lands on a past date — e.g. a clock in the wrong zone putting "tomorrow" in the past | low | high | `effective_from` is computed server-side only, as `LocalDate.now(clock)` in `Europe/Tirane` **plus one day** (invariant #6); no request field can influence it, and there is no endpoint that writes an arbitrary effective date. Pinned by `VenueCommissionServiceTest` with a fixed clock straddling the Tirane/UTC day boundary | claude | open |
-| R-4 | **Money rounding** (invariant #5) changes because the commission is computed somewhere new | low | high | It is not computed anywhere new: `CommissionSplit.of(gross, bps)` remains the single formula for both the accrual and the view; only the *bps input* to the view's call changes. `CommissionSplitTest` and `CommissionMathTest` are unmodified and must stay green | claude | open |
-| R-5 | **BOLA / role-level-only authorization** on the new surface (OWASP API #1) — the A4 defect class | med | high | Both endpoints are `/api/admin/**` with `hasRole(ADMIN_ROLE)`, which is invariant #13's admin exemption and therefore the **whole** authorization. Proven against a **genuinely non-admin `ACTIVE` operator with its own session**, provisioned through the real `OperatorProvisioning` as `AdminPhotoModerationIT`/`AdminPhotoTakedownIT` do — the bootstrap `operator` is the platform admin (`is_admin`, V29) and `CrossVenueDenialIT`'s `operatorA` has no `password_hash`, so neither can demonstrate a `403`. Pinned by `AdminVenueCommissionIT.commissionSurfaceIsAdminOnly` | claude | open |
-| R-6 | A new endpoint falls through to `anyRequest().authenticated()` (the #316/#317/#328 defect class) | low | high | `EndpointRoleGateCoverageTest` fails the build for any mapped endpoint with no explicit `SecurityConfig` rule; both new matchers are added there with the rationale on the constants | claude | open |
-| R-7 | **Module boundary leak** (invariant #11): the admin surface reaches into `venue`'s internals, or the ownership-free write gets hung off the `assertOwns`-first `Venues`/`EditVenueProfile` contracts | med | med | The ownership-free operations get their own port, `VenueCommissionAdministration` in `venue/application`, named for the posture every method shares (#511's argument). `commissionBpsOn` goes on the role-split `VenueRates`, not back onto `VenueCatalog` (`VenueApiRoleSplitTests`). No new `allowedDependencies` grant: `payout` already lists `venue::api`, and `venue` needs nothing new. Pinned by `ModularityTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` | claude | open |
-| R-8 | **Error contract** drift — a per-controller `{"error": …}` body, or a raw `IllegalArgumentException` masquerading as a client error | low | med | One RFC-7807 contract (#97): `ApiProblem.response` for the typed-outcome rejection (`404 NO_SUCH_VENUE`), and `InvalidApiRequestException.parsing(...)` at the request→command conversion so a bad bps is a logged-free `400 INVALID_REQUEST` and a stored-state bug stays a 500 (§6b, #118). No `@ExceptionHandler` in the controller. Pinned by `AdminVenueCommissionControllerTest` + `ErrorContractArchitectureTests` | claude | open |
-| R-9 | **Flyway number collision** — V39 claimed by a parallel slice | low | med | Verified free on `main` (`V38__admin_audit_record.sql` is the highest) and unclaimed by any open PR's diff at plan time. If a parallel slice merges first, **whoever merges second renumbers** (default rule); the migration is self-contained, so renumbering is a file rename | claude | open |
-| R-10 | Duplicate `commissionBps` validation drifts from the DB CHECK | low | low | `VenueFieldValidation.requireCommissionBps` (already mirroring `venue_commission_bps_check`) is **reused**, not duplicated; the new table carries its own CHECK mirroring the same bound as the race-safe backstop (invariant #12) | claude | open |
-| R-11 | Adding a method to the published `VenueRates` port breaks every test fake that implements it | high | low | Known set, updated in the same phase: `WebSliceStubs.venueRates()` and `DailyTakingsServiceTest`'s two anonymous impls. `PayoutModuleTest` uses `@MockitoBean` and needs no change. Compile failure is the detector | claude | open |
+| R-1 | **Two sources for "the commission rate"** (`venue.commission_bps` live vs the schedule) drift, so accrual and the view disagree permanently | med | high | One transaction writes both, always with the same bps value; the schedule never carries a value the live column doesn't also hold. The divergence is *temporal only* (which dates the value applies to), never in value. Pinned by `VenueCommissionServiceTest.writeUpdatesTheLiveRateAndSchedulesItFromTomorrow` and `VenueCommissionForwardOnlyIT` | claude | closed — one `@Transactional` write sends the same bps to both; divergence is temporal only, never in value |
+| R-2 | A gap in the schedule makes `commissionBpsOn` fall through and silently return the **new** rate for a past date — the exact bug being fixed | med | high | **The mitigation moved during implementation, because CI proved the first one wrong (F-1).** Totality is now a property of the *write*: a rate change pins the superseded rate at the epoch floor (`ON CONFLICT DO NOTHING`, so only the first change writes it) before moving the live column, and the read falls back to the live rate only when the venue has *no* schedule at all — which means its rate never changed, so the live rate is exactly what applied. No creation path has to cooperate. Pinned by `JdbcVenueCommissionScheduleIT` (which inserts its venues with raw SQL on purpose) + `VenueCommissionServiceTest.thePreviousRateIsPinnedBeforeTheLiveColumnMoves` | claude | closed — `HEAD` |
+| R-3 | **History repriced** (invariant #9) by a write that lands on a past date — e.g. a clock in the wrong zone putting "tomorrow" in the past | low | high | `effective_from` is computed server-side only, as `LocalDate.now(clock)` in `Europe/Tirane` **plus one day** (invariant #6); no request field can influence it, and there is no endpoint that writes an arbitrary effective date. Pinned by `VenueCommissionServiceTest` with a fixed clock straddling the Tirane/UTC day boundary | claude | closed — pinned by `VenueCommissionServiceTest.tomorrowIsReckonedInTiraneNotUtc` (fixed clock at 22:30 UTC, already the next day in Tirane) |
+| R-4 | **Money rounding** (invariant #5) changes because the commission is computed somewhere new | low | high | It is not computed anywhere new: `CommissionSplit.of(gross, bps)` remains the single formula for both the accrual and the view; only the *bps input* to the view's call changes. `CommissionSplitTest` and `CommissionMathTest` are unmodified and must stay green | claude | closed — `CommissionSplitTest`/`CommissionMathTest`/`ReversalMathTest` unmodified and green; `VenueCommissionForwardOnlyIT` also asserts an accrued `commission_minor` is untouched |
+| R-5 | **BOLA / role-level-only authorization** on the new surface (OWASP API #1) — the A4 defect class | med | high | Both endpoints are `/api/admin/**` with `hasRole(ADMIN_ROLE)`, which is invariant #13's admin exemption and therefore the **whole** authorization. Proven against a **genuinely non-admin `ACTIVE` operator with its own session**, provisioned through the real `OperatorProvisioning` as `AdminPhotoModerationIT`/`AdminPhotoTakedownIT` do — the bootstrap `operator` is the platform admin (`is_admin`, V29) and `CrossVenueDenialIT`'s `operatorA` has no `password_hash`, so neither can demonstrate a `403`. Pinned by `AdminVenueCommissionIT.commissionSurfaceIsAdminOnly` | claude | closed — pinned by `AdminVenueCommissionIT.commissionSurfaceIsAdminOnly` + `theOwnerCannotChangeItsOwnRateThroughEitherSurface` |
+| R-6 | A new endpoint falls through to `anyRequest().authenticated()` (the #316/#317/#328 defect class) | low | high | `EndpointRoleGateCoverageTest` fails the build for any mapped endpoint with no explicit `SecurityConfig` rule; both new matchers are added there with the rationale on the constants | claude | closed — `HEAD`, green |
+| R-7 | **Module boundary leak** (invariant #11): the admin surface reaches into `venue`'s internals, or the ownership-free write gets hung off the `assertOwns`-first `Venues`/`EditVenueProfile` contracts | med | med | The ownership-free operations get their own port, `VenueCommissionAdministration` in `venue/application`, named for the posture every method shares (#511's argument). `commissionBpsOn` goes on the role-split `VenueRates`, not back onto `VenueCatalog` (`VenueApiRoleSplitTests`). No new `allowedDependencies` grant: `payout` already lists `venue::api`, and `venue` needs nothing new. Pinned by `ModularityTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` | claude | closed — `ModularityTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests`, `ResponsibilitiesArchitectureTests` all green |
+| R-8 | **Error contract** drift — a per-controller `{"error": …}` body, or a raw `IllegalArgumentException` masquerading as a client error | low | med | One RFC-7807 contract (#97): `ApiProblem.response` for the typed-outcome rejection (`404 NO_SUCH_VENUE`), and `InvalidApiRequestException.parsing(...)` at the request→command conversion so a bad bps is a logged-free `400 INVALID_REQUEST` and a stored-state bug stays a 500 (§6b, #118). No `@ExceptionHandler` in the controller. Pinned by `AdminVenueCommissionControllerTest` + `ErrorContractArchitectureTests` | claude | closed — pinned by `AdminVenueCommissionControllerTest` + `ErrorContractArchitectureTests`, green |
+| R-9 | **Flyway number collision** — V39 claimed by a parallel slice | low | med | Verified free on `main` (`V38__admin_audit_record.sql` is the highest) and unclaimed by any open PR's diff at plan time. If a parallel slice merges first, **whoever merges second renumbers** (default rule); the migration is self-contained, so renumbering is a file rename | claude | closed — V39 still the highest at push time; no renumber needed |
+| R-10 | Duplicate `commissionBps` validation drifts from the DB CHECK | low | low | `VenueFieldValidation.requireCommissionBps` is **reused** by `CommissionRateCommand`, not duplicated; `venue_commission_rate_bps_check` mirrors the same bound as the race-safe backstop, pinned by `VenueCommissionScheduleMigrationIT` | claude | closed — `HEAD` |
+| R-11 | Adding a method to the published `VenueRates` port breaks every test fake that implements it | high | low | Known set, updated in the same phase: `WebSliceStubs.venueRates()` and `DailyTakingsServiceTest`'s fakes. `PayoutModuleTest` uses `@MockitoBean` and needed no change. Compile failure was the detector, as expected — and it also caught the missing `VenueCommissionAdministration` web-slice stub | claude | closed — `HEAD` |
 
 ## Open questions / Assumptions
 
@@ -153,10 +158,13 @@ change".
   moderation surface, which blurs unknown-venue vs empty-slot. Grounds: venues are already
   publicly enumerable through the anonymous discovery read `GET /api/venues`, so there is no
   existence signal to protect. Consequently the rate write answers a plain `404 NO_SUCH_VENUE`.
-  — *Owner:* claude · *Resolves by:* phase 3 (recorded on the controller Javadoc)
+  — *Resolved* in phase 3: recorded on `AdminVenueCommissionController` and
+  `VenueCommissionAdministration`, and the `404 NO_SUCH_VENUE` is pinned by
+  `AdminVenueCommissionIT.unknownVenueIsNotFound`.
 - **Assumption:** the venues-with-commission list needs no pagination at v1 scale (5–15 venues,
   per ADR-0002's operational note). If the platform outgrows that, the list gets a page window in
-  its own slice. — *Owner:* claude · *Resolves by:* phase 3
+  its own slice. — *Resolved* in phase 3: the list is an object wrapping the array
+  (`{"venues": [...]}`), precisely so a page window can be added without breaking its clients.
 
 ### Resolved
 
@@ -311,19 +319,18 @@ epic's Q1 (tab information architecture); the task brief scopes A7 to the backen
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)` — draft PR open as the CI vehicle
+**Stage pointer:** `PR — ready for review` (implement complete; review + sonar gates next)
 
-**Next action:** Phase 2 — write the failing `VenueCommissionServiceTest` (the write sets the live
-rate *and* schedules the same bps from tomorrow in `Europe/Tirane`; an unknown venue schedules
-nothing), then the `VenueCommissionAdministration` port and its service.
+**Next action:** Mark PR #522 ready for review, then run the review gate (`/code-review` +
+`riviera-review-overlay`) and pull the SonarCloud new-issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V39 schedule table + `CommissionRateStore` + `commissionBpsOn` (venue storage) | ✅ | `db73e56` |
 | 1 — Takings view reads the service-date rate (payout) | ✅ | `db73e56` (same commit — the port method and its one consumer) |
-| 2 — `VenueCommissionAdministration` port + service (venue) | ⏳ | |
-| 3 — Admin endpoints + ADMIN gate + wire contract | | |
-| 4 — Docs sweep (`riviera-docs-freshness`) + close-out | | |
+| 2 — `VenueCommissionAdministration` port + service (venue) | ✅ | `HEAD` |
+| 3 — Admin endpoints + ADMIN gate + wire contract | ✅ | `HEAD` |
+| 4 — Docs sweep (`riviera-docs-freshness`) + close-out | ✅ | `HEAD` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -333,7 +340,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (run 31014457784, `Backend (build + test)`) | `VenueCommissionScheduleMigrationIT.backfillsEveryVenueAtTheEpochFloor` failed in the full suite: it asserted *every* venue has an epoch-floor schedule row, but the shared Testcontainers DB accumulates venues from every other IT, most inserted with raw SQL that bypasses `Venues#insertVenue`. Exactly the full-suite-only class `riviera-local-debug` documents — and a genuine design flaw, not a test artifact: the schedule's totality depended on every creation path cooperating, which nothing enforces. | fixed-in-`HEAD` — redesigned rather than re-scoped. Dropped the V39 backfill and the create-time seed; a rate change now pins the superseded rate at the floor itself (`ON CONFLICT DO NOTHING`) and the read falls back to the live rate only for a venue with no schedule at all. Totality became a property of the write. `JdbcVenueCommissionScheduleIT` now inserts venues with raw SQL deliberately, as the regression guard. AC-8 and R-2 revised accordingly. |
 
 ---
 
@@ -394,57 +401,57 @@ Skill-routing gate for what the fix touches *before* editing).
 `venue/adapter/out/JdbcVenueCatalog.java`, `venue/application/Venues.java`,
 `venue/adapter/out/JdbcVenues.java`, `WebSliceStubs`, `DailyTakingsServiceTest`
 
-- [ ] **Step 1: Write the failing tests** — the migration backfills one epoch-floor row per venue;
+- [x] **Step 1: Write the failing tests** — the migration backfills one epoch-floor row per venue;
       `commissionBpsOn` answers the scheduled rate for a covered date, the *latest* row at or before
       the date when several exist, and empty for an unknown venue; `insertVenue` seeds a schedule row.
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `gradle test --tests "*VenueCommissionScheduleMigrationIT*" --tests "*JdbcVenueCommissionScheduleIT*"`
       → FAIL (relation `venue_commission_rate` does not exist / method missing).
-- [ ] **Step 3: Minimal implementation** — V39 (composite PK `(venue_id, effective_from)`, CHECK
+- [x] **Step 3: Minimal implementation** — V39 (composite PK `(venue_id, effective_from)`, CHECK
       mirroring `venue_commission_bps_check`, `ON DELETE CASCADE` like `set_position`, backfill
       `SELECT id, DATE '1970-01-01', commission_bps FROM venue`); `commissionBpsOn` as
       `WHERE venue_id = :id AND effective_from <= :date ORDER BY effective_from DESC LIMIT 1`
       (served by the PK index, no second index); the seed insert in `JdbcVenues#insertVenue`.
-- [ ] **Step 4: Run them, verify they pass** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — search for every implementor of `VenueRates` and every
+- [x] **Step 4: Run them, verify they pass** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — search for every implementor of `VenueRates` and every
       caller of `commissionBps`; decide per site whether it wants the live or the dated read.
-- [ ] **Step 6: Commit** — `git commit -m "Add an effective-dated venue commission schedule (#348)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Add an effective-dated venue commission schedule (#348)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Takings view reads the service-date rate
 
 **Files:** Modify `payout/application/DailyTakingsService.java` · Test
 `payout/application/DailyTakingsServiceTest.java`, `payout/VenueCommissionForwardOnlyIT.java`
 
-- [ ] **Step 1: Write the failing test** — `pastServiceDatesKeepTheRateTheyWereSoldAt`: a fake
+- [x] **Step 1: Write the failing test** — `pastServiceDatesKeepTheRateTheyWereSoldAt`: a fake
       `VenueRates` answering 1500 for a past date and 2000 for a future one; the view for the past
       date splits at 1500. Plus `VenueCommissionForwardOnlyIT`: an accrued ledger entry's
       `commission_minor` is unchanged by a rate write, and the takings for the accrued day still
       match it.
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
       `gradle test --tests "*DailyTakingsServiceTest*"` → FAIL (live rate applied).
-- [ ] **Step 3: Minimal implementation** — `rates.commissionBpsOn(venueId, date)`.
-- [ ] **Step 4: Run it, verify it passes** — `gradle test --tests "*DailyTakings*" --tests "*Commission*"` → PASS.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Split daily takings at the service date's commission rate (#348)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 3: Minimal implementation** — `rates.commissionBpsOn(venueId, date)`.
+- [x] **Step 4: Run it, verify it passes** — `gradle test --tests "*DailyTakings*" --tests "*Commission*"` → PASS.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Split daily takings at the service date's commission rate (#348)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — `VenueCommissionAdministration` port + service
 
 **Files:** Create `VenueCommissionAdministration`, `VenueCommissionService`, `VenueCommissionView`,
 `VenueCommissionServiceTest` · Modify `Venues`, `JdbcVenues`
 
-- [ ] **Step 1: Write the failing test** — `VenueCommissionServiceTest`: the write updates the live
+- [x] **Step 1: Write the failing test** — `VenueCommissionServiceTest`: the write updates the live
       rate **and** schedules the same bps from tomorrow in `Europe/Tirane` (fixed clock straddling
       the UTC/Tirane boundary); an unknown venue schedules nothing and reports not-found; the list
       returns what the port returns.
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*VenueCommissionServiceTest*"` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the `VenueCommissionAdministration` port and the
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*VenueCommissionServiceTest*"` → FAIL.
+- [x] **Step 3: Minimal implementation** — the `VenueCommissionAdministration` port and the
       `@Transactional` service over `CommissionRateStore` (whose three methods landed in phase 0).
-- [ ] **Step 4: Run it, verify it passes.**
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Add the ownership-free venue commission administration port (#348)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 4: Run it, verify it passes.**
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Add the ownership-free venue commission administration port (#348)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 3 — Admin endpoints + ADMIN gate
 
@@ -452,32 +459,32 @@ Skill-routing gate for what the fix touches *before* editing).
 `SetCommissionRequest`, `AdminVenueCommissionControllerTest`, `AdminVenueCommissionIT` ·
 Modify `SecurityConfig`
 
-- [ ] **Step 1: Write the failing tests** — the controller test for the wire contract + error codes;
+- [x] **Step 1: Write the failing tests** — the controller test for the wire contract + error codes;
       `AdminVenueCommissionIT` for the gate against a genuinely non-admin operator, the round-trip,
       and the profile-`PATCH` non-regression.
-- [ ] **Step 2: Run them, verify they fail.**
-- [ ] **Step 3: Minimal implementation** — the controller, the DTOs, the two matchers.
-- [ ] **Step 4: Run them, verify they pass** — plus `*EndpointRoleGateCoverageTest*`,
+- [x] **Step 2: Run them, verify they fail.**
+- [x] **Step 3: Minimal implementation** — the controller, the DTOs, the two matchers.
+- [x] **Step 4: Run them, verify they pass** — plus `*EndpointRoleGateCoverageTest*`,
       `*CrossVenueDenialIT*` and the structural net.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Expose the admin venues-with-commission read and rate write (#348)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Expose the admin venues-with-commission read and rate write (#348)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 4 — Docs sweep + close-out
 
 **Files:** Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `VenueRates` Javadoc,
 `VenueProfileResponse`/`VenueProfileView` notes, this plan doc
 
-- [ ] **Step 1:** Run `riviera-docs-freshness` over the branch's range.
-- [ ] **Step 2:** Patch every stated fact the diff contradicts — at minimum the `VenueRates`
+- [x] **Step 1:** Run `riviera-docs-freshness` over the branch's range.
+- [x] **Step 2:** Patch every stated fact the diff contradicts — at minimum the `VenueRates`
       "read at decision time, never carried on an event" sentence, the "commissionBps and
       payoutCurrency are display-only" notes (now: display-only *for the operator*; the admin
       surface is where it changes), `RESPONSIBILITIES.md` §`venue` (the rate schedule + the second
       ownership-free port) and §`payout` (the takings read's rate source), and `CLAUDE.md`'s venue
       module row.
-- [ ] **Step 3:** Finalize this Execution status section — stage pointer DONE, every phase row ✅
+- [x] **Step 3:** Finalize this Execution status section — stage pointer DONE, every phase row ✅
       with its commit, Open Questions empty, every risk row closed, `merged via PR #NN`.
-- [ ] **Step 4: Commit** — `git commit -m "Record the commission-rate backend in the substrate docs (#348)"`
+- [x] **Step 4: Commit** — `git commit -m "Record the commission-rate backend in the substrate docs (#348)"`
 
 ---
 
@@ -487,41 +494,43 @@ Modify `SecurityConfig`
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-05 | phase 0 — new `VenueRates` method | every implementor of `VenueRates` and every caller of `commissionBps`, to decide per site whether it wants the live or the dated read | `grep -rln "VenueRates" platform/src` | prod: `JdbcVenueCatalog` (impl), `BookingConfirmedPayoutListener` (accrual), `CancellationPolicy` (refund share), `DailyTakingsService` (reporting). tests: `WebSliceStubs`, `DailyTakingsServiceTest`, `PayoutModuleTest` (`@MockitoBean`, no change), `SetBookingInfoIT` | Only `DailyTakingsService` switched to the dated read — it is the sole *reporting* consumer. The accrual and the refund computation are decisions and must stay on the live rate; leaving them untouched is the invariant-#9 argument, so both were deliberately skipped |
+| 2026-08-05 | F-1 fix — schedule totality moved from creation to the write | every place a venue row is created, to confirm none of them still needs to cooperate for the read to be correct | `grep -rn "INSERT INTO venue " platform/src` | 1 prod site (`JdbcVenues#insertVenue`) and ~20 test sites using raw SQL | Confirmed the fix generalizes: with the floor pinned at write time, *no* insert site needs changing, which is exactly why the redesign was preferable to fixing the assertion. `insertVenue` reverted to its original form |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `gradle test --tests "*AdminVenueCommissionIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `gradle test --tests "*VenueCommissionServiceTest*" --tests "*AdminVenueCommissionIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `gradle test --tests "*DailyTakingsServiceTest*" --tests "*VenueCommissionForwardOnlyIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `gradle test --tests "*AdminVenueCommissionControllerTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `gradle test --tests "*VenueCommissionServiceTest*" --tests "*AdminVenueCommissionIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `gradle test --tests "*AdminVenueCommissionIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** Run `gradle test --tests "*AdminVenueCommissionIT*" --tests "*VenueAdminServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-8:** Run `gradle test --tests "*VenueCommissionScheduleMigrationIT*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `gradle test --tests "*AdminVenueCommissionIT*"` → PASS. Verified on the branch at `HEAD`.
+- [x] **AC-2:** Run `gradle test --tests "*VenueCommissionServiceTest*" --tests "*AdminVenueCommissionIT*"` → PASS. Verified on the branch at `HEAD`.
+- [x] **AC-3:** Run `gradle test --tests "*DailyTakingsServiceTest*" --tests "*VenueCommissionForwardOnlyIT*"` → PASS. Verified on the branch at `HEAD`.
+- [x] **AC-4:** Run `gradle test --tests "*AdminVenueCommissionControllerTest*"` → PASS. Verified on the branch at `HEAD`.
+- [x] **AC-5:** Run `gradle test --tests "*VenueCommissionServiceTest*" --tests "*AdminVenueCommissionIT*"` → PASS. Verified on the branch at `HEAD`.
+- [x] **AC-6:** Run `gradle test --tests "*AdminVenueCommissionIT*"` → PASS. Verified on the branch at `HEAD`.
+- [x] **AC-7:** Run `gradle test --tests "*AdminVenueCommissionIT*" --tests "*VenueAdminServiceTest*"` → PASS. Verified on the branch at `HEAD`.
+- [x] **AC-8:** Run `gradle test --tests "*VenueCommissionScheduleMigrationIT*"` → PASS. Verified on the branch at `HEAD`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section justified `N/A` with the reason (invariant #2 untouched).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — #4 is load-bearing for the effective-date rule.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new event (invariant #11).
-- [ ] **Payment/payout** section filled; the ledger is not written by this slice; money in exact-integer minor units / bps (invariants #5, #8, #9).
-- [ ] Refund policy untouched and still server-side (invariant #10).
-- [ ] Timezone correct: UTC clock, `Europe/Tirane` for the effective date (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] Flyway migration present; the CHECK mirroring the rate bound is tested (invariant #12).
-- [ ] Admin exemption from per-venue ownership is explicit and proven against a **non-admin** operator (invariant #13).
-- [ ] **Frontend** `N/A` justified; no contract typed `as any` (no client shipped).
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — citing `merged via PR #NN`, so no docs-only follow-up PR is needed.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section justified `N/A` with the reason (invariant #2 untouched).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — #4 is load-bearing for the effective-date rule.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new event (invariant #11).
+- [x] **Payment/payout** section filled; the ledger is not written by this slice; money in exact-integer minor units / bps (invariants #5, #8, #9).
+- [x] Refund policy untouched and still server-side (invariant #10).
+- [x] Timezone correct: UTC clock, `Europe/Tirane` for the effective date (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] Flyway migration present; the CHECK mirroring the rate bound is tested (invariant #12).
+- [x] Admin exemption from per-venue ownership is explicit and proven against a **non-admin** operator (invariant #13).
+- [x] **Frontend** `N/A` justified; no contract typed `as any` (no client shipped).
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — citing `merged via PR #NN`, so no docs-only follow-up PR is needed.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

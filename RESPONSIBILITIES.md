@@ -94,7 +94,18 @@ case moderation exists for. Both ports run the same single cascading delete, and
 one **slot**, not one image (byte-identical variants in another slot keep serving; each published
 slot is its own takedown). Also own the beach map / layout, set
 positions, the online-vs-walk-in pool assignment for each set, pricing, and the booking mode
-(Instant / Request). Since S9 (#277) also **assemble the signed-in operator's own-venues read model**
+(Instant / Request). Since A7 (#348) I also own the commission rate **over time**, not just its current
+value: `venue_commission_rate` (V39) is the effective-dated schedule behind `VenueRates#commissionBpsOn`,
+which answers "what rate applied to bookings served on date D" for the reporting reads, while
+`commissionBps` stays the live rate every *decision* re-reads. That is still storing the rate, not
+computing with it — `payout` keeps the arithmetic. It comes with the platform-admin rate write (my
+**second** ownership-free surface, on its own `VenueCommissionAdministration` port for the same reason
+`VenuePhotoModeration` is separate: `EditVenueProfile`'s "asserts `assertOwns` first" contract stays
+uniform), and the write is forward-only by construction — it pins the superseded rate back to an epoch
+floor, moves the live column, and schedules the new rate from tomorrow (`Europe/Tirane`), so no past
+service date reprices and no ledger entry is touched (invariant #9). Note the asymmetry it preserves:
+the *owner's* profile PATCH still cannot write the rate at all (O8 #177) — a venue does not set its own
+commission. Since S9 (#277) also **assemble the signed-in operator's own-venues read model**
 (`GET /api/venues/mine`): I ask `operator::api` for the ownership set and join the names, because
 naming venues is my job and `operator → venue` would cycle. Since #207 also **compose the owner's
 per-set daily availability read** (`GET /api/venues/{venueId}/availability?date=`, owner-asserted,
@@ -110,7 +121,7 @@ hold type never reaches the public surface.
 - Collecting money, or knowing an amount was actually paid → **`payment`** (I set the
   price; `payment` charges it)
 - The payout math or commission arithmetic → **`payout`** (I store the commission
-  *rate*; `payout` computes with it)
+  *rate* — since A7 #348 including which service dates each rate applied to; `payout` computes with it)
 - Deciding *which* venues an operator owns, or authorizing them → **`operator`** (it owns the
   mapping and answers the question; since #277 I *render* that answer as named summaries, but the
   set itself is always its call)
@@ -234,7 +245,11 @@ permanently overstating what the venue was owed.
 - Actually moving money to venues → settled **manually via BKT**; I only record what
   is owed
 - Collecting money from tourists → **`payment`**
-- Setting the commission rate → **`venue`** (I apply the rate it stores)
+- Setting the commission rate, or recording which dates a past rate applied to → **`venue`**
+  (I apply the rate it stores; since A7 #348 the console daily-takings read asks it for the rate that
+  applied on the *service date* rather than the live one, so a rate change cannot re-split a day
+  already reported — the accrual still reads the live rate at accrual time, which is what fixes each
+  ledger entry permanently)
 - The booking lifecycle or refund decisions → **`booking`** (I reverse a ledger entry
   when told; I don't decide the refund)
 - The tourist's identity or contact → **not sent to me** (I work in venue-ids,

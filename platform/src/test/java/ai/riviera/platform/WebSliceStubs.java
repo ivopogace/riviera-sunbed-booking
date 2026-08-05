@@ -104,6 +104,7 @@ import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.application.AddSetOutcome;
 import ai.riviera.platform.venue.application.ChangeOutcome;
+import ai.riviera.platform.venue.application.CommissionRateCommand;
 import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.LayoutCommand;
@@ -118,6 +119,8 @@ import ai.riviera.platform.venue.application.ReplaceRejection;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
 import ai.riviera.platform.venue.application.StoredBytes;
+import ai.riviera.platform.venue.application.VenueCommissionAdministration;
+import ai.riviera.platform.venue.application.VenueCommissionView;
 import ai.riviera.platform.venue.application.VenuePhotoModeration;
 import ai.riviera.platform.venue.application.VenuePhotos;
 import ai.riviera.platform.venue.application.ViewDailyAvailability;
@@ -654,6 +657,22 @@ class WebSliceStubs {
 			@Override
 			public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
 				return Map.of();
+			}
+		};
+	}
+
+	@Bean
+	VenueCommissionAdministration venueCommissionAdministration() {
+		return new VenueCommissionAdministration() {
+			@Override
+			public List<VenueCommissionView> venueCommissions() {
+				return List.of();
+			}
+
+			@Override
+			public Optional<VenueCommissionView> setCommission(VenueId venueId,
+					CommissionRateCommand command) {
+				return Optional.empty();
 			}
 		};
 	}

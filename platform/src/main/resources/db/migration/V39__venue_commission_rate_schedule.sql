@@ -9,8 +9,7 @@
 --
 -- venue.commission_bps STAYS the live rate and stays the single source for decisions made NOW: the
 -- accrual listener re-reads it at accrual time, unchanged. This table answers the different
--- question "what rate applied on service date D". A write sets both, with the SAME bps value — they
--- differ only in WHICH DATES the value governs, never in value.
+-- question "what rate applied on service date D".
 --
 -- FORWARD-ONLY by construction: the admin write schedules from TOMORROW in Europe/Tirane
 -- (invariant #6), computed server-side; no request field can name an effective date, and there is
@@ -18,19 +17,28 @@
 -- because invariant #4 closes a day's bookings the evening before, so today's bookings have all
 -- already accrued — making a change effective today would be wrong by construction.
 --
--- The schedule is TOTAL, which is what makes the per-date read safe: every venue gets a row at the
--- epoch floor below (backfilled here, seeded by JdbcVenues#insertVenue for new venues), so the
--- "latest row at or before D" lookup always finds one for any real service date and can never fall
--- through to the live rate for a past day — the exact bug this table fixes.
+-- DELIBERATELY EMPTY AT MIGRATION, and there is no backfill. The table is a CHANGE LOG, not a
+-- mirror: an empty schedule for a venue means "this rate has never changed", and the per-date read
+-- answers that case from venue.commission_bps, which is exactly right. What makes the read total is
+-- the WRITE, not this migration: a rate change first pins the rate it is superseding at the epoch
+-- floor below (INSERT ... ON CONFLICT DO NOTHING, so only ever the first change writes it), then
+-- moves the live rate, then schedules the new one. Every date is therefore covered from the moment
+-- coverage could matter.
+--
+-- That placement is the point. A backfill here plus a seed on venue creation would make totality
+-- depend on every present and future insert path cooperating — and it already does not: the ITs
+-- insert venues with raw SQL, and nothing stops a future import or a manual fix from doing the
+-- same. Pinning at write time needs no cooperation from whoever created the venue.
 
 CREATE TABLE venue_commission_rate (
     venue_id       BIGINT      NOT NULL REFERENCES venue (id) ON DELETE CASCADE,
     effective_from DATE        NOT NULL,                   -- a SERVICE date (civil, Europe/Tirane) — DATE, not TIMESTAMPTZ
     commission_bps INTEGER     NOT NULL,                   -- basis points, exact integer (invariant #5)
     recorded_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),     -- TIMESTAMPTZ, never naked TIMESTAMP (invariant #6)
-    -- One rate per (venue, effective date). Also the idempotency target: two writes on the same day
-    -- collapse onto this row via ON CONFLICT DO UPDATE, last writer wins, no duplicate schedule.
-    -- The composite PK's index serves the read (WHERE venue_id = ? AND effective_from <= ?
+    -- One rate per (venue, effective date). Two idempotency guards ride this constraint: the floor
+    -- pin (ON CONFLICT DO NOTHING — never overwrite the oldest rate we know of) and the schedule
+    -- write (ON CONFLICT DO UPDATE — two admins acting the same day collapse to the last value).
+    -- Its index also serves the read (WHERE venue_id = ? AND effective_from <= ?
     -- ORDER BY effective_from DESC LIMIT 1) on its leftmost prefix + range, so the FK column needs
     -- no second index (postgres skill: don't duplicate an index a constraint already provides).
     PRIMARY KEY (venue_id, effective_from),
@@ -38,10 +46,3 @@ CREATE TABLE venue_commission_rate (
     -- VenueFieldValidation.requireCommissionBps (invariant #12).
     CONSTRAINT venue_commission_rate_bps_check CHECK (commission_bps BETWEEN 0 AND 10000)
 );
-
--- Backfill: every existing venue's current rate, from the epoch floor. Truthful, not a placeholder —
--- no venue's rate has ever changed (there was no endpoint that could change it), so its current rate
--- IS the rate that applied to all of its history. 1970-01-01 predates the platform, so it covers
--- every service date a booking could carry.
-INSERT INTO venue_commission_rate (venue_id, effective_from, commission_bps)
-SELECT id, DATE '1970-01-01', commission_bps FROM venue;

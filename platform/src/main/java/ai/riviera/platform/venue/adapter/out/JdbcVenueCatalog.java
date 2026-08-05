@@ -271,14 +271,20 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 
 	@Override
 	public OptionalInt commissionBpsOn(VenueId id, LocalDate serviceDate) {
-		// The latest scheduled rate at or before the service date (A7, #348). The composite PK
-		// (venue_id, effective_from) serves this on its leftmost prefix + range — no second index.
+		// The latest scheduled rate at or before the service date, falling back to the live rate when
+		// the venue has no schedule at all — which means its rate has never changed, so the live rate
+		// IS what applied (A7, #348). Driven off the venue row so a missing venue stays empty rather
+		// than answering a rate. The subquery rides the composite PK's leftmost prefix + range.
 		return jdbc.sql("""
-				SELECT commission_bps
-				  FROM venue_commission_rate
-				 WHERE venue_id = :id AND effective_from <= :serviceDate
-				 ORDER BY effective_from DESC
-				 LIMIT 1
+				SELECT COALESCE(
+				         (SELECT commission_bps
+				            FROM venue_commission_rate
+				           WHERE venue_id = v.id AND effective_from <= :serviceDate
+				           ORDER BY effective_from DESC
+				           LIMIT 1),
+				         v.commission_bps) AS commission_bps
+				  FROM venue v
+				 WHERE v.id = :id
 				""")
 				.param("id", id.value())
 				.param("serviceDate", serviceDate)
