@@ -200,7 +200,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                   role="alert"
                   data-testid="admin-privacy-error"
                 >
-                  {{ error() }}
+                  {{ erasureError() }}
                 </p>
               </div>
             } @else {
@@ -279,7 +279,7 @@ export class AdminPrivacy {
   protected readonly reason = signal('');
   protected readonly reviewAttempted = signal(false);
   protected readonly busy = signal(false);
-  protected readonly error = signal('');
+  protected readonly erasureError = signal('');
 
   protected readonly model = signal({ email: '' });
   protected readonly erasureForm = form(this.model, (path) => {
@@ -302,14 +302,14 @@ export class AdminPrivacy {
     }
     this.reviewAttempted.set(false);
     this.submittedEmail.set(this.model().email);
-    this.error.set('');
+    this.erasureError.set('');
     this.stage.set('confirm');
     this.focusAfterRender('admin-privacy-confirm-panel');
   }
 
   protected cancel(): void {
     this.reason.set('');
-    this.error.set('');
+    this.erasureError.set('');
     this.stage.set('form');
     this.focusAfterRender('admin-privacy-review');
   }
@@ -331,7 +331,7 @@ export class AdminPrivacy {
   protected async erase(): Promise<void> {
     const grounds = this.reason().trim();
     this.busy.set(true);
-    this.error.set('');
+    this.erasureError.set('');
     try {
       await (grounds === ''
         ? this.service.erase(this.submittedEmail())
@@ -339,8 +339,8 @@ export class AdminPrivacy {
       this.reason.set('');
       this.stage.set('done');
       this.focusAfterRender('admin-privacy-done-panel');
-    } catch (failure) {
-      this.error.set(messageFor(erasureErrorOf(failure)));
+    } catch (error) {
+      this.erasureError.set(messageFor(erasureErrorOf(error)));
       // Disabling Erase blurred it to `<body>`; re-enabling does not bring focus back (WCAG 2.4.3).
       this.focusAfterRender('admin-privacy-confirm');
     } finally {
@@ -352,7 +352,7 @@ export class AdminPrivacy {
     this.model.set({ email: '' });
     this.submittedEmail.set('');
     this.reviewAttempted.set(false);
-    this.error.set('');
+    this.erasureError.set('');
     this.stage.set('form');
     this.focusAfterRender('admin-privacy-email');
   }

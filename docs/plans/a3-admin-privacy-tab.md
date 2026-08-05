@@ -252,7 +252,8 @@ detaches the person from them, so no money moves and no ledger entry changes.
 | 2 — Tab slot 7 + lazy route | ✅ | `61ce2c1` |
 | 3 — a11y spec + mocked e2e at 360px | ✅ | `61ce2c1` |
 | 4 — Docs-freshness counting sweep | ✅ | `666864c` |
-| 5 — Review-gate findings (F-4..F-6) | ✅ | `60de01e`, `9d3a7ea`, this commit |
+| 5 — Review-gate findings (F-4..F-6) | ✅ | `60de01e`, `9d3a7ea`, `aebab71` |
+| 6 — Sonar-gate finding (F-7) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -268,6 +269,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-4 | review gate (RV-PROC-1, self-caught on the overlay walk) | `riviera-local-debug` was loaded and its recipes used (scoped `ng test --include`, the `PW_CHROMIUM_EXECUTABLE` escape hatch for a browser revision that does not match the pinned one) but was absent from *Skills consulted* — the exact omission class RV-PROC-1 exists for | fixed |
 | F-5 | review gate (prior-PR-comment agent) | The File structure section listed 7 of the diff's 11 paths, dropping the registry entry, the two comment-only freshness fixes and the plan doc itself — the **fifth** consecutive recurrence of a finding raised on #438, #522, #524 and #525. Fixed, and the section now carries the `--stat` check that would have caught it | fixed |
 | F-6 | review gate (code-comment agent) | `admin-privacy.service.ts`'s `erasureErrorOf` TSDoc and this plan's assumption both claimed the server validates the *address*; it validates **blankness only** (`Emails#normalize` explicitly does not validate shape), which also makes `INVALID_REQUEST` unreachable through the shipped form. Both statements corrected to say what the backend does, and to name the branch as defensive | fixed |
+| F-7 | sonar gate (`typescript:S7718`, 1 new issue — the gate passed, the merge bar did not) | The catch parameter was named `failure`, the repo's only such outlier against 19 uses of `catch (error)`; it had been renamed to dodge the component's own `error` signal. Fixed at the cause instead: the signal is now `erasureError` (matching A8's `editorError`), so the catch parameter is plain `error` with nothing to collide with | fixed |
 
 ---
 
