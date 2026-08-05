@@ -534,6 +534,7 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'admin/email',
     'admin/refunds',
     'admin/photos',
+    'admin/privacy',
     'admin/audit',
   ];
 

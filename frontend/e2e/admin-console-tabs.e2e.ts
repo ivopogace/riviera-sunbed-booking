@@ -9,7 +9,8 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * question Q1 answered once it has been answered.
  *
  * Q1 asked whether the strip should group, overflow, or stay flat once Commissions (A8), Privacy
- * (A3) and Payouts (A6) took it from five tabs to eight; A8 has since landed the sixth. It was
+ * (A3) and Payouts (A6) took it from five tabs to eight; A8 and A3 have since landed the sixth and
+ * seventh. It was
  * settled by measurement in favour of staying flat: at 360px the wrap costs 2 rows at five tabs and
  * **3 rows at six, seven and eight alike**,
  * never clipping and never scrolling horizontally at any width. Accepting eight is therefore only

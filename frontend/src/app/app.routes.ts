@@ -198,6 +198,14 @@ export const routes: Routes = [
     data: { operatorChrome: true },
   },
   {
+    // Admin console Privacy tab (A3, #348) — data-subject erasure; ADMIN-gated server-side.
+    path: 'admin/privacy',
+    loadComponent: () => import('./admin/admin-privacy').then((m) => m.AdminPrivacy),
+    title: 'Privacy — Riviera',
+    // Admin surface: the shared operator header/footer, never the tourist ones.
+    data: { operatorChrome: true },
+  },
+  {
     // Admin console Audit tab (#507) — the recorded admin actions; ADMIN-gated server-side.
     path: 'admin/audit',
     loadComponent: () => import('./admin/admin-audit').then((m) => m.AdminAudit),
