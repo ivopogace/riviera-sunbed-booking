@@ -48,7 +48,14 @@ test('an admin suspends an operator, which blocks its sign-in, then reinstates i
   await row.getByRole('button', { name: 'Suspend' }).click();
   await expect(row.getByText(`Suspend ${OP.username}?`)).toBeVisible();
   await expectNoSeriousAxeViolations(page, 'admin suspend confirmation armed');
+
+  // Typed grounds ride the X-Audit-Reason header into the #507 audit trail (#519).
+  await row.getByLabel('Reason (optional)').fill('repeated guest reports');
+  const suspendRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().includes('/suspend'),
+  );
   await row.getByRole('button', { name: 'Suspend' }).click();
+  expect((await suspendRequest).headers()['x-audit-reason']).toBe('repeated guest reports');
 
   // The row stays listed and badged (never a one-way door), reconciled from the server.
   await expect(row.getByText('Suspended')).toBeVisible();
