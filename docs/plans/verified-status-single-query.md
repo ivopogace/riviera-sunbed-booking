@@ -32,9 +32,10 @@ issue was written (#371), which pins the fix to `customer::api`, and that the by
 read goes dead after the fix, turning "add a query" into "replace a query") ·
 `riviera-plan-doc` (this template — forced the parity ledger for the replaced port
 method) · `tdd` (each phase red→green: port/adapter first, edge second) ·
-`riviera-review-overlay` (review gate — runs at ready-for-review) ·
-`riviera-docs-freshness` (due at close-out over this slice's diff; expected clean —
-RESPONSIBILITIES.md §customer names the recovery port's reads generically) ·
+`riviera-review-overlay` (review gate — ran on PR #518: code-review fan-out (5 agents)
++ the full RV-BE bank walk; 1 Minor RV-STYLE-1 finding, fixed) ·
+`riviera-docs-freshness` (ran — pre-merge smoke over `origin/main...HEAD` + counting
+sweep; 0 findings — no living substrate doc cites the renamed method) ·
 `riviera-modulith` (port-conversation rule → replace on `CustomerAccountRecovery`, not
 a new port; api-surface change checked by `ModularityTests`) ·
 `riviera-java-conventions` (`Optional<Boolean>` for absent on a query port — never
@@ -70,7 +71,9 @@ remote addendum; branched from `main` @ `96601fa`).
   (existing, must stay green).
 - [x] **AC-5:** Given an operator session, when `GET /api/auth/me` answers, then
   `emailVerified` is `null` (non-customer) — the in-memory role check short-circuits
-  before any customer lookup. *Pinned by:* existing auth/web-slice tests staying green.
+  before any customer lookup. *Pinned by:*
+  `AuthSessionIT.meReturnsThePrincipalForASessionAnd401ProblemWhenAnonymous` (now
+  asserts `emailVerified: null`).
 
 ## Non-goals
 
@@ -99,7 +102,7 @@ The slice replaces a published port method and rewires one edge helper:
 | R-1 | Semantics drift on the unknown-account case (`false` vs `null` on the wire) | low | med | parity ledger row + AC-2; the edge maps `empty→null` exactly as `orElse(null)` did | session | closed — pinned by `CustomerAccountServiceTest` + `AuthSessionIT` |
 | R-2 | Dropping normalization silently works in tests that use already-canonical emails (#390 G-4) | low | med | AC-3 uses a byte-different cased/padded input | session | closed — pinned by `emailVerifiedForNormalizesTheEmail` |
 | R-3 | Removing the by-id port method breaks an unseen consumer | low | low | grep'd `isEmailVerified`/`isVerified` across `src/main`: only `CustomerRecovery.isVerified` → `AuthController.verifiedStatus`; tests re-pointed in the same commit; compile + `ModularityTests` prove it | session | closed — full grep clean, structural net green |
-| R-4 | Full-suite-only failure (shared-state beans; #122/#127 class) | low | low | slice adds no filter/limiter/scheduled bean — read-only query swap; verified by the PR's CI run | session | open |
+| R-4 | Full-suite-only failure (shared-state beans; #122/#127 class) | low | low | slice adds no filter/limiter/scheduled bean — read-only query swap; verified by the PR's CI run | session | closed — CI green on `30fd835` (full suite, Sonar 100% new-code coverage) |
 
 ## Open questions / Assumptions
 
@@ -158,18 +161,17 @@ identical).
 
 ## Execution status
 
-**Stage pointer:** CI gate (phases 1–2 implemented, scoped tests green locally)
+**Stage pointer:** merge close-out (all gates run; this commit is the PR's last)
 
-**Next action:** push, verify the PR's CI run is green, then mark ready-for-review and
-run the review gate.
+**Next action:** none after merge — merged via PR #518.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR (#518) | ✅ | `68e11a8` |
-| 1 — module: port/service/store/adapter swap (red→green) | ✅ | this commit |
-| 2 — edge: `CustomerRecovery` + `AuthController` rewire (red→green) | ✅ | this commit |
-| 3 — CI green → ready-for-review → review gate → sonar gate | ⏳ | |
-| 4 — merge + close-out | | |
+| 1 — module: port/service/store/adapter swap (red→green) | ✅ | `30fd835` |
+| 2 — edge: `CustomerRecovery` + `AuthController` rewire (red→green) | ✅ | `30fd835` |
+| 3 — CI green → ready-for-review → review gate → sonar gate | ✅ | CI + Sonar green on `30fd835`; review gate ran on PR #518 |
+| 4 — merge + close-out | ✅ | merged via PR #518 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -177,6 +179,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (code-review fan-out + overlay RV-STYLE-1; confidence 75 → below the plugin's 80 comment bar, fixed anyway) | two-line inline comment in `WebSliceStubs.emailVerifiedFor` | fixed in the close-out commit (shortened to one line) |
 
 ---
 
@@ -249,21 +252,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A (read-only identity query).
-- [ ] Pool + cutoff rules not in scope (invariants #3, #4).
-- [ ] **Modulith** section filled; api-surface swap verified by `ModularityTests` (invariant #11).
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy not in scope (invariant #10).
-- [ ] Timezone not in scope (invariant #6) — no timestamp handling.
-- [ ] Booking codes not in scope (invariant #7).
-- [ ] No schema change → no Flyway migration (invariant #12).
-- [ ] **Frontend** N/A — contract unchanged.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — cites `merged via PR #NN` once the PR exists.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 plus `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A (read-only identity query).
+- [x] Pool + cutoff rules not in scope (invariants #3, #4).
+- [x] **Modulith** section filled; api-surface swap verified by `ModularityTests` (invariant #11).
+- [x] **Payment/payout** N/A.
+- [x] Refund policy not in scope (invariant #10).
+- [x] Timezone not in scope (invariant #6) — no timestamp handling.
+- [x] Booking codes not in scope (invariant #7).
+- [x] No schema change → no Flyway migration (invariant #12).
+- [x] **Frontend** N/A — contract unchanged.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — cites `merged via PR #518`.
+- [x] **The review gate ran in full** — rung 1 (`code-review` skill, 5-agent
+      fan-out) + the `riviera-review-overlay` RV bank walk on PR #518; 1 Minor
+      finding (F-1), fixed.

@@ -503,8 +503,7 @@ class WebSliceStubs {
 
 			@Override
 			public Optional<Boolean> emailVerifiedFor(String email) {
-				// Empty mirrors the pre-#256 stub world: the directory stub resolved no account, so a
-				// customer /me answered emailVerified: null; the one-query read keeps that answer.
+				// Empty = no account, mirroring the pre-#256 stub world (/me answered emailVerified: null).
 				return Optional.empty();
 			}
 		};
