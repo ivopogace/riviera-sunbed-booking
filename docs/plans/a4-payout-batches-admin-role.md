@@ -313,10 +313,32 @@ are all `notification`'s mail-listener carve-out — a different subject, untouc
 
 ## Execution status
 
-**Stage pointer:** `sonar gate — review gate run (1 finding, fixed); awaiting SonarCloud analysis on PR #521`
+**Stage pointer:** `DONE — all gates green; merged via PR #521`
 
-**Next action:** Pull the SonarCloud issue + duplication list for PR #521 (`pr-gates.md` §2 —
-the *list*, never the gate conclusion alone) and clear every entry; then merge close-out.
+**Next action:** None. Post-merge remainder is GitHub-only (no commit): tick **A4** on epic
+#348's checklist with the PR number.
+
+**CI gate — green** on `c12cdc3`: Backend (build + test), Frontend (lint + test + build),
+CodeQL and both Analyze jobs. The backend run is what closes **R-3** — the per-username
+login budget is only observable under the full suite's cumulative traffic in one cached
+context (`riviera-local-debug`'s full-suite-only failure class), and it passed.
+
+**Sonar gate — green, and verified as a real analysis rather than a false-clean**
+(`pr-gates.md` §2's warning: an unanalyzed PR returns `total: 0` byte-for-byte identically
+to a clean one). All three confirmations present: `SonarCloud Code Analysis` concluded
+`success`, `new_lines = 31` proves the analysis covered this diff, and the pulled *list* —
+not the bot's summary comment — is empty:
+
+| Metric | Value |
+|---|---|
+| issues (`api/issues/search`) | **0** |
+| security hotspots (`api/hotspots/search`) | **0** |
+| `new_bugs` / `new_vulnerabilities` / `new_code_smells` | 0 / 0 / 0 |
+| `new_duplicated_blocks` / `new_duplicated_lines_density` | 0 / 0.0% |
+| `new_coverage` | **100.0%** (bar: ≥80%) |
+
+Read via `curl`, not `WebFetch`, deliberately — the skill notes `WebFetch` caches for 15
+minutes, which is how a stale "clean" answer survives a whole gate (PR #318).
 
 **Review gate — ran in full** at `3ab9f8d`, via the `code-review` plugin's fan-out (five
 independent agents: CLAUDE.md compliance, shallow bug scan, git-history context, prior-PR
