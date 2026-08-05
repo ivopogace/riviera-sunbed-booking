@@ -73,6 +73,37 @@ class DailyTakingsServiceTest {
 		assertEquals(0, view.commissionBps());
 	}
 
+	/**
+	 * The venue's rate rose 15% → 20% with effect from the day after {@link #DAY} (A7, #348). DAY's
+	 * bookings were sold — and their ledger entries accrued — at 15%, so DAY must still split at 15%;
+	 * reading the live rate here would silently reprice a day already reported (invariant #9).
+	 */
+	@Test
+	void pastServiceDatesKeepTheRateTheyWereSoldAt() {
+		LocalDate effectiveFrom = DAY.plusDays(1);
+		DailyTakingsService service = new DailyTakingsService((venue, date) -> new OnlineTakings(11000, "EUR"),
+				ratesChanging(1500, 2000, effectiveFrom), allowAll());
+
+		DailyTakingsView pastDay = service.forVenueOn(OPERATOR, VENUE, DAY);
+
+		assertEquals(1500, pastDay.commissionBps(), "a past service date keeps its own rate");
+		assertEquals(1650, pastDay.commissionMinor());
+		assertEquals(9350, pastDay.netMinor());
+	}
+
+	@Test
+	void serviceDatesFromTheEffectiveDateOnwardSplitAtTheNewRate() {
+		LocalDate effectiveFrom = DAY.plusDays(1);
+		DailyTakingsService service = new DailyTakingsService((venue, date) -> new OnlineTakings(11000, "EUR"),
+				ratesChanging(1500, 2000, effectiveFrom), allowAll());
+
+		DailyTakingsView newDay = service.forVenueOn(OPERATOR, VENUE, effectiveFrom);
+
+		assertEquals(2000, newDay.commissionBps());
+		assertEquals(2200, newDay.commissionMinor());
+		assertEquals(8800, newDay.netMinor());
+	}
+
 	@Test
 	void assertsOwnershipBeforeReadingAnyFinancialData() {
 		boolean[] takingsRead = {false};
@@ -87,11 +118,31 @@ class DailyTakingsServiceTest {
 		assertFalse(takingsRead[0], "ownership is asserted before any takings read (invariant #13, BOLA)");
 	}
 
+	/**
+	 * A venue whose rate is {@code bps} on every service date — the shape of every venue whose rate
+	 * has never changed. The live read answers the same value, so a service reading either one passes;
+	 * {@link #pastServiceDatesKeepTheRateTheyWereSoldAt} is what distinguishes them.
+	 */
 	private static VenueRates rates(int bps) {
+		return ratesChanging(bps, bps, DAY);
+	}
+
+	/**
+	 * A venue whose rate changed to {@code liveBps} with effect from {@code effectiveFrom}, having been
+	 * {@code scheduledBps} before. The <strong>live</strong> read answers the new rate (that is what
+	 * "live" means — the next accrual uses it); the dated read answers per service date. A service
+	 * reading the live rate therefore re-splits past days at the new rate, which is the defect.
+	 */
+	private static VenueRates ratesChanging(int scheduledBps, int liveBps, LocalDate effectiveFrom) {
 		return new VenueRates() {
 			@Override
 			public OptionalInt commissionBps(VenueId id) {
-				return OptionalInt.of(bps);
+				return OptionalInt.of(liveBps);
+			}
+
+			@Override
+			public OptionalInt commissionBpsOn(VenueId id, LocalDate serviceDate) {
+				return OptionalInt.of(serviceDate.isBefore(effectiveFrom) ? scheduledBps : liveBps);
 			}
 
 			@Override
@@ -105,6 +156,11 @@ class DailyTakingsServiceTest {
 		return new VenueRates() {
 			@Override
 			public OptionalInt commissionBps(VenueId id) {
+				return OptionalInt.empty();
+			}
+
+			@Override
+			public OptionalInt commissionBpsOn(VenueId id, LocalDate serviceDate) {
 				return OptionalInt.empty();
 			}
 

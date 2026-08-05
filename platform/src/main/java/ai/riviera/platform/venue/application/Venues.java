@@ -123,7 +123,9 @@ public interface Venues {
 
 	/**
 	 * The venue's admin profile for the operator console (O8 #177) — the editable core plus the
-	 * read-only commission + payout currency — or empty if no venue has this id. Read-only; the
+	 * commission + payout currency the owner may read but not write — or empty if no venue has this id
+	 * (read-only for the operator by O8 #177; the platform admin changes the rate through
+	 * {@link CommissionRateStore}). Read-only; the
 	 * caller (application service) has already asserted ownership (invariant #13).
 	 */
 	Optional<VenueProfileView> findProfile(VenueId venueId);

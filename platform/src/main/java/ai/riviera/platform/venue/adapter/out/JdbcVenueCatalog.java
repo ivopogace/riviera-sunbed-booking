@@ -269,6 +269,34 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.orElseGet(OptionalInt::empty);
 	}
 
+	/**
+	 * The latest scheduled rate at or before the service date, falling back to the live rate when the
+	 * venue has no schedule at all — which means its rate has never changed, so the live rate IS what
+	 * applied (A7, #348). Driven off the {@code venue} row rather than the schedule, so an unknown
+	 * venue answers empty instead of a rate; the subquery rides the composite PK's leftmost prefix +
+	 * range, so it needs no index of its own.
+	 */
+	@Override
+	public OptionalInt commissionBpsOn(VenueId id, LocalDate serviceDate) {
+		return jdbc.sql("""
+				SELECT COALESCE(
+				         (SELECT commission_bps
+				            FROM venue_commission_rate
+				           WHERE venue_id = v.id AND effective_from <= :serviceDate
+				           ORDER BY effective_from DESC
+				           LIMIT 1),
+				         v.commission_bps) AS commission_bps
+				  FROM venue v
+				 WHERE v.id = :id
+				""")
+				.param("id", id.value())
+				.param("serviceDate", serviceDate)
+				.query(Integer.class)
+				.optional()
+				.map(OptionalInt::of)
+				.orElseGet(OptionalInt::empty);
+	}
+
 	@Override
 	public OptionalInt lateCancelRefundBps(VenueId id) {
 		return jdbc.sql("SELECT late_cancel_refund_bps FROM venue WHERE id = :id")

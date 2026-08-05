@@ -15,7 +15,13 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
  * venue-admin profile. Maps the application {@link VenueProfileView} to the shape the console form
  * consumes — booking mode + amenity codes as their token strings, and the cutoff as {@code "HH:mm"}
  * (matching {@code CreateVenueRequest.bookingCutoff}), so the round-trip to the widened
- * {@code PATCH} is symmetric. {@code commissionBps} and {@code payoutCurrency} are display-only.
+ * {@code PATCH} is symmetric.
+ *
+ * <p>{@code commissionBps} and {@code payoutCurrency} are <strong>display-only on this surface</strong>
+ * — for the operator, deliberately (O8 #177): a venue does not set its own commission. Since A7 (#348)
+ * the rate <em>is</em> changeable, by the platform admin through
+ * {@code PUT /api/admin/venues/{venueId}/commission}; the {@code PATCH} here is unchanged and still
+ * cannot reach the column.
  *
  * <p>{@code version} is the row's optimistic-concurrency token (#224): the tab echoes it back as
  * {@code expectedVersion} on the next {@code PATCH}, so a stale write is rejected with 409.
