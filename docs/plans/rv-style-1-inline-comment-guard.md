@@ -222,8 +222,29 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | review (prior-PR-comment agent) | The "Positive control (phase 1)" paragraph was byte-identical **twice** in this document — a copy/paste artifact of the phase-1 and phase-2 status updates — which also orphaned the phase table's `Legend:` line below the prose. Same category as #522's F-5: the plan doc is the artifact the next session reads, so an internally inconsistent one misleads more than no doc would. | fixed — this commit |
 | F-2 | review (CLAUDE.md-adherence agent) | The self-review checklist's closing rule ("if any box is unchecked, record the gap in Open Questions") was unsatisfied: the review-gate box was unticked with no matching entry. Resolved by the gate itself completing — the box is ticked on its own evidence rather than by adding a placeholder question. | fixed — this commit |
-| F-3 | review (prior-PR-comment agent) | Per PR #420's correction, a check living in `ci.yml` is **not** thereby a *required* check — that is a GitHub ruleset property. `Inline comments (RV-STYLE-1)` runs green on this PR, but nothing in this diff makes it block a merge. Out of scope here (repo settings, admin-only, not a code change) and **raised to the maintainer** rather than silently assumed. | open → maintainer decision |
+| F-3 | review (prior-PR + git-history agents, independently) | Per PR #420's correction, a check living in `ci.yml` is **not** thereby a *required* check — enforcement is the `Riviera Rule Set` ruleset (id `18207603`), which names its contexts explicitly. `Inline comments (RV-STYLE-1)` runs green here, but nothing in this diff makes it block a merge, and the step's "hard gate" name overstated that. | fixed as far as code allows — **Ready-for-human** section added (admin-only repo setting), raised on the PR |
+| F-5 | review (bug-scan agent) | **The diff-scoping guarantee was broken.** Comment lines were grouped into runs *before* consulting the diff, so any run containing one added line was reported whole — meaning a compliant new one-liner parked under a pre-existing block flagged the whole block and quoted text the author never wrote. In a tree that carries such blocks by design, that is precisely the day-one-red failure #529 rules out, and it would have fired in CI as a merge gate. | fixed — this commit; grouping now runs over **added** lines only, and a block comment is flagged only when the diff wrote its **opening** line |
+| F-6 | review (bug-scan agent) | A multi-line template literal was not tracked across lines, so `//` inside a backtick string (e.g. a multi-line SQL/GraphQL fixture in a `.ts` file) read as real comments. | fixed — this commit; unclosed backtick strings now carry state across lines |
+| F-7 | review (bug-scan agent) | A Java text block containing the escaped delimiter `\"""` (JLS 3.10.6 — a literal triple quote that does **not** close the block) was treated as closed, so the remaining text-block content was scanned as code. | fixed — this commit |
+| F-8 | review (git-history agent) | The new CI job's comment claimed "a skipped run cannot mask anything: this check name is published on PR runs only" — **inaccurate**. A skipped job does publish a check run; what makes it harmless is that `push` is scoped to `main`, so a push run and a PR run never share a head SHA. In a file whose comments are load-bearing incident records (#417, #430), a wrong reason is a defect. | fixed — this commit; the comment now states the real reason and carries the #417 trap warning |
 | F-4 | review (prior-PR-comment agent) | The PR body still described the branch as a draft with phases 1–3 outstanding, contradicting the shipped state. | fixed — PR body refreshed at close-out |
+
+## Ready-for-human (maintainer-only, one step)
+
+> Same pattern and the same reason as `docs/plans/ci-pipeline.md`'s Ready-for-human section: a
+> job living in `ci.yml` is **not** thereby a *required* check. Enforcement is a repository
+> **ruleset** — `Riviera Rule Set` (id `18207603`), which names its required check contexts
+> explicitly — and no workflow edit can add itself to that list. PR #420 had to correct exactly
+> this assumption once already (a `405 … required status checks are expected` on #413 was what
+> revealed it), so it is recorded here rather than assumed.
+
+- [ ] **Add `Inline comments (RV-STYLE-1)` to the required-checks list.** Settings → Rules →
+      Rulesets → *Riviera Rule Set* → *Require status checks to pass*. Until this is done the job
+      runs and reports on every PR, but a red result does **not** block a merge — the
+      "hard gate" wording in `ci.yml` describes the intended end state, not today's.
+
+Deliberately not attempted from the session: it is a repository-settings change, needs admin
+rights, and is not expressible in this diff. Flagged to the maintainer on the PR.
 
 ---
 

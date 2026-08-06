@@ -239,3 +239,62 @@ test('skips a deleted file and keeps a renamed one', () => {
   assert.equal(added.has('frontend/src/app/venue-admin/venue-admin.ts'), false);
   assert.deepEqual([...added.get('scripts/new-name.mjs')], [4]);
 });
+
+test('does not blame a pre-existing block for one newly added one-liner', () => {
+  const lines = [
+    '// preexisting line1 of an old, established block',
+    '// preexisting line2',
+    '// preexisting line3',
+    '// NEW: a fresh, perfectly one-line comment about the call below',
+    'doSomething();',
+  ];
+
+  const violations = findViolations({ path: 'frontend/src/app/x.ts', lines, added: new Set([4]) });
+
+  assert.deepEqual(violations, []);
+});
+
+test('does not flag a pre-existing block comment whose opening line the diff never wrote', () => {
+  const lines = [
+    ':root {',
+    '  /* The scrim reaches alpha 0.68 at its three-quarter stop: the location overlay',
+    '     needs that backing for white ink to clear AA over ANY cover photo. */',
+    '  --riv-photo-scrim: rgba(6, 26, 33, 0.68);',
+    '}',
+  ];
+
+  const violations = findViolations({ path: SCSS, lines, added: new Set([3]) });
+
+  assert.deepEqual(violations, []);
+});
+
+test('treats a multi-line template literal as string content, not comments', () => {
+  const lines = [
+    'const sql = `select 1',
+    '// not a comment, just template literal content',
+    '// still template literal content',
+    'from dual`;',
+  ];
+
+  const violations = findViolations({
+    path: 'frontend/src/app/x.ts',
+    lines,
+    added: new Set([1, 2, 3, 4]),
+  });
+
+  assert.deepEqual(violations, []);
+});
+
+test('keeps a Java text block open across an escaped triple quote', () => {
+  const lines = [
+    'String s = """',
+    '    a literal has \\""" inside it, and the block is still open',
+    '    // this line is still text-block content, not a comment',
+    '    // and so is this one',
+    '    """;',
+  ];
+
+  const violations = findViolations({ path: JAVA, lines, added: new Set([1, 2, 3, 4, 5]) });
+
+  assert.deepEqual(violations, []);
+});

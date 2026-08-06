@@ -51,26 +51,56 @@ export function findViolations({ path, lines, added }) {
   const syntax = syntaxFor(path);
   if (!syntax) return [];
 
+  const regions = scan(lines, syntax);
   const violations = [];
-  for (const region of merge(scan(lines, syntax))) {
+
+  for (const region of regions) {
+    if (region.kind === 'line') continue;
     if (region.endLine === region.startLine) continue;
     if (region.isDoc || region.isFileHeader) continue;
-    if (!touchedByDiff(region, added)) continue;
-    violations.push({
-      path,
-      line: region.startLine + 1,
-      endLine: region.endLine + 1,
-      text: lines[region.startLine].trim(),
-    });
+    if (!added.has(region.startLine + 1)) continue;
+    violations.push(violationAt(path, lines, region.startLine, region.endLine));
   }
-  return violations;
+  for (const run of addedLineRuns(regions, added)) {
+    violations.push(violationAt(path, lines, run.startLine, run.endLine));
+  }
+  return violations.sort((a, b) => a.line - b.line);
 }
 
-function touchedByDiff(region, added) {
-  for (let i = region.startLine; i <= region.endLine; i++) {
-    if (added.has(i + 1)) return true;
+function violationAt(path, lines, startLine, endLine) {
+  return { path, line: startLine + 1, endLine: endLine + 1, text: lines[startLine].trim() };
+}
+
+/**
+ * Groups the whole-line comments **the diff added** into maximal consecutive runs, and keeps the
+ * runs longer than one line.
+ *
+ * The added-only restriction is the diff-scoping guarantee, and it is not a detail: grouping every
+ * adjacent comment line and then asking whether any of them was added blames a pre-existing block
+ * for the one compliant one-liner a diff parks beneath it — reporting a span, and quoting text,
+ * the author never wrote. In a tree that carries many such blocks by design, that false positive
+ * is exactly how a gate gets switched off (issue #529).
+ *
+ * The cost is a deliberate false negative: appending a second line to a comment that was already
+ * there reads as a one-line addition. A diff that *rewrites* the comment — which is what the #522
+ * regression did — adds both lines and is still caught.
+ */
+function addedLineRuns(regions, added) {
+  const runs = [];
+  let current = null;
+
+  for (const region of regions) {
+    const eligible =
+      region.kind === 'line' && region.wholeLine && added.has(region.startLine + 1);
+    if (eligible && current && region.startLine === current.endLine + 1) {
+      current.endLine = region.startLine;
+      continue;
+    }
+    if (current && current.endLine > current.startLine) runs.push(current);
+    current = eligible ? { startLine: region.startLine, endLine: region.startLine } : null;
   }
-  return false;
+  if (current && current.endLine > current.startLine) runs.push(current);
+  return runs;
 }
 
 /**
@@ -82,6 +112,7 @@ function scan(lines, syntax) {
   const regions = [];
   let open = null;
   let inTextBlock = false;
+  let inTemplate = false;
   let seenCode = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -90,6 +121,12 @@ function scan(lines, syntax) {
     let lineHasCode = false;
 
     while (c < line.length) {
+      if (inTemplate) {
+        c = skipString(line, c, '`');
+        if (c <= line.length && line[c - 1] === '`') inTemplate = false;
+        lineHasCode = true;
+        continue;
+      }
       if (open) {
         const terminator = open.kind === 'html' ? '-->' : '*/';
         const at = line.indexOf(terminator, c);
@@ -101,7 +138,10 @@ function scan(lines, syntax) {
         continue;
       }
       if (inTextBlock) {
-        if (line.startsWith('"""', c)) {
+        // `\"""` embeds a literal triple quote without closing the block (JLS 3.10.6).
+        if (line[c] === '\\') {
+          c += 2;
+        } else if (line.startsWith('"""', c)) {
           inTextBlock = false;
           c += 3;
         } else {
@@ -117,7 +157,9 @@ function scan(lines, syntax) {
       }
       const ch = line[c];
       if (ch === '"' || ch === "'" || ch === '`') {
-        c = skipString(line, c);
+        c = skipString(line, c + 1, ch);
+        // A template literal may legally span lines, so an unclosed one carries to the next.
+        if (ch === '`' && line[c - 1] !== '`') inTemplate = true;
         lineHasCode = true;
         continue;
       }
@@ -155,10 +197,13 @@ function scan(lines, syntax) {
   return regions;
 }
 
-/** Returns the index just past the string literal opening at `start`, honouring backslash escapes. */
-function skipString(line, start) {
-  const quote = line[start];
-  let c = start + 1;
+/**
+ * Scans from `start` to just past the closing `quote`, honouring backslash escapes. When the quote
+ * never closes on this line the end of the line is returned, so the caller can tell the two apart
+ * by checking whether the character before the returned index is the quote.
+ */
+function skipString(line, start, quote) {
+  let c = start;
   while (c < line.length) {
     if (line[c] === '\\') {
       c += 2;
@@ -168,32 +213,6 @@ function skipString(line, start) {
     c++;
   }
   return line.length;
-}
-
-/**
- * Collapses a run of consecutive whole-line comments into one region, so two `//` lines above a
- * statement read as one two-line comment. Only whole-line comments merge: a trailing comment is
- * one line by construction, and merging it with the next line's comment would flag two unrelated
- * one-liners that merely sit next to each other.
- */
-function merge(regions) {
-  const merged = [];
-  for (const region of regions) {
-    const previous = merged[merged.length - 1];
-    const continues =
-      previous &&
-      previous.kind === 'line' &&
-      region.kind === 'line' &&
-      previous.wholeLine &&
-      region.wholeLine &&
-      region.startLine === previous.endLine + 1;
-    if (continues) {
-      previous.endLine = region.endLine;
-    } else {
-      merged.push({ ...region });
-    }
-  }
-  return merged;
 }
 
 /**

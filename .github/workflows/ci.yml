@@ -126,8 +126,13 @@ jobs:
     #
     # Pull requests only, deliberately. The rule governs what a DIFF writes, and a push to main
     # has no base to diff against that means anything here (the tree carries many pre-existing
-    # multi-line inline comments by design; see the guard's header). Unlike the sonar job below,
-    # a skipped run cannot mask anything: this check name is published on PR runs only.
+    # multi-line inline comments by design; see the guard's header).
+    #
+    # Same #417 trap as the sonar job below, and for the same reason: when this `if` is false the
+    # job is SKIPPED, and a skipped job still publishes a check run under this name. What makes
+    # that harmless today is not the `if` — it is that `push` is scoped to `branches: [main]`, so
+    # a push run and a PR run never share a head SHA, and masking needs a same-SHA collision.
+    # Broaden the `push` trigger and this job masks its own PR result exactly as #417 described.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     # Observed green: well under a minute (no install step — the guard has no dependencies).
