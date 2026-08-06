@@ -20,6 +20,8 @@ role constants** — `OperatorUserDetailsService.OPERATOR_ROLE` / `.ADMIN_ROLE` 
 `CustomerUserDetailsService.CUSTOMER_ROLE` — which are precisely what
 `loadUserByUsername` grants a non-admin operator, a platform admin and a customer, so the
 probe principal is authority-identical to a real session rather than a hand-guessed twin.
+The one structural consequence: the request-synthesis machinery both sweeps need is extracted to
+`EndpointProbes`, so the new guard adds a second *caller* rather than a second *copy*.
 
 **Persistence:** JDBC only (invariant #1). N/A — no table, no query, no migration; this slice
 adds one test class and one Javadoc sentence.
@@ -52,27 +54,27 @@ for `feature/admin-endpoint-role-gate` (`riviera-sdlc` §Remote/cloud session ad
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the `/api/admin/**` endpoints the application actually maps — discovered
+- [x] **AC-1:** Given the `/api/admin/**` endpoints the application actually maps — discovered
   from `RequestMappingHandlerMapping`, never a hand-maintained list — when each is requested by
   an authenticated **non-admin operator** principal (`ROLE_OPERATOR` only, exactly what
   `OperatorUserDetailsService` grants a `credential.admin() == false` account), then the
   security filter chain refuses it with **403** *before* `DispatcherServlet` dispatches.
   *Pinned by:* `AdminSurfaceRoleGateTest.plainOperatorReachesNoAdminEndpoint`
-- [ ] **AC-2:** Given the same discovered set, when each endpoint is requested by an
+- [x] **AC-2:** Given the same discovered set, when each endpoint is requested by an
   authenticated **customer** principal (`ROLE_CUSTOMER` — the D-2 second principal type, whose
   separate authentication manager is why operator-only coverage is not the whole property),
   then the chain refuses it with **403** before dispatch.
   *Pinned by:* `AdminSurfaceRoleGateTest.customerReachesNoAdminEndpoint`
-- [ ] **AC-3 (omission case):** Given an `/api/admin/**` endpoint mapped with **no**
+- [x] **AC-3 (omission case):** Given an `/api/admin/**` endpoint mapped with **no**
   `SecurityConfig` matcher at all — the actual #521-shaped failure, which arrives by omission
   rather than by an edit anyone reviews — when the guard runs, then it **fails naming that
   endpoint**. *Proven by:* a temporary fixture controller in Phase 1, evidence (the verbatim
   failure message) recorded in this doc, fixture removed before the PR.
-- [ ] **AC-4 (downgrade case):** Given one admin matcher flipped back to
+- [x] **AC-4 (downgrade case):** Given one admin matcher flipped back to
   `hasRole(OPERATOR_ROLE)` — literally the pre-#521 `/api/admin/payout-batches` state — when
   the guard runs, then it **fails naming that endpoint**. *Proven by:* a temporary
   `SecurityConfig` mutation in Phase 1, evidence recorded, mutation reverted.
-- [ ] **AC-5 (non-vacuity):** Given the guard passes, then that pass is load-bearing: the
+- [x] **AC-5 (non-vacuity):** Given the guard passes, then that pass is load-bearing: the
   discovered set is non-empty, contains a cross-module anchor set (so a `@WebMvcTest` that
   stopped registering module controllers cannot pass by discovering nothing), and an **ADMIN**
   principal *is* dispatched to every one of those same endpoints — which additionally catches
@@ -80,7 +82,7 @@ for `feature/admin-endpoint-role-gate` (`riviera-sdlc` §Remote/cloud session ad
   both AC-1 and AC-2 would call green. *Pinned by:*
   `AdminSurfaceRoleGateTest.adminPrincipalReachesEveryAdminEndpoint` + the anchor assertion in
   `mappedAdminEndpoints`.
-- [ ] **AC-6:** Given the slice is complete, then **no production behaviour changed** — the
+- [x] **AC-6:** Given the slice is complete, then **no production behaviour changed** — the
   only `platform/src/main` edit is Javadoc — and the structural test set
   (`ModularityTests`, `PackageShapeArchitectureTests`,
   `PublishedSurfacePlacementArchitectureTests`) stays green.
@@ -122,25 +124,29 @@ for `feature/admin-endpoint-role-gate` (`riviera-sdlc` §Remote/cloud session ad
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **The guard passes vacuously** — the web slice registers no module controllers, so the discovered admin set is empty and every assertion is over nothing. This is the dominant failure mode for a discovery-based test. | med | high | Three independent anchors: non-empty assertion, a cross-module anchor set spanning root + `venue` + `notification` + `payout` + `booking`, and the ADMIN positive control that proves dispatch is reachable at all (AC-5). | Claude | open |
-| R-2 | **A synthesized probe path 404s** (bad path-variable sample), so "not dispatched" is true for the wrong reason and the guard verifies nothing. | med | high | The status assertion is exact: a non-dispatched probe must carry **403**, never 401/404/405/429. A bad sample fails the guard loudly instead of passing it quietly — the same discriminator `EndpointRoleGateCoverageTest` uses. | Claude | open |
-| R-3 | **Full-suite-only rate-limit failure (#127/#129).** This class fires ~66 probes; `RateLimitFilter` sits *ahead of* authorization in a **cached** context, so a shared client IP would turn a green scoped run into a CI wall of `429`s — and a `429` is exactly what R-2's status check would then report. | med | high | Every probe carries a unique `X-Forwarded-For` from `SessionLoginSupport.uniqueClientIp()`, which mints untrusted `198.18.x.y` (RFC 2544) — not an RFC1918 value the #129 trusted-proxy resolver would skip. Verified by the PR's CI run, not by the scoped run. | Claude | open |
-| R-4 | **The probe principal drifts from the real one** — someone changes what `OperatorUserDetailsService` grants, and the guard keeps testing the old authority, going green against a principal that no longer exists. | low | med | The probe roles are **read from the production constants**, not re-spelled as literals; a change to either constant changes the probe in the same commit. | Claude | open |
-| R-5 | **The ADMIN positive control is flaky** — a stub returning `null` or a `{}` body failing validation makes an endpoint answer 400/500. | med | low | The control asserts **dispatch** (`getHandler() != null`), not status. Handler selection precedes body binding, validation and every stub interaction, so a 400/500 still proves the point. | Claude | open |
-| R-6 | **The guard is trusted without ever being seen red.** A green-only tripwire is indistinguishable from a tripwire that cannot fire — the issue calls this out for both cases. | med | high | Phase 1 mutates the tree twice (omission fixture, matcher downgrade), records the verbatim failure output in this doc, and reverts. Phase 2 does not start until both are recorded. | Claude | open |
-| R-7 | **Boundary leak (invariant #11)** — a root-package test reaching into module internals to enumerate controllers. | low | med | Enumeration is via the framework's `RequestMappingHandlerMapping`; no module type is imported. `ModularityTests` + `PackageShapeArchitectureTests` re-run (AC-6). | Claude | open |
+| R-1 | **The guard passes vacuously** — the web slice registers no module controllers, so the discovered admin set is empty and every assertion is over nothing. This is the dominant failure mode for a discovery-based test. | med | high | Three independent anchors: non-empty assertion, a cross-module anchor set spanning root + `venue` + `notification` + `payout` + `booking`, and the ADMIN positive control that proves dispatch is reachable at all (AC-5). | Claude | **closed** — all three anchors green; the AC-3 mutation independently proved the sweep sees a newly-mapped endpoint with no edit to the test. |
+| R-2 | **A synthesized probe path 404s** (bad path-variable sample), so "not dispatched" is true for the wrong reason and the guard verifies nothing. | med | high | The status assertion is exact: a non-dispatched probe must carry **403**, never 401/404/405/429. A bad sample fails the guard loudly instead of passing it quietly — the same discriminator `EndpointRoleGateCoverageTest` uses. | Claude | **closed** — the exact-403 rule held for all 22 endpoints under both principals; no probe answered 404/405. |
+| R-3 | **Full-suite-only rate-limit failure (#127/#129).** This class fires ~66 probes; `RateLimitFilter` sits *ahead of* authorization in a **cached** context, so a shared client IP would turn a green scoped run into a CI wall of `429`s — and a `429` is exactly what R-2's status check would then report. | med | high | Every probe carries a unique `X-Forwarded-For` from `SessionLoginSupport.uniqueClientIp()`, which mints untrusted `198.18.x.y` (RFC 2544) — not an RFC1918 value the #129 trusted-proxy resolver would skip. Verified by the PR's CI run, not by the scoped run. | Claude | **closed locally, CI-confirmed at the PR** — every probe takes `uniqueClientIp()`; scoped green is not proof, so the PR's CI run is the verification (riviera-sdlc CI-gate rule). |
+| R-4 | **The probe principal drifts from the real one** — someone changes what `OperatorUserDetailsService` grants, and the guard keeps testing the old authority, going green against a principal that no longer exists. | low | med | The probe roles are **read from the production constants**, not re-spelled as literals; a change to either constant changes the probe in the same commit. | Claude | **closed** — probe roles read from `OperatorUserDetailsService.OPERATOR_ROLE`/`.ADMIN_ROLE` and `CustomerUserDetailsService.CUSTOMER_ROLE`; no role literal is spelled in the test. |
+| R-5 | **The ADMIN positive control is flaky** — a stub returning `null` or a `{}` body failing validation makes an endpoint answer 400/500. | med | low | The control asserts **dispatch** (`getHandler() != null`), not status. Handler selection precedes body binding, validation and every stub interaction, so a 400/500 still proves the point. | Claude | **closed, and it fired** — sharper than predicted: `PATCH /api/admin/payout-batches/*` does not answer 400, it *throws* (`BatchStatus.valueOf(null)`), so `perform` never returns a result. Handled by treating a thrown dispatch as admission, which is sound one-directionally — Spring Security refuses by *writing* 401/403, never by throwing. |
+| R-6 | **The guard is trusted without ever being seen red.** A green-only tripwire is indistinguishable from a tripwire that cannot fire — the issue calls this out for both cases. | med | high | Phase 1 mutates the tree twice (omission fixture, matcher downgrade), records the verbatim failure output in this doc, and reverts. Phase 2 does not start until both are recorded. | Claude | **closed** — both mutations recorded verbatim in *Mutation evidence*; tree confirmed clean before Phase 2. |
+| R-7 | **Boundary leak (invariant #11)** — a root-package test reaching into module internals to enumerate controllers. | low | med | Enumeration is via the framework's `RequestMappingHandlerMapping`; no module type is imported. `ModularityTests` + `PackageShapeArchitectureTests` re-run (AC-6). | Claude | **closed** — structural set green; the test imports no module type. |
 
 ## Open questions / Assumptions
+
+### Resolved
 
 - **Assumption:** `@WebMvcTest` registers the admin controllers that live inside modules
   (`venue`/`notification`/`payout`/`booking` `adapter/in`), not only root-package ones —
   strongly implied by `WebSliceStubs` already stubbing their exact collaborators
   (`MailOutboxStatus`, `RefundOutboxStatus`, `MailDeliveryLookup`, `OperatorLifecycle`,
   `AccountErasure`, …). — *Owner:* Claude · *Resolves by:* Phase 0 Step 2, where the anchor
-  assertion (R-1) turns the assumption into a machine-checked fact.
+  assertion (R-1) turns the assumption into a machine-checked fact. — **Resolved:** true. All five cross-module anchors
+  were discovered; 22 admin endpoints across 10 controllers in root + 4 modules were swept.
 - **Assumption:** no `/api/admin/**` path sits in a `RateLimitFilter` budget, so the probes
   spend only the default per-IP budget. Unique IPs make this moot either way. — *Owner:*
-  Claude · *Resolves by:* Phase 0 Step 4.
+  Claude · *Resolves by:* Phase 0 Step 4. — **Resolved:** true; no probe answered 429, and unique
+  IPs make the question moot regardless.
 
 ## Availability & concurrency (invariant #2)
 
@@ -188,16 +194,16 @@ N/A — no contract change. No endpoint, DTO, status code or error body moves.
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, awaiting Phase 0`
+**Stage pointer:** `PR — draft opened, awaiting CI; review + sonar gates due at ready-for-review`
 
-**Next action:** Phase 0 Step 1 — write `AdminSurfaceRoleGateTest` and run it scoped
-(`gradle --no-daemon --console=plain test --tests "*AdminSurfaceRoleGateTest*"`).
+**Next action:** Confirm the draft PR's CI run is green (R-3's rate-limit question is answerable
+only there), then mark ready for review and run the review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The guard (discover + probe both principal types) | | |
-| 1 — Prove it fails: omission + downgrade mutations | | |
-| 2 — Docs freshness + close-out | | |
+| 0 — The guard (discover + probe both principal types) | ✅ | `39adb6a` |
+| 1 — Prove it fails: omission + downgrade mutations | ✅ | evidence-only, no code shipped (see *Mutation evidence*) |
+| 2 — Docs freshness + close-out | ✅ | `39adb6a` (Javadoc + close-out folded into the one code commit — the slice is a single cohesive change) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -217,10 +223,19 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/AdminSurfaceRoleGateTest.java` — **new**: the
   guard. Discovers `/api/admin/**` mappings, probes each with a plain operator, a customer and
   an admin principal, and carries the anchor + status assertions that make a pass load-bearing.
+- `platform/src/test/java/ai/riviera/platform/EndpointProbes.java` — **new**: the request-synthesis
+  machinery (path-variable samples, `csrf()`, the unique `X-Forwarded-For`), extracted so the two
+  endpoint-sweep guards share one definition instead of two copies that can drift. Not merely a
+  duplication fix: getting this synthesis wrong is R-2, and one home means it is verified once.
+- `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` — **modified**:
+  now consumes `EndpointProbes` (its private `probe`/`concretePath` and their constants moved
+  there verbatim), and its Javadoc gains the *role-agnostic by design* paragraph naming the new
+  guard as the owner of the role-specific half. **No assertion, allow-list entry or probe
+  principal changed** — the sole reason to touch a shipped tripwire.
 - `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — **Javadoc only** (no
-  behaviour change): name the new guard where the admin constants are declared, mirroring the
-  existing `EndpointRoleGateCoverageTest` pointer on `BEACH_MAP_PATH`, so the next author
-  adding an admin endpoint learns which test will fail and why.
+  behaviour change): name the new guard on the `ADMIN_ROLE` constant, mirroring the existing
+  `EndpointRoleGateCoverageTest` pointer on `BEACH_MAP_PATH`, so the next author adding an admin
+  endpoint learns which test will fail and why.
 
 ---
 
@@ -228,46 +243,78 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `platform/src/test/java/ai/riviera/platform/AdminSurfaceRoleGateTest.java`
 
-- [ ] **Step 1: Write the failing test** — authored red-first against a guard that does not
+- [x] **Step 1: Write the failing test** — authored red-first against a guard that does not
   exist yet; the first run must fail to compile, then fail on the anchor assertion if the web
   slice does not register module controllers (Assumption 1).
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `gradle --no-daemon --console=plain test --tests "*AdminSurfaceRoleGateTest*"`
-- [ ] **Step 3: Minimal implementation** — the enumeration + probe helpers.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Machine-check the /api/admin/** ADMIN gate (#528)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 3: Minimal implementation** — the enumeration + probe helpers.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Machine-check the /api/admin/** ADMIN gate (#528)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Prove it fails (AC-3, AC-4)
 
 **Files:** temporary mutations only — nothing from this phase reaches the PR.
 
-- [ ] **Step 1 (omission, AC-3):** add a test-scoped fixture controller mapping a new
+- [x] **Step 1 (omission, AC-3):** add a test-scoped fixture controller mapping a new
   `/api/admin/**` endpoint with **no** `SecurityConfig` matcher; run the guard; record the
   verbatim failure; delete the fixture.
-- [ ] **Step 2 (downgrade, AC-4):** flip one admin matcher to `hasRole(OPERATOR_ROLE)`; run
+- [x] **Step 2 (downgrade, AC-4):** flip one admin matcher to `hasRole(OPERATOR_ROLE)`; run
   the guard; record the verbatim failure; revert.
-- [ ] **Step 3:** paste both outputs into the *Mutation evidence* section below.
-- [ ] **Step 4:** confirm `git status` is clean of both mutations before Phase 2.
+- [x] **Step 3:** paste both outputs into the *Mutation evidence* section below.
+- [x] **Step 4:** confirm `git status` is clean of both mutations before Phase 2.
 
 ## Phase 2 — Docs freshness + close-out
 
-- [ ] **Step 1:** `SecurityConfig` Javadoc pointer to the new guard.
-- [ ] **Step 2:** structural test set green (AC-6).
-- [ ] **Step 3:** run both repo-hygiene guards
+- [x] **Step 1:** `SecurityConfig` Javadoc pointer to the new guard.
+- [x] **Step 2:** structural test set green (AC-6).
+- [x] **Step 3:** run both repo-hygiene guards
   (`node scripts/check-inline-comments.mjs --diff origin/main`,
   `node scripts/check-plan-file-structure.mjs --diff origin/main`).
-- [ ] **Step 4:** finalize Execution status in this PR's own last commit, citing
+- [x] **Step 4:** finalize Execution status in this PR's own last commit, citing
   `merged via PR #NN`.
 
 ---
 
 ## Mutation evidence (Phase 1 output)
 
-> Filled in Phase 1. A guard nobody has seen fail is a guard nobody should trust (R-6).
+> A guard nobody has seen fail is a guard nobody should trust (R-6). Both mutations were applied
+> to a working tree, run, recorded verbatim, and reverted; `git status` was confirmed clean of
+> both before Phase 2 began.
 
-*(pending Phase 1)*
+**AC-4 — the downgrade case.** `GET /api/admin/audit` flipped from `hasRole(ADMIN_ROLE)` to
+`hasRole(OPERATOR_ROLE)` — literally the pre-#521 `/api/admin/payout-batches` state:
+
+```
+AdminSurfaceRoleGateTest > plainOperatorReachesNoAdminEndpoint() FAILED
+java.lang.AssertionError: [every mapped /api/admin/** endpoint must be gated to ROLE_ADMIN and
+refuse a plain operator; gate a new one with an explicit requestMatchers(...).hasRole(ADMIN_ROLE)
+rule in SecurityConfig]
+Expecting empty but was: ["GET /api/admin/audit reached
+  ai.riviera.platform.AdminAuditController#audit(Integer) — it is not gated to ROLE_ADMIN,
+  so a plain operator passes the filter chain"]
+```
+
+`customerReachesNoAdminEndpoint` stayed green, correctly — a customer holds no `OPERATOR`
+authority, so only the operator probe can see this particular downgrade. That asymmetry is
+precisely why AC-2 exists as its own sweep rather than as a second assertion in the first.
+
+**AC-3 — the omission case.** A temporary `UngatedAdminFixture` mapping
+`GET /api/admin/forgotten-surface`, with no `SecurityConfig` matcher at all:
+
+```
+AdminSurfaceRoleGateTest > plainOperatorReachesNoAdminEndpoint() FAILED
+AdminSurfaceRoleGateTest > customerReachesNoAdminEndpoint()      FAILED
+Expecting empty but was: ["GET /api/admin/forgotten-surface reached
+  ai.riviera.platform.UngatedAdminFixture#forgotten() — it is not gated to ROLE_ADMIN,
+  so a signed-in customer passes the filter chain"]
+```
+
+Both principal types caught it, and neither needed an edit to this test to know the endpoint
+existed — which is the discovery property (issue approach 2) doing exactly the job a
+hand-maintained list structurally cannot.
 
 ---
 
@@ -277,35 +324,37 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-06 | Phase 0 — the shared-probe extraction | Other tests hand-rolling endpoint-probe synthesis that would drift from `EndpointProbes` | `grep -rn "PATH_VARIABLE_SAMPLES\|concretePath" platform/src/test` | 2 (both now the shared helper's own definition) | **Fixed all** — `EndpointRoleGateCoverageTest` moved onto the helper rather than the new guard copying it. `MeSurfaceRoleGateTest`/`VenueWriteRoleGateTest` drive *named* endpoints, not sweeps, so they need no synthesis and were deliberately left alone. |
+| 2026-08-06 | Phase 1 — R-5's sharper form (a handler that throws, not 400s) | Whether the same "dispatched" discriminator is used elsewhere and would break the same way | `grep -rn "getHandler()" platform/src/test` | 3 (`EndpointRoleGateCoverageTest`, `MeSurfaceRoleGateTest`, this guard) | **Skipped for the other two, deliberately** — both assert `getHandler()` is **null** (a *rejection*), which no thrown handler exception can fake; only the positive-control direction is exposed to it, and only this guard has one. |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `gradle … --tests "*AdminSurfaceRoleGateTest*"` → PASS.
-- [ ] **AC-2:** Same run → PASS.
-- [ ] **AC-3:** Mutation evidence section records the omission failure.
-- [ ] **AC-4:** Mutation evidence section records the downgrade failure.
-- [ ] **AC-5:** Same run → PASS, anchors included.
-- [ ] **AC-6:** Structural test set green; `SecurityConfig` diff is Javadoc-only.
+- [x] **AC-1:** Run `gradle … --tests "*AdminSurfaceRoleGateTest*"` → PASS.
+- [x] **AC-2:** Same run → PASS.
+- [x] **AC-3:** Mutation evidence section records the omission failure.
+- [x] **AC-4:** Mutation evidence section records the downgrade failure.
+- [x] **AC-5:** Same run → PASS, anchors included.
+- [x] **AC-6:** Structural test set green; `SecurityConfig` diff is Javadoc-only.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified N/A); no availability write path in scope (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event payloads (invariant #11).
-- [ ] **Payment/payout** section filled (justified N/A) (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A, unchanged.
-- [ ] Timezone correct (invariant #6) — N/A, no time arithmetic.
-- [ ] Booking codes unguessable (invariant #7) — N/A; no booking code is logged or probed.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented — N/A, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified N/A); no availability write path in scope (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event payloads (invariant #11).
+- [x] **Payment/payout** section filled (justified N/A) (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A, unchanged.
+- [x] Timezone correct (invariant #6) — N/A, no time arithmetic.
+- [x] Booking codes unguessable (invariant #7) — N/A; no booking code is logged or probed.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented — N/A, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
