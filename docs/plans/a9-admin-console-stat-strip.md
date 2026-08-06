@@ -220,15 +220,15 @@ client for the same endpoint; its TSDoc gains its second consumer.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — the 360px fold guard and the home-only guard in `e2e/admin-console-stats.e2e.ts`, each proven to fail on the mistake it exists to catch.
+**Next action:** Phase 3 — docs-freshness counting sweep, the canvas header note, then mark the PR ready and run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `shared/stat-tile.ts` + refactor the operator strip onto it | ✅ | `1bd7751` |
 | 1 — `admin/admin-console-stats.ts` + wire into the console home | ✅ | `7d227c2` |
-| 2 — a11y + e2e (360px fold guard, home-only guard) | | |
+| 2 — a11y + e2e (360px fold guard, home-only guard) | ✅ | `faec9b0` |
 | 3 — full local verification, docs-freshness counting sweep, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -239,7 +239,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | sonar (PR #527, first analysis) | `typescript:S7059` CRITICAL — async call in `AdminConsoleStats`' constructor. The gate read **passed** while reporting it; A3's hand-off note 4 is why the list was pulled instead of the badge | fixed-in-`faec9b0` — moved to `ngOnInit`, the fix `operator-home.ts:157` already established in this repo for the same rule |
 
 ---
 

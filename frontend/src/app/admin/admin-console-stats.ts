@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
 
 import { formatCommissionPercent } from '../shared/commission-rate';
 import { StatTile } from '../shared/stat-tile';
@@ -40,6 +40,12 @@ import { VenueCommissionView } from './admin.model';
  * <p>The strip is deliberately inert: no tile links anywhere. The tabs sit directly above it, and a
  * navigating tile would add exactly the focus-management surface that cost A8's review three
  * findings.
+ *
+ * <p><strong>The labels are terse because the fold is measured, not guessed.</strong> At 360px a tile
+ * is ~136px of inner width, so an uppercase 11px label past roughly sixteen characters wraps — and a
+ * wrap costs the whole two-tile row a line. "Pending approvals" and "Active operators" each cost
+ * 15px that the console home does not have: with them, the first content heading landed at y=724 of
+ * a 740px fold; without, at 691. `e2e/admin-console-stats.e2e.ts` holds that budget.
  */
 @Component({
   selector: 'app-admin-console-stats',
@@ -47,11 +53,11 @@ import { VenueCommissionView } from './admin.model';
   template: `
     <section class="mt-5" aria-label="Platform at a glance" data-testid="admin-stats">
       <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <app-stat-tile label="Pending approvals" valueTestId="admin-stat-pending">
+        <app-stat-tile label="To approve" valueTestId="admin-stat-pending">
           {{ pendingCount() ?? '—' }}
         </app-stat-tile>
 
-        <app-stat-tile label="Active operators" valueTestId="admin-stat-active">
+        <app-stat-tile label="Active" valueTestId="admin-stat-active">
           {{ activeCount() ?? '—' }}
         </app-stat-tile>
 
@@ -74,14 +80,14 @@ import { VenueCommissionView } from './admin.model';
           class="mt-2 text-[11.5px] leading-[1.45] text-(--riv-ink-soft)"
           data-testid="admin-stats-mean-note"
         >
-          The mean averages venue rates equally; what the platform actually takes depends on where
-          bookings land.
+          The mean averages venue rates equally — what the platform takes depends on where bookings
+          land.
         </p>
       }
     </section>
   `,
 })
-export class AdminConsoleStats {
+export class AdminConsoleStats implements OnInit {
   private readonly commissions = inject(AdminCommissionsService);
 
   /** Operators awaiting approval, or `undefined` while the page's read is unsettled or failed. */
@@ -110,7 +116,8 @@ export class AdminConsoleStats {
     return `mean rate ${formatCommissionPercent(Math.round(totalBps / venues.length))}`;
   });
 
-  constructor() {
+  // Not the constructor: an async call there is a testability/ordering smell (typescript:S7059).
+  ngOnInit(): void {
     void this.loadVenues();
   }
 
