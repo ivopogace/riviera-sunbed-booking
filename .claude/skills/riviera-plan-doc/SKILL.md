@@ -97,7 +97,8 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    ```
 
    It reports every path the diff changed that the section omits, and CI fails the PR on the same
-   comparison (#533, a step in the `Inline comments (RV-STYLE-1)` job). Undercounting this section
+   comparison (#533, a step in the `Repo hygiene (diff-scoped)` job, named `Inline comments
+   (RV-STYLE-1)` until #539). Undercounting this section
    was a review finding on five consecutive slices — the omissions are never the interesting files,
    they are the registry entry and the docs-sweep file, which is exactly what a resuming session
    cannot infer from the code. Details and the accepted path idioms: the template's File-structure

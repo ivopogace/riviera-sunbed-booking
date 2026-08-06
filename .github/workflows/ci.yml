@@ -118,19 +118,21 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  inline-comments:
+  repo-hygiene:
     # DO NOT RENAME. This string is a required status-check CONTEXT in the `Riviera Rule Set`
-    # ruleset (#534 added it as the seventh; `docs/plans/ci-pipeline.md` records the list). A
-    # ruleset names its contexts explicitly, so renaming the job here removes a check the ruleset
-    # still expects, and EVERY pull request becomes unmergeable — the `405 … N of N required
-    # status checks are expected` failure #413/#420 already paid for once. Renaming means editing
-    # the ruleset in the same change, which is a repository setting and not expressible in a diff.
-    name: Inline comments (RV-STYLE-1)
+    # ruleset (#534 added the seventh context as `Inline comments (RV-STYLE-1)`; #539 renamed it
+    # to this string; `docs/plans/ci-pipeline.md` records the list). A ruleset names its contexts
+    # explicitly, so renaming the job here removes a check the ruleset still expects, and EVERY
+    # pull request becomes unmergeable — the `405 … N of N required status checks are expected`
+    # failure #413/#420 already paid for once. Renaming means editing the ruleset in the same
+    # change, which is a repository setting and not expressible in a diff — #539 records the
+    # swap sequencing that lands the pair without an unmergeable window.
+    name: Repo hygiene (diff-scoped)
     # Two diff-scoped repo-hygiene guards, not one: RV-STYLE-1 inline comments (#529) and the plan
     # doc's File-structure section (#533). They share this job because they share a shape — judge
     # what a DIFF wrote, never the standing tree — and because the name above is the enforcement
-    # handle. The name predates the second guard and now understates it; correcting that needs the
-    # coordinated rename described above.
+    # handle. Until #539 the job kept #529's original name, which described only the first guard;
+    # a plan-doc failure surfacing under "Inline comments" sent the author hunting the wrong rule.
     #
     # The authoring-time guard's backstop (#529). The hook in .claude/settings.json is the
     # primary control — it fires on the edit itself — but hooks are per-machine and an author
