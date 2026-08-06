@@ -90,6 +90,18 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    public `api/` port. Decide naming/style yourself.
 3. **Run the Self-review checklist before claiming done.** Unchecked items are
    evidence the feature is not done, not "minor cleanup."
+   **3a. Reconcile the File-structure section with the diff — by running the guard, not by eye:**
+
+   ```bash
+   node scripts/check-plan-file-structure.mjs --diff origin/main
+   ```
+
+   It reports every path the diff changed that the section omits, and CI fails the PR on the same
+   comparison (#533, a step in the `Inline comments (RV-STYLE-1)` job). Undercounting this section
+   was a review finding on five consecutive slices — the omissions are never the interesting files,
+   they are the registry entry and the docs-sweep file, which is exactly what a resuming session
+   cannot infer from the code. Details and the accepted path idioms: the template's File-structure
+   blockquote.
 4. **Scope test runs to the smallest set that proves the change** — the run recipes
    live in `riviera-local-debug`; load it before the session's first build/test invocation.
 
