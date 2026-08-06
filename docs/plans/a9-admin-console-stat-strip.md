@@ -217,13 +217,13 @@ client for the same endpoint; its TSDoc gains its second consumer.
 
 ## Execution status
 
-**Stage pointer:** `plan` — complete, entering implement (phase 0)
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write `shared/stat-tile.spec.ts` red, then build `StatTile`.
+**Next action:** Phase 1 — write `admin-console-stats.spec.ts` red (AC-1..AC-7), then build the strip.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `shared/stat-tile.ts` + refactor the operator strip onto it | | |
+| 0 — `shared/stat-tile.ts` + refactor the operator strip onto it | ✅ | `1bd7751` |
 | 1 — `admin/admin-console-stats.ts` + wire into the console home | | |
 | 2 — a11y + e2e (360px fold guard, home-only guard) | | |
 | 3 — full local verification, docs-freshness counting sweep, close-out | | |

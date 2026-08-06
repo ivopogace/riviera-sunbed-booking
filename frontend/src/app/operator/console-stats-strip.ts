@@ -1,8 +1,8 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 
-import { CardGlass } from '../shared/card-glass';
 import { formatCommissionPercent } from '../shared/commission-rate';
 import { formatMoney, MoneyView } from '../shared/money';
+import { StatTile } from '../shared/stat-tile';
 import { VenueMapView } from '../shared/venue-views';
 import { todayBookingDate } from '../shared/booking-date';
 import { SetDayState, TakingsView } from './operator-console.model';
@@ -23,7 +23,7 @@ import { OperatorConsoleService } from './operator-console.service';
  */
 @Component({
   selector: 'app-console-stats-strip',
-  imports: [CardGlass],
+  imports: [StatTile],
   templateUrl: './console-stats-strip.html',
 })
 export class ConsoleStatsStrip {
@@ -73,6 +73,19 @@ export class ConsoleStatsStrip {
       : held.filter((s) => s.state === 'STAFF_MARKED').length;
   });
 
+  /**
+   * The net-after-commission line under today's gross, or `undefined` until the takings read lands —
+   * which is what makes the tile omit the sub-caption element rather than render an empty one. The
+   * rate is a percent rendering of the server's basis points; the net itself is computed server-side
+   * (invariant #9) and merely formatted here.
+   */
+  protected readonly netCaption = computed(() => {
+    const takings = this.takings();
+    return takings === undefined
+      ? undefined
+      : `${formatMoney(takings.net)} after ${formatCommissionPercent(takings.commissionBps)} commission`;
+  });
+
   constructor() {
     // Load the booked-online count + takings once the venue id is known; both best-effort so a failed
     // read leaves the tile at its zero/dash default and never blocks the console (mirrors the shell).
@@ -84,11 +97,6 @@ export class ConsoleStatsStrip {
 
   protected money(amount: MoneyView): string {
     return formatMoney(amount);
-  }
-
-  /** The venue's commission rate as a percent for the "after {pct} commission" label (rate, not money). */
-  protected commissionPct(bps: number): string {
-    return formatCommissionPercent(bps);
   }
 
   private load(venueId: number): void {
