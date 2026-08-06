@@ -169,6 +169,15 @@ feedback on the edit that wrote it; CI re-runs it over the PR diff. Run it by ha
 - **Two exemptions beyond the doc-comment carve-out:** a block comment standing before any code is
   the file's header (`styles.scss` opens with one), and only whole-line comments merge into a
   block, so a trailing comment never pairs with the next line's.
+- **One deliberate false negative — do not "fix" it.** A violation must be something the diff
+  *wrote*: it groups only **added** comment lines, and flags a block comment only when the diff
+  wrote its **opening** line. So appending a second line to a comment that was already there
+  reads as a one-line addition and passes. The alternative — grouping every adjacent comment line
+  and then asking whether any was added — flags a whole pre-existing block because you parked one
+  compliant one-liner beneath it, quoting text you never wrote. `SecurityConfig` alone carries 25
+  such blocks. That false positive is how the gate gets switched off; the false negative just
+  leaves the case to review, which is what RV-STYLE-1 is still for. (Found at this slice's own
+  review gate, after the guard shipped with the bug it exists to prevent.)
 
 The guard is a floor, not the rule: it cannot see a one-line comment that says nothing, and the
 rule's "default to zero inline comments" half is still yours. RV-STYLE-1 remains the review item.
