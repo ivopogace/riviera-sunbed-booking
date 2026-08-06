@@ -45,7 +45,11 @@ package, because the slice imports the package-private `SecurityConfig` / `WebSl
 the two `UserDetailsService` role constants — no module structure changes, no port, no
 `allowedDependencies` edit) · `riviera-local-debug` (scoped `gradle --no-daemon` runs with the
 JDK-25 toolchain; the #127 unique-`X-Forwarded-For` rule, which this slice needs badly at ~66
-probe requests in one class)
+probe requests in one class) · `codebase-design` (added at the review gate, F-1 — its
+"can I reduce the number of methods?" question shrank `EndpointProbes`' interface from four
+package-private methods to **one**, `probe`; `verbOf`/`patternOf`/`concretePath` had no caller
+outside the class and are now private, so the seam offers leverage without inviting a third
+caller to assemble its own probe from the parts)
 
 **Branch:** `claude/sdlc-528-wzuc8r` — the cloud session's designated remote branch stands in
 for `feature/admin-endpoint-role-gate` (`riviera-sdlc` §Remote/cloud session addendum).
@@ -213,7 +217,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (`/code-review` agent #4, prior-PR recurrence) | **RV-PROC-1** — *Skills consulted* omitted `codebase-design` although the slice makes a seam decision (share vs duplicate → `EndpointProbes`). The recurring #447/#459/#516 omission. Note the review split on it: the overlay agent read the routing table literally (no module/port/adapter in the diff → row does not fire) and passed the item. Both readings have merit, and loading the skill settled it **in favour of the finding** — it produced a real code change, which is the whole argument for the gate. | **fixed in `387da49`** — loaded `codebase-design`, re-vetted the seam, made `verbOf`/`patternOf`/`concretePath` private (interface 4 → 1 method), documented why, updated the *Skills consulted* line. |
+| F-2 | CI (CodeQL) | Both CodeQL runs on the branch concluded `failure` with their `Analyze` jobs **cancelled** after ~15 min — never leaving `queued`, so they never ran (the workflow's own cap is `timeout-minutes: 20`). Not a base-branch failure: CodeQL is green on `main` across the six most recent runs, including this PR's base `108f958`. Not plausibly caused by the diff either — `build-mode: none` extracts source, and the diff is one test class, one test helper and Javadoc. | **re-run triggered** on run `31122752766`; outcome tracked before merge. |
 
 ---
 

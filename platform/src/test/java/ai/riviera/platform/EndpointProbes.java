@@ -25,6 +25,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * the two guards — and a new path-variable name is taught to both by editing {@link
  * #PATH_VARIABLE_SAMPLES} once.
  *
+ * <p>The published surface is deliberately <strong>one method</strong>, {@link #probe}: the verb/pattern
+ * split and the path-variable substitution are steps <em>within</em> synthesizing a request, not
+ * services a sweep needs. Exposing them would widen the interface without giving either caller
+ * leverage, and would invite a third caller to assemble its own probe from the parts — which is the
+ * drift this class exists to prevent.
+ *
  * <p>Every probe carries {@code csrf()} (the writes are CSRF-protected, and a token rejection would
  * mask the authorization answer) and a <strong>unique</strong> {@code X-Forwarded-For} from {@link
  * SessionLoginSupport#uniqueClientIp()}. The latter is not optional: {@code RateLimitFilter} runs
@@ -70,17 +76,17 @@ final class EndpointProbes {
 	}
 
 	/** The HTTP verb half of a {@code VERB pattern} endpoint key. */
-	static String verbOf(String endpoint) {
+	private static String verbOf(String endpoint) {
 		return endpoint.substring(0, endpoint.indexOf(VERB_SEPARATOR));
 	}
 
 	/** The URI-pattern half of a {@code VERB pattern} endpoint key, path variables still in braces. */
-	static String patternOf(String endpoint) {
+	private static String patternOf(String endpoint) {
 		return endpoint.substring(endpoint.indexOf(VERB_SEPARATOR) + 1);
 	}
 
 	/** Substitute each {@code {var}} with a sample value, so the probe resolves to a real handler. */
-	static String concretePath(String pattern) {
+	private static String concretePath(String pattern) {
 		Matcher variable = PATH_VARIABLE.matcher(pattern);
 		StringBuilder path = new StringBuilder();
 		while (variable.find()) {
