@@ -169,15 +169,15 @@ nothing under `frontend/src` or `frontend/e2e` changes.
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)` — draft PR #538 open as the CI vehicle.
 
-**Next action:** Phase 0 — write the red `node --test` case for the detector's core comparison,
-then make it green.
+**Next action:** Phase 1 — write the five idiom fixtures and the two real-history cases red, then
+teach the parser the idioms.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Detector core: section parse + set comparison | | |
-| 1 — Path idioms + exemptions + the real-case fixtures | | |
+| 0 — Detector core: section parse + set comparison | ✅ | `7957f43` |
+| 1 — Path idioms + exemptions + the real-case fixtures | ⏳ | |
 | 2 — Git front-end and CLI | | |
 | 3 — CI wiring + `riviera-plan-doc` names the command | | |
 | 4 — Docs sweep + close-out | | |
