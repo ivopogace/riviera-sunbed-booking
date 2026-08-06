@@ -137,14 +137,18 @@ coverage corrections folded in here.
   Since **#533** that seventh context gates **two** diff-scoped hygiene guards rather than one — the
   job also runs the plan doc's File-structure check. #533 left the context list untouched because it
   added a *step*, deliberately: the ruleset keys contexts by job name, so a new job would not block
-  until the ruleset named it, and a renamed one would break every PR (#413/#420). **#539 then renamed
-  the seventh context to `Repo hygiene (diff-scoped)`** so the name no longer understates what it
-  gates — job and ruleset entry together, as a single old→new swap in the ruleset at the moment the
-  rename PR merged. The swap beats add-then-remove here: with both names required, the rename PR
-  itself (which reports only the new name) could never merge; with the swap there is no window in
-  which a required context has no job able to satisfy it on an up-to-date branch, and `strict`
-  already forces every other PR onto post-rename `main` before merging.
-  — *Owner:* maintainer · *Resolved by:* the ruleset read above, re-verified per #534.
+  until the ruleset named it, and a renamed one would break every PR (#413/#420). **#539 renames the
+  seventh context to `Repo hygiene (diff-scoped)`** so the name no longer understates what it gates —
+  job and ruleset entry together: the job rename ships via PR #540, and the ruleset entry is swapped
+  old→new through the rulesets API (`PUT /repos/…/rulesets/18207603` — a repository setting, not
+  expressible in the diff) at that PR's merge, with the fresh post-swap ruleset read recorded on
+  PR #540 as the verification. The swap beats add-then-remove (issue #539's suggested sequence)
+  here: with both names required, the rename PR itself (which reports only the new name) could never
+  merge; with the swap there is no window in which a required context has no job able to satisfy it
+  on an up-to-date branch, and `strict` already forces every other PR onto post-rename `main` before
+  merging.
+  — *Owner:* maintainer · *Resolved by:* the ruleset read above, re-verified per #534; the #539
+  swap verified by the post-swap ruleset read recorded on PR #540.
 - **Open question:** none blocking. No material scope change surfaced in the audit.
 
 ## Availability & concurrency (invariant #2)
