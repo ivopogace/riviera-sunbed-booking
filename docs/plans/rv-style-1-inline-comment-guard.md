@@ -176,9 +176,19 @@ N/A — no contract change. No endpoint, DTO, or wire shape.
 
 ## Execution status
 
-**Stage pointer:** `PR — ready for review` (merged via PR #532)
+**Stage pointer:** `merge close-out` — all gates passed on `8f4eb4f` (merged via PR #532)
 
-**Next action:** Review gate, then the Sonar gate's reported issue list, then merge close-out.
+**Next action:** Maintainer merges, then does the one **Ready-for-human** step below (adding the
+check to the `Riviera Rule Set` ruleset). Nothing else is outstanding in the diff.
+
+**Gate results.** CI **8/8 green** on `8f4eb4f`. **Review gate ran in full** — `/code-review`'s
+five-agent fan-out with `riviera-review-overlay` layered on; **nine findings**, eight fixed on the
+branch and F-3 escalated as the maintainer step. One agent (code-comment guidance) died mid-run
+without reporting; its brief was **re-run in-thread rather than counted as clean**, which is what
+surfaced F-9. **Sonar gate green with a genuinely empty issue list** — 0 new, 0 accepted, 0
+hotspots, 0 duplicated blocks; the issue list was read, not just the badge. New-code coverage
+reads 0.0% because `sonar.sources` is `platform/src/main/java,frontend/src`, so `scripts/` is
+outside Sonar's scope entirely; the guard's coverage is the 15-test `node --test` suite CI gates on.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -226,8 +236,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-5 | review (bug-scan agent) | **The diff-scoping guarantee was broken.** Comment lines were grouped into runs *before* consulting the diff, so any run containing one added line was reported whole — meaning a compliant new one-liner parked under a pre-existing block flagged the whole block and quoted text the author never wrote. In a tree that carries such blocks by design, that is precisely the day-one-red failure #529 rules out, and it would have fired in CI as a merge gate. | fixed — this commit; grouping now runs over **added** lines only, and a block comment is flagged only when the diff wrote its **opening** line |
 | F-6 | review (bug-scan agent) | A multi-line template literal was not tracked across lines, so `//` inside a backtick string (e.g. a multi-line SQL/GraphQL fixture in a `.ts` file) read as real comments. | fixed — this commit; unclosed backtick strings now carry state across lines |
 | F-7 | review (bug-scan agent) | A Java text block containing the escaped delimiter `\"""` (JLS 3.10.6 — a literal triple quote that does **not** close the block) was treated as closed, so the remaining text-block content was scanned as code. | fixed — this commit |
-| F-9 | self-check (reviewer #5 died mid-run; its brief re-run in-thread) | The plan's own Non-goals stated `SecurityConfig` carries **3** pre-existing multi-line inline blocks. Measured with the guard itself: **25**. A wrong count in the very sentence justifying diff-scoping — and exactly the class of stated fact `riviera-docs-freshness` exists to catch. | fixed — this commit; counts corrected to 25 / 6 / 31, and §6c now records the deliberate false negative so a later session does not "fix" it back into a false positive |
 | F-8 | review (git-history agent) | The new CI job's comment claimed "a skipped run cannot mask anything: this check name is published on PR runs only" — **inaccurate**. A skipped job does publish a check run; what makes it harmless is that `push` is scoped to `main`, so a push run and a PR run never share a head SHA. In a file whose comments are load-bearing incident records (#417, #430), a wrong reason is a defect. | fixed — this commit; the comment now states the real reason and carries the #417 trap warning |
+| F-9 | self-check (reviewer #5 died mid-run; its brief re-run in-thread) | The plan's own Non-goals stated `SecurityConfig` carries **3** pre-existing multi-line inline blocks. Measured with the guard itself: **25**. A wrong count in the very sentence justifying diff-scoping — and exactly the class of stated fact `riviera-docs-freshness` exists to catch. | fixed — this commit; counts corrected to 25 / 6 / 31, and §6c now records the deliberate false negative so a later session does not "fix" it back into a false positive |
 | F-4 | review (prior-PR-comment agent) | The PR body still described the branch as a draft with phases 1–3 outstanding, contradicting the shipped state. | fixed — PR body refreshed at close-out |
 
 ## Ready-for-human (maintainer-only, one step)
@@ -365,7 +375,7 @@ raw**, write the JSON, validate with `jq -e`, then prove it fires with a sentine
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
       If tooling blocked the review, that is stated in the PR and its checkbox is left
       unticked.
