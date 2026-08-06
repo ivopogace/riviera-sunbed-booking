@@ -72,12 +72,14 @@ for `feature/plan-file-structure-guard` (`riviera-sdlc` §Remote/cloud session a
   `frontend/src/app/admin/admin-console-tabs.spec.ts` and
   `frontend/e2e/admin-console-tabs.e2e.ts`. *Pinned by:*
   `check-plan-file-structure.test.mjs` › `"real case: PR #526 before its review fixed the section"`.
-- [ ] **AC-6:** Given a section written in each of the five path idioms real plan docs already use —
-  repo-relative suffix (`payout/application/DailyTakingsServiceTest.java`), sibling extension
+- [ ] **AC-6:** Given a section written in each of the **six** path idioms real plan docs already use
+  — repo-relative suffix (`payout/application/DailyTakingsServiceTest.java`), sibling extension
   (`` `privacy-policy.ts` `` then `` `.html` ``), brace set (`{a,b}.e2e.ts`), pipe alternation
-  (`venue-create-card.ts|.html`), and a directory (`frontend/src/app/venue-admin/`) — when the guard
-  runs over paths those forms denote, then it reports nothing. *Pinned by:*
-  `check-plan-file-structure.test.mjs` › the five `"idiom: …"` cases.
+  (`venue-create-card.ts|.html`), a directory (`frontend/src/app/venue-admin/`), and `**` crossing
+  directories (`frontend/src/app/**/*.contrast.spec.ts`) — when the guard runs over paths those
+  forms denote, then it reports nothing, **and** a single `*` still does not cross a `/`.
+  *Pinned by:* `check-plan-file-structure.test.mjs` › the six `"idiom: …"` cases. (The sixth came
+  from phase 1's generalization audit, not the plan — see the audit log.)
 - [ ] **AC-7:** Given a plan doc with no `## File structure` section, when the diff changes only that
   doc, then the guard is clean; when the diff also changes other paths, then those paths are
   reported together with a `no "## File structure" section` note. *Pinned by:*
@@ -169,10 +171,10 @@ nothing under `frontend/src` or `frontend/e2e` changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)` — draft PR #538 open as the CI vehicle.
+**Stage pointer:** `implement (phase 3)` — draft PR #538 open as the CI vehicle.
 
-**Next action:** Phase 2 — add the git front-end (`git diff --name-only` over the merge base) and
-the `--diff` CLI, then run the guard against this branch.
+**Next action:** Phase 3 — append the CI step to the existing `inline-comments` job (its `name:` is
+load-bearing, R-1) and name the command in the two `riviera-plan-doc` files.
 
 > Phase SHAs are recorded by the **next** phase's commit, not by amending the phase's own. A
 > commit cannot contain its own hash; amending to insert it rewrites the hash again, which is how
@@ -181,9 +183,9 @@ the `--diff` CLI, then run the guard against this branch.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Detector core: section parse + set comparison | ✅ | `6dd67d3` |
-| 1 — Path idioms + exemptions + the real-case fixtures | ✅ | recorded by phase 2 |
-| 2 — Git front-end and CLI | ⏳ | |
-| 3 — CI wiring + `riviera-plan-doc` names the command | | |
+| 1 — Path idioms + exemptions + the real-case fixtures | ✅ | `b8140d3` |
+| 2 — Git front-end and CLI | ✅ | recorded by phase 3 |
+| 3 — CI wiring + `riviera-plan-doc` names the command | ⏳ | |
 | 4 — Docs sweep + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -426,6 +428,7 @@ test('real case: PR #522 undercounts by two', () => {
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-06 | Phase 1 — the parser learned five path idioms | Any *other* idiom real plan docs use that the parser would false-positive on | Ran the finished detector over the last 60 `main` commits (34 plan-doc slices) and read every flagged path for artifacts | One: `frontend/src/app/**/*.contrast.spec.ts` (PR #478's plan doc) — a `**` glob, which the single-`*` matcher widened only within a segment | **Fixed all**: `globBody` now scans, so `**/` crosses directories, bare `**` matches anything, and a single `*` stays in one segment. Pinned by `idiom: \`**\` crosses directories, a single \`*\` does not (PR #478)`, whose second half proves the single-`*` case did **not** become permissive |
+| 2026-08-06 | Phase 2 — the git front-end | `git()`, `rangeFor()` and the report/advice shape, now written twice across `scripts/check-*.mjs` | Read both guards side by side | Two: `git()` (3 lines) and `rangeFor()` (7 lines), near-identical but not contiguous | **Skip, with a trigger.** Extracting a shared module would couple two guards that otherwise share nothing, to save ten lines. The pair sits under Sonar's ~100-token duplicate-block threshold, and the merge bar is 0 duplicated blocks — so the Sonar gate is the arbiter: if it reports a duplicated block on this PR, extract `scripts/lib/git-range.mjs` then. |
 
 ---
 

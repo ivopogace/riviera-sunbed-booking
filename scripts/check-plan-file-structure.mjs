@@ -11,6 +11,9 @@
  * doc entirely, and a guard must not invent a requirement the SDLC does not make.
  */
 
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
 /** The heading that opens the section, as the plan-doc template writes it. */
 const HEADING = /^##\s+File structure\s*$/i;
 
@@ -165,4 +168,82 @@ export function findOmissions({ docs, changed }) {
     .filter((path) => !isExempt(path, docs))
     .filter((path) => !listed.some((token) => covers(token, path)))
     .map((path) => ({ path, reason }));
+}
+
+/**
+ * The plan docs among a diff's paths: top-level markdown under `docs/plans/`. A per-slice asset
+ * directory (`docs/plans/<slug>/screenshot.png`) is content the section should list, not a plan.
+ */
+export function planDocsIn(changed) {
+  return changed.filter((path) => /^docs\/plans\/[^/]+\.md$/.test(path));
+}
+
+const ADVICE =
+  'Add each path above to the plan doc\'s "## File structure" section — that section is what a ' +
+  'resuming session reads to know what the slice touches, so an omission misleads exactly the ' +
+  'reader it exists for (issue #533). A directory or a glob may stand in for a large mechanical ' +
+  'sweep. A slice with no plan doc is not checked at all.';
+
+/** Renders the findings for a terminal: one line per path, then the fix. */
+export function report(omissions) {
+  const lines = omissions.map((o) => `  ${o.path}  — ${o.reason}`);
+  return `Paths changed by this diff but absent from the plan doc:\n${lines.join('\n')}\n${ADVICE}`;
+}
+
+function git(args) {
+  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+}
+
+/** Resolves the merge base with `base`, falling back to a plain two-dot diff when it has none. */
+function rangeFor(base) {
+  try {
+    git(['merge-base', base, 'HEAD']);
+    return `${base}...HEAD`;
+  } catch {
+    return base;
+  }
+}
+
+/** Reads a path from the working tree, or null when it is unreadable (deleted, binary, gone). */
+function readText(path) {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Runs the detector over a diff.
+ *
+ * Plan docs are read from the **working tree**, not from the diff: the section is judged as it
+ * stands now, which is also what the author is about to fix. A doc the diff deletes reads as null
+ * and drops out.
+ */
+export function check(range) {
+  const changed = git(['diff', '--name-only', '--no-color', '--no-ext-diff', range])
+    .split('\n')
+    .filter(Boolean);
+
+  const docs = planDocsIn(changed)
+    .map((path) => ({ path, text: readText(path) }))
+    .filter((d) => d.text !== null);
+
+  return findOmissions({ docs, changed });
+}
+
+function main(argv) {
+  if (argv[0] !== '--diff') {
+    process.stderr.write('usage: check-plan-file-structure.mjs --diff [<base>]\n');
+    return 2;
+  }
+  const omissions = check(rangeFor(argv[1] ?? 'origin/main'));
+  if (omissions.length === 0) return 0;
+  process.stderr.write(`${report(omissions)}\n`);
+  return 1;
+}
+
+// Only run the CLI when invoked directly, so the test suite can import the detector.
+if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+  process.exitCode = main(process.argv.slice(2));
 }

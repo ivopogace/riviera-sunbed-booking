@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { findOmissions } from './check-plan-file-structure.mjs';
+import { findOmissions, planDocsIn, report } from './check-plan-file-structure.mjs';
 
 const SECTION = `# A plan
 
@@ -81,7 +81,7 @@ test('several plan docs in one diff contribute a union of listings', () => {
 });
 
 /**
- * The five path idioms below are not invented — each is lifted from a merged plan doc, because a
+ * The six path idioms below are not invented — each is lifted from a merged plan doc, because a
  * parser that only understands one-path-per-bullet reports files the author *did* list. That is
  * the false positive that gets a gate switched off (issue #529's lesson, inherited here): before
  * these were taught, the naive matcher reported 8 of PR #464's paths, all 8 of them listed.
@@ -365,4 +365,24 @@ test('real case: PR #526 before its review fixed the section', () => {
     'frontend/src/app/admin/admin-console-tabs.spec.ts',
     'frontend/src/app/app.spec.ts',
   ]);
+});
+
+test('plan docs are the top-level markdown under docs/plans, not their assets', () => {
+  const found = planDocsIn([
+    'docs/plans/a8-admin-commissions-tab.md',
+    'docs/plans/a8-admin-commissions-tab/commissions-list-360.png',
+    'docs/plans/nested/deeper.md',
+    'docs/adr/ADR-0013-photo-moderation-trusted-operators.md',
+    'frontend/src/app/app.routes.ts',
+  ]);
+  assert.deepEqual(found, ['docs/plans/a8-admin-commissions-tab.md']);
+});
+
+test('the report names each path, its reason, and the fix', () => {
+  const text = report([
+    { path: 'CONTEXT.md', reason: 'not listed in the File structure section' },
+  ]);
+  assert.match(text, /CONTEXT\.md/);
+  assert.match(text, /not listed in the File structure section/);
+  assert.match(text, /File structure/);
 });
