@@ -107,6 +107,19 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && node scripts/check-inline-comments.mjs --hook 2>/dev/null || true",
+            "statusMessage": "Checking inline comments (RV-STYLE-1)",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {

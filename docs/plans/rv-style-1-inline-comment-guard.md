@@ -166,17 +166,31 @@ N/A — no contract change. No endpoint, DTO, or wire shape.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — merge the `PostToolUse` entry into `.claude/settings.json`'s existing
-`hooks` block (never replace it), validate with `jq -e`, prove it fires, then add the CI step.
+**Next action:** Phase 3 — point §6c and RV-STYLE-1 at the guard, open the plan-doc-guard
+follow-up issue, record the decision on #529, then close out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Detector core, test-first | ✅ | `175bac5` |
-| 1 — Git front-ends (`--files`, `--diff`) + clean-tree proof | ✅ | this commit |
-| 2 — Wiring: PostToolUse hook + CI step | ⏳ | |
-| 3 — Rule docs name the guard; follow-up issue; close-out | | |
+| 1 — Git front-ends (`--files`, `--diff`) + clean-tree proof | ✅ | `4468e5f` |
+| 2 — Wiring: PostToolUse hook + CI step | ✅ | this commit |
+| 3 — Rule docs name the guard; follow-up issue; close-out | ⏳ | |
+
+**Positive control (phase 1).** An exit 0 is not evidence the plumbing works, so the #522 block
+was re-injected into `SecurityConfig.java` verbatim and the CLI run against it: `--files` exited
+1 naming `SecurityConfig.java:422-423`, `--hook` emitted the `additionalContext` payload, and the
+file was reverted clean. That is AC-1 proven end-to-end through git, not only through the unit.
+
+**Hook verification (phase 2, AC-7).** The `update-config` flow ran in full: the raw command was
+pipe-tested on three payloads (violating file → JSON, clean file → silent, `.md` → silent) before
+any JSON was written; the entry was **merged** into the existing `hooks` block (`SessionStart` and
+both `PreToolUse` entries intact, 61 permissions and 2 plugins untouched); `jq -e` confirmed
+placement; a sentinel prefix proved the hook fires; and finally a **real violation was introduced
+through the `Edit` tool** — the hook answered in-context naming
+`scripts/check-inline-comments.mjs:150-151`, and the edit was reverted. The guard's first live
+catch was on its own source.
 
 **Positive control (phase 1).** An exit 0 is not evidence the plumbing works, so the #522 block
 was re-injected into `SecurityConfig.java` verbatim and the CLI run against it: `--files` exited
