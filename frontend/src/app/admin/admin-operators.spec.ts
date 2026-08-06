@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { AdminCommissionsService } from './admin-commissions.service';
 import { AdminOperators } from './admin-operators';
 import { AdminOperatorsService } from './admin-operators.service';
 import { OperatorAccountView, PendingOperatorView } from './admin.model';
@@ -45,6 +46,11 @@ function serviceStub(
   };
 }
 
+/** The A9 stat strip's own read — stubbed so the page's specs never reach a real HttpClient. */
+function commissionsStub(): Partial<AdminCommissionsService> {
+  return { venues: async () => [] };
+}
+
 async function render(
   auth: OperatorAuth,
   service: ReturnType<typeof serviceStub>,
@@ -55,6 +61,7 @@ async function render(
       provideRouter([]),
       { provide: OperatorAuth, useValue: auth },
       { provide: AdminOperatorsService, useValue: service },
+      { provide: AdminCommissionsService, useValue: commissionsStub() },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminOperators);
@@ -267,5 +274,59 @@ describe('AdminOperators', () => {
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-ops-signed-out"]'),
     ).not.toBeNull();
+  });
+});
+
+describe('AdminOperators stat strip (A9, #348)', () => {
+  const accounts: OperatorAccountView[] = [
+    { id: 1, username: 'admin-self', contactEmail: null, admin: true, suspended: false },
+    { id: 2, username: 'bea', contactEmail: 'b@v.example', admin: false, suspended: false },
+    { id: 3, username: 'caj', contactEmail: 'c@v.example', admin: false, suspended: true },
+  ];
+
+  function tile(fixture: ComponentFixture<AdminOperators>, testId: string): string | undefined {
+    return (fixture.nativeElement as HTMLElement)
+      .querySelector(`[data-testid="${testId}"]`)
+      ?.textContent?.trim();
+  }
+
+  it('feeds the strip the counts derived from the lists it loaded', async () => {
+    const pending: PendingOperatorView[] = [
+      { id: 7, username: 'a', contactEmail: 'a@v.example', registeredAt: '2026-07-18T00:00:00Z' },
+      { id: 8, username: 'b', contactEmail: 'b@v.example', registeredAt: '2026-07-19T00:00:00Z' },
+    ];
+    const fixture = await render(authStub({ isAdmin: true }), serviceStub(pending, accounts));
+
+    expect(tile(fixture, 'admin-stat-pending')).toBe('2');
+    expect(tile(fixture, 'admin-stat-active')).toBe('2');
+    expect(tile(fixture, 'admin-stat-suspended')).toBe('1');
+  });
+
+  it('dashes every count when the load failed — a blip is never a confident zero', async () => {
+    const service = serviceStub([], accounts);
+    service.pending.mockRejectedValueOnce(new Error('offline'));
+    const fixture = await render(authStub({ isAdmin: true }), service);
+
+    expect(tile(fixture, 'admin-stat-pending')).toBe('—');
+    expect(tile(fixture, 'admin-stat-active')).toBe('—');
+    expect(tile(fixture, 'admin-stat-suspended')).toBe('—');
+  });
+
+  it('reports a genuinely empty queue as a real zero', async () => {
+    const fixture = await render(authStub({ isAdmin: true }), serviceStub([], accounts));
+
+    expect(tile(fixture, 'admin-stat-pending')).toBe('0');
+  });
+
+  it('renders the strip above the queue but below the tab strip', async () => {
+    const fixture = await render(authStub({ isAdmin: true }), serviceStub([], accounts));
+    const host = fixture.nativeElement as HTMLElement;
+    const order = [...host.querySelectorAll('nav, [data-testid="admin-stats"], #admin-pending-title')];
+
+    expect(order.map((el) => el.getAttribute('data-testid') ?? el.tagName)).toEqual([
+      'NAV',
+      'admin-stats',
+      'H2',
+    ]);
   });
 });

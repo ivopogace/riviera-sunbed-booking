@@ -40,8 +40,8 @@ at ready-for-review; RV-FE-8 is the live constraint on this slice) ·
 strip in `admin/`, and ruled out the `admin/`→`operator/` import) · `riviera-tailwind`
 (styling — directive-shared surface via `appCardGlass` rather than `@apply`, `text-[11px]`
 over `text-xs`, no radius on the surface directive) · `angular-developer` + angular-cli MCP
-(v22 APIs — `input()` signals, content projection, and the `hostDirectives` composition that
-lets the tile own its glass surface) · `playwright-cli` (e2e — the 360px fold guard and the
+(v22 APIs — `input()` signals, content projection, and the collapsed `display: contents` host
+that keeps the tile's `<article>` as its strip's grid item) · `playwright-cli` (e2e — the 360px fold guard and the
 "strip is home-only" assertion, authored against the mocked CI suite).
 
 **Branch:** `claude/admin-console-stat-strip-a9-lwvop9` — the cloud session's **designated
@@ -111,7 +111,7 @@ admin strip is new and replaces nothing.
 | Old-surface behavior (`operator/console-stats-strip.html`) | Verdict | How the new surface does it, or why it's gone |
 |---|---|---|
 | Four `appCardGlass` articles in a `grid-cols-2 sm:grid-cols-4` wrapper | preserved | the wrapper stays in `console-stats-strip.html`; each article becomes `<article appStatTile>` |
-| `appCardGlass` surface on every tile | preserved | `StatTile` composes `CardGlass` via `hostDirectives`, so the identical host classes land on the same `<article>` |
+| `appCardGlass` surface on every tile | preserved | `StatTile`'s template applies `appCardGlass` to the same `<article>`, so the identical host classes land on the identical element |
 | Tile radius `rounded-[16px]`, padding `px-3.5 py-3`, shadow `0_1px_2px_rgba(7,42,58,0.06)` | preserved | moved verbatim onto the `StatTile` host `class` (radius stays off `CardGlass` — `riviera-tailwind` rule 3) |
 | Uppercase 11px label in `--riv-card-ink-faint` | preserved | `StatTile`'s `label` input renders the same span with the same classes |
 | 27px bold value in `--riv-card-ink` carrying the tile's `data-testid` | preserved | `StatTile`'s `valueTestId` input puts the id on the same div; the value itself is content-projected, so the free tile keeps its `{{ free }}<span>/ {{ total }}</span>` composite |
@@ -196,16 +196,19 @@ ledger, no payout, no commission *money* is computed anywhere on the client (A7'
 
 | # | Surface | Existing/new | Type | State/reactivity | Forms |
 |---|---|---|---|---|---|
-| FE-1 | `shared/stat-tile.ts` | new | standalone component, `article[appStatTile]`, `hostDirectives: [CardGlass]` | `input()` signals only — no state | none |
+| FE-1 | `shared/stat-tile.ts` | new | standalone component, `app-stat-tile`, `display: contents` host | `input()` signals only — no state | none |
 | FE-2 | `admin/admin-console-stats.ts` | new | standalone component | three `input<number \| undefined>()` for the operator counts + one own `signal` for the venue read; `computed()` for the mean | none |
 | FE-3 | `admin/admin-operators.ts` | existing | standalone component | three new `computed()` count projections + a `countsKnown` signal | none |
 | FE-4 | `operator/console-stats-strip.html` | existing | template only | unchanged TypeScript | none |
 
 **Standards:** standalone components, `inject()`, `@if`/`@for`, `input()` signal APIs, no
-`NgOptimizedImage` (no images). Deviation to document: `hostDirectives` is used for the first
-time in this repo — it is the standard Angular composition primitive for exactly this
-(a component that *is* a `CardGlass` surface), and the alternative is asking every one of the
-eight tiles to repeat `appCardGlass` beside `appStatTile`.
+`NgOptimizedImage` (no images). One deviation to document: `StatTile`'s host carries
+`display: contents`. An attribute selector on the caller's own `<article>` would have avoided
+the wrapper entirely, but the repo's ESLint config mandates **element** selectors for
+components (`@angular-eslint/component-selector`, `type: element`) — and every strip lays its
+tiles out as a CSS grid, so a laid-out wrapper between the grid and the `<article>` would
+swallow the grid placement. Collapsing a host that carries no semantics is the smaller price,
+and the proof it costs nothing is the byte-identical computed-style capture below.
 
 ## FE↔BE contract
 
@@ -217,14 +220,14 @@ client for the same endpoint; its TSDoc gains its second consumer.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — write `admin-console-stats.spec.ts` red (AC-1..AC-7), then build the strip.
+**Next action:** Phase 2 — the 360px fold guard and the home-only guard in `e2e/admin-console-stats.e2e.ts`, each proven to fail on the mistake it exists to catch.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `shared/stat-tile.ts` + refactor the operator strip onto it | ✅ | `1bd7751` |
-| 1 — `admin/admin-console-stats.ts` + wire into the console home | | |
+| 1 — `admin/admin-console-stats.ts` + wire into the console home | ✅ | `7d227c2` |
 | 2 — a11y + e2e (360px fold guard, home-only guard) | | |
 | 3 — full local verification, docs-freshness counting sweep, close-out | | |
 
@@ -276,9 +279,9 @@ Skill-routing gate for what the fix touches *before* editing).
   label text, the value test id and text, and that **no** sub element exists; a second case
   passes `sub`/`subTestId` and asserts it renders.
 - [ ] **Step 2: Run it, verify it fails** — `npm test -- stat-tile` → FAIL (module not found).
-- [ ] **Step 3: Minimal implementation** — `StatTile` with `label`, `valueTestId`, `sub`,
-  `subTestId` inputs; `hostDirectives: [CardGlass]`; host classes lifted verbatim from the
-  operator tile.
+- [x] **Step 3: Minimal implementation** — `StatTile` with `label`, `valueTestId`, `sub`,
+  `subTestId` inputs; `display: contents` host wrapping an `appCardGlass` `<article>` whose
+  classes are lifted verbatim from the operator tile.
 - [ ] **Step 4: Run it, verify it passes** — `npm test -- stat-tile` → PASS.
 - [ ] **Step 5: Refactor `console-stats-strip.html`** onto it, then run the strip's own specs
   **unedited** — `npm test -- console-stats-strip` → PASS (AC-11's unit half).
