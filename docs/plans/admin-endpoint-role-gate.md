@@ -36,8 +36,8 @@ unpinned **role-specific** half and at the D-2 second principal type) · `rivier
 must not silently duplicate the existing one, and the Module-ownership row) · `tdd` (each
 probe written red-first; the two mutation proofs in Phase 1 are the red half that a
 green-only guard can never demonstrate) · `riviera-review-overlay` (review gate — run at
-ready-for-review) · `riviera-docs-freshness` (**ran** over this slice's own diff range,
-1 finding — `SecurityConfig`'s guard-naming Javadoc, patched in Phase 2) ·
+ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD`,
+2 findings, both patched — see *Docs-freshness run* below) ·
 `riviera-java-conventions` (records/constants over magic literals, §6c one-line inline
 comments — the long rationale goes in Javadoc, and the `PROBE_*` role constants are sourced
 from production rather than re-spelled) · `riviera-modulith` (placement: the root **test**
@@ -236,6 +236,9 @@ Skill-routing gate for what the fix touches *before* editing).
   behaviour change): name the new guard on the `ADMIN_ROLE` constant, mirroring the existing
   `EndpointRoleGateCoverageTest` pointer on `BEACH_MAP_PATH`, so the next author adding an admin
   endpoint learns which test will fail and why.
+- `.claude/skills/riviera-review-overlay/references/backend-conventions.md` — **docs-freshness
+  finding** (step 3): RV-BE-9 named a pinning test for the venue-scoped half of invariant #13 and
+  none for the `/api/admin/**` half, because none existed. Now cites `AdminSurfaceRoleGateTest`.
 
 ---
 
@@ -317,6 +320,33 @@ existed — which is the discovery property (issue approach 2) doing exactly the
 hand-maintained list structurally cannot.
 
 ---
+
+## Docs-freshness run (`origin/main..HEAD`)
+
+> Merge close-out step 5, run pre-merge as the cheapest moment.
+
+- **2a — rename/removal grep:** nothing renamed or removed by this slice. `EndpointProbes`
+  is new; `EndpointRoleGateCoverageTest` keeps its name, assertions and allow-list. Grepping
+  the substrate set for `EndpointRoleGateCoverageTest` returns **zero** hits outside historical
+  plan docs (`a4-payout-batches-admin-role.md`, `operator-self-service-password.md`), which are
+  records, not living docs (§Scope discipline) — left as-is.
+- **2b — counting sweep:** this slice adds the **second** endpoint-sweep guard, so any sentence
+  saying "the guard" of that kind would now be false. Swept `platform/src`, `CLAUDE.md`,
+  `RESPONSIBILITIES.md`, `docs/adr`, `docs/agents`, `.claude/skills` for
+  `the/both/only two|three` narrowed to guard/gate/role/admin/tripwire vocabulary. **Zero
+  findings** — no doc counts the role-gate guards. (The one self-referential hit is this
+  slice's own new Javadoc, "the two ways the property breaks", which is accurate.)
+- **3 — reverse direction:** two findings, both **patched**:
+
+| Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `SecurityConfig.java:70` | `ADMIN_ROLE` documented only as gating "the `/api/admin/operators/**` approval surface" — true when written, but the role has gated the whole namespace uniformly since #348 A4, and nothing told the next author a test now enforces it | this slice + #348 A4 | **patched** — the constant's Javadoc now states the uniformity and names the guard + both failure modes it catches |
+| `riviera-review-overlay/references/backend-conventions.md:273` (RV-BE-9) | "Platform-wide `/api/admin/**` is role-gated and exempt" — still true, but the item cites `CrossVenueDenialIT` as the pin for the venue-scoped half and named no pin for the admin half, leaving a reviewer to check that gate by hand | this slice | **patched** — cites `AdminSurfaceRoleGateTest`, mirroring the existing citation pattern |
+
+- **Re-sweep after the fix round** (the skill's own step 2b warning): re-ran both greps after
+  patching. No new hits; neither patch introduces a count or an identifier the other docs name.
+- **Graph refresh:** N/A — `graphify-out/` is absent in this cloud clone (gitignored,
+  regenerable), so there is nothing to update.
 
 ## Generalization-audit log
 

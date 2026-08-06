@@ -270,7 +270,11 @@ from the application service (shipped #73/#74, pinned by `CrossVenueDenialIT`) �
 verify any **new** venue-scoped surface calls it too, and that no driving adapter
 bypasses it. A shared role is necessary but not sufficient (OWASP API #1, BOLA) —
 default **Blocker** whenever a venue-scoped surface is touched. Platform-wide
-`/api/admin/**` is role-gated and exempt. (Authority: invariant #13.) Since #115 the
+`/api/admin/**` is role-gated and exempt — and since #528 that gate is machine-checked
+rather than read: `AdminSurfaceRoleGateTest` discovers the mapped `/api/admin/**`
+endpoints and fails the build unless each refuses both non-admin principal types, so a
+new admin endpoint needs its `hasRole(ADMIN_ROLE)` matcher and there is no allow-list to
+opt out through. (Authority: invariant #13.) Since #115 the
 denial is uniform: `403 NOT_VENUE_OWNER` **before any existence check**, even for a
 nonexistent venue — a 404 that leaks the existence of an unowned venue is a finding.
 
