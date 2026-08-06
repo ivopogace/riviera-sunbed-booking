@@ -274,6 +274,24 @@ Skill-routing gate for what the fix touches *before* editing).
 ## File structure
 
 > Map files to be created/modified before defining tasks.
+>
+> **Every path in the diff, including the one-line ones — and this is machine-checked.** Listing
+> only the interesting files was a review finding on five consecutive slices (#438, #522, #524,
+> #525, #526), and the paths that fall out are always the same shape: a registry entry, a
+> comment-only freshness fix, a docs-sweep file. Since #533 CI fails the PR on any path the diff
+> changed and this section does not list. Run it yourself before pushing — it is the check, not a
+> reminder to do the check by hand:
+>
+> ```bash
+> node scripts/check-plan-file-structure.mjs --diff origin/main
+> ```
+>
+> The guard reads paths written any way real plans write them — repo-relative
+> (`payout/application/DailyTakingsServiceTest.java`), sibling extensions
+> (`` `privacy-policy.ts` `` then `` `.html` ``), brace sets, `a.ts|.html`, a bare directory, and
+> globs (`frontend/src/app/**/*.contrast.spec.ts`) — so a large mechanical sweep is one honest
+> entry rather than fifty. It never flags the reverse (a path you listed and did not need), and it
+> exempts the plan doc itself and lockfiles. A slice with no plan doc is not checked at all.
 
 - `<path>` — <responsibility>
 

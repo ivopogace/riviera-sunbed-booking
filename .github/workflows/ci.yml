@@ -119,10 +119,24 @@ jobs:
           retention-days: 1
 
   inline-comments:
+    # DO NOT RENAME. This string is a required status-check CONTEXT in the `Riviera Rule Set`
+    # ruleset (#534 added it as the seventh; `docs/plans/ci-pipeline.md` records the list). A
+    # ruleset names its contexts explicitly, so renaming the job here removes a check the ruleset
+    # still expects, and EVERY pull request becomes unmergeable — the `405 … N of N required
+    # status checks are expected` failure #413/#420 already paid for once. Renaming means editing
+    # the ruleset in the same change, which is a repository setting and not expressible in a diff.
     name: Inline comments (RV-STYLE-1)
+    # Two diff-scoped repo-hygiene guards, not one: RV-STYLE-1 inline comments (#529) and the plan
+    # doc's File-structure section (#533). They share this job because they share a shape — judge
+    # what a DIFF wrote, never the standing tree — and because the name above is the enforcement
+    # handle. The name predates the second guard and now understates it; correcting that needs the
+    # coordinated rename described above.
+    #
     # The authoring-time guard's backstop (#529). The hook in .claude/settings.json is the
     # primary control — it fires on the edit itself — but hooks are per-machine and an author
-    # can disable them, so the rule also has to hold somewhere the merge gate can read.
+    # can disable them, so the rule also has to hold somewhere the merge gate can read. The #533
+    # guard has no hook half: its rule needs the whole diff, and mid-slice a plan doc legitimately
+    # lags the code it plans, so a per-edit check would fire on nearly every edit.
     #
     # Pull requests only, deliberately. The rule governs what a DIFF writes, and a push to main
     # has no base to diff against that means anything here (the tree carries many pre-existing
@@ -149,11 +163,18 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Test the guard itself
+      - name: Test the guards themselves
+        # Globs both suites; a new scripts/*.test.mjs is picked up with no edit here.
         run: node --test "scripts/*.test.mjs"
 
-      - name: Check the diff (hard gate)
+      - name: Check the diff for multi-line inline comments (RV-STYLE-1, hard gate)
         run: node scripts/check-inline-comments.mjs --diff ${{ github.event.pull_request.base.sha }}
+
+      - name: Check each plan doc lists what the diff changed (#533, hard gate)
+        # Runs even when the step above failed, so one push surfaces both rules rather than
+        # trickling them out over two round trips — each is a seconds-long fix on its own.
+        if: ${{ !cancelled() }}
+        run: node scripts/check-plan-file-structure.mjs --diff ${{ github.event.pull_request.base.sha }}
 
   sonar:
     name: SonarCloud scan

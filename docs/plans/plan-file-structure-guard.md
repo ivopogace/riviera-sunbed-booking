@@ -171,10 +171,10 @@ nothing under `frontend/src` or `frontend/e2e` changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)` — draft PR #538 open as the CI vehicle.
+**Stage pointer:** `implement (phase 4)` — draft PR #538 open as the CI vehicle.
 
-**Next action:** Phase 3 — append the CI step to the existing `inline-comments` job (its `name:` is
-load-bearing, R-1) and name the command in the two `riviera-plan-doc` files.
+**Next action:** Phase 4 — confirm phase 3's CI run is green, run `riviera-docs-freshness` over the
+merge span, open the R-5 follow-up issue, then mark the PR ready for review.
 
 > Phase SHAs are recorded by the **next** phase's commit, not by amending the phase's own. A
 > commit cannot contain its own hash; amending to insert it rewrites the hash again, which is how
@@ -184,9 +184,9 @@ load-bearing, R-1) and name the command in the two `riviera-plan-doc` files.
 |-------|--------|---------|
 | 0 — Detector core: section parse + set comparison | ✅ | `6dd67d3` |
 | 1 — Path idioms + exemptions + the real-case fixtures | ✅ | `b8140d3` |
-| 2 — Git front-end and CLI | ✅ | recorded by phase 3 |
-| 3 — CI wiring + `riviera-plan-doc` names the command | ⏳ | |
-| 4 — Docs sweep + close-out | | |
+| 2 — Git front-end and CLI | ✅ | `572a92d` |
+| 3 — CI wiring + `riviera-plan-doc` names the command | ✅ | recorded by phase 4 |
+| 4 — Docs sweep + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
