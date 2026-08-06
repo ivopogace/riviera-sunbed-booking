@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { findOmissions, planDocsIn, report } from './check-plan-file-structure.mjs';
+import { changedPaths, findOmissions, planDocsIn, report } from './check-plan-file-structure.mjs';
 
 const SECTION = `# A plan
 
@@ -415,4 +415,70 @@ test('the report names each path, its reason, and the fix', () => {
   assert.match(text, /CONTEXT\.md/);
   assert.match(text, /not listed in the File structure section/);
   assert.match(text, /File structure/);
+});
+
+/**
+ * Found by PR #538's review fan-out. A bare filename was suffix-matched like any other token, so
+ * one common name in a section blanket-covered every same-named path in the diff — a false
+ * NEGATIVE, which is the one direction this guard cannot afford: it hides the omission it exists
+ * to report.
+ *
+ * Two mechanics fix it without breaking the bare-name idiom, which is common and legitimate here:
+ * a name written after a path on the same line takes that path's directory (`app.html` +
+ * `app.spec.ts`, PR #464), and a bare name matching two or more changed paths has identified
+ * neither, so it covers nothing.
+ */
+test('a bare filename resolves against the path before it, not against the whole tree', () => {
+  const sameLine = findOmissions({
+    docs: [doc(withHeading('- `frontend/src/app/app.html` + `app.spec.ts` — shell + its spec'))],
+    changed: ['frontend/src/app/app.html', 'frontend/src/app/app.spec.ts'],
+  });
+  assert.deepEqual(sameLine, []);
+
+  const blanket = findOmissions({
+    docs: [doc(withHeading('- `index.ts` — the new barrel file'))],
+    changed: ['frontend/src/app/booking/index.ts', 'frontend/src/app/unrelated/index.ts'],
+  });
+  assert.deepEqual(paths(blanket), [
+    'frontend/src/app/booking/index.ts',
+    'frontend/src/app/unrelated/index.ts',
+  ]);
+});
+
+test('a bare name matching exactly one path is still the common idiom', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `SecurityConfig.java` — two matcher constants'))],
+    changed: ['platform/src/main/java/ai/riviera/platform/SecurityConfig.java'],
+  });
+  assert.deepEqual(omissions, []);
+});
+
+test('a single-segment directory matching two places is ambiguous', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `components/` — the new folder'))],
+    changed: [
+      'frontend/src/app/one/components/widget.ts',
+      'frontend/src/app/two/components/other.ts',
+    ],
+  });
+  assert.deepEqual(paths(omissions), [
+    'frontend/src/app/one/components/widget.ts',
+    'frontend/src/app/two/components/other.ts',
+  ]);
+});
+
+test('a repo-relative multi-segment token still suffix-matches', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `payout/application/DailyTakingsServiceTest.java`'))],
+    changed: [
+      'platform/src/test/java/ai/riviera/platform/payout/application/DailyTakingsServiceTest.java',
+    ],
+  });
+  assert.deepEqual(omissions, []);
+});
+
+test('changedPaths splits git -z output and drops the trailing empty field', () => {
+  assert.deepEqual(changedPaths('a.ts\0docs/plans/p.md\0'), ['a.ts', 'docs/plans/p.md']);
+  assert.deepEqual(changedPaths(''), []);
+  assert.deepEqual(changedPaths('src/logo-\u{1F600}.png\0'), ['src/logo-\u{1F600}.png']);
 });

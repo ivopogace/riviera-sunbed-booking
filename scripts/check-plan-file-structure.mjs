@@ -59,6 +59,17 @@ function siblingOf(base, extension) {
   return base.replace(/\.[^./]*$/, '') + extension;
 }
 
+/**
+ * A bare filename written after a path on the same line means the file *next to* it —
+ * `frontend/src/app/app.html` + `app.spec.ts` is that directory's spec, not every `app.spec.ts` in
+ * the tree. Anything already carrying a `/` is left alone.
+ */
+function beside(base, token) {
+  if (token.includes('/')) return token;
+  const directory = base.slice(0, base.lastIndexOf('/') + 1);
+  return `${directory}${token}`;
+}
+
 /** `frontend/e2e/{a,b}.e2e.ts` → one entry per alternative; recursive, so nesting works. */
 function expandBraces(token) {
   const braces = /^(.*?)\{([^{}]*)\}(.*)$/.exec(token);
@@ -104,7 +115,7 @@ export function listedPaths(section) {
       }
       for (const candidate of expandBraces(token).flatMap(expandPipes)) {
         if (!isPath(candidate)) continue;
-        listed.push(candidate);
+        listed.push(previous ? beside(previous, candidate) : candidate);
         if (!candidate.endsWith('/')) previous = candidate;
       }
     }
@@ -152,11 +163,32 @@ function globBody(token) {
  * `platform/src/test/java/ai/riviera/platform/payout/application/DailyTakingsServiceTest.java` to
  * its last two packages — so a suffix counts, but only on a `/` boundary: `venue-map.ts` must not
  * be satisfied by `admin-venue-map.ts`.
+ *
+ * Shortening all the way to a bare filename is idiomatic here too, and stays allowed — see
+ * `unambiguous` for the one case it is not.
  */
 function covers(token, path) {
   if (token.endsWith('/')) return path.startsWith(token) || path.includes(`/${token}`);
   if (token.includes('*')) return new RegExp(`(^|/)${globBody(token)}$`).test(path);
   return path === token || path.endsWith(`/${token}`);
+}
+
+/**
+ * Drops the listed tokens that are too vague to mean anything.
+ *
+ * A token with no `/` carries no directory context, so if it matches **more than one** path in this
+ * diff it has not identified either of them — `index.ts` cannot stand for both
+ * `booking/index.ts` and `unrelated/index.ts`. Dropping it reports both, which is the right answer:
+ * the section did not say which. Matching exactly one path is the common idiom (a plan doc naming
+ * `SecurityConfig.java`) and stays covered — the floor has to sit here rather than at "must contain
+ * a `/`", because that stricter rule false-flags eleven legitimately-named files on PR #516 alone,
+ * and a noisy gate is one that gets switched off (R-2).
+ */
+function unambiguous(listed, changed) {
+  return listed.filter((token) => {
+    if (token.replace(/\/$/, '').includes('/') || token.includes('*')) return true;
+    return changed.filter((path) => covers(token, path)).length <= 1;
+  });
 }
 
 /**
@@ -178,7 +210,10 @@ export function findOmissions({ docs, changed }) {
   if (docs.length === 0) return [];
 
   const sections = docs.map((d) => sectionOf(d.text));
-  const listed = sections.filter((section) => section !== null).flatMap(listedPaths);
+  const listed = unambiguous(
+    sections.filter((section) => section !== null).flatMap(listedPaths),
+    changed,
+  );
   const reason = sections.every((section) => section === null)
     ? 'no "## File structure" section'
     : 'not listed in the File structure section';
@@ -213,6 +248,16 @@ function git(args) {
   return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 }
 
+/**
+ * Splits `git diff --name-only -z` output. The `-z` is not a detail: without it git C-quotes and
+ * octal-escapes any path holding a non-ASCII byte (`"src/logo-\360\237\230\200.png"`), and that
+ * literal can never match a token, so **every** diff touching such a file failed unconditionally
+ * with no way to satisfy the check. Found by PR #538's review.
+ */
+export function changedPaths(raw) {
+  return raw.split('\0').filter(Boolean);
+}
+
 /** Resolves the merge base with `base`, falling back to a plain two-dot diff when it has none. */
 function rangeFor(base) {
   try {
@@ -240,9 +285,9 @@ function readText(path) {
  * and drops out.
  */
 export function check(range) {
-  const changed = git(['diff', '--name-only', '--no-color', '--no-ext-diff', range])
-    .split('\n')
-    .filter(Boolean);
+  const changed = changedPaths(
+    git(['diff', '--name-only', '-z', '--no-color', '--no-ext-diff', range]),
+  );
 
   const docs = planDocsIn(changed)
     .map((path) => ({ path, text: readText(path) }))

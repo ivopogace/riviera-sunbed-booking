@@ -114,8 +114,12 @@ for `feature/plan-file-structure-guard` (`riviera-sdlc` §Remote/cloud session a
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
-`N/A — new behavior, replaces nothing.` The existing `inline-comments` job keeps its name, its
-existing two steps, and its trigger unchanged; this slice only appends a step.
+`N/A — new behavior, replaces nothing.` The existing `inline-comments` job keeps its name and its
+trigger unchanged, and this slice only appends a step. Its two pre-existing steps keep their `run:`
+commands byte-for-byte; both were **renamed** (`Test the guard itself` → `Test the guards
+themselves`, `Check the diff (hard gate)` → `Check the diff for multi-line inline comments
+(RV-STYLE-1, hard gate)`) because a job running two rules needs each step to say which one it is.
+Step names are not check contexts, so nothing downstream reads them (F-3).
 
 ## Risk register
 
@@ -175,10 +179,10 @@ nothing under `frontend/src` or `frontend/e2e` changes.
 
 ## Execution status
 
-**Stage pointer:** `review gate` — PR #538 marked ready for review.
+**Stage pointer:** `review gate — fixing findings` → re-verify CI + Sonar on the fix push.
 
-**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then pull the
-Sonar new-issue list from the API (a green badge is not the check). Findings re-enter at Implement.
+**Next action:** Confirm the fix push is green on CI and re-analyzed by Sonar, re-walk the overlay
+bank items over the changed surface, then merge close-out.
 
 > Phase SHAs are recorded by the **next** phase's commit, not by amending the phase's own. A
 > commit cannot contain its own hash; amending to insert it rewrites the hash again, which is how
@@ -190,7 +194,8 @@ Sonar new-issue list from the API (a green badge is not the check). Findings re-
 | 1 — Path idioms + exemptions + the real-case fixtures | ✅ | `b8140d3` |
 | 2 — Git front-end and CLI | ✅ | `572a92d` |
 | 3 — CI wiring + `riviera-plan-doc` names the command | ✅ | `c22bfd2` |
-| 4 — Docs sweep + close-out | ✅ | `723a13c` (fixes F-1/F-2 + the sweep) · close-out commit |
+| 4 — Docs sweep + close-out | ✅ | `723a13c` (F-1/F-2 + the sweep) · `6e1644d` (close-out) |
+| 5 — Review-gate findings F-3…F-7 | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -202,6 +207,11 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | CI (run `31094385031`, the guard failing on its **own** PR) | Paths rooted at a dot-directory (`.github/…`, `.claude/…`) were invisible to the parser: a path had to open with a word character, while a leading dot was read as "sibling extension". All three of this slice's own tooling paths were flagged despite being listed. The two forms are told apart by the `/`, not by the dot | fixed — `isPath` now admits dot-rooted paths and extension-less dotfiles, and `SIBLING_EXT` applies only when a path precedes it on the line. Pinned by `a path rooted at a dot-directory is a path, not an extension` **and** `a bare extension is still an extension when a path precedes it`, so the widening did not undo the #464 idiom. Re-running the 60-commit audit dropped the historical flag count 390 → **373**: 17 paths that were false positives all along |
 | F-2 | CodeQL (high, `check-plan-file-structure.mjs:122`) | `String#replace` without `/g` in `globBody` — "replaces only the first occurrence". Correct in practice only because it was handed one character at a time, which is an accident rather than a design | fixed — a `RESERVED` set membership test, no regex replace. `*` is deliberately **not** in the set: it is the one character that must never be escaped, and the scanner consumes it before this branch |
+| F-3 | Review gate (agent: doc-claims-vs-code) | The Behavior-parity ledger said the job "keeps its existing two steps unchanged", but the diff renames both (their `run:` commands are untouched) | fixed — the ledger now says exactly that: `run:` byte-for-byte, names sharpened because a job running two rules needs each step to say which one it is, and step names are not check contexts |
+| F-4 | Review gate (agent: git history) | The `ci-pipeline.md` insertion landed mid-paragraph, between two sentences both explaining the "returned to 7" count — factually right, but it read as a stutter | fixed — the #419-vs-#534 count explanation is left intact and the #533 note moved to its own paragraph |
+| F-5 | Self-caught while reading the Sonar gate's own false-clean guard | The phase-2 audit row deferred the `git()`/`rangeFor()` duplication decision to "the Sonar gate as arbiter". `sonar-project.properties` sets `sonar.sources=platform/src/main/java,frontend/src` — **`scripts/` is outside Sonar's scope**, so its "0.0% duplication on new code" says nothing about these files. The referee was blind, and the PR's green Sonar badge would have looked like vindication | fixed — decided on merits instead and the row rewritten to say so. Same caveat applies to "0.0% coverage on new code": the guard has 41 `node --test` cases, but Sonar never analyzed `scripts/`, so that figure measures nothing here |
+| F-6 | Review gate (agent: bug scan) | `git diff --name-only` C-quotes and octal-escapes any path holding a non-ASCII byte (`"src/logo-\360\237\230\200.png"`), so the literal could never match a listed token: **every** diff touching such a file failed unconditionally, with no way to satisfy the check. Reproduced in a scratch repo before fixing | fixed — `-z` plus `changedPaths()`, pinned by `changedPaths splits git -z output…` and re-verified end-to-end against the emoji-path repo (now clean) |
+| F-7 | Review gate (agent: bug scan) | A bare filename was suffix-matched like any other token, so one common name blanket-covered every same-named path in the diff — a false **negative**, the one direction this guard cannot afford | fixed, after the **first fix was measured and rejected**. Requiring a `/` in every token false-flagged 11 legitimately bare-named files on PR #516 alone — the R-2 "noisy gate gets switched off" mode. The shipped rule instead resolves a bare name against the path before it on the line (`beside`) and treats a bare name matching 2+ changed paths as ambiguous (`unambiguous`). Measured over 33 real slices: **+2 newly flagged paths in all of history**, both on one slice that wrote a bare `CLAUDE.md` while two different `CLAUDE.md` files changed |
 
 ---
 
@@ -435,7 +445,8 @@ test('real case: PR #522 undercounts by two', () => {
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-06 | Phase 1 — the parser learned five path idioms | Any *other* idiom real plan docs use that the parser would false-positive on | Ran the finished detector over the last 60 `main` commits (34 plan-doc slices) and read every flagged path for artifacts | One: `frontend/src/app/**/*.contrast.spec.ts` (PR #478's plan doc) — a `**` glob, which the single-`*` matcher widened only within a segment | **Fixed all**: `globBody` now scans, so `**/` crosses directories, bare `**` matches anything, and a single `*` stays in one segment. Pinned by `idiom: \`**\` crosses directories, a single \`*\` does not (PR #478)`, whose second half proves the single-`*` case did **not** become permissive |
-| 2026-08-06 | Phase 2 — the git front-end | `git()`, `rangeFor()` and the report/advice shape, now written twice across `scripts/check-*.mjs` | Read both guards side by side | Two: `git()` (3 lines) and `rangeFor()` (7 lines), near-identical but not contiguous | **Skip, with a trigger.** Extracting a shared module would couple two guards that otherwise share nothing, to save ten lines. The pair sits under Sonar's ~100-token duplicate-block threshold, and the merge bar is 0 duplicated blocks — so the Sonar gate is the arbiter: if it reports a duplicated block on this PR, extract `scripts/lib/git-range.mjs` then. |
+| 2026-08-06 | Phase 5 — F-7's fix (bare-name coverage) | Whether the new specificity rule false-flags paths across real history — the same question phase 1's audit asked, re-asked because F-7's first fix was a *coverage* change, the class most likely to over-report | Ran the detector over the last 60 `main` commits twice (before/after), diffing the flagged sets per slice | The first fix (require a `/` in every token) added **16** flags, 11 on PR #516 alone — all legitimate bare-named files | **Rejected that fix and reshaped it.** The shipped rule adds **2** flags across 33 slices, both genuinely ambiguous. Also excluded the repo's root commit from the audit harness: with no parent it diffs the whole tree (1361 paths) and was inflating every count |
+| 2026-08-06 | Phase 2 — the git front-end | `git()`, `rangeFor()` and the report/advice shape, now written twice across `scripts/check-*.mjs` | Read both guards side by side | Two: `git()` (3 lines) and `rangeFor()` (7 lines), near-identical but not contiguous | **Skip — decided on merits, not deferred.** This row first named the Sonar gate as arbiter; that was wrong and is corrected here (F-5). `sonar-project.properties` sets `sonar.sources=platform/src/main/java,frontend/src`, so **`scripts/` is outside Sonar's analysis scope entirely** — its "0.0% duplication on new code" says nothing about these files, and waiting for it would have been waiting on a blind referee. Decided directly: ten lines of trivial, stable git glue do not justify a third file that couples two deliberately independent, dependency-free guards. Revisit if a third guard appears, which is when the shared-module case actually earns itself. |
 
 ---
 
