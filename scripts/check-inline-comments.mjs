@@ -11,6 +11,9 @@
  * (see the plan doc's Non-goals; #522/F-6 settled SQL).
  */
 
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
 /**
  * Per-extension comment syntax. An extension absent from this map is not checked at all.
  *
@@ -191,4 +194,133 @@ function merge(regions) {
     }
   }
   return merged;
+}
+
+/**
+ * Maps a unified diff to the 1-based line numbers each file gains. Files the diff deletes are
+ * absent from the result: they have no new content to check.
+ *
+ * @param {string} diff output of `git diff --unified=0`
+ * @returns {Map<string, Set<number>>} new-side path → added line numbers
+ */
+export function parseAddedLines(diff) {
+  const added = new Map();
+  let path = null;
+  let next = 0;
+
+  for (const line of diff.split('\n')) {
+    if (line.startsWith('+++ ')) {
+      const target = line.slice(4).trim();
+      path = target === '/dev/null' ? null : target.replace(/^b\//, '');
+      continue;
+    }
+    if (line.startsWith('@@')) {
+      const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)/.exec(line);
+      next = hunk ? Number(hunk[1]) : 0;
+      continue;
+    }
+    if (path && next && line.startsWith('+')) {
+      if (!added.has(path)) added.set(path, new Set());
+      added.get(path).add(next);
+      next++;
+    }
+  }
+  return added;
+}
+
+function git(args) {
+  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+}
+
+/** Reads a path from the working tree, or null when it is unreadable (deleted, binary, gone). */
+function readLines(path) {
+  try {
+    return readFileSync(path, 'utf8').split('\n');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Runs the detector over every in-scope file a diff touches.
+ *
+ * @param {string[]} diffArgs arguments describing the diff, e.g. `['origin/main...HEAD']`
+ * @param {string[]} [limitTo] when given, only these paths are considered
+ */
+export function check(diffArgs, limitTo) {
+  const diff = git(['diff', '--unified=0', '--no-color', '--no-ext-diff', ...diffArgs]);
+  const violations = [];
+
+  for (const [path, added] of parseAddedLines(diff)) {
+    if (limitTo && !limitTo.includes(path)) continue;
+    if (!syntaxFor(path)) continue;
+    const lines = readLines(path);
+    if (!lines) continue;
+    violations.push(...findViolations({ path, lines, added }));
+  }
+  return violations;
+}
+
+const ADVICE =
+  'RV-STYLE-1: an inline comment is one line, or it is not written. Shorten it, delete it, or ' +
+  'move the prose to a doc comment (Javadoc/TSDoc), which is exempt. See ' +
+  'riviera-java-conventions §6c.';
+
+function report(violations) {
+  return violations.map((v) => `  ${v.path}:${v.line}-${v.endLine}  ${v.text}`).join('\n');
+}
+
+/** Resolves the merge base with `base`, falling back to a plain two-dot diff when it has none. */
+function rangeFor(base) {
+  try {
+    git(['merge-base', base, 'HEAD']);
+    return [`${base}...HEAD`];
+  } catch {
+    return [base];
+  }
+}
+
+function main(argv) {
+  const mode = argv[0];
+
+  if (mode === '--hook') {
+    const payload = JSON.parse(readFileSync(0, 'utf8'));
+    const path = payload?.tool_response?.filePath ?? payload?.tool_input?.file_path;
+    if (!path || !syntaxFor(path)) return 0;
+    const relative = path.replace(`${process.cwd()}/`, '');
+    const violations = check(['HEAD', '--', relative], [relative]);
+    if (violations.length === 0) return 0;
+    process.stdout.write(
+      JSON.stringify({
+        hookSpecificOutput: {
+          hookEventName: 'PostToolUse',
+          additionalContext: `Multi-line inline comment written by this edit:\n${report(violations)}\n${ADVICE}`,
+        },
+      }),
+    );
+    return 0;
+  }
+
+  if (mode === '--files') {
+    const paths = argv.slice(1);
+    const violations = check(['HEAD', '--', ...paths], paths);
+    if (violations.length === 0) return 0;
+    process.stderr.write(`Multi-line inline comments:\n${report(violations)}\n${ADVICE}\n`);
+    return 1;
+  }
+
+  if (mode === '--diff') {
+    const violations = check(rangeFor(argv[1] ?? 'origin/main'));
+    if (violations.length === 0) return 0;
+    process.stderr.write(`Multi-line inline comments added by this diff:\n${report(violations)}\n${ADVICE}\n`);
+    return 1;
+  }
+
+  process.stderr.write('usage: check-inline-comments.mjs (--diff <base> | --files <path…> | --hook)\n');
+  return 2;
+}
+
+// Only run the CLI when invoked directly, so the test suite can import the detector.
+if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+  process.exitCode = main(process.argv.slice(2));
 }

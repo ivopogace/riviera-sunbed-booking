@@ -166,17 +166,22 @@ N/A — no contract change. No endpoint, DTO, or wire shape.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — add the `--diff` and `--files` git front-ends over the detector, then
-prove AC-6 against the real tree.
+**Next action:** Phase 2 — merge the `PostToolUse` entry into `.claude/settings.json`'s existing
+`hooks` block (never replace it), validate with `jq -e`, prove it fires, then add the CI step.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Detector core, test-first | ✅ | SHA recorded in the phase-1 commit window |
-| 1 — Git front-ends (`--files`, `--diff`) + clean-tree proof | ⏳ | |
-| 2 — Wiring: PostToolUse hook + CI step | | |
+| 0 — Detector core, test-first | ✅ | `175bac5` |
+| 1 — Git front-ends (`--files`, `--diff`) + clean-tree proof | ✅ | this commit |
+| 2 — Wiring: PostToolUse hook + CI step | ⏳ | |
 | 3 — Rule docs name the guard; follow-up issue; close-out | | |
+
+**Positive control (phase 1).** An exit 0 is not evidence the plumbing works, so the #522 block
+was re-injected into `SecurityConfig.java` verbatim and the CLI run against it: `--files` exited
+1 naming `SecurityConfig.java:422-423`, `--hook` emitted the `additionalContext` payload, and the
+file was reverted clean. That is AC-1 proven end-to-end through git, not only through the unit.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
