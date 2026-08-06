@@ -1,6 +1,7 @@
 import {
   afterNextRender,
   Component,
+  computed,
   effect,
   ElementRef,
   inject,
@@ -11,6 +12,7 @@ import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { AdminConsoleStats } from './admin-console-stats';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminOperatorsService } from './admin-operators.service';
 import { OperatorAccountView, PendingOperatorView } from './admin.model';
@@ -36,7 +38,7 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
  */
 @Component({
   selector: 'app-admin-operators',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs],
+  imports: [RouterLink, CardGlass, AdminConsoleTabs, AdminConsoleStats],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-ops-title">
@@ -62,6 +64,11 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
         </p>
       } @else {
         <app-admin-console-tabs label="Admin console sections" />
+        <app-admin-console-stats
+          [pendingCount]="pendingCount()"
+          [activeCount]="activeCount()"
+          [suspendedCount]="suspendedCount()"
+        />
 
         @if (loading()) {
           <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-loading">
@@ -263,6 +270,23 @@ export class AdminOperators {
   protected readonly confirmingId = signal<number | undefined>(undefined);
   /** The armed confirmation's optional grounds (#519); cleared on arm, dismiss, and confirm. */
   protected readonly suspendReason = signal('');
+  /**
+   * Whether the lists above came from a read that actually succeeded. They start empty and are left
+   * untouched on failure, so without this the stat strip would render a confident `0` for a queue it
+   * has simply not read yet — and an empty queue is a real, common state (A9, #348).
+   */
+  private readonly countsKnown = signal(false);
+
+  /** The three operator counts the A9 stat strip renders; `undefined` means "not known", never 0. */
+  protected readonly pendingCount = computed(() =>
+    this.countsKnown() ? this.pending().length : undefined,
+  );
+  protected readonly activeCount = computed(() =>
+    this.countsKnown() ? this.accounts().filter((op) => !op.suspended).length : undefined,
+  );
+  protected readonly suspendedCount = computed(() =>
+    this.countsKnown() ? this.accounts().filter((op) => op.suspended).length : undefined,
+  );
 
   private loaded = false;
 
@@ -290,8 +314,10 @@ export class AdminOperators {
       ]);
       this.pending.set(pending);
       this.accounts.set(accounts);
+      this.countsKnown.set(true);
     } catch {
       this.loadError.set(true);
+      this.countsKnown.set(false);
     } finally {
       this.loading.set(false);
     }

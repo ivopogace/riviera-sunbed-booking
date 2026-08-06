@@ -2,73 +2,31 @@
   <div
     class="mx-auto grid w-full max-w-[1100px] grid-cols-2 gap-2.5 px-5 py-3.5 sm:grid-cols-4"
   >
-    <article
-      appCardGlass
-      class="oc-stat flex flex-col gap-0.5 rounded-[16px] px-3.5 py-3 shadow-[0_1px_2px_rgba(7,42,58,0.06)]"
-    >
-      <span
-        class="oc-stat-label text-[11px] font-bold uppercase tracking-[0.1em] text-(--riv-card-ink-faint)"
-        >Free today</span
+    <app-stat-tile label="Free today" valueTestId="oc-stat-free">
+      {{ free() }}<span class="text-[14px] font-semibold text-(--riv-card-ink-faint)">
+        / {{ total() }}</span
       >
-      <div class="oc-stat-value text-[27px] font-bold text-(--riv-card-ink)" data-testid="oc-stat-free">
-        {{ free() }}<span class="text-[14px] font-semibold text-(--riv-card-ink-faint)">
-          / {{ total() }}</span
-        >
-      </div>
-    </article>
+    </app-stat-tile>
 
-    <article
-      appCardGlass
-      class="oc-stat flex flex-col gap-0.5 rounded-[16px] px-3.5 py-3 shadow-[0_1px_2px_rgba(7,42,58,0.06)]"
-    >
-      <span
-        class="oc-stat-label text-[11px] font-bold uppercase tracking-[0.1em] text-(--riv-card-ink-faint)"
-        >Booked online</span
-      >
-      <div
-        class="oc-stat-value text-[27px] font-bold text-(--riv-card-ink)"
-        data-testid="oc-stat-booked"
-      >
-        {{ bookedOnline() ?? '—' }}
-      </div>
-    </article>
+    <app-stat-tile label="Booked online" valueTestId="oc-stat-booked">
+      {{ bookedOnline() ?? '—' }}
+    </app-stat-tile>
 
-    <article
-      appCardGlass
-      class="oc-stat flex flex-col gap-0.5 rounded-[16px] px-3.5 py-3 shadow-[0_1px_2px_rgba(7,42,58,0.06)]"
-    >
-      <span
-        class="oc-stat-label text-[11px] font-bold uppercase tracking-[0.1em] text-(--riv-card-ink-faint)"
-        >Walk-ins marked</span
-      >
-      <div
-        class="oc-stat-value text-[27px] font-bold text-(--riv-card-ink)"
-        data-testid="oc-stat-walkins"
-      >
-        {{ walkIns() ?? '—' }}
-      </div>
-    </article>
+    <app-stat-tile label="Walk-ins marked" valueTestId="oc-stat-walkins">
+      {{ walkIns() ?? '—' }}
+    </app-stat-tile>
 
-    <article
-      appCardGlass
-      class="oc-stat flex flex-col gap-0.5 rounded-[16px] px-3.5 py-3 shadow-[0_1px_2px_rgba(7,42,58,0.06)]"
+    <app-stat-tile
+      label="Online takings · today"
+      valueTestId="oc-stat-takings"
+      [sub]="netCaption()"
+      subTestId="oc-stat-net"
     >
-      <span
-        class="oc-stat-label text-[11px] font-bold uppercase tracking-[0.1em] text-(--riv-card-ink-faint)"
-        >Online takings · today</span
-      >
-      <div class="oc-stat-value text-[27px] font-bold text-(--riv-card-ink)" data-testid="oc-stat-takings">
-        @if (takings(); as t) {
-          {{ money(t.gross) }}
-        } @else {
-          —
-        }
-      </div>
       @if (takings(); as t) {
-        <span class="oc-stat-sub text-[11.5px] text-(--riv-card-ink-soft)" data-testid="oc-stat-net"
-          >{{ money(t.net) }} after {{ commissionPct(t.commissionBps) }} commission</span
-        >
+        {{ money(t.gross) }}
+      } @else {
+        —
       }
-    </article>
+    </app-stat-tile>
   </div>
 </section>

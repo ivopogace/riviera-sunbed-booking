@@ -4,15 +4,20 @@ import { provideRouter } from '@angular/router';
 
 import { expectNoAxeViolations } from '../../testing/axe';
 import { OperatorAuth } from '../core/operator-auth';
+import { AdminCommissionsService } from './admin-commissions.service';
 import { AdminOperators } from './admin-operators';
 import { AdminOperatorsService } from './admin-operators.service';
-import { OperatorAccountView, PendingOperatorView } from './admin.model';
+import { OperatorAccountView, PendingOperatorView, VenueCommissionView } from './admin.model';
 
 /**
  * Structural axe audit of the admin operator surface (S6 #115, extended #128): two titled regions —
  * the pending-registration queue with approve/reject controls, and the account list with
  * suspend/reinstate. Rendered as a signed-in admin with one row in each. Contrast is not measurable by
  * axe under jsdom; it is proven in the e2e.
+ *
+ * <p>Since A9 (#348) the page also carries the console stat strip, audited here in <strong>both</strong>
+ * of its states — with its numbers and with every tile dashed, which is a different DOM (the Venues
+ * tile drops its sub-caption and the strip drops its note) and therefore a separate audit.
  */
 const rows: PendingOperatorView[] = [
   { id: 7, username: 'alice', contactEmail: 'a@v.example', registeredAt: '2026-07-18T00:00:00Z' },
@@ -35,13 +40,20 @@ const serviceStub: Partial<AdminOperatorsService> = {
   accounts: async () => accountRows,
 };
 
-async function render(): Promise<ComponentFixture<AdminOperators>> {
+const VENUES = [
+  { venueId: 7, name: 'Bora Bora Beach', beach: 'Dhërmi', commissionBps: 1500, payoutCurrency: 'EUR' },
+];
+
+async function render(
+  venues: () => Promise<readonly VenueCommissionView[]> = async () => VENUES,
+): Promise<ComponentFixture<AdminOperators>> {
   await TestBed.configureTestingModule({
     imports: [AdminOperators],
     providers: [
       provideRouter([]),
       { provide: OperatorAuth, useValue: authStub },
       { provide: AdminOperatorsService, useValue: serviceStub },
+      { provide: AdminCommissionsService, useValue: { venues } },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminOperators);
@@ -82,6 +94,25 @@ describe('AdminOperators accessibility (axe)', () => {
 
     // The inline confirmation replaces the trigger in place — axe must still pass in that state.
     expect(host.querySelector('[data-testid="admin-suspend-confirm-11"]')).not.toBeNull();
+    await expectNoAxeViolations(host);
+  });
+
+  it('has no critical/serious violations with the stat strip populated', async () => {
+    const fixture = await render();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="admin-stat-mean-rate"]')).not.toBeNull();
+    await expectNoAxeViolations(host);
+  });
+
+  it('has no critical/serious violations with every stat tile dashed', async () => {
+    const fixture = await render(async () => {
+      throw new Error('offline');
+    });
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="admin-stat-venues"]')?.textContent?.trim()).toBe('—');
+    expect(host.querySelector('[data-testid="admin-stats-mean-note"]')).toBeNull();
     await expectNoAxeViolations(host);
   });
 });

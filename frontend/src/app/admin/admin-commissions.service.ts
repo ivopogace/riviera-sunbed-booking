@@ -18,9 +18,13 @@ interface AdminVenueCommissionsResponse {
 }
 
 /**
- * HTTP client for the admin console's Commissions tab (A8, epic #348), against the two ADMIN-gated
- * endpoints A7 shipped. Stateless: the session cookie + CSRF header are added by
+ * HTTP client for the admin console's venue-commission surface (A8, epic #348), against the two
+ * ADMIN-gated endpoints A7 shipped. Stateless: the session cookie + CSRF header are added by
  * {@link apiSessionInterceptor}, and the component holds the page state.
+ *
+ * <p>Two consumers since A9: the Commissions tab, which reads and writes, and the console home's
+ * stat strip, which only calls {@link venues} for the venue count and the mean of their rates. The
+ * strip deliberately reuses this client rather than adding a second one for the same endpoint.</p>
  *
  * <p><strong>One type and one parse for both calls.</strong> The write answers the same object shape
  * as one list element, which is what lets the caller splice the response into the list it already

@@ -24,8 +24,23 @@
   40px pills do not have to spare. Full reasoning: the Q1 comment on #348 and
   docs/plans/q1-admin-console-tab-ia.md.
 
-  EVERYTHING ELSE IN THIS HEADER STILL STANDS — the endpoint map and the commission/payout decision
-  lists below are binding.
+  ⚠ CORRECTION (2026-08-06, #348 A9) — THE STAT STRIP IS NOT DRAWN WHERE IT SHIPS.
+  This canvas renders the stats ONCE, ABOVE the tab strip, on EVERY screen — which it can do because
+  it is a single demo page. The console is seven independent lazy routes with NO layout component, a
+  shape Q1 chose deliberately and gave one revisit trigger: a NINTH tab. So A9 ships the strip on the
+  console HOME only and BELOW the tabs — below, because with the strip on one page only, putting it
+  above would shift the pills down on /admin and back up on every other tab, moving the control the
+  admin just clicked. When a layout component lands on Q1's trigger, the strip moves into it and
+  becomes shell-wide as drawn here.
+  A9 also ships FOUR of the six tiles drawn below: "Releasing tomorrow" and "Transfers to fix" are
+  payout tiles belonging to A6, which is blocked on A5/#284. And "avg commission" ships as
+  "mean rate N%" with a note stating it is an equal average of venue rates, NOT the platform's
+  effective take — nothing on the wire supports the booking-weighted figure a bare "avg" implies.
+  Source of truth: frontend/src/app/admin/admin-console-stats.ts and
+  docs/plans/a9-admin-console-stat-strip.md.
+
+  EVERYTHING ELSE IN THIS HEADER STILL STANDS — the endpoint map and the payout decision
+  list below are binding.
 
   Every screen here is backed by a shipped endpoint — nothing invented:
 
@@ -37,17 +52,25 @@
                 POST /api/admin/operators/{id}/reinstate  -> restores access, NOT the old sessions
     Privacy     POST /api/admin/erasure                   (#101 D5)   ROLE_ADMIN, always 204
 
-  The Commissions tab has NO backend at all today — it is the sharpest gap this console exposes:
+  ⚠ CORRECTION (2026-08-06, #348 A7/A8) — THE GAP BELOW IS CLOSED. The two endpoints this section
+  asks for SHIPPED in PR #522 (GET /api/admin/venues, PUT /api/admin/venues/{venueId}/commission,
+  both ROLE_ADMIN, on venue's VenueCommissionAdministration port) and the tab that consumes them
+  shipped in PR #525. Read the block below as the REASONING that produced them — the bps unit and
+  the forward-only rule are still binding — not as a description of today's backend.
 
-    - Commission is settable ONLY AT CREATION. NewVenueCommand/CreateVenueRequest take commissionBps;
+  The Commissions tab had NO backend at all when this canvas was drawn — it was the sharpest gap
+  this console exposed:
+
+    - Commission was settable ONLY AT CREATION. NewVenueCommand/CreateVenueRequest take commissionBps;
       the owner-asserted profile PATCH treats it as DISPLAY-ONLY (VenueProfileResponse: "commissionBps
-      and payoutCurrency are display-only"; O8 #177 decided read-only for the operator on purpose).
-      So today there is no way to change a venue's rate after creation — not by the operator, not by
-      the admin, not by anyone. Getting a rate wrong at onboarding is currently permanent.
-    - There is also no platform-wide venue read. GET /api/venues is the anonymous discovery read (no
+      and payoutCurrency are display-only"; O8 #177 decided read-only for the operator on purpose —
+      that decision STANDS; A7 added an admin-only write beside it, it did not reopen O8).
+      There was no way to change a venue's rate after creation — not by the operator, not by
+      the admin, not by anyone. Getting a rate wrong at onboarding was permanent.
+    - There was also no platform-wide venue read. GET /api/venues is the anonymous discovery read (no
       commission), GET /api/venues/{id}/profile is owner-asserted and OPERATOR-gated, and
-      GET /api/venues/mine is operator-scoped (S9 #277). The admin cannot list venues with their rates.
-    - So this tab needs two new ADMIN endpoints: a venues-with-commission list, and a rate write.
+      GET /api/venues/mine is operator-scoped (S9 #277). The admin could not list venues with rates.
+    - So this tab needed two new ADMIN endpoints: a venues-with-commission list, and a rate write.
       Basis points are the stored unit (exact integer, invariant #5) — the editor takes a percent for
       human sanity but the wire value is bps, 0..10000, mirroring venue_commission_bps_check.
 
