@@ -271,9 +271,9 @@ export class AdminOperators {
   /** The armed confirmation's optional grounds (#519); cleared on arm, dismiss, and confirm. */
   protected readonly suspendReason = signal('');
   /**
-   * Whether the lists above came from a read that actually succeeded. The lists start empty and are
-   * emptied again on failure, so without this the stat strip would render a confident `0` for a
-   * queue it has simply not read yet — and an empty queue is a real, common state (A9, #348).
+   * Whether the lists above came from a read that actually succeeded. They start empty and are left
+   * untouched on failure, so without this the stat strip would render a confident `0` for a queue it
+   * has simply not read yet — and an empty queue is a real, common state (A9, #348).
    */
   private readonly countsKnown = signal(false);
 

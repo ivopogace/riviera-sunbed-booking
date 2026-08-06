@@ -43,9 +43,9 @@ import { VenueCommissionView } from './admin.model';
  *
  * <p><strong>The labels are terse because the fold is measured, not guessed.</strong> At 360px a tile
  * is ~136px of inner width, so an uppercase 11px label past roughly sixteen characters wraps — and a
- * wrap costs the whole two-tile row a line. "Pending approvals" and "Active operators" each cost
- * 15px that the console home does not have: with them, the first content heading landed at y=724 of
- * a 740px fold; without, at 691. `e2e/admin-console-stats.e2e.ts` holds that budget.
+ * wrap costs its whole two-tile row a line. Measured: restoring "Pending approvals" and "Active
+ * operators" moves the first content heading from y=691 to y=707 against a 740px fold, spending 16
+ * of the 22px of headroom that remain. `e2e/admin-console-stats.e2e.ts` holds that budget.
  */
 @Component({
   selector: 'app-admin-console-stats',
