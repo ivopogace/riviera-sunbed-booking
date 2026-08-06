@@ -67,6 +67,12 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   documented surface. Put the long explanation there, not scattered through the body.
 - Enforced at the review gate as **RV-STYLE-1**; this section exists so the first draft already
   complies instead of being trimmed later.
+- **A guard enforces it while you type** (#529): `scripts/check-inline-comments.mjs` runs from a
+  `PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff, covering `.ts`,
+  `.tsx`, `.js`, `.scss`, `.css` and `.html`. It is **diff-scoped** — it judges only lines your
+  diff adds, so the pre-existing multi-line blocks in `styles.scss` stay untouched and so should
+  yours. Run it by hand with `node scripts/check-inline-comments.mjs --files <path…>`. Scope
+  details and the two exemptions: `riviera-java-conventions` §6c.
 
 ## Unit tests
 
