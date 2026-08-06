@@ -153,6 +153,26 @@ Write the comment you would keep after review, not the one you would have to tri
 The review bank enforces this as **RV-STYLE-1** — but a rule that only fires at review means the
 prose gets written and then deleted. This section exists so the first draft is already right.
 
+**A guard now enforces it at authoring time** (#529): `scripts/check-inline-comments.mjs` runs
+from a `PostToolUse` hook on every `Write`/`Edit`, so a multi-line inline comment comes back as
+feedback on the edit that wrote it; CI re-runs it over the PR diff. Run it by hand with
+`node scripts/check-inline-comments.mjs --files <path…>`, or over a whole branch with
+`--diff origin/main`. Three things about its scope, so nobody "fixes" a deliberate gap:
+
+- **Diff-scoped, always.** It only judges lines a diff *added*. The existing tree carries many
+  pre-existing multi-line inline comments that read as established convention in their own files;
+  a repo-wide gate would go red on day one and get switched off. Don't reflow untouched comments.
+- **Four languages, by comment syntax:** `.java`, `.ts`/`.tsx`/`.js`/`.mjs`/`.cjs`, `.scss`/`.css`,
+  `.html`. **Not** `#` files (shell, YAML, `.properties`) — every one of those in this repo carries
+  multi-line `#` header prose as its documented convention — and **not** SQL `--`, which #522's
+  finding F-6 declined by precedent, citing `V9__payout_ledger.sql`.
+- **Two exemptions beyond the doc-comment carve-out:** a block comment standing before any code is
+  the file's header (`styles.scss` opens with one), and only whole-line comments merge into a
+  block, so a trailing comment never pairs with the next line's.
+
+The guard is a floor, not the rule: it cannot see a one-line comment that says nothing, and the
+rule's "default to zero inline comments" half is still yours. RV-STYLE-1 remains the review item.
+
 ### 7. Money & time (invariants #5, #6 — canonical in CLAUDE.md)
 
 Money is integer **minor units** + ISO currency (invariant #5); time is UTC `Instant`, with booking

@@ -35,7 +35,11 @@ merge-don't-replace rule for the existing `hooks` block, and the pipe-test/`jq -
 flow used in phase 2) · `postgres` `N/A — no SQL, no migration` · `riviera-modulith` +
 `riviera-java-conventions` `N/A — the guard reads Java, it adds none` · `riviera-frontend` +
 `angular-developer` + `playwright-cli` `N/A — nothing under frontend/src or frontend/e2e` ·
-`riviera-local-debug` (run recipes — the checker's suite is `node --test`, no Gradle/npm)
+`riviera-local-debug` — N/A: no Gradle and no npm ran this slice, because the guard is
+dependency-free and its suite is `node --test`, so none of that skill's cloud-session recipes
+applied. `update-config` is the one routed skill the standing table does not name — a Claude Code
+hook is harness config rather than app code — so it is called out here for RV-PROC-1 to check
+against the diff.
 
 **Branch:** `claude/sdlc-529-f6p8y1` — the cloud session's designated remote branch, standing
 in for `feature/rv-style-1-inline-comment-guard` per the `riviera-sdlc` remote-session addendum.
@@ -47,38 +51,38 @@ in for `feature/rv-style-1-inline-comment-guard` per the `riviera-sdlc` remote-s
 > Written against the detector's own boundary — added lines in, findings out — not against
 > the git plumbing or the hook JSON, both of which are thin adapters over it.
 
-- [ ] **AC-1 (the #522 regression):** Given the `SecurityConfig` matcher comment exactly as
+- [x] **AC-1 (the #522 regression):** Given the `SecurityConfig` matcher comment exactly as
       commit `7d89c0b` wrote it — two `//` lines above `.requestMatchers(HttpMethod.GET,
       ADMIN_VENUE_COMMISSIONS_PATH)` — when the detector runs over that hunk as added lines,
       then it reports one finding naming the file and the block's first line.
       *Pinned by:* `check-inline-comments.test.mjs` › `flags the SecurityConfig two-line matcher block (#522)`
-- [ ] **AC-2 (the SCSS `/* */` case):** Given a two-line `/* … */` comment added inside a
+- [x] **AC-2 (the SCSS `/* */` case):** Given a two-line `/* … */` comment added inside a
       `:root` block in a `.scss` file, when the detector runs, then it reports one finding —
       i.e. the guard is comment-syntax-scoped, not `//`-only.
       *Pinned by:* `check-inline-comments.test.mjs` › `flags a two-line block comment in SCSS`
-- [ ] **AC-3 (doc comments exempt):** Given an added Javadoc `/** … */` spanning eight lines
+- [x] **AC-3 (doc comments exempt):** Given an added Javadoc `/** … */` spanning eight lines
       and an added TSDoc block, when the detector runs, then it reports nothing.
       *Pinned by:* `check-inline-comments.test.mjs` › `exempts Javadoc and TSDoc doc comments`
-- [ ] **AC-4 (one-liners pass):** Given added one-line `//`, `/* … */` and `<!-- … -->`
+- [x] **AC-4 (one-liners pass):** Given added one-line `//`, `/* … */` and `<!-- … -->`
       comments — including two one-line comments separated by a line of code — when the
       detector runs, then it reports nothing.
       *Pinned by:* `check-inline-comments.test.mjs` › `passes one-line comments`
-- [ ] **AC-5 (no false positive on strings):** Given an added line declaring a URL
+- [x] **AC-5 (no false positive on strings):** Given an added line declaring a URL
       (`"https://example.com"`), a Java text block containing `//`, and a line where `/*`
       appears inside a string literal, when the detector runs, then it reports nothing.
       *Pinned by:* `check-inline-comments.test.mjs` › `does not treat comment markers inside string literals as comments`
-- [ ] **AC-6 (diff-scoped, the hard constraint):** Given `styles.scss` and `SecurityConfig.java`
+- [x] **AC-6 (diff-scoped, the hard constraint):** Given `styles.scss` and `SecurityConfig.java`
       exactly as they stand on `main` — both carrying pre-existing multi-line inline comments —
       when the checker runs in `--diff` mode with no lines added, then it exits 0 and reports
       nothing. *Pinned by:* `check-inline-comments.test.mjs` › `reports nothing when a diff adds no lines`
       **and** the phase-1 whole-repo run recorded in AC-verification.
-- [ ] **AC-7 (fires at authoring time):** Given the `PostToolUse` hook installed in
+- [x] **AC-7 (fires at authoring time):** Given the `PostToolUse` hook installed in
       `.claude/settings.json`, when it is piped the payload Claude Code sends after an `Edit`
       of a file containing a diff-added multi-line inline comment, then the hook emits
       `hookSpecificOutput.additionalContext` naming the violation. *Pinned by:* the phase-2
       pipe-test recorded in AC-verification (a hook is config, not a unit — the detector under
       it is covered by AC-1..AC-6).
-- [ ] **AC-8 (the rule points at the tool):** Given `riviera-java-conventions` §6c and
+- [x] **AC-8 (the rule points at the tool):** Given `riviera-java-conventions` §6c and
       `riviera-review-overlay` RV-STYLE-1, when a reader reaches either, then both name
       `scripts/check-inline-comments.mjs` and state its language scope, so the review item
       points at the guard instead of duplicating the check by hand.
@@ -97,7 +101,7 @@ in for `feature/rv-style-1-inline-comment-guard` per the `riviera-sdlc` remote-s
 - **No SQL `--`.** Settled by precedent, not invented here: PR #522 finding F-6 declined
   exactly this, citing `V9__payout_ledger.sql`'s matching shape.
 - **No plan-doc File-structure guard.** The issue's related-recurrence note; kept out by the
-  triage call recorded below, and tracked as its own issue.
+  triage call recorded below, and tracked as its own issue — **#533**.
 - **No pre-commit hook and no Husky dependency.** The wiring decision picked the Claude Code
   hook + CI; a `git` pre-commit hook lives in `.git/hooks`, which is not version-controlled,
   so it would need an install step this slice does not want to add.
@@ -113,11 +117,11 @@ tool that fires earlier and leaves the review item's wording governing.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | False positive on a comment marker inside a string literal (`"https://…"`) — this repo is full of URLs and text-block SQL; one bad flag on a legitimate line and the guard gets switched off | high | high | The detector scans character-by-character tracking quote state (`"`, `'`, backtick, Java `"""` text blocks) rather than regex-matching `//`; AC-5 pins it | Claude | open |
-| R-2 | False positive on a **file-header** block comment — `styles.scss` opens with a multi-line `/* * … */` header, and PR #471 edited it; flagging that would fail the guard on its own repo | med | high | A block comment appearing before any non-comment content is treated as the file's doc comment and exempted, same category as Javadoc | Claude | open |
-| R-3 | Hook latency on every `Edit`/`Write` makes the session sluggish and the hook gets removed | low | med | The check is one `git diff` + a regex-free line scan of a single file; the hook is filtered by extension before any work, and wrapped so a failure can never block an edit | Claude | open |
-| R-4 | The hook is written correctly but never fires, giving false confidence that authoring-time coverage exists | med | med | Phase 2 does not claim done on the JSON alone: it pipe-tests the raw command, validates placement with `jq -e`, and proves the hook fires via a sentinel edit (the `update-config` verification flow) | Claude | open |
-| R-5 | The guard disagrees with the rule it enforces — the tool covers 4 languages, RV-STYLE-1's text names `#` too — and a future session "fixes" one to match the other | med | low | Phase 3 writes the scope into both `riviera-java-conventions` §6c and RV-STYLE-1, so the narrowing is stated where the rule is read, not only here (AC-8) | Claude | open |
+| R-1 | False positive on a comment marker inside a string literal (`"https://…"`) — this repo is full of URLs and text-block SQL; one bad flag on a legitimate line and the guard gets switched off | high | high | The detector scans character-by-character tracking quote state (`"`, `'`, backtick, Java `"""` text blocks) rather than regex-matching `//`; AC-5 pins it | Claude | closed — `175bac5`, pinned by the string-literal spec (URLs, `"/**/*.java"`, a Java text block) |
+| R-2 | False positive on a **file-header** block comment — `styles.scss` opens with a multi-line `/* * … */` header, and PR #471 edited it; flagging that would fail the guard on its own repo | med | high | A block comment appearing before any non-comment content is treated as the file's doc comment and exempted, same category as Javadoc | Claude | closed — `175bac5`, pinned by the file-header spec over `styles.scss`'s real header |
+| R-3 | Hook latency on every `Edit`/`Write` makes the session sluggish and the hook gets removed | low | med | The check is one `git diff` + a regex-free line scan of a single file; the hook is filtered by extension before any work, and wrapped so a failure can never block an edit | Claude | closed — `f9d119f`; the hook is extension-filtered, dependency-free and wrapped `|| true`, so it can never block an edit |
+| R-4 | The hook is written correctly but never fires, giving false confidence that authoring-time coverage exists | med | med | Phase 2 does not claim done on the JSON alone: it pipe-tests the raw command, validates placement with `jq -e`, and proves the hook fires via a sentinel edit (the `update-config` verification flow) | Claude | closed — `f9d119f`; pipe-test, `jq -e`, sentinel and a real `Edit`-tool violation all recorded below |
+| R-5 | The guard disagrees with the rule it enforces — the tool covers 4 languages, RV-STYLE-1's text names `#` too — and a future session "fixes" one to match the other | med | low | Phase 3 writes the scope into both `riviera-java-conventions` §6c and RV-STYLE-1, so the narrowing is stated where the rule is read, not only here (AC-8) | Claude | closed — this commit; §6c, RV-STYLE-1 and `frontend/.claude/CLAUDE.md` all carry the scope |
 
 ## Open questions / Assumptions
 
@@ -129,6 +133,11 @@ tool that fires earlier and leaves the review item's wording governing.
 
 ### Resolved
 
+- **A1 — the `#467/F-1 styles.scss` specimen is unreconstructable.** Confirmed at phase 0: PR #467
+  has no reviews and its merged commit touches no `styles.scss` hunk, consistent with the issue's
+  own note that the finding scored 25 confidence, *below the reporting bar*. AC-2 pins the same
+  class with a verbatim-shaped SCSS two-line block; `styles.scss`'s six real pre-existing blocks
+  serve as the clean-tree control instead. Recorded on #529 and in the PR body.
 - **Q1 — build the guard, or close `wontfix`?** → **Build it.** User decision, this session.
   Grounds recorded on the issue: #521 fixed a multi-line block on `SecurityConfig`'s matcher
   constants and #522 re-broke the same block days later, so habit alone does not survive a
@@ -137,7 +146,8 @@ tool that fires earlier and leaves the review item's wording governing.
   decision, this session. In this repo the author *is* the agent, so the hook is the only
   wiring that fires before the code is even committed; CI catches an author with hooks off.
 - **Q3 — does this issue also cover the plan-doc File-structure guard?** → **No, RV-STYLE-1
-  only.** User decision, this session (the issue left it to triage). Different input, own issue.
+  only.** User decision, this session (the issue left it to triage). Different input, own issue —
+  opened as **#533**, carrying the three constraints this slice learned.
 
 ## Availability & concurrency (invariant #2)
 
@@ -166,17 +176,16 @@ N/A — no contract change. No endpoint, DTO, or wire shape.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR — ready for review` (merged via PR #532)
 
-**Next action:** Phase 3 — point §6c and RV-STYLE-1 at the guard, open the plan-doc-guard
-follow-up issue, record the decision on #529, then close out.
+**Next action:** Review gate, then the Sonar gate's reported issue list, then merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Detector core, test-first | ✅ | `175bac5` |
 | 1 — Git front-ends (`--files`, `--diff`) + clean-tree proof | ✅ | `4468e5f` |
-| 2 — Wiring: PostToolUse hook + CI step | ✅ | this commit |
-| 3 — Rule docs name the guard; follow-up issue; close-out | ⏳ | |
+| 2 — Wiring: PostToolUse hook + CI step | ✅ | `f9d119f` |
+| 3 — Rule docs name the guard; follow-up issue; close-out | ✅ | this commit |
 
 **Positive control (phase 1).** An exit 0 is not evidence the plumbing works, so the #522 block
 was re-injected into `SecurityConfig.java` verbatim and the CLI run against it: `--files` exited
@@ -198,6 +207,17 @@ was re-injected into `SecurityConfig.java` verbatim and the CLI run against it: 
 file was reverted clean. That is AC-1 proven end-to-end through git, not only through the unit.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Docs-freshness run (phase 3, close-out step 5).** Range `origin/main..HEAD`. **One finding,
+patched:** `CLAUDE.md:107` enumerated what `ci.yml` runs ("backend build/test, frontend
+lint/test/build + e2e, and a SonarCloud scan") — the counting sweep's exact shape, since this
+slice adds the **fourth** job and the sentence is a stated present-tense fact in the file every
+session loads. Patched to name the inline-comment check and point at the hook. Checked and clean:
+no substrate doc enumerates the `.claude/settings.json` hooks (every hit is the `SessionStart`
+hook specifically, still true), `scripts/` is referenced only by individual filename and never as
+an inventory, `ci.yml`'s own "sonar needs both build jobs" stays true (the new job is not a build
+job and is not in `sonar`'s `needs`), and `CONTEXT.md` / `RESPONSIBILITIES.md` / `docs/adr/` state
+nothing this slice touches — no module, aggregate, endpoint or domain term changed.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
 Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule (run the
@@ -234,25 +254,25 @@ content annotated with which line numbers the diff **added**, return one finding
 block that (a) spans more than one line, (b) is not a doc comment, (c) is not a file header,
 and (d) has at least one added line.
 
-- [ ] **Step 1: Write the failing tests** — AC-1 and AC-2 first (the two named regressions),
+- [x] **Step 1: Write the failing tests** — AC-1 and AC-2 first (the two named regressions),
       then AC-3/AC-4 (exemptions), AC-5 (string safety), AC-6 (empty diff).
-- [ ] **Step 2: Run them, verify they fail** — `node --test "scripts/*.test.mjs"` → FAIL (module not found)
-- [ ] **Step 3: Minimal implementation** — the line scanner with quote-state tracking.
-- [ ] **Step 4: Run them, verify they pass** — `node --test "scripts/*.test.mjs"` → PASS
-- [ ] **Step 5: Generalization-audit pass**
-- [ ] **Step 6: Commit** — `git commit -m "Add the diff-scoped inline-comment detector (#529)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 2: Run them, verify they fail** — `node --test "scripts/*.test.mjs"` → FAIL (module not found)
+- [x] **Step 3: Minimal implementation** — the line scanner with quote-state tracking.
+- [x] **Step 4: Run them, verify they pass** — `node --test "scripts/*.test.mjs"` → PASS
+- [x] **Step 5: Generalization-audit pass**
+- [x] **Step 6: Commit** — `git commit -m "Add the diff-scoped inline-comment detector (#529)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Git front-ends and the clean-tree proof
 
 **Files:** Modify `scripts/check-inline-comments.mjs` · Modify `scripts/check-inline-comments.test.mjs`
 
-- [ ] **Step 1:** `--diff <baseRef>` — added lines from `git diff --unified=0 <base>...HEAD`.
-- [ ] **Step 2:** `--files <paths…>` — added lines of each path against `HEAD` (working tree),
+- [x] **Step 1:** `--diff <baseRef>` — added lines from `git diff --unified=0 <base>...HEAD`.
+- [x] **Step 2:** `--files <paths…>` — added lines of each path against `HEAD` (working tree),
       which is what the hook needs after an `Edit`.
-- [ ] **Step 3:** Prove AC-6 for real — run `--diff origin/main` on a clean `main` checkout and
+- [x] **Step 3:** Prove AC-6 for real — run `--diff origin/main` on a clean `main` checkout and
       on this branch; both report only what this branch actually writes.
-- [ ] **Step 4: Commit** + execution-status update.
+- [x] **Step 4: Commit** + execution-status update.
 
 ## Phase 2 — Wiring: PostToolUse hook + CI step
 
@@ -261,22 +281,22 @@ and (d) has at least one added line.
 Follows the `update-config` construction flow — dedup check, build the command, **pipe-test it
 raw**, write the JSON, validate with `jq -e`, then prove it fires with a sentinel.
 
-- [ ] **Step 1:** Build + pipe-test the hook command against a real repo file.
-- [ ] **Step 2:** Merge the `PostToolUse` entry into the existing `hooks` block — never replace it.
-- [ ] **Step 3:** `jq -e` placement validation.
-- [ ] **Step 4:** Prove it fires (sentinel), then clean up.
-- [ ] **Step 5:** Add the CI step; keep it diff-scoped against the PR base.
-- [ ] **Step 6: Commit** + execution-status update.
+- [x] **Step 1:** Build + pipe-test the hook command against a real repo file.
+- [x] **Step 2:** Merge the `PostToolUse` entry into the existing `hooks` block — never replace it.
+- [x] **Step 3:** `jq -e` placement validation.
+- [x] **Step 4:** Prove it fires (sentinel), then clean up.
+- [x] **Step 5:** Add the CI step; keep it diff-scoped against the PR base.
+- [x] **Step 6: Commit** + execution-status update.
 
 ## Phase 3 — The rule points at the tool; follow-up issue; close-out
 
 **Files:** Modify `.claude/skills/riviera-java-conventions/SKILL.md` · Modify `.claude/skills/riviera-review-overlay/SKILL.md`
 
-- [ ] **Step 1:** §6c and RV-STYLE-1 name the guard, its command, and its language scope (AC-8, R-5).
-- [ ] **Step 2:** Open the follow-up issue for the plan-doc File-structure guard (Q3).
-- [ ] **Step 3:** Record the decision on #529 (its AC-1).
-- [ ] **Step 4:** `riviera-docs-freshness` over the slice range; plan-doc final state.
-- [ ] **Step 5: Commit** + execution-status update.
+- [x] **Step 1:** §6c and RV-STYLE-1 name the guard, its command, and its language scope (AC-8, R-5).
+- [x] **Step 2:** Open the follow-up issue for the plan-doc File-structure guard (Q3).
+- [x] **Step 3:** Record the decision on #529 (its AC-1).
+- [x] **Step 4:** `riviera-docs-freshness` over the slice range; plan-doc final state.
+- [x] **Step 5: Commit** + execution-status update.
 
 ---
 
@@ -286,6 +306,7 @@ raw**, write the JSON, validate with `jq -e`, then prove it fires with a sentine
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-06 | Phase 2 — the rule now has a tool, so every place stating the rule could go stale | where the one-line rule is written down | `grep -rn "RV-STYLE-1\|one line, or they are not written" .claude/skills frontend/.claude CLAUDE.md` | 3 (`riviera-java-conventions` §6c, `riviera-review-overlay` RV-STYLE-1, `frontend/.claude/CLAUDE.md` §Comments) | fixed all 3 — the TS-side file was **not** in the issue's ACs, which name only the two skills; leaving it would have left the frontend rule pointing at a review gate the backend rule no longer relies on |
 
 ---
 
@@ -293,31 +314,36 @@ raw**, write the JSON, validate with `jq -e`, then prove it fires with a sentine
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1..AC-6:** Run `node --test "scripts/*.test.mjs"` → all pass. Verified at commit `<sha>`.
-- [ ] **AC-6 (real tree):** Run `node scripts/check-inline-comments.mjs --diff origin/main` →
-      exit 0 on an unchanged tree. Verified at commit `<sha>`.
-- [ ] **AC-7:** Pipe-test transcript recorded in phase 2. Verified at commit `<sha>`.
-- [ ] **AC-8:** Both skill files name the guard. Verified at commit `<sha>`.
+- [x] **AC-1..AC-6:** `node --test "scripts/*.test.mjs"` → 11 tests, 11 pass, 0 fail. Verified at `175bac5` (AC-1..AC-6) and `4468e5f` (the two hunk-parser specs).
+- [x] **AC-1 (end-to-end, not only the unit):** the #522 block re-injected into the real
+      `SecurityConfig.java`; `--files` exited 1 naming `SecurityConfig.java:422-423`; file reverted. Verified at `4468e5f`.
+- [x] **AC-6 (real tree):** `--diff origin/main` and `--diff HEAD` both exit 0 on an unchanged
+      checkout, and `--files` is silent over `styles.scss` + `SecurityConfig.java` despite their
+      nine pre-existing multi-line blocks. Verified at `4468e5f`.
+- [x] **AC-7:** pipe-tested on three payloads, then a real violation introduced through the `Edit`
+      tool came back in-context naming `scripts/check-inline-comments.mjs:150-151`. Verified at `f9d119f`.
+- [x] **AC-8:** `riviera-java-conventions` §6c, `riviera-review-overlay` RV-STYLE-1 and
+      `frontend/.claude/CLAUDE.md` all name the guard and its scope. Verified at this commit.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND
       findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.

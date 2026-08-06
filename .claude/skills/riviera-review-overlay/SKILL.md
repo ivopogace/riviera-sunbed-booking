@@ -71,6 +71,24 @@ method, or field is the repo's documented convention (`riviera-java-conventions`
 `api/` surface depends on it) and stays as long as it earns its length. Applies to what the diff
 writes; don't reflow untouched comments to satisfy it.
 
+**Don't walk this by hand — run the guard** (#529, after the item was raised on eight consecutive
+PRs): `node scripts/check-inline-comments.mjs --diff origin/main` lists every multi-line inline
+comment the diff wrote, and the same check runs from a `PostToolUse` hook while the author edits
+and as a CI job on the PR. A clean run discharges the mechanical half of this item.
+
+What it does **not** cover, which is what this item is still for:
+
+- **`#` files** (shell, YAML, `.properties`) and **SQL `--`** are outside the tool's four languages
+  — `#` because every such file here carries multi-line header prose as its convention, SQL because
+  F-6 on PR #522 declined exactly that, citing `V9__payout_ledger.sql`. Judge these by eye, and
+  lean toward leaving them alone.
+- **A one-line comment that shouldn't exist at all.** The rule's other half is "default to zero
+  inline comments in a method"; the guard counts lines, it cannot weigh whether the *why* was
+  already available from the code.
+
+The guard is diff-scoped by construction, so it will never flag the pre-existing multi-line blocks
+in `SecurityConfig` or `styles.scss` — and neither should you.
+
 ## RV-PROC-1 — skill-routing gate honored (when a plan doc is in scope)
 
 Cross-check the plan doc's **Skills consulted** line against what the diff actually
