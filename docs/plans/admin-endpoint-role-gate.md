@@ -105,8 +105,9 @@ for `feature/admin-endpoint-role-gate` (`riviera-sdlc` §Remote/cloud session ad
 - **Actuator endpoints.** `WebMvcEndpointHandlerMapping` entries are not `@WebMvcTest`-loaded
   and keep their own exposure lockdown (#75) — the same scope line `EndpointRoleGateCoverageTest`
   draws.
-- **Fixing the pre-existing duplicated `ai.riviera.platform.shared.ResubmissionOutcome` imports
-  in `WebSliceStubs.java`** — real, unrelated, and out of this slice's scope; raised separately.
+- ~~**Fixing the pre-existing duplicated `ResubmissionOutcome` imports in `WebSliceStubs.java`**~~
+  — **pulled into scope on the maintainer's instruction** after the review gate surfaced it (see
+  F-3). Test-only, no production file touched, so AC-6 still holds.
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
@@ -210,6 +211,7 @@ no epic checklist to tick (close-out step 2 is N/A).
 | 1 — Prove it fails: omission + downgrade mutations | ✅ | evidence-only, no code shipped (see *Mutation evidence*) |
 | 2 — Docs freshness + close-out | ✅ | `39adb6a` (Javadoc) · `f7db4dc` (docs-freshness patches) |
 | 3 — Review-gate fix round | ✅ | `157226e` (F-1) · `8cc99e6` (SHA citation) |
+| 4 — Import cleanup (F-3, maintainer-requested) | ✅ | `fec6cb6` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -220,6 +222,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | review gate (`/code-review` agent #4, prior-PR recurrence) | **RV-PROC-1** — *Skills consulted* omitted `codebase-design` although the slice makes a seam decision (share vs duplicate → `EndpointProbes`). The recurring #447/#459/#516 omission. Note the review split on it: the overlay agent read the routing table literally (no module/port/adapter in the diff → row does not fire) and passed the item. Both readings have merit, and loading the skill settled it **in favour of the finding** — it produced a real code change, which is the whole argument for the gate. | **fixed in `157226e`** — loaded `codebase-design`, re-vetted the seam, made `verbOf`/`patternOf`/`concretePath` private (interface 4 → 1 method), documented why, updated the *Skills consulted* line. |
+| F-3 | review gate (out-of-scope observation, then maintainer instruction) | `WebSliceStubs.java` carried the same `import ai.riviera.platform.shared.ResubmissionOutcome;` **11 times** — legal Java, so it compiled and no linter caught it; almost certainly a bad sweep during the #371 `shared`-kernel extraction or #454. | **fixed in `fec6cb6`** — 10 duplicates removed and the survivor moved into the file's existing alphabetical `shared` block (after `CurrentOperator`), where the other two `shared` imports already sat; the strays had been wedged between the `notification` and `operator` groups. Import count 131 → 121. Verified by the 10 `WebSliceStubs`-dependent web-slice tests. |
 | F-2 | CI (CodeQL) | Both CodeQL runs on the branch concluded `failure` with their `Analyze` jobs **cancelled** after ~15 min — never leaving `queued`, so they never ran (the workflow's own cap is `timeout-minutes: 20`). Not a base-branch failure: CodeQL is green on `main` across the six most recent runs, including this PR's base `108f958`. Not plausibly caused by the diff either — `build-mode: none` extracts source, and the diff is one test class, one test helper and Javadoc. | **closed — infrastructure, not the diff.** The re-run of `31122752766` completed **success** with no code change, confirming queue starvation rather than a finding. Recorded here rather than silently re-run, because "a scan that was cancelled" and "a scan that passed" are not the same evidence. |
 
 ---
@@ -243,6 +246,9 @@ Skill-routing gate for what the fix touches *before* editing).
   behaviour change): name the new guard on the `ADMIN_ROLE` constant, mirroring the existing
   `EndpointRoleGateCoverageTest` pointer on `BEACH_MAP_PATH`, so the next author adding an admin
   endpoint learns which test will fail and why.
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — **F-3 import cleanup**: 10
+  duplicate `ResubmissionOutcome` imports removed, survivor moved into the existing alphabetical
+  `shared` block. Import-only; no stub, bean or signature changed.
 - `.claude/skills/riviera-review-overlay/references/backend-conventions.md` — **docs-freshness
   finding** (step 3): RV-BE-9 named a pinning test for the venue-scoped half of invariant #13 and
   none for the `/api/admin/**` half, because none existed. Now cites `AdminSurfaceRoleGateTest`.
@@ -370,6 +376,7 @@ hand-maintained list structurally cannot.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-06 | Phase 4 — F-3's duplicate imports | Whether any other file carries duplicate imports from the same `shared`-kernel sweep | `for f in $(git ls-files '*.java'); do grep '^import ' $f \| sort \| uniq -d; done` | **1** (`WebSliceStubs.java` only) | **Swept the whole repo, not just the reported file** — a duplicate that appeared 11 times in one file is evidence of a bad mechanical edit, and those rarely land in exactly one place. Repo-wide sweep over every tracked `.java` file returned **no other duplicate import**, so the fix is complete rather than a first instance. |
 | 2026-08-06 | Phase 0 — the shared-probe extraction | Other tests hand-rolling endpoint-probe synthesis that would drift from `EndpointProbes` | `grep -rn "PATH_VARIABLE_SAMPLES\|concretePath" platform/src/test` | 2 (both now the shared helper's own definition) | **Fixed all** — `EndpointRoleGateCoverageTest` moved onto the helper rather than the new guard copying it. `MeSurfaceRoleGateTest`/`VenueWriteRoleGateTest` drive *named* endpoints, not sweeps, so they need no synthesis and were deliberately left alone. |
 | 2026-08-06 | Phase 1 — R-5's sharper form (a handler that throws, not 400s) | Whether the same "dispatched" discriminator is used elsewhere and would break the same way | `grep -rn "getHandler()" platform/src/test` | 3 (`EndpointRoleGateCoverageTest`, `MeSurfaceRoleGateTest`, this guard) | **Skipped for the other two, deliberately** — both assert `getHandler()` is **null** (a *rejection*), which no thrown handler exception can fake; only the positive-control direction is exposed to it, and only this guard has one. |
 
