@@ -166,14 +166,15 @@ N/A — no contract change. No endpoint, DTO, or wire shape.
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write the failing detector specs (AC-1..AC-5 first), then the detector.
+**Next action:** Phase 1 — add the `--diff` and `--files` git front-ends over the detector, then
+prove AC-6 against the real tree.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Detector core, test-first | | |
-| 1 — Git front-ends (`--files`, `--diff`) + clean-tree proof | | |
+| 0 — Detector core, test-first | ✅ | SHA recorded in the phase-1 commit window |
+| 1 — Git front-ends (`--files`, `--diff`) + clean-tree proof | ⏳ | |
 | 2 — Wiring: PostToolUse hook + CI step | | |
 | 3 — Rule docs name the guard; follow-up issue; close-out | | |
 
@@ -216,9 +217,9 @@ and (d) has at least one added line.
 
 - [ ] **Step 1: Write the failing tests** — AC-1 and AC-2 first (the two named regressions),
       then AC-3/AC-4 (exemptions), AC-5 (string safety), AC-6 (empty diff).
-- [ ] **Step 2: Run them, verify they fail** — `node --test scripts/` → FAIL (module not found)
+- [ ] **Step 2: Run them, verify they fail** — `node --test "scripts/*.test.mjs"` → FAIL (module not found)
 - [ ] **Step 3: Minimal implementation** — the line scanner with quote-state tracking.
-- [ ] **Step 4: Run them, verify they pass** — `node --test scripts/` → PASS
+- [ ] **Step 4: Run them, verify they pass** — `node --test "scripts/*.test.mjs"` → PASS
 - [ ] **Step 5: Generalization-audit pass**
 - [ ] **Step 6: Commit** — `git commit -m "Add the diff-scoped inline-comment detector (#529)"`
 - [ ] **Step 7: Update plan-doc execution status** in the same commit window.
@@ -273,7 +274,7 @@ raw**, write the JSON, validate with `jq -e`, then prove it fires with a sentine
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1..AC-6:** Run `node --test scripts/` → all pass. Verified at commit `<sha>`.
+- [ ] **AC-1..AC-6:** Run `node --test "scripts/*.test.mjs"` → all pass. Verified at commit `<sha>`.
 - [ ] **AC-6 (real tree):** Run `node scripts/check-inline-comments.mjs --diff origin/main` →
       exit 0 on an unchanged tree. Verified at commit `<sha>`.
 - [ ] **AC-7:** Pipe-test transcript recorded in phase 2. Verified at commit `<sha>`.
