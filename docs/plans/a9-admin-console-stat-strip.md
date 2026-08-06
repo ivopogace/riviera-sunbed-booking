@@ -224,7 +224,9 @@ client for the same endpoint; its TSDoc gains its second consumer.
 
 ## Execution status
 
-**Stage pointer:** `merge close-out` — implementation complete, CI + Sonar green, review gate run.
+**Stage pointer:** `merge close-out` — implementation complete, CI + Sonar green, **review gate run in full**
+(5-agent fan-out + `riviera-review-overlay`): **1 finding, fixed** (F-2, an inaccurate TSDoc sentence);
+reviewers 1, 3 and 4 returned no issues.
 
 **Next action:** none — merged via PR #527; tick A9 on epic #348 and post the epic-state comment.
 
@@ -244,6 +246,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | sonar (PR #527, first analysis) | `typescript:S7059` CRITICAL — async call in `AdminConsoleStats`' constructor. The gate read **passed** while reporting it; A3's hand-off note 4 is why the list was pulled instead of the badge | fixed-in-`6587a67` — moved to `ngOnInit`, the fix `operator-home.ts:157` already established in this repo for the same rule |
+| F-2 | review gate (5-agent fan-out, reviewer 2 — shallow bug scan) | `admin-operators.ts` `countsKnown` TSDoc stated the lists "are emptied again on failure". They are not — the catch leaves `pending`/`accounts` as they were and only flips `countsKnown`. A false stated fact, the class A3's review flagged twice | fixed — sentence corrected to "left untouched on failure"; no behaviour change, the tiles were always gated on `countsKnown` |
 
 ---
 
