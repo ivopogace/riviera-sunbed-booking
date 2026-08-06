@@ -38,13 +38,21 @@ export function sectionOf(text) {
 }
 
 /** A backticked span that could be a path: no spaces, and a file extension. `*` allowed. */
-const PATH_LIKE = /^[\w@][\w./@*-]*\.[A-Za-z0-9]+$/;
+const PATH_LIKE = /^[\w@.][\w./@*-]*\.[A-Za-z0-9]+$/;
 
 /** A backticked span naming a directory, e.g. `frontend/src/app/venue-admin/`. */
-const DIR_LIKE = /^[\w@][\w./@*-]*\/$/;
+const DIR_LIKE = /^[\w@.][\w./@*-]*\/$/;
+
+/** An extension-less dotfile, e.g. `.nvmrc`. */
+const DOTFILE = /^\.[A-Za-z0-9][\w-]*$/;
 
 /** A bare extension, e.g. `.html` or `.a11y.spec.ts` — a sibling of the path written before it. */
 const SIBLING_EXT = /^\.[A-Za-z0-9][\w.]*$/;
+
+/** True when a token denotes a file or directory rather than prose. */
+function isPath(token) {
+  return PATH_LIKE.test(token) || DIR_LIKE.test(token) || DOTFILE.test(token);
+}
 
 /** `privacy-policy.ts` + `.a11y.spec.ts` → `privacy-policy.a11y.spec.ts`. */
 function siblingOf(base, extension) {
@@ -74,8 +82,12 @@ function expandPipes(token) {
  *
  * Parsed line by line because one real idiom is positional: a bare extension attaches to the path
  * written before it *on the same line* (`` `privacy-policy.ts`/`.html` ``). Bullets that carry only
- * prose in backticks — a method name, an HTTP route — contribute nothing, since neither pattern
- * above matches them.
+ * prose in backticks — a method name, an HTTP route — contribute nothing, since no pattern above
+ * matches them.
+ *
+ * A leading dot alone does not mean "extension": `.github/workflows/ci.yml` is a path and `.nvmrc`
+ * is a file, while `.spec.ts` is a sibling only because a path precedes it on the line. The `/` and
+ * that preceding path are what separate the three.
  */
 export function listedPaths(section) {
   const listed = [];
@@ -86,12 +98,12 @@ export function listedPaths(section) {
     for (const [, span] of line.matchAll(/`([^`\n]+)`/g)) {
       const token = span.trim();
 
-      if (SIBLING_EXT.test(token)) {
-        if (previous) listed.push(siblingOf(previous, token));
+      if (previous && SIBLING_EXT.test(token)) {
+        listed.push(siblingOf(previous, token));
         continue;
       }
       for (const candidate of expandBraces(token).flatMap(expandPipes)) {
-        if (!PATH_LIKE.test(candidate) && !DIR_LIKE.test(candidate)) continue;
+        if (!isPath(candidate)) continue;
         listed.push(candidate);
         if (!candidate.endsWith('/')) previous = candidate;
       }
@@ -99,6 +111,13 @@ export function listedPaths(section) {
   }
   return listed;
 }
+
+/**
+ * RegExp metacharacters that must be escaped to stay literal. A `Set` membership test rather than
+ * `String#replace`, which without `/g` escapes only the first match — correct here only by accident
+ * of being handed one character at a time, and flagged as such by CodeQL on PR #538.
+ */
+const RESERVED = new Set([...'.+^${}()|[]\\?']);
 
 /**
  * Compiles a listed token into a RegExp body: `**` crosses directory boundaries, a single `*` stays
@@ -119,7 +138,7 @@ function globBody(token) {
       body += '[^/]*';
       i += 1;
     } else {
-      body += token[i].replace(/[.+^${}()|[\]\\?]/, '\\$&');
+      body += RESERVED.has(token[i]) ? `\\${token[i]}` : token[i];
       i += 1;
     }
   }

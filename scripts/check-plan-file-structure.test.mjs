@@ -169,6 +169,36 @@ test('idiom: a directory covers what it contains (PR #505)', () => {
   assert.deepEqual(omissions, []);
 });
 
+/**
+ * Found by the guard failing on its own PR (#538): `.github/…` and `.claude/…` were invisible,
+ * because a path had to start with a word character while a leading dot meant "sibling extension".
+ * The two are told apart by the `/`, not by the dot — and a repo whose CI, skills and hooks all
+ * live under dot-directories is one where that blind spot hides most tooling changes.
+ */
+test('a path rooted at a dot-directory is a path, not an extension', () => {
+  const body = [
+    '- `.github/workflows/ci.yml` — one step appended',
+    '- `.claude/skills/riviera-plan-doc/SKILL.md` — names the command',
+    '- `.nvmrc` — the pinned Node version',
+  ].join('\n');
+  const omissions = findOmissions({
+    docs: [doc(withHeading(body))],
+    changed: ['.github/workflows/ci.yml', '.claude/skills/riviera-plan-doc/SKILL.md', '.nvmrc'],
+  });
+  assert.deepEqual(omissions, []);
+});
+
+test('a bare extension is still an extension when a path precedes it', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `frontend/src/app/booking/booking-dialog.ts` / `.spec.ts`'))],
+    changed: [
+      'frontend/src/app/booking/booking-dialog.ts',
+      'frontend/src/app/booking/booking-dialog.spec.ts',
+    ],
+  });
+  assert.deepEqual(omissions, []);
+});
+
 test('a backticked span that is not a path is not a listing', () => {
   const body = [
     '- `platform/src/main/java/ai/riviera/platform/venue/api/VenueRates.java` — add',

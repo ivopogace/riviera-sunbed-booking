@@ -31,9 +31,10 @@ template — forced the Non-goals section that fixes the check's direction as di
 and the risk register that surfaced the draft-PR red-while-lagging posture) · `tdd` (each
 phase writes the failing `node --test` case first; the five parser idioms are pinned as
 regression fixtures *before* the parser learns them) · `riviera-review-overlay` (review gate
-— due at ready-for-review) · `riviera-docs-freshness` (due at close-out over this PR's own
-merge span — the slice makes the *second* diff-scoped hygiene check, so every doc saying
-"the diff-scoped inline-comment check" is a counting-sweep candidate)
+— due at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD`,
+**2 findings, both patched** — the counting sweep was the point: this slice makes the *second*
+diff-scoped hygiene check, so `CLAUDE.md`'s CI/CD paragraph and `docs/plans/ci-pipeline.md`'s
+required-context note both described a job that runs one)
 
 > Routed skills the gate did **not** match, and why: `postgres` (no migration), `riviera-modulith`
 > + `riviera-java-conventions` (no backend Java), `riviera-frontend` + `angular-developer` +
@@ -185,7 +186,7 @@ merge span, open the R-5 follow-up issue, then mark the PR ready for review.
 | 0 — Detector core: section parse + set comparison | ✅ | `6dd67d3` |
 | 1 — Path idioms + exemptions + the real-case fixtures | ✅ | `b8140d3` |
 | 2 — Git front-end and CLI | ✅ | `572a92d` |
-| 3 — CI wiring + `riviera-plan-doc` names the command | ✅ | recorded by phase 4 |
+| 3 — CI wiring + `riviera-plan-doc` names the command | ✅ | `c22bfd2` |
 | 4 — Docs sweep + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -196,7 +197,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (run `31094385031`, the guard failing on its **own** PR) | Paths rooted at a dot-directory (`.github/…`, `.claude/…`) were invisible to the parser: a path had to open with a word character, while a leading dot was read as "sibling extension". All three of this slice's own tooling paths were flagged despite being listed. The two forms are told apart by the `/`, not by the dot | fixed — `isPath` now admits dot-rooted paths and extension-less dotfiles, and `SIBLING_EXT` applies only when a path precedes it on the line. Pinned by `a path rooted at a dot-directory is a path, not an extension` **and** `a bare extension is still an extension when a path precedes it`, so the widening did not undo the #464 idiom. Re-running the 60-commit audit dropped the historical flag count 390 → **373**: 17 paths that were false positives all along |
+| F-2 | CodeQL (high, `check-plan-file-structure.mjs:122`) | `String#replace` without `/g` in `globBody` — "replaces only the first occurrence". Correct in practice only because it was handed one character at a time, which is an accident rather than a design | fixed — a `RESERVED` set membership test, no regex replace. `*` is deliberately **not** in the set: it is the one character that must never be escaped, and the scanner consumes it before this branch |
 
 ---
 
@@ -213,7 +215,7 @@ Skill-routing gate for what the fix touches *before* editing).
   including the two real-history fixtures.
 - `docs/plans/plan-file-structure-guard.md` — this plan.
 
-**Modified (4)**
+**Modified (5)**
 
 - `.github/workflows/ci.yml` — one step appended to the existing `inline-comments` job, plus a
   comment recording that the job's `name:` is a ruleset-required context and must not change.
@@ -221,9 +223,11 @@ Skill-routing gate for what the fix touches *before* editing).
   (AC-10).
 - `.claude/skills/riviera-plan-doc/references/plan-doc-template.md` — the File-structure section's
   blockquote names the command (AC-10).
-- `CLAUDE.md` — the CI/CD paragraph says "a diff-scoped inline-comment check (RV-STYLE-1, #529)";
-  with a second check in that job it becomes two. The counting sweep `riviera-docs-freshness`
-  exists to catch (phase 4).
+- `CLAUDE.md` — the CI/CD paragraph said "a diff-scoped inline-comment check (RV-STYLE-1, #529)";
+  with a second check in that job it is two. Found by the phase-4 counting sweep.
+- `docs/plans/ci-pipeline.md` — the required-context list still reads **7** and stays true (this
+  slice adds a step, not a job), but the seventh context now gates two guards. Same sweep. Listed
+  here as a live doc, not as a historical plan record.
 
 ---
 

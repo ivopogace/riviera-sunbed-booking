@@ -130,7 +130,12 @@ coverage corrections folded in here.
   `Analyze (java-kotlin)`, `Analyze (javascript-typescript)`, `CodeQL`, `SonarCloud Code Analysis`.
   **#534 added a seventh**, `Inline comments (RV-STYLE-1)` — the CI backstop #529/PR #532 shipped,
   which until then ran and reported on every PR without blocking a merge. The current list is those
-  **7**. Note the count returned to 7 but the *set* did not: the original seven included the
+  **7**. Since **#533** that seventh context covers **two** diff-scoped hygiene guards, not one: the
+  job also runs the plan doc's File-structure check. The context count is unchanged because #533
+  added a *step*, deliberately — the ruleset names contexts by job name, so a new or renamed job
+  would need a ruleset edit to block anything (and a rename would break every PR, #413/#420). The
+  name therefore now understates what the context gates. Note the count returned to 7 but the *set*
+  did not: the original seven included the
   job-level `SonarCloud scan`, which #419 removed; today's seventh is the RV-STYLE-1 check. A "7"
   elsewhere in this doc dated to #413/#417 refers to the **old** set.
   — *Owner:* maintainer · *Resolved by:* the ruleset read above, re-verified per #534.
