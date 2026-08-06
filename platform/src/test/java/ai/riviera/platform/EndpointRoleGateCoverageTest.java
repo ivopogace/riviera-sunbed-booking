@@ -2,29 +2,22 @@ package ai.riviera.platform;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 /**
  * The recurrence guard for the defect class behind #316, #317 and #328: <strong>a mapped endpoint
@@ -54,7 +47,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * {@code RateLimitFilter} runs <em>ahead of</em> authorization) would all look exactly like "the
  * filter blocked it" and the guard would pass while verifying nothing. Every probe therefore also
  * carries a unique {@code X-Forwarded-For} (#127: shared buckets across a cached-context full-suite
- * run are how green scoped batches become a CI-only wall of {@code 429}s).
+ * run are how green scoped batches become a CI-only wall of {@code 429}s) — supplied, with the rest of
+ * the request synthesis, by {@link EndpointProbes}, which {@link AdminSurfaceRoleGateTest} shares.
+ *
+ * <p><strong>Role-agnostic by design</strong>, and it must stay that way: {@link #PROBE_ROLE} is
+ * granted to nobody, so this guard proves a gate <em>exists</em> and never which role it names — a
+ * matcher downgraded from {@code ADMIN} to {@code OPERATOR} keeps refusing this principal. Pinning the
+ * role of the {@code /api/admin/**} surface is {@link AdminSurfaceRoleGateTest}'s job (#528); don't
+ * fold it in here, or a whole-surface guard acquires one namespace's role policy.
  *
  * <p><strong>Known limitation — this is an escalation guard, not a public-access guard.</strong> The
  * probe principal is <em>authenticated</em>, so a {@code permitAll} endpoint and one falling through to
@@ -117,17 +117,7 @@ class EndpointRoleGateCoverageTest {
 	/** A principal that authenticates but holds no authority the application grants anywhere. */
 	private static final String PROBE_ROLE = "NOBODY";
 	private static final String PROBE_USER = "probe";
-	/** An empty JSON object parses, so a probed write fails in validation rather than in Jackson. */
-	private static final String EMPTY_JSON_BODY = "{}";
-	/** Sample values by path-variable name; anything unlisted becomes {@link #DEFAULT_SAMPLE}. */
-	private static final Map<String, String> PATH_VARIABLE_SAMPLES = Map.of(
-			"provider", "google",
-			"code", "PROBE999",
-			"rowLabel", "A",
-			"slot", "COVER",
-			"hash", "0123456789abcdef");
-	private static final String DEFAULT_SAMPLE = "1";
-	private static final Pattern PATH_VARIABLE = Pattern.compile("\\{([^/{}]+)}");
+	private static final RequestPostProcessor PROBE_PRINCIPAL = user(PROBE_USER).roles(PROBE_ROLE);
 
 	@Autowired
 	MockMvc mvc;
@@ -147,9 +137,7 @@ class EndpointRoleGateCoverageTest {
 				.containsAll(DECLARED_REACHABLE);
 
 		for (String endpoint : endpoints) {
-			String verb = endpoint.substring(0, endpoint.indexOf(' '));
-			String pattern = endpoint.substring(endpoint.indexOf(' ') + 1);
-			MvcResult result = mvc.perform(probe(verb, pattern)).andReturn();
+			MvcResult result = mvc.perform(EndpointProbes.probe(endpoint, PROBE_PRINCIPAL)).andReturn();
 			boolean dispatched = result.getHandler() != null;
 			int status = result.getResponse().getStatus();
 
@@ -195,28 +183,5 @@ class EndpointRoleGateCoverageTest {
 						+ "green run here would prove nothing")
 				.isNotEmpty();
 		return endpoints;
-	}
-
-	private static MockHttpServletRequestBuilder probe(String verb, String pattern) {
-		HttpMethod method = HttpMethod.valueOf(verb);
-		MockHttpServletRequestBuilder builder = request(method, concretePath(pattern))
-				.with(csrf())
-				.with(user(PROBE_USER).roles(PROBE_ROLE))
-				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp());
-		return HttpMethod.GET.equals(method) || HttpMethod.DELETE.equals(method)
-				? builder
-				: builder.contentType(MediaType.APPLICATION_JSON).content(EMPTY_JSON_BODY);
-	}
-
-	/** Substitute each {@code {var}} with a sample value, so the probe resolves to a real handler. */
-	private static String concretePath(String pattern) {
-		Matcher variable = PATH_VARIABLE.matcher(pattern);
-		StringBuilder path = new StringBuilder();
-		while (variable.find()) {
-			variable.appendReplacement(path, Matcher.quoteReplacement(
-					PATH_VARIABLE_SAMPLES.getOrDefault(variable.group(1), DEFAULT_SAMPLE)));
-		}
-		variable.appendTail(path);
-		return path.toString();
 	}
 }

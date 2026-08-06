@@ -67,7 +67,21 @@ class SecurityConfig {
 	private static final String OPERATOR_ROLE = "OPERATOR";
 	/** The role gating the signed-in tourist's own-bookings surface (S3 #114). */
 	private static final String CUSTOMER_ROLE = "CUSTOMER";
-	/** The platform-admin role that gates the {@code /api/admin/operators/**} approval surface (S6 #115). */
+	/**
+	 * The platform-admin role that gates the {@code /api/admin/operators/**} approval surface (S6 #115)
+	 * — and, uniformly since #348 A4 retired the last carve-out, <strong>every</strong> path in the
+	 * {@code /api/admin/**} namespace.
+	 *
+	 * <p>That uniformity is machine-checked by {@code AdminSurfaceRoleGateTest} (#528), which discovers
+	 * the mapped {@code /api/admin/**} endpoints rather than reading a list and requires each to refuse
+	 * both non-admin principal types. It fails on the two ways the property breaks: a matcher
+	 * <em>downgraded</em> to another role (the pre-#521 {@code /api/admin/payout-batches} state), and —
+	 * the likelier one, since it arrives by omission rather than by an edit anyone reviews — a new admin
+	 * endpoint added below with <strong>no matcher at all</strong>, which
+	 * {@code .anyRequest().authenticated()} would otherwise hand to any signed-in operator or tourist.
+	 * Adding an admin endpoint therefore means adding its {@code hasRole(ADMIN_ROLE)} rule; there is no
+	 * allow-list to opt out through, deliberately.
+	 */
 	private static final String ADMIN_ROLE = "ADMIN";
 	/** A single laid-out set (PATCH/DELETE target); session + CSRF token required (issue #109). */
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
