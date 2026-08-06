@@ -198,16 +198,18 @@ N/A — no contract change. No endpoint, DTO, status code or error body moves.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft opened, awaiting CI; review + sonar gates due at ready-for-review`
+**Stage pointer:** `merge close-out — all three gates run and green; merged via PR #541`
 
-**Next action:** Confirm the draft PR's CI run is green (R-3's rate-limit question is answerable
-only there), then mark ready for review and run the review + Sonar gates.
+**Next action:** None pending in-repo. Post-merge remainder is GitHub-only (no commit): confirm
+issue #528 closed by the PR's `Closes #528`. This slice belongs to no tracking epic, so there is
+no epic checklist to tick (close-out step 2 is N/A).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The guard (discover + probe both principal types) | ✅ | `39adb6a` |
 | 1 — Prove it fails: omission + downgrade mutations | ✅ | evidence-only, no code shipped (see *Mutation evidence*) |
-| 2 — Docs freshness + close-out | ✅ | `39adb6a` (Javadoc + close-out folded into the one code commit — the slice is a single cohesive change) |
+| 2 — Docs freshness + close-out | ✅ | `39adb6a` (Javadoc) · `f7db4dc` (docs-freshness patches) |
+| 3 — Review-gate fix round | ✅ | `157226e` (F-1) · `8cc99e6` (SHA citation) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -218,7 +220,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | review gate (`/code-review` agent #4, prior-PR recurrence) | **RV-PROC-1** — *Skills consulted* omitted `codebase-design` although the slice makes a seam decision (share vs duplicate → `EndpointProbes`). The recurring #447/#459/#516 omission. Note the review split on it: the overlay agent read the routing table literally (no module/port/adapter in the diff → row does not fire) and passed the item. Both readings have merit, and loading the skill settled it **in favour of the finding** — it produced a real code change, which is the whole argument for the gate. | **fixed in `157226e`** — loaded `codebase-design`, re-vetted the seam, made `verbOf`/`patternOf`/`concretePath` private (interface 4 → 1 method), documented why, updated the *Skills consulted* line. |
-| F-2 | CI (CodeQL) | Both CodeQL runs on the branch concluded `failure` with their `Analyze` jobs **cancelled** after ~15 min — never leaving `queued`, so they never ran (the workflow's own cap is `timeout-minutes: 20`). Not a base-branch failure: CodeQL is green on `main` across the six most recent runs, including this PR's base `108f958`. Not plausibly caused by the diff either — `build-mode: none` extracts source, and the diff is one test class, one test helper and Javadoc. | **re-run triggered** on run `31122752766`; outcome tracked before merge. |
+| F-2 | CI (CodeQL) | Both CodeQL runs on the branch concluded `failure` with their `Analyze` jobs **cancelled** after ~15 min — never leaving `queued`, so they never ran (the workflow's own cap is `timeout-minutes: 20`). Not a base-branch failure: CodeQL is green on `main` across the six most recent runs, including this PR's base `108f958`. Not plausibly caused by the diff either — `build-mode: none` extracts source, and the diff is one test class, one test helper and Javadoc. | **closed — infrastructure, not the diff.** The re-run of `31122752766` completed **success** with no code change, confirming queue starvation rather than a finding. Recorded here rather than silently re-run, because "a scan that was cancelled" and "a scan that passed" are not the same evidence. |
 
 ---
 
@@ -326,6 +328,15 @@ hand-maintained list structurally cannot.
 
 ---
 
+## Gate results (PR #541)
+
+| Gate | Outcome |
+|---|---|
+| CI | Green — backend, frontend, repo hygiene (both diff-scoped guards). **R-3 closed here and only here:** the ~66 probes survived the cached-context full-suite run with no `429`, which a scoped run cannot demonstrate. |
+| CodeQL | Green on re-run (F-2 — the first two attempts were queue starvation, never executed). |
+| Review | Ran at high effort, 6 dimensions. 1 finding (F-1), fixed in `157226e`. |
+| Sonar | Green **and its reported list verified empty via the API**, not inferred from the badge: `measures` populated (`new_lines` 15) and the `SonarCloud Code Analysis` check `success`, which together rule out the false-clean read where an unanalyzed PR returns the same `total: 0` as a genuinely clean one. `new_code_smells` 0, `new_duplicated_blocks` 0. |
+
 ## Docs-freshness run (`origin/main..HEAD`)
 
 > Merge close-out step 5, run pre-merge as the cheapest moment.
@@ -390,6 +401,7 @@ hand-maintained list structurally cannot.
 - [x] **Frontend** standards met or deviation documented — N/A, backend-only.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **Close-out written in THIS PR** — citing `merged via PR #541`, so no docs-only follow-up PR is needed.
+- [x] **The review gate ran in full** — `/code-review`'s agent fan-out (5 dimensions) *plus* a
+      sixth agent walking `riviera-review-overlay`'s backend bank, at **high effort** (the slice
+      touches authorization). 1 finding (F-1), fixed and re-verified; outcome posted on PR #541.
