@@ -131,6 +131,14 @@ operator chrome** (#462) — the dominant consumer of above-fold space, not the 
 three full-width tiles would push content past a 740px fold. A 2-up or horizontally-scrolling tile
 row is the shape that fits; that is advice for A9, not a gate on it.
 
+> **The numbers in the paragraph above are as of 2026-08-05 and are no longer the console's geometry**
+> (noted at the epic #348 close-out, 2026-08-06). They were measured with **five** tabs and before the
+> A9 stat strip existed; the strip has since landed on the console home and A3 took the strip to
+> **seven** tabs. A9 re-measured at 360px: chrome 0–165, `h1` 205–241, tab strip 261–398, stat strip
+> 418–659, first content heading **691–718** against the 740px fold — 22px of headroom. The **live**
+> budget is the assertion in `frontend/e2e/admin-console-stats.e2e.ts`, not this paragraph; the
+> qualitative advice it gave (2-up, not three stacked full-width tiles) is what A9 shipped.
+
 ---
 
 ## Acceptance criteria (testable)
