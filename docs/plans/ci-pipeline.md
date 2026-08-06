@@ -131,16 +131,24 @@ coverage corrections folded in here.
   **#534 added a seventh**, `Inline comments (RV-STYLE-1)` — the CI backstop #529/PR #532 shipped,
   which until then ran and reported on every PR without blocking a merge. The current list is those
   **7**. Note the count returned to 7 but the *set* did not: the original seven included the
-  job-level `SonarCloud scan`, which #419 removed; today's seventh is the RV-STYLE-1 check. A "7"
+  job-level `SonarCloud scan`, which #419 removed; today's seventh is the repo-hygiene check. A "7"
   elsewhere in this doc dated to #413/#417 refers to the **old** set.
 
   Since **#533** that seventh context gates **two** diff-scoped hygiene guards rather than one — the
-  job also runs the plan doc's File-structure check. The context list is untouched because #533 added
-  a *step*, deliberately: the ruleset keys contexts by job name, so a new job would not block until
-  the ruleset named it, and a renamed one would break every PR (#413/#420). The consequence to know
-  is that the context's **name now understates what it gates**; #539 tracks renaming the job and the
-  ruleset entry together.
-  — *Owner:* maintainer · *Resolved by:* the ruleset read above, re-verified per #534.
+  job also runs the plan doc's File-structure check. #533 left the context list untouched because it
+  added a *step*, deliberately: the ruleset keys contexts by job name, so a new job would not block
+  until the ruleset named it, and a renamed one would break every PR (#413/#420). **#539 renames the
+  seventh context to `Repo hygiene (diff-scoped)`** so the name no longer understates what it gates —
+  job and ruleset entry together: the job rename ships via PR #540, and the ruleset entry is swapped
+  old→new through the rulesets API (`PUT /repos/…/rulesets/18207603` — a repository setting, not
+  expressible in the diff) at that PR's merge, with the fresh post-swap ruleset read recorded on
+  PR #540 as the verification. The swap beats add-then-remove (issue #539's suggested sequence)
+  here: with both names required, the rename PR itself (which reports only the new name) could never
+  merge; with the swap there is no window in which a required context has no job able to satisfy it
+  on an up-to-date branch, and `strict` already forces every other PR onto post-rename `main` before
+  merging.
+  — *Owner:* maintainer · *Resolved by:* the ruleset read above, re-verified per #534; the #539
+  swap verified by the post-swap ruleset read recorded on PR #540.
 - **Open question:** none blocking. No material scope change surfaced in the audit.
 
 ## Availability & concurrency (invariant #2)
@@ -204,6 +212,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   both modules: `sonar.sources=platform/src/main/java,frontend/src`, `sonar.java.binaries`,
   `sonar.coverage.jacoco.xmlReportPaths`, `sonar.javascript.lcov.reportPaths`. Replaces
   the earlier per-module property files (deleted).
+- `.claude/skills/riviera-plan-doc/SKILL.md` — **modify (#539).** Its #533 guard reference
+  follows the job rename to `Repo hygiene (diff-scoped)`.
 - `docs/plans/ci-pipeline.md` — **this plan.**
 
 ---
@@ -395,8 +405,8 @@ tasks.named('test') {
   landed as the `Riviera Rule Set` ruleset. Evidence is an actual rejected merge, recorded in #417:
   `PUT .../pulls/413/merge` → `405 Repository rule violations found — 7 of 7 required status checks
   are expected` (that 7 is the **pre-#419** set, which still carried the job-level `SonarCloud scan`
-  — not today's 7, which carries `Inline comments (RV-STYLE-1)` instead; see *Open questions /
-  Assumptions*). The ruleset refused the merge on a required check it did not consider satisfied,
+  — not today's 7, which carries `Repo hygiene (diff-scoped)` instead, the context #534 added as
+  `Inline comments (RV-STYLE-1)` and #539 renamed; see *Open questions / Assumptions*). The ruleset refused the merge on a required check it did not consider satisfied,
   which is exactly what this AC asserts. (#417's own bug was *which* check state won the race; that
   it was enforced at all is the proof here.)
 
