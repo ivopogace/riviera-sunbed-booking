@@ -34,8 +34,11 @@ operator strip onto a shared tile is a *replacement* needing a row-by-row check)
 (each phase writes the failing spec first — the strip's dash-vs-zero cases before the
 component, the fold guard before the markup) · `riviera-review-overlay` (review gate — run
 at ready-for-review; RV-FE-8 is the live constraint on this slice) ·
-`riviera-docs-freshness` (**ran** over `a02c199..HEAD` at close-out — counting sweep for
-"operator-only" / tile-count statements; findings in the Execution status) ·
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD` — **2 findings, both patched**, both in
+the design canvas: the "Commissions tab has NO backend at all today" block that A7/#522 falsified,
+and the stats-above-the-tabs-on-every-screen layout this slice deviates from. The counting sweep
+found **no** stale count statement — nothing in the substrate asserted that
+`console-stats-strip.ts` is operator-only, and the cross-feature-edge ledger stays at five) ·
 `riviera-frontend` (structure — placed the tile primitive in `shared/` and the data-bearing
 strip in `admin/`, and ruled out the `admin/`→`operator/` import) · `riviera-tailwind`
 (styling — directive-shared surface via `appCardGlass` rather than `@apply`, `text-[11px]`
@@ -52,37 +55,37 @@ addendum). It exists and already contains `origin/main` (`a02c199`).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in admin whose approval queue holds 2 rows and whose account
+- [x] **AC-1:** Given a signed-in admin whose approval queue holds 2 rows and whose account
   list holds 3 active + 1 suspended, when the console home settles, then the strip reads
   `2`, `3`, `1`. *Pinned by:* `AdminConsoleStats.spec.ts › renders the operator counts it is given`
-- [ ] **AC-2:** Given the venue read answers two venues at 1500 and 1000 bps, when the strip
+- [x] **AC-2:** Given the venue read answers two venues at 1500 and 1000 bps, when the strip
   settles, then the Venues tile reads `2` with the sub-caption `mean rate 12.5%`.
   *Pinned by:* `AdminConsoleStats.spec.ts › counts venues and renders the mean rate`
-- [ ] **AC-3:** Given the venue read rejects, when the strip settles, then the Venues tile
+- [x] **AC-3:** Given the venue read rejects, when the strip settles, then the Venues tile
   reads `—` with **no** sub-caption while the three operator tiles still read their counts.
   *Pinned by:* `AdminConsoleStats.spec.ts › a failed venue read dashes only its own tile`
-- [ ] **AC-4:** Given the operator lists have not loaded (or their load failed), when the
+- [x] **AC-4:** Given the operator lists have not loaded (or their load failed), when the
   strip renders, then all three operator tiles read `—` and never `0`.
   *Pinned by:* `AdminConsoleStats.spec.ts › unknown counts render a dash, never a zero`
-- [ ] **AC-5:** Given the venue read answers an empty list, when the strip settles, then the
+- [x] **AC-5:** Given the venue read answers an empty list, when the strip settles, then the
   Venues tile reads `0` with no sub-caption (no mean over zero venues).
   *Pinned by:* `AdminConsoleStats.spec.ts › no venues means a real zero and no mean`
-- [ ] **AC-6:** Given rates 1500, 1000 and 1000 bps, when the mean is rendered, then it is
+- [x] **AC-6:** Given rates 1500, 1000 and 1000 bps, when the mean is rendered, then it is
   `11.67%` — rounded to whole basis points and formatted by `formatCommissionPercent`, never
   a second percent formatter. *Pinned by:* `AdminConsoleStats.spec.ts › rounds the mean to whole basis points`
-- [ ] **AC-7:** Given the strip is rendered, when its subtree is queried for interactive
+- [x] **AC-7:** Given the strip is rendered, when its subtree is queried for interactive
   elements, then there are none — the strip navigates nowhere, so no focus can be stranded.
   *Pinned by:* `AdminConsoleStats.spec.ts › is inert — no link, button or focusable tile`
-- [ ] **AC-8:** Given the admin console home at 360×740, when it renders with the strip, then
+- [x] **AC-8:** Given the admin console home at 360×740, when it renders with the strip, then
   the first content heading (`Awaiting approval`) is still above the 740px fold and the page
   never scrolls sideways. *Pinned by:* `admin-console-stats.e2e.ts › the console home's first content heading survives the strip at 360px`
-- [ ] **AC-9:** Given an admin on `/admin/commissions`, when the page renders, then no stat
+- [x] **AC-9:** Given an admin on `/admin/commissions`, when the page renders, then no stat
   strip is present — the strip is the console **home's**, not the shell's.
   *Pinned by:* `admin-console-stats.e2e.ts › the strip is the console home's, not every tab's`
-- [ ] **AC-10:** Given the console home rendered with the strip, when axe runs (jsdom
+- [x] **AC-10:** Given the console home rendered with the strip, when axe runs (jsdom
   structural + real-render serious), then there are no violations, in both the loaded and the
   all-dashes states. *Pinned by:* `admin-operators.a11y.spec.ts` + `admin-console-stats.e2e.ts`
-- [ ] **AC-11:** Given the operator console's own stats strip after it is refactored onto the
+- [x] **AC-11:** Given the operator console's own stats strip after it is refactored onto the
   shared tile, when its existing specs and e2e run, then every assertion passes unchanged —
   the four `oc-stat-*` test ids and their rendered text are byte-identical.
   *Pinned by:* `console-stats-strip.spec.ts` (unchanged) + `operator-console.e2e.ts` (unchanged)
@@ -124,22 +127,23 @@ admin strip is new and replaces nothing.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | An unweighted mean of venue rates is read as the platform's effective take rate — it is not, and no wire field supports the weighted figure | **high** | med | The number is kept because it is a genuine *configuration* readout (spot an outlier rate; the Commissions tab is one click away), but the caption names the aggregation — `mean rate 12.5%` — and a footnote states the trap outright: an equal average of venue rates, not the platform's blended take. Pinned by AC-2/AC-6 and asserted verbatim in the e2e | A9 | open |
-| R-2 | `admin/` importing `operator/console-stats-strip.ts` would add a sixth cross-feature edge — RV-FE-8 Major, and the grandfathered ledger is tolerated debt, not precedent | med | high | Presentation extracted to `shared/stat-tile.ts` (a pure, stateless presentational primitive — `riviera-frontend`'s `shared/` row); `admin/` imports `shared/`, never `operator/`. The ledger table stays at five edges | A9 | open |
-| R-3 | The strip pushes the console home's content past the 740px fold at 360px | med | med | Measured before building (chrome 165px, tabs 3 rows ending y=398, first heading y=430); 2-up tile grid, not three stacked full-width tiles. AC-8 asserts the heading stays above the fold in CI, so a later tile or a longer label fails the build rather than quietly eating the page — the Q1 guard's shape | A9 | open |
-| R-4 | A blip in a read renders as a confident `0` (an empty approval queue and a failed read look identical) | med | high | `undefined` is kept distinct from `0` end-to-end: the page exposes counts only once a read has actually succeeded, the strip's venue signal starts `undefined`, and both render `—`. AC-3/AC-4/AC-5 pin all three states | A9 | open |
-| R-5 | Refactoring the shipped operator strip onto the shared tile silently changes its render | med | med | Behavior-parity ledger above, row by row; its unchanged unit spec, contrast spec and two e2e specs are the guard (AC-11). No spec is edited to accommodate the refactor — if one needs editing, the refactor is wrong | A9 | open |
-| R-6 | `AdminOperators`' existing specs break because the strip injects a service they do not provide | high | low | Expected and cheap: `admin-operators.spec.ts` and `admin-operators.a11y.spec.ts` gain an `AdminCommissionsService` stub. Noted here so it reads as a planned edit, not collateral | A9 | open |
+| R-1 | An unweighted mean of venue rates is read as the platform's effective take rate — it is not, and no wire field supports the weighted figure | **high** | med | The number is kept because it is a genuine *configuration* readout (spot an outlier rate; the Commissions tab is one click away), but the caption names the aggregation — `mean rate 12.5%` — and a footnote states the trap outright: an equal average of venue rates, not the platform's blended take. Pinned by AC-2/AC-6 and asserted verbatim in the e2e | A9 | closed — caption reads `mean rate N%`, note states the limit; pinned by AC-2/AC-6 and asserted verbatim in the e2e |
+| R-2 | `admin/` importing `operator/console-stats-strip.ts` would add a sixth cross-feature edge — RV-FE-8 Major, and the grandfathered ledger is tolerated debt, not precedent | med | high | Presentation extracted to `shared/stat-tile.ts` (a pure, stateless presentational primitive — `riviera-frontend`'s `shared/` row); `admin/` imports `shared/`, never `operator/`. The ledger table stays at five edges | A9 | closed — `shared/stat-tile.ts`; grep confirms zero cross-feature imports in `admin/` or `shared/`, ledger still five |
+| R-3 | The strip pushes the console home's content past the 740px fold at 360px | med | med | Measured before building (chrome 165px, tabs 3 rows ending y=398, first heading y=430); 2-up tile grid, not three stacked full-width tiles. AC-8 asserts the heading stays above the fold in CI, so a later tile or a longer label fails the build rather than quietly eating the page — the Q1 guard's shape | A9 | closed — heading 691..718 against a 740px fold, wholly visible; guard proven to fail (heading at 908) when tiles stack |
+| R-4 | A blip in a read renders as a confident `0` (an empty approval queue and a failed read look identical) | med | high | `undefined` is kept distinct from `0` end-to-end: the page exposes counts only once a read has actually succeeded, the strip's venue signal starts `undefined`, and both render `—`. AC-3/AC-4/AC-5 pin all three states | A9 | closed — AC-3/AC-4/AC-5 + the two `admin-operators.spec.ts` cases; guard proven to fail when `countsKnown` is bypassed |
+| R-5 | Refactoring the shipped operator strip onto the shared tile silently changes its render | med | med | Behavior-parity ledger above, row by row; its unchanged unit spec, contrast spec and two e2e specs are the guard (AC-11). No spec is edited to accommodate the refactor — if one needs editing, the refactor is wrong | A9 | closed — every operator spec passed unedited and the computed-style + bounding-box capture was byte-identical |
+| R-6 | `AdminOperators`' existing specs break because the strip injects a service they do not provide | high | low | Expected and cheap: `admin-operators.spec.ts` and `admin-operators.a11y.spec.ts` gain an `AdminCommissionsService` stub. Noted here so it reads as a planned edit, not collateral | A9 | closed — stub added to both specs; the strip's failure path made it benign rather than a break |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the mocked e2e suite's unrouted `GET /api/admin/venues` on specs that visit
-  `/admin` without a venue mock (`admin-console-tabs.e2e.ts`, `admin-operator-suspension.e2e.ts`)
-  resolves to the dev server's SPA fallback and is caught, dashing only the Venues tile — no
-  spec asserts on console errors. *Owner:* A9 · *Resolves by:* phase 3 (run both suites).
+_None open._
 
 ### Resolved
 
+- **Assumption (held):** the mocked e2e suite's unrouted `GET /api/admin/venues` on specs that visit
+  `/admin` without a venue mock resolves to the dev server's SPA fallback, is caught, and dashes only
+  the Venues tile. Verified by running the whole mocked suite — **152 passed**, including
+  `admin-console-tabs.e2e.ts` and `admin-operator-suspension.e2e.ts` and their axe checks.
 - **Open question (the structural decision the epic demanded): does the strip render on the
   console home only, or on every admin page?** → **Console home only, below the tab strip.**
   Reasoning, stated against Q1 rather than around it:
@@ -199,7 +203,7 @@ ledger, no payout, no commission *money* is computed anywhere on the client (A7'
 | FE-1 | `shared/stat-tile.ts` | new | standalone component, `app-stat-tile`, `display: contents` host | `input()` signals only — no state | none |
 | FE-2 | `admin/admin-console-stats.ts` | new | standalone component | three `input<number \| undefined>()` for the operator counts + one own `signal` for the venue read; `computed()` for the mean | none |
 | FE-3 | `admin/admin-operators.ts` | existing | standalone component | three new `computed()` count projections + a `countsKnown` signal | none |
-| FE-4 | `operator/console-stats-strip.html` | existing | template only | unchanged TypeScript | none |
+| FE-4 | `operator/console-stats-strip.{ts,html}` | existing | standalone component | template onto `StatTile`; the takings sub-caption becomes a `netCaption()` computed | none |
 
 **Standards:** standalone components, `inject()`, `@if`/`@for`, `input()` signal APIs, no
 `NgOptimizedImage` (no images). One deviation to document: `StatTile`'s host carries
@@ -220,16 +224,16 @@ client for the same endpoint; its TSDoc gains its second consumer.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `merge close-out` — implementation complete, CI + Sonar green, review gate run.
 
-**Next action:** Phase 3 — docs-freshness counting sweep, the canvas header note, then mark the PR ready and run the review gate.
+**Next action:** none — merged via PR #527; tick A9 on epic #348 and post the epic-state comment.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `shared/stat-tile.ts` + refactor the operator strip onto it | ✅ | `1bd7751` |
-| 1 — `admin/admin-console-stats.ts` + wire into the console home | ✅ | `7d227c2` |
-| 2 — a11y + e2e (360px fold guard, home-only guard) | ✅ | `faec9b0` |
-| 3 — full local verification, docs-freshness counting sweep, close-out | | |
+| 0 — `shared/stat-tile.ts` + refactor the operator strip onto it | ✅ | `fa2a53e` |
+| 1 — `admin/admin-console-stats.ts` + wire into the console home | ✅ | `822c300` |
+| 2 — a11y + e2e (360px fold guard, home-only guard) | ✅ | `6587a67` |
+| 3 — full local verification, docs-freshness counting sweep, close-out | ✅ | this PR's final commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -239,34 +243,38 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | sonar (PR #527, first analysis) | `typescript:S7059` CRITICAL — async call in `AdminConsoleStats`' constructor. The gate read **passed** while reporting it; A3's hand-off note 4 is why the list was pulled instead of the badge | fixed-in-`faec9b0` — moved to `ngOnInit`, the fix `operator-home.ts:157` already established in this repo for the same rule |
+| F-1 | sonar (PR #527, first analysis) | `typescript:S7059` CRITICAL — async call in `AdminConsoleStats`' constructor. The gate read **passed** while reporting it; A3's hand-off note 4 is why the list was pulled instead of the badge | fixed-in-`6587a67` — moved to `ngOnInit`, the fix `operator-home.ts:157` already established in this repo for the same rule |
 
 ---
 
 ## File structure
 
-- `frontend/src/app/shared/stat-tile.ts` — **new.** The presentational stat tile: glass
-  surface, uppercase label, projected value, optional sub-caption. No HTTP, no state.
-- `frontend/src/app/shared/stat-tile.spec.ts` — **new.** Unit spec for the tile's three
-  render states (value only, value + sub, sub omitted).
-- `frontend/src/app/operator/console-stats-strip.html` — **modify.** Four inline tile blocks
-  become four `<article appStatTile>` — no behavior change (parity ledger).
-- `frontend/src/app/admin/admin-console-stats.ts` — **new.** The console home's four tiles:
-  three counts in, the venue read its own, the mean computed, the footnote.
-- `frontend/src/app/admin/admin-console-stats.spec.ts` — **new.** AC-1..AC-7.
-- `frontend/src/app/admin/admin-operators.ts` — **modify.** Renders the strip below the tabs;
-  exposes `countsKnown` + three count `computed()`s.
-- `frontend/src/app/admin/admin-operators.spec.ts` — **modify.** `AdminCommissionsService`
-  stub (R-6) + a case pinning that the strip dashes before the load settles.
-- `frontend/src/app/admin/admin-operators.a11y.spec.ts` — **modify.** Same stub; AC-10.
-- `frontend/src/app/admin/admin-commissions.service.ts` — **modify.** TSDoc only: name the
-  second consumer.
-- `frontend/e2e/admin-console-stats.e2e.ts` — **new.** AC-8, AC-9, AC-10 (real render, 360px).
-- `docs/plans/a9-admin-console-stat-strip.md` — **new.** This plan.
-- `docs/design/riviera-admin-console.dc.html` — **modify.** Header correction note: the
-  stats-above-tabs-on-every-screen layout is a demo-page artefact; A9 renders them on the home
-  only, below the tabs (same treatment the canvas's tab strip already carries).
-- `CLAUDE.md` / `docs/…` — **modify if the counting sweep finds stale statements** (phase 3).
+> The complete set — `git diff --name-only origin/main...HEAD` is 13 paths and so is this list.
+
+**New (6)**
+
+- `frontend/src/app/shared/stat-tile.ts` — the presentational stat tile: glass surface, uppercase
+  label, projected value, optional sub-caption. No HTTP, no state.
+- `frontend/src/app/shared/stat-tile.spec.ts` — the tile's render states, incl. the collapsed host.
+- `frontend/src/app/admin/admin-console-stats.ts` — the console home's four tiles: three counts in,
+  the venue read its own, the mean computed, the note.
+- `frontend/src/app/admin/admin-console-stats.spec.ts` — AC-1..AC-7.
+- `frontend/e2e/admin-console-stats.e2e.ts` — AC-8, AC-9, AC-10 (real render, 360px).
+- `docs/plans/a9-admin-console-stat-strip.md` — this plan.
+
+**Modified (7)**
+
+- `frontend/src/app/operator/console-stats-strip.html` — four inline tile blocks become four
+  `<app-stat-tile>`; no behavior change (parity ledger).
+- `frontend/src/app/operator/console-stats-strip.ts` — imports `StatTile` instead of `CardGlass`, and
+  the takings sub-caption becomes a `netCaption()` computed because the tile takes it as a string
+  input. `commissionPct()` folded into it.
+- `frontend/src/app/admin/admin-operators.ts` — renders the strip below the tabs; adds `countsKnown`
+  plus the three count `computed()`s.
+- `frontend/src/app/admin/admin-operators.spec.ts` — `AdminCommissionsService` stub + four strip cases.
+- `frontend/src/app/admin/admin-operators.a11y.spec.ts` — same stub; the two AC-10 audits.
+- `frontend/src/app/admin/admin-commissions.service.ts` — TSDoc only: names its second consumer.
+- `docs/design/riviera-admin-console.dc.html` — two header corrections from the freshness sweep.
 
 ---
 
@@ -348,34 +356,37 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-7:** `npm test -- admin-console-stats` → all pass. Verified at commit `<sha>`.
-- [ ] **AC-8, AC-9:** `npm run test:e2e:a11y admin-console-stats` → pass. Verified at `<sha>`.
-- [ ] **AC-10:** `npm run test:a11y` + the e2e's axe run → no violations. Verified at `<sha>`.
-- [ ] **AC-11:** `npm test -- console-stats-strip` and `npm run test:e2e:a11y operator-console`
-  → pass **with no spec edited**. Verified at `<sha>`.
+- [x] **AC-1..AC-7:** `npm test` → 1209 pass (143 files), incl. the 10 `admin-console-stats` cases.
+- [x] **AC-8, AC-9:** `npm run test:e2e:a11y` → 152 pass, incl. all 7 `admin-console-stats` specs.
+- [x] **AC-10:** `npm run test:a11y` → 326 pass; the e2e's axe run at 360px is clean.
+- [x] **AC-11:** the operator strip's unit + contrast + e2e specs pass **with no spec edited**, and a
+  computed-style + bounding-box capture at 360px is byte-identical before and after the refactor.
+- [x] **Negative proofs:** the fold guard fails (heading at 908) with the tiles stacked full-width;
+  the scope guard fails with the strip on the Commissions tab; the dash-vs-zero guard fails with
+  `countsKnown` bypassed. All three reverted.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (N/A justified); invariant #2 untouched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path.
-- [ ] **Modulith** section filled (N/A, frontend-only); invariant #11 untouched.
-- [ ] **Payment/payout** section filled — rate arithmetic only, no money math on the client (#5, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A, no date is rendered by this slice.
-- [ ] Booking codes unguessable (invariant #7) — N/A, no code is rendered.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; `shared/`-vs-feature placement per `riviera-frontend`; no new
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (N/A justified); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path.
+- [x] **Modulith** section filled (N/A, frontend-only); invariant #11 untouched.
+- [x] **Payment/payout** section filled — rate arithmetic only, no money math on the client (#5, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A, no date is rendered by this slice.
+- [x] Booking codes unguessable (invariant #7) — N/A, no code is rendered.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; `shared/`-vs-feature placement per `riviera-frontend`; no new
       cross-feature import (RV-FE-8); no `as any` on the contract.
-- [ ] **RV-STYLE-1:** every inline comment in the diff is one line.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** citing `merged via PR #NN`.
+- [x] **RV-STYLE-1:** every inline comment in the diff is one line.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — **merged via PR #527**.
 - [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder
       *plus* `riviera-review-overlay`.
 
