@@ -187,11 +187,6 @@ N/A — no contract change. No endpoint, DTO, or wire shape.
 | 2 — Wiring: PostToolUse hook + CI step | ✅ | `f9d119f` |
 | 3 — Rule docs name the guard; follow-up issue; close-out | ✅ | this commit |
 
-**Positive control (phase 1).** An exit 0 is not evidence the plumbing works, so the #522 block
-was re-injected into `SecurityConfig.java` verbatim and the CLI run against it: `--files` exited
-1 naming `SecurityConfig.java:422-423`, `--hook` emitted the `additionalContext` payload, and the
-file was reverted clean. That is AC-1 proven end-to-end through git, not only through the unit.
-
 **Hook verification (phase 2, AC-7).** The `update-config` flow ran in full: the raw command was
 pipe-tested on three payloads (violating file → JSON, clean file → silent, `.md` → silent) before
 any JSON was written; the entry was **merged** into the existing `hooks` block (`SessionStart` and
@@ -201,12 +196,12 @@ through the `Edit` tool** — the hook answered in-context naming
 `scripts/check-inline-comments.mjs:150-151`, and the edit was reverted. The guard's first live
 catch was on its own source.
 
+Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
 **Positive control (phase 1).** An exit 0 is not evidence the plumbing works, so the #522 block
 was re-injected into `SecurityConfig.java` verbatim and the CLI run against it: `--files` exited
 1 naming `SecurityConfig.java:422-423`, `--hook` emitted the `additionalContext` payload, and the
 file was reverted clean. That is AC-1 proven end-to-end through git, not only through the unit.
-
-Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Docs-freshness run (phase 3, close-out step 5).** Range `origin/main..HEAD`. **One finding,
 patched:** `CLAUDE.md:107` enumerated what `ci.yml` runs ("backend build/test, frontend
@@ -225,7 +220,10 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (prior-PR-comment agent) | The "Positive control (phase 1)" paragraph was byte-identical **twice** in this document — a copy/paste artifact of the phase-1 and phase-2 status updates — which also orphaned the phase table's `Legend:` line below the prose. Same category as #522's F-5: the plan doc is the artifact the next session reads, so an internally inconsistent one misleads more than no doc would. | fixed — this commit |
+| F-2 | review (CLAUDE.md-adherence agent) | The self-review checklist's closing rule ("if any box is unchecked, record the gap in Open Questions") was unsatisfied: the review-gate box was unticked with no matching entry. Resolved by the gate itself completing — the box is ticked on its own evidence rather than by adding a placeholder question. | fixed — this commit |
+| F-3 | review (prior-PR-comment agent) | Per PR #420's correction, a check living in `ci.yml` is **not** thereby a *required* check — that is a GitHub ruleset property. `Inline comments (RV-STYLE-1)` runs green on this PR, but nothing in this diff makes it block a merge. Out of scope here (repo settings, admin-only, not a code change) and **raised to the maintainer** rather than silently assumed. | open → maintainer decision |
+| F-4 | review (prior-PR-comment agent) | The PR body still described the branch as a draft with phases 1–3 outstanding, contradicting the shipped state. | fixed — PR body refreshed at close-out |
 
 ---
 
