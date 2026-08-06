@@ -179,7 +179,7 @@ export function findOmissions({ docs, changed }) {
 
   const sections = docs.map((d) => sectionOf(d.text));
   const listed = sections.filter((section) => section !== null).flatMap(listedPaths);
-  const reason = listed.length === 0 && sections.every((section) => section === null)
+  const reason = sections.every((section) => section === null)
     ? 'no "## File structure" section'
     : 'not listed in the File structure section';
 

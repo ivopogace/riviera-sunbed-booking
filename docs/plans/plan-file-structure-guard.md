@@ -29,8 +29,8 @@ blocker the issue does not mention: the CI job name is a ruleset-required contex
 rules out both a rename and, for a same-day hard gate, a new job) · `riviera-plan-doc` (this
 template — forced the Non-goals section that fixes the check's direction as diff∖plan only,
 and the risk register that surfaced the draft-PR red-while-lagging posture) · `tdd` (each
-phase writes the failing `node --test` case first; the five parser idioms are pinned as
-regression fixtures *before* the parser learns them) · `riviera-review-overlay` (review gate
+phase writes the failing `node --test` case first; every parser idiom is pinned as a
+regression fixture *before* the parser learns it — six of them, the sixth found by the audit) · `riviera-review-overlay` (review gate
 — due at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD`,
 **2 findings, both patched** — the counting sweep was the point: this slice makes the *second*
 diff-scoped hygiene check, so `CLAUDE.md`'s CI/CD paragraph and `docs/plans/ci-pipeline.md`'s
@@ -53,27 +53,27 @@ for `feature/plan-file-structure-guard` (`riviera-sdlc` §Remote/cloud session a
 > Written against the detector — the inner boundary — not against GitHub Actions. The CI
 > wiring is asserted once, at the adapter level, by this PR's own run.
 
-- [ ] **AC-1:** Given a diff whose plan doc lists every changed path, when the guard runs, then it
+- [x] **AC-1:** Given a diff whose plan doc lists every changed path, when the guard runs, then it
   reports nothing and exits 0. *Pinned by:* `check-plan-file-structure.test.mjs` ›
   `"a complete section passes — PR #526 as merged"` (real data: the 11 paths of `a02c199`).
-- [ ] **AC-2:** Given a diff that changes a path the section omits, when the guard runs, then it
+- [x] **AC-2:** Given a diff that changes a path the section omits, when the guard runs, then it
   names exactly that path and exits 1. *Pinned by:* `check-plan-file-structure.test.mjs` ›
   `"reports exactly the paths the section omits"`.
-- [ ] **AC-3:** Given a diff containing no `docs/plans/*.md`, when the guard runs, then it exits 0
+- [x] **AC-3:** Given a diff containing no `docs/plans/*.md`, when the guard runs, then it exits 0
   and reports nothing — a slice that legitimately skips the plan doc (`riviera-sdlc` rule 6) is
   not failed for a missing section. *Pinned by:* `check-plan-file-structure.test.mjs` ›
   `"a slice with no plan doc passes cleanly"`.
-- [ ] **AC-4:** Given the real merged diff of PR #522 (28 paths) and its plan doc's section, when the
+- [x] **AC-4:** Given the real merged diff of PR #522 (28 paths) and its plan doc's section, when the
   guard runs, then it flags exactly `CONTEXT.md` and
   `platform/…/venue/application/CommissionRateCommand.java` and exits 1. *Pinned by:*
   `check-plan-file-structure.test.mjs` › `"real case: PR #522 undercounts by two"`.
-- [ ] **AC-5:** Given PR #526's plan doc with the three bullets its review added (F-1/F-2/F-3)
+- [x] **AC-5:** Given PR #526's plan doc with the three bullets its review added (F-1/F-2/F-3)
   removed — the section as it stood *before* the review gate corrected it — when the guard runs,
   then it flags exactly `frontend/src/app/app.spec.ts`,
   `frontend/src/app/admin/admin-console-tabs.spec.ts` and
   `frontend/e2e/admin-console-tabs.e2e.ts`. *Pinned by:*
   `check-plan-file-structure.test.mjs` › `"real case: PR #526 before its review fixed the section"`.
-- [ ] **AC-6:** Given a section written in each of the **six** path idioms real plan docs already use
+- [x] **AC-6:** Given a section written in each of the **six** path idioms real plan docs already use
   — repo-relative suffix (`payout/application/DailyTakingsServiceTest.java`), sibling extension
   (`` `privacy-policy.ts` `` then `` `.html` ``), brace set (`{a,b}.e2e.ts`), pipe alternation
   (`venue-create-card.ts|.html`), a directory (`frontend/src/app/venue-admin/`), and `**` crossing
@@ -81,17 +81,17 @@ for `feature/plan-file-structure-guard` (`riviera-sdlc` §Remote/cloud session a
   forms denote, then it reports nothing, **and** a single `*` still does not cross a `/`.
   *Pinned by:* `check-plan-file-structure.test.mjs` › the six `"idiom: …"` cases. (The sixth came
   from phase 1's generalization audit, not the plan — see the audit log.)
-- [ ] **AC-7:** Given a plan doc with no `## File structure` section, when the diff changes only that
+- [x] **AC-7:** Given a plan doc with no `## File structure` section, when the diff changes only that
   doc, then the guard is clean; when the diff also changes other paths, then those paths are
   reported together with a `no "## File structure" section` note. *Pinned by:*
   `check-plan-file-structure.test.mjs` › `"a missing section reports the paths, not the section"`.
-- [ ] **AC-8:** Given a diff containing the plan doc itself and `frontend/package-lock.json`, when the
+- [x] **AC-8:** Given a diff containing the plan doc itself and `frontend/package-lock.json`, when the
   guard runs, then neither is ever reported. *Pinned by:*
   `check-plan-file-structure.test.mjs` › `"the plan doc and lockfiles are exempt"`.
-- [ ] **AC-9:** Given this PR, when CI runs, then the `Inline comments (RV-STYLE-1)` job executes the
+- [x] **AC-9:** Given this PR, when CI runs, then the `Inline comments (RV-STYLE-1)` job executes the
   new step and the job is green. *Verified by:* this PR's own Actions run (recorded in
   *Acceptance-criteria verification*), not by a unit test.
-- [ ] **AC-10:** Given a session at merge close-out, when it consults `riviera-plan-doc`, then the
+- [x] **AC-10:** Given a session at merge close-out, when it consults `riviera-plan-doc`, then the
   skill names the exact command instead of asking for the comparison by hand. *Verified by:*
   `grep -r "check-plan-file-structure" .claude/skills/riviera-plan-doc/` returning both SKILL.md
   and the template.
@@ -107,8 +107,8 @@ for `feature/plan-file-structure-guard` (`riviera-sdlc` §Remote/cloud session a
   code; a per-turn hook would fire on nearly every turn. CI + the by-hand CLI is the decided
   surface.
 - **Renaming the CI job to a generic hygiene name.** Correct end state, but the job name is a
-  ruleset-required context — the rename and the ruleset edit must land together. Deferred to a
-  follow-up issue (R-5).
+  ruleset-required context — the rename and the ruleset edit must land together, which one PR
+  cannot do. Deferred to **issue #539** (R-5).
 - **Retro-fixing the 24 historical plan docs** the spike found undercounting. The guard is
   diff-scoped; history stays as it is.
 
@@ -121,21 +121,24 @@ existing two steps, and its trigger unchanged; this slice only appends a step.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Renaming or replacing the `Inline comments (RV-STYLE-1)` job silently drops a ruleset-required context, and **every** PR becomes unmergeable (`405 … N of N required status checks are expected`, #413/#420) | low | high | The job's `name:` is not touched. The new step goes inside it; a comment above the `name:` records that the string is load-bearing and points at #534 and `docs/plans/ci-pipeline.md` | this slice | open |
-| R-2 | False positives from a path idiom the parser does not know — the failure mode that gets a gate switched off (#529's own lesson) | med | high | Five idioms harvested from real plan docs are pinned as red-first fixtures (AC-6) before the parser learns them; the spike measured 8/8 false positives on PR #464 from the sibling-extension idiom alone, which is now a fixture. Residual escape hatch: list the path — that is the fix the guard is asking for | this slice | open |
-| R-3 | The gate reds a draft PR mid-slice, when the plan legitimately has not caught up with the diff yet | high | low | Accepted, and identical to the red-TDD push posture `riviera-sdlc` already exempts from the CI gate. The check is only merge-blocking at ready-for-review | this slice | open |
-| R-4 | A red result surfaces under a check named `Inline comments (RV-STYLE-1)`, sending the author looking for a comment problem | med | med | The step name and the error message both say `plan doc` and name the file; the message leads with the fix. Structural fix deferred to R-5 | this slice | open |
-| R-5 | The job name stays a misnomer once it gates two rules | high | low | Follow-up issue: rename the job **and** the ruleset context together (maintainer-only, the #534 shape). Not doable in a diff alone | maintainer | open → issue |
-| R-6 | A slice whose plan doc landed in an earlier PR has no `docs/plans/*.md` in this diff, so the guard passes vacuously | med | low | Accepted by design — indistinguishable from "no plan doc" (constraint 1), and the alternative (guessing the doc from the branch name) is worse. Recorded here so the limitation is not rediscovered | this slice | open |
-| R-7 | A docs-only close-out PR touching an *older* plan doc is read as that doc's slice and fails | med | med | Two mechanics remove it: plan docs in the diff are themselves exempt (AC-8), and multiple plan docs contribute a **union** of listed paths rather than being skipped. A close-out touching only plan docs therefore has nothing left to check | this slice | open |
+| R-1 | Renaming or replacing the `Inline comments (RV-STYLE-1)` job silently drops a ruleset-required context, and **every** PR becomes unmergeable (`405 … N of N required status checks are expected`, #413/#420) | low | high | The job's `name:` is not touched. The new step goes inside it; a comment above the `name:` records that the string is load-bearing and points at #534 and `docs/plans/ci-pipeline.md` | this slice | closed — `name:` byte-for-byte unchanged (asserted while wiring: the ruleset context still reads `Inline comments (RV-STYLE-1)`), and a `DO NOT RENAME` comment above it states what breaks. `c22bfd2` |
+| R-2 | False positives from a path idiom the parser does not know — the failure mode that gets a gate switched off (#529's own lesson) | med | high | Five idioms harvested from real plan docs are pinned as red-first fixtures (AC-6) before the parser learns them; the spike measured 8/8 false positives on PR #464 from the sibling-extension idiom alone, which is now a fixture. Residual escape hatch: list the path — that is the fix the guard is asking for | this slice | **closed, and the risk fired twice** — once in phase 1's audit (`**` globs) and once on this PR's own CI run (dot-directory paths, F-1). Both became fixtures; the historical false-positive count fell 390 → 373. The mitigation is what caught them, so it is doing its job rather than being untested. `b8140d3`, `723a13c` |
+| R-3 | The gate reds a draft PR mid-slice, when the plan legitimately has not caught up with the diff yet | high | low | Accepted, and identical to the red-TDD push posture `riviera-sdlc` already exempts from the CI gate. The check is only merge-blocking at ready-for-review | this slice | closed as accepted — it fired exactly once, on this PR, and was a real bug rather than lag (F-1). No change to the posture |
+| R-4 | A red result surfaces under a check named `Inline comments (RV-STYLE-1)`, sending the author looking for a comment problem | med | med | The step name and the error message both say `plan doc` and name the file; the message leads with the fix. Structural fix deferred to R-5 | this slice | closed as accepted, mitigated — the step name reads `Check each plan doc lists what the diff changed (#533, hard gate)` and the message names the file and the fix. Structural fix tracked by **#539** |
+| R-5 | The job name stays a misnomer once it gates two rules | high | low | Follow-up issue: rename the job **and** the ruleset context together (maintainer-only, the #534 shape). Not doable in a diff alone | maintainer | closed → **issue #539** (rename the job and the ruleset context together, add-then-remove so no window leaves a required context unsatisfiable) |
+| R-6 | A slice whose plan doc landed in an earlier PR has no `docs/plans/*.md` in this diff, so the guard passes vacuously | med | low | Accepted by design — indistinguishable from "no plan doc" (constraint 1), and the alternative (guessing the doc from the branch name) is worse. Recorded here so the limitation is not rediscovered | this slice | closed as accepted — documented limitation, not a defect. Recorded here and in the guard's header |
+| R-7 | A docs-only close-out PR touching an *older* plan doc is read as that doc's slice and fails | med | med | Two mechanics remove it: plan docs in the diff are themselves exempt (AC-8), and multiple plan docs contribute a **union** of listed paths rather than being skipped. A close-out touching only plan docs therefore has nothing left to check | this slice | closed — verified by the union/exemption mechanics (`several plan docs in one diff contribute a union of listings`) and by this PR itself, whose first push was plan-doc-only and passed |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `git diff --name-only` over the PR's base is the right path set, including
-  deletions and renames (a rename shows as its new path; a delete as its old). Listing a deleted
-  path is still what a resuming reader needs. — *Owner:* this slice · *Resolves by:* phase 1.
+*Empty — every entry resolved below.*
 
 ### Resolved
+
+- **Assumption:** `git diff --name-only` over the PR's base is the right path set, including
+  deletions and renames. — **Confirmed** in phase 2 and exercised on every push since: a rename
+  shows as its new path, a delete as its old, and listing a deleted path is still what a resuming
+  reader needs. `572a92d`
 
 - **Open question:** build the guard, or close #533 as `wontfix`? — **Resolved:** build it as a
   **hard CI gate**, with a by-hand CLI named in `riviera-plan-doc`. Decided by the maintainer
@@ -172,10 +175,10 @@ nothing under `frontend/src` or `frontend/e2e` changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)` — draft PR #538 open as the CI vehicle.
+**Stage pointer:** `review gate` — PR #538 marked ready for review.
 
-**Next action:** Phase 4 — confirm phase 3's CI run is green, run `riviera-docs-freshness` over the
-merge span, open the R-5 follow-up issue, then mark the PR ready for review.
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then pull the
+Sonar new-issue list from the API (a green badge is not the check). Findings re-enter at Implement.
 
 > Phase SHAs are recorded by the **next** phase's commit, not by amending the phase's own. A
 > commit cannot contain its own hash; amending to insert it rewrites the hash again, which is how
@@ -187,7 +190,7 @@ merge span, open the R-5 follow-up issue, then mark the PR ready for review.
 | 1 — Path idioms + exemptions + the real-case fixtures | ✅ | `b8140d3` |
 | 2 — Git front-end and CLI | ✅ | `572a92d` |
 | 3 — CI wiring + `riviera-plan-doc` names the command | ✅ | `c22bfd2` |
-| 4 — Docs sweep + close-out | ⏳ | |
+| 4 — Docs sweep + close-out | ✅ | `723a13c` (fixes F-1/F-2 + the sweep) · close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -236,7 +239,7 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Create `scripts/check-plan-file-structure.mjs` · Test
 `scripts/check-plan-file-structure.test.mjs`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```js
 import { test } from 'node:test';
@@ -272,24 +275,24 @@ test('a slice with no plan doc passes cleanly', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/check-plan-file-structure.test.mjs`
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/check-plan-file-structure.test.mjs`
   → FAIL with `Cannot find module … check-plan-file-structure.mjs`
 
-- [ ] **Step 3: Minimal implementation** — `sectionOf(text)` (the lines under `## File structure`
+- [x] **Step 3: Minimal implementation** — `sectionOf(text)` (the lines under `## File structure`
   up to the next `## ` heading), `listedPaths(section)` (backticked spans that look like paths),
   `covered(path, listed)` (exact match only, for now), and `findOmissions({docs, changed})`
   returning `{ path }[]` for changed paths that are neither covered nor exempt. `docs: []` returns
   `[]` before anything else runs.
 
-- [ ] **Step 4: Run it, verify it passes** — `node --test scripts/check-plan-file-structure.test.mjs`
+- [x] **Step 4: Run it, verify it passes** — `node --test scripts/check-plan-file-structure.test.mjs`
   → PASS (3/3)
 
-- [ ] **Step 5: Generalization-audit pass** — n/a for phase 0 (no bug fixed, no pattern beyond the
+- [x] **Step 5: Generalization-audit pass** — n/a for phase 0 (no bug fixed, no pattern beyond the
   one #529 already set).
 
-- [ ] **Step 6: Commit** — `git commit -m "Add the plan-doc File-structure detector core (#533)"`
+- [x] **Step 6: Commit** — `git commit -m "Add the plan-doc File-structure detector core (#533)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -301,7 +304,7 @@ test('a slice with no plan doc passes cleanly', () => {
 > This is the phase R-2 lives in. Each idiom is a real one harvested from a merged plan doc,
 > cited in the test name, and written red before the parser learns it.
 
-- [ ] **Step 1: Write the failing tests** — the five `idiom: …` cases (AC-6), the exemption case
+- [x] **Step 1: Write the failing tests** — the `idiom: …` cases (AC-6), the exemption case
   (AC-8), the missing-section case (AC-7), and the two real-history fixtures (AC-4, AC-5), e.g.
 
 ```js
@@ -327,23 +330,23 @@ test('real case: PR #522 undercounts by two', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/check-plan-file-structure.test.mjs`
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/check-plan-file-structure.test.mjs`
   → FAIL; the sibling-extension and repo-relative-suffix cases fail first.
 
-- [ ] **Step 3: Minimal implementation** — extend `listedPaths` with brace expansion, pipe
+- [x] **Step 3: Minimal implementation** — extend `listedPaths` with brace expansion, pipe
   alternation, and bare-extension attachment to the preceding full path on the same line; extend
   `covered` with segment-boundary suffix match, directory-prefix match, and `*` globbing; add the
   exemption predicate (any `docs/plans/*.md` in the diff, plus `package-lock.json`).
 
-- [ ] **Step 4: Run it, verify it passes** — `node --test scripts/check-plan-file-structure.test.mjs`
+- [x] **Step 4: Run it, verify it passes** — `node --test scripts/check-plan-file-structure.test.mjs`
   → PASS (all AC-1…AC-8 cases)
 
-- [ ] **Step 5: Generalization-audit pass** — search the last 60 `main` commits with the finished
+- [x] **Step 5: Generalization-audit pass** — search the last 60 `main` commits with the finished
   detector and re-check the flagged set for parser artifacts; record the sites and the decision.
 
-- [ ] **Step 6: Commit** — `git commit -m "Teach the File-structure detector the five real path idioms (#533)"`
+- [x] **Step 6: Commit** — `git commit -m "Teach the File-structure detector the real path idioms (#533)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -352,29 +355,29 @@ test('real case: PR #522 undercounts by two', () => {
 **Files:** Modify `scripts/check-plan-file-structure.mjs` · Test
 `scripts/check-plan-file-structure.test.mjs`
 
-- [ ] **Step 1: Write the failing test** — `rangeFor` falls back to a two-dot diff when the base has
+- [x] **Step 1: Write the failing test** — `rangeFor` falls back to a two-dot diff when the base has
   no merge base (the #529 behaviour, re-pinned here because it is copied), and `report()` renders
   one line per omission with the advice string.
 
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/check-plan-file-structure.test.mjs`
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/check-plan-file-structure.test.mjs`
   → FAIL with `report is not a function`
 
-- [ ] **Step 3: Minimal implementation** — `check(diffArgs)` running
+- [x] **Step 3: Minimal implementation** — `check(diffArgs)` running
   `git diff --name-only --no-color <range>` and reading each plan doc from the working tree;
   `main(argv)` supporting `--diff [base]` (default `origin/main`) and exiting 1 on findings, 0
   otherwise, 2 on a usage error. Guarded by the same
   `import.meta.url === \`file://${process.argv[1]}\`` check #529 uses, so the suite can import it.
 
-- [ ] **Step 4: Run it, verify it passes** — `node --test scripts/check-plan-file-structure.test.mjs`
+- [x] **Step 4: Run it, verify it passes** — `node --test scripts/check-plan-file-structure.test.mjs`
   → PASS, then `node scripts/check-plan-file-structure.mjs --diff origin/main` against this branch
   → exits 0 (this plan's own section is complete).
 
-- [ ] **Step 5: Generalization-audit pass** — `rangeFor`, `git()` and `report()` are now duplicated
+- [x] **Step 5: Generalization-audit pass** — `rangeFor`, `git()` and `report()` are now duplicated
   across the two `scripts/check-*.mjs` guards. Decide extract-vs-duplicate and record it.
 
-- [ ] **Step 6: Commit** — `git commit -m "Add the File-structure guard's git front-end and CLI (#533)"`
+- [x] **Step 6: Commit** — `git commit -m "Add the File-structure guard's git front-end and CLI (#533)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -383,13 +386,13 @@ test('real case: PR #522 undercounts by two', () => {
 **Files:** Modify `.github/workflows/ci.yml` · `.claude/skills/riviera-plan-doc/SKILL.md` ·
 `.claude/skills/riviera-plan-doc/references/plan-doc-template.md`
 
-- [ ] **Step 1: Write the failing test** — no unit test; AC-9's signal is the PR's own CI run and
+- [x] **Step 1: Write the failing test** — no unit test; AC-9's signal is the PR's own CI run and
   AC-10's is a `grep`. The red state is the step not existing.
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `grep -c check-plan-file-structure .github/workflows/ci.yml` → `0`
 
-- [ ] **Step 3: Minimal implementation** — append to the `inline-comments` job:
+- [x] **Step 3: Minimal implementation** — append to the `inline-comments` job:
 
 ```yaml
       - name: Check each plan doc's File structure section (hard gate)
@@ -400,15 +403,15 @@ test('real case: PR #522 undercounts by two', () => {
   picked up with no change. Add the comment above the job's `name:` recording that the string is a
   ruleset-required context (R-1). Then name the command in the two `riviera-plan-doc` files.
 
-- [ ] **Step 4: Run it, verify it passes** — `grep -c check-plan-file-structure .github/workflows/ci.yml`
+- [x] **Step 4: Run it, verify it passes** — `grep -c check-plan-file-structure .github/workflows/ci.yml`
   → `1`; `grep -rc check-plan-file-structure .claude/skills/riviera-plan-doc/` → both files ≥ 1; the
   PR's CI run green.
 
-- [ ] **Step 5: Generalization-audit pass** — n/a (no bug fixed).
+- [x] **Step 5: Generalization-audit pass** — n/a (no bug fixed).
 
-- [ ] **Step 6: Commit** — `git commit -m "Gate the plan doc's File structure section in CI (#533)"`
+- [x] **Step 6: Commit** — `git commit -m "Gate the plan doc's File structure section in CI (#533)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -416,12 +419,12 @@ test('real case: PR #522 undercounts by two', () => {
 
 **Files:** Modify `CLAUDE.md` · this plan
 
-- [ ] **Step 1** — run `riviera-docs-freshness` over this PR's merge span. The counting sweep is the
+- [x] **Step 1** — run `riviera-docs-freshness` over this PR's merge span. The counting sweep is the
   point: the job now runs **two** diff-scoped checks, so every doc phrased around the single
   inline-comment check is a candidate.
-- [ ] **Step 2** — open the R-5 follow-up issue (coordinated job + ruleset rename) and cite it.
-- [ ] **Step 3** — finalize Execution status, ACs, risk register; cite `merged via PR #NN`.
-- [ ] **Step 4: Commit** — `git commit -m "Close out the plan-doc File-structure guard (#533)"`
+- [x] **Step 2** — open the R-5 follow-up issue (coordinated job + ruleset rename) and cite it.
+- [x] **Step 3** — finalize Execution status, ACs, risk register; cite `merged via PR #NN`.
+- [x] **Step 4: Commit** — `git commit -m "Close out the plan-doc File-structure guard (#533)"`
 
 ---
 
@@ -440,32 +443,45 @@ test('real case: PR #522 undercounts by two', () => {
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1…AC-8:** Run `node --test scripts/check-plan-file-structure.test.mjs` → all pass.
-  Verified at commit `<sha>`.
-- [ ] **AC-9:** This PR's `Inline comments (RV-STYLE-1)` job green, with the new step present in the
-  run log. Verified at run `<id>`.
-- [ ] **AC-10:** Run `grep -rl check-plan-file-structure .claude/skills/riviera-plan-doc/` → both
-  `SKILL.md` and `references/plan-doc-template.md`. Verified at commit `<sha>`.
+- [x] **AC-1…AC-8:** `node --test "scripts/*.test.mjs"` → **36 pass, 0 fail** (both guards' suites;
+  19 of them this guard's). Verified at `723a13c`, and re-run inside CI by the job's own
+  `Test the guards themselves` step.
+- [x] **AC-9:** **Red then green, on this PR's own runs** — the strongest available evidence:
+  - run `31094385031`: steps `success` / `success` / **`failure`** — the new step failing for a
+    real defect (F-1) while the RV-STYLE-1 step beside it stayed green. The gate bites, and bites
+    independently of its neighbour.
+  - run `31094650471` (after the F-1/F-2 fixes): job **`success`**, all three steps green,
+    including `Check each plan doc lists what the diff changed (#533, hard gate)`.
+
+  The close-out commit's own run is what the merge gate ultimately reads; it is not cited here
+  because a commit cannot name the run it triggers (the same reason step 4 of the merge close-out
+  cites `merged via PR #NN` rather than a squash SHA).
+- [x] **AC-10:** `grep -rl check-plan-file-structure .claude/skills/riviera-plan-doc/` → both
+  `SKILL.md` and `references/plan-doc-template.md`. Verified at `c22bfd2`.
+
+> The CLI leg was proven end-to-end by hand before CI saw it: a throwaway commit adding an unlisted
+> `scripts/zz-proof.mjs` made `--diff origin/main` exit 1 naming exactly that path; the clean branch
+> exits 0.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — trivially held: no backend code.
-- [ ] **Availability** section justified `N/A` (invariant #2) — no app code.
-- [ ] Pool + cutoff rules (invariants #3, #4) — not in scope.
-- [ ] **Modulith** section justified `N/A` (invariant #11) — no module code.
-- [ ] **Payment/payout** section justified `N/A` (invariants #5, #8, #9).
-- [ ] Refund policy (invariant #10) — not in scope.
-- [ ] Timezone (invariant #6) — not in scope.
-- [ ] Booking codes (invariant #7) — not in scope.
-- [ ] Flyway (invariant #12) — no schema change, no version number claimed.
-- [ ] **Frontend** standards — `N/A`, no Angular surface.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — trivially held: no backend code.
+- [x] **Availability** section justified `N/A` (invariant #2) — no app code.
+- [x] Pool + cutoff rules (invariants #3, #4) — not in scope.
+- [x] **Modulith** section justified `N/A` (invariant #11) — no module code.
+- [x] **Payment/payout** section justified `N/A` (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — not in scope.
+- [x] Timezone (invariant #6) — not in scope.
+- [x] Booking codes (invariant #7) — not in scope.
+- [x] Flyway (invariant #12) — no schema change, no version number claimed.
+- [x] **Frontend** standards — `N/A`, no Angular surface.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
