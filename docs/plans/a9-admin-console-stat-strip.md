@@ -43,8 +43,12 @@ found **no** stale count statement — nothing in the substrate asserted that
 strip in `admin/`, and ruled out the `admin/`→`operator/` import) · `riviera-tailwind`
 (styling — directive-shared surface via `appCardGlass` rather than `@apply`, `text-[11px]`
 over `text-xs`, no radius on the surface directive) · `angular-developer` + angular-cli MCP
-(v22 APIs — `input()` signals, content projection, and the collapsed `display: contents` host
-that keeps the tile's `<article>` as its strip's grid item) · `playwright-cli` (e2e — the 360px fold guard and the
+(v22 APIs — `input()` signals and the collapsed `display: contents` host that keeps the tile's
+`<article>` as its strip's grid item; the docs check found **no violation** but did settle the
+sub-caption's shape: a projection slot may not sit under `@if`, so making `sub` a string input is
+the only way the omit-rather-than-empty contract can be true, now cited in `StatTile`'s TSDoc. It
+also re-confirmed A8's `httpResource` anchor and that `httpResource` models a *reactive* read, which
+this one-shot venue read is not) · `playwright-cli` (e2e — the 360px fold guard and the
 "strip is home-only" assertion, authored against the mocked CI suite).
 
 **Branch:** `claude/admin-console-stat-strip-a9-lwvop9` — the cloud session's **designated

@@ -19,6 +19,15 @@ import { CardGlass } from './card-glass';
  * span: `sub` left `undefined` means there is nothing to say, which is not the same as saying
  * nothing.
  *
+ * <p><strong>A second projection slot for the sub-caption would be wrong, not merely heavier.</strong>
+ * Angular's content-projection guide forbids putting an `<ng-content>` under `@if`/`@for`/`@switch`,
+ * because it "always instantiates and creates DOM nodes for content rendered to a `<ng-content>`
+ * placeholder, even if that `<ng-content>` placeholder is hidden"
+ * (angular.dev/guide/components/content-projection — <em>Caveats</em>). A projected sub-caption
+ * behind the `@if` below would still build its nodes, so the omit-rather-than-empty contract above
+ * would quietly be false. The string input is what makes that contract real — keep it an input.
+ * The value's own `<ng-content>` is unconditional, which is why it is allowed to stay projected.
+ *
  * <p><strong>The host is `display: contents` on purpose.</strong> Every strip lays its tiles out as
  * a CSS grid, so the grid item has to be the `<article>` itself; a laid-out host element between
  * them would swallow the grid placement. The host carries no semantics to lose by collapsing.
