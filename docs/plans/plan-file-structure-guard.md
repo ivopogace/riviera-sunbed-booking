@@ -169,16 +169,20 @@ nothing under `frontend/src` or `frontend/e2e` changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)` — draft PR #538 open as the CI vehicle.
+**Stage pointer:** `implement (phase 2)` — draft PR #538 open as the CI vehicle.
 
-**Next action:** Phase 1 — write the five idiom fixtures and the two real-history cases red, then
-teach the parser the idioms.
+**Next action:** Phase 2 — add the git front-end (`git diff --name-only` over the merge base) and
+the `--diff` CLI, then run the guard against this branch.
+
+> Phase SHAs are recorded by the **next** phase's commit, not by amending the phase's own. A
+> commit cannot contain its own hash; amending to insert it rewrites the hash again, which is how
+> the `7957f43` this row first carried stopped existing.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Detector core: section parse + set comparison | ✅ | `7957f43` |
-| 1 — Path idioms + exemptions + the real-case fixtures | ⏳ | |
-| 2 — Git front-end and CLI | | |
+| 0 — Detector core: section parse + set comparison | ✅ | `6dd67d3` |
+| 1 — Path idioms + exemptions + the real-case fixtures | ✅ | recorded by phase 2 |
+| 2 — Git front-end and CLI | ⏳ | |
 | 3 — CI wiring + `riviera-plan-doc` names the command | | |
 | 4 — Docs sweep + close-out | | |
 
@@ -421,6 +425,7 @@ test('real case: PR #522 undercounts by two', () => {
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-06 | Phase 1 — the parser learned five path idioms | Any *other* idiom real plan docs use that the parser would false-positive on | Ran the finished detector over the last 60 `main` commits (34 plan-doc slices) and read every flagged path for artifacts | One: `frontend/src/app/**/*.contrast.spec.ts` (PR #478's plan doc) — a `**` glob, which the single-`*` matcher widened only within a segment | **Fixed all**: `globBody` now scans, so `**/` crosses directories, bare `**` matches anything, and a single `*` stays in one segment. Pinned by `idiom: \`**\` crosses directories, a single \`*\` does not (PR #478)`, whose second half proves the single-`*` case did **not** become permissive |
 
 ---
 
