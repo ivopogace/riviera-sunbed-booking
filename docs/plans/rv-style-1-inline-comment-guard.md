@@ -179,7 +179,8 @@ N/A — no contract change. No endpoint, DTO, or wire shape.
 **Stage pointer:** `merge close-out` — all gates passed on `8f4eb4f` (merged via PR #532)
 
 **Next action:** none — the slice merged as PR #532, and its one **Ready-for-human** step below
-(adding the check to the `Riviera Rule Set` ruleset) was carried as **#534** and is now done.
+(adding the check to the `Riviera Rule Set` ruleset) was carried as **#534**, whose ruleset change
+is applied and API-verified; #534 itself closes with **PR #536**, which records it.
 
 **Gate results.** CI **8/8 green** on `8f4eb4f`. **Review gate ran in full** — `/code-review`'s
 five-agent fan-out with `riviera-review-overlay` layered on; **nine findings**, eight fixed on the
@@ -232,7 +233,7 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | review (prior-PR-comment agent) | The "Positive control (phase 1)" paragraph was byte-identical **twice** in this document — a copy/paste artifact of the phase-1 and phase-2 status updates — which also orphaned the phase table's `Legend:` line below the prose. Same category as #522's F-5: the plan doc is the artifact the next session reads, so an internally inconsistent one misleads more than no doc would. | fixed — this commit |
 | F-2 | review (CLAUDE.md-adherence agent) | The self-review checklist's closing rule ("if any box is unchecked, record the gap in Open Questions") was unsatisfied: the review-gate box was unticked with no matching entry. Resolved by the gate itself completing — the box is ticked on its own evidence rather than by adding a placeholder question. | fixed — this commit |
-| F-3 | review (prior-PR + git-history agents, independently) | Per PR #420's correction, a check living in `ci.yml` is **not** thereby a *required* check — enforcement is the `Riviera Rule Set` ruleset (id `18207603`), which names its contexts explicitly. `Inline comments (RV-STYLE-1)` runs green here, but nothing in this diff makes it block a merge, and the step's "hard gate" name overstated that. | fixed as far as code allows — **Ready-for-human** section added (admin-only repo setting), raised on the PR, then carried as **#534**, which added the context and closed it |
+| F-3 | review (prior-PR + git-history agents, independently) | Per PR #420's correction, a check living in `ci.yml` is **not** thereby a *required* check — enforcement is the `Riviera Rule Set` ruleset (id `18207603`), which names its contexts explicitly. `Inline comments (RV-STYLE-1)` runs green here, but nothing in this diff makes it block a merge, and the step's "hard gate" name overstated that. | fixed as far as code allows — **Ready-for-human** section added (admin-only repo setting), raised on the PR, then carried as **#534**, which added the context to the ruleset; F-3 closes with **PR #536** |
 | F-5 | review (bug-scan agent) | **The diff-scoping guarantee was broken.** Comment lines were grouped into runs *before* consulting the diff, so any run containing one added line was reported whole — meaning a compliant new one-liner parked under a pre-existing block flagged the whole block and quoted text the author never wrote. In a tree that carries such blocks by design, that is precisely the day-one-red failure #529 rules out, and it would have fired in CI as a merge gate. | fixed — this commit; grouping now runs over **added** lines only, and a block comment is flagged only when the diff wrote its **opening** line |
 | F-6 | review (bug-scan agent) | A multi-line template literal was not tracked across lines, so `//` inside a backtick string (e.g. a multi-line SQL/GraphQL fixture in a `.ts` file) read as real comments. | fixed — this commit; unclosed backtick strings now carry state across lines |
 | F-7 | review (bug-scan agent) | A Java text block containing the escaped delimiter `\"""` (JLS 3.10.6 — a literal triple quote that does **not** close the block) was treated as closed, so the remaining text-block content was scanned as code. | fixed — this commit |
@@ -253,7 +254,20 @@ Skill-routing gate for what the fix touches *before* editing).
       Rulesets → *Riviera Rule Set* → *Require status checks to pass*. Until this was done the job
       ran and reported on every PR, but a red result did **not** block a merge — the
       "hard gate" wording in `ci.yml` described the intended end state, not that day's.
-      **Done under #534**; `docs/plans/ci-pipeline.md`'s recorded context list went 6 → 7.
+      **Applied under #534** and recorded by **PR #536**; `docs/plans/ci-pipeline.md`'s recorded
+      context list went 6 → 7.
+
+      **How it was verified.** #420's review set this repo's bar for "a red check really blocks":
+      an *actual rejected merge* (`PUT .../pulls/413/merge` → `405 … required status checks are
+      expected`), because a GitHub-computed merge-state field read on its own is "an absence of
+      evidence dressed as evidence". That exact call was unavailable — this session's proxy refuses
+      write access to the merge API — so #534 used a **paired comparison** instead: a throwaway PR
+      (#537, closed unmerged) carrying a deliberate two-line inline comment reached
+      `mergeable_state: blocked` with `Inline comments (RV-STYLE-1)` its **only** red check, while
+      PR #536 with the identical seven-check set all green reached `clean`. Both reported
+      `mergeable: true`, so no conflict confounds it. That meets #420's bar on the point #420
+      actually cared about — the value is definite (`blocked`), not the ambiguous `unknown` that
+      burned it — and isolates *which* rule refused, which a bare `405` does not.
 
 Deliberately not attempted from *this* session: it is a repository-settings change, needs admin
 rights, and is not expressible in this diff. Flagged to the maintainer on the PR, then carried as

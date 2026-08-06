@@ -130,7 +130,10 @@ coverage corrections folded in here.
   `Analyze (java-kotlin)`, `Analyze (javascript-typescript)`, `CodeQL`, `SonarCloud Code Analysis`.
   **#534 added a seventh**, `Inline comments (RV-STYLE-1)` — the CI backstop #529/PR #532 shipped,
   which until then ran and reported on every PR without blocking a merge. The current list is those
-  **7**. — *Owner:* maintainer · *Resolved by:* the ruleset read above, re-verified per #534.
+  **7**. Note the count returned to 7 but the *set* did not: the original seven included the
+  job-level `SonarCloud scan`, which #419 removed; today's seventh is the RV-STYLE-1 check. A "7"
+  elsewhere in this doc dated to #413/#417 refers to the **old** set.
+  — *Owner:* maintainer · *Resolved by:* the ruleset read above, re-verified per #534.
 - **Open question:** none blocking. No material scope change surfaced in the audit.
 
 ## Availability & concurrency (invariant #2)
@@ -384,7 +387,9 @@ tasks.named('test') {
 - [x] **AC-8:** `main` blocks merge on a red required check — **verified** once Ready-for-human #4
   landed as the `Riviera Rule Set` ruleset. Evidence is an actual rejected merge, recorded in #417:
   `PUT .../pulls/413/merge` → `405 Repository rule violations found — 7 of 7 required status checks
-  are expected`. The ruleset refused the merge on a required check it did not consider satisfied,
+  are expected` (that 7 is the **pre-#419** set, which still carried the job-level `SonarCloud scan`
+  — not today's 7, which carries `Inline comments (RV-STYLE-1)` instead; see *Open questions /
+  Assumptions*). The ruleset refused the merge on a required check it did not consider satisfied,
   which is exactly what this AC asserts. (#417's own bug was *which* check state won the race; that
   it was enforced at all is the proof here.)
 
@@ -400,7 +405,7 @@ tasks.named('test') {
 - [x] Node pinned via `.nvmrc` (26.0.0); JDK pinned to 25 via `setup-java` (R-1/R-3).
 - [x] Sonar is secret-gated and cannot red the pipeline pre-wiring (R-4); verified coverage imported (JaCoCo + lcov sensors).
 - [x] Execution-status table at HEAD matches reality.
-- [x] Risk register: only AC-4 (post-merge) and AC-8 (branch protection) remain — both maintainer/post-merge, not build gaps. Open Questions empty.
+- [x] Risk register: only AC-4 (Dependabot, post-merge) remains — maintainer/post-merge, not a build gap. Open Questions empty. (AC-8 was still outstanding when this line was written; it has since been verified against the `Riviera Rule Set` ruleset — see its entry above.)
 
 ## Review (riviera-review-overlay) — 2026-06-27
 
