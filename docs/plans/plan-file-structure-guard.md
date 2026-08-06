@@ -179,10 +179,26 @@ nothing under `frontend/src` or `frontend/e2e` changes.
 
 ## Execution status
 
-**Stage pointer:** `review gate — fixing findings` → re-verify CI + Sonar on the fix push.
+**Stage pointer:** `merge close-out` — every gate passed; awaiting the maintainer's merge call.
 
-**Next action:** Confirm the fix push is green on CI and re-analyzed by Sonar, re-walk the overlay
-bank items over the changed surface, then merge close-out.
+**Next action:** Merge PR #538, then the post-merge remainder, which is GitHub-only and needs no
+commit: confirm #533 closed, and #539 already carries the deferred R-5 finding.
+
+**Gate results (all on `86f5f39`, the fix-round head):**
+
+| Gate | Result |
+|---|---|
+| CI | `Backend`, `Frontend`, `Inline comments (RV-STYLE-1)` all **success** |
+| Review | **Ran in full** — rung-1 `code-review` fan-out + overlay; 5 findings, all fixed |
+| Sonar | Gate **passed**; `api/issues/search` **total 0**, re-read after the fix push |
+| Overlay re-walk | RV-STYLE-1 mechanical half clean; RV-PROC-1 covered; guard clean on its own diff |
+
+> **Sonar's reach here is narrower than its badge suggests, and the plan says so rather than
+> banking the green.** `sonar.sources=platform/src/main/java,frontend/src` excludes `scripts/`, so
+> this PR's "0.0% coverage on new code" and "0.0% duplication on new code" measure *nothing* about
+> the guard — they are not evidence it is untested (41 `node --test` cases) or un-duplicated (that
+> call was made on merits, F-5). The Sonar gate is genuinely clear; it is simply clear about the
+> Java and Angular trees, which this slice does not touch.
 
 > Phase SHAs are recorded by the **next** phase's commit, not by amending the phase's own. A
 > commit cannot contain its own hash; amending to insert it rewrites the hash again, which is how
@@ -494,5 +510,7 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **The review gate ran in full** — the `code-review` plugin workflow via ladder **rung 1**
+      (`Skill("code-review")` was accepted, so no fallback was needed), five-agent fan-out, with
+      `riviera-review-overlay` layered on. Five findings (F-3…F-7), all fixed in `86f5f39`; the fix
+      round itself re-cleared CI, Sonar and the overlay re-walk. Result posted on PR #538.
