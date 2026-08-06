@@ -49,9 +49,13 @@ Content-Type: application/json
 - It erases **any** account **and** guest row sharing that email. A guest row whose email diverges
   from the account email is a separate subject — submit that email too.
 
-> There is no admin console screen for erasure yet (API-only in Slice 1, like the admin endpoints that
-> predated their console tabs). Drive it with an authenticated `curl`/HTTP client, or add a console
-> surface in a follow-up.
+> **Use the console: the Privacy tab at `/admin/privacy`** (A3, epic #348, PR #526) — the endpoint was
+> API-only from #101 Slice 1 until then. It is address → confirm → done, and the irreversible step
+> collects optional `X-Audit-Reason` grounds, which `admin_audit_record` keeps (#507). Because the
+> `204` above is non-enumerating, the done panel deliberately reports the same thing for a real scrub
+> and an unknown address — a confirmation there is **not** evidence the subject existed. An
+> authenticated `curl`/HTTP client still works and is the right tool for a scripted replay (see
+> *Backups and restore*, below).
 
 ## Accountability / audit
 
