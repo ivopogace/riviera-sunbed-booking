@@ -47,7 +47,9 @@ in more depth.
 - [x] AC-3 `node --test scripts/*.test.mjs` green (8 new cases for the verifier).
 - [x] AC-4 Full CI green (backend build + test, frontend lint/test/build + e2e, both hygiene checks) —
       confirmed on PR #545 after the R-6 fix; re-checked per batch thereafter.
-- [ ] AC-5 Every file in the sweep scope trimmed to §6d.
+- [ ] AC-5 Every **over-budget block** in the sweep scope trimmed to §6d — see *What the trim actually
+      pays for* below. Restated after measurement: the original "every file" reading was wrong, because
+      roughly half the tree's comment lines are already at budget and yield nothing.
 - [ ] AC-6 No rationale lost: anything load-bearing that was removed exists in a substrate doc.
 
 ## Non-goals
@@ -134,8 +136,38 @@ contract — treat their current size as the floor, not a backlog item.
 Concentration is long-tailed — top 100 files hold 34%, top 400 hold 72% — so there is no shortcut
 set. Expect the full sweep to span sessions; work heaviest-first so each session lands real volume.
 
-**Tree total:** 24,718 → 24,136 comment lines after 10 files. The per-file cuts are large (≈40%), but
-they are 10 files of 1,050; the number that moves is the one in the phase table, not this one.
+| `frontend/src/app/operator/operator-console.model.ts` | 133 | 116 | A DTO file already near budget — 23 types × ~5 lines. Treat as the floor |
+| `RateLimitFilterTest.java` | 178 | 175 | Provenance out, rationale kept per A-2. Three lines: the evidence for the finding below |
+
+### What the trim actually pays for
+
+Measured after twelve files, because two of them returned almost nothing and that is the more useful
+result:
+
+| Block size | Comment lines | Behaviour under §6d |
+|---|---|---|
+| 1–2 | 3,197 | At budget. Untouchable. |
+| 3–5 | 3,083 | At budget. |
+| 6–9 | 5,534 | At or near budget; copy-editing yields ~0. |
+| 10–14 | 4,203 | Over budget — real, moderate wins. |
+| 15+ | 8,099 | The essay class. Where every large win came from. |
+
+**Deleting provenance does not reduce volume; deleting duplicated paragraphs does.** 72% of comment
+lines sit in a block carrying an issue number or a decision-history phrase, which made "683 blocks cite
+an issue" look like the lever. It is not: stripping `#544`-style refs from a 6-line block re-wraps it to
+6 lines. `RateLimitFilterTest` lost 3 lines that way; `ObservabilityMetrics` lost 153 because its
+paragraphs were a third copy of a substrate doc.
+
+**The real work list is 583 files holding 12,302 lines in blocks of 10+ lines** — not 1,069 files
+holding 24,116. By tree: backend main 7,136 · backend test 3,525 · frontend src 1,570 · frontend e2e 71.
+Concentration within that list is far better than the raw ranking suggested: top 100 files hold 37%,
+top 150 hold 48%, top 200 hold 57%.
+
+**Expected reachable outcome:** ~55% off the over-budget blocks ≈ 6,800 lines, ~28% of the tree. A
+sweep of the top ~200 of those 583 files captures well over half of it; past that the marginal file is
+a 10-line block that becomes an 8-line block.
+
+**Tree total so far:** 24,718 → 24,116 after 12 files.
 
 ## File structure
 
