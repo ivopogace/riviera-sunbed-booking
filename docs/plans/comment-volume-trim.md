@@ -123,7 +123,7 @@ sweep can silently do damage, and both were found by review rather than by the g
 | 0 | §6d + the frontend TSDoc twin | #545 | ✅ committed `1109c2f` |
 | 1 | `check-comment-only.mjs` + its 8 tests | #545 | ✅ committed |
 | 2 | First batch — 12 heaviest files | #545 | ✅ committed, CI green |
-| 3 | Backend main, top ~120 over-budget files | follow-up | 🔄 8 of ~120 (328 over-budget files hold 7,136 lines) |
+| 3 | Backend main, over-budget files with a *duplicated* home | follow-up | 🔄 17 done; 305 over-budget files remain, holding 5,821 lines — but see the selection rule, most are contract |
 | 4 | Backend test, top ~50 | follow-up | ⬜ not started |
 | 5 | `frontend/src` + `frontend/e2e`, top ~30 | follow-up | ⬜ not started |
 
@@ -176,6 +176,43 @@ rows.sort((a,b)=>b[0]-a[0]);rows.slice(0,200).forEach(([n,f])=>console.log(Strin
 The `*Properties` files share one shape worth reusing: their operational *why* is already in the
 `IllegalArgumentException` messages, **left byte-identical**, where an operator meets it at boot. The
 class Javadoc only has to carry the traps that are not reachable from a failed boot.
+
+**Phase 3, batch 2** — 9 files, **56 lines**, against batch 1's 158 from 8. The shortfall is the
+useful part:
+
+| File | Before | After |
+|---|---|---|
+| `notification/adapter/out/JdbcEmailSuppressions.java` | 97 | 82 |
+| `notification/adapter/in/BookingCancellationMailListener.java` | 53 | 41 |
+| `notification/application/EmailSuppressions.java` | 64 | 56 |
+| `PrincipalSessionRevoker.java` | 45 | 40 |
+| `venue/api/VenueRates.java` | 60 | 56 |
+| `SessionIdentity.java` | 52 | 48 |
+| `venue/spi/SetAvailabilityLookup.java` | 57 | 53 |
+| `OperatorAccountController.java` | 79 | 76 |
+| `venue/application/CommissionRateStore.java` | 64 | 63 |
+
+### Block size over-predicts yield — rank by duplication instead
+
+A ≥10-line block is a *candidate*, not a target. Batch 2 was picked purely by block size and half of
+it was already at the floor: `CommissionRateStore` gave up **one line**, `VenueRates` four.
+
+The files that pay are the ones whose prose has **a second home**:
+
+- a substrate-doc duplicate — `ObservabilityMetrics` 245→92, `AsyncMailDispatcher` 189→90, both
+  `package-info` files;
+- an *in-code* duplicate — the four `*Properties` files, whose exception messages already say it;
+- restatement across siblings — `SecurityConfig`'s ordering rule stated eight times,
+  `TransactionalMailService`'s five near-identical method docs.
+
+The files that do **not** pay are ports, interfaces and edge-security classes, whose Javadoc is
+ordering constraints, guarantees and traps — contract with no second home. `VenueRates`,
+`SetAvailabilityLookup`, `CommissionRateStore`, `EmailSuppressions`, `SessionIdentity`,
+`PrincipalSessionRevoker` are all in this class and are at their floor now.
+
+**Selection rule for later batches:** before opening a file, ask where else its prose lives. If the
+answer is "nowhere", it is contract — skip it. That is also why the ~6,800-line estimate above is
+optimistic; treat it as a ceiling nobody should plan against.
 
 **Remaining heaviest** (recomputed after the batch above): `SecurityConfig.java` 248 ·
 `RateLimitFilter.java` 184 · `RateLimitFilterTest.java` 175 · `TransactionalMailServiceTest.java` 143 ·

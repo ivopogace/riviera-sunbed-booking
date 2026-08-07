@@ -17,25 +17,22 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * The signed-in operator's own credential surface (#326): change your own password, proving the current
- * one. Until this slice an operator had no self-service path at all — {@link OperatorProvisioning#setPassword}
- * existed but its only caller was {@link OperatorCredentialInitializer}, the boot-time runner for the
- * bootstrap admin — so a self-registered operator (S6 #115) that suspected its credential was compromised
- * had to go find a platform admin. Tourists have had the equivalent since S8 ({@link MyAccountController}).
+ * The signed-in operator's own credential surface: change your own password, proving the current one.
+ * The tourist twin is {@link MyAccountController}.
  *
- * <p><strong>Why not under {@code /api/me/**}.</strong> That namespace has been a method-agnostic
- * {@code hasRole(CUSTOMER)} rule since #317, and {@link SecurityConfig} states outright that adding a
- * non-customer endpoint under it makes the rule wrong. This endpoint instead joins the other two
- * operator-credential surfaces ({@code login}, {@code register}) under {@code /api/auth/operator/**},
- * with its own {@code OPERATOR} matcher and its own rate-limit budget.
+ * <p><strong>Why not under {@code /api/me/**}.</strong> That namespace is a method-agnostic
+ * {@code hasRole(CUSTOMER)} rule, and {@link SecurityConfig} states outright that adding a non-customer
+ * endpoint under it makes the rule wrong. This endpoint instead joins the other two operator-credential
+ * surfaces ({@code login}, {@code register}) under {@code /api/auth/operator/**}, with its own
+ * {@code OPERATOR} matcher and its own rate-limit budget.
  *
  * <p><strong>The bootstrap admin is deliberately refused.</strong> Its credential is env-managed:
- * {@link OperatorCredentialInitializer} re-stamps {@code RIVIERA_OPERATOR_PASSWORD} on every boot and reads
- * any difference as a genuine rotation, so a self-service change would be silently reverted at the next
- * deploy — and would revoke the admin's own session on the way. Its rotation path stays "change the
- * variable and restart". The guard keys on {@code riviera.operator.username}, <strong>not</strong> on
- * {@link OperatorCredential#admin()}: a second admin approved through {@code /api/admin/operators} is an
- * admin but is not env-managed, and must keep self-service.
+ * {@link OperatorCredentialInitializer} re-stamps {@code RIVIERA_OPERATOR_PASSWORD} on every boot and
+ * reads any difference as a genuine rotation, so a self-service change would be silently reverted at
+ * the next deploy — and would revoke the admin's own session on the way. Its rotation path stays
+ * "change the variable and restart". The guard keys on {@code riviera.operator.username},
+ * <strong>not</strong> on {@link OperatorCredential#admin()}: a second admin approved through
+ * {@code /api/admin/operators} is an admin but is not env-managed, and must keep self-service.
  *
  * <p>Platform-edge machinery (RV-BE-11): the {@code operator} module stores an opaque hash and never
  * encodes, verifies, or invalidates a session — all three happen here.

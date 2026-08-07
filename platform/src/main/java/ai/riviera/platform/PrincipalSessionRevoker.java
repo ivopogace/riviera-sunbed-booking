@@ -11,15 +11,10 @@ import org.springframework.stereotype.Component;
  * (RV-BE-11), not domain: neither {@code customer} nor {@code operator} may import
  * {@code org.springframework.session}.
  *
- * <p>Callers today: customer password reset and right-to-erasure (S8 #113, AC-3), operator suspension
- * and genuine credential rotation (#128). Generalized from the customer-only {@code CustomerSessionRevoker}
- * in #128 rather than copied — the logic was never customer-specific, and a second near-identical edge
- * class is duplication the merge gate rejects.
- *
  * <p>Backed by Spring Session's {@link FindByIndexNameSessionRepository} (the JDBC-backed
- * {@code JdbcIndexedSessionRepository} in this app, V20), which indexes sessions by principal name —
- * the customer's email or the operator's username, whichever value that principal's login stored as
- * the authentication name.
+ * {@code JdbcIndexedSessionRepository} here), which indexes sessions by principal name — the
+ * customer's email or the operator's username, whichever value that principal's login stored as the
+ * authentication name.
  *
  * <p><strong>The index is not principal-type-scoped.</strong> An operator whose username were literally
  * some customer's email address would have both sets of sessions revoked together. That is accepted:
@@ -38,13 +33,13 @@ class PrincipalSessionRevoker {
 	/**
 	 * Delete every session whose principal name matches {@code principalName}.
 	 *
-	 * <p><strong>Callers pairing this with a state change must bracket it</strong> (#357): call it
+	 * <p><strong>Callers pairing this with a state change must bracket it:</strong> call it
 	 * <em>before</em> the change, so a failure here cannot leave the state changed behind an error saying
-	 * nothing happened — and <em>again after</em>, because revoking only first leaves a window in which the
-	 * old credential/status is still valid, so a sign-in landing there would produce a session that outlives
-	 * the change. Both calls are idempotent deletes; the second is normally a no-op, and is not dead code.
-	 * A principal that cannot be named until the change has run is the reason two of the three callers
-	 * ({@link AdminOperatorController}, {@link AccountRecoveryController}) first make a pure read.
+	 * nothing happened — and <em>again after</em>, because revoking only first leaves a window in which
+	 * the old credential or status is still valid, so a sign-in landing there would produce a session
+	 * that outlives the change. Both calls are idempotent deletes; the second is normally a no-op and is
+	 * <strong>not</strong> dead code. A principal that cannot be named until the change has run is why
+	 * two of the three callers first make a pure read.
 	 */
 	void revokeAll(String principalName) {
 		revokeAllExcept(principalName, null);
