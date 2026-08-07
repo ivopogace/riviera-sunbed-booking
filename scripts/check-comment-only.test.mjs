@@ -56,3 +56,42 @@ test('deleting an entire comment block leaves nothing behind', () => {
 test('a trailing comment is removed without touching the code before it', () => {
   assert.equal(strip('int a = 1; // why'), 'int a = 1;');
 });
+
+test('a `/` inside a regex character class does not open a block comment', () => {
+  const src = ['const re = /[/*]/;', 'const kept = 1;'].join('\n');
+
+  assert.equal(strip(src), ['const re = /[/*]/;', 'const kept = 1;'].join('\n'));
+});
+
+test('an escaped slash in a regex does not end it early', () => {
+  assert.equal(strip('const re = /a\\/\\*b/; const kept = 2;'), 'const re = /a\\/\\*b/; const kept = 2;');
+});
+
+test('a regex after `return` is a literal, not a division', () => {
+  assert.equal(strip('return /[/]/.test(s); // why'), 'return /[/]/.test(s);');
+});
+
+test('division is still division, so a following line comment is still stripped', () => {
+  assert.equal(strip('const half = total / 2; // halve it'), 'const half = total / 2;');
+  assert.equal(strip('const r = (a + b) / c; // ratio'), 'const r = (a + b) / c;');
+});
+
+test('a `//` inside an unquoted CSS url() is code, not a comment', () => {
+  const src = ['.a { background: url(http://example.com/a.png) no-repeat; }', '.b { color: red; }'].join('\n');
+
+  assert.equal(strip(src), src);
+});
+
+test('a quoted CSS url() still round-trips through the string handler', () => {
+  assert.equal(
+    strip('.a { background: url("http://example.com/a.png"); }'),
+    '.a { background: url("http://example.com/a.png"); }',
+  );
+});
+
+test('a real change on an unquoted url() line is NOT reported as comment-only', () => {
+  const before = '.a { background: url(http://example.com/a.png) no-repeat; }';
+  const after = '.a { background: url(http://example.com/b.png) no-repeat; }';
+
+  assert.notEqual(strip(before), strip(after));
+});

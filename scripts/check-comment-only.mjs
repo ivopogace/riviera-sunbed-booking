@@ -15,9 +15,83 @@ import { pathToFileURL } from 'node:url';
 /** Extensions whose comment syntax `strip` understands. Anything else is skipped, not assumed safe. */
 const SUPPORTED = new Set(['.java', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.scss', '.css']);
 
+/** Characters after which a `/` opens a regex literal rather than dividing. */
+const REGEX_PRECEDERS = new Set(
+  ['(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '%', '~', '^', '<', '>'],
+);
+
+/** Keywords after which a `/` opens a regex literal, where the preceding character is a letter. */
+const REGEX_KEYWORDS = new Set(
+  ['return', 'typeof', 'instanceof', 'in', 'of', 'case', 'do', 'else', 'yield', 'await', 'new', 'delete',
+    'void', 'throw'],
+);
+
+const WORD_CHAR = /[A-Za-z0-9_$]/;
+
 /**
- * Removes comments while honouring string, template, char and Java text-block state, so a `//` inside
- * a URL literal or a `/*` inside a string is kept as the code it is.
+ * Would a `/` at this point open a regex literal rather than divide? Decided from the last significant
+ * character already emitted — the standard heuristic, and inert on Java, where none of the regex-opening
+ * positions is valid syntax before a `/`.
+ */
+function opensRegex(out) {
+  let end = out.length - 1;
+  while (end >= 0 && /\s/.test(out[end])) end--;
+  if (end < 0) return true;
+  const last = out[end];
+  if (REGEX_PRECEDERS.has(last)) return true;
+  if (!WORD_CHAR.test(last)) return false;
+  let start = end;
+  while (start >= 0 && WORD_CHAR.test(out[start])) start--;
+  return REGEX_KEYWORDS.has(out.slice(start + 1, end + 1));
+}
+
+/**
+ * The index just past a regex literal starting at {@code i}, or -1 if it is not one that terminates on
+ * this line. A `/` inside a `[…]` class does not close the literal — the case that made `/[/*]/` read as
+ * an opening block comment and swallow the rest of the file.
+ */
+function readRegex(src, i) {
+  let j = i + 1;
+  let inClass = false;
+  while (j < src.length) {
+    const c = src[j];
+    if (c === '\n') return -1;
+    if (c === '\\') {
+      j += 2;
+      continue;
+    }
+    if (c === '[') inClass = true;
+    else if (c === ']') inClass = false;
+    else if (c === '/' && !inClass) return j + 1;
+    j++;
+  }
+  return -1;
+}
+
+/**
+ * The index just past an <em>unquoted</em> CSS `url(…)`, or -1 when it is quoted (the string handler is
+ * already correct) or unterminated. Unquoted is the dangerous form: the `//` in `url(http://x)` sits in
+ * code state with no string to protect it.
+ */
+function readUnquotedUrl(src, i) {
+  if (src.slice(i, i + 4).toLowerCase() !== 'url(') return -1;
+  let j = i + 4;
+  while (j < src.length && /[ \t]/.test(src[j])) j++;
+  if (src[j] === '"' || src[j] === "'") return -1;
+  const close = src.indexOf(')', j);
+  if (close === -1 || src.slice(j, close).includes('\n')) return -1;
+  return close + 1;
+}
+
+/**
+ * Removes comments while honouring string, template, char, Java text-block, JS regex-literal and CSS
+ * unquoted-`url()` state, so a `//` inside a URL or a `/*` inside a string or character class is kept as
+ * the code it is.
+ *
+ * <p>Known limitation: the final normalization collapses whitespace on every line, including inside a
+ * Java text block, whose compiled value depends on its minimum common indentation. A re-indent of a text
+ * block would therefore compare equal. Out of scope for a comment-only sweep, which never re-indents;
+ * if this tool is ever pointed at a formatting change, that case needs handling first.
  *
  * @param {string} src file contents
  * @returns {string} code-only lines, trimmed and whitespace-collapsed, blanks dropped
@@ -47,6 +121,19 @@ export function strip(src) {
         out += src[i];
         i++;
       } else {
+        // An unquoted url() and a regex literal both hide `/` sequences the comment checks would eat.
+        const urlEnd = src[i] === 'u' || src[i] === 'U' ? readUnquotedUrl(src, i) : -1;
+        if (urlEnd !== -1) {
+          out += src.slice(i, urlEnd);
+          i = urlEnd;
+          continue;
+        }
+        const regexEnd = src[i] === '/' && opensRegex(out) ? readRegex(src, i) : -1;
+        if (regexEnd !== -1) {
+          out += src.slice(i, regexEnd);
+          i = regexEnd;
+          continue;
+        }
         out += src[i];
         i++;
       }

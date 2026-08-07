@@ -69,6 +69,8 @@ in more depth.
 | R-4 | Ordering-sensitive security comments lost from `SecurityConfig` | First-match-wins rule stated **once** at the `authorizeHttpRequests` block; each order-sensitive matcher keeps a one-line marker |
 | R-5 | The sweep spans sessions and loses its place | This doc is the state store (SDLC rule 11); the ledger below is updated per batch |
 | R-6 | **The trim itself writes multi-line inline comments**, tripping RV-STYLE-1 — hit on the first CI run, 8 violations in `SecurityConfig` | Prose that will not fit one line goes in the Javadoc (§6c's own remedy), never a `//` block. Run `check-inline-comments.mjs` per batch — and note its CLI no-ops on Windows (the `import.meta.url` guard), so call `check(...)` directly or rely on CI |
+| R-7 | **A relocation pointer that points at nothing.** `RefundExecutorProperties` said "the full sizing argument: RESPONSIBILITIES §`booking`" while the arithmetic it named (pool 4 from a 12.5-vs-6-minute drain, queue 500 from ≈52 minutes of backlog) had never been written there — AC-6 self-certified, not checked. Caught by the review gate | Relocation means **moving the text**, then reading the target to confirm it arrived. Fixed for this file; every future batch verifies each new pointer before the batch commits, since a dangling pointer is strictly worse than the essay it replaced |
+| R-8 | **The inertness checker itself has blind spots**, so a batch could pass AC-2 while changing code. Review found two: a `/` inside a regex character class (`/[/*]/`) read as an opening block comment, and the `//` in an unquoted CSS `url(http://…)` read as a line comment | Both fixed with regex-literal and unquoted-`url()` handling, pinned by three tests confirmed to go **red** against the pre-fix script. The residual known gap — Java text-block re-indentation — is documented in the script's own Javadoc and is out of scope for a sweep that never re-indents |
 
 ## Open questions / Assumptions
 
@@ -143,26 +145,25 @@ rows.sort((a,b)=>b[0]-a[0]);rows.slice(0,200).forEach(([n,f])=>console.log(Strin
 | `SecurityConfig.java` | 635 | 487 | Ordering rule stated once, not eight times |
 | `shared/MdcTaskDecorator.java` | 127 | 100 | Kept all three traps; dropped the #455/#410 argument |
 | `booking/application/Bookings.java` | 207 | 175 | Port interface — its Javadoc is genuine contract, so only issue numbers and story labels went |
-| `booking/adapter/in/RefundExecutorProperties.java` | 145 | 105 | Sizing argument already in RESPONSIBILITIES §`booking`; the operational *why* is in the exception messages, where an operator meets it at boot |
+| `booking/adapter/in/RefundExecutorProperties.java` | 145 | 105 | Sizing argument relocated to RESPONSIBILITIES §`booking` (the arithmetic was moved there, not assumed present — see R-7); the operational *why* is in the exception messages, where an operator meets it at boot |
 | `RateLimitFilter.java` | 273 | 184 | Security-critical, so every trap stayed (the `%64` decode bypass, the firewall tripwire, `AuthBudget`'s "same 401, opposite meaning"). What went: the separation rule restated once per constant |
 | `notification/application/AsyncMailDispatcher.java` | 189 | 90 | Third copy of RESPONSIBILITIES §`notification`, which CLAUDE.md already names as the single home for these policies |
 | `notification/application/TransactionalMailService.java` | 153 | 92 | Five registry-vehicle methods each restated the shared posture; stated once on the class |
 | `booking/adapter/in/RefundExecutorConfig.java` | 131 | 92 | Twin of the next row — trimmed in parallel so the two stay symmetric, which their own Javadoc requires |
 | `notification/adapter/in/RegistryMailExecutorConfig.java` | 128 | 99 | `defaultCandidate = false`, compose-don't-replace, and episode-ends-on-drain all kept verbatim |
+| `frontend/src/app/operator/operator-console.model.ts` | 133 | 116 | A DTO file already near budget — 23 types × ~5 lines. Treat as the floor |
+| `RateLimitFilterTest.java` | 178 | 175 | Provenance out, rationale kept per A-2. Three lines: the evidence for the finding below |
 
 **Remaining heaviest** (recomputed after the batch above): `SecurityConfig.java` 248 ·
-`RateLimitFilter.java` 184 · `RateLimitFilterTest.java` 178 · `TransactionalMailServiceTest.java` 143 ·
-`operator-console.model.ts` 133 · `Bookings.java` 125 · `RefundBulkheadIT.java` 114 ·
+`RateLimitFilter.java` 184 · `RateLimitFilterTest.java` 175 · `TransactionalMailServiceTest.java` 143 ·
+`Bookings.java` 125 · `operator-console.model.ts` 116 · `RefundBulkheadIT.java` 114 ·
 `AuthController.java` 111 · `MailListenerExecutorArchitectureTest.java` 111 · `my-bookings.ts` 110.
 
-The first two are already-trimmed files that remain top-ranked because their Javadoc is genuine
+Half of those are already-trimmed files that stay top-ranked because their Javadoc is genuine
 contract — treat their current size as the floor, not a backlog item.
 
 Concentration is long-tailed — top 100 files hold 34%, top 400 hold 72% — so there is no shortcut
 set. Expect the full sweep to span sessions; work heaviest-first so each session lands real volume.
-
-| `frontend/src/app/operator/operator-console.model.ts` | 133 | 116 | A DTO file already near budget — 23 types × ~5 lines. Treat as the floor |
-| `RateLimitFilterTest.java` | 178 | 175 | Provenance out, rationale kept per A-2. Three lines: the evidence for the finding below |
 
 ### What the trim actually pays for
 
@@ -202,7 +203,9 @@ guard sanctions.
 - `.claude/skills/riviera-java-conventions/SKILL.md` — **modified**: adds §6d, bounds §6c's exemption
 - `frontend/.claude/CLAUDE.md` — **modified**: the TSDoc twin of §6d
 - `scripts/check-comment-only.mjs` — **new**: proves a trim diff changed only comments
-- `scripts/check-comment-only.test.mjs` — **new**: 8 cases incl. string/text-block false positives
+- `scripts/check-comment-only.test.mjs` — **new**: 15 cases incl. string/text-block/regex/`url()` holes
+- `RESPONSIBILITIES.md` — **modified**: receives the refund-bulkhead sizing arithmetic relocated out of
+  `RefundExecutorProperties`' Javadoc (R-7)
 - `docs/plans/comment-volume-trim.md` — **new**: this doc
 - `platform/src/main/java/` — **modified**: Javadoc trimmed to §6d, comment-only
 - `platform/src/test/java/` — **modified**: Javadoc trimmed to §6d, comment-only
