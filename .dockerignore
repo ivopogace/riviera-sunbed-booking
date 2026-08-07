@@ -24,6 +24,5 @@ platform/bin/
 # Local/dev-only + generated (not needed by the image build)
 *.log
 compose.yaml
-graphify-out/
 .claude/
 docs/

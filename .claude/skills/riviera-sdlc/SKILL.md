@@ -47,9 +47,9 @@ at Implement", it means this paragraph.
 
 | Stage | What happens | Driving skill(s) |
 |---|---|---|
-| **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. Ground the interview in what already exists — `graphify query "<idea>"` / `explain "<concept>"` (when the graph is present) so you refine against the real code, not assumptions. A **foggy epic** (destination clear, route not) may first be charted with `wayfinder` — see *Epic front-end*, below. | `grilling` (interview), `domain-modeling` (vocabulary + ADRs); `wayfinder` (foggy epics only) |
+| **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. Ground the interview in what already exists — read the substrate docs and grep the real code, so you refine against what's there, not assumptions. A **foggy epic** (destination clear, route not) may first be charted with `wayfinder` — see *Epic front-end*, below. | `grilling` (interview), `domain-modeling` (vocabulary + ADRs); `wayfinder` (foggy epics only) |
 | **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. For an **epic** (multi-slice), optionally first synthesize a committed epic **spec** — user stories + testing seams + out-of-scope — then slice its user stories (see *Epic front-end*, below). Any strategic document the issues reference must be committed to the repo before or with them (rule 10). | `to-spec` (epic spec, optional) → `to-issues` |
-| **Plan** | Write the plan doc: testable ACs, risk register, and — if booking/availability/money is touched — how the invariant holds. Map the affected surface (modules + events + blast radius) with `graphify query`/`path` — evidence for the plan's *modules/events touched* section and the Detect step below. Entering at an existing issue? Grill it first — procedure: `references/issue-intake-gate.md`. Then the Skill-routing gate. | `riviera-plan-doc` (owner) + `grilling` + both gates |
+| **Plan** | Write the plan doc: testable ACs, risk register, and — if booking/availability/money is touched — how the invariant holds. Map the affected surface (modules + events + blast radius) by grepping the modules and their published surfaces (an Explore agent for anything broad) — evidence for the plan's *modules/events touched* section and the Detect step below. Entering at an existing issue? Grill it first — procedure: `references/issue-intake-gate.md`. Then the Skill-routing gate. | `riviera-plan-doc` (owner) + `grilling` + both gates |
 | **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. Re-run the Skill-routing gate for each area you touch. | `implement` + `tdd` + the Skill-routing gate (below) |
 | **CI gate** | Every push to an **open PR** builds both apps, runs tests, scans (CodeQL + Dependabot + SonarCloud). Green required. After any push that claims a phase green, check that push's run before starting the next phase (red-TDD and labeled-partial pushes exempt) — full-suite-only failures surface only here (case history: #122/#127). | GitHub Actions (issue #3); red → `diagnosing-bugs` |
 | **PR** | **Open the PR as a draft as soon as the first phase commit exists** — CI fires on the `pull_request` event only (`push` is scoped to `main`, #417), so a branch with no PR gets **no CI at all**; `opened` gates the first push, `synchronize` every later one. A draft is a CI vehicle, not a request to review. When the slice is built: merge the latest `origin/main` in with full phase discipline (routing gate for what the integration touches, scoped tests, honest commit), then mark **ready for review** — which is what makes the Review and Sonar gates due (`references/pr-gates.md`). | `triage` (issue lifecycle — issues only in this repo; PRs go through normal review) |
@@ -124,15 +124,15 @@ sanity-check module ownership against `RESPONSIBILITIES.md`. Full procedure: `re
 **How the gate runs — three steps, every time:**
 
 1. **Detect.** List what the slice touches: DB? a backend module? the frontend? money?
-   Use the knowledge graph as evidence, not memory — `graphify query "<slice>"` and
-   `graphify path "<A>" "<B>"` surface the modules, call sites, and blast radius a change
-   reaches. (The graph is local/gitignored, so it's absent in a fresh clone — fall back to
-   grep there.) An `area:fullstack` issue almost always trips DB **and** BE **and** FE —
+   Use the repo as evidence, not memory — grep the modules, their published surfaces and
+   call sites (delegate anything broad to an Explore agent) to find the blast radius a
+   change reaches. An `area:fullstack` issue almost always trips DB **and** BE **and** FE —
    load all of them; don't stop at the label.
 
-   > **An empty graph result is not evidence of absence** — confirm any negative with
-   > `git ls-files`/grep before concluding a thing doesn't exist; the #321 blind-spot
-   > check lives in `CLAUDE.md`'s graphify section.
+   > **An empty search result is not evidence of absence** — confirm any negative with
+   > `git ls-files` before concluding a thing doesn't exist (search tools honour
+   > `.gitignore`, which ignores `out/` — the name of every `adapter/out` package;
+   > see `CLAUDE.md` § *Searching the codebase*).
 2. **Load + announce.** Load each triggered skill **before** authoring that part and say
    so out loud, e.g. *"Loaded `postgres` (migration V2), `codebase-design` (venue seam),
    `angular-developer` + angular-cli MCP (beach-map component)."* If you wrote the
@@ -195,8 +195,8 @@ defense is not "use less context"; it is **the conversation is never the state s
 4. **Keep bulk reads out of the main thread.** What fills context fastest is tool output,
    not skills. Delegate self-contained heavy reading to subagents that return conclusions:
    the review gate (`/code-review` already runs one), the Sonar issue-list triage,
-   `riviera-docs-freshness`, and broad exploration (an Explore agent, or `graphify query`'s
-   scoped subgraph instead of raw grep dumps). Keep test runs scoped per
+   `riviera-docs-freshness`, and broad exploration (an Explore agent, which returns
+   conclusions instead of raw grep dumps). Keep test runs scoped per
    `riviera-local-debug`; read file ranges, not whole files.
 5. **Break marathon slices at the gate boundaries instead of pushing through.** The gates
    are designed as cold-entry points: a committed plan doc is everything an implement
@@ -223,12 +223,6 @@ Cloud sessions (Claude Code on the web / iOS) differ from the idealized local se
   the substitute when `gh` is missing). When an instruction is impossible in the current
   toolset, do the nearest honest thing and **say so in the reply** — don't silently
   half-do it.
-- **Knowledge graph:** `graphify-out/` is gitignored, so a fresh cloud clone starts
-  without it — the Refine/Plan/Detect graph steps have nothing to query. Either build it
-  once (`/graphify .` — code is free via AST, the doc-semantic pass costs tokens) or fall
-  back to grep/read; don't assume `graphify query` is available. The post-commit hook still
-  rebuilds code changes locally within the session once the graph exists.
-
 ## IntelliJ IDEA session addendum (`idea` MCP)
 
 The JetBrains `idea` MCP server is defined at **project scope** (`.mcp.json`) but is
@@ -249,8 +243,7 @@ developer machine's.
   - *Implement:* after an edit, `get_file_problems` / `lint_files` return the IDE's
     inspection verdict faster than a compile cycle; `rename_refactoring` for symbol
     renames instead of grep-and-replace.
-  - *Plan / Detect:* `analyze_calls` + `get_symbol_info` complement `graphify` when
-    mapping blast radius.
+  - *Plan / Detect:* `analyze_calls` + `get_symbol_info` when mapping blast radius.
   - *Debug:* the `xdebug_*` breakpoint/session tools when `diagnosing-bugs` needs
     runtime state.
 - They **supplement, never replace** the gates: scoped test runs (`riviera-local-debug`)

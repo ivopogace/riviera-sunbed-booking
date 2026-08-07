@@ -106,11 +106,6 @@ a stale fact there propagates into every future plan and review.
 5. **Report.** One line per finding: `doc:line — stated fact — contradicted by — action
    (patched/flagged)`. Zero findings is a valid result — say so explicitly. Record the
    run (range + findings) in the slice's plan doc or the epic close-out comment.
-6. **Refresh the knowledge graph.** If any doc was patched, refresh via the graphify
-   skill's update flow and **verify the docs were actually re-extracted** — the bare
-   `graphify update .` CLI has been observed to re-extract code only. (The post-commit
-   hook rebuilds code only; the graph is local/gitignored — nothing to commit; skip
-   when `graphify-out/` is absent, e.g. a cloud clone.)
 
 ## Scope discipline
 
