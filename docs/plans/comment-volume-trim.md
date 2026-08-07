@@ -347,6 +347,31 @@ guard sanctions.
 - ~~`frontend/e2e/`~~ — **never touched**; listed here while the sweep was still planned across all four
   trees. The guard only checks touched ⊆ listed, so a stale entry passes — worth knowing it reads as
   outstanding work when it is cancelled work
+- `docs/adr/ADR-0007-package-structure.md` — **modified**: freshness note + decision-time markers on the
+  thin/full census (see the audit below)
+- `docs/architecture/improvement-plan.md` — **modified**: allowed top-level set widened to match
+  Amendment 1
+- `.claude/skills/riviera-review-overlay/references/backend-conventions.md` — **modified**: same set,
+  in the review bank
+
+### `riviera-docs-freshness` audit (2026-08-07)
+
+Run because the closing batch's review (R-9) found a trimmed Javadoc pointing readers at ADR-0007 for a
+census ADR-0007 states backwards. The audit was scoped to that claim and its neighbours, not to a git
+range. **Four findings, all patched; the decision itself was not touched** — the mechanical
+thin-iff-no-application-service rule is unchanged and still binding.
+
+| Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `ADR-0007:62,74,88,121,255` | `customer` is the sole **thin** module; full is the other six | `customer` gained `CustomerAccountService` at S2 #111 — all eight contexts are full, none thin | patched: decision-time markers + one freshness note, using the ADR's own dated-snapshot idiom from #319 |
+| `ADR-0007:196` | allowed top-level set is `{api, spi, application, domain, adapter}` | **Amendment 1 in the same file** widened it to include `vocabulary` + `events`; `PackageShapeArchitectureTests.ALLOWED_TOP_LEVEL` has all seven | patched: supersession pointer, old set retained for the record |
+| `riviera-review-overlay/references/backend-conventions.md:348` | same five-element set, as a **review-bank violation trigger** | as above | patched — the worst of the four: a reviewer following it would flag `vocabulary/` or `events/` as a violation, i.e. manufacture a false finding |
+| `docs/architecture/improvement-plan.md:156` | same five-element set | as above | patched |
+
+Two hits deliberately **left alone**: `docs/plans/issue-81-*` and `issue-82-*` carry the old set, and
+historical plan docs are records, not living docs (the skill's scope rule). The census in
+`.claude/skills/riviera-modulith/SKILL.md` was **verified correct** and is now the named home for it —
+ADR-0007 points there rather than restating it, which is R-9's rule applied to the ADR.
 
 ## Skills consulted
 
