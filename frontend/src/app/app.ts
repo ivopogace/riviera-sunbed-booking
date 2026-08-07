@@ -132,7 +132,7 @@ export class App {
         this.menuOpen.set(false);
         this.themeOpen.set(false);
         this.accountOpen.set(false);
-        // Land the keyboard/AT guest on the new page, not document.body (WCAG 2.4.3, finding [4]).
+        // Land the keyboard/AT guest on the new page, not document.body (WCAG 2.4.3).
         if (overlayHeldFocus) {
           this.mainRef()?.nativeElement.focus();
         }
