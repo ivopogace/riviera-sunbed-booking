@@ -10,6 +10,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 /** Extensions whose comment syntax `strip` understands. Anything else is skipped, not assumed safe. */
 const SUPPORTED = new Set(['.java', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.scss', '.css']);
@@ -150,6 +151,8 @@ function main(argv) {
   return 0;
 }
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL, not string concatenation: on Windows argv[1] is `C:\…`, which never equals the
+// `file:///C:/…` form of import.meta.url, so the CLI would silently no-op.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.exitCode = main(process.argv.slice(2));
 }
