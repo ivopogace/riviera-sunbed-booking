@@ -159,8 +159,8 @@ stale as batches land.
 
 ## Execution status
 
-**Stage pointer:** implement — Phase A, batch 5 at the PR gate (batches 1–4 merged via
-PR #551, #552, #553, #554).
+**Stage pointer:** batch 5 gates all green on PR #555 (CI + Sonar on `6cf83bb`) — awaiting
+merge; batches 1–4 merged via PR #551, #552, #553, #554.
 
 **Next action:** open the batch-5 PR, run the review gate + read the Sonar new-issue list; on
 merge, restart the branch from `main` and cut batch A-6 — the first sparse-tail directory sweep
