@@ -76,6 +76,14 @@ in more depth.
   rationale relocated* (not deleted), across all four trees. Recorded so no session re-derives it.
 - **A-2** Test-tree doc blocks that justify *why a test exists* are more defensible than production
   archaeology; they still lose issue numbers and history, but the "why this test" sentence stays.
+- **A-3** *(decided 2026-08-07, after the measurement below)* The sweep stops at the **top ~200
+  over-budget files**, ≈57% of the reachable volume. Past that the marginal file is a 10-line block
+  becoming an 8-line block, which does not earn a session. The remaining 383 files are not a backlog —
+  §6d governs them the next time they are edited for another reason.
+- **A-4** *(same)* **PR #545 lands with the rule, the tooling and the first batch**; the mechanical
+  sweep ships as follow-up PRs, one per batch, each carrying its own inertness proof. Chosen against
+  R-3: a branch that grows for weeks presents the review gate with hundreds of files at once, and the
+  §6d guard is worth more running than staged.
 
 ## Availability & concurrency (invariant #2)
 
@@ -99,16 +107,33 @@ No component, template binding, route or service behaviour changes. TSDoc and HT
 
 ## Execution status
 
-**Stage:** Implement (batched) · **Next action:** continue the ledger below, heaviest files first.
+**Stage:** Review gate on PR #545 · **Next action:** `/code-review`, then the Sonar issue list, then
+merge. The sweep continues in follow-up PRs (A-4).
 
-| Phase | Scope | Status |
-|---|---|---|
-| 0 | §6d + frontend twin | ✅ committed `1109c2f` |
-| 1 | `check-comment-only.mjs` + test | ✅ committed |
-| 2 | `platform/src/main` — heaviest files | 🔄 in progress (10 of 481) |
-| 3 | `platform/src/main` — remainder | ⬜ not started |
-| 4 | `platform/src/test` | ⬜ not started |
-| 5 | `frontend/src` + `frontend/e2e` | ⬜ not started |
+| Phase | Scope | Ships in | Status |
+|---|---|---|---|
+| 0 | §6d + the frontend TSDoc twin | #545 | ✅ committed `1109c2f` |
+| 1 | `check-comment-only.mjs` + its 8 tests | #545 | ✅ committed |
+| 2 | First batch — 12 heaviest files | #545 | ✅ committed, CI green |
+| 3 | Backend main, top ~120 over-budget files | follow-up | ⬜ not started |
+| 4 | Backend test, top ~50 | follow-up | ⬜ not started |
+| 5 | `frontend/src` + `frontend/e2e`, top ~30 | follow-up | ⬜ not started |
+
+Phases 3–5 are sized from the over-budget ranking, not from file counts per tree. **Regenerate the
+queue rather than checking a list in** — it goes stale as batches land:
+
+```bash
+node -e "const{execFileSync}=require('node:child_process'),{readFileSync}=require('node:fs');
+const fs=execFileSync('git',['ls-files','platform/src/**/*.java','frontend/src/**/*.ts','frontend/src/**/*.html','frontend/e2e/**/*.ts'],{encoding:'utf8',maxBuffer:1<<28}).split('\n').filter(Boolean);
+const rows=[];for(const f of fs){const ls=readFileSync(f,'utf8').split('\n');let c=[],o=false,n=0;
+const fl=()=>{if(c.length>=10)n+=c.length;c=[]};
+for(const l of ls){const t=l.trim();
+if(t.startsWith('/*')){fl();o=true;c.push(l);if(t.endsWith('*/')){o=false;fl()}continue}
+if(o){c.push(l);if(t.endsWith('*/')){o=false;fl()}continue}
+if(t.startsWith('//')||t.startsWith('<!--')){c.push(l);continue}fl()}fl();
+if(n)rows.push([n,f])}
+rows.sort((a,b)=>b[0]-a[0]);rows.slice(0,200).forEach(([n,f])=>console.log(String(n).padStart(4),f))"
+```
 
 ### Trim ledger
 
