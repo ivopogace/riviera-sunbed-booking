@@ -10,11 +10,11 @@ import { ThemeId, ThemeService } from './core/theme';
 import { OperatorChrome } from './operator/operator-chrome';
 
 /**
- * The Liquid Glass app shell (issue #134): themed gradient background, sticky glass header with
+ * The Liquid Glass app shell: themed gradient background, sticky glass header with
  * responsive nav (inline on desktop, hamburger menu below 640px — CSS decides, both live here),
  * and the theme switcher. Routes not yet restyled to glass carry `data.legacySurface`, which
- * wraps <main> in an opaque light panel so their pre-redesign styling stays legible (plan R-1);
- * each restyle slice (T2–T5, operator epic) removes its route's flag.
+ * wraps <main> in an opaque light panel so their pre-redesign styling stays legible;
+ * each restyle slice removes its route's flag.
  */
 @Component({
   selector: 'app-root',
@@ -29,10 +29,10 @@ import { OperatorChrome } from './operator/operator-chrome';
 })
 export class App {
   protected readonly themes = inject(ThemeService);
-  /** Customer session state for the header (S2 #111): sign-in/register links ↔ signed-in + sign-out. */
+  /** Customer session state for the header: sign-in/register links ↔ signed-in + sign-out. */
   protected readonly customerAuth = inject(CustomerAuth);
   /**
-   * The "your sign-out may not have reached the server" warning (#128). Rendered by the shell for
+   * The "your sign-out may not have reached the server" warning. Rendered by the shell for
    * BOTH principal types — `SessionAuth` records into it, so an operator signing out of the console
    * raises the same banner without the console knowing about it.
    *
@@ -48,8 +48,7 @@ export class App {
   protected readonly menuOpen = signal(false);
   protected readonly themeOpen = signal(false);
   /**
-   * The signed-in account menu (#351) — the tourist's entry point to `/account/password`, which
-   * until now was reachable only by typing the URL.
+   * The signed-in account menu — the tourist's entry point to `/account/password`.
    *
    * <p><strong>A disclosure, deliberately not an ARIA `menu`.</strong> `role="menu"`/`menuitem`
    * would oblige roving `tabindex` + arrow-key navigation to be correct; the theme options were
@@ -57,7 +56,7 @@ export class App {
    * `aria-expanded` revealing plain links — the same shape as `riv-theme-picker`.
    */
   protected readonly accountOpen = signal(false);
-  /** The "Find a booking" glass modal (issue #148) — a shell-level, nav-triggered overlay. */
+  /** The "Find a booking" glass modal — a shell-level, nav-triggered overlay. */
   protected readonly findOpen = signal(false);
 
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
@@ -78,7 +77,7 @@ export class App {
   /**
    * The active route's chrome flags, computed once per navigation from a SINGLE root→leaf walk:
    * `legacySurface` (the leaf still renders pre-redesign styling → opaque compat panel),
-   * `chromeless` (the operator console, `/operator/:venueId` #170, owns a full-bleed porcelain
+   * `chromeless` (the operator console, `/operator/:venueId`, owns a full-bleed porcelain
    * shell → all shell chrome is suppressed) and `operatorChrome` (every OTHER operator/admin
    * surface → the shared porcelain operator header/footer replace the tourist ones, so an admin is
    * never shown the customer session's "Sign in / Register" while signed in). The console flag sits
@@ -127,7 +126,7 @@ export class App {
         takeUntilDestroyed(),
       )
       .subscribe(() => {
-        // Both overlays hold focus in markup this navigation destroys (#148 find modal, #351 menu).
+        // Both overlays hold focus in markup this navigation destroys (find modal, account menu).
         const overlayHeldFocus = this.findOpen() || this.accountOpen();
         this.findOpen.set(false);
         this.menuOpen.set(false);
@@ -169,7 +168,7 @@ export class App {
     this.themeOpen.update((open) => !open);
   }
 
-  /** Toggle the signed-in account menu (#351); only one header popover is open at a time. */
+  /** Toggle the signed-in account menu; only one header popover is open at a time. */
   protected toggleAccountMenu(): void {
     this.menuOpen.set(false);
     this.themeOpen.set(false);
@@ -181,7 +180,7 @@ export class App {
     this.closeMenus();
   }
 
-  /** Sign the customer out (S2 #111) — clears the session server-side; closes the menus first. */
+  /** Sign the customer out — clears the session server-side; closes the menus first. */
   protected async signOut(): Promise<void> {
     this.menuOpen.set(false);
     this.accountOpen.set(false);
@@ -191,7 +190,7 @@ export class App {
     await this.customerAuth.signOut();
   }
 
-  /** Retry a sign-out the server never confirmed (#128); the banner clears only if it confirms now. */
+  /** Retry a sign-out the server never confirmed; the banner clears only if it confirms now. */
   protected async retrySignOut(): Promise<void> {
     await this.signOutNotice.retry();
   }

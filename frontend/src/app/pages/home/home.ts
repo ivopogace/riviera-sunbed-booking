@@ -16,7 +16,7 @@ import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
 
 /**
- * A discovery card's ready-to-render view (issue #297): every per-venue display value the
+ * A discovery card's ready-to-render view: every per-venue display value the
  * template needs, precomputed once from a {@link VenueSummary} by {@link Home.venuesView} rather
  * than re-derived per item on each change-detection tick. The pure `shared/` helpers stay
  * signal-free; this record is where their outputs are memoized off the `venues` signal.
@@ -43,9 +43,9 @@ interface VenueCard {
 }
 
 /**
- * Tourist venue discovery — the app's landing page (`/`, issue #61; Liquid Glass restyle #135).
+ * Tourist venue discovery — the app's landing page (`/`).
  * Hero + one glass filter bar (beach/region/date with the live result count inside) + glass venue
- * cards (the cover photo when uploaded (#142), else the gradient placeholder; mode chip, rating,
+ * cards (the cover photo when uploaded, else the gradient placeholder; mode chip, rating,
  * availability bar), each a link to the beach map at `/venues/:id`. The date drives the per-venue availability count (invariant #2). Money is
  * rendered from integer minor units (invariant #5); every card fact is conveyed as text, not
  * colour alone (WCAG AA). Loading, empty, and error states are distinct.
@@ -76,7 +76,7 @@ export class Home {
   protected readonly region = signal('');
   /**
    * The earliest selectable booking date — tomorrow in Europe/Tirane. Backs the date input's `min`
-   * and clamps a hand-typed date so past/today dates can't be presented as bookable (#155,
+   * and clamps a hand-typed date so past/today dates can't be presented as bookable (an
    * invariant #4 display guardrail; the server stays authoritative for the real cutoff).
    */
   protected readonly minDate = defaultBookingDate(new Date());
@@ -94,7 +94,7 @@ export class Home {
   });
 
   /**
-   * The discovery cards, precomputed off `venues()` + the selected date (issue #297): the template
+   * The discovery cards, precomputed off `venues()` + the selected date: the template
    * iterates these ready-made fields instead of calling parameterized pure methods per item per CD
    * tick. `undefined` while a request is in flight, mirroring `venues()`.
    */
@@ -191,7 +191,7 @@ export class Home {
     if (!input.value) {
       return;
     }
-    // Clamp a hand-typed past/today date up to the earliest day — typing bypasses the picker `min` (#155).
+    // Clamp a hand-typed past/today date up to the earliest day — typing bypasses the picker `min`.
     const value = input.value < this.minDate ? this.minDate : input.value;
     input.value = value; // reflect any clamp back into the field, even when the model is unchanged
     if (value === this.selectedDate()) {
@@ -201,7 +201,7 @@ export class Home {
     this.reload();
   }
 
-  /** Retry the load that failed (the failure panel's "Try again" button, #149 AC-1). */
+  /** Retry the load that failed (the failure panel's "Try again" button). */
   protected onRetryDiscover(): void {
     this.lastLoad();
   }
@@ -212,7 +212,7 @@ export class Home {
   }
 
   /**
-   * Derive one card's render+a11y view from a summary (issue #297). All logic is the pure `shared/`
+   * Derive one card's render+a11y view from a summary. All logic is the pure `shared/`
    * helpers, called here — never from the template. `dateLabel` is passed in so it is read once per
    * `venuesView` evaluation, not re-read per card.
    */
