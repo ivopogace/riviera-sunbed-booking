@@ -45,7 +45,8 @@ in more depth.
 - [x] AC-2 `node scripts/check-comment-only.mjs main` exits 0 — every touched source file is
       code-identical after comment stripping.
 - [x] AC-3 `node --test scripts/*.test.mjs` green (8 new cases for the verifier).
-- [ ] AC-4 Full CI green (backend build + test, frontend lint/test/build + e2e, both hygiene checks).
+- [x] AC-4 Full CI green (backend build + test, frontend lint/test/build + e2e, both hygiene checks) —
+      confirmed on PR #545 after the R-6 fix; re-checked per batch thereafter.
 - [ ] AC-5 Every file in the sweep scope trimmed to §6d.
 - [ ] AC-6 No rationale lost: anything load-bearing that was removed exists in a substrate doc.
 
@@ -102,7 +103,7 @@ No component, template binding, route or service behaviour changes. TSDoc and HT
 |---|---|---|
 | 0 | §6d + frontend twin | ✅ committed `1109c2f` |
 | 1 | `check-comment-only.mjs` + test | ✅ committed |
-| 2 | `platform/src/main` — heaviest files | 🔄 in progress (5 of 481) |
+| 2 | `platform/src/main` — heaviest files | 🔄 in progress (10 of 481) |
 | 3 | `platform/src/main` — remainder | ⬜ not started |
 | 4 | `platform/src/test` | ⬜ not started |
 | 5 | `frontend/src` + `frontend/e2e` | ⬜ not started |
@@ -116,14 +117,25 @@ No component, template binding, route or service behaviour changes. TSDoc and HT
 | `shared/MdcTaskDecorator.java` | 127 | 100 | Kept all three traps; dropped the #455/#410 argument |
 | `booking/application/Bookings.java` | 207 | 175 | Port interface — its Javadoc is genuine contract, so only issue numbers and story labels went |
 | `booking/adapter/in/RefundExecutorProperties.java` | 145 | 105 | Sizing argument already in RESPONSIBILITIES §`booking`; the operational *why* is in the exception messages, where an operator meets it at boot |
+| `RateLimitFilter.java` | 273 | 184 | Security-critical, so every trap stayed (the `%64` decode bypass, the firewall tripwire, `AuthBudget`'s "same 401, opposite meaning"). What went: the separation rule restated once per constant |
+| `notification/application/AsyncMailDispatcher.java` | 189 | 90 | Third copy of RESPONSIBILITIES §`notification`, which CLAUDE.md already names as the single home for these policies |
+| `notification/application/TransactionalMailService.java` | 153 | 92 | Five registry-vehicle methods each restated the shared posture; stated once on the class |
+| `booking/adapter/in/RefundExecutorConfig.java` | 131 | 92 | Twin of the next row — trimmed in parallel so the two stay symmetric, which their own Javadoc requires |
+| `notification/adapter/in/RegistryMailExecutorConfig.java` | 128 | 99 | `defaultCandidate = false`, compose-don't-replace, and episode-ends-on-drain all kept verbatim |
 
-**Remaining heaviest** (comment lines, from `concentration.mjs`): `RateLimitFilter.java` 273 ·
-`AsyncMailDispatcher.java` 189 · `RateLimitFilterTest.java` 178 · `TransactionalMailService.java` 153 ·
-`TransactionalMailServiceTest.java` 143 · `Bookings.java` 141 · `operator-console.model.ts` 133 ·
-`RefundExecutorConfig.java` 131 · `RegistryMailExecutorConfig.java` 128.
+**Remaining heaviest** (recomputed after the batch above): `SecurityConfig.java` 248 ·
+`RateLimitFilter.java` 184 · `RateLimitFilterTest.java` 178 · `TransactionalMailServiceTest.java` 143 ·
+`operator-console.model.ts` 133 · `Bookings.java` 125 · `RefundBulkheadIT.java` 114 ·
+`AuthController.java` 111 · `MailListenerExecutorArchitectureTest.java` 111 · `my-bookings.ts` 110.
+
+The first two are already-trimmed files that remain top-ranked because their Javadoc is genuine
+contract — treat their current size as the floor, not a backlog item.
 
 Concentration is long-tailed — top 100 files hold 34%, top 400 hold 72% — so there is no shortcut
 set. Expect the full sweep to span sessions; work heaviest-first so each session lands real volume.
+
+**Tree total:** 24,718 → 24,136 comment lines after 10 files. The per-file cuts are large (≈40%), but
+they are 10 files of 1,050; the number that moves is the one in the phase table, not this one.
 
 ## File structure
 

@@ -23,58 +23,34 @@ import org.springframework.core.task.support.CompositeTaskDecorator;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
- * The executor {@link BookingRefundListener} drains on (#404) — a bulkhead between a degraded payment
- * gateway and the money-path spine.
+ * The executor {@link BookingRefundListener} drains on — a bulkhead between a degraded payment gateway
+ * and the money-path spine.
  *
- * <p><strong>Why this bean exists at all.</strong> {@code @ApplicationModuleListener} expands to
- * {@code @Async} with no qualifier, which is Boot's shared {@code applicationTaskExecutor} — the same
- * pool that carries {@link PaymentEventListener} (payment → confirm, invariant #8) and {@code payout}'s
- * accrual/reversal listeners (invariant #9), 8 core threads behind an <em>unbounded</em> queue. The
- * refund listener's body is a blocking gateway round-trip, so under the {@code stripe} profile that put
- * up to 25s of network wait on the spine's threads, once per cancellation. #383 fixed the same hazard
- * class for mail and its generalization-audit pass named this listener as the one genuine sibling it had
- * deferred; this is that deferral closed.
+ * <p><strong>Why the bean exists.</strong> {@code @ApplicationModuleListener} expands to {@code @Async}
+ * with no qualifier, which is Boot's shared {@code applicationTaskExecutor} — the same pool that carries
+ * {@link PaymentEventListener} (payment → confirm, invariant #8) and {@code payout}'s accrual/reversal
+ * listeners (invariant #9), behind an <em>unbounded</em> queue. The refund listener's body is a blocking
+ * gateway round-trip, and {@code WeatherRefundService} dispatches a whole venue-day of them from one
+ * admin action (invariant #10's weather exception), so sharing that pool puts minutes of network wait
+ * ahead of the confirmation a tourist who has just paid is waiting for.
  *
- * <p><strong>The burst is what makes it acute, and it is not the one the issue assumed.</strong> A
- * tourist cancellation produces one refund, which is why #404 was filed as the milder of the two. But
- * {@code WeatherRefundService} cancels <em>every</em> confirmed booking for a {@code (venue, date)} in
- * one transaction (invariant #10's admin weather exception) and publishes a {@code BookingCancelled} for
- * each, so a single admin action dispatches a whole venue-day of refunds at once. On the shared pool a
- * 60-booking venue-day against a degraded gateway is ~3 minutes during which every spine listener queues
- * behind refunds — including the confirmation a tourist who has just paid is waiting for.
+ * <p><strong>Bounded on every axis, and the saturation behaviour is a contract.</strong> Core equals max
+ * deliberately: a {@code ThreadPoolExecutor} grows past its core size only once the queue is
+ * <em>full</em>, so a larger max would add no headroom until the whole queue were already backed up. All
+ * three bounds are {@link RefundExecutorProperties}. At {@code poolSize + queueCapacity} the pool
+ * <strong>sheds</strong> — the rejection handler counts and discards instead of throwing (an
+ * {@code AFTER_COMMIT} listener is dispatched from inside {@code commit()}, so a throw would surface on
+ * the very thread this pool protects, reporting a server error for a cancellation that already
+ * succeeded) and instead of running on the caller's thread, which would be the original defect reached
+ * from the other side.
  *
- * <p><strong>Bounded on every axis, and the saturation behaviour is a contract, not an accident.</strong>
- * Core equals max deliberately: a {@code ThreadPoolExecutor} grows past its core size only once the queue
- * is <em>full</em>, so a larger max would add no headroom until the whole queue were already backed up.
- * All three bounds are {@link RefundExecutorProperties}, which carries the sizing argument behind each.
- * At {@code poolSize + queueCapacity} the pool <strong>sheds</strong>: the rejection handler counts and
- * discards instead of throwing (an {@code AFTER_COMMIT} listener is dispatched from inside
- * {@code commit()}, so a throw would surface on the very thread this pool protects — and would report a
- * server error for a cancellation that has already succeeded) and instead of running on the caller's
- * thread (which would be the original defect, reached from the other side).
- *
- * <p><strong>Shedding here loses nothing, but it is not free either — and that asymmetry is why the
- * queue is deep.</strong> The mechanism matches #383's: a shed submission never runs, so the listener
- * never completes, so its Event Publication Registry row stays outstanding and
- * {@code republish-outstanding-events-on-restart} re-delivers it; until then it keeps
- * {@code riviera.outbox.pending} non-zero, which {@code MoneyPathAlertCheck} already watches. Two things
- * differ from mail, both pushing the same way. A refund is money owed to a tourist under invariant #10,
- * where "retried whenever we next deploy" is a far less comfortable contract than it is for a
- * confirmation mail. And a shed is the one loss mode that does <strong>not</strong> trigger its own
- * recovery — a crash restarts by definition, a shed happens while the process is healthy — while the
- * outbox alert's default threshold of 10 means a single shed refund would never reach it. Hence
- * {@link ObservabilityMetrics#REFUNDS_SHED}, and hence a queue sized so that reaching it at all takes a
- * burst far larger than one weather-refund sweep. Every replay is safe because the gateway call is
- * idempotency-keyed on the booking id ({@code booking-<id>-refund}), so a republished publication
- * re-issues the same key and the gateway returns the original refund rather than moving money twice.
- *
- * <p><strong>Expiring the drain window means giving up, not interrupting.</strong>
- * {@code ExecutorConfigurationSupport} awaits {@code shutdownDrain} and then returns; this configuration
- * deliberately does not escalate to {@code shutdownNow()}. The reason is weaker than the mail pool's and
- * lands in the same place: an interrupted refund cannot double-charge (the idempotency key sees to that),
- * but it may have reached the gateway with {@code markRefunded} unwritten, and the recovery for that is
- * precisely the republish that an unfinished listener leaves available. Interrupting adds a race and
- * buys nothing.
+ * <p>A shed refund is recoverable but not free: the listener never completes, so its Event Publication
+ * Registry row stays outstanding for the next start's republish, and every replay is safe because the
+ * gateway call is idempotency-keyed on the booking id ({@code booking-<id>-refund}). Expiring the drain
+ * window therefore means giving up rather than {@code shutdownNow()}: an interrupt cannot tell a refund
+ * that reached the gateway from one that did not, and the republish is the recovery for both. Why the
+ * queue is sized past one weather-refund sweep and why {@link ObservabilityMetrics#REFUNDS_SHED} exists
+ * beside {@code riviera.outbox.pending}: {@code RESPONSIBILITIES.md} §{@code booking}.
  *
  * <p><strong>{@code defaultCandidate = false} is load-bearing — do not "tidy" it away.</strong> Boot
  * declares {@code applicationTaskExecutor} {@code @ConditionalOnMissingBean(Executor.class)}, so merely
@@ -83,8 +59,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * {@code SimpleAsyncTaskExecutor}, one new thread per event: this bulkhead would have removed a bound
  * from the exact path it exists to protect, and no test would have failed, because unbounded threads
  * always keep up. Excluding this bean from by-type resolution keeps Boot's condition unmet while leaving
- * it addressable by name, which is all {@code @Async} needs. {@code RefundExecutorWiringIT} pins it in
- * the configuration #383 could not: with <em>two</em> such executors in one context.
+ * it addressable by name, which is all {@code @Async} needs. {@code RefundExecutorWiringIT} pins it with
+ * <em>two</em> such executors in one context.
  */
 @Configuration
 @EnableConfigurationProperties(RefundExecutorProperties.class)
@@ -120,56 +96,41 @@ class RefundExecutorConfig {
 	/**
 	 * What saturation does: <strong>count every shed refund, escalate once per episode.</strong>
 	 *
-	 * <p>The <em>counter</em> is the signal to alert on, and it is the whole reason a shed is survivable
-	 * as a design: {@code riviera.outbox.pending} would also rise, but its alert threshold is 10, so a
-	 * handful of shed refunds is invisible there while being exactly the case worth paging on.
-	 * {@link ObservabilityMetrics#REFUNDS_SHED} increments unconditionally and before the episode flag is
-	 * consulted, so throttling the log can never cost a count.
-	 *
-	 * <p>The <em>log</em> is one escalated line per episode, not per rejected task. At saturation the
-	 * handler fires once per submission, so a wedged gateway during a weather-refund sweep would
-	 * otherwise bury the lines that matter under hundreds of identical ones. {@code ERROR} rather than
-	 * {@code WARN} because a shed refund is not merely delayed: nothing retries it until the next
-	 * restart's republish, and until then a tourist owed money under invariant #10 has not been paid.
-	 *
-	 * <p><strong>The flag's two writers race, benignly, and the review gate asked about it.</strong>
-	 * {@code rejectedExecution} opens the episode with a CAS on the submitting thread; a worker clears it
-	 * with a plain {@code set(false)} after reading the queue. A worker that reads the queue as empty and
-	 * writes after a fresh rejection has re-opened it would clear a live episode, costing one extra
-	 * {@code ERROR} line on the next shed. It cannot lose a count ({@code shed.increment()} is
-	 * unconditional and runs first) and cannot lose a refund (the publication is untouched), and reaching
-	 * it needs {@code queueCapacity} submissions inside the nanoseconds between that read and that write —
-	 * 500 at the shipped bounds. Left as-is deliberately: this is the same shape as the merged
-	 * {@code RegistryMailExecutorConfig}, and fixing it in one copy only would diverge two implementations
-	 * kept parallel on purpose.
+	 * <p>{@link ObservabilityMetrics#REFUNDS_SHED} increments unconditionally and before the episode flag
+	 * is consulted, so throttling the log can never cost a count. The log is one escalated line per
+	 * episode, not per rejected task: at saturation the handler fires once per submission, so a wedged
+	 * gateway during a weather-refund sweep would otherwise bury the lines that matter under hundreds of
+	 * identical ones. {@code ERROR} rather than {@code WARN} because a shed refund is not merely delayed —
+	 * nothing retries it until the next restart's republish, and until then a tourist owed money under
+	 * invariant #10 has not been paid.
 	 *
 	 * <p><strong>An episode ends when the queue drains, not when a task starts.</strong> Clearing the
 	 * flag on every task start would tie the log rate to the pool's <em>drain</em> rate rather than to
 	 * the incident, because under saturation each completed refund frees exactly one slot and the next
-	 * arrival refills-then-rejects. Gating the reset on an empty queue makes "episode" mean what this
-	 * says: one line while the backlog persists, and a new line for a genuinely new saturation.
+	 * arrival refills-then-rejects.
 	 *
-	 * <p><strong>A rejection during shutdown is not saturation and is not counted as one.</strong> The
-	 * pool is bounded but also {@code shutdown()} at context close, so an in-flight cancellation can
-	 * still reach its {@code AFTER_COMMIT} dispatch after the executor stops accepting. That rejection
-	 * arrives at this same handler from an <em>idle</em> pool; counting it would make every routine
-	 * redeploy raise an "any increase" alert, and escalating it would describe a gateway degradation
-	 * that never happened.
+	 * <p><strong>A rejection during shutdown is not saturation and is not counted as one</strong> — it
+	 * arrives at this same handler from an <em>idle</em> pool, so counting it would make every routine
+	 * redeploy raise an "any increase" alert and escalating it would describe a gateway degradation that
+	 * never happened.
 	 *
-	 * <p><strong>This policy shares the pool's single {@code TaskDecorator} slot.</strong> Since #455 the
-	 * slot holds a {@code CompositeTaskDecorator} of {@link #decorate} and {@link MdcTaskDecorator}, and a
-	 * third decorator must <em>join that list</em> rather than call {@code setTaskDecorator} again, which
-	 * silently replaces the lot: {@link #decorate} would then never run, so the episode flag would never
-	 * clear and every saturation after the first would be counted but never logged. No test would go red
-	 * for the missing lines, only for their absence in {@code aLaterEpisodeLogsAgain}.
+	 * <p><strong>This policy shares the pool's single {@code TaskDecorator} slot</strong> with
+	 * {@link MdcTaskDecorator}. A third decorator must <em>join that list</em> rather than call
+	 * {@code setTaskDecorator} again, which silently replaces the lot: {@link #decorate} would then never
+	 * run, so the episode flag would never clear and every saturation after the first would be counted but
+	 * never logged. No test would go red for the missing lines, only for their absence in
+	 * {@code aLaterEpisodeLogsAgain}.
 	 *
-	 * <p>Neither path may throw or run the task: see this class's Javadoc for why both defeat the
-	 * bulkhead. The lines carry counts and a metric name only — never a booking code (invariant #7).
-	 * They are attributable without a {@code TaskDecorator} because {@code ThreadPoolExecutor.execute}
-	 * calls {@code reject(...)} on the <strong>calling</strong> thread, which here is the thread
-	 * committing the cancellation, so the context {@code CorrelationIdFilter} put there is still present.
-	 * What #455 added is the other half — the <em>worker</em> lines, where the listener's
-	 * {@code refunded cancelled booking} INFO and any gateway failure run.
+	 * <p>Neither path may throw or run the task — both defeat the bulkhead. The lines carry counts and a
+	 * metric name only, never a booking code (invariant #7), and are attributable without a
+	 * {@code TaskDecorator} because {@code ThreadPoolExecutor.execute} calls {@code reject(...)} on the
+	 * <strong>calling</strong> thread, which here is the thread committing the cancellation.
+	 *
+	 * <p>The flag's two writers race benignly: a worker that reads the queue as empty and writes after a
+	 * fresh rejection re-opened the episode costs one extra {@code ERROR} line, and can lose neither a
+	 * count (the increment is unconditional and runs first) nor a refund (the publication is untouched).
+	 * Left as-is deliberately, and identically in {@code RegistryMailExecutorConfig} — fixing one copy
+	 * only would diverge two implementations kept parallel on purpose.
 	 */
 	private static final class SaturationPolicy implements RejectedExecutionHandler, TaskDecorator {
 
