@@ -2,16 +2,16 @@ import { SetView } from './venue-views';
 
 /**
  * Shared logic for the operator console's per-day availability grid — the read-model derivations used
- * by the O5 Daily view (`operator/daily-view-tab.ts`), plus the row grouping the Pricing tab also uses.
+ * by the Daily view (`operator/daily-view-tab.ts`), plus the row grouping the Pricing tab also uses.
  * Pure and side-effect free, so it is exhaustively unit-testable and lives in exactly one place
- * (extracted at O5 #175 — three consumers, rule of three; the third, the legacy staff daily view, was
- * retired at O6 #176, and the two operator tabs remain).
+ * (extracted on the rule of three; the third consumer, the legacy staff daily view, is retired —
+ * the two operator tabs remain).
  */
 
 /** A set's state on a chosen day: `FREE` → tap to mark; `STAFF_MARKED` → tap to release; `BOOKED_ONLINE` → locked. */
 export type TileState = 'FREE' | 'STAFF_MARKED' | 'BOOKED_ONLINE';
 
-/** A held set's server state token (#207) — what the owner availability read reports; free sets are absent. */
+/** A held set's server state token — what the owner availability read reports; free sets are absent. */
 export type HeldSetState = Exclude<TileState, 'FREE'>;
 
 /** Sets grouped into a beach-map row; first-seen read order is preserved for both rows and sets. */
@@ -35,7 +35,7 @@ export function groupSetsByRow(sets: readonly SetView[]): SetRow[] {
 }
 
 /**
- * Derive each set's effective tile state from the server's per-set state tokens (#207) and any
+ * Derive each set's effective tile state from the server's per-set state tokens and any
  * optimistic overrides (which win until a reconcile clears them). The states map is the single
  * classification authority: a set absent from it is `FREE`; a held one carries `BOOKED_ONLINE`
  * (any online hold — paid or not — renders locked) or `STAFF_MARKED`. This replaced the

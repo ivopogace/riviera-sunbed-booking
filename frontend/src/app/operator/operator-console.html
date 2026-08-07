@@ -11,8 +11,7 @@
     </div>
   </main>
 } @else {
-  <!-- S9 (#277): no sign-in gate here — operatorSessionGuard owns it, and it awaits the session
-       restore before deciding, so this shell only ever renders for a signed-in operator. -->
+  <!-- No sign-in gate here: operatorSessionGuard owns it and awaits the session restore, so this shell only renders signed-in. -->
   <div class="oc-shell">
     <header class="oc-header" data-testid="oc-header">
       <div class="oc-header-inner">
@@ -23,7 +22,7 @@
           }}</span>
         </div>
         <div class="oc-header-right">
-          <!-- Venue creation lives in the operator home's create state (#278); keep it reachable here. -->
+          <!-- Venue creation lives in the operator home's create state; keep it reachable here. -->
           <a
             class="oc-create-venue"
             data-testid="oc-create-venue"
@@ -32,11 +31,10 @@
             >Create a venue</a
           >
           @if (operator.isAdmin()) {
-            <!-- Platform-admin operator-approval surface (S6 #115); shown only to an ADMIN principal. -->
+            <!-- Platform-admin operator-approval surface; shown only to an ADMIN principal. -->
             <a class="oc-create-venue" data-testid="oc-admin-link" routerLink="/admin">Admin</a>
           }
-          <!-- Self-service credential rotation (#326). Shown to every operator, including the bootstrap
-               admin, whose refusal is explained on the page rather than hidden by a missing link. -->
+          <!-- Self-service credential rotation. Shown to every operator, incl. the bootstrap admin, whose refusal the page explains. -->
           <a
             class="oc-create-venue"
             data-testid="oc-change-password"
