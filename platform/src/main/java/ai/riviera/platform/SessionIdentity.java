@@ -10,10 +10,8 @@ import jakarta.servlet.http.HttpSession;
 /**
  * The calling request's server-side session <em>identity</em> — reading it, and retiring it. Both
  * self-service password endpoints ({@link OperatorAccountController}, {@link MyAccountController}) need
- * exactly these two operations in exactly this order, and had already copied the read between them;
- * #344 added the rotation, which is the half that is easy to get wrong. {@link SessionAuthentication} has
- * carried a byte-identical guarded rotation since S1 for session-fixation defence and now calls
- * {@link #rotate} too, so the idiom has one implementation rather than two.
+ * exactly these two operations in exactly this order, and {@link SessionAuthentication} needs the same
+ * rotation for session-fixation defence, so the idiom has one implementation rather than three.
  *
  * <p>Session-identity lifecycle is platform-edge machinery (RV-BE-11): neither {@code customer} nor
  * {@code operator} may import the servlet or Spring Session APIs, so this cannot live in a module.
@@ -36,19 +34,17 @@ final class SessionIdentity {
 
 	/**
 	 * Give the calling request a fresh session identity, so the cookie value that reached it stops
-	 * authenticating anyone — the rotation half of a password change (#344) and the session-fixation
-	 * defence on every login path (design D-1). Spring Session's filter writes the replacement
-	 * {@code SESSION} cookie on the same response, so a legitimate caller notices nothing; a copy of the
-	 * old cookie is simply dead.
+	 * authenticating anyone — the rotation half of a password change, and the session-fixation defence on
+	 * every login path (design D-1). Spring Session's filter writes the replacement {@code SESSION}
+	 * cookie on the same response, so a legitimate caller notices nothing; a copy of the old cookie is
+	 * simply dead.
 	 *
-	 * <p><strong>Must run after any {@code revokeAllExcept} that spares this session.</strong> That revoke's
-	 * keep-id has to be one its own query can see, and after this call none is: the caller's row is gone and
-	 * its replacement is not persisted until the filter commits, so an id read afterwards names nothing and
-	 * the keep-contract would be vacuous. (Before #359 the mis-ordering was worse than vacuous — the row
-	 * survived under the old id, so a post-rotation keep-id failed the filter and the revoke deleted the
-	 * caller's own session.)
+	 * <p><strong>Must run after any {@code revokeAllExcept} that spares this session.</strong> That
+	 * revoke's keep-id has to be one its own query can see, and after this call none is: the caller's row
+	 * is gone and its replacement is not persisted until the filter commits, so an id read afterwards
+	 * names nothing and the keep-contract would be vacuous.
 	 *
-	 * <p><strong>Why this is not {@code changeSessionId()}</strong> (issue #359). That keeps the same
+	 * <p><strong>Why this is not {@code changeSessionId()}.</strong> That keeps the same
 	 * {@code SPRING_SESSION} row and defers the new id to the filter's post-request save, which writes
 	 * <em>that</em> request's in-memory id. Any second request touching the session performs the same write
 	 * on completion, so one that loaded before the rotation committed and finished after wrote the OLD id
