@@ -7,77 +7,28 @@ import ai.riviera.platform.shared.ShutdownBudget;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * The bounds of the refund bulkhead ({@link RefundExecutorConfig}), externalised from the start
- * because every number here is sized against a <em>gateway</em> budget, and the gateway is changing.
+ * The bounds of the refund bulkhead ({@link RefundExecutorConfig}), externalised because every number
+ * here is sized against a <em>gateway</em> budget — one refund is one blocking round-trip, bounded
+ * today at 25s by Stripe's configured connect + read timeouts with no SDK retries (pinned by
+ * {@code StripeConfigTest}). The full sizing argument: {@code RESPONSIBILITIES.md} §{@code booking}.
  *
- * <p><strong>The sizing argument, so it can be checked rather than inherited.</strong> One refund is
- * one blocking round-trip, bounded today by Stripe's configured 5s connect + 20s read = <strong>25s</strong>
- * with no SDK retries — pinned, not assumed, by
- * {@code StripeConfigTest#theRefundBudgetIsOneRoundTripWithNoSdkRetries}. From that:
- * <ul>
- *   <li><strong>{@link #DEFAULT_POOL_SIZE} = 4.</strong> Not a throughput number — a head-of-line one.
- *       The worst realistic burst is an admin weather refund, which cancels <em>every</em> confirmed
- *       booking for one {@code (venue, date)} in a single transaction and dispatches that many refunds
- *       at once. At 2 threads (the mail pool's choice, sized for "a handful of sends a day") a
- *       60-booking venue-day against a degraded gateway would take 12.5 minutes to drain; at 4 it is
- *       ~6. Larger buys little: in the normal case a refund is sub-second and even one thread keeps up,
- *       and each extra worker is another concurrent gateway request during precisely the incident where
- *       the gateway is already unhappy.</li>
- *   <li><strong>{@link #DEFAULT_QUEUE_CAPACITY} = 500.</strong> Deep enough that shedding is unreachable
- *       for any plausible burst — several venues' worth of weather refunds in one storm — because unlike
- *       a shed mail, a shed refund is money owed under invariant #10 and its recovery is restart-only.
- *       Bounded anyway, at ≈52 minutes of worst-case backlog (500 × 25s ÷ 4), past which the Event
- *       Publication Registry is the better queue; the same reasoning #383 applied at ≈50 minutes.</li>
- *   <li><strong>{@link #DEFAULT_SHUTDOWN_DRAIN} = 5s, and it is deliberately far short of one
- *       round-trip.</strong> The instinct is to cover the full 25s so a redeploy never abandons a refund
- *       that is merely slow; that instinct is wrong twice over, and the review gate caught it at 30s.
+ * <p>The shipped values live in {@code application.properties}; the defaults below are a backstop for a
+ * context bound without it. The {@code ${RIVIERA_REFUND_*:…}} placeholders are also the only reason the
+ * readable env-var names work — relaxed binding of {@code riviera.booking.refund.pool-size} would be
+ * {@code RIVIERA_BOOKING_REFUND_POOLSIZE}.
  *
- *       <p>First, <strong>the budget is shared and it stacks.</strong> This is the third pool in the
- *       context that drains on shutdown, and pools are separate beans whose {@code destroy()} methods
- *       {@code destroySingletons()} runs <em>sequentially on one thread</em> — so the windows add rather
- *       than overlap. The two mail pools already claim 20s of Render's ~30s SIGTERM→SIGKILL grace
- *       between them. At 30s here the total would have been 50s: the process is killed mid-close, Hikari
- *       and the web layer never close in order, and the long drain does not even finish. 5s leaves 5s of
- *       the grace for them. Since #456 that arithmetic is not restated per module but stated once in
- *       {@link ShutdownBudget} and checked as a sum — the version of it that lived in
- *       {@code notification} could not see this pool, which is how the 30s reached review at all.
+ * <p><strong>Every knob is validated on BOTH ends, because every invalid value boots clean.</strong>
+ * {@code ThreadPoolTaskExecutor.createQueue} returns a {@link java.util.concurrent.SynchronousQueue}
+ * for any capacity {@code <= 0}, silently converting the bulkhead into a pool that sheds every refund
+ * it cannot hand straight to a free thread. At the other end it returns a {@code LinkedBlockingQueue}
+ * for <em>any</em> positive capacity and allocates lazily, so an absurd value is just the unbounded
+ * queue this bulkhead removed, restored by configuration. Core threads are created lazily too, so an
+ * oversized pool fails later as {@code OutOfMemoryError: unable to create native thread} — on the very
+ * commit thread {@link RefundExecutorConfig}'s shed handler exists to keep exceptions off.
  *
- *       <p>Second, <strong>abandoning a refund is cheap here in a way abandoning a mail is not.</strong>
- *       The mail pools drain long because an interrupted send cannot be retried safely — at-least-once
- *       becomes a duplicate. A refund has no such problem: the publication stays outstanding, the next
- *       start republishes it, and the idempotency key {@code booking-<id>-refund} makes the replay return
- *       the original refund rather than moving money twice. So the drain only needs to catch the
- *       <em>common</em> case, which is sub-second; the pathological 25s case is precisely the one it is
- *       safe to give up on. The ceiling equals the default for the reason
- *       {@code MailTransportProperties} gives for its own: at that value the drain already fills what
- *       shutdown may afford this pool, so the knob exists to turn it <em>down</em>.</li>
- * </ul>
- *
- * <p><strong>The values that ship live in {@code application.properties}, not here.</strong> The
- * defaults below are a backstop for a context bound without that file; production reads the
- * {@code ${RIVIERA_REFUND_*:…}} placeholders, and those placeholders are also the only reason the
- * readable env-var names work — the relaxed-binding form of {@code riviera.booking.refund.pool-size}
- * would be {@code RIVIERA_BOOKING_REFUND_POOLSIZE}. This matters more here than it did for #408:
- * ADR-0009 (epic #284) replaces the gateway outright, and the whole point of these being properties is
- * that re-deriving the numbers against Paysera's client is a config change rather than a code change.
- *
- * <p><strong>Every knob is validated here, not annotated, and on BOTH ends.</strong> A non-positive
- * {@code queue-capacity} is not harmless: {@code ThreadPoolTaskExecutor.createQueue} returns a
- * {@link java.util.concurrent.SynchronousQueue} for any capacity {@code <= 0}, so a typo would boot
- * cleanly and silently convert the bulkhead into a pool that sheds every refund it cannot hand straight
- * to a free thread — worse than the starvation this exists to prevent, and invisible. The upper bounds
- * close the same hole from the other end: {@code createQueue} returns a {@code LinkedBlockingQueue} for
- * <em>any</em> positive capacity and allocates its nodes lazily, so an absurd value boots clean, reports
- * healthy, sheds nothing, and is simply the unbounded queue this slice removed, restored by
- * configuration. A large {@code pool-size} is the mirror image — core threads are created lazily too, so
- * the failure arrives later as {@code OutOfMemoryError: unable to create native thread}, thrown from
- * {@code execute()} on the commit thread that {@link RefundExecutorConfig}'s shed handler exists to keep
- * exceptions off.
- *
- * <p>The guard is a compact constructor rather than {@code @Validated} + {@code @Min} because Boot
- * validates {@code @ConfigurationProperties} only when a JSR-303 implementation is on the classpath, and
- * there is none: #97 declined {@code spring-boot-starter-validation} deliberately, in favour of explicit
- * checks in records. An annotation here would bind and validate nothing.
+ * <p>A compact constructor rather than {@code @Validated} + {@code @Min}: Boot validates
+ * {@code @ConfigurationProperties} only with a JSR-303 implementation on the classpath, and there is
+ * none by deliberate choice, so an annotation here would validate nothing.
  *
  * @param poolSize core <em>and</em> max threads; equal by design, since a {@code ThreadPoolExecutor}
  *        grows past core only once the queue is full
@@ -87,28 +38,34 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("riviera.booking.refund")
 record RefundExecutorProperties(Integer poolSize, Integer queueCapacity, Duration shutdownDrain) {
 
+	/** Sized against head-of-line delay on a weather-refund burst, not throughput. */
 	static final int DEFAULT_POOL_SIZE = 4;
 
+	/** Deep enough that shedding is unreachable for any plausible burst: a shed refund is money owed. */
 	static final int DEFAULT_QUEUE_CAPACITY = 500;
 
+	/**
+	 * Deliberately far short of one round-trip. Abandoning a refund is cheap — the publication stays
+	 * outstanding, the next start republishes, and the {@code booking-<id>-refund} idempotency key makes
+	 * the replay return the original rather than move money twice — so the drain need only catch the
+	 * sub-second common case.
+	 */
 	static final Duration DEFAULT_SHUTDOWN_DRAIN = Duration.ofSeconds(5);
 
 	/** 8× the shipped 4. Past this the pool stops being the small thing the spine's pool is protected from. */
 	static final int MAX_POOL_SIZE = 32;
 
-	/** 20× the shipped 500 — ≈17 hours of backlog at 4 × 25s, long past where the registry is the better queue. */
+	/** 20× the shipped 500 — ≈17 hours of backlog, long past where the registry is the better queue. */
 	static final int MAX_QUEUE_CAPACITY = 10_000;
 
 	/** Below a second the drain gives up on the sub-second common case, every single redeploy. */
 	static final Duration MIN_SHUTDOWN_DRAIN = Duration.ofSeconds(1);
 
 	/**
-	 * This pool's claim on the platform's SIGTERM grace, equal to the default as
-	 * {@code MailTransportProperties}' own ceiling is: at this value the drain already fills what
-	 * shutdown can afford this pool once the two mail pools have taken their share, so the knob exists to
-	 * turn it <strong>down</strong>. Raising it is not a tuning decision but a re-division of a
-	 * platform-wide budget — do that in {@link ShutdownBudget}, where the grace and every pool's claim
-	 * against it are stated together and {@code ShutdownDrainArchitectureTest} checks the sum (#456).
+	 * This pool's claim on the platform's SIGTERM grace — equal to the default, so the knob exists to
+	 * turn it <strong>down</strong>. Raising it is not tuning but a re-division of a platform-wide
+	 * budget: pools drain SEQUENTIALLY at context close, so windows add rather than overlap. Do that in
+	 * {@link ShutdownBudget}, where every pool's claim is stated together and the sum is checked.
 	 */
 	static final Duration MAX_SHUTDOWN_DRAIN = Duration.ofMillis(ShutdownBudget.REFUND_POOL_CLAIM_MS);
 

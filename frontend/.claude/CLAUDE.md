@@ -63,8 +63,14 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   work the code should do — name the constant, extract the function, sharpen the type — then delete
   it. Default to zero inline comments in a function; reach for one only when the *why* is genuinely
   unavailable from the code (an ordering constraint, an ARIA/spec rule, a deliberate deviation).
-- **TSDoc (`/** … */`) on a component, service, directive or exported type is exempt** — that is the
-  documented surface. Put the long explanation there, not scattered through the body.
+- **TSDoc (`/** … */`) on a component, service, directive or exported type is exempt** from the
+  one-line rule — that is the documented surface, so the explanation belongs there rather than
+  scattered through the body. **Exempt is not unbounded**, though: TSDoc states the contract, not
+  the changelog. No issue numbers (`git blame` holds provenance), no "it used to / the alternative
+  would have" decision history, and roughly 6 lines on a type, 3 on a member. When the rationale is
+  load-bearing, relocate it — an ADR, or the feature's plan doc — and leave a one-line pointer.
+  Keep short operational warnings a reader needs at the point of use. Canonical statement, with the
+  numbers behind it: `riviera-java-conventions` §6d.
 - Enforced at the review gate as **RV-STYLE-1**; this section exists so the first draft already
   complies instead of being trimmed later.
 - **A guard enforces it while you type** (#529): `scripts/check-inline-comments.mjs` runs from a

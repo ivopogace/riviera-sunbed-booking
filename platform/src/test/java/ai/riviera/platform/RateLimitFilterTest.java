@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * HTTP contract for the booking-endpoint rate limiter (issue #56). Tiny limits (capacity 2, refill an
+ * HTTP contract for the booking-endpoint rate limiter. Tiny limits (capacity 2, refill an
  * hour out so nothing replenishes mid-test) make the over-limit boundary cheap to hit; the fixed clock
  * keeps every bucket frozen. Each test uses unique IPs/codes so buckets don't collide across methods
  * sharing the slice's context. An allowed request is a {@code 404} (stubbed unknown code/set); a
@@ -81,7 +81,7 @@ class RateLimitFilterTest {
 	/**
 	 * Overrides the {@link WebSliceStubs} bean, which resolves every principal to {@link Optional#empty()}.
 	 * That default makes {@code CurrentCustomer#require} throw {@code AccessDeniedException}, so an
-	 * authenticated {@code /api/me/password} call would answer {@code 403} — a status the #343 refund treats
+	 * authenticated {@code /api/me/password} call would answer {@code 403} — a status the refund treats
 	 * as "never reached the credential check". The customer-side budget could then never be exercised
 	 * authenticated at all, so the resolution is stubbed to succeed here.
 	 */
@@ -149,10 +149,9 @@ class RateLimitFilterTest {
 	}
 
 	/**
-	 * The withdraw POST (#123) is a code-keyed booking endpoint like view and cancel, so it must draw
-	 * the per-code budget. An unmatched path would spend no token and still reach the controller — an
-	 * unthrottled oracle against the very bearer credential the budget exists to protect (the #342
-	 * percent-encoding defect, one path over).
+	 * The withdraw POST is a code-keyed booking endpoint like view and cancel, so it must draw the
+	 * per-code budget. An unmatched path would spend no token and still reach the controller — an
+	 * unthrottled oracle against the very bearer credential the budget exists to protect.
 	 */
 	@Test
 	void withdrawSpendsThePerCodeBudget() throws Exception {
@@ -315,11 +314,10 @@ class RateLimitFilterTest {
 	// ---- Operator self-service password change rides its OWN per-IP budget (#326, D-8) ----
 
 	/**
-	 * An <strong>anonymous</strong> attempt at the operator change endpoint. Until #343 this was enough to
-	 * exercise the budget — the filter runs ahead of authorization, so the request spent a token and then
-	 * landed as the endpoint's {@code 401}. That is exactly the defect: the token is now refunded, so this
-	 * helper drives the "must not drain" cases and {@link #authenticatedChangePasswordFromIp} drives the
-	 * budget itself.
+	 * An <strong>anonymous</strong> attempt at the operator change endpoint. The filter runs ahead of
+	 * authorization, so such a request reaches the budget — but its token is refunded, which is why this
+	 * helper drives the "must not drain" cases while {@link #authenticatedChangePasswordFromIp} drives
+	 * the budget itself.
 	 */
 	private ResultActions changePasswordFromIp(String ip) throws Exception {
 		return mvc.perform(post("/api/auth/operator/password").with(fromIp(ip)).with(csrf())
@@ -329,11 +327,10 @@ class RateLimitFilterTest {
 	}
 
 	/**
-	 * AC-3 (#326's AC-8 / R-5, redriven authenticated for #343). The #111 review found a real operator
-	 * lockout caused by a shared bucket, so both halves are still asserted: the change endpoint <em>does</em>
-	 * throttle, and operator login from the SAME IP still works afterwards. Since #343 only a signed-in
-	 * caller net-spends the budget — which is the stronger test, because it is the signed-in caller that
-	 * reaches the credential oracle the budget exists to throttle.
+	 * A shared bucket once caused a real operator lockout, so both halves are asserted: the change
+	 * endpoint <em>does</em> throttle, and operator login from the SAME IP still works afterwards. Only a
+	 * signed-in caller net-spends the budget, which is the stronger test — it is the signed-in caller
+	 * that reaches the credential oracle the budget exists to throttle.
 	 */
 	@Test
 	void authenticatedOperatorPasswordChangesAreStillThrottled() throws Exception {
@@ -351,10 +348,10 @@ class RateLimitFilterTest {
 	}
 
 	/**
-	 * AC-7. A CSRF-less change is rejected by {@code CsrfFilter} with a {@code 403}, before the controller
-	 * and therefore before the credential check — so it must cost nothing. This is the deliberate
-	 * give-up documented on {@code AuthBudget}: a token-less flood is free, because the chain throws it
-	 * away without a database read, a bcrypt or a mail send.
+	 * A CSRF-less change is rejected by {@code CsrfFilter} with a {@code 403}, before the controller and
+	 * therefore before the credential check — so it must cost nothing. This is the deliberate give-up
+	 * documented on {@code AuthBudget}: a token-less flood is free, because the chain throws it away
+	 * without a database read, a bcrypt or a mail send.
 	 */
 	@Test
 	void aCsrfRejectedPasswordChangeDoesNotSpendTheBudget() throws Exception {
@@ -376,8 +373,8 @@ class RateLimitFilterTest {
 	 * compared the raw {@code getRequestURI()} — which the servlet spec leaves percent-encoded — against
 	 * plain string constants, while {@code PathPatternRequestMatcher} and {@code @PostMapping} both match
 	 * the DECODED path. So {@code …/passwor%64} spent no token yet still reached the controller: an
-	 * unlimited brute-force oracle against the very credential this endpoint exists to protect. Found by
-	 * the #342 review gate; it predated #326 and applied to every budget in this filter, login included.
+	 * unlimited brute-force oracle against the very credential this endpoint exists to protect, on every
+	 * budget in this filter, login included.
 	 */
 	@Test
 	void aPercentEncodedSpellingOfThePathDrawsOnTheSameBudget() throws Exception {
@@ -455,9 +452,9 @@ class RateLimitFilterTest {
 	}
 
 	/**
-	 * Found by the #326 Phase-1 generalization audit: {@code POST /api/me/password} had no budget at all,
-	 * so a hijacked customer session could brute-force the real password unthrottled and then lock the
-	 * owner out. Same oracle as the operator endpoint, so it gets the same treatment.
+	 * {@code POST /api/me/password} once had no budget at all, so a hijacked customer session could
+	 * brute-force the real password unthrottled and then lock the owner out. Same oracle as the operator
+	 * endpoint, so it gets the same treatment.
 	 */
 	@Test
 	void authenticatedCustomerPasswordChangesAreStillThrottled() throws Exception {
@@ -474,9 +471,9 @@ class RateLimitFilterTest {
 	}
 
 	/**
-	 * The two password-change endpoints must not share one per-IP map. Venue WiFi / CGNAT puts tourists and
-	 * operators behind one address, and a tourist flood that blocked an operator from rotating a possibly
-	 * compromised credential is the #111 operator-lockout defect wearing a different hat.
+	 * The two password-change endpoints must not share one per-IP map. Venue WiFi / CGNAT puts tourists
+	 * and operators behind one address, and a tourist flood that blocked an operator from rotating a
+	 * possibly compromised credential is the operator-lockout defect wearing a different hat.
 	 */
 	@Test
 	void customerPasswordChangeDoesNotStarveTheOperatorOne() throws Exception {
@@ -512,11 +509,11 @@ class RateLimitFilterTest {
 	}
 
 	/**
-	 * AC-1. {@code POST /api/auth/operator/password} is {@code hasRole(OPERATOR)}, but this filter runs
-	 * before {@code AuthorizationFilter}, so until #343 a caller with no session, no account and no CSRF
-	 * token spent its tokens anyway. Ten requests is five times the budget: every operator behind that
-	 * address — venue WiFi / CGNAT is exactly the topology the budget was split for (#326) — then met a
-	 * {@code 429} on the page whose whole purpose is rotating a credential they believe is compromised.
+	 * {@code POST /api/auth/operator/password} is {@code hasRole(OPERATOR)}, but this filter runs before
+	 * {@code AuthorizationFilter}, so a caller with no session, no account and no CSRF token reaches the
+	 * budget anyway. Ten requests is five times it: without the refund every operator behind that address
+	 * — venue WiFi / CGNAT is exactly the topology the budget was split for — would meet a {@code 429} on
+	 * the page whose whole purpose is rotating a credential they believe is compromised.
 	 */
 	@Test
 	void anUnauthenticatedFloodDoesNotDrainTheOperatorPasswordBudget() throws Exception {
@@ -553,10 +550,10 @@ class RateLimitFilterTest {
 	}
 
 	/**
-	 * AC-6, found by the #343 generalization audit. {@code /api/me/verify-email/request} is
-	 * {@code hasRole(CUSTOMER)} but shares {@code recoveryBuckets} with three public paths, so an anonymous
-	 * flood on it drained the budget that legitimate {@code forgot-password} depends on — the password-endpoint
-	 * defect one map over, and unmentioned by the issue.
+	 * {@code /api/me/verify-email/request} is {@code hasRole(CUSTOMER)} but shares
+	 * {@code recoveryBuckets} with three public paths, so without the refund an anonymous flood on it
+	 * drains the budget legitimate {@code forgot-password} depends on — the password-endpoint defect one
+	 * map over.
 	 */
 	@Test
 	void anUnauthenticatedFloodOnTheVerificationResendDoesNotStarveRecovery() throws Exception {
@@ -570,8 +567,8 @@ class RateLimitFilterTest {
 	}
 
 	/**
-	 * The other half of AC-6: the budget must still bite. Without this, flagging the map could silently
-	 * disable recovery throttling and the test above would happily pass.
+	 * The other half: the budget must still bite. Without this, flagging the map could silently disable
+	 * recovery throttling and the test above would happily pass.
 	 */
 	@Test
 	void authenticatedVerificationResendsAreStillThrottled() throws Exception {
@@ -768,8 +765,8 @@ class RateLimitFilterTest {
 	}
 
 	/**
-	 * The production defect (#286): one client is load-balanced across Cloudflare edge nodes, so the
-	 * right-most forwarded hop — the one Render appended — varies per request. Keyed on that hop it is
+	 * The production defect: one client is load-balanced across Cloudflare edge nodes, so the right-most
+	 * forwarded hop — the one Render appended — varies per request. Keyed on that hop it is
 	 * ~14 buckets; keyed on the edge-supplied client header it is one. The trust list here is the
 	 * SHIPPED default (private ranges only, no Cloudflare CIDRs), so this fails without the header path.
 	 */

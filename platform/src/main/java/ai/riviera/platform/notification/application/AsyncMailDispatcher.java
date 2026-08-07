@@ -19,125 +19,36 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
 /**
- * Production {@link MailDispatcher} (#369): a small bounded in-memory pool that takes the SMTP round-trip
- * off the request thread, closing the timing account-enumeration oracle the real {@code SmtpMailer} (#368)
- * opened on the known-email branch of {@code register} / {@code forgot-password}.
+ * Production {@link MailDispatcher}: a small bounded in-memory pool that takes the SMTP round-trip off
+ * the request thread, closing the timing account-enumeration oracle the real {@code SmtpMailer} opened on
+ * the known-email branch of {@code register} / {@code forgot-password}.
  *
- * <p><strong>The pool is deliberately its own.</strong> Boot's shared {@code applicationTaskExecutor} is
- * what Spring Modulith's {@code @ApplicationModuleListener}s run on — the payment→booking confirmation and
- * booking→payout accrual spine — so a degraded relay sharing it could back up the money path. It is
- * bounded for the complementary reason: a saturated dispatcher drops the send rather than queueing
- * without limit or, worse, falling back to running the send on the caller's thread, which would re-open
- * the very oracle this class exists to close. A dropped recovery mail the person re-requests; a dropped
- * operator-approval notice (#375) nobody re-sends (ADR-0011 decision 5, amended #439) — and since #442
- * this class can tell you which it lost, because {@link MailDispatcher#dispatch} takes the
- * {@link MailKind} alongside the send. {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} therefore
- * carries {@code kind} on every {@code reason}, as the send-side
- * {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} always did. It had carried {@code reason} alone for
- * two slices, not because a drop is less attributable than a failure but because the seam was one
- * parameter narrower than the accounting this class already owed.
+ * <p><strong>Its own pool, and bounded.</strong> Boot's shared {@code applicationTaskExecutor} carries
+ * the payment→booking and booking→payout listeners, so a degraded relay sharing it could back up the
+ * money path. Bounded for the complementary reason: a saturated dispatcher <em>drops</em> the send rather
+ * than queueing without limit or — far worse — falling back to running it on the caller's thread, which
+ * would re-open the very oracle this class exists to close. Why this vehicle drops where the registry
+ * vehicle sheds, what each {@code reason} tag means, why every drop is logged rather than throttled per
+ * episode, and what {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} may be read as ("never ran", never
+ * "refused"): {@code RESPONSIBILITIES.md} §{@code notification} and
+ * {@code docs/runbooks/observability.md}.
  *
- * <p><strong>That rule is the module's, not this class's</strong> (#383). It was stated here and then
- * broken next door: #371's registry-borne booking confirmation went onto the shared executor, because
- * {@code @ApplicationModuleListener} accepts no executor qualifier — and with a per-confirmed-booking
- * volume this pool never had. The registry vehicle now has its own bounded sibling,
- * {@code RegistryMailExecutorConfig}, and {@code MailListenerExecutorArchitectureTest} fails the build
- * if a future mail listener forgets it. The two pools stay separate, with deliberately different
- * saturation behaviour: this one <em>drops</em>, because a recovery payload is a bearer credential the
- * Event Publication Registry may not persist (ADR-0011 decision 5) so there is nothing to retry from;
- * the registry one <em>sheds</em>, because its publication survives and is republished on restart.
- *
- * <p>The caller's logging context rides along so a failed send stays traceable to its request (the
- * correlation id from {@code CorrelationIdFilter}), and is cleared afterwards so it cannot leak onto the
- * next task sharing the pooled thread. <strong>Since #410 that is {@link MdcTaskDecorator}'s job, not
- * this class's</strong> — the hand-rolled capture/restore here was the only implementation of a rule the
- * registry vehicle's pool needed too, and two implementations of one rule is how one of them ends up
- * missing (it had been, for the whole of #383). Package-private (RV-BE-11); pinned by
- * {@code AsyncMailDispatcherTest}.
- *
- * <p><strong>One drainer thread, deliberately</strong> — recovery mail is a handful of sends a day, and a
- * serial drain behind a 100-deep buffer is the whole requirement. Core and max are equal on purpose: a
- * {@code ThreadPoolExecutor} grows past its core size only once the queue is <em>full</em>, so a larger max
- * with this queue would add no headroom until 100 sends were already backed up — an inviting number to
- * "tune" and a misleading one to read.
+ * <p><strong>One drainer thread, and core == max on purpose.</strong> A {@code ThreadPoolExecutor} grows
+ * past its core size only once the queue is <em>full</em>, so a larger max with this queue would add no
+ * headroom until 100 sends were already backed up — an inviting number to "tune" and a misleading one to
+ * read. Recovery mail is a handful of sends a day; a serial drain behind a 100-deep buffer is the whole
+ * requirement.
  *
  * <p><strong>Everything that runs on this thread must be bounded</strong>, because one serial drainer
- * means one wedged task stalls the queue and then silently drops sends once the 100 slots fill. Two
- * things run here, not one: the SMTP round-trip, whose connect/read/write timeouts are finite (#368),
- * and — since the {@code notification} module gained the suppression list (#382) — a database read.
- * That read arrived after this class was written and inherited Postgres's infinite default statement
- * timeout; {@code JdbcEmailSuppressions} now gives it a finite {@code queryTimeout} of its own (#386),
- * deliberately scoped to that one lookup rather than set globally, where it would also bound
- * {@code availability}'s {@code INSERT … ON CONFLICT} claim, whose loser waits on the winner's index
- * tuple lock (invariant #2).
+ * means one wedged task stalls the queue and then silently drops sends once the slots fill. Two things
+ * run here, not one: the SMTP round-trip, whose connect/read/write timeouts are finite, and the
+ * suppression-list read, whose {@code queryTimeout} is scoped to that one lookup in
+ * {@code JdbcEmailSuppressions} — never set globally, where it would also bound {@code availability}'s
+ * {@code INSERT … ON CONFLICT} claim, whose loser waits on the winner's index tuple lock (invariant #2).
  *
- * <p><strong>Every drop is counted, and every drop is logged — one line each, deliberately</strong> (#415).
- * The counter ({@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED}) is the alertable signal; before it, "how
- * often did the recovery vehicle drop?" was answerable only by grepping logs.
- *
- * <p><strong>One branch logs without counting, and it is the one that can never run</strong> (#442): the
- * unmatched payload in {@link #recordAbandonment}. Counting it would mean inventing a {@code kind} tag
- * value meaning "we lost track", which pollutes a documented vocabulary for a state {@link #dispatch} makes
- * unreachable — so it escalates to {@code ERROR} instead, naming the future edit that broke the assumption.
- * Stated here rather than left as a silent exception to the sentence above, because a claim about this
- * class's accounting that its code does not honour is the exact defect #442 was filed to correct.
- *
- * <p>The per-line half is where this class parts company with {@code RegistryMailExecutorConfig}, which
- * throttles to one escalated line per saturation episode — and the divergence is deliberate on both sides.
- * <strong>A throttle trades repeated lines for the durable record that makes them redundant.</strong> The
- * registry vehicle has that record: a shed send's event publication is still outstanding, payload and all,
- * so the ninth line tells an operator nothing the row does not. This vehicle has none, by construction —
- * ADR-0011 decision 5 keeps the bearer-credential payload out of the registry — so there is nothing to retry
- * from and <em>the line is the only per-loss artefact that exists</em>, carrying in its MDC the correlation
- * id of the request whose user is still waiting. Throttling here would discard evidence, not noise. The
- * flood the registry's throttle exists to prevent has no analogue either: that flood is a restart
- * republishing a backlog, and this vehicle never republishes, so arrivals are live requests only. All three
- * endpoints that feed it — customer register, the authenticated verification resend, and forgot-password —
- * are bounded by a <em>per-IP</em> token budget in {@code RateLimitFilter} (D-8), though not the same one:
- * register rides {@code customerAuthBuckets} while the other two ride the recovery budget, a separation
- * that is deliberate (recovery spam must not starve login) and does not weaken the bound. Should aggregate
- * volume ever make these lines a genuine flood, add an escalated once-per-episode line <em>beside</em> the
- * per-drop record, never in place of it.
- *
- * <p><strong>A rejection during shutdown is still a loss, so it is still counted</strong> — the second
- * divergence. #408 excludes the registry's equivalent because a shed-at-shutdown send loses nothing; here,
- * with {@code server.shutdown=graceful} unset, an in-flight request can reach {@code dispatch} after the pool
- * has stopped accepting, and that user's mail is simply gone. Excluding it would make the counter
- * under-report the very thing the runbook says it means. The {@code reason} tag carries the distinction
- * instead, so a routine redeploy cannot read as a degraded relay: only {@link #REASON_SATURATED} escalates
- * to {@code ERROR} and warrants investigating the relay.
- *
- * <p><strong>A redeploy loses mail two ways, and both are this counter's</strong> (#434). The rejection
- * above is the send that arrived too late; {@link #REASON_ABANDONED} — see {@link #accountForAbandonedSends()}
- * — is the send that arrived in time and was still queued when the drain window expired. They differ only in
- * whether {@code execute} had already returned, which is invisible to the user and irrelevant to the remedy,
- * so they are two reasons on one series rather than two series. That also keeps the taxonomy consistent with
- * #423's split, which is not refusal-versus-acceptance but <em>attempted versus never attempted</em>:
- * {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} is the send the transport ran and lost, and every reason
- * here is a send this pool never ran. Read {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} as
- * "never ran", then, never as "refused".
- *
- * <p><strong>The shutdown drain is derived from the relay budget, and expiring it means giving up</strong>
- * (#410). The window is {@link MailTransportBudget#shutdownDrain()} rather than the 5-second literal #369
- * shipped, which was smaller than the budget one degraded send can legitimately occupy — so a redeploy
- * mid-backlog abandoned work that was still running and closed the data source underneath it. When the
- * window expires this class does <em>not</em> escalate to {@code shutdownNow()}: an interrupt cannot tell
- * a send that already handed the message to the relay from one that has not, and interrupting the first is
- * how at-least-once becomes a duplicate. The cost lands differently here than for the registry vehicle,
- * though, and that asymmetry is the same one as everywhere else in this class — an abandoned send on this
- * vehicle has no publication to be republished from, so it is a mail the recipient must ask for again, or
- * for the approval notice cannot ask for at all. Which is why
- * #434 made it visible: the registry's equivalent shows up in {@code riviera.outbox.pending}, and this one
- * showed up nowhere until {@link #accountForAbandonedSends()} counted it.
- *
- * <p><strong>The cause is read after the rejection, and that race is one-directional by construction.</strong>
- * {@code execute} throws before {@link #recordDrop} can ask why, so a saturation rejection coinciding with a
- * concurrent {@code destroy()} is attributed to the shutdown. The converse cannot happen: {@code shutdown()}
- * latches its flag permanently, so a shutdown rejection always reads as one. The error is therefore always
- * <em>under</em>-reporting saturation during the seconds a pod is going away, never the false alarm #408's
- * F-5 was about — a deploy cannot manufacture a {@link #REASON_SATURATED} increment. Do not "fix" this by
- * reading the flag before {@code execute}: that costs a read on every send and is equally racy, since no JDK
- * primitive makes reject-and-classify atomic.
+ * <p>The submitting request's logging context rides along through the shared {@link MdcTaskDecorator}, so
+ * a failed send stays traceable to the request whose user is still waiting. Package-private (RV-BE-11);
+ * pinned by {@code AsyncMailDispatcherTest}.
  */
 @Component
 class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
@@ -211,12 +122,9 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 
 	/**
 	 * A queued send paired with the flow it belongs to, so a loss can still be attributed after the fact.
-	 *
-	 * <p>It exists for {@link #accountForAbandonedSends()} alone: the two rejection paths learn the kind
-	 * from the {@code dispatch} call they are failing, but the drain reaches a task submitted long before,
-	 * by then wrapped in {@link MdcTaskDecorator}'s own carrier. Without this the {@code abandoned} reason
-	 * would be the one un-attributable third of the series — and a {@code kind} query that silently
-	 * under-counts is worse than the honest absence #442 replaced.
+	 * It exists for {@link #accountForAbandonedSends()} alone: the two rejection paths learn the kind from
+	 * the {@code dispatch} call they are failing, but the drain reaches a task submitted long before, by
+	 * then wrapped in {@link MdcTaskDecorator}'s own carrier.
 	 */
 	private record KindedSend(MailKind kind, Runnable send) implements Runnable {
 
@@ -229,14 +137,16 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	/**
 	 * Account for a send that will never be delivered. Nothing here may throw or run the task: this runs on
 	 * the caller's request thread, whose response the send may not influence (D-8). Neither line carries the
-	 * address or the link (invariant #7); the correlation id rides the MDC.
+	 * address or the link (invariant #7); the correlation id rides the MDC, and the kind names which flow
+	 * was lost — never whose mail, which is the most that can be said without breaking that invariant.
 	 *
-	 * <p>Both lines name the flow, and so does the counter they accompany (#442). The mechanism is the
-	 * same for every kind — nothing retries the send — but the <em>cost</em> is not: a recovery mail the
-	 * person re-requests, an approval notice nobody re-sends (ADR-0011 decision 5, amended #439), and the
-	 * remedy differs accordingly. The kind is the most the platform can say without breaking invariant #7:
-	 * it names which flow was lost, never whose mail, so a dropped approval notice still points at the
-	 * approval log rather than naming the operator itself.
+	 * <p><strong>The cause is read after the rejection, and that race is one-directional.</strong>
+	 * {@code execute} throws before this can ask why, so a saturation rejection coinciding with a concurrent
+	 * {@code destroy()} is attributed to the shutdown; the converse cannot happen, {@code shutdown()}
+	 * latching its flag permanently. The error is therefore always <em>under</em>-reporting saturation while
+	 * a pod goes away — a deploy cannot manufacture a {@link #REASON_SATURATED} increment. Do not "fix" it
+	 * by reading the flag before {@code execute}: that costs a read on every send and is equally racy, since
+	 * no JDK primitive makes reject-and-classify atomic.
 	 */
 	private void recordDrop(MailKind kind, TaskRejectedException cause) {
 		if (executor.getThreadPoolExecutor().isShutdown()) {
@@ -257,25 +167,19 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	}
 
 	/**
-	 * Account for every send the drain window did not reach (#434). {@code shutdown()} above has already
-	 * awaited that window and given up, so anything still queued is a mail nobody will ever send and
-	 * nothing else will ever see: {@code execute} returned normally (neither rejection reason fires), the
-	 * task never ran ({@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} cannot), and this vehicle keeps no
-	 * durable copy, so {@code riviera.outbox.pending} has nothing to carry either.
+	 * Account for every send the drain window did not reach. {@code shutdown()} above has already awaited
+	 * that window and given up, so anything still queued is a mail nobody will send and nothing else will
+	 * see: {@code execute} returned normally, the task never ran, and this vehicle keeps no durable copy,
+	 * so {@code riviera.outbox.pending} has nothing to carry either.
 	 *
 	 * <p><strong>Draining is what makes the count true, and it is not an interrupt.</strong> The pool is
 	 * still <em>running</em> here — awaiting termination timed out, it did not stop the threads — so a send
 	 * merely counted and left in place could still execute, and the counter would then report a loss that
 	 * did not happen. {@code drainTo} makes the count and the loss the same event while touching only the
-	 * queue, which is exactly the part {@code shutdownNow()} would have returned anyway; the decision not
-	 * to call it (#410, above) is untouched. Racing the drainer for an element is harmless in both
-	 * directions: a {@code BlockingQueue} hands each task to exactly one of {@code poll} and
-	 * {@code drainTo}, so it is run <em>xor</em> counted, never both and never neither.
-	 *
-	 * <p><strong>The send caught <em>running</em> is deliberately not counted.</strong> It may already have
-	 * handed the message to the relay — the ambiguity that made give-up the right call — so charging it
-	 * here would over-report a mail that arrived. The runbook states that exclusion rather than leaving the
-	 * series to read as "every mail lost at shutdown".
+	 * queue. Racing the drainer is harmless in both directions: a {@code BlockingQueue} hands each task to
+	 * exactly one of {@code poll} and {@code drainTo}, so it is run <em>xor</em> counted, never both and
+	 * never neither. The send caught <em>running</em> is deliberately not counted — it may already have
+	 * handed the message to the relay, the ambiguity that made giving up the right call.
 	 */
 	private void accountForAbandonedSends() {
 		List<Runnable> abandoned = new ArrayList<>();
@@ -285,18 +189,15 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 
 	/**
 	 * One line per loss, under the abandoned send's <em>own</em> context: this runs on the thread closing
-	 * the application context, which in production is a shutdown thread with no request of its own to name
-	 * (and whatever context it does carry is restored afterwards, not cleared — see {@link MdcTaskDecorator}).
-	 * Invariant #7 keeps the address and the link out of the line, so the borrowed correlation id is the
-	 * only thing left that says whose mail this was — and, since #442, the kind, which says which flow.
+	 * the application context, which has no request of its own to name. Invariant #7 keeps the address and
+	 * the link out of the line, so the borrowed correlation id and the kind are all that identify it.
 	 *
 	 * <p>The kind is read back through two wrappers: {@link MdcTaskDecorator}'s carrier, applied by the pool
-	 * inside {@code execute}, around the {@link KindedSend} this class queued. Nothing else can be on this
-	 * queue — {@link #dispatch} is the only path onto it, and the executor is private to this class — so the
-	 * unmatched branch is a defect in a future edit rather than a state the running system reaches. It is
-	 * reported as one instead of being swallowed: a silent loss here is precisely what this counter exists
-	 * to end. It deliberately invents <strong>no</strong> tag value for the case, because a documented
-	 * vocabulary gaining a member that means "we lost track" is how the next runbook sentence becomes false.
+	 * inside {@code execute}, around the {@link KindedSend} this class queued. {@link #dispatch} is the only
+	 * path onto this queue and the executor is private here, so the unmatched branch is a defect in a future
+	 * edit rather than a reachable state. It is reported as one instead of being swallowed, and deliberately
+	 * invents <strong>no</strong> tag value for the case: a documented vocabulary gaining a member that
+	 * means "we lost track" is how the next runbook sentence becomes false.
 	 */
 	private void recordAbandonment(Runnable queued) {
 		if (!(MdcTaskDecorator.payloadOf(queued) instanceof KindedSend(MailKind kind, Runnable ignored))) {

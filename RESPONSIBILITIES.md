@@ -187,7 +187,21 @@ what a consumer actually needs and keeps `BookingStatus` internal.
   **sheds** to `ObservabilityMetrics.REFUNDS_SHED` and the publication stays outstanding for the
   restart republish, but the queue is sized (`riviera.booking.refund.*`, validated at boot) so
   shedding is unreachable for any plausible burst — unlike a shed mail, a shed refund is money owed
-  under invariant #10, and a shed is the one loss mode that does not trigger its own recovery. The
+  under invariant #10, and a shed is the one loss mode that does not trigger its own recovery.
+  **The arithmetic behind the three defaults**, so they can be checked rather than inherited, all
+  derived from that ≈25s worst-case round-trip: **pool 4** is a head-of-line number, not a throughput
+  one — a 60-booking venue-day against a degraded gateway drains in ~12.5 min at 2 threads (the mail
+  pools' choice, sized for a handful of sends a day) and ~6 min at 4, while larger buys little, since
+  the normal case is sub-second and each extra worker is one more concurrent request during exactly
+  the incident where the gateway is already unhappy. **Queue 500** is ≈52 min of worst-case backlog
+  (500 × 25s ÷ 4), past which the Event Publication Registry is the better queue — the same reasoning
+  #383 applied at ≈50 min. **Drain 5s** is deliberately far short of one round-trip, for two reasons:
+  the shutdown budget *stacks* rather than overlaps (§`shared`'s `ShutdownBudget` owns that sum), and
+  abandoning a refund is cheap in a way abandoning a mail is not — the publication stays outstanding
+  and the `booking-<id>-refund` idempotency key makes the replay return the original refund rather
+  than move money twice, so the drain need only catch the sub-second common case and the pathological
+  25s one is precisely what it is safe to give up on. Re-deriving these against a different gateway
+  (ADR-0009) is then a config change, not a code change. The
   executor rule is structural: `RefundListenerExecutorArchitectureTest`, scoped to `booking`
   listeners reaching `payment::api`, so `PaymentEventListener` and `payout`'s DB-only listeners
   correctly stay on the shared pool. Since **#454** I
