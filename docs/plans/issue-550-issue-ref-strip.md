@@ -159,8 +159,8 @@ stale as batches land.
 
 ## Execution status
 
-**Stage pointer:** implement — Phase A, batch 3 at the PR gate (batches 1–2 merged via PR #551,
-PR #552).
+**Stage pointer:** batch 3 gates all green on PR #553 (CI on `aabe194` + `63f7b36`; Sonar
+first-try pass) — awaiting merge.
 
 **Next action:** open the batch-3 PR, run the review gate + read the Sonar new-issue list; on
 merge, restart the branch from `main` and cut batch A-4 (next by census: `layout-editor.ts`,
