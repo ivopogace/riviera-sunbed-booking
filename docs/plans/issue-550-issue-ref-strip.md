@@ -159,11 +159,11 @@ stale as batches land.
 
 ## Execution status
 
-**Stage pointer:** implement — Phase A, batch 2 at the PR gate (batch 1 merged via PR #551).
+**Stage pointer:** batch 2 gates all green on PR #552 (CI + Sonar on `a16a603`) — awaiting merge.
 
-**Next action:** open the batch-2 PR, run the review gate + read the Sonar new-issue list; on
-merge, restart the branch from `main` and cut batch A-3 (next dense files by the regenerated
-census: `app.ts`/`app.html`, `admin/` services + tabs, `booking-pay.ts`, `home.ts`).
+**Next action:** on PR #552's merge, restart the branch from `main` and cut batch A-3 (next dense
+files by the regenerated census: `app.ts`/`app.html`, `admin/` services + tabs, `booking-pay.ts`,
+`home.ts`), applying the full inherited rule set F-3–F-9.
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
