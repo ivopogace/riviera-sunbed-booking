@@ -47,10 +47,13 @@ in more depth.
 - [x] AC-3 `node --test scripts/*.test.mjs` green (8 new cases for the verifier).
 - [x] AC-4 Full CI green (backend build + test, frontend lint/test/build + e2e, both hygiene checks) —
       confirmed on PR #545 after the R-6 fix; re-checked per batch thereafter.
-- [ ] AC-5 Every **over-budget block** in the sweep scope trimmed to §6d — see *What the trim actually
-      pays for* below. Restated after measurement: the original "every file" reading was wrong, because
-      roughly half the tree's comment lines are already at budget and yield nothing.
-- [ ] AC-6 No rationale lost: anything load-bearing that was removed exists in a substrate doc.
+- [x] AC-5 Every over-budget block **with a second home** trimmed to §6d. Restated twice against
+      measurement: the original "every file" reading was wrong (half the tree is already at budget), and
+      the "top ~200 over-budget files" reading (A-3) was wrong too — the 2026-08-07 rescan found the
+      duplicate-bearing class exhausted and the remainder contract. Closed at the measured floor, not at
+      a file count. See *The rescan that closed the sweep*.
+- [x] AC-6 No rationale lost: every relocation target was **read** to confirm it carries the text before
+      the copy was removed (R-7), per batch.
 
 ## Non-goals
 
@@ -78,10 +81,13 @@ in more depth.
   rationale relocated* (not deleted), across all four trees. Recorded so no session re-derives it.
 - **A-2** Test-tree doc blocks that justify *why a test exists* are more defensible than production
   archaeology; they still lose issue numbers and history, but the "why this test" sentence stays.
-- **A-3** *(decided 2026-08-07, after the measurement below)* The sweep stops at the **top ~200
-  over-budget files**, ≈57% of the reachable volume. Past that the marginal file is a 10-line block
-  becoming an 8-line block, which does not earn a session. The remaining 383 files are not a backlog —
-  §6d governs them the next time they are edited for another reason.
+- **A-3** ~~*(decided 2026-08-07)* The sweep stops at the **top ~200 over-budget files**.~~
+  **Superseded by A-5.** The stopping rule was still a file count, and a file count was the wrong unit.
+- **A-5** *(decided 2026-08-07, after the rescan)* The sweep stops when the **duplicate-bearing files
+  run out**, not at a rank. Sampling the top 15 untrimmed files found 2 with a second home; the rest
+  were contract, test-rationale (A-2) or measurement records. The remaining 547 over-budget files are
+  **not a backlog** — §6d governs them the next time they are edited for another reason. Reopening this
+  sweep needs new evidence of duplication, not a fresh block-size census.
 - **A-4** *(same)* **PR #545 lands with the rule, the tooling and the first batch**; the mechanical
   sweep ships as follow-up PRs, one per batch, each carrying its own inertness proof. Chosen against
   R-3: a branch that grows for weeks presents the review gate with hundreds of files at once, and the
@@ -109,8 +115,8 @@ No component, template binding, route or service behaviour changes. TSDoc and HT
 
 ## Execution status
 
-**Stage:** phase 3 in progress · **Next action:** continue the backend-main queue below, biggest-block
-first, in batches of ~8.
+**Stage:** ✅ complete · **Next action:** none. The sweep closed after the 2026-08-07 rescan; §6d and
+`check-comment-only.mjs` govern the rest of the tree the next time a file is edited for another reason.
 
 Gates cleared on #545: full CI green; `/code-review` returned one finding at or above threshold (the
 broken ledger table) plus three below it that were fixed anyway — the two verifier blind spots now
@@ -123,9 +129,9 @@ sweep can silently do damage, and both were found by review rather than by the g
 | 0 | §6d + the frontend TSDoc twin | #545 | ✅ committed `1109c2f` |
 | 1 | `check-comment-only.mjs` + its 8 tests | #545 | ✅ committed |
 | 2 | First batch — 12 heaviest files | #545 | ✅ committed, CI green |
-| 3 | Backend main, over-budget files with a *duplicated* home | follow-up | 🔄 17 done; 305 over-budget files remain, holding 5,821 lines — but see the selection rule, most are contract |
-| 4 | Backend test, top ~50 | follow-up | ⬜ not started |
-| 5 | `frontend/src` + `frontend/e2e`, top ~30 | follow-up | ⬜ not started |
+| 3 | Backend main, over-budget files with a *duplicated* home | #547, #548 | ✅ 17 files; stopped deliberately when yield fell to ~6 lines/file |
+| 4 | Rescan + closing batch — every remaining file with a **named second home**, across both trees | this PR | ✅ 9 files, 100 lines |
+| — | ~~Backend test top ~50 / `frontend/src` top ~30 as separate phases~~ | — | ❌ dropped by the rescan: sampled and found to be contract, not archaeology |
 
 Phases 3–5 are sized from the over-budget ranking, not from file counts per tree. **Regenerate the
 queue rather than checking a list in** — it goes stale as batches land:
@@ -192,6 +198,64 @@ useful part:
 | `OperatorAccountController.java` | 79 | 76 |
 | `venue/application/CommissionRateStore.java` | 64 | 63 |
 
+**Phase 4, closing batch** — 9 files, **100 lines**. Selected by *named second home*, never by block
+size. Every target was read to confirm it carries the text before the copy was removed (R-7).
+
+| File | Before | After | Second home |
+|---|---|---|---|
+| `MailListenerExecutorArchitectureTest.java` | 111 | 86 | RESPONSIBILITIES §`notification` |
+| `PackageShapeArchitectureTests.java` | 76 | 56 | ADR-0007 + invariant #11 |
+| `ShutdownDrainArchitectureTest.java` | 107 | 92 | RESPONSIBILITIES §`shared` |
+| `RegistryMailExecutorConfigTest.java` | 104 | 91 | RESPONSIBILITIES §`notification` |
+| `RefundListenerExecutorArchitectureTest.java` | 75 | 64 | RESPONSIBILITIES §`booking` + its notification twin |
+| `RefundBulkheadIT.java` | 114 | 108 | RESPONSIBILITIES §`booking` |
+| `MyAccountController.java` | 57 | 51 | `OperatorAccountController#changePassword` |
+| `RegistryMailBulkheadIT.java` | 71 | 68 | RESPONSIBILITIES §`notification` |
+| `PublishedSurfacePlacementArchitectureTests.java` | 57 | 56 | ADR-0007 Amendment 1 |
+
+`ShutdownDrainArchitectureTest` also carried an **orphaned duplicate Javadoc block** — two doc comments
+stacked on `KNOWN_DRAINING_POOLS`, the first unreachable. Removed here; worth knowing the shape exists,
+since nothing flags it.
+
+### The rescan that closed the sweep (2026-08-07)
+
+Phase 3 stopped at ~6 lines/file and the question was whether to continue. The rescan says no, on
+measurement rather than fatigue.
+
+**State at rescan:** 23,902 lines across 1,050 files. Over-budget: 583 files / 12,086 lines, of which
+**556 files / 10,835 lines were untrimmed**.
+
+**The sample.** The top 15 untrimmed files (846 over-budget lines) were read — not inferred from paths —
+and asked the selection question. Only **2 of 15** had a substrate-doc duplicate, and both yielded ~20
+lines rather than the 100+ that `ObservabilityMetrics` and `AsyncMailDispatcher` did, because the
+duplication was one paragraph of several rather than wholesale. Measured sample yield: **~19%**, at the
+very heaviest end of the ranking, falling below it.
+
+**Three findings that make continuing the wrong call:**
+
+1. **The duplicate-bearing class is exhausted.** It was never a large population; the first twelve files
+   consumed most of it.
+2. **A third of the remaining volume (3,525 lines) is the backend test tree**, which A-2 explicitly
+   protects. Ten of the fifteen sampled files were tests, and their prose is "why this guard is not
+   vacuous" — deleting it is how a security tripwire quietly becomes a change-detector.
+3. **The frontend essays are measurement records, not archaeology.** `admin-console-stats.ts` documents
+   that restoring two long labels moves the fold from y=691 to y=707 against a 740px budget;
+   `admin-console-tabs.ts` records the wrap budget and names the ninth tab as the revisit trigger.
+   Nobody re-takes those measurements. The line count is the cheapest thing about them.
+
+**What continuing would have cost:** the top 200 untrimmed files hold 6,105 lines; at a falling yield
+rate that is roughly **875 lines across ~25 batches** — 3.7% of the tree for 25 PRs, 25 reviews and 25
+CI runs, each carrying R-1 and R-7 exposure.
+
+**Why the closing batch happened anyway.** Its nine files were not worth touching for volume. They were
+worth touching because each held a paragraph restating a doc that owns it, and **two copies of a rule
+drift apart** — a correctness cost, not a cosmetic one. `MailListenerExecutorArchitectureTest` and
+`RefundListenerExecutorArchitectureTest` carried near-identical copies of the same argument, with
+RESPONSIBILITIES §`notification` holding a third.
+
+**Strike the ~6,800-line estimate below.** The measured reachable figure was always closer to ~1,000,
+and 916 of it shipped (#545 + #547 + #548 + this batch).
+
 ### Block size over-predicts yield — rank by duplication instead
 
 A ≥10-line block is a *candidate*, not a target. Batch 2 was picked purely by block size and half of
@@ -210,20 +274,15 @@ ordering constraints, guarantees and traps — contract with no second home. `Ve
 `SetAvailabilityLookup`, `CommissionRateStore`, `EmailSuppressions`, `SessionIdentity`,
 `PrincipalSessionRevoker` are all in this class and are at their floor now.
 
-**Selection rule for later batches:** before opening a file, ask where else its prose lives. If the
-answer is "nowhere", it is contract — skip it. That is also why the ~6,800-line estimate above is
-optimistic; treat it as a ceiling nobody should plan against.
+**Selection rule, and the one that ended the sweep:** before opening a file, ask where else its prose
+lives. If the answer is "nowhere", it is contract — skip it. Applied as a *stopping* rule at the
+2026-08-07 rescan: when a read sample of the fifteen heaviest untrimmed files turns up only two with a
+second home, the population is exhausted and the sweep is done.
 
-**Remaining heaviest** (recomputed after the batch above): `SecurityConfig.java` 248 ·
-`RateLimitFilter.java` 184 · `RateLimitFilterTest.java` 175 · `TransactionalMailServiceTest.java` 143 ·
-`Bookings.java` 125 · `operator-console.model.ts` 116 · `RefundBulkheadIT.java` 114 ·
-`AuthController.java` 111 · `MailListenerExecutorArchitectureTest.java` 111 · `my-bookings.ts` 110.
-
-Half of those are already-trimmed files that stay top-ranked because their Javadoc is genuine
-contract — treat their current size as the floor, not a backlog item.
-
-Concentration is long-tailed — top 100 files hold 34%, top 400 hold 72% — so there is no shortcut
-set. Expect the full sweep to span sessions; work heaviest-first so each session lands real volume.
+**Do not re-rank by block size.** The top of that ranking is now dominated by already-trimmed files
+that stay there because their Javadoc is genuine contract — `SecurityConfig`, `RateLimitFilter`,
+`Bookings`, `operator-console.model.ts` are at their floor, not in a backlog. A future session
+regenerating the queue will see them first and should not read that as work.
 
 ### What the trim actually pays for
 
@@ -249,11 +308,13 @@ holding 24,116. By tree: backend main 7,136 · backend test 3,525 · frontend sr
 Concentration within that list is far better than the raw ranking suggested: top 100 files hold 37%,
 top 150 hold 48%, top 200 hold 57%.
 
-**Expected reachable outcome:** ~55% off the over-budget blocks ≈ 6,800 lines, ~28% of the tree. A
-sweep of the top ~200 of those 583 files captures well over half of it; past that the marginal file is
-a 10-line block that becomes an 8-line block.
+~~**Expected reachable outcome:** ~55% off the over-budget blocks ≈ 6,800 lines, ~28% of the tree.~~
+**Superseded** — the 2026-08-07 rescan measured the real figure at ~1,000 lines. The 6,800 estimate
+assumed every over-budget block was compressible; sampling found most of them to be contract. Kept
+here struck through rather than deleted, because the *shape* of the error is the reusable lesson: a
+block-size census tells you where prose is, never whether it has somewhere else to live.
 
-**Tree total so far:** 24,718 → 24,116 after 12 files.
+**Tree total:** 24,718 → 24,116 (12 files) → 23,902 (29 files) → **23,802** (38 files, sweep closed).
 
 ## File structure
 
