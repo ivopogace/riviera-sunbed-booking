@@ -109,8 +109,8 @@ No component, template binding, route or service behaviour changes. TSDoc and HT
 
 ## Execution status
 
-**Stage:** #545 merged — rule, tooling and first batch shipped · **Next action:** open the first
-follow-up PR for phase 3, regenerating the queue with the command below.
+**Stage:** phase 3 in progress · **Next action:** continue the backend-main queue below, biggest-block
+first, in batches of ~8.
 
 Gates cleared on #545: full CI green; `/code-review` returned one finding at or above threshold (the
 broken ledger table) plus three below it that were fixed anyway — the two verifier blind spots now
@@ -123,7 +123,7 @@ sweep can silently do damage, and both were found by review rather than by the g
 | 0 | §6d + the frontend TSDoc twin | #545 | ✅ committed `1109c2f` |
 | 1 | `check-comment-only.mjs` + its 8 tests | #545 | ✅ committed |
 | 2 | First batch — 12 heaviest files | #545 | ✅ committed, CI green |
-| 3 | Backend main, top ~120 over-budget files | follow-up | ⬜ not started |
+| 3 | Backend main, top ~120 over-budget files | follow-up | 🔄 8 of ~120 (328 over-budget files hold 7,136 lines) |
 | 4 | Backend test, top ~50 | follow-up | ⬜ not started |
 | 5 | `frontend/src` + `frontend/e2e`, top ~30 | follow-up | ⬜ not started |
 
@@ -159,6 +159,23 @@ rows.sort((a,b)=>b[0]-a[0]);rows.slice(0,200).forEach(([n,f])=>console.log(Strin
 | `notification/adapter/in/RegistryMailExecutorConfig.java` | 128 | 99 | `defaultCandidate = false`, compose-don't-replace, and episode-ends-on-drain all kept verbatim |
 | `frontend/src/app/operator/operator-console.model.ts` | 133 | 116 | A DTO file already near budget — 23 types × ~5 lines. Treat as the floor |
 | `RateLimitFilterTest.java` | 178 | 175 | Provenance out, rationale kept per A-2. Three lines: the evidence for the finding below |
+
+**Phase 3, batch 1** (backend main, biggest-block first):
+
+| File | Before | After | Note |
+|---|---|---|---|
+| `notification/adapter/in/BookingConfirmationMailListener.java` | 93 | 61 | Kept every trap: the annotations are the composite's expansion and must stay written out, no `REQUIRES_NEW`, and the class/method/param names are the registry `listener_id` |
+| `ClientIpResolver.java` | 92 | 80 | Trust model kept whole — it is the contract. The measured CDN topology points at its runbook, which carries it in more depth |
+| `RateLimitProperties.java` | 71 | 55 | `@param` block was the bulk; the trust-list default ("an unset property throttles more, never less") stays |
+| `CustomerRetentionProperties.java` | 57 | 39 | Kept the `isNegative()` argument — `P1M-40D` reads positive by total months yet moves the cutoff forward |
+| `notification/adapter/in/MailTransportProperties.java` | 54 | 37 | Kept millis-not-`Duration` and the one-knob-three-consumers rule |
+| `notification/adapter/in/RegistryMailProperties.java` | 53 | 33 | Kept the env-var placeholder trap: deleting the property lines breaks the override while the defaults keep working |
+| `notification/package-info.java` | 53 | 36 | Layout and the `allowedDependencies` rationale stay — they sit next to the annotation they explain |
+| `shared/package-info.java` | 53 | 27 | Admission bar stays; the three per-type grounds point at RESPONSIBILITIES §`shared`, which CLAUDE.md already names as their home |
+
+The `*Properties` files share one shape worth reusing: their operational *why* is already in the
+`IllegalArgumentException` messages, **left byte-identical**, where an operator meets it at boot. The
+class Javadoc only has to carry the traps that are not reachable from a failed boot.
 
 **Remaining heaviest** (recomputed after the batch above): `SecurityConfig.java` 248 ·
 `RateLimitFilter.java` 184 · `RateLimitFilterTest.java` 175 · `TransactionalMailServiceTest.java` 143 ·

@@ -13,19 +13,17 @@ import org.springframework.security.util.matcher.InetAddressMatchers;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Resolves the client IP used as the per-IP rate-limit key. The backend runs behind the Render proxy
- * (ADR-0004), so the originating client address arrives in a forwarding header rather than as the
- * direct socket address — but those headers are entirely client-supplied, so honouring one blindly
- * let a caller rotate a forged value and mint a fresh bucket per request (ADR-0006 risk R-2, #129).
+ * Resolves the client IP used as the per-IP rate-limit key. The backend runs behind a proxy, so the
+ * originating client address arrives in a forwarding header rather than as the direct socket address —
+ * but those headers are entirely client-supplied, so honouring one blindly lets a caller rotate a
+ * forged value and mint a fresh bucket per request (ADR-0006 risk R-2).
  *
- * <p><strong>Topology (measured, issue #286).</strong> {@code *.onrender.com} is fronted by
- * Cloudflare, so the real chain is <em>client → Cloudflare edge → Render → app</em>. Render appends
- * its observation of its peer to {@code X-Forwarded-For}, and that peer is the <em>edge node</em> —
- * a public address that varies per request as a client is load-balanced across the CDN. Keying on the
- * right-most untrusted hop therefore keyed on the edge, giving one client ~14 buckets while unrelated
- * clients behind one edge node shared a bucket. Making the walk land on the client would require the
- * trust list to enumerate Cloudflare's published ranges — a hand-maintained copy of a third-party
- * list that rots silently, re-opening the defect with no signal.
+ * <p><strong>The deployed topology is not the obvious one</strong>, and the difference is what the
+ * client-IP header below exists for: the real chain is <em>client → CDN edge → Render → app</em>, so
+ * the hop Render appends is a public edge address that varies per request. Read
+ * {@code docs/runbooks/rate-limit-client-ip.md} before changing anything here — it carries the
+ * measurements, including why the CDN's ranges must stay in the trust list, and the end-to-end probe
+ * that is the only check no unit or slice test can replace.
  *
  * <p><strong>Trust model.</strong> The resolver is constructed with a list of trusted-proxy CIDRs
  * ({@code riviera.ratelimit.trusted-proxies}) and the name of an edge-supplied client-IP header
@@ -34,12 +32,9 @@ import jakarta.servlet.http.HttpServletRequest;
  * <li>if the socket peer is <em>not</em> a trusted proxy, every forwarding header is ignored and the
  * socket address is the key — a direct client cannot talk its way out of its own bucket;</li>
  * <li>otherwise, if the configured client-IP header carries exactly one IP literal, that is the key.
- * A CDN sets this header itself from the connection it terminated (Cloudflare's
- * {@code CF-Connecting-IP} is generated, not appended to a client-supplied copy), so behind a trusted
- * peer it is unforgeable, and it needs no chain walk. Note what this does <em>not</em> buy: the
- * trust list still has to classify the peer, and on this deployment the peer is itself a
- * Cloudflare address (measured — #286), so the CDN's ranges stay in the list. The header removes
- * the walk, not the list;</li>
+ * A CDN generates this header from the connection it terminated rather than appending to a
+ * client-supplied copy, so behind a trusted peer it is unforgeable and needs no chain walk. It
+ * removes the walk, <em>not</em> the trust list — the peer must still be classified;</li>
  * <li>otherwise walk {@code X-Forwarded-For} right-to-left and key on the first <em>untrusted</em>
  * hop — correct wherever the app sits directly behind an appending proxy, and the reason a non-CDN
  * deployment needs no configuration change;</li>
@@ -47,30 +42,23 @@ import jakarta.servlet.http.HttpServletRequest;
  * </ol>
  * The header is all-or-nothing on purpose: repeated or non-literal values are discarded rather than
  * guessed at, because taking the first of several would let a client-supplied copy become the key.
- * Each way of losing the preferred path is logged once per process, so a topology change that
- * silently demotes resolution to the walk leaves a trace (see {@code docs/runbooks/rate-limit-client-ip.md}).
- * The opposite fingerprint is covered too (issue #290): a client-IP header arriving from an
- * <em>untrusted</em> peer — the signature of the trust list missing the upstream edge's ranges — is
- * still ignored (the #129 bypass closure) but now warns once per process, so the trust-list rot that
- * made the failed #286 retirement need a log-<em>absence</em> deduction names itself instead.
+ * Each way of losing the preferred path warns once per process, so a topology change that silently
+ * demotes resolution to the walk leaves a trace instead of needing a log-<em>absence</em> deduction.
  *
  * <p>A hop that is not an IP literal ({@code unknown}, a hostname, garbage) can never be proven
  * trusted, so it is treated as a client value; it is validated with {@link InetAddress#ofLiteral}
  * first so a hostile hop can never trigger a DNS lookup.
  *
- * <p>An empty trusted-proxy list means "trust no proxy" — the socket address is always the key, and
- * the client-IP header is never read. The shipped default trusts loopback, the RFC1918 private
- * ranges, link-local, and their IPv6 equivalents, which is right for an app sitting directly behind
- * a private proxy hop. <strong>It is not sufficient on the deployed topology</strong>, where the peer
- * is a public CDN address: there the list is widened per environment via the property (see
- * {@code docs/deploy/cd-pipeline.md}). A deployment exposed directly on a private network would
- * instead want to narrow it.
+ * <p>An empty trusted-proxy list means "trust no proxy" — the socket address is always the key and the
+ * client-IP header is never read. The shipped default trusts loopback, the RFC1918 ranges, link-local
+ * and their IPv6 equivalents, which is right for an app directly behind a private proxy hop.
+ * <strong>It is not sufficient on the deployed topology</strong>, where the peer is a public CDN
+ * address; there the list is widened per environment via the property
+ * ({@code docs/deploy/cd-pipeline.md}).
  *
  * <p>The headers are partly user-controlled, so the returned value is stripped of control characters
- * (ASCII C0/C1 including CR/LF/TAB/ESC) and the Unicode line/paragraph separators before it can reach
- * a logger — neutralising log-forging and terminal-escape injection (the riviera-java-conventions
- * log-injection guard). The value is only ever used as a map key and, at most, a {@code debug} log
- * field; the booking code is never involved here (invariant #7).
+ * and the Unicode line/paragraph separators before it can reach a logger — log-forging and
+ * terminal-escape injection. The value is only ever a map key and, at most, a {@code debug} log field.
  */
 final class ClientIpResolver {
 
@@ -150,11 +138,11 @@ final class ClientIpResolver {
 
 	/**
 	 * A configured client-IP header arriving from an <em>untrusted</em> peer is the fingerprint of the
-	 * trusted-proxy list no longer covering the upstream edge's ranges (issue #290). The header is
-	 * still ignored — that is #129's bypass closure, invariant-critical — but the silence that made the
-	 * failed #286 retirement need a log-<em>absence</em> deduction is what this warning removes: it
-	 * names the likely cause on the first affected request, once per process. Interpolates only the
-	 * configured header <em>name</em>, never its value, which is attacker-influenced whenever this fires.
+	 * trusted-proxy list no longer covering the upstream edge's ranges. The header is still ignored —
+	 * that is the bypass closure and is invariant-critical — but the warning names the likely cause on
+	 * the first affected request rather than leaving it to be deduced from a missing log line.
+	 * Interpolates only the header <em>name</em>, never its value, which is attacker-influenced whenever
+	 * this fires.
 	 */
 	private void warnOnClientIpHeaderFromUntrustedPeer(HttpServletRequest request) {
 		if (clientIpHeader.isEmpty() || request.getHeader(clientIpHeader) == null) {
@@ -174,8 +162,8 @@ final class ClientIpResolver {
 
 	/**
 	 * The parsed address, or {@code null} when {@code value} is not an IP literal. Literal-only — a
-	 * hostile hop or header value must never trigger a DNS lookup (#129 R-4), and anything unparseable
-	 * can never be proven trusted.
+	 * hostile hop or header value must never trigger a DNS lookup, and anything unparseable can never
+	 * be proven trusted.
 	 */
 	private static InetAddress ipLiteral(String value) {
 		if (value == null || value.isBlank()) {
