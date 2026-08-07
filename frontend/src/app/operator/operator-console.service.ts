@@ -247,7 +247,7 @@ export function venueProfileErrorOf(error: unknown): VenueProfileErrorCode {
 
 /**
  * Map a Payouts-tab failure — a ledger read or a weather refund — to a known {@link PayoutErrorCode}
- * (RFC-7807 `code`, #97; or 401). One mapper for both: 403 `NOT_VENUE_OWNER` (invariant #13) and 401 are
+ * (RFC-7807 `code`; or 401). One mapper for both: 403 `NOT_VENUE_OWNER` (invariant #13) and 401 are
  * the only outcomes the tab distinguishes; everything else is generic operator copy.
  */
 export function payoutErrorOf(error: unknown): PayoutErrorCode {
@@ -262,7 +262,7 @@ export function payoutErrorOf(error: unknown): PayoutErrorCode {
   return 'UNKNOWN';
 }
 
-/** Map an HTTP failure of a walk-in mark to a known {@link MarkErrorCode} (RFC-7807 `code`, #97; or 401). */
+/** Map an HTTP failure of a walk-in mark to a known {@link MarkErrorCode} (RFC-7807 `code`; or 401). */
 export function markErrorOf(error: unknown): MarkErrorCode {
   if (error instanceof HttpErrorResponse) {
     if (error.status === 401) {
@@ -344,7 +344,7 @@ export function repriceErrorOf(error: unknown): RepriceErrorCode {
   return 'UNKNOWN';
 }
 
-/** Map an HTTP failure of the layout write to a known {@link LayoutErrorCode} (RFC-7807 `code`, issue #97). */
+/** Map an HTTP failure of the layout write to a known {@link LayoutErrorCode} (RFC-7807 `code`). */
 export function layoutErrorOf(error: unknown): LayoutErrorCode {
   if (error instanceof HttpErrorResponse) {
     if (error.status === 401) {

@@ -255,7 +255,7 @@ export class VenueTab {
       try {
         await firstValueFrom(this.console.updateVenueProfile(venueId, request));
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this save's UI state; saving clears in finally
+          return; // a venue switch superseded this save's UI state (#180); saving clears in finally
         }
         this.saved.set(true);
         // The conditional write bumped the row's version by exactly one; advance our token so a
@@ -263,7 +263,7 @@ export class VenueTab {
         this.loadedVersion.set(expectedVersion + 1);
       } catch (error) {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this save's UI state
+          return; // a venue switch superseded this save's UI state (#180)
         }
         const code = venueProfileErrorOf(error);
         this.errorCode.set(code);
@@ -299,12 +299,12 @@ export class VenueTab {
     this.console.venueProfile(venueId).subscribe({
       next: (profile) => {
         if (this.epoch === epoch) {
-          this.seed(profile); // a superseded venue's profile never seeds the new venue's form
+          this.seed(profile); // a superseded venue's profile never seeds the new venue's form (#180)
         }
       },
       error: (error: unknown) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this load
+          return; // a venue switch superseded this load (#180)
         }
         // A transient read failure must NOT read as a blank form — show an error instead.
         this.loadError.set(true);
@@ -360,12 +360,12 @@ export class VenueTab {
     try {
       const uploaded = await firstValueFrom(this.photos.upload(venueId, slot, file));
       if (this.epoch !== epoch) {
-        return; // a venue switch superseded this upload's UI state
+        return; // a venue switch superseded this upload's UI state (#180)
       }
       this.patchSlot(slot, { previewUrl: previewUrlOf(uploaded) });
     } catch (error) {
       if (this.epoch !== epoch) {
-        return; // a venue switch superseded this upload's UI state
+        return; // a venue switch superseded this upload's UI state (#180)
       }
       const code = photoErrorOf(error);
       this.patchSlot(slot, { error: code });
@@ -388,12 +388,12 @@ export class VenueTab {
     try {
       await firstValueFrom(this.photos.remove(venueId, slot));
       if (this.epoch !== epoch) {
-        return; // a venue switch superseded this removal's UI state
+        return; // a venue switch superseded this removal's UI state (#180)
       }
       this.patchSlot(slot, { previewUrl: null });
     } catch (error) {
       if (this.epoch !== epoch) {
-        return; // a venue switch superseded this removal's UI state
+        return; // a venue switch superseded this removal's UI state (#180)
       }
       const code = photoErrorOf(error);
       this.patchSlot(slot, { error: code });

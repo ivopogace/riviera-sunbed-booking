@@ -73,8 +73,8 @@ export function operatorPasswordByteLength(password: string): number {
 }
 
 /**
- * The operator-facing message for a FAILED sign-in — one source so every auth surface says the
- * same thing (the venue editor, the staff view, and the customer/SSO surfaces).
+ * The operator-facing message for a FAILED sign-in — one source so every surface that signs an
+ * operator in says the same thing.
  * Returns undefined for `'signed-in'` (no message). Failure wording stays generic (D-8).
  */
 export function signInFailureMessage(result: SignInResult): string | undefined {
@@ -92,7 +92,7 @@ export function signInFailureMessage(result: SignInResult): string | undefined {
 
 /**
  * The operator-facing notice when the session has expired mid-action (a `401` on a console call).
- * One source so every operator surface — the console tabs, the venue editor — says the same thing.
+ * One source so every operator surface says the same thing.
  */
 export const SESSION_EXPIRED_MESSAGE =
   'Your operator session has expired. Please sign in again.';

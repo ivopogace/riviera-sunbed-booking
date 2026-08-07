@@ -186,12 +186,12 @@ export class DailyViewTab {
     write.subscribe({
       next: () => {
         if (this.epoch === epoch) {
-          this.reconcile(set.id); // skip if a venue switch superseded this write
+          this.reconcile(set.id); // skip if a venue switch superseded this write (#180)
         }
       },
       error: (e: unknown) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this write
+          return; // a venue switch superseded this write (#180)
         }
         if (marking) {
           const reason = markErrorOf(e);

@@ -422,8 +422,7 @@ export class VenueMap {
 
   protected async onRequested(): Promise<void> {
     this.selectedSet.set(undefined);
-    // The request-sent screen reads BookingService.lastRequested() (set by the 202 POST); nothing
-    // is charged until the venue accepts (Request-to-Book, issue #98).
+    // Nothing is charged until the venue accepts; the request-sent screen reads lastRequested().
     await this.router.navigate(['/booking/requested']);
   }
 }

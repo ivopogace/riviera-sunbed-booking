@@ -139,8 +139,8 @@ export abstract class SessionAuth {
 
   /**
    * One-time startup restore; the subclass fires this from a field initializer (once type is set).
-   * Kept at a single {@code await} depth so surfaces that settle it
-   * with one microtask / {@code whenStable} still see {@code restoring} flip in the same tick.
+   * Kept at a single {@code await} depth so surfaces that settle it with one microtask /
+   * {@code whenStable} still see {@code restoring} flip in the same tick.
    */
   protected async restore(): Promise<void> {
     try {
