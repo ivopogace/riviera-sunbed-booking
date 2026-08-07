@@ -9,7 +9,7 @@ import { AdminPrivacy } from './admin-privacy';
 import { AdminPrivacyService } from './admin-privacy.service';
 
 /**
- * The admin console's Privacy tab (A3, epic #348) — the first UI for `POST /api/admin/erasure`.
+ * The admin console's Privacy tab — the first UI for `POST /api/admin/erasure`.
  *
  * <p>Two things carry this spec. First, **nothing is sent until the confirmation is confirmed**: an
  * erasure is irreversible, so every case that reaches the confirm stage also asserts the service was
@@ -179,7 +179,7 @@ describe('AdminPrivacy', () => {
     expect(text(fixture, 'admin-privacy-done-panel')).toContain(EMAIL);
   });
 
-  /** #507 (the #519 pattern): grounds typed into the confirmation ride the request into the audit trail. */
+  /** Grounds typed into the confirmation ride the request into the audit trail. */
   it('passes typed grounds to the erasure', async () => {
     const service = serviceStub();
     const fixture = await render(authStub(), service);
@@ -311,7 +311,7 @@ describe('AdminPrivacy', () => {
   });
 
   /**
-   * WCAG 2.4.3 — the recurring #148/#351/#462/#505 stranded-focus class, which A8's review fan-out
+   * WCAG 2.4.3 — the recurring stranded-focus class, which a sibling tab's review fan-out
    * hit three times in one PR. Each of the five transitions below destroys the control that was just
    * activated, so without a deliberate move focus falls back to `<body>`. Each case fails with its
    * `focusAfterRender` call removed; that was verified rather than assumed.

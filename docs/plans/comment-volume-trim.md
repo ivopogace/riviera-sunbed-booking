@@ -138,7 +138,7 @@ sweep can silently do damage, and both were found by review rather than by the g
 | 1 | `check-comment-only.mjs` + its 8 tests | #545 | ✅ committed |
 | 2 | First batch — 12 heaviest files | #545 | ✅ committed, CI green |
 | 3 | Backend main, over-budget files with a *duplicated* home | #547, #548 | ✅ 17 files; stopped deliberately when yield fell to ~6 lines/file |
-| 4 | Rescan + closing batch — every remaining file with a **named second home**, across both trees | this PR | ✅ 9 files, 100 lines |
+| 4 | Rescan + closing batch — every remaining file with a **named second home**, across both trees | #549 | ✅ 9 files, 96 lines |
 | — | ~~Backend test top ~50 / `frontend/src` top ~30 as separate phases~~ | — | ❌ dropped by the rescan: sampled and found to be contract, not archaeology |
 
 Phases 3–5 are sized from the over-budget ranking, not from file counts per tree. **Regenerate the

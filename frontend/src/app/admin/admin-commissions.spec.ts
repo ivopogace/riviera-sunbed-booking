@@ -10,7 +10,7 @@ import { AdminCommissionsService } from './admin-commissions.service';
 import { VenueCommissionView } from './admin.model';
 
 /**
- * The admin console's Commissions tab (A8, epic #348) — the surface that makes a venue's rate
+ * The admin console's Commissions tab — the surface that makes a venue's rate
  * changeable at all. Four things matter here: the exact integer that will be stored is visible before
  * anything is sent, the wire never carries a percent, the response is spliced rather than re-read,
  * and the explainer states the guarantee the backend actually gives rather than the one a reader
@@ -164,7 +164,7 @@ describe('AdminCommissions', () => {
     expect(text(fixture, 'admin-commissions-notice')).toContain('Bora Bora Beach');
   });
 
-  /** #507 (the #519 pattern): grounds typed into the confirmation ride the write into the audit trail. */
+  /** Grounds typed into the confirmation ride the write into the audit trail. */
   it('passes typed grounds to the write', async () => {
     const service = serviceStub();
     const fixture = await render(authStub(), service);
@@ -263,7 +263,7 @@ describe('AdminCommissions', () => {
    * The fourth focus transition, and the one the other three hide: disabling Save while the write is
    * in flight blurs it to `<body>`, and re-enabling it afterwards does not bring focus back. Success
    * and dismissal both move focus deliberately; a failure left it stranded on the one path where the
-   * admin most needs to act next (WCAG 2.4.3 — the recurring #148/#351/#462/#505 class).
+   * admin most needs to act next (WCAG 2.4.3 — the recurring stranded-focus class).
    */
   it('returns focus to Save when the write fails, rather than stranding it', async () => {
     const service = serviceStub();
@@ -345,7 +345,7 @@ describe('AdminCommissions', () => {
   });
 
   /**
-   * WCAG 2.4.3 — the recurring #148/#351/#462/#505 stranded-focus class. Each transition destroys the
+   * WCAG 2.4.3 — the recurring stranded-focus class. Each transition destroys the
    * control that was just activated, so without a deliberate move focus falls back to `<body>`.
    */
   it('moves focus onto the rate field when the editor opens', async () => {

@@ -18,16 +18,16 @@ import { AdminOperatorsService } from './admin-operators.service';
 import { OperatorAccountView, PendingOperatorView } from './admin.model';
 
 /**
- * The platform-admin operator surface: the approval queue (S6 #115, design D-5) and the account list
- * with suspend/reinstate (#128). Every action <strong>reconciles both lists from the server</strong>
+ * The platform-admin operator surface: the approval queue and the account list
+ * with suspend/reinstate. Every action <strong>reconciles both lists from the server</strong>
  * (re-fetch, never a local-only row removal) so a concurrently-decided or already-gone row simply
  * settles to the truth.
  *
  * <p>Suspension is destructive and easy to misclick, so it takes a deliberate second step: the row's
  * Suspend button becomes an inline `Suspend <username>?` confirmation in place — no modal, so nothing
- * to focus-trap and no context switch away from the row being acted on. Since #519 the confirmation
- * also collects optional grounds, which ride the `X-Audit-Reason` header into the platform's admin
- * audit trail (#507). Suspended accounts stay in the list (badged) with a Reinstate action, so
+ * to focus-trap and no context switch away from the row being acted on. The confirmation also
+ * collects optional grounds, which ride the `X-Audit-Reason` header into the platform's admin
+ * audit trail. Suspended accounts stay in the list (badged) with a Reinstate action, so
  * suspension is never a one-way door.
  *
  * <p>The signed-in admin's own row offers no Suspend at all: the server refuses a self-suspend with
@@ -268,12 +268,12 @@ export class AdminOperators {
   protected readonly actingId = signal<number | undefined>(undefined);
   /** The row awaiting a second click to confirm suspension — inline, so the action stays in place. */
   protected readonly confirmingId = signal<number | undefined>(undefined);
-  /** The armed confirmation's optional grounds (#519); cleared on arm, dismiss, and confirm. */
+  /** The armed confirmation's optional grounds; cleared on arm, dismiss, and confirm. */
   protected readonly suspendReason = signal('');
   /**
    * Whether the lists above came from a read that actually succeeded. They start empty and are left
    * untouched on failure, so without this the stat strip would render a confident `0` for a queue it
-   * has simply not read yet — and an empty queue is a real, common state (A9, #348).
+   * has simply not read yet — and an empty queue is a real, common state.
    */
   private readonly countsKnown = signal(false);
 
@@ -339,9 +339,9 @@ export class AdminOperators {
   /**
    * Arm the confirmation and put focus on it. Arming and dismissing each destroy the element that
    * was just activated, which strands keyboard/AT focus on `<body>` unless it is moved deliberately
-   * (WCAG 2.4.3 — the recurring #148/#351/#462 class, handled as in #505). Only these two
-   * transitions are covered here: #505's third — parking focus once the action settles — spans all
-   * four row actions on this page and is deferred with that class (#519 plan, Non-goals).
+   * (WCAG 2.4.3 — the recurring stranded-focus class). Only these two transitions are covered
+   * here: the third — parking focus once the action settles — spans all four row actions on
+   * this page and is deliberately deferred.
    */
   protected askToSuspend(id: number): void {
     this.confirmingId.set(id);
@@ -360,7 +360,7 @@ export class AdminOperators {
   }
 
   protected async suspend(id: number): Promise<void> {
-    // #519: typed grounds ride the suspension into the audit trail; no grounds → the 1-arg call.
+    // Typed grounds ride the suspension into the audit trail; no grounds → the 1-arg call.
     const grounds = this.suspendReason().trim();
     this.suspendReason.set('');
     await this.act(id, () =>

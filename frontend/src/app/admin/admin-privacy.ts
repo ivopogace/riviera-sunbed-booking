@@ -11,10 +11,10 @@ import { AdminPrivacyService, erasureErrorOf } from './admin-privacy.service';
 type ErasureStage = 'form' | 'confirm' | 'done';
 
 /**
- * The admin console's Privacy tab (A3, epic #348) — the first UI for `POST /api/admin/erasure`, the
- * data-subject erasure endpoint that has existed unused since #101. It exists for the people who
+ * The admin console's Privacy tab — the first UI for `POST /api/admin/erasure`, the
+ * data-subject erasure endpoint that shipped long before any UI for it. It exists for the people who
  * cannot self-serve: a guest who never had an account, and an account holder who cannot reach their
- * own account page (which has its own erasure UI, #101 D5, for a different principal entirely).
+ * own account page (which has its own erasure UI, for a different principal entirely).
  *
  * <p><strong>The `204` is the whole design.</strong> The endpoint answers `204 No Content` when a
  * subject was scrubbed, when they had already been scrubbed, and when the platform never held that
@@ -24,14 +24,14 @@ type ErasureStage = 'form' | 'confirm' | 'done';
  * states that property to the admin outright, because a bare confirmation would otherwise be read as
  * "yes, they were in the system" — which is exactly the inference the `204` exists to prevent.
  *
- * <p><strong>Three stages, armed in place.</strong> Form → confirm → done, the #519 confirm-in-place
- * shape rather than a modal: nothing to focus-trap, and the confirmation names the address it is
- * about. The confirm step collects optional grounds that ride `X-Audit-Reason` into the platform's
- * admin audit trail (#507, recorded at the edge — this surface adds no instrumentation of its own).
+ * <p><strong>Three stages, armed in place.</strong> Form → confirm → done, the console's recurring
+ * confirm-in-place shape rather than a modal: nothing to focus-trap, and the confirmation names the
+ * address it is about. The confirm step collects optional grounds that ride `X-Audit-Reason` into the
+ * platform's admin audit trail (recorded at the edge — this surface adds no instrumentation of its own).
  *
  * <p><strong>Each stage swap moves focus deliberately.</strong> Every transition destroys the
  * control that was just activated, which strands keyboard/AT focus on `<body>` unless it is moved
- * (WCAG 2.4.3 — the recurring #148/#351/#462/#505 class). The two panels take focus themselves, as
+ * (WCAG 2.4.3 — the recurring stranded-focus class). The two panels take focus themselves, as
  * labelled groups, so the swap is announced rather than silently replacing the page's content;
  * dismissal and "erase another" return focus to the control that produced them.
  *

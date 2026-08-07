@@ -22,14 +22,15 @@ import { AdminCommissionsService, commissionWriteErrorOf } from './admin-commiss
 import { VenueCommissionView } from './admin.model';
 
 /**
- * The admin console's Commissions tab (A8, epic #348) — the surface that makes A7's rate write
+ * The admin console's Commissions tab — the surface that makes the admin rate write
  * usable. Until this tab a rate was settable only at venue creation: the owner's profile `PATCH`
- * treats it as display-only on purpose (O8 #177 — a venue does not set its own commission), so a rate
+ * treats it as display-only on purpose (a venue does not set its own commission), so a rate
  * typed wrong at onboarding was permanent for everyone, admin included.
  *
  * <p><strong>One card per venue, at every width.</strong> The design canvas draws a five-column table
  * that collapses to one labelled card per row at 360px — but two of its columns (owner, last-changed)
- * have no wire source: A7 deliberately returns no owner, and exposes no read of the rate schedule. A
+ * have no wire source: the backend deliberately returns no owner, and exposes no read of the rate
+ * schedule. A
  * three-column table is thinner than the card it would collapse into, so the card is drawn at every
  * width instead, which also lets the editor expand in place without a `colspan` row.
  *
@@ -54,10 +55,10 @@ import { VenueCommissionView } from './admin.model';
  * because invariant #4 closed today's bookings the evening before and they have already accrued.
  * These are not in tension: the live rate is what the next accrual will use.
  *
- * <p>The change is armed in place before it is sent — the #519 confirm-in-place shape, where the
- * editor itself is the confirmation: it names the venue, states when the change takes effect, shows
- * was-and-will-be, and collects optional grounds that ride `X-Audit-Reason` into the platform's admin
- * audit trail (#507, recorded at the edge with no instrumentation here).
+ * <p>The change is armed in place before it is sent — the console's recurring confirm-in-place shape,
+ * where the editor itself is the confirmation: it names the venue, states when the change takes
+ * effect, shows was-and-will-be, and collects optional grounds that ride `X-Audit-Reason` into the
+ * platform's admin audit trail (recorded at the edge with no instrumentation here).
  *
  * <p>Like every admin tab, the page self-gates on {@link OperatorAuth} for UX while the backend
  * `/api/admin/**` role gate does the enforcing. Porcelain-themed to match the operator console.
@@ -395,7 +396,7 @@ export class AdminCommissions {
   /**
    * Open the editor on a venue and put focus in the rate field. Opening, dismissing and saving each
    * destroy the control that was just activated, which strands keyboard/AT focus on `<body>` unless
-   * it is moved deliberately (WCAG 2.4.3 — the recurring #148/#351/#462/#505 class). The field is
+   * it is moved deliberately (WCAG 2.4.3 — the recurring stranded-focus class). The field is
    * seeded with the venue's current rate so a small correction is an edit, not a re-type.
    */
   protected startEdit(venue: VenueCommissionView): void {
