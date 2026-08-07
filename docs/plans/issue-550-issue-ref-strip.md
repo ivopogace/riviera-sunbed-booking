@@ -153,12 +153,10 @@ stale as batches land.
 
 ## Execution status
 
-**Stage pointer:** review gate — batch 1 review ran (PR #551), 5 findings fixed; awaiting CI +
-Sonar new-issue list.
+**Stage pointer:** batch 1 gates all green on PR #551 — awaiting merge.
 
-**Next action:** confirm PR #551 CI green and read the Sonar new-issue list (AC-6); on merge,
-restart the branch from `main` and cut batch A-2 from the post-probe census (dense files
-first: `operator/`, `booking/`, `core/`).
+**Next action:** on PR #551's merge, restart the branch from `main` and cut batch A-2 from the
+post-probe census (dense files first: `operator/`, `booking/`, `core/`).
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
@@ -208,7 +206,8 @@ Per batch, in order: commit → AC-2 → AC-5 (direct `check()`, assert file cou
 AC-1 re-census per phase close. Batch A-1: AC-2 ✅ (10 files code-identical), AC-3 ✅
 (one `ADR-0013` line survives; the stripped `design D-5` was a miss, caught at review and
 restored — F-3), AC-5 ✅ (10 files scanned, 0 violations), AC-4 ✅ (review ran on PR #551,
-all 5 lenses reported, findings F-3–F-5 fixed), AC-6 pending CI/Sonar on PR #551.
+all 5 lenses reported, findings F-3–F-5 fixed), AC-6 ✅ (CI green on `2f51e3b`; Sonar: 0 new
+issues on the list, 0 duplication, 0 hotspots — no coverable new lines, comment-only).
 
 ## Self-review checklist (before merge / PR)
 
