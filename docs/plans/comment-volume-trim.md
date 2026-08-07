@@ -47,11 +47,14 @@ in more depth.
 - [x] AC-3 `node --test scripts/*.test.mjs` green (8 new cases for the verifier).
 - [x] AC-4 Full CI green (backend build + test, frontend lint/test/build + e2e, both hygiene checks) —
       confirmed on PR #545 after the R-6 fix; re-checked per batch thereafter.
-- [x] AC-5 Every over-budget block **with a second home** trimmed to §6d. Restated twice against
-      measurement: the original "every file" reading was wrong (half the tree is already at budget), and
-      the "top ~200 over-budget files" reading (A-3) was wrong too — the 2026-08-07 rescan found the
-      duplicate-bearing class exhausted and the remainder contract. Closed at the measured floor, not at
-      a file count. See *The rescan that closed the sweep*.
+- [~] AC-5 **DESCOPED, not met** — and the distinction is the honest one. The criterion was restated
+      twice against measurement (the original "every file" reading was wrong because half the tree is
+      already at budget; A-3's "top ~200 files" reading was wrong because it was still a file count).
+      What shipped is every duplicate-bearing file the sweep *found*, which is not the same as every one
+      that *exists*: the search was a 15-file read sample against 556 untrimmed over-budget files, and
+      HEAD still carries 583 files / ~11,950 lines in blocks of 10+. The sample says the remainder is
+      contract, and that is a defensible basis for stopping — it is not a basis for claiming completion.
+      See *The rescan that closed the sweep*.
 - [x] AC-6 No rationale lost: every relocation target was **read** to confirm it carries the text before
       the copy was removed (R-7), per batch.
 
@@ -74,6 +77,7 @@ in more depth.
 | R-6 | **The trim itself writes multi-line inline comments**, tripping RV-STYLE-1 — hit on the first CI run, 8 violations in `SecurityConfig` | Prose that will not fit one line goes in the Javadoc (§6c's own remedy), never a `//` block. Run `check-inline-comments.mjs` per batch — and note its CLI no-ops on Windows (the `import.meta.url` guard), so call `check(...)` directly or rely on CI |
 | R-7 | **A relocation pointer that points at nothing.** `RefundExecutorProperties` said "the full sizing argument: RESPONSIBILITIES §`booking`" while the arithmetic it named (pool 4 from a 12.5-vs-6-minute drain, queue 500 from ≈52 minutes of backlog) had never been written there — AC-6 self-certified, not checked. Caught by the review gate | Relocation means **moving the text**, then reading the target to confirm it arrived. Fixed for this file; every future batch verifies each new pointer before the batch commits, since a dangling pointer is strictly worse than the essay it replaced |
 | R-8 | **The inertness checker itself has blind spots**, so a batch could pass AC-2 while changing code. Review found two: a `/` inside a regex character class (`/[/*]/`) read as an opening block comment, and the `//` in an unquoted CSS `url(http://…)` read as a line comment | Both fixed with regex-literal and unquoted-`url()` handling, pinned by three tests confirmed to go **red** against the pre-fix script. The residual known gap — Java text-block re-indentation — is documented in the script's own Javadoc and is out of scope for a sweep that never re-indents |
+| R-9 | **"It has a second home" is judged too fast.** The closing batch made the R-7 mistake twice more, in subtler forms: (a) a **scan-limit** sentence deleted from a fitness test — `RESPONSIBILITIES.md` §`Machine-checked vs review-checked` says known scan limits are *"documented on the tests"*, so a test Javadoc **is** the substrate home and deleting from it loses the fact outright; (b) a pointer to ADR-0007 for the thin/full **census**, which ADR-0007 states **backwards** (`:62` still calls `customer` thin; it has had an application service since S2). Both caught at review, not by any gate | Two rules the next sweep inherits. **A fitness test's stated blind spot is contract, never archaeology** — it is the one place the repo directs readers to. And **verifying a pointer means reading the target for the specific claim**, not for the topic: ADR-0007 does carry the templates, which is what made the census pointer look verified. Where a fact is a *census* (what is true today), do not point at all — state the rule and let the census live in `riviera-modulith`, which maintains it |
 
 ## Open questions / Assumptions
 
@@ -198,20 +202,21 @@ useful part:
 | `OperatorAccountController.java` | 79 | 76 |
 | `venue/application/CommissionRateStore.java` | 64 | 63 |
 
-**Phase 4, closing batch** — 9 files, **100 lines**. Selected by *named second home*, never by block
-size. Every target was read to confirm it carries the text before the copy was removed (R-7).
+**Phase 4, closing batch** — 9 files, **96 lines**. Selected by *named second home*, never by block
+size. Every target was read to confirm it carries the text before the copy was removed (R-7) — and the
+review gate still caught two misses, recorded as R-9 below.
 
 | File | Before | After | Second home |
 |---|---|---|---|
-| `MailListenerExecutorArchitectureTest.java` | 111 | 86 | RESPONSIBILITIES §`notification` |
-| `PackageShapeArchitectureTests.java` | 76 | 56 | ADR-0007 + invariant #11 |
+| `MailListenerExecutorArchitectureTest.java` | 111 | 87 | RESPONSIBILITIES §`notification` |
+| `PackageShapeArchitectureTests.java` | 76 | 61 | invariant #11 + `riviera-modulith` (census) |
 | `ShutdownDrainArchitectureTest.java` | 107 | 92 | RESPONSIBILITIES §`shared` |
 | `RegistryMailExecutorConfigTest.java` | 104 | 91 | RESPONSIBILITIES §`notification` |
 | `RefundListenerExecutorArchitectureTest.java` | 75 | 64 | RESPONSIBILITIES §`booking` + its notification twin |
 | `RefundBulkheadIT.java` | 114 | 108 | RESPONSIBILITIES §`booking` |
 | `MyAccountController.java` | 57 | 51 | `OperatorAccountController#changePassword` |
 | `RegistryMailBulkheadIT.java` | 71 | 68 | RESPONSIBILITIES §`notification` |
-| `PublishedSurfacePlacementArchitectureTests.java` | 57 | 56 | ADR-0007 Amendment 1 |
+| `PublishedSurfacePlacementArchitectureTests.java` | 57 | 54 | ADR-0007 Amendment 1 |
 
 `ShutdownDrainArchitectureTest` also carried an **orphaned duplicate Javadoc block** — two doc comments
 stacked on `KNOWN_DRAINING_POOLS`, the first unreachable. Removed here; worth knowing the shape exists,
@@ -226,10 +231,16 @@ measurement rather than fatigue.
 **556 files / 10,835 lines were untrimmed**.
 
 **The sample.** The top 15 untrimmed files (846 over-budget lines) were read — not inferred from paths —
-and asked the selection question. Only **2 of 15** had a substrate-doc duplicate, and both yielded ~20
-lines rather than the 100+ that `ObservabilityMetrics` and `AsyncMailDispatcher` did, because the
-duplication was one paragraph of several rather than wholesale. Measured sample yield: **~19%**, at the
-very heaviest end of the ranking, falling below it.
+and asked the selection question. **7 of 15 had a second home** (2 a substrate-doc duplicate, 5 a
+sibling or in-code restatement); the other 8 were contract, test-rationale or measurement records. The
+2 substrate-doc duplicates yielded ~20 lines each rather than the 100+ that `ObservabilityMetrics` and
+`AsyncMailDispatcher` did, because the duplication was one paragraph of several rather than wholesale.
+
+Those 7 files are the bulk of the closing batch below — **84 of its 96 lines** — so the sample is not
+independent evidence of a stopping point; it *is* the last of the work. Sample yield came in at **~10%
+of the 846 lines**, against a pre-batch estimate of ~19%. The estimate was 2× optimistic, which
+strengthens the stop rather than weakening it: **8 of the 15 heaviest untrimmed files in the tree
+yielded nothing**, and the ranking only gets thinner below them.
 
 **Three findings that make continuing the wrong call:**
 
@@ -254,7 +265,7 @@ drift apart** — a correctness cost, not a cosmetic one. `MailListenerExecutorA
 RESPONSIBILITIES §`notification` holding a third.
 
 **Strike the ~6,800-line estimate below.** The measured reachable figure was always closer to ~1,000,
-and 916 of it shipped (#545 + #547 + #548 + this batch).
+and 912 of it shipped (#545 + #547 + #548 + this batch).
 
 ### Block size over-predicts yield — rank by duplication instead
 
@@ -314,7 +325,7 @@ assumed every over-budget block was compressible; sampling found most of them to
 here struck through rather than deleted, because the *shape* of the error is the reusable lesson: a
 block-size census tells you where prose is, never whether it has somewhere else to live.
 
-**Tree total:** 24,718 → 24,116 (12 files) → 23,902 (29 files) → **23,802** (38 files, sweep closed).
+**Tree total:** 24,718 → 24,116 (12 files) → 23,902 (29 files) → **23,806** (38 files, sweep closed).
 
 ## File structure
 
@@ -330,8 +341,12 @@ guard sanctions.
 - `docs/plans/comment-volume-trim.md` — **new**: this doc
 - `platform/src/main/java/` — **modified**: Javadoc trimmed to §6d, comment-only
 - `platform/src/test/java/` — **modified**: Javadoc trimmed to §6d, comment-only
-- `frontend/src/` — **modified**: TSDoc + HTML comments trimmed, comment-only
-- `frontend/e2e/` — **modified**: TSDoc trimmed, comment-only
+- `frontend/src/` — **modified**: TSDoc trimmed in `operator-console.model.ts` only (#545); the planned
+  wider frontend pass was dropped by the rescan, which found the admin-tab essays to be measurement
+  records rather than archaeology
+- ~~`frontend/e2e/`~~ — **never touched**; listed here while the sweep was still planned across all four
+  trees. The guard only checks touched ⊆ listed, so a stale entry passes — worth knowing it reads as
+  outstanding work when it is cancelled work
 
 ## Skills consulted
 

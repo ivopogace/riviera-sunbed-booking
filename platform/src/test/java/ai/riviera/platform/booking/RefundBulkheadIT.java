@@ -352,7 +352,7 @@ class RefundBulkheadIT {
 	 * {@code isActualTransactionActive()} goes false under {@code @Transactional(NOT_SUPPORTED)} while
 	 * {@code DataSourceUtils} keeps the {@code ConnectionHolder} bound for the whole method — so a
 	 * transaction assertion alone can read green with the pooled connection still pinned across the
-	 * round-trip, which is the resource #404 is actually about.
+	 * round-trip, which is the scarcer resource of the two.
 	 */
 	static final class ControllableRefundPort implements RefundPort {
 

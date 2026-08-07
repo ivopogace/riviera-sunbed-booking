@@ -108,7 +108,7 @@ class ShutdownDrainArchitectureTest {
 
 	private static final Path MAIN_RESOURCES = Path.of("src/main/resources");
 
-	/** The deliberately mis-shaped tree the detector's own proofs run against (#95's fixture mechanism). */
+	/** The deliberately mis-shaped tree the detector's own proofs run against. */
 	private static final String DRAIN_FIXTURES = "ai.riviera.drainfixture";
 
 	/**
@@ -138,10 +138,10 @@ class ShutdownDrainArchitectureTest {
 	}
 
 	/**
-	 * The proof that counting windows sees what counting classes cannot (review finding F-1). The fixture
+	 * The proof that counting windows sees what counting classes cannot. The fixture
 	 * declares <strong>two</strong> pools in <strong>one</strong> class, so the class-keyed view reports a
-	 * single entry — one claim's worth — while the window count reports two. Without this, the fix for
-	 * F-1 would be an untested assertion about an untested assertion.
+	 * single entry — one claim's worth — while the window count reports two. Without this, counting
+	 * windows would be an untested assertion about an untested assertion.
 	 */
 	@Test
 	void countingWindowsSeesASecondPoolThatCountingClassesCannot() {

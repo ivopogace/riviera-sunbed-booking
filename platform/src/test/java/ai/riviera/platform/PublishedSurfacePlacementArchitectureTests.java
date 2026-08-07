@@ -160,10 +160,8 @@ class PublishedSurfacePlacementArchitectureTests {
 
 	/**
 	 * The same rejection for a listener written as {@code @Async} + {@code @TransactionalEventListener}
-	 * rather than the {@code @ApplicationModuleListener} composite. A listener takes that form when it
-	 * must name its own executor — the composite accepts no qualifier — which is how #383 kept mail off
-	 * the money-path pool. Until then this rule matched the composite alone, so decomposing a listener
-	 * silently removed it from the rule's reach: nothing went red, the check simply stopped applying.
+	 * rather than the {@code @ApplicationModuleListener} composite — the form a listener takes when it
+	 * must name its own executor, since the composite accepts no qualifier.
 	 */
 	@Test
 	void eventListenedFromOutsideEventsSurfaceIsRejectedForADecomposedListenerToo() {

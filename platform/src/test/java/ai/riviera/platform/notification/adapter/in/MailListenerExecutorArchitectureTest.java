@@ -58,7 +58,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   <li><strong>Only listeners of {@code ai.riviera.platform} events are in scope.</strong> A
  *       container-lifecycle listener ({@code ContextRefreshedEvent} and friends) is skipped: there
  *       is no publishing transaction to bind to, so demanding {@code @TransactionalEventListener}
- *       of it would fail code that is correct.</li>
+ *       of it would fail code that is correct. The gap that leaves: a mail sent from a Spring
+ *       lifecycle event is invisible to this rule.</li>
  *   <li><strong>{@code @Async} is resolved method-first, then type</strong>, because Spring resolves
  *       it that way; a class-level {@code @Async(MAIL_EXECUTOR)} is a compliant spelling and must
  *       not read as "no {@code @Async} at all".</li>
@@ -140,7 +141,7 @@ class MailListenerExecutorArchitectureTest {
 	}
 
 	/**
-	 * The non-vacuity proof #409 AC-3 asks for, run against a fixture instead of by reverting
+	 * The non-vacuity proof, run against a fixture instead of by reverting
 	 * production code: {@code @ApplicationModuleListener} is exactly what
 	 * {@link BookingConfirmationMailListener} would revert to.
 	 */

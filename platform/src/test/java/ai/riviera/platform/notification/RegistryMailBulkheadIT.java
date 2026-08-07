@@ -117,7 +117,7 @@ class RegistryMailBulkheadIT {
 	}
 
 	/**
-	 * AC-1 — the money path is not behind the mail queue. Ten confirmations are dispatched into an
+	 * The money path is not behind the mail queue. Ten confirmations are dispatched into an
 	 * unresponsive transport (more than the shared executor's eight core threads, so before the fix the
 	 * pool is exhausted, not merely busy); an eleventh booking is then confirmed through the payment
 	 * route, and both invariant-#8 confirmation and invariant-#9 accrual must land while mail is still
@@ -153,7 +153,7 @@ class RegistryMailBulkheadIT {
 	}
 
 	/**
-	 * AC-3 — a failed send stays outstanding and is re-delivered on resubmit, which is exactly what
+	 * A failed send stays outstanding and is re-delivered on resubmit, which is exactly what
 	 * {@code republish-outstanding-events-on-restart} performs at boot. The resubmit predicate is
 	 * narrowed to this booking on purpose: the database is shared with other IT classes in this
 	 * context, and a blanket resubmit would re-deliver their events too.
@@ -185,7 +185,7 @@ class RegistryMailBulkheadIT {
 	}
 
 	/**
-	 * AC-5 — the {@code listener_id} the registry writes is still the string V31 (#382) migrated every
+	 * The {@code listener_id} the registry writes is still the string the migration wrote onto every
 	 * pre-existing row to. Asserted against an <em>outstanding</em> row, which is the one republication
 	 * actually matches on.
 	 */
@@ -209,9 +209,9 @@ class RegistryMailBulkheadIT {
 	}
 
 	/**
-	 * AC-7 — no transaction, and no bound Hikari connection, around the transport call. The listener's
+	 * No transaction, and no bound Hikari connection, around the transport call. The listener's
 	 * three port reads are independent read-only queries with nothing to keep consistent between them,
-	 * so the transaction {@code @ApplicationModuleListener} supplied bought only the risk #383 names: a
+	 * so the transaction {@code @ApplicationModuleListener} supplied bought only the bulkhead risk: a
 	 * connection pinned for the length of an SMTP round-trip.
 	 *
 	 * <p>Both flags are asserted, and the second is the load-bearing one — see

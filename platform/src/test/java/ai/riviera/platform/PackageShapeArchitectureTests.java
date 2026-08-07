@@ -21,10 +21,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 /**
  * Locks the two-template package layout so the shape cannot regress — the machine-checkable
  * (structural) half of {@code riviera-review-overlay} <strong>RV-BE-12</strong>. The templates
- * themselves are ADR-0007 (as amended by issues #95 and #371) and invariant #11; the four assertions
- * below are the structural rules ADR-0007's "Enforcement" section calls out. A fast, context-free
- * ArchUnit test (sibling to {@link JdbcOnlyArchitectureTests} / {@link ModularityTests} — no Spring
- * context, no DB, runs anywhere).
+ * themselves are invariant #11 and ADR-0007; which modules are full or thin <em>today</em> is a
+ * census that goes stale, so it is deliberately not restated here — {@code riviera-modulith} keeps
+ * it. A fast, context-free ArchUnit test (sibling to {@link JdbcOnlyArchitectureTests} /
+ * {@link ModularityTests} — no Spring context, no DB, runs anywhere).
+ *
+ * <p><strong>{@code domain} is optional, and that is not a loophole.</strong> A module may own
+ * table-backed state without owning an aggregate, so it has no {@code domain} package — full is
+ * defined by <em>having an application service</em>, not by using every package. This is the one
+ * reconciliation between the allowed-set below and invariant #11's unqualified spelling.
  *
  * <p>The <em>thin-vs-full judgment</em> (whether a serviceless module should stay thin or graduate)
  * and the <em>use-case-slicing</em> call (booking's {@code application/{reserve,cancel,refund,view}})
@@ -129,7 +134,7 @@ class PackageShapeArchitectureTests {
 
 	/**
 	 * Assertion 3 — the {@code @NamedInterface} packages ({@code api} / {@code spi} /
-	 * {@code vocabulary} / {@code events}, the last two since issue #95) are top-level (ADR-0007).
+	 * {@code vocabulary} / {@code events}) are top-level (ADR-0007).
 	 * Each must be a direct child of the module, never nested (no {@code application.api},
 	 * {@code adapter.in.events}, …) — nesting would hide the published surface from Spring Modulith,
 	 * and the four names are reserved for published surfaces even as internal package names.
