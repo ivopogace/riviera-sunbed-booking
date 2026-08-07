@@ -363,31 +363,10 @@ upstream). Each skill's frontmatter description is the authoritative
 - **Decisions:** `docs/adr/`. **Roadmap:** `docs/architecture/improvement-plan.md`
   (tracked by epic #93).
 
-## graphify
+## Searching the codebase
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships. **The graph is local-only — `graphify-out/` is gitignored** (regenerable output, not committed), so it may be **absent in a fresh or cloud clone**; when it's missing, build it once with `/graphify .` (code is free via AST; the doc-semantic pass costs tokens) or just proceed without it.
-
-Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- Keeping the graph current: **code changes rebuild automatically** — the installed post-commit hook re-runs AST extraction on changed code after every commit (no LLM, no API cost). Doc/ADR/plan changes are **not** covered by the hook; refresh them via the graphify skill's update flow after doc-touching slices, and **verify the changed doc actually landed** (grep its name in `graphify-out/graph.json`) — the bare `graphify update .` CLI has been observed to re-extract code only.
-
-### The `adapter/out` blind spot (#321) — verify after every graphify upgrade
-
-Stock graphify prunes `out/` directories before consulting `.gitignore`, silently dropping
-every `adapter/out` package — the whole persistence layer. A local `site-packages` patch
-(`_is_noise_dir` exempts `out`/`build`/`target`/`dist` under `src/main|test/`) fixes it, and
-**any `pip install -U graphifyy` silently reverts the patch**. After every graphify upgrade
-(or on a new machine), re-verify:
-
-```bash
-git ls-files '*/adapter/out/*.java' | wc -l                   # what SHOULD be indexed (48 as of #386;
-                                                              # it grows — read it, don't trust this number)
-grep -c '"JdbcGuestBookingHistory"' graphify-out/graph.json   # >0 — what actually is
-```
-
-If the second returns `0`, reapply the patch (diff on #321) and re-run the update before
-trusting any graph result that touches persistence or a port implementation. **General rule
-this cost us: an empty graph result is not evidence of absence** — confirm with
-`git ls-files`/grep before concluding a thing doesn't exist. (Full story: #321.)
+Grep/Glob and `git ls-files` are the tools; there is no knowledge-graph index. One rule
+worth keeping: **an empty search result is not evidence of absence.** Search tools honour `.gitignore`, and
+`platform/.gitignore` ignores `out/` — which is also the name of every hexagonal
+`adapter/out` package. Confirm any negative with `git ls-files '*/adapter/out/*.java'`
+before concluding a class doesn't exist.

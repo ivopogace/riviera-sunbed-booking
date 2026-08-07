@@ -260,12 +260,6 @@ Merging is not the last step; the close-out is. Every item, every merge:
      follow-up issue (step 3). **If you find yourself opening a docs-only PR to finish a
      close-out, step 4 was skipped** — that is the signal, not a normal cost.
    - It also runs over every epic's full merge span at epic close-out (case history: #72).
-   **Then refresh the knowledge graph for the same doc changes:** the post-commit hook
-   rebuilds *code* only, so after a doc/ADR/plan-touching slice refresh the docs via the
-   graphify skill's update flow and **verify the changed doc actually landed** (grep its
-   name in `graphify-out/graph.json`) — the bare `graphify update .` CLI has been observed
-   to re-extract code only. (The graph is gitignored — a local refresh, nothing to commit;
-   skip if the slice touched no docs, since code already rebuilt via the hook.)
 6. **Subscription closed:** confirm the PR-activity subscription ended with the merge
    (auto-unsubscribe) or unsubscribe manually.
 7. **Notify** per *Staying in touch* (SKILL.md): push; email only if a send-capable tool
