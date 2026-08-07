@@ -81,8 +81,10 @@ class SecurityConfig {
 	 */
 	private static final String BEACH_MAP_PATH = "/api/venues/*/beach-map";
 	private static final String ROW_PRICE_PATH = "/api/venues/*/rows/*/price";
-	// A single venue photo slot: POST upload / DELETE remove, operator-only. The public GET serving
-	// path falls under "GET /api/venues/**" below.
+	/**
+	 * A single venue photo slot: POST upload / DELETE remove, operator-only. The public GET serving path
+	 * falls under {@code GET /api/venues/**} below.
+	 */
 	private static final String PHOTO_ITEM_PATH = "/api/venues/*/photos/*";
 	/** A set's per-day staff availability (mark POST / release DELETE); session + CSRF token required. */
 	private static final String SET_AVAILABILITY_PATH = "/api/venues/*/sets/*/availability";
@@ -244,38 +246,39 @@ class SecurityConfig {
 	/** The session logout; handled by the framework {@code LogoutFilter}, not a controller. */
 	private static final String LOGOUT_PATH = "/api/auth/logout";
 
+	/**
+	 * The backend chain, scoped to {@code /api/**} + {@code /actuator/**} and ordered FIRST so the SPA
+	 * shell's permit-all chain below only catches what this one did not match.
+	 *
+	 * <p><strong>ORDERING RULE — first match wins.</strong> Every operator-only
+	 * {@code GET /api/venues/*&#47;…} rule below MUST precede the public {@code GET /api/venues/**}, or
+	 * its data leaks to anyone. Each such rule carries an "order-sensitive" note on its path constant.
+	 *
+	 * <p>{@code .spa()} is Spring Security 7's single-page-app CSRF posture: a JS-readable XSRF-TOKEN
+	 * cookie the SPA echoes as {@code X-XSRF-TOKEN}. The only exemptions are the genuinely token-less
+	 * surfaces — guest booking create/cancel/withdraw, authorized by the booking code alone
+	 * (invariant #7) and deliberately session-free, and the Stripe webhook, a server-to-server POST
+	 * authenticated by its signature header (invariant #8).
+	 */
 	@Bean
 	@Order(1)
 	SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
 			Clock clock, ObjectMapper objectMapper, AdminAuditLog adminAuditLog) {
-		// One shared CSRF cookie repository: the chain and the logout success handler must stay in
-		// lockstep, both issuing through the same hardened config.
+		// One instance, so the chain and the logout success handler stay in lockstep.
 		CookieCsrfTokenRepository csrfTokenRepository = csrfCookieRepository();
 		http
-				// Scope this chain to the backend surface only; the SPA shell is a separate PUBLIC
-				// chain below. Ordered FIRST, so /api + /actuator keep the full posture.
 				.securityMatcher("/api/**", "/actuator/**")
 				.cors(Customizer.withDefaults())
-				// Runs after CORS (a preflight is handled first) and before authorization: the booking
-				// endpoints are permitAll, so the booking code IS the authorization and the 200/404
-				// oracle must be throttled.
+				// After CORS (preflight first), before authorization: the 200/404 code oracle needs throttling.
 				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock, objectMapper), CorsFilter.class)
 				// After AuthorizationFilter, so only actions past the gate leave an audit row.
 				.addFilterAfter(new AdminAuditFilter(adminAuditLog, ADMIN_AUDIT_NAMESPACE), AuthorizationFilter.class)
-				// `.spa()` is Spring Security 7's single-page-app posture: a JS-readable XSRF-TOKEN
-				// cookie the SPA echoes as X-XSRF-TOKEN. The only exemptions are the genuinely
-				// token-less surfaces — guest booking create/cancel/withdraw, authorized by the booking
-				// code alone (invariant #7) and deliberately session-free, and the Stripe webhook, a
-				// server-to-server POST authenticated by its signature header (invariant #8).
 				.csrf(csrf -> csrf
 						.spa()
 						// Hardened to mirror the session cookie's posture (keeps spa()'s handler).
 						.csrfTokenRepository(csrfTokenRepository)
 						.ignoringRequestMatchers("/api/bookings", "/api/bookings/*/cancel",
 								"/api/bookings/*/withdraw", "/api/payments/stripe/webhook"))
-				// ORDERING RULE: first match wins. Every operator-only `GET /api/venues/*/…` rule below
-				// MUST precede the public `GET /api/venues/**`, or its data leaks to anyone. Each such
-				// rule is marked "order-sensitive" on its path constant above.
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						// Anonymous by definition — authentication happens INSIDE the endpoint.
@@ -355,8 +358,7 @@ class SecurityConfig {
 				.logout(logout -> logout
 						.logoutUrl(LOGOUT_PATH)
 						.logoutSuccessHandler(csrfReissuingLogoutSuccessHandler(csrfTokenRepository)))
-				// Fires in the filter chain and never reaches ApiErrorHandler, so the RFC-7807 body is
-				// hand-mirrored here.
+				// Never reaches ApiErrorHandler, so the RFC-7807 body is hand-mirrored here.
 				.exceptionHandling(handling -> handling
 						.authenticationEntryPoint((_, response, _) ->
 								SecurityProblemResponses.writeUnauthenticated(response))

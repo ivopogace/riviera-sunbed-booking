@@ -65,6 +65,7 @@ in more depth.
 | R-3 | A 1,000-file diff is unreviewable, so review rubber-stamps it | Batched commits by area with an inertness proof per batch; the diff is large but provably inert |
 | R-4 | Ordering-sensitive security comments lost from `SecurityConfig` | First-match-wins rule stated **once** at the `authorizeHttpRequests` block; each order-sensitive matcher keeps a one-line marker |
 | R-5 | The sweep spans sessions and loses its place | This doc is the state store (SDLC rule 11); the ledger below is updated per batch |
+| R-6 | **The trim itself writes multi-line inline comments**, tripping RV-STYLE-1 — hit on the first CI run, 8 violations in `SecurityConfig` | Prose that will not fit one line goes in the Javadoc (§6c's own remedy), never a `//` block. Run `check-inline-comments.mjs` per batch — and note its CLI no-ops on Windows (the `import.meta.url` guard), so call `check(...)` directly or rely on CI |
 
 ## Open questions / Assumptions
 
@@ -113,6 +114,7 @@ No component, template binding, route or service behaviour changes. TSDoc and HT
 | `shared/ObservabilityMetrics.java` | 245 | 92 | Third copy of RESPONSIBILITIES §`shared` + the observability runbook |
 | `SecurityConfig.java` | 635 | 487 | Ordering rule stated once, not eight times |
 | `shared/MdcTaskDecorator.java` | 127 | 100 | Kept all three traps; dropped the #455/#410 argument |
+| `booking/application/Bookings.java` | 207 | 175 | Port interface — its Javadoc is genuine contract, so only issue numbers and story labels went |
 
 **Remaining heaviest** (comment lines, from `concentration.mjs`): `RateLimitFilter.java` 273 ·
 `AsyncMailDispatcher.java` 189 · `RateLimitFilterTest.java` 178 · `TransactionalMailService.java` 153 ·

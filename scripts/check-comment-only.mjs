@@ -151,8 +151,7 @@ function main(argv) {
   return 0;
 }
 
-// pathToFileURL, not string concatenation: on Windows argv[1] is `C:\…`, which never equals the
-// `file:///C:/…` form of import.meta.url, so the CLI would silently no-op.
+// pathToFileURL, not concatenation: on Windows `C:\…` never equals the `file:///C:/…` form.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.exitCode = main(process.argv.slice(2));
 }
