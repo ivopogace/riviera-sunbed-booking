@@ -153,15 +153,17 @@ stale as batches land.
 
 ## Execution status
 
-**Stage pointer:** batch 1 gates all green on PR #551 — awaiting merge.
+**Stage pointer:** implement — Phase A, batch 2 at the PR gate (batch 1 merged via PR #551).
 
-**Next action:** on PR #551's merge, restart the branch from `main` and cut batch A-2 from the
-post-probe census (dense files first: `operator/`, `booking/`, `core/`).
+**Next action:** open the batch-2 PR, run the review gate + read the Sonar new-issue list; on
+merge, restart the branch from `main` and cut batch A-3 (next dense files by the regenerated
+census: `app.ts`/`app.html`, `admin/` services + tabs, `booking-pay.ts`, `home.ts`).
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
-| A-1 (probe) | 10 densest `app/admin/` files — 83 refs (65 embedded, 18 parenthetical); + the #549 ledger-row fix in the #544 plan doc | this PR | ✅ committed `b4af5a2`, all gates green non-vacuously |
-| A-2… | remaining `frontend/src` dense files (≥4 refs), by directory | follow-up PRs | |
+| A-1 (probe) | 10 densest `app/admin/` files — 83 refs (65 embedded, 18 parenthetical); + the #549 ledger-row fix in the #544 plan doc | **merged via PR #551** | ✅ all gates green; review found F-3–F-5, fixed |
+| A-2 | next 10 dense files — `operator-console.service`, `customer-auth`, `my-bookings`, `venue-tab`, `venue-views`, `venue-map`, `operator-auth`, `session-auth`, `operator-console`, `daily-view-tab` — 117 refs (35 embedded); F-4 whole-file label sweep applied (review F1/F2/O1/S9-R-1 orphans cleaned, one 2-line inline comment promoted to a doc comment); `design D-1`/`D-6` preserved per F-3; one stale D-6 claim corrected in passing (F-6) | this PR | ⏳ at gates |
+| A-3… | remaining `frontend/src` dense files (≥4 refs), by directory | follow-up PRs | |
 | A-n | sparse tail, ~30-file directory sweeps; then `frontend/e2e` | follow-up PRs | |
 | B-0 | 5-file backend-test mini-probe (R-4 rate) | | |
 | B-1… | backend test, per the mini-probe's verdict | | |
@@ -179,6 +181,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | review (2 lenses converged) | `design D-5` stripped from `admin-operators.ts` — a durable decision label in the permitted D-* class, not issue provenance; target verified (`docs/architecture/auth-signin-register.md` D-5 = self-register + admin approval) | fixed — restored as `(design D-5)`; **rule for later batches: D-\* decision labels are permitted alongside D-8** |
 | F-4 | review | two bare embedded `A7` labels survived in the commissions pair (`admin-commissions.ts` saveRate doc, `.spec.ts` inline) — the A-1 rule missed sites below the class doc | fixed — rewritten to "the backend"; **rule: sweep the whole file for labels, not just lines the locator flagged** |
 | F-5 | review | a rewrap left `schedule. A` orphaned on its own line — gates prove inertness, not readability (this pass's R-1, exactly as pre-registered) | fixed — reflowed |
+| F-6 | batch A-2 | `my-bookings.ts` claimed guest-booking back-linking "is a later, #113-gated step" — stale against the amended D-6, which makes it a **permanent non-goal**; the strip pass rewrote the sentence to the current truth rather than preserve a falsehood | fixed in A-2 — **rule: when a ref-bearing sentence states a superseded fact, correct it, don't launder it** |
 
 ## File structure
 
@@ -188,10 +191,10 @@ Comment-only edits across the source trees; globs stand in for the mechanical sw
 - `docs/plans/issue-550-issue-ref-strip.md` — **new**: this doc
 - `docs/plans/comment-volume-trim.md` — **modified**: phase-4 ledger row corrected (`#549`,
   96 lines) — it contradicted its own batch header three lines below
-- `frontend/src/**` — **modified**: TSDoc/HTML-comment refs stripped (Phase A)
-- `frontend/e2e/**` — **modified**: same (Phase A tail)
-- `platform/src/test/**` — **modified**: same (Phase B)
-- `platform/src/main/**` — **modified**: same (Phase C)
+- `frontend/src/` — **modified**: TSDoc/HTML-comment refs stripped (Phase A)
+- `frontend/e2e/` — **modified**: same (Phase A tail)
+- `platform/src/test/` — **modified**: same (Phase B)
+- `platform/src/main/` — **modified**: same (Phase C)
 
 ## Generalization-audit log
 

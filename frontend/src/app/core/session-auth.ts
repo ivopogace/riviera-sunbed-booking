@@ -9,9 +9,9 @@ import { SignOutNotice } from './sign-out-notice';
 export interface AuthPrincipal {
   readonly username: string;
   readonly principalType: string;
-  /** Soft email-verification state (S8 #113) — customer-only; `null` for an operator principal. */
+  /** Soft email-verification state — customer-only; `null` for an operator principal. */
   readonly emailVerified?: boolean | null;
-  /** Platform-admin flag (S6 #115) — `true` for an operator with `ROLE_ADMIN`; the FE gates the approval surface on it. */
+  /** Platform-admin flag — `true` for an operator with `ROLE_ADMIN`; the FE gates the approval surface on it. */
   readonly admin?: boolean;
 }
 
@@ -19,7 +19,7 @@ export interface AuthPrincipal {
 export type SignInResult = 'signed-in' | 'invalid-credentials' | 'rate-limited' | 'error';
 
 /**
- * How a sign-out ended (#128). `signed-out` means the server confirmed it; `may-persist` means the
+ * How a sign-out ended. `signed-out` means the server confirmed it; `may-persist` means the
  * request never got a confirmation, so this device's session cookie may still be live.
  */
 export type SignOutResult = 'signed-out' | 'may-persist';
@@ -38,7 +38,7 @@ export function signInResultFor(error: unknown): SignInResult {
 }
 
 /**
- * Session-aware auth state for ONE principal type (S2 #111 — the shared base of {@link OperatorAuth}
+ * Session-aware auth state for ONE principal type (the shared base of {@link OperatorAuth}
  * and {@link CustomerAuth}, extracted so the ~80 lines of restore/logout/session-state logic live
  * once). The browser holds NO credential: a subclass posts to its principal-typed login endpoint and
  * the backend answers with an `HttpOnly` session cookie the browser then attaches
@@ -46,7 +46,7 @@ export function signInResultFor(error: unknown): SignInResult {
  * subclass restores from `GET /api/auth/me`, so a signed-in principal survives a page reload; a `401`
  * there just means "signed out" (expected state, not an error).
  *
- * <p><strong>Principal-type isolation (review F2):</strong> `/me` is polymorphic (it returns whichever
+ * <p><strong>Principal-type isolation:</strong> `/me` is polymorphic (it returns whichever
  * principal owns the session), so this base adopts a `/me` principal ONLY when its {@link principalType}
  * matches — an operator session never makes the customer service signed-in, and a customer session
  * never drives the operator console. Each subclass declares its own type.
@@ -63,17 +63,17 @@ export abstract class SessionAuth {
   readonly signedIn = computed(() => this.principal() !== undefined);
   /** The signed-in principal's name (operator username / customer email), or undefined. */
   readonly principalName = computed(() => this.principal()?.username);
-  /** The signed-in principal's soft email-verified state (S8 #113), or undefined when unknown/signed out. */
+  /** The signed-in principal's soft email-verified state, or undefined when unknown/signed out. */
   readonly emailVerified = computed(() => this.principal()?.emailVerified ?? undefined);
-  /** Whether the signed-in principal is a platform admin (S6 #115); false when signed out / not admin. */
+  /** Whether the signed-in principal is a platform admin; false when signed out / not admin. */
   readonly isAdmin = computed(() => this.principal()?.admin ?? false);
 
-  /** The principal type this service owns; a `/me` principal is adopted only when it matches (F2). */
+  /** The principal type this service owns; a `/me` principal is adopted only when it matches. */
   protected abstract readonly principalType: string;
 
   /**
    * The subclass's one-time startup restore, assigned from its field initializer. Declared here so
-   * {@link whenReady} is available on both principals (S9 #277 — promoted from `CustomerAuth`).
+   * {@link whenReady} is available on both principals.
    */
   protected abstract readonly restoreOnStartup: Promise<void>;
 
@@ -81,7 +81,7 @@ export abstract class SessionAuth {
    * Resolves once the initial `GET /api/auth/me` restore has completed — i.e. once {@link signedIn}
    * is trustworthy. **Anything that branches on the session must await this first**: a route guard
    * that reads `signedIn()` while the restore is still in flight sees `false` and bounces a
-   * signed-in principal to sign-in on every page reload (S9 R-1).
+   * signed-in principal to sign-in on every page reload.
    *
    * Awaiting it also guarantees the CSRF cookie has been bootstrapped (`.spa()` issues `XSRF-TOKEN`
    * on the first API response), so a page that fires a CSRF-protected write on load — the
@@ -98,7 +98,7 @@ export abstract class SessionAuth {
 
   /**
    * Invalidate the server session. Local state clears either way — a UI stuck in "signed in" is worse
-   * than a stale cookie — but the RESULT says whether the server actually confirmed it (#128 gap 2).
+   * than a stale cookie — but the RESULT says whether the server actually confirmed it.
    *
    * A `401` counts as success: the server has no such session, which is exactly what sign-out wants.
    * Anything else (network error, `5xx`, or the common `403` from a missing/stale XSRF cookie) may
@@ -139,7 +139,7 @@ export abstract class SessionAuth {
 
   /**
    * One-time startup restore; the subclass fires this from a field initializer (once type is set).
-   * Kept at a single {@code await} depth (like the pre-#111 OperatorAuth) so surfaces that settle it
+   * Kept at a single {@code await} depth so surfaces that settle it
    * with one microtask / {@code whenStable} still see {@code restoring} flip in the same tick.
    */
   protected async restore(): Promise<void> {
@@ -164,7 +164,7 @@ export abstract class SessionAuth {
     }
   }
 
-  /** Adopt a `/me` principal ONLY when it is THIS service's {@link principalType} (F2 guard). */
+  /** Adopt a `/me` principal ONLY when it is THIS service's {@link principalType}. */
   private adopt(principal: AuthPrincipal): void {
     this.principal.set(principal.principalType === this.principalType ? principal : undefined);
   }

@@ -52,7 +52,7 @@ interface MapRow {
 }
 
 /**
- * The venue header's ready-to-render view (issue #297): every per-venue display value the header
+ * The venue header's ready-to-render view: every per-venue display value the header
  * needs, precomputed once from the {@link VenueMapView} by {@link VenueMap.venueView} rather than
  * re-derived from the template each change-detection tick. The pure `shared/` helpers stay
  * signal-free; this record memoizes their outputs off the `venue` signal. `bookingMode` is carried
@@ -93,12 +93,11 @@ export function rowCode(index: number): string {
 }
 
 /**
- * Read-only visual beach map for one venue on a chosen day (U1, issue #4; date-aware since
- * issue #44; Liquid Glass restyle T3, issue #136). Renders the glass venue header (with
- * description + cutoff explainer), a per-date availability summary, and the positioned,
+ * Read-only visual beach map for one venue on a chosen day. Renders the glass venue header
+ * (with description + cutoff explainer), a per-date availability summary, and the positioned,
  * row-major set grid coloured by tier and availability. The map owns the selected date:
  * changing it re-fetches that date's availability and seeds the booking dialog's date, so
- * the two always agree. Reactive to in-place `:id`/`?date` route changes since #499 — the
+ * the two always agree. Reactive to in-place `:id`/`?date` route changes — the
  * router reuses the instance, so a change resets per-venue state and re-loads like a fresh
  * mount. Money is rendered from integer minor units; tile state is conveyed
  * by an accessible name, not colour alone (WCAG AA). Big venues pan horizontally by drag;
@@ -140,7 +139,7 @@ export class VenueMap {
   protected readonly failed = signal(false);
 
   /** Earliest bookable day (tomorrow, Europe/Tirane): today is not offered (invariant #4, display).
-   *  Re-derived from a fresh clock on every route reset (#499) — the instance now outlives
+   *  Re-derived from a fresh clock on every route reset — the instance outlives
    *  navigations, so a construction-time floor would go stale past Tirane midnight. */
   protected readonly minDate = signal(defaultBookingDate(new Date()));
 
@@ -149,17 +148,17 @@ export class VenueMap {
   });
   /**
    * The day the map reflects (ISO YYYY-MM-DD). Seeded from {@link routeDate} on mount and on every
-   * in-place route change that alters the venue or the carried `?date` param (#499); the date
+   * in-place route change that alters the venue or the carried `?date` param; the date
    * picker then writes it directly without touching the URL.
    */
   protected readonly selectedDate = signal(this.minDate());
 
   /** The venue id from the `:id` param (undefined if invalid) — reactive to in-place changes,
-   *  which reuse this instance (#499, the tourist mirror of #180). */
+   *  which reuse this instance. */
   private readonly venueId = routeIdParam(this.route, 'id');
-  /** Bumped per load dispatch and per route reset (#499): an identity guard — a value check
+  /** Bumped per load dispatch and per route reset: an identity guard — a value check
    *  (id or date) passes again after an A→B→A round trip, so continuations compare this
-   *  instead (the #487 precedent). */
+   *  instead. */
   private epoch = 0;
 
   /** The set whose booking dialog is open, or undefined when closed. */
@@ -185,7 +184,7 @@ export class VenueMap {
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
 
   /**
-   * The header's render+a11y view, precomputed off `venue()` (issue #297): the template reads these
+   * The header's render+a11y view, precomputed off `venue()`: the template reads these
    * ready-made fields instead of calling parameterized pure methods each CD tick. `undefined` while
    * the venue is loading/failed, mirroring `venue()` — so it also gates the loaded branch.
    */
@@ -261,7 +260,7 @@ export class VenueMap {
     return `${this.venueId()}|${this.queryParams().get('date') ?? ''}`;
   }
 
-  /** The route-carried map date (#294): a well-formed `?date` on/after `floor`, else `floor`. */
+  /** The route-carried map date: a well-formed `?date` on/after `floor`, else `floor`. */
   private routeDate(floor: string): string {
     const raw = this.queryParams().get('date');
     return raw && isIsoDate(raw) && raw >= floor ? raw : floor;
@@ -304,7 +303,7 @@ export class VenueMap {
     }
     // A fresh attempt clears any prior failure so a recovered load renders the map.
     this.failed.set(false);
-    // The per-dispatch generation: any later dispatch or reset supersedes this response (#487).
+    // The per-dispatch generation: any later dispatch or reset supersedes this response.
     const epoch = ++this.epoch;
     this.venues.getVenueMap(id, this.selectedDate()).subscribe({
       next: (venue) => {

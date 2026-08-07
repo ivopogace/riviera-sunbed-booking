@@ -13,12 +13,11 @@ import {
   SignOutResult,
 } from './session-auth';
 
-// Re-exported for the operator surfaces + specs that import it from here (the type now lives on the
-// shared SessionAuth base, S2 #111).
+// Re-exported for the operator surfaces + specs; the type lives on the shared SessionAuth base.
 export type { SignInResult } from './session-auth';
 
 /**
- * How an operator self-registration ended (S6 #115). `submitted` = the registration was accepted and is
+ * How an operator self-registration ended. `submitted` = the registration was accepted and is
  * now awaiting admin approval — deliberately the SAME outcome whether the username was fresh or already
  * taken (non-enumeration, D-8): the backend answers an identical 202 and establishes NO session. The
  * rest are input/transport failures.
@@ -26,9 +25,9 @@ export type { SignInResult } from './session-auth';
 export type OperatorRegisterResult = 'submitted' | 'invalid-password' | 'rate-limited' | 'error';
 
 /**
- * How a self-service password change ended (#326). The three `400`s are distinguished by the problem
+ * How a self-service password change ended. The three `400`s are distinguished by the problem
  * `code`, never by the status alone — reporting a wrong or omitted current password as a policy violation
- * would send the operator off changing a password that was fine (#345). `bootstrap-managed` is the
+ * would send the operator off changing a password that was fine. `bootstrap-managed` is the
  * env-managed bootstrap admin, whose credential rotates via `RIVIERA_OPERATOR_PASSWORD` + restart, not here.
  */
 export type OperatorPasswordChangeResult =
@@ -50,10 +49,10 @@ export { MIN_PASSWORD_LENGTH as MIN_OPERATOR_PASSWORD_LENGTH } from './customer-
 export const OPERATOR_PASSWORD_LENGTH_MESSAGE = PASSWORD_LENGTH_MESSAGE;
 
 /**
- * Shown when the current-password field is left empty — from the client-side guard, and now also from the
- * server, which names the case `MISSING_CURRENT_PASSWORD` since #345 (before that it answered the same
- * `INVALID_REQUEST` a policy violation uses, so this message was the *only* thing standing between the
- * operator and "your new password is the wrong length"). Sourced from the customer constant like the
+ * Shown when the current-password field is left empty — from the client-side guard, and also from the
+ * server, which names the case `MISSING_CURRENT_PASSWORD` (a code of its own, distinct from the
+ * `INVALID_REQUEST` a policy violation uses — collapsed, this message would be the *only* thing standing
+ * between the operator and "your new password is the wrong length"). Sourced from the customer constant like the
  * length message above: one wording for both principal types, no byte-for-byte copy to desync.
  */
 export const OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE = CURRENT_PASSWORD_REQUIRED_MESSAGE;
@@ -75,7 +74,7 @@ export function operatorPasswordByteLength(password: string): number {
 
 /**
  * The operator-facing message for a FAILED sign-in — one source so every auth surface says the
- * same thing (the venue editor, the staff view, and the customer/SSO surfaces epic #108 adds).
+ * same thing (the venue editor, the staff view, and the customer/SSO surfaces).
  * Returns undefined for `'signed-in'` (no message). Failure wording stays generic (D-8).
  */
 export function signInFailureMessage(result: SignInResult): string | undefined {
@@ -99,8 +98,8 @@ export const SESSION_EXPIRED_MESSAGE =
   'Your operator session has expired. Please sign in again.';
 
 /**
- * Session-aware operator auth state (issue #109, design D-1) on the shared {@link SessionAuth} base
- * (S2 #111). `signIn` posts username/password once to the operator session-login endpoint; the
+ * Session-aware operator auth state (design D-1) on the shared {@link SessionAuth} base.
+ * `signIn` posts username/password once to the operator session-login endpoint; the
  * backend answers with an `HttpOnly` session cookie the browser attaches from then on. On
  * construction the state is restored from `GET /api/auth/me` (filtered to the `OPERATOR` principal by
  * the base — a customer session never makes this service signed-in), so a signed-in operator survives
@@ -119,7 +118,7 @@ export class OperatorAuth extends SessionAuth {
   private readonly ownedVenues = inject(OwnedVenues);
 
   /**
-   * Sign out, then drop the cached owned-venues list (S9 #277). Without this the next operator to
+   * Sign out, then drop the cached owned-venues list. Without this the next operator to
    * sign in on this device would be routed by — and shown — the previous operator's venues.
    */
   override async signOut(): Promise<SignOutResult> {
@@ -146,7 +145,7 @@ export class OperatorAuth extends SessionAuth {
   }
 
   /**
-   * Self-register an operator account (S6 #115). The backend creates a PENDING account and does NOT
+   * Self-register an operator account. The backend creates a PENDING account and does NOT
    * sign in — a fresh and an already-taken username both return 202 with no session (non-enumeration,
    * D-8) — so this establishes no principal and always resolves to `submitted` on a 2xx. The account
    * can sign in only once a platform admin approves it.
@@ -173,7 +172,7 @@ export class OperatorAuth extends SessionAuth {
   }
 
   /**
-   * Change this operator's own password, proving the current one (#326). On success the backend
+   * Change this operator's own password, proving the current one. On success the backend
    * destroys every OTHER session of this operator and keeps this one, so no local state changes and
    * the caller stays signed in — the UI's job is to say the other devices were signed out.
    */
