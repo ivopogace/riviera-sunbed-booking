@@ -21,43 +21,32 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The fitness function behind #404 AC-9: a {@code booking} listener that reaches the payment gateway
- * must do it behind the bulkhead — not just the one listener that does today.
- *
- * <p>The regression this prevents is silent and cheap to make, and the codebase has already made it
- * twice. {@code @ApplicationModuleListener} is the documented, obvious way to write a registry-backed
- * listener, and it expands to a bare {@code @Async}: Boot's shared {@code applicationTaskExecutor},
- * the pool carrying payment→booking confirmation (invariant #8) and booking→payout accrual
- * (invariant #9). #369 bought that isolation for recovery mail and wrote down why; #371 then landed a
- * per-confirmed-booking send on the shared pool anyway, which is what #383 had to fix — and #383's own
- * generalization audit found {@link BookingRefundListener} doing the same thing with a different
- * transport. A rule is the only thing that makes the *next* one fail loudly instead of shipping the
- * same defect a third time.
+ * Fitness function: a {@code booking} listener that reaches the payment gateway must do it behind the
+ * bulkhead — not just the one listener that does today. The twin of
+ * {@code MailListenerExecutorArchitectureTest}, guarding the same trap for a different transport.
+ * Rationale: RESPONSIBILITIES.md §`booking`.
  *
  * <p><strong>What the rule demands:</strong> {@code @Async(RefundExecutorConfig.REFUND_EXECUTOR)} +
  * {@code @TransactionalEventListener} at {@code AFTER_COMMIT}. The executor half is the bulkhead. The
- * transactional half is the durability half and is not decoration: a plain {@code @EventListener} runs
- * inside the publishing transaction, so it can refund against a commit that never happens, and it
- * leaves no {@code event_publication} row for {@code republish-outstanding-events-on-restart} to
- * retry — which for a refund is the entire automatic retry story for money owed under invariant #10.
+ * transactional half is durability: a plain {@code @EventListener} runs inside the publishing
+ * transaction, so it can refund against a commit that never happens, and it leaves no
+ * {@code event_publication} row for {@code republish-outstanding-events-on-restart} to retry — which
+ * for a refund is the entire automatic retry story for money owed under invariant #10.
  *
  * <p><strong>Scope: listeners that reach {@code payment::api}, not every listener in
  * {@code booking}.</strong> That distinction is the whole design of this rule.
  * {@link PaymentEventListener} is an {@code @ApplicationModuleListener} in the very same package and
- * belongs exactly where it is — it is DB-only work and *is* the spine, so moving it to a smaller pool
- * would shed money-path work, which is strictly worse (#383's Non-goals). What separates the two is
- * not the package or the annotation but whether the listener makes a blocking external round-trip, and
- * {@code payment.api} — {@code RefundPort}, {@code CheckoutPort} — is precisely where those live.
- * {@link #thePaymentEventListenerIsOutOfScopeAndCorrectlySo} asserts that boundary rather than leaving
- * it to a reader.
+ * belongs exactly where it is — DB-only work that <em>is</em> the spine, so moving it to a smaller
+ * pool would shed money-path work. What separates the two is not the package or the annotation but
+ * whether the listener makes a blocking external round-trip, and {@code payment.api} —
+ * {@code RefundPort}, {@code CheckoutPort} — is precisely where those live.
+ * {@link #thePaymentEventListenerIsOutOfScopeAndCorrectlySo} asserts that boundary rather than
+ * leaving it to a reader.
  *
- * <p><strong>ArchUnit discovers, reflection asserts.</strong> The assertion is about <em>merged</em>
- * annotation attributes — the executor name surviving whatever meta-annotation composed it — which is
- * {@link AnnotatedElementUtils}' job, and it lets the rule name the very constant the production
- * {@code @Async} uses instead of re-typing the bean name and hoping the two stay in step. Discovery is
- * a separate question and uses {@link ArchitectureTestSupport#productionClasses()}, which excludes the
- * test source set — so {@link RefundListenerRuleFixtures} can stand in this package without reading as
- * a production violation (the {@code classpath*:} trap #409 documented).
+ * <p><strong>ArchUnit discovers, reflection asserts</strong>, for the reasons its notification twin
+ * states. Discovery uses {@link ArchitectureTestSupport#productionClasses()}, which excludes the test
+ * source set, so {@link RefundListenerRuleFixtures} can stand in this package without reading as a
+ * production violation.
  */
 class RefundListenerExecutorArchitectureTest {
 

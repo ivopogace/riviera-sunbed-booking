@@ -59,7 +59,16 @@ stay visible; the shape must be ArchUnit-enforceable by package name.
 Adopt a **graduated two-template** structure (a corrected Option A). `api`/`spi` stay **top-level and
 exposed**; the hexagon beneath is at most `application` / `domain` / `adapter`.
 
-### Thin template — for a module with **no application service** (today: only `customer`)
+> *Which modules are thin and which are full is **decision-time state (2026-07-01), not maintained
+> here** — the same caveat the evidence table above carries, and for the same reason. Every
+> parenthetical census in this section has since drifted: `customer` was the sole thin module and
+> **graduated to full at S2 (#111)**, so **no module is thin today** and all eight bounded contexts
+> are full. The maintained census lives in `.claude/skills/riviera-modulith/SKILL.md`; the current
+> tree is in `CLAUDE.md`. What this section decides — the mechanical thin-iff-no-application-service
+> rule and the two package shapes — is unchanged and still binding. (Freshness note added per #544,
+> after a trimmed Javadoc pointed a reader here for the census.)*
+
+### Thin template — for a module with **no application service** (at decision time: only `customer`)
 ```
 <module>/
   api/                 @NamedInterface — the published port(s) + ids/value records
@@ -71,7 +80,7 @@ to keep the adapter vocabulary uniform and avoid a third bucket-naming scheme.) 
 grows real logic, it **graduates** to the full template — a visible, reviewable refactor, which is a
 feature, not a cost.
 
-### Full template — everything else (`booking`, `venue`, `payment`, `payout`, `availability`, `operator`)
+### Full template — everything else (at decision time: `booking`, `venue`, `payment`, `payout`, `availability`, `operator`)
 ```
 <module>/
   api/                 @NamedInterface — ONLY if the module publishes a port/event a sibling consumes
@@ -85,8 +94,9 @@ feature, not a cost.
 ```
 
 **Assignment rule (mechanical):** a module is **thin** iff it has no application service; otherwise
-**full**. Today that yields `customer` = thin, all others = full. `availability` is "small but full"
-— correct, because it owns a published command port with real concurrency semantics.
+**full**. At decision time that yielded `customer` = thin, all others = full (see the freshness note
+above — it yields *no* thin modules today). `availability` is "small but full" — correct, because it
+owns a published command port with real concurrency semantics.
 
 **`api`/`spi` are optional in the full template.** `payout` has neither (pure subscriber). Do not
 force an empty `api/` onto a module that only consumes.
@@ -118,7 +128,7 @@ is the philosophy: structure tracks weight.
 
 ## Target trees
 
-### `customer` (thin)
+### `customer` (thin at decision time; full since S2 #111)
 ```
 customer/
   api/            CustomerDirectory, CustomerId, GuestContact        @NamedInterface("api")
@@ -178,13 +188,14 @@ serviceless module stay honestly small (no ghost packages); keeps `api`/`spi` fi
 
 **Trade-off:** two shapes, not one. A module can *graduate* thin→full (a real refactor: introduce
 `application/`, move the port). You hold a classification rule ("has a service?") in your head. But the
-population of thin modules is **one** and the rule is mechanical, so the cost is ~zero for this
-codebase. The A-vs-B decision effectively reduced to a single module (`customer`): five of six modules
+population of thin modules is **one** at decision time and the rule is mechanical, so the cost is ~zero
+for this codebase. (That graduation duly happened, once: `customer` at S2 #111.) The A-vs-B decision effectively reduced to a single module (`customer`): five of six modules
 are identical under either, so the uniformity B would buy is almost entirely retained here anyway.
 
 **Enforcement (necessary, not sufficient — the structural half):**
 - Allowed top-level package set per module ⊆ `{api, spi, application, domain, adapter}` (thin uses a
-  subset). Single ArchUnit rule.
+  subset). Single ArchUnit rule. **Widened by Amendment 1** to
+  `{api, spi, vocabulary, events, application, domain, adapter}` — read that set, not this one.
 - `adapter.*` may depend on `application`/`domain`; `application`/`domain` must not depend on
   `adapter` (hexagon direction).
 - `api`/`spi` are `@NamedInterface` and top-level (not nested under `application`).
@@ -252,8 +263,8 @@ so the allowed top-level set becomes `{api, spi, vocabulary, events, application
 and surfaces stay optional per kind — no forced empty packages. Notably `booking` now has **no
 `api/` at all** (it publishes no ports): its surface is `events/` (`BookingConfirmed`,
 `BookingCancelled`) + `vocabulary/` (`BookingId`, `RefundReason`), and `payout` is granted
-`booking::events` + `booking::vocabulary` — never a command surface. `customer` (thin) is
-`api/` + `vocabulary/` + `adapter/out/`.
+`booking::events` + `booking::vocabulary` — never a command surface. `customer` (still thin when this
+amendment was written) is `api/` + `vocabulary/` + `adapter/out/`; it has since graduated to full.
 
 `allowedDependencies` grants are per-surface and least-privilege (see the grant matrix in
 `docs/plans/issue-95-published-surface-split.md`). Because the Event Publication Registry persists

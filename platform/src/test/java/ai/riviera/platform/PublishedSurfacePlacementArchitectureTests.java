@@ -19,8 +19,8 @@ import static ai.riviera.platform.ArchitectureTestSupport.surfaceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Locks the <strong>published-surface placement</strong> convention (issue #95, improvement-plan
- * C1) — the machine-checkable half of {@code riviera-review-overlay} <strong>RV-BE-3c</strong>.
+ * Locks the <strong>published-surface placement</strong> convention — the machine-checkable half of
+ * {@code riviera-review-overlay} <strong>RV-BE-3c</strong>, and the placement half of invariant #11.
  * The published surface of a module is split by kind into distinct {@code @NamedInterface}
  * packages, and each kind of type may live only in its surface:
  * <ul>
@@ -34,14 +34,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * </ul>
  * Additionally, every <strong>transactional event listener</strong>'s parameter type owned by
  * <em>another</em> module must reside in that module's {@code events} surface — the semantic check
- * that a published event cannot creep back into {@code api}/{@code vocabulary}. "Transactional event
- * listener" means either spelling: the {@code @ApplicationModuleListener} composite, or the
- * {@code @Async} + {@code @TransactionalEventListener} expansion a listener must use when it needs to
- * name its own executor (#383). Keying on the composite alone left a hole — decomposing a listener
- * removed it from this rule with nothing going red.
+ * that a published event cannot creep back into {@code api}/{@code vocabulary}. Both spellings count:
+ * the {@code @ApplicationModuleListener} composite <em>and</em> its {@code @Async} +
+ * {@code @TransactionalEventListener} expansion, since keying on the composite alone would let a
+ * decomposed listener fall out of this rule with nothing going red.
  *
  * <p>There is no annotation taxonomy to match on, so the rules key off the package convention
- * (ADR-0007 + issue #95) and the class <em>kind</em>. Like its siblings
+ * (ADR-0007) and the class <em>kind</em>. Like its siblings
  * ({@link PackageShapeArchitectureTests}, {@link JdbcOnlyArchitectureTests}) this is fast,
  * context-free ArchUnit — no Spring, no DB.
  *
@@ -52,9 +51,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * holding helpers would pass Modulith yet fail here) — if a type isn't the surface's kind, it
  * doesn't belong under that package at all.
  *
- * <p>The violation collectors are parameterized by base package so the negative cases (AC-4/AC-5)
- * are proven against the deliberately mis-shaped fixtures under
- * {@code ai.riviera.placementfixture} — never by breaking production code.
+ * <p>The violation collectors are parameterized by base package so the negative cases are proven
+ * against the deliberately mis-shaped fixtures under {@code ai.riviera.placementfixture} — never by
+ * breaking production code.
  */
 class PublishedSurfacePlacementArchitectureTests {
 
@@ -161,10 +160,8 @@ class PublishedSurfacePlacementArchitectureTests {
 
 	/**
 	 * The same rejection for a listener written as {@code @Async} + {@code @TransactionalEventListener}
-	 * rather than the {@code @ApplicationModuleListener} composite. A listener takes that form when it
-	 * must name its own executor — the composite accepts no qualifier — which is how #383 kept mail off
-	 * the money-path pool. Until then this rule matched the composite alone, so decomposing a listener
-	 * silently removed it from the rule's reach: nothing went red, the check simply stopped applying.
+	 * rather than the {@code @ApplicationModuleListener} composite — the form a listener takes when it
+	 * must name its own executor, since the composite accepts no qualifier.
 	 */
 	@Test
 	void eventListenedFromOutsideEventsSurfaceIsRejectedForADecomposedListenerToo() {

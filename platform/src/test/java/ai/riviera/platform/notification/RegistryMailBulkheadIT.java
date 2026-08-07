@@ -26,33 +26,30 @@ import ai.riviera.platform.payment.vocabulary.BookingRef;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The bulkhead between transactional mail and the money path (#383).
+ * The bulkhead between transactional mail and the money path — the mail twin of
+ * {@code RefundBulkheadIT}. Rationale: RESPONSIBILITIES.md §`notification`.
  *
- * <p>{@code @ApplicationModuleListener} expands to a bare {@code @Async}, which is Boot's shared
- * {@code applicationTaskExecutor} — the pool that also carries {@code booking}'s
- * {@code PaymentEventListener} (invariant #8) and {@code payout}'s accrual listener (invariant #9).
- * #369 built the recovery dispatcher its own pool precisely so a degraded relay could not back up
- * that spine, then #371 put a per-confirmed-booking send back on the shared one. These tests hold the
- * fix in place from four angles:
+ * <p>A registry mail listener on Boot's shared {@code applicationTaskExecutor} would put an SMTP
+ * round-trip on the pool that also carries {@code booking}'s {@code PaymentEventListener}
+ * (invariant #8) and {@code payout}'s accrual listener (invariant #9). These tests hold the fix in
+ * place from four angles:
  *
  * <ul>
- *   <li><strong>AC-1</strong> — with every mail thread wedged on an unresponsive transport, a
- *       payment still confirms its booking and still accrues its payout.</li>
- *   <li><strong>AC-3</strong> — the decomposition into explicit annotations did not cost the Event
- *       Publication Registry its grip: a failed send still leaves the publication <em>outstanding</em>
- *       and a resubmit still re-delivers it. Losing this silently would turn at-least-once into
- *       fire-and-forget, which is why #383 exists as its own slice rather than a line in #371.</li>
- *   <li><strong>AC-5</strong> — the registry's {@code listener_id} still reads exactly as V31 (#382)
- *       migrated it. The id embeds the listener FQCN and signature, and republication matches it
- *       string-equal, so a drift here dead-letters every outstanding row.</li>
- *   <li><strong>AC-7</strong> — the send holds no transaction <em>and</em> no bound pooled connection
- *       for the duration of the SMTP round-trip. The two are asserted separately on purpose: the
- *       connection does not follow from the transaction, and it is the resource #383 is about.</li>
+ *   <li>with every mail thread wedged on an unresponsive transport, a payment still confirms its
+ *       booking and still accrues its payout;</li>
+ *   <li>a failed send still leaves the publication <em>outstanding</em> and a resubmit still
+ *       re-delivers it — losing this silently would turn at-least-once into fire-and-forget;</li>
+ *   <li>the registry's {@code listener_id} still reads as the migration wrote it. The id embeds the
+ *       listener FQCN and signature, and republication matches it string-equal, so drift here
+ *       dead-letters every outstanding row;</li>
+ *   <li>the send holds no transaction <em>and</em> no bound pooled connection for the duration of the
+ *       round-trip. The two are asserted separately on purpose: the connection does not follow from
+ *       the transaction, and it is the scarcer resource.</li>
  * </ul>
  *
- * <p>What a <em>shed</em> send costs is the sibling question, and this class does not answer it: it
- * wedges the transport, it never overflows the queue. {@code RegistryMailShedDurabilityIT} (#407)
- * owns that, in its own context, for the isolation reason below.
+ * <p>What a <em>shed</em> send costs is not asked here: this class wedges the transport, it never
+ * overflows the queue. {@code RegistryMailShedDurabilityIT} owns that, in its own context, for the
+ * isolation reason below.
  *
  * <p>The imported {@link ControllableMailerConfiguration} gives this class its <strong>own</strong>
  * Spring context rather than the suite's shared one — deliberate: a test that deliberately wedges a
@@ -120,7 +117,7 @@ class RegistryMailBulkheadIT {
 	}
 
 	/**
-	 * AC-1 — the money path is not behind the mail queue. Ten confirmations are dispatched into an
+	 * The money path is not behind the mail queue. Ten confirmations are dispatched into an
 	 * unresponsive transport (more than the shared executor's eight core threads, so before the fix the
 	 * pool is exhausted, not merely busy); an eleventh booking is then confirmed through the payment
 	 * route, and both invariant-#8 confirmation and invariant-#9 accrual must land while mail is still
@@ -156,7 +153,7 @@ class RegistryMailBulkheadIT {
 	}
 
 	/**
-	 * AC-3 — a failed send stays outstanding and is re-delivered on resubmit, which is exactly what
+	 * A failed send stays outstanding and is re-delivered on resubmit, which is exactly what
 	 * {@code republish-outstanding-events-on-restart} performs at boot. The resubmit predicate is
 	 * narrowed to this booking on purpose: the database is shared with other IT classes in this
 	 * context, and a blanket resubmit would re-deliver their events too.
@@ -188,7 +185,7 @@ class RegistryMailBulkheadIT {
 	}
 
 	/**
-	 * AC-5 — the {@code listener_id} the registry writes is still the string V31 (#382) migrated every
+	 * The {@code listener_id} the registry writes is still the string the migration wrote onto every
 	 * pre-existing row to. Asserted against an <em>outstanding</em> row, which is the one republication
 	 * actually matches on.
 	 */
@@ -212,9 +209,9 @@ class RegistryMailBulkheadIT {
 	}
 
 	/**
-	 * AC-7 — no transaction, and no bound Hikari connection, around the transport call. The listener's
+	 * No transaction, and no bound Hikari connection, around the transport call. The listener's
 	 * three port reads are independent read-only queries with nothing to keep consistent between them,
-	 * so the transaction {@code @ApplicationModuleListener} supplied bought only the risk #383 names: a
+	 * so the transaction {@code @ApplicationModuleListener} supplied bought only the bulkhead risk: a
 	 * connection pinned for the length of an SMTP round-trip.
 	 *
 	 * <p>Both flags are asserted, and the second is the load-bearing one — see

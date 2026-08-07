@@ -345,8 +345,10 @@ Check any diff that adds or moves packages against the two-template layout.
 - **the adapter layer spelled by technology instead of direction** — `adapter/rest`,
   `adapter/jdbc`, `adapter/event` at the top level instead of `adapter/in` + `adapter/out`
   (technology, if needed, is a *sub*-package: `adapter/in/rest`).
-- **a package outside the allowed top-level set** `{api, spi, application, domain, adapter}`
-  (thin module: `{api, adapter}` only) — e.g. a lingering `infrastructure/`.
+- **a package outside the allowed top-level set** `{api, spi, vocabulary, events, application,
+  domain, adapter}` (thin module: `{api, vocabulary?, adapter/out}` only) — e.g. a lingering
+  `infrastructure/`. `vocabulary` and `events` joined the set with ADR-0007 Amendment 1; flagging
+  either as a violation is a false finding.
 - **an adapter dependency pointing inward's opposite** — `application`/`domain` importing
   `adapter.*` (the hexagon runs adapter → application/domain, never back).
 - **a thin (serviceless) module grown an empty `application/` or `domain/`** — ghost

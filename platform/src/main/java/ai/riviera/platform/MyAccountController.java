@@ -18,18 +18,16 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Authenticated customer account-management endpoints (S8, epic #108): set/change the signed-in
- * customer's password, and re-request a verification email. Under {@code /api/me/**}, which
- * {@link SecurityConfig}'s method-agnostic matcher gates to {@code ROLE_CUSTOMER} at the filter layer
- * (#317 — until then these two POSTs fell through to {@code anyRequest().authenticated()} and were held
- * only by {@link CurrentCustomer#require} below), session-principal-scoped (BOLA-safe
- * — no id in the path; the account is resolved from the session via {@link CurrentCustomer}). Platform-edge
- * machinery (RV-BE-11).
+ * Authenticated customer account-management endpoints: set/change the signed-in customer's password,
+ * and re-request a verification email. Under {@code /api/me/**}, which {@link SecurityConfig}'s
+ * method-agnostic matcher gates to {@code ROLE_CUSTOMER} at the filter layer, session-principal-scoped
+ * (BOLA-safe — no id in the path; the account is resolved from the session via
+ * {@link CurrentCustomer}). Platform-edge machinery (RV-BE-11).
  *
- * <p><strong>Set password (closes S4 F-1):</strong> an SSO-only account (no local password) sets its
- * first password freely — its SSO session is proof of a provider-verified email — while an account that
- * already has a password must supply the correct current one. Never a register-time UPSERT (a takeover
- * vector); the password is set only from within the account's own authenticated session.
+ * <p><strong>Set password:</strong> an SSO-only account (no local password) sets its first password
+ * freely — its SSO session is proof of a provider-verified email — while an account that already has a
+ * password must supply the correct current one. Never a register-time UPSERT (a takeover vector); the
+ * password is set only from within the account's own authenticated session.
  */
 @RestController
 class MyAccountController {
@@ -66,24 +64,20 @@ class MyAccountController {
 
 	/**
 	 * Set or change the signed-in customer's password. SSO-only accounts (no stored credential) set their
-	 * first password with no current-password check (F-1); accounts that already have one must supply the
+	 * first password with no current-password check; accounts that already have one must supply the
 	 * matching current password — omitted is {@code 400 MISSING_CURRENT_PASSWORD}, supplied-but-wrong is
-	 * {@code 400 INVALID_CURRENT_PASSWORD} (#345: one code for both told a caller a password it never sent
-	 * was incorrect; the operator twin split the same conflation out of {@code INVALID_REQUEST}). A weak new
-	 * password is {@code 400 INVALID_REQUEST}.
+	 * {@code 400 INVALID_CURRENT_PASSWORD} (distinct codes: one for both would tell a caller a password it
+	 * never sent was incorrect). A weak new password is {@code 400 INVALID_REQUEST}.
 	 *
 	 * <p><strong>A doubly-invalid request resolves the opposite way to the operator twin</strong>, which
 	 * answers the omission first. That divergence is forced rather than chosen: whether a current password is
 	 * required here depends on whether the account <em>has</em> one, so the presence check cannot precede
-	 * {@code validate} without moving the credential read ahead of the policy check — the ordering the #342
-	 * review pinned against. Pinned by {@code SetPasswordIT.aWeakNewPasswordOutranksAnOmittedCurrentOne}.
+	 * {@code validate} without moving the credential read ahead of the policy check. Pinned by
+	 * {@code SetPasswordIT.aWeakNewPasswordOutranksAnOmittedCurrentOne}.
 	 *
-	 * <p>The success-path effects are <strong>ordered, not transactional</strong> (#344) — encode, revoke,
-	 * write, rotate. {@link OperatorAccountController#changePassword} carries the full rationale, including
-	 * what the ordering does <em>not</em> buy; this is its customer twin and must not drift from it. In
-	 * short: revoking first means a <em>revoke</em> failure leaves the password unchanged, so the customer's
-	 * natural retry works, and rotating the surviving session id last — after the revoke has been handed the
-	 * pre-rotation id — retires the cookie value that proved the old credential.
+	 * <p>The success-path effects are <strong>ordered, not transactional</strong> — encode, revoke, write,
+	 * rotate. {@link OperatorAccountController#changePassword} carries the full rationale, including what
+	 * the ordering does <em>not</em> buy; this is its customer twin and must not drift from it.
 	 */
 	@PostMapping(SET_PASSWORD_PATH)
 	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication) {
@@ -116,15 +110,15 @@ class MyAccountController {
 
 	/**
 	 * Re-issue a verification email to the signed-in customer's own address. Always {@code 200}, carrying
-	 * whether that mail was withheld as suppressed (#400) — the page previously said "Verification email
-	 * sent" unconditionally, which is false for an address on the do-not-mail list.
+	 * whether that mail was withheld as suppressed — "Verification email sent" is false for an address on
+	 * the do-not-mail list.
 	 *
 	 * <p><strong>Why disclosing it here does not reopen D-8.</strong> This endpoint is
 	 * {@code ROLE_CUSTOMER}-gated and takes no address: it answers about {@code authentication.getName()},
 	 * the caller's own session principal, so there is no id to tamper with (BOLA-safe by shape) and no
 	 * account whose existence the answer could reveal — the caller is signed in to it. The anonymous
 	 * {@code forgot-password} flow keeps its deliberately hedged copy and its {@code 204}: branching
-	 * <em>that</em> on suppression would rebuild the enumeration oracle #369 closed.
+	 * <em>that</em> on suppression would rebuild the enumeration oracle (D-8).
 	 *
 	 * <p>The send itself is unchanged — issued, dispatched off-thread, best-effort. The suppression read is
 	 * a <strong>separate call after it</strong>, so nothing about the answer can gate the send, and the

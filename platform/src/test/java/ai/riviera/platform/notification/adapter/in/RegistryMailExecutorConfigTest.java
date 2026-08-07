@@ -32,18 +32,17 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The saturation contract of the registry-mail executor (#383 AC-2). The pool exists to be a
+ * The saturation contract of the registry-mail executor. The pool exists to be a
  * <strong>bulkhead</strong>, so the two properties that make it one are asserted rather than left to
  * a reader of the builder: it is <em>bounded</em> on every axis (threads and queue), and once both
  * are full it <em>sheds</em> — the submission neither throws back at the caller nor runs the task on
- * the caller's thread.
+ * the caller's thread. Rationale: RESPONSIBILITIES.md §`notification`.
  *
  * <p>Both halves of the shed matter and neither is the default. A throw would surface on the thread
  * committing the booking transaction (an {@code AFTER_COMMIT} listener is invoked from inside
  * {@code commit()}), which is the money path this pool exists to protect; and a caller-runs fallback
- * would put the SMTP round-trip on that same thread — the exact failure #383 is about, arrived at
- * from the other direction. The shed work is not lost: its Event Publication Registry row is still
- * outstanding, so the next restart republishes it.
+ * would put the SMTP round-trip on that same thread. The shed work is not lost: its Event
+ * Publication Registry row is still outstanding, so the next restart republishes it.
  *
  * <p>No Spring context — the configuration is exercised as the plain factory it is, standing in for
  * the container's own {@code afterPropertiesSet()} call.
@@ -52,7 +51,7 @@ class RegistryMailExecutorConfigTest {
 
 	private static final long RELEASE_TIMEOUT_SECONDS = 10;
 
-	/** The shipped defaults, spelled out — #408 made them properties, so nothing asserts them by identity. */
+	/** The shipped defaults, spelled out — they are properties, so nothing asserts them by identity. */
 	private static final RegistryMailProperties SHIPPED = new RegistryMailProperties(2, 200);
 
 	/**
@@ -71,7 +70,7 @@ class RegistryMailExecutorConfigTest {
 
 	private static final String CORRELATION_KEY = "correlationId";
 
-	/** #368's shipped relay budget, from which the drain window is derived (#410). */
+	/** The shipped relay budget, from which the drain window is derived. */
 	private static final MailTransportBudget SHIPPED_BUDGET = new MailTransportBudget(Duration.ofMillis(10_000));
 
 	/** Short enough that a test can watch the window expire; the shipped one is ten seconds. */
@@ -116,9 +115,9 @@ class RegistryMailExecutorConfigTest {
 	}
 
 	/**
-	 * Every line the config logged, at any level. AC-6 is about <em>volume</em>, so asserting only the
-	 * ERROR count would stay green if a future change re-added a per-shed line at WARN or INFO beside
-	 * the throttled one — the flood would be back with the throttle's test none the wiser.
+	 * Every line the config logged, at any level. The property is about <em>volume</em>, so asserting
+	 * only the ERROR count would stay green if a future change re-added a per-shed line at WARN or INFO
+	 * beside the throttled one — the flood would be back with the throttle's test none the wiser.
 	 */
 	private int logLines() {
 		return logs.list.size();
@@ -251,8 +250,8 @@ class RegistryMailExecutorConfigTest {
 	}
 
 	/**
-	 * The guarantee the docs actually claim, and the one the first cut of #408 did not deliver:
-	 * draining a task does <strong>not</strong> end an episode while the queue is still backed up.
+	 * The guarantee the docs actually claim: draining a task does <strong>not</strong> end an episode
+	 * while the queue is still backed up.
 	 * Clearing the flag on every task start ties the log rate to the pool's drain rate — a restart
 	 * republishing an hour of outstanding sends would emit hundreds of lines, which is the flood the
 	 * throttle exists to prevent. A capacity of 2 is what makes the distinction observable: one slot
@@ -335,11 +334,9 @@ class RegistryMailExecutorConfigTest {
 	}
 
 	/**
-	 * AC-1 (#410). Until this pool had a {@code TaskDecorator}, every line emitted from a mail worker
-	 * was unattributable: {@code BookingConfirmationMailListener}'s abandoned-confirmation {@code ERROR}
-	 * (#428), {@code TransactionalMailService}'s suppression {@code WARN}, and whatever #370's real relay
-	 * produces on a transport failure. Invariant #7 keeps the recipient and the arrival code out of those
-	 * lines, so the correlation id is the only handle on <em>which</em> send they describe.
+	 * A mail worker's log lines carry the submitting request's correlation id. Invariant #7 keeps the
+	 * recipient and the arrival code out of those lines, so the correlation id is the only handle on
+	 * <em>which</em> send they describe.
 	 *
 	 * <p>The caller's MDC is cleared before the assertion, so only a copy captured at submit time can
 	 * satisfy it — a decorator that read the context on the worker instead would see nothing.
@@ -372,7 +369,7 @@ class RegistryMailExecutorConfigTest {
 	}
 
 	/**
-	 * AC-2 — the other half of propagation: a carried context must not outlive its own task.
+	 * The other half of propagation: a carried context must not outlive its own task.
 	 *
 	 * <p>Both tasks are asserted, not just the second. Checking only that the second saw nothing would
 	 * be satisfied by a pool that propagates nothing at all — the state this test was written in — so it
@@ -412,16 +409,11 @@ class RegistryMailExecutorConfigTest {
 	}
 
 	/**
-	 * AC-3 (#410) — the claim the shed comment makes, asserted rather than assumed.
-	 *
-	 * <p>It holds for a different reason than the worker-side lines above:
-	 * {@code ThreadPoolExecutor.execute} calls {@code reject(...)} on the <strong>calling</strong>
-	 * thread, which in production is the thread committing the booking transaction (an
-	 * {@code AFTER_COMMIT} listener is dispatched from inside {@code commit()}), and that thread does
-	 * carry {@code CorrelationIdFilter}'s context. So the escalated line was already attributable and
-	 * the {@code TaskDecorator} is not what makes it so — which is exactly why it is pinned here: the
-	 * property is load-bearing (invariant #7 leaves nothing else in the line to identify the send by)
-	 * and nothing else would notice it breaking.
+	 * The shed line is attributable, and it holds for a different reason than the worker-side lines
+	 * above: {@code ThreadPoolExecutor.execute} calls {@code reject(...)} on the <strong>calling</strong>
+	 * thread, which in production is the thread committing the booking transaction, and that thread
+	 * already carries {@code CorrelationIdFilter}'s context. The {@code TaskDecorator} is not what makes
+	 * it attributable — which is why it is pinned here, since nothing else would notice it breaking.
 	 */
 	@Test
 	void theShedLineIsAttributableToTheSubmittingRequest() throws Exception {
@@ -451,17 +443,12 @@ class RegistryMailExecutorConfigTest {
 	}
 
 	/**
-	 * AC-10 (#410 Part 2) — what happens when the drain window expires, asserted rather than left to a
-	 * reader of {@code ExecutorConfigurationSupport}.
-	 *
-	 * <p>Two assertions, and the second is the decision. Spring awaits the window and then <em>gives
-	 * up</em>: it does not escalate to {@code shutdownNow()}, so a send still on a thread is neither
-	 * interrupted nor waited for. That is deliberate here — interrupting a send whose publication is
-	 * still outstanding would be safe, but interrupting one that already handed the message to the relay
-	 * is precisely how at-least-once becomes a duplicate mail, and an interrupt cannot tell the two
-	 * apart. The unfinished send therefore never returns, which is what leaves the publication
-	 * outstanding for the next start's republish ({@code RegistryMailBulkheadIT} proves that half
-	 * against a real registry).
+	 * What happens when the drain window expires, asserted rather than left to a reader of
+	 * {@code ExecutorConfigurationSupport}: Spring awaits the window and then <em>gives up</em> rather
+	 * than escalating to {@code shutdownNow()}, so a send still on a thread is neither interrupted nor
+	 * waited for. The unfinished send never returns, which is what leaves the publication outstanding
+	 * for the next start's republish ({@code RegistryMailBulkheadIT} proves that half against a real
+	 * registry).
 	 *
 	 * <p>The tiny budget is the point of deriving the window from configuration: the shipped drain is
 	 * ten seconds, and no unit test should wait that long to observe it.
