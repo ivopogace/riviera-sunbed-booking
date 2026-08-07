@@ -45,36 +45,35 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The bulkhead between the cancellation refund and the money path (#404).
+ * The bulkhead between the cancellation refund and the money path. Rationale:
+ * RESPONSIBILITIES.md §`booking`, which carries the pool sizing and the argument for dropping
+ * {@code REQUIRES_NEW}.
  *
- * <p>{@code @ApplicationModuleListener} expands to a bare {@code @Async}, which is Boot's shared
- * {@code applicationTaskExecutor} — the pool that also carries {@code booking}'s
- * {@code PaymentEventListener} (invariant #8) and {@code payout}'s accrual listener (invariant #9) on
- * eight core threads behind an unbounded queue. {@link ai.riviera.platform.booking.adapter.in.BookingRefundListener}
- * drives {@code payment}'s {@link RefundPort}, i.e. a blocking gateway round-trip, so a degraded gateway
- * could occupy that spine. #383 fixed the identical hazard for mail and named this listener as the
- * sibling it deferred; these tests hold the fix in place from four angles:
+ * <p>{@link ai.riviera.platform.booking.adapter.in.BookingRefundListener} drives {@code payment}'s
+ * {@link RefundPort} — a blocking gateway round-trip — so on Boot's shared
+ * {@code applicationTaskExecutor} a degraded gateway could occupy the pool that also carries
+ * {@code booking}'s {@code PaymentEventListener} (invariant #8) and {@code payout}'s accrual listener
+ * (invariant #9). These tests hold the fix in place from four angles:
  *
  * <ul>
- *   <li><strong>AC-2</strong> — with every refund thread wedged on an unresponsive gateway, a payment
- *       still confirms its booking and still accrues its payout.</li>
- *   <li><strong>AC-3</strong> — the refund holds no transaction <em>and</em> no bound pooled connection
- *       across the gateway call. The two are asserted separately on purpose: the connection does not
- *       follow from the transaction, and it is the scarcer resource — ten of them, shared with every
- *       HTTP request thread.</li>
- *   <li><strong>AC-4</strong> — the decomposition into explicit annotations did not cost the Event
- *       Publication Registry its grip: a failed refund still leaves the publication <em>outstanding</em>
- *       and a resubmit still re-delivers it. This is the whole retry story for a refund, so losing it
- *       silently would turn "money owed is never lost" into fire-and-forget.</li>
- *   <li><strong>AC-5</strong> — the {@code listener_id} still reads exactly as it did before the swap.
- *       The id embeds the listener FQCN and signature and republication matches it string-equal, so
- *       drift would dead-letter every outstanding refund — and would owe a Flyway rewrite this slice
- *       claims not to need.</li>
+ *   <li>with every refund thread wedged on an unresponsive gateway, a payment still confirms its
+ *       booking and still accrues its payout;</li>
+ *   <li>the refund holds no transaction <em>and</em> no bound pooled connection across the gateway
+ *       call. The two are asserted separately on purpose: the connection does not follow from the
+ *       transaction, and it is the scarcer resource — ten of them, shared with every HTTP request
+ *       thread;</li>
+ *   <li>a failed refund still leaves the publication <em>outstanding</em> and a resubmit still
+ *       re-delivers it. This is the whole retry story for a refund, so losing it silently would turn
+ *       "money owed is never lost" into fire-and-forget;</li>
+ *   <li>the {@code listener_id} still reads as the registry wrote it. The id embeds the listener FQCN
+ *       and signature and republication matches it string-equal, so drift would dead-letter every
+ *       outstanding refund and would owe a Flyway rewrite (invariant #12).</li>
  * </ul>
  *
- * <p>What a <em>shed</em> refund costs is the sibling question and is not asked here: these tests wedge
- * the gateway, they never overflow the queue (the shipped capacity is 500). The shed contract is
- * {@code RefundExecutorConfigTest}'s, at the unit level where saturation is reachable deterministically.
+ * <p>What a <em>shed</em> refund costs is not asked here: these tests wedge the gateway, they never
+ * overflow the queue (the shipped capacity is 500). The shed contract is
+ * {@code RefundExecutorConfigTest}'s, at the unit level where saturation is reachable
+ * deterministically.
  *
  * <p>The nested {@link ControllableRefundConfiguration} gives this class its <strong>own</strong> Spring
  * context rather than the suite's shared one — deliberate: a test that wedges a thread pool must not
@@ -98,9 +97,9 @@ class RefundBulkheadIT {
 
 	/**
 	 * The registry's id for the refund listener, class-derived so a rename breaks the compile rather
-	 * than this pin. {@link #keepsTheListenerIdUnchanged} proves the running registry writes it (a move
-	 * would owe a Flyway {@code listener_id} rewrite, invariant #12) — and since #454 that same check is
-	 * level 2 of the admin lever's scope pinning, {@code RefundOutboxScopeTest} being level 1.
+	 * than this pin. {@link #keepsTheListenerIdUnchanged} proves the running registry writes it, and is
+	 * also level 2 of the admin refund-outbox lever's scope pinning ({@code RefundOutboxScopeTest}
+	 * being level 1).
 	 */
 	private static final String REFUND_LISTENER_ID = BookingListenerIds.REFUND;
 
@@ -205,7 +204,7 @@ class RefundBulkheadIT {
 	// ---- the acceptance criteria -------------------------------------------------------------
 
 	/**
-	 * AC-2 — the money path is not behind the refund queue. Ten cancellations are dispatched into an
+	 * The money path is not behind the refund queue. Ten cancellations are dispatched into an
 	 * unresponsive gateway (more than the shared executor's eight core threads, so before the fix the
 	 * pool is exhausted, not merely busy); an eleventh booking is then confirmed through the payment
 	 * route, and both invariant-#8 confirmation and invariant-#9 accrual must land while every refund is
@@ -243,14 +242,10 @@ class RefundBulkheadIT {
 	}
 
 	/**
-	 * AC-3 — no transaction, and no bound Hikari connection, around the gateway call.
+	 * No transaction, and no bound Hikari connection, around the gateway call.
 	 *
-	 * <p>Both flags are asserted, and the second is the load-bearing one. {@code REQUIRES_NEW} bought
-	 * nothing the listener needed — its only write, {@code markRefunded}, is a single statement that runs
-	 * after a successful refund — while pinning one of ten pooled connections for the length of the
-	 * round-trip, on a pool shared with every HTTP request thread. Dropping {@code @Transactional} is
-	 * what releases it; note that a mere {@code NOT_SUPPORTED} would satisfy the first assertion and
-	 * still fail the second, which is why the second exists.
+	 * <p>Both flags are asserted and the second is the load-bearing one: a mere {@code NOT_SUPPORTED}
+	 * would satisfy the first and still fail the second, which is why the second exists.
 	 *
 	 * <p>Each sample list must be non-empty: a refund that never ran would otherwise clear both
 	 * assertions by having nothing to contradict them, which is how a bulkhead test ships vacuous.
@@ -276,7 +271,7 @@ class RefundBulkheadIT {
 	}
 
 	/**
-	 * AC-4 — a failed refund stays outstanding and is re-delivered on resubmit, which is exactly what
+	 * A failed refund stays outstanding and is re-delivered on resubmit, which is exactly what
 	 * {@code republish-outstanding-events-on-restart} performs at boot. This is the entire automatic
 	 * retry story for money owed under invariant #10, so it is asserted against a real registry rather
 	 * than inferred from the listener throwing.
@@ -311,9 +306,8 @@ class RefundBulkheadIT {
 	}
 
 	/**
-	 * AC-5 — the {@code listener_id} the registry writes still reads exactly as it did before the
-	 * annotations were swapped. Asserted against an <em>outstanding</em> row, which is the one
-	 * republication actually matches on.
+	 * The {@code listener_id} the registry writes still reads as the pin expects. Asserted against an
+	 * <em>outstanding</em> row, which is the one republication actually matches on.
 	 */
 	@Test
 	void keepsTheListenerIdUnchanged() {

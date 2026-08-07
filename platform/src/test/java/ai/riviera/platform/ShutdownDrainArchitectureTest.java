@@ -26,18 +26,11 @@ import static ai.riviera.platform.ArchitectureTestSupport.fixtureClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The platform-wide guard on shutdown drain (#456) — the rule the per-module one could not be.
- *
- * <p><strong>The defect this replaces.</strong> Pools that drain on shutdown are separate beans, and
- * {@code destroySingletons()} runs their {@code destroy()} methods <em>sequentially on one thread</em>,
- * so their windows <strong>add rather than overlap</strong>. #410 encoded that inside
- * {@code notification} as {@code MAIL_SHUTDOWN_BUDGET_MS / DRAINING_POOLS}, with a test asserting
- * {@code SHUTDOWN_BUDGET_MS * DRAINING_POOLS <= MAIL_SHUTDOWN_BUDGET_MS}. That assertion is
- * <strong>unfalsifiable</strong>: the left side is defined as the right side divided by the same
- * factor, and {@code (a / b) * b <= a} holds for every positive integer pair. Its only live assertion
- * was {@code DRAINING_POOLS == 2} — a change-detector that fires when someone edits the very constant
- * they would have had to remember to edit. #404 landed a third draining pool in {@code booking} and it
- * did not fire, which is the whole case for this class.
+ * The platform-wide guard on shutdown drain: every pool that spends the SIGTERM grace must be
+ * accounted for, and their claims must sum inside it. Pools that drain on shutdown are separate
+ * beans and {@code destroySingletons()} runs their {@code destroy()} methods <em>sequentially on one
+ * thread</em>, so their windows <strong>add rather than overlap</strong>. The budget arithmetic is
+ * {@code shared}'s {@code ShutdownBudget}; rationale: RESPONSIBILITIES.md §`shared`.
  *
  * <p><strong>Why bytecode and not the {@code ApplicationContext}.</strong> Discovering pools through
  * the context has two holes that read as green: the two bulkhead pools are declared
@@ -53,10 +46,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * counted as draining when it is not. That direction is the safe one — an over-counted pool makes the
  * budget tighter, never looser, and it fails the build rather than passing it. Do not "fix" it by
  * narrowing the marker set: the argument is not in the bytecode this rule reads.
- *
- * <p>The shape is {@code ScheduledWorkArchitectureTest}'s, for the same reason it has it — a committed
- * number fixes today and rots tomorrow, so the rule encodes the number's <em>reason</em>: every pool
- * that spends the grace must be accounted for, and their claims must sum inside it.
  */
 class ShutdownDrainArchitectureTest {
 
@@ -87,10 +76,6 @@ class ShutdownDrainArchitectureTest {
 	 */
 	private static final String SPRING_EXECUTOR_PACKAGE = "org.springframework.scheduling.concurrent.";
 
-	/**
-	 * Today's draining pools. Extending this set is the deliberate cost of adding a fourth: it is the
-	 * moment someone confirms the grace can carry it and declares its claim in {@code ShutdownBudget}.
-	 */
 	/**
 	 * Today's draining pools, <strong>fully qualified</strong>. Extending this set is the deliberate cost
 	 * of adding a fourth: it is the moment someone confirms the grace can carry it and declares its claim

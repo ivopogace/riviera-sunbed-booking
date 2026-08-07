@@ -19,31 +19,16 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
- * Locks the <strong>ADR-0007 two-template package layout</strong> so the shape cannot regress —
- * the machine-checkable (structural) half of {@code riviera-review-overlay} <strong>RV-BE-12</strong>.
- * A fast, context-free ArchUnit test (sibling to {@link JdbcOnlyArchitectureTests} / {@link
- * ModularityTests} — no Spring context, no DB, runs anywhere), added once all six modules were
- * migrated to the new shape (#72, item 10/10).
+ * Locks the two-template package layout so the shape cannot regress — the machine-checkable
+ * (structural) half of {@code riviera-review-overlay} <strong>RV-BE-12</strong>. The templates
+ * themselves are ADR-0007 (as amended by issues #95 and #371) and invariant #11; the four assertions
+ * below are the structural rules ADR-0007's "Enforcement" section calls out. A fast, context-free
+ * ArchUnit test (sibling to {@link JdbcOnlyArchitectureTests} / {@link ModularityTests} — no Spring
+ * context, no DB, runs anywhere).
  *
- * <p>Each bounded-context module under {@code ai.riviera.platform} uses one of two templates
- * (published surfaces optional per kind — ADR-0007 Amendment 1 / issue #95):
- * <ul>
- *   <li><strong>full</strong> — {@code api?} / {@code spi?} / {@code vocabulary?} / {@code events?} /
- *       {@code application} / {@code domain?} / {@code adapter/{in,out}} (today: <strong>all eight</strong>
- *       bounded contexts — booking, venue, payment, payout, availability, operator, customer, and
- *       {@code notification} since #382. {@code domain} is marked optional because of that eighth one:
- *       {@code notification} owns table-backed state but no aggregate yet, so it has no {@code domain}
- *       package — full is defined by <em>having an application service</em>, not by using every
- *       package);</li>
- *   <li><strong>thin</strong> — {@code api} / {@code vocabulary?} / {@code adapter/out} only
- *       (<strong>none today</strong>: {@code customer} was the last one and graduated at S2 #111, when it
- *       gained {@code CustomerAccountService}; it has since added {@code spi} + {@code adapter/in} for the
- *       #101 Slice 2 retention sweep. The template stays documented for a future serviceless module).</li>
- * </ul>
- * The four assertions below are the structural rules ADR-0007's "Enforcement" section calls out.
- * The <em>thin-vs-full judgment</em> (whether a serviceless module should stay thin or graduate)
+ * <p>The <em>thin-vs-full judgment</em> (whether a serviceless module should stay thin or graduate)
  * and the <em>use-case-slicing</em> call (booking's {@code application/{reserve,cancel,refund,view}})
- * are deliberately <strong>review-only</strong> — so this rule keys on the module-agnostic
+ * are deliberately <strong>review-only</strong>, so this rule keys on the module-agnostic
  * <strong>union</strong> allowed-set {@code {api, spi, vocabulary, events, application, domain,
  * adapter}}, never on a per-module classification. Which <em>kind</em> of type may live in which
  * published surface is {@link PublishedSurfacePlacementArchitectureTests}' job.
@@ -52,20 +37,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * {@code WebCorsConfig}, {@code TimeConfig}, …) sits directly under {@code ai.riviera.platform} and is
  * <strong>not</strong> a module — it is excluded from the package-shape assertions. What the root may
  * <em>reach</em> is {@link CompositionRootDisciplineTests}' job. The non-context {@code shared} kernel
- * (#371) matches neither template deliberately — flat classes at the module root, no published
- * surface — and passes here because types sitting at a module root are skipped.
+ * matches neither template deliberately — flat classes at the module root, no published surface — and
+ * passes here because types sitting at a module root are skipped.
  */
 class PackageShapeArchitectureTests {
 
 	/**
 	 * The top-level package set any module may use; a thin module uses the subset
-	 * {@code {api, vocabulary, adapter}}.
-	 * {@code vocabulary} and {@code events} joined the set with issue #95 (improvement-plan B2): the
-	 * published surface is split by kind — {@code api} = ports only, {@code vocabulary} = published typed
-	 * ids / value types, {@code events} = published domain events — each its own top-level
-	 * {@code @NamedInterface}, following the {@code spi} precedent that published surfaces are top-level
-	 * siblings. Placement (which kind of type belongs in which surface) is enforced by
-	 * {@link PublishedSurfacePlacementArchitectureTests}.
+	 * {@code {api, vocabulary, adapter}}. Which kind of type belongs in which published surface is
+	 * enforced by {@link PublishedSurfacePlacementArchitectureTests}.
 	 */
 	private static final Set<String> ALLOWED_TOP_LEVEL =
 			Set.of("api", "spi", "vocabulary", "events", "application", "domain", "adapter");

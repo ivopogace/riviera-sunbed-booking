@@ -21,71 +21,52 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The fitness function behind #383 AC-4: <em>every</em> mail path honours the isolation rule
- * {@code AsyncMailDispatcher} states, not just the listeners that exist today.
+ * Fitness function: <em>every</em> mail path honours the executor-isolation rule, not just the
+ * listeners that exist today. Rationale: RESPONSIBILITIES.md §`notification`.
  *
- * <p>The regression this exists to prevent is silent and cheap to make. {@code @ApplicationModuleListener}
- * is the documented, obvious way to write a registry-backed listener — {@code riviera-modulith}'s own
- * events reference shows it — and it expands to a bare {@code @Async}, which is Boot's shared
- * {@code applicationTaskExecutor}: the pool carrying payment→booking confirmation (invariant #8) and
- * booking→payout accrual (invariant #9). #369 bought that isolation for recovery mail and wrote down
- * why; #371 then landed a per-confirmed-booking send on the shared pool, and nothing failed. Epic #367
- * still had registry-borne mails to write, each of which would reach for the same annotation. A rule
- * is the only thing that makes the second one fail loudly instead of shipping the same defect twice —
- * and #374 (cancellation/refund) has since shipped as exactly that second listener, arriving compliant
- * rather than being caught, which is the outcome a fitness function is for. #373 (request-accepted)
- * has since landed the same way, which closes the set the epic named.
+ * <p>The trap it guards is that {@code @ApplicationModuleListener} — the documented, obvious way to
+ * write a registry-backed listener — expands to a bare {@code @Async}, i.e. Boot's shared
+ * {@code applicationTaskExecutor}, the pool carrying payment→booking confirmation (invariant #8) and
+ * booking→payout accrual (invariant #9).
  *
  * <p><strong>What a {@code notification} listener of a platform event must be:</strong>
  * {@code @Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)} + {@code @TransactionalEventListener} at
- * {@code AFTER_COMMIT}. The executor half is the bulkhead. The transactional half is the durability
- * half and is not decoration: a plain {@code @EventListener} runs <em>inside</em> the publishing
- * transaction, so it can mail about a commit that never happens, and it leaves no
- * {@code event_publication} row for {@code republish-outstanding-events-on-restart} to retry — the
- * at-least-once guarantee {@code BookingConfirmationMailListener}'s Javadoc rests on. #409 asked
- * which of the two a non-transactional mail listener should fail; the answer is both, because they
- * are independent properties and each is separately load-bearing.
+ * {@code AFTER_COMMIT}. Both halves are separately load-bearing. The executor half is the bulkhead.
+ * The transactional half is durability: a plain {@code @EventListener} runs <em>inside</em> the
+ * publishing transaction, so it can mail about a commit that never happens, and it leaves no
+ * {@code event_publication} row for {@code republish-outstanding-events-on-restart} to retry.
  *
  * <p><strong>ArchUnit discovers, reflection asserts.</strong> The assertion is about <em>merged</em>
  * annotation attributes — the executor name surviving whatever meta-annotation composed it — which
  * is {@link AnnotatedElementUtils}' job, and it lets the rule name the very constant the production
- * {@code @Async} uses instead of re-typing the bean name and hoping the two stay in step. Finding
- * the candidates is a separate question, and the answer is the shared
- * {@link ArchitectureTestSupport#productionClasses()} import every sibling rule already uses:
- * it excludes the test source set. A {@code ClassPathScanningCandidateComponentProvider} does not —
- * it resolves {@code classpath*:}, which under Gradle spans {@code build/classes/java/main}
- * <em>and</em> {@code .../test} — so before #409 a recording listener in an IT, the plausible way
- * to test #373 and #374, would have failed this rule with a violation naming no production code at
- * all. {@link MailListenerRuleFixtures} keeps that closed by standing in the scanned package.
+ * {@code @Async} uses instead of re-typing the bean name. Discovery uses
+ * {@link ArchitectureTestSupport#productionClasses()}, which excludes the test source set;
+ * a {@code ClassPathScanningCandidateComponentProvider} does not — it resolves {@code classpath*:},
+ * which under Gradle spans {@code build/classes/java/main} <em>and</em> {@code .../test}, so a
+ * recording listener in an IT would fail this rule naming no production code at all.
+ * {@link MailListenerRuleFixtures} stands in the scanned package to keep that closed.
  *
- * <p><strong>The rule's boundaries, stated rather than assumed.</strong> A fitness function is only
- * as trustworthy as its edges are known, and #409 was filed because two of these were neither
- * closed nor written down:
+ * <p><strong>The rule's boundaries, stated rather than assumed:</strong>
  * <ul>
- *   <li><strong>Test scope is excluded</strong> (above) — deliberately, so #373's and #374's own
- *       recording listeners were free to exist. The cost is that this rule cannot police a listener
- *       that only exists in tests, which is the right trade: such a listener ships to nobody.</li>
+ *   <li><strong>Test scope is excluded</strong> (above), so recording listeners in ITs are free to
+ *       exist. The cost is that this rule cannot police a listener that only exists in tests, which
+ *       is the right trade: such a listener ships to nobody.</li>
  *   <li><strong>Every {@code @EventListener} spelling is examined</strong>, not just
- *       {@code @TransactionalEventListener}. The latter is itself meta-annotated with the former, so
- *       the old predicate was a strict subset and {@code @Async} + {@code @EventListener} — a mail
- *       send on any executor, inside the publishing transaction — was never looked at.</li>
+ *       {@code @TransactionalEventListener} — the latter is meta-annotated with the former, so
+ *       keying on it alone would never look at {@code @Async} + {@code @EventListener}: a mail send
+ *       on any executor, inside the publishing transaction.</li>
  *   <li><strong>Only listeners of {@code ai.riviera.platform} events are in scope.</strong> A
  *       container-lifecycle listener ({@code ContextRefreshedEvent} and friends) is skipped: there
  *       is no publishing transaction to bind to, so demanding {@code @TransactionalEventListener}
- *       of it would be the #409 hole-1 mistake in a new costume — a rule failing code that is
- *       correct. The gap this leaves is a mail sent from a Spring lifecycle event, which is not a
- *       shape anything here has reason to write.</li>
+ *       of it would fail code that is correct.</li>
  *   <li><strong>{@code @Async} is resolved method-first, then type</strong>, because Spring resolves
  *       it that way; a class-level {@code @Async(MAIL_EXECUTOR)} is a compliant spelling and must
  *       not read as "no {@code @Async} at all".</li>
- *   <li><strong>The rule is module-local, and since #404 it is no longer the only one of its
- *       kind.</strong> This rule governs {@code notification}; {@code booking}'s refund listener now
- *       has its own — {@code RefundListenerExecutorArchitectureTest} — because it makes the same
- *       blocking round-trip to a different transport. What still belongs on the shared pool is what
- *       always did: {@code booking}'s {@code PaymentEventListener} and {@code payout}'s
- *       accrual/reversal listeners, which are DB-only and <em>are</em> the spine. The principle
- *       these two rules share is the criterion, not the annotation — a bulkhead exists because a
- *       listener makes a blocking external round-trip, not because async listeners are bad.</li>
+ *   <li><strong>The rule is module-local.</strong> It governs {@code notification};
+ *       {@code booking}'s refund listener has its own twin rule. What belongs on the shared pool is
+ *       {@code booking}'s {@code PaymentEventListener} and {@code payout}'s accrual/reversal
+ *       listeners — DB-only work that <em>is</em> the spine. The shared criterion is the blocking
+ *       external round-trip, not the annotation: async listeners are not the problem.</li>
  * </ul>
  */
 class MailListenerExecutorArchitectureTest {
@@ -107,17 +88,11 @@ class MailListenerExecutorArchitectureTest {
 	/**
 	 * Guards against a vacuously-green rule. Two filters stand between a class on the classpath and
 	 * an actual assertion — the production import and the platform-event carve-out — so this asserts
-	 * every production listener survives <em>both</em>. Checking only that they were discovered would
-	 * leave the rule green if the carve-out ever swallowed one.
+	 * every production listener survives <em>both</em>.
 	 *
-	 * <p><strong>Named per listener, not counted.</strong> #374 was the case this guard was written
-	 * for — it is the second listener the class Javadoc predicted — and it is also when the guard had
-	 * to stop naming only the first: a rule that examines one of two listeners is half vacuous, and a
-	 * bare count would go green again the moment a listener was added <em>and</em> another silently
-	 * fell out of scope. #373 is the third and the last one the class Javadoc predicted, so the names
-	 * moved into a list rather than accreting a third near-identical assertion — the property being
-	 * asserted is per listener either way, and a list is what a fourth one extends without inviting a
-	 * copy-paste that forgets to change the class it names.
+	 * <p><strong>Named per listener, not counted.</strong> A bare count goes green again the moment
+	 * a listener is added <em>and</em> another silently falls out of scope. Add a new listener to the
+	 * list; do not copy an assertion.
 	 */
 	@Test
 	void theRuleExaminesEveryProductionListener() {
