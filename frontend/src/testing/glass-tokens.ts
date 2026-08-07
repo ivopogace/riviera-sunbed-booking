@@ -59,7 +59,7 @@ export function surfaceOver(glass: Glass, stop: Rgb): Rgb {
 /**
  * Asserts an (optionally alpha) ink meets the threshold on a glass surface over EVERY
  * given stop — the shared AA-over-worst-case-stops loop every glass restyle slice
- * (T1 shell, T2 Discover, T3–T5, operator epic) otherwise re-implements.
+ * otherwise re-implements.
  */
 export function expectAaOverStops(
   ink: Rgb,
