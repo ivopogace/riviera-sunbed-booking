@@ -146,9 +146,9 @@ Write the comment you would keep after review, not the one you would have to tri
 - **Default to zero inline comments in a method.** Reach for one only when the *why* is genuinely
   unavailable from the code: a race, an ordering constraint, a spec/invariant reference, a
   deliberate deviation. "What the next line does" is never worth a line.
-- **Javadoc is the opposite** — it is the repo's documented surface (§every `api/` port depends on
-  it) and is exempt from the one-line rule. Put the long explanation *there*, on the type or method,
-  where it is discoverable; don't scatter it through the body.
+- **Javadoc is exempt from the one-line rule, not from every rule.** It is the repo's documented
+  surface (every `api/` port depends on it), so the explanation belongs *there* rather than scattered
+  through a method body — but "exempt" once read as "unbounded", and §6d is the bound it was missing.
 
 The review bank enforces this as **RV-STYLE-1** — but a rule that only fires at review means the
 prose gets written and then deleted. This section exists so the first draft is already right.
@@ -181,6 +181,41 @@ feedback on the edit that wrote it; CI re-runs it over the PR diff. Run it by ha
 
 The guard is a floor, not the rule: it cannot see a one-line comment that says nothing, and the
 rule's "default to zero inline comments" half is still yours. RV-STYLE-1 remains the review item.
+
+### 6d. Javadoc: the contract, not the changelog
+
+§6c pushes prose *out* of method bodies and into Javadoc, and for four years said nothing about
+what happens once it lands there. It accumulated: 42% of `platform/src/main` was comment lines,
+11,269 of them Javadoc, and only 53 of 1,280 blocks carried a `@param`/`@return`/`@throws`. The
+overwhelming majority was **decision archaeology** — issue numbers, what the code used to be, which
+alternative was rejected — restated at every call site. This section is the missing half of §6c.
+
+**Javadoc answers what a caller must know.** What this is, what it guarantees, and what would
+surprise someone using it. Not how it came to be.
+
+- **No issue numbers.** `#404`, `#442`, "(issue #100, D4)" — provenance is `git blame`'s job and the
+  tracker's. An issue number in Javadoc points at a conversation the reader cannot see, cannot
+  search from their editor, and does not need in order to call the method correctly.
+- **No decision history.** "It began…", "widened by…", "used to…", "the alternative would have…",
+  "deliberately not…", "reversed at…". This is ADR and `RESPONSIBILITIES.md` material.
+- **Relocate, don't delete, when the rationale is load-bearing.** Move it to the module's
+  `RESPONSIBILITIES.md` section (or an ADR when the decision is hard-to-reverse), and leave a
+  one-line pointer: `Rationale: RESPONSIBILITIES.md §booking`. The repo already states this
+  principle for the mail metrics — *"stated once in `RESPONSIBILITIES.md` § notification, not
+  duplicated here"* — §6d is that rule applied to Javadoc.
+- **Keep the warning, drop the essay.** Operational guidance a reader needs *at the point of use*
+  stays, in one sentence. `do not sum them` earns its line; three paragraphs on why the counter
+  needed a name of its own do not.
+- **Invariant references stay** — `invariant #2`, `invariant #11`. They are short, load-bearing,
+  and resolve inside the repo against a numbered list in `CLAUDE.md`.
+
+**Budget, as a smell test rather than a gate:** roughly **6 lines on a type, 3 on a member**. Over
+budget is the signal to ask whether the excess is contract (keep, and the budget is advisory) or
+archaeology (relocate). A 40-line constant doc is never contract.
+
+Nothing machine-enforces this — there is no Checkstyle Javadoc rule and no eslint-jsdoc, by
+choice: a line budget would push authors to write six useless lines as readily as it stops them
+writing sixty. It is a review item, and the frontend twin lives in `frontend/.claude/CLAUDE.md`.
 
 ### 7. Money & time (invariants #5, #6 — canonical in CLAUDE.md)
 
