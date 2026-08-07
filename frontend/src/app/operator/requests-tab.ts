@@ -47,7 +47,7 @@ interface RequestRow {
  * shared {@link PendingRequestsStore}, which this tab writes after load and every action.
  *
  * <p>The queue is <strong>reconciled with server truth</strong> — re-read after every accept/decline
- * and on a low-frequency poll — so a request the expiry sweep ends (or another operator device handles)
+ * and on a low-frequency poll — so a request the expiry sweep expires (or another operator device handles)
  * leaves the list rather than lingering as a phantom card, and the urgency clock stays current on this
  * long-open working surface. The reconcile is read-only; it changes no request-lifecycle state.
  */
