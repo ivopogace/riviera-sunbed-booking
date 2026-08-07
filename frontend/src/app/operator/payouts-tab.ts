@@ -18,7 +18,7 @@ import { OperatorConsoleService, payoutErrorOf } from './operator-console.servic
 import { PayoutStatement } from './payout-statement';
 
 /**
- * The O7 Payouts tab (issue #173, epic #141) — the operator console's payout ledger. Renders the
+ * The Payouts tab — the operator console's payout ledger. Renders the
  * venue's accruals + reversals (per-entry date, a `#<bookingId>` reference, gross / commission / net),
  * an "Owed to you" hero, and a period-total row; refund **reversals** show as negative rows with a
  * reason chip. The weather-refund action + the statement modal live alongside (phase 2).
@@ -44,7 +44,7 @@ export class PayoutsTab {
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
   private readonly venueId = parentVenueId(this.route);
 
   private readonly ledger = signal<PayoutLedgerView | undefined>(undefined);
@@ -65,11 +65,11 @@ export class PayoutsTab {
   protected readonly notice = signal<string | undefined>(undefined);
   /** True while the display-only payout-statement modal is open. */
   protected readonly statementOpen = signal(false);
-  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
-   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  /** Bumped per venue context: an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
   constructor() {
-    // Re-runs on an in-place venue switch (#180): reset to the fresh-mount state, then load.
+    // Re-runs on an in-place venue switch: reset to the fresh-mount state, then load.
     effect(() => {
       const id = this.venueId();
       untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));

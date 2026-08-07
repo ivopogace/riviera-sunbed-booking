@@ -3,10 +3,9 @@ import { expect } from 'vitest';
 import { AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from './contrast';
 
 /**
- * The ONE test-side mirror of the `styles.scss` glass tokens (extracted at the #135
- * review — previously each glass restyle spec hand-copied these "keep in sync"
- * constants, and stale copies pass silently). When a token is retuned in
- * `styles.scss`, this file is the only place the spec suite needs the new value.
+ * The ONE test-side mirror of the `styles.scss` glass tokens — per-spec hand-copies of these
+ * "keep in sync" constants go stale silently, so every glass spec imports these instead. When a
+ * token is retuned in `styles.scss`, this file is the only place the spec suite needs the new value.
  */
 
 export interface Glass {
@@ -23,14 +22,14 @@ export const CARD_INK: Rgb = hexToRgb('0c2a33');
 export const RIVIERA_HEADER_GLASS: Glass = { color: hexToRgb('0a2c3f'), alpha: 0.72 };
 export const PORCELAIN_HEADER_GLASS: Glass = { color: WHITE, alpha: 0.6 };
 
-/** `--riv-card-glass` per theme (promoted at #101 Slice 3; every card spec imports these since #465). */
+/** `--riv-card-glass` per theme; every card spec imports these. */
 export const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
 export const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
 /** `--riv-card-ink-soft` alpha over the card glass. */
 export const CARD_INK_SOFT_ALPHA = 0.78;
-/** `--riv-card-ink-faint` alpha over the card glass (promoted at #468). */
+/** `--riv-card-ink-faint` alpha over the card glass. */
 export const CARD_INK_FAINT_ALPHA = 0.72;
-/** `--riv-card-track` alpha (a `CARD_INK` tint) over the card glass (promoted at #470). */
+/** `--riv-card-track` alpha (a `CARD_INK` tint) over the card glass. */
 export const CARD_TRACK_ALPHA = 0.12;
 
 /**

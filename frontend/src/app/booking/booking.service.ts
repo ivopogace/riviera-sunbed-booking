@@ -27,12 +27,12 @@ import {
  * <p>The create call discriminates on the HTTP status and body: `201` → the booking is already
  * `CONFIRMED` (stub/Instant profile); `202` with `AWAITING_PAYMENT` → the card must be collected
  * via Stripe (stripe profile); `202` with `PENDING_REQUEST` → a REQUEST-mode venue must accept
- * first (issue #98). One source signal holds the latest outcome (#126) — at most one hand-off
+ * first. One source signal holds the latest outcome — at most one hand-off
  * can exist at a time *structurally*, so the confirmation screen never renders an unpaid
  * booking as "Paid" (invariant #8); the three per-outcome accessors are `computed` projections.
  *
  * <p>Every successful create — confirmed, awaiting-payment, or requested — remembers its booking
- * code in {@link DeviceLocalBookings} so the guest's device-local "My bookings" list (#139) can
+ * code in {@link DeviceLocalBookings} so the guest's device-local "My bookings" list can
  * find it later by code (invariant #7: the code is the only key; there is no guest list endpoint).
  */
 @Service()
@@ -73,7 +73,7 @@ export class BookingService {
         map((response): CreateBookingResult => {
           // Remember the code once, from whichever outcome — guarded against a missing body (the
           // branches below already treat `body` as nullable via `?.status`), so an empty 201/202
-          // never throws here and turns a real booking into a false "failed" (#139 review).
+          // never throws here and turns a real booking into a false "failed".
           this.device.remember(response.body?.code);
 
           if (response.status === 202) {
@@ -94,7 +94,7 @@ export class BookingService {
   }
 
   /**
-   * Prime the payment route from a fetched booking (issue #98 "Pay now" on an accepted request):
+   * Prime the payment route from a fetched booking ("Pay now" on an accepted request):
    * the booking-view rebuilds the hand-off from `GET /api/bookings/{code}`'s open-intent
    * credentials, then navigates to `/booking/pay` exactly as the 202 create path does.
    */
@@ -108,8 +108,8 @@ export class BookingService {
 
   /**
    * Prime the booking-view route with a detail the caller already fetched, so a find-a-booking
-   * lookup (issue #168) opens `/booking/{code}` without a second `GET /api/bookings/{code}` —
-   * two GETs per success could 429 near the #56 rate-limit ceiling and drop a valid code on the
+   * lookup opens `/booking/{code}` without a second `GET /api/bookings/{code}` —
+   * two GETs per success could 429 near the rate-limit ceiling and drop a valid code on the
    * generic error. Mirrors {@link beginPayment}: hand off what we have across the navigation.
    */
   primeDetail(detail: BookingDetail): void {
@@ -131,7 +131,7 @@ export class BookingService {
     return undefined;
   }
 
-  /** Fetch a booking and its server-computed cancellation terms by code (U6, `GET /api/bookings/{code}`). */
+  /** Fetch a booking and its server-computed cancellation terms by code (`GET /api/bookings/{code}`). */
   getByCode(code: string): Observable<BookingDetail> {
     return this.http.get<BookingDetail>(
       `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}`,
@@ -139,7 +139,7 @@ export class BookingService {
   }
 
   /**
-   * The signed-in customer's account-linked bookings (S3, `GET /api/me/bookings`). Session-principal
+   * The signed-in customer's account-linked bookings (`GET /api/me/bookings`). Session-principal
    * scoped by the backend — the request carries no id, so it returns only the caller's own bookings
    * (never another customer's). The session cookie is attached by the api-session interceptor.
    */
@@ -148,7 +148,7 @@ export class BookingService {
   }
 
   /**
-   * Cancel a booking by code (U6, `POST /api/bookings/{code}/cancel`). The refund is computed
+   * Cancel a booking by code (`POST /api/bookings/{code}/cancel`). The refund is computed
    * server-side (invariant #10) — no body is sent.
    */
   cancel(code: string): Observable<Cancellation> {
@@ -159,7 +159,7 @@ export class BookingService {
   }
 
   /**
-   * Withdraw a pending request by code (#123, `POST /api/bookings/{code}/withdraw`). No body, and no
+   * Withdraw a pending request by code (`POST /api/bookings/{code}/withdraw`). No body, and no
    * money involved — the venue has not accepted, so nothing was ever charged.
    */
   withdraw(code: string): Observable<Withdrawal> {
@@ -170,13 +170,13 @@ export class BookingService {
   }
 }
 
-/** The latest create/pay hand-off — a discriminated union, so only one outcome can exist (#126). */
+/** The latest create/pay hand-off — a discriminated union, so only one outcome can exist. */
 type LastHandoff =
   | { kind: 'confirmed'; confirmation: BookingConfirmation }
   | { kind: 'awaiting'; awaiting: PaymentHandoff }
   | { kind: 'requested'; requested: RequestedBooking };
 
-/** Map an HTTP failure (RFC-7807 body, issue #97) to a stable, displayable booking error code. */
+/** Map an HTTP failure (RFC-7807 body) to a stable, displayable booking error code. */
 export function bookingErrorOf(error: unknown): BookingErrorCode {
   if (error instanceof HttpErrorResponse) {
     const code = problemCodeOf(error);

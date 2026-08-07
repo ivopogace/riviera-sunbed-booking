@@ -159,20 +159,21 @@ stale as batches land.
 
 ## Execution status
 
-**Stage pointer:** batch 3 gates all green on PR #553 (CI on `aabe194` + `63f7b36`; Sonar
-first-try pass) — awaiting merge.
+**Stage pointer:** implement — Phase A, batch 4 at the PR gate (batches 1–3 merged via
+PR #551, #552, #553).
 
-**Next action:** open the batch-3 PR, run the review gate + read the Sonar new-issue list; on
-merge, restart the branch from `main` and cut batch A-4 (next by census: `layout-editor.ts`,
-`admin-outbox-lever.ts`, `set-password.ts`, `booking.model.ts`, `booking.service.ts`,
-`payouts-tab.ts`, `requests-tab.ts`, `admin-audit.spec.ts`, `admin-privacy.service.ts`, …).
+**Next action:** open the batch-4 PR, run the review gate + read the Sonar new-issue list; on
+merge, restart the branch from `main` and cut batch A-5 from the regenerated census (next dense:
+`app.spec.ts`, `sso-buttons.ts`, `booking-view.contrast.spec.ts`, `admin-privacy.spec.ts` tail,
+then begin the ~30-file sparse-tail directory sweeps).
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
 | A-1 (probe) | 10 densest `app/admin/` files — 83 refs (65 embedded, 18 parenthetical); + the #549 ledger-row fix in the #544 plan doc | **merged via PR #551** | ✅ all gates green; review found F-3–F-5, fixed |
 | A-2 | next 10 dense files — `operator-console.service`, `customer-auth`, `my-bookings`, `venue-tab`, `venue-views`, `venue-map`, `operator-auth`, `session-auth`, `operator-console`, `daily-view-tab` — ~143 numeric refs removed (the locator census's "117" was doc-comment refs only; inline-comment refs and ~60 provenance labels came out too), minus 10 refs restored by the F-8 carve-out; F-4 whole-file label sweep applied (review F1/F2/O1/S9-R-1 orphans cleaned, one 3-line inline comment promoted to a doc comment); `design D-1`/`D-6` preserved per F-3; stale claims corrected per F-6 (D-6 back-linking; the retired venue-editor/staff-view surface lists) | **merged via PR #552** | ✅ all gates green (CI + Sonar on `a16a603`); minted F-7–F-9 |
 | A-3 | next 10 dense files — `app.ts`, `app.html`, `admin-venue-photos.service`, `console-stats-strip`, `pricing-tab`, `home`, `admin-console-tabs`, `admin-operators.service`, `booking-pay`, `device-local-bookings` — 101 refs + labels removed (80 numeric + 21 labels; review-measured, correcting the eyeballed "~70") under the full F-3–F-9 rule set from the start: 5 F-8 trailing-on-code refs left in `pricing-tab` by design, two 2-line inline comments compressed to one line (`pricing-tab`), two 2-line HTML comments compressed (`app.html`), `Sonar S2871` recognised as a rule id (not provenance), bare `U1`/`A6`/`Q1` labels rewritten or dropped | this PR | ⏳ at gates |
-| A-4… | remaining `frontend/src` dense files (≥4 refs), by directory | follow-up PRs | |
+| A-4 | next 10 dense files — `layout-editor`, `admin-outbox-lever`, `set-password`, `booking.model`, `booking.service`, `payouts-tab`, `requests-tab`, `glass-tokens`, `admin-audit.spec`, `admin-privacy.service` — ~60 refs + labels removed; 17 F-8 trailing-on-code refs left by design (`layout-editor` 7, `payouts-tab` 5, `requests-tab` 5); one 4-line inline comment promoted to a method doc (`layout-editor.loadExisting`), three 2-line inline comments compressed; embedded `O1`/`O4`/`U3`/`U4 #8`/`U6`/`S3` labels rewritten to real nouns | this PR | ⏳ at gates |
+| A-5… | remaining `frontend/src` dense files, then the ~30-file sparse-tail sweeps; then `frontend/e2e` | follow-up PRs | |
 | A-n | sparse tail, ~30-file directory sweeps; then `frontend/e2e` | follow-up PRs | |
 | B-0 | 5-file backend-test mini-probe (R-4 rate) | | |
 | B-1… | backend test, per the mini-probe's verdict | | |

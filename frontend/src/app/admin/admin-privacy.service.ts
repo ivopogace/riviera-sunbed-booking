@@ -5,15 +5,15 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { problemCodeOf } from '../shared/api-error';
 
-/** What went wrong on an erasure request, as the console needs to tell it apart (RFC-7807 `code`, #97). */
+/** What went wrong on an erasure request, as the console needs to tell it apart (RFC-7807 `code`). */
 export type ErasureError = 'INVALID_REQUEST' | 'UNKNOWN';
 
-/** The optional grounds an admin action may carry into the audit trail (#507); sanitized server-side. */
+/** The optional grounds an admin action may carry into the audit trail; sanitized server-side. */
 const AUDIT_REASON_HEADER = 'X-Audit-Reason';
 
 /**
- * HTTP client for the admin console's Privacy tab (A3, epic #348), against the ADMIN-gated
- * data-subject erasure endpoint #101 shipped. Stateless: the session cookie + CSRF header are added
+ * HTTP client for the admin console's Privacy tab, against the ADMIN-gated
+ * data-subject erasure endpoint. Stateless: the session cookie + CSRF header are added
  * by {@link apiSessionInterceptor}, and the component holds the stage state.
  *
  * <p><strong>There is exactly one success shape, and it carries no information.</strong>
@@ -24,7 +24,7 @@ const AUDIT_REASON_HEADER = 'X-Audit-Reason';
  * one in the client would re-open the oracle the backend closes.
  *
  * <p>A non-blank `reason` rides the {@link AUDIT_REASON_HEADER} into the platform's admin audit
- * trail (#507, recorded at the edge with no instrumentation here); header values must be Latin-1, so
+ * trail (recorded at the edge with no instrumentation here); header values must be Latin-1, so
  * anything outside it becomes a space rather than an aborted request.
  */
 @Service()

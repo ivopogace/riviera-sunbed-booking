@@ -1,12 +1,11 @@
 import { BookingStatus } from '../shared/booking-status';
 import { MoneyView } from '../shared/money';
 
-// Re-exported from its canonical home in shared/ so booking-domain code keeps importing it from the
-// model (no call-site churn) while shared/ owns the exhaustive STATUS_META keyed by it (#139 review).
+// Re-exported from its canonical home in shared/ (which owns the exhaustive STATUS_META keyed by it).
 export type { BookingStatus } from '../shared/booking-status';
 
 /**
- * Typed view of the U3 booking API (`POST /api/bookings`). Mirrors the backend
+ * Typed view of the booking-create API (`POST /api/bookings`). Mirrors the backend
  * `CreateBookingRequest` / `BookingConfirmationView` exactly — money travels as integer minor
  * units + currency (invariant #5); the booking date as an ISO `LocalDate` string. No `any`.
  */
@@ -32,13 +31,13 @@ export interface BookingConfirmation {
   readonly positionNo: number;
   readonly bookingDate: string;
   readonly amount: MoneyView;
-  /** The confirmation email was suppressed (#390), so this code is the guest's only record. */
+  /** The confirmation email was suppressed, so this code is the guest's only record. */
   readonly emailWithheld: boolean;
 }
 
 /**
  * Typed view of the `202 AWAITING_PAYMENT` response (`POST /api/bookings` under the `stripe`
- * profile, U4 #8). Mirrors the backend `AwaitingPaymentView`: the same summary as
+ * profile). Mirrors the backend `AwaitingPaymentView`: the same summary as
  * {@link BookingConfirmation} plus the Stripe `clientSecret` the browser uses to complete the
  * card with Stripe.js and the `paymentIntentId` for reference. Confirmation itself arrives via
  * the signature-verified webhook (invariant #8) — never this response — so the client must poll
@@ -54,7 +53,7 @@ export interface AwaitingPayment extends PaymentHandoff {
  * The minimum the payment page needs to mount the Stripe Payment Element and render the booking
  * summary. Primed by the 202 `AWAITING_PAYMENT` booking-create ({@link AwaitingPayment} is a
  * superset) or rebuilt from a fetched {@link BookingDetail} when an accepted request's guest
- * clicks "Pay now" (issue #98).
+ * clicks "Pay now".
  */
 export interface PaymentHandoff {
   readonly code: string;
@@ -69,7 +68,7 @@ export interface PaymentHandoff {
 
 /**
  * Typed view of the `202 PENDING_REQUEST` response (`POST /api/bookings` on a REQUEST-mode
- * venue, issue #98). No `clientSecret` — nothing is charged until the venue accepts; the guest
+ * venue). No `clientSecret` — nothing is charged until the venue accepts; the guest
  * keeps the code and checks `GET /api/bookings/{code}` for the venue's decision before
  * `requestExpiresAt` (an ISO-8601 UTC instant).
  */
@@ -90,7 +89,7 @@ export interface RequestedBooking {
  * The result of creating a booking, discriminated on the HTTP status AND body the backend
  * returned: `201` (stub/Instant — already `CONFIRMED`) vs `202` with `AWAITING_PAYMENT` (stripe —
  * the card must still be collected) vs `202` with `PENDING_REQUEST` (REQUEST-mode venue — the
- * venue must accept first, issue #98). One Angular build serves all backends, so the channel is
+ * venue must accept first). One Angular build serves all backends, so the channel is
  * chosen at runtime from the response, not at build time.
  */
 export type CreateBookingResult =
@@ -99,7 +98,7 @@ export type CreateBookingResult =
   | { readonly kind: 'requested'; readonly requested: RequestedBooking };
 
 /**
- * Typed view of the U6 booking-view API (`GET /api/bookings/{code}`). Mirrors the backend
+ * Typed view of the booking-view API (`GET /api/bookings/{code}`). Mirrors the backend
  * `BookingDetailView`: money as integer minor units + currency (invariant #5), date as ISO
  * `LocalDate`. The cancellation terms are computed server-side (invariant #10) — the client only
  * displays them. `refundedAmount` is set only once the booking is `CANCELLED`.
@@ -114,30 +113,30 @@ export interface BookingDetail {
   readonly bookingDate: string;
   readonly amount: MoneyView;
   readonly cancellable: boolean;
-  /** The guest may retract this still-open request (#123) — separate from `cancellable`. */
+  /** The guest may retract this still-open request — separate from `cancellable`. */
   readonly withdrawable: boolean;
   readonly beforeCutoff: boolean;
   readonly refundIfCancelledNow: MoneyView;
   readonly refundedAmount: MoneyView | null;
-  /** The venue's response deadline while the request is open (issue #98); null otherwise. */
+  /** The venue's response deadline while the request is open; null otherwise. */
   readonly requestExpiresAt: string | null;
   /** Open-intent credentials, present only while `AWAITING_PAYMENT` with an open PaymentIntent. */
   readonly payment: BookingPayment | null;
   /**
-   * The confirmation email was suppressed (#390). Only ever `true` for a `CONFIRMED` booking — the
+   * The confirmation email was suppressed. Only ever `true` for a `CONFIRMED` booking — the
    * backend does not even ask the question before payment, so this can't be read as an oracle.
    */
   readonly emailWithheld: boolean;
 }
 
-/** The open PaymentIntent of an `AWAITING_PAYMENT` booking (issue #98 "Pay now" resume path). */
+/** The open PaymentIntent of an `AWAITING_PAYMENT` booking (the "Pay now" resume path). */
 export interface BookingPayment {
   readonly clientSecret: string;
   readonly paymentIntentId: string;
 }
 
 /**
- * Typed view of one row from `GET /api/me/bookings` (S3, #114) — the signed-in "my bookings" list.
+ * Typed view of one row from `GET /api/me/bookings` — the signed-in "my bookings" list.
  * Mirrors the backend `MyBookingView`: a **subset** of {@link BookingDetail} (the refund terms +
  * payment credentials are loaded only on the code-gated detail view, not the list). Money as integer
  * minor units (invariant #5); date as ISO `LocalDate`; `requestExpiresAt` null for instant bookings.
@@ -170,7 +169,7 @@ export interface Cancellation {
 }
 
 /**
- * The `POST /api/bookings/{code}/withdraw` 200 body (#123), mirroring the backend `WithdrawalView`.
+ * The `POST /api/bookings/{code}/withdraw` 200 body, mirroring the backend `WithdrawalView`.
  * Deliberately narrower than {@link Cancellation}: a withdrawn request was never charged, so there
  * is no refund amount and no tier to report — only the new terminal status.
  */

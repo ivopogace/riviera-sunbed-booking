@@ -57,17 +57,17 @@ const SWATCH_CLASS: Record<CellState, string> = {
 };
 
 /**
- * The O3 Layout-editor tab (issue #172) — the beach-map generate-grid + paint editor that replaces the
+ * The Layout-editor tab — the beach-map generate-grid + paint editor that replaces the
  * console's beach-map placeholder. The operator generates an R×C grid in one action (row A faces the
  * sea, auto-priced front-row premium), paints tier/pool/gap per cell by click or drag, and saves the
  * whole grid through one owner-asserted bulk write (`PUT …/beach-map`). Regenerate replaces after an
  * explicit confirm; a venue with bookings or walk-in holds is server-locked (`LAYOUT_IN_USE`).
  *
- * <p>Reads `:venueId` from the parent route (child routes don't inherit it — O1 finding). Cells are
+ * <p>Reads `:venueId` from the parent route (child routes don't inherit it). Cells are
  * real, individually-labelled `<button>`s so the grid is fully keyboard + AT operable (Enter/Space
  * paints with the active tool); drag-paint is the mouse affordance on top. Always porcelain (inherited
  * from the console shell); glass via {@link CardGlass}; money via {@link formatMoney} (invariant #5 —
- * the default prices are integer minor-unit EUR constants, editable later in the O4 Pricing tab).
+ * the default prices are integer minor-unit EUR constants, editable later in the Pricing tab).
  */
 @Component({
   selector: 'app-layout-editor',
@@ -82,7 +82,7 @@ export class LayoutEditor {
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
   protected readonly venueId = parentVenueId(this.route);
 
   /** Generate inputs: rows × positions. Clamped to the design maxima on generate. */
@@ -102,7 +102,7 @@ export class LayoutEditor {
   protected readonly errorCode = signal<LayoutErrorCode | undefined>(undefined);
   /** True while awaiting confirmation of a destructive regenerate over an existing grid. */
   protected readonly confirmRegen = signal(false);
-  /** The optimistic-concurrency token loaded with the map (#226 `setVersion`), echoed back on Save; a
+  /** The optimistic-concurrency token loaded with the map (`setVersion`), echoed back on Save; a
    *  `409 STALE_WRITE` means the layout moved on since — the editor keeps the grid and offers Reload. */
   protected readonly loadedSetVersion = signal<number | null>(null);
   /** True while a `reloadAfterStale()` GET is in flight (disables the Reload button, shows "Reloading…"). */
@@ -124,16 +124,17 @@ export class LayoutEditor {
 
   /** Drag state — a plain field (not reactive; only the pointer handlers read it). */
   private painting = false;
-  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
-   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  /** Bumped per venue context: an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
 
   /**
    * Prices of the sets loaded from the venue, keyed by `${gridX},${gridY}` — so a load→save round-trip
-   * preserves each set's existing price instead of resetting it to the tier default (O4 owns price
-   * editing). Newly generated cells have no entry and fall back to the tier default. Mutated only
-   * alongside a `grid.set(...)`, so the `displayRows` computed reads it consistently.
+   * preserves each set's existing price instead of resetting it to the tier default (the Pricing
+   * tab owns price editing). Newly generated cells have no entry and fall back to the tier
+   * default. Mutated only alongside a `grid.set(...)`, so the `displayRows` computed reads it
+   * consistently.
    */
   private readonly priceByCoord = new Map<string, MoneyView>();
 
@@ -171,7 +172,7 @@ export class LayoutEditor {
   });
 
   constructor() {
-    // Re-runs on an in-place venue switch (#180): reset the draft + flags, then load the new venue.
+    // Re-runs on an in-place venue switch: reset the draft + flags, then load the new venue.
     effect(() => {
       const id = this.venueId();
       if (id !== undefined) {
@@ -310,10 +311,9 @@ export class LayoutEditor {
         return; // a venue switch superseded this save (#180); saving clears in finally
       }
       this.savedNotice.set(true);
-      // The layout was replaced, so the console's shared snapshot now describes retired sets (#486).
+      // The layout was replaced, so the console's shared snapshot now describes retired sets.
       this.venueMap.reset();
-      // The conditional write bumped set_version by exactly one (#226); advance our token so a second
-      // consecutive save by the same operator isn't spuriously rejected as a stale write.
+      // The conditional write bumped set_version by one; advance the token so a second save isn't stale.
       this.loadedSetVersion.set(expectedVersion + 1);
     } catch (error) {
       if (this.epoch !== epoch) {
@@ -357,7 +357,7 @@ export class LayoutEditor {
   }
 
   /**
-   * Recover from a `409 STALE_WRITE` (#226): re-fetch the latest server layout and — ONLY on a successful
+   * Recover from a `409 STALE_WRITE`: re-fetch the latest server layout and — ONLY on a successful
    * reload — discard the in-progress grid for it, re-seeding every cell, its prices, and the `setVersion`
    * token, and clear the conflict banner. If the reload GET fails, the painted grid, the stale token, and
    * the banner are all KEPT and a retry hint is shown — the operator never loses work to a failed reload
@@ -415,8 +415,7 @@ export class LayoutEditor {
           positionNo: x + 1,
           tier: premium ? 'PREMIUM' : 'STANDARD',
           pool: state === 'walkin' ? 'WALK_IN' : 'ONLINE',
-          // Preserve a loaded set's existing price; only a newly generated/painted cell takes the
-          // tier default (O4 owns price editing — a load→save round-trip must not reset prices).
+          // Preserve a loaded set's price; only a new cell takes the tier default (Pricing owns prices).
           price: this.priceByCoord.get(coordKey(x + 1, y + 1)) ?? (premium ? PREMIUM_PRICE : STANDARD_PRICE),
           gridX: x + 1,
           gridY: y + 1,
@@ -426,12 +425,14 @@ export class LayoutEditor {
     return sets;
   }
 
+  /**
+   * Best-effort: seed the grid from the venue's current layout so the operator paints on it. An empty
+   * venue leaves the empty state, from which Generate builds a fresh grid. Always capture the
+   * optimistic-concurrency token (`setVersion`) so a later Save can echo it back; a failed read leaves
+   * the token null and sets loadFailed so Save surfaces a refresh prompt (never a silent no-op).
+   */
   private loadExisting(venueId: number): void {
     const epoch = this.epoch;
-    // Best-effort: seed the grid from the venue's current layout so the operator paints on it. An empty
-    // venue leaves the empty state, from which Generate builds a fresh grid. Always capture the
-    // optimistic-concurrency token (#226 setVersion) so a later Save can echo it back; a failed read leaves
-    // the token null and sets loadFailed so Save surfaces a refresh prompt (never a silent no-op).
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
         if (this.epoch !== epoch) {
