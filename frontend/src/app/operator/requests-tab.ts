@@ -29,25 +29,25 @@ interface RequestRow {
 }
 
 /**
- * The O6 Requests tab (issue #176, epic #141) — the operator console's restyle of the #98
+ * The Requests tab — the operator console's restyle of the
  * Request-to-Book pending queue. One card per open request (guest, set + tier, date, price, "Respond
  * by", and an amber ⏰ time-left chip when urgent), a one-click **Accept — send to payment**, a
  * confirm-gated **Decline**, a dismissible **expired-race** notice when the sweep wins the race, and
  * an **all-caught-up** empty state.
  *
- * <p><strong>Restyle only — no request-lifecycle change.</strong> The response deadline, the #98
+ * <p><strong>Restyle only — no request-lifecycle change.</strong> The response deadline, the
  * expiry sweep and the pay window are server-owned; accept only moves the guest into the pay window,
  * and CONFIRMED comes solely from the signature-verified Stripe webhook, never from this tab
  * (invariant #8). The queue is deliberately <strong>code-less</strong>: a pending request isn't
  * confirmed and the booking code is the guest's bearer credential, shown to staff only at arrival
  * (invariant #7). Every accept/decline is owner-asserted server-side (invariant #13); a 403/401 maps
  * to operator copy. Reads `:venueId` from the parent route via {@link parentVenueId} (child routes
- * don't inherit it — the O1 finding), like the sibling console tabs. Always porcelain (inherited from
+ * don't inherit it), like the sibling console tabs. Always porcelain (inherited from
  * the console shell); cards via {@link CardGlass}. The shell's Requests badge stays in sync through the
  * shared {@link PendingRequestsStore}, which this tab writes after load and every action.
  *
  * <p>The queue is <strong>reconciled with server truth</strong> — re-read after every accept/decline
- * and on a low-frequency poll — so a request the #98 sweep expires (or another operator device handles)
+ * and on a low-frequency poll — so a request the expiry sweep expires (or another operator device handles)
  * leaves the list rather than lingering as a phantom card, and the urgency clock stays current on this
  * long-open working surface. The reconcile is read-only; it changes no request-lifecycle state.
  */
@@ -65,7 +65,7 @@ export class RequestsTab {
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
   private readonly venueId = parentVenueId(this.route);
 
   /** The venue map, loaded best-effort for set labels + tiers (undefined until/if it loads). */
@@ -89,18 +89,18 @@ export class RequestsTab {
   private readonly declineConfirm = signal<ReadonlySet<number>>(new Set());
   /** Requests the sweep expired mid-action — the dismissible expired-race card. */
   private readonly expired = signal<ReadonlySet<number>>(new Set());
-  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
-   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  /** Bumped per venue context: an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
 
   constructor() {
-    // Re-runs on an in-place venue switch (#180): reset to the fresh-mount state, then load.
+    // Re-runs on an in-place venue switch: reset to the fresh-mount state, then load.
     effect(() => {
       const id = this.venueId();
       untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
     });
-    // One lifetime poll: the #98 sweep + urgency clock reconcile whatever venue is current.
+    // One lifetime poll: the expiry sweep + urgency clock reconcile whatever venue is current.
     const poll = setInterval(() => this.reconcile(), REFRESH_MS);
     this.destroyRef.onDestroy(() => clearInterval(poll));
   }

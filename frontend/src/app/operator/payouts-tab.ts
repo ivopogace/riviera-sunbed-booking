@@ -18,7 +18,7 @@ import { OperatorConsoleService, payoutErrorOf } from './operator-console.servic
 import { PayoutStatement } from './payout-statement';
 
 /**
- * The O7 Payouts tab (issue #173, epic #141) — the operator console's payout ledger. Renders the
+ * The Payouts tab — the operator console's payout ledger. Renders the
  * venue's accruals + reversals (per-entry date, a `#<bookingId>` reference, gross / commission / net),
  * an "Owed to you" hero, and a period-total row; refund **reversals** show as negative rows with a
  * reason chip. The weather-refund action + the statement modal live alongside (phase 2).
@@ -30,7 +30,7 @@ import { PayoutStatement } from './payout-statement';
  * session. The ledger carries only `bookingId`: <strong>no booking code</strong> (a bearer credential,
  * invariant #7) and <strong>no guest identity</strong> (the `payout` module holds none — need-to-know,
  * invariant #11); the console renders a non-credential reference. Reads `:venueId` from the parent route
- * via {@link parentVenueId} (child routes don't inherit it — the O1 finding), like its sibling tabs;
+ * via {@link parentVenueId} (child routes don't inherit it), like its sibling tabs;
  * always porcelain (inherited from the console shell); glass via {@link CardGlass}.
  */
 @Component({
@@ -44,7 +44,7 @@ export class PayoutsTab {
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
   private readonly venueId = parentVenueId(this.route);
 
   private readonly ledger = signal<PayoutLedgerView | undefined>(undefined);
@@ -53,9 +53,9 @@ export class PayoutsTab {
   /** The load-error message (owner / session / generic), or undefined when the read succeeded. */
   protected readonly loadErrorMsg = signal<string | undefined>(undefined);
 
-  /** The washed-out day a weather refund targets (ISO YYYY-MM-DD); defaults to today Europe/Tirane (#6).
-   *  The refund is per-DATE (whole-day, invariant #10) — the design's per-row buttons don't map to the
-   *  per-date endpoint, and the ledger carries no service-date (O7 decision, plan Resolved). */
+  /** The washed-out day a weather refund targets (ISO YYYY-MM-DD); defaults to today Europe/Tirane
+   *  (invariant #6). The refund is per-DATE (whole-day, invariant #10) — the design's per-row buttons
+   *  don't map to the per-date endpoint, and the ledger carries no service-date. */
   protected readonly selectedDate = signal(todayBookingDate(new Date()));
   /** True while the amber "Issue full weather refund" confirm is open (a two-step, no accidental refund). */
   protected readonly weatherConfirm = signal(false);
@@ -65,11 +65,11 @@ export class PayoutsTab {
   protected readonly notice = signal<string | undefined>(undefined);
   /** True while the display-only payout-statement modal is open. */
   protected readonly statementOpen = signal(false);
-  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
-   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  /** Bumped per venue context: an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
   constructor() {
-    // Re-runs on an in-place venue switch (#180): reset to the fresh-mount state, then load.
+    // Re-runs on an in-place venue switch: reset to the fresh-mount state, then load.
     effect(() => {
       const id = this.venueId();
       untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
@@ -126,7 +126,7 @@ export class PayoutsTab {
   /** The "Owed to you" figure — the SERVER's net owed, rendered as-is (invariant #9, R-1). */
   protected readonly owedStr = computed(() => money(this.ledger()?.netOwedMinor ?? 0, this.currency()));
 
-  /** The ledger's ISO currency, for the statement header/footnote (EUR collection currency, #5). */
+  /** The ledger's ISO currency, for the statement header/footnote (EUR collection currency, invariant #5). */
   protected readonly statementCurrency = computed(() => this.currency());
 
   private readonly accrualCount = computed(
@@ -178,9 +178,10 @@ export class PayoutsTab {
 
   /**
    * Issue the per-date weather refund. The server cancels + fully refunds every CONFIRMED booking for
-   * the day (invariant #10), executes the refund via the Stripe webhook path (#8) and posts the payout
-   * reversal (#9) — this only triggers it and re-renders. The reversal is posted by an AFTER_COMMIT
-   * listener, so after the outcome lands the ledger is re-read to pull it in (eventually-consistent, R-2).
+   * the day (invariant #10), executes the refund via the Stripe webhook path (invariant #8) and posts
+   * the payout reversal (invariant #9) — this only triggers it and re-renders. The reversal is posted by
+   * an AFTER_COMMIT listener, so after the outcome lands the ledger is re-read to pull it in
+   * (eventually consistent).
    */
   protected onConfirmWeather(): void {
     const venueId = this.venueId();

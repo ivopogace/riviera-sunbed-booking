@@ -18,22 +18,22 @@ const RESEND_NOTICES = {
 } as const;
 
 /**
- * The signed-in customer's account page (S8 #113): set or change a password, and see/resend email
- * verification. This closes the S4 F-1 gap — an account created via Google/Apple SSO (no local password)
+ * The signed-in customer's account page: set or change a password, and see/resend email
+ * verification. An account created via Google/Apple SSO (no local password)
  * sets its first password here (leaving the current-password field blank), while an account that already
  * has one must supply the correct current password. The verification nudge + resend live here too, so the
  * whole self-service account surface is one page rather than an app-wide banner.
  *
- * The resend has three outcomes, not two (`RESEND_NOTICES`, #400). `withheld` means the request
- * succeeded but the address is on the do-not-email list, so no message will ever leave — claiming "sent"
- * there was the defect #400 fixed. Two constraints shape that wording, both of them "don't replace one
- * false statement with another":
+ * The resend has three outcomes, not two (`RESEND_NOTICES`). `withheld` means the request
+ * succeeded but the address is on the do-not-email list, so no message will ever leave — claiming
+ * "sent" there is the lie this outcome exists to avoid. Two constraints shape that wording, both
+ * of them "don't replace one false statement with another":
  *
  * 1. **Reason-neutral.** The response carries no suppression reason, and only one of the three
  *    (`HARD_BOUNCE`) is a delivery failure — copy blaming bounces would lie to a customer who marked
  *    our mail as spam (`COMPLAINT`) or was suppressed by an ops decision (`MANUAL`).
- * 2. **No action the product cannot honour.** The customer cannot lift a suppression themselves (#391
- *    reinstatement is ADMIN-gated) and the app ships no contact surface, so "get in touch" would point
+ * 2. **No action the product cannot honour.** The customer cannot lift a suppression themselves
+ *    (reinstatement is ADMIN-gated) and the app ships no contact surface, so "get in touch" would point
  *    at nothing. It says what is true instead: verification here is soft/non-blocking, so nothing the
  *    customer came to do is blocked.
  */
@@ -186,7 +186,7 @@ export class SetPassword {
   protected readonly error = signal<string | undefined>(undefined);
   protected readonly notice = signal<string | undefined>(undefined);
 
-  /** Right-to-erasure UI state (#101 [D5]): the two-step confirm, the in-flight flag, and the done screen. */
+  /** Right-to-erasure UI state: the two-step confirm, the in-flight flag, and the done screen. */
   protected readonly confirming = signal(false);
   protected readonly erasing = signal(false);
   protected readonly erased = signal(false);

@@ -159,20 +159,21 @@ stale as batches land.
 
 ## Execution status
 
-**Stage pointer:** batch 3 gates all green on PR #553 (CI on `aabe194` + `63f7b36`; Sonar
-first-try pass) — awaiting merge.
+**Stage pointer:** implement — Phase A, batch 4 at the PR gate (batches 1–3 merged via
+PR #551, #552, #553).
 
-**Next action:** open the batch-3 PR, run the review gate + read the Sonar new-issue list; on
-merge, restart the branch from `main` and cut batch A-4 (next by census: `layout-editor.ts`,
-`admin-outbox-lever.ts`, `set-password.ts`, `booking.model.ts`, `booking.service.ts`,
-`payouts-tab.ts`, `requests-tab.ts`, `admin-audit.spec.ts`, `admin-privacy.service.ts`, …).
+**Next action:** open the batch-4 PR, run the review gate + read the Sonar new-issue list; on
+merge, restart the branch from `main` and cut batch A-5 from the regenerated census (next dense:
+`app.spec.ts`, `sso-buttons.ts`, `booking-view.contrast.spec.ts`, `admin-privacy.spec.ts` tail,
+then begin the ~30-file sparse-tail directory sweeps).
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
 | A-1 (probe) | 10 densest `app/admin/` files — 83 refs (65 embedded, 18 parenthetical); + the #549 ledger-row fix in the #544 plan doc | **merged via PR #551** | ✅ all gates green; review found F-3–F-5, fixed |
 | A-2 | next 10 dense files — `operator-console.service`, `customer-auth`, `my-bookings`, `venue-tab`, `venue-views`, `venue-map`, `operator-auth`, `session-auth`, `operator-console`, `daily-view-tab` — ~143 numeric refs removed (the locator census's "117" was doc-comment refs only; inline-comment refs and ~60 provenance labels came out too), minus 10 refs restored by the F-8 carve-out; F-4 whole-file label sweep applied (review F1/F2/O1/S9-R-1 orphans cleaned, one 3-line inline comment promoted to a doc comment); `design D-1`/`D-6` preserved per F-3; stale claims corrected per F-6 (D-6 back-linking; the retired venue-editor/staff-view surface lists) | **merged via PR #552** | ✅ all gates green (CI + Sonar on `a16a603`); minted F-7–F-9 |
-| A-3 | next 10 dense files — `app.ts`, `app.html`, `admin-venue-photos.service`, `console-stats-strip`, `pricing-tab`, `home`, `admin-console-tabs`, `admin-operators.service`, `booking-pay`, `device-local-bookings` — 101 refs + labels removed (80 numeric + 21 labels; review-measured, correcting the eyeballed "~70") under the full F-3–F-9 rule set from the start: 5 F-8 trailing-on-code refs left in `pricing-tab` by design, two 2-line inline comments compressed to one line (`pricing-tab`), two 2-line HTML comments compressed (`app.html`), `Sonar S2871` recognised as a rule id (not provenance), bare `U1`/`A6`/`Q1` labels rewritten or dropped | this PR | ⏳ at gates |
-| A-4… | remaining `frontend/src` dense files (≥4 refs), by directory | follow-up PRs | |
+| A-3 | next 10 dense files — `app.ts`, `app.html`, `admin-venue-photos.service`, `console-stats-strip`, `pricing-tab`, `home`, `admin-console-tabs`, `admin-operators.service`, `booking-pay`, `device-local-bookings` — 101 refs + labels removed (80 numeric + 21 labels; review-measured, correcting the eyeballed "~70") under the full F-3–F-9 rule set from the start: 5 F-8 trailing-on-code refs left in `pricing-tab` by design, two 2-line inline comments compressed to one line (`pricing-tab`), two 2-line HTML comments compressed (`app.html`), `Sonar S2871` recognised as a rule id (not provenance), bare `U1`/`A6`/`Q1` labels rewritten or dropped | **merged via PR #553** | ✅ all gates green; Sonar first-try |
+| A-4 | next 10 dense files — `layout-editor`, `admin-outbox-lever`, `set-password`, `booking.model`, `booking.service`, `payouts-tab`, `requests-tab`, `glass-tokens`, `admin-audit.spec`, `admin-privacy.service` — ~89 refs + labels removed (72 numeric + ~17 labels incl. `O3`/`O6`/`O7`/`S4`/`S8`; review-measured, correcting the eyeballed "~60"); 17 F-8 trailing-on-code refs left by design (`layout-editor` 7, `payouts-tab` 5, `requests-tab` 5); one 4-line inline comment promoted to a method doc (`layout-editor.loadExisting`), three 2-line inline comments compressed; embedded `O1`/`O4`/`U3`/`U4 #8`/`U6`/`S3` labels rewritten to real nouns; review caught four more label sites the sweep missed (`payouts-tab` `O1`/`O7`, `glass-tokens` `T1/T2/T3–T5/epic`, a `plan Resolved`/`R-2` pointer pair) plus bare invariant shorthands normalized to `invariant #n` — all fixed | this PR | ⏳ at gates |
+| A-5… | remaining `frontend/src` dense files, then the ~30-file sparse-tail sweeps; then `frontend/e2e` | follow-up PRs | |
 | A-n | sparse tail, ~30-file directory sweeps; then `frontend/e2e` | follow-up PRs | |
 | B-0 | 5-file backend-test mini-probe (R-4 rate) | | |
 | B-1… | backend test, per the mini-probe's verdict | | |
@@ -194,6 +195,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-7 | review (3 lenses converged) | `daily-view-tab.ts` dropped "and the legacy-page retirement" from its out-of-scope sentence — flagged as content loss. **Ruled: the deletion stands.** The retirement is since-completed work (CLAUDE.md: StaffDaily retired), so "out of scope" about it is pure decision history, which §6d deletes; F-6's correct-don't-launder applies only to claims still **operative** | no change — **rule: an out-of-scope claim about since-completed work is history (delete); an operative claim gone stale is corrected (F-6)** |
 | F-8 | Sonar gate (PR #552 red) | **Editing a trailing comment on a code-bearing line makes Sonar count that line as "new code"** — 10 such lines (8 `venue-tab.ts`, 2 `daily-view-tab.ts`, all `return;`-class), 8 uncovered → coverage gate failed at 20 % on a provably code-inert diff | fixed — edits reverted; **rule: refs in trailing comments on code-bearing lines are OUT OF SCOPE for this pass** (30 refs / 9 files tree-wide; the one class A-5 decay genuinely handles, since the line is edited whenever its code is) |
 | F-9 | review | four 2-digit issue refs (`#97` ×3, `issue #98`) survived — the locator's 3–4-digit pattern exists to spare `invariant #1`–`#13`, but §6d bans **all** issue numbers, and 2-digit issues are real (`#97` error contract, `#98` Request-to-Book) | fixed (3 doc-comment strips + one 2-line inline compressed) — **rule: the locator must match `#14`–`#9999` context-aware (exclude `invariant #n`), not skip 2-digit refs** |
+| F-10 | review ×2 (A-3, A-4) | the ledger's merged-row flip trails one batch behind — batch N's PR updates the stage pointer but leaves batch N−1's row at "⏳ at gates", so the doc self-contradicts until the next review catches it | fixed both times — **rule: when writing batch N's ledger row, flip batch N−1's row to "merged via PR #NNN ✅" in the same edit** |
 
 ## File structure
 

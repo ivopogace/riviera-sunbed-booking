@@ -4,8 +4,8 @@ import { OutboxStatusView, ResubmissionResultView } from './admin.model';
 
 /**
  * The client side of an admin outbox lever — a status read and a resubmit that resolves for every
- * typed outcome, refusals included. Implemented by {@link AdminMailOutboxService} (#405) and
- * {@link AdminRefundOutboxService} (#460).
+ * typed outcome, refusals included. Implemented by {@link AdminMailOutboxService} and
+ * {@link AdminRefundOutboxService}.
  */
 export interface AdminOutboxPort {
   status(): Promise<OutboxStatusView>;
@@ -13,8 +13,8 @@ export interface AdminOutboxPort {
 }
 
 /**
- * The shared state machine behind both admin outbox tabs (#405 Email, #460 Refunds) — the frontend
- * mirror of the backend's `shared.ResubmissionThrottle` extraction (#454 F-3): the two levers
+ * The shared state machine behind both admin outbox tabs (Email and Refunds) — the frontend
+ * mirror of the backend's `shared.ResubmissionThrottle`: the two levers
  * deliberately share one wire shape and one behaviour, so the behaviour lives once instead of being
  * mirrored into a duplicated block.
  *

@@ -9,7 +9,7 @@ import { AdminAuditService } from './admin-audit.service';
 import { AdminAuditEntryView } from './admin.model';
 
 /**
- * The admin console's Audit tab (#507): the recorded admin actions render newest-first with who /
+ * The admin console's Audit tab: the recorded admin actions render newest-first with who /
  * what / when / outcome / grounds, empty and failure states are honest, and the surface self-gates
  * exactly like its sibling tabs.
  */
@@ -131,7 +131,7 @@ describe('AdminAudit', () => {
   });
 
   /**
-   * WCAG 2.4.3 — the recurring #148/#351/#462 stranded-focus class: a successful retry destroys
+   * WCAG 2.4.3 — the recurring stranded-focus class: a successful retry destroys
    * the error banner and the Retry button the user just activated, so focus must be parked on the
    * card that replaces it rather than falling back to `<body>`.
    */
