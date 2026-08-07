@@ -153,11 +153,12 @@ stale as batches land.
 
 ## Execution status
 
-**Stage pointer:** implement — Phase A, batch 1 at the PR gate.
+**Stage pointer:** review gate — batch 1 review ran (PR #551), 5 findings fixed; awaiting CI +
+Sonar new-issue list.
 
-**Next action:** open the batch-1 PR (probe + this doc), run `/code-review` + read the Sonar
-new-issue list on it; on merge, restart the branch from `main` and cut batch A-2 from the
-post-probe census (dense files first: `operator/`, `booking/`, `core/`).
+**Next action:** confirm PR #551 CI green and read the Sonar new-issue list (AC-6); on merge,
+restart the branch from `main` and cut batch A-2 from the post-probe census (dense files
+first: `operator/`, `booking/`, `core/`).
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
@@ -177,6 +178,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | probe | refs live in code strings too (`describe()` titles) — a comment-only pass cannot reach them; AC-1 must be locator-measured | recorded as a Non-goal |
 | F-2 | probe | orphan labels ride with refs; deleting the ref and keeping the label leaves residue | standing rule A-1 |
+| F-3 | review (2 lenses converged) | `design D-5` stripped from `admin-operators.ts` — a durable decision label in the permitted D-* class, not issue provenance; target verified (`docs/architecture/auth-signin-register.md` D-5 = self-register + admin approval) | fixed — restored as `(design D-5)`; **rule for later batches: D-\* decision labels are permitted alongside D-8** |
+| F-4 | review | two bare embedded `A7` labels survived in the commissions pair (`admin-commissions.ts` saveRate doc, `.spec.ts` inline) — the A-1 rule missed sites below the class doc | fixed — rewritten to "the backend"; **rule: sweep the whole file for labels, not just lines the locator flagged** |
+| F-5 | review | a rewrap left `schedule. A` orphaned on its own line — gates prove inertness, not readability (this pass's R-1, exactly as pre-registered) | fixed — reflowed |
 
 ## File structure
 
@@ -202,14 +206,15 @@ Comment-only edits across the source trees; globs stand in for the mechanical sw
 Per batch, in order: commit → AC-2 → AC-5 (direct `check()`, assert file count) → AC-3 count
 → push → PR → AC-6 (CI + Sonar new-issue list + all review lenses reported) → AC-4 at review.
 AC-1 re-census per phase close. Batch A-1: AC-2 ✅ (10 files code-identical), AC-3 ✅
-(one `ADR-0013` line, survives), AC-5 ✅ (10 files scanned, 0 violations), AC-4/AC-6 due at
-the PR gate, verified at commit `b4af5a2`.
+(one `ADR-0013` line survives; the stripped `design D-5` was a miss, caught at review and
+restored — F-3), AC-5 ✅ (10 files scanned, 0 violations), AC-4 ✅ (review ran on PR #551,
+all 5 lenses reported, findings F-3–F-5 fixed), AC-6 pending CI/Sonar on PR #551.
 
 ## Self-review checklist (before merge / PR)
 
 - [x] Every AC has a verifying gate or a named review owner (AC-4 is review-owned by design).
 - [x] No placeholders / TODO / TBD anywhere in the doc.
-- [x] Invariants #1–#12: N/A — comment-only, proved by AC-2 per batch (no code, schema, money,
+- [x] Invariants #1–#13: N/A — comment-only, proved by AC-2 per batch (no code, schema, money,
       or timezone surface exists in this diff to violate them).
 - [x] Frontend standards: no component behavior touched; the engaged standard is the TSDoc twin.
 - [x] Execution status at HEAD matches reality.

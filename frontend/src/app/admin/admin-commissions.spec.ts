@@ -320,7 +320,7 @@ describe('AdminCommissions', () => {
     await typeRate(fixture, 7, '12.5');
     await save(fixture, 7);
 
-    // A7 does not blur venue existence here — a stale or mistyped id must fail loudly.
+    // The backend does not blur venue existence here — a stale or mistyped id must fail loudly.
     expect(text(fixture, 'admin-commission-error-7')).toContain('no longer exists');
     expect(text(fixture, 'admin-commission-rate-7')).toBe('15%');
   });

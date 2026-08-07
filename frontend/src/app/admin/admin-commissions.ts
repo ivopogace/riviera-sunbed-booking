@@ -30,9 +30,8 @@ import { VenueCommissionView } from './admin.model';
  * <p><strong>One card per venue, at every width.</strong> The design canvas draws a five-column table
  * that collapses to one labelled card per row at 360px — but two of its columns (owner, last-changed)
  * have no wire source: the backend deliberately returns no owner, and exposes no read of the rate
- * schedule. A
- * three-column table is thinner than the card it would collapse into, so the card is drawn at every
- * width instead, which also lets the editor expand in place without a `colspan` row.
+ * schedule. A three-column table is thinner than the card it would collapse into, so the card is
+ * drawn at every width instead, which also lets the editor expand in place without a `colspan` row.
  *
  * <p><strong>The write splices, it does not re-fetch.</strong> `PUT …/commission` answers the same
  * object shape as one list element, so the response replaces its row and the list read happens once
@@ -429,8 +428,8 @@ export class AdminCommissions {
    * audit entry for a change that did not happen.
    *
    * <p>A failure keeps the editor open holding what was typed, so a retry costs no re-typing, and
-   * `NO_SUCH_VENUE` is reported as its own outcome: A7 chose not to blur venue existence on this
-   * surface, so a stale or mistyped id must read as "gone", not as something a retry would fix.
+   * `NO_SUCH_VENUE` is reported as its own outcome: the backend chose not to blur venue existence on
+   * this surface, so a stale or mistyped id must read as "gone", not as something a retry would fix.
    */
   protected async saveRate(venue: VenueCommissionView): Promise<void> {
     const commissionBps = this.draftBps();

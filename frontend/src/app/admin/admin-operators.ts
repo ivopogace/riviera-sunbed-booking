@@ -18,7 +18,7 @@ import { AdminOperatorsService } from './admin-operators.service';
 import { OperatorAccountView, PendingOperatorView } from './admin.model';
 
 /**
- * The platform-admin operator surface: the approval queue and the account list
+ * The platform-admin operator surface: the approval queue (design D-5) and the account list
  * with suspend/reinstate. Every action <strong>reconciles both lists from the server</strong>
  * (re-fetch, never a local-only row removal) so a concurrently-decided or already-gone row simply
  * settles to the truth.
