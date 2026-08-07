@@ -132,10 +132,10 @@ guard sanctions.
 - `scripts/check-comment-only.mjs` — **new**: proves a trim diff changed only comments
 - `scripts/check-comment-only.test.mjs` — **new**: 8 cases incl. string/text-block false positives
 - `docs/plans/comment-volume-trim.md` — **new**: this doc
-- `platform/src/main/java/**` — **modified**: Javadoc trimmed to §6d
-- `platform/src/test/java/**` — **modified**: Javadoc trimmed to §6d
-- `frontend/src/**` — **modified**: TSDoc + HTML comments trimmed
-- `frontend/e2e/**` — **modified**: TSDoc trimmed
+- `platform/src/main/java/` — **modified**: Javadoc trimmed to §6d, comment-only
+- `platform/src/test/java/` — **modified**: Javadoc trimmed to §6d, comment-only
+- `frontend/src/` — **modified**: TSDoc + HTML comments trimmed, comment-only
+- `frontend/e2e/` — **modified**: TSDoc trimmed, comment-only
 
 ## Skills consulted
 
