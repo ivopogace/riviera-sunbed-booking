@@ -102,7 +102,7 @@ No component, template binding, route or service behaviour changes. TSDoc and HT
 |---|---|---|
 | 0 | §6d + frontend twin | ✅ committed `1109c2f` |
 | 1 | `check-comment-only.mjs` + test | ✅ committed |
-| 2 | `platform/src/main` — heaviest files | 🔄 in progress (3 of 481) |
+| 2 | `platform/src/main` — heaviest files | 🔄 in progress (5 of 481) |
 | 3 | `platform/src/main` — remainder | ⬜ not started |
 | 4 | `platform/src/test` | ⬜ not started |
 | 5 | `frontend/src` + `frontend/e2e` | ⬜ not started |
@@ -115,6 +115,7 @@ No component, template binding, route or service behaviour changes. TSDoc and HT
 | `SecurityConfig.java` | 635 | 487 | Ordering rule stated once, not eight times |
 | `shared/MdcTaskDecorator.java` | 127 | 100 | Kept all three traps; dropped the #455/#410 argument |
 | `booking/application/Bookings.java` | 207 | 175 | Port interface — its Javadoc is genuine contract, so only issue numbers and story labels went |
+| `booking/adapter/in/RefundExecutorProperties.java` | 145 | 105 | Sizing argument already in RESPONSIBILITIES §`booking`; the operational *why* is in the exception messages, where an operator meets it at boot |
 
 **Remaining heaviest** (comment lines, from `concentration.mjs`): `RateLimitFilter.java` 273 ·
 `AsyncMailDispatcher.java` 189 · `RateLimitFilterTest.java` 178 · `TransactionalMailService.java` 153 ·
