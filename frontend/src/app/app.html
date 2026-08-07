@@ -64,11 +64,10 @@
           Find a booking
         </button>
 
-        <!-- Customer auth (S2 #111): sign-in/register links ↔ signed-in + sign-out. Held until the
-             startup /me restore settles so the signed-in state doesn't flash "Sign in" first. -->
+        <!-- Customer auth: sign-in/register ↔ signed-in; held until the /me restore settles (no "Sign in" flash). -->
         @if (!customerAuth.restoring()) {
           @if (customerAuth.signedIn()) {
-            <!-- Account menu (#351) — a disclosure, not role=menu; see App.accountOpen for why. -->
+            <!-- Account menu — a disclosure, not role=menu; see App.accountOpen for why. -->
             <div class="riv-account-menu">
               <button
                 #accountButton
@@ -184,10 +183,10 @@
             Find a booking
           </button>
 
-          <!-- Customer auth (S2 #111), mobile menu twin of the desktop controls. -->
+          <!-- Customer auth, mobile menu twin of the desktop controls. -->
           @if (!customerAuth.restoring()) {
             @if (customerAuth.signedIn()) {
-              <!-- Account group (#351): flattened into the sheet, per the riv-mobile-theme precedent. -->
+              <!-- Account group: flattened into the sheet, per the riv-mobile-theme precedent. -->
               <span class="riv-mobile-user" data-testid="nav-user-mobile"
                 >Signed in as {{ customerAuth.email() }}</span
               >
@@ -247,8 +246,7 @@
   </header>
   }
 
-  <!-- tabindex=-1: a programmatic focus target so closing the find modal on navigation lands
-       keyboard/AT focus on the new page's content, not document.body (issue #148, review finding [4]). -->
+  <!-- tabindex=-1: closing the find modal on navigation lands keyboard/AT focus here, not document.body. -->
   <main #mainEl tabindex="-1" class="riv-main" [class.riv-legacy-surface]="legacySurface()">
     <router-outlet />
   </main>
@@ -256,7 +254,7 @@
   <!-- Shared by the tourist and operator chromes (tokens re-scope under the porcelain pin). -->
   @if (shellChrome() !== 'none') {
   <footer class="riv-footer">
-    <!-- New tab: in-app nav would unmount /booking/pay's Payment Element or swap an admin into tourist chrome (#462). -->
+    <!-- New tab: in-app nav would unmount /booking/pay's Payment Element or swap an admin into tourist chrome. -->
     <div class="riv-footer-inner">
       © Riviera Sunbed Booking ·
       <a class="underline" href="/legal/privacy" target="_blank" rel="noopener">Privacy</a> ·
@@ -265,7 +263,7 @@
   </footer>
   }
 
-  <!-- Find-a-booking glass modal (issue #148): a shell-level, nav-triggered overlay. -->
+  <!-- Find-a-booking glass modal: a shell-level, nav-triggered overlay. -->
   @if (findOpen()) {
     <app-find-booking (dismissed)="dismissFind()" />
   }

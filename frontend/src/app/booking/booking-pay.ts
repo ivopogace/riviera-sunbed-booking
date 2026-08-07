@@ -27,20 +27,20 @@ const POLL_WINDOW_MS = 30_000;
 type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' | 'error' | 'missing';
 
 /**
- * Liquid Glass payment page for the `stripe` profile (U4-FE #50; restyle #137), reached on a
+ * Liquid Glass payment page for the `stripe` profile, reached on a
  * `202 AWAITING_PAYMENT` booking-create. It mounts the Stripe Payment Element on the booking's
  * `clientSecret`, confirms the card, then **polls `GET /api/bookings/{code}` for `CONFIRMED`** — the
  * booking is confirmed only by the signature-verified webhook (invariant #8), **never** from the
  * Stripe.js result. Restyle only: the state machine, poll, and every `data-testid` are unchanged.
  *
- * <p>When the confirming poll reports `emailWithheld` (#390 — the address is on the do-not-mail
+ * <p>When the confirming poll reports `emailWithheld` (the address is on the do-not-mail
  * list, so the confirmation mail was suppressed), the done panel adds a save-your-code notice and
  * the page's one persistent live region announces it. The notice deliberately gets no live region of
  * its own: it is created together with the done panel, and a region only announces content that
  * mutates after it is already in the DOM.
  *
  * <p>States: `mounting` → `ready` (card form) → on pay: `error` (declined/failed — retry in place,
- * the element stays mounted; one status re-check decides retryable vs terminal, #126 — see
+ * the element stays mounted; one status re-check decides retryable vs terminal — see
  * {@link failCardStep}) or `processing` (polling, "Confirming your booking…") →
  * `confirmed` (backend said so) or `awaiting` (webhook hasn't landed within ~30s — "payment
  * received", never "confirmed"). A cold load with no hand-off shows `missing`. A terminal server
@@ -205,11 +205,11 @@ export class BookingPay {
   protected readonly state = signal<PayState>('mounting');
   protected readonly errorMessage = signal<string | undefined>(undefined);
   protected readonly paying = signal(false);
-  /** A terminal failure — the poll saw a server-side CANCELLED, or the failure re-check (#126)
+  /** A terminal failure — the poll saw a server-side CANCELLED, or the failure re-check
    *  found the booking no longer payable: retrying the same PaymentIntent is futile, so the page
    *  offers the booking-status link and "start over" instead of "Pay". */
   protected readonly terminalError = signal(false);
-  /** The confirmed booking's mail was suppressed (#390) — read from the poll, never assumed. */
+  /** The confirmed booking's mail was suppressed — read from the poll, never assumed. */
   protected readonly emailWithheld = signal(false);
 
   /** The awaiting-payment summary handed off by the 202 POST; absent on a cold load. */
@@ -292,7 +292,7 @@ export class BookingPay {
   /**
    * A card-step failure (mount or confirm) is only retryable while the booking is still payable:
    * the pay-window sweep may have cancelled the intent while this page was open, and retrying a
-   * dead intent loops forever (#126). So the error state re-reads the booking once — server truth,
+   * dead intent loops forever. So the error state re-reads the booking once — server truth,
    * invariant #8 intact: the answer can only escalate to the terminal state (or adopt a booking the
    * verified webhook already confirmed), never report a payment the backend hasn't. A failed
    * re-check changes nothing — the retry-in-place state stays.

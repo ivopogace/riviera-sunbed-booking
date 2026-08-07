@@ -5,14 +5,14 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { OperatorAccountView, PendingOperatorView } from './admin.model';
 
-/** The platform-admin operator-approval surface (S6 #115); ADMIN-gated server-side. */
+/** The platform-admin operator-approval surface; ADMIN-gated server-side. */
 const ADMIN_OPERATORS_API = `${environment.apiBaseUrl}/api/admin/operators`;
 
-/** The optional grounds an admin action may carry into the audit trail (#507); sanitized server-side. */
+/** The optional grounds an admin action may carry into the audit trail; sanitized server-side. */
 const AUDIT_REASON_HEADER = 'X-Audit-Reason';
 
 /**
- * HTTP client for the platform-admin operator-approval surface (S6 #115). Stateless — the session
+ * HTTP client for the platform-admin operator-approval surface. Stateless — the session
  * cookie + CSRF header are added by {@link apiSessionInterceptor}; the component holds the list state.
  * Every call is gated to the ADMIN role by the backend (a non-admin operator gets 403).
  */
@@ -35,15 +35,15 @@ export class AdminOperatorsService {
     return firstValueFrom(this.http.post<void>(`${ADMIN_OPERATORS_API}/${id}/reject`, null));
   }
 
-  /** The operators that can currently sign in (#128). */
+  /** The operators that can currently sign in. */
   accounts(): Promise<OperatorAccountView[]> {
     return firstValueFrom(this.http.get<OperatorAccountView[]>(`${ADMIN_OPERATORS_API}/accounts`));
   }
 
   /**
    * Suspend an active operator → it cannot sign in, and its live sessions are revoked server-side.
-   * A non-blank `reason` rides the {@link AUDIT_REASON_HEADER} into the audit trail (#519, per
-   * #507); header values must be Latin-1, so anything outside it becomes a space rather than an
+   * A non-blank `reason` rides the {@link AUDIT_REASON_HEADER} into the audit trail;
+   * header values must be Latin-1, so anything outside it becomes a space rather than an
    * aborted request.
    */
   suspend(id: number, reason?: string): Promise<void> {

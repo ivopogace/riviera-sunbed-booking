@@ -30,7 +30,7 @@ interface PriceRow {
 }
 
 /**
- * The O4 Pricing tab (issue #174, epic #141) — one full-day EUR price input per beach-map <strong>row</strong>,
+ * The Pricing tab — one full-day EUR price input per beach-map <strong>row</strong>,
  * applied to every set in that row, with a live "projected full-day take if every online set sells" figure.
  *
  * <p>Reads the current layout from the public venue map (like {@link import('./layout-editor').LayoutEditor})
@@ -53,10 +53,10 @@ export class PricingTab {
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
   protected readonly venueId = parentVenueId(this.route);
 
-  /** The venue's sets, from the U1 read; the source of the rows + the projected take. */
+  /** The venue's sets, from the public venue-map read; the source of the rows + the projected take. */
   private readonly sets = signal<readonly SetView[]>([]);
   /** True once the initial load settles (success or failure) — drives the empty state vs the rows. */
   protected readonly loaded = signal(false);
@@ -70,15 +70,15 @@ export class PricingTab {
   /** The last row saved and the last per-row error — sequential edits, per-row so a fail is scoped. */
   protected readonly savedRow = signal<string | null>(null);
   protected readonly errorRow = signal<{ label: string; code: RepriceErrorCode } | null>(null);
-  /** The optimistic-concurrency token loaded with the map (#226 `setVersion`), echoed back on each
+  /** The optimistic-concurrency token loaded with the map (`setVersion`), echoed back on each
    *  reprice and advanced on success; a `409 STALE_WRITE` sets {@link staleConflict}. */
   protected readonly loadedSetVersion = signal<number | null>(null);
   /** True after a reprice lost the optimistic-concurrency race (409 STALE_WRITE) — a venue-level
    *  conflict (the whole `set_version` moved), so it drives a recover-and-reload banner, not the
    *  per-row inline error. Cleared by {@link reloadAfterStale}. */
   protected readonly staleConflict = signal(false);
-  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
-   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  /** Bumped per venue context: an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
 
@@ -105,7 +105,7 @@ export class PricingTab {
   });
 
   constructor() {
-    // Re-runs on an in-place venue switch (#180): reset the rows + flags, then load the new venue.
+    // Re-runs on an in-place venue switch: reset the rows + flags, then load the new venue.
     effect(() => {
       const id = this.venueId();
       untracked(() => (id === undefined ? this.loaded.set(true) : this.resetForVenue(id)));
@@ -150,8 +150,7 @@ export class PricingTab {
     }
     const expectedVersion = this.loadedSetVersion();
     if (expectedVersion === null) {
-      // Defensive (#226): rows only render after a successful load seeds the token, so the only null case
-      // is a failed read (which shows the load-error state instead). Never reprice without the token.
+      // Defensive: the token is null only after a failed read (load-error shows) — never reprice without it.
       input.value = row.priceEur;
       return;
     }
@@ -169,10 +168,9 @@ export class PricingTab {
         return; // a venue switch superseded this reprice — don't write its outcome over the new venue (#180)
       }
       this.savedRow.set(row.label);
-      // The conditional write bumped set_version by one (#226); advance our token so a following
-      // sequential row edit isn't spuriously rejected as a stale write.
+      // The conditional write bumped set_version by one; advance the token so the next row edit isn't stale.
       this.loadedSetVersion.set(expectedVersion + 1);
-      // This row's price just changed server-side, so the console's shared snapshot is stale (#486).
+      // This row's price just changed server-side, so the console's shared snapshot is stale.
       this.venueMap.reset();
     } catch (error) {
       if (this.epoch !== epoch) {
@@ -215,7 +213,7 @@ export class PricingTab {
   }
 
   /**
-   * Recover from a `409 STALE_WRITE` (#226): re-load the venue map — re-seeding every row's price and the
+   * Recover from a `409 STALE_WRITE`: re-load the venue map — re-seeding every row's price and the
    * `setVersion` token — and clear the conflict banner. The optimistic value already reverted when the
    * reprice failed, so this simply pulls the current server prices for the operator to re-apply.
    */

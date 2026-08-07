@@ -7,10 +7,10 @@ import { apiPhotoUrl } from '../shared/photo-url';
 import { PhotoSlotKey, VenueSummary } from '../shared/venue-views';
 import { AdminPhotoSlotView, AdminVenuePhotosView } from './admin.model';
 
-/** The slot order the surface renders — the backend's `PhotoSlot` declaration order (#142). */
+/** The slot order the surface renders — the backend's `PhotoSlot` declaration order. */
 const SLOT_ORDER: readonly PhotoSlotKey[] = ['cover', 'sunbeds', 'bar'];
 
-/** The optional grounds an admin action may carry into the audit trail (#507); sanitized server-side. */
+/** The optional grounds an admin action may carry into the audit trail; sanitized server-side. */
 const AUDIT_REASON_HEADER = 'X-Audit-Reason';
 
 /** The wire shape of `GET /api/admin/venues/{venueId}/photos` — a slot-keyed map, like the profile read. */
@@ -27,11 +27,11 @@ export interface ModerationVenue {
 }
 
 /**
- * HTTP client for the admin console's Photos tab (#511). Stateless: the session cookie + CSRF header
+ * HTTP client for the admin console's Photos tab. Stateless: the session cookie + CSRF header
  * are added by {@link apiSessionInterceptor}, and the component holds the page state.
  *
  * <p>The venue list comes from the **public** catalogue (`GET /api/venues`), and stays there now that
- * an admin venue read does exist (A7, #348 — `GET /api/admin/venues`, which the Commissions tab uses).
+ * an admin venue read does exist (`GET /api/admin/venues`, which the Commissions tab uses).
  * Keeping this picker on the catalogue is a need-to-know call, not inertia: the admin read carries
  * each venue's `commissionBps`, a commercial term a photo moderator has no business reading, and
  * routing moderation through it would put the platform's cut on a content-moderation surface for no
@@ -59,7 +59,7 @@ export class AdminVenuePhotosService {
 
   /**
    * One venue's photo slots — always all three, occupied or not. Preview paths are resolved against
-   * the API origin here, at the service boundary (#142 review F-7), so the template treats them as
+   * the API origin here, at the service boundary, so the template treats them as
    * opaque strings.
    */
   slots(venueId: number): Promise<AdminVenuePhotosView> {
@@ -71,8 +71,8 @@ export class AdminVenuePhotosService {
   }
 
   /**
-   * Remove one slot's photo — irreversible, and the bytes are gone (#504). `204`; `404` when empty.
-   * A non-blank `reason` rides the {@link AUDIT_REASON_HEADER} into the audit trail (#507); header
+   * Remove one slot's photo — irreversible, and the bytes are gone. `204`; `404` when empty.
+   * A non-blank `reason` rides the {@link AUDIT_REASON_HEADER} into the audit trail; header
    * values must be Latin-1, so anything outside it becomes a space rather than an aborted request.
    */
   takedown(venueId: number, slot: PhotoSlotKey, reason?: string): Promise<void> {

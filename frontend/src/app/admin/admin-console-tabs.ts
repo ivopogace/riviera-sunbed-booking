@@ -2,14 +2,14 @@ import { Component, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 /**
- * The console's canonical tab order, answering epic #348's open question Q1 — the strip's
+ * The console's canonical tab order — the strip's
  * information architecture is an ORDER, not a layout (see {@link AdminConsoleTabs}).
  *
  * <p>Ordered by what each tab <em>is</em>, not by when it shipped: the console home, then the money
  * the platform sets and pays, then the two outbox re-drive levers (Email and Refunds share
  * `OutboxLever`), then moderation, then erasure, and Audit last because it is the record of
  * all of the above. One slot is still reserved for a tab that does not exist yet —
- * <strong>Payouts (A6)</strong>; every tab that ships has landed in its slot without the order
+ * <strong>Payouts</strong>; every tab that ships has landed in its slot without the order
  * being renegotiated, which is what writing it down bought.
  *
  * <p>This is the contract, not a snapshot: `admin-console-tabs.spec.ts` pins that the rendered tabs
@@ -28,17 +28,17 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
 ] as const;
 
 /**
- * The platform-admin console's tab strip (#405), drawn from the admin-console design canvas
+ * The platform-admin console's tab strip, drawn from the admin-console design canvas
  * (`docs/design/riviera-admin-console.dc.html`): porcelain glass pills, the active one lifted.
  *
  * <p><strong>Routed tabs, not local state.</strong> The canvas models tabs as a `tab` state field
  * because it is a single demo page; here each tab is its own lazy route, so it is deep-linkable,
  * back-button-correct, and only the tab you opened is downloaded — the operator console's shape
- * (#170), minus the layout component.
+ * minus the layout component.
  *
- * <p><strong>Why still no layout component, and no grouping (Q1, #348).</strong> Measured at 360px
- * against the real pills, the wrap costs 2 rows at five tabs and 3 rows at <em>seven</em> (today,
- * since A3) as well as at six and eight alike, never clipping and never scrolling sideways at any
+ * <p><strong>Why still no layout component, and no grouping.</strong> Measured at 360px
+ * against the real pills, the wrap costs 2 rows at five tabs and 3 rows at <em>seven</em> (today's
+ * count) as well as at six and eight alike, never clipping and never scrolling sideways at any
  * width — so absorbing every planned tab is free, and the alternatives all cost more than they save.
  * Grouping degenerates: the natural
  * clusters put Operators and Privacy alone in groups of one. An overflow menu buys ~48px by hiding
@@ -49,8 +49,8 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
  * `e2e/admin-console-tabs.e2e.ts` fails if the budget is ever exceeded.
  *
  * <p><strong>Which tabs exist is a backend question.</strong> This strip lists what ships, which is
- * why Photos (#511) appears here without appearing on the canvas at all: the canvas's Privacy tab
- * is scoped to GDPR data-subject erasure (built as drawn by A3, #348), and content moderation is a
+ * why Photos appears here without appearing on the canvas at all: the canvas's Privacy tab
+ * is scoped to GDPR data-subject erasure (built as drawn), and content moderation is a
  * different job. The canvas's own five-tab strip predates four of the tabs that ship and is not the
  * target IA.
  *
