@@ -139,7 +139,7 @@ describe('AdminOperators', () => {
     expect(service.accounts).toHaveBeenCalledTimes(2); // initial load + reconcile, never a local removal
   });
 
-  /** #519 (AC-1): grounds typed into the confirmation ride the suspension into the audit trail. */
+  /** Grounds typed into the confirmation ride the suspension into the audit trail. */
   it('passes typed grounds to the suspend', async () => {
     const service = serviceStub(rows, accounts);
     const fixture = await render(authStub({ isAdmin: true }), service);
@@ -186,7 +186,7 @@ describe('AdminOperators', () => {
   });
 
   /**
-   * WCAG 2.4.3 — the recurring #148/#351/#462/#505 stranded-focus class. Arming and dismissing
+   * WCAG 2.4.3 — the recurring stranded-focus class. Arming and dismissing
    * each destroy the control that was just activated, so focus must be moved deliberately.
    */
   it('moves focus onto the confirmation when armed rather than stranding it (AC-5)', async () => {

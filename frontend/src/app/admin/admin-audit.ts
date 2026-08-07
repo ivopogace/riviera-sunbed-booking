@@ -16,7 +16,7 @@ import { AdminAuditService } from './admin-audit.service';
 import { AdminAuditEntryView } from './admin.model';
 
 /**
- * The admin console's Audit tab (#507) — the accountability record ADR-0013 requires: who did what,
+ * The admin console's Audit tab — the accountability record ADR-0013 requires: who did what,
  * to what, when, and (when offered) on what grounds, for every mutating `/api/admin/**` action that
  * reached past the security gate. Until this surface the trail was API/DB-readable only.
  *
@@ -169,7 +169,7 @@ export class AdminAudit {
   /**
    * Retry from the error banner. A successful retry destroys the banner — and the Retry button the
    * user just activated — so focus is parked on the card that replaces it (WCAG 2.4.3, the recurring
-   * #148/#351/#462 stranded-focus class, same cure as the Photos tab's confirmation swaps). The
+   * stranded-focus class, same cure as the Photos tab's confirmation swaps). The
    * initial automatic load never moves focus: only a user-initiated retry does.
    */
   protected async retry(): Promise<void> {

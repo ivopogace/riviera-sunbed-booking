@@ -18,7 +18,7 @@ import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminVenuePhotosService, ModerationVenue } from './admin-venue-photos.service';
 import { AdminPhotoSlotView } from './admin.model';
 
-/** The slot labels, in the backend's `PhotoSlot` declaration order (#142). */
+/** The slot labels, in the backend's `PhotoSlot` declaration order. */
 const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
   cover: 'Cover',
   sunbeds: 'Sunbeds',
@@ -26,7 +26,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
 };
 
 /**
- * The admin console's Photos tab (#511) — the surface that makes #504's takedown usable. Until this
+ * The admin console's Photos tab — the surface that makes the moderation takedown usable. Until this
  * tab, removing a reported photo meant hand-crafting an HTTP `DELETE` with a session cookie and a
  * CSRF token, which is not a thing anyone does from a phone when a report arrives by email.
  *
@@ -34,14 +34,14 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
  * to land in; a report names a venue and the moderator finds it. The list is the public catalogue —
  * public data, every venue, no publish filter — so no admin venue endpoint had to be invented.
  *
- * <p><strong>Every slot renders, occupied or not.</strong> Emptiness is the null preview URL (#142
- * review F-11), so a takedown just empties its slot in place — no re-fetch, and the grid never
+ * <p><strong>Every slot renders, occupied or not.</strong> Emptiness is the null preview URL,
+ * so a takedown just empties its slot in place — no re-fetch, and the grid never
  * reflows under the moderator mid-decision.
  *
  * <p><strong>The confirmation is the whole safety story.</strong> A takedown destroys bytes and there
  * is no undo, so Remove only *asks*, and the question names the venue and the slot — the
  * {@code admin-operators} suspend precedent, inline rather than modal, so there is nothing to
- * focus-trap and the action stays where it was clicked. Since #507 the confirmation also collects
+ * focus-trap and the action stays where it was clicked. The confirmation also collects
  * optional grounds, which ride the `X-Audit-Reason` header into the platform's admin audit trail.
  *
  * <p>Like every admin tab, the page self-gates on {@link OperatorAuth} for UX while the backend
@@ -261,8 +261,8 @@ export class AdminVenuePhotos {
   /**
    * Open the confirmation and put focus on it. Each of the three transitions below destroys the
    * element that was just activated, which strands keyboard/AT focus on `<body>` unless focus is
-   * moved deliberately (WCAG 2.4.3 — the recurring #148/#351/#462 class, fixed the same way in
-   * #505). Asking moves focus to the confirm button; keeping it returns focus to Remove; a completed
+   * moved deliberately (WCAG 2.4.3 — the recurring stranded-focus class). Asking moves focus to
+   * the confirm button; keeping it returns focus to Remove; a completed
    * removal has no Remove button left to return to, so focus parks on the slot card itself.
    */
   protected askToRemove(slot: PhotoSlotKey): void {
@@ -336,7 +336,7 @@ export class AdminVenuePhotos {
 
   protected async remove(venue: ModerationVenue, slot: PhotoSlotKey): Promise<void> {
     this.busy.set(true);
-    // #507: typed grounds ride the takedown into the audit trail; no reason → the two-argument call.
+    // Typed grounds ride the takedown into the audit trail; no reason → the two-argument call.
     const grounds = this.reason().trim();
     try {
       await (grounds === ''

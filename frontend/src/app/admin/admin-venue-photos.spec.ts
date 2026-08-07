@@ -9,7 +9,7 @@ import { AdminVenuePhotosService } from './admin-venue-photos.service';
 import { AdminVenuePhotosView } from './admin.model';
 
 /**
- * The admin console's Photos tab (#511) — the surface that makes #504's takedown usable. Three
+ * The admin console's Photos tab — the surface that makes the moderation takedown usable. Three
  * things matter here and nothing else does: an admin sees every slot of a venue it does not own,
  * a removal cannot happen on one click, and a non-admin never sees the surface at all.
  */
@@ -158,7 +158,7 @@ describe('AdminVenuePhotos', () => {
     expect(byTestId(fixture, 'admin-photo-preview-sunbeds')).not.toBeNull();
   });
 
-  /** #507 (AC-6): grounds typed into the confirmation ride the takedown into the audit trail. */
+  /** Grounds typed into the confirmation ride the takedown into the audit trail. */
   it('passes a typed reason to the takedown', async () => {
     const service = serviceStub();
     const fixture = await render(authStub(), service);
@@ -302,7 +302,7 @@ describe('AdminVenuePhotos', () => {
   });
 
   /**
-   * WCAG 2.4.3 — the recurring #148/#351/#462 stranded-focus class. Each transition destroys the
+   * WCAG 2.4.3 — the recurring stranded-focus class. Each transition destroys the
    * control that was just activated, so without a deliberate move focus falls back to `<body>` and a
    * keyboard user loses their place mid-decision on an irreversible action.
    */
