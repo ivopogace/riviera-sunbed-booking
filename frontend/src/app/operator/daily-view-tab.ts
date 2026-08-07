@@ -31,7 +31,7 @@ interface ArrivalRow {
 }
 
 /**
- * The O5 Daily view tab (issue #175, epic #141) — the operator console's restyle of the staff
+ * The Daily view tab — the operator console's restyle of the staff
  * daily-operations surface: a sea-facing availability grid (tap a FREE set to mark a walk-in, tap a
  * `STAFF_MARKED` set to release; an online-booked set is locked), a Europe/Tirane date picker, and
  * an Arrivals card listing the day's confirmed bookings with their booking-code chips.
@@ -40,18 +40,18 @@ interface ArrivalRow {
  * driving adapter onto the existing owner-asserted staff mark/release writes (invariant #13):
  * `availability` stays the single writer per `(set, date)` (invariant #2) and the online/walk-in
  * pools stay separate (invariant #3). Tile classification comes from the owner availability-states
- * read (#207) — `BOOKED_ONLINE` covers any online hold, paid or not, so an unpaid hold renders locked,
+ * read — `BOOKED_ONLINE` covers any online hold, paid or not, so an unpaid hold renders locked,
  * never as a phantom walk-in. Tap state is optimistic-but-reconciled — the tile flips immediately, the
  * write is sent, then the map + bookings + states are re-read so server truth replaces the guess (the
  * server release deletes only a `STAFF_MARKED` row, so a mis-tap on an online-held tile is
  * a safe no-op). Reads `:venueId` from the parent route via {@link parentVenueId} (child routes don't
- * inherit it — the O1 finding), the same as {@link import('./pricing-tab').PricingTab}. Always
+ * inherit it), the same as {@link import('./pricing-tab').PricingTab}. Always
  * porcelain (inherited from the console shell); glass via {@link CardGlass}; the shared sea-facing
  * chrome via {@link BeachGridFrame}. Tile state is conveyed by an accessible name, not colour alone
  * (WCAG AA); codes are bearer credentials (invariant #7), shown for arrival verification, never logged.
  *
- * <p>The Request-to-Book queue and the legacy-page retirement are deliberately out of scope — they are
- * O6 (#176). This tab does daily-ops only.
+ * <p>The Request-to-Book queue is deliberately out of scope — it is the Requests tab's job. This
+ * tab does daily-ops only.
  */
 @Component({
   selector: 'app-daily-view-tab',
@@ -65,12 +65,12 @@ export class DailyViewTab {
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
   private readonly venueId = parentVenueId(this.route);
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly bookings = signal<readonly ConsoleDailyBooking[]>([]);
-  /** The day's per-set server states (#207) — the tile-classification authority; undefined until loaded. */
+  /** The day's per-set server states — the tile-classification authority; undefined until loaded. */
   private readonly states = signal<ReadonlyMap<number, HeldSetState> | undefined>(undefined);
   /** True once the initial load settles (success or failure) — drives the loading vs content state. */
   protected readonly loaded = signal(false);
@@ -86,13 +86,13 @@ export class DailyViewTab {
   private readonly overrides = signal<ReadonlyMap<number, TileState>>(new Map());
   /** Sets with an in-flight mark/release — disabled until it settles. */
   protected readonly pendingSets = signal<ReadonlySet<number>>(new Set());
-  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
-   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  /** Bumped per venue context: an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
 
   constructor() {
-    // Re-runs on an in-place venue switch (#180): reset to the fresh-mount state, then load.
+    // Re-runs on an in-place venue switch: reset to the fresh-mount state, then load.
     effect(() => {
       const id = this.venueId();
       untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
@@ -125,7 +125,7 @@ export class DailyViewTab {
     groupSetsByRow(this.venue()?.sets ?? []),
   );
 
-  /** The effective tile state per set id: optimistic override, else the server state token (#207). */
+  /** The effective tile state per set id: optimistic override, else the server state token. */
   private readonly tileState = computed<ReadonlyMap<number, TileState>>(() =>
     deriveTileStates(this.venue()?.sets ?? [], this.states() ?? new Map(), this.overrides()),
   );
@@ -268,7 +268,7 @@ export class DailyViewTab {
     }
     const requested = this.selectedDate();
     const epoch = this.epoch;
-    // Continuations re-check venue + date so a superseded venue/day never writes here (#180).
+    // Continuations re-check venue + date so a superseded venue/day never writes here.
     const current = (): boolean => this.epoch === epoch && this.selectedDate() === requested;
     const venue$ = this.venues.getVenueMap(venueId, requested).pipe(
       tap((v) => {
@@ -298,7 +298,7 @@ export class DailyViewTab {
         return of(undefined);
       }),
     );
-    // #207: a failed reconcile keeps the last consistent states, mirroring the venue read's degrade.
+    // A failed reconcile keeps the last consistent states, mirroring the venue read's degrade.
     const states$ = this.console.dailyAvailability(venueId, requested).pipe(
       tap((list) => {
         if (current()) {
@@ -310,7 +310,7 @@ export class DailyViewTab {
         return of(undefined);
       }),
     );
-    // The join flips `loaded` only once ALL reads settle — no "0 of 0 free" flash (#126).
+    // The join flips `loaded` only once ALL reads settle — no "0 of 0 free" flash.
     forkJoin([venue$, bookings$, states$]).subscribe(() => {
       if (current()) {
         // States still missing = their initial read failed: error card, never tiles without truth.

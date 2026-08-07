@@ -46,7 +46,7 @@ const EMPTY_DETAILS: VenueDetailsModel = {
   bookingCutoff: '18:00',
 };
 
-/** The three designed photo slots (#142). Only the cover is tourist-surfaced (card + map banner);
+/** The three designed photo slots. Only the cover is tourist-surfaced (card + map banner);
  *  sunbeds/bar are stored + operator-preview only. */
 const PHOTO_SLOTS: readonly { readonly key: PhotoSlotKey; readonly label: string }[] = [
   { key: 'cover', label: 'Cover photo — the beach' },
@@ -69,10 +69,10 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
 };
 
 /**
- * The O8 Venue &amp; commodities tab (issue #177, epic #141) — the operator's venue-details form
+ * The Venue &amp; commodities tab — the operator's venue-details form
  * (name/beach/region/description, booking mode, evening-before cutoff), the commodities amenity
  * toggle-chip row over the fixed catalogue, and the three photo slots with real upload / replace /
- * delete (#142; pick = upload = replace, previewed from the returned PREVIEW variant URL).
+ * delete (pick = upload = replace, previewed from the returned PREVIEW variant URL).
  *
  * <p>Loads the owner-scoped profile (`GET /api/venues/{id}/profile`) — which carries the read-only
  * <strong>commission</strong> (shown as a %) and <strong>payout currency</strong> the tourist read
@@ -94,7 +94,7 @@ export class VenueTab {
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
-   *  invalid) — reactive to in-place venue switches, which reuse this instance (#180). */
+   *  invalid) — reactive to in-place venue switches, which reuse this instance. */
   protected readonly venueId = parentVenueId(this.route);
 
   protected readonly loaded = signal(false);
@@ -105,11 +105,11 @@ export class VenueTab {
   /** A field-level error for the distance input (not a Signal-Form field), so a bad metres value points
    *  the operator at the right field instead of a generic form-wide message. */
   protected readonly distanceError = signal(false);
-  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
-   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  /** Bumped per venue context: an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
-  /** The optimistic-concurrency token loaded with the profile (#224), echoed back on Save; a `409
+  /** The optimistic-concurrency token loaded with the profile, echoed back on Save; a `409
    *  STALE_WRITE` means the venue moved on since — the tab keeps the edits and offers Reload. */
   protected readonly loadedVersion = signal<number | null>(null);
 
@@ -137,7 +137,7 @@ export class VenueTab {
   protected readonly distanceDraft = signal('');
 
   protected readonly photoSlots = PHOTO_SLOTS;
-  /** Per-slot photo UI state (#142), seeded from the profile's `photos` map on load/reload. */
+  /** Per-slot photo UI state, seeded from the profile's `photos` map on load/reload. */
   protected readonly slotUi = signal<Readonly<Record<PhotoSlotKey, SlotUi>>>(EMPTY_SLOTS);
 
   constructor() {
@@ -149,7 +149,7 @@ export class VenueTab {
       this.saved.set(false);
     });
 
-    // Re-runs on an in-place venue switch (#180): reset the form + flags, then load the new venue.
+    // Re-runs on an in-place venue switch: reset the form + flags, then load the new venue.
     effect(() => {
       const id = this.venueId();
       untracked(() => (id === undefined ? this.loaded.set(true) : this.resetForVenue(id)));
@@ -235,7 +235,7 @@ export class VenueTab {
       const expectedVersion = this.loadedVersion();
       if (expectedVersion === null) {
         // The form is only interactable after a successful load seeds the version, so this is
-        // defensive — never save without the token the server needs to detect a stale write (#224).
+        // defensive — never save without the token the server needs to detect a stale write.
         return;
       }
       const m = this.details();
@@ -258,7 +258,7 @@ export class VenueTab {
           return; // a venue switch superseded this save's UI state (#180); saving clears in finally
         }
         this.saved.set(true);
-        // The conditional write bumped the row's version by exactly one (#224); advance our token so a
+        // The conditional write bumped the row's version by exactly one; advance our token so a
         // second consecutive save by the same operator isn't spuriously rejected as a stale write.
         this.loadedVersion.set(expectedVersion + 1);
       } catch (error) {
@@ -343,7 +343,7 @@ export class VenueTab {
   }
 
   /**
-   * A file was picked for a slot (#142): upload it (the server replaces the slot, so pick = upload
+   * A file was picked for a slot: upload it (the server replaces the slot, so pick = upload
    * = replace) and show the returned PREVIEW variant. Validation is server-side — the processor's
    * magic-byte/size/dimension rejections come back as displayable codes; the client never
    * second-guesses the bytes. A 401 drops the lost session, like the profile save.
@@ -377,7 +377,7 @@ export class VenueTab {
     }
   }
 
-  /** Remove the slot's photo (#142) — a single-transaction erasure server-side (metadata + bytes). */
+  /** Remove the slot's photo — a single-transaction erasure server-side (metadata + bytes). */
   protected async onPhotoRemove(slot: PhotoSlotKey): Promise<void> {
     const venueId = this.venueId();
     if (venueId === undefined || this.slotUi()[slot].busy) {
@@ -431,7 +431,7 @@ export class VenueTab {
   }
 
   /**
-   * Recover from a `409 STALE_WRITE` (#224): re-load the latest server profile — re-seeding every
+   * Recover from a `409 STALE_WRITE`: re-load the latest server profile — re-seeding every
    * field and the version — and clear the conflict banner. The preserve-edits UX is deliberate: a 409
    * itself never touches the form (so the operator keeps their work); only this explicit Reload
    * discards it in favour of the current server state, from which they re-apply and Save.

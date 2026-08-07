@@ -19,7 +19,7 @@ interface ConsoleTab {
 }
 
 /**
- * Operator console shell (issue #170, epic #141 foundation). The porcelain-light glass chrome that
+ * Operator console shell. The porcelain-light glass chrome that
  * wraps the operator surface at `/operator/:venueId`: a sticky header (Operator wordmark, venue
  * title, signed-in-as, sign out) and the pill tab nav with a live Requests badge, hosting each tab
  * as a child route. The app shell (`app.ts`) suppresses all of its own chrome for
@@ -31,9 +31,9 @@ interface ConsoleTab {
  * chose the dark `riviera` theme still sees a light console, and their choice is preserved on return
  * (AC-6). The console never injects `ThemeService` and exposes no theme switcher.
  *
- * <p>Since S9 (#277) it carries <strong>no sign-in gate</strong>: {@code operatorSessionGuard} owns
- * that, and because the guard awaits the session restore before deciding, the console no longer needs
- * its own "Checking your session…" state either — it only ever renders for a signed-in operator.
+ * <p>It carries <strong>no sign-in gate</strong>: {@code operatorSessionGuard} owns
+ * that, and because the guard awaits the session restore before deciding, the console needs no
+ * "Checking your session…" state of its own either — it only ever renders for a signed-in operator.
  */
 @Component({
   selector: 'app-operator-console',
@@ -50,7 +50,7 @@ export class OperatorConsole {
   private readonly requests = inject(PendingRequestsStore);
   protected readonly operator = inject(OperatorAuth);
 
-  /** The venue this console manages — reactive to in-place `:venueId` changes (#180): the router
+  /** The venue this console manages — reactive to in-place `:venueId` changes: the router
    *  reuses this instance when only the param differs, so a snapshot read would pin the old venue. */
   protected readonly venueId = venueIdParam(this.route);
 
@@ -66,19 +66,19 @@ export class OperatorConsole {
 
   /** The venue name shown in the header, from the public venue read (best-effort). */
   protected readonly venueName = signal<string | undefined>(undefined);
-  /** The venue map loaded per venue for the header, shared with the stats strip for its free/total tile (#171). */
+  /** The venue map loaded per venue for the header, shared with the stats strip for its free/total tile. */
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   /** The live pending-request count for the Requests tab badge — the shared store the Requests tab
-   *  writes after every accept/decline, so the badge stays in sync with the queue (#176). The shell
+   *  writes after every accept/decline, so the badge stays in sync with the queue. The shell
    *  seeds it from its own count read below; a failed read leaves it at 0 (no badge). */
   protected readonly requestsCount = this.requests.count;
-  /** Bumped per venue context (#180): an identity guard — a venueId value check passes again
-   *  after an A→B→A switch, so continuations compare this instead (the #487 precedent). */
+  /** Bumped per venue context: an identity guard — a venueId value check passes again
+   *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
 
   constructor() {
-    // Load per session (#109: the async /me restore resolves late) AND per venue param (#180).
+    // Load per session (the async /me restore resolves late) AND per venue param.
     effect(() => {
       const id = this.venueId();
       if (this.operator.signedIn() && id !== undefined) {
@@ -93,7 +93,7 @@ export class OperatorConsole {
     this.venue.set(undefined);
     this.venueMap.reset(); // it outlives this component — the next operator must not inherit it
     this.requests.reset();
-    // The guard gates on ACTIVATION, so leave ourselves rather than sit on a dead session (#277).
+    // The guard gates on ACTIVATION, so leave ourselves rather than sit on a dead session.
     await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
   }
 
@@ -103,14 +103,14 @@ export class OperatorConsole {
    */
   private load(venueId: number): void {
     const epoch = ++this.epoch;
-    // A venue switch reuses this instance (#180) — drop the old name/map while the new one loads.
+    // A venue switch reuses this instance — drop the old name/map while the new one loads.
     this.venueName.set(undefined);
     this.venue.set(undefined);
     // Fresh load starts the badge at 0, so a slow/failed seed never shows a stale count — nor
     // one leaked from a previously-managed venue (the store is a root singleton). The Requests tab, once
     // visited, takes authority over this store via `set`; the shell only ever seeds it.
     this.requests.reset();
-    // Continuations re-check the venue so a superseded venue's reads never land here (#180).
+    // Continuations re-check the venue so a superseded venue's reads never land here.
     this.bestEffort(this.venueMap.load(venueId, todayBookingDate(new Date())), (venue) => {
       if (this.epoch === epoch) {
         this.venueName.set(venue.name);

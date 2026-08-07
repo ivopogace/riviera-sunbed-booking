@@ -19,7 +19,7 @@ function subLineOf(b: MyBookingSummary): string {
   switch (b.status) {
     case 'AWAITING_PAYMENT':
       // No server pay-by deadline exists (only requestExpiresAt, the venue response deadline) →
-      // fall back rather than invent a cutoff (invariants #4/#6; the epic forbids a backend change).
+      // fall back rather than invent a cutoff (invariants #4/#6; deliberately not a backend change).
       return 'Payment needed';
     case 'PENDING_REQUEST':
       return b.requestExpiresAt
@@ -73,7 +73,7 @@ function buildView(b: MyBookingSummary): RowView {
 
 /**
  * One list row: still fetching, loaded (its view-model ready), or a transient fetch failure. A
- * loaded row carries its raw ISO `bookingDate` — the chronological sort key (F4 #246) — separate
+ * loaded row carries its raw ISO `bookingDate` — the chronological sort key — separate
  * from the presentation-only {@link RowView}.
  */
 type Row =
@@ -82,14 +82,14 @@ type Row =
   | { readonly code: string; readonly state: 'failed' };
 
 /**
- * Display order (F4 #246): loaded rows by booking date, newest first — the same key and direction
+ * Display order: loaded rows by booking date, newest first — the same key and direction
  * as the backend account list (`booking_date DESC`) — with still-loading/failed rows (date not yet
  * known) last. Ties (same date, or both undated) fall back to `rankOf`, each code's first-seen
  * position (device-store order, then the account list's own order), so same-date rows keep a
  * DETERMINISTIC order instead of freezing whichever fetch happened to resolve first — sorting is
  * re-applied incrementally on every resolution, so a date-only comparator would bake the network's
- * completion order into the list. The F2 rule is untouched (rows still render immediately, then
- * sort). ISO `YYYY-MM-DD` compares correctly as a string.
+ * completion order into the list. The render-first rule is untouched (rows still render
+ * immediately, then sort). ISO `YYYY-MM-DD` compares correctly as a string.
  */
 function inDisplayOrder(rows: readonly Row[], rankOf: ReadonlyMap<string, number>): readonly Row[] {
   const dateOf = (r: Row): string => (r.state === 'loaded' ? r.bookingDate : '');
@@ -104,7 +104,7 @@ function inDisplayOrder(rows: readonly Row[], rankOf: ReadonlyMap<string, number
 }
 
 /**
- * How many per-code lookups may be in flight at once (#164). Under the ~6-connections-per-host
+ * How many per-code lookups may be in flight at once. Under the ~6-connections-per-host
  * HTTP/1.1 cap this leaves a slot for the account list; on HTTP/2 it is a deliberate self-limit.
  */
 const DEVICE_FETCH_CONCURRENCY = 5;
@@ -115,27 +115,28 @@ function isNotFound(error: unknown): boolean {
 }
 
 /**
- * The tourist's "My bookings" list (issue #139 device-local base; S3 #114 signed-in merge).
+ * The tourist's "My bookings" list: a device-local code base, merged with the account's own
+ * list when signed in.
  *
  * <p><strong>Signed out (guest):</strong> the only key to a booking is its unguessable code
  * (invariant #7) — {@link DeviceLocalBookings} holds the codes this browser created, and this screen
  * fetches each live from `GET /api/bookings/{code}` so every row shows the current server status;
  * there is deliberately no guest list endpoint.
  *
- * <p><strong>Signed in (S3 #114):</strong> the screen also loads the customer's account-linked
+ * <p><strong>Signed in:</strong> the screen also loads the customer's account-linked
  * bookings from `GET /api/me/bookings` (a single, already-enriched call) and MERGES them with the
  * device-local codes, deduped by code — nothing the user could already see disappears, and
  * account-linked bookings show on any device they sign in on. Back-linking past guest bookings by
- * email is a later, #113-gated step (design D-6), so a pre-sign-in guest booking made elsewhere is
- * not yet listed here. The merge is display-only — no booking codes are handed to the account.
+ * email is a permanent non-goal (design D-6), so a pre-sign-in guest booking made elsewhere is
+ * never listed here. The merge is display-only — no booking codes are handed to the account.
  *
- * <p><strong>Fetch scheduling (#164):</strong> the per-code lookups are queued through a bounded
+ * <p><strong>Fetch scheduling:</strong> the per-code lookups are queued through a bounded
  * {@link DEVICE_FETCH_CONCURRENCY} rather than all issued at once. That bound is also what makes
  * the account list able to answer for a device code: because the queue subscribes to each lookup
  * lazily, a code still waiting its turn when `GET /api/me/bookings` returns is served from that
  * response and never fetched. Crucially this is a dequeue-time skip, **not** a barrier — device
  * rows and their first requests go out immediately, so a slow or failed account list never delays
- * them (review F2). Because those first requests are therefore always in flight when the account
+ * them. Because those first requests are therefore always in flight when the account
  * list lands, the account's answer is also treated as **authoritative once given**: a per-code
  * lookup that fails afterwards leaves the row alone rather than retracting a booking the account
  * just vouched for. The stored code list itself is deliberately uncapped and unpruned — see
@@ -143,7 +144,7 @@ function isNotFound(error: unknown): boolean {
  *
  * <p>Each row loads independently into a precomputed {@link RowView}, and the list stays
  * chronologically sorted — newest booking date first, undated (still-loading/failed) rows last —
- * re-sorting as each async row resolves ({@link inDisplayOrder}, F4 #246). Rows link to the T5
+ * re-sorting as each async row resolves ({@link inDisplayOrder}). Rows link to the
  * `/booking/:code` detail view. Money renders from integer minor units via {@link formatMoney}
  * (invariant #5); the PENDING_REQUEST deadline via {@link formatDeadline} (Europe/Tirane, invariant
  * #6). On a `404` a device-local row is dropped from view but the code is kept (invariant #7 — a 404
@@ -261,12 +262,12 @@ export class MyBookings {
   protected readonly loading = signal(true);
   /**
    * The account list (signed-in) failed to load — surface a Retry rather than silently hiding the
-   * account bookings behind the device-local ones (review F1).
+   * account bookings behind the device-local ones.
    */
   protected readonly accountError = signal(false);
   /**
-   * Codes the account list has already answered for (#164). Consulted when a queued per-code lookup
-   * is DEQUEUED — never as a barrier, so device rows are still issued immediately (review F2).
+   * Codes the account list has already answered for. Consulted when a queued per-code lookup
+   * is DEQUEUED — never as a barrier, so device rows are still issued immediately.
    */
   private readonly accountResolved = new Set<string>();
   /** Each code's first-seen position — the {@link inDisplayOrder} tie-break for same-date rows. */
@@ -287,18 +288,20 @@ export class MyBookings {
     });
   }
 
+  /**
+   * Device-local rows render IMMEDIATELY in both modes, so a slow or failed account fetch never
+   * blocks them; signed in, the account list then merges IN the bookings this device doesn't
+   * already list.
+   */
   private loadAll(): void {
     const codes = this.store.codes();
-    // Device-local rows render IMMEDIATELY in both modes, so a slow or failed account fetch never
-    // blocks them (review F2 — pre-S3 the device bookings always showed at once). Signed in, the
-    // account list then merges IN the bookings this device doesn't already list.
     this.loadDeviceLocal(codes);
     if (this.auth.signedIn()) {
       this.loadAccount();
     }
   }
 
-  /** Render this device's remembered codes (issue #139), each fetched live by code, K at a time. */
+  /** Render this device's remembered codes, each fetched live by code, K at a time. */
   private loadDeviceLocal(codes: readonly string[]): void {
     codes.forEach((code, i) => this.displayRank.set(code, i));
     this.rows.set(codes.map((code) => ({ code, state: 'loading' as const })));
@@ -320,12 +323,12 @@ export class MyBookings {
   }
 
   /**
-   * Signed in (S3 #114): merge the account's server list ON TOP of the already-rendered device rows,
+   * Signed in: merge the account's server list ON TOP of the already-rendered device rows,
    * deduped by code. A failed or slow list call leaves the device rows intact and surfaces a Retry
-   * (review F1) rather than silently hiding the account bookings; a 401 (expired session) surfaces the
+   * rather than silently hiding the account bookings; a 401 (expired session) surfaces the
    * same way, not as a false "these are all your bookings."
    *
-   * <p>Each returned code is also recorded as account-resolved (#164), so a device code still sitting
+   * <p>Each returned code is also recorded as account-resolved, so a device code still sitting
    * in the fetch queue is answered from here instead of costing a second request for the same booking.
    */
   private loadAccount(): void {
@@ -351,7 +354,7 @@ export class MyBookings {
 
   /**
    * Merge server rows in: replace the row for a code already listed, append the rest, then re-sort
-   * chronologically ({@link inDisplayOrder}, F4 #246). Both branches earn their keep —
+   * chronologically ({@link inDisplayOrder}). Both branches earn their keep —
    * <em>replace</em> answers a code still queued (its row is listed, loading), <em>append</em>
    * restores one a transient 404 had removed from the list entirely. Either way the row comes from
    * the same {@link buildView}, so it renders identically to a per-code fetch.
@@ -370,7 +373,7 @@ export class MyBookings {
     });
   }
 
-  /** Re-attempt the account list after a failure (review F1); the device rows stay untouched. */
+  /** Re-attempt the account list after a failure; the device rows stay untouched. */
   protected retryAccount(): void {
     this.loadAccount();
   }

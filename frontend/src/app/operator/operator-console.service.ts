@@ -28,12 +28,12 @@ import {
 } from './operator-console.model';
 
 /**
- * The operator console's own read/write surface (issue #170; #171 the stats strip; #175 the daily
- * view; #176 the Requests queue).
+ * The operator console's own read/write surface — the stats strip, the daily view, and the
+ * Requests queue all read and write through here.
  *
  * <p>Single responsibility — HTTP only (no UI state; the badge count lives in
  * {@link import('./pending-requests-store').PendingRequestsStore}). The console is the successor to the
- * retired `StaffDaily` page: since O6 (#176) the full Request-to-Book client (`pendingRequests` /
+ * retired `StaffDaily` page: the full Request-to-Book client (`pendingRequests` /
  * `acceptRequest` / `declineRequest`) lives here, not in a separate `staff` feature — the one-way
  * frontend import rule forbids one feature folder depending on another. Every endpoint is
  * owner-asserted server-side (invariant #13); the session cookie + CSRF ride the `apiSessionInterceptor`.
@@ -43,20 +43,20 @@ export class OperatorConsoleService {
   private readonly http = inject(HttpClient);
   private readonly base = environment.apiBaseUrl;
 
-  /** The venue's pending booking requests, sorted server-side by response deadline (issue #98). */
+  /** The venue's pending booking requests, sorted server-side by response deadline. */
   pendingRequests(venueId: number): Observable<PendingRequestItem[]> {
     return this.http.get<PendingRequestItem[]>(
       `${this.base}/api/venues/${venueId}/booking-requests`,
     );
   }
 
-  /** The count of pending booking requests for the venue — the Requests tab badge (issue #170). */
+  /** The count of pending booking requests for the venue — the Requests tab badge. */
   pendingRequestCount(venueId: number): Observable<number> {
     return this.pendingRequests(venueId).pipe(map((requests) => requests.length));
   }
 
   /**
-   * Accept a pending request (issue #98) → `AWAITING_PAYMENT` (the guest is asked to pay) or
+   * Accept a pending request → `AWAITING_PAYMENT` (the guest is asked to pay) or
    * `CONFIRMED` (stub payment profile). Accept only moves the guest into the pay window — the booking
    * is confirmed by the signature-verified Stripe webhook, never by this call (invariant #8).
    */
@@ -67,7 +67,7 @@ export class OperatorConsoleService {
     );
   }
 
-  /** Decline a pending request (issue #98) → `DECLINED`; the soft-held set is freed server-side. */
+  /** Decline a pending request → `DECLINED`; the soft-held set is freed server-side. */
   declineRequest(venueId: number, bookingId: number): Observable<RequestDecision> {
     return this.http.post<RequestDecision>(
       `${this.base}/api/venues/${venueId}/booking-requests/${bookingId}/decline`,
@@ -75,7 +75,7 @@ export class OperatorConsoleService {
     );
   }
 
-  /** The count of confirmed online bookings for the venue on `date` — the "Booked online" tile (#171). */
+  /** The count of confirmed online bookings for the venue on `date` — the "Booked online" tile. */
   dailyBookingCount(venueId: number, date: string): Observable<number> {
     return this.http
       .get<readonly unknown[]>(`${this.base}/api/venues/${venueId}/bookings`, {
@@ -85,7 +85,7 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The venue's held sets for `date` with their authoritative state tokens (#207) —
+   * The venue's held sets for `date` with their authoritative state tokens —
    * `BOOKED_ONLINE` (any online hold, paid or not) vs `STAFF_MARKED`; a free set is absent.
    * Owner-asserted server-side (invariant #13). The Daily view's tile classification and the
    * strip's Walk-ins tile read this instead of deriving from `taken − confirmed bookings`.
@@ -98,7 +98,7 @@ export class OperatorConsoleService {
 
   /**
    * The venue's online takings for `date` — gross + net-after-commission (server-computed, invariant
-   * #9). The "Online takings today" tile (#171); an indicative per-service-date figure, not the ledger.
+   * #9). The "Online takings today" tile; an indicative per-service-date figure, not the ledger.
    */
   dailyTakings(venueId: number, date: string): Observable<TakingsView> {
     return this.http.get<TakingsView>(`${this.base}/api/venues/${venueId}/takings`, {
@@ -107,7 +107,7 @@ export class OperatorConsoleService {
   }
 
   /**
-   * Replace the venue's whole beach-map layout in one write (O3, #172). Server-side it is owner-asserted
+   * Replace the venue's whole beach-map layout in one write. Server-side it is owner-asserted
    * (invariant #13) and reject-unless-unclaimed (invariants #2/#3) — a `LAYOUT_IN_USE` failure means the
    * venue has bookings or holds and its layout is locked. `204` on success.
    */
@@ -116,9 +116,9 @@ export class OperatorConsoleService {
   }
 
   /**
-   * Reprice every set in one beach-map row (O4, #174). Non-destructive and owner-asserted server-side
+   * Reprice every set in one beach-map row. Non-destructive and owner-asserted server-side
    * (invariant #13); `price` is integer minor units + ISO currency (invariant #5). `expectedVersion` is
-   * the required optimistic-concurrency token (#226 `setVersion`) the tab loaded — a stale token is
+   * the required optimistic-concurrency token (`setVersion`) the tab loaded — a stale token is
    * rejected `409 STALE_WRITE`, a missing one `400`. `204` on success.
    */
   repriceRow(
@@ -135,7 +135,7 @@ export class OperatorConsoleService {
 
   /**
    * The venue's CONFIRMED online bookings for `date`, each as `(setId, code)` — the Daily view's
-   * Arrivals list (O5, #175). Owner-asserted server-side (invariant #13); the code is display-only
+   * Arrivals list. Owner-asserted server-side (invariant #13); the code is display-only
    * (invariant #7) — shown for arrival verification, never logged.
    */
   dailyBookings(venueId: number, date: string): Observable<ConsoleDailyBooking[]> {
@@ -167,7 +167,7 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The venue's payout ledger (O7 #173) — accruals + reversals with the server-authoritative net owed
+   * The venue's payout ledger — accruals + reversals with the server-authoritative net owed
    * (`netOwedMinor`, invariant #9). Owner-asserted server-side (invariant #13); money is integer minor
    * units (invariant #5) rendered by the tab, never computed; carries no booking code / guest identity
    * (invariants #7/#11).
@@ -177,7 +177,7 @@ export class OperatorConsoleService {
   }
 
   /**
-   * Issue a **full weather refund** for every CONFIRMED booking on `venueId`+`date` (O7 #173, invariant
+   * Issue a **full weather refund** for every CONFIRMED booking on `venueId`+`date` (invariant
    * #10) — admin-triggered, whole-day, regardless of the cutoff. The server decides + executes the
    * refund (via the Stripe webhook path, invariant #8) and posts the payout reversal (#9); this only
    * triggers it. `date` is a required query param (no implicit "today"). Owner-asserted (invariant #13);
@@ -192,13 +192,13 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The owner's venue admin profile (O8 #177) — the editable core + the read-only commission +
+   * The owner's venue admin profile — the editable core + the read-only commission +
    * payout currency the Venue tab pre-fills. Operator-gated + owner-asserted server-side (invariant
    * #13); the endpoint sits ABOVE the public venue GET so commission never leaks to the tourist read.
    */
   venueProfile(venueId: number): Observable<VenueProfileView> {
     return this.http.get<VenueProfileView>(`${this.base}/api/venues/${venueId}/profile`).pipe(
-      // Preview paths resolve against the API origin (#142 review F-7; no-op same-origin prod).
+      // Preview paths resolve against the API origin (no-op same-origin prod).
       map((profile) => ({
         ...profile,
         photos: {
@@ -211,7 +211,7 @@ export class OperatorConsoleService {
   }
 
   /**
-   * Save the venue's editable profile (O8 #177) — REPLACES it (the form re-sends every field).
+   * Save the venue's editable profile — REPLACES it (the form re-sends every field).
    * Owner-asserted server-side (invariant #13); commission + payout currency are read-only and never
    * sent (invariant #9). `204` on success; an unknown amenity code / bad field is `400` (§6b).
    */
@@ -247,7 +247,7 @@ export function venueProfileErrorOf(error: unknown): VenueProfileErrorCode {
 
 /**
  * Map a Payouts-tab failure — a ledger read or a weather refund — to a known {@link PayoutErrorCode}
- * (RFC-7807 `code`, #97; or 401). One mapper for both: 403 `NOT_VENUE_OWNER` (invariant #13) and 401 are
+ * (RFC-7807 `code`; or 401). One mapper for both: 403 `NOT_VENUE_OWNER` (invariant #13) and 401 are
  * the only outcomes the tab distinguishes; everything else is generic operator copy.
  */
 export function payoutErrorOf(error: unknown): PayoutErrorCode {
@@ -262,7 +262,7 @@ export function payoutErrorOf(error: unknown): PayoutErrorCode {
   return 'UNKNOWN';
 }
 
-/** Map an HTTP failure of a walk-in mark to a known {@link MarkErrorCode} (RFC-7807 `code`, #97; or 401). */
+/** Map an HTTP failure of a walk-in mark to a known {@link MarkErrorCode} (RFC-7807 `code`; or 401). */
 export function markErrorOf(error: unknown): MarkErrorCode {
   if (error instanceof HttpErrorResponse) {
     if (error.status === 401) {
@@ -344,7 +344,7 @@ export function repriceErrorOf(error: unknown): RepriceErrorCode {
   return 'UNKNOWN';
 }
 
-/** Map an HTTP failure of the layout write to a known {@link LayoutErrorCode} (RFC-7807 `code`, issue #97). */
+/** Map an HTTP failure of the layout write to a known {@link LayoutErrorCode} (RFC-7807 `code`). */
 export function layoutErrorOf(error: unknown): LayoutErrorCode {
   if (error instanceof HttpErrorResponse) {
     if (error.status === 401) {

@@ -6,7 +6,7 @@ import { environment } from '../../environments/environment';
 import { AUTH_API, AuthPrincipal, SessionAuth, SignInResult, signInResultFor } from './session-auth';
 import { SsoProviderId, SsoRedirect } from './sso-redirect';
 
-/** The `/api/me` surface for the signed-in customer's own account writes (S8 #113). */
+/** The `/api/me` surface for the signed-in customer's own account writes. */
 const ME_API = `${environment.apiBaseUrl}/api/me`;
 
 /**
@@ -18,7 +18,7 @@ export const PASSWORD_LENGTH_MESSAGE = 'Choose a password of 8–72 characters.'
 
 /**
  * Shown when a current password is required but none was supplied — the case the backend names
- * `MISSING_CURRENT_PASSWORD` (#345). Distinct from "incorrect", which is what both change-password
+ * `MISSING_CURRENT_PASSWORD`. Distinct from "incorrect", which is what both change-password
  * endpoints used to say (or imply) for an empty field; one constant so the tourist and operator pages
  * cannot word the same server answer differently.
  */
@@ -37,7 +37,7 @@ export type ResetPasswordResult =
 export type VerifyEmailResult = 'verified' | 'invalid-token' | 'rate-limited' | 'error';
 /**
  * How an authenticated set/change-password ended. `missing-current` and `invalid-current` are told apart
- * by the problem `code` alone (#345) — collapsing them shows "incorrect" for a field the account left blank.
+ * by the problem `code` alone — collapsing them shows "incorrect" for a field the account left blank.
  */
 export type SetPasswordResult =
   | 'set'
@@ -46,14 +46,14 @@ export type SetPasswordResult =
   | 'invalid-password'
   | 'rate-limited'
   | 'error';
-/** How a self-service right-to-erasure ended (#101 [D5]). */
+/** How a self-service right-to-erasure ended. */
 export type EraseAccountResult = 'erased' | 'error';
-/** The verification-resend response body (#400): whether the do-not-email list withheld the message. */
+/** The verification-resend response body: whether the do-not-email list withheld the message. */
 interface VerificationRequested {
   readonly emailWithheld: boolean;
 }
 
-/** The stable machine-readable `code` on an RFC-7807 error body (the backend's error contract, #97). */
+/** The stable machine-readable `code` on an RFC-7807 error body (the backend's error contract). */
 function problemCode(error: unknown): string | undefined {
   return error instanceof HttpErrorResponse
     ? (error.error as { code?: string } | null)?.code
@@ -76,7 +76,7 @@ export type CustomerRegisterResult =
   | 'error';
 
 /**
- * Session-aware customer auth state (epic #108 / S2 #111) on the shared {@link SessionAuth} base — the
+ * Session-aware customer auth state on the shared {@link SessionAuth} base — the
  * tourist-side twin of {@link OperatorAuth}. `signIn`/`register` post to the customer session
  * endpoints and the backend answers with an `HttpOnly` session cookie. On construction the state is
  * restored from `GET /api/auth/me`, filtered by the base to the `CUSTOMER` principal (an operator
@@ -93,7 +93,7 @@ export class CustomerAuth extends SessionAuth {
   protected readonly restoreOnStartup = this.restore();
 
   /**
-   * Start "Continue with Google/Apple" (S4, epic #108): a full-page navigation to the backend authorize
+   * Start "Continue with Google/Apple": a full-page navigation to the backend authorize
    * endpoint. The OIDC Authorization Code + PKCE flow completes server-side and returns to the SPA with a
    * session cookie — the same session as form login — so this deliberately leaves the SPA (via the
    * {@link SsoRedirect} seam) rather than an {@code HttpClient} call; `restore()` then picks up the
@@ -125,7 +125,7 @@ export class CustomerAuth extends SessionAuth {
    * leaves the session untouched. So we compare the pre/post principal IDENTITY, not just the
    * signed-in boolean: `registered` iff `/me` now reports a signed-in principal whose email differs
    * from before. The boolean alone misclassified a signed-in user registering a genuinely new,
-   * different account as `exists` (#252, review F3).
+   * different account as `exists`.
    */
   async register(email: string, password: string): Promise<CustomerRegisterResult> {
     const previousEmail = this.email();
@@ -147,7 +147,7 @@ export class CustomerAuth extends SessionAuth {
   }
 
   /**
-   * Request a password-reset link (S8 #113). The response is deliberately uniform (non-enumeration,
+   * Request a password-reset link. The response is deliberately uniform (non-enumeration,
    * D-8), so a success here means "if that email has an account, a link was sent" — never that it exists.
    */
   async forgotPassword(email: string): Promise<ForgotPasswordResult> {
@@ -159,7 +159,7 @@ export class CustomerAuth extends SessionAuth {
     }
   }
 
-  /** Redeem a reset token and set a new password (S8 #113). A bad/expired token is distinguished by `code`. */
+  /** Redeem a reset token and set a new password. A bad/expired token is distinguished by `code`. */
   async resetPassword(token: string, newPassword: string): Promise<ResetPasswordResult> {
     try {
       await firstValueFrom(
@@ -177,7 +177,7 @@ export class CustomerAuth extends SessionAuth {
     }
   }
 
-  /** Redeem an email-verification token (S8 #113); refresh `emailVerified` if this device is signed in. */
+  /** Redeem an email-verification token; refresh `emailVerified` if this device is signed in. */
   async verifyEmail(token: string): Promise<VerifyEmailResult> {
     try {
       await firstValueFrom(this.http.post<void>(`${AUTH_API}/customer/verify-email`, { token }));
@@ -194,7 +194,7 @@ export class CustomerAuth extends SessionAuth {
   }
 
   /**
-   * Set or change the signed-in customer's password (S8 #113, closes S4 F-1). An SSO-only account omits
+   * Set or change the signed-in customer's password. An SSO-only account omits
    * `currentPassword` to set its first one; an account that already has one must supply the correct current —
    * omitting it there is `missing-current`, supplying the wrong one `invalid-current`.
    */
@@ -215,8 +215,7 @@ export class CustomerAuth extends SessionAuth {
             return 'invalid-password';
         }
       }
-      // #326 gave this endpoint its first rate-limit budget, so 429 is newly reachable; without its own
-      // branch it read as a generic error and the retry advice invited the exact retry being rejected.
+      // A 429 needs its own branch: the generic retry advice would invite the exact retry being rejected.
       if (error instanceof HttpErrorResponse && error.status === 429) {
         return 'rate-limited';
       }
@@ -225,7 +224,7 @@ export class CustomerAuth extends SessionAuth {
   }
 
   /**
-   * Erase the signed-in customer's account + contact PII (#101 [D5], right-to-erasure). The backend
+   * Erase the signed-in customer's account + contact PII (right-to-erasure). The backend
    * scrubs in place (the booking/payment/payout records are retained under statutory retention) and
    * revokes every session, so on success we also clear local state via {@link signOut} — the tourist is
    * signed out on this device too. Idempotent server-side; a transport failure is `'error'`.
@@ -241,10 +240,10 @@ export class CustomerAuth extends SessionAuth {
   }
 
   /**
-   * Re-request a verification email to the signed-in customer's own address (S8 #113).
+   * Re-request a verification email to the signed-in customer's own address.
    *
    * `'withheld'` means the backend accepted the request but the address is on the do-not-email list,
-   * so no message will leave (#400) — distinct from `'error'`, where the request itself failed and
+   * so no message will leave — distinct from `'error'`, where the request itself failed and
    * retrying may work. The distinction only exists on this authenticated endpoint; the anonymous
    * forgot-password flow stays deliberately uninformative (D-8).
    */

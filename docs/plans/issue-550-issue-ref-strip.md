@@ -72,6 +72,12 @@ behavior in scope; the pins are the gates, per the #544 precedent.
   (`admin-operators.spec.ts:280` is the known instance) — are explicitly out of scope and
   survive the pass; noted here so AC-1's "zero" is measured by the locator, not by grep.
 - **Backend `#`/SQL `--` comment syntaxes** — out of scope by the #522/F-6 precedent.
+- **Refs in trailing comments on code-bearing lines** (F-8): editing the comment flags the host
+  line as Sonar "new code" and fails coverage on uncovered branches, on a diff AC-2 proves inert.
+  30 refs / 9 files tree-wide stay, and decay under A-5 when their code is genuinely edited.
+- **Spec/sibling files keep their slice labels until their own batch** — batching by file means a
+  component can lose its `O5`/`O8` self-label while its `.spec.ts` twins still use it; transient
+  drift, resolved when the spec batch lands, not a defect.
 
 ## Behavior-parity ledger
 
@@ -153,15 +159,17 @@ stale as batches land.
 
 ## Execution status
 
-**Stage pointer:** batch 1 gates all green on PR #551 — awaiting merge.
+**Stage pointer:** batch 2 gates all green on PR #552 (CI + Sonar on `a16a603`) — awaiting merge.
 
-**Next action:** on PR #551's merge, restart the branch from `main` and cut batch A-2 from the
-post-probe census (dense files first: `operator/`, `booking/`, `core/`).
+**Next action:** on PR #552's merge, restart the branch from `main` and cut batch A-3 (next dense
+files by the regenerated census: `app.ts`/`app.html`, `admin/` services + tabs, `booking-pay.ts`,
+`home.ts`), applying the full inherited rule set F-3–F-9.
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
-| A-1 (probe) | 10 densest `app/admin/` files — 83 refs (65 embedded, 18 parenthetical); + the #549 ledger-row fix in the #544 plan doc | this PR | ✅ committed `b4af5a2`, all gates green non-vacuously |
-| A-2… | remaining `frontend/src` dense files (≥4 refs), by directory | follow-up PRs | |
+| A-1 (probe) | 10 densest `app/admin/` files — 83 refs (65 embedded, 18 parenthetical); + the #549 ledger-row fix in the #544 plan doc | **merged via PR #551** | ✅ all gates green; review found F-3–F-5, fixed |
+| A-2 | next 10 dense files — `operator-console.service`, `customer-auth`, `my-bookings`, `venue-tab`, `venue-views`, `venue-map`, `operator-auth`, `session-auth`, `operator-console`, `daily-view-tab` — ~143 numeric refs removed (the locator census's "117" was doc-comment refs only; inline-comment refs and ~60 provenance labels came out too), minus 10 refs restored by the F-8 carve-out; F-4 whole-file label sweep applied (review F1/F2/O1/S9-R-1 orphans cleaned, one 3-line inline comment promoted to a doc comment); `design D-1`/`D-6` preserved per F-3; stale claims corrected per F-6 (D-6 back-linking; the retired venue-editor/staff-view surface lists) | this PR (#552) | ⏳ review ran, findings fixed; Sonar re-run pending |
+| A-3… | remaining `frontend/src` dense files (≥4 refs), by directory | follow-up PRs | |
 | A-n | sparse tail, ~30-file directory sweeps; then `frontend/e2e` | follow-up PRs | |
 | B-0 | 5-file backend-test mini-probe (R-4 rate) | | |
 | B-1… | backend test, per the mini-probe's verdict | | |
@@ -179,6 +187,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | review (2 lenses converged) | `design D-5` stripped from `admin-operators.ts` — a durable decision label in the permitted D-* class, not issue provenance; target verified (`docs/architecture/auth-signin-register.md` D-5 = self-register + admin approval) | fixed — restored as `(design D-5)`; **rule for later batches: D-\* decision labels are permitted alongside D-8** |
 | F-4 | review | two bare embedded `A7` labels survived in the commissions pair (`admin-commissions.ts` saveRate doc, `.spec.ts` inline) — the A-1 rule missed sites below the class doc | fixed — rewritten to "the backend"; **rule: sweep the whole file for labels, not just lines the locator flagged** |
 | F-5 | review | a rewrap left `schedule. A` orphaned on its own line — gates prove inertness, not readability (this pass's R-1, exactly as pre-registered) | fixed — reflowed |
+| F-6 | batch A-2 | `my-bookings.ts` claimed guest-booking back-linking "is a later, #113-gated step" — stale against the amended D-6, which makes it a **permanent non-goal**; the strip pass rewrote the sentence to the current truth rather than preserve a falsehood. Review then found the same class twice more in `operator-auth.ts` (retired venue-editor/staff-view pages still named as consumers — one site untouched by the diff), both corrected | fixed in A-2 — **rule: when a ref-bearing sentence states a superseded fact, correct it, don't launder it** |
+| F-7 | review (3 lenses converged) | `daily-view-tab.ts` dropped "and the legacy-page retirement" from its out-of-scope sentence — flagged as content loss. **Ruled: the deletion stands.** The retirement is since-completed work (CLAUDE.md: StaffDaily retired), so "out of scope" about it is pure decision history, which §6d deletes; F-6's correct-don't-launder applies only to claims still **operative** | no change — **rule: an out-of-scope claim about since-completed work is history (delete); an operative claim gone stale is corrected (F-6)** |
+| F-8 | Sonar gate (PR #552 red) | **Editing a trailing comment on a code-bearing line makes Sonar count that line as "new code"** — 10 such lines (8 `venue-tab.ts`, 2 `daily-view-tab.ts`, all `return;`-class), 8 uncovered → coverage gate failed at 20 % on a provably code-inert diff | fixed — edits reverted; **rule: refs in trailing comments on code-bearing lines are OUT OF SCOPE for this pass** (30 refs / 9 files tree-wide; the one class A-5 decay genuinely handles, since the line is edited whenever its code is) |
+| F-9 | review | four 2-digit issue refs (`#97` ×3, `issue #98`) survived — the locator's 3–4-digit pattern exists to spare `invariant #1`–`#13`, but §6d bans **all** issue numbers, and 2-digit issues are real (`#97` error contract, `#98` Request-to-Book) | fixed (3 doc-comment strips + one 2-line inline compressed) — **rule: the locator must match `#14`–`#9999` context-aware (exclude `invariant #n`), not skip 2-digit refs** |
 
 ## File structure
 
@@ -188,10 +200,10 @@ Comment-only edits across the source trees; globs stand in for the mechanical sw
 - `docs/plans/issue-550-issue-ref-strip.md` — **new**: this doc
 - `docs/plans/comment-volume-trim.md` — **modified**: phase-4 ledger row corrected (`#549`,
   96 lines) — it contradicted its own batch header three lines below
-- `frontend/src/**` — **modified**: TSDoc/HTML-comment refs stripped (Phase A)
-- `frontend/e2e/**` — **modified**: same (Phase A tail)
-- `platform/src/test/**` — **modified**: same (Phase B)
-- `platform/src/main/**` — **modified**: same (Phase C)
+- `frontend/src/` — **modified**: TSDoc/HTML-comment refs stripped (Phase A)
+- `frontend/e2e/` — **modified**: same (Phase A tail)
+- `platform/src/test/` — **modified**: same (Phase B)
+- `platform/src/main/` — **modified**: same (Phase C)
 
 ## Generalization-audit log
 
