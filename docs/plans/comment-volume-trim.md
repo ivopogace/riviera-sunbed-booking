@@ -53,8 +53,9 @@ in more depth.
       What shipped is every duplicate-bearing file the sweep *found*, which is not the same as every one
       that *exists*: the search was a 15-file read sample against 556 untrimmed over-budget files, and
       HEAD still carries 583 files / ~11,950 lines in blocks of 10+. The sample says the remainder is
-      contract, and that is a defensible basis for stopping — it is not a basis for claiming completion.
-      See *The rescan that closed the sweep*.
+      contract **on the duplication axis only** — see *The axis this sweep never measured*, which found
+      §6d's issue-number clause violated in 1,136 doc blocks. A defensible basis for stopping the
+      **volume** sweep; not a claim that the tree complies with §6d.
 - [x] AC-6 No rationale lost: every relocation target was **read** to confirm it carries the text before
       the copy was removed (R-7), per batch.
 
@@ -119,8 +120,11 @@ No component, template binding, route or service behaviour changes. TSDoc and HT
 
 ## Execution status
 
-**Stage:** ✅ complete · **Next action:** none. The sweep closed after the 2026-08-07 rescan; §6d and
-`check-comment-only.mjs` govern the rest of the tree the next time a file is edited for another reason.
+**Stage:** ✅ complete **on the volume axis** · **Next action:** decide the scoped issue-ref strip pass
+(*Scoped follow-up*, below) — the sweep shipped §6d while leaving 1,136 doc blocks violating its
+issue-number clause, which is a separate pass, not a continuation of this one. Absent that decision,
+§6d and `check-comment-only.mjs` govern the rest of the tree the next time a file is edited for another
+reason.
 
 Gates cleared on #545: full CI green; `/code-review` returned one finding at or above threshold (the
 broken ledger table) plus three below it that were fixed anyway — the two verifier blind spots now
@@ -266,6 +270,97 @@ RESPONSIBILITIES §`notification` holding a third.
 
 **Strike the ~6,800-line estimate below.** The measured reachable figure was always closer to ~1,000,
 and 912 of it shipped (#545 + #547 + #548 + this batch).
+
+### The axis this sweep never measured
+
+Added after the close-out, when the maintainer asked whether bloated Javadoc/TSDoc really was gone from
+**both** trees. Re-measuring against §6d's own text rather than against block size says **no**, and the
+gap is not where this sweep was looking.
+
+The sweep ranked by *lines in blocks of ≥10* and asked one question: **does this prose have a second
+home?** That is the right test for **volume**, and on volume the stop holds. But §6d has a second,
+blunter clause — ***"No issue numbers"*** — that needs no second-home analysis at all, and it was never
+measured. Against it, at the close of this sweep:
+
+| Tree | Doc blocks | Over §6d budget | Excess lines | **Blocks citing an issue #** | Files with ≥1 |
+|---|---|---|---|---|---|
+| backend main | 1,288 | 836 | 6,406 | 393 | 289 / 481 |
+| backend test | 977 | 597 | 3,793 | 347 | 204 / 309 |
+| frontend src | 1,008 | 354 | 1,932 | 369 | **179 / 254** |
+| frontend e2e | 47 | 15 | 77 | 27 | 10 / 11 |
+| **Total** | **3,320** | **1,802** | **12,208** | **1,136** | **682 / 1,055** |
+
+Counting 3–4-digit refs only, so `invariant #11`, `D-8`, `RV-BE-11` and `ADR-0007` — all explicitly
+permitted by §6d — are excluded. **1,756 individual refs** across those 1,136 blocks.
+
+**Two findings the volume framing hid.**
+
+1. **The 12,208 "excess" lines are mostly not bloat.** The top of that ranking is `SecurityConfig` (112
+   over), `RateLimitFilter` (94), `Bookings` (63) — files this sweep already trimmed, whose Javadoc is
+   ordering constraints and traps. §6d says so itself: over budget is *"the signal to ask whether the
+   excess is contract (keep, and the budget is advisory) or archaeology."* Do not read this column as a
+   backlog.
+2. **The issue-ref count is not a judgement call, and it is the real gap.** 65% of files carry at least
+   one. The prose is usually fine — `customer-auth.ts` documents outcomes and non-enumeration correctly
+   — with a provenance tag bolted on: `(S8 #113)`, `(#345)`, `(#101 [D5])`, `(#252, review F3)`. That is
+   §6d's own named example of what to delete.
+
+**Why the sweep missed it.** The measurement that *"deleting provenance does not reduce volume"* is
+true — a 6-line block re-wraps to 6 lines — and it correctly deprioritised provenance for a **volume**
+goal. It was then allowed to retire the question for the **compliance** goal too. Different axes; one
+finding cannot close both.
+
+**Where the claim was weakest: the frontend.** It received **one file** in the entire sweep
+(`operator-console.model.ts`, #545) and was assessed from five admin-console files, which were
+genuinely measurement records. That did not generalise — 179 of 254 frontend files cite an issue
+number, and the heaviest are core services (`customer-auth.ts` 14 blocks,
+`operator-console.service.ts` 12, `session-auth.ts` 9), not design essays.
+
+### Scoped follow-up — the issue-ref strip pass
+
+**Not** a reopening of the volume sweep; a different pass with a different shape.
+
+**The argument is not line count.** Stripping these yields ≈0 lines. It is that **a rule with 1,136
+visible violations does not govern new code** — the next file gets written by copying its neighbours,
+and today every neighbour cites issue numbers. That is precisely the drift §6d was written to stop, so
+the rule is currently aspirational in the tree that shipped it.
+
+**Shape — the opposite of the volume sweep, which is what makes it tractable.** That sweep was
+concentrated and judgement-heavy (top 12 files held most of the win). This one is **diffuse and largely
+mechanical**: 494 of the 682 affected files carry exactly **one** block, and only 9 carry 10+. A
+"heaviest first" batching therefore buys nothing; batch by **tree and directory** instead.
+
+Splitting the 1,756 refs by how they sit in the sentence:
+
+| Class | Refs | Share | Treatment |
+|---|---|---|---|
+| bare parenthetical — `(#123)`, `(issue #123)`, `(#123, #456)` | 688 | 39% | delete the parenthetical; prose untouched |
+| labelled parenthetical — `(S8 #113)`, `(epic #108)`, `(#348, A7)` | 310 | 18% | delete; the label is provenance too |
+| trailing `— #123` / `· #123` | 11 | 1% | delete |
+| **embedded in prose** — *"ROTATED by the #326 …"*, *"the recurring #148/#351/#462 class"* | **747** | **43%** | **rewrite the sentence** — not deletable |
+
+So **57% is script-assisted** and **43% needs a human-quality rewrite**. The second half is comparable
+in effort to the whole volume sweep and should be costed as such, not assumed cheap.
+
+**Suggested execution**
+- **Phase A — frontend** (`frontend/src` + `frontend/e2e`, 396 refs / 189 files). Highest value: the
+  §6d TSDoc twin has never actually been applied there, and it is the tree new UI work copies from.
+- **Phase B — backend test** (526 refs / 204 files). A-2 still applies: the "why this test exists"
+  sentence stays; only the ref goes.
+- **Phase C — backend main** (650 refs / 289 files).
+- Batch by directory, ~10 files per PR. Gates are this sweep's: `check-comment-only.mjs` (AC-2),
+  `check-inline-comments.mjs`, the plan-doc File-structure guard, `/code-review`, Sonar new-issue list.
+
+**Risks specific to this pass**
+- **A regex that strips refs can mangle prose** — `"#252, review F3"` leaves a dangling `, review F3`;
+  an embedded ref leaves a broken sentence. Never run the script as an auto-fix: use it to *locate*,
+  and edit deliberately. AC-2 proves inertness, **not** readability.
+- **Over-stripping the allowed refs.** `invariant #2`–`#13`, `D-8`, `RV-BE-11`, `ADR-0007`, `V29` and
+  `{@link Type#member}` are all legitimate; only 3–4-digit `#nnn` is banned. A single-digit-safe pattern
+  is what keeps invariant references intact.
+- **Churn without a volume win** across ~680 files. The counter-argument is A-5's standing policy —
+  §6d governs a file the next time it is edited for another reason — which would let these decay
+  naturally. Recorded so the trade is made deliberately rather than inherited.
 
 ### Block size over-predicts yield — rank by duplication instead
 
