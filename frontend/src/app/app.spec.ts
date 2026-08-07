@@ -558,7 +558,7 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
   });
 
   it('has no legacy compat-surface routes left (O8 #177 retired the last one)', () => {
-    // /venue-admin is onboarding-only and unflagged — the operator surface is all glass + bare onboarding.
+    // /venue-admin is a bare redirect to the operator home's create state — the operator surface is all glass.
     const legacy = routes.filter((r) => r.data?.['legacySurface'] === true);
     expect(legacy.map((r) => r.path)).toEqual([]);
   });

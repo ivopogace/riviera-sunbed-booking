@@ -192,7 +192,8 @@ describe('payoutErrorOf (ledger read + weather refund, #173)', () => {
 /**
  * The payout client on the console service: the per-venue ledger read and the per-date
  * weather refund — both existing, owner-asserted endpoints (invariant #13). Money is integer minor
- * units (invariant #5); the ledger carries only `bookingId`, never a code or guest identity (#7/#11).
+ * units (invariant #5); the ledger carries only `bookingId`, never a code or guest identity
+ * (invariants #7/#11).
  */
 describe('OperatorConsoleService — payout ledger + weather refund (#173)', () => {
   let service: OperatorConsoleService;

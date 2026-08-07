@@ -19,8 +19,8 @@ const FILLS: Record<string, string> = {
 
 /**
  * The booking-status pill, shared by the booking detail view and the "My bookings" list.
- * Tailwind twin of the `shared/_glass.scss` `status-chip` mixin — the last
- * recipe in that file, which retires with it. A directive, not a mixin: Tailwind has no CSS-level
+ * Tailwind twin of the retired `shared/_glass.scss` `status-chip` mixin — the last
+ * recipe that file carried. A directive, not a mixin: Tailwind has no CSS-level
  * sharing primitive, so a recipe applied to arbitrary hosts moves to the directive layer (the
  * `shared/amenity-chip.ts` precedent).
  *
