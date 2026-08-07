@@ -109,8 +109,14 @@ No component, template binding, route or service behaviour changes. TSDoc and HT
 
 ## Execution status
 
-**Stage:** Review gate on PR #545 · **Next action:** `/code-review`, then the Sonar issue list, then
-merge. The sweep continues in follow-up PRs (A-4).
+**Stage:** #545 merged — rule, tooling and first batch shipped · **Next action:** open the first
+follow-up PR for phase 3, regenerating the queue with the command below.
+
+Gates cleared on #545: full CI green; `/code-review` returned one finding at or above threshold (the
+broken ledger table) plus three below it that were fixed anyway — the two verifier blind spots now
+recorded as R-8 and the dangling relocation pointer as R-7; Sonar 0 new issues, 0 duplicated blocks,
+no coverable new lines. **Read R-7 and R-8 before starting a batch** — they are the two ways this
+sweep can silently do damage, and both were found by review rather than by the gates.
 
 | Phase | Scope | Ships in | Status |
 |---|---|---|---|
