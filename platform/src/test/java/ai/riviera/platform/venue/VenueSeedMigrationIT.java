@@ -77,9 +77,7 @@ class VenueSeedMigrationIT {
 
 	@Test
 	void seedsTheSetVersionOptimisticConcurrencyColumn() {
-		// V23: venue.set_version is the SEPARATE optimistic-concurrency token for the beach-map
-		// replace + per-row reprice writes (distinct from the profile version). NOT NULL DEFAULT 0,
-		// so the seeded Miramar venue starts at 0 and the map read always has a token to hand out.
+		// V23: venue.set_version is the SEPARATE optimistic-concurrency token for beach-map writes, NOT NULL DEFAULT 0.
 		Long setVersion = jdbc.queryForObject(
 				"SELECT set_version FROM venue WHERE name = 'Miramar Beach Club'", Long.class);
 		assertThat(setVersion).isZero();
