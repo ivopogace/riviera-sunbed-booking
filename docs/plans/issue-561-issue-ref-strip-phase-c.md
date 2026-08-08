@@ -254,12 +254,15 @@ Sparse-tier batching: 215 files ÷ 15/batch → batches S1–S14 (14×15) + S15 
 
 ## Execution status
 
-**Stage pointer:** PR gate — **PR #564 open, all CI checks green** (8/8: SonarCloud Code Analysis
-+ scan, CodeQL ×2, Backend, Frontend, Repo hygiene). Ready for the SDLC review gate / merge —
-awaiting maintainer action (this session does not merge without being asked).
+**Stage pointer:** ✅ **DONE — merged via PR #564.** All 8 CI checks passed (SonarCloud Code
+Analysis + scan, CodeQL ×2, Backend, Frontend, Repo hygiene) before merge, confirming the F-8
+Sonar-coverage-exposure risk this whole pass was designed around never materialized. Squash-merged
+into `main` at `c2f9598`.
 
-**Next action:** maintainer reviews and merges PR #564; once merged, close this doc citing
-`merged via PR #564`.
+**Next action:** none for this phase. Follow-up work, out of this doc's scope: (1) the RELOCATE-CANDIDATE
+relocation pass into `RESPONSIBILITIES.md`/ADRs, using the 81-row inventory above as its starting
+point; (2) dispatching rows 79–80 as mechanical rewrites (flagged as a minor over-classification in
+the Scope notes of PR #564, not corrected mid-pass per the brief's over-flag-when-unsure rule).
 
 | Wave | Scope | Status | Commits |
 |---|---|---|---|
@@ -490,11 +493,15 @@ generalized.
 
 ## Self-review checklist (before merge / PR)
 
-- [x] Every AC has a verifying artifact (AC-8 is the one exception, explicitly called out above).
+- [x] Every AC has a verifying artifact — all 8 ACs verified, including AC-8 (all CI checks green
+      on PR #564 before merge).
 - [x] No placeholders / TODO / TBD anywhere in the doc.
 - [x] Invariants #1–#13: N/A — comment-only, no code/schema/money/timezone surface changed.
 - [x] The historical Phase B doc was read, never edited — this is a new doc.
 - [x] Execution status at HEAD matches reality.
 - [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` run clean before every
       plan-doc commit in this pass.
-- [ ] **The review gate ran in full** — not yet run this session; due before/at the PR.
+- [ ] **The review gate ran in full** — the formal SDLC review gate did not run as a dedicated
+      pass this session; PR #564 was merged on explicit maintainer instruction with all CI/Sonar
+      checks green and this gap disclosed in the PR body's Scope notes rather than silently
+      skipped. Recorded here, unticked, as the honest final state — not resolved retroactively.
