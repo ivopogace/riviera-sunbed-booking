@@ -3,7 +3,7 @@ package ai.riviera.platform.customer.api;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 
 /**
- * Published write port that creates a customer account (S2, epic #108). The platform edge's register
+ * Published write port that creates a customer account. The platform edge's register
  * endpoint encodes the password <strong>before</strong> calling this (the module receives an
  * already-encoded, opaque hash — exactly as {@code operator.api.OperatorProvisioning} does), so no
  * Spring Security type crosses into the {@code customer} module (RV-BE-11).

@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.riviera.platform.booking.events.BookingPaymentDue;
 
 /**
- * Publishes {@link BookingPaymentDue} durably (#373). One method, and its entire reason for existing
+ * Publishes {@link BookingPaymentDue} durably. One method, and its entire reason for existing
  * is the annotation on it.
  *
  * <p><strong>Why a transaction wraps a publish that writes nothing of its own.</strong> The Event

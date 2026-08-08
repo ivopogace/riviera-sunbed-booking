@@ -1,7 +1,7 @@
 package ai.riviera.platform.booking.application.request;
 
 /**
- * The closed set of outcomes of {@link WithdrawRequest#withdraw} (issue #123) — typed outcomes for
+ * The closed set of outcomes of {@link WithdrawRequest#withdraw} — typed outcomes for
  * expected flows, not exceptions. The web adapter {@code switch}es exhaustively: {@link Withdrawn} →
  * 200, {@link Rejected#NO_SUCH_BOOKING} → 404, {@link Rejected#NOT_PENDING} → 409.
  *
