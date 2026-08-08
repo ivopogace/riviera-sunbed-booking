@@ -35,11 +35,11 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     // apiSessionInterceptor rides the operator session: withCredentials + CSRF header on API
-    // calls (issue #109 — replaces the retired Basic-credential interceptor).
+    // calls (replaces the retired Basic-credential interceptor).
     provideHttpClient(withInterceptors([apiSessionInterceptor])),
     provideRouter(routes),
     // The stored/OS theme must apply at bootstrap regardless of which components render —
-    // don't rely on the shell happening to inject ThemeService (issue #134 review).
+    // don't rely on the shell happening to inject ThemeService.
     provideAppInitializer(() => {
       inject(ThemeService);
     }),

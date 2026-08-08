@@ -1,4 +1,4 @@
-/* Liquid Glass shell (issue #134). Palette comes exclusively from the tokens in styles.scss. */
+/* Liquid Glass shell. Palette comes exclusively from the tokens in styles.scss. */
 
 .riv-app {
   display: flex;
@@ -162,7 +162,7 @@
 }
 
 // The "Find a booking" nav entry is a <button> (it opens a dialog, not a route) styled to sit
-// inline with the .riv-nav-link anchors (issue #148).
+// inline with the .riv-nav-link anchors.
 .riv-nav-btn {
   background: none;
   border: 0;
@@ -294,7 +294,7 @@
   font-weight: 700;
 }
 
-/* ---- account menu (#351) ---- */
+/* ---- account menu ---- */
 
 .riv-account-menu {
   position: relative;
@@ -396,7 +396,7 @@
 }
 
 // The mobile "Find a booking" entry is a <button> (opens the dialog) sharing the .riv-mobile-link
-// visual (issue #148).
+// visual.
 .riv-mobile-btn {
   background: transparent;
   border: 0;

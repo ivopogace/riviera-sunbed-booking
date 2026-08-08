@@ -1,5 +1,5 @@
 /*
- * Liquid Glass design tokens (issue #134, design: the v2 tourist export, superseded in-repo by
+ * Liquid Glass design tokens (design: the v2 tourist export, superseded in-repo by
  * docs/design/riviera-sunbeds-liquid-glass-v3.dc.html — every "(design: …)" note below cites it).
  *
  * Themes are CSS custom properties scoped by `data-riv-theme` on <html> — the attribute is
@@ -38,7 +38,7 @@
   --riv-header-border: rgba(255, 255, 255, 0.22);
 
   /* CTA buttons carry white body-size text, so both stops must clear AA (4.5:1). The design's
-     brighter #2bb8d4→#0e8aa8 only reaches 2.4–4.0:1 white; darkened for AA (#149, pinned by the
+     brighter #2bb8d4→#0e8aa8 only reaches 2.4–4.0:1 white; darkened for AA (pinned by the
      CTA_STOPS case in home.contrast.spec.ts). --riv-bar-grad stays bright — it's the availability
      fill, decorative, text-free. */
   --riv-cta-grad: linear-gradient(180deg, #0c7288, #0a5f74);
@@ -76,8 +76,8 @@
     rgba(13, 40, 40, 0.8) 100%
   );
   --riv-photo-ink: #ffffff;
-  /* 0.85 (design: 0.7): the chip backs the accent ink over ANY cover photo since #142 — a dark
-     photo under a 0.7 white glass leaves the accent below AA; 0.85 clears it even over black. */
+  /** 0.85 (design: 0.7): the chip backs the accent ink over ANY cover photo — a dark
+      photo under a 0.7 white glass leaves the accent below AA; 0.85 clears it even over black. */
   --riv-mode-chip-glass: rgba(255, 255, 255, 0.85);
 }
 
@@ -106,10 +106,10 @@
   --riv-cta-grad: linear-gradient(180deg, #0c7288, #0a5f74);
   --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
 
-  /* Card surfaces (issue #135): only the glass alpha differs per theme — porcelain's
-     stops are light, so the design's airier 0.55 already clears AA (home.contrast.spec.ts).
-     The other card tokens inherit from the :root block above (review finding: a duplicated
-     block invites silent per-theme drift). */
+  /** Card surfaces: only the glass alpha differs per theme — porcelain's
+      stops are light, so the design's airier 0.55 already clears AA (home.contrast.spec.ts).
+      The other card tokens inherit from the :root block above (a duplicated
+      block invites silent per-theme drift). */
   --riv-card-glass: rgba(255, 255, 255, 0.55);
 }
 
