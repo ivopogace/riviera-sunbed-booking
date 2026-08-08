@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
- * The two session-identity operations a password change performs (#344), unit-tested at the helper rather
+ * The two session-identity operations a password change performs, unit-tested at the helper rather
  * than through MockMvc — because the no-session case is <strong>not reachable</strong> from a web slice:
  * {@code SecurityMockMvcRequestPostProcessors.user(…)} stores the test {@code SecurityContext} in a
  * session, so every {@code with(user(…))} request already has one. Asserting the guard there would have
@@ -17,10 +17,10 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * <p>The guard still earns its place: rotating with no session throws — the servlet spec says
  * {@link IllegalStateException} and {@code MockHttpServletRequest} an {@code IllegalArgumentException},
  * so this pins "does not throw" rather than a type — and a password change with no session to rotate has
- * nothing to fail about. {@link SessionIdentity#currentId} has carried the same guard since #128, when
- * the customer twin first needed it; #326 copied it to the operator side and #344 moved both here.
+ * nothing to fail about. {@link SessionIdentity#currentId} has carried the same guard since the
+ * customer twin first needed it; the operator side copied it, and this class moved both here.
  *
- * <p><strong>Scope caveat (#359).</strong> {@code MockHttpSession} models neither Spring Session's deferred
+ * <p><strong>Scope caveat.</strong> {@code MockHttpSession} models neither Spring Session's deferred
  * post-request save nor the {@code SPRING_SESSION} row, so nothing here is evidence that the rotation
  * survives a concurrent request — a green run of this class says only that the local contract holds. The
  * durability guarantee is pinned end-to-end by {@code OperatorPasswordChangeIT}, {@code SetPasswordIT} and
@@ -46,7 +46,7 @@ class SessionIdentityTest {
 		assertThat(request.getSession(false)).isNull();
 	}
 
-	/** Reads the request's CURRENT session, not the pre-rotation handle — since #359 that one is dead. */
+	/** Reads the request's CURRENT session, not the pre-rotation handle — that one is dead. */
 	@Test
 	void rotateGivesTheSessionAFreshId() {
 		MockHttpServletRequest request = new MockHttpServletRequest();

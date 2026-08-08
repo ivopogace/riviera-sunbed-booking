@@ -10,18 +10,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * The registry-mail pool's two bounds as <em>bound, validated</em> configuration (#408).
+ * The registry-mail pool's two bounds as <em>bound, validated</em> configuration.
  *
- * <p>Externalising them is what lets #370 retune the pool when a real relay's latency is known for
+ * <p>Externalising them is what lets the deploy environment retune the pool when a real relay's latency is known for
  * the first time, without a code change, a PR and a deploy. Validating them is not decoration:
  * {@code ThreadPoolTaskExecutor.createQueue} returns a {@link java.util.concurrent.SynchronousQueue}
  * for <em>any</em> non-positive capacity, so {@code queue-capacity=0} — which reads as "unbounded"
  * to a human and means "capacity zero" to Spring — would silently convert the bulkhead into a pool
  * that sheds every send it cannot hand straight to a free thread. That is a worse failure than the
- * one #383 built the pool to prevent, and it would boot cleanly.
+ * one the bulkhead was built to prevent, and it would boot cleanly.
  *
  * <p><strong>Why a compact constructor and not {@code @Validated} + {@code @Min}.</strong> There is
- * no JSR-303 implementation on the runtime classpath — #97 declined
+ * no JSR-303 implementation on the runtime classpath — the platform declined
  * {@code spring-boot-starter-validation} deliberately, in favour of explicit checks in records — and
  * Boot only validates {@code @ConfigurationProperties} when an implementation is present. An
  * annotation here would therefore bind and validate <em>nothing</em>: the same silent degradation,

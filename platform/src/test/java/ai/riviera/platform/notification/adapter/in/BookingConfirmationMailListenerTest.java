@@ -44,18 +44,18 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * What the listener does when it <em>gives up</em> (#428) — the one mail loss
- * {@code riviera.outbox.pending} cannot show — and, since #374, that it maps the resolved facts onto
+ * What the listener does when it <em>gives up</em> — the one mail loss
+ * {@code riviera.outbox.pending} cannot show — and that it maps the resolved facts onto
  * the right message fields.
  *
  * <p>The abandoned paths complete normally, so the Event Publication Registry marks the publication
- * done and no gauge moves: #423's registry-asymmetry argument ("a transport failure propagates, so
+ * done and no gauge moves: the registry-asymmetry argument ("a transport failure propagates, so
  * the outbox already carries it") holds only for failures that <em>throw</em>. These specs pin the
  * accounting that closes it, and just as deliberately pin where it stays silent — a healthy send and
  * a propagating transport failure are not abandonments, and counting either would make this counter
  * unreadable as the data-integrity signal the runbook says it is.
  *
- * <p><strong>Stubs the resolver, not three ports</strong> (#374): the three reads and their
+ * <p><strong>Stubs the resolver, not three ports</strong>: the three reads and their
  * short-circuit ordering moved into {@code BookingMailFactsService} and are pinned by
  * {@code BookingMailFactsServiceTest}, which is now the only place that knows their order. What is
  * left here is exactly this adapter's own behavior. The field-mapping spec below is new with that
@@ -189,7 +189,7 @@ class BookingConfirmationMailListenerTest {
 	}
 
 	/**
-	 * The whole reason #380 records attempts rather than reading the registry: this send never happened,
+	 * The whole reason attempts are recorded rather than the registry read: this send never happened,
 	 * yet the publication completes exactly as a delivery does. The attempt row is the only artefact
 	 * that tells them apart.
 	 */
@@ -205,7 +205,7 @@ class BookingConfirmationMailListenerTest {
 
 	/**
 	 * Recording must not swallow the transport failure — the throw is what keeps the publication
-	 * outstanding for the at-least-once retry (#371) — and the row must survive it, which is why the
+	 * outstanding for the at-least-once retry — and the row must survive it, which is why the
 	 * attempt log takes no ambient transaction (see {@code JdbcConfirmationMailAttempts}).
 	 */
 	@Test
