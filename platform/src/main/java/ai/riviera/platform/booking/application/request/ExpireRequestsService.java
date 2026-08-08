@@ -12,7 +12,7 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
 
 /**
- * Expires overdue pending requests and frees their sets (issue #98), implementing
+ * Expires overdue pending requests and frees their sets, implementing
  * {@link ExpireRequests}. Mirrors the abandoned-payment sweep's shape: read the candidate ids,
  * then expire each via {@link RequestReleaseService#expire} — its own transaction per row, with
  * a per-row try/catch so one bad row (e.g. a transient failure releasing its claim) cannot roll

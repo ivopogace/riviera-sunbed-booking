@@ -13,7 +13,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * {@link CustomerBookings} over the {@code booking} table (#380). Package-private driven adapter
+ * {@link CustomerBookings} over the {@code booking} table. Package-private driven adapter
  * (invariant #11), {@code JdbcClient} + explicit SQL.
  *
  * <p>The read rides the {@code booking_customer_id_idx} index V5 created for exactly this shape of

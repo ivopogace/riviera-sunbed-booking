@@ -22,12 +22,12 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Operator endpoints for the Request-to-Book queue (issue #98): list the venue's pending
+ * Operator endpoints for the Request-to-Book queue: list the venue's pending
  * requests, accept one (issues the payment request — payment-request-on-accept), or decline one
  * (releases the hold). Driving adapter over the booking module's {@link PendingRequests} and
  * {@link RespondToRequest} ports (invariant #11); per-venue ownership is enforced in those
  * services, a mismatch surfacing as {@code NotVenueOwnerException} → {@code 403 NOT_VENUE_OWNER}
- * via the single {@code ApiErrorHandler} (invariant #13 — no per-controller handler, issue #97).
+ * via the single {@code ApiErrorHandler} (invariant #13 — no per-controller handler).
  * Rejections are RFC-7807 {@code ProblemDetail}s built by {@link ApiProblem} with stable codes;
  * no booking code appears in any response here (invariant #7 — the queue is id-based).
  */

@@ -9,7 +9,7 @@ import ai.riviera.platform.venue.spi.BookingPresence;
 /**
  * JDBC adapter answering {@link BookingPresence} from the {@code booking} table — the {@code booking}
  * module owns that table, so the "does this venue have any booking?" probe lives here while the layout
- * write it guards stays in {@code venue} (issue #172). Invariant #1: explicit SQL via {@link JdbcClient},
+ * write it guards stays in {@code venue}. Invariant #1: explicit SQL via {@link JdbcClient},
  * no JPA.
  *
  * <p>This is the implementing side of a dependency-inverted <strong>driven (SPI) port</strong>

@@ -17,8 +17,8 @@ import ai.riviera.platform.payment.api.CancelPaymentPort;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 
 /**
- * Expires abandoned {@code AWAITING_PAYMENT} bookings past their TTL and frees their sets (issue
- * #51), implementing {@link ExpireAbandonedBookings}. For each stale booking it:
+ * Expires abandoned {@code AWAITING_PAYMENT} bookings past their TTL and frees their sets,
+ * implementing {@link ExpireAbandonedBookings}. For each stale booking it:
  *
  * <ol>
  *   <li>cancels the Stripe PaymentIntent via {@link CancelPaymentPort} (collect-only — voids an
@@ -30,7 +30,7 @@ import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
  *       double-act.</li>
  * </ol>
  *
- * <p>A {@link PaymentCancellation.NoCollection} (no payment on record — issue #125: a {@code pay()}
+ * <p>A {@link PaymentCancellation.NoCollection} (no payment on record — a {@code pay()}
  * that threw after the reserve commit) is <strong>released</strong>: past the TTL the row is stranded,
  * not in-flight, so leaving it would hold the set forever (the abandoned sweep's whole purpose). A
  * {@link PaymentCancellation.NotCancellable} (the payment already {@code succeeded}) leaves the booking
@@ -89,7 +89,7 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 		return switch (outcome) {
 			case PaymentCancellation.Canceled ignored -> release(id, "canceled its PaymentIntent");
 			case PaymentCancellation.NoCollection ignored ->
-				// #125: no payment on record (a pay() that threw after the reserve commit). Past the TTL
+				// No payment on record (a pay() that threw after the reserve commit). Past the TTL
 				// this is a stranded booking, not an in-flight one — release it so the set isn't held
 				// forever. Any orphan intent is inert (client secret never delivered) and auto-expires.
 				release(id, "no PaymentIntent on record");
@@ -108,7 +108,7 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 		};
 	}
 
-	/** The shared #51 guarded transition + claim release; {@code why} names the cancel outcome for the log. */
+	/** The shared guarded transition + claim release; {@code why} names the cancel outcome for the log. */
 	private boolean release(BookingId id, String why) {
 		boolean released = releaseAbandonedBooking.release(id);
 		if (released) {

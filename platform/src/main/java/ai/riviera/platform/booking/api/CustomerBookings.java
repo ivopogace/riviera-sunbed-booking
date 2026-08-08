@@ -6,13 +6,13 @@ import ai.riviera.platform.booking.vocabulary.CustomerBookingSummary;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 
 /**
- * The {@code booking} module's published <strong>bookings-of-one-guest</strong> query port (#380) —
+ * The {@code booking} module's published <strong>bookings-of-one-guest</strong> query port —
  * which bookings belong to a guest-contact id, so a consumer that starts from a person can find the
  * booking it needs.
  *
- * <p>Split from {@link BookingNotificationFacts} by consumer role (the issue #94 rule, applied here
- * rather than piling a second shape onto that port): {@code BookingNotificationFacts} answers "tell
- * the guest about <em>this</em> booking" for a caller that already has a booking id, while this port
+ * <p>Split from {@link BookingNotificationFacts} by consumer role (the same split-by-consumer-role
+ * rule, applied here rather than piling a second shape onto that port): {@code BookingNotificationFacts}
+ * answers "tell the guest about <em>this</em> booking" for a caller that already has a booking id, while this port
  * answers "which bookings does this person have" for a caller that has only an address. Different
  * question, different caller, different port.
  *

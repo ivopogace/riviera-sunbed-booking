@@ -12,7 +12,7 @@ import ai.riviera.platform.booking.application.view.MyBookings;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 /**
- * The signed-in tourist's "my bookings" endpoint (S3, #114). Driving adapter — depends only on the
+ * The signed-in tourist's "my bookings" endpoint. Driving adapter — depends only on the
  * {@code booking} module's {@link MyBookings} port (invariant #11) plus the edge {@link CurrentCustomer}
  * to resolve the principal.
  *
