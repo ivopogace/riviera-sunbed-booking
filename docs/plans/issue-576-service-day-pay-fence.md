@@ -286,9 +286,9 @@ on the wire.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The service-day boundary on `BookingCutoff` | ✅ | `7d4562f` |
-| 1 — Cap the pay deadline (`RequestWindows` + the accept) | ✅ | `0abe8a8` |
-| 2 — The sweep enforces the capped deadline | ✅ | `c5b0c1f` |
+| 0 — The service-day boundary on `BookingCutoff` | ✅ | `379064d` |
+| 1 — Cap the pay deadline (`RequestWindows` + the accept) | ✅ | `19de5c9` |
+| 2 — The sweep enforces the capped deadline | ✅ | `1a48270` |
 | 3 — Withhold credentials + `payWindowClosed` on the wire | | |
 | 4 — The guest-facing closed-window panel + e2e | | |
 | 5 — Docs freshness + close-out | | |
