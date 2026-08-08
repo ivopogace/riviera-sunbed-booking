@@ -278,14 +278,14 @@ e2e. No new route, no new service call.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — add the three service-day methods to `BookingCutoff` test-first
-(`BookingCutoffTest`), then open the draft PR so CI fires on the first phase commit.
+**Next action:** Phase 1 — cap `RequestWindows#payDeadline` at the service-day opening and pass the
+cap from the accept.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The service-day boundary on `BookingCutoff` | | |
+| 0 — The service-day boundary on `BookingCutoff` | ✅ | `7d4562f` |
 | 1 — Cap the pay deadline (`RequestWindows` + the accept) | | |
 | 2 — The sweep enforces the capped deadline | | |
 | 3 — Withhold credentials + `payWindowClosed` on the wire | | |
@@ -727,6 +727,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-08 | phase 0 | a second civil-day computation that should share the new boundary | `grep -rn "atStartOfDay\|Europe/Tirane" platform/src/main --include=*.java` | 6 modules declare their own `TIRANE` constant (`customer`, `notification`, `venue`, `payout`, `availability`, and `booking`'s `StaffBookingController`) | **skip, deliberately.** Each is a different question about civil days (a retention cutoff, a mail render zone, an ISO week key, a staff "today" default), none is the service-day boundary, and a cross-module zone constant would need a `shared` admission that rests on ownership, not reuse. Inside `booking`'s pay/cancel path `BookingCutoff` remains the only site. |
 
 ---
 
