@@ -59,7 +59,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	private static final String COL_REGION = "region";
 	private static final String COL_DESCRIPTION = "description";
 	/**
-	 * The date a venue's first rate change pins its previous rate at (A7 #348). It predates the
+	 * The date a venue's first rate change pins its previous rate at. It predates the
 	 * platform, so once a venue has changed rate every service date it could have sold on is covered,
 	 * and the "latest rate at or before this date" read can never fall through to the live rate for a
 	 * day already sold.
@@ -178,7 +178,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 
 	@Override
 	public long lockAndReadSetVersion(VenueId venueId) {
-		// FOR UPDATE takes the venue row's write lock and reads the current set_version (#226). This is the
+		// FOR UPDATE takes the venue row's write lock and reads the current set_version. This is the
 		// FIRST lock both set-writes acquire (before their set_position locks) → consistent venue→sets order
 		// → no deadlock (R-1). The caller compares the value to the loaded expectedVersion (mismatch ⇒
 		// STALE_WRITE) and advances it via incrementSetVersion ONLY on success — so a rejected write never
@@ -192,7 +192,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 
 	@Override
 	public void incrementSetVersion(VenueId venueId) {
-		// Advance the token by one (#226) — called only after the set-write commits. The caller holds the
+		// Advance the token by one — called only after the set-write commits. The caller holds the
 		// venue row lock from lockAndReadSetVersion, so this is race-free.
 		jdbc.sql("UPDATE venue SET set_version = set_version + 1 WHERE id = :id")
 				.param("id", venueId.value())
@@ -276,7 +276,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 
 	@Override
 	public int repriceRow(VenueId venueId, RowPriceCommand c) {
-		// Non-destructive per-row reprice (O4, #174): overwrite only the price columns for every set
+		// Non-destructive per-row reprice: overwrite only the price columns for every set
 		// carrying the row label. The WHERE (venue_id, row_label) rides the set_position_cell_uniq
 		// UNIQUE(venue_id, row_label, position_no) index prefix. Rows-affected 0 ⇒ unknown row.
 		return jdbc.sql("""
@@ -343,7 +343,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 
 	@Override
 	public int updateVenueProfile(VenueId venueId, long expectedVersion, VenueProfileCommand command) {
-		// Conditional on the loaded version (#224): WHERE id = :id AND version = :version. The caller
+		// Conditional on the loaded version: WHERE id = :id AND version = :version. The caller
 		// has already verified the venue exists, so 0 rows-affected here means the version no longer
 		// matches (a concurrent writer bumped it) — a stale write, and the amenity set below is left
 		// untouched. On a match the row's version is bumped by one, so the other writer off the same
@@ -352,8 +352,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 		//
 		// commission_bps and payout_currency are NOT in the SET clause — they are read-only for
 		// operators (invariant #9 / provisional payout currency), and the command carries no such
-		// field, so a crafted request cannot reach them (O8, issue #177).
-		// The admin rate write is updateLiveRate — a separate statement, separate surface (A7 #348).
+		// field, so a crafted request cannot reach them; updateLiveRate is a separate write, separate surface.
 		int rows = jdbc.sql("""
 				UPDATE venue
 				SET name = :name, beach = :beach, region = :region, description = :description,
@@ -403,7 +402,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 
 	@Override
 	public Optional<VenueProfileView> findProfile(VenueId venueId) {
-		// The owner's admin profile (O8 #177): the editable core + the read-only commission + payout
+		// The owner's admin profile: the editable core + the read-only commission + payout
 		// currency. Two reads inside the caller's read-only tx — the venue row, then its amenity set
 		// (catalogue-ordered) — mirroring findVenueMap's shape. Ownership is asserted by the caller.
 		Optional<ProfileRow> venue = jdbc.sql("""
@@ -438,7 +437,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	/**
-	 * Every {@link PhotoSlot} in declaration order with its presence + PREVIEW serving URL (#142) —
+	 * Every {@link PhotoSlot} in declaration order with its presence + PREVIEW serving URL —
 	 * a stable three-slot grid for the console's Venue tab. Blob-free: only the hash travels; the
 	 * {@code bytea} column is never selected outside the serving path (R-3, ADR-0008).
 	 */
