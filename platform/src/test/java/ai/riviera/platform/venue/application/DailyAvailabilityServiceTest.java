@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit-tests the owner-asserted daily availability read (issue #207) at the application boundary:
+ * Unit-tests the owner-asserted daily availability read at the application boundary:
  * per-set state tokens for the owner (AC-2), ownership asserted <strong>before</strong> any
  * existence/set lookup so a non-owner learns nothing (AC-3, invariant #13), and the empty-Optional
  * no-such-venue signal the controller maps to 404. Collaborators are mocked — the JDBC truths are

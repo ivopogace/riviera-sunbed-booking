@@ -103,7 +103,7 @@ class PhotoProcessorTest {
 
 	@Test
 	void rejectsAJpegWhoseHeaderParsesButWhoseRasterDoesNot() throws IOException {
-		// #142 review F-5: the up-front guard is header-only, so a file can pass the magic + SOF
+		// The up-front guard is header-only, so a file can pass the magic + SOF
 		// checks yet still fail the FULL raster decode (real-world case: a CMYK/Adobe JPEG). Model
 		// it with a JPEG cut just before its SOS marker: the SOF header (dimensions) is intact, but
 		// there is no scan data to decode. This must be the typed UNREADABLE rejection — an upload

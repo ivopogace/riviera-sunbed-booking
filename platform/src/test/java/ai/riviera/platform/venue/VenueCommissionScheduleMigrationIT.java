@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * The A7 commission-rate schedule's storage constraints (Flyway V39, epic #348) — the DB-level
+ * The commission-rate schedule's storage constraints (Flyway V39) — the DB-level
  * backstop behind {@code VenueFieldValidation.requireCommissionBps} and the two idempotency guards
  * the rate write rides (invariant #12).
  *

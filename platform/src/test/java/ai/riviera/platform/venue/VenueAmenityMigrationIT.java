@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Verifies the T7 venue-profile storage constraints (Flyway V21, issue #140): amenities are a
+ * Verifies the venue-profile storage constraints (Flyway V21): amenities are a
  * fixed-catalogue, order-insensitive set stored in the {@code venue_amenity} join table, and
  * {@code distance_to_water_m} is an optional positive integer on {@code venue}. These constraints
  * (invariant #12) are the DB-level backstop behind the application's edge validation — the

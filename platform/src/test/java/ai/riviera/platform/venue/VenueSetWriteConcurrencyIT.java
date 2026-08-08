@@ -31,7 +31,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * The #226 cross-write concurrency test (AC-3): a {@code replaceLayout} and a {@code repriceRow} race
+ * The cross-write concurrency test (AC-3): a {@code replaceLayout} and a {@code repriceRow} race
  * off the <strong>same</strong> {@code set_version = V} — exactly one applies and the other is
  * {@code STALE_WRITE}, proving the two set-writes share ONE token (they write overlapping columns:
  * map-replace re-sends {@code price_minor}, reprice overwrites it, so they must not both win). Also

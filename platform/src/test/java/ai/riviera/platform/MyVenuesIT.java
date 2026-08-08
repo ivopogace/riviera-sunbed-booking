@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * {@code GET /api/venues/mine} against the real schema (S9 #277, AC-1/AC-2) — the half
+ * {@code GET /api/venues/mine} against the real schema (AC-1/AC-2) — the half
  * {@code MyVenuesControllerTest} cannot prove on a stubbed port: that the {@code operator_venue} join
  * really scopes the rows to the session operator, and that {@code ORDER BY name} really orders them.
  *
@@ -109,7 +109,7 @@ class MyVenuesIT {
 
 	@Test
 	void anOperatorOwningNothingGetsAnEmptyArray() throws Exception {
-		// A freshly-approved operator (#115) owns nothing: 200 [] — never 404, never someone else's rows.
+		// A freshly-approved operator owns nothing: 200 [] — never 404, never someone else's rows.
 		actingAs(insertOperator("s9-op-empty"));
 
 		mvc.perform(get(MINE).cookie(operatorSession))

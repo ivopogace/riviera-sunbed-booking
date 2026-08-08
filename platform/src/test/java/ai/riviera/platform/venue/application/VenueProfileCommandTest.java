@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Validation of the widened venue-profile command (O8, issue #177). The command now carries the
+ * Validation of the widened venue-profile command. The command now carries the
  * editable core fields (name/beach/region/description/bookingMode/bookingCutoff) alongside the
  * T7 amenities + distance; commission and payout currency are read-only and deliberately absent
  * (a crafted write can never set them). The compact constructor enforces the same edge invariants

@@ -24,8 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verifies the {@code venue.api} booking-info lookup the {@code booking} module relies on
- * (issue #6): an ONLINE seeded set resolves to its venue, pool, price (minor units) and the
+ * Verifies the {@code venue.api} booking-info lookup the {@code booking} module relies on:
+ * an ONLINE seeded set resolves to its venue, pool, price (minor units) and the
  * venue's evening-before cutoff; an unknown set is empty. Real Postgres + seed (V3) via
  * Testcontainers.
  */
@@ -47,7 +47,7 @@ class SetBookingInfoIT {
 	void resolvesBookingInfoForOnlineSet() {
 		// Scope to Miramar (the venue this test asserts on): the highest-priced ONLINE set is its front-row
 		// premium (4500). A global "ORDER BY price_minor DESC" would be order-dependent in a shared
-		// Testcontainers DB — other ITs (concurrency #226, reprice) leave higher-priced ONLINE sets, so a
+		// Testcontainers DB — other ITs (concurrency, reprice) leave higher-priced ONLINE sets, so a
 		// class-ordering shift would otherwise pick one of theirs (riviera-local-debug: isolate the key).
 		long setId = jdbc.sql("""
 				SELECT sp.id FROM set_position sp JOIN venue v ON v.id = sp.venue_id
@@ -75,7 +75,7 @@ class SetBookingInfoIT {
 
 	@Test
 	void resolvesBatchBookingInfoInOneCall() {
-		// #246 F3: every Miramar ONLINE set resolves in one map, each entry equal to the single-id read.
+		// Every Miramar ONLINE set resolves in one map, each entry equal to the single-id read.
 		List<Long> setIds = jdbc.sql("""
 				SELECT sp.id FROM set_position sp JOIN venue v ON v.id = sp.venue_id
 				WHERE sp.pool = 'ONLINE' AND v.name = 'Miramar Beach Club'
@@ -106,7 +106,7 @@ class SetBookingInfoIT {
 
 	@Test
 	void resolvesCommissionBpsForSeededVenue() {
-		// payout reads the commission rate here at accrual time (issue #9, invariant #9).
+		// payout reads the commission rate here at accrual time (invariant #9).
 		long venueId = jdbc.sql("SELECT id FROM venue WHERE name = 'Miramar Beach Club'")
 				.query(Long.class).single();
 

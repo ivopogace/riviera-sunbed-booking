@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The budget arithmetic's own falsifiability proof (#456).
+ * The budget arithmetic's own falsifiability proof.
  *
  * <p>This class exists because the guard it replaces did not have one. {@code MailTransportPropertiesTest
  * #theCombinedDrainOfEveryPoolFitsTheMailShutdownBudget} asserted

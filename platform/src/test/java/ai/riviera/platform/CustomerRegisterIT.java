@@ -25,12 +25,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S2 #111 registration endpoint (design D-8). A fresh email creates the account and auto-signs-in
+ * The registration endpoint (design D-8). A fresh email creates the account and auto-signs-in
  * (a {@code SESSION} cookie is set); an already-registered email returns a <strong>byte-identical</strong>
  * response but establishes NO session (non-enumeration — the only residual signal is the cookie's
  * presence, an accepted trade-off); password policy is enforced server-side before any write. Real
  * Postgres via Testcontainers, so the full Flyway chain (incl. V25) backs the account row. Each request
- * carries a unique {@code X-Forwarded-For} so suite-cumulative traffic never shares a rate bucket (#127).
+ * carries a unique {@code X-Forwarded-For} so suite-cumulative traffic never shares a rate bucket.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
