@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pins the pure token-bucket math (issue #56): capacity is the burst, tokens refill steadily over
+ * Pins the pure token-bucket math: capacity is the burst, tokens refill steadily over
  * the period, and {@code retryAfterSeconds} reports the wait when empty. Time is supplied by the
  * caller, so the test advances a fixed {@link Instant} by hand — no Spring, no clock, no sleep.
  */

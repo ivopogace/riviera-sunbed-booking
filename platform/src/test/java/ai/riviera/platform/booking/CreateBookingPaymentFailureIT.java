@@ -31,7 +31,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * The two-phase create failure path (issue #52, AC-3): under the {@code stripe} profile, when the
+ * The two-phase create failure path (AC-3): under the {@code stripe} profile, when the
  * Stripe PaymentIntent creation fails (Stripe unreachable), the booking + claim were already
  * committed {@code AWAITING_PAYMENT}, so {@code create} must <strong>compensate</strong> — cancel
  * the booking and free the {@code (set, date)} — rather than leave an orphaned booking holding the
@@ -64,7 +64,7 @@ class CreateBookingPaymentFailureIT {
 		PaymentIntentService intents = mock(PaymentIntentService.class);
 		when(stripeClient.v1()).thenReturn(v1);
 		when(v1.paymentIntents()).thenReturn(intents);
-		// The exact failure issue #52 targets: a degraded/unreachable Stripe at PI creation.
+		// The exact failure this test targets: a degraded/unreachable Stripe at PI creation.
 		when(intents.create(any(), any())).thenThrow(new ApiConnectionException("stripe unreachable"));
 	}
 

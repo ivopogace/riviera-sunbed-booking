@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Issue #110: with the deployed sandbox now same-origin (Spring serves the SPA), the default
+ * With the deployed sandbox now same-origin (Spring serves the SPA), the default
  * CORS origin list is <strong>empty</strong> — there is no cross-origin browser caller. Pins
  * that an empty list wires cleanly (no bean failure — R-6; a blank property must not become a
  * malformed empty-string "allowed origin") and that it denies every cross-origin preflight, so

@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Direct unit test for the SPA fallback resolver (issue #110). Exercises the resolver's branches
+ * Direct unit test for the SPA fallback resolver. Exercises the resolver's branches
  * head-on — including the backend-path guard a MockMvc slice can't drive (a request only reaches
  * the resolver past the security filter chain, so an anonymous {@code /api} 401s first), and the
  * empty-path root that the welcome-page mapping normally intercepts. Complements {@link SpaShellTest}

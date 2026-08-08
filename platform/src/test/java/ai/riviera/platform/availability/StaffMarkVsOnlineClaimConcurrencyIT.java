@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The headline U8 test (issue #10, AC-1): prove invariant #2 holds across the TWO channels. A staff
+ * The headline test (AC-1): prove invariant #2 holds across the TWO channels. A staff
  * tap-to-mark and an online claim race for the <strong>same</strong> {@code (set, date)}, released
  * together by a {@link CountDownLatch}; exactly one must win and exactly one row may exist — never
  * both a {@code MARKED} and a {@code CLAIMED}. Both writers use the same atomic
@@ -76,7 +76,7 @@ class StaffMarkVsOnlineClaimConcurrencyIT {
 	 * together. Returns {@code [markWon, claimWon]}. Bounded waits so a lock-wait hang fails fast.
 	 */
 	private boolean[] race(SetId set, LocalDate date) throws Exception {
-		// Resolve the owns-all bootstrap operator once, outside the race (#73): the ownership guard is
+		// Resolve the owns-all bootstrap operator once, outside the race: the ownership guard is
 		// not what's under test here — the atomic INSERT ... ON CONFLICT is.
 		OperatorId operator = operators.operatorFor("operator").orElseThrow();
 		CountDownLatch startGate = new CountDownLatch(1);

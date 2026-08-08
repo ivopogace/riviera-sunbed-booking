@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 /**
  * Fast branch coverage for {@link AbandonedBookingSweepService} with in-memory doubles — no Spring,
  * no DB. Pins the per-outcome decision the sweep makes on each stale {@code AWAITING_PAYMENT}
- * booking's cancel result, in particular the #125 backstop: a {@link PaymentCancellation.NoCollection}
+ * booking's cancel result, in particular the crash-recovery backstop: a {@link PaymentCancellation.NoCollection}
  * row (a {@code pay()} that threw after the reserve commit, leaving no payment on record) is now
  * <em>released</em> rather than skipped forever, while a {@link PaymentCancellation.NotCancellable}
  * ({@code succeeded}) is still left for the confirm webhook (invariant #8). The end-to-end real-DB
@@ -56,7 +56,7 @@ class AbandonedBookingSweepServiceTest {
 
 	@Test
 	void releasesAStaleBookingWithNoCollectionOnRecord() {
-		// #125: no payment row (a pay() that threw after the reserve commit). Past the TTL this is a
+		// No payment row (a pay() that threw after the reserve commit). Past the TTL this is a
 		// stranded booking, so the sweep — the crash backstop — must release it, not skip it forever.
 		int expired = sweepWith(new PaymentCancellation.NoCollection()).sweep(TTL, WINDOWS);
 
@@ -84,7 +84,7 @@ class AbandonedBookingSweepServiceTest {
 
 	@Test
 	void releasesAfterAnAuthoritativeCancel() {
-		// Regression guard for the pre-#125 happy path: a Canceled PaymentIntent still releases the set.
+		// Regression guard for the original happy path: a Canceled PaymentIntent still releases the set.
 		int expired = sweepWith(new PaymentCancellation.Canceled()).sweep(TTL, WINDOWS);
 
 		assertEquals(1, expired, "a canceled PaymentIntent expires the booking");
