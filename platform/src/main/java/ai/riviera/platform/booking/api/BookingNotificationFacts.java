@@ -8,8 +8,8 @@ import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 
 /**
  * The {@code booking} module's published <strong>notification-facts</strong> query port (invariant
- * #11, #371) — the booking-relevant truths a consumer needs to tell the guest about one booking,
- * split by consumer role from {@link DailyTakings} (the issue #94 precedent) so each caller depends
+ * #11) — the booking-relevant truths a consumer needs to tell the guest about one booking,
+ * split by consumer role from {@link DailyTakings} so each caller depends
  * only on the surface it uses. Consumed by the platform edge, whose booking-confirmation mail
  * listener reacts to {@code BookingConfirmed}.
  *
@@ -34,7 +34,7 @@ public interface BookingNotificationFacts {
 
 	/**
 	 * Everything needed to rebuild this booking's confirmation mail without an event to read it from
-	 * (#380) — the admin resend's read. Empty if no booking has this id.
+	 * — the admin resend's read. Empty if no booking has this id.
 	 *
 	 * <p>The same conversation as {@link #notificationInfo}, for the trigger that has no payload:
 	 * where the registry listener is handed the date, amount and currency by {@code BookingConfirmed},

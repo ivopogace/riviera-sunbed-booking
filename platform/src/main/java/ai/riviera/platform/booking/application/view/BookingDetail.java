@@ -12,19 +12,19 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * cancellation terms (invariant #10) — whether it is still {@code cancellable} ({@code CONFIRMED}),
  * whether free cancellation is still open ({@code beforeCutoff}), the {@code refundIfCancelledNow},
  * and, once cancelled, the {@code refundedAmount} actually issued ({@code null} otherwise). Money is
- * integer minor units (invariant #5). Request-to-Book (issue #98) adds {@code requestExpiresAt}
+ * integer minor units (invariant #5). Request-to-Book adds {@code requestExpiresAt}
  * (the venue-response deadline; {@code null} for instant bookings) and {@code payment} — the open
  * PaymentIntent's credentials, present <strong>only</strong> while {@code AWAITING_PAYMENT} with a
  * payable intent on record, so an accepted guest can pay from this code-gated view. A pure value
  * carried out of the use case.
  *
- * <p>{@code withdrawable} (#123) is the guest's own retraction of a still-open request
+ * <p>{@code withdrawable} is the guest's own retraction of a still-open request
  * ({@code PENDING_REQUEST}) — a <strong>separate</strong> flag from {@code cancellable}, not a
  * widening of it. The two answer different questions about different states, and only ever one of
  * them is true; collapsing them would tie the withdraw to the cancellation policy, which has no say
  * here (no money was ever collected).
  *
- * <p>{@code emailWithheld} (#390) says the confirmation mail was suppressed, so the post-payment
+ * <p>{@code emailWithheld} says the confirmation mail was suppressed, so the post-payment
  * surface can tell the guest the code on screen is their only record. It is {@code true} only for a
  * {@code CONFIRMED} booking whose address is on the do-not-mail list; for every other status it is
  * {@code false} <em>without the question being asked</em> — the `202` create hands out the code

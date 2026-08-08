@@ -13,7 +13,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * the wire (the booking date is an ISO {@code LocalDate} string); {@link #toCommand()} maps it
  * onto the typed {@link CreateBookingCommand}, validating presence and shape. Any bad input
  * surfaces as {@link IllegalArgumentException}, which the controller's conversion wrap translates
- * to the typed 400 (#118; the project has no {@code spring-boot-starter-validation}, so
+ * to the typed 400 (the project has no {@code spring-boot-starter-validation}, so
  * validation is explicit here).
  */
 record CreateBookingRequest(Long setId, String bookingDate, Contact contact) {
@@ -40,7 +40,7 @@ record CreateBookingRequest(Long setId, String bookingDate, Contact contact) {
 		}
 		// GuestContact's canonical constructor validates email/name/phone are present.
 		GuestContact guest = new GuestContact(contact.email(), contact.fullName(), contact.phone());
-		// accountId is the signed-in tourist's account link (S3, #114) — null for a guest.
+		// accountId is the signed-in tourist's account link (S3) — null for a guest.
 		return new CreateBookingCommand(new SetId(setId), date, guest, accountId);
 	}
 }

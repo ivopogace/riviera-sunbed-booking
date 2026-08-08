@@ -31,7 +31,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 /**
- * The platform-edge SSO redirect/callback flow (S4, epic #108, design D-3): OIDC Authorization Code +
+ * The platform-edge SSO redirect/callback flow (design D-3): OIDC Authorization Code +
  * PKCE completed <strong>server-side</strong>, so tokens never reach browser JS and a successful callback
  * establishes the same {@code SESSION} cookie as form login. Login machinery stays at the edge (RV-BE-11);
  * the {@code customer} module only resolves the resulting account identity ({@link SsoAccountProvisioning}).
@@ -120,7 +120,7 @@ class SsoController {
 	 * Validate the returned {@code state} against the session's, confirm the provider matches, and return
 	 * the stored PKCE verifier — clearing all three attributes first so a callback cannot be replayed
 	 * (single-use). Any mismatch or missing attribute is a typed {@link InvalidApiRequestException} →
-	 * {@code 400 INVALID_REQUEST} (#118), with nothing written.
+	 * {@code 400 INVALID_REQUEST}, with nothing written.
 	 */
 	private static String consumeValidatedChallenge(HttpServletRequest request, SsoProvider provider, String state) {
 		HttpSession session = request.getSession(false);

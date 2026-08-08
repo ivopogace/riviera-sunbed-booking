@@ -6,7 +6,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 /**
  * Platform-edge port for the OIDC Authorization Code + PKCE dance with an external identity provider
- * (S4, epic #108, design D-3/D-4). This is <strong>authentication machinery</strong>, so it lives at the
+ * (design D-3/D-4). This is <strong>authentication machinery</strong>, so it lives at the
  * application edge (the root package) alongside {@code SecurityConfig}/{@code AuthController}, never
  * inside a bounded-context module (RV-BE-11) — the {@code customer} module only owns the resulting
  * account identity ({@code SsoAccountProvisioning}).
@@ -23,7 +23,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
  * <p>Exactly one implementation is active per profile (mirroring {@code StubPaymentGateway} vs
  * {@code StripePaymentGateway}): the default {@code MockSsoGateway} ({@code @Profile("!sso")}) plays a
  * cooperative IdP with canned identities; under {@code @Profile("sso")} the real per-provider adapters
- * (S5, #116) throw {@link UnsupportedOperationException} until client credentials ship — activating the
+ * (S5) throw {@link UnsupportedOperationException} until client credentials ship — activating the
  * real profile without S5 fails loudly, never silently falling back to the mock.
  */
 public interface SsoGateway {
