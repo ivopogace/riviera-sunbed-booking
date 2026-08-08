@@ -214,16 +214,38 @@ Sparse-tier batching: 215 files ÷ 15/batch → batches S1–S14 (14×15) + S15 
 | 50 | `OperatorApprovalMail.java` | 58 | Names an established failure pattern as the reason there's no try/catch around the mail send — an escaping exception would return a false 500 on work that succeeded | D18 |
 | 51 | `MyErasureController.java` | 24 | Historical "used to..." rationale — the method-agnostic matcher previously needed a dedicated erasure-only rule before a later change broadened it | D18 |
 | 52 | `AccountRecoveryController.java` | 92–106 | Multi-paragraph justification for why session revocation brackets the password write (before AND after, not just once), including why a spanning `@Transactional` would only look atomic | D19 |
+| 53 | `venue/adapter/out/JdbcVenueCatalog.java` | ~275 | COALESCE fallback-to-live-rate semantics for `commissionBpsOn`, plus a non-obvious indexing rationale (subquery rides the composite PK's leftmost prefix) | S1 |
+| 54 | `venue/adapter/out/JdbcVenueCatalog.java` | ~233 | Why a cover photo needs both card+banner variants to count as present — the concrete defect avoided (a null URL reaching `NgOptimizedImage`) | S1 |
+| 55 | `notification/application/MailResubmission.java` | ~31 | Versioning nuance about the registry repository (v2 vs. v1 shape) affecting `resubmit()` | S1 |
+| 56 | `notification/application/MailAttemptOutcome.java` | ~6 | Why this enum exists instead of relying on the Event Publication Registry's `completion_date`, which would misreport two of the four outcomes | S1 |
+| 57 | `customer/vocabulary/Emails.java` | ~16 | Why this class can't move to the `shared` Kernel — would recreate a dependency cycle a prior change eliminated | S2 |
+| 58 | `AdminAuditFilter.java` | ~35 | Historical tightening: a prior carve-out was OPERATOR-gated, then closed so every path in the namespace is platform-ADMIN-gated | S2 |
+| 59 | `venue/application/VenueCommissionService.java` | 14–36 (whole class Javadoc) | Why a commission-rate change is three writes in one transaction in that order, and why a new schedule always starts tomorrow (invariant #4's cutoff) | S3 |
+| 60 | `venue/application/PhotoStorage.java` | ~49 | Historical bug/fix: answering the conditional-GET question from the URL alone (not a blob-free existence probe) let a taken-down photo keep revalidating as 304 indefinitely | S3 |
+| 61 | `shared/InvalidApiRequestException.java` | ~7–11 | Before a prior change, the advice mapped every `IllegalArgumentException` and mis-blamed deep-bug IAEs on the caller as unlogged 400s | S4 |
+| 62 | `payment/api/CollectionGuarantee.java` | ~20 | Deliberately its own role-split port rather than a `CheckoutPort` method | S4 |
+| 63 | `operator/vocabulary/ApprovalOutcome.java` | ~8 | Sealed interface rather than the enum it shipped as, for a stated reason tied to two other codebase precedents | S4 |
+| 64 | `operator/adapter/out/JdbcOperators.java` | ~261 | Historical fact: an "owns-all" ownership model existed and was intentionally retired (durable CLAUDE.md/V29 decision) | S4 |
+| 65 | `notification/application/MissingBookingFact.java` | ~13 | One type rather than three string constants per listener — contrasts with a prior string-constant approach | S4 |
+| 66 | `notification/application/MailResubmissionService.java` | ~18 | Historical note: a prior change moved the resubmission-throttle guard into `shared` when the refund lever became its second consumer | S5 |
+| 67 | `notification/application/ConfirmationSendOutcome.java` | ~7 | Before a prior change, `sendBookingConfirmation` returned `void`, making deliberate withholding indistinguishable from delivery — why this typed return value exists | S5 |
+| 68 | `notification/adapter/out/JdbcConfirmationMailAttempts.java` | ~20 | Deliberate absence of `@Transactional`/`REQUIRES_NEW` so a `TRANSPORT_FAILED` row auto-commits and survives the rethrown exception | S5 |
+| 69 | `customer/api/SsoAccountProvisioning.java` | ~24 | Security trust-boundary paragraph: auto-linking trusts the caller's verified-email claim; real SSO adapters must assert `email_verified` or auto-link becomes an account-takeover vector | S5 |
+| 70 | `customer/api/CustomerAccountRecovery.java` | ~43 | Race-condition rationale: `resetPassword` can only name the account after the password is changed, so reading the email first lets the edge revoke sessions before the write | S5 |
+| 71 | `booking/application/request/RequestWindows.java` | ~23–29 | Why the payment-due deadline is derived from `RequestWindows` rather than a bare field — before a prior change the enforcing half was a separate expression, so a mailed deadline couldn't be checked against it by eye | S6 |
+| 72 | `booking/application/refund/RefundOutbox.java` | ~8–13 | Why the refund-outbox scope is an exact-listener-id allowlist rather than a module-prefix scope — a revised design decision | S6 |
+| 73 | `booking/application/refund/ExpireAbandonedBookings.java` | ~27–30 | Why the second TTL clock is threaded through as the whole `RequestWindows` value rather than a bare `Duration` — keeps promise and enforcement from drifting apart | S6 |
+| 74 | `booking/adapter/out/JdbcGuestBookingHistory.java` | ~57–58 | Provenance: this fix's scope came from a broader generalization audit, not the original issue's stated scope (which named four jobs and four queries) | S6 |
+| 75 | `PrincipalSessionRevoker.java` | ~53–58 | Dual-ordering-constraint rationale for `revokeAllExcept`: revoke must run before the credential write, and the pre-rotation session id is the only one visible | S6 |
+| 76 | `ObservabilityConfig.java` | 46, 69–70 | Corrects the class's own prior claim of issuing no query (Micrometer evaluates the gauge supplier at read time); explains why the bounded client's timeout is scoped to one gauge, not global (would also bound the availability claim) | S7 |
+| 77 | `MoneyPathAlertCheck.java` | 23–31 | Same historical correction from the reader's side — documents the prior no-query claim and how the bounded-read/NaN-on-timeout behavior works now | S7 |
 
 ## Execution status
 
-**Stage pointer:** implement — **the entire dense tier (D1–D19, all 55 files) is complete.** Sparse
-tier next: wave 1 (S1–S7, 105 files).
+**Stage pointer:** implement — **the entire dense tier (D1–D19, all 55 files) and sparse wave 1
+(S1–S7, 105 files) are complete.** Sparse wave 2 (S8–S15, 110 files) next.
 
-**Next action:** dispatch S1–S7 as parallel worktree-isolated agents, integrate serially. Sparse
-batches are larger (~15 files each) than dense batches (~3), per the kickoff brief's sizing —
-priced for edit count, not the same per-file judgment density as the dense tier (though the
-triage rule still applies to every file).
+**Next action:** dispatch S8–S15 as parallel worktree-isolated agents, integrate serially.
 
 | Wave | Scope | Status | Commits |
 |---|---|---|---|
@@ -231,7 +253,7 @@ triage rule still applies to every file).
 | Dense wave 2 (D7–D13) | next 21 files (19 edited, 2 fully RELOCATE-CANDIDATE, 0 edits) | ✅ | `da57ce0` (D8), `c607bc0` (D9), `eb5f33c` (D10), `40f4286` (D13), `75819b4` (D11), `0c3e635` (D12), `3b65889` (D7) |
 | Dense wave 3 (D14–D19) | remaining 16 files (12 edited, 2 fully RELOCATE-CANDIDATE, 0 edits) | ✅ | `f41b078`→`7b896f1` (D19), `c269191`→`0f66720` (D14), `ab6a5d5`→`ed7c074` (D15), `d3d9f44`→`b84786a` (D18), `f3936af`→`6272727` (D16), `fc42d01`→`a035a35` (D17) |
 | **Dense tier total (D1–D19)** | **all 55 files** (51 edited, 4 fully RELOCATE-CANDIDATE with 0 edits) | ✅ | 51 files code-identical to `origin/main` except comments; 52-row RELOCATE-CANDIDATE inventory |
-| Sparse wave 1 (S1–S7) | 105 files | | |
+| Sparse wave 1 (S1–S7) | 105 files (102 edited, 3 fully RELOCATE-CANDIDATE with 0 edits — `VenueCommissionService.java`, `InvalidApiRequestException.java`, `PrincipalSessionRevoker.java`) | ✅ | `ebc61f1` (S7), `efb7484` (S3), `b9a0f8a` (S2), `947a7a6` (S6), `c7e3960` (S4), `c842ee7` (S5), `619f269`+`e25ee4d` (S1) |
 | Sparse wave 2 (S8–S15) | 110 files | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -269,6 +291,20 @@ edited (677 candidate true-violation tokens reduced to the MECHANICAL subset act
 exact before/after token counts are in each batch's ledger entry above), 4 files left fully
 untouched as pure RELOCATE-CANDIDATE, 52 RELOCATE-CANDIDATE items catalogued, 0 F-8-EXPOSED hits
 edited, 0 permitted labels lost.**
+
+**Sparse wave 1 (S1–S7) summary — first sparse-tier wave:** 102 of 105 assigned files edited; 3
+files (`VenueCommissionService.java`, `InvalidApiRequestException.java`,
+`PrincipalSessionRevoker.java`) left fully untouched as pure RELOCATE-CANDIDATE. 25 new
+RELOCATE-CANDIDATE hits recorded (rows 53–77), 0 new F-8-EXPOSED hits, 0 new F-17 refs beyond what
+each batch reported inline. Two F-6 stale-fact corrections in S1 (`CurrentOperator.java`,
+`operator/api/VenueOwnership.java` — both described the retired owns-all-venues bootstrap flag as
+still in effect; the sentences were removed as now-false, matching CLAUDE.md's "No account owns
+all venues (V29)" fact). One RV-STYLE-1 fixup in S1 (`payout/package-info.java`'s stripped `//`
+block converted to a `/** */` doc comment rather than crammed onto one line). Gates on the
+cumulative diff after all 7 (8 including the S1 fixup commit) cherry-picks: `check-comment-only.mjs`
+(153 files verified code-identical against `origin/main`), `check-inline-comments.mjs` clean, the
+F-8 pre-push grep clean, `compileJava`/`compileTestJava` BUILD SUCCESSFUL, structural net BUILD
+SUCCESSFUL. Pushed incrementally after each batch (7 pushes).
 
 **Findings register**
 
@@ -336,6 +372,33 @@ edited, 0 permitted labels lost.**
   - `platform/src/main/java/ai/riviera/platform/OperatorApprovalMail.java` — **modified** (D18); 1 RELOCATE-CANDIDATE block left untouched (inventory #50)
   - `platform/src/main/java/ai/riviera/platform/MyErasureController.java` — **modified** (D18); 1 RELOCATE-CANDIDATE block left untouched (inventory #51)
   - `platform/src/main/java/ai/riviera/platform/AccountRecoveryController.java` — **modified** (D19); 1 RELOCATE-CANDIDATE block left untouched (inventory #52)
+- **Sparse wave 1 (S1–S7, 105 files), comment-only `#nnn` strip — see RELOCATE-CANDIDATE inventory
+  rows 53–77 for the per-file rationale flags; every file below was reviewed for the full triage,
+  most with `#nnn` hits fully stripped, some with a subset left as RELOCATE-CANDIDATE or fully
+  untouched where noted:**
+  - S1 (15 files): `venue/spi/package-info.java`, `venue/application/{ReplaceRejection,EditVenueProfile}.java`, `venue/adapter/out/JdbcVenueCatalog.java` (2 RELOCATE-CANDIDATE, #53–#54), `venue/adapter/in/{UpdateVenueProfileRequest,ExpectedVersion}.java`, `shared/{ResubmissionOutcome,CurrentOperator}.java` (F-6 stale-sentence correction in `CurrentOperator`), `payout/package-info.java` (converted a stripped `//` block to `/** */` doc comment, RV-STYLE-1), `operator/api/VenueOwnership.java` (F-6 stale-sentence correction), `notification/application/{ResendOutcome,MailResubmission (1 RELOCATE-CANDIDATE, #55),MailAttemptSource,MailAttemptOutcome (1 RELOCATE-CANDIDATE, #56),BookingMailFactsService}.java`
+  - S2 (15 files): `notification/api/package-info.java`, `notification/adapter/in/{AdminMailOutboxController,AdminEmailSuppressionController}.java`, `customer/vocabulary/Emails.java` (1 RELOCATE-CANDIDATE, #57), `customer/adapter/out/JdbcAccountErasure.java`, `customer/adapter/in/GuestContactRetentionScheduler.java`, `booking/vocabulary/package-info.java`, `booking/application/refund/RefundResubmission.java`, `booking/adapter/in/{RefundResubmissionProperties,AbandonedPaymentProperties}.java`, `availability/adapter/in/StaffAvailabilityController.java`, `WebCorsConfig.java`, `SessionAuthentication.java`, `ApiErrorHandler.java`, `AdminAuditFilter.java` (1 RELOCATE-CANDIDATE, #58)
+  - S3 (15 files): `venue/vocabulary/{VenueSummaryView,PhotoSlot}.java`, `venue/application/{VenueProfileView,VenueCommissionService (reviewed, not modified — RELOCATE-CANDIDATE #59),SetRejection,ProfileUpdateOutcome,PhotoStorage (1 RELOCATE-CANDIDATE, #60),PhotoSlotView,PhotoServingUrls,PhotoProcessor,OnboardVenue,ListOwnedVenues,DailyAvailabilityService}.java`, `venue/adapter/in/{SetCommissionRequest,PhotoUploadResponse}.java`
+  - S4 (15 files): `venue/adapter/in/{BeachMapLayoutRequest,AdminVenuePhotosResponse}.java`, `shared/InvalidApiRequestException.java` (reviewed, not modified — RELOCATE-CANDIDATE #61), `shared/CurrentCustomer.java`, `payment/api/{PaymentCredentialsLookup,CollectionGuarantee (1 RELOCATE-CANDIDATE, #62)}.java`, `operator/vocabulary/{package-info,OperatorCredential,OperatorAccount,ApprovalOutcome (1 RELOCATE-CANDIDATE, #63)}.java`, `operator/package-info.java`, `operator/application/OperatorRegistrationService.java`, `operator/api/package-info.java`, `operator/adapter/out/JdbcOperators.java` (1 RELOCATE-CANDIDATE, #64), `notification/application/MissingBookingFact.java` (1 RELOCATE-CANDIDATE, #65)
+  - S5 (15 files): `notification/application/{MailResubmissionService (1 RELOCATE-CANDIDATE, #66),MailOutboxStatus,ConfirmationSendOutcome (1 RELOCATE-CANDIDATE, #67),ConfirmationMailAttempts}.java`, `notification/adapter/out/{SuppressedConfirmationMailDelivery,JdbcConfirmationMailAttempts (1 RELOCATE-CANDIDATE, #68)}.java`, `customer/vocabulary/SsoProvider.java`, `customer/package-info.java`, `customer/api/{SsoAccountProvisioning (1 RELOCATE-CANDIDATE, #69),CustomerAccountRecovery (1 RELOCATE-CANDIDATE, #70)}.java`, `booking/events/{package-info,BookingRequestExpired,BookingRequestDeclined,BookingCancelled}.java`, `booking/domain/BookingStatus.java`
+  - S6 (15 files): `booking/application/view/{MyBookingsService,BookingDetail}.java`, `booking/application/request/{RequestWindows (1 RELOCATE-CANDIDATE, #71),PendingRequestsService}.java`, `booking/application/refund/{RefundOutbox (1 RELOCATE-CANDIDATE, #72),ExpireAbandonedBookings (1 RELOCATE-CANDIDATE, #73)}.java`, `booking/api/BookingNotificationFacts.java`, `booking/adapter/out/JdbcGuestBookingHistory.java` (1 RELOCATE-CANDIDATE, #74), `booking/adapter/in/CreateBookingRequest.java`, `SsoProviders.java`, `SsoProviderClient.java`, `SsoGateway.java`, `SsoController.java`, `SpaWebConfig.java`, `PrincipalSessionRevoker.java` (reviewed, not modified — 2 RELOCATE-CANDIDATE, #75)
+  - S7 (15 files): `ObservabilityConfig.java` (1 RELOCATE-CANDIDATE, #76), `MoneyPathAlertCheck.java` (1 RELOCATE-CANDIDATE, #77), `MockSsoProdGuard.java`, `GoogleSsoGateway.java`, `ExternalIdentity.java`, `CustomerPasswords.java`, `AppleSsoGateway.java`, `AdminErasureController.java`, `AdminAuditLog.java`, `AdminAuditController.java`, `venue/vocabulary/{package-info,VenueFilter,PhotoSurface,CoverPhotoView,ContentHash}.java`
+  - Sparse wave 1 paths the brace-set parser above didn't expand (listed individually for the
+    `check-plan-file-structure.mjs` guard): `platform/src/main/java/ai/riviera/platform/SsoProviders.java`,
+    `platform/src/main/java/ai/riviera/platform/WebCorsConfig.java`,
+    `platform/src/main/java/ai/riviera/platform/booking/application/refund/ExpireAbandonedBookings.java`,
+    `platform/src/main/java/ai/riviera/platform/booking/application/refund/RefundOutbox.java`,
+    `platform/src/main/java/ai/riviera/platform/booking/application/request/RequestWindows.java`,
+    `platform/src/main/java/ai/riviera/platform/customer/api/CustomerAccountRecovery.java`,
+    `platform/src/main/java/ai/riviera/platform/customer/api/SsoAccountProvisioning.java`,
+    `platform/src/main/java/ai/riviera/platform/notification/adapter/out/JdbcConfirmationMailAttempts.java`,
+    `platform/src/main/java/ai/riviera/platform/notification/application/ConfirmationSendOutcome.java`,
+    `platform/src/main/java/ai/riviera/platform/notification/application/MailAttemptOutcome.java`,
+    `platform/src/main/java/ai/riviera/platform/notification/application/MailResubmission.java`,
+    `platform/src/main/java/ai/riviera/platform/notification/application/MailResubmissionService.java`,
+    `platform/src/main/java/ai/riviera/platform/operator/vocabulary/ApprovalOutcome.java`,
+    `platform/src/main/java/ai/riviera/platform/payment/api/CollectionGuarantee.java`,
+    `platform/src/main/java/ai/riviera/platform/venue/application/PhotoStorage.java`
 
 ## Generalization-audit log
 
