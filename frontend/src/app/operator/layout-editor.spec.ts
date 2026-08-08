@@ -216,7 +216,7 @@ describe('LayoutEditor (#172)', () => {
   });
 
   it('keeps edits and offers Reload on a 409 STALE_WRITE, then Reload re-seeds from the server', async () => {
-    // AC-9: a stale-write conflict must not discard edits — it shows a banner and offers Reload.
+    // A stale-write conflict must not discard edits — it shows a banner and offers Reload.
     render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3); // loaded at set_version 3
     expect(cells()).toHaveLength(1);
     // Paint the loaded cell to walk-in — an in-progress edit that must survive the 409.

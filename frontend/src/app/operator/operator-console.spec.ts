@@ -57,7 +57,7 @@ function flushVenue(httpMock: HttpTestingController, name: string, venue = VENUE
 }
 
 /** The Requests-badge count read the console fires once a session exists (owner-asserted server-side,
- *  invariant #13). The exact URL is pinned here (AC-8: no new unscoped call). */
+ *  invariant #13). The exact URL is pinned here (no new unscoped call). */
 function flushRequests(httpMock: HttpTestingController, pending: number, venue = VENUE): void {
   httpMock
     .expectOne((r) => r.url === `${BASE}/api/venues/${venue}/booking-requests` && r.method === 'GET')

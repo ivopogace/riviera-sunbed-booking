@@ -65,7 +65,7 @@ describe('ConsoleVenueMap (#486)', () => {
     cache.load(VENUE, TODAY).subscribe((v) => seen.push(`shell:${v.name}`));
     cache.load(VENUE, TODAY).subscribe((v) => seen.push(`tab:${v.name}`));
 
-    // expectOne fails outright if the second load issued its own request — the point of the slice.
+    // expectOne fails outright if the second load issued its own request — the point of the cache.
     flushMap(TODAY, venueMap());
 
     expect(seen).toEqual(['shell:Miramar Beach Club', 'tab:Miramar Beach Club']);
@@ -158,7 +158,7 @@ describe('ConsoleVenueMap (#486)', () => {
   it('does not age out a read that is still in flight (review F-6)', () => {
     // The window must start when the data becomes real, not when the request left. A read slower than
     // the TTL is still about to answer, so expiring it would dispatch a second concurrent GET for the
-    // same key — the duplicate this whole slice exists to remove, re-entered through latency.
+    // same key — the duplicate this cache exists to remove, re-entered through latency.
     cache.load(VENUE, TODAY).subscribe();
     vi.setSystemTime(new Date(Date.now() + 31_000));
 

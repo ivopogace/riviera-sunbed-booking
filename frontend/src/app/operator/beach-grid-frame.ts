@@ -7,7 +7,7 @@ import { CardGlass } from '../shared/card-glass';
  * and "▼ Promenade · Entrance" orientation banners that make a grid of tiles read as a beach map.
  *
  * <p>Extracted as the shared chrome of the two operator-console grids (the rule of three): the
- * layout editor's paint grid and this slice's Daily view availability grid both project their
+ * layout editor's paint grid and the Daily view availability grid both project their
  * rows into it. The <strong>tiles differ by purpose</strong>
  * — the editor paints tier/pool/gap, the daily grid shows FREE / booked-online / walk-in availability —
  * so only the framing (card + banners + orientation) is shared here; each consumer owns its own tile

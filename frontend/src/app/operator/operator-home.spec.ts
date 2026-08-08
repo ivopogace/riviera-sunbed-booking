@@ -147,7 +147,7 @@ describe('OperatorHome (#277, create state #278)', () => {
   });
 
   it('offers a retry instead of rendering the create zero state when the read fails', async () => {
-    // R-12: "couldn't load" must never be mistaken for "owns nothing".
+    // "Couldn't load" must never be mistaken for "owns nothing".
     await render({ status: 'error' });
 
     expect(navigate).not.toHaveBeenCalled();

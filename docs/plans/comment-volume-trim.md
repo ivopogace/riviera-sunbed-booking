@@ -120,9 +120,14 @@ No component, template binding, route or service behaviour changes. TSDoc and HT
 
 ## Execution status
 
-**Stage:** ✅ complete **on the volume axis** · **Next action:** decide the scoped issue-ref strip pass
-(*Scoped follow-up*, below) — the sweep shipped §6d while leaving 1,136 doc blocks violating its
-issue-number clause, which is a separate pass, not a continuation of this one. Absent that decision,
+**Stage:** ✅ complete **on the volume axis** · **Follow-up outcome (2026-08-08):** the scoped
+issue-ref strip pass was decided GO as issue #550 and executed for **Phase A — the entire
+`frontend/` tree** (nine PRs, #551–#559; state store `docs/plans/issue-550-issue-ref-strip.md`).
+The maintainer then stopped the pass: **Phases B/C (backend) deliberately do not proceed** — the
+backend's refs decay under §6d as files are edited for other reasons, and any revival starts from
+fresh mini-probes. The paragraph below records the decision inputs as they stood; its frontend
+figures (179 of 254 files, "every neighbour cites issue numbers") describe the pre-#550 tree.
+Absent further work,
 §6d and `check-comment-only.mjs` govern the rest of the tree the next time a file is edited for another
 reason.
 

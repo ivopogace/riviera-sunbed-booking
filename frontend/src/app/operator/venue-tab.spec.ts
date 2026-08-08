@@ -42,7 +42,7 @@ describe('VenueTab (#177)', () => {
     },
   };
 
-  /** The service resolves photo paths against the API origin (F-7), so rendered src attrs carry it. */
+  /** The service resolves photo paths against the API origin, so rendered src attrs carry it. */
   const API = 'http://localhost:8080';
 
   function configure(parentVenueId: Record<string, string> = { venueId: '1' }): void {
@@ -130,7 +130,7 @@ describe('VenueTab (#177)', () => {
       bookingCutoff: '18:00',
       amenities: ['WIFI', 'BEACH_BAR'],
       distanceToWaterM: 20,
-      expectedVersion: 7, // the loaded optimistic-concurrency token (#224)
+      expectedVersion: 7, // the loaded optimistic-concurrency token
     });
     // Read-only fields must not be on the wire.
     expect(req.request.body.commissionBps).toBeUndefined();
