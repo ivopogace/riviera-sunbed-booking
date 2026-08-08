@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The cross-venue denial matrix (issue #73, AC-4/AC-5) — the reference deliverable proving the BOLA
+ * The cross-venue denial matrix (AC-4/AC-5) — the reference deliverable proving the BOLA
  * fix (invariant #13, OWASP API #1). For <strong>every</strong> venue-scoped endpoint, an operator
  * that does not own the target venue gets {@code 403}; the owning operator does not; and the
  * platform-wide {@code /api/admin/**} surface plus {@code POST /api/venues} (no path {@code venueId})
@@ -47,10 +47,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>Two synthetic per-venue operators are seeded, each owning its own fresh venue (<strong>A</strong>
  * and <strong>B</strong>); Miramar (venue 1) is owned by neither (it is backfilled to the bootstrap
- * admin, #115), so a non-owner denial can target it too. The real {@code VenueOwnership} runs against
- * the real {@code operator} tables; only the edge {@link CurrentOperator} (principal → operator id —
- * the seam #74 completes) is mocked, so each request is attributed to A or B independently of the
- * shared bootstrap login. The session cookie (from one real login, issue #109) still satisfies the
+ * admin), so a non-owner denial can target it too. The real {@code VenueOwnership} runs against
+ * the real {@code operator} tables; only the edge {@link CurrentOperator} (principal → operator id)
+ * is mocked, so each request is attributed to A or B independently of the
+ * shared bootstrap login. The session cookie (from one real login) still satisfies the
  * role gate. The staff-availability case is the spoofing test: A uses <em>its own</em> venue in the
  * URL path but a Miramar {@code setId}, and is still denied because the service resolves the owning
  * venue from the set, never the path.
@@ -137,7 +137,7 @@ class CrossVenueDenialIT {
 				{"rowLabel":"Row A","positionNo":1,"tier":"STANDARD","pool":"ONLINE",
 				 "price":{"minorUnits":3000,"currency":"EUR"},"gridX":1,"gridY":1}
 				""";
-		// The 403 shape is the one error contract (issue #97): ProblemDetail + stable code.
+		// The 403 shape is the one error contract: ProblemDetail + stable code.
 		mvc.perform(post("/api/venues/{v}/sets", MIRAMAR).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(setBody))
 				.andExpect(status().isForbidden())
@@ -147,9 +147,9 @@ class CrossVenueDenialIT {
 
 	@Test
 	void beachMapLayoutReplaceByNonOwnerIs403() throws Exception {
-		// #172: the bulk layout replace is venue-scoped — a non-owner is denied before any read/write,
+		// The bulk layout replace is venue-scoped — a non-owner is denied before any read/write,
 		// so Miramar's layout is never touched. Ownership asserts first (invariant #13, BOLA). The body is
-		// VALID — including the #226 required expectedVersion — so ExpectedVersion.require passes and the
+		// VALID — including the required expectedVersion — so ExpectedVersion.require passes and the
 		// 403 is genuinely from ownership, not a 400 (parse-then-authorize; mirrors FULL_PROFILE_BODY).
 		actingAs(operatorA);
 		String layoutBody = """
@@ -166,9 +166,9 @@ class CrossVenueDenialIT {
 
 	@Test
 	void rowRepriceByNonOwnerIs403() throws Exception {
-		// O4 (#174): repricing a beach-map row is venue-scoped — a non-owner is denied before any
+		// Repricing a beach-map row is venue-scoped — a non-owner is denied before any
 		// read/write, so Miramar's prices are never touched. Ownership asserts first (invariant #13). The
-		// body is VALID — including the #226 required expectedVersion — so the 403 is genuinely from
+		// body is VALID — including the required expectedVersion — so the 403 is genuinely from
 		// ownership, not a 400 (parse-then-authorize; mirrors FULL_PROFILE_BODY).
 		actingAs(operatorA);
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", MIRAMAR, "A").cookie(operatorSession).with(csrf())
@@ -186,7 +186,7 @@ class CrossVenueDenialIT {
 				.andExpect(status().isForbidden());
 	}
 
-	/** A full, VALID widened profile body (O8 #177, versioned by #224): valid — including the required
+	/** A full, VALID widened profile body: valid — including the required
 	 *  {@code expectedVersion} — so {@code toCommand()}/{@code ExpectedVersion.require} pass and the
 	 *  403 comes from the service's ownership check, not from body/version validation (parse-then-authorize).
 	 *  The owning-venue counterpart edits a fresh venue, so {@code expectedVersion} 0 matches. */
@@ -198,7 +198,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void venueProfileEditByNonOwnerIs403() throws Exception {
-		// T7 (#140) / O8 (#177): editing a venue's profile is venue-scoped (invariant #13, BOLA). A
+		// Editing a venue's profile is venue-scoped (invariant #13, BOLA). A
 		// does not own Miramar → 403 before any write, so Miramar's profile is left untouched. The body
 		// is VALID so the 403 is genuinely from ownership, not from request validation.
 		actingAs(operatorA);
@@ -211,7 +211,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void venueProfileReadByNonOwnerIs403() throws Exception {
-		// O8 (#177): the owner profile read carries the commission rate + payout currency — venue
+		// The owner profile read carries the commission rate + payout currency — venue
 		// financial data — so a non-owner must be denied (invariant #13, BOLA). A does not own Miramar.
 		actingAs(operatorA);
 		mvc.perform(get("/api/venues/{v}/profile", MIRAMAR).cookie(operatorSession))
@@ -237,7 +237,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void takingsReadByNonOwnerIs403() throws Exception {
-		// #171: a venue's daily online takings are financial data — a non-owner must not read them.
+		// A venue's daily online takings are financial data — a non-owner must not read them.
 		actingAs(operatorA);
 		mvc.perform(get("/api/venues/{v}/takings", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isForbidden())
@@ -246,7 +246,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void dailyAvailabilityReadByNonOwnerIs403() throws Exception {
-		// #207: the hold split is operator data — denied BEFORE any existence probe (invariant #13).
+		// The hold split is operator data — denied BEFORE any existence probe (invariant #13).
 		actingAs(operatorA);
 		mvc.perform(get("/api/venues/{v}/availability", MIRAMAR).cookie(operatorSession)
 						.param("date", "2026-09-14"))
@@ -272,7 +272,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void photoUploadByNonOwnerIs403() throws Exception {
-		// #142: the photo slot upload is venue-scoped (invariant #13, BOLA). The file is a VALID
+		// The photo slot upload is venue-scoped (invariant #13, BOLA). The file is a VALID
 		// JPEG so the 403 is genuinely from ownership, not from image validation — and the service
 		// asserts ownership BEFORE processing, so Miramar's slot is never touched.
 		actingAs(operatorA);
@@ -286,7 +286,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void photoDeleteByNonOwnerIs403() throws Exception {
-		// #142: deleting a photo slot is venue-scoped — denied before the slot is even looked at,
+		// Deleting a photo slot is venue-scoped — denied before the slot is even looked at,
 		// so a non-owner gets 403 (not the owner's 404-when-empty).
 		actingAs(operatorA);
 		mvc.perform(delete("/api/venues/{v}/photos/{slot}", MIRAMAR, "cover")
@@ -298,7 +298,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void pendingRequestsQueueByNonOwnerIs403() throws Exception {
-		// #98: the pending-requests queue is venue-scoped operator data (guest names, demand).
+		// The pending-requests queue is venue-scoped operator data (guest names, demand).
 		actingAs(operatorA);
 		mvc.perform(get("/api/venues/{v}/booking-requests", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isForbidden())
@@ -307,7 +307,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void acceptRequestByNonOwnerIs403() throws Exception {
-		// #98: accept moves money (issues the payment request) — the ownership check must fire
+		// Accept moves money (issues the payment request) — the ownership check must fire
 		// BEFORE any state is read or transitioned, so even a nonexistent bookingId is 403, not 404.
 		actingAs(operatorA);
 		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", MIRAMAR, 999_999)
@@ -329,7 +329,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void ownerRequestSurfacesAreNotForbidden() throws Exception {
-		// #98 positive counterparts: for the owner the queue is 200, and accept/decline of an
+		// The positive counterparts: for the owner the queue is 200, and accept/decline of an
 		// unknown request are 404 (the check passed; the id is simply not a pending request).
 		actingAs(operatorB);
 		mvc.perform(get("/api/venues/{v}/booking-requests", venueOwnedByB).cookie(operatorSession))
@@ -354,7 +354,7 @@ class CrossVenueDenialIT {
 				.andExpect(status().isOk());
 		mvc.perform(get("/api/venues/{v}/takings", venueOwnedByB).cookie(operatorSession))
 				.andExpect(status().isOk());
-		// #207: the owner's daily availability read passes — proving its 403 is genuinely ownership.
+		// The owner's daily availability read passes — proving its 403 is genuinely ownership.
 		mvc.perform(get("/api/venues/{v}/availability", venueOwnedByB).cookie(operatorSession)
 						.param("date", "2026-09-14"))
 				.andExpect(status().isOk());
@@ -435,8 +435,8 @@ class CrossVenueDenialIT {
 	 * demoted to the platform admin ({@code is_admin}) — so the session carries {@code ROLE_ADMIN},
 	 * whatever the mocked {@link CurrentOperator} says. {@code actingAs} swaps the <em>ownership</em>
 	 * identity the application services resolve, not the session's authorities, and this path consults
-	 * no ownership at all; stubbing it here only ever implied an actor the request did not have. Since
-	 * #348 A4 the surface is ADMIN-gated, so a plain operator is refused outright — pinned by
+	 * no ownership at all; stubbing it here only ever implied an actor the request did not have. The
+	 * surface is ADMIN-gated, so a plain operator is refused outright — pinned by
 	 * {@code AdminPayoutSecurityIT}, which provisions a genuinely non-admin operator to prove it.
 	 */
 	@Test
@@ -466,7 +466,7 @@ class CrossVenueDenialIT {
 
 	@Test
 	void creatorOwnsCreatedVenueAndOthersAreDenied() throws Exception {
-		// Creator-owns-on-create (#115, invariant #13, BOLA): the operator that creates a venue owns it
+		// Creator-owns-on-create (invariant #13, BOLA): the operator that creates a venue owns it
 		// from creation (the ownership row is written in the application service, atomically with the
 		// insert), so the creator's venue-scoped reads pass and a DIFFERENT operator gets 403.
 		actingAs(operatorA);

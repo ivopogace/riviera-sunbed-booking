@@ -34,20 +34,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * The chokepoint's contract (#382, absorbing what {@code CustomerRecoveryDispatchTest} pinned at the
+ * The chokepoint's contract (absorbing what {@code CustomerRecoveryDispatchTest} pinned at the
  * edge before the move): a recovery send does <em>no mail work on the caller's thread</em> — the
- * structural closure of the #369 timing account-enumeration oracle, recorded through a
+ * structural closure of the timing account-enumeration oracle, recorded through a
  * {@link MailDispatcher} that captures the task instead of running it — and a transport failure
  * dies inside the dispatched task (D-8: the response may not reveal whether the address is
  * registered). The booking confirmation is the deliberate opposite: synchronous, failures
  * propagating, so the Event Publication Registry retries it.
  *
- * <p><strong>#423 added the accounting for the loss that swallow creates.</strong> The specs below
+ * <p><strong>This slice added the accounting for the loss that swallow creates.</strong> The specs below
  * assert not only <em>that</em> a lost recovery mail is counted but <em>how it is attributed</em>:
  * the same catch site can lose a mail to a dead relay or to a structurally broken suppression
  * lookup, and a counter that cannot tell those apart cannot be the signal the runbook says it is.
  * Just as load-bearing are the specs that assert the counter stays at <em>zero</em> — a suppressed
- * skip and a transient fail-open (#386) are not losses, and counting them would make a healthy
+ * skip and a transient fail-open are not losses, and counting them would make a healthy
  * relay read as a broken one.
  */
 class TransactionalMailServiceTest {
@@ -140,7 +140,7 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
-	 * #442. The dispatcher accounts for the sends it never runs, so it has to be told what it is carrying —
+	 * The dispatcher accounts for the sends it never runs, so it has to be told what it is carrying —
 	 * before this slice its whole interface was {@code dispatch(Runnable)}, and a mail it dropped could not
 	 * be attributed to any flow. This service is the one production caller, and the kind is already in its
 	 * hand at every call site; passing it is what makes the drop counter's {@code kind} tag possible at all.
@@ -160,7 +160,7 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
-	 * The failure this slice exists for (#423): the dispatcher <em>accepted</em> the send and the relay
+	 * The failure this slice exists for: the dispatcher <em>accepted</em> the send and the relay
 	 * then refused it. Before this counter the entire record was one log line, so a relay outage — the
 	 * likelier of the vehicle's two losses by far, since saturating the pool takes 100 queued sends —
 	 * was un-alertable. The swallow itself is unchanged and still asserted here: wherever the task runs,
@@ -235,11 +235,11 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
-	 * The vehicle's first <strong>non-recovery</strong> kind (#375). It carries no bearer credential —
+	 * The vehicle's first <strong>non-recovery</strong> kind. It carries no bearer credential —
 	 * a plain sign-in link — and yet it rides this dispatcher rather than the registry, because the
 	 * payload is not the only thing ADR-0011 decision 5 reads: it is edge-orchestrated from an admin
 	 * request, not driven by a domain fact, so a registry publication would be ceremony carrying a
-	 * message back to the very edge that issued it (epic #367). What matters is that it inherits the
+	 * message back to the very edge that issued it. What matters is that it inherits the
 	 * vehicle's whole contract unchanged, starting here — off the caller's thread, so the mail can
 	 * neither slow nor fail the approval request that triggered it.
 	 */
@@ -290,7 +290,7 @@ class TransactionalMailServiceTest {
 		service.sendBookingConfirmation(EMAIL, CONFIRMATION);
 		verify(mailer).sendBookingConfirmation(EMAIL, CONFIRMATION);
 
-		// The registry vehicle relies on the throw to keep the publication outstanding (#371).
+		// The registry vehicle relies on the throw to keep the publication outstanding.
 		doThrow(new IllegalStateException("relay down")).when(mailer).sendBookingConfirmation(any(), any());
 		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, CONFIRMATION))
 				.isInstanceOf(IllegalStateException.class);
@@ -331,7 +331,7 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
-	 * #386's fail-open carve-out is the <em>recovery</em> vehicle's alone. Here the throw is
+	 * The fail-open carve-out is the <em>recovery</em> vehicle's alone. Here the throw is
 	 * load-bearing: it keeps the publication outstanding so at-least-once retries against a healthy
 	 * database, rather than burning the delivery on a blip.
 	 */
@@ -347,9 +347,9 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
-	 * #373 joins the registry vehicle, so it must behave like its two siblings and not like the
+	 * This kind joins the registry vehicle, so it must behave like its two siblings and not like the
 	 * recovery pair beside them. The throw is the mechanism, not an accident: it is what keeps the
-	 * publication outstanding for the restart republish and the #405 re-drive. A
+	 * publication outstanding for the restart republish and the re-drive. A
 	 * dispatched-and-swallowed payment-due mail would look identical in every other test in this
 	 * slice — the listener IT included, since the mock transport never fails there — and would turn
 	 * at-least-once into fire-and-forget for the one mail whose loss costs the guest their booking.
@@ -382,7 +382,7 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
-	 * #386's fail-open carve-out is the <em>recovery</em> vehicle's alone, here as on the cancellation:
+	 * The fail-open carve-out is the <em>recovery</em> vehicle's alone, here as on the cancellation:
 	 * a blip should cost a retry against a healthy database, not the delivery.
 	 */
 	@Test
@@ -397,10 +397,10 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
-	 * #124's two request-outcome mails join the registry vehicle, so each must behave like its three
+	 * These two request-outcome mails join the registry vehicle, so each must behave like its three
 	 * siblings and not like the recovery pair: synchronous, the throw left intact (it is what keeps
-	 * the publication outstanding for the restart republish and the #405 re-drive), the suppression
-	 * skip a normal return, and no #386 fail-open carve-out. One test per property per kind — the
+	 * the publication outstanding for the restart republish and the re-drive), the suppression
+	 * skip a normal return, and no fail-open carve-out. One test per property per kind — the
 	 * arguments are the payment-due trio's, unchanged.
 	 */
 	@Test
@@ -487,7 +487,7 @@ class TransactionalMailServiceTest {
 
 	@Test
 	void theSuppressionReadRunsOffTheCallersThread() {
-		// R-2: a suppression SELECT on the request thread would widen the #369 timing oracle.
+		// R-2: a suppression SELECT on the request thread would widen the timing oracle.
 		service.sendPasswordReset(EMAIL, LINK);
 
 		verify(suppressions, never()).isSuppressed(any());
@@ -496,11 +496,11 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
-	 * #386: a failing suppression <em>read</em> fails <strong>open</strong> on the recovery vehicle —
+	 * A failing suppression <em>read</em> fails <strong>open</strong> on the recovery vehicle —
 	 * the mail goes. This deliberately reverses accepted drift Info-5, under which the read shared the
 	 * transport's catch and a transient DB blip silently dropped a reset the user was waiting for,
 	 * behind a log line that read like an SMTP failure. Three reasons: the list is empty in production
-	 * until #372's bounce feed lands; a user-requested reset to a suppressed address is the most
+	 * until the bounce feed lands; a user-requested reset to a suppressed address is the most
 	 * harmless send there is; and D-8 makes the response identical either way, so a dropped reset is a
 	 * dead end with no signal to the user. Bounding the read with a query timeout (same slice) makes
 	 * this path <em>more</em> reachable, since a slow read now throws instead of hanging.
@@ -513,7 +513,7 @@ class TransactionalMailServiceTest {
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
 		verify(mailer).sendPasswordReset(EMAIL, LINK);
-		// The mail went, so nothing was lost — the #386 carve-out must not raise the failure series.
+		// The mail went, so nothing was lost — the carve-out must not raise the failure series.
 		assertThat(failedTotal()).isZero();
 	}
 
@@ -522,7 +522,7 @@ class TransactionalMailServiceTest {
 	 * for (a wedged or timed-out read, made reachable by this slice's query timeout). A structurally
 	 * broken lookup — a bad grant, schema drift, a typo'd column after a refactor — is not transient, and
 	 * failing open on it would mail every suppressed address indefinitely behind a single log line. Those
-	 * fall through to the outer catch instead: the mail is dropped, as before (#386 review).
+	 * fall through to the outer catch instead: the mail is dropped, as before.
 	 */
 	@Test
 	void aStructurallyBrokenSuppressionReadDoesNotFailOpen() {
@@ -538,7 +538,7 @@ class TransactionalMailServiceTest {
 	/**
 	 * The other half of the same decision: fail-open is scoped to the recovery vehicle and must not
 	 * leak to the registry one. There the throw is load-bearing — it keeps the publication outstanding
-	 * so the at-least-once contract (#371) retries against a healthy DB, rather than burning the
+	 * so the at-least-once contract retries against a healthy DB, rather than burning the
 	 * delivery on a blip.
 	 */
 	@Test
@@ -561,7 +561,7 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
-	 * The outcome the skip above used to discard (#380). Completing normally is right; leaving the
+	 * The outcome the skip above used to discard. Completing normally is right; leaving the
 	 * caller unable to tell a delivery from a deliberate withholding is what made the delivery history
 	 * impossible to record honestly — the registry marks both identically, so this return value is the
 	 * only place the difference exists.
@@ -583,7 +583,7 @@ class TransactionalMailServiceTest {
 	}
 
 	/**
-	 * The asymmetry #423 had to settle rather than leave implied: the registry vehicle gets no counter
+	 * The asymmetry this slice had to settle rather than leave implied: the registry vehicle gets no counter
 	 * of its own, and that is a decision, not an omission. Its transport failure <em>propagates</em>, so
 	 * the event publication stays outstanding and {@code riviera.outbox.pending} — already read by
 	 * {@code MoneyPathAlertCheck} — rises. Adding a second series for the same event would double-count

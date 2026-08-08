@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@link Venues} — no Spring, no DB. Proves the existence checks and conflict→{@link SetRejection}
  * mapping (AC-1/2/3/5) without paying Testcontainers startup; the round-trip and DB constraints
  * are pinned by {@code VenueAdminControllerIT} and {@code BeachMapLayoutMigrationIT}. The per-venue
- * ownership guard (issue #73) is stubbed by {@link FakeOwnership} — {@link #OWNER} owns
+ * ownership guard is stubbed by {@link FakeOwnership} — {@link #OWNER} owns
  * {@link #VENUE}, anyone else is denied; the end-to-end 403 path is pinned by {@code CrossVenueDenialIT}.
  */
 class VenueAdminServiceTest {
@@ -77,7 +77,7 @@ class VenueAdminServiceTest {
 		NewVenueCommand command = new NewVenueCommand("Sunset", "Ksamil", "Riviera", "nice",
 				"INSTANT", 1500, "EUR", LocalTime.of(18, 0));
 
-		// Creator-owns-on-create writes ownership too (#115); the ownership write + non-owner denial is
+		// Creator-owns-on-create writes ownership too; the ownership write + non-owner denial is
 		// proven end-to-end by CrossVenueDenialIT.creatorOwnsCreatedVenueAndOthersAreDenied.
 		assertEquals(new VenueId(99), service.onboard(OWNER, command));
 		assertEquals(1, venues.insertedVenues);
@@ -189,7 +189,7 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.deletedSets);
 	}
 
-	/** A valid widened profile command (O8 #177) with the given amenities + distance; core fields fixed. */
+	/** A valid widened profile command with the given amenities + distance; core fields fixed. */
 	private static VenueProfileCommand profile(Set<Amenity> amenities, Integer distanceToWaterM) {
 		return new VenueProfileCommand("Sunset", "Ksamil", "Riviera", "nice", "INSTANT",
 				LocalTime.of(18, 0), amenities, distanceToWaterM);
@@ -197,7 +197,7 @@ class VenueAdminServiceTest {
 
 	@Test
 	void updateProfileWithCurrentVersionApplies() {
-		// #224: the venue exists and the conditional UPDATE matches the loaded version ⇒ 1 row ⇒ APPLIED.
+		// The venue exists and the conditional UPDATE matches the loaded version ⇒ 1 row ⇒ APPLIED.
 		venues.venues.add(VENUE.value());
 
 		ProfileUpdateOutcome outcome = service.updateProfile(OWNER, VENUE, 0L,
@@ -209,7 +209,7 @@ class VenueAdminServiceTest {
 
 	@Test
 	void updateProfileWithStaleVersionIsStaleWrite() {
-		// #224, AC-1: the venue exists but the conditional UPDATE finds no row at the loaded version
+		// AC-1: the venue exists but the conditional UPDATE finds no row at the loaded version
 		// (another writer bumped it) ⇒ 0 rows ⇒ STALE_WRITE, and no profile column is reported changed.
 		venues.venues.add(VENUE.value());
 		venues.forceProfileUpdateRows = 0; // version no longer matches
@@ -240,7 +240,7 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.updatedProfiles);
 	}
 
-	// ---- Owner-asserted profile READ (O8, issue #177) ----
+	// ---- Owner-asserted profile READ ----
 
 	@Test
 	void profileForByOwnerReturnsTheView() {
@@ -266,7 +266,7 @@ class VenueAdminServiceTest {
 		assertTrue(service.profileFor(OWNER, VENUE).isEmpty());
 	}
 
-	// ---- Bulk layout replace (O3, issue #172) ----
+	// ---- Bulk layout replace ----
 
 	@Test
 	void replacesLayoutForUnclaimedVenue() {
@@ -277,7 +277,7 @@ class VenueAdminServiceTest {
 		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
 		assertEquals(1, venues.deletedAllCount);
 		assertEquals(6, venues.insertedInLayout);
-		assertEquals(1, venues.incrementedSetVersions); // #226: token advanced exactly once, on success
+		assertEquals(1, venues.incrementedSetVersions); // token advanced exactly once, on success
 	}
 
 	@Test
@@ -290,7 +290,7 @@ class VenueAdminServiceTest {
 		assertEquals(ReplaceRejection.LAYOUT_IN_USE, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedAllCount); // guard runs BEFORE any delete
 		assertEquals(0, venues.insertedInLayout);
-		// #226 review fix: a LAYOUT_IN_USE reject must NOT advance the token (no spurious bump), so the
+		// A LAYOUT_IN_USE reject must NOT advance the token (no spurious bump), so the
 		// acting operator's own retry after the lock clears still works off the same loaded token.
 		assertEquals(0, venues.incrementedSetVersions);
 	}
@@ -339,7 +339,7 @@ class VenueAdminServiceTest {
 
 	@Test
 	void replaceWithStaleSetVersionIsStaleWrite() {
-		// #226, AC-1 (unit): the venue exists but the locked set_version no longer matches the loaded token
+		// AC-1 (unit): the venue exists but the locked set_version no longer matches the loaded token
 		// (another writer advanced it) ⇒ STALE_WRITE, and the layout is left untouched — the version check
 		// precedes the delete, and the token is never advanced on the stale path.
 		venues.venues.add(VENUE.value());
@@ -365,7 +365,7 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.deletedAllCount);
 	}
 
-	// ---- Per-row reprice (O4, issue #174) ----
+	// ---- Per-row reprice ----
 
 	private static final RowPriceCommand REPRICE_CMD = new RowPriceCommand("A", 4200, "EUR");
 
@@ -377,7 +377,7 @@ class VenueAdminServiceTest {
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
 		assertEquals(1, venues.repricedRows);
-		assertEquals(1, venues.incrementedSetVersions); // #226: token advanced once, on success
+		assertEquals(1, venues.incrementedSetVersions); // token advanced once, on success
 	}
 
 	@Test
@@ -397,14 +397,14 @@ class VenueAdminServiceTest {
 		ChangeOutcome outcome = service.repriceRow(OWNER, VENUE, 0L, REPRICE_CMD);
 
 		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
-		// #226 review fix: a NO_SUCH_ROW reject must NOT advance the token (no spurious bump), so the
+		// A NO_SUCH_ROW reject must NOT advance the token (no spurious bump), so the
 		// acting operator's own next edit of a real row off the same loaded token still works.
 		assertEquals(0, venues.incrementedSetVersions);
 	}
 
 	@Test
 	void repriceWithStaleSetVersionIsStaleWrite() {
-		// #226, AC-2 (unit): the venue exists but the locked set_version no longer matches the loaded token
+		// AC-2 (unit): the venue exists but the locked set_version no longer matches the loaded token
 		// (another writer advanced it) ⇒ STALE_WRITE, the reprice UPDATE is never attempted, and the token
 		// is not advanced.
 		venues.venues.add(VENUE.value());
@@ -425,10 +425,10 @@ class VenueAdminServiceTest {
 		assertThrows(NotVenueOwnerException.class,
 				() -> service.repriceRow(STRANGER, VENUE, 0L, REPRICE_CMD));
 		assertEquals(0, venues.repricedRows);
-		assertEquals(0, venues.incrementedSetVersions); // fail closed before the version read/write too (#226)
+		assertEquals(0, venues.incrementedSetVersions); // fail closed before the version read/write too
 	}
 
-	// ---- Owned-venues read (S9, issue #277) ----
+	// ---- Owned-venues read ----
 
 	private static final OperatorId MULTI_OWNER = new OperatorId(7);
 	private static final OperatorId OTHER_OWNER = new OperatorId(8);
@@ -524,7 +524,7 @@ class VenueAdminServiceTest {
 		// null ⇒ derive from the seeded `sets` map.
 		Boolean forceSetExists;
 		Integer forceUpdateRows;
-		// #224: null ⇒ the profile UPDATE matches the loaded version (1 row, APPLIED); set 0 to model a
+		// null ⇒ the profile UPDATE matches the loaded version (1 row, APPLIED); set 0 to model a
 		// stale version (another writer bumped it since the load ⇒ STALE_WRITE).
 		Integer forceProfileUpdateRows;
 
@@ -540,7 +540,7 @@ class VenueAdminServiceTest {
 		}
 
 		int incrementedSetVersions;
-		// #226: what lockAndReadSetVersion returns. The set-write tests pass expectedVersion 0, so the
+		// What lockAndReadSetVersion returns. The set-write tests pass expectedVersion 0, so the
 		// default 0 models a token match (proceed); set it to a different value to model a stale token
 		// (another replace/reprice advanced it since the load ⇒ STALE_WRITE).
 		long setVersionOnLock;
@@ -631,7 +631,7 @@ class VenueAdminServiceTest {
 			insertedInLayout += sets.size();
 		}
 
-		// S9 (#277): seeded summaries, plus every id set asked for (so a test can assert what was NOT).
+		// Seeded summaries, plus every id set asked for (so a test can assert what was NOT).
 		final Map<Long, OwnedVenueView> summaries = new HashMap<>();
 		final List<Collection<VenueId>> summaryQueries = new ArrayList<>();
 
