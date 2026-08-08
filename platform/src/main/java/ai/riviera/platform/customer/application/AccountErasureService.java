@@ -13,7 +13,7 @@ import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.customer.vocabulary.EraseOutcome;
 
 /**
- * The {@code customer} module's right-to-erasure application service (Slice 1 of #101). Package-private
+ * The {@code customer} module's right-to-erasure application service. Package-private
  * behind the published {@link AccountErasure} port (invariant #11); constructor injection into a
  * {@code final} {@link AccountErasureStore}. The scrub is one {@code @Transactional} unit — a partial
  * erasure (account tombstoned but its children left behind) must never commit.
@@ -21,7 +21,7 @@ import ai.riviera.platform.customer.vocabulary.EraseOutcome;
  * <p>It reads the account's email <em>before</em> the account scrub tombstones it, then scrubs any guest
  * contact sharing that email. Holds no Spring Security type (RV-BE-11); authentication + session
  * revocation stay at the platform edge. The completion is recorded with the shipped structured logger
- * (#100) carrying only technical ids + the outcome — never the email, name, phone, or a booking code
+ * carrying only technical ids + the outcome — never the email, name, phone, or a booking code
  * (invariant #7, {@code riviera-java-conventions} §10).
  */
 @Service

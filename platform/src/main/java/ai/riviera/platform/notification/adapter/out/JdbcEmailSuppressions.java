@@ -49,7 +49,7 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	private static final String HMAC_ALGORITHM = "HmacSHA256";
 
 	/** Generous for a single indexed-key lookup, short enough that a wedged read cannot stall the queue. */
-	// 2 s, not 5: since #390 this also bounds a user-facing read (see boundedClient).
+	// 2 s, not 5: this also bounds a user-facing read (see boundedClient).
 	private static final String DEFAULT_QUERY_TIMEOUT_SECONDS = "2";
 
 	private final JdbcClient jdbc;

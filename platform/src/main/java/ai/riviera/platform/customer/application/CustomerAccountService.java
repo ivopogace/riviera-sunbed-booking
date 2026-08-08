@@ -20,7 +20,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 
 /**
- * The {@code customer} module's account application service (S2, epic #108): the read side of an
+ * The {@code customer} module's account application service: the read side of an
  * account's stored credential ({@link CustomerAccounts}) and the registration write side
  * ({@link CustomerAccountProvisioning}). This is the service that <strong>graduates</strong> the
  * previously-thin {@code customer} module to the full ADR-0007 template. Package-private behind the

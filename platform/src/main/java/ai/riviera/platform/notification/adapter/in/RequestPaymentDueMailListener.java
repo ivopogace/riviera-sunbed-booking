@@ -18,8 +18,8 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 /**
- * Mails the tourist that their accepted request must now be paid for, and by when (#373, epic #367
- * story 14) — the thing that today reaches them only if they happen to reload the app, and whose
+ * Mails the tourist that their accepted request must now be paid for, and by when — the thing that
+ * today reaches them only if they happen to reload the app, and whose
  * absence quietly costs them the slot.
  *
  * <p><strong>It is the only one of the booking mails that is not a record of something
@@ -97,7 +97,7 @@ class RequestPaymentDueMailListener {
 	 * the booking id and the deadline: together they say <em>which</em> booking lost its warning and
 	 * how long there is to reach the guest another way before the sweep releases the set. Ids, the
 	 * deadline and the reason only — never the arrival code (invariant #7), never the pay link that
-	 * embeds it, never the address. The correlation id of the accepting request rides the MDC (#410).
+	 * embeds it, never the address. The correlation id of the accepting request rides the MDC.
 	 */
 	private void abandon(MissingBookingFact fact, BookingPaymentDue event) {
 		meters.counter(ObservabilityMetrics.MAIL_PAYMENT_DUE_ABANDONED,

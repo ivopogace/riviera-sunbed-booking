@@ -5,7 +5,7 @@ import java.net.URI;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
- * Builds the link a booking mail points at (#373): the code-gated booking view,
+ * Builds the link a booking mail points at: the code-gated booking view,
  * {@code <base>/booking/<code>}.
  *
  * <p><strong>Why this module may build a link at all, given RV-BE-11.</strong> That rule keeps

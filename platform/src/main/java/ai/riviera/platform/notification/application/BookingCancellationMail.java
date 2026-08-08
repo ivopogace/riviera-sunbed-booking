@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 
 /**
- * Everything the cancellation/refund email renders (#374, epic #367 story 15) — structured, not
+ * Everything the cancellation/refund email renders — structured, not
  * pre-rendered, so each {@link Mailer} implementation decides its own presentation, exactly as
  * {@link BookingConfirmationMail} does.
  *
@@ -34,7 +34,7 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
  * {@code CANCELLED} — but it must never be logged, and no transport reachable in production does.
  *
  * <p>No spot ({@code rowLabel}/{@code positionNo}): the set is released, so it is not a fact this
- * reader needs. Unpublished module-internal value (#382) — public only for the module's own
+ * reader needs. Unpublished module-internal value — public only for the module's own
  * {@code adapter} packages.
  */
 public record BookingCancellationMail(String bookingCode, String venueName, LocalDate bookingDate,

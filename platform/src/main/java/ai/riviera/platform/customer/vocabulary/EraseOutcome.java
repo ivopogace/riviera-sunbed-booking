@@ -1,7 +1,7 @@
 package ai.riviera.platform.customer.vocabulary;
 
 /**
- * Result of a right-to-erasure request (Slice 1 of #101). A dataless, caller-handled outcome — a plain
+ * Result of a right-to-erasure request. A dataless, caller-handled outcome — a plain
  * {@code enum} (like {@code availability}'s {@code ClaimOutcome}), not an exception: "nothing to erase" is
  * normal flow, not a stack trace.
  *

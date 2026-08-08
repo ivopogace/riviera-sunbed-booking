@@ -9,7 +9,7 @@
  * by customer's <em>own</em> adapter would stay internal in {@code application}, not here.)
  *
  * <p>Holds {@link GuestBookingHistory}, implemented by the {@code booking} module so the retention sweep
- * (#101 Slice 2) can ask "does this guest still have a recent booking?" without customer depending on
+ * can ask "does this guest still have a recent booking?" without customer depending on
  * booking — which would cycle, since {@code booking} already depends on {@code customer::api}. Same shape
  * as {@code venue.spi.BookingPresence}. Grant {@code customer::spi} only to the implementing module;
  * callers that merely use customer use {@code customer::api}.
