@@ -10,12 +10,12 @@ import { AdminOperatorsService } from './admin-operators.service';
 import { OperatorAccountView, PendingOperatorView, VenueCommissionView } from './admin.model';
 
 /**
- * Structural axe audit of the admin operator surface (S6 #115, extended #128): two titled regions —
+ * Structural axe audit of the admin operator surface: two titled regions —
  * the pending-registration queue with approve/reject controls, and the account list with
  * suspend/reinstate. Rendered as a signed-in admin with one row in each. Contrast is not measurable by
  * axe under jsdom; it is proven in the e2e.
  *
- * <p>Since A9 (#348) the page also carries the console stat strip, audited here in <strong>both</strong>
+ * <p>The page also carries the console stat strip, audited here in <strong>both</strong>
  * of its states — with its numbers and with every tile dashed, which is a different DOM (the Venues
  * tile drops its sub-caption and the strip drops its note) and therefore a separate audit.
  */

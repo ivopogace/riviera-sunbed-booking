@@ -22,7 +22,7 @@ const NO_CONTENT = { status: 204, statusText: 'No Content' };
 const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 /**
- * Sign-out robustness (#128 gap 2). `signOut()` used to swallow every failure and clear local state,
+ * Sign-out robustness. `signOut()` used to swallow every failure and clear local state,
  * so a logout that never reached the server left the `HttpOnly` SESSION cookie alive — and the next
  * visitor on a shared device (operators plausibly share a tablet at the venue) was silently restored
  * by `GET /api/auth/me`. It now distinguishes "the session is provably gone" from "we don't know",

@@ -3,8 +3,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PrivacyPolicy } from './privacy-policy';
 
 /**
- * The draft privacy-policy page (#101 Slice 3). The DRAFT banner is load-bearing: the final
- * counsel-reviewed text is #101's human-gated remainder, so until it lands the page must
+ * The draft privacy-policy page. The DRAFT banner is load-bearing: the final
+ * counsel-reviewed text is a human-gated remainder still pending, so until it lands the page must
  * declare itself a draft with placeholder entities rather than pass as a binding policy.
  */
 describe('PrivacyPolicy (draft legal page)', () => {

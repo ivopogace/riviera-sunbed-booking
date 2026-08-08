@@ -5,11 +5,11 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { MailDeliveryLookupView, MailResendResultView } from './admin.model';
 
-/** The platform-admin mail-delivery surface (#380); ADMIN-gated server-side. */
+/** The platform-admin mail-delivery surface; ADMIN-gated server-side. */
 const ADMIN_MAIL_DELIVERY_API = `${environment.apiBaseUrl}/api/admin/mail-deliveries`;
 
 /**
- * HTTP client for the per-booking mail-delivery view (#380) — what happened to a tourist's
+ * HTTP client for the per-booking mail-delivery view — what happened to a tourist's
  * confirmation mail, and the button that sends it again. Stateless: the session cookie + CSRF header
  * are added by {@link apiSessionInterceptor}, and the component holds the page state.
  *

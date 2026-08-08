@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TermsOfService } from './terms-of-service';
 
 /**
- * The draft terms-of-service page (#101 Slice 3). Same draft-banner rule as the privacy page;
+ * The draft terms-of-service page. Same draft-banner rule as the privacy page;
  * the cancellation copy must state the server-enforced rules generically (invariants #4/#10 —
  * cutoff the evening before, refunds computed server-side) without hardcoding a clock time the
  * backend makes configurable.

@@ -19,7 +19,7 @@ const stubAuth = () => ({
 });
 
 /**
- * Structural a11y audit for the unified auth card (S9 #277, AC-10). axe runs over all four
+ * Structural a11y audit for the unified auth card. axe runs over all four
  * flows — both modes × both audiences — plus the two landed states, because the card swaps its
  * whole field set and control shape between them. The audience/mode toggle is a `radiogroup` whose
  * keyboard contract is pinned separately by `shared/segmented-control.spec.ts`.

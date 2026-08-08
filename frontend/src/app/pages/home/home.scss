@@ -1,9 +1,9 @@
-/* Liquid Glass Discover (issue #135, design: the v2 tourist export, superseded in-repo by
+/* Liquid Glass Discover (design: the v2 tourist export, superseded in-repo by
  * riviera-sunbeds-liquid-glass-v3.dc.html → Discover). Palette comes exclusively from the
  * styles.scss tokens; every text-bearing pair is pinned as a composited effective colour
  * in home.contrast.spec.ts.
  *
- * Deviation from the design file, on purpose (plan R-1, same reasoning as T1's header):
+ * Deviation from the design file, on purpose (same reasoning as the shell header):
  * the hero and the list states sit on the AA-proven header-glass tokens instead of the
  * bare gradient — white ink over the riviera gradient's light top stops cannot reach
  * WCAG AA, glass or shadow notwithstanding. */
@@ -87,7 +87,7 @@
   line-height: 1.5;
   color: var(--riv-ink-soft);
   margin: 0;
-  // Kept to a comfortable reading measure even though the panel is now full-width (#153) — a
+  // Kept to a comfortable reading measure even though the panel is now full-width — a
   // full-column intro line would be too long to read; the title uses the full width, the copy doesn't.
   max-width: 520px;
 }
@@ -193,8 +193,7 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-/* Hover lift only where hover is a real affordance (pointer devices) — avoids the
-   sticky-hover artifact on touch (AC-1). */
+/* Hover lift only where hover is a real affordance (pointer devices) — avoids the sticky-hover artifact on touch. */
 @media (hover: hover) {
   .card:hover {
     transform: translateY(-5px);
@@ -203,7 +202,7 @@
   }
 }
 
-/* Motion guard lives next to the motion it guards (T1 rule — encapsulation specificity). */
+/* Motion guard lives next to the motion it guards (encapsulation specificity). */
 @media (prefers-reduced-motion: reduce) {
   .card,
   .card:hover {
@@ -220,7 +219,7 @@
   box-shadow: 0 0 0 7px color-mix(in srgb, var(--riv-accent-ink) 90%, transparent);
 }
 
-/* ---- card photo area (gradient placeholder until #142) ---- */
+/* ---- card photo area (gradient placeholder when no photo) ---- */
 
 .card-photo {
   position: relative;
@@ -318,7 +317,7 @@
   color: rgba(12, 42, 51, 0.3); /* decorative separator */
 }
 
-/* "New" / unrated state (#154): a bordered pill; text in the already-AA-proven --riv-card-ink. */
+/* "New" / unrated state: a bordered pill; text in the already-AA-proven --riv-card-ink. */
 .card-meta .new-chip {
   font-weight: 700;
   color: var(--riv-card-ink);
@@ -327,9 +326,7 @@
   padding: 1px 9px;
 }
 
-/* T7 (#140) slot. :empty removes it from the flex flow until chips exist — otherwise a
-   zero-height item still costs an extra 8px column gap (review finding). Comment anchors from
-   the @if/@for don't count for :empty, so the slot still collapses when the venue has no chips. */
+/* Amenity-chips slot. :empty removes it from the flex flow until chips exist — otherwise a zero-height item still costs an extra 8px column gap. Comment anchors from the @if/@for don't count for :empty, so the slot still collapses when the venue has no chips. */
 .card-chips {
   display: flex;
   flex-wrap: wrap;
@@ -384,10 +381,7 @@
   color: var(--riv-card-ink);
 }
 
-/* ---- cutoff explainer (invariant #4, display only; issue #149) ----
-   A subtle inline glass pill: the line sits over the bare gradient, where white-ish ink fails
-   AA, so it reuses the AA-proven card glass + card-ink-soft (plan R-2; same class as the
-   hero-on-glass deviation). */
+/* ---- cutoff explainer (invariant #4, display only) — a subtle inline glass pill: the line sits over the bare gradient, where white-ish ink fails AA, so it reuses the AA-proven card glass + card-ink-soft (same class as the hero-on-glass deviation). ---- */
 .cutoff-note {
   display: inline-flex;
   align-items: center;
@@ -418,5 +412,4 @@
   color: var(--riv-ink-soft);
 }
 
-/* ---- load-failure panel (issue #149) — now the shared appFailure* directives + <app-retry-button>
-   (Tailwind twins, shared/failure-panel.ts); nothing styled here. ---- */
+/* ---- load-failure panel — now the shared appFailure* directives + <app-retry-button> (Tailwind twins, shared/failure-panel.ts); nothing styled here. ---- */

@@ -54,7 +54,7 @@ async function render(
       provideRouter([]),
       { provide: OperatorAuth, useValue: auth },
       { provide: AdminMailOutboxService, useValue: service },
-      // The page nests the #380 delivery card; inert here, it has its own specs.
+      // The page nests the delivery card; inert here, it has its own specs.
       { provide: AdminMailDeliveryService, useValue: inertDeliveryService },
     ],
   }).compileComponents();

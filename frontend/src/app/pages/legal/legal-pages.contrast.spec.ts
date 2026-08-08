@@ -11,7 +11,7 @@ import {
 } from '../../../testing/glass-tokens';
 
 /**
- * Deterministic AA maths for the two draft legal pages' shared surface (#101 Slice 3):
+ * Deterministic AA maths for the two draft legal pages' shared surface:
  * body/soft card inks on the card glass (constants from `glass-tokens.ts`, the one test-side
  * token mirror) over each theme's worst-case gradient stops, plus the solid amber draft
  * banner (the withheld-email-notice recipe — solid fill so the ratio is computable, not

@@ -1,8 +1,8 @@
-/** The SSO providers a customer can start a sign-in with (S4, epic #108). */
+/** The SSO providers a customer can start a sign-in with. */
 export type SsoProviderId = 'google' | 'apple';
 
 /**
- * Seam for the SSO start redirect (S4, epic #108). Starting SSO is a full-page navigation OUT of the SPA
+ * Seam for the SSO start redirect. Starting SSO is a full-page navigation OUT of the SPA
  * to the backend authorize endpoint — the OIDC Authorization Code + PKCE flow completes server-side and
  * returns with the same session cookie as form login — so it cannot go through {@code HttpClient} / the
  * session interceptor. This abstract token isolates the `window.location` side-effect so it is swappable:

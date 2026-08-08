@@ -7,9 +7,9 @@ import { CardGlass } from '../shared/card-glass';
 type VerifyState = 'verifying' | 'verified' | 'invalid' | 'error';
 
 /**
- * Email-verification landing page (S8 #113). Reached from the emailed link `/account/verify?token=…`.
+ * Email-verification landing page. Reached from the emailed link `/account/verify?token=…`.
  * The verification itself is a POST the page issues on load — the emailed link is a plain GET to the SPA,
- * so an email scanner prefetching it (a GET, no JS) never consumes the single-use token (R-6). Verifying
+ * so an email scanner prefetching it (a GET, no JS) never consumes the single-use token. Verifying
  * is soft: it only flips the account's verified flag, so an unverified account was fully usable already.
  */
 @Component({
@@ -61,7 +61,7 @@ export class VerifyEmail {
   protected readonly state = signal<VerifyState>('verifying');
 
   constructor() {
-    // No DOM access, so no render phase applies — this is POST-on-load, browser-only (scanner-safe, R-6).
+    // No DOM access, so no render phase applies — this is POST-on-load, browser-only (scanner-safe).
     afterNextRender(() => void this.verify());
   }
 

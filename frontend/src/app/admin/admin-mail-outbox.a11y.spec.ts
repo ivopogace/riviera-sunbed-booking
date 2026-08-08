@@ -10,7 +10,7 @@ import { AdminMailOutboxService } from './admin-mail-outbox.service';
 import { OutboxStatusView } from './admin.model';
 
 /**
- * Structural axe audit of the admin console's Email tab (#405): the tab strip, the titled outbox card
+ * Structural axe audit of the admin console's Email tab: the tab strip, the titled outbox card
  * with its single action, and the polite live region that announces the outcome. Rendered as a
  * signed-in admin with mail outstanding, and again with none, since the card's body swaps between the
  * two. Contrast is not measurable by axe under jsdom; it is proven in the e2e.
@@ -42,7 +42,7 @@ async function render(status: OutboxStatusView): Promise<ComponentFixture<AdminM
       provideRouter([]),
       { provide: OperatorAuth, useValue: authStub },
       { provide: AdminMailOutboxService, useValue: serviceStub(status) },
-      // The page nests the #380 delivery card; inert here, it has its own specs.
+      // The page nests the delivery card; inert here, it has its own specs.
       { provide: AdminMailDeliveryService, useValue: inertDeliveryService },
     ],
   }).compileComponents();

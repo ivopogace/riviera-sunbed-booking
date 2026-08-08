@@ -9,7 +9,7 @@ import { AdminCommissionsService } from './admin-commissions.service';
 import { VenueCommissionView } from './admin.model';
 
 /**
- * Structural axe audit of the admin console's Commissions tab (A8, epic #348): the tab strip, the
+ * Structural axe audit of the admin console's Commissions tab: the tab strip, the
  * venue cards, the explainer's heading hierarchy (an `h2` over six `h3` sections under the page's
  * one `h1`), the polite live region, and — with the editor open — two labelled fields and an alert
  * region that exists before it ever carries text.

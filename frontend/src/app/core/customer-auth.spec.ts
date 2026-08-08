@@ -175,7 +175,7 @@ describe('CustomerAuth', () => {
     expect(auth.signedIn()).toBe(false);
   });
 
-  // --- S8 (#113) account recovery ---
+  // --- account recovery ---
 
   const ME_API = `${environment.apiBaseUrl}/api/me`;
 
@@ -257,7 +257,7 @@ describe('CustomerAuth', () => {
     expect(await weak).toBe('invalid-password');
   });
 
-  // #345: without its own arm the default would call this invalid-password and show the length message.
+  // Without its own arm the default would call this invalid-password and show the length message.
   it('set-password maps MISSING_CURRENT_PASSWORD to its own result, not invalid-password', async () => {
     const auth = await create({ principalType: 'CUSTOMER' });
 
@@ -269,7 +269,7 @@ describe('CustomerAuth', () => {
     expect(await omitted).toBe('missing-current');
   });
 
-  // #326 gave this endpoint its first rate-limit budget, so 429 is newly reachable here.
+  // This endpoint now carries a rate-limit budget, so 429 is reachable here.
   it('set-password maps a 429 → rate-limited rather than a generic error', async () => {
     const auth = await create({ principalType: 'CUSTOMER' });
 

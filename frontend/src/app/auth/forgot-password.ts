@@ -6,7 +6,7 @@ import { CustomerAuth } from '../core/customer-auth';
 import { CardGlass } from '../shared/card-glass';
 
 /**
- * "Forgot password" request page (S8 #113, design D-8). A tourist enters their email and we ask the
+ * "Forgot password" request page (design D-8). A tourist enters their email and we ask the
  * backend to send a reset link. The confirmation is deliberately uniform — it never reveals whether the
  * email has an account (non-enumeration) — so a successful request always shows the same "if an account
  * exists…" message. Signal Forms drives the one field; the server is the authority.

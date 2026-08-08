@@ -8,7 +8,7 @@ import { OperatorAuth, OperatorPasswordChangeResult } from '../core/operator-aut
 import { OperatorPassword } from './operator-password';
 
 /**
- * Structural a11y audit for the operator password-change page (#326). Both outcome states are audited,
+ * Structural a11y audit for the operator password-change page. Both outcome states are audited,
  * not just the clean form: each renders a live region that only exists after a submit — the success
  * notice (`role="status"`) and the failure message (`role="alert"`) — so auditing the initial render
  * alone would never see either.

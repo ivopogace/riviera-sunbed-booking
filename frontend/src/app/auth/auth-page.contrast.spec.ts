@@ -18,7 +18,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the unified auth card (S9 #277, AC-11). The card is translucent, so
+ * WCAG-AA contrast guard for the unified auth card. The card is translucent, so
  * every pair is checked as the EFFECTIVE colour — the card glass composited over the worst-case
  * stops of the theme's background gradient, then each alpha ink composited over that result.
  *

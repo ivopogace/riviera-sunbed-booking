@@ -6,16 +6,16 @@ import { environment } from '../../environments/environment';
 import { AdminOutboxPort } from './admin-outbox-lever';
 import { OutboxStatusView, ResubmissionResultView } from './admin.model';
 
-/** The platform-admin refund-outbox surface (#454); ADMIN-gated server-side. */
+/** The platform-admin refund-outbox surface; ADMIN-gated server-side. */
 const ADMIN_REFUND_OUTBOX_API = `${environment.apiBaseUrl}/api/admin/refund-outbox`;
 
 /**
- * HTTP client for the refund outbox (#460) — what the Event Publication Registry still owes the
+ * HTTP client for the refund outbox — what the Event Publication Registry still owes the
  * cancellation-refund listener, and the lever that re-drives it. Stateless: the session cookie +
  * CSRF header are added by {@link apiSessionInterceptor}, and the component holds the page state.
  *
  * <p>Both calls are ADMIN-gated by the backend (a non-admin operator gets 403). Neither ever returns
- * a booking id or code — counts and an outcome token only (invariant #7, the #454 contract).
+ * a booking id or code — counts and an outcome token only (invariant #7).
  */
 @Service()
 export class AdminRefundOutboxService implements AdminOutboxPort {

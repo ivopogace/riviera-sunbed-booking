@@ -49,9 +49,7 @@
           </p>
         }
 
-        <!-- T7 (#140): to-water chip first, then the FULL amenity row in catalogue order. The header
-             is real (not aria-hidden) content, so the chip text is read directly; the slot collapses
-             (:empty) when the venue states neither. -->
+        <!-- To-water chip first, then the FULL amenity row in catalogue order. The header is real (not aria-hidden) content, so the chip text is read directly; the slot collapses (:empty) when the venue states neither. -->
         <div class="flex flex-wrap gap-[7px] mt-[14px] empty:hidden" data-testid="venue-chips">
           @if (v.water; as water) {
             <span appAmenityChip water>{{ water }}</span>
@@ -99,10 +97,7 @@
           </div>
         </div>
 
-        <!-- The venue's cover photo (#142) when uploaded; the gradient + sun as the empty state
-             (the "coming soon" pill is gone — photos have shipped). The photo (the sea view) sits
-             above the grid card's "Facing the sea" banner — the v3 design's spatial order:
-             sea ↑ / promenade ↓. Decorative (aria-hidden): the header already names the venue. -->
+        <!-- The venue's cover photo when uploaded; the gradient + sun as the empty state (the "coming soon" pill is gone — photos have shipped). The photo (the sea view) sits above the grid card's "Facing the sea" banner — the v3 design's spatial order: sea ↑ / promenade ↓. Decorative (aria-hidden): the header already names the venue. -->
         <div class="photo-band relative h-[150px] rounded-[20px] overflow-hidden bg-(image:--riv-photo-grad)" aria-hidden="true">
           @if (v.coverPhoto; as cover) {
             <img [ngSrc]="cover.banner" fill class="object-cover" alt="" data-testid="map-banner-img" />

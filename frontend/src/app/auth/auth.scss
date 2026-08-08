@@ -1,8 +1,4 @@
-// Customer auth pages (sign-in + register, epic #108 / S2 #111) — shared styles. A single centered
-// Liquid Glass card on the tourist themed background, reusing the design tokens the tourist surfaces
-// share (--riv-card-*, --riv-field-*, --riv-cta-grad) so it sits coherently in the app shell. The
-// glass surface (bg / border / ink) comes from `appCardGlass`; this adds the card geometry + the
-// field/button styling cloned from the AA-proven find-booking values.
+// Shared styles for the auth pages (forgot/reset/verify/set-password, operator password-change): a single centered Liquid Glass card reusing the tourist `--riv-card-*`/`--riv-field-*`/`--riv-cta-grad` tokens; `appCardGlass` supplies the glass surface, this adds card geometry + field/button styling.
 
 .auth-wrap {
   min-height: 60vh;

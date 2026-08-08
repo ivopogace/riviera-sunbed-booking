@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { expectNoAxeViolations } from '../../../testing/axe';
 import { PrivacyPolicy } from './privacy-policy';
 
-/** Axe structural audit of the draft privacy page (#101 Slice 3) — static content, one state. */
+/** Axe structural audit of the draft privacy page — static content, one state. */
 describe('PrivacyPolicy accessibility (axe)', () => {
   let fixture: ComponentFixture<PrivacyPolicy>;
 

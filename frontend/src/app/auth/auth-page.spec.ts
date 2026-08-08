@@ -48,7 +48,7 @@ describe('AuthPage', () => {
   let operator: FakeOperatorAuth;
   let owned: FakeOwnedVenues;
   let navigate: ReturnType<typeof vi.spyOn>;
-  // Live query-param source: the component seeds mode/audience/returnUrl from this and reacts to it (#300).
+  // Live query-param source: the component seeds mode/audience/returnUrl from this and reacts to it.
   let queryParams$: BehaviorSubject<ParamMap>;
 
   /** Emit a live query-param change post-mount (a query-param-only soft nav under the default reuse strategy). */
@@ -137,7 +137,7 @@ describe('AuthPage', () => {
     });
 
     it('clears the password when the audience switches', async () => {
-      // R-6: a tourist password must never be carried into an operator submit.
+      // A tourist password must never be carried into an operator submit.
       await render();
       type('auth-password', 'tourist-secret');
       await chooseAudience('audience-operator');
@@ -184,7 +184,7 @@ describe('AuthPage', () => {
     });
 
     it('no-ops while a submit is already in flight', async () => {
-      // From the deleted runOperatorSignIn helper (#170): a double submit fires ONE login.
+      // A double submit fires ONE login.
       await render();
       let release!: (value: string) => void;
       customer.signIn.mockReturnValue(new Promise<string>((resolve) => (release = resolve)));
@@ -309,7 +309,7 @@ describe('AuthPage', () => {
     });
 
     it('sends the operator to the picker when the venue read fails', async () => {
-      // R-12: a failed read must not be mistaken for "owns nothing" and forwarded to onboarding.
+      // A failed read must not be mistaken for "owns nothing" and forwarded to onboarding.
       await render({ audience: 'operator' });
       owned.result = { status: 'error' };
       type('auth-identifier', 'sereno');
@@ -401,7 +401,7 @@ describe('AuthPage', () => {
     });
 
     it('clears the password on a live audience query-param change', async () => {
-      // R-6: a live nav that flips the audience must not carry a tourist credential to the operator endpoint.
+      // A live nav that flips the audience must not carry a tourist credential to the operator endpoint.
       await render();
       type('auth-password', 'tourist-secret');
 

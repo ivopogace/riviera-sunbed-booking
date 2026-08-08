@@ -30,7 +30,7 @@ import { OutcomeCard } from '../shared/outcome-card';
 import { SegmentedControl, SegmentedOption } from '../shared/segmented-control';
 import { SsoButtons } from './sso-buttons';
 
-/** Who is signing in. Picks the client service, never a shared endpoint (S9 R-6). */
+/** Who is signing in. Picks the client service, never a shared endpoint. */
 type Audience = 'tourist' | 'operator';
 type Mode = 'signin' | 'register';
 
@@ -59,7 +59,7 @@ const LABEL_CLASS =
   'text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-faint)';
 
 /**
- * The one audience-aware auth card (S9 #277) — four flows on a single surface: tourist sign-in,
+ * The one audience-aware auth card — four flows on a single surface: tourist sign-in,
  * tourist register, operator sign-in, operator register. It replaces five scattered surfaces
  * (`auth/sign-in`, `auth/register`, `operator/operator-register`, and the inline sign-in cards the
  * operator console and venue editor used to render).
@@ -68,10 +68,10 @@ const LABEL_CLASS =
  * still two principal types and two login endpoints, and the audience toggle picks the *client
  * service* ({@link CustomerAuth} vs {@link OperatorAuth}), never a shared credential endpoint. The
  * submit paths are separate and the password field is cleared whenever the audience switches, so a
- * tourist credential can never be posted to the operator endpoint (R-6).
+ * tourist credential can never be posted to the operator endpoint.
  *
  * Audience, mode and `returnUrl` live in query params, so the state survives the full-page SSO
- * redirect and the retired routes can forward into the right tab (R-9).
+ * redirect and the retired routes can forward into the right tab.
  */
 @Component({
   selector: 'app-auth-page',
@@ -281,7 +281,7 @@ export class AuthPage {
 
   private readonly firstField = viewChild<ElementRef<HTMLInputElement>>('firstField');
 
-  // #300: read params live — a query-param-only soft nav reuses this component, so a snapshot goes stale.
+  // Read params live — a query-param-only soft nav reuses this component, so a snapshot goes stale.
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
 
   private readonly returnUrl = computed(() => this.queryParams().get('returnUrl') ?? undefined);
@@ -380,7 +380,7 @@ export class AuthPage {
         return;
       }
       if (audience !== previousAudience) {
-        // R-6: never carry a credential across principal types, even on a live query-param nav.
+        // Never carry a credential across principal types, even on a live query-param nav.
         this.model.update((m) => ({ ...m, password: '' }));
       }
       previousMode = mode;
@@ -392,7 +392,7 @@ export class AuthPage {
 
   protected onAudienceChange(next: Audience): void {
     this.audience.set(next);
-    // Password + error reset (incl. R-6) is owned by the audience/mode effect above.
+    // Password + error reset is owned by the audience/mode effect above.
     // No refocus: arrows move focus WITHIN a radiogroup (caught by unified-auth.e2e.ts).
   }
 
@@ -495,7 +495,7 @@ export class AuthPage {
       }
       return;
     }
-    // No session is established: the account is PENDING until a platform admin approves it (#115).
+    // No session is established: the account is PENDING until a platform admin approves it.
     const result = await this.operatorAuth.register(identifier, password, contactEmail);
     if (result === 'submitted') {
       this.model.set({ identifier: '', contactEmail: '', password: '' });

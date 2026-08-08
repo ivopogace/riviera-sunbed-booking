@@ -24,7 +24,7 @@ function venues(): VenueSummary[] {
       reviewsCount: 326,
       bookingMode: 'INSTANT',
       fromPrice: { minorUnits: 2500, currency: 'EUR' },
-      // Four amenities out of catalogue order (T7 #140) → the card shows the first 3 in catalogue
+      // Four amenities out of catalogue order → the card shows the first 3 in catalogue
       // order (Beach bar, Free parking, Showers); WiFi is dropped. Plus a to-water distance.
       amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
       distanceToWaterM: 15,
@@ -89,7 +89,7 @@ describe('Home (venue discovery)', () => {
 
     const cards = el().querySelectorAll('[data-testid="venue-card"]');
     const coverImg = cards[0].querySelector<HTMLImageElement>('[data-testid="card-photo-img"]');
-    // The service resolves the wire's root-relative path against the API origin (F-7).
+    // The service resolves the wire's root-relative path against the API origin.
     expect(coverImg?.getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/aa01`);
     // The scrim stays layered over the photo — the location text's AA floor depends on it.
     expect(cards[0].querySelector('.photo-scrim')).toBeTruthy();
@@ -356,7 +356,7 @@ describe('Home (venue discovery)', () => {
 
     const error = el().querySelector('[data-testid="error"]');
     expect(error).not.toBeNull();
-    // Alert semantics T2 shipped are preserved so AT announces the failure (#149 AC-1).
+    // Alert semantics are preserved so AT announces the failure.
     expect(error?.getAttribute('role')).toBe('alert');
     // The designed panel content: heading, reassurance copy, and a Retry action.
     expect(error?.querySelector('.failure-title')?.textContent).toContain('load the beaches');

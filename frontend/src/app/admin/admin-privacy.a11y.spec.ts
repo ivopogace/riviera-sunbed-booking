@@ -8,7 +8,7 @@ import { AdminPrivacy } from './admin-privacy';
 import { AdminPrivacyService } from './admin-privacy.service';
 
 /**
- * Structural axe audit of the admin console's Privacy tab (A3, epic #348), at **each of the three
+ * Structural axe audit of the admin console's Privacy tab, at **each of the three
  * stages** — the form, the armed confirmation, and the outcome — because the panels replace one
  * another in place, so two thirds of this surface's semantics never exist at the same time as the
  * rest. What is audited per stage: the tab strip, the labelled erasure card and its aside, the

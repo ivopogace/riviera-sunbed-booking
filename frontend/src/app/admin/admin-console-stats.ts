@@ -6,18 +6,18 @@ import { AdminCommissionsService } from './admin-commissions.service';
 import { VenueCommissionView } from './admin.model';
 
 /**
- * The platform-admin console's stat strip (A9, epic #348) — the four tiles the console shell A1/A2
- * never got: the approval queue's depth, how many operators can sign in, how many are suspended, and
+ * The platform-admin console's stat strip — the four tiles the console shell's initial build never
+ * got: the approval queue's depth, how many operators can sign in, how many are suspended, and
  * how many venues the platform carries. Every number comes from an ADMIN read that already ships;
- * A9 adds no endpoint.
+ * this strip adds no endpoint.
  *
  * <p><strong>Where it renders, and why not everywhere.</strong> The design canvas draws the stats
  * once, above the tab strip, on every screen — because the canvas is a single demo page. Here the
- * console is seven independent lazy routes with no layout component, a shape Q1 (PR #524) chose
- * deliberately and gave one revisit trigger: a <em>ninth</em> tab. So this strip renders on the
+ * console is seven independent lazy routes with no layout component, a shape the console's routing
+ * decision chose deliberately and gave one revisit trigger: a <em>ninth</em> tab. So this strip renders on the
  * console <em>home</em> only, and <em>below</em> the tabs. Below, because with the strip on one page
  * only, putting it above would shift the pills down on `/admin` and back up on every other tab — the
- * control you just clicked would move. The day a layout component lands on Q1's trigger, this strip
+ * control you just clicked would move. The day a layout component lands on that trigger, this strip
  * moves into it and becomes shell-wide for free; until then, seven copies each re-reading three
  * endpoints per navigation is the wrong trade.
  *
@@ -35,11 +35,11 @@ import { VenueCommissionView } from './admin.model';
  * from the page that already reads them (no duplicate fetch), left `undefined` until a read has
  * actually succeeded; the venue read is this strip's own and starts `undefined`. All four render "—"
  * in that state, so a failed read is never dressed up as a confident zero — and a failure in one
- * read dashes only its own tile, never the others (the operator strip's posture, #171).
+ * read dashes only its own tile, never the others.
  *
  * <p>The strip is deliberately inert: no tile links anywhere. The tabs sit directly above it, and a
- * navigating tile would add exactly the focus-management surface that cost A8's review three
- * findings.
+ * navigating tile would add exactly the focus-management surface that has cost comparable tiles
+ * review findings elsewhere.
  *
  * <p><strong>The labels are terse because the fold is measured, not guessed.</strong> At 360px a tile
  * is ~136px of inner width, so an uppercase 11px label past roughly sixteen characters wraps — and a

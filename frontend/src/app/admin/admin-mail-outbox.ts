@@ -9,7 +9,7 @@ import { AdminMailOutboxService } from './admin-mail-outbox.service';
 import { OutboxLever } from './admin-outbox-lever';
 
 /**
- * The admin console's Email tab (#405): what the Event Publication Registry still owes — confirmation
+ * The admin console's Email tab: what the Event Publication Registry still owes — confirmation
  * mails whose send failed — and the lever that re-drives them without waiting for a deploy.
  *
  * <p><strong>The count is shown before the button is pressed</strong>, which is why the slice added a
@@ -26,10 +26,10 @@ import { OutboxLever } from './admin-outbox-lever';
  * stale the moment it is rendered, and a button disabled by a stale number is indistinguishable from
  * a broken one. It disables only for the round-trip it is actually making.
  *
- * <p>Those press semantics are shared with the Refunds tab (#460) and live in {@link OutboxLever};
+ * <p>Those press semantics are shared with the Refunds tab and live in {@link OutboxLever};
  * this component keeps the auth self-gate, the template, and the mail-specific copy.
  *
- * <p>Since #380 the page carries a second card, {@link AdminMailDelivery}: the outbox above answers
+ * <p>The page also carries a second card, {@link AdminMailDelivery}: the outbox above answers
  * "what does the registry still owe us", that one answers "what happened to this tourist's mail" —
  * the same concern from opposite ends, which is why it is a card here rather than a tab of its own.
  *

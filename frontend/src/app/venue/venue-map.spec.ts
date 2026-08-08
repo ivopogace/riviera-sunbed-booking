@@ -54,8 +54,7 @@ function miramar(): VenueMapView {
     reviewsCount: 326,
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
-    // Amenities out of catalogue order (T7 #140) → the header renders the FULL row catalogue-ordered
-    // (Beach bar, Free parking, WiFi); plus a to-water distance.
+    // Amenities out of catalogue order → the header renders the FULL row catalogue-ordered (Beach bar, Free parking, WiFi); plus a to-water distance.
     amenities: ['WIFI', 'BEACH_BAR', 'FREE_PARKING'],
     distanceToWaterM: 8,
     sets,
@@ -103,7 +102,7 @@ describe('VenueMap', () => {
 
   afterEach(() => httpMock.verify());
 
-  /** Match the venue request on path only (a `?date=` param is appended — issue #44). */
+  /** Match the venue request on path only (a `?date=` param is appended). */
   function venueRequest(id = 1): TestRequest {
     return httpMock.expectOne((req) => req.url === `${environment.apiBaseUrl}/api/venues/${id}`);
   }
@@ -136,7 +135,7 @@ describe('VenueMap', () => {
     fixture.detectChanges();
 
     const img = el().querySelector<HTMLImageElement>('[data-testid="map-banner-img"]');
-    // The service resolves the wire's root-relative path against the API origin (F-7).
+    // The service resolves the wire's root-relative path against the API origin.
     expect(img?.getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/bb02`);
     // The scrim stays layered over the photo band, and the retired pill never renders.
     expect(el().querySelector('.photo-band')?.innerHTML).toContain('riv-photo-scrim');
@@ -415,7 +414,7 @@ describe('VenueMap', () => {
     params$.next(convertToParamMap({ id: '1' }));
     await fixture.whenStable();
 
-    // A value guard (id === 1) would re-admit `firstVisit`; the epoch identity guard must not (#487).
+    // A value guard (id === 1) would re-admit `firstVisit`; the epoch identity guard must not.
     detour.flush({ ...miramar(), id: 2, name: 'Riviera Blue' });
     firstVisit.flush({ ...miramar(), name: 'Stale Miramar' });
     await fixture.whenStable();
@@ -440,8 +439,7 @@ describe('VenueMap', () => {
 
     fresh.error(new ProgressEvent('error'));
     detour.flush(miramar());
-    // Same venue, same date as `fresh` — only a per-DISPATCH generation tells this stale
-    // success from the freshest attempt's failure (#487); it must not resurrect the map.
+    // Same venue, same date as `fresh` — only a per-DISPATCH generation tells this stale success from the freshest attempt's failure; it must not resurrect the map.
     first.flush(miramar());
     await fixture.whenStable();
     fixture.detectChanges();
@@ -539,8 +537,7 @@ describe('VenueMap', () => {
     el().querySelector<HTMLButtonElement>('.set-button')!.click();
     await fixture.whenStable();
 
-    // The dialog now shows the map's date read-only (the map owns the date, #44/#136) — assert the
-    // formatted date display instead of an editable input.
+    // The dialog now shows the map's date read-only (the map owns the date) — assert the formatted date display instead of an editable input.
     const dialogDate = el().querySelector('app-booking-dialog [data-testid="dialog-date"]');
     expect(dialogDate?.textContent).toContain(formatBookingDate(chosen));
   });
@@ -548,7 +545,7 @@ describe('VenueMap', () => {
 
 /**
  * The venue map seeds its date from the `?date=` query param the discovery page carries when a
- * venue is opened (#294), so the tourist's chosen date persists across the hop. The param is
+ * venue is opened, so the tourist's chosen date persists across the hop. The param is
  * validated (well-formed ISO calendar date) and clamped to the map's floor (tomorrow, invariant #4);
  * an absent or malformed value falls back to the default. Each case needs its own ActivatedRoute, so
  * this block configures TestBed per test rather than sharing the suite's beforeEach.

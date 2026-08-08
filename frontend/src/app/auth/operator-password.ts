@@ -15,16 +15,15 @@ import {
 import { CardGlass } from '../shared/card-glass';
 
 /**
- * The signed-in operator's password-change page (#326). Deliberately a **separate** page from the
+ * The signed-in operator's password-change page. Deliberately a **separate** page from the
  * customer's `set-password`, not an audience toggle on it: that page is the customer *account* page and
  * only one of its five blocks concerns passwords — email verification, the SSO "leave blank" affordance
  * and right-to-erasure all fail to apply to an operator (an operator is a business counterparty with
  * payout records, not a data subject). Merging would have wrapped most of it in an audience conditional.
  * What is genuinely shared — `CardGlass`, `auth.scss`, the password-policy constants — is shared.
  *
- * <p>No signed-out branch: `operatorSessionGuard` (S9 #277) awaits the session restore and redirects
- * before this component renders, which is why the console's old per-page "checking your session" cards
- * were removed. Both fields are always required — operators have no SSO (that is #276), so there is no
+ * <p>No signed-out branch: `operatorSessionGuard` awaits the session restore and redirects
+ * before this component renders. Both fields are always required — operators have no SSO, so there is no
  * password-less account that could set a first password here.
  */
 @Component({
@@ -136,7 +135,7 @@ export class OperatorPassword {
     this.error.set(undefined);
     this.notice.set(undefined);
     const { currentPassword, newPassword } = this.model();
-    // Kept though the server now names this case (#345): since #343 an attempt costs a rate-limit token.
+    // Kept though the server now names this case too: an attempt still costs a rate-limit token.
     if (currentPassword.length === 0) {
       this.fail(OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE);
       return;
@@ -153,7 +152,7 @@ export class OperatorPassword {
     }
     this.submitting.set(true);
     // Sent exactly as typed — a password may carry leading/trailing spaces, so trimming would make an
-    // account with such a password unable to prove its current one (the S8 set-password review fix).
+    // account with such a password unable to prove its current one.
     const result = await this.auth.changePassword(currentPassword, newPassword);
     this.submitting.set(false);
     const message = operatorPasswordChangeMessage(result);
