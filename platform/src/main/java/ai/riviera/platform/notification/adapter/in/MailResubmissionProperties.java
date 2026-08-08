@@ -4,9 +4,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The cooldown behind the ADMIN resubmit lever (#405), externalised so the window can be matched to a
- * real relay's drain rate without a deploy — the {@code RegistryMailProperties} argument (#408),
- * applied to a knob whose right value is likewise unknowable until #370 puts traffic through it.
+ * The cooldown behind the ADMIN resubmit lever, externalised so the window can be matched to a
+ * real relay's drain rate without a deploy — the same shape as the {@code RegistryMailProperties}
+ * argument, applied to a knob whose right value is likewise unknowable until real traffic runs
+ * through it.
  *
  * <p><strong>The value that ships lives in {@code application.properties}, not here.</strong> The
  * {@code @DefaultValue} is a backstop for a context bound without that file; deployment reads the
@@ -32,9 +33,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *
  * <p>Validated in the compact constructor rather than with {@code @Validated} + {@code @Min}: Boot
  * validates {@code @ConfigurationProperties} only with a JSR-303 implementation on the classpath, and
- * #97 declined {@code spring-boot-starter-validation} deliberately in favour of explicit checks in
- * records ({@code riviera-java-conventions} §2/§6b). An annotation here would bind and validate
- * nothing.
+ * this project deliberately declined {@code spring-boot-starter-validation} in favour of explicit
+ * checks in records ({@code riviera-java-conventions} §2/§6b). An annotation here would bind and
+ * validate nothing.
  *
  * @param cooldownMs how long an accepted resubmission refuses the next one
  */
