@@ -4,8 +4,8 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 /**
- * Published write port that resolves-or-creates the customer account behind an external SSO identity
- * (S4, epic #108). The platform edge completes the OIDC Authorization Code + PKCE exchange, then calls
+ * Published write port that resolves-or-creates the customer account behind an external SSO identity.
+ * The platform edge completes the OIDC Authorization Code + PKCE exchange, then calls
  * this with the verified {@code (provider, subject, email)} — no Spring Security or OIDC type crosses
  * into the {@code customer} module (RV-BE-11), exactly as {@link CustomerAccountProvisioning} keeps
  * password machinery at the edge.

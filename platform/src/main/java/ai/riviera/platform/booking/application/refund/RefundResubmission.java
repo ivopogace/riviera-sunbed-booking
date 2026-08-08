@@ -3,7 +3,7 @@ package ai.riviera.platform.booking.application.refund;
 import ai.riviera.platform.shared.ResubmissionOutcome;
 
 /**
- * The driving port behind the ADMIN refund-outbox surface (#454): read what the registry still owes
+ * The driving port behind the ADMIN refund-outbox surface: read what the registry still owes
  * the refund listener, and re-drive it on demand.
  *
  * <p><strong>Why this exists at all.</strong> The failure path was already correct — the listener
@@ -14,7 +14,7 @@ import ai.riviera.platform.shared.ResubmissionOutcome;
  * is the targeted trigger, and nothing more: eligibility, amount, gateway and bulkhead are untouched.
  *
  * <p><strong>Internal, not published.</strong> Its only caller is this module's own admin adapter, so
- * publishing it would add a published surface for a hypothetical seam — the #391/#405 argument.
+ * publishing it would add a published surface for a hypothetical seam.
  */
 public interface RefundResubmission {
 

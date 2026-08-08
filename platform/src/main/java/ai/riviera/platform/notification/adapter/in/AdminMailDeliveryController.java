@@ -21,7 +21,7 @@ import ai.riviera.platform.notification.application.MailDeliveryLookup;
 import ai.riviera.platform.shared.ApiProblem;
 
 /**
- * The platform-admin mail-delivery surface (#380): what happened to a tourist's booking-confirmation
+ * The platform-admin mail-delivery surface: what happened to a tourist's booking-confirmation
  * mail, and the button that sends it again. Driving adapter depending only on the module's two driving
  * ports.
  *
@@ -32,7 +32,7 @@ import ai.riviera.platform.shared.ApiProblem;
  * {@code 401}.
  *
  * <p><strong>Lives in the module, not at the composition root</strong> — the
- * {@code AdminEmailSuppressionController} (#391) and {@code AdminMailOutboxController} (#405)
+ * {@code AdminEmailSuppressionController} and {@code AdminMailOutboxController}
  * precedent, for the same reason: hosting it at the root would force a published
  * {@code notification::api} port for a single same-module consumer.
  *
@@ -45,7 +45,7 @@ import ai.riviera.platform.shared.ApiProblem;
  * rather than an error ({@code riviera-java-conventions} §6) — including "no such booking" and "never
  * confirmed", where the admin needs to know <em>which</em> refusal it was to know what to do next. A
  * malformed request body is the one genuine {@code 400}, and it is RFC-7807 through the single
- * {@link ApiProblem} factory (issue #97); anything thrown becomes a {@link ProblemDetail} through the
+ * {@link ApiProblem} factory; anything thrown becomes a {@link ProblemDetail} through the
  * one {@code ApiErrorHandler}, never a per-controller {@code @ExceptionHandler}.
  *
  * <p><strong>What the responses deliberately never carry</strong> (invariant #7): no arrival code, and

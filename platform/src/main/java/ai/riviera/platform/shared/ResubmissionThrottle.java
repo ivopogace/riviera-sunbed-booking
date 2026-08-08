@@ -8,7 +8,7 @@ import java.util.function.IntSupplier;
 
 /**
  * The once-only guard behind an admin outbox-resubmit lever: single-flight, plus a cooldown that
- * starts at construction. Each module's lever (#405's mail outbox, #454's refund outbox) supplies its
+ * starts at construction. Each module's lever (the mail outbox, the refund outbox) supplies its
  * own scope and its own window; this class owns what a press <em>means</em> — it either does real
  * work or says plainly why it did not.
  *

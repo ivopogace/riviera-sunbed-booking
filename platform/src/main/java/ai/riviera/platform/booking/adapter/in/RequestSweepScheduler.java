@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.application.request.ExpireRequests;
 
 /**
- * Periodically runs the request-expiry sweep (issue #98) — the sibling of
+ * Periodically runs the request-expiry sweep — the sibling of
  * {@code AbandonedBookingScheduler}, with two deliberate differences: it is <strong>not</strong>
  * profile-gated (a pending request lingers regardless of the payment profile — no Stripe is
  * involved before accept), and it needs no TTL parameter (each row carries its own

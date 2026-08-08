@@ -16,7 +16,7 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 /**
  * JDBC adapter answering {@link SetAvailabilityLookup} from the {@code set_availability} source
  * of truth (invariant #2) — the {@code availability} module owns that table, so the live-map
- * read lives here while the map assembly stays in {@code venue} (issue #44). Invariant #1:
+ * read lives here while the map assembly stays in {@code venue}. Invariant #1:
  * explicit SQL via {@link JdbcClient}, no JPA.
  *
  * <p>This is the implementing side of a dependency-inverted <strong>driven (SPI) port</strong>
@@ -28,7 +28,7 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
  *
  * <p>A row's mere existence means taken (its {@code state} — {@code BOOKED_ONLINE} or
  * {@code STAFF_MARKED} — is irrelevant to "is it free?"), so {@code takenOn} selects
- * {@code set_id} without filtering on {@code state}; {@code statesOn} (#207) additionally returns
+ * {@code set_id} without filtering on {@code state}; {@code statesOn} additionally returns
  * the state token for the owner-asserted operator read. Every predicate is served by the existing
  * {@code UNIQUE(set_id, booking_date)} composite index; no new index is needed.
  */

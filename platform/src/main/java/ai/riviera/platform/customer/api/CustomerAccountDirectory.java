@@ -5,8 +5,8 @@ import java.util.Optional;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 /**
- * Published read port that resolves a customer account's login email to its {@link CustomerAccountId}
- * (S3, epic #108). The platform edge's {@code CurrentCustomer} calls this to turn an authenticated
+ * Published read port that resolves a customer account's login email to its {@link CustomerAccountId}.
+ * The platform edge's {@code CurrentCustomer} calls this to turn an authenticated
  * {@code CUSTOMER} principal (whose name is the email) into the technical account id that a signed-in
  * booking is linked to. Identity resolution — the account-side twin of {@code operator.api.OperatorDirectory}
  * ({@code operatorFor(username) -> OperatorId}) — deliberately kept separate from the credential port

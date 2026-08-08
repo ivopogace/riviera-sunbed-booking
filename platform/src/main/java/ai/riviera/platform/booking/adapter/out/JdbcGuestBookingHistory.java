@@ -17,7 +17,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 /**
  * JDBC adapter answering {@link GuestBookingHistory} from the {@code booking} table — the {@code booking}
  * module owns that table, so the "does this guest still have a recent booking?" probe lives here while the
- * retention window and the scrub it authorizes stay in {@code customer} (#101 Slice 2). Invariant #1:
+ * retention window and the scrub it authorizes stay in {@code customer}. Invariant #1:
  * explicit SQL via {@link JdbcClient}, no JPA.
  *
  * <p>This is the implementing side of a dependency-inverted <strong>driven (SPI) port</strong> (declared in
@@ -44,7 +44,7 @@ class JdbcGuestBookingHistory implements GuestBookingHistory {
 	}
 
 	/**
-	 * This adapter's <em>only</em> client, bounded outright (#395) — unlike its sibling bounded
+	 * This adapter's <em>only</em> client, bounded outright — unlike its sibling bounded
 	 * clients, which sit beside an unbounded one, because every call that reaches this port is
 	 * scheduled work: {@code ExpireGuestContactsService.sweep()} is {@code GuestBookingHistory}'s
 	 * sole consumer, and it is driven by {@code GuestContactRetentionScheduler}. There is no request

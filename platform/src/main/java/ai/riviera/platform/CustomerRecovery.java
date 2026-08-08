@@ -15,13 +15,13 @@ import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 
 /**
- * Edge orchestrator for the S8 (#113) account-recovery flows — the credential-material machinery that
+ * Edge orchestrator for the account-recovery flows — the credential-material machinery that
  * must stay at the platform edge (RV-BE-11), keeping the controllers thin and the {@code customer}
  * module free of tokens/mail/crypto. It mints + hashes the raw token, drives the module's
  * {@link CustomerAccountRecovery} port with only the opaque digest, and hands the raw token to the
- * {@code notification} module's {@link MailSender} inside the emailed link (#382) — a fire-and-forget
+ * {@code notification} module's {@link MailSender} inside the emailed link — a fire-and-forget
  * port that runs the send off this thread, swallows transport failures and enforces suppression, so
- * the D-8 non-enumeration and #369 timing-oracle guarantees hold behind that seam rather than here.
+ * the D-8 non-enumeration and timing-oracle guarantees hold behind that seam rather than here.
  *
  * <p>The email links point at the SPA routes {@code /account/verify} and {@code /account/reset} on the
  * configured {@link RecoveryProperties#linkBaseUrl()} — the SPA renders the page and issues the actual
@@ -57,13 +57,13 @@ class CustomerRecovery {
 		String rawToken = tokens.generate();
 		recovery.issueEmailVerificationToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.verificationTokenTtl()));
-		// The token store above is NOT best-effort and stays on this thread; only the send is (#369, R-3).
+		// The token store above is NOT best-effort and stays on this thread; only the send is.
 		mails.sendEmailVerification(email, link(VERIFY_PATH, rawToken));
 	}
 
 	/**
 	 * Whether a mail to this address would be withheld as suppressed, so a surface can stop claiming one
-	 * was sent (#400).
+	 * was sent.
 	 *
 	 * <p><strong>Deliberately not folded into {@link #sendVerificationEmail}.</strong> That method's other
 	 * caller is anonymous registration ({@code AuthController}, {@code permitAll}), where an extra
@@ -98,7 +98,7 @@ class CustomerRecovery {
 
 	/**
 	 * Whose account a presented raw reset token unlocks, while it is still redeemable — the read that lets
-	 * the caller revoke that principal's sessions before {@link #resetPassword} changes anything (#357).
+	 * the caller revoke that principal's sessions before {@link #resetPassword} changes anything.
 	 * Consumes nothing; empty for any token the redemption would reject.
 	 */
 	Optional<String> emailForResetToken(String rawToken) {
@@ -112,7 +112,7 @@ class CustomerRecovery {
 
 	/**
 	 * Whether the email's account is verified (the signed-in "please verify" nudge), or empty when no
-	 * account exists — one read per {@code /api/auth/me} restore instead of the old id-then-flag pair (#256).
+	 * account exists — one read per {@code /api/auth/me} restore instead of the old id-then-flag pair.
 	 */
 	Optional<Boolean> verifiedFor(String email) {
 		return recovery.emailVerifiedFor(email);

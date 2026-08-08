@@ -1,20 +1,20 @@
 package ai.riviera.platform.notification.application;
 
 /**
- * Internal seam deciding <em>where</em> a transactional-email send runs (#369, ADR-0011 decision 5;
- * moved into the {@code notification} module in #382).
+ * Internal seam deciding <em>where</em> a transactional-email send runs (ADR-0011 decision 5;
+ * moved into the {@code notification} module).
  *
  * <p>Recovery mail carries a raw single-use token inside the emailed link — a bearer credential
  * (invariant #7) — so it deliberately does <strong>not</strong> ride the Spring Modulith Event
  * Publication Registry: the registry serializes event payloads into {@code event_publication}, which would
  * persist that credential in cleartext and, under this application's {@code archive} completion mode, keep
- * it after the send — defeating the S8 design where only the digest is ever stored. The rule epic #367
- * settled: <em>ids-only payload → registry; bearer-credential payload → this in-memory dispatcher</em>.
+ * it after the send — defeating the S8 design where only the digest is ever stored. The rule this seam
+ * encodes: <em>ids-only payload → registry; bearer-credential payload → this in-memory dispatcher</em>.
  *
  * <p>Losing a send to a crash is acceptable for the recovery pair, whose flow is user-retryable: the
- * token is already stored, so the person asks again. Since #375 this dispatcher also carries the
+ * token is already stored, so the person asks again. This dispatcher also carries the
  * operator-approval notice, for which it is <em>not</em> — nothing re-sends that one, so the loss is
- * unrecoverable and mitigated only operationally (ADR-0011 decision 5, amended #439). The vehicle's
+ * unrecoverable and mitigated only operationally (ADR-0011 decision 5). The vehicle's
  * mechanics are one rule; what a loss costs is per-kind.
  *
  * <p><strong>Contract: an implementation never throws.</strong> The send is a best-effort side channel

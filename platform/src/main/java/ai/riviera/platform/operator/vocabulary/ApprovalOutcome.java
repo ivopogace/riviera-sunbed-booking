@@ -1,7 +1,7 @@
 package ai.riviera.platform.operator.vocabulary;
 
 /**
- * The result of an admin approve/reject decision on a self-registered operator (#115, S6) — a closed,
+ * The result of an admin approve/reject decision on a self-registered operator (S6) — a closed,
  * caller-mappable set (typed outcome over exceptions; riviera-java-conventions), so the edge admin
  * controller maps each case to an HTTP status exhaustively.
  *

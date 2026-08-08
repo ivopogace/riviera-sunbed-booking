@@ -4,10 +4,10 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * The platform-admin audit trail (#507, required by ADR-0013): one row per mutating
+ * The platform-admin audit trail (required by ADR-0013): one row per mutating
  * {@code /api/admin/**} action that reached past the security gate — actor, method, path, outcome
  * status, UTC instant, optional sanitized grounds. Written by {@link AdminAuditFilter}, read by
- * {@link AdminAuditController}; append-only, no updates, no deletes (retention is a #507 Phase-1
+ * {@link AdminAuditController}; append-only, no updates, no deletes (retention is a Phase-1
  * non-goal).
  *
  * <p>Composition-root state, not a module's: the {@code /api/admin} namespace's controllers span

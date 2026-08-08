@@ -10,8 +10,8 @@ import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 
 /**
- * The platform edge's Spring Security {@link UserDetailsService} for {@code CUSTOMER} accounts (S2,
- * epic #108) — the customer-side sibling of {@link OperatorUserDetailsService}. It resolves a customer
+ * The platform edge's Spring Security {@link UserDetailsService} for {@code CUSTOMER} accounts — the
+ * customer-side sibling of {@link OperatorUserDetailsService}. It resolves a customer
  * login email to a principal backed by the DB via the {@code customer} module's {@link CustomerAccounts}
  * port. Authentication is an edge concern (RV-BE-11): the module owns the opaque credential hash, the
  * edge verifies it against the delegating {@code PasswordEncoder} and hands a {@link UserDetails} to a

@@ -4,7 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 /**
- * The two Request-to-Book time windows (issue #98), as a plain application-layer value — the
+ * The two Request-to-Book time windows, as a plain application-layer value — the
  * adapter binds them from configuration ({@code booking.request.*}, see
  * {@code RequestProperties}/{@code BookingRequestConfig}) so this layer holds no configuration
  * type, mirroring how the abandoned sweep receives its TTL.

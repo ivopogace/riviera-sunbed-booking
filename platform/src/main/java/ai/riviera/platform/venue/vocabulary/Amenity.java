@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue.vocabulary;
 
 /**
- * The fixed platform amenity catalogue (T7, issue #140). A venue's amenities are an
+ * The fixed platform amenity catalogue. A venue's amenities are an
  * order-insensitive subset of these; the venue read views carry them as codes.
  *
  * <p><strong>Declaration order IS the canonical display/priority order.</strong> The Discover

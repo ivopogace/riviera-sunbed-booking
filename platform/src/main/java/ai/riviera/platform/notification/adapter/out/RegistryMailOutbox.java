@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.notification.application.MailOutbox;
 
 /**
- * The {@link MailOutbox} over Spring Modulith's Event Publication Registry (#405) — the driven adapter
+ * The {@link MailOutbox} over Spring Modulith's Event Publication Registry — the driven adapter
  * that knows the registry exists, so nothing inside the hexagon has to.
  *
  * <p><strong>Scope is a listener-id prefix, and that is the load-bearing decision.</strong> The
@@ -22,7 +22,7 @@ import ai.riviera.platform.notification.application.MailOutbox;
  * separate them, and an admin pressing "resubmit mail" would replay money-path work. The instances the
  * registry hands the predicate are {@link TargetEventPublication}s carrying the listener id, so the
  * scope is stated where the difference actually lives: publications targeted at a listener under this
- * module's package. It also survives what a per-listener list would not — #373/#374's listeners are in
+ * module's package. It also survives what a per-listener list would not — new listeners are in
  * scope the day they land, without anyone remembering to add them.
  *
  * <p><strong>Why the {@code Predicate} overload and not {@code ResubmissionOptions}.</strong> 2.1's
@@ -31,7 +31,7 @@ import ai.riviera.platform.notification.application.MailOutbox;
  * {@code STATUS = 'FAILED' OR (STATUS IS NULL AND COMPLETION_DATE IS NULL)} — so it reaches a send
  * whose listener <em>threw</em>, but not one the bulkhead <em>shed</em>: a rejected send never runs, so
  * nothing marks it failed and it sits at {@code PUBLISHED} while its publication stays outstanding
- * (#383/#407, the durability that shed policy is built on). Its {@code maxInFlight} gate is the second
+ * (the durability that shed policy is built on). Its {@code maxInFlight} gate is the second
  * trap, counting {@code RESUBMITTED} rows that a never-completing send leaves behind forever. The
  * {@code Predicate} overload routes to {@code processIncompletePublications}, which reads
  * <em>incomplete</em> and therefore covers both.
@@ -56,7 +56,7 @@ class RegistryMailOutbox implements MailOutbox {
 
 	/**
 	 * Every listener id this module owns starts here — Spring's default {@code listener_id} embeds the
-	 * declaring class's FQCN, which V31 (#382) rewrote precisely because the registry matches it
+	 * declaring class's FQCN, which V31 rewrote precisely because the registry matches it
 	 * string-equal. {@code MailOutboxScopeTest} pins this against the confirmation listener's real id,
 	 * and {@code RegistryMailBulkheadIT} pins that against what the running registry writes.
 	 */

@@ -10,7 +10,7 @@ import java.time.Instant;
  * the server-computed cancellation terms the Angular app renders. Money travels as {@link MoneyView}
  * (integer minor units + ISO currency, invariant #5); the date as an ISO {@code LocalDate} string.
  * {@code refundedAmount} is {@code null} unless the booking is already cancelled.
- * {@code emailWithheld} (#390) is {@code true} only for a {@code CONFIRMED} booking whose
+ * {@code emailWithheld} is {@code true} only for a {@code CONFIRMED} booking whose
  * confirmation mail was suppressed — never before payment, so this code-gated view cannot be used as
  * a suppression oracle (D-8). Mirrors the FE {@code BookingDetail} type.
  */
@@ -30,7 +30,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 				d.emailWithheld());
 	}
 
-	/** The open PaymentIntent's credentials — present only while {@code AWAITING_PAYMENT} (#98). */
+	/** The open PaymentIntent's credentials — present only while {@code AWAITING_PAYMENT}. */
 	record PaymentCredentialsView(String clientSecret, String paymentIntentId) {
 	}
 }

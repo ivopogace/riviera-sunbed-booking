@@ -13,8 +13,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Stamps every request with a correlation id (issue #100, D4 observability) so all log lines emitted
- * while handling one request share a traceable key. The id is placed in the SLF4J {@link MDC} under
+ * Stamps every request with a correlation id so all log lines emitted while handling one request share
+ * a traceable key. The id is placed in the SLF4J {@link MDC} under
  * {@link #MDC_KEY} — the structured (JSON) console appender includes MDC fields, so it surfaces on
  * every line — and echoed back in the {@link #HEADER} response header for the caller/next hop.
  *

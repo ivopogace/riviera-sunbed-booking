@@ -3,7 +3,7 @@ package ai.riviera.platform.booking.adapter.in;
 import ai.riviera.platform.booking.domain.BookingStatus;
 
 /**
- * The {@code 200} response body for {@code POST /api/bookings/{code}/withdraw} (issue #123) — the
+ * The {@code 200} response body for {@code POST /api/bookings/{code}/withdraw} — the
  * new terminal status, and nothing else.
  *
  * <p>Deliberately narrower than its cancel sibling {@link CancellationView}: a withdrawn request

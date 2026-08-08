@@ -75,7 +75,7 @@ class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {
 					.ifPresent(variant -> previewBySlot.put(photo.slot(),
 							PhotoServingUrls.servingUrl(venueId.value(), variant.hash())));
 		}
-		// Every slot, occupied or not, so the console renders a stable grid (#142 F-11: null IS empty).
+		// Every slot, occupied or not, so the console renders a stable grid (null means empty).
 		return Arrays.stream(PhotoSlot.values())
 				.map(slot -> new PhotoSlotView(slot, previewBySlot.get(slot)))
 				.toList();
@@ -95,7 +95,7 @@ class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {
 
 	@Override
 	public boolean exists(VenueId venueId, ContentHash hash) {
-		// Public like serve(); kept off the blob so revalidating on every view stays cheap (#508).
+		// Public like serve(); kept off the blob so revalidating on every view stays cheap.
 		return storage.exists(venueId, hash);
 	}
 

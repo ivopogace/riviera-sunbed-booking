@@ -37,7 +37,7 @@ public interface VenuePhotos {
 
 	/**
 	 * Whether {@code hash} still names a servable variant of {@code venueId} — the public
-	 * conditional-GET question (#508), answered without reading the bytes. No ownership check, like
+	 * conditional-GET question, answered without reading the bytes. No ownership check, like
 	 * {@link #serve}. Turns {@code false} the moment the photo is deleted or taken down, which is
 	 * what makes a removal reach a client that already holds the bytes and the {@code ETag}.
 	 */

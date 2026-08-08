@@ -10,7 +10,7 @@ import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 
 /**
- * The {@code payout} module's reaction to a cancelled booking (U6, issue #11) — a driving adapter
+ * The {@code payout} module's reaction to a cancelled booking — a driving adapter
  * listening for the {@code BookingCancelled} fact {@code booking} announces (invariant #11). It posts
  * a REVERSAL that backs out the prior ACCRUAL <strong>proportionally to the refund</strong>
  * (ADR-0005): a full refund reverses the whole accrual, a partial refund reverses the matching share,

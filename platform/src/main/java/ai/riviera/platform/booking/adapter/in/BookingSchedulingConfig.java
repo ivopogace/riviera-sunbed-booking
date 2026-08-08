@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Enables the {@code booking} module's scheduling — the abandoned-payment TTL sweep (issue #51) —
+ * Enables the {@code booking} module's scheduling — the abandoned-payment TTL sweep —
  * and binds its {@link AbandonedPaymentProperties}. Gated to the {@code stripe} profile: only there
  * do bookings linger in {@code AWAITING_PAYMENT} (under the default stub profile collection succeeds
  * synchronously, so there is nothing to sweep). Keeping {@code @EnableScheduling} profile-scoped also

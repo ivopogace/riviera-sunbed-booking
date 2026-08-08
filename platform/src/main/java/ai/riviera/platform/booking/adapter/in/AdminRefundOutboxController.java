@@ -72,8 +72,7 @@ class AdminRefundOutboxController {
 	/**
 	 * Seconds, rounded <em>up</em>, carrying a nanosecond tail — the remainder comes from
 	 * {@code Duration.between} on a nanosecond clock, so {@code plusMillis(999)} would truncate a
-	 * sub-millisecond tail back down and report one second less than a polling caller is promised
-	 * (#405's F-4).
+	 * sub-millisecond tail back down and report one second less than a polling caller is promised.
 	 */
 	private static long seconds(Duration remaining) {
 		return remaining.plusNanos(NANOS_PER_SECOND - 1).toSeconds();

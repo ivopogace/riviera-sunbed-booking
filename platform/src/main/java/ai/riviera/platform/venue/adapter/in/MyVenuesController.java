@@ -12,7 +12,7 @@ import ai.riviera.platform.venue.application.ListOwnedVenues;
 import ai.riviera.platform.venue.application.OwnedVenueView;
 
 /**
- * The signed-in operator's own venues (S9, issue #277) — {@code GET /api/venues/mine}, the read the
+ * The signed-in operator's own venues — {@code GET /api/venues/mine}, the read the
  * unified auth page uses to decide where an operator lands after sign-in (0 → venue onboarding,
  * 1 → straight into that console, N → the picker).
  *

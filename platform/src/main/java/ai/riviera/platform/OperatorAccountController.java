@@ -63,7 +63,7 @@ class OperatorAccountController {
 	/**
 	 * Wire DTO for an operator password change. Both fields are required in practice — unlike the customer
 	 * DTO, whose {@code currentPassword} is optional for an SSO-only account, because operators have no SSO
-	 * (that is #276) and therefore always have a password to prove. Only {@code newPassword} is enforced
+	 * and therefore always have a password to prove. Only {@code newPassword} is enforced
 	 * <em>here</em> (§6b centralized-explicit style) → an absent or blank one is a malformed body,
 	 * {@code 400 INVALID_REQUEST}, whose length message reads correctly for an empty value. A missing
 	 * {@code currentPassword} is a <strong>different</strong> fault and {@link #changePassword} answers it

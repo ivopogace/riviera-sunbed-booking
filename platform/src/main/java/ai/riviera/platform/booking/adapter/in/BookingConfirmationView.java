@@ -6,7 +6,7 @@ import ai.riviera.platform.booking.application.reserve.BookingConfirmation;
 
 /**
  * The {@code 201} response body for a created booking — the shared {@link CreatedBookingView}
- * summary plus {@code emailWithheld} (#390), which tells the confirmation screen its "we've also
+ * summary plus {@code emailWithheld}, which tells the confirmation screen its "we've also
  * emailed it to you" claim would be false, so it shows the save-your-code notice instead. Only
  * this body carries the flag (D-8 — the pre-payment outcomes must not leak suppression status).
  * Mirrors the FE {@code BookingConfirmation} type.

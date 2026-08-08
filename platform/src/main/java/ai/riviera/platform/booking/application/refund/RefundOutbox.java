@@ -2,7 +2,7 @@ package ai.riviera.platform.booking.application.refund;
 
 /**
  * What the Event Publication Registry still owes the cancellation-refund listener, and the lever to
- * re-drive it (#454) — a driven port, implemented by {@code adapter/out} against the registry, the
+ * re-drive it — a driven port, implemented by {@code adapter/out} against the registry, the
  * {@code notification.application.MailOutbox} shape transplanted to the money path.
  *
  * <p><strong>Scoped by construction, to exactly one listener.</strong> Both methods speak only of

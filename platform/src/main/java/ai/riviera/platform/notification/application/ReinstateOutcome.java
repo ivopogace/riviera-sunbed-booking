@@ -3,7 +3,7 @@ package ai.riviera.platform.notification.application;
 import java.time.Instant;
 
 /**
- * What a reinstatement attempt found and did (#391) — a typed outcome, not an exception, because all
+ * What a reinstatement attempt found and did — a typed outcome, not an exception, because all
  * three cases are expected flows an admin acts on ({@code riviera-java-conventions} §6). Sealed, so
  * the driving adapter's {@code switch} is exhaustive without a {@code default}: a fourth case added
  * later fails compilation instead of falling through to a wrong HTTP response.
@@ -12,7 +12,7 @@ import java.time.Instant;
  * never the {@code domain}. That is what lets the reinstate response answer the investigative half of
  * the ops workflow ("what was this suppressed for, and since when?") without the slice growing a
  * standing suppression-lookup endpoint, which would be a new authenticated oracle for a question
- * #390 is careful not to expose pre-payment.
+ * the confirmation-mail flag is careful not to expose pre-payment.
  *
  * <p>Timestamps are UTC instants (invariant #6). Module-internal: the only consumer is this module's
  * own {@code adapter/in}, so it stays in {@code application} rather than being published as

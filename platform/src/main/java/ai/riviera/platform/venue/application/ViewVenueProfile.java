@@ -6,8 +6,8 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Driving (inbound) port for an operator to read <strong>their own</strong> venue's admin profile
- * (O8, issue #177) — the values the Venue &amp; commodities tab pre-fills, including the read-only
+ * Driving (inbound) port for an operator to read <strong>their own</strong> venue's admin profile —
+ * the values the Venue &amp; commodities tab pre-fills, including the read-only
  * commission + payout currency that the public tourist read must not expose. Internal to the
  * {@code venue} module (REST-only caller), so it lives in {@code application}, not {@code api/}
  * (invariant #11), exactly like {@link EditVenueProfile}.

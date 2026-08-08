@@ -2,7 +2,7 @@ package ai.riviera.platform.notification.adapter.in;
 
 /**
  * Whether a request body's value could be an email address at all — the request-validation check this
- * module's two address-taking admin surfaces share (#391's suppression reinstatement and #380's
+ * module's two address-taking admin surfaces share (suppression reinstatement and
  * mail-delivery lookup).
  *
  * <p>Extracted rather than copied when the second caller arrived: the reasoning below is subtle enough

@@ -17,10 +17,10 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Serves {@link ViewDailyAvailability} (issue #207): assert ownership, resolve the venue's set
+ * Serves {@link ViewDailyAvailability}: assert ownership, resolve the venue's set
  * ids (the layout is {@code venue}'s), then ask the dependency-inverted
  * {@code SetAvailabilityLookup} (implemented by {@code availability}, the table's sole owner) for
- * the day's state tokens — the same composition split as the public map read (#44), one
+ * the day's state tokens — the same composition split as the public map read, one
  * state-aware step deeper. Package-private behind its port (invariant #11).
  *
  * <p>Ownership asserts <strong>first</strong> (invariant #13, BOLA): a non-owner is

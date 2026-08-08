@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * Fail-fast guard (#388, ADR-0012), the pepper sibling of {@code MockMailerProdGuard}: the
+ * Fail-fast guard (ADR-0012), the pepper sibling of {@code MockMailerProdGuard}: the
  * email-suppression key HMAC must never run on the committed dev pepper in production. Unlike the
  * mock-transport guards this one is conditional — it exists under the {@code prod} profile and its
  * constructor throws only when the pepper property is blank or still the committed dev default, so

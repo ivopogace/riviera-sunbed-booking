@@ -3,7 +3,7 @@ package ai.riviera.platform.booking.application.refund;
 import java.time.Duration;
 
 /**
- * What an admin sees before pressing anything (#454): how many refunds the registry still owes, and
+ * What an admin sees before pressing anything: how many refunds the registry still owes, and
  * whether the lever is currently accepting — the {@code MailOutboxStatus} shape on the money path.
  *
  * <p>It is the same scoped count the resubmission computes, so the two can never disagree about what

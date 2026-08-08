@@ -14,7 +14,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 /**
  * The single {@link SsoGateway} bean active under {@code @Profile("sso")}: it dispatches by provider to
  * the per-provider {@link SsoProviderClient} adapters ({@code GoogleSsoGateway}, {@code AppleSsoGateway}),
- * which currently throw {@link UnsupportedOperationException} until S5 (#116). Composing them here keeps
+ * which currently throw {@link UnsupportedOperationException} until S5. Composing them here keeps
  * exactly one {@code SsoGateway} bean per profile — the mock under {@code !sso}, this under {@code sso} —
  * so nothing is ambiguous and nothing silently falls back to the mock (design D-4). Package-private
  * (invariant #11).

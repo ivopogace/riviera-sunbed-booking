@@ -7,11 +7,11 @@ import ai.riviera.platform.shared.InvalidApiRequestException;
 
 /**
  * Edge helper mapping between the URL provider <em>slug</em> ({@code google}/{@code apple}) and the
- * {@code customer::vocabulary} {@link SsoProvider} enum (S4, epic #108). Parsing an HTTP path segment is
+ * {@code customer::vocabulary} {@link SsoProvider} enum. Parsing an HTTP path segment is
  * an edge concern, not domain vocabulary, so it lives at the root package with the SSO machinery.
  *
  * <p>An unknown slug is a typed {@link InvalidApiRequestException} → {@code 400 INVALID_REQUEST} via
- * the central {@code ApiErrorHandler} (#118; the message is not leaked to the client).
+ * the central {@code ApiErrorHandler} (the message is not leaked to the client).
  */
 final class SsoProviders {
 

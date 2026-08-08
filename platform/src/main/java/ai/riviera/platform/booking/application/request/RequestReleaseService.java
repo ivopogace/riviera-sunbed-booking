@@ -15,10 +15,10 @@ import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The one place a pending request is terminated and its set freed (issue #98) — the request-slice
+ * The one place a pending request is terminated and its set freed — the request-slice
  * sibling of {@code ClaimReleaseService}, with the three terminal legs side by side so they cannot
  * drift: <strong>decline</strong> (venue said no), <strong>expire</strong> (venue never answered)
- * and <strong>withdraw</strong> (the guest retracted it — issue #123). Each is a guarded
+ * and <strong>withdraw</strong> (the guest retracted it). Each is a guarded
  * {@code UPDATE … RETURNING} transition plus the
  * {@code availability.release}, committing together — a booking is never left
  * {@code DECLINED}/{@code EXPIRED}/{@code WITHDRAWN} with its set still claimed (invariant #2), and
@@ -37,7 +37,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * Stripe call, and the sweep isolates failures per row by calling {@link #expire} once per
  * candidate. Methods public for the proxy; the class stays package-private.
  *
- * <p><strong>Decline and expire publish their fact from inside the winning leg</strong> (#124):
+ * <p><strong>Decline and expire publish their fact from inside the winning leg</strong>:
  * the guarded transition settles the outcome right here — unlike the accept branch, whose answer
  * arrives only after its transaction ({@code PaymentDueAnnouncer}) — so publishing on the success
  * branch makes the Event Publication Registry row commit atomically with the transition, and the
@@ -82,7 +82,7 @@ class RequestReleaseService {
 	}
 
 	/**
-	 * The guest's own retraction (issue #123) — the third terminal leg, structurally identical to the
+	 * The guest's own retraction — the third terminal leg, structurally identical to the
 	 * two above and guarded, like decline, on {@code status} alone. That is the opposite of disjoint:
 	 * on an overdue row its {@code WHERE} and expire's both match, and the row lock is what leaves
 	 * exactly one winner (see the class javadoc).
@@ -92,9 +92,9 @@ class RequestReleaseService {
 	 * <strong>returns</strong> the booking id, which decline and expire are already given by their
 	 * caller — so the caller can log which booking ended without logging the code (invariant #7).
 	 *
-	 * <p>And a third, now its siblings publish (#124): this leg raises <strong>no</strong> event,
+	 * <p>And a third, now its siblings publish: this leg raises <strong>no</strong> event,
 	 * deliberately — the guest retracted the request themselves, so there is no outcome to mail
-	 * them (#123). Do not "complete the set"; {@code RequestTerminationEventPublicationIT} pins it.
+	 * them. Do not "complete the set"; {@code RequestTerminationEventPublicationIT} pins it.
 	 */
 	@Transactional
 	public Optional<BookingId> withdraw(String code) {

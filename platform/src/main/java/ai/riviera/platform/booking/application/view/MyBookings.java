@@ -5,7 +5,7 @@ import java.util.List;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 /**
- * The signed-in tourist's "my bookings" use case (S3, #114): list the bookings linked to a customer
+ * The signed-in tourist's "my bookings" use case: list the bookings linked to a customer
  * ACCOUNT. The module's inbound (driving) port — {@code MyBookingsController} depends on this
  * interface, not the concrete service (invariant #11 hexagonal layout), mirroring {@link ViewBooking}.
  *

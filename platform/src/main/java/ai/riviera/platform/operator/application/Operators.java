@@ -15,7 +15,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 /**
  * Driven (outbound) persistence port for the {@code operator} module — the operator accounts (incl.
- * their stored credential, #74) and the operator↔venue ownership mapping. Internal to the module (not
+ * their stored credential) and the operator↔venue ownership mapping. Internal to the module (not
  * a published named interface); implemented by {@code adapter/out}'s {@code JdbcOperators} (invariant
  * #1 — JDBC only). A single purposeful port for the whole module's storage, mirroring
  * {@code venue.application.Venues}.
@@ -37,41 +37,41 @@ public interface Operators {
 	/**
 	 * Insert a self-registered {@code PENDING} operator with this username + pre-encoded hash + contact
 	 * email, non-enumerating: a free username returns {@link OperatorRegistrationOutcome.Registered}, a
-	 * taken one returns {@link OperatorRegistrationOutcome.AlreadyRegistered} writing nothing (#115, D-8).
+	 * taken one returns {@link OperatorRegistrationOutcome.AlreadyRegistered} writing nothing (D-8).
 	 */
 	OperatorRegistrationOutcome insertPending(String username, String passwordHash, String contactEmail);
 
-	/** Every operator awaiting admin approval (status PENDING), oldest first (#115, S6). */
+	/** Every operator awaiting admin approval (status PENDING), oldest first. */
 	List<PendingOperator> pendingOperators();
 
-	/** Every operator that can currently authenticate (status ACTIVE), by username (#128). */
+	/** Every operator that can currently authenticate (status ACTIVE), by username. */
 	List<OperatorAccount> accounts();
 
 	/**
 	 * The username of the ACTIVE operator with this id, or empty (unknown / not ACTIVE) — the mirror of
 	 * {@link #idByActiveUsername}, read before a suspension so the edge can revoke that principal's
-	 * sessions first (#357).
+	 * sessions first.
 	 */
 	Optional<String> activeUsernameById(OperatorId operatorId);
 
 	/**
 	 * Transition the PENDING operator with this id to ACTIVE; see {@link ApprovalOutcome} for the
-	 * pending/exists/absent cases (#115, S6). On success the outcome carries the operator's stored
-	 * contact email, read by the same guarded statement that performed the transition (#375).
+	 * pending/exists/absent cases. On success the outcome carries the operator's stored
+	 * contact email, read by the same guarded statement that performed the transition.
 	 */
 	ApprovalOutcome activate(OperatorId operatorId);
 
-	/** Transition the PENDING operator with this id to REJECTED; see {@link ApprovalOutcome} (#115, S6). */
+	/** Transition the PENDING operator with this id to REJECTED; see {@link ApprovalOutcome}. */
 	ApprovalOutcome rejectPending(OperatorId operatorId);
 
 	/**
 	 * Transition the ACTIVE operator with this id to SUSPENDED, returning
-	 * {@link OperatorLifecycleOutcome.Changed} with its username so the edge can revoke its sessions
-	 * (#128). Writes nothing on a non-ACTIVE or unknown operator.
+	 * {@link OperatorLifecycleOutcome.Changed} with its username so the edge can revoke its sessions.
+	 * Writes nothing on a non-ACTIVE or unknown operator.
 	 */
 	OperatorLifecycleOutcome suspend(OperatorId operatorId);
 
-	/** Transition the SUSPENDED operator with this id back to ACTIVE; see {@link #suspend} (#128). */
+	/** Transition the SUSPENDED operator with this id back to ACTIVE; see {@link #suspend}. */
 	OperatorLifecycleOutcome reinstate(OperatorId operatorId);
 
 	/** Update the stored credential of the operator with this username; returns rows affected. */
@@ -79,13 +79,13 @@ public interface Operators {
 
 	/**
 	 * Whether {@code operator} owns {@code venue} — true iff an explicit {@code operator_venue}
-	 * mapping row exists (the owns-all short-circuit was retired in #115).
+	 * mapping row exists (the owns-all short-circuit was retired).
 	 */
 	boolean ownsVenue(OperatorId operator, VenueRef venue);
 
 	/** The venues explicitly mapped to {@code operator}. */
 	Set<VenueRef> ownedVenues(OperatorId operator);
 
-	/** Record an {@code operator_venue} mapping row (creator-owns-on-create, #115). */
+	/** Record an {@code operator_venue} mapping row (creator-owns-on-create). */
 	void assignOwner(OperatorId operator, VenueRef venue);
 }

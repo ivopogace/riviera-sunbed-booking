@@ -10,10 +10,10 @@ import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 /**
- * Edge glue that resolves the authenticated principal to its {@link CustomerAccountId} (S3, epic #108) —
+ * Edge glue that resolves the authenticated principal to its {@link CustomerAccountId} (S3) —
  * the customer-side sibling of {@link CurrentOperator}. Reading the Spring Security context is a
  * platform/edge concern (RV-BE-11), not {@code customer} domain: the module only maps an email to an id
- * via {@link CustomerAccountDirectory}. It lives in the {@code shared} kernel module (#371), not at the composition
+ * via {@link CustomerAccountDirectory}. It lives in the {@code shared} kernel module, not at the composition
  * root: modules depend on it, so hosting it at the root would cycle back through them.
  *
  * <p>Two entry points for the two call sites (invariant #13 posture — authorization is by the session

@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Binds {@link MailResubmissionProperties} and maps it to the application-layer
- * {@link MailResubmissionWindow} (#405) — the same edge-binding / framework-light-hexagon split as
+ * {@link MailResubmissionWindow} — the same edge-binding / framework-light-hexagon split as
  * {@link MailTransportConfig}.
  *
  * <p>Unconditional, for the same reason that config is: the resubmission guard is not a property of

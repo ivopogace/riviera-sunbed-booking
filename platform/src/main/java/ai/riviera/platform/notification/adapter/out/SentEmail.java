@@ -9,8 +9,7 @@ import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 
 /**
- * One email the {@link MockMailer} recorded instead of sending (S8, epic #108; extended for the
- * booking-confirmation kind in #371 and the cancellation kind in #374) — enough for a developer/demo
+ * One email the {@link MockMailer} recorded instead of sending — enough for a developer/demo
  * to follow the flow and for backend ITs to complete a verify/reset journey by pulling the tokenized
  * {@link #link} out of the "sent" record, or to assert what a {@link #confirmation} or
  * {@link #cancellation} carried. Not used by the real {@link SmtpMailer}.
@@ -68,7 +67,7 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 	}
 
 	/**
-	 * An accepted request's payment-due notice, identified by the details it renders (#373). Its
+	 * An accepted request's payment-due notice, identified by the details it renders. Its
 	 * {@code payLink} lives on the payload rather than in the shared {@link #link} slot, so an IT
 	 * reaching for a recovery link can never match it: that slot's occupants are followed blindly by
 	 * the recovery ITs, and this URL leads to a booking, not a token exchange.
@@ -77,12 +76,12 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 		return new SentEmail(toEmail, Kind.PAYMENT_DUE, null, null, null, paymentDue, null, null);
 	}
 
-	/** A declined request's record (#124); its {@code statusLink} rides the payload, like the pay link. */
+	/** A declined request's record; its {@code statusLink} rides the payload, like the pay link. */
 	static SentEmail requestDeclined(String toEmail, RequestDeclinedMail declined) {
 		return new SentEmail(toEmail, Kind.REQUEST_DECLINED, null, null, null, null, declined, null);
 	}
 
-	/** An expired request's record (#124), on the declined kind's rules. */
+	/** An expired request's record, on the declined kind's rules. */
 	static SentEmail requestExpired(String toEmail, RequestExpiredMail expired) {
 		return new SentEmail(toEmail, Kind.REQUEST_EXPIRED, null, null, null, null, null, expired);
 	}

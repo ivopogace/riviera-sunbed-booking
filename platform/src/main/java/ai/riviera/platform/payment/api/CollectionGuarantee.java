@@ -2,7 +2,7 @@ package ai.riviera.platform.payment.api;
 
 /**
  * Whether the wired gateway <strong>proves money was collected</strong> before a booking may reach
- * {@code CONFIRMED} (#390) — a property of the payment model, published so callers can reason about
+ * {@code CONFIRMED} — a property of the payment model, published so callers can reason about
  * what a confirmed booking actually attests to.
  *
  * <p>It exists because that is <em>not</em> universally true here. The {@code stripe}-profile gateway
@@ -12,7 +12,7 @@ package ai.riviera.platform.payment.api;
  * {@code CONFIRMED} having taken no money at all.
  *
  * <p>The distinction is load-bearing for anything that treats "confirmed" as "the requester has
- * skin in the game" — #390's withheld-confirmation-mail flag is disclosed only when this answers
+ * skin in the game" — the withheld-confirmation-mail flag is disclosed only when this answers
  * {@code true}, because otherwise the flag would be a free suppression oracle for any address
  * (D-8 non-enumeration). Asking the payment model directly, rather than testing a profile string in
  * the consuming module, keeps that security gate checkable and survives a third gateway.

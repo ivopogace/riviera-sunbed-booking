@@ -27,7 +27,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
  * (so it never collides with the {@code email} UNIQUE constraint), on the reserved {@code .invalid} TLD
  * (RFC 2606) so it can never route. Name/phone become the fixed {@code 'ERASED'} placeholder.
  *
- * <p>Since Slice 2 (#101) the same adapter also serves the automated retention sweep: the candidate read
+ * <p>Since Slice 2 the same adapter also serves the automated retention sweep: the candidate read
  * applies the two gates {@code customer} can evaluate on its own tables (row age, and no live
  * {@code customer_account} claiming the email), and the by-id scrub reuses the identical guest tombstone —
  * shared as {@link #GUEST_TOMBSTONE} so request-erasure and retention-erasure cannot drift apart. All of it
@@ -56,7 +56,7 @@ class JdbcAccountErasure implements AccountErasureStore {
 	private final JdbcClient jdbc;
 
 	/**
-	 * Used by the retention sweep's candidate read alone (#395). See {@link #boundedClient}.
+	 * Used by the retention sweep's candidate read alone. See {@link #boundedClient}.
 	 */
 	private final JdbcClient sweepJdbc;
 
@@ -68,8 +68,8 @@ class JdbcAccountErasure implements AccountErasureStore {
 
 	/**
 	 * A {@link JdbcClient} of this adapter's own with a finite {@code queryTimeout}, used by
-	 * {@link #expiredGuestCandidates} and nothing else (#395) — the #386 idiom
-	 * ({@code JdbcEmailSuppressions#boundedClient}) applied to scheduled work.
+	 * {@link #expiredGuestCandidates} and nothing else — the {@code JdbcEmailSuppressions#boundedClient}
+	 * idiom applied to scheduled work.
 	 *
 	 * <p>This read opens the retention sweep, and it is the widest of the three scheduled candidate
 	 * queries: it scans {@code customer} with a correlated {@code NOT EXISTS} against
@@ -134,7 +134,7 @@ class JdbcAccountErasure implements AccountErasureStore {
 
 	@Override
 	public List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit) {
-		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded (#395).
+		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded.
 		return sweepJdbc.sql("""
 				SELECT c.id FROM customer c
 				WHERE c.erased_at IS NULL

@@ -1,7 +1,7 @@
 package ai.riviera.platform.operator.vocabulary;
 
 /**
- * How an admin-driven operator lifecycle transition ended (#128) — suspend (ACTIVE → SUSPENDED) or
+ * How an admin-driven operator lifecycle transition ended — suspend (ACTIVE → SUSPENDED) or
  * reinstate (SUSPENDED → ACTIVE). A typed outcome rather than an exception: a transition refused
  * because the account is in the wrong status is expected flow, not an exceptional condition
  * ({@code riviera-java-conventions} §6).

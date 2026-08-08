@@ -15,7 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
- * App-level observability wiring (issue #100, D4) — a root-package concern, not a Modulith module
+ * App-level observability wiring — a root-package concern, not a Modulith module
  * (like {@link SecurityConfig}/{@link WebCorsConfig}). It owns the cross-cutting instrumentation the
  * whole app shares: the {@link CorrelationIdFilter} registration and the money-path metrics that back
  * the alert self-check.

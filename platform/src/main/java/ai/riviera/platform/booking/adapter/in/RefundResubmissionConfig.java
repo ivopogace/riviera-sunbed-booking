@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Binds {@link RefundResubmissionProperties} and maps it to the application-layer
- * {@link RefundResubmissionWindow} (#454) — the same edge-binding / framework-light-hexagon split as
+ * {@link RefundResubmissionWindow} — the same edge-binding / framework-light-hexagon split as
  * {@code MailResubmissionConfig}.
  *
  * <p>Unconditional, profile-free, for the same reason: the sweep throttle is not a property of the

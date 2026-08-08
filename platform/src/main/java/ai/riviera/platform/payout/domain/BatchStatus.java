@@ -1,7 +1,7 @@
 package ai.riviera.platform.payout.domain;
 
 /**
- * The lifecycle of a {@link PayoutBatch} (U9, issue #12). Settlement is <strong>manual</strong> via BKT
+ * The lifecycle of a {@link PayoutBatch}. Settlement is <strong>manual</strong> via BKT
  * (no Stripe Connect, ADR-0002) — these statuses record where a period's payout stands, they do not
  * drive an automated transfer. Mirrors the {@code payout_batch.status} CHECK (V15) one-to-one.
  *

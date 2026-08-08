@@ -14,7 +14,7 @@ import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Computes a venue's "online takings today" for the operator console (#171, O2): reads the gross of
+ * Computes a venue's "online takings today" for the operator console: reads the gross of
  * a venue's CONFIRMED online bookings for the service date from {@code booking::api}, then applies
  * the venue's commission to yield net owed. {@code payout} owns the commission arithmetic
  * ({@code venue} stores the rate; invariant #9) and reuses the same {@link CommissionSplit} as the

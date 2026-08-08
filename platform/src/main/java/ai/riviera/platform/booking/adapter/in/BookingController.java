@@ -26,12 +26,12 @@ import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 /**
- * Public tourist booking endpoint (U3, issue #6). Driving adapter — depends only on the
+ * Public tourist booking endpoint (U3). Driving adapter — depends only on the
  * {@code booking} module's {@link CreateBooking} port (invariant #11). Maps the sealed
  * {@link BookingOutcome} to HTTP via an exhaustive {@code switch}: {@code Confirmed}→201,
  * {@code SET_TAKEN}→409, {@code NOT_ONLINE_POOL}/{@code BOOKING_CLOSED}→422,
  * {@code NO_SUCH_SET}→404; malformed input→400 via {@code ApiErrorHandler}. Errors are
- * RFC-7807 {@link ProblemDetail} built by {@link ApiProblem} (issue #97).
+ * RFC-7807 {@link ProblemDetail} built by {@link ApiProblem}.
  */
 @RestController
 @RequestMapping("/api/bookings")
@@ -63,7 +63,7 @@ class BookingController {
 	/**
 	 * View a booking by its code (U6). The code is the bearer credential (invariant #7) — knowing it
 	 * authorizes the view; it is never logged. Returns the summary + server-computed refund terms, or
-	 * {@code 404} for an unknown code. (#50 builds on this endpoint.)
+	 * {@code 404} for an unknown code.
 	 */
 	@GetMapping("/{code}")
 	ResponseEntity<?> view(@PathVariable String code) {
@@ -90,7 +90,7 @@ class BookingController {
 	}
 
 	/**
-	 * Withdraw a pending booking request by its code (issue #123). Like cancel, the code is the whole
+	 * Withdraw a pending booking request by its code. Like cancel, the code is the whole
 	 * authorization (invariant #7) and there is no request body. {@code Withdrawn}→200,
 	 * {@code NO_SUCH_BOOKING}→404, {@code NOT_PENDING}→409. No money is involved — a pending request
 	 * has no PaymentIntent on record — so there is no refund to report, only the new terminal status.
@@ -111,11 +111,11 @@ class BookingController {
 
 	@PostMapping
 	ResponseEntity<?> create(@RequestBody CreateBookingRequest request, Authentication authentication) {
-		// Signed-in checkout links the booking to the customer's account (S3, #114); a guest / anonymous
+		// Signed-in checkout links the booking to the customer's account (S3); a guest / anonymous
 		// principal resolves to null → an unchanged guest booking (invariant #2/#4 flows untouched). The
 		// account id comes from the SESSION principal only, never the request body (BOLA-safe).
 		CustomerAccountId accountId = currentCustomer.optional(authentication).orElse(null);
-		// The conversion wrap keeps bad request input a 400 while a service-level IAE stays a 500 (#118).
+		// The conversion wrap keeps bad request input a 400 while a service-level IAE stays a 500.
 		BookingOutcome outcome = createBooking.create(
 				InvalidApiRequestException.parsing(() -> request.toCommand(accountId)));
 		return switch (outcome) {
@@ -127,7 +127,7 @@ class BookingController {
 					.body(AwaitingPaymentView.of(awaiting.confirmation(), awaiting.clientSecret(),
 							awaiting.paymentIntentId()));
 			// 202: a Request-to-Book venue — created PENDING_REQUEST, no payment until the venue
-			// accepts (#98). The guest tracks status (and later pays) via the code-gated view.
+			// accepts. The guest tracks status (and later pays) via the code-gated view.
 			case BookingOutcome.Requested requested -> ResponseEntity.status(HttpStatus.ACCEPTED)
 					.body(RequestedView.of(requested.confirmation(), requested.requestExpiresAt()));
 			case BookingOutcome.Rejected rejected -> switch (rejected) {

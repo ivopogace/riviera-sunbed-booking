@@ -3,7 +3,7 @@ package ai.riviera.platform.venue.vocabulary;
 import java.util.List;
 
 /**
- * One venue as the tourist discovery list needs it (issue #61, design §4.1 steps 1–2). The
+ * One venue as the tourist discovery list needs it (design §4.1 steps 1–2). The
  * coarse, list-level view: enough to render a card and decide whether to open the full beach
  * map ({@link VenueMapView}), no per-set layout.
  *
@@ -15,9 +15,9 @@ import java.util.List;
  *
  * <p>{@code amenities} are this venue's amenities in canonical catalogue order ({@link Amenity}),
  * possibly empty — the Discover card renders the first few. {@code distanceToWaterM} is the
- * optional distance to the water in metres, or {@code null} when not stated (T7, issue #140).
+ * optional distance to the water in metres, or {@code null} when not stated.
  *
- * <p>{@code coverPhoto} is the cover slot's card + banner serving URLs (#142), or {@code null}
+ * <p>{@code coverPhoto} is the cover slot's card + banner serving URLs, or {@code null}
  * when no cover photo is uploaded — the card then renders its gradient fallback.
  */
 public record VenueSummaryView(long id, String name, String beach, String region,

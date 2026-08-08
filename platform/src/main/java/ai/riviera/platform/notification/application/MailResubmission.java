@@ -3,7 +3,7 @@ package ai.riviera.platform.notification.application;
 import ai.riviera.platform.shared.ResubmissionOutcome;
 
 /**
- * The driving port behind the ADMIN mail-outbox surface (#405): read what the registry still owes this
+ * The driving port behind the ADMIN mail-outbox surface: read what the registry still owes this
  * module, and re-drive it on demand.
  *
  * <p><strong>Why this exists at all.</strong> The failure path was already correct — a transport
@@ -16,7 +16,7 @@ import ai.riviera.platform.shared.ResubmissionOutcome;
  *
  * <p><strong>Internal, not published.</strong> Its only caller is this module's own admin adapter, so
  * publishing it would add a third {@code notification::api} surface for a hypothetical seam — the same
- * argument that kept {@code AdminEmailSuppressionController} inside the module in #391.
+ * argument that kept {@code AdminEmailSuppressionController} inside the module.
  */
 public interface MailResubmission {
 

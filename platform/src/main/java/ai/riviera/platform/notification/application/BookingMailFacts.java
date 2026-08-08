@@ -1,7 +1,7 @@
 package ai.riviera.platform.notification.application;
 
 /**
- * What {@link BookingMailFactsService} could — or could not — assemble about one booking (#374): a
+ * What {@link BookingMailFactsService} could — or could not — assemble about one booking: a
  * typed outcome rather than an {@code Optional}, because "absent" is not the useful answer here.
  * Every caller has to <em>name</em> the missing fact, both to tag its loss counter and to point an
  * operator at the module that owes the row, so collapsing the three cases into an empty
@@ -10,7 +10,7 @@ package ai.riviera.platform.notification.application;
  * <p>Sealed, so each listener's {@code switch} is exhaustive without a {@code default} — a third
  * outcome could not be added without every caller being made to handle it.
  *
- * <p>Module-internal (#382): public only so {@code adapter/in} can consume it, like
+ * <p>Module-internal: public only so {@code adapter/in} can consume it, like
  * {@code BookingConfirmationMail} beside it. Nothing outside {@code notification} sees it.
  */
 public sealed interface BookingMailFacts {

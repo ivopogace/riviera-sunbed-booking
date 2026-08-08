@@ -3,7 +3,7 @@ package ai.riviera.platform.booking.application.refund;
 import java.time.Duration;
 
 /**
- * How long the refund-resubmit lever refuses after an accepted press (#454).
+ * How long the refund-resubmit lever refuses after an accepted press.
  *
  * <p><strong>Why a window and not just a lock.</strong> A mutex answers only the truly simultaneous
  * case. The recurring one is sequential: during a gateway outage every re-driven refund fails fast and

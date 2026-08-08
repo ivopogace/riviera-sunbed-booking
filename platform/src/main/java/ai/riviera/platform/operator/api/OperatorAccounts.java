@@ -5,7 +5,7 @@ import java.util.Optional;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 
 /**
- * Published read port for an operator account's stored credential (issue #74). The platform edge's
+ * Published read port for an operator account's stored credential. The platform edge's
  * {@code UserDetailsService} calls this to build a Spring Security principal from the DB — replacing
  * the old single in-memory {@code operator} user. The {@code operator} module owns the credential
  * <em>storage</em> (account identity); it does <strong>not</strong> encode or verify the hash — that

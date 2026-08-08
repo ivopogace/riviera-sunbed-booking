@@ -8,8 +8,8 @@ import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 
 /**
- * Published port for the customer account's email-verification + password-recovery lifecycle (S8, epic
- * #108) — one purposeful conversation the platform edge drives. The edge owns all credential-material
+ * Published port for the customer account's email-verification + password-recovery lifecycle — one
+ * purposeful conversation the platform edge drives. The edge owns all credential-material
  * transformation: it generates the raw token, hashes it to the opaque {@code tokenHash} passed here, and
  * encodes the password. This module stores the digest, enforces single-use + expiry atomically in SQL,
  * and flips verification state — never importing a Spring Security type (RV-BE-11,
@@ -58,7 +58,7 @@ public interface CustomerAccountRecovery {
 	/**
 	 * Whether the email's account is verified (the signed-in "please verify" nudge on {@code /api/auth/me}),
 	 * or empty when no account exists for it. Keyed by email — the session principal's name — so the edge
-	 * resolves the flag in <strong>one</strong> read instead of an id lookup plus a by-id read (#256); the
+	 * resolves the flag in <strong>one</strong> read instead of an id lookup plus a by-id read; the
 	 * module normalizes the email before lookup (same contract as {@link CustomerAccountDirectory#accountFor}).
 	 */
 	Optional<Boolean> emailVerifiedFor(String email);

@@ -6,7 +6,7 @@ import java.util.Optional;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Platform administration of venue commission rates (A7, epic #348) — the list every venue's rate and
+ * Platform administration of venue commission rates — the list every venue's rate and
  * the write that changes one. Deliberately a <strong>separate port</strong> from the venue-scoped
  * write use cases ({@link EditVenueProfile}, {@link EditBeachMap}) rather than extra methods on them,
  * for the reason {@link VenuePhotoModeration} was split from {@code VenuePhotos}: those ports promise
@@ -23,7 +23,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * which is why nothing else may depend on it. An admin does not <em>own</em> a rate, so there is
  * nothing for object-level authorization to check — and the venue-scoped alternative would refuse
  * exactly the case this exists for. Note the asymmetry with the operator: the owner's profile
- * {@code PATCH} still cannot write the rate at all (O8 #177), which is why this surface had to exist
+ * {@code PATCH} still cannot write the rate at all, which is why this surface had to exist
  * rather than the `PATCH` simply being widened — a venue does not get to set its own commission.
  *
  * <p><strong>Unlike {@link VenuePhotoModeration} this surface does not blur venue existence.</strong>

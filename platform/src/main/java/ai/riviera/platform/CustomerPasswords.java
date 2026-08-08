@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
  * without threading a collaborator through each constructor (keeping them under the parameter budget).
  *
  * <p>Policy (design D-8): a server-side minimum length, capped at bcrypt's 72-byte input limit. A
- * violation throws {@link InvalidApiRequestException} (#118), which the single {@code ApiErrorHandler}
+ * violation throws {@link InvalidApiRequestException}, which the single {@code ApiErrorHandler}
  * maps to {@code 400 INVALID_REQUEST} — the same contract every edge write already uses.
  */
 final class CustomerPasswords {
@@ -24,7 +24,7 @@ final class CustomerPasswords {
 
 	/**
 	 * Whether a current-password field was supplied at all — the one definition shared by both self-service
-	 * change endpoints (#345), so the operator and customer twins cannot drift on what "supplied" means.
+	 * change endpoints, so the operator and customer twins cannot drift on what "supplied" means.
 	 * The test is <em>empty</em>, never blank: the policy above forbids a stored password under
 	 * {@value #MIN_PASSWORD_LENGTH} characters so {@code ""} can never be a real one, while leading and
 	 * trailing spaces are significant and must survive (the S8 set-password review fix).

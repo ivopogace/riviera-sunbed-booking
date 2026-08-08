@@ -32,16 +32,16 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Venue photo endpoints (#142) — a separate driving adapter from {@code VenueAdminController} so the
+ * Venue photo endpoints — a separate driving adapter from {@code VenueAdminController} so the
  * <strong>public</strong> serving GET sits apart from the authenticated writes. The writes are
  * <strong>venue-scoped</strong>: the controller resolves the principal to an {@link OperatorId} and
  * hands it to {@link VenuePhotos}, which asserts ownership before acting (invariant #13); a mismatch
- * is {@code 403} via {@code ApiErrorHandler}. Errors are RFC-7807 {@link ProblemDetail} (issue #97).
+ * is {@code 403} via {@code ApiErrorHandler}. Errors are RFC-7807 {@link ProblemDetail}.
  *
  * <p>Upload is <strong>POST</strong> (not PUT): multipart parsing is reliable on POST across servlet
  * containers, and a slot upload is an idempotent replace regardless. The serving GET is
  * content-addressed by the variant hash and returned with a strong {@code ETag} under a
- * <strong>revalidating</strong> cache directive (ADR-0008 as amended by #508): the client still
+ * <strong>revalidating</strong> cache directive (ADR-0008): the client still
  * stores and reuses the bytes via {@code 304}, so the DB is read ≈once per image, but every cache —
  * including a shared one we do not control — has to ask before serving again, so a takedown takes
  * effect instead of outliving the removal. The {@code 304} short-circuit is therefore gated on the
@@ -51,7 +51,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 @RequestMapping("/api/venues")
 class VenuePhotoController {
 
-	/** Public but always revalidated — a removal has to reach shared caches too (#508, ADR-0008). */
+	/** Public but always revalidated — a removal has to reach shared caches too (ADR-0008). */
 	private static final CacheControl REVALIDATE = CacheControl.noCache().cachePublic();
 
 	private final VenuePhotos photos;
@@ -93,7 +93,7 @@ class VenuePhotoController {
 		}
 		String etag = "\"" + hash + "\"";
 		if (etag.equals(ifNoneMatch)) {
-			// #508: answered from the URL alone, a taken-down photo revalidated as 304 forever.
+			// answered from the URL alone, a taken-down photo revalidated as 304 forever.
 			return photos.exists(new VenueId(venueId), contentHash)
 					? ResponseEntity.status(HttpStatus.NOT_MODIFIED)
 							.cacheControl(REVALIDATE)

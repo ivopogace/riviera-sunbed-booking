@@ -15,7 +15,7 @@ import ai.riviera.platform.notification.application.ReinstateSuppression;
 import ai.riviera.platform.shared.ApiProblem;
 
 /**
- * The platform-admin surface for lifting a suppression (#391) — the mirror of the {@code MANUAL}
+ * The platform-admin surface for lifting a suppression — the mirror of the {@code MANUAL}
  * suppression reason, and the one sanctioned exception to the never-deleted deliverability record
  * (still not a deletion; ADR-0012 as amended). Driving adapter depending only on the module's
  * {@link ReinstateSuppression} driving port.
@@ -36,10 +36,10 @@ import ai.riviera.platform.shared.ApiProblem;
  * <em>facts</em> — what this was suppressed for, and since when — which a bare {@code 404} cannot
  * carry. That response is what lets the slice ship without a standing suppression-lookup endpoint:
  * the investigative half of the ops workflow is answered by the action itself. Errors are RFC-7807
- * {@link ProblemDetail} from the one {@link ApiProblem} factory (issue #97); no per-controller
+ * {@link ProblemDetail} from the one {@link ApiProblem} factory; no per-controller
  * {@code @ExceptionHandler}.
  *
- * <p>Request validation is the shape check in {@link AddressShape} — extracted there when #380's
+ * <p>Request validation is the shape check in {@link AddressShape} — extracted there when the
  * mail-delivery lookup needed the identical guard, so the two admin surfaces that take an address
  * cannot drift apart on what they accept.
  *

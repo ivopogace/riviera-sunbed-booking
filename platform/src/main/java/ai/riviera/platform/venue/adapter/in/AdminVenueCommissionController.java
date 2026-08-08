@@ -16,14 +16,14 @@ import ai.riviera.platform.venue.application.VenueCommissionAdministration;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The platform-admin commission-rate surface (A7, epic #348) — the list of every venue's rate and the
+ * The platform-admin commission-rate surface — the list of every venue's rate and the
  * write that corrects one. Driving adapter depending only on the module's
  * {@link VenueCommissionAdministration} port; hosted in the module rather than at the composition root,
- * like the other module-owned admin surfaces (#391/#405/#454/#504).
+ * like the other module-owned admin surfaces.
  *
  * <p><strong>Why this surface has to exist.</strong> A venue's commission was settable only at
- * creation: the owner-asserted profile {@code PATCH} treats it as display-only, deliberately (O8
- * #177 — a venue does not set its own commission), and nothing else could write it, so a rate typed
+ * creation: the owner-asserted profile {@code PATCH} treats it as display-only, deliberately
+ * (a venue does not set its own commission), and nothing else could write it, so a rate typed
  * wrong at onboarding was permanent. Widening the operator's {@code PATCH} would have been the wrong
  * fix; the authority to change a commercial term belongs to the platform, not the counterparty.
  *
@@ -34,14 +34,14 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * {@code SecurityConfig} is then the <strong>whole</strong> authorization: a plain {@code OPERATOR} is
  * {@code 403}, anonymous is {@code 401}.
  *
- * <p>Errors are the one RFC-7807 contract (#97): an unknown venue is {@code 404 NO_SUCH_VENUE}, and a
+ * <p>Errors are the one RFC-7807 contract: an unknown venue is {@code 404 NO_SUCH_VENUE}, and a
  * missing or out-of-range rate is {@code 400 INVALID_REQUEST} via
  * {@link InvalidApiRequestException#parsing} at the conversion boundary — so the range guard yields a
- * 400 when a client trips it and would still yield a 500 if stored state ever did (#118). Unlike the
+ * 400 when a client trips it and would still yield a 500 if stored state ever did. Unlike the
  * photo-moderation twin this surface does not blur venue existence: venues are already enumerable
  * through the anonymous discovery read, and an admin correcting a rate needs a mistyped id to fail
- * loudly. The audit record is written at the edge for every mutating {@code /api/admin/**} action
- * (#507), so there is no instrumentation here.
+ * loudly. The audit record is written at the edge for every mutating {@code /api/admin/**} action,
+ * so there is no instrumentation here.
  */
 @RestController
 @RequestMapping("/api/admin/venues")

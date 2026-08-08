@@ -83,7 +83,7 @@ class PhotoProcessor {
 			}
 		} catch (IOException e) {
 			// The up-front check is header-only, so a raster the decoder can't handle (e.g. a CMYK
-			// JPEG) first fails HERE — an expected upload flaw, not a server error (#142 review F-5).
+			// JPEG) first fails HERE — an expected upload flaw, not a server error.
 			return rejected(Reason.UNREADABLE);
 		}
 		return new PhotoProcessingResult.Processed(new ProcessedPhoto(List.copyOf(variants)));
@@ -118,7 +118,7 @@ class PhotoProcessor {
 				.toOutputStream(out);
 		byte[] bytes = out.toByteArray();
 		// Header-only read of our own freshly encoded JPEG — no second full-raster decode just for
-		// two ints (#142 review F-10). It cannot fail on bytes this class just wrote.
+		// two ints. It cannot fail on bytes this class just wrote.
 		int[] actual = readHeaderDimensions(bytes);
 		if (actual == null) {
 			throw new IllegalStateException("the freshly rendered " + surface + " JPEG has no readable header");

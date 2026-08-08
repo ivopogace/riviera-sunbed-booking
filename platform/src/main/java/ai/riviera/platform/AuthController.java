@@ -22,16 +22,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Session login + registration + current-principal endpoints (issues #109, #111; design D-1/D-2/D-8).
+ * Session login + registration + current-principal endpoints (design D-1/D-2/D-8).
  * A principal signs in ONCE here and rides the resulting {@code SESSION} cookie; logout is the framework
  * {@code LogoutFilter} configured in {@link SecurityConfig} (not a handler here). Platform-edge login
  * machinery — the {@code operator}/{@code customer} modules only supply credentials/identity via their
  * {@code api/} ports (RV-BE-11, pinned by {@code OperatorAuthPlacementTests} / {@code CustomerAuthPlacementTests}).
  *
- * <p><strong>Controller-based on purpose</strong> (grill-gate re-decision on #109): driving the
+ * <p><strong>Controller-based on purpose</strong> (a grill-gate re-decision): driving the
  * framework {@link AuthenticationManager} from a controller keeps D-1's "no custom token filters"
  * intact <em>and</em> routes a failed login through the single {@link ApiErrorHandler} advice —
- * so the 401 lands on the RFC-7807 contract (#97) instead of a filter's bare status.
+ * so the 401 lands on the RFC-7807 contract instead of a filter's bare status.
  *
  * <p><strong>Two principal types, two managers</strong> (D-2). The paths are principal-typed
  * ({@code /api/auth/operator/login}, {@code /api/auth/customer/login|register}); each login drives its
@@ -51,7 +51,7 @@ class AuthController {
 	private static final String CUSTOMER_PRINCIPAL_TYPE = "CUSTOMER";
 	/** The authority a customer principal carries ({@code ROLE_} + type), used to label {@code /me}. */
 	private static final String CUSTOMER_ROLE_AUTHORITY = "ROLE_" + CUSTOMER_PRINCIPAL_TYPE;
-	/** The authority a platform-admin operator carries (#115), surfaced on {@code /me} so the FE can gate the admin surface. */
+	/** The authority a platform-admin operator carries, surfaced on {@code /me} so the FE can gate the admin surface. */
 	private static final String ADMIN_ROLE_AUTHORITY = "ROLE_ADMIN";
 
 	/**
@@ -102,7 +102,7 @@ class AuthController {
 	}
 
 	/**
-	 * Wire DTO for an operator self-registration (#115, S6): the login {@code username}, the
+	 * Wire DTO for an operator self-registration: the login {@code username}, the
 	 * {@code password}, and a {@code contactEmail} for the admin's approval decision. Presence checks in
 	 * the compact constructor (§6b centralized-explicit style) → a malformed body is {@code 400 INVALID_REQUEST}.
 	 */
@@ -133,10 +133,10 @@ class AuthController {
 
 	/**
 	 * The signed-in principal as the FE sees it (login/register responses and {@code /me} share it).
-	 * {@code emailVerified} is the customer's soft email-verification state (S8 #113) for the "please
+	 * {@code emailVerified} is the customer's soft email-verification state for the "please
 	 * verify" nudge; {@code null} for an operator principal (not a customer concept). A fresh registration
 	 * is always {@code false}, and the neutral already-registered branch also reports {@code false} so the
-	 * response stays byte-identical (non-enumeration, D-8). {@code admin} (S6 #115) is {@code true} for a
+	 * response stays byte-identical (non-enumeration, D-8). {@code admin} is {@code true} for a
 	 * platform-admin operator ({@code ROLE_ADMIN}), so the FE can reveal the approval surface; always
 	 * {@code false} for a customer.
 	 */
@@ -155,7 +155,7 @@ class AuthController {
 	}
 
 	/**
-	 * Register an operator account (S6, #115). Unlike the customer register, a fresh registration does
+	 * Register an operator account. Unlike the customer register, a fresh registration does
 	 * <strong>NOT</strong> sign the operator in: the account is created {@code PENDING} and cannot
 	 * authenticate until a platform admin approves it (design D-5). Both a fresh username and an
 	 * already-taken one return the SAME {@code 202} body and NEVER a session (non-enumeration, D-8); only
@@ -190,7 +190,7 @@ class AuthController {
 	}
 
 	/**
-	 * Register a customer account (S2, #111). Fresh email → the account is created and the caller is
+	 * Register a customer account. Fresh email → the account is created and the caller is
 	 * auto-signed-in (a session is established, AC-3). An already-registered email → the response is
 	 * <strong>byte-identical</strong> but NO session is established (non-enumeration, design D-8; the
 	 * only residual signal is the presence of the {@code SESSION} cookie — an accepted trade-off).
@@ -211,7 +211,7 @@ class AuthController {
                 CustomerAccountId accountId
         )) {
 			establishSession(customerManager, email, registration.password(), request, response);
-			// S8 (#113): a fresh account gets a verification email (soft/non-blocking). Only on the
+			// A fresh account gets a verification email (soft/non-blocking). Only on the
 			// Registered branch — the neutral already-registered branch sends nothing, so no enumeration leak.
 			recovery.sendVerificationEmail(accountId, email);
 		}
@@ -259,15 +259,15 @@ class AuthController {
 		return customer ? CUSTOMER_PRINCIPAL_TYPE : OPERATOR_PRINCIPAL_TYPE;
 	}
 
-	/** Whether the authenticated principal is a platform admin ({@code ROLE_ADMIN}, #115). */
+	/** Whether the authenticated principal is a platform admin ({@code ROLE_ADMIN}). */
 	private static boolean adminOf(Authentication authentication) {
 		return authentication.getAuthorities().stream()
 				.anyMatch(authority -> ADMIN_ROLE_AUTHORITY.equals(authority.getAuthority()));
 	}
 
 	/**
-	 * The signed-in principal's soft email-verified state, or {@code null} for a non-customer (S8 #113).
-	 * The role check is in-memory and the customer branch is a single by-email read (#256) — the principal
+	 * The signed-in principal's soft email-verified state, or {@code null} for a non-customer.
+	 * The role check is in-memory and the customer branch is a single by-email read — the principal
 	 * name IS the account email, so the old resolve-id-then-read-flag pair was a second round trip for free.
 	 */
 	private Boolean verifiedStatus(Authentication authentication) {

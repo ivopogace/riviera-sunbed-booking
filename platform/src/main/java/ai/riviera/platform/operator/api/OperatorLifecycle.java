@@ -10,8 +10,8 @@ import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 
 /**
- * Published port for the <strong>platform-admin</strong> operator account-lifecycle surface (#115 S6
- * design D-5; extended by #128). Synchronous inbound queries/commands the edge admin controller calls
+ * Published port for the <strong>platform-admin</strong> operator account-lifecycle surface (design D-5).
+ * Synchronous inbound queries/commands the edge admin controller calls
  * → {@code api}, not {@code spi}. It exposes the two admin work queues (registrations awaiting
  * approval, currently-active operators) and every admin-driven status transition:
  * {@code PENDING → ACTIVE/REJECTED} (approve/reject) and {@code ACTIVE ⇄ SUSPENDED}
@@ -51,7 +51,7 @@ public interface OperatorLifecycle {
 	/**
 	 * Approve the PENDING operator with this id → ACTIVE (it can now sign in). Returns
 	 * {@link ApprovalOutcome.Approved}, carrying the operator's registered contact email so the caller
-	 * can tell it the account is live (#375) — populated only when <em>this</em> call performed the
+	 * can tell it the account is live — populated only when <em>this</em> call performed the
 	 * transition, so a concurrent second approval cannot notify twice;
 	 * {@link ApprovalOutcome.NotPending} if it exists but is not PENDING;
 	 * {@link ApprovalOutcome.NoSuchOperator} if there is no such operator.

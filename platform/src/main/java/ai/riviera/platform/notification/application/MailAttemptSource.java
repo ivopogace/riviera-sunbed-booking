@@ -1,7 +1,7 @@
 package ai.riviera.platform.notification.application;
 
 /**
- * What triggered a booking-confirmation mail attempt (#380) — the dimension that makes the delivery
+ * What triggered a booking-confirmation mail attempt — the dimension that makes the delivery
  * history readable as "sent automatically 14:02, resent by admin 09:31".
  *
  * <p>The constant names <strong>are</strong> the {@code trigger_source} tokens V36's {@code CHECK}
@@ -11,9 +11,9 @@ package ai.riviera.platform.notification.application;
  */
 public enum MailAttemptSource {
 
-	/** The registry listener reacting to {@code BookingConfirmed} (#371) — the ordinary path. */
+	/** The registry listener reacting to {@code BookingConfirmed} — the ordinary path. */
 	AUTOMATIC,
 
-	/** A platform admin pressing Resend on the mail-delivery view (#380). */
+	/** A platform admin pressing Resend on the mail-delivery view. */
 	ADMIN_RESEND
 }

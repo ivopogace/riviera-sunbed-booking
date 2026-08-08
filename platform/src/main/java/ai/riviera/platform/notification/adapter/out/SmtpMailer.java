@@ -22,8 +22,7 @@ import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 
 /**
- * Real SMTP {@link Mailer} (#368, ADR-0011; booking confirmations added in #371, cancellations in
- * #374, the accepted request's payment deadline in #373): delivers every message kind over the
+ * Real SMTP {@link Mailer} (ADR-0011): delivers every message kind over the
  * configured relay via {@link JavaMailSender} — Scaleway TEM in deployment, any RFC-compliant relay by
  * config ({@code application-mailer.properties}; STARTTLS on 587, finite timeouts). Active under
  * {@code @Profile("mailer")} — where missing SMTP config fails at boot (unresolved placeholder), never on

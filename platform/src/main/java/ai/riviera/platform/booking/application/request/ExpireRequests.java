@@ -1,10 +1,10 @@
 package ai.riviera.platform.booking.application.request;
 
 /**
- * The request-expiry sweep use case (issue #98): terminate every {@code PENDING_REQUEST} whose
+ * The request-expiry sweep use case: terminate every {@code PENDING_REQUEST} whose
  * stored {@code request_expires_at} deadline has passed ({@code EXPIRED}) and free its soft-held
  * {@code (set, date)}. Driven by a scheduled adapter; idempotent and safe to run repeatedly or
- * concurrently with accept, decline, and the guest's own withdraw (issue #123).
+ * concurrently with accept, decline, and the guest's own withdraw.
  *
  * <p>What makes those legs exclusive is the <strong>row lock, not the predicates</strong>. Only
  * <em>accept</em> is disjoint from this sweep by predicate ({@code request_expires_at > now} vs

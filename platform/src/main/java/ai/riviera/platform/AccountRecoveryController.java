@@ -14,7 +14,7 @@ import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 
 /**
- * Public customer account-recovery endpoints (S8, epic #108, design D-6/D-8): request a password reset,
+ * Public customer account-recovery endpoints (design D-6/D-8): request a password reset,
  * redeem a reset token, and redeem an email-verification token. Anonymous by definition (the token is
  * the bearer credential, invariant #7) — permitted in {@link SecurityConfig} and behind the
  * {@code RateLimitFilter} recovery budget. Platform-edge login machinery (RV-BE-11): the {@code customer}
@@ -22,7 +22,7 @@ import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
  *
  * <p><strong>Non-enumeration (D-8):</strong> {@code forgot-password} returns the SAME {@code 204} whether
  * or not the email has an account; invalid, expired, and already-used tokens all return the same generic
- * {@code 400 INVALID_OR_EXPIRED_TOKEN}. Every 4xx rides the centralized RFC-7807 contract (#97).
+ * {@code 400 INVALID_OR_EXPIRED_TOKEN}. Every 4xx rides the centralized RFC-7807 contract.
  */
 @RestController
 class AccountRecoveryController {

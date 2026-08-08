@@ -4,14 +4,14 @@ import java.time.Duration;
 
 /**
  * What a press of an admin outbox-resubmit lever did — the typed outcome shared by every lever over
- * the Event Publication Registry (#405's mail outbox, #454's refund outbox), because all three
+ * the Event Publication Registry (the mail outbox, the refund outbox), because all three
  * answers are properties of {@link ResubmissionThrottle}'s guard, not of any one module's outbox. A
  * value, not an exception: all three are expected flows an operator acts on
  * ({@code riviera-java-conventions} §6), and the two refusals are the once-only guarantee made
  * visible — the caller is told <em>why</em> nothing was resubmitted and when to try again, instead of
  * receiving a success that quietly re-drove nothing.
  *
- * <p>Kernel admission (#454): the sibling of {@link ResubmissionThrottle}, admitted with it — one
+ * <p>Kernel admission: the sibling of {@link ResubmissionThrottle}, admitted with it — one
  * outcome vocabulary keeps the two levers' wire {@code outcome} tokens from drifting into two
  * spellings, the {@code MailKind} argument one level up.
  */

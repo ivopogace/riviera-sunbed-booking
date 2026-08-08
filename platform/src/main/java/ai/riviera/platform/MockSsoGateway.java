@@ -10,7 +10,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 /**
  * Default-profile ({@code @Profile("!sso")}) mock {@link SsoGateway} that plays a cooperative identity
- * provider with canned, verified identities (S4, epic #108, design D-4) — the same pattern as
+ * provider with canned, verified identities (design D-4) — the same pattern as
  * {@code StubPaymentGateway}. It makes "Continue with Google/Apple" demoable end-to-end with zero
  * external credentials: {@link #authorizationRequest} points the browser at the in-app mock IdP endpoint
  * ({@code MockSsoIdpController}), which redirects back to the real callback, and {@link #exchangeCode}

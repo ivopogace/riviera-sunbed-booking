@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import ai.riviera.platform.booking.application.Bookings;
 
 /**
- * The guest withdraw use case (issue #123). Transition first, read only to explain a miss — the same
+ * The guest withdraw use case. Transition first, read only to explain a miss — the same
  * shape {@code RespondToRequestService} uses for accept/decline: the guarded {@code UPDATE} in
  * {@link RequestReleaseService} <em>is</em> the decision, so there is no read-then-write window a
  * concurrent decline or expiry sweep could slip through. A lost race matches 0 rows and classifies
@@ -41,7 +41,7 @@ class WithdrawRequestService implements WithdrawRequest {
 				.orElseGet(() -> classifyMiss(code));
 	}
 
-	/** The transition matched no row — read the booking to say why. Never logs the code (#7). */
+	/** The transition matched no row — read the booking to say why. Never logs the code. */
 	private WithdrawOutcome classifyMiss(String code) {
 		return bookings.findByCode(code)
 				.<WithdrawOutcome>map(booking -> WithdrawOutcome.Rejected.NOT_PENDING)

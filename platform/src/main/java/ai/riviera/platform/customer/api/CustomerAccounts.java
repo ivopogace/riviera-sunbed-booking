@@ -5,7 +5,7 @@ import java.util.Optional;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 
 /**
- * Published read port for a customer account's stored credential (S2, epic #108). The platform edge's
+ * Published read port for a customer account's stored credential. The platform edge's
  * customer {@code UserDetailsService} calls this to build a Spring Security principal from the DB. The
  * {@code customer} module owns the credential <em>storage</em> (account identity); it does
  * <strong>not</strong> encode or verify the hash — that is the edge's password-checking machinery

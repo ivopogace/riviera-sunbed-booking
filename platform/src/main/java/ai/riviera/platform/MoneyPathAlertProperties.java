@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * Tunables for the money-path alert self-check (issue #100, D4) — the thresholds the
+ * Tunables for the money-path alert self-check — the thresholds the
  * {@link MoneyPathAlertCheck} compares each signal against, plus the webhook path whose 5xx responses
  * it watches. Schedule timings live on the {@code @Scheduled} placeholders (mirroring the sweeps), not
  * here. Defaults suit a low-volume single-instance soft launch; override per environment.

@@ -20,20 +20,19 @@ public interface VenueOwnership {
 
 	/**
 	 * Verify that {@code operator} owns {@code venue}; return normally if so, otherwise throw
-	 * {@link NotVenueOwnerException}. An operator flagged as owning all venues (the interim
-	 * bootstrap operator, retired by #74) passes for any venue.
+	 * {@link NotVenueOwnerException}.
 	 */
 	void assertOwns(OperatorId operator, VenueRef venue);
 
 	/**
-	 * The venues explicitly mapped to {@code operator}. With the owns-all bootstrap retired (#115),
+	 * The venues explicitly mapped to {@code operator}. With the owns-all bootstrap retired,
 	 * ownership is strictly this explicit mapping.
 	 */
 	Set<VenueRef> ownedVenues(OperatorId operator);
 
 	/**
 	 * Record that {@code operator} owns {@code venue} — the write side of the ownership mapping,
-	 * used by <strong>creator-owns-on-create</strong> (#115): the {@code venue} application service
+	 * used by <strong>creator-owns-on-create</strong>: the {@code venue} application service
 	 * calls this in the same transaction as the venue insert so a newly-created venue is owned by its
 	 * creator atomically (never a window where the creator is {@code 403}'d on its own venue). A
 	 * venue is owned by at most one operator ({@code operator_venue.venue_id} is the PK), so calling

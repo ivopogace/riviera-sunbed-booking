@@ -17,10 +17,10 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Serves the operator pending-requests queue (issue #98). The ownership check is the first act
+ * Serves the operator pending-requests queue. The ownership check is the first act
  * (invariant #13) — in the application service, so no driving adapter can bypass it, mirroring
  * {@code DailyBookingsService}. Guest names resolve through the {@code customer::api} port in
- * one batch call ({@code findByIds}, #126 — never one lookup per row); a missing customer row
+ * one batch call ({@code findByIds} — never one lookup per row); a missing customer row
  * (impossible via FK, defensive anyway) renders as an empty name rather than failing the whole
  * queue.
  */

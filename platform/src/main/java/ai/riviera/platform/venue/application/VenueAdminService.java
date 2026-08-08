@@ -18,7 +18,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The venue write use cases: onboard a venue (U7), edit its beach-map layout (U7), and edit its
- * profile fields — amenities + distance-to-water (T7, #140). Package-private — the public seams
+ * profile fields — amenities + distance-to-water. Package-private — the public seams
  * are the {@link OnboardVenue} / {@link EditBeachMap} / {@link EditVenueProfile} ports (invariant #11);
  * one implementation, but the ports give the web adapter a clean, mockable entry point. The hard
  * command validation lives in the command records ({@link NewVenueCommand} / {@link SetCommand});
@@ -32,7 +32,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * the check is here in the application service, not the controller, so no driving adapter can
  * bypass it. {@code onboard} (venue creation) has no path {@code venueId} to check against — instead
  * it <em>writes</em> ownership: the creating operator is recorded as the new venue's owner in the same
- * transaction (creator-owns-on-create, #115), so a create-then-edit flow works and no venue is ever
+ * transaction (creator-owns-on-create), so a create-then-edit flow works and no venue is ever
  * left unowned.
  */
 @Service
@@ -56,7 +56,7 @@ class VenueAdminService
 	@Transactional
 	public VenueId onboard(OperatorId creator, NewVenueCommand command) {
 		VenueId id = new VenueId(venues.insertVenue(command));
-		// Creator-owns-on-create (#115, invariant #13): record ownership atomically with the insert.
+		// Creator-owns-on-create (invariant #13): record ownership atomically with the insert.
 		// If this write fails the whole create rolls back — a venue is never left owned by no one, and
 		// the creator is never 403'd on the venue it just made.
 		ownership.assignOwner(creator, new VenueRef(id.value()));
@@ -73,7 +73,7 @@ class VenueAdminService
 		if (!venues.venueExists(venueId)) {
 			return ProfileUpdateOutcome.NO_SUCH_VENUE;
 		}
-		// Conditional on the loaded version (#224): of two writers off the same version the winner bumps
+		// Conditional on the loaded version: of two writers off the same version the winner bumps
 		// version→+1, so the loser's WHERE version=:expected then matches nothing (READ COMMITTED
 		// re-evaluates the qual after the winner commits) → 0 rows → STALE_WRITE, rather than silently
 		// clobbering booking_mode/booking_cutoff. The amenity replace runs in the same @Transactional unit.
@@ -161,7 +161,7 @@ class VenueAdminService
 		if (!venues.venueExists(venueId)) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 		}
-		// #226 optimistic lock — take the venue row lock and read set_version (the SAME token replaceLayout
+		// Optimistic lock — take the venue row lock and read set_version (the SAME token replaceLayout
 		// guards, so a replace and a reprice off the same value cannot both win) BEFORE the reprice UPDATE.
 		// A mismatch is a stale version. Order matches replaceLayout (venue row before its set rows) → no
 		// deadlock (R-1). The token is advanced ONLY after a successful reprice below, so a NO_SUCH_ROW
@@ -199,7 +199,7 @@ class VenueAdminService
 		if (internal.isPresent()) {
 			return new ReplaceLayoutOutcome.Rejected(toReplaceRejection(internal.get()));
 		}
-		// #226 optimistic lock — take the venue row lock and read set_version BEFORE lockSetsOfVenue's
+		// Optimistic lock — take the venue row lock and read set_version BEFORE lockSetsOfVenue's
 		// FOR UPDATE. Both set-writes acquire the venue row first, then their set rows: one consistent order
 		// → no deadlock (R-1). A mismatch means another replace/reprice advanced it since the load →
 		// STALE_WRITE. The token is advanced by incrementSetVersion ONLY on the success path below, so a
@@ -209,7 +209,7 @@ class VenueAdminService
 		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
 			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.STALE_WRITE);
 		}
-		// Reject-unless-unclaimed (issue #172): a booking (any status) pins its set via the RESTRICT FK,
+		// Reject-unless-unclaimed: a booking (any status) pins its set via the RESTRICT FK,
 		// and an availability hold (any date) would be silently CASCADE-dropped by the delete — either
 		// destroys invariant-#2 state, so refuse the destructive replace and delete nothing.
 		//

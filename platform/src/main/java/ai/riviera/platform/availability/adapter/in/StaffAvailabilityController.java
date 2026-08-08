@@ -22,7 +22,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * Operator write endpoints for staff tap-to-mark walk-ins (U8, issue #10) — the availability
+ * Operator write endpoints for staff tap-to-mark walk-ins (U8) — the availability
  * module's first driving (REST) adapter, depending on its own {@link StaffAvailability} port
  * (invariant #11) plus the edge {@link CurrentOperator} resolver. An authenticated operator surface
  * (session cookie, role {@code OPERATOR}, configured in {@code SecurityConfig}), mirroring the U7 write
@@ -32,9 +32,9 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * NO_SUCH_SET→404, DATE_IN_PAST→422; release RELEASED→204, NOT_MARKED→409. The {@code venueId} path
  * segment keeps the URL consistent with the U7 set paths ({@code /api/venues/{id}/sets/{id}}) but is
  * <strong>not</strong> the authorization key: the owning venue is derived from the {@code setId}
- * inside the service (invariant #13, issue #73), and a mismatch is {@code 403} via
+ * inside the service (invariant #13), and a mismatch is {@code 403} via
  * {@code ApiErrorHandler}. The controller resolves the authenticated operator and
- * passes it through. Errors are RFC-7807 problem bodies built by {@link ApiProblem} (issue #97).
+ * passes it through. Errors are RFC-7807 problem bodies built by {@link ApiProblem}.
  */
 @RestController
 @RequestMapping("/api/venues")

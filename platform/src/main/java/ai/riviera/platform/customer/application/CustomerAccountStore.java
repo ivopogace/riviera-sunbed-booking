@@ -24,7 +24,7 @@ public interface CustomerAccountStore {
 	/**
 	 * The stored <em>password</em> credential for this normalized email, or empty if no account exists
 	 * <em>or the account has no local password</em> (an SSO-only account created by
-	 * {@link #resolveSsoAccount}, S4 #112 — null hash). Filtering null-hash rows here keeps password
+	 * {@link #resolveSsoAccount} — null hash). Filtering null-hash rows here keeps password
 	 * login a generic 401 for SSO-only accounts (non-enumeration, design D-8).
 	 */
 	Optional<CustomerAccountCredential> findByEmail(String normalizedEmail);
@@ -41,7 +41,7 @@ public interface CustomerAccountStore {
 	RegistrationOutcome insertIfAbsent(String normalizedEmail, String passwordHash);
 
 	/**
-	 * Resolve-or-create the account for an external {@code (provider, subject)} identity (S4 #112),
+	 * Resolve-or-create the account for an external {@code (provider, subject)} identity,
 	 * returning its {@link CustomerAccountId}. Idempotent on {@code (provider, subject)} and race-safe
 	 * via {@code INSERT … ON CONFLICT DO NOTHING} claims on both {@code customer_account.email} and
 	 * {@code customer_sso_identity (provider, subject)}: a returning subject reuses its linked account; a
@@ -52,14 +52,14 @@ public interface CustomerAccountStore {
 	CustomerAccountId resolveSsoAccount(SsoProvider provider, String subject, String normalizedEmail);
 
 	/**
-	 * Mark the account's email verified (S8 #113) — sets {@code email_verified = true} +
+	 * Mark the account's email verified — sets {@code email_verified = true} +
 	 * {@code email_verified_at = NOW()}, idempotent: it only writes rows still {@code false}, so a repeat
 	 * (e.g. a returning SSO sign-in) does not churn the timestamp.
 	 */
 	void markEmailVerified(CustomerAccountId accountId);
 
 	/**
-	 * Set the account's opaque password hash (S8 #113) — an unconditional {@code UPDATE}. The edge has
+	 * Set the account's opaque password hash — an unconditional {@code UPDATE}. The edge has
 	 * already authorized the write (token-proven reset or authenticated set-password) and encoded the hash.
 	 * Also gives a password-less SSO-only account its first local password (closes S4 F-1).
 	 */
@@ -68,6 +68,6 @@ public interface CustomerAccountStore {
 	/** Whether the email's account is verified (#256, was by-id S8 #113); empty if no account exists. */
 	Optional<Boolean> emailVerifiedFor(String normalizedEmail);
 
-	/** The account's (normalized) email — its session principal name (S8 #113, for reset session revocation). */
+	/** The account's (normalized) email — its session principal name (for reset session revocation). */
 	String emailOf(CustomerAccountId accountId);
 }

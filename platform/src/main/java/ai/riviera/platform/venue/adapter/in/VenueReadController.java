@@ -21,9 +21,9 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
 /**
  * Public tourist read endpoints for venues (invariant #11 — depends only on the {@code venue.api}
- * port). Two reads: the discovery <strong>list</strong> ({@code GET /api/venues?beach=&region=&date=},
- * issue #61) and a single venue + its beach <strong>map</strong> ({@code GET /api/venues/{id}},
- * U1/#4, date-aware since #44 — 200 with the map, or 404 for an unknown id).
+ * port). Two reads: the discovery <strong>list</strong> ({@code GET /api/venues?beach=&region=&date=})
+ * and a single venue + its beach <strong>map</strong> ({@code GET /api/venues/{id}},
+ * date-aware — 200 with the map, or 404 for an unknown id).
  *
  * <p>The optional {@code date} query param selects the day whose availability the map reflects.
  * When omitted it defaults to <strong>tomorrow in {@code Europe/Tirane}</strong> (invariant #6) —
@@ -46,7 +46,7 @@ class VenueReadController {
 	}
 
 	/**
-	 * Discovery list (issue #61): the venues matching the optional {@code beach}/{@code region}
+	 * Discovery list: the venues matching the optional {@code beach}/{@code region}
 	 * filters, as summaries with each venue's free/total set count for {@code date}. Always 200 with
 	 * a JSON array (empty when nothing matches) — a filter that hits no venue is not a 404. {@code date}
 	 * defaults to tomorrow in {@code Europe/Tirane} like the map read above.

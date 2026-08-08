@@ -18,7 +18,7 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
  * Package-private; only the {@code api/} port is public (invariant #11). Constructor injection into
  * {@code final} fields (no Lombok, no field {@code @Autowired}).
  *
- * <p>Observability (issue #100, D4): a {@link RefundResult.Failed} — the gateway could not issue a
+ * <p>Observability: a {@link RefundResult.Failed} — the gateway could not issue a
  * refund the platform owes a tourist — increments the money-path {@code riviera.refunds.failed}
  * counter. Self-observation of this module's own refund execution ({@link MeterRegistry} is a
  * framework bean, not a cross-module dependency); the alert self-check reads the counter. The metric

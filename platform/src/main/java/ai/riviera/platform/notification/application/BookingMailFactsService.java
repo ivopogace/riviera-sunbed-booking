@@ -14,7 +14,7 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * Assembles the facts a booking mail renders from three owners' published ports (#374): {@code
+ * Assembles the facts a booking mail renders from three owners' published ports: {@code
  * booking} supplies the arrival code + contact id, {@code venue} the venue name + set label,
  * {@code customer} the address. One method, three reads, one typed outcome.
  *
@@ -22,7 +22,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * about to need it verbatim.</strong> Applying the deletion test: removing this class does not
  * simplify anything — it puts the same three ordered reads, the same three-way missing-fact
  * vocabulary and the same injected-port block back into every listener that mails about a booking,
- * which is three since #373 (confirmation, cancellation, payment-due). It is not a
+ * which is three today: confirmation, cancellation, payment-due. It is not a
  * published port and never should be: one implementation, no cross-module caller, so a
  * {@code notification.api} entry would be a hypothetical seam.
  *
@@ -37,8 +37,8 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * {@code booking} was the one at fault. The contact read additionally <em>depends</em> on the
  * booking read, which supplies the customer id.
  *
- * <p><strong>No transaction, deliberately.</strong> Callers are after-commit registry listeners
- * (#383): the producing transaction has already committed, so each read sees settled state and there
+ * <p><strong>No transaction, deliberately.</strong> Callers are after-commit registry listeners:
+ * the producing transaction has already committed, so each read sees settled state and there
  * is nothing to keep consistent between them. Wrapping them would pin a Hikari connection across the
  * caller's subsequent SMTP round-trip — the second hazard
  * {@code BookingConfirmationMailListener}'s Javadoc declines to reintroduce.

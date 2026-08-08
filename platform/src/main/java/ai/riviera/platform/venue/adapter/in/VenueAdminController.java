@@ -46,15 +46,15 @@ import ai.riviera.platform.venue.application.ViewVenueProfile;
  * {@code switch}: created→201 (+Location), applied→204, {@code NO_SUCH_*}→404,
  * {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}→409; malformed→400 and the
  * constraint-race backstop ({@code DuplicateKeyException}→409 {@code CONFLICT},
- * invariant #12; #118) map centrally in {@code ApiErrorHandler}. Errors are RFC-7807
- * {@link ProblemDetail} built by {@link ApiProblem} (issue #97).
+ * invariant #12) map centrally in {@code ApiErrorHandler}. Errors are RFC-7807
+ * {@link ProblemDetail} built by {@link ApiProblem}.
  *
  * <p>The per-set edits and the profile edit ({@code PATCH /api/venues/{venueId}} — amenities +
- * distance-to-water, T7 #140) are venue-scoped: the controller resolves the authenticated principal
+ * distance-to-water) are venue-scoped: the controller resolves the authenticated principal
  * to an {@link OperatorId} and hands it to {@link EditBeachMap} / {@link EditVenueProfile}, which
  * asserts ownership of {@code venueId} before acting (invariant #13); a mismatch is {@code 403} via
  * {@code ApiErrorHandler}. {@code create} takes no {@code venueId} — it resolves the authenticated
- * operator and the service records it as the new venue's owner (creator-owns-on-create, #115).
+ * operator and the service records it as the new venue's owner (creator-owns-on-create).
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -84,11 +84,11 @@ class VenueAdminController {
 	@PostMapping
 	ResponseEntity<Map<String, Object>> create(Authentication authentication,
 			@RequestBody CreateVenueRequest request) {
-		// Creator-owns-on-create (#115, invariant #13): resolve the authenticated operator and hand it
+		// Creator-owns-on-create (invariant #13): resolve the authenticated operator and hand it
 		// to the service, which records ownership in the same transaction as the insert. Create is still
 		// role-gated only (any ACTIVE operator may create) — there is no prior owner to check against.
 		OperatorId creator = currentOperator.require(authentication);
-		// Conversion wraps here and below: bad request input stays a 400, a service IAE stays a 500 (#118).
+		// Conversion wraps here and below: bad request input stays a 400, a service IAE stays a 500.
 		var command = InvalidApiRequestException.parsing(request::toCommand);
 		VenueId id = onboardVenue.onboard(creator, command);
 		return ResponseEntity.created(URI.create("/api/venues/" + id.value()))
@@ -110,7 +110,7 @@ class VenueAdminController {
 	}
 
 	/**
-	 * The owner's per-set availability states for one day (#207) — owner-scoped (invariant #13): the
+	 * The owner's per-set availability states for one day — owner-scoped (invariant #13): the
 	 * service asserts ownership before answering, so a venue's hold pattern (online hold vs walk-in
 	 * mark) never leaks to a non-owner ({@code 403} via {@code ApiErrorHandler}). Gated to role
 	 * OPERATOR ABOVE the public {@code GET /api/venues/**} in {@code SecurityConfig}, like the
@@ -133,7 +133,7 @@ class VenueAdminController {
 			@RequestBody UpdateVenueProfileRequest request) {
 		OperatorId operator = currentOperator.require(authentication);
 		// ExpectedVersion.require first: a missing token is a 400 (INVALID_REQUEST) before the write,
-		// never a silent 0 (#224). STALE_WRITE → 409 lets the tab reload the latest values and re-apply.
+		// never a silent 0. STALE_WRITE → 409 lets the tab reload the latest values and re-apply.
 		long expectedVersion = InvalidApiRequestException
 				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));
 		var command = InvalidApiRequestException.parsing(request::toCommand);
@@ -180,7 +180,7 @@ class VenueAdminController {
 			@RequestBody BeachMapLayoutRequest request) {
 		OperatorId operator = currentOperator.require(authentication);
 		// ExpectedVersion.require first: a missing token is a 400 (INVALID_REQUEST) before the write,
-		// never a silent 0 (#226). STALE_WRITE → 409 lets the tab reload the latest map and re-apply.
+		// never a silent 0. STALE_WRITE → 409 lets the tab reload the latest map and re-apply.
 		long expectedVersion = InvalidApiRequestException
 				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));
 		var command = InvalidApiRequestException.parsing(request::toCommand);
@@ -196,7 +196,7 @@ class VenueAdminController {
 			@PathVariable String rowLabel, @RequestBody RowPriceRequest request) {
 		OperatorId operator = currentOperator.require(authentication);
 		// ExpectedVersion.require first: a missing token is a 400 (INVALID_REQUEST) before the write,
-		// never a silent 0 (#226). STALE_WRITE → 409 lets the tab reload the latest prices and re-apply.
+		// never a silent 0. STALE_WRITE → 409 lets the tab reload the latest prices and re-apply.
 		long expectedVersion = InvalidApiRequestException
 				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));
 		var command = InvalidApiRequestException.parsing(() -> request.toCommand(rowLabel));

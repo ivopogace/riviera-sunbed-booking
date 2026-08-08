@@ -37,7 +37,7 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
  * JDBC adapter implementing the three role-split {@code venue::api} read ports —
  * {@link VenueCatalog}, {@link SetBookingFacts}, {@link VenueRates} — directly (no
  * intervening application service / out-port — a single adapter is a hypothetical seam,
- * not a real one). One bean, three narrow surfaces (issue #94). Explicit SQL via
+ * not a real one). One bean, three narrow surfaces. Explicit SQL via
  * {@link JdbcClient}, no JPA (invariant #1): one query loads the venue, a second
  * loads its sets ordered for rendering, and from-price is the minimum set price.
  */
@@ -59,7 +59,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	private static final String COL_AMENITY = "amenity";
 	/** The bulk IN-clause bind param shared by the three list-read queries (named once — Sonar S1192). */
 	private static final String P_VENUE_IDS = "venueIds";
-	// The two tourist-surfaced cover variants (#142) — kept in lockstep with the PhotoSurface enum
+	// The two tourist-surfaced cover variants — kept in lockstep with the PhotoSurface enum
 	// tokens the V24 CHECK constraint lists.
 	private static final String SURFACE_CARD = "CARD";
 	private static final String SURFACE_BANNER = "BANNER";
@@ -96,7 +96,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		VenueRow v = venue.get();
 
 		// The static layout (venue's own table) — availability is NOT read here; it is the one
-		// fact venue lacks and overlays from the source of truth below (issue #44, invariant #2).
+		// fact venue lacks and overlays from the source of truth below (invariant #2).
 		List<SetRow> rows = jdbc.sql("""
 				SELECT id, row_label, position_no, tier, pool, price_minor, price_currency,
 				       grid_x, grid_y
@@ -315,7 +315,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.optional();
 	}
 
-	/** The set-facts row shared by the single-id and batch reads (#246) — one SQL shape, one mapper. */
+	/** The set-facts row shared by the single-id and batch reads — one SQL shape, one mapper. */
 	private static final String SET_BOOKING_INFO_SELECT = """
 			SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
 			       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff,

@@ -3,7 +3,7 @@ package ai.riviera.platform.notification.api;
 import java.net.URI;
 
 /**
- * The published fire-and-forget transactional-mail port (#382) — what the platform-edge recovery
+ * The published fire-and-forget transactional-mail port — what the platform-edge recovery
  * flows call instead of touching mail machinery themselves. The edge keeps orchestrating
  * <em>when</em> to send and hands each message here fully formed (RV-BE-11): the link already
  * carries the raw single-use token — a bearer credential (invariant #7) — so the module never
@@ -12,11 +12,11 @@ import java.net.URI;
  * <p><strong>Contract — every send is best-effort and asynchronous:</strong>
  * <ul>
  *   <li><strong>Never throws.</strong> The send's outcome may influence neither the triggering
- *       response's status code (the D-8 non-enumeration contract) nor its latency (the #369 timing
+ *       response's status code (the D-8 non-enumeration contract) nor its latency (the timing
  *       oracle): a transport failure dies inside the dispatched task, a saturated dispatcher drops
  *       the send. <strong>What a lost send costs differs by kind</strong> — the recovery pair is
- *       user-retryable by design, the operator-approval notice is not (ADR-0011 decision 5, amended
- *       #439; see {@link #sendOperatorApproved}).</li>
+ *       user-retryable by design, the operator-approval notice is not (ADR-0011 decision 5; see
+ *       {@link #sendOperatorApproved}).</li>
  *   <li><strong>Runs off the caller's thread</strong>, on the module's bounded in-memory dispatcher
  *       — never the Event Publication Registry, which would persist the credential-carrying payload
  *       in cleartext (ADR-0011 decision 5: ids-only → registry, bearer-credential → in-memory).</li>
@@ -37,7 +37,7 @@ public interface MailSender {
 
 	/**
 	 * Tell a self-registered operator that a platform admin approved its account, pointing at the
-	 * sign-in page (#375).
+	 * sign-in page.
 	 *
 	 * <p>The first kind here whose link is <strong>not</strong> a bearer credential — it is the
 	 * ordinary sign-in URL, which anyone may hold. It still travels this port rather than the Event
@@ -47,10 +47,10 @@ public interface MailSender {
 	 * the contract above unchanged — in particular, a mail failure may not fail or slow the approval.
 	 *
 	 * <p>What it does <strong>not</strong> inherit is the reason best-effort delivery is acceptable
-	 * (ADR-0011 decision 5, amended #439). There is no token already stored and no page offering a
+	 * (ADR-0011 decision 5). There is no token already stored and no page offering a
 	 * retry, so a lost notice is unrecoverable in the product: the operator learns its account is live
 	 * by trying to sign in, the very experience this exists to remove. That is accepted as the
-	 * knowingly weaker case and mitigated only operationally — but, since #442, mitigated in full
+	 * knowingly weaker case and mitigated only operationally — but is now mitigated in full
 	 * rather than in part: a send the transport <em>ran and lost</em> raises
 	 * {@code MAIL_RECOVERY_FAILED} under {@code kind="operator-approved"}, and one the pool
 	 * <em>never ran</em> raises {@code MAIL_RECOVERY_DROPPED} under the same tag. Either way the remedy

@@ -12,7 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * The money-path alert route (issue #100, D4): a scheduled self-check that evaluates the three
+ * The money-path alert route: a scheduled self-check that evaluates the three
  * money-path signals against their thresholds and emits a structured {@code ERROR} log line when one
  * trips — the deliberate single-instance alerting mechanism (an ERROR line is greppable and forwardable
  * by a Render log drain; the {@code /actuator/prometheus} → Grafana route is the documented upgrade,

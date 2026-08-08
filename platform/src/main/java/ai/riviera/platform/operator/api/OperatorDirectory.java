@@ -10,7 +10,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
  * an edge concern the controllers handle, then hand the username here). Used by the venue-scoped
  * controllers to turn {@code authentication.getName()} into the id they pass to their service.
  *
- * <p>Login/credentials themselves are a platform/edge concern (#74). This port only answers
+ * <p>Login/credentials themselves are a platform/edge concern. This port only answers
  * "which operator is this username?", and only for an {@code ACTIVE} account.
  */
 public interface OperatorDirectory {

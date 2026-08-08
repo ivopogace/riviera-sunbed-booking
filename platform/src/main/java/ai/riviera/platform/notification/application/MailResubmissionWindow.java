@@ -3,7 +3,7 @@ package ai.riviera.platform.notification.application;
 import java.time.Duration;
 
 /**
- * How long the resubmit lever refuses after an accepted press (#405).
+ * How long the resubmit lever refuses after an accepted press.
  *
  * <p><strong>Why a window and not just a lock.</strong> A mutex answers only the truly simultaneous
  * case. The one that actually recurs is sequential: during a relay outage every send fails fast, the

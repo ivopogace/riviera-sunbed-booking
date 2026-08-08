@@ -6,7 +6,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The operator console's "online takings today" read use case (#171, O2). Returns a venue's gross
+ * The operator console's "online takings today" read use case. Returns a venue's gross
  * confirmed-online takings for one service date with the venue's commission applied — an
  * <strong>indicative</strong> per-service-date figure, distinct from the payout ledger's per-booking
  * ISO-week accrual. Package-private implementation behind this port (invariant #11); the

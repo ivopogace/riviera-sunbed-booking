@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue.application;
 
 /**
- * The closed set of outcomes of {@link EditVenueProfile#updateProfile} (#224). Dedicated to the
+ * The closed set of outcomes of {@link EditVenueProfile#updateProfile}. Dedicated to the
  * profile write — unlike the shared {@link ChangeOutcome}/{@link SetRejection}, it can be
  * {@code STALE_WRITE} (optimistic-concurrency loss), a state the beach-map edits
  * ({@code addSet}/{@code editSet}/{@code repriceRow}/{@code replaceLayout}) can never reach, so it
@@ -19,7 +19,7 @@ public enum ProfileUpdateOutcome {
 	/**
 	 * Another writer bumped the row's version since the tab loaded it, so the conditional {@code UPDATE}
 	 * matched no row — the write is rejected rather than clobbering {@code booking_mode}/{@code booking_cutoff}
-	 * (the last-write-wins hole #224 closes). The tab reloads the latest values and re-applies.
+	 * (closing a last-write-wins hole). The tab reloads the latest values and re-applies.
 	 */
 	STALE_WRITE
 }

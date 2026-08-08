@@ -9,12 +9,12 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 
 /**
- * Published when a booking transitions to {@code CANCELLED} (U6, issue #11) — the cancellation spine
+ * Published when a booking transitions to {@code CANCELLED} (U6) — the cancellation spine
  * fact other modules react to. The {@code payout} module consumes it and posts a REVERSAL sized to
  * the refund (ADR-0005); {@code availability} is freed and the refund issued <em>synchronously</em>
  * by {@code booking} (calling {@code availability::api} / {@code payment::api}) rather than via this
  * event, because those modules already sit downstream of {@code booking} and an event back to them
- * would cycle (invariant #11). {@code notification} is the second subscriber (#374), mailing the
+ * would cycle (invariant #11). {@code notification} is the second subscriber, mailing the
  * guest a record of the cancellation and its refund — a read-only consumer on the same fact, which is
  * why it changes nothing above: the money path is still {@code payout} plus {@code booking}'s own
  * refund listener.

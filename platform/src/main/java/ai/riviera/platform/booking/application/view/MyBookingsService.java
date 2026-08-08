@@ -15,11 +15,11 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * The list-my-bookings use case (S3, #114): load the account's bookings ({@link Bookings#findByAccountId},
+ * The list-my-bookings use case (S3): load the account's bookings ({@link Bookings#findByAccountId},
  * account-scoped in SQL) and enrich them with venue + set display via the {@code venue} module's
  * {@link SetBookingFacts} api port (invariant #11 — the display names come from {@code venue}, never a
- * cross-module table join), resolved in <strong>one batch call</strong> for the whole list (#246 F3 —
- * N bookings cost one venue query, not N). Package-private behind the {@link MyBookings} port;
+ * cross-module table join), resolved in <strong>one batch call</strong> for the whole list — N bookings
+ * cost one venue query, not N. Package-private behind the {@link MyBookings} port;
  * read-only, no {@code @Transactional}.
  *
  * <p>A booking's set always resolves — {@code booking.set_id} references {@code set_position} with

@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue.application;
 
 /**
- * The closed set of outcomes of {@link EditBeachMap#replaceLayout} (O3, issue #172). Sealed so the
+ * The closed set of outcomes of {@link EditBeachMap#replaceLayout}. Sealed so the
  * REST adapter {@code switch}es exhaustively: {@code Replaced}→204, {@code Rejected}→the
  * {@link ReplaceRejection}'s HTTP status.
  */

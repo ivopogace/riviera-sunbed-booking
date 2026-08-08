@@ -9,8 +9,8 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
 
 /**
  * The read side of the guest-identity conversation, split from {@link CustomerDirectory} by
- * consumer role (issue #94 precedent): resolve a stored {@link CustomerId} back to its contact.
- * Lets the operator pending-requests queue (issue #98) show who is asking without the
+ * consumer role: resolve a stored {@link CustomerId} back to its contact.
+ * Lets the operator pending-requests queue show who is asking without the
  * {@code booking} module reading customer tables (invariant #11).
  */
 public interface CustomerLookup {
@@ -20,13 +20,13 @@ public interface CustomerLookup {
 
 	/**
 	 * The stored contacts for a batch of customer ids, keyed by id; unknown ids are simply absent
-	 * from the map (#126). One query where {@link #findById} in a loop would be N — the operator
+	 * from the map. One query where {@link #findById} in a loop would be N — the operator
 	 * pending-requests queue resolves every row's guest name through a single call.
 	 */
 	Map<CustomerId, GuestContact> findByIds(Collection<CustomerId> ids);
 
 	/**
-	 * The id of the guest contact with this email, or empty if no contact has it (#380).
+	 * The id of the guest contact with this email, or empty if no contact has it.
 	 *
 	 * <p>The <strong>read-only</strong> counterpart of {@link CustomerDirectory#findOrCreate}, and the
 	 * distinction is the reason it exists: answering this question through {@code findOrCreate} would
@@ -35,7 +35,7 @@ public interface CustomerLookup {
 	 * ({@code Emails.normalize}), applied inside the adapter so a caller cannot spell the rule a second
 	 * way and miss rows the writer would have matched.
 	 *
-	 * <p>Its consumer is the admin mail-delivery view (#380), which needs an id to ask {@code booking}
+	 * <p>Its consumer is the admin mail-delivery view, which needs an id to ask {@code booking}
 	 * for that person's bookings — so the address stops here and no PII crosses into another module.
 	 */
 	Optional<CustomerId> findByEmail(String email);
