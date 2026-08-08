@@ -5,7 +5,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockCustomerRecoveryApi } from './support/auth-mocks';
 
 /**
- * Real-render a11y + behaviour audit of the customer password-reset journey (S8 #113, AC-12): a tourist
+ * Real-render a11y + behaviour audit of the customer password-reset journey: a tourist
  * requests a reset link, follows the (simulated) emailed link to set a new password, and then signs in
  * with the new password while the old one is rejected. A bad/missing token is a clear dead-end. The
  * recovery API is mocked statefully (`support/auth-mocks.ts`), so this runs in CI (`npm run test:e2e:a11y`).

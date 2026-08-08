@@ -5,13 +5,13 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockCustomerRecoveryApi } from './support/auth-mocks';
 
 /**
- * Real-render a11y + behaviour audit of the customer email-verification journey (S8 #113, AC-12):
+ * Real-render a11y + behaviour audit of the customer email-verification journey:
  * following the emailed verification link marks the email verified; a bad/expired link is a clear
  * dead-end. The verification is a POST the page issues on load (the link itself is a plain GET — an
- * email scanner prefetching it never consumes the single-use token, R-6). The recovery API is mocked
+ * email scanner prefetching it never consumes the single-use token). The recovery API is mocked
  * statefully, so this runs in CI (`npm run test:e2e:a11y`).
  *
- * The two resend tests are AC-8 of #400: the account page must not tell an unverified customer a mail
+ * The two resend tests pin one rule: the account page must not tell an unverified customer a mail
  * is on its way when the do-not-email list withheld it. Each asserts both halves — the right copy
  * appears AND the other one is absent — because a caveat bolted onto "sent" would be the same lie.
  */

@@ -491,7 +491,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
 });
 
 describe('app.routes legacy-surface flags (issue #134)', () => {
-  // Restyled routes render on the bare themed background; each restyle slice moves its route here.
+  // Restyled routes render on the bare themed background; each restyle moves its route here.
   const RESTYLED_PATHS = [
     '',
     'my-bookings',

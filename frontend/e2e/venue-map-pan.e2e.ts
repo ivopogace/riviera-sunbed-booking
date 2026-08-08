@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
- * Real-render audit of the beach map's pan-vs-select distinction (issue #136, AC-7/AC-8). A big
+ * Real-render audit of the beach map's pan-vs-select distinction. A big
  * venue overflows the map viewport, so the tile grid pans horizontally by mouse drag. The pin:
  * a plain click on a free tile opens the booking dialog, but a drag-pan release does NOT — and
  * the row-code/price side columns stay fixed while the tiles pan. The API is mocked (`page.route`),

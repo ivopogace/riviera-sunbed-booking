@@ -10,8 +10,8 @@ import {
 } from './support/operator';
 
 /**
- * Real-backend e2e for venue ONBOARDING, which lives on the operator home's create state since #278
- * (`/operator?create=1`; the retired `/venue-admin` page now redirects there). A real Chromium
+ * Real-backend e2e for venue ONBOARDING, which lives on the operator home's create state
+ * (`/operator?create=1`; the retired `/venue-admin` page redirects there). A real Chromium
  * drives the create form, which calls the REAL Spring Boot backend and persists to a REAL
  * Flyway-migrated Postgres — nothing is mocked. Editing an existing venue (layout, pricing, details,
  * commodities) lives in the console tabs; the Venue tab's real round-trip is
@@ -39,7 +39,7 @@ test.describe('venue onboarding — real backend, real Postgres', () => {
   test('a wrong operator password is rejected AT sign-in with the generic message', async ({
     page,
   }) => {
-    // Server-validated login (issue #109): the real 401 arrives immediately — the create surface is
+    // Server-validated login: the real 401 arrives immediately — the create surface is
     // never revealed — and the message is deliberately generic (no account enumeration, D-8).
     const card = new OperatorSignInPage(page);
     await card.signIn(OPERATOR_USERNAME, 'definitely-not-the-password');
@@ -55,7 +55,7 @@ test.describe('venue onboarding — real backend, real Postgres', () => {
     await signInOperator(page);
     const id = await createVenue(page, venueName('create'));
 
-    // #278: creation navigates STRAIGHT into the new console — the id comes from the real 201.
+    // Creation navigates STRAIGHT into the new console — the id comes from the real 201.
     await expect(page).toHaveURL(new RegExp(`/operator/${id}/beach-map`));
     await expect(page.getByTestId('oc-header')).toBeVisible();
   });

@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
- * Real-render a11y audit of the venue-discovery landing page (issue #61, design §4.1 steps 1–2):
+ * Real-render a11y audit of the venue-discovery landing page (design §4.1 steps 1–2):
  * land on `/` → see venue cards → filter by beach → open a venue's beach map. Runs axe at each step
  * in a real browser — catching keyboard, focus and true colour-contrast issues jsdom can't. The API
  * is mocked (`page.route`), so the test is self-contained and runs in CI (`npm run test:e2e:a11y`).
@@ -19,7 +19,7 @@ const VENUES = [
     reviewsCount: 326,
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
-    // T7 (#140): four amenities (out of catalogue order) + a distance. The card caps at 3 in
+    // Four amenities (out of catalogue order) + a distance. The card caps at 3 in
     // catalogue order (Beach bar, Free parking, Showers) — WiFi is dropped; the map shows all four.
     amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
     distanceToWaterM: 15,
@@ -71,7 +71,7 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
 
-  // All venues are listed as cards; the live count sits inside the filter bar (#135).
+  // All venues are listed as cards; the live count sits inside the filter bar.
   const cards = page.getByTestId('venue-card');
   await expect(cards).toHaveCount(2);
   await expect(cards.first()).toContainText('Miramar Beach Club');
@@ -80,7 +80,7 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   // year digits in the date label (review finding).
   await expect(page.getByTestId('results')).toContainText('2 venues');
 
-  // T7 (#140): the card shows the to-water chip + the first 3 amenities (catalogue order); the
+  // The card shows the to-water chip + the first 3 amenities (catalogue order); the
   // fourth (WiFi) is capped off on the card — but appears on the map header below.
   const cardChips = cards.first().getByTestId('card-chips');
   await expect(cardChips.locator('.amenity-chip')).toHaveCount(4); // to-water + 3
@@ -90,7 +90,7 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(cardChips).not.toContainText('WiFi');
   await expectNoSeriousAxeViolations(page, 'discovery list');
 
-  // #155: the date picker is floored at the earliest bookable day, so past/today can't be picked.
+  // The date picker is floored at the earliest bookable day, so past/today can't be picked.
   // Clock-free assertion (no timezone math to flake): a non-empty ISO `min` equal to the default.
   const dateInput = page.getByTestId('filter-date');
   const dateMin = await dateInput.evaluate((el: HTMLInputElement) => el.min);
@@ -112,7 +112,7 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(page).toHaveURL(/\/venues\/1/);
   await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
 
-  // T7 (#140): the map header shows the FULL amenity row (no ≤3 cap) + to-water — so WiFi, capped
+  // The map header shows the FULL amenity row (no ≤3 cap) + to-water — so WiFi, capped
   // off the Discover card above, is present here.
   const headerChips = page.getByTestId('venue-chips');
   await expect(headerChips.locator('.amenity-chip')).toHaveCount(5); // to-water + all 4
@@ -154,7 +154,7 @@ test('hero panel fills the content width, matching the search bar (#153)', async
   const searchBar = await page.locator('.filter-bar').boundingBox();
   if (!hero || !searchBar) throw new Error('hero / filter-bar not laid out');
 
-  // Same width and same left edge as the search bar below it. Before #153 the hero was capped at
+  // Same width and same left edge as the search bar below it. Before the fix the hero was capped at
   // max-width: 680px (~63% of the 1080px column) and left-aligned — so the left-edge check already
   // passed while the width check failed; this width assertion is what the fix turns green.
   expect(Math.abs(hero.width - searchBar.width)).toBeLessThanOrEqual(1);
@@ -162,7 +162,7 @@ test('hero panel fills the content width, matching the search bar (#153)', async
   // ...and genuinely wider than the removed 680px cap — guards against it being re-introduced.
   expect(hero.width).toBeGreaterThan(680);
 
-  // Widening the panel introduced no horizontal overflow (AC-3).
+  // Widening the panel introduced no horizontal overflow.
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
@@ -240,7 +240,7 @@ test('discovery shows an accessible empty state when no venues match', async ({ 
   await page.goto('/');
   await expect(page.getByTestId('empty')).toBeVisible();
   await expect(page.getByTestId('venue-card')).toHaveCount(0);
-  // The in-bar count stays visible in the empty state (#135): "0 venues · <date>".
+  // The in-bar count stays visible in the empty state: "0 venues · <date>".
   await expect(page.getByTestId('results')).toContainText('0 venues');
   await expectNoSeriousAxeViolations(page, 'discovery empty state');
 });

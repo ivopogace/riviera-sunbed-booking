@@ -3,10 +3,10 @@ import { expect, test } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
- * Real-render e2e for the Liquid Glass shell (issue #134): theme switching + persistence
- * (AC-2), the mobile hamburger menu (AC-3), and the reduced-motion guard (AC-5) — with axe
- * sweeps in both themes (AC-4's real-browser half). The discovery API is mocked
- * (`page.route`), so the spec is CI-safe like its siblings.
+ * Real-render e2e for the Liquid Glass shell: theme switching + persistence,
+ * the mobile hamburger menu, and the reduced-motion guard — with axe
+ * sweeps in both themes (the real-browser half of the contrast audit). The discovery API is
+ * mocked (`page.route`), so the spec is CI-safe like its siblings.
  */
 
 const VENUES = [
@@ -47,7 +47,7 @@ test.describe('theme persistence', () => {
 
 test.describe('axe sweeps', () => {
   // Without this, headless (light) boots porcelain and the "riviera" sweeps would silently
-  // audit porcelain twice (review finding on the first version of this spec).
+  // audit porcelain twice.
   test.use({ colorScheme: 'dark' });
 
   test('axe passes on the shell in both themes, including the open theme picker (AC-4)', async ({
@@ -86,7 +86,7 @@ test.describe('mobile viewport', () => {
     await toggle.click();
     await expect(page.getByTestId('mobile-menu')).toBeVisible();
 
-    // Containing-block pin (#134 review): the dim backdrop must cover the viewport, not just
+    // Containing-block pin: the dim backdrop must cover the viewport, not just
     // the header strip (backdrop-filter on the header itself once shrank it to the header).
     const centerHit = await page.evaluate(() => {
       const hit = document.elementFromPoint(window.innerWidth / 2, window.innerHeight * 0.7);
@@ -107,7 +107,7 @@ test.describe('mobile viewport', () => {
 });
 
 /**
- * The signed-in account menu (#351) — the tourist's in-app entry point to `/account/password`.
+ * The signed-in account menu — the tourist's in-app entry point to `/account/password`.
  * Only `/api/auth/me` needs mocking: the shell's signed-in state is all these cases turn on.
  */
 test.describe('account menu', () => {
@@ -136,7 +136,7 @@ test.describe('account menu', () => {
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByTestId('nav-account-menu')).toBeHidden();
 
-    // The one new interactive control in the nav row must hover like its siblings (#355 review).
+    // The one new interactive control in the nav row must hover like its siblings.
     await expect(trigger).toHaveCSS('cursor', 'pointer');
 
     await openAccountMenu(page);

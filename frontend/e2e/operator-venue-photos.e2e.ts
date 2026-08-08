@@ -4,7 +4,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * Real-render CI-safe e2e for the venue photo slots (#142, AC-9). Drives sign-in → the Venue &
+ * Real-render CI-safe e2e for the venue photo slots. Drives sign-in → the Venue &
  * commodities tab → pick a real file in the cover slot (pick = upload = replace: one multipart
  * POST) → the returned PREVIEW variant renders and the control flips to Replace → Remove DELETEs
  * the slot and the empty state returns. Also the server-side validation rejection copy and the
@@ -78,7 +78,7 @@ async function mockVenuePhotos(
 
   await page.route(/\/api\/venues\/1\/profile$/, (route) => route.fulfill({ json: PROFILE }));
 
-  // The slot write endpoints (#142): POST = upload/replace, DELETE = remove. Registered BEFORE the
+  // The slot write endpoints: POST = upload/replace, DELETE = remove. Registered BEFORE the
   // serving GET below, but they never collide — a slot name is not a hex hash.
   await page.route(/\/api\/venues\/1\/photos\/(cover|sunbeds|bar)$/, (route) => {
     if (route.request().method() === 'POST') {
@@ -149,7 +149,7 @@ async function mockVenuePhotos(
 
 async function signInAndOpenVenue(page: Page): Promise<void> {
   await page.goto('/operator/1');
-  // S9 (#277): the guard sends us to the unified card's operator tab; returnUrl brings us back.
+  // The guard sends us to the unified card's operator tab; returnUrl brings us back.
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
@@ -184,7 +184,7 @@ test('picks a file → one multipart upload → preview + Replace, then Remove d
   expect(uploads[0].headers()['content-type']).toContain('multipart/form-data');
 
   // The tab previews the returned PREVIEW variant's content-addressed URL (resolved against the
-  // API origin — F-7), no profile re-fetch.
+  // API origin), no profile re-fetch.
   await expect(page.getByTestId('photo-preview-cover')).toHaveAttribute(
     'src',
     /\/api\/venues\/1\/photos\/cc03$/,

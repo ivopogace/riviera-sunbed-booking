@@ -4,9 +4,9 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * Real-render CI-safe e2e for the O3 layout editor (#172). Drives the actual generate → confirm →
+ * Real-render CI-safe e2e for the layout editor. Drives the actual generate → confirm →
  * paint → save flow on the default beach-map tab, asserting the single bulk PUT payload, the
- * server-locked (`LAYOUT_IN_USE`) path, and the #226 stale-write conflict (409 STALE_WRITE keeps the
+ * server-locked (`LAYOUT_IN_USE`) path, and the stale-write conflict (409 STALE_WRITE keeps the
  * painted grid + offers Reload — co-located here as the venue tab does in operator-venue.e2e.ts). API
  * mocked via `page.route` (no backend), axe over the editor.
  */
@@ -32,7 +32,7 @@ test.use({ colorScheme: 'dark' });
 
 /**
  * Session + reads mock; `puts` collects the layout PUT payloads; `lock` makes that PUT 409 LAYOUT_IN_USE.
- * STATEFUL on the #226 `setVersion`: the map GET hands out the current token, the PUT enforces it (a
+ * STATEFUL on the `setVersion`: the map GET hands out the current token, the PUT enforces it (a
  * mismatch is 409 STALE_WRITE) and bumps it on success. `bump()` simulates a concurrent writer moving the
  * layout on behind the tab's back, so a subsequent stale save is genuinely rejected.
  */
@@ -56,8 +56,7 @@ async function mockEditor(page: Page, lock = false): Promise<{ puts: Request[]; 
     sessionLive = false;
     return route.fulfill({ status: 204, body: '' });
   });
-  // The layout PUT — captured; 409 LAYOUT_IN_USE when locked; else the optimistic-concurrency guard
-  // (#226): a stale expectedVersion is 409 STALE_WRITE, a match is 204 and bumps the server token.
+  // Captures the PUT; locked → 409 LAYOUT_IN_USE; stale expectedVersion → 409 STALE_WRITE; match → 204 + bump.
   await page.route(/\/api\/venues\/1\/beach-map$/, (route) => {
     puts.push(route.request());
     if (lock) {
@@ -95,7 +94,7 @@ async function mockEditor(page: Page, lock = false): Promise<{ puts: Request[]; 
 }
 
 async function signIn(page: Page): Promise<void> {
-  // S9 (#277): the guard sends us to the unified card's operator tab; returnUrl brings us back.
+  // The guard sends us to the unified card's operator tab; returnUrl brings us back.
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
@@ -128,7 +127,7 @@ test('generates a grid, paints a walk-in set, and saves the whole layout in one 
   await expect(page.getByTestId('layout-cell').first()).toHaveAttribute('data-state', 'walkin');
   await expect(page.getByTestId('layout-count-walkin')).toHaveText('1');
 
-  // Save → exactly one PUT carrying all six sets, one of them WALK_IN, plus the loaded #226 token.
+  // Save → exactly one PUT carrying all six sets, one of them WALK_IN, plus the loaded setVersion token.
   await page.getByTestId('layout-save').click();
   await expect(page.getByTestId('layout-saved')).toBeVisible();
   expect(puts).toHaveLength(1);

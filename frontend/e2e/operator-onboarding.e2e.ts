@@ -5,7 +5,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * Venue onboarding inside the operator console surface (#278) — the mocked, CI-safe successor to the
+ * Venue onboarding inside the operator console surface — the mocked, CI-safe successor to the
  * retired `/venue-admin` page's coverage. A first-time operator signs in, gets the create form
  * INLINE on `/operator` (zero state), submits it, and lands straight in the new venue's beach-map
  * tab. Also pins the one-release `/venue-admin` → `/operator?create=1` redirect from the outside.
@@ -111,7 +111,7 @@ test('the picker’s Add-another-venue link swaps to the create form and keeps k
   await expect(page.getByTestId('venue-create-card')).toBeVisible();
   const title = page.getByRole('heading', { name: 'Add another venue' });
   await expect(title).toBeVisible();
-  // WCAG 2.4.3 (the #148/#351/#462 stranded-focus class): focus re-anchors on the new title.
+  // WCAG 2.4.3 (the recurring stranded-focus class): focus re-anchors on the new title.
   await expect(title).toBeFocused();
 });
 

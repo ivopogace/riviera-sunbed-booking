@@ -6,7 +6,7 @@ import { OperatorSignInPage } from '../../support/pages/operator-sign-in.page';
  * The operator credential the real-backend e2e suite signs in with. The same value is fed to the
  * backend `webServer` as `RIVIERA_OPERATOR_PASSWORD` (see `playwright.config.ts`), which
  * provisions the bootstrap operator's DB-backed hash at startup (`OperatorCredentialInitializer`)
- * — so the session login (`POST /api/auth/operator/login`, issue #109) accepts exactly this
+ * — so the session login (`POST /api/auth/operator/login`) accepts exactly this
  * credential, keeping the launcher and the tests in lock-step from one source. Local-only test
  * data, never a real secret.
  */
@@ -19,7 +19,7 @@ export function venueName(label: string): string {
 }
 
 /**
- * Establish a REAL operator session (issue #109) via the shared sign-in Page Object: the form POSTs
+ * Establish a REAL operator session via the shared sign-in Page Object: the form POSTs
  * the credential once, the backend verifies the DB-backed hash and answers with the session cookie
  * + CSRF token every later write rides.
  */
@@ -28,8 +28,8 @@ export async function signInOperator(page: Page, password: string = OPERATOR_PAS
 }
 
 /**
- * Create a venue on the operator home's create state (#278 — the retired /venue-admin form moved
- * there): open `/operator?create=1` (deterministic whatever the operator already owns), fill the
+ * Create a venue on the operator home's create state:
+ * open `/operator?create=1` (deterministic whatever the operator already owns), fill the
  * "Venue details" form (defaults stand for commission/currency/cutoff) and submit; returns the real
  * venue id parsed from the beach-map console URL the app navigates into. Must be signed in first.
  */

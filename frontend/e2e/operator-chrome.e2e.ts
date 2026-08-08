@@ -74,7 +74,7 @@ test('a signed-out visitor on /admin is offered the operator sign-in from the he
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
   await page.goto('/admin');
 
-  // Both sign-in links carry the operator audience AND the page as returnUrl (S9: outranks all).
+  // Both sign-in links carry the operator audience AND the page as returnUrl (returnUrl outranks all).
   await expect(page.getByTestId('opc-signin')).toHaveAttribute(
     'href',
     '/account/sign-in?audience=operator&returnUrl=%2Fadmin',

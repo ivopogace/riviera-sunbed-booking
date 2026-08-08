@@ -1,6 +1,6 @@
 import { Page } from '@playwright/test';
 
-/** RFC-7807 body matching the backend contract (issue #97) — mocks must flush realistic shapes. */
+/** RFC-7807 body matching the backend contract — mocks must flush realistic shapes. */
 function problem(status: number, title: string, code: string) {
   return {
     status,
@@ -17,10 +17,10 @@ function problem(status: number, title: string, code: string) {
 }
 
 /**
- * Stateful mock of the session-auth API (issue #109) for the CI-safe suite: a tiny in-memory
- * "session" that `/api/auth/me` reflects — so a reload realistically RESTORES a signed-in state
- * (AC-8) because routes persist across navigations within one Playwright page. Login succeeds
- * only for the CURRENT password — which starts as `validPassword` and is ROTATED by the #326
+ * Stateful mock of the session-auth API for the CI-safe suite: a tiny in-memory
+ * "session" that `/api/auth/me` reflects — so a reload realistically RESTORES a signed-in state,
+ * because routes persist across navigations within one Playwright page. Login succeeds
+ * only for the CURRENT password — which starts as `validPassword` and is ROTATED by the
  * self-service change endpoint, so a spec can prove the old credential stops working and the new
  * one starts. Everything else answers the generic 401 (D-8); logout flips the state back and
  * answers 204 like the real LogoutFilter.
@@ -30,10 +30,10 @@ export async function mockAuthApi(
   options: {
     readonly validPassword: string;
     readonly username?: string;
-    /** The operator's venues for the S9 landing read; defaults to one (straight into its console). */
+    /** The operator's venues for the post-sign-in landing read; defaults to one (straight into its console). */
     readonly venues?: readonly { id: number; name: string; beach: string }[];
     /**
-     * Marks this account as the env-managed bootstrap admin (#326), whose password lives in
+     * Marks this account as the env-managed bootstrap admin, whose password lives in
      * `RIVIERA_OPERATOR_PASSWORD` — its change attempts answer `409 BOOTSTRAP_CREDENTIAL_MANAGED`.
      */
     readonly envManaged?: boolean;
@@ -57,7 +57,7 @@ export async function mockAuthApi(
     return route.fulfill(problem(401, 'Unauthorized', 'INVALID_CREDENTIALS'));
   });
 
-  // Self-service credential rotation (#326). Branch order mirrors the controller: the env-managed
+  // Self-service credential rotation. Branch order mirrors the controller: the env-managed
   // bootstrap admin is refused BEFORE the policy check and before the stored credential is read.
   await page.route(/\/api\/auth\/operator\/password$/, (route) => {
     if (!signedIn) {
@@ -70,13 +70,13 @@ export async function mockAuthApi(
       currentPassword?: string;
       newPassword?: string;
     };
-    // Outranks the policy check below, as in the controller, and carries its own code (#345).
+    // Outranks the policy check below, as in the controller, and carries its own code.
     if (!body.currentPassword) {
       return route.fulfill(problem(400, 'Bad Request', 'MISSING_CURRENT_PASSWORD'));
     }
     // Policy BEFORE the credential check, and bytes not characters — both mirror the controller, which
     // calls CustomerPasswords.validate ahead of findByUsername and caps at bcrypt's 72-byte input limit.
-    // Reversing either lets the mocked suite stay green through a real reordering (#342 review finding).
+    // Reversing either lets the mocked suite stay green through a real reordering.
     const newPassword = body.newPassword ?? '';
     if (newPassword.length < 8 || new TextEncoder().encode(newPassword).length > 72) {
       return route.fulfill(problem(400, 'Bad Request', 'INVALID_REQUEST'));
@@ -98,9 +98,9 @@ export async function mockAuthApi(
 }
 
 /**
- * The operator's own venues (S9 #277) — `GET /api/venues/mine`, which the unified auth page consults
+ * The operator's own venues — `GET /api/venues/mine`, which the unified auth page consults
  * to decide where a signed-in operator lands (0 → onboarding, 1 → that console, 2+ → the picker).
- * Defaults to one venue, which reproduces the pre-#277 "straight into the console" behaviour that
+ * Defaults to one venue, which reproduces the "straight into the console" behaviour that
  * most operator e2e specs assume.
  */
 export async function mockOwnedVenues(
@@ -111,7 +111,7 @@ export async function mockOwnedVenues(
 }
 
 /**
- * Stateful mock of the CUSTOMER session-auth API (S2 #111) for the CI-safe suite. Mirrors
+ * Stateful mock of the CUSTOMER session-auth API for the CI-safe suite. Mirrors
  * {@link mockAuthApi} but for the customer principal type + the register endpoint's D-8 semantics:
  * registration returns an identical 201 body whether the email is fresh or already taken, but only a
  * FRESH email establishes the session — so the FE learns "registered vs exists" from the subsequent
@@ -164,7 +164,7 @@ export async function mockCustomerAuthApi(
 
 /**
  * Stateful mock of the OPERATOR self-registration → admin-approval → sign-in → create-venue lifecycle
- * (S6 #115) for the CI-safe suite. One in-memory model backs the whole flow so a single Playwright page
+ * for the CI-safe suite. One in-memory model backs the whole flow so a single Playwright page
  * can drive it end to end:
  *
  * - `POST /api/auth/operator/register` always answers a byte-identical `202 {status:'PENDING'}`
@@ -200,7 +200,7 @@ export async function mockOperatorLifecycleApi(
     suspended: boolean;
   }
   const pending: PendingOp[] = [];
-  /** Decided accounts (ACTIVE + SUSPENDED) — what `GET /api/admin/operators/accounts` returns (#128). */
+  /** Decided accounts (ACTIVE + SUSPENDED) — what `GET /api/admin/operators/accounts` returns. */
   const accounts: AccountOp[] = [];
   /** Login works only for a decided, NOT-suspended account whose password matches. */
   const canSignIn = (username: string, password: string | undefined): boolean =>
@@ -210,7 +210,7 @@ export async function mockOperatorLifecycleApi(
   let nextVenueId = 100;
   let session: { username: string; admin: boolean } | undefined;
 
-  // The admin is itself a decided account — its own row is where "This is you" shows (#128).
+  // The admin is itself a decided account — its own row is where "This is you" shows.
   accounts.push({
     id: nextOpId++,
     username: admin.username,
@@ -290,7 +290,7 @@ export async function mockOperatorLifecycleApi(
     }
     if (approve) {
       const op = pending[idx];
-      // Approval makes it a decided account — login enabled, and now listed under /accounts (#128).
+      // Approval makes it a decided account — login enabled, and now listed under /accounts.
       accounts.push({
         id: op.id,
         username: op.username,
@@ -322,7 +322,7 @@ export async function mockOperatorLifecycleApi(
       : route.fulfill(problem(403, 'Forbidden', 'ACCESS_DENIED')),
   );
 
-  /** Suspend/reinstate (#128); suspending also REVOKES that operator's live session, as the server does. */
+  /** Suspend/reinstate; suspending also REVOKES that operator's live session, as the server does. */
   const transition = (route: import('@playwright/test').Route, suspend: boolean) => {
     if (!session?.admin) {
       return route.fulfill(problem(403, 'Forbidden', 'ACCESS_DENIED'));
@@ -353,7 +353,7 @@ export async function mockOperatorLifecycleApi(
       : route.fulfill({ json: [] }),
   );
 
-  // S9 (#277): owning nothing forwards to onboarding — where this spec creates its first venue.
+  // Owning nothing forwards to onboarding — where this spec creates its first venue.
   await mockOwnedVenues(page, []);
 
   await page.route(/\/api\/auth\/logout$/, (route) => {
@@ -363,7 +363,7 @@ export async function mockOperatorLifecycleApi(
 }
 
 /**
- * Stateful mock of the CUSTOMER SSO flow (S4 #112) for the CI-safe suite. The FE starts SSO with a
+ * Stateful mock of the CUSTOMER SSO flow for the CI-safe suite. The FE starts SSO with a
  * full-page navigation to `GET /api/auth/sso/{provider}/authorize`; here we intercept that navigation
  * and mimic the backend's completed OIDC dance — flip the in-memory session to the provider's canned
  * email and 302 back to the SPA root (`baseURL/`), where `restore()` reads `/api/auth/me` and shows the
@@ -396,39 +396,39 @@ export async function mockCustomerSsoApi(
 }
 
 /**
- * Stateful mock of the CUSTOMER account-recovery API (S8 #113) for the CI-safe suite: forgot-password
+ * Stateful mock of the CUSTOMER account-recovery API for the CI-safe suite: forgot-password
  * always answers a neutral 204 (non-enumeration, D-8); reset-password + verify-email accept only
  * `validToken`, else the generic 400 `INVALID_OR_EXPIRED_TOKEN`. A successful reset rotates the mock's
- * accepted password AND signs the session out (the real reset invalidates sessions, AC-3); a successful
+ * accepted password AND signs the session out (the real reset invalidates sessions); a successful
  * verify flips `emailVerified`, which `/me` + login then reflect. Login succeeds for the CURRENT password
  * only — so the reset e2e can prove the old password stops working and the new one starts.
  *
- * <p>The same rotating credential backs the authenticated set/change-password endpoint (#346), so one
+ * <p>The same rotating credential backs the authenticated set/change-password endpoint, so one
  * mock covers every way a customer's password can change. An account with NO `initialPassword` is the
- * SSO-only case (S4 F-1): nothing signs in until a first password is set, and that first set needs no
- * current password. That endpoint's branch order mirrors the server — `RateLimitFilter` spends the
- * per-IP budget before the controller runs, and the controller validates the password policy before it
- * reads the stored credential — so a real reordering cannot leave this suite green (#342 finding).
+ * SSO-only case (no local credential): nothing signs in until a first password is set, and that first
+ * set needs no current password. That endpoint's branch order mirrors the server — `RateLimitFilter`
+ * spends the per-IP budget before the controller runs, and the controller validates the password policy
+ * before it reads the stored credential — so a real reordering cannot leave this suite green.
  */
 export async function mockCustomerRecoveryApi(
   page: Page,
   options: {
     readonly email: string;
-    /** The stored credential; omit for an SSO-only account that has none yet (#346). */
+    /** The stored credential; omit for an SSO-only account that has none yet. */
     readonly initialPassword?: string;
     /** The one token the reset/verify routes accept; omit in a spec that redeems no token. */
     readonly validToken?: string;
-    /** Start with a live session — stands in for a completed SSO dance, which S4's own mock drives. */
+    /** Start with a live session — stands in for a completed SSO dance, which the SSO mock drives. */
     readonly signedIn?: boolean;
     /** Provider-verified email (SSO), before any verify-email token is redeemed. */
     readonly emailVerified?: boolean;
     /**
-     * Attempts allowed on `POST /api/me/password` before the per-IP budget answers 429 (#326).
+     * Attempts allowed on `POST /api/me/password` before the per-IP budget answers 429.
      * Defaults to the deployed capacity (`riviera.ratelimit.login.capacity`, 10 per minute); a spec
      * proving the FE's rate-limit rendering sets something small rather than clicking ten times.
      */
     readonly passwordChangeBudget?: number;
-    /** Whether the do-not-email list withholds the verification resend (#400). Defaults to deliverable. */
+    /** Whether the do-not-email list withholds the verification resend. Defaults to deliverable. */
     readonly verificationMailWithheld?: boolean;
   },
 ): Promise<void> {
@@ -457,7 +457,7 @@ export async function mockCustomerRecoveryApi(
     return route.fulfill(problem(401, 'Unauthorized', 'INVALID_CREDENTIALS'));
   });
 
-  // The signed-in set/change-password endpoint (S8 #113, rate-limited since #326) — see the TSDoc above.
+  // The signed-in set/change-password endpoint, rate-limited per IP — see the TSDoc above.
   await page.route(/\/api\/me\/password$/, (route) => {
     if (!signedIn) {
       return route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED'));
@@ -473,7 +473,7 @@ export async function mockCustomerRecoveryApi(
     if (newPassword.length < 8 || new TextEncoder().encode(newPassword).length > 72) {
       return route.fulfill(problem(400, 'Bad Request', 'INVALID_REQUEST'));
     }
-    // Nested as the controller nests it: a stored password is what makes either answer reachable (#345).
+    // Nested as the controller nests it: a stored password is what makes either answer reachable.
     if (password !== undefined) {
       if (!body.currentPassword) {
         return route.fulfill(problem(400, 'Bad Request', 'MISSING_CURRENT_PASSWORD'));
@@ -495,7 +495,7 @@ export async function mockCustomerRecoveryApi(
     const body = route.request().postDataJSON() as { token?: string; newPassword?: string };
     if (validToken !== undefined && body.token === validToken && body.newPassword) {
       password = body.newPassword;
-      signedIn = false; // a reset invalidates existing sessions (AC-3)
+      signedIn = false; // a reset invalidates existing sessions
       return route.fulfill({ status: 204 });
     }
     return route.fulfill(problem(400, 'Bad Request', 'INVALID_OR_EXPIRED_TOKEN'));
@@ -510,7 +510,7 @@ export async function mockCustomerRecoveryApi(
     return route.fulfill(problem(400, 'Bad Request', 'INVALID_OR_EXPIRED_TOKEN'));
   });
 
-  // Mirrors the real 200 {emailWithheld} shape exactly (#400); before this there was no route at all.
+  // Mirrors the real 200 {emailWithheld} shape exactly.
   await page.route(/\/api\/me\/verify-email\/request$/, (route) =>
     route.fulfill({ json: { emailWithheld: options.verificationMailWithheld ?? false } }),
   );

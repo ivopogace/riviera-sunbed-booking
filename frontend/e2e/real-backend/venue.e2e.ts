@@ -4,7 +4,7 @@ import { expectNoSeriousAxeViolations } from '../support/axe';
 import { createVenue, signInOperator, venueName } from './support/operator';
 
 /**
- * Real-backend e2e for the O8 Venue & commodities console tab (#177). A real Chromium onboards a
+ * Real-backend e2e for the Venue & commodities console tab. A real Chromium onboards a
  * fresh venue, opens its tab in the operator console, and edits the details + commodities through the
  * REAL owner-asserted profile write (PATCH /api/venues/{id}) — persisted to real Postgres. It then
  * proves the round-trip: the edited name + amenity chips + to-water render on the PUBLIC tourist
@@ -77,7 +77,7 @@ test('a stale-tab save is rejected with the 409 banner, and Reload recovers (#22
 
   // The first tab (still holding the old version) edits and saves → real 409 STALE_WRITE. The
   // conflict banner shows, and the operator's edit is PRESERVED (never a silent clobber — the exact
-  // #224 scenario: the stale INSTANT is NOT written back over the deliberate REQUEST).
+  // stale-write scenario: the stale INSTANT is NOT written back over the deliberate REQUEST).
   await page.getByTestId('venue-name').fill('Stale Edit');
   await page.getByTestId('venue-save').click();
   await expect(page.getByTestId('venue-stale-banner')).toBeVisible();

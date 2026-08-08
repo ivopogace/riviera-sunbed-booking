@@ -4,7 +4,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { completeDialog, settle } from './support/booking-dialog';
 
 /**
- * The withheld-confirmation-email notice (#390), on both post-payment surfaces — real browser, API
+ * The withheld-confirmation-email notice, on both post-payment surfaces — real browser, API
  * mocked, so the suite stays CI-safe and hermetic.
  *
  * <p>The suppression list's invariant is *no send to a suppressed address*, so a guest whose address

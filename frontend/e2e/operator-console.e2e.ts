@@ -4,7 +4,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * Real-render CI-safe e2e for the operator console shell (issue #170, epic #141 foundation). Drives
+ * Real-render CI-safe e2e for the operator console shell. Drives
  * the sign-in gate → porcelain shell → tab switching → sign-out lifecycle, the reload-survival of the
  * session, the always-porcelain theme override, and a narrow-viewport responsive tab row — with the
  * API mocked via `page.route` (no backend, like the sibling a11y specs). Axe runs on the signed-out
@@ -37,7 +37,7 @@ const VENUE_MAP = {
   reviewsCount: 12,
   bookingMode: 'INSTANT',
   fromPrice: null,
-  // 5 sets, 2 free / 3 taken — the stats strip's "Free today 2 / 5" tile (#171).
+  // 5 sets, 2 free / 3 taken — the stats strip's "Free today 2 / 5" tile.
   sets: [
     seat(1, 'FREE'),
     seat(2, 'FREE'),
@@ -88,7 +88,7 @@ async function mockConsole(
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })) }),
   );
-  // The stats strip's three reads (#171, #207): confirmed bookings, takings, availability states.
+  // The stats strip's three reads: confirmed bookings, takings, availability states.
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
     route.fulfill({ json: Array.from({ length: booked }, (_, i) => ({ setId: i + 1, code: 'X' })) }),
   );
@@ -99,7 +99,7 @@ async function mockConsole(
 }
 
 async function signIn(page: import('@playwright/test').Page): Promise<void> {
-  // S9 (#277): the guard sends us to the unified card's operator tab; returnUrl brings us back.
+  // The guard sends us to the unified card's operator tab; returnUrl brings us back.
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
@@ -109,7 +109,7 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
   await mockConsole(page, 3);
   await page.goto('/operator/1');
 
-  // Signed out: S9 (#277) redirects to the unified auth card's operator tab, never the shell.
+  // Signed out: the guard redirects to the unified auth card's operator tab, never the shell.
   await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator&returnUrl=/);
   await expect(page.getByTestId('auth-form')).toBeVisible();
   await expect(page.getByTestId('oc-header')).toHaveCount(0);
@@ -124,14 +124,14 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'operator console shell');
 
-  // Default tab is Beach map; the O3 layout editor renders (not a placeholder). It reads :venueId
+  // Default tab is Beach map; the layout editor renders (not a placeholder). It reads :venueId
   // from the PARENT route (child routes don't inherit it) — a real browser exercises that
-  // inheritance, which a mocked ActivatedRoute unit spec can't (finding 2); the editor loads the
+  // inheritance, which a mocked ActivatedRoute unit spec can't; the editor loads the
   // venue map for that id and seeds its grid.
   await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
   await expect(page.getByTestId('layout-editor')).toBeVisible();
 
-  // Switching to Daily view updates the URL and the active tab, rendering the O5 daily view tab
+  // Switching to Daily view updates the URL and the active tab, rendering the daily view tab
   // (not a placeholder). It reads :venueId from the PARENT route (child routes don't inherit it) —
   // a real browser exercises that inheritance, which a mocked ActivatedRoute unit spec can't.
   const tabs = page.getByTestId('oc-tabs');
@@ -143,7 +143,7 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
   );
   await expect(page.getByTestId('daily-view-tab')).toBeVisible();
 
-  // Sign out → the console leaves for the unified auth card (the guard gates on activation, #277).
+  // Sign out → the console leaves for the unified auth card (the guard gates on activation).
   await page.getByTestId('oc-signout').click();
   await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator$/);
   await expect(page.getByTestId('auth-form')).toBeVisible();
@@ -162,7 +162,7 @@ test('shows the stats strip with live free/total, walk-ins and takings, across a
   await signIn(page);
   await expect(page.getByTestId('oc-header')).toBeVisible();
 
-  // Four live tiles: 5 sets (2 free), 2 booked, 1 STAFF_MARKED (#207), €110 gross / €93.50 net.
+  // Four live tiles: 5 sets (2 free), 2 booked, 1 STAFF_MARKED, €110 gross / €93.50 net.
   await expect(page.getByTestId('oc-stat-free')).toHaveText(/2\s*\/\s*5/);
   await expect(page.getByTestId('oc-stat-booked')).toHaveText('2');
   await expect(page.getByTestId('oc-stat-walkins')).toHaveText('1');

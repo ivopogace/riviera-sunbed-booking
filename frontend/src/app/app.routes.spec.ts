@@ -8,7 +8,7 @@ import { routes } from './app.routes';
 class BlankPage {}
 
 /**
- * The S9 (#277) legacy-route redirects. The three retired auth surfaces keep working for one
+ * The legacy-route redirects. The three retired auth surfaces keep working for one
  * release by forwarding into the unified card with the right tab preselected — a bookmark or an
  * already-sent email must not 404.
  */
@@ -54,7 +54,7 @@ describe('app.routes — retired auth surfaces', () => {
   });
 
   it('keeps forwarding the retired staff-daily deep link to the console tab', async () => {
-    // Pre-existing O6 (#176) redirect — re-asserted so the S9 route edits cannot silently drop it.
+    // Pre-existing staff-daily redirect — re-asserted so later route edits cannot silently drop it.
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [

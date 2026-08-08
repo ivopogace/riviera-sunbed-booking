@@ -4,10 +4,10 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * Real-render CI-safe e2e for the O4 Pricing tab (#174). Drives sign-in → open the Pricing tab →
+ * Real-render CI-safe e2e for the Pricing tab. Drives sign-in → open the Pricing tab →
  * see one row per label with its tier description and price → edit a row's € input → assert the
- * owner-asserted per-row reprice PUT (path + integer-minor-unit body + #226 token) and the recomputed
- * projected take. Also the cross-venue (403) failure copy and the #226 stale-write conflict (409
+ * owner-asserted per-row reprice PUT (path + integer-minor-unit body + concurrency token) and the
+ * recomputed projected take. Also the cross-venue (403) failure copy and the stale-write conflict (409
  * STALE_WRITE reverts the row + offers Reload — co-located here as the venue tab does in
  * operator-venue.e2e.ts). API mocked via `page.route` (no backend); axe over the tab.
  */
@@ -61,7 +61,7 @@ test.use({ colorScheme: 'dark' });
 
 /**
  * Session + shell reads mocked; `puts` collects the reprice PUTs; `deny` makes the reprice 403. STATEFUL
- * on the #226 `setVersion`: the map GET hands out the current token, the reprice PUT enforces it (a
+ * on the `setVersion` token: the map GET hands out the current token, the reprice PUT enforces it (a
  * mismatch is 409 STALE_WRITE) and bumps it on success. `bump()` simulates a concurrent writer moving the
  * prices on behind the tab's back, so a subsequent stale reprice is genuinely rejected.
  */
@@ -90,7 +90,7 @@ async function mockPricing(
     return route.fulfill({ status: 204, body: '' });
   });
   // The per-row reprice PUT — captured; 403 NOT_VENUE_OWNER when denied; else the optimistic-concurrency
-  // guard (#226): a stale expectedVersion is 409 STALE_WRITE, a match is 204 and bumps the server token.
+  // guard: a stale expectedVersion is 409 STALE_WRITE, a match is 204 and bumps the server token.
   await page.route(/\/api\/venues\/1\/rows\/[^/]+\/price$/, (route) => {
     puts.push(route.request());
     if (deny) {
@@ -134,7 +134,7 @@ async function mockPricing(
 }
 
 async function signInAndOpenPricing(page: Page): Promise<void> {
-  // S9 (#277): the guard sends us to the unified card's operator tab; returnUrl brings us back.
+  // The guard sends us to the unified card's operator tab; returnUrl brings us back.
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
@@ -167,7 +167,7 @@ test('lists rows, projects the online-only take, and commits a minor-unit repric
 
   expect(puts).toHaveLength(1);
   expect(puts[0].url()).toMatch(/\/api\/venues\/1\/rows\/A\/price$/);
-  // The body carries the price AND the #226 token loaded from the map read (0 for the fresh mock).
+  // The body carries the price AND the concurrency token loaded from the map read (0 for the fresh mock).
   expect(puts[0].postDataJSON()).toEqual({
     price: { minorUnits: 4250, currency: 'EUR' },
     expectedVersion: 0,
@@ -193,7 +193,7 @@ test('opens the Pricing tab on ONE venue-map read, not two (#486)', async ({ pag
 
   expect(mapReads()).toBe(1);
 
-  // The shared snapshot carried the #226 token too: a reprice off it is accepted, not falsely stale.
+  // The shared snapshot carried the concurrency token too: a reprice off it is accepted, not falsely stale.
   await page.getByTestId('pricing-input-A').fill('40');
   await page.getByTestId('pricing-input-A').blur();
   await expect.poll(() => puts.length).toBe(1);

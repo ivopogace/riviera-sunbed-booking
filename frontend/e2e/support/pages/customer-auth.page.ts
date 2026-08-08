@@ -1,14 +1,14 @@
 import { expect, Locator, Page } from '@playwright/test';
 
 /**
- * Page Object for the customer auth flow (S2 #111, epic #108) — the tourist-side twin of
+ * Page Object for the customer auth flow — the tourist-side twin of
  * {@link OperatorSignInPage}. Unlike the operator sign-in card, this spans the shell header
  * (Sign in / Register links ↔ "Signed in as …" + Sign out) and the two full-page forms
  * (`/account/register`, `/account/sign-in`). Header controls are keyed by their `data-testid`
  * (the desktop nav is the only one in the DOM at the Desktop-Chrome viewport); the form fields use
  * accessible-name locators (one Email/Password per page), so a11y regressions surface here too.
  *
- * <p>Since #351 the signed-in controls sit behind an account disclosure, so `signOut()` and
+ * <p>The signed-in controls sit behind an account disclosure, so `signOut()` and
  * `gotoAccount()` open it first — callers are unaffected.
  */
 export class CustomerAuthPage {
@@ -17,7 +17,7 @@ export class CustomerAuthPage {
   readonly registerLink: Locator;
   readonly signedInAs: Locator;
   readonly signOutButton: Locator;
-  /** "Your account" inside the account menu (#351). */
+  /** "Your account" inside the account menu. */
   readonly accountLink: Locator;
 
   /** Form fields (shared by both pages — one Email/Password input is present per page). */
@@ -27,7 +27,7 @@ export class CustomerAuthPage {
   readonly error: Locator;
   readonly registerSubmit: Locator;
   readonly signInSubmit: Locator;
-  /** SSO buttons (S4 #112 — present on both the sign-in and register cards). */
+  /** SSO buttons — present on both the sign-in and register cards. */
   readonly ssoGoogle: Locator;
   readonly ssoApple: Locator;
 
@@ -68,7 +68,7 @@ export class CustomerAuthPage {
     await this.signInSubmit.click();
   }
 
-  /** Reveal the signed-in controls — since #351 they live behind the account disclosure. */
+  /** Reveal the signed-in controls — they live behind the account disclosure. */
   async openAccountMenu(): Promise<void> {
     await this.signedInAs.click();
   }
@@ -78,7 +78,7 @@ export class CustomerAuthPage {
     await this.signOutButton.click();
   }
 
-  /** Reach the account page (#351) the way a tourist does — through the header, not a URL. */
+  /** Reach the account page the way a tourist does — through the header, not a URL. */
   async gotoAccount(): Promise<void> {
     await this.openAccountMenu();
     await this.accountLink.click();

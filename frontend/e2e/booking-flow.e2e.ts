@@ -4,7 +4,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { completeDialog, settle } from './support/booking-dialog';
 
 /**
- * Real-render a11y audit of the Instant-Book flow (issue #6; Liquid Glass restyle #137): beach map →
+ * Real-render a11y audit of the Instant-Book flow: beach map →
  * keyboard-select a free online set → 2-step booking dialog (Details → Review, focus trapped) →
  * confirmation. Runs axe at each step in a real browser — catching keyboard, focus-management and
  * true colour-contrast issues jsdom can't. The API is mocked, so the test is self-contained.
@@ -69,7 +69,7 @@ const AWAITING_DETAIL = {
 };
 
 test.beforeEach(async ({ page }) => {
-  // Match with or without the `?date=` query the map now appends (issue #44).
+  // Match with or without the `?date=` query the map appends.
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
     route.fulfill({ json: VENUE }),
   );
@@ -96,7 +96,7 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'booking dialog (Details)');
 
-  // Stacking pin (#134 review): the modal scrim must paint ABOVE the sticky glass header —
+  // Stacking pin: the modal scrim must paint ABOVE the sticky glass header —
   // a stacking context on <main> once trapped it below, leaving the header clickable.
   const headerHit = await page.evaluate(() => {
     const header = document.querySelector('.riv-header') as HTMLElement;
@@ -123,7 +123,7 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
 });
 
 test('booking dialog stays laptop-friendly at a ~700px viewport (#188, guards the #186 regression)', async ({ page }) => {
-  // #186 (PR #187) compacted the dialog so step-1 sits above the fold on laptop viewports; this locks it in.
+  // The dialog is compacted so step-1 sits above the fold on laptop viewports; this locks it in.
   const VIEWPORT_HEIGHT = 700;
   await page.setViewportSize({ width: 1280, height: VIEWPORT_HEIGHT });
 
@@ -132,7 +132,7 @@ test('booking dialog stays laptop-friendly at a ~700px viewport (#188, guards th
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  // Step 1 (Details) is the tallest step and the one #186 measured.
+  // Step 1 (Details) is the tallest step and the one the compaction was measured on.
   await expect(page.getByTestId('step-1')).toHaveAttribute('aria-current', 'step');
   await settle(page);
 
@@ -150,7 +150,7 @@ test('booking dialog stays laptop-friendly at a ~700px viewport (#188, guards th
 });
 
 test('a taken-set rejection surfaces an accessible error in the dialog', async ({ page }) => {
-  // Overrides the beforeEach 201 route: the API rejects on the RFC-7807 contract (issue #97) —
+  // Overrides the beforeEach 201 route: the API rejects on the RFC-7807 contract —
   // application/problem+json whose stable identity is the `code` extension.
   await page.route('**/api/bookings', (route) =>
     route.fulfill({

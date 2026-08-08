@@ -4,7 +4,7 @@ import { OperatorSignInPage } from '../support/pages/operator-sign-in.page';
 import { OPERATOR_PASSWORD, OPERATOR_USERNAME } from './support/operator';
 
 /**
- * Real-backend e2e for the O7 Payouts tab (issue #173). A real Chromium drives the operator console's
+ * Real-backend e2e for the Payouts tab. A real Chromium drives the operator console's
  * Payouts tab, which calls the REAL Spring Boot backend + REAL Flyway-migrated Postgres — nothing is
  * mocked. It proves the wired, owner-asserted round-trip the unit/IT layers only prove in halves:
  * the `GET /api/venues/{id}/payout-ledger` read and the `POST /api/venues/{id}/weather-refund` action

@@ -4,7 +4,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * Real-render CI-safe e2e for the O8 Venue & commodities tab (#177). Drives sign-in → open the tab →
+ * Real-render CI-safe e2e for the Venue & commodities tab. Drives sign-in → open the tab →
  * the details form pre-fills from the owner profile (with read-only commission % + payout currency) →
  * edit the name + toggle an amenity + flip booking mode → assert the widened owner-asserted profile
  * PATCH (body carries the edits, NEVER commission/payout currency) and the saved notice → then the
@@ -25,8 +25,8 @@ const INITIAL_PROFILE = {
   payoutCurrency: 'EUR',
   amenities: ['WIFI', 'BEACH_BAR'],
   distanceToWaterM: 20,
-  version: 7, // the optimistic-concurrency token the tab loads and echoes back (#224)
-  // The per-slot photo map (#142) — empty here; the photo flows live in operator-venue-photos.e2e.ts.
+  version: 7, // the optimistic-concurrency token the tab loads and echoes back
+  // The per-slot photo map — empty here; the photo flows live in operator-venue-photos.e2e.ts.
   photos: {
     cover: { previewUrl: null },
     sunbeds: { previewUrl: null },
@@ -65,7 +65,7 @@ async function mockVenue(
   const patches: Request[] = [];
   let sessionLive = false;
   const profile = { ...INITIAL_PROFILE };
-  // The server-side version (#224). The profile GET hands it out; the PATCH enforces it (a mismatch is
+  // The server-side version. The profile GET hands it out; the PATCH enforces it (a mismatch is
   // 409 STALE_WRITE) and bumps it on success. `bump()` simulates a concurrent writer moving the row on
   // behind the tab's back, so a subsequent stale save is genuinely rejected.
   let serverVersion = INITIAL_PROFILE.version;
@@ -112,7 +112,7 @@ async function mockVenue(
         const body = route.request().postDataJSON() as Partial<typeof INITIAL_PROFILE> & {
           expectedVersion?: number;
         };
-        // Optimistic-concurrency guard (#224): a write whose token no longer matches the row is a
+        // Optimistic-concurrency guard: a write whose token no longer matches the row is a
         // 409 STALE_WRITE — never a silent clobber. A match bumps the row's version by one.
         if (body.expectedVersion !== serverVersion) {
           return route.fulfill({
@@ -152,7 +152,7 @@ async function mockVenue(
 }
 
 async function signInAndOpenVenue(page: Page): Promise<void> {
-  // S9 (#277): the guard sends us to the unified card's operator tab; returnUrl brings us back.
+  // The guard sends us to the unified card's operator tab; returnUrl brings us back.
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
@@ -175,7 +175,7 @@ test('pre-fills the form, saves the widened profile without commission/currency,
   await expect(page.getByTestId('venue-commission')).toHaveText('15%');
   await expect(page.getByTestId('venue-payout-currency')).toHaveText('EUR');
   await expect(page.getByTestId('amenity-toggle-WIFI')).toHaveAttribute('aria-pressed', 'true');
-  // The three photo slots are real upload controls now (#142) — all empty here, so each offers
+  // The three photo slots are real upload controls — all empty here, so each offers
   // Add photo; the full pick → upload → preview → remove flows live in operator-venue-photos.e2e.ts.
   await expect(page.getByTestId('photo-slot')).toHaveCount(3);
   await expect(page.getByTestId('photo-pick-cover')).toHaveText(/Add photo/);

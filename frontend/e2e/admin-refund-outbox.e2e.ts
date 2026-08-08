@@ -5,15 +5,15 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * Real-render behaviour + a11y audit of the admin console's Refunds tab (#460): an admin sees what
+ * Real-render behaviour + a11y audit of the admin console's Refunds tab: an admin sees what
  * the Event Publication Registry still owes the cancellation-refund listener, presses Resubmit, and
  * is told what happened — including when the answer is "nothing, the lever is cooling down", which
- * is a `200` and must not read as a failure (AC-1).
+ * is a `200` and must not read as a failure.
  *
  * The refund-outbox API is mocked statefully below so the spec is self-contained and runs in CI
  * (`npm run test:e2e:a11y`). What it cannot prove — that the re-drive is scoped to the refund
  * listener's exact id, away from the payment→confirm spine — is proven against a real registry by
- * `RefundOutboxScopeIT` (#454); this spec proves the console drives the endpoint correctly and
+ * `RefundOutboxScopeIT`; this spec proves the console drives the endpoint correctly and
  * stays accessible while doing it.
  */
 
@@ -63,7 +63,7 @@ test('an admin resubmits the outstanding refunds and is told how much was handed
   await mockRefundOutbox(page, { outstanding: 3 });
   await openRefundsTab(page);
 
-  // The count is on screen before anything is pressed — the lever is never a blind one (AC-1).
+  // The count is on screen before anything is pressed — the lever is never a blind one.
   await expect(page.getByTestId('admin-refunds-outstanding')).toContainText('3');
   await expectNoSeriousAxeViolations(page, 'admin refund outbox with refunds outstanding');
 

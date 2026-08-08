@@ -13,13 +13,13 @@ import {
 } from '../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the Liquid Glass shell tokens (issue #134, AC-4; gate from #38).
+ * WCAG-AA contrast guard for the Liquid Glass shell tokens.
  * Glass surfaces are translucent, so each pair is checked as the EFFECTIVE colour: the glass
  * rgba composited over the worst-case (lightest and darkest) stop of the theme's background
  * gradient, and alpha inks composited over that result. The token mirrors live in
  * `testing/glass-tokens.ts` (shared with the per-page glass specs) — a token edit in
  * `styles.scss` must re-pass here (three tokens already deviate from the design file for
- * exactly this reason; see the styles.scss header note and plan R-2).
+ * exactly this reason; see the styles.scss header note).
  *
  * Decorative, text-free elements (sun disc, blobs, swatches, menu bars, caret) are exempt
  * (WCAG 1.4.3 incidental/decoration).

@@ -4,7 +4,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * Real-render CI-safe e2e for the O5 Daily view tab (#175). Drives sign-in → open the Daily view tab
+ * Real-render CI-safe e2e for the Daily view tab. Drives sign-in → open the Daily view tab
  * → see the three tile states (free / booked-online-locked) + the arrivals code chips → tap a free
  * set to mark a walk-in → assert the owner-asserted mark POST and that the tile flips to walk-in
  * marked after the reconcile. API mocked via `page.route` (no backend); axe over the tab.
@@ -12,7 +12,7 @@ import { settle } from './support/booking-dialog';
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
-// A1 free, A2 held by a CONFIRMED booking, A3 free, A4 an UNPAID online hold (#207).
+// A1 free, A2 held by a CONFIRMED booking, A3 free, A4 an UNPAID online hold.
 const BOOKINGS = [{ setId: 2, code: 'ABC12345' }];
 
 function seat(
@@ -62,7 +62,7 @@ async function mockDaily(page: Page): Promise<void> {
     return route.fulfill({ status: 204, body: '' });
   });
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: BOOKINGS }));
-  // #207 states read: sets 2 + 4 are online holds (4 unpaid, so absent from the bookings read).
+  // The per-set states read: sets 2 + 4 are online holds (4 unpaid, so absent from the bookings read).
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({
       json: [
@@ -112,7 +112,7 @@ async function mockDaily(page: Page): Promise<void> {
 test.use({ colorScheme: 'dark' });
 
 async function signInAndOpenDaily(page: Page): Promise<void> {
-  // S9 (#277): the guard sends us to the unified card's operator tab; returnUrl brings us back.
+  // The guard sends us to the unified card's operator tab; returnUrl brings us back.
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
@@ -133,10 +133,10 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'FREE');
   await expect(page.locator('[data-set-id="2"]')).toHaveAttribute('data-state', 'BOOKED_ONLINE');
 
-  // #207: the UNPAID hold (set 4, no confirmed booking) is locked — never a tappable walk-in ✓.
+  // The UNPAID hold (set 4, no confirmed booking) is locked — never a tappable walk-in ✓.
   await expect(page.locator('[data-set-id="4"]')).toHaveAttribute('data-state', 'BOOKED_ONLINE');
 
-  // #207: only STAFF_MARKED states count — the old taken−confirmed remainder showed a phantom 1.
+  // Only STAFF_MARKED states count — the old taken−confirmed remainder showed a phantom 1.
   await expect(page.getByTestId('oc-stat-walkins')).toHaveText('0');
 
   // Arrivals: one row with the display-only booking code chip.

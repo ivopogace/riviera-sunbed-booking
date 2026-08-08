@@ -3,16 +3,16 @@ import { expect, test, type Page } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
- * Real-render a11y + behaviour audit of the self-service right-to-erasure journey (#101 [D5], AC-9): a
+ * Real-render a11y + behaviour audit of the self-service right-to-erasure journey: a
  * signed-in tourist erases their account from the account page behind a two-step confirm; on success the
  * page shows an erased confirmation and the session is cleared, and a transport failure keeps them signed
  * in with an error. The erasure API is mocked statefully, so this runs in CI (`npm run test:e2e:a11y`).
  *
- * <p>Since #351 the page is reached through the shell's account menu rather than by URL — the session is
+ * <p>The page is reached through the shell's account menu rather than by URL — the session is
  * still faked at `/api/auth/me`, so the spec lands on Discover first to get a signed-in header to click.
  */
 
-/** Reach the account page the way a tourist does (#351) — through the header, not a URL. */
+/** Reach the account page the way a tourist does — through the header, not a URL. */
 async function gotoAccount(page: Page): Promise<void> {
   await page.goto('/');
   await page.getByTestId('nav-user').click();

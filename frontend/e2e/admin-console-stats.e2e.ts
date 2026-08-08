@@ -5,29 +5,29 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * Real-render behaviour + a11y audit of the admin console's stat strip (A9, epic #348), at **360px**
+ * Real-render behaviour + a11y audit of the admin console's stat strip, at **360px**
  * — the project's small-screen bar and the only width where the strip's cost is in question.
  *
- * Two guards here exist to keep decisions decided, in the shape Q1's own e2e established:
+ * Two guards here exist to keep decisions decided, in the shape the tab strip's own e2e established:
  *
  *  - **The fold budget.** The strip's whole risk is that it pushes the console home's actual work
- *    below the fold. The shared operator chrome (#462) already spends 165px and the seven-tab strip
+ *    below the fold. The shared operator chrome already spends 165px and the seven-tab strip
  *    another 137px, so the room left is small and shrinks with every tab. Asserting that the first
  *    content heading stays above a 740px fold fails CI on a fifth tile or a taller tile, instead of
  *    letting the page quietly become a masthead.
- *  - **The strip's scope.** A9 renders the stats on the console *home* only, because Q1 (PR #524)
- *    declined a layout component and pinned its revisit to a ninth tab. That is a decision, not an
- *    accident, so a later slice pasting the strip onto another tab should fail a test rather than
- *    silently reopen it.
+ *  - **The strip's scope.** The stats render on the console *home* only, because the console's
+ *    tab-order decision declined a layout component and pinned its revisit to a ninth tab. That is
+ *    a decision, not an accident, so a later change pasting the strip onto another tab should fail
+ *    a test rather than silently reopen it.
  *
  * The admin reads are mocked here so the spec is self-contained and runs in CI
  * (`npm run test:e2e:a11y`). What it cannot prove — that `/api/admin/**` is genuinely ADMIN-gated —
- * is A4's, proven against a real Postgres by `AdminPayoutSecurityIT` and its siblings.
+ * is the backend's, proven against a real Postgres by `AdminPayoutSecurityIT` and its siblings.
  */
 
 const ADMIN = { username: 'operator', password: 'admin-pw' };
 
-/** The viewport the whole slice is argued at — and the fold the budget is measured against. */
+/** The viewport the whole strip is argued at — and the fold the budget is measured against. */
 test.use({ viewport: { width: 360, height: 740 } });
 
 const PENDING = [

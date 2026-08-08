@@ -5,9 +5,9 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * Real-render behaviour + a11y audit of the admin console's Photos tab (#511): an admin picks a
+ * Real-render behaviour + a11y audit of the admin console's Photos tab: an admin picks a
  * venue it does not own, sees its photo slots, and removes one — behind a confirmation that names
- * what is about to be destroyed (AC-11).
+ * what is about to be destroyed.
  *
  * The moderation API is mocked statefully below so the spec is self-contained and runs in CI
  * (`npm run test:e2e:a11y`). What it cannot prove — that the read and the delete are genuinely
@@ -108,7 +108,7 @@ test('an admin picks a venue, sees its slots, and takes one down behind a confir
 
   await page.getByTestId('admin-photo-remove-cover').click();
 
-  // The first press only asks — and the question names what it is about to destroy (AC-8).
+  // The first press only asks — and the question names what it is about to destroy.
   const prompt = page.getByTestId('admin-photo-confirm-prompt-cover');
   await expect(prompt).toContainText('Bora Bora Beach');
   await expect(prompt).toContainText('Cover');

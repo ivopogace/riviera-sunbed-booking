@@ -5,7 +5,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * Real-render behaviour + a11y audit of the admin console's mail-delivery card (#380): an admin looks
+ * Real-render behaviour + a11y audit of the admin console's mail-delivery card: an admin looks
  * a tourist up by the address they booked with, reads what actually happened to each confirmation
  * mail, and presses Resend on the one that never arrived.
  *
@@ -72,7 +72,7 @@ async function mockMailDelivery(
 }
 
 /**
- * The outbox status the page loads before it renders anything else (#405). Mocked here because this
+ * The outbox status the page loads before it renders anything else. Mocked here because this
  * card lives on that page: without it the page shows its own load error and no card exists to test.
  */
 async function mockEmptyOutbox(page: Page): Promise<void> {

@@ -5,7 +5,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * Real-render behaviour + a11y audit of the full operator lifecycle (S6 #115, AC-10): a prospective
+ * Real-render behaviour + a11y audit of the full operator lifecycle: a prospective
  * operator self-registers → a PENDING account that CANNOT sign in → a platform admin approves it → the
  * approved operator signs in → creates a venue (which it owns, creator-owns-on-create). The whole
  * lifecycle API is mocked statefully (`support/auth-mocks.ts`), so the spec is self-contained and runs
@@ -23,7 +23,7 @@ test('operator registers, is approved by an admin, then signs in and creates a v
   const signIn = new OperatorSignInPage(page);
 
   // 1. The prospective operator self-registers → PENDING; it sees the approval notice, not a session.
-  //    Since S9 (#277) /operator/register redirects into the unified card's operator+register tab.
+  //    /operator/register redirects into the unified card's operator+register tab.
   await page.goto('/operator/register');
   await page.getByLabel('Username', { exact: true }).fill(NEW_OP.username);
   await page.getByLabel('Contact email', { exact: true }).fill(NEW_OP.contactEmail);
@@ -57,7 +57,7 @@ test('operator registers, is approved by an admin, then signs in and creates a v
   await signIn.signIn(NEW_OP.username, NEW_OP.password);
   await signIn.expectSignedInAs(NEW_OP.username);
 
-  // 5. The approved operator creates a venue on the inline /operator form and lands in its console (#278).
+  // 5. The approved operator creates a venue on the inline /operator form and lands in its console.
   await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
   await page.getByLabel('Name', { exact: true }).fill('Sunset Club');
   await page.getByLabel('Beach', { exact: true }).fill('Ksamil');

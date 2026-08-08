@@ -4,20 +4,19 @@ import { mockCustomerRecoveryApi } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
- * Real-render CI-safe e2e for the signed-in customer's set/change-password page (S8 #113, issue #346) —
- * the last credential-rotation surface with no e2e at all, next to the reset, verify and operator-password
- * specs. It proves the rotation is REAL the way those do: after a successful change, sign out and show that
- * only the new password gets back in. The four failure branches each get their own render — a wrong current
- * password, a current password omitted by an account that has one (`MISSING_CURRENT_PASSWORD`, #345 — the
- * branch this page alone can reach, since it cannot know whether the account has a local password), a
- * password under the policy minimum (caught client-side, so no request at all), and the 429 that #326 made
- * newly reachable and #342 mapped but never rendered.
+ * Real-render CI-safe e2e for the signed-in customer's set/change-password page. It proves the rotation is
+ * REAL the way the reset, verify and operator-password specs do: after a successful change, sign out and
+ * show that only the new password gets back in. The four failure branches each get their own render — a
+ * wrong current password, a current password omitted by an account that has one (`MISSING_CURRENT_PASSWORD`
+ * — the branch this page alone can reach, since it cannot know whether the account has a local password), a
+ * password under the policy minimum (caught client-side, so no request at all), and the 429 from the
+ * change-password budget.
  *
- * <p>The SSO-only account is the second test because it is why this page exists (closing the S4 F-1 gap):
- * with no stored credential it sets its first password with the current-password field left blank.
+ * <p>The SSO-only account is the second test because it is why this page exists — an account signed up via
+ * a provider has no local credential: it sets its first password with the current-password field left blank.
  *
  * <p>The auth API is mocked statefully (`support/auth-mocks.ts`), which is what makes the old/new password
- * assertions mean something. Since #351 the page has an in-app entry point, so the spec reaches it the way
+ * assertions mean something. The page has an in-app entry point, so the spec reaches it the way
  * a tourist does — through the header's account menu — rather than by URL.
  */
 
@@ -25,7 +24,7 @@ const EMAIL = 'ana@example.com';
 const OLD_PASSWORD = 'old-customer-pw';
 const NEW_PASSWORD = 'brand-new-customer-pw';
 
-/** Sign in through the unified auth card (S9 #277); a signed-in tourist lands back on Discover. */
+/** Sign in through the unified auth card; a signed-in tourist lands back on Discover. */
 async function signIn(page: Page, password: string): Promise<void> {
   await page.goto('/account/sign-in');
   await page.getByTestId('auth-identifier').fill(EMAIL);
@@ -33,13 +32,13 @@ async function signIn(page: Page, password: string): Promise<void> {
   await page.getByTestId('auth-submit').click();
 }
 
-/** Reach the account page through the shell's account menu (#351), not by URL. */
+/** Reach the account page through the shell's account menu, not by URL. */
 async function gotoAccount(page: Page): Promise<void> {
   await page.getByTestId('nav-user').click();
   await page.getByTestId('nav-account-link').click();
 }
 
-/** Sign out — the control lives inside the account menu since #351. */
+/** Sign out — the control lives inside the account menu. */
 async function signOut(page: Page): Promise<void> {
   await page.getByTestId('nav-user').click();
   await page.getByTestId('nav-signout').click();
@@ -93,7 +92,7 @@ test('a signed-in tourist changes their password, and the new credential replace
 });
 
 test('an SSO-only account sets its first password with no current password', async ({ page }) => {
-  // No initialPassword: the S4 F-1 case — signed in via a provider, no local credential to prove.
+  // No initialPassword: the SSO-only case — signed in via a provider, no local credential to prove.
   await mockCustomerRecoveryApi(page, {
     email: EMAIL,
     signedIn: true,
@@ -157,7 +156,7 @@ test('a blank current password is reported as missing, not incorrect', async ({ 
 });
 
 test('an exhausted change-password budget renders the rate-limit message', async ({ page }) => {
-  // One attempt allowed, so the second meets the per-IP budget (#326) the way a flood would.
+  // One attempt allowed, so the second meets the per-IP budget the way a flood would.
   await mockCustomerRecoveryApi(page, {
     email: EMAIL,
     initialPassword: OLD_PASSWORD,

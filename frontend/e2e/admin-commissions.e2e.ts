@@ -5,7 +5,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * Real-render behaviour + a11y audit of the admin console's Commissions tab (A8, epic #348): an
+ * Real-render behaviour + a11y audit of the admin console's Commissions tab: an
  * admin sees every venue's rate, corrects one through a percent editor that shows the exact basis
  * points it will store, and offers grounds that ride the audit trail.
  *
@@ -15,7 +15,7 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  *
  * The rate API is mocked statefully below so the spec is self-contained and runs in CI
  * (`npm run test:e2e:a11y`). What it cannot prove — that the schedule is genuinely forward-only and
- * that a plain operator gets `403` — is A7's, proven against a real Postgres by its own tests; this
+ * that a plain operator gets `403` — is the backend's, proven against a real Postgres by its own tests; this
  * spec proves the console sends basis points and never a percent, splices the answer, and never
  * scrolls sideways.
  */
@@ -183,7 +183,7 @@ test('the tab strip marks Commissions in slot 2 and never scrolls sideways at 36
   await expect(commissions).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('admin-tab-operators')).not.toHaveAttribute('aria-current', 'page');
 
-  // Q1 (#348) put Commissions immediately after Operators; the strip is where that is visible.
+  // The console's tab-order decision put Commissions immediately after Operators; the strip is where that is visible.
   const labels = await page
     .getByRole('navigation', { name: 'Admin console sections' })
     .getByRole('link')

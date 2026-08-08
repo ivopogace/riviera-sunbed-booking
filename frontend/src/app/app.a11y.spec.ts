@@ -6,12 +6,12 @@ import { App } from './app';
 import { SsoRedirect } from './core/sso-redirect';
 import { ThemeService } from './core/theme';
 
-/** No-op SSO redirect: the shell instantiates the real CustomerAuth, which injects SsoRedirect (S4 #112);
+/** No-op SSO redirect: the shell instantiates the real CustomerAuth, which injects SsoRedirect;
  *  these tests never start SSO, so a do-nothing redirector avoids a real navigation. */
 const noopSsoRedirect: SsoRedirect = { go: () => undefined };
 
 /**
- * Automated axe-core structural audit of the Liquid Glass shell (issue #134, AC-4): header,
+ * Automated axe-core structural audit of the Liquid Glass shell: header,
  * nav, theme picker and mobile menu — in BOTH themes, closed and open. Colour contrast is
  * verified deterministically in `app.contrast.spec.ts` (axe can't measure it under jsdom);
  * the real-browser sweep runs in `e2e/theme-shell.e2e.ts`.

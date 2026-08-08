@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
- * Real-render CI-safe e2e for the tourist cover-photo display (#142, AC-10): the Discover card
+ * Real-render CI-safe e2e for the tourist cover-photo display: the Discover card
  * renders the cover's CARD variant when a venue has one and keeps the gradient placeholder (sun,
  * no image) when it does not; the beach-map banner renders the BANNER variant, the scrim stays
  * layered over both, and the retired "coming soon" pill never renders in either state. API mocked
@@ -85,7 +85,7 @@ test('the Discover card shows the cover photo (scrim kept), the photo-less card 
   // (the location text's AA floor is computed in home.contrast.spec.ts — here we pin the layering).
   const coverImg = cards.first().getByTestId('card-photo-img');
   await expect(coverImg).toBeVisible();
-  // The service resolves the wire's root-relative path against the API origin (F-7).
+  // The service resolves the wire's root-relative path against the API origin.
   await expect(coverImg).toHaveAttribute('src', /\/api\/venues\/1\/photos\/aa01$/);
   await expect(cards.first().locator('.photo-scrim')).toBeAttached();
 

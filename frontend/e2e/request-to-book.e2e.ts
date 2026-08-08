@@ -4,11 +4,11 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * Real-render a11y + behaviour audit of the Request-to-Book flow (issue #98; Liquid Glass restyle
- * #137): REQUEST-mode beach map → 2-step dialog whose Review step shows the "Send request" CTA +
- * no-charge copy → 202 PENDING_REQUEST → request-sent screen → the booking-by-code view through its
- * request lifecycle (pending → accepted "Pay now" → fake-Stripe payment → poll to CONFIRMED; plus
- * the guest's own withdraw (#123) and the DECLINED/EXPIRED terminal views). The API is mocked (`page.route`) and Stripe is the
+ * Real-render a11y + behaviour audit of the Request-to-Book flow: REQUEST-mode beach map → 2-step
+ * dialog whose Review step shows the "Send request" CTA + no-charge copy → 202 PENDING_REQUEST →
+ * request-sent screen → the booking-by-code view through its request lifecycle (pending → accepted
+ * "Pay now" → fake-Stripe payment → poll to CONFIRMED; plus the guest's own withdraw and the
+ * DECLINED/EXPIRED terminal views). The API is mocked (`page.route`) and Stripe is the
  * deterministic fake (`__RIVIERA_FAKE_STRIPE__`), so the suite is CI-safe with no backend.
  */
 
@@ -183,7 +183,7 @@ test('pay window closed mid-page: Pay now fails → honest terminal state + link
   phase = 'cancelled';
   await page.getByTestId('pay-button').click();
 
-  // The failure re-checks server truth (#126) and goes terminal — no retry loop on a dead intent.
+  // The failure re-checks server truth and goes terminal — no retry loop on a dead intent.
   await expect(page.getByRole('heading', { name: /couldn.t be completed/ })).toBeVisible();
   await expect(page.getByTestId('pay-button')).toHaveCount(0);
   await expectNoSeriousAxeViolations(page, 'payment page (terminal, dead intent)');

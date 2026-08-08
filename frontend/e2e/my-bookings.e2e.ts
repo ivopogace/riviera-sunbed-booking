@@ -4,9 +4,9 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { completeDialog, settle } from './support/booking-dialog';
 
 /**
- * Real-render a11y + behaviour audit of the device-local "My bookings" list (issue #139): a booking
+ * Real-render a11y + behaviour audit of the device-local "My bookings" list: a booking
  * made in this browser is remembered on-device (no account), appears in the list fetched live by
- * code, opens the T5 detail, and — after a server-truth cancellation — reflects Cancelled on return.
+ * code, opens the booking detail, and — after a server-truth cancellation — reflects Cancelled on return.
  * The API is mocked (`page.route`), so the suite is CI-safe with no backend. Axe runs on the list in
  * both themes (the Liquid Glass card glass + status chip must clear AA over each theme's gradient).
  */
@@ -105,7 +105,7 @@ test('a booking made here appears in My bookings, and a cancellation reflects th
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'my bookings list (porcelain)');
 
-  // Open the row → T5 detail → cancel it.
+  // Open the row → the booking detail → cancel it.
   await row.click();
   await expect(page).toHaveURL(new RegExp(`/booking/${CODE}`));
   await page.getByTestId('start-cancel').click();
@@ -126,9 +126,9 @@ test('the empty My bookings state is accessible (no bookings on this device)', a
   await expectNoSeriousAxeViolations(page, 'my bookings empty state');
 });
 
-// S3 (#114): signed-in union + dedupe. DEVICE_CODE is device-only; SHARED_CODE is on this device AND
+// Signed-in union + dedupe. DEVICE_CODE is device-only; SHARED_CODE is on this device AND
 // in the account list (booked while signed in → shown once); ACCT_CODE is account-only (another
-// device → the account list ADDS it). Device codes render per-code (F2: device shows immediately);
+// device → the account list ADDS it). Device codes render per-code (device rows show immediately);
 // the account list contributes only codes this device doesn't already have.
 const DEVICE_CODE = 'DEVICE99999';
 const SHARED_CODE = 'SHARED11111';
@@ -188,7 +188,7 @@ test('signed in: My bookings unions the account list with this device\'s codes, 
   // The account's server list: SHARED_CODE (also on this device) + ACCT_CODE (only on the account).
   await page.route(/\/api\/me\/bookings(\?.*)?$/, (route) => route.fulfill({ json: ACCOUNT_ROWS }));
   // This device's codes, fetched live by code.
-  // Device-only booking is oldest (11-20), so the F4 #246 sort must put the account row on top.
+  // Device-only booking is oldest (11-20), so the newest-first global sort must put the account row on top.
   await page.route(new RegExp(`/api/bookings/${DEVICE_CODE}(\\?.*)?$`), (route) =>
     route.fulfill({ json: deviceDetail(DEVICE_CODE, 'Device Bar', 9, '2026-11-20') }),
   );
@@ -210,7 +210,7 @@ test('signed in: My bookings unions the account list with this device\'s codes, 
   await expect(rows.filter({ hasText: DEVICE_CODE })).toHaveCount(1);
   await expect(rows.filter({ hasText: ACCT_CODE })).toHaveCount(1); // account-only, merged in
   await expect(page.getByText('Sunset Bar')).toBeVisible();
-  // F4 #246 global order, newest first: account 12-05 above shared 12-01 above device 11-20.
+  // Global order, newest first: account 12-05 above shared 12-01 above device 11-20.
   await expect(rows.nth(0)).toContainText(ACCT_CODE);
   await expect(rows.nth(1)).toContainText(SHARED_CODE);
   await expect(rows.nth(2)).toContainText(DEVICE_CODE);

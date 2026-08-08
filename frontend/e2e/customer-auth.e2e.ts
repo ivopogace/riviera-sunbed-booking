@@ -6,7 +6,7 @@ import { mockCustomerAuthApi } from './support/auth-mocks';
 import { CustomerAuthPage } from './support/pages/customer-auth.page';
 
 /**
- * Real-render a11y + behaviour audit of the customer auth flow (S2 #111, epic #108, AC-11): register
+ * Real-render a11y + behaviour audit of the customer auth flow: register
  * from the header → auto-signed-in state that SURVIVES a reload (restored from `GET /api/auth/me`,
  * never a held credential — D-1) → sign out returns to the signed-out header; and a returning tourist
  * signs in, with a wrong password answered by one generic message (no enumeration — D-8). The auth API
@@ -22,7 +22,7 @@ test('a tourist registers, stays signed in across a reload, and signs out', asyn
   await auth.expectSignedOut(); // header offers Sign in / Register
 
   // Register a fresh account from the header.
-  // S9 (#277): the header's Register link deep-links into the unified card's register mode.
+  // The header's Register link deep-links into the unified card's register mode.
   await auth.gotoRegister();
   await expect(page).toHaveURL(/\/account\/sign-in\?mode=register$/);
   await expectNoSeriousAxeViolations(page, 'register page');

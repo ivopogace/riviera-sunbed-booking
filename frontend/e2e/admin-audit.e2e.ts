@@ -5,7 +5,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * Real-render behaviour + a11y audit of the admin console's Audit tab (#507): an admin opens the
+ * Real-render behaviour + a11y audit of the admin console's Audit tab: an admin opens the
  * trail and reads who did what, to what, when, and on what grounds — including a failed attempt,
  * which renders like any other row with its status. The audit API is mocked so the spec is
  * self-contained and runs in CI (`npm run test:e2e:a11y`); that a mutating admin action actually
@@ -61,7 +61,7 @@ test('an admin reads the recorded actions — who, what, when, outcome, grounds'
   // The moment reads in Europe/Tirane (09:30Z is 11:30 in summer), newest row first.
   await expect(takedown).toContainText('11:30');
 
-  // A refused attempt is a row like any other — its status is the story (AC-5).
+  // A refused attempt is a row like any other — its status is the story.
   const failed = page.getByTestId('admin-audit-row-11');
   await expect(failed).toContainText('400');
 

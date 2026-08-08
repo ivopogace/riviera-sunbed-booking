@@ -4,11 +4,11 @@ import { OperatorSignInPage } from '../support/pages/operator-sign-in.page';
 import { OPERATOR_PASSWORD, OPERATOR_USERNAME } from './support/operator';
 
 /**
- * Real-backend e2e for the O4 per-row reprice (issue #174). A real Chromium drives the operator
+ * Real-backend e2e for the per-row reprice. A real Chromium drives the operator
  * console's Pricing tab, which calls the REAL Spring Boot backend, which persists to a REAL
  * Flyway-migrated Postgres — nothing is mocked. Proves the full wired round-trip the unit/IT layers
  * can only prove in halves: reprice a row in the console → it survives a reload → and the SAME price
- * renders on the public tourist beach map + booking dialog (AC-2/AC-8). Local-only suite (never CI).
+ * renders on the public tourist beach map + booking dialog. Local-only suite (never CI).
  *
  * Each test creates its OWN venue (the DB persists across the run) so tests are order-free.
  */
@@ -78,11 +78,11 @@ test.describe('O4 pricing — real backend, real Postgres', () => {
     await page.getByTestId('pricing-input-A').blur();
     await expect(page.getByTestId('pricing-saved-A')).toBeVisible();
 
-    // AC-2: survives reload — the value is re-read from Postgres, not local state.
+    // Survives reload — the value is re-read from Postgres, not local state.
     await page.reload();
     await expect(page.getByTestId('pricing-input-A')).toHaveValue('50.5');
 
-    // AC-8: the public tourist beach map (U1 read) reflects it — open an A set, the dialog shows €50.50.
+    // The public tourist beach map reflects it — open an A set, the dialog shows €50.50.
     await page.goto(`/venues/${id}`);
     await expect(page.getByTestId('set-tile').first()).toBeVisible();
     await page.getByTestId('set-tile').first().click();
