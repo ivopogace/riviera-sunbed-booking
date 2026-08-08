@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
 
 /**
- * The two answers to {@link CollectionGuarantee} (#390), bound to the same profiles as the gateways
+ * The two answers to {@link CollectionGuarantee}, bound to the same profiles as the gateways
  * they describe and living beside them on purpose — {@code StubPaymentGateway} and
  * {@code StripePaymentGateway} are in this package, so the profile expression and the gateway it
  * characterizes stay one file apart rather than one module apart.

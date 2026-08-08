@@ -4,7 +4,7 @@ import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PayoutBatch;
 
 /**
- * The result of a batch status transition (U9, issue #12) — a closed, caller-mappable set (typed
+ * The result of a batch status transition — a closed, caller-mappable set (typed
  * outcomes for expected flows, not exceptions). The web adapter {@code switch}es exhaustively:
  * {@link Marked} → 200, {@link NotFound} → 404, {@link IllegalTransition} → 409.
  */

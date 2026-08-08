@@ -7,7 +7,7 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 
 /**
  * Maps the lower-case REST slot segment to {@link PhotoSlot} for the two photo controllers — the
- * operator's venue-scoped writes and the platform admin's takedown (#504). Shared rather than
+ * operator's venue-scoped writes and the platform admin's takedown. Shared rather than
  * duplicated so both surfaces answer an unknown slot identically: {@code 400 INVALID_REQUEST} from
  * the one advice, never an enum-parse {@code 500}.
  */

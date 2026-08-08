@@ -1,7 +1,7 @@
 package ai.riviera.platform.operator.vocabulary;
 
 /**
- * The result of a self-registration attempt for an operator account (#115, S6) — a closed,
+ * The result of a self-registration attempt for an operator account — a closed,
  * caller-mappable set (typed outcomes over exceptions; riviera-java-conventions). A sealed interface so
  * the edge {@code switch}es/pattern-matches exhaustively. Both cases return the <em>identical</em>
  * outward HTTP response (non-enumeration, design D-8); the edge uses the distinction only to run the

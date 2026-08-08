@@ -26,7 +26,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * via {@link JdbcClient}, no JPA (invariant #1); package-private, so callers depend on the port
  * (invariant #11). The blob is isolated in {@code venue_photo_variant} and read only on the serving
  * path ({@link #loadBytes}) — never by {@link #listMetadata}, and never by {@link #exists}, which
- * answers the conditional-GET question on the {@code (venue_id, content_hash)} index alone (#508).
+ * answers the conditional-GET question on the {@code (venue_id, content_hash)} index alone.
  */
 @Repository
 class JdbcPhotoStorage implements PhotoStorage {
@@ -43,7 +43,7 @@ class JdbcPhotoStorage implements PhotoStorage {
 	@Override
 	@Transactional
 	public void replace(VenueId venueId, PhotoSlot slot, ProcessedPhoto photo) {
-		// Atomic race-safe replace (review finding #142 F-3): the upsert claims OR locks the slot's
+		// Atomic race-safe replace: the upsert claims OR locks the slot's
 		// row — a concurrent replace of the same (venue, slot) blocks on the row lock instead of
 		// dying on venue_photo_slot_uniq the way delete-then-insert did (last writer wins, per the
 		// plan's concurrency section). created_at is bumped on conflict: the row then describes the

@@ -16,12 +16,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * when unset, which is correct for the default (stub) profile where Stripe is dormant.
  *
  * <p>{@code connectTimeout} / {@code readTimeout} are explicit, short {@code StripeClient}
- * timeouts (issue #52, risk R-3): the Stripe SDK defaults to 30s connect / 80s read, long enough
+ * timeouts: the Stripe SDK defaults to 30s connect / 80s read, long enough
  * that a degraded Stripe could pin a request thread (and a pooled connection) — these fail fast
  * instead. Defaults (5s / 20s) comfortably exceed a normal sub-second PaymentIntent create;
  * tune per environment via {@code stripe.connect-timeout} / {@code stripe.read-timeout}.
  *
- * <p><strong>Both timeouts are bounded at bind time (#426), because {@code 0} is the classic
+ * <p><strong>Both timeouts are bounded at bind time, because {@code 0} is the classic
  * footgun.</strong> It reads as "no limit" to whoever types it and means <em>infinite</em> to the JDK
  * HTTP stack the SDK builds on ({@code java.net.URLConnection#setConnectTimeout}: "A timeout of zero is
  * interpreted as an infinite timeout") — so the value that looks like removing a restriction restores
@@ -58,7 +58,7 @@ public record StripeProperties(String apiKey, String webhookSecret, Duration con
 	 * The SDK's own default connect timeout — the value this knob exists to <em>shorten</em>. It is the
 	 * last accepted value, not the first rejected one: setting exactly the SDK default is merely a no-op,
 	 * whereas anything <em>beyond</em> it is worse than leaving the knob unset and hands back the thread
-	 * pin of #52 R-3. 6× the shipped 5s.
+	 * pin these timeouts exist to prevent. 6× the shipped 5s.
 	 */
 	static final Duration MAX_CONNECT_TIMEOUT = Duration.ofSeconds(30);
 
