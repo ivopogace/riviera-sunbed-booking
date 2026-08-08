@@ -114,7 +114,13 @@ model in `docs/architecture/domain-model.md`.
 - **Refund** — money returned to a tourist, by reason: policy, weather, or conflict.
 - **Refund tier** — the policy outcome of a cancellation: **full** (cancelled before
   the cutoff), **partial** (after the cutoff, the venue's configurable late-cancel
-  share), or **none** (after the cutoff, non-refundable). Always computed server-side.
+  share), or **none** (after the cutoff, the venue offering 0 bps). Always computed
+  server-side, and only within the **cancellation window**.
+- **Cancellation window** — how long a confirmed booking may be cancelled at all:
+  from booking until `00:00 Europe/Tirane` on the service date. Once the service day
+  opens the window is **closed** — the cancellation is refused outright (not refunded
+  at a tier), because the guest can already be consuming the stay. The venue's own
+  weather refund is outside the window and stays available for past dates.
 
 ## Demand (tourist side)
 

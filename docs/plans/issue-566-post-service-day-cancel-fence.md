@@ -29,7 +29,9 @@ issue names only `CancelBookingService`, while `ViewBookingService` carries the 
 "just add a date check" framing into an explicit three-tier window) · `tdd` (each phase is
 red-green: the boundary arithmetic and the refund tier are pure unit tests before any wiring) ·
 `riviera-review-overlay` (review gate — due at ready-for-review) · `riviera-docs-freshness`
-(**ran** over the slice's own diff at close-out — see Execution status) · `riviera-modulith`
+(**ran** over `origin/main..HEAD`, **2 findings**, both patched — D-1 `CONTEXT.md`'s three-tier
+glossary entry implied a cancel is always possible after the cutoff; D-2 `CLAUDE.md` invariant #10
+stated the tiers with no closing bound) · `riviera-modulith`
 (confirmed the whole change stays inside `booking`: no new published surface, no new event, no
 `allowedDependencies` edit — and that `CancellationWindow` belongs in `booking.domain`, not
 `vocabulary/`, since no sibling module consumes it) · `riviera-java-conventions` (sealed
@@ -62,11 +64,12 @@ for `bugfix/post-service-day-cancel-fence` (`riviera-sdlc` § Remote/cloud sessi
       `CancelBookingIT.rejectsCancelAfterTheServiceDayHasPassed`
 - [ ] **AC-5:** Given that same booking, when it is viewed by code, then `cancellable` is `false`
       and `refundIfCancelledNow` is 0 — the UI never offers a cancel the server would reject.
-      *Pinned by:* `ViewBookingServiceTest.pastBookingIsNotCancellableAndQuotesNothing`
+      *Pinned by:* `ViewBookingServiceTest.pastBookingIsNotCancellableAndQuotesNothing`, and at
+      HTTP level by `BookingViewIT.viewOffersNoCancelOnceTheServiceDayHasPassed`
 - [ ] **AC-6:** Given the cancel endpoint rejects on a closed window, when the response is written,
       then it is `409` with code `CANCELLATION_WINDOW_CLOSED` (distinct from `NOT_CANCELLABLE`, so
       the two rejections stay diagnosable). *Pinned by:*
-      `CancelBookingIT.closedWindowRejectionCarriesItsOwnCode`
+      `BookingControllerIT.closedWindowRejectionCarriesItsOwnCode`
 - [ ] **AC-7:** Given a venue owner triggering a weather refund for a **past** date, when the
       service runs, then it still cancels and fully refunds — the fence is scoped to the
       guest-initiated path only. *Pinned by:* `WeatherRefundServiceIT.fullRefundRegardlessOfCutoff`
@@ -263,7 +266,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI — `Repo hygiene (diff-scoped)` on `1a1e785` | `BookingControllerIT.java` and `BookingViewIT.java` were changed by the diff but absent from the File-structure section | fixed — both listed, guard green |
+| D-1 | docs-freshness (step 3) | `CONTEXT.md`'s **Refund tier** entry described *none* as "after the cutoff, non-refundable", implying a cancel is always available after the cutoff — the exact belief the fence removes | patched — tier entry corrected to the 0-bps case, new **Cancellation window** term added |
+| D-2 | docs-freshness (step 3) | `CLAUDE.md` invariant #10 stated "after → non-refundable (or partial)" with no end, so the canonical rule under-specified the fence | patched — **substantive wording change to an invariant, flagged for reviewer attention** rather than left silent |
 
 ---
 
@@ -280,14 +285,20 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/booking/application/refund/WeatherRefundService.java` — one Javadoc line recording why it stays unfenced
 - `platform/src/test/java/ai/riviera/platform/booking/application/cancel/BookingCutoffTest.java` — AC-1, AC-2
 - `platform/src/test/java/ai/riviera/platform/booking/domain/RefundPolicyTest.java` — AC-3
-- `platform/src/test/java/ai/riviera/platform/booking/CancelBookingIT.java` — AC-4, AC-6
+- `platform/src/test/java/ai/riviera/platform/booking/CancelBookingIT.java` — AC-4
+- `platform/src/test/java/ai/riviera/platform/booking/BookingControllerIT.java` — AC-6, the HTTP code for the refusal
+- `platform/src/test/java/ai/riviera/platform/booking/BookingViewIT.java` — the AC-5 twin at HTTP level, and the `LATE`-window reseed of the partial-refund test
 - `platform/src/test/java/ai/riviera/platform/booking/application/view/ViewBookingServiceTest.java` — AC-5
 - `platform/src/test/java/ai/riviera/platform/booking/WeatherRefundServiceIT.java` — AC-7
 - `frontend/src/app/booking/booking-view.spec.ts` — pins no cancel affordance when `cancellable` is false on a `CONFIRMED` booking
 - `docs/adr/0005-cancellation-refund-tiers-and-proportional-reversal.md` — the third-tier amendment
 - `docs/plans/issue-566-post-service-day-cancel-fence.md` — this plan
-- `RESPONSIBILITIES.md` — `booking`'s cancellation entry gains the fence
-- `CLAUDE.md` — the `booking` module row's lifecycle phrase, if the freshness audit finds it stale
+- `CONTEXT.md` — the `Refund tier` glossary entry, plus the new `Cancellation window` term (freshness finding D-1)
+- `CLAUDE.md` — invariant #10 gains the closing bound (freshness finding D-2)
+
+`RESPONSIBILITIES.md` is deliberately **not** touched: its `booking` Job line ("Enforce the
+cancellation policy and the same-day cutoff") stays true, and the fence's rationale belongs in
+ADR-0005, which `CancellationWindow`'s Javadoc points at.
 
 ---
 
@@ -364,7 +375,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Phase 4 — Docs, ADR-0005 amendment, close-out
 
-**Files:** Modify `docs/adr/0005-…md`, `RESPONSIBILITIES.md`, `CLAUDE.md` (if stale), this plan
+**Files:** Modify `docs/adr/0005-…md`, `CONTEXT.md`, `CLAUDE.md`, this plan
 
 - [ ] **Step 1:** Amend ADR-0005 with the third tier, in the style of its #428 amendment.
 - [ ] **Step 2:** Run `riviera-docs-freshness` over the slice's diff; patch what it flags.
