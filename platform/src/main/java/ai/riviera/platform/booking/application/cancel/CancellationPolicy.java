@@ -45,10 +45,24 @@ public class CancellationPolicy {
 				? rates.lateCancelRefundBps(booking.venueId()).orElse(0)
 				: 0;
 		long refundMinor = RefundPolicy.refundMinor(booking.amountMinor(), window, lateBps);
-		return new RefundQuote(set, window == CancellationWindow.FREE, refundMinor);
+		return new RefundQuote(set, window, refundMinor);
 	}
 
-	/** The computed cancellation terms: set display, free-cancellation status, and the refund due. */
-	public record RefundQuote(SetBookingInfo set, boolean beforeCutoff, long refundMinor) {
+	/**
+	 * The computed cancellation terms: set display, which {@link CancellationWindow} the request
+	 * falls in, and the refund due. {@code beforeCutoff} is derived rather than stored so the
+	 * window stays the single carrier of the temporal decision.
+	 */
+	public record RefundQuote(SetBookingInfo set, CancellationWindow window, long refundMinor) {
+
+		/** Whether free cancellation is still open — what the booking view reports on the wire. */
+		public boolean beforeCutoff() {
+			return window == CancellationWindow.FREE;
+		}
+
+		/** Whether a cancellation may still be actioned at all (invariant #10). */
+		public boolean cancellationOpen() {
+			return window != CancellationWindow.CLOSED;
+		}
 	}
 }

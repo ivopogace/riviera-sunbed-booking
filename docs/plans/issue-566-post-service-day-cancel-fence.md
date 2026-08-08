@@ -69,8 +69,9 @@ for `bugfix/post-service-day-cancel-fence` (`riviera-sdlc` § Remote/cloud sessi
       `CancelBookingIT.closedWindowRejectionCarriesItsOwnCode`
 - [ ] **AC-7:** Given a venue owner triggering a weather refund for a **past** date, when the
       service runs, then it still cancels and fully refunds — the fence is scoped to the
-      guest-initiated path only. *Pinned by:*
-      `WeatherRefundServiceIT.refundsAPastDateBecauseTheFenceIsGuestOnly`
+      guest-initiated path only. *Pinned by:* `WeatherRefundServiceIT.fullRefundRegardlessOfCutoff`
+      — the **existing** test, which already seeds on `2020-07-01`; no new test was written for
+      AC-7, its class Javadoc now records that it also pins the fence's scope.
 
 ## Non-goals
 
@@ -241,17 +242,17 @@ mocked suite does not construct; the unit spec is the proportionate pin.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Write the failing `CancelBookingIT.rejectsCancelAfterTheServiceDayHasPassed` (AC-4)
-and `closedWindowRejectionCarriesItsOwnCode` (AC-6), plus AC-7 in `WeatherRefundServiceIT`.
+**Next action:** Write the failing `ViewBookingServiceTest.pastBookingIsNotCancellableAndQuotesNothing`
+(AC-5), then AND the window into `ViewBookingService`'s `cancellable`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `CancellationWindow` + the `BookingCutoff` boundary | ✅ | `dc6f9cc` |
 | 1 — `RefundPolicy` third tier | ✅ | `61b9818` |
-| 2 — Fence the cancel use case + its error code | ⏳ | |
-| 3 — Fence the view + FE pin | | |
+| 2 — Fence the cancel use case + its error code | ✅ | `1a776ca` |
+| 3 — Fence the view + FE pin | ⏳ | |
 | 4 — Docs, ADR-0005 amendment, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -382,6 +383,7 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|---|---|
 | 2026-08-08 | Phase 0 — the window classification | Any other place deriving a cancellation decision from a date | `grep -rn "freeCancellationOpen\|cancellationWindow\|isBefore(.*bookingDate)" platform/src/main` | Only `BookingCutoff` + its one caller `CancellationPolicy` | None needed — the rule was already centralized; the classification replaced the boolean in place |
 | 2026-08-08 | Phase 0 — the fence's reach | Every caller of the guarded `cancelConfirmed` transition | `grep -rln "cancelConfirmed" platform/src/main` | `CancelBookingService` (guest), `WeatherRefundService` (operator), plus the port + adapter + row record | Fence the guest path only; AC-7 pins the weather path staying open (A-3) |
+| 2026-08-08 | Phase 2 — AC-7's pin | Whether a new past-date weather test was needed | Read `WeatherRefundServiceIT` | `fullRefundRegardlessOfCutoff` already seeds `2020-07-01` and asserts a full refund | Wrote **no** new test — cited the existing one and recorded the extra guarantee in its class Javadoc, rather than duplicating coverage |
 
 ---
 

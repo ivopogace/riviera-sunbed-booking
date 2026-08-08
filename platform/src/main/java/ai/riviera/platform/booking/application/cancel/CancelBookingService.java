@@ -24,6 +24,13 @@ import ai.riviera.platform.booking.domain.BookingStatus;
  * (invariant #10), transitions {@code CONFIRMED → CANCELLED} (guarded), frees the {@code (set, date)}
  * via {@link AvailabilityClaim#release} (invariant #2), and publishes {@link BookingCancelled}.
  *
+ * <p>Status alone does not authorize the cancellation: nothing writes {@code COMPLETED}, so a
+ * {@code CONFIRMED} booking would otherwise stay cancellable — and late-cancel-refundable — long
+ * after the guest consumed the stay. The quote's {@link CancellationPolicy.RefundQuote#cancellationOpen}
+ * is the end-of-life fence, checked before the transition so a spent day is never released and no
+ * {@link BookingCancelled} is published for it. The operator's weather refund is deliberately
+ * outside this fence: it is a full refund of the venue's own money for a storm that already happened.
+ *
  * <p><strong>The refund is not issued here.</strong> Moving real money is a side effect that must not
  * sit inside this transaction (a post-refund commit failure would diverge money from state, and a
  * Stripe round-trip would hold the booking row lock). Instead {@code BookingCancelled} carries the
@@ -65,6 +72,9 @@ class CancelBookingService implements CancelBooking {
 		}
 
 		RefundQuote quote = cancellationPolicy.quote(booking);
+		if (!quote.cancellationOpen()) {
+			return new CancelOutcome.WindowClosed();
+		}
 		long refundMinor = quote.refundMinor();
 
 		Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(

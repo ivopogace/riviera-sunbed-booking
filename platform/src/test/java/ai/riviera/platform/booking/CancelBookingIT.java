@@ -24,6 +24,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * AC-4/AC-5/AC-7 (issue #11): cancelling a CONFIRMED booking frees the {@code (set, date)}
@@ -116,5 +117,36 @@ class CancelBookingIT {
 	@Test
 	void unknownCodeIsNotFound() {
 		assertInstanceOf(CancelOutcome.NotFound.class, cancelBooking.cancel("NOSUCHCODE"));
+	}
+
+	@Test
+	void rejectsCancelAfterTheServiceDayHasPassed() {
+		LocalDate booked = LocalDate.of(2035, 5, 11);
+		Created booking = confirmBookingOn(booked);
+		LocalDate spent = LocalDate.of(2021, 6, 3);
+		backdateServiceDay(booking, booked, spent);
+
+		CancelOutcome outcome = cancelBooking.cancel(booking.code());
+
+		assertInstanceOf(CancelOutcome.WindowClosed.class, outcome,
+				"a stay the guest could already consume is no longer reclaimable");
+		assertEquals("CONFIRMED", jdbc.sql("SELECT status FROM booking WHERE id = :id")
+				.param("id", booking.id()).query(String.class).single(),
+				"the delivered booking keeps its status");
+		assertNull(jdbc.sql("SELECT refund_minor FROM booking WHERE id = :id")
+				.param("id", booking.id()).query(Long.class).optional().orElse(null),
+				"no refund is stamped");
+		assertEquals(1, availabilityRows(booking.setId(), spent),
+				"the spent day is not released back into the pool");
+		assertEquals(0, events.stream(BookingCancelled.class).count(),
+				"no BookingCancelled means no Stripe refund and no payout reversal");
+	}
+
+	/** Move a confirmed booking's service day into the past, as if the stay had been consumed. */
+	private void backdateServiceDay(Created booking, LocalDate from, LocalDate past) {
+		jdbc.sql("UPDATE set_availability SET booking_date = :past WHERE set_id = :s AND booking_date = :d")
+				.param("past", past).param("s", booking.setId()).param("d", from).update();
+		jdbc.sql("UPDATE booking SET booking_date = :past WHERE id = :id")
+				.param("past", past).param("id", booking.id()).update();
 	}
 }

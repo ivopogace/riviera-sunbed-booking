@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.domain.CancellationWindow;
 import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
@@ -144,12 +145,16 @@ class ViewBookingServiceTest {
 	}
 
 	private void givenBooking(BookingStatus status) {
+		givenBooking(status, CancellationWindow.FREE, 4500L);
+	}
+
+	private void givenBooking(BookingStatus status, CancellationWindow window, long refundMinor) {
 		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, status, VENUE, SET, GUEST, DATE,
 				4500L, "EUR", null, null, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
-				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), true, 4500L));
+				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), window, refundMinor));
 	}
 
 	private static SetBookingInfo setInfo() {
