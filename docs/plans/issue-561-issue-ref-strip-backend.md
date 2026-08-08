@@ -204,7 +204,7 @@ reflects that stop.
 **Stage pointer:** ⏳ **B green-lit by the maintainer 2026-08-08; B-1 shipped this session. C stays
 not-recommended per the *Recommendation* above — no C batch runs without a separate go.**
 
-**Next action:** the dense tier (≥4 refs/file) has ~38 files left; continue at ~5 files/PR until it's
+**Next action:** the dense tier (≥4 refs/file) has ~28 files left; continue at ~5 files/PR until it's
 exhausted, then switch to larger sparse-tail sweeps (~20–30 files/PR, matching Phase A's own
 dense→sparse transition) for the ~156 files carrying 1–3 refs. C stays parked.
 
@@ -215,10 +215,34 @@ dense→sparse transition) for the ~156 files carrying 1–3 refs. C stays parke
 | B-1 | the B-0 probe's same 5 files (`CrossVenueDenialIT`, `VenueAdminControllerIT`, `TransactionalMailServiceTest`, `VenueAdminServiceTest`, `WebSliceStubs`) — 117 true-violation `#nnn` tokens removed (per-file table below), 0 orphan labels left dangling (O4/O8/T7/S3/S4/S8/S9 rewritten to real nouns or dropped per A-1/F-4), 0 R-4 hits, every `invariant #n` preserved (AC-3: 6 removed/6 added, balanced), R-8 (decision-archaeology over budget in `TransactionalMailServiceTest` + `CrossVenueDenialIT`) left unaddressed by design (out of scope for this mechanical batch) | pushed | ✅ all gates green (AC-2 comment-only, AC-5 non-vacuous 0-violation scan, AC-3 balanced, `compileJava`/`compileTestJava` clean, the 2 pure-unit classes' own tests pass) — CI/Sonar pending a PR |
 | B-2 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `AsyncMailDispatcherTest`, `RateLimitFilterTest`, `OperatorAccountControllerTest`, `PayoutModuleTest`, `MailTransportPropertiesTest` — 64 true-violation tokens removed (F-17 correction: 5 tokens inside AssertJ `.as(...)` description strings were caught and reverted — those are code, F-1's `describe()`-title class, not comments), invariant `#11` preserved in the two files carrying it, 0 R-4 hits. All 5 touched test classes pass locally, `PayoutModuleTest` via Testcontainers (Docker available this session) | pushed | ✅ all gates green after the F-17 fix (AC-2 comment-only, AC-5 non-vacuous scan, `compileJava`/`compileTestJava` clean, all 5 test classes pass) |
 | B-3 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `BookingMailFixtures`, `SetPasswordIT`, `ClientIpResolverTest`, `AdminOperatorControllerTest`, `OperatorPasswordChangeIT` — 51 true-violation tokens removed, 0 permitted refs lost (none of the 5 carried `invariant #n`/`D-n`), 0 R-4 hits. One edit briefly produced a 2-line inline comment (`SetPasswordIT`); the `PostToolUse` RV-STYLE-1 hook (§6c) caught it before the next tool call and it was compressed to one line. `compileJava`/`compileTestJava` clean; 4 of 5 files are directly testable (`BookingMailFixtures` is a shared IT fixture, no `@Test` of its own) and all 4 pass locally, 2 via Testcontainers | pushed | ✅ all gates green (AC-2, AC-5 non-vacuous, `compileJava`/`compileTestJava`, all 4 testable classes pass) |
-| B-4… | next ~5-file batch (dense tier, ~33 files left after B-3) | — | not started |
+| B-4 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `ControllableMailer`, `WorkerContextArchitectureTest`, `AdminPayoutSecurityIT`, `OperatorLifecycleIT`, `EmailSuppressionIT` — 33 true-violation tokens removed, 2 `invariant #13` refs preserved (`AdminPayoutSecurityIT`), 0 R-4 hits. `OperatorLifecycleIT`'s class doc needed a fuller rewrite (two clauses briefly stacked after a ref's removal); caught and fixed by hand-reading the whole paragraph before moving on | pushed | ✅ all gates green (AC-2, AC-5 non-vacuous, `compileJava`/`compileTestJava`, all 4 directly-testable classes pass — `ControllableMailer` is an IT fixture, no `@Test` of its own) |
+| B-5 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `RegistryMailShedDurabilityIT`, `RegistryMailPropertiesTest`, `BookingConfirmationMailListenerTest`, `CreateBookingServiceTest`, `SessionIdentityTest` — 31 true-violation tokens removed, 0 R-4 hits. Applied the F-17 lesson proactively this time: 3 refs inside AssertJ `.as(...)` strings (2 files) were identified as code before editing and left untouched, alongside real Javadoc refs on nearby/same lines that were stripped | pushed | ✅ all gates green (AC-2, AC-5 non-vacuous, `compileJava`/`compileTestJava`, all 5 test classes pass — one via Testcontainers) |
+| B-6… | next ~5-file batch (dense tier, ~28 files left after B-5) | — | not started |
 | C-1… | backend main batches | — | not recommended; blocked on a separate maintainer go |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**B-5 per-file true-violation count (exact, `grep`-verified before and after):**
+
+| File | True violations removed | Refs intentionally left in `.as(...)` code strings (F-1/F-17) |
+|---|---:|---:|
+| `RegistryMailShedDurabilityIT.java` | 5 | 1 (`#407`) |
+| `RegistryMailPropertiesTest.java` | 4 | 2 (`#383`, `#370`) |
+| `BookingConfirmationMailListenerTest.java` | 6 | 0 |
+| `CreateBookingServiceTest.java` | 10 | 0 |
+| `SessionIdentityTest.java` | 6 | 0 |
+| **Total** | **31** | **3** |
+
+**B-4 per-file true-violation count (exact, `grep`-verified before and after):**
+
+| File | True violations removed | `invariant #n` preserved |
+|---|---:|---:|
+| `notification/ControllableMailer.java` | 8 | 0 |
+| `WorkerContextArchitectureTest.java` | 8 | 0 |
+| `payout/AdminPayoutSecurityIT.java` | 5 | 2 |
+| `operator/OperatorLifecycleIT.java` | 6 | 0 |
+| `notification/adapter/out/EmailSuppressionIT.java` | 6 | 0 |
+| **Total** | **33** | **2** |
 
 **B-3 per-file true-violation count (exact, `grep`-verified before and after):**
 
@@ -294,7 +318,26 @@ doc — new findings start at F-14 to stay globally unambiguous across both plan
   (B-3): same
 - `platform/src/test/java/ai/riviera/platform/OperatorPasswordChangeIT.java` — **modified** (B-3):
   same
-- Stage 0 itself (the probe tables above) touched no file — only B-1, B-2, and B-3's batches did.
+- `platform/src/test/java/ai/riviera/platform/notification/ControllableMailer.java` — **modified**
+  (B-4): comment-only, `#nnn` refs stripped
+- `platform/src/test/java/ai/riviera/platform/WorkerContextArchitectureTest.java` — **modified**
+  (B-4): same
+- `platform/src/test/java/ai/riviera/platform/payout/AdminPayoutSecurityIT.java` — **modified**
+  (B-4): same
+- `platform/src/test/java/ai/riviera/platform/operator/OperatorLifecycleIT.java` — **modified**
+  (B-4): same
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/out/EmailSuppressionIT.java` —
+  **modified** (B-4): same
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/in/RegistryMailShedDurabilityIT.java`
+  — **modified** (B-5): comment-only, `#nnn` refs stripped (1 left inside an `.as(...)` string, F-17)
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/in/RegistryMailPropertiesTest.java`
+  — **modified** (B-5): comment-only, `#nnn` refs stripped (2 left inside `.as(...)` strings, F-17)
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/in/BookingConfirmationMailListenerTest.java`
+  — **modified** (B-5): comment-only, `#nnn` refs stripped
+- `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java`
+  — **modified** (B-5): same
+- `platform/src/test/java/ai/riviera/platform/SessionIdentityTest.java` — **modified** (B-5): same
+- Stage 0 itself (the probe tables above) touched no file — only B-1 through B-5's batches did.
 
 ## Generalization-audit log
 
