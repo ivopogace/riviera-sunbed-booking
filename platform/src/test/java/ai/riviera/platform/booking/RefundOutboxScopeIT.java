@@ -39,7 +39,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The guarantee that makes #454's admin lever safe: <strong>a button labelled "refund" can reach
+ * The guarantee that makes the admin lever safe: <strong>a button labelled "refund" can reach
  * exactly one listener</strong> (AC-2), and it never re-drives a refund already settled (AC-8).
  *
  * <p><strong>Why the fixture holds an outstanding {@code PaymentConfirmed}.</strong> The defect the
@@ -50,12 +50,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * registry and asserts it stays stuck.
  *
  * <p><strong>How each out-of-scope row is left genuinely outstanding.</strong> The payout reversal is
- * the easy one: a refunded cancellation with no {@code ACCRUAL} to mirror <em>defers</em> (#428 —
- * throws, publication stays outstanding), so seeding no accrual leaves it owed by the production
+ * the easy one: a refunded cancellation with no {@code ACCRUAL} to mirror <em>defers</em> (throws,
+ * publication stays outstanding), so seeding no accrual leaves it owed by the production
  * path itself. The cancellation mail and the payment confirmation complete normally, so their own
  * archived rows are lifted back into the live table marked {@code FAILED} — the registry's rows,
  * verbatim, never hand-built: a hand-built row the registry silently skips is indistinguishable from
- * the scope working (#405's R-9, which two drafts of {@code MailOutboxScopeIT} paid for).
+ * the scope working (which two drafts of {@code MailOutboxScopeIT} paid for).
  *
  * <p><strong>The control is the load-bearing half.</strong> "Nothing happened to that row" is exactly
  * what a dead row looks like too. So the test ends by re-driving the same rows through an
@@ -231,7 +231,7 @@ class RefundOutboxScopeIT {
 				new SetId(set.setId()), date, refundMinor, "EUR", RefundReason.POLICY);
 	}
 
-	/** The accrual the deferred reversal has been waiting to mirror (#428) — seeded for the control. */
+	/** The accrual the deferred reversal has been waiting to mirror — seeded for the control. */
 	private void seedAccrual(long bookingId, long venueId) {
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (booking_id, venue_id, entry_type,
@@ -278,7 +278,7 @@ class RefundOutboxScopeIT {
 	/**
 	 * Copies an archived publication back into the live table under a fresh id — the registry's own
 	 * row, verbatim, minus its completion. In SQL so no listener id, event type or serialization is
-	 * restated: a hand-built row the registry silently skips is a false green (#405's R-9), and the v2
+	 * restated: a hand-built row the registry silently skips is a false green, and the v2
 	 * repository's claim ({@code STATUS != 'RESUBMITTED'}) never matches a NULL status, so the status
 	 * is set to what a listener that threw leaves behind.
 	 */

@@ -18,22 +18,23 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The scoping half of #454 — the decision that keeps a button labelled "refund" off every other
+ * The scoping half of the decision that keeps a button labelled "refund" off every other
  * listener, including the two that share its module.
  *
- * <p><strong>Why the scope is an exact listener id and not a package prefix.</strong> #405's prefix is
- * safe because every listener in {@code notification} is a mail listener. This module also hosts
+ * <p><strong>Why the scope is an exact listener id and not a package prefix.</strong> The
+ * notification module's listener-id-prefix scope is safe because every listener in {@code notification}
+ * is a mail listener. This module also hosts
  * {@code PaymentEventListener} — payment → confirm (invariant #8) and payment-cancel → availability
  * release (invariant #2) — so {@code ai.riviera.platform.booking.} would hand an admin button the
- * payment spine. An allowlist of one loses #405's "future listeners covered automatically" property,
- * and for money that is a feature: a second money-moving listener must join the scope deliberately,
- * with review.
+ * payment spine. An allowlist of one loses that prefix scope's "future listeners covered automatically"
+ * property, and for money that is a feature: a second money-moving listener must join the scope
+ * deliberately, with review.
  *
- * <p><strong>How the id is kept honest, two levels (#405's R-6).</strong> This test pins
+ * <p><strong>How the id is kept honest, two levels.</strong> This test pins
  * {@link RegistryRefundOutbox#REFUND_LISTENER_ID} against {@link BookingListenerIds#REFUND}, which is
  * derived from the class literals (compile-safe against a rename); {@code RefundBulkheadIT} pins that
  * same fixture against the id the live registry writes. A stale string here would otherwise be a
- * silent no-op lever — the V31/#382 failure mode one level up.
+ * silent no-op lever — the V31 failure mode one level up.
  */
 class RefundOutboxScopeTest {
 

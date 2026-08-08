@@ -20,8 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 /**
- * The recurrence guard for the defect class behind #316, #317 and #328: <strong>a mapped endpoint
- * with no explicit {@code SecurityConfig} rule</strong>, which falls through to
+ * The recurrence guard for the defect class where <strong>a mapped endpoint
+ * with no explicit {@code SecurityConfig} rule</strong> falls through to
  * {@code anyRequest().authenticated()} where every authenticated principal — of either principal
  * type — passes the filter.
  *
@@ -46,14 +46,14 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
  * ({@code 404}), an unmapped verb ({@code 405}) or an exhausted rate-limit bucket ({@code 429} —
  * {@code RateLimitFilter} runs <em>ahead of</em> authorization) would all look exactly like "the
  * filter blocked it" and the guard would pass while verifying nothing. Every probe therefore also
- * carries a unique {@code X-Forwarded-For} (#127: shared buckets across a cached-context full-suite
+ * carries a unique {@code X-Forwarded-For} (shared buckets across a cached-context full-suite
  * run are how green scoped batches become a CI-only wall of {@code 429}s) — supplied, with the rest of
  * the request synthesis, by {@link EndpointProbes}, which {@link AdminSurfaceRoleGateTest} shares.
  *
  * <p><strong>Role-agnostic by design</strong>, and it must stay that way: {@link #PROBE_ROLE} is
  * granted to nobody, so this guard proves a gate <em>exists</em> and never which role it names — a
  * matcher downgraded from {@code ADMIN} to {@code OPERATOR} keeps refusing this principal. Pinning the
- * role of the {@code /api/admin/**} surface is {@link AdminSurfaceRoleGateTest}'s job (#528); don't
+ * role of the {@code /api/admin/**} surface is {@link AdminSurfaceRoleGateTest}'s job; don't
  * fold it in here, or a whole-surface guard acquires one namespace's role policy.
  *
  * <p><strong>Known limitation — this is an escalation guard, not a public-access guard.</strong> The
@@ -66,7 +66,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
  *
  * <p>Scope: {@code RequestMappingHandlerMapping} — the annotated controllers. Actuator endpoints are
  * {@code WebMvcEndpointHandlerMapping} entries, are not loaded by {@code @WebMvcTest}, and keep their
- * own exposure lockdown (#75). Lives in the root test package because the web slice imports the
+ * own exposure lockdown. Lives in the root test package because the web slice imports the
  * package-private {@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}.
  */
 @WebMvcTest
@@ -84,15 +84,15 @@ class EndpointRoleGateCoverageTest {
 			"POST /api/auth/operator/register",
 			"POST /api/auth/customer/login",
 			"POST /api/auth/customer/register",
-			// permitAll — the emailed token is the bearer credential (invariant #7), S8 #113.
+			// permitAll — the emailed token is the bearer credential (invariant #7).
 			"POST /api/auth/customer/forgot-password",
 			"POST /api/auth/customer/reset-password",
 			"POST /api/auth/customer/verify-email",
-			// permitAll — the OIDC redirect flow completes the exchange internally (S4 #112, D-3).
+			// permitAll — the OIDC redirect flow completes the exchange internally (D-3).
 			"GET /api/auth/sso/{provider}/authorize",
 			"GET /api/auth/sso/{provider}/callback",
 			"GET /api/auth/sso/mock/{provider}/authorize",
-			// permitAll — the public tourist catalogue + beach map (U1) and the photo serve (#142).
+			// permitAll — the public tourist catalogue + beach map (U1) and the photo serve.
 			"GET /api/venues",
 			"GET /api/venues/{venueId}",
 			"GET /api/venues/{venueId}/photos/{hash}",
