@@ -18,6 +18,7 @@ import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.api.PaymentCredentialsLookup;
+import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
@@ -168,6 +169,49 @@ class ViewBookingServiceTest {
 
 		assertThat(detail.cancellable()).isFalse();
 		assertThat(detail.beforeCutoff()).isFalse();
+	}
+
+	/**
+	 * The pay fence is a short-circuit, not a filter on the answer — the same shape as the D-8 mail
+	 * gate above it. Past the service day's opening the credentials port must not be
+	 * <em>consulted</em>: a {@code clientSecret} handed out then buys a stay already underway
+	 * (invariant #4), which #566's cancellation fence would immediately refuse to undo.
+	 */
+	@Test
+	void withholdsPaymentCredentialsOnceTheServiceDayHasOpened() {
+		givenBooking(BookingStatus.AWAITING_PAYMENT);
+
+		BookingDetail detail = serviceAt("2026-08-01T09:00:00Z").byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNull();
+		assertThat(detail.payWindowClosed()).isTrue();
+		verifyNoInteractions(checkout);
+	}
+
+	@Test
+	void stillIssuesCredentialsBeforeTheServiceDayOpens() {
+		givenBooking(BookingStatus.AWAITING_PAYMENT);
+		when(checkout.pendingCredentials(any()))
+				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNotNull();
+		assertThat(detail.payWindowClosed()).isFalse();
+	}
+
+	@Test
+	void reportsTheClosedPayWindowOnTheLastMinuteBeforeMidnight() {
+		givenBooking(BookingStatus.AWAITING_PAYMENT);
+		when(checkout.pendingCredentials(any()))
+				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+
+		// 2026-07-31T21:59:59Z is 23:59:59 in Tirane — the last second the guest may still pay.
+		BookingDetail open = serviceAt("2026-07-31T21:59:59Z").byCode(CODE).orElseThrow();
+		BookingDetail closed = serviceAt("2026-07-31T22:00:00Z").byCode(CODE).orElseThrow();
+
+		assertThat(open.payWindowClosed()).isFalse();
+		assertThat(closed.payWindowClosed()).isTrue();
 	}
 
 	private void givenBooking(BookingStatus status) {

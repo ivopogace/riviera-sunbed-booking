@@ -279,17 +279,16 @@ e2e. No new route, no new service call.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** Phase 3 — withhold payment credentials past the boundary and put `payWindowClosed`
-on the wire.
+**Next action:** Phase 4 — the guest-facing closed-window panel plus its unit, contrast and e2e cover.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The service-day boundary on `BookingCutoff` | ✅ | `379064d` |
 | 1 — Cap the pay deadline (`RequestWindows` + the accept) | ✅ | `19de5c9` |
 | 2 — The sweep enforces the capped deadline | ✅ | `1a48270` |
-| 3 — Withhold credentials + `payWindowClosed` on the wire | | |
+| 3 — Withhold credentials + `payWindowClosed` on the wire | ✅ | next commit |
 | 4 — The guest-facing closed-window panel + e2e | | |
 | 5 — Docs freshness + close-out | | |
 

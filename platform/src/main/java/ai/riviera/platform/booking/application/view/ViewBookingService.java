@@ -27,16 +27,19 @@ class ViewBookingService implements ViewBooking {
 	private final ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout;
 	private final ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail;
 	private final ai.riviera.platform.payment.api.CollectionGuarantee collection;
+	private final ai.riviera.platform.booking.application.cancel.BookingCutoff cutoff;
 
 	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy,
 			ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout,
 			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail,
-			ai.riviera.platform.payment.api.CollectionGuarantee collection) {
+			ai.riviera.platform.payment.api.CollectionGuarantee collection,
+			ai.riviera.platform.booking.application.cancel.BookingCutoff cutoff) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
 		this.checkout = checkout;
 		this.confirmationMail = confirmationMail;
 		this.collection = collection;
+		this.cutoff = cutoff;
 	}
 
 	@Override
@@ -75,10 +78,10 @@ class ViewBookingService implements ViewBooking {
 
 		MoneyView refunded = b.refundMinor() == null ? null
 				: new MoneyView(b.refundMinor(), b.currency());
-		// Pay-on-accept: only an AWAITING_PAYMENT booking can have an open, payable
-		// intent — the code-gated view is where the accepted guest picks up the clientSecret.
+		boolean payWindowClosed = cutoff.serviceDayHasOpened(b.bookingDate());
+		// Only an AWAITING_PAYMENT booking still inside its pay window has a payable intent.
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment =
-				b.status() == BookingStatus.AWAITING_PAYMENT
+				b.status() == BookingStatus.AWAITING_PAYMENT && !payWindowClosed
 						? checkout.pendingCredentials(
 								new ai.riviera.platform.payment.vocabulary.BookingRef(b.id())).orElse(null)
 						: null;
@@ -86,6 +89,6 @@ class ViewBookingService implements ViewBooking {
 				set.positionNo(), b.bookingDate(), new MoneyView(b.amountMinor(), b.currency()),
 				cancellable, withdrawable, quote.beforeCutoff(),
 				new MoneyView(quote.refundMinor(), b.currency()),
-				refunded, b.requestExpiresAt(), payment, emailWithheld);
+				refunded, b.requestExpiresAt(), payment, emailWithheld, payWindowClosed);
 	}
 }

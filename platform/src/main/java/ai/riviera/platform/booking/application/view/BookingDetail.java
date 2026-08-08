@@ -31,11 +31,17 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * {@code CONFIRMED} booking whose address is on the do-not-mail list; for every other status it is
  * {@code false} <em>without the question being asked</em> — the `202` create hands out the code
  * before payment, so answering earlier would make this code-gated view a suppression oracle (D-8).
+ *
+ * <p>{@code payWindowClosed} says the booking's service day has opened, so no payment may be taken
+ * for it any more (invariant #4) and {@code payment} is {@code null} whatever the status. It is
+ * carried rather than derived on the client because the boundary is a civil-day instant in
+ * {@code Europe/Tirane} and the server owns that zone and clock (invariant #6).
  */
 public record BookingDetail(String code, BookingStatus status, VenueId venueId, String venueName,
 		String rowLabel, int positionNo, LocalDate bookingDate, MoneyView amount, boolean cancellable,
 		boolean withdrawable, boolean beforeCutoff, MoneyView refundIfCancelledNow,
 		MoneyView refundedAmount,
 		java.time.Instant requestExpiresAt,
-		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld) {
+		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld,
+		boolean payWindowClosed) {
 }

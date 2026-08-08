@@ -113,6 +113,34 @@ class BookingViewIT {
 				.andExpect(jsonPath("$.refundIfCancelledNow.minorUnits").value(0));
 	}
 
+	@Test
+	void reportsPayWindowClosedForAnOpenServiceDay() throws Exception {
+		seedLateCancelBooking("VIEWPAY01", "toolate@e.com", tirane());
+		markAwaitingPayment("VIEWPAY01");
+
+		mvc.perform(get("/api/bookings/{code}", "VIEWPAY01"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("AWAITING_PAYMENT"))
+				.andExpect(jsonPath("$.payWindowClosed").value(true))
+				.andExpect(jsonPath("$.payment").doesNotExist());
+	}
+
+	@Test
+	void leavesThePayWindowOpenBeforeTheServiceDay() throws Exception {
+		seedLateCancelBooking("VIEWPAY02", "intime@e.com", tirane().plusDays(2));
+		markAwaitingPayment("VIEWPAY02");
+
+		mvc.perform(get("/api/bookings/{code}", "VIEWPAY02"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.payWindowClosed").value(false));
+	}
+
+	/** The seed helper writes a CONFIRMED booking; the pay fence only ever bites before that. */
+	private void markAwaitingPayment(String code) {
+		jdbc.sql("UPDATE booking SET status = 'AWAITING_PAYMENT', confirmed_at = NULL WHERE code = :c")
+				.param("c", code).update();
+	}
+
 	private static LocalDate tirane() {
 		return LocalDate.now(ZoneId.of("Europe/Tirane"));
 	}
