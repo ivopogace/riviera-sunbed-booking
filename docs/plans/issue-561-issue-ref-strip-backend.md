@@ -201,14 +201,16 @@ reflects that stop.
 
 ## Execution status
 
-**Stage pointer:** ⏳ **B green-lit by the maintainer 2026-08-08; B-1 shipped this session. C stays
-not-recommended per the *Recommendation* above — no C batch runs without a separate go.**
+**Stage pointer:** ⏳ **B green-lit by the maintainer 2026-08-08; B-1 through B-6 shipped this
+session. C stays not-recommended per the *Recommendation* above — no C batch runs without a
+separate go.**
 
-**Next action:** the dense tier (≥4 refs/file) has 33 files left (review-recount, `grep`-exact —
-corrects the "~28" eyeballed after B-4); continue at ~5 files/PR until it's exhausted, then switch to
-larger sparse-tail sweeps (~20–30 files/PR, matching Phase A's own dense→sparse transition) for the
-156 files carrying 1–3 refs (422 true-violation tokens remain tree-wide across both tiers). C stays
-parked.
+**Next action:** the dense tier (≥4 refs/file) has 29 files left (review-recount, `grep`-exact —
+see F-19 for the count-drift this recount exposed); continue at ~5 files/PR until it's exhausted,
+then switch to larger sparse-tail sweeps (~20–30 files/PR, matching Phase A's own dense→sparse
+transition) for the 155 files carrying 1–3 refs (357 true-violation tokens remain tree-wide across
+both tiers, `#[0-9]{2,4}\b` raw minus `invariant #[0-9]{1,2}\b`, same method as every prior count in
+this doc). C stays parked.
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
@@ -219,10 +221,22 @@ parked.
 | B-3 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `BookingMailFixtures`, `SetPasswordIT`, `ClientIpResolverTest`, `AdminOperatorControllerTest`, `OperatorPasswordChangeIT` — 51 true-violation tokens removed, 0 permitted refs lost (none of the 5 carried `invariant #n`/`D-n`), 0 R-4 hits. One edit briefly produced a 2-line inline comment (`SetPasswordIT`); the `PostToolUse` RV-STYLE-1 hook (§6c) caught it before the next tool call and it was compressed to one line. `compileJava`/`compileTestJava` clean; 4 of 5 files are directly testable (`BookingMailFixtures` is a shared IT fixture, no `@Test` of its own) and all 4 pass locally, 2 via Testcontainers | pushed | ✅ all gates green (AC-2, AC-5 non-vacuous, `compileJava`/`compileTestJava`, all 4 testable classes pass) |
 | B-4 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `ControllableMailer`, `WorkerContextArchitectureTest`, `AdminPayoutSecurityIT`, `OperatorLifecycleIT`, `EmailSuppressionIT` — 33 true-violation tokens removed, 2 `invariant #13` refs preserved (`AdminPayoutSecurityIT`), 0 R-4 hits. `OperatorLifecycleIT`'s class doc needed a fuller rewrite (two clauses briefly stacked after a ref's removal); caught and fixed by hand-reading the whole paragraph before moving on | pushed | ✅ all gates green (AC-2, AC-5 non-vacuous, `compileJava`/`compileTestJava`, all 4 directly-testable classes pass — `ControllableMailer` is an IT fixture, no `@Test` of its own) |
 | B-5 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `RegistryMailShedDurabilityIT`, `RegistryMailPropertiesTest`, `BookingConfirmationMailListenerTest`, `CreateBookingServiceTest`, `SessionIdentityTest` — 31 true-violation tokens removed, 0 R-4 hits. Applied the F-17 lesson proactively this time: 3 refs inside AssertJ `.as(...)` strings (2 files) were identified as code before editing and left untouched, alongside real Javadoc refs on nearby/same lines that were stripped | pushed | ✅ all gates green (AC-2, AC-5 non-vacuous, `compileJava`/`compileTestJava`, all 5 test classes pass — one via Testcontainers) |
-| B-6… | next ~5-file batch (dense tier, 33 files left after B-5) | — | not started |
+| B-6 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `EndpointRoleGateCoverageTest`, `BeachMapReplaceIT`, `RefundOutboxScopeTest`, `VenueRepriceIT`, `RefundOutboxScopeIT` — 33 true-violation tokens removed (per-file table below), 0 R-4 hits, all `invariant #n` refs preserved. One ref (`#428`) intentionally left inside a `RefundOutboxScopeIT` AssertJ `.as(...)` string (F-17) | pushed | ✅ all gates green (AC-2 comment-only over all 30 touched files, AC-5 non-vacuous 0-violation scan, `compileJava`/`compileTestJava` clean, all 5 test classes pass — 3 via Testcontainers, 29 tests total, 0 failures) — CI/Sonar pending a PR |
+| B-7… | next ~5-file batch (dense tier, 29 files left after B-6) | — | not started |
 | C-1… | backend main batches | — | not recommended; blocked on a separate maintainer go |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**B-6 per-file true-violation count (exact, `grep`-verified before and after):**
+
+| File | True violations removed | Permitted refs preserved | `#nnn` intentionally left in code strings (F-17) |
+|---|---:|---:|---:|
+| `EndpointRoleGateCoverageTest.java` | 9 | 3 (`invariant #7` ×2, `invariant #8`) | 0 |
+| `venue/BeachMapReplaceIT.java` | 7 | 5 (`invariant #2`, 3 styles) | 0 |
+| `booking/adapter/out/RefundOutboxScopeTest.java` | 5 | 6 (`invariant #8`, `invariants #9/#7`) | 0 |
+| `venue/VenueRepriceIT.java` | 7 | 4 (`invariant #2` ×2, `invariant #13` ×2) | 0 |
+| `booking/RefundOutboxScopeIT.java` | 5 | 3 (`invariant #8`, `#9`, `#11`) | 1 (`#428` inside an `.as(...)` string) |
+| **Total** | **33** | — | **1** |
 
 **B-5 per-file true-violation count (exact, `grep`-verified before and after):**
 
@@ -289,6 +303,7 @@ doc — new findings start at F-14 to stay globally unambiguous across both plan
 | F-16 | C-0 probe | `AdminOperatorController`'s class Javadoc and `JdbcBookings#boundedClient`'s method Javadoc are the two most load-bearing single blocks found in either probe — genuine architecture rationale (the suspend/revoke-bracket ordering; why the sweep reads are bounded and by what) that would need `RESPONSIBILITIES.md`/ADR relocation, not deletion, under §6d's own rule ("relocate, don't delete, when the rationale is load-bearing") | recorded; cited as C's strongest no-go reason |
 | F-17 | B-2, `check-comment-only.mjs` (caught before push) | Test-tree comments are not the only place a ref hides: `AssertJ`'s `.as("…")` description strings are Java **code** (`String` literal arguments), the same class F-1 already named for `describe()` titles — but the strip pass's own instinct reads them as prose because they read like sentences. 5 refs across 2 files (`AsyncMailDispatcherTest` 1, `MailTransportPropertiesTest` 4) were edited inside `.as(...)` calls, which `check-comment-only.mjs` correctly flagged as code changed before the batch was pushed | fixed — all 5 reverted to their original text (still carrying their `#nnn`); **rule: before editing any line, confirm it is a `//`/`/* */`/`/** */` comment or Javadoc, never a method-argument string literal, no matter how sentence-like the string reads — `.as(...)`, `.withMessage(...)`, JUnit `assertThat(...).describedAs(...)`, and log-message string literals are the recurring instances of this class** |
 | F-18 | B-3, `PostToolUse` RV-STYLE-1 hook | Compressing a ref out of a comment can flip a one-line comment into two (a mid-sentence citation removed left the surrounding clause wrapping onto a second line) — `SetPasswordIT`'s `check-inline-comments.mjs` hook fired live on the edit that did this, exactly as designed (riviera-java-conventions §6c: authoring-time, not just review-time) | fixed immediately — reflowed to one line before the next edit; **rule: after any strip edit that reflows a `//` comment, re-check its line count — removing text can lengthen as easily as shorten a wrapped clause** |
+| F-19 | B-6, tree-wide recount | The dense/sparse file-count and total-token figures drift across sessions even with no other tree change, because the counting method itself is under-specified: (a) `invariant #n` sometimes appears hyphenated (`invariant-#2`) rather than with a space, and a `grep` for the space-only form leaves the hyphenated instance uncounted as permitted, inflating the "true violation" figure for that file; (b) single-digit invariant refs (`#7`, `#8`, `#9`) never match a `#[0-9]{2,4}` raw pattern in the first place, so subtracting an `invariant #n` count found via a *separate*, wider pattern against that raw total silently undercounts true violations in files that cite single-digit invariants. Recomputing B-6's candidate list with a corrected `#[0-9]{1,4}` raw pattern moved `EndpointRoleGateCoverageTest` from "true=6" to the correct "true=9" (it was still the top pick either way, so B-6's file selection was unaffected) | recorded; **rule: state the exact regex pair used for any dense/sparse/total figure in this doc (this batch used `#[0-9]{2,4}\b` raw minus `invariant #[0-9]{1,2}\b`, matching every prior count here), and always recompute fresh — do not carry a prior session's tree-wide total forward as fact** |
 
 ## File structure
 
@@ -339,7 +354,16 @@ doc — new findings start at F-14 to stay globally unambiguous across both plan
 - `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java`
   — **modified** (B-5): same
 - `platform/src/test/java/ai/riviera/platform/SessionIdentityTest.java` — **modified** (B-5): same
-- Stage 0 itself (the probe tables above) touched no file — only B-1 through B-5's batches did.
+- `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` — **modified**
+  (B-6): comment-only, `#nnn` refs stripped
+- `platform/src/test/java/ai/riviera/platform/venue/BeachMapReplaceIT.java` — **modified** (B-6):
+  same
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/RefundOutboxScopeTest.java` —
+  **modified** (B-6): same
+- `platform/src/test/java/ai/riviera/platform/venue/VenueRepriceIT.java` — **modified** (B-6): same
+- `platform/src/test/java/ai/riviera/platform/booking/RefundOutboxScopeIT.java` — **modified**
+  (B-6): comment-only, `#nnn` refs stripped (1 left inside an `.as(...)` string, F-17)
+- Stage 0 itself (the probe tables above) touched no file — only B-1 through B-6's batches did.
 
 ## Generalization-audit log
 
