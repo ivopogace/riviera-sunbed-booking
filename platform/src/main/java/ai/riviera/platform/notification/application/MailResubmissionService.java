@@ -10,7 +10,7 @@ import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.shared.ResubmissionThrottle;
 
 /**
- * The ADMIN mail-resubmit lever (#405): this module's scope ({@link MailOutbox}, the module's own
+ * The ADMIN mail-resubmit lever: this module's scope ({@link MailOutbox}, the module's own
  * listeners by id prefix) behind the kernel's {@link ResubmissionThrottle}, which owns what a press
  * means — single-flight, cooldown seeded at construction so a press cannot race the restart
  * republication, and a typed refusal instead of a success that moved nothing. What stays this
@@ -20,7 +20,7 @@ import ai.riviera.platform.shared.ResubmissionThrottle;
  *
  * <p>Duplicate mail is prevented one layer below the throttle: the v2 registry's
  * {@code markResubmitted} claim ({@code UPDATE … WHERE ID = ? AND STATUS != 'RESUBMITTED'}) skips a
- * publication whose previous resubmission is still draining on {@code registryMailExecutor} (#383) —
+ * publication whose previous resubmission is still draining on {@code registryMailExecutor} —
  * durably, in the database, across instances.
  *
  * <p>Nothing here logs an address or an arrival code (invariant #7) — and structurally cannot: this

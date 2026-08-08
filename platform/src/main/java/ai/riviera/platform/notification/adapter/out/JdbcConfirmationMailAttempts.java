@@ -13,8 +13,8 @@ import ai.riviera.platform.notification.application.MailAttemptOutcome;
 import ai.riviera.platform.notification.application.MailAttemptSource;
 
 /**
- * {@link ConfirmationMailAttempts} over the V36 {@code booking_confirmation_mail_attempt} table
- * (#380). Package-private driven adapter (invariant #11), plain {@code JdbcClient} + text-block SQL.
+ * {@link ConfirmationMailAttempts} over the V36 {@code booking_confirmation_mail_attempt} table.
+ * Package-private driven adapter (invariant #11), plain {@code JdbcClient} + text-block SQL.
  *
  * <p><strong>No {@code @Transactional}, deliberately.</strong> The confirmation listener holds no
  * transaction (#371 dropped {@code REQUIRES_NEW} on purpose), so this insert auto-commits — which is

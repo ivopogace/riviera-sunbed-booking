@@ -6,7 +6,7 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * A pending Request-to-Book reached its response deadline with no venue decision (issue #124): the
+ * A pending Request-to-Book reached its response deadline with no venue decision: the
  * expiry sweep's guarded {@code PENDING_REQUEST → EXPIRED} transition committed and the
  * {@code (set, date)} soft-hold was released. Published from inside
  * {@code RequestReleaseService}'s expire leg, one per expired row in that row's own transaction —

@@ -1,7 +1,7 @@
 package ai.riviera.platform.notification.application;
 
 /**
- * What the send chokepoint did with a booking-confirmation mail (#380) — exactly two answers, because
+ * What the send chokepoint did with a booking-confirmation mail — exactly two answers, because
  * exactly two things can happen once the facts are in hand and the transport has not thrown.
  *
  * <p>Until #380 this was discarded: {@code sendBookingConfirmation} returned {@code void}, so a

@@ -10,8 +10,8 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.notification.application.EmailSuppressions;
 
 /**
- * Answers {@code booking}'s {@link ConfirmationMailDelivery} port from this module's own state
- * (#390): resolve the customer's address through {@code customer}'s published lookup, then consult
+ * Answers {@code booking}'s {@link ConfirmationMailDelivery} port from this module's own state:
+ * resolve the customer's address through {@code customer}'s published lookup, then consult
  * the do-not-mail list — the same pair {@code BookingConfirmationMailListener} drives through the
  * send chokepoint, so on the healthy path the surface's claim and the send decision agree by
  * construction.
@@ -30,7 +30,7 @@ import ai.riviera.platform.notification.application.EmailSuppressions;
  * all data-access ({@code keyOf}'s missing-HMAC {@code IllegalStateException}, a contact record that
  * fails its own validation), and the caller in {@code CreateBookingService} runs <em>after</em> the
  * booking is confirmed and the payment collected, where a throw is uncompensatable and costs the
- * guest the code. Bounded by this module's own {@code queryTimeout} (#386), so a wedged read aborts
+ * guest the code. Bounded by this module's own {@code queryTimeout}, so a wedged read aborts
  * rather than hanging the response.
  */
 @Component
