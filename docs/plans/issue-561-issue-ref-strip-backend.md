@@ -204,18 +204,30 @@ reflects that stop.
 **Stage pointer:** ⏳ **B green-lit by the maintainer 2026-08-08; B-1 shipped this session. C stays
 not-recommended per the *Recommendation* above — no C batch runs without a separate go.**
 
-**Next action:** continue B's sparse remainder in ~5-file batches by directory (never heaviest-first
-across directories, matching #550's rule); C stays parked.
+**Next action:** continue B's remainder in ~5-file batches (next: the sparse-tail sweep of the rest
+of `platform/src/test`, batched by directory, never heaviest-first); C stays parked.
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
 | B-0 (probe) | 5 densest `platform/src/test` files by raw `#nnn` count — 118 true violations, 0 R-4 hits, F-8-immune, 2/5 files carry R-8 decision-archaeology | this doc | ✅ measured, reported above |
 | C-0 (probe) | 5 densest `platform/src/main` files by raw `#nnn` count — 54 true violations, 0 R-4 hits, F-8-exposed, 5/5 files carry R-8 decision-archaeology | this doc | ✅ measured, reported above |
-| B-1 | the B-0 probe's same 5 files (`CrossVenueDenialIT`, `VenueAdminControllerIT`, `TransactionalMailServiceTest`, `VenueAdminServiceTest`, `WebSliceStubs`) — 118 true-violation `#nnn` tokens removed (review-recount: 24+24+21+21+21 = actually see per-file table below), 0 orphan labels left dangling (O4/O8/T7/S3/S4/S8/S9 rewritten to real nouns or dropped per A-1/F-4), 0 R-4 hits, every `invariant #n` preserved (AC-3: 6 removed/6 added, balanced), R-8 (decision-archaeology over budget in `TransactionalMailServiceTest` + `CrossVenueDenialIT`) left unaddressed by design (out of scope for this mechanical batch) | pending push | ✅ gates green locally (AC-2 comment-only, AC-5 non-vacuous 0-violation scan, AC-3 balanced, `compileJava`/`compileTestJava` clean, the 2 pure-unit classes' own tests pass) — CI/Sonar pending a PR |
-| B-2… | next ~5-file directory batch (sparse-tail sweep of the rest of `platform/src/test`) | — | not started |
+| B-1 | the B-0 probe's same 5 files (`CrossVenueDenialIT`, `VenueAdminControllerIT`, `TransactionalMailServiceTest`, `VenueAdminServiceTest`, `WebSliceStubs`) — 117 true-violation `#nnn` tokens removed (per-file table below), 0 orphan labels left dangling (O4/O8/T7/S3/S4/S8/S9 rewritten to real nouns or dropped per A-1/F-4), 0 R-4 hits, every `invariant #n` preserved (AC-3: 6 removed/6 added, balanced), R-8 (decision-archaeology over budget in `TransactionalMailServiceTest` + `CrossVenueDenialIT`) left unaddressed by design (out of scope for this mechanical batch) | pushed (3 commits) | ✅ all gates green (AC-2 comment-only, AC-5 non-vacuous 0-violation scan, AC-3 balanced, `compileJava`/`compileTestJava` clean, the 2 pure-unit classes' own tests pass) — CI/Sonar pending a PR |
+| B-2 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `AsyncMailDispatcherTest`, `RateLimitFilterTest`, `OperatorAccountControllerTest`, `PayoutModuleTest`, `MailTransportPropertiesTest` — 64 true-violation tokens removed (F-17 correction: 5 tokens inside AssertJ `.as(...)` description strings were caught and reverted — those are code, F-1's `describe()`-title class, not comments), invariant `#11` preserved in the two files carrying it, 0 R-4 hits. All 5 touched test classes pass locally, `PayoutModuleTest` via Testcontainers (Docker available this session) | pending push | ✅ all gates green after the F-17 fix (AC-2 comment-only, AC-5 non-vacuous scan, `compileJava`/`compileTestJava` clean, all 5 test classes pass) |
+| B-3… | next ~5-file batch (sparse-tail sweep of the rest of `platform/src/test`) | — | not started |
 | C-1… | backend main batches | — | not recommended; blocked on a separate maintainer go |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**B-2 per-file true-violation count (exact, `grep`-verified before and after, post-F-17-fix):**
+
+| File | True violations removed | `invariant #n` preserved | `#nnn` intentionally left in code strings (F-1/F-17) |
+|---|---:|---:|---:|
+| `AsyncMailDispatcherTest.java` | 17 | 0 | 1 (`#442` inside an `.as(...)` string) |
+| `RateLimitFilterTest.java` | 15 | 0 | 0 |
+| `OperatorAccountControllerTest.java` | 14 | 0 | 0 |
+| `PayoutModuleTest.java` | 11 | 1 | 0 |
+| `MailTransportPropertiesTest.java` | 7 | 1 | 4 (`#368` ×3, `#370` — all inside `.as(...)` strings) |
+| **Total** | **64** | **2** | **5** |
 
 **B-1 per-file true-violation count (exact, `grep`-verified before and after):**
 
@@ -236,6 +248,7 @@ doc — new findings start at F-14 to stay globally unambiguous across both plan
 | F-14 | C-0/B-0 probe | `sonar.sources` (read directly, not assumed) excludes `platform/src/test` entirely — F-8's coverage-gate risk is backend-**main**-only; the test tree needs no spec-file-style carve-out logic because it was never in scope for Sonar at all | recorded; drives the B vs. C risk asymmetry above |
 | F-15 | C-0/B-0 probe | Backend Javadoc density and R-8 (decision-archaeology 3–7× over the §6d budget) make per-file cost fundamentally uneven with Phase A's TSDoc-citation profile — a future batch's size must be priced from *this* probe, never carried over from Phase A's ~10-files/PR figure | recorded; the stated basis for both phases' batch-size recommendation above |
 | F-16 | C-0 probe | `AdminOperatorController`'s class Javadoc and `JdbcBookings#boundedClient`'s method Javadoc are the two most load-bearing single blocks found in either probe — genuine architecture rationale (the suspend/revoke-bracket ordering; why the sweep reads are bounded and by what) that would need `RESPONSIBILITIES.md`/ADR relocation, not deletion, under §6d's own rule ("relocate, don't delete, when the rationale is load-bearing") | recorded; cited as C's strongest no-go reason |
+| F-17 | B-2, `check-comment-only.mjs` (caught before push) | Test-tree comments are not the only place a ref hides: `AssertJ`'s `.as("…")` description strings are Java **code** (`String` literal arguments), the same class F-1 already named for `describe()` titles — but the strip pass's own instinct reads them as prose because they read like sentences. 5 refs across 2 files (`AsyncMailDispatcherTest` 1, `MailTransportPropertiesTest` 4) were edited inside `.as(...)` calls, which `check-comment-only.mjs` correctly flagged as code changed before the batch was pushed | fixed — all 5 reverted to their original text (still carrying their `#nnn`); **rule: before editing any line, confirm it is a `//`/`/* */`/`/** */` comment or Javadoc, never a method-argument string literal, no matter how sentence-like the string reads — `.as(...)`, `.withMessage(...)`, JUnit `assertThat(...).describedAs(...)`, and log-message string literals are the recurring instances of this class** |
 
 ## File structure
 
@@ -249,7 +262,17 @@ doc — new findings start at F-14 to stay globally unambiguous across both plan
   (B-1): same
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` —
   **modified** (B-1): same
-- Stage 0 itself (the probe tables above) touched no file — only B-1's batch did.
+- `platform/src/test/java/ai/riviera/platform/notification/application/AsyncMailDispatcherTest.java`
+  — **modified** (B-2): comment-only, `#nnn` refs stripped (1 left inside an `.as(...)` string, F-17)
+- `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java` — **modified** (B-2):
+  comment-only, `#nnn` refs stripped
+- `platform/src/test/java/ai/riviera/platform/OperatorAccountControllerTest.java` — **modified**
+  (B-2): same
+- `platform/src/test/java/ai/riviera/platform/payout/PayoutModuleTest.java` — **modified** (B-2):
+  same
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/in/MailTransportPropertiesTest.java`
+  — **modified** (B-2): comment-only, `#nnn` refs stripped (4 left inside `.as(...)` strings, F-17)
+- Stage 0 itself (the probe tables above) touched no file — only B-1 and B-2's batches did.
 
 ## Generalization-audit log
 

@@ -337,7 +337,7 @@ class AsyncMailDispatcherTest {
 
 			assertThat(droppedTotal())
 					.as("both causes are drops and belong to one series, so a total can be alerted on — and "
-							+ "partitioning that series by kind did not double-count it")
+							+ "#442 partitioned that series by kind, it did not double-count it")
 					.isEqualTo(DROPS + 1D);
 		}
 		finally {

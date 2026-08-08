@@ -47,7 +47,7 @@ class MailTransportPropertiesTest {
 	@Test
 	void bindsTheShippedDefault() {
 		runner.run(context -> assertThat(context.getBean(MailTransportBudget.class).socketTimeout())
-				.as("unset config must reproduce the shipped value exactly — this slice makes it tunable, "
+				.as("unset config must reproduce #368's value exactly — this slice makes it tunable, "
 						+ "not different")
 				.isEqualTo(Duration.ofMillis(10_000)));
 	}
@@ -56,7 +56,7 @@ class MailTransportPropertiesTest {
 	void theEnvironmentOverridesTheBudget() {
 		runner.withSystemProperties("RIVIERA_SMTP_SOCKET_TIMEOUT_MS=4000")
 				.run(context -> assertThat(context.getBean(MailTransportBudget.class).socketTimeout())
-						.as("the deploy environment must be able to retune the relay budget")
+						.as("#370 must be able to retune the relay budget from the deploy environment")
 						.isEqualTo(Duration.ofMillis(4_000)));
 	}
 
@@ -91,7 +91,7 @@ class MailTransportPropertiesTest {
 									.as("%s must interpolate the knob under the %s profile: a restated "
 											+ "literal is how the drain and the relay budget drifted "
 											+ "apart, and an unresolved placeholder puts Jakarta Mail's "
-											+ "INFINITE default one typo away", key, profile)
+											+ "INFINITE default one typo away (#368)", key, profile)
 									.isEqualTo("7000"));
 					assertThat(context.getBean(MailTransportBudget.class).socketTimeout())
 							.isEqualTo(Duration.ofMillis(7_000));
@@ -102,7 +102,7 @@ class MailTransportPropertiesTest {
 	void aNonPositiveSocketTimeoutFailsTheContext() {
 		runner.withPropertyValues("riviera.notification.mail.socket-timeout-ms=0")
 				.run(context -> assertThat(context)
-						.as("a typo must fail the boot, not restore the infinite transport timeouts this budget closed")
+						.as("a typo must fail the boot, not restore the infinite transport timeouts #368 closed")
 						.hasFailed()
 						.getFailure()
 						.rootCause()
