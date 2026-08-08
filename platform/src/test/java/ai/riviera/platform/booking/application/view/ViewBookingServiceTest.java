@@ -1,12 +1,16 @@
 package ai.riviera.platform.booking.application.view;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.application.cancel.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.CancellationWindow;
@@ -51,8 +55,15 @@ class ViewBookingServiceTest {
 	private final ConfirmationMailDelivery mailDelivery = mock(ConfirmationMailDelivery.class);
 	private final CollectionGuarantee collection = mock(CollectionGuarantee.class);
 
-	private final ViewBookingService service =
-			new ViewBookingService(bookings, cancellationPolicy, checkout, mailDelivery, collection);
+	/** A month before {@link #DATE}'s service day opens, so the pay fence is inert for every case
+	 *  that is not about it. */
+	private final ViewBookingService service = serviceAt("2026-07-01T09:00:00Z");
+
+	private ViewBookingService serviceAt(String instant) {
+		Clock clock = Clock.fixed(Instant.parse(instant), ZoneId.of("UTC"));
+		return new ViewBookingService(bookings, cancellationPolicy, checkout, mailDelivery, collection,
+				new BookingCutoff(clock));
+	}
 
 	@Test
 	void flagsWithheldConfirmationMailForSuppressedGuest() {

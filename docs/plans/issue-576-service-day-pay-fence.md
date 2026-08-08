@@ -328,6 +328,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/booking/BookingViewIT.java` — the wire shape
 - `platform/src/test/java/ai/riviera/platform/booking/ServiceDayBackdate.java` — Javadoc widened past "confirmed"
 - `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — the in-test `Bookings` fake's new parameter
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingsTransitionIT.java` — the JDBC-level three-arm proof: the new date bound selects on its own and does not over-select
+- `platform/src/test/java/ai/riviera/platform/ScheduledQueryTimeoutIT.java` — the sweep read's bounded-query assertion, whose call gains the third argument
 - `frontend/src/app/booking/booking.model.ts` — `payWindowClosed`
 - `frontend/src/app/booking/booking-view.ts` — the closed-window panel
 - `frontend/src/app/booking/booking-view.spec.ts` — AC-7 unit half
