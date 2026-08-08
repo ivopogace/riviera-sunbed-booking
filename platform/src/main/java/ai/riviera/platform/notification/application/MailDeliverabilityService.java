@@ -8,10 +8,10 @@ import org.springframework.stereotype.Service;
 import ai.riviera.platform.notification.api.MailDeliverability;
 
 /**
- * Answers {@link MailDeliverability} from this module's own state (#400) — the same
+ * Answers {@link MailDeliverability} from this module's own state — the same
  * {@link EmailSuppressions} lookup {@link TransactionalMailService} makes before every send, so the
  * claim a surface renders and the decision the send takes come from one list. Normalization and
- * hashing stay in the adapter, which owns that key's input contract (#386/#388).
+ * hashing stay in the adapter, which owns that key's input contract.
  *
  * <p><strong>Degrades rather than fails, and does so wider than the send path.</strong> Every
  * {@link RuntimeException} reports "not withheld", where {@code TransactionalMailService}'s fail-open
