@@ -254,14 +254,12 @@ Sparse-tier batching: 215 files ÷ 15/batch → batches S1–S14 (14×15) + S15 
 
 ## Execution status
 
-**Stage pointer:** implement complete — **the entire recomputed scope (270 files: 55 dense +
-215 sparse) is triaged and every MECHANICAL hit stripped.** Moving to close-out: PR + CI + Sonar
-gate.
+**Stage pointer:** PR gate — **PR #564 opened** (`claude/issue-ref-strip-backend-phase-c` → `main`);
+watching CI/SonarCloud.
 
-**Next action:** open the PR, run the full `check-comment-only.mjs`/`check-inline-comments.mjs`
-gates one more time on the whole diff (already done below), watch CI (SonarCloud: 0 new issues,
-0 duplicated blocks, ≥80% new-code coverage) — the gate this whole pass was threading a needle
-around.
+**Next action:** watch CI on PR #564 (SonarCloud: 0 new issues, 0 duplicated blocks, ≥80% new-code
+coverage — the gate this whole pass was threading a needle around); address any findings; merge
+when green.
 
 | Wave | Scope | Status | Commits |
 |---|---|---|---|
