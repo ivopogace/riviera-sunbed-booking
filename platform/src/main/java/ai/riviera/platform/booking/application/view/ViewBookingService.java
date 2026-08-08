@@ -45,7 +45,7 @@ class ViewBookingService implements ViewBooking {
 	}
 
 	/**
-	 * The D-8 gate on {@code emailWithheld} (#390): a short-circuit, not a filter on the answer — the
+	 * The D-8 gate on {@code emailWithheld}: a short-circuit, not a filter on the answer — the
 	 * port must not be <em>consulted</em> before the booking is settled, because the {@code 202} create
 	 * hands the code out before the card is collected, and answering then would turn this code-gated
 	 * view into a suppression oracle for any address a checkout can be started with.
@@ -69,13 +69,13 @@ class ViewBookingService implements ViewBooking {
 		RefundQuote quote = cancellationPolicy.quote(b);
 		SetBookingInfo set = quote.set();
 		boolean cancellable = b.status() == BookingStatus.CONFIRMED;
-		// Its own predicate, not a reuse of cancellable's: see BookingDetail (#123).
+		// Its own predicate, not a reuse of cancellable's: see BookingDetail.
 		boolean withdrawable = b.status() == BookingStatus.PENDING_REQUEST;
 		boolean emailWithheld = mayDiscloseMailStatus(b) && confirmationMail.isWithheld(b.customerId());
 
 		MoneyView refunded = b.refundMinor() == null ? null
 				: new MoneyView(b.refundMinor(), b.currency());
-		// Pay-on-accept (issue #98): only an AWAITING_PAYMENT booking can have an open, payable
+		// Pay-on-accept: only an AWAITING_PAYMENT booking can have an open, payable
 		// intent — the code-gated view is where the accepted guest picks up the clientSecret.
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment =
 				b.status() == BookingStatus.AWAITING_PAYMENT
