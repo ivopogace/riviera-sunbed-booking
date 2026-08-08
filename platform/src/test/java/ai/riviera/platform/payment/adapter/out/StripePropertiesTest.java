@@ -12,14 +12,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * The two {@code StripeClient} timeouts as <em>bound, validated</em> configuration (#426).
+ * The two {@code StripeClient} timeouts as <em>bound, validated</em> configuration.
  *
- * <p>These exist because of issue #52 (risk R-3): the SDK's own defaults — 30s connect, 80s read — are
+ * <p>These exist because the SDK's own defaults — 30s connect, 80s read — are
  * long enough that a degraded Stripe pins a request thread and its pooled connection, on the money path.
  * {@code 0} re-opens exactly that risk in the most deceptive way available, because it reads as "no
  * limit" to the operator who types it and means <em>infinite</em> to the JDK HTTP stack the SDK builds
  * on ({@code java.net.URLConnection#setConnectTimeout}: "A timeout of zero is interpreted as an infinite
- * timeout"). It is the same read-as-unbounded / means-degenerate inversion that made #408's
+ * timeout"). It is the same read-as-unbounded / means-degenerate inversion that elsewhere made
  * {@code queue-capacity=0} worth failing the boot over, with the sign flipped.
  *
  * <p>A negative duration is worse still at binding time and better at runtime: it survives
@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * {@link #acceptsTheWholeTimeoutRangeButNotBeyondIt} asserts both ceilings bind.
  *
  * <p><strong>Why a compact constructor and not {@code @Validated} + {@code @Min}.</strong> There is no
- * JSR-303 implementation on the runtime classpath (#97 declined {@code spring-boot-starter-validation}),
+ * JSR-303 implementation on the runtime classpath (adding {@code spring-boot-starter-validation} was declined),
  * and Boot validates {@code @ConfigurationProperties} only when one is present — an annotation would
  * bind and validate nothing.
  *

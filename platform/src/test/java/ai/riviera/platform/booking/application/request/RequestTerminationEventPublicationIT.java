@@ -24,7 +24,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The decline/expiry facts of issue #124, at the SQL seam against real Postgres: each terminal leg
+ * The decline/expiry facts at the SQL seam against real Postgres: each terminal leg
  * of {@code RequestReleaseService} publishes its fact exactly when its guarded transition wins —
  * and the two legs that must stay silent stay silent.
  *
@@ -35,11 +35,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * delivery side. A lost race (0-row transition) must publish nothing, which is what keeps the
  * facts truthful under the row-lock exclusivity argument ({@code ConcurrentRequestTerminationIT}).
  *
- * <p>The withdraw case is this slice's stated non-event (#123/#124): guest-initiated, so no notice
+ * <p>The withdraw case is this slice's stated non-event: guest-initiated, so no notice
  * — pinned here so a future "complete the set" refactor fails a test, not a product expectation.
  *
- * <p>The background sweep is pushed out of the test window ({@code initial-delay=PT2H}, the #98
- * lesson) — this IT seeds overdue rows and must be the one to sweep them.
+ * <p>The background sweep is pushed out of the test window ({@code initial-delay=PT2H}) — this IT
+ * seeds overdue rows and must be the one to sweep them.
  */
 @EnabledIfDockerAvailable
 @Import({TestcontainersConfiguration.class, RequestTerminationEventPublicationIT.RecordedFacts.class})

@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Issue #75 (P0 launch blocker): operational-exposure hardening of the Spring Boot Actuator.
+ * Operational-exposure hardening of the Spring Boot Actuator.
  *
  * <p>Only {@code /actuator/health} is web-exposed <em>publicly</em>; every other operational
  * endpoint — {@code env}, {@code beans}, {@code mappings}, {@code configprops}, {@code heapdump},
@@ -31,10 +31,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * shown only {@code when-authorized} (invariant: a public status probe must not leak internal
  * component state).
  *
- * <p>Issue #100 (D4 observability) adds {@code /actuator/prometheus} to the exposure allowlist —
- * the <em>deliberate</em> extension the issue sanctioned. It is <strong>not</strong> public: it
+ * <p>Observability instrumentation adds {@code /actuator/prometheus} to the exposure allowlist —
+ * a <em>deliberate</em> extension, not an oversight. It is <strong>not</strong> public: it
  * falls through the same {@code anyRequest().authenticated()} rule, so an anonymous scrape is
- * {@code 401} and only an authenticated operator can read it. The #75 lockdown therefore holds —
+ * {@code 401} and only an authenticated operator can read it. The lockdown therefore holds —
  * the sole public actuator surface is still {@code /actuator/health}.
  */
 @EnabledIfDockerAvailable
@@ -100,15 +100,13 @@ class ActuatorHardeningIT {
 
 	@Test
 	void prometheusIsNotPubliclyReachable() throws Exception {
-		// #100 AC-3: the metrics scrape endpoint is exposed but NOT public — an anonymous scrape is
-		// rejected by the security filter chain (401), never a 200 body. The #75 lockdown holds:
-		// health remains the only anonymous actuator surface.
+		// AC-3: the metrics scrape endpoint is exposed but NOT public — an anonymous scrape is rejected (401), never a 200 body.
 		mvc.perform(get("/actuator/prometheus")).andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	void prometheusIsReadableByOperator() throws Exception {
-		// #100 AC-3: an authenticated operator can scrape metrics in Prometheus text format.
+		// AC-3: an authenticated operator can scrape metrics in Prometheus text format.
 		mvc.perform(get("/actuator/prometheus").cookie(operatorSession))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("# HELP")));
