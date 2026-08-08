@@ -1,0 +1,208 @@
+# Strip issue-number provenance from backend `platform/src/main` (§6d compliance pass, Phase C)
+
+**Issue:** #561 · **Branch:** `claude/issue-ref-strip-backend-phase-c` · **Type:** repo-wide
+mechanical sweep (comment-only), triage-gated · **Parent:** #561
+(`docs/plans/issue-561-issue-ref-strip-backend.md` — CLOSED for Phase B; **historical record,
+never edited by this doc**). Sibling: #550 (`docs/plans/issue-550-issue-ref-strip.md`, frontend,
+Phase A — CLOSED).
+
+**Goal:** strip MECHANICAL `#nnn` tracker-provenance refs from `platform/src/main`, leaving
+F-8-exposed (trailing-on-code-line) refs untouched and cataloguing RELOCATE-CANDIDATE refs
+(load-bearing architecture rationale) for a later, separate editorial pass into
+`RESPONSIBILITIES.md`/ADRs — never performing that relocation in this pass.
+
+**Architecture:** N/A — comment-only sweep, zero behavior change. The only structural decision is
+process: per-file three-way triage (MECHANICAL / F-8-EXPOSED / RELOCATE-CANDIDATE) before any
+edit, smaller worktree-isolated batches than Phase B (~3 files/batch dense, ~15 files/batch
+sparse) priced for the triage judgment call, and a pre-push local Sonar-relevant check (grep the
+diff for any edited line trailing on code) since C carries live Sonar coverage-gate exposure that
+B never had (F-8, `sonar.sources` includes `platform/src/main/java`).
+
+**Persistence:** N/A — no schema, no SQL, no code behavior change.
+
+**Source of intent:** issue #561; the Phase C kickoff brief (maintainer-authored, 2026-08-08,
+confirming go on C after Phase B's no-go-by-default recommendation); the inherited rulebook is
+`docs/plans/issue-561-issue-ref-strip-backend.md` (Findings F-1–F-20, Recommendation section,
+Risk register rows R-4/R-8/R-9) and `docs/plans/issue-550-issue-ref-strip.md` (F-1–F-13, the
+original batching pattern).
+
+**Skills consulted:** `riviera-sdlc` (routing — comment-only sweep, no feature-area skill
+triggered beyond plan-doc discipline) · `riviera-plan-doc` (this template — mandated a fresh doc
+per instruction, never editing the closed Phase B doc) · `riviera-java-conventions` §6c/§6d (the
+rules being enforced — inline-comment one-line rule, decision-archaeology-belongs-in-docs rule)
+· `riviera-review-overlay` (due once a batch ships — RV-STYLE-1 inline-comment check) ·
+`riviera-local-debug` (build/test recipe for the structural-net + compile gates each wave) ·
+`riviera-modulith` (N/A — no class moves, no published-surface change) · `postgres` (N/A) ·
+`riviera-docs-freshness` (N/A — this pass explicitly produces no `RESPONSIBILITIES.md`/ADR edits;
+the RELOCATE-CANDIDATE inventory is the deliverable for a *future* pass, not this one).
+
+## The decision this plan records
+
+Phase B's plan doc recommended **no-go** on C by default, citing three compounding reasons: live
+F-8 Sonar exposure, denser R-8 decision-archaeology than B, and the strongest A-5 (ambient decay)
+argument of either tree. The maintainer's kickoff brief overrides that default with an explicit
+go, on the condition that C is run as a **fundamentally different process** from B — not "Phase B
+again on `platform/src/main`" — via:
+
+1. A mandatory per-file three-way triage (MECHANICAL / F-8-EXPOSED / RELOCATE-CANDIDATE) instead
+   of Phase B's blanket strip.
+2. A hard rule never to edit a ref trailing on a code-bearing line, regardless of content.
+3. Explicit non-goals: no `RESPONSIBILITIES.md`/ADR edits this pass — RELOCATE-CANDIDATE hits are
+   inventoried, not resolved.
+4. Smaller batches (~3 dense, ~15 sparse) than Phase B's (~5/~22), priced for the triage step.
+5. A pre-push local Sonar-relevant check on every batch, not just the standard gates.
+
+## Acceptance criteria (testable)
+
+- [ ] **AC-1:** Every file in the recomputed scope (270 files, 55 dense ≥4 refs, 215 sparse 1–3
+      refs, 677 true-violation tokens as of this branch — recomputed fresh, see *Current scope*)
+      is triaged file-by-file into MECHANICAL / F-8-EXPOSED / RELOCATE-CANDIDATE for every `#nnn`
+      hit. *Pinned by:* the per-batch agent reports recorded in the Execution-status ledger below,
+      each stating its breakdown.
+- [ ] **AC-2:** Every MECHANICAL hit is stripped; the resulting diff is comment-only against
+      `origin/main` for every touched file. *Pinned by:* `node scripts/check-comment-only.mjs`
+      run against each integrated batch's diff.
+- [ ] **AC-3:** Zero edited line sits trailing on a code-bearing line (the F-8 hazard). *Pinned
+      by:* the pre-push grep check (diff `+`/`-` lines that are not whole-line comment changes)
+      run on every batch before push, recorded per-batch below.
+- [ ] **AC-4:** Every permitted label (`invariant #1`–`#13`, `D-n`, `AC-n`, `ADR-nnnn`, `RV-*`,
+      Flyway `Vnn`, `{@link}`/`{@code}`, RFC numbers, Sonar rule ids, hex colors) is preserved
+      across every batch. *Pinned by:* per-batch before/after counts in the ledger, same method as
+      Phase B's B-1..B-19 rows.
+- [ ] **AC-5:** `check-inline-comments.mjs` passes clean on the full committed diff after every
+      wave (the RV-STYLE-1 one-line-comment rule, F-20-part-2 aware — content shortened, not
+      crammed onto one long line).
+- [ ] **AC-6:** `compileJava`/`compileTestJava` clean and the structural net
+      (`ModularityTests`/`JdbcOnlyArchitectureTests`/`PackageShapeArchitectureTests`/
+      `PublishedSurfacePlacementArchitectureTests`) green after every wave.
+- [ ] **AC-7:** A RELOCATE-CANDIDATE inventory (file, line, one-sentence rationale description) is
+      produced and recorded in this doc, ready to hand to a later editorial pass — this pass makes
+      zero edits to `RESPONSIBILITIES.md` or any ADR.
+- [ ] **AC-8:** CI green (including SonarCloud — 0 new issues, 0 duplicated blocks, ≥80% new-code
+      coverage) on the PR(s) this pass produces, verifying AC-3's local check actually held.
+
+## Non-goals
+
+- No edits to `RESPONSIBILITIES.md` or any ADR — the RELOCATE-CANDIDATE inventory is this pass's
+  entire deliverable for that thread; the relocation itself is explicit future follow-up work.
+- No edits to any F-8-exposed trailing-on-code-line ref, however trivial it looks.
+- No merge without every CI check green, SonarCloud included.
+- No reuse of Phase B's per-file cost model or batch size — C's batches are smaller by design
+  (~3 dense / ~15 sparse vs. B's ~5 / ~22), priced for the triage step which B never had to do.
+
+## Behavior-parity ledger
+
+N/A — comment-only sweep; no surface is retired or replaced. Every batch's `check-comment-only.mjs`
+pass is the direct verification that zero behavior changed.
+
+## Risk register
+
+| # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
+|---|---|---|---|---|---|---|
+| R-1 (F-8, carried from Phase B) | An edited ref sits trailing on a code-bearing line, flipping that line to "new code" for the Sonar coverage gate and failing CI on a behavior-inert diff (the PR #552 incident class) | med — `platform/src/main` is live-analyzed, unlike B's tree | high — CI-red on unrelated grounds, blocks merge | per-file triage classifies trailing-on-code hits as F-8-EXPOSED and skips them outright; a pre-push grep check re-verifies no edited line is trailing-on-code before every push | agent | mitigated by process; verified per-batch |
+| R-2 (R-8, carried from Phase B) | A ref is deleted that was the sole attachment point for load-bearing architecture rationale (the `AdminOperatorController`/`JdbcBookings#boundedClient` class of finding) | high — 5/5 C-0 probe files hit this | high — silent loss of documented design rationale | RELOCATE-CANDIDATE triage category catches this by construction: any ref attached to genuine rationale is flagged and left untouched, never stripped | agent | mitigated by process; inventory is this pass's deliverable |
+| R-3 | Parallel worktree-isolated agents drift on triage judgment calls (mirrors Phase B's F-20: 2/6 subagents over-generalized the orphan-label rule) | med — smaller batches reduce blast radius per mistake, but more batches increase the number of judgment calls made | med — inconsistent stripping across batches | serial integration review re-checks each batch's triage breakdown against precedent before cherry-pick; default-to-RELOCATE-CANDIDATE-when-unsure is stated explicitly in every agent prompt | agent | standing mitigation, checked every batch |
+| R-4 | Wave sized past what can actually be reviewed (mirrors Phase B's F-20, caught at batches 6–7) | med | med | waves capped at ~6–7 batches; explicit check-in after each wave before starting the next | agent | standing rule |
+| R-5 | `origin/main` stale in a fresh container | low | low | `git fetch origin main` before the first gate of every session/wave | agent | standing rule |
+| R-6 | Gates pass vacuously when run before committing | med | high | commit first, then gate — carried forward from Phase A/B | agent | standing rule |
+
+## Open questions / Assumptions
+
+- **Open question:** exact placement/format of the RELOCATE-CANDIDATE inventory's eventual
+  consumption (a follow-up issue vs. direct `RESPONSIBILITIES.md` PR) is not this pass's call —
+  *Owner:* maintainer · *Resolves by:* the follow-up editorial pass, out of this doc's scope.
+
+## Availability & concurrency (invariant #2)
+
+N/A — comment-only sweep, zero SQL/transaction/claim-path touched.
+
+## Spring Modulith — modules, interfaces, events
+
+N/A for structure — no class moves, no published-surface change, no dependency change. Touched
+files span every module (selection is by raw `#nnn` density via `grep`, not by module, same
+method as Phase B/C-0).
+
+## Payment & payout (invariants #5, #8, #9, #10)
+
+N/A — comment-only; no payment/payout logic changes even where payment/payout files are touched.
+
+## Angular — frontend surfaces touched
+
+N/A — backend only.
+
+## FE↔BE contract
+
+N/A — no contract change.
+
+## Current scope (recomputed fresh on this branch, `origin/main` @ `9cfb13f`)
+
+```bash
+grep -rlE '#[0-9]{2,4}\b' platform/src/main --include='*.java' | while read f; do
+  raw=$(grep -oE '#[0-9]{2,4}\b' "$f" | wc -l)
+  inv=$(grep -oE 'invariant #[0-9]{1,2}\b' "$f" | wc -l)
+  true=$((raw-inv))
+  if [ "$true" -gt 0 ]; then echo "$true $f"; fi
+done | sort -rn
+```
+
+**270 files, 55 dense (≥4 refs), 215 sparse (1–3 refs), 677 true-violation tokens total** —
+matches the kickoff brief's figures exactly (recomputed independently on a fresh `main`
+checkout, confirming no drift since the brief was written). Densest: `AuthController` (14),
+`operator/application/Operators` (12), `AdminOperatorController` (12), `venue/application/Venues`
+(11), `venue/adapter/in/VenueAdminController` (10), `venue/adapter/in/AdminVenueCommissionController`
+(10), `booking/adapter/out/JdbcBookings` (10).
+
+Dense-tier batching: 55 files ÷ 3/batch → batches D1–D18 (18×3) + D19 (1 file) = 19 batches.
+Sparse-tier batching: 215 files ÷ 15/batch → batches S1–S14 (14×15) + S15 (5 files) = 15 batches.
+
+## RELOCATE-CANDIDATE inventory
+
+> Populated as batches report their triage breakdown. Deliverable of this pass — not resolved
+> here. One row per hit; file/line as of the commit that flagged it.
+
+| # | File | Line | Rationale (one sentence) | Flagged in |
+|---|---|---|---|---|
+| _(none yet — populated per wave)_ | | | | |
+
+## Execution status
+
+**Stage pointer:** implement — dense-tier wave 1 starting (batches D1–D6).
+
+**Next action:** dispatch D1–D6 as parallel worktree-isolated agents, integrate serially.
+
+| Wave | Scope | Status | Commits |
+|---|---|---|---|
+| Dense wave 1 (D1–D6) | 18 densest files | ⏳ | |
+| Dense wave 2 (D7–D13) | next 21 files | | |
+| Dense wave 3 (D14–D19) | remaining 16 files | | |
+| Sparse wave 1 (S1–S7) | 105 files | | |
+| Sparse wave 2 (S8–S15) | 110 files | | |
+
+Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Findings register**
+
+| # | Source | Finding | Status |
+|---|---|---|---|
+
+## File structure
+
+- `docs/plans/issue-561-issue-ref-strip-phase-c.md` — **new**: this doc
+- _(populated per batch as files are touched — see per-wave sections below)_
+
+## Generalization-audit log
+
+N/A this pass — mechanical strip, no new pattern introduced beyond what Phase B already
+generalized.
+
+## Acceptance-criteria verification (final)
+
+_(filled at close-out)_
+
+## Self-review checklist (before merge / PR)
+
+- [ ] Every AC has a verifying artifact.
+- [ ] No placeholders / TODO / TBD anywhere in the doc.
+- [ ] Invariants #1–#13: N/A — comment-only, no code/schema/money/timezone surface changed.
+- [ ] The historical Phase B doc was read, never edited — this is a new doc.
+- [ ] Execution status at HEAD matches reality.
