@@ -3,10 +3,10 @@ package ai.riviera.platform.booking.spi;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 
 /**
- * Whether the booking-confirmation mail will be <strong>withheld</strong> from a customer (#390) —
+ * Whether the booking-confirmation mail will be <strong>withheld</strong> from a customer —
  * the cross-module driven port {@code booking} declares and {@code notification} implements.
  *
- * <p>The suppression list's defining invariant — <em>no send to a suppressed address</em> (#382) —
+ * <p>The suppression list's defining invariant — <em>no send to a suppressed address</em> —
  * means a tourist with a hard-bounced or complained address books and pays normally while the
  * confirmation mail is silently dropped. For a guest that is severe: the confirmation screen and the
  * booking-code URL (ADR-0006) are their only record. This port lets the confirmation surface say so.
@@ -24,9 +24,9 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
  *
  * <p><strong>Read it as a present-tense question</strong> — <em>would</em> a confirmation mail to
  * this customer be withheld <em>now</em> — not as the historical fact that a particular send was
- * skipped. The two coincide at confirmation time, which is the only moment #390's surfaces ask. They
- * drift afterwards: a later hard bounce (#372's feed) makes a delivered mail read as withheld, and
- * an ADMIN reinstatement (#391, V35) makes a genuinely skipped one read as delivered. Any consumer
+ * skipped. The two coincide at confirmation time, which is the only moment this port's surfaces ask. They
+ * drift afterwards: a later hard bounce (the bounce-feed sweep) makes a delivered mail read as withheld, and
+ * an ADMIN reinstatement (V35) makes a genuinely skipped one read as delivered. Any consumer
  * that needs the historical fact must record it at send time instead of calling this.
  *
  * <p>Callers must consult this <strong>only for a booking that is already confirmed</strong>:
