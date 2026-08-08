@@ -10,8 +10,8 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 
 /**
- * The request body for editing a venue's profile ({@code PATCH /api/venues/{venueId}}, widened by
- * O8 #177 from the T7 #140 amenities + distance). It carries the operator-editable fields —
+ * The request body for editing a venue's profile ({@code PATCH /api/venues/{venueId}}, widened from
+ * the original amenities + distance fields). It carries the operator-editable fields —
  * {@code name}/{@code beach}/{@code region}/{@code description}, {@code bookingMode}
  * ({@code INSTANT}|{@code REQUEST}), {@code bookingCutoff} ({@code "HH:mm"} in {@code Europe/Tirane}),
  * the full amenity set (codes from the fixed {@link Amenity} catalogue), and the optional
@@ -26,7 +26,7 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  * <p><strong>The edit REPLACES the profile</strong> (the form always re-sends every field), so a
  * null/absent {@code amenities} clears them and a null {@code distanceToWaterM} clears the distance.
  *
- * <p>{@code expectedVersion} is the required optimistic-concurrency token (#224) — the {@code version}
+ * <p>{@code expectedVersion} is the required optimistic-concurrency token — the {@code version}
  * the tab loaded with the profile. It is typed {@link Long} (not primitive) so an absent field is
  * {@code null}, not a silent {@code 0}: {@link ExpectedVersion#require(Long)} rejects the null with a
  * {@code 400} rather than letting it match a fresh venue and re-open the last-write-wins hole.

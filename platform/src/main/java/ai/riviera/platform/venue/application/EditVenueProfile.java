@@ -4,7 +4,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Driving (inbound) port for editing a venue's profile fields (T7 #140, widened by O8 #177) —
+ * Driving (inbound) port for editing a venue's profile fields —
  * name/beach/region/description, booking mode, booking cutoff, the amenity set, and
  * distance-to-water. Commission and payout currency are read-only for operators and are never part
  * of this write. Internal to the {@code venue} module (REST-only caller), so it lives in
@@ -15,7 +15,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * edit REPLACES the whole profile (the form re-sends every field, and clears the distance when
  * absent).
  *
- * <p>Optimistic concurrency (#224): the caller passes the {@code expectedVersion} it loaded with the
+ * <p>Optimistic concurrency: the caller passes the {@code expectedVersion} it loaded with the
  * profile; the write is conditional on it. A {@link ProfileUpdateOutcome} of {@code NO_SUCH_VENUE}
  * maps to 404 when the venue does not exist, and {@code STALE_WRITE} to 409 when another writer has
  * bumped the version since the load — so a stale tab cannot silently clobber

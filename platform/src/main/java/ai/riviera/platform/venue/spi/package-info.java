@@ -10,9 +10,9 @@
  * {@code application}, not here.)
  *
  * <p>Holds {@link SetAvailabilityLookup}, implemented by the {@code availability} module so the
- * venue beach-map read can overlay live per-{@code (set, date)} availability (issue #44), and
+ * venue beach-map read can overlay live per-{@code (set, date)} availability, and
  * {@link BookingPresence}, implemented by the {@code booking} module so the bulk layout replace can
- * refuse a venue that has bookings (O3, issue #172) — both without venue depending on those modules.
+ * refuse a venue that has bookings — both without venue depending on those modules.
  * Grant {@code venue::spi} only to the implementing module; callers that merely use venue use
  * {@code venue::api}.
  */

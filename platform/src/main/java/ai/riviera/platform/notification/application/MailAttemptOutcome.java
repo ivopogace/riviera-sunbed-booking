@@ -1,7 +1,7 @@
 package ai.riviera.platform.notification.application;
 
 /**
- * What became of a booking-confirmation mail attempt (#380).
+ * What became of a booking-confirmation mail attempt.
  *
  * <p>This enum is the reason #380 records attempts instead of reading the Event Publication Registry:
  * the registry completes a publication for the first <em>three</em> of these identically, because in
@@ -27,6 +27,6 @@ public enum MailAttemptOutcome {
 	 */
 	TRANSPORT_FAILED,
 
-	/** Given up on: a booking, set or contact fact the mail needs is missing (#428) and cannot appear later. */
+	/** Given up on: a booking, set or contact fact the mail needs is missing and cannot appear later. */
 	ABANDONED_MISSING_FACTS
 }

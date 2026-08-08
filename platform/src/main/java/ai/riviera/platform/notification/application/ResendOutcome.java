@@ -1,7 +1,7 @@
 package ai.riviera.platform.notification.application;
 
 /**
- * What an admin's Resend press achieved (#380) — the answer the console shows, and the reason the
+ * What an admin's Resend press achieved — the answer the console shows, and the reason the
  * resend is a synchronous call rather than an event.
  *
  * <p>Every value is an ordinary answer an admin acts on, not an error
@@ -17,7 +17,7 @@ public enum ResendOutcome {
 
 	/**
 	 * Withheld: the address is on the suppression list. Usually the most valuable answer on this
-	 * surface — it is the reason a tourist never received the original either, and the lift is #391's
+	 * surface — it is the reason a tourist never received the original either, and the lift is the
 	 * ADMIN reinstatement rather than another press of this button.
 	 */
 	WITHHELD_SUPPRESSED,
@@ -32,8 +32,8 @@ public enum ResendOutcome {
 	NOT_CONFIRMED,
 
 	/**
-	 * A booking, set or contact fact the mail needs is missing — the same data-integrity fault #428
-	 * counts on the automatic path, surfaced here rather than hidden behind a generic failure.
+	 * A booking, set or contact fact the mail needs is missing — the same data-integrity fault the
+	 * automatic path counts, surfaced here rather than hidden behind a generic failure.
 	 */
 	MISSING_FACTS
 }
