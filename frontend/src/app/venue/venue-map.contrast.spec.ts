@@ -20,7 +20,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the Liquid Glass beach map (issue #136; gate from #38). Glass
+ * WCAG-AA contrast guard for the Liquid Glass beach map. Glass
  * surfaces are translucent, so every pair is checked as the EFFECTIVE colour — the glass rgba
  * composited over the theme background's worst-case gradient stops, and alpha inks composited
  * over that (the `home.contrast.spec.ts` / `app.contrast.spec.ts` pattern). Shared token
@@ -29,8 +29,8 @@ import {
  * This table mirrors every text-bearing token `venue-map.html` sets itself; the shared directives
  * it composes prove their own (the amenity chips in `shared/amenities.contrast.spec.ts` — solid
  * fills, so backdrop-independent; the failure panel's inks are the `--riv-card-ink` /
- * `--riv-card-ink-soft` pair already below). Deviations from the design file, on purpose (plan R-2,
- * same class as T1/T2): the header + back pill sit on the AA-proven dark header glass, not the bare
+ * `--riv-card-ink-soft` pair already below). Deviations from the design file, on purpose:
+ * the header + back pill sit on the AA-proven dark header glass, not the bare
  * gradient; the seat tiles keep SOLID colours (below) so their ink pairs are AA regardless of
  * backdrop; the date field is near-opaque (it sits on dark glass, unlike Discover's field on light
  * card glass).
@@ -170,7 +170,5 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
     }
   });
 
-  // The "photos coming soon" caption pill test is gone with the pill itself (#142): the banner
-  // now renders the real cover photo (or the bare gradient as the empty state) and carries no
-  // text — the scrim there is decorative depth on an aria-hidden band, with no AA duty.
+  // The "photos coming soon" caption pill test is gone with the pill itself: the banner now renders the real cover photo (or the bare gradient as the empty state) and carries no text — the scrim there is decorative depth on an aria-hidden band, with no AA duty.
 });

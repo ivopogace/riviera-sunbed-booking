@@ -277,7 +277,7 @@ export class AdminOperators {
    */
   private readonly countsKnown = signal(false);
 
-  /** The three operator counts the A9 stat strip renders; `undefined` means "not known", never 0. */
+  /** The three operator counts the stat strip renders; `undefined` means "not known", never 0. */
   protected readonly pendingCount = computed(() =>
     this.countsKnown() ? this.pending().length : undefined,
   );

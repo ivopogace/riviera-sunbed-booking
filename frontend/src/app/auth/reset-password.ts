@@ -6,9 +6,9 @@ import { CustomerAuth, MIN_PASSWORD_LENGTH, PASSWORD_LENGTH_MESSAGE } from '../c
 import { CardGlass } from '../shared/card-glass';
 
 /**
- * Password-reset page (S8 #113). Reached from the emailed link `/account/reset?token=…`; the token is
+ * Password-reset page. Reached from the emailed link `/account/reset?token=…`; the token is
  * the bearer credential (invariant #7). The tourist sets a new password (confirmed) and, on success, the
- * backend rotates it and invalidates any existing sessions (AC-3), so they sign in fresh. A bad/expired
+ * backend rotates it and invalidates any existing sessions, so they sign in fresh. A bad/expired
  * token or missing token is a clear dead-end that points back at requesting a new link.
  */
 @Component({

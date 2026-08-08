@@ -6,7 +6,7 @@ import { AdminMailDeliveryService } from './admin-mail-delivery.service';
 import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from './admin.model';
 
 /**
- * The admin console's per-booking mail-delivery card (#380): what happened to a tourist's
+ * The admin console's per-booking mail-delivery card: what happened to a tourist's
  * booking-confirmation mail, and the button that sends it again.
  *
  * <p><strong>Searched by email address, not by arrival code.</strong> Anyone who can quote their code
@@ -23,7 +23,7 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
  * says no confirmation was due; for a confirmed one it says nothing was recorded — which is the honest
  * answer for a booking that predates the log.
  *
- * <p>Sits on the Email tab beside the outbox card (#405) rather than in a tab of its own: same concern,
+ * <p>Sits on the Email tab beside the outbox card rather than in a tab of its own: same concern,
  * and the two answer the support question from opposite ends — what is still owed, versus what happened
  * to one person's mail. Porcelain theme comes from the page host.
  */

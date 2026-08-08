@@ -3,7 +3,7 @@ import { Component } from '@angular/core';
 import { CardGlass } from '../../shared/card-glass';
 
 /**
- * The hosted terms-of-service document (#101 Slice 3) at `/legal/terms` — the target of the
+ * The hosted terms-of-service document at `/legal/terms` — the target of the
  * checkout agreement links and the footer link.
  *
  * <p><strong>Deliberately a DRAFT</strong> under the same rule as {@link PrivacyPolicy}: banner

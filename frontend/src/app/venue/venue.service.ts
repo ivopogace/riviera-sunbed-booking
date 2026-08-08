@@ -13,8 +13,8 @@ export interface VenueListFilter {
 }
 
 /**
- * Reads the public venue catalogue: the discovery list (`GET /api/venues`, U-discovery) and a
- * single venue + beach map (U1, `GET /api/venues/{id}`). Single responsibility: typed access to
+ * Reads the public venue catalogue: the discovery list (`GET /api/venues`) and a
+ * single venue + beach map (`GET /api/venues/{id}`). Single responsibility: typed access to
  * the read API; no state of its own.
  */
 @Service()
@@ -36,7 +36,7 @@ export class VenueService {
       params = params.set('region', filter.region);
     }
     return this.http.get<VenueSummary[]>(`${environment.apiBaseUrl}/api/venues`, { params }).pipe(
-      // Photo paths resolve against the API origin (#142 review F-7; no-op in same-origin prod).
+      // Photo paths resolve against the API origin (no-op in same-origin prod).
       map((venues) =>
         venues.map((venue) => ({ ...venue, coverPhoto: resolveCoverPhoto(venue.coverPhoto) })),
       ),
@@ -45,7 +45,7 @@ export class VenueService {
 
   /**
    * The venue and its beach map for a given day. `date` is an ISO `YYYY-MM-DD` string; each set's
-   * availability reflects the authoritative `set_availability` state for that date (issue #44).
+   * availability reflects the authoritative `set_availability` state for that date.
    */
   getVenueMap(venueId: number, date: string): Observable<VenueMapView> {
     return this.http

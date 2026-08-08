@@ -74,7 +74,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
   });
 
   // A password may legitimately carry leading/trailing spaces; trimming would lock such an account
-  // out of proving its current password (the S8 set-password review finding, kept from recurring).
+  // out of proving its current password.
   it('does not trim the submitted passwords', async () => {
     const auth = authStub('changed');
     const fixture = await render(auth);
@@ -115,7 +115,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
     expect(text(fixture, 'oppw-error')).toBeDefined();
   });
 
-  // The guard still spends no request; the server names the case too since #345 (it no longer needs to).
+  // The guard still spends no request; the server names the case too (it no longer needs to).
   it('names the empty current-password field instead of blaming the new password', async () => {
     const auth = authStub('changed');
     const fixture = await render(auth);

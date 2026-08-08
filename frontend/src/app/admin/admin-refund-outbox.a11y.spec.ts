@@ -9,7 +9,7 @@ import { AdminRefundOutboxService } from './admin-refund-outbox.service';
 import { OutboxStatusView } from './admin.model';
 
 /**
- * Structural axe audit of the admin console's Refunds tab (#460): the tab strip, the titled card
+ * Structural axe audit of the admin console's Refunds tab: the tab strip, the titled card
  * with its single action, and the polite live region that announces the outcome. Rendered as a
  * signed-in admin with refunds outstanding, and again with none, since the card's body swaps between
  * the two. Contrast is not measurable by axe under jsdom; it is proven in the e2e.

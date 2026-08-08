@@ -46,7 +46,7 @@ function serviceStub(
   };
 }
 
-/** The A9 stat strip's own read — stubbed so the page's specs never reach a real HttpClient. */
+/** The stat strip's own read — stubbed so the page's specs never reach a real HttpClient. */
 function commissionsStub(): Partial<AdminCommissionsService> {
   return { venues: async () => [] };
 }

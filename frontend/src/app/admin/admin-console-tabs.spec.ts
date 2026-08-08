@@ -111,11 +111,10 @@ describe('AdminConsoleTabs', () => {
   });
 
   /**
-   * Q1 (#348) settled the strip's information architecture as an ORDER rather than a layout: one
-   * flat wrapping strip of at most eight tabs, in the canonical order. Every tab that ships sits
-   * in it, so this pins a rule rather than a snapshot — a subset in canonical order passes, which is
-   * what let A8 add Commissions and A3 add Privacy without editing an assertion here, and will do
-   * the same for A6.
+   * The strip's information architecture is an ORDER rather than a layout: one flat wrapping strip
+   * of at most eight tabs, in the canonical order. Every tab that ships sits in it, so this pins a
+   * rule rather than a snapshot — a subset in canonical order passes, which is what lets a new tab
+   * join the strip without editing an assertion here.
    */
   it('renders tabs in the canonical console order (Q1, #348)', async () => {
     const rendered = labels(await renderAt('/admin'));

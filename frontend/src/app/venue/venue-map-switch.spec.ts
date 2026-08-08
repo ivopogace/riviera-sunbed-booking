@@ -12,7 +12,7 @@ import { VenueMap } from './venue-map';
 const BASE = environment.apiBaseUrl;
 
 /**
- * The #499 integration proof, on the REAL route config: `/venues/1` → `/venues/2` REUSES the
+ * The integration proof, on the REAL route config: `/venues/1` → `/venues/2` REUSES the
  * `VenueMap` instance (same route config, only the param differs — the router never
  * re-constructs), and the reactive `:id` signal still re-loads the map for venue 2. This is the
  * exact navigation a future "similar venues nearby" link would perform; the unit specs push
@@ -72,7 +72,7 @@ describe('Tourist beach map — in-place venue switch over the real routes (#499
     flushVenue(2, 'Second Venue');
     harness.fixture.detectChanges();
 
-    // The regression class #499 closes: the router REUSED the instance (no re-construction)…
+    // The regression class this closes: the router REUSED the instance (no re-construction)…
     expect(map()).toBe(firstInstance);
     // …and the reactive param still re-loaded the map for venue 2.
     expect(header()).toContain('Second Venue');

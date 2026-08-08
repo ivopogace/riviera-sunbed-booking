@@ -326,7 +326,7 @@ describe('AdminCommissions', () => {
   });
 
   /**
-   * The forward-only explainer is the substance of this slice, so its two load-bearing claims are
+   * The forward-only explainer is the substance of this surface, so its two load-bearing claims are
    * pinned rather than left to a later copy edit: the guarantee is that a past service date never
    * re-prices, NOT that the takings strip agrees with the ledger (the ledger prices each booking at
    * accrual, the strip applies one rate to a service date's aggregate).

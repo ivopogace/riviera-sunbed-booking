@@ -54,7 +54,7 @@ describe('AdminOperatorsService', () => {
     await promise;
   });
 
-  /** #519 (AC-1): typed grounds ride the suspension into the #507 admin audit trail. */
+  /** Typed grounds ride the suspension into the admin audit trail. */
   it('sends typed grounds as the X-Audit-Reason header on suspend', async () => {
     const promise = service.suspend(7, '  reported by email  ');
     const req = http.expectOne(`${base}/7/suspend`);

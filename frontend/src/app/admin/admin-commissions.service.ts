@@ -6,10 +6,10 @@ import { environment } from '../../environments/environment';
 import { problemCodeOf } from '../shared/api-error';
 import { VenueCommissionView } from './admin.model';
 
-/** What went wrong on a rate write, as the console needs to tell it apart (RFC-7807 `code`, #97). */
+/** What went wrong on a rate write, as the console needs to tell it apart (RFC-7807 `code`). */
 export type CommissionWriteError = 'NO_SUCH_VENUE' | 'INVALID_REQUEST' | 'UNKNOWN';
 
-/** The optional grounds an admin action may carry into the audit trail (#507); sanitized server-side. */
+/** The optional grounds an admin action may carry into the audit trail; sanitized server-side. */
 const AUDIT_REASON_HEADER = 'X-Audit-Reason';
 
 /** The wire shape of `GET /api/admin/venues` — an object wrapping the array, so a page window can be added later. */
@@ -18,11 +18,11 @@ interface AdminVenueCommissionsResponse {
 }
 
 /**
- * HTTP client for the admin console's venue-commission surface (A8, epic #348), against the two
- * ADMIN-gated endpoints A7 shipped. Stateless: the session cookie + CSRF header are added by
+ * HTTP client for the admin console's venue-commission surface, against the two ADMIN-gated
+ * endpoints it wraps. Stateless: the session cookie + CSRF header are added by
  * {@link apiSessionInterceptor}, and the component holds the page state.
  *
- * <p>Two consumers since A9: the Commissions tab, which reads and writes, and the console home's
+ * <p>Two consumers: the Commissions tab, which reads and writes, and the console home's
  * stat strip, which only calls {@link venues} for the venue count and the mean of their rates. The
  * strip deliberately reuses this client rather than adding a second one for the same endpoint.</p>
  *
@@ -60,7 +60,7 @@ export class AdminCommissionsService {
    * only — never a percent — and no effective date: the schedule is forward-only and computed
    * server-side, so a caller cannot backdate a rate (invariant #9).
    *
-   * <p>A non-blank `reason` rides the {@link AUDIT_REASON_HEADER} into the audit trail (#507); header
+   * <p>A non-blank `reason` rides the {@link AUDIT_REASON_HEADER} into the audit trail; header
    * values must be Latin-1, so anything outside it becomes a space rather than an aborted request.
    */
   setCommission(
@@ -84,8 +84,9 @@ export class AdminCommissionsService {
 /**
  * Map a rate-write failure to a {@link CommissionWriteError}. Kept beside the calls, mirroring
  * `venueProfileErrorOf`, so the page never handles an `HttpErrorResponse` itself. `NO_SUCH_VENUE`
- * earns its own value because A7 chose not to blur venue existence here: a stale or mistyped id must
- * read as "that venue is gone", not as the generic failure a retry would be sensible against.
+ * earns its own value because this endpoint deliberately does not blur venue existence: a stale or
+ * mistyped id must read as "that venue is gone", not as the generic failure a retry would be
+ * sensible against.
  */
 export function commissionWriteErrorOf(error: unknown): CommissionWriteError {
   if (!(error instanceof HttpErrorResponse)) {

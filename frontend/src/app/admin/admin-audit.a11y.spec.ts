@@ -9,7 +9,7 @@ import { AdminAuditService } from './admin-audit.service';
 import { AdminAuditEntryView } from './admin.model';
 
 /**
- * Structural axe audit of the admin console's Audit tab (#507): the tab strip, the titled card, and
+ * Structural axe audit of the admin console's Audit tab: the tab strip, the titled card, and
  * the header-labelled data table. Rendered with recorded actions and again empty, since the card's
  * body swaps between the two. Contrast is not measurable by axe under jsdom; it is proven in the e2e.
  */

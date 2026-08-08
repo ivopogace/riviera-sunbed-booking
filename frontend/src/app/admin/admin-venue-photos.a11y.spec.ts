@@ -9,7 +9,7 @@ import { AdminVenuePhotosService } from './admin-venue-photos.service';
 import { AdminVenuePhotosView } from './admin.model';
 
 /**
- * Structural axe audit of the admin console's Photos tab (#511): the tab strip, the labelled venue
+ * Structural axe audit of the admin console's Photos tab: the tab strip, the labelled venue
  * picker, the slot grid (occupied slots carry an `<img>` that needs a real alt, empty ones carry a
  * text placeholder), and the polite live region that announces a removal.
  *

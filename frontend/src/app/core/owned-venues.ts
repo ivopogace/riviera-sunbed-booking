@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 
-/** One venue the signed-in operator owns, as `GET /api/venues/mine` returns it (S9 #277). */
+/** One venue the signed-in operator owns, as `GET /api/venues/mine` returns it. */
 export interface OwnedVenue {
   readonly id: number;
   readonly name: string;
@@ -21,7 +21,7 @@ export type OwnedVenuesResult =
   | { readonly status: 'error' };
 
 /**
- * The signed-in operator's own venues (S9 #277) — the read behind the post-sign-in landing decision
+ * The signed-in operator's own venues — the read behind the post-sign-in landing decision
  * and the `/operator` picker. Session-scoped at the backend (no id in the request), so this service
  * has no parameters and nothing to authorize client-side.
  *

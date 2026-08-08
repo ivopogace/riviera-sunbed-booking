@@ -59,7 +59,7 @@ const ACCENT = '#085a6e'; // --riv-accent-ink
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 
 // styles.scss card-surface tokens (theme-invariant ones live in the :root block)
-const MODE_CHIP_GLASS: Glass = { color: WHITE, alpha: 0.85 }; // --riv-mode-chip-glass (0.85 since #142: AA over any photo)
+const MODE_CHIP_GLASS: Glass = { color: WHITE, alpha: 0.85 }; // --riv-mode-chip-glass (0.85: AA over any photo)
 
 // --riv-photo-grad stops (same in both themes; from the design's CTA hexes).
 const PHOTO_STOPS = ['2bb8d4', '0e8aa8'].map(hexToRgb);

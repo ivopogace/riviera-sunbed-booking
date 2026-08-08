@@ -53,19 +53,14 @@
     </p>
   </form>
 
-  <!-- Cutoff explainer (invariant #4 — display only; the server enforces the cutoff). Backed by a
-       subtle glass pill so its ink clears WCAG AA over the bare gradient (plan R-2). The ngsp
-       entity keeps a real space between the clock glyph and the copy (epic-133 sibling-inline
-       gotcha). -->
+  <!-- Cutoff explainer (invariant #4 — display only; the server enforces the cutoff). Backed by a subtle glass pill so its ink clears WCAG AA over the bare gradient. The ngsp entity keeps a real space between the clock glyph and the copy (a known sibling-inline gotcha). -->
   <p class="cutoff-note" appCardGlass data-testid="cutoff-note">
     <span class="cutoff-icon" aria-hidden="true">⏰</span>&ngsp;
     <span>Bookings close the evening before — book by 6&nbsp;PM the day before. Today isn’t available.</span>
   </p>
 
   @if (failed()) {
-    <!-- Designed load-failure panel (#149). The alert role and error test id preserve the T2
-         semantics so assistive tech announces it; the warning glyph is decorative — the heading
-         carries the meaning. -->
+    <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->
     <div appFailurePanel role="alert" data-testid="error">
       <span appFailureIcon aria-hidden="true">⚠</span>
       <h2 appFailureTitle>We couldn’t load the beaches</h2>
@@ -94,9 +89,7 @@
             >
               <!-- The <a> carries the full accessible name via aria-label, so its visible content
                    is decorative to AT — the two inner blocks are aria-hidden. -->
-              <!-- The cover photo (#142) when uploaded; the gradient + sun placeholder as the empty
-                   state. The scrim ALWAYS layers over it — the location text's AA floor must hold
-                   over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
+              <!-- The cover photo when uploaded; the gradient + sun placeholder as the empty state. The scrim ALWAYS layers over it — the location text's AA floor must hold over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
               <span class="card-photo" aria-hidden="true">
                 @if (card.coverPhoto; as cover) {
                   <img
@@ -127,9 +120,7 @@
                   }
                 </span>
 
-                <!-- T7 (#140): to-water chip first, then ≤3 amenity chips in catalogue order. The
-                     card body is aria-hidden, so this text is also folded into card.ariaLabel; the
-                     slot collapses (:empty) when the venue states neither. -->
+                <!-- To-water chip first, then ≤3 amenity chips in catalogue order. The card body is aria-hidden, so this text is also folded into card.ariaLabel; the slot collapses (:empty) when the venue states neither. -->
                 <span class="card-chips" data-testid="card-chips">
                   @if (card.water; as water) {
                     <span appAmenityChip water>{{ water }}</span>

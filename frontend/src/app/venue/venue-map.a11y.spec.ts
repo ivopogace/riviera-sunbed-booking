@@ -10,8 +10,8 @@ import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
 
 /**
- * Automated axe-core structural audit of the beach map (issue #38, AC-1/AC-2). Guards the
- * a11y the U1 component implements (accessible tile names, ARIA validity, non-colour
+ * Automated axe-core structural audit of the beach map. Guards the
+ * accessibility the component implements (accessible tile names, ARIA validity, non-colour
  * state) against regression. Colour contrast is checked separately and deterministically
  * in `venue-map.contrast.spec.ts` — axe can't measure contrast under jsdom.
  */
@@ -85,7 +85,7 @@ describe('VenueMap accessibility (axe)', () => {
   afterEach(() => httpMock.verify());
 
   function expectVenueRequest() {
-    // The map appends a `?date=` param (issue #44); match on the path, ignoring the query.
+    // The map appends a `?date=` param; match on the path, ignoring the query.
     return httpMock.expectOne((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
   }
 

@@ -3,10 +3,10 @@ import { computed, Service, signal } from '@angular/core';
 import type { SessionAuth } from './session-auth';
 
 /**
- * Carries the one fact a failed sign-out has to surface (#128 gap 2): the server may still hold this
+ * Carries the one fact a failed sign-out has to surface: the server may still hold this
  * device's session. The shell renders it as a warning with a retry, and it lives in `core/` because
- * both principal types and several surfaces (the tourist shell, the operator console, the venue
- * editor) sign out — a feature folder would have to import another feature's state to share it.
+ * both principal types and several surfaces (the tourist shell, the operator console) sign out —
+ * a feature folder would have to import another feature's state to share it.
  *
  * <p>{@link SessionAuth} records into this itself on every sign-out, so no call site has to remember
  * to. That matters: the bug being fixed is precisely that a failure was silently dropped, and a

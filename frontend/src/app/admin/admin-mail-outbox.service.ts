@@ -6,11 +6,11 @@ import { environment } from '../../environments/environment';
 import { AdminOutboxPort } from './admin-outbox-lever';
 import { OutboxStatusView, ResubmissionResultView } from './admin.model';
 
-/** The platform-admin mail-outbox surface (#405); ADMIN-gated server-side. */
+/** The platform-admin mail-outbox surface; ADMIN-gated server-side. */
 const ADMIN_MAIL_OUTBOX_API = `${environment.apiBaseUrl}/api/admin/mail-outbox`;
 
 /**
- * HTTP client for the mail outbox (#405) — what the Event Publication Registry still owes the
+ * HTTP client for the mail outbox — what the Event Publication Registry still owes the
  * notification module, and the lever that re-drives it. Stateless: the session cookie + CSRF header
  * are added by {@link apiSessionInterceptor}, and the component holds the page state.
  *

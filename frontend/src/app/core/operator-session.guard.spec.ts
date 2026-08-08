@@ -52,7 +52,7 @@ describe('operatorSessionGuard', () => {
   }
 
   it('awaits restore before deciding', async () => {
-    // R-1 / AC-8: reading signedIn() eagerly would see `false` here and redirect on every reload.
+    // Reading signedIn() eagerly would see `false` here and redirect on every reload.
     let decision: boolean | UrlTree | undefined;
     const guard = run('/operator/12').then((d) => (decision = d));
 
@@ -81,7 +81,7 @@ describe('operatorSessionGuard', () => {
   });
 
   it('redirects a customer session too — a tourist session grants no operator surface', async () => {
-    // AC-9: OperatorAuth filters /me by principal type, so a CUSTOMER session leaves signedIn false.
+    // OperatorAuth filters /me by principal type, so a CUSTOMER session leaves signedIn false.
     auth.settle(false);
     expect(await run('/operator')).toBeInstanceOf(UrlTree);
   });

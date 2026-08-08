@@ -8,15 +8,15 @@ import { AdminRefundOutboxService } from './admin-refund-outbox.service';
 import { OutboxLever } from './admin-outbox-lever';
 
 /**
- * The admin console's Refunds tab (#460): what the Event Publication Registry still owes the
- * cancellation-refund listener — refunds whose gateway call failed or was shed — and the #454 lever
+ * The admin console's Refunds tab: what the Event Publication Registry still owes the
+ * cancellation-refund listener — refunds whose gateway call failed or was shed — and the lever
  * that re-drives them without waiting for a deploy. Until this tab, the money path's retry lever was
  * the one admin lever without a button (a cookie-jar `curl`, mid-incident, from a runbook).
  *
  * <p>The press semantics are the Email tab's, shared through {@link OutboxLever}: the count is shown
  * before the button is pressed, a refusal (`COOLING_DOWN` / `ALREADY_RUNNING`) is reported as a
  * refusal with the retry window rather than as a failure, and the button disables only for its own
- * round-trip. What this surface deliberately cannot show (invariant #7, AC-4): a booking id, a
+ * round-trip. What this surface deliberately cannot show (invariant #7): a booking id, a
  * booking code, or any per-publication detail — the endpoint returns counts, an outcome token and
  * seconds, nothing else, and the client invents no columns for more.
  *

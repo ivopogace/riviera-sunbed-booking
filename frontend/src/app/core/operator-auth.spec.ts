@@ -57,7 +57,7 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
   });
 
   it('does NOT adopt a CUSTOMER /me principal — a customer session never signs an operator in (F2)', async () => {
-    // /me is polymorphic (S2 #111); OperatorAuth must filter to its own principal type.
+    // /me is polymorphic; OperatorAuth must filter to its own principal type.
     const auth = TestBed.inject(OperatorAuth);
     httpMock.expectOne(`${AUTH_API}/me`).flush({ username: 'ana@example.com', principalType: 'CUSTOMER' });
     await Promise.resolve();
@@ -191,7 +191,7 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
       req.flush(null, { status: 204, statusText: 'No Content' });
 
       expect(await result).toBe('changed');
-      // Other devices are signed out server-side; THIS session is deliberately kept (#128).
+      // Other devices are signed out server-side; THIS session is deliberately kept.
       expect(auth.signedIn()).toBe(true);
     });
 
@@ -209,7 +209,7 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
       expect(await result).toBe('invalid-current');
     });
 
-    // #345 split this out of INVALID_REQUEST: mapping it to invalid-password revives the very defect.
+    // This is split out of INVALID_REQUEST: mapping it to invalid-password revives the very defect.
     it('maps 400 MISSING_CURRENT_PASSWORD to missing-current', async () => {
       const auth = serviceWithRestore({ username: 'adriatica' });
       await Promise.resolve();

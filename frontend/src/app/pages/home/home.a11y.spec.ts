@@ -9,10 +9,10 @@ import { VenueSummary } from '../../shared/venue-views';
 import { Home } from './home';
 
 /**
- * Automated axe-core structural audit of the venue-discovery landing page (issue #61; a11y gate
- * from #38). Guards the accessible card names, ARIA validity, and the distinct loading/empty/error
- * states. Colour contrast is checked deterministically in `home.contrast.spec.ts` (axe can't
- * measure contrast under jsdom) and in the real-browser e2e.
+ * Automated axe-core structural audit of the venue-discovery landing page. Guards the accessible
+ * card names, ARIA validity, and the distinct loading/empty/error states. Colour contrast is
+ * checked deterministically in `home.contrast.spec.ts` (axe can't measure contrast under jsdom)
+ * and in the real-browser e2e.
  */
 function venues(): VenueSummary[] {
   return [

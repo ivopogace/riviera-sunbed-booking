@@ -6,7 +6,7 @@ import { AdminMailDeliveryService } from './admin-mail-delivery.service';
 import { MailDeliveryLookupView } from './admin.model';
 
 /**
- * Structural axe audit of the mail-delivery card (#380): the labelled search field, the per-booking
+ * Structural axe audit of the mail-delivery card: the labelled search field, the per-booking
  * results list with its own action, and the polite live region that announces a resend's outcome.
  * Audited in both states the card has — before a search and with results — since the results state
  * introduces every interactive element on the card. Contrast is not measurable by axe under jsdom; it

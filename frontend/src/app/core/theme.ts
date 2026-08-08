@@ -3,8 +3,8 @@ import { Service, signal } from '@angular/core';
 import { readStorage, writeStorage } from '../shared/safe-storage';
 
 /**
- * The two Liquid Glass themes (issue #134) — one dark, one light, the full set by decision
- * (#143, closed not-planned). Palettes themselves are CSS custom properties under
+ * The two Liquid Glass themes — one dark, one light, the full set by deliberate decision —
+ * not planned to grow. Palettes themselves are CSS custom properties under
  * `[data-riv-theme="…"]` in `styles.scss` — this registry only carries what the switcher UI
  * needs; a palette change is a styles.scss block plus one row here.
  */
@@ -34,7 +34,7 @@ function isThemeId(value: string | null): value is ThemeId {
 /**
  * The single writer of the document's `data-riv-theme` attribute. Resolution order on boot:
  * stored choice → OS `prefers-color-scheme: light` (→ porcelain) → riviera. `select` persists,
- * so the choice survives reloads (AC-2); storage access is guarded — a blocked storage
+ * so the choice survives reloads; storage access is guarded — a blocked storage
  * (private mode) degrades to session-only theming, never an error.
  */
 @Service()
