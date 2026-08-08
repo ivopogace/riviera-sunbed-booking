@@ -29,10 +29,10 @@ import { BookingService, bookingErrorOf } from './booking.service';
 const SET_INCLUDES = '2 loungers + umbrella · full day';
 
 /**
- * Two-step guest-checkout modal for booking one set (U3 #6; Liquid Glass restyle #137, epic #133).
+ * Two-step guest-checkout modal for booking one set.
  * Step 1 **Details** collects contact info (Signal Forms) with the date shown read-only — the map
- * owns the date now (#44/#136); step 2 **Review** shows the summary + total and the mode-specific
- * note, then submits through {@link BookingService}. Restyle only: the three shipped #98 flows are
+ * owns the date now; step 2 **Review** shows the summary + total and the mode-specific
+ * note, then submits through {@link BookingService}. Restyle only: the three shipped booking flows are
  * unchanged — a `201` emits {@link booked}, a `202 AWAITING_PAYMENT` emits {@link awaiting} (the
  * booking is NOT confirmed until the verified webhook, invariant #8), a `202 PENDING_REQUEST` emits
  * {@link requested}. Accessible modal: `role="dialog"` + `aria-modal`, a focus trap, ESC / backdrop
@@ -183,7 +183,7 @@ export class BookingDialog implements OnInit {
   readonly set = input.required<SetView>();
   /** The day the map is showing (ISO YYYY-MM-DD); seeds the POST body and the read-only date row. */
   readonly date = input.required<string>();
-  /** The venue's booking mode: `REQUEST` swaps the CTA/copy to Request-to-Book (issue #98). */
+  /** The venue's booking mode: `REQUEST` swaps the CTA/copy to Request-to-Book. */
   readonly mode = input<BookingMode>('INSTANT');
   /** The venue name, shown in the gradient header (SetView carries none). */
   readonly venueName = input<string>('');
@@ -197,7 +197,7 @@ export class BookingDialog implements OnInit {
    */
   readonly awaiting = output<AwaitingPayment>();
   /**
-   * Emitted on a `202 PENDING_REQUEST` (REQUEST-mode venue, issue #98) — nothing is charged; the
+   * Emitted on a `202 PENDING_REQUEST` (REQUEST-mode venue) — nothing is charged; the
    * parent routes to the request-sent screen and the venue must accept before any payment.
    */
   readonly requested = output<RequestedBooking>();

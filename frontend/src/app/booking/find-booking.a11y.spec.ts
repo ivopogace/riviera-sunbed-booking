@@ -8,7 +8,7 @@ import { BookingService } from './booking.service';
 import { FindBooking } from './find-booking';
 
 /**
- * Structural axe audit of the Liquid Glass "Find a booking" modal (issue #148, AC-9/AC-11): the
+ * Structural axe audit of the Liquid Glass "Find a booking" modal: the
  * modal exposes a dialog role with an accessible name from its heading, a labelled code input, and
  * a close control — on both the idle and the not-found error states. Contrast is checked separately
  * in find-booking.contrast.spec.ts (axe can't measure it under jsdom); real focus/trap is proven in

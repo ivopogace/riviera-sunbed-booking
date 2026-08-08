@@ -4,8 +4,7 @@ import { CardGlass } from './card-glass';
 
 /**
  * One glass KPI tile: an uppercase label, a large projected value, and an optional sub-caption —
- * the shape both console stat strips draw (the operator's #171 strip and the admin console's A9
- * strip, epic #348).
+ * the shape both console stat strips draw (the operator's strip and the admin console's strip).
  *
  * <p><strong>Why it lives in `shared/`.</strong> It is pure presentation with no HTTP and no state,
  * and two features now need it; `admin/` may not import `operator/`, so the alternative was a

@@ -179,7 +179,8 @@ export class OperatorConsoleService {
   /**
    * Issue a **full weather refund** for every CONFIRMED booking on `venueId`+`date` (invariant
    * #10) — admin-triggered, whole-day, regardless of the cutoff. The server decides + executes the
-   * refund (via the Stripe webhook path, invariant #8) and posts the payout reversal (#9); this only
+   * refund (via the Stripe webhook path, invariant #8) and posts the payout reversal (invariant #9);
+   * this only
    * triggers it. `date` is a required query param (no implicit "today"). Owner-asserted (invariant #13);
    * idempotent server-side (a re-run refunds nothing already cancelled).
    */

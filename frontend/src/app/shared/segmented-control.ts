@@ -9,7 +9,7 @@ export interface SegmentedOption<T extends string> {
 }
 
 /**
- * A reusable single-choice segmented control with full WAI-ARIA radiogroup semantics (S9 #277).
+ * A reusable single-choice segmented control with full WAI-ARIA radiogroup semantics.
  * Two visual variants over one behaviour:
  *
  * - `pill` — the compact tab strip (label only), used for the sign-in audience switch.

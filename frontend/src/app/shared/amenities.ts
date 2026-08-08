@@ -1,5 +1,5 @@
 /**
- * The fixed platform amenity catalogue (T7, issue #140) — the frontend mirror of the backend
+ * The fixed platform amenity catalogue — the frontend mirror of the backend
  * `ai.riviera.platform.venue.vocabulary.Amenity` enum, exactly as `booking-status.ts` mirrors the
  * backend `BookingStatus`. **Codes travel the wire; labels are display-only.** Declaration order is
  * the canonical display/priority order: the Discover card renders the first few amenities in this

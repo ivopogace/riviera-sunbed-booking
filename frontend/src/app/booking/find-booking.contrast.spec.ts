@@ -14,13 +14,13 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the Liquid Glass "Find a booking" modal (issue #148, AC-12). The modal
+ * WCAG-AA contrast guard for the Liquid Glass "Find a booking" modal. The modal
  * floats over a dark scrim + the theme background, so every pair is the EFFECTIVE colour: the panel
  * glass composited over the theme's worst-case gradient stops, then each ink composited over that
  * (the booking-dialog.contrast.spec.ts pattern). This table mirrors every text-bearing token in
  * find-booking.scss.
  *
- * Deviations from the design file, on purpose (plan R-5, cloned from booking-dialog): the panel is
+ * Deviations from the design file, on purpose (cloned from booking-dialog): the panel is
  * white 0.82 (design 0.78) so dark inks clear AA over the darkest stop; the input border is the dark
  * --riv-field-border (a white border fails the 3:1 boundary); the CTA is the AA-safe --riv-cta-grad
  * teal with SOLID white ink.

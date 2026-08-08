@@ -18,7 +18,7 @@ describe('formatDeadline', () => {
 });
 
 /**
- * The Requests-tab urgency helpers (issue #176). Pure functions taking `now` as a millisecond epoch,
+ * The Requests-tab urgency helpers. Pure functions taking `now` as a millisecond epoch,
  * so the 8-hour boundary is deterministic without mocking the clock.
  */
 describe('isUrgent', () => {

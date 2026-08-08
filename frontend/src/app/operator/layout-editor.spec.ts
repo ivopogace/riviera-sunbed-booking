@@ -390,7 +390,7 @@ describe('LayoutEditor (#172)', () => {
   });
 
   it('drops a superseded save’s outcome after a venue switch (#180)', async () => {
-    // A save for venue 1 resolving after a switch must not stamp its advanced token onto venue 2's editor.
+    // A save for venue 1 resolving after a switch must not stamp its token or Saved notice onto venue 2.
     render([], 7);
     generate('1', '1');
     byId('layout-save').click();

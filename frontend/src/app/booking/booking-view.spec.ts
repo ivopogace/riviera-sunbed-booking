@@ -35,7 +35,7 @@ const DETAIL: BookingDetail = {
 
 const WITHDRAWAL: Withdrawal = { code: 'ABCD234567', status: 'WITHDRAWN' };
 
-/** A PENDING_REQUEST detail the guest may still retract (#123). */
+/** A PENDING_REQUEST detail the guest may still retract. */
 const PENDING: BookingDetail = {
   ...DETAIL,
   status: 'PENDING_REQUEST',
@@ -63,7 +63,7 @@ function stubService(opts: {
   withdrawCalls?: string[];
   withdrawError?: unknown;
   handoffs?: PaymentHandoff[];
-  /** A primed detail (#168 find-a-booking hand-off); consumed one-shot for the matching code. */
+  /** A primed detail (find-a-booking hand-off); consumed one-shot for the matching code. */
   prefetched?: BookingDetail;
 }): Partial<BookingService> {
   let served = 0;
@@ -150,7 +150,7 @@ describe('BookingView', () => {
   });
 
   it('moves focus to the destructive confirm button when the cancel prompt appears', async () => {
-    // Twin of the withdraw focus test — the component claims this for BOTH prompts (#477 item 2).
+    // Twin of the withdraw focus test — the component claims this for BOTH prompts.
     const fixture = await render(stubService({ detail: DETAIL }));
     const host = fixture.nativeElement as HTMLElement;
 
@@ -178,7 +178,7 @@ describe('BookingView', () => {
     expect(panel?.textContent).toContain('Waiting for the venue');
     expect(panel?.textContent).toContain('17:00');
     expect(host.querySelector('[data-testid="pay-now"]')).toBeNull();
-    // Cancel is for a CONFIRMED booking; a pending request is retracted, not cancelled (#123).
+    // Cancel is for a CONFIRMED booking; a pending request is retracted, not cancelled.
     expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
     expect(host.querySelector('[data-testid="withdraw-request"]')).not.toBeNull();
     await expectNoAxeViolations(host);
@@ -289,7 +289,7 @@ describe('BookingView', () => {
   });
 
   it('renders no withdraw control when the server says the request is not withdrawable', async () => {
-    // The server owns the rule (#123) — the template gates on `withdrawable`, never on the status.
+    // The server owns the rule — the template gates on `withdrawable`, never on the status.
     const fixture = await render(
       stubService({ detail: { ...PENDING, withdrawable: false } }),
     );
@@ -299,8 +299,7 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="withdraw-request"]')).toBeNull();
   });
 
-  // The unified status chip renders the design label for the whole #98 union — one header chip
-  // carrying `booking-status`, replacing the old dl "Status" row.
+  // The unified status chip renders the design label for the whole booking-status union — one header chip carrying `booking-status`, replacing the old dl "Status" row.
   it.each<[BookingStatus, string]>([
     ['CONFIRMED', 'Confirmed'],
     ['PENDING_REQUEST', 'Pending request'],
@@ -468,8 +467,7 @@ describe('BookingView', () => {
     await expectNoAxeViolations(host);
   });
 
-  // Review finding [2]: a status outside the #98 union (FE deployed before a new backend
-  // lifecycle state) must degrade to a humanized label, not throw in the STATUS_META lookup.
+  // A status outside the booking-status union (FE deployed before a new backend lifecycle state) must degrade to a humanized label, not throw in the STATUS_META lookup.
   it('renders an unmapped status gracefully instead of crashing (FE/BE skew)', async () => {
     const fixture = await render(
       stubService({ detail: { ...DETAIL, status: 'ON_HOLD' as BookingStatus, cancellable: false } }),
@@ -481,7 +479,7 @@ describe('BookingView', () => {
     expect(host.textContent).toContain('Amount');
   });
 
-  // Review finding [1]: a failed post-cancel reload must NOT hide the confirmed cancellation.
+  // A failed post-cancel reload must NOT hide the confirmed cancellation.
   it('keeps the cancellation confirmation when the post-cancel reload fails', async () => {
     let calls = 0;
     const service: Partial<BookingService> = {
@@ -506,7 +504,7 @@ describe('BookingView', () => {
     expect(host.textContent).not.toContain('Couldn’t load your booking');
   });
 
-  // Review finding [3]: the status chip carries a programmatic "status" label (the old dl row's context).
+  // The status chip carries a programmatic "status" label (the old dl row's context).
   it('gives the status chip a visually-hidden "Booking status" label (a11y)', async () => {
     const fixture = await render(stubService({ detail: DETAIL }));
     const host = fixture.nativeElement as HTMLElement;
@@ -516,7 +514,7 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe('Confirmed');
   });
 
-  // Review finding [4]: the celebratory emoji is decorative (aria-hidden), not part of the heading name.
+  // The celebratory emoji is decorative (aria-hidden), not part of the heading name.
   it('marks the celebratory emoji decorative in the accepted banner (a11y)', async () => {
     const fixture = await render(
       stubService({
@@ -537,8 +535,7 @@ describe('BookingView', () => {
     await expectNoAxeViolations(host);
   });
 
-  // Issue #168: a find-a-booking hand-off primes the detail, so the initial load renders it WITHOUT
-  // a second GET /api/bookings/{code} (two GETs per success can 429 near the #56 ceiling).
+  // A find-a-booking hand-off primes the detail, so the initial load renders it WITHOUT a second GET /api/bookings/{code} (two GETs per success can approach the rate-limit ceiling).
   it('renders a prefetched detail for the matching code without fetching (#168)', async () => {
     const getByCode = vi.fn(() => of(DETAIL) as Observable<BookingDetail>);
     let prefetched: BookingDetail | undefined = DETAIL;
@@ -577,8 +574,7 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('ABCD234567');
   });
 
-  // T8 review finding [0]: the find modal (#148) makes booking→booking navigation reachable; the
-  // view must reload on a route-code change, not reuse the instance and show the previous booking.
+  // The find modal makes booking→booking navigation reachable; the view must reload on a route-code change, not reuse the instance and show the previous booking.
   it('reloads and re-renders when the route code changes (booking→booking, T8 finding [0])', async () => {
     const detailA: BookingDetail = { ...DETAIL, code: 'AAAAAAAAAA', venueName: 'Venue Alpha' };
     const detailB: BookingDetail = { ...DETAIL, code: 'BBBBBBBBBB', venueName: 'Venue Beta' };

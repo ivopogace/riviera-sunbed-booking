@@ -1,8 +1,4 @@
-// Liquid Glass booking confirmation (issue #137, design: riviera-sunbeds-liquid-glass-v3.dc.html →
-// confirmed card). A centered card-glass surface on the bare themed gradient; every text pair is
-// pinned as a composited effective colour in booking-confirmation.contrast.spec.ts. The
-// confirmation-card layout is shared in spirit with request-confirmation.scss — kept local per the
-// rule of three (two users; extract on the third).
+// Liquid Glass confirmation card-glass surface; colours pinned in the contrast spec; kept local, rule of three.
 
 // The card-glass surface is now the shared appCardGlass directive; this stylesheet keeps only the
 // confirmation card's bespoke blur/shadow/radius + inner layout.

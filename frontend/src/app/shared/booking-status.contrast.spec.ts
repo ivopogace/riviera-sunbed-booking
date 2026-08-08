@@ -1,8 +1,7 @@
 import { AA_NORMAL, contrastRatio } from '../../testing/contrast';
 
 /**
- * WCAG-AA contrast guard for the shared status chips (introduced #138, extracted to a shared
- * `status-chip` recipe at #139, ported to the `shared/status-chip.ts` directive at #477). The chips
+ * WCAG-AA contrast guard for the shared status chips. The chips
  * use OPAQUE SOLID fills (the css:S7924 treatment — see `shared/status-chip.ts`), so their text
  * contrast is theme-independent and asserted directly. This is the **single home** of that proof —
  * both `booking-view` and `my-bookings` consume the directive, so the assertion lives here once

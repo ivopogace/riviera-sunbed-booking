@@ -1,8 +1,8 @@
 /**
  * Keep keyboard focus inside a modal container (a focus trap; modal a11y, WCAG 2.4.3 / 2.1.2). Wraps
  * Tab at the last focusable back to the first, and Shift+Tab at the first to the last. Shared by the
- * app's modals (booking-dialog #137, find-booking #148) — extracted so the a11y-critical logic lives
- * in ONE place and can't drift between copies (issue #169 / T8 review finding [6]).
+ * app's modals (the booking dialog, find-booking) — extracted so the a11y-critical logic lives
+ * in ONE place and can't drift between copies.
  *
  * The selector excludes disabled controls; it deliberately does NOT filter on `offsetParent` — that
  * is null for a position:fixed subtree (the modal backdrop) and unavailable under jsdom, which would

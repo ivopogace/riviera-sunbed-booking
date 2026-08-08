@@ -8,9 +8,9 @@ export type OutcomeTone = 'success' | 'pending';
 let nextHeadingId = 0;
 
 /**
- * The "landed" card the auth page swaps in once a flow finishes (S9 #277) — a centred glass card
+ * The "landed" card the auth page swaps in once a flow finishes — a centred glass card
  * with a tone-coloured glyph, a heading, projected body copy and a projected CTA. Two tones today:
- * `success` (signed in) and `pending` (an operator registration awaiting admin approval, S6 #115).
+ * `success` (signed in) and `pending` (an operator registration awaiting admin approval).
  *
  * Reusable rather than inlined because the same shape serves three distinct landed states, and a
  * shared primitive keeps their a11y contract identical: the card is a labelled region, the glyph is

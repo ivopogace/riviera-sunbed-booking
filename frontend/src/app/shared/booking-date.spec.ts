@@ -8,7 +8,7 @@ import {
 } from './booking-date';
 
 /**
- * Pins the map/dialog default date (issue #44): tomorrow in Europe/Tirane, as ISO YYYY-MM-DD,
+ * Pins the map/dialog default date: tomorrow in Europe/Tirane, as ISO YYYY-MM-DD,
  * computed purely from an injected `now`. Covers the civil-day derivation and the +1-day
  * roll across month and year boundaries.
  */
@@ -34,7 +34,7 @@ describe('defaultBookingDate', () => {
 });
 
 /**
- * Pins the U8 staff daily-view default date: TODAY in Europe/Tirane, as ISO YYYY-MM-DD, computed
+ * Pins the staff daily-view default date: TODAY in Europe/Tirane, as ISO YYYY-MM-DD, computed
  * purely from an injected `now`. The civil-day boundary is the late-evening case where a naive UTC
  * reading would show the wrong day.
  */
@@ -50,7 +50,7 @@ describe('todayBookingDate', () => {
 });
 
 /**
- * Pins the shared civil-day label (issue #176) — the human "Tue 30 Jun 2026" the console's Daily-view
+ * Pins the shared civil-day label — the human "Tue 30 Jun 2026" the console's Daily-view
  * and Requests tabs render. UTC-anchored, so the same ISO day formats identically regardless of the
  * viewer's zone (invariant #6).
  */
@@ -62,7 +62,7 @@ describe('formatCivilDate', () => {
 
 /**
  * Guards the validation of an externally-supplied date — the `?date=` query param the discovery page
- * carries into the venue map (#294). Must reject the wrong shape and calendar overflow (which would
+ * carries into the venue map. Must reject the wrong shape and calendar overflow (which would
  * otherwise silently roll into a different day), and round-trip a UTC-anchored date to ISO.
  */
 describe('isIsoDate', () => {

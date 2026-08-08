@@ -5,7 +5,7 @@ import { BehaviorSubject } from 'rxjs';
 import { parentVenueId, routeIdParam, venueIdParam } from './parent-venue-id';
 
 /**
- * The shared venue-id route-param guard (#175, reactive since #180). A console tab reads `:venueId`
+ * The shared venue-id route-param guard. A console tab reads `:venueId`
  * from its PARENT route (child routes don't inherit it under `emptyOnly`); the shell reads its own
  * route through {@link venueIdParam}. The returned signal tracks in-place param changes — the router
  * reuses the component instance when only the param differs — and a non-numeric or non-positive

@@ -1,7 +1,7 @@
 import { AA_NORMAL, contrastRatio } from '../../testing/contrast';
 
 /**
- * WCAG-AA guard for the withheld-email notice (#390). Theme-independent by construction: the fill is
+ * WCAG-AA guard for the withheld-email notice. Theme-independent by construction: the fill is
  * a SOLID composite of the design's amber tint (not a translucent one), so the pair is a single fixed
  * hex in both themes and static CSS analysis computes the real ratio — the `.form-error` /
  * `.done-badge.warn` / `.failure-icon` precedent for `css:S7924`.

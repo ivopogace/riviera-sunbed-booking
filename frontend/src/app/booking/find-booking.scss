@@ -1,16 +1,6 @@
-// Liquid Glass "Find a booking" modal (issue #148, design: riviera-sunbeds-liquid-glass-v3.dc.html
-// → Find booking). This is the SECOND glass modal after booking-dialog; per the rule of three the
-// shared modal-glass recipe is NOT extracted yet — the AA-proven values below are cloned from
-// booking-dialog.scss (extract a shared `modal-glass` directive when a 3rd modal lands).
-// Every text-bearing pair is pinned as a composited effective colour in find-booking.contrast.spec.ts.
-//
-// Deviations from the design file, on purpose (same class as booking-dialog):
-//  - panel is white 0.82 (design 0.78): the modal floats over a dark scrim + the gradient's darkest
-//    stop, and the extra opacity keeps the dark card inks (and the error red) AA there;
-//  - input border is the dark --riv-field-border (design's white border fails the 3:1 boundary);
-//  - the CTA uses the AA-safe --riv-cta-grad teal with SOLID white text.
+// Liquid Glass "Find a booking" modal; the SECOND glass modal after booking-dialog (rule of three: not yet extracted into a shared modal-glass directive, cloned from booking-dialog.scss instead). Palette pinned in find-booking.contrast.spec.ts. Design deviations (on purpose, same class as booking-dialog): panel opacity 0.82 vs design's 0.78 (keeps dark card inks + error red AA over the darkest gradient stop); dark --riv-field-border input border (design's white border fails 3:1); the CTA uses the AA-safe --riv-cta-grad teal with solid white text.
 
-// Fixed, scrim-backed backdrop, painting ABOVE the sticky glass header (#134 stacking pin).
+// Fixed, scrim-backed backdrop, painting ABOVE the sticky glass header.
 :host.find-backdrop {
   position: fixed;
   inset: 0;
@@ -156,8 +146,7 @@
   outline-offset: 2px;
 }
 
-// Motion guards live next to the motion they guard (T1 rule — component-encapsulation specificity
-// beats a global guard).
+// Motion guards live next to the motion they guard — component-encapsulation specificity beats a global guard.
 @media (prefers-reduced-motion: reduce) {
   .find-panel {
     animation: none;

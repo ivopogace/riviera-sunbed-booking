@@ -1,15 +1,12 @@
 import { Directive } from '@angular/core';
 
-// Tailwind twins of the retired shared/_glass.scss `failure-*` mixins (spike: SCSS-vs-Tailwind comparison) —
-// the load-failure panel shared by Discover (#149) and the beach map (#136). Four co-located
-// directives, one per element of the panel; the "Try again" button is already <app-retry-button>.
-// Directives, not mixins (see shared/retry-button.ts). Import the whole set via FAILURE_DIRECTIVES.
-//
-// The literal marker classes (`failure`, `failure-icon`, `failure-title`, `failure-text`) are
-// RETAINED as inert test hooks — the venue-map + home specs query `.failure-title`.
-
-// The panel is self-contained: it inlines the card-glass recipe (the mixin did `@include card-glass`)
-// plus its own surface extras, so a consumer applies a single attribute.
+/**
+ * Tailwind twins of the retired `shared/_glass.scss` `failure-*` mixins — the load-failure panel
+ * shared by Discover and the beach map. Four co-located directives, one per element of the panel;
+ * import the whole set via `FAILURE_DIRECTIVES`. The literal marker classes (`failure`,
+ * `failure-icon`, `failure-title`, `failure-text`) are RETAINED as inert test hooks. Self-contained:
+ * inlines the card-glass recipe plus its own surface extras, so a consumer applies one attribute.
+ */
 @Directive({
   selector: '[appFailurePanel]',
   host: {

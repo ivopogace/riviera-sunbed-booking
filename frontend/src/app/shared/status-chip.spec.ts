@@ -23,7 +23,7 @@ describe('StatusChip', () => {
   }
 
   it('keeps the .chip and .chip--* marker classes the specs and e2e query', () => {
-    // Nothing queried these in the DOM before #477 — this spec is what makes them a real hook.
+    // This spec is what makes .chip / .chip--* a real DOM hook — nothing queried them before.
     const el = chip('chip--confirmed');
     expect(el.classList.contains('chip')).toBe(true);
     expect(el.classList.contains('chip--confirmed')).toBe(true);
@@ -67,7 +67,7 @@ describe('StatusChip', () => {
   });
 
   it('merges with a static class on the consuming element rather than replacing it', () => {
-    // #477 measured this: a host `[class]` binding does NOT clobber a static `class`, as was claimed.
+    // A host `[class]` binding does NOT clobber a static `class`, as was once claimed.
     @Component({
       imports: [StatusChip],
       template: `<span class="legacy-marker" [appStatusChip]="'chip--confirmed'" data-testid="c">S</span>`,

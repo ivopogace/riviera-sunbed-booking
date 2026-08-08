@@ -25,13 +25,13 @@ export function normalizeCode(raw: string): string {
 }
 
 /**
- * "Find a booking" glass modal (issue #148, epic #133; design
+ * "Find a booking" glass modal (design
  * `riviera-sunbeds-liquid-glass-v3.dc.html` → *Find booking*). A guest on a device that doesn't
  * hold their booking (no device-local entry, no email link) types their booking **code** — the
- * unguessable bearer credential (invariant #7) — and is taken to the existing T5 `/booking/:code`
+ * unguessable bearer credential (invariant #7) — and is taken to the existing `/booking/:code`
  * detail view. The modal performs the lookup itself (`BookingService.getByCode`) so an unknown /
- * rate-limited / failed code renders **inline without navigating** (issue AC), reusing the same
- * server-rate-limited endpoint (#56) — no new lookup oracle. The code is never logged and only ever
+ * rate-limited / failed code renders **inline without navigating**, reusing the same
+ * server-rate-limited endpoint — no new lookup oracle. The code is never logged and only ever
  * appears in a URL via the existing `/booking/:code` deep link.
  *
  * <p>Accessible modal cloned from {@link BookingDialog}: `role="dialog"` + `aria-modal`, an
@@ -126,7 +126,7 @@ export class FindBooking {
   });
 
   /** The code that will actually be looked up (what {@link normalizeCode} yields). Empty for a blank
-   *  OR whitespace/dash-only entry — both must show the "enter a code" message (review finding [2]). */
+   *  OR whitespace/dash-only entry — both must show the "enter a code" message. */
   private readonly normalizedCode = computed(() => normalizeCode(this.model().code));
 
   /** One alert region: a server lookup error wins; otherwise, after a submit, the "enter a code"
@@ -158,18 +158,13 @@ export class FindBooking {
     }
     this.submitting.set(true);
     try {
-      // Validate the code against the (rate-limited, #56) lookup endpoint, THEN navigate to the
-      // existing /booking/:code deep link — so an unknown/rate-limited code stays inline here
-      // without navigating.
+      // Validate the code against the rate-limited lookup endpoint, THEN navigate to the existing /booking/:code deep link — so an unknown/rate-limited code stays inline here without navigating.
       const detail = await firstValueFrom(this.bookings.getByCode(code));
-      // Prime the fetched detail so BookingView opens without a second GET (#168, #56 ceiling).
+      // Prime the fetched detail so BookingView opens without a second GET.
       this.bookings.primeDetail(detail);
       const navigated = await this.router.navigate(['/booking', code]);
       if (!navigated) {
-        // Same-URL (the guest is already on this booking) or a blocked nav produces no
-        // NavigationEnd, so the shell won't close the modal — close it here (the target is already
-        // shown) and stop the spinner, or the modal freezes on "Opening…" (review finding [1]).
-        // Discard the prime the un-navigated view won't consume, so a later deep-link re-fetches (#168).
+        // Same-URL (the guest is already on this booking) or a blocked nav produces no NavigationEnd, so the shell won't close the modal — close it here (the target is already shown) and stop the spinner, or the modal freezes on "Opening…"; also discard the prime the un-navigated view won't consume, so a later deep-link re-fetches.
         this.bookings.takePrefetched(code);
         this.submitting.set(false);
         this.dismissed.emit();
@@ -182,7 +177,7 @@ export class FindBooking {
     }
   }
 
-  /** Clear a stale server error as the guest edits the code (review finding [3]). */
+  /** Clear a stale server error as the guest edits the code. */
   protected onCodeInput(): void {
     this.lookupError.set(undefined);
   }

@@ -1,17 +1,6 @@
-// Liquid Glass booking dialog (issue #137, design: riviera-sunbeds-liquid-glass-v3.dc.html →
-// booking dialog). Palette from the styles.scss tokens; every text-bearing pair is pinned as a
-// composited effective colour in booking-dialog.contrast.spec.ts.
-//
-// Deviations from the design file, on purpose (same class as T1–T3):
-//  - the gradient header uses the AA-safe dark-teal --riv-cta-grad stops (design's brighter
-//    #36b3cf→#0e7d92 cannot carry white text at WCAG AA), and all header text is SOLID white
-//    (opacity would drop below AA on the teal);
-//  - the panel is white 0.82 (design 0.72): the modal floats over a dark scrim + the gradient's
-//    darkest stop, and the extra opacity keeps the dark card inks (and the error red) AA there;
-//  - input borders are the dark --riv-field-border (design's white border fails the 3:1 boundary).
+// Liquid Glass booking dialog; palette pinned in booking-dialog.contrast.spec.ts. Design deviations (on purpose): AA-safe dark-teal header, solid white text; panel opacity 0.82 vs design's 0.72 (keeps dark inks + error red AA over the darkest gradient stop); dark --riv-field-border borders (design's white border fails 3:1).
 
-// The dialog is a fixed, scrim-backed backdrop that must paint ABOVE the sticky glass header
-// (#134 stacking pin — the app shell relies on this z-index).
+// The dialog is a fixed, scrim-backed backdrop that must paint ABOVE the sticky glass header — the app shell relies on this z-index.
 :host.booking-backdrop {
   position: fixed;
   inset: 0;
@@ -357,8 +346,7 @@
   outline-offset: 2px;
 }
 
-// Motion guards live next to the motion they guard (T1 rule — component-encapsulation
-// specificity beats a global guard).
+// Motion guards live next to the motion they guard — component-encapsulation specificity beats a global guard.
 @media (prefers-reduced-motion: reduce) {
   :host.booking-backdrop {
     animation: none;

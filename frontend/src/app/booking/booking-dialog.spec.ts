@@ -130,7 +130,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     expect(host().querySelector('[data-testid="dialog-price"]')?.textContent).toContain('€45');
     expect(host().querySelector('[data-testid="step-1"]')?.getAttribute('aria-current')).toBe('step');
     expect(host().querySelector('[data-testid="step-2"]')?.getAttribute('aria-current')).toBeNull();
-    // Date is now owned by the map (#44/#136) — no editable date field in the dialog.
+    // Date is now owned by the map — no editable date field in the dialog.
     expect(host().querySelector('input[type="date"]')).toBeNull();
     // Venue name appears in the gradient header.
     expect(host().textContent).toContain('Miramar Beach Club');
