@@ -64,7 +64,7 @@ class PayoutModuleTest {
 	@MockitoBean
 	VenueRates venues;
 
-	// #171: the console daily-takings read service (DailyTakingsService) pulls a venue's gross online
+	// The console daily-takings read service (DailyTakingsService) pulls a venue's gross online
 	// takings from booking::api. In module isolation booking isn't bootstrapped, so its port is mocked
 	// to let the payout context load; the accrual listener under test doesn't use it.
 	@MockitoBean
@@ -72,7 +72,7 @@ class PayoutModuleTest {
 
 	// The ledger-read service (PayoutLedgerQueryService) depends on operator::api's ownership port,
 	// and the root edge (SecurityConfig + its beans) depends on operator::api too — CurrentOperator on
-	// OperatorDirectory, the DB-backed UserDetailsService on OperatorAccounts, and the #74 boot
+	// OperatorDirectory, the DB-backed UserDetailsService on OperatorAccounts, and the boot
 	// provisioner on OperatorProvisioning. In module isolation the operator module isn't bootstrapped,
 	// so these operator::api ports are supplied as mocks to let the payout context load; the accrual
 	// listener under test uses none of them.
@@ -82,7 +82,7 @@ class PayoutModuleTest {
 	@MockitoBean
 	CurrentOperator currentOperator;
 
-	// Both principal accessors need mocking since #371 moved them out of the root package into the
+	// Both principal accessors need mocking because they moved out of the root package into the
 	// `shared` kernel module: Modulith's STANDALONE bootstrap always supplies root-package beans, but
 	// a module's beans only when that module is bootstrapped — which `shared` is not, here.
 	@MockitoBean
@@ -94,7 +94,7 @@ class PayoutModuleTest {
 	@MockitoBean
 	OperatorProvisioning provisioning;
 
-	// S6 #115: the root edge's AuthController register endpoint depends on operator::api's
+	// The root edge's AuthController register endpoint depends on operator::api's
 	// OperatorRegistration, and the AdminOperatorController on OperatorLifecycle — same isolation story,
 	// so both are mocked here too; the accrual listener under test uses neither.
 	@MockitoBean
@@ -103,7 +103,7 @@ class PayoutModuleTest {
 	@MockitoBean
 	OperatorLifecycle operatorLifecycle;
 
-	// S2 #111: the root edge (SecurityConfig + AuthController) now also depends on the customer::api
+	// The root edge (SecurityConfig + AuthController) also depends on the customer::api
 	// account ports — the customer UserDetailsService/manager on CustomerAccounts, the register endpoint
 	// on CustomerAccountProvisioning. In module isolation the customer module isn't bootstrapped, so
 	// these are mocked to let the payout context load; the accrual listener under test uses neither.
@@ -113,31 +113,31 @@ class PayoutModuleTest {
 	@MockitoBean
 	CustomerAccountProvisioning customerAccountProvisioning;
 
-	// S3 #114: the root edge's CurrentCustomer resolves the signed-in principal to its account id via
+	// The root edge's CurrentCustomer resolves the signed-in principal to its account id via
 	// customer::api's CustomerAccountDirectory — same isolation story, so it is mocked here too.
 	@MockitoBean
 	CustomerAccountDirectory customerAccountDirectory;
 
-	// S4 #112: the root edge's SsoController resolve-or-creates the account behind an external SSO identity
+	// The root edge's SsoController resolve-or-creates the account behind an external SSO identity
 	// via customer::api's SsoAccountProvisioning — same isolation story, so it is mocked here too.
 	@MockitoBean
 	SsoAccountProvisioning ssoAccountProvisioning;
 
-	// S8 #113: the root edge's CustomerRecovery drives customer::api's CustomerAccountRecovery (verify /
+	// The root edge's CustomerRecovery drives customer::api's CustomerAccountRecovery (verify /
 	// reset / set-password) — same isolation story, so it is mocked here too.
 	@MockitoBean
 	CustomerAccountRecovery customerAccountRecovery;
 
-	// #101 [D5]: the root edge's MyErasureController + AdminErasureController drive customer::api's
+	// [D5]: the root edge's MyErasureController + AdminErasureController drive customer::api's
 	// AccountErasure (right-to-erasure) — same isolation story, so it is mocked here too.
 	@MockitoBean
 	AccountErasure accountErasure;
 
-	// #382: root-edge CustomerRecovery needs notification::api's MailSender — same isolation story.
+	// Root-edge CustomerRecovery needs notification::api's MailSender — same isolation story.
 	@MockitoBean
 	MailSender mailSender;
 
-	// #400: and its second, role-split sibling, which the same root-edge bean now also depends on.
+	// And its second, role-split sibling, which the same root-edge bean also depends on.
 	@MockitoBean
 	MailDeliverability mailDeliverability;
 

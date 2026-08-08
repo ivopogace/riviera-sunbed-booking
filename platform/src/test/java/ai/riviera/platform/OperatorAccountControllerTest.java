@@ -38,9 +38,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Operator self-service password change (#326) — {@code POST /api/auth/operator/password}.
+ * Operator self-service password change — {@code POST /api/auth/operator/password}.
  *
- * <p><strong>Why not under {@code /api/me/**}</strong> (which the issue proposed): since #317 that
+ * <p><strong>Why not under {@code /api/me/**}</strong> (which the issue proposed): that
  * namespace is a method-agnostic {@code hasRole(CUSTOMER)} rule, and {@code SecurityConfig} states that
  * adding a non-customer endpoint under it makes the rule wrong. The endpoint therefore joins the other
  * two operator-credential surfaces under {@code /api/auth/operator/**} with its own {@code OPERATOR} matcher.
@@ -54,7 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>The filter-layer assertions use {@link MvcResult#getHandler()} rather than the status alone, for the
  * reason {@code MeSurfaceRoleGateTest} documents: a {@code 403} from inside the filter chain and one from a
  * controller-level check are byte-identical, so only "was a handler ever selected" tells the layers apart.
- * Every request carries a unique {@code X-Forwarded-For} (#127 rate-bucket isolation).
+ * Every request carries a unique {@code X-Forwarded-For} (rate-bucket isolation).
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
@@ -99,8 +99,8 @@ class OperatorAccountControllerTest {
 	}
 
 	/**
-	 * #344 part 1: the revoke must run <strong>before</strong> the credential write. Ordered the other way
-	 * (as it shipped in #326), a transient failure in the revoke — a connection reset, a Neon failover — is
+	 * The revoke must run <strong>before</strong> the credential write. Ordered the other way,
+	 * a transient failure in the revoke — a connection reset, a Neon failover — is
 	 * raised <em>after</em> the hash has already rotated, so the operator is told the change did not happen,
 	 * retries with what they believe is their current password, and is met with
 	 * {@code INVALID_CURRENT_PASSWORD}. Meanwhile the other device's session, the whole point of the call,
@@ -137,18 +137,18 @@ class OperatorAccountControllerTest {
 	}
 
 	/**
-	 * #344 part 2: the surviving session gets a <strong>new id</strong>, so the cookie value that made the
+	 * The surviving session gets a <strong>new id</strong>, so the cookie value that made the
 	 * change dies with the credential it was proving. Without this, an exfiltrated cookie names the very
 	 * session the change deliberately spares and keeps full operator authority afterwards.
 	 *
-	 * <p>The captured keep-id pins the ordering constraint that makes this safe (<strong>#344</strong> plan
-	 * R-1 — not the #326 R-1 this class's header names): the revoke must be handed the
-	 * <strong>pre-rotation</strong> id, the only one its own {@code findByPrincipalName} query can see.
-	 * Rotating first would hand it an id no {@code SPRING_SESSION} row carries — since #359 the rotation
+	 * <p>The captured keep-id pins the ordering constraint that makes this safe (that slice's own R-1 —
+	 * not the R-1 this class's header names, the current-password hash-vs-hash defect): the revoke must be
+	 * handed the <strong>pre-rotation</strong> id, the only one its own {@code findByPrincipalName} query
+	 * can see. Rotating first would hand it an id no {@code SPRING_SESSION} row carries — the rotation
 	 * deletes the caller's row and the replacement is not persisted until the filter commits — leaving the
 	 * keep-contract vacuous rather than merely mis-targeted.
 	 *
-	 * <p>Asserted on the <em>request's</em> session rather than the handle passed in, because since #359 the
+	 * <p>Asserted on the <em>request's</em> session rather than the handle passed in, because the
 	 * rotation retires that handle instead of renaming it in place: the old session is invalidated outright
 	 * and a fresh one takes its place, which is what stops a concurrent save from resurrecting the old id.
 	 */
@@ -173,7 +173,7 @@ class OperatorAccountControllerTest {
 	}
 
 	/**
-	 * A rejected change must not rotate the caller's session id — the dimension #344 added. That it also
+	 * A rejected change must not rotate the caller's session id — a dimension this slice added. That it also
 	 * writes and revokes nothing is {@link #rejectsWrongCurrentPasswordWithoutRevoking}'s assertion.
 	 */
 	@Test
@@ -236,7 +236,7 @@ class OperatorAccountControllerTest {
 	}
 
 	/**
-	 * #345: an omitted current password is its own fault, not a new-password policy violation. Until this
+	 * An omitted current password is its own fault, not a new-password policy violation. Until this
 	 * slice the record's compact constructor threw {@link IllegalArgumentException} for it and the global
 	 * advice funnelled that into the same {@code INVALID_REQUEST} {@link #rejectsWeakNewPassword} produces —
 	 * so a caller whose new password was perfectly good was told to choose one of 8–72 characters. Both
@@ -264,7 +264,7 @@ class OperatorAccountControllerTest {
 	}
 
 	/**
-	 * #345: with both fields wrong the missing one wins — the order {@code operator-password.ts} validates in,
+	 * With both fields wrong the missing one wins — the order {@code operator-password.ts} validates in,
 	 * and the order the compact constructor enforced before this slice. Pinned so a later reordering cannot
 	 * silently revive the wrong-length answer for a caller who never filled the current-password field.
 	 */
@@ -303,7 +303,7 @@ class OperatorAccountControllerTest {
 	}
 
 	/**
-	 * R-8 defence-in-depth: a suspended operator has no live session to reach this with (#128 revokes them
+	 * R-8 defence-in-depth: a suspended operator has no live session to reach this with (suspension revokes them
 	 * and the pre-auth check bars re-login), but a suspend racing an in-flight request must not slip a
 	 * credential change through.
 	 */
