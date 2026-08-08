@@ -39,7 +39,7 @@ public interface Mailer {
 	void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation);
 
 	/**
-	 * Send the cancellation/refund record (#374): what was cancelled, why, and the server-computed
+	 * Send the cancellation/refund record: what was cancelled, why, and the server-computed
 	 * refund — or, when the cutoff has passed and nothing is returned, that none applies. Structured
 	 * like the confirmation, and for the same reason; the implementation decides how a zero refund and
 	 * each {@code RefundReason} read.
@@ -47,7 +47,7 @@ public interface Mailer {
 	void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation);
 
 	/**
-	 * Send the "your request was accepted, payment is due by …" message (#373): the deadline, the
+	 * Send the "your request was accepted, payment is due by …" message: the deadline, the
 	 * amount, and the link to the code-gated view where the guest pays. Structured like the two
 	 * booking kinds above, and for the same reason — the implementation decides how a UTC instant
 	 * reads to a tourist (invariant #6: in {@code Europe/Tirane}).
@@ -55,21 +55,21 @@ public interface Mailer {
 	void sendPaymentDue(String toEmail, PaymentDueMail paymentDue);
 
 	/**
-	 * Send the "your operator account is approved" message with the sign-in link (#375). The only kind
+	 * Send the "your operator account is approved" message with the sign-in link. The only kind
 	 * on this port carrying no bearer credential at all, so the mock's dev-only link echo needs no
 	 * invariant-#7 argument here.
 	 */
 	void sendOperatorApproved(String toEmail, URI signInLink);
 
 	/**
-	 * Send the "the venue declined your request" record (#124): the outcome, that nothing is held and
+	 * Send the "the venue declined your request" record: the outcome, that nothing is held and
 	 * nothing was charged, and the code-gated status link. A plain record with no call-to-action, by
 	 * product decision; structured like the other booking kinds, and for the same reason.
 	 */
 	void sendRequestDeclined(String toEmail, RequestDeclinedMail declined);
 
 	/**
-	 * Send the "your request expired unanswered" record (#124) — {@link #sendRequestDeclined}'s mirror
+	 * Send the "your request expired unanswered" record — {@link #sendRequestDeclined}'s mirror
 	 * for the sweep's outcome, under the same plain-record rule.
 	 */
 	void sendRequestExpired(String toEmail, RequestExpiredMail expired);
