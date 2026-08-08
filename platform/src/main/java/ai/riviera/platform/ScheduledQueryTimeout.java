@@ -4,8 +4,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * The platform-wide bound on a scheduled job's entry query (#395), validated once at boot — the
- * #414/#426 house pattern (a compact canonical constructor that throws), because there is no JSR-303
+ * The platform-wide bound on a scheduled job's entry query, validated once at boot — the
+ * established house pattern (a compact canonical constructor that throws), because there is no JSR-303
  * validator on this classpath and {@code @Min} would therefore validate nothing at all.
  *
  * <p><strong>The value it guards against looks harmless.</strong> {@code Statement#setQueryTimeout(0)}

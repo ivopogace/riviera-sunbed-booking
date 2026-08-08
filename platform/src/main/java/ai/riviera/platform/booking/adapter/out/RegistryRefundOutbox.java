@@ -11,10 +11,10 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.application.refund.RefundOutbox;
 
 /**
- * The {@link RefundOutbox} over Spring Modulith's Event Publication Registry (#454) — the driven
+ * The {@link RefundOutbox} over Spring Modulith's Event Publication Registry — the driven
  * adapter that knows the registry exists, so nothing inside the hexagon has to.
  *
- * <p><strong>Scope is one exact listener id, and that is the load-bearing decision.</strong> #405's
+ * <p><strong>Scope is one exact listener id, and that is the load-bearing decision.</strong>
  * {@code RegistryMailOutbox} scopes by module package prefix, which is safe there because every
  * listener in {@code notification} is a mail listener. This module also hosts
  * {@code PaymentEventListener} — the payment → confirm spine (invariant #8), whose cancel branch
@@ -23,15 +23,15 @@ import ai.riviera.platform.booking.application.refund.RefundOutbox;
  * "future listeners covered automatically" property: a second money-moving listener must be added to
  * this allowlist on purpose, with review. {@code RefundOutboxScopeTest} pins the constant against the
  * class-derived id and {@code RefundBulkheadIT} pins that against what the running registry writes
- * (#405's R-6, two levels).
+ * (two levels).
  *
  * <p><strong>Why the {@code Predicate} overload and not {@code ResubmissionOptions}.</strong> The
  * options object delegates to a query reaching {@code STATUS = 'FAILED'} rows (plus legacy NULLs) — a
- * listener that <em>threw</em>. A refund the bulkhead <em>shed</em> (#404) never ran, so nothing
+ * listener that <em>threw</em>. A refund the bulkhead <em>shed</em> never ran, so nothing
  * marked it failed and it sits at {@code PUBLISHED}; the {@code Predicate} overload routes to
  * {@code processIncompletePublications}, which reads <em>incomplete</em> and covers both. Same trap,
  * same answer as {@code RegistryMailOutbox} — restated because the shed row is one of the three cases
- * #454 exists to clear.
+ * this adapter exists to clear.
  *
  * <p><strong>The registry, not this adapter, is what makes a re-drive once-only</strong> — the v2
  * repository's {@code markResubmitted} claim ({@code UPDATE … WHERE ID = ? AND STATUS !=
