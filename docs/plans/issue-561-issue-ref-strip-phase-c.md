@@ -254,12 +254,12 @@ Sparse-tier batching: 215 files ÷ 15/batch → batches S1–S14 (14×15) + S15 
 
 ## Execution status
 
-**Stage pointer:** PR gate — **PR #564 opened** (`claude/issue-ref-strip-backend-phase-c` → `main`);
-watching CI/SonarCloud.
+**Stage pointer:** PR gate — **PR #564 open, all CI checks green** (8/8: SonarCloud Code Analysis
++ scan, CodeQL ×2, Backend, Frontend, Repo hygiene). Ready for the SDLC review gate / merge —
+awaiting maintainer action (this session does not merge without being asked).
 
-**Next action:** watch CI on PR #564 (SonarCloud: 0 new issues, 0 duplicated blocks, ≥80% new-code
-coverage — the gate this whole pass was threading a needle around); address any findings; merge
-when green.
+**Next action:** maintainer reviews and merges PR #564; once merged, close this doc citing
+`merged via PR #564`.
 
 | Wave | Scope | Status | Commits |
 |---|---|---|---|
@@ -482,8 +482,11 @@ generalized.
       very end on the fully-integrated branch.
 - [x] **AC-7:** 81-row RELOCATE-CANDIDATE inventory produced (file, line, one-sentence rationale);
       zero edits made to `RESPONSIBILITIES.md` or any ADR this pass.
-- [ ] **AC-8:** CI/SonarCloud green on the PR — not yet verifiable from this session; the PR has
-      not been opened yet. **This is the one AC still open** — see Open questions.
+- [x] **AC-8:** CI/SonarCloud green on PR #564 — all 8 checks passed: SonarCloud Code Analysis
+      (Quality Gate passed, 0 new issues, 0 duplications, 0 security hotspots), SonarCloud scan,
+      CodeQL, Backend (build+test), Frontend (lint+test+build), Repo hygiene (diff-scoped),
+      CodeQL java-kotlin, CodeQL javascript-typescript. Confirms the F-8 mitigation held —
+      zero coverage-gate exposure from a comment-only diff across 257 files.
 
 ## Self-review checklist (before merge / PR)
 
