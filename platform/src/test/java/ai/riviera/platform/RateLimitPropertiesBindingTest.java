@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 /**
  * Pins the SHIPPED rate-limit configuration as <em>bound, validated</em> values.
  *
- * <p><strong>The client-IP half (issue #286):</strong> the defaults live in
+ * <p><strong>The client-IP half:</strong> the defaults live in
  * {@code application.properties} and nowhere else, each is env-overridable through an explicit
  * {@code ${VAR:default}} placeholder, and the colon-bearing IPv6 CIDRs survive placeholder parsing —
  * Spring splits a placeholder's name from its default on the FIRST colon, and a silent mis-parse
@@ -23,17 +23,17 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * {@link ConfigDataApplicationContextInitializer} so the real properties file is loaded without a
  * Spring Boot context, no web layer and no Docker (sibling to {@code MockMailerProdGuardTest}).
  *
- * <p><strong>The key-cap half (issue #414):</strong> {@code max-tracked-keys} is bounded on both
+ * <p><strong>The key-cap half:</strong> {@code max-tracked-keys} is bounded on both
  * ends, because the map-bounding check in {@code RateLimitFilter#bucketFor} is {@code size() >= cap}.
  * A non-positive cap therefore fires on <em>every</em> new key and, since {@code removeIf} cannot
  * bring the size below zero, falls through to {@code buckets.clear()} — so each new key wipes every
- * other key's spent tokens and the limiter that #129/#286 hardened throttles nobody, having booted
+ * other key's spent tokens and the limiter throttles nobody, having booted
  * cleanly with only a {@code DEBUG} line as evidence. A small-but-positive cap degrades the same way,
  * just less completely, which is why the floor is not {@code 1}. The ceiling closes the hole from the
  * other end: the cap is the only thing bounding ten independent dimension maps.
  *
  * <p><strong>Why a compact constructor and not {@code @Validated} + {@code @Min}.</strong> There is
- * no JSR-303 implementation on the runtime classpath — #97 declined
+ * no JSR-303 implementation on the runtime classpath — the project declined
  * {@code spring-boot-starter-validation} deliberately, in favour of explicit checks in records — and
  * Boot only validates {@code @ConfigurationProperties} when an implementation is present. An
  * annotation here would therefore bind and validate <em>nothing</em>: the same silent degradation,

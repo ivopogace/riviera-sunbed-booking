@@ -12,10 +12,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * Pins the S8 recovery configuration: the {@code riviera.recovery.link-base-url} binding (#368 AC:
- * mailed links point at the real deployed origin, not {@code localhost:4200}) and, since #426, the two
+ * Pins the recovery configuration: the {@code riviera.recovery.link-base-url} binding (mailed links
+ * point at the real deployed origin, not {@code localhost:4200}) and the two
  * <em>bound, validated</em> token TTLs — split out of {@code MailerProfileWiringTest} when that class
- * moved into the {@code notification} module (#382): recovery is <em>edge</em> config
+ * moved into the {@code notification} module: recovery is <em>edge</em> config
  * ({@code RecoveryProperties} stays root-package-private with {@code CustomerRecovery}, which builds the
  * links and stamps {@code expiresAt}), so its binding test stays at the root. Same harness posture as
  * its former host: {@link ApplicationContextRunner} + {@link ConfigDataApplicationContextInitializer},
@@ -23,8 +23,8 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  *
  * <p><strong>Why the TTLs are bounded.</strong> {@code CustomerRecovery} issues a token as
  * {@code clock.instant().plus(ttl)}, so {@code PT0S} makes {@code expiresAt == issuedAt}: every token is
- * born expired. Nothing fails — the mail is still built, still queued, still delivered (real SMTP since
- * #368, off the request thread since #369) — and the symptom reaching support is "the emails arrive and
+ * born expired. Nothing fails — the mail is still built, still queued, still delivered (real SMTP,
+ * off the request thread) — and the symptom reaching support is "the emails arrive and
  * every link says expired", with the reset flow, the one route back into an account, dead for everyone.
  * The ceilings answer the opposite risk: these tokens are unguessable bearer credentials sitting in a
  * mailbox, and a leaked reset link <em>is</em> account takeover, which is why this record ships the reset
