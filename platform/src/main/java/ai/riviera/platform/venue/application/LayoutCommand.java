@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * The validated intent to replace a venue's whole beach-map layout in one write (O3, issue #172) —
+ * The validated intent to replace a venue's whole beach-map layout in one write —
  * the complete desired set of positions the operator generated + painted, sent as one bulk PUT. Each
  * element is a {@link SetCommand}, already range/token-validated by its own compact constructor (tier,
  * pool, integer minor-unit price, 1-based coordinates), so this record only adds the whole-layout

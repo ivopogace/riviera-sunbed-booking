@@ -10,7 +10,7 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
 
 /**
  * Shared edge validators for the venue-profile fields, used by both {@link NewVenueCommand} (onboard,
- * U7) and {@link VenueProfileCommand} (edit, O8 #177) so the two command records enforce the same
+ * U7) and {@link VenueProfileCommand} (edit) so the two command records enforce the same
  * invariants from one place — no duplicated validation block. Package-private, static-only; each
  * method throws {@link IllegalArgumentException} on a bad value, which the edge maps to
  * {@code 400 INVALID_REQUEST} (riviera-java-conventions §6b). The DB CHECK constraints (V2) remain

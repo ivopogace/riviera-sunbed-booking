@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue.application;
 
 /**
- * One row of the operator's own-venues picker (S9, issue #277) — just enough to name a venue and
+ * One row of the operator's own-venues picker — just enough to name a venue and
  * route to its console: its technical id, its name, and the beach it sits on. Deliberately carries
  * <strong>no</strong> commission, payout currency, availability or pricing: the venue picker on the
  * post-sign-in landing needs none of it, and the operator-only financial fields already have their
