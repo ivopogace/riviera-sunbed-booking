@@ -144,6 +144,17 @@ class ViewBookingServiceTest {
 		assertThat(detail.cancellable()).isFalse();
 	}
 
+	@Test
+	void pastBookingIsNotCancellableAndQuotesNothing() {
+		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.CLOSED, 0L);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellable()).isFalse();
+		assertThat(detail.refundIfCancelledNow().minorUnits()).isZero();
+		assertThat(detail.beforeCutoff()).isFalse();
+	}
+
 	private void givenBooking(BookingStatus status) {
 		givenBooking(status, CancellationWindow.FREE, 4500L);
 	}

@@ -50,10 +50,10 @@ class ViewBookingService implements ViewBooking {
 	 * hands the code out before the card is collected, and answering then would turn this code-gated
 	 * view into a suppression oracle for any address a checkout can be started with.
 	 *
-	 * <p>Deliberately its own predicate rather than reusing {@code cancellable}, which happens to test
-	 * the same status today: those are different rules, and letting a future "the guest may withdraw an
-	 * open request" change to the cancellation policy silently widen this one is exactly the accident
-	 * worth spending a method on. Pinned by {@code ViewBookingServiceTest}'s no-interaction cases.
+	 * <p>Deliberately its own predicate rather than reusing {@code cancellable}, which no longer tests
+	 * the same thing at all — {@code cancellable} now also requires the cancellation window to be open,
+	 * so a delivered booking is uncancellable while its mail status stays disclosable. Pinned by
+	 * {@code ViewBookingServiceTest}'s no-interaction cases.
 	 *
 	 * <p><strong>Status alone is not enough</strong>, which the review gate caught: it means
 	 * "post-payment" only where the wired gateway actually collects before confirming. Under the
@@ -68,7 +68,7 @@ class ViewBookingService implements ViewBooking {
 	private BookingDetail toDetail(BookingRecord b) {
 		RefundQuote quote = cancellationPolicy.quote(b);
 		SetBookingInfo set = quote.set();
-		boolean cancellable = b.status() == BookingStatus.CONFIRMED;
+		boolean cancellable = b.status() == BookingStatus.CONFIRMED && quote.cancellationOpen();
 		// Its own predicate, not a reuse of cancellable's: see BookingDetail.
 		boolean withdrawable = b.status() == BookingStatus.PENDING_REQUEST;
 		boolean emailWithheld = mayDiscloseMailStatus(b) && confirmationMail.isWithheld(b.customerId());

@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -86,14 +87,44 @@ class BookingViewIT {
 
 	@Test
 	void viewComputesPartialRefundAfterCutoff() throws Exception {
-		// A self-contained venue offering a 50% late-cancel refund + a CONFIRMED booking on a past
-		// date (after the cutoff). Isolated from the seed venue so other ITs' assumptions hold.
+		// Tomorrow behind a 00:00 cutoff is LATE at every hour of the run, so the tier is deterministic.
+		seedLateCancelBooking("VIEWPART1", "partial@e.com", tirane().plusDays(1));
+
+		mvc.perform(get("/api/bookings/{code}", "VIEWPART1"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.beforeCutoff").value(false))
+				.andExpect(jsonPath("$.cancellable").value(true))
+				.andExpect(jsonPath("$.refundIfCancelledNow.minorUnits").value(2250)); // 4500 × 50%
+	}
+
+	@Test
+	void viewOffersNoCancelOnceTheServiceDayHasPassed() throws Exception {
+		seedLateCancelBooking("VIEWPAST1", "spent@e.com", tirane().minusDays(3));
+
+		mvc.perform(get("/api/bookings/{code}", "VIEWPAST1"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("CONFIRMED"))
+				.andExpect(jsonPath("$.cancellable").value(false))
+				.andExpect(jsonPath("$.refundIfCancelledNow.minorUnits").value(0));
+	}
+
+	private static LocalDate tirane() {
+		return LocalDate.now(ZoneId.of("Europe/Tirane"));
+	}
+
+	/**
+	 * A self-contained venue offering a 50% late-cancel refund, its one online set, and a
+	 * {@code CONFIRMED} booking on {@code date}. Isolated from the seed venue so other ITs'
+	 * assumptions hold, and its {@code 00:00} cutoff keeps the window classification independent of
+	 * the wall-clock hour the suite happens to run at.
+	 */
+	private void seedLateCancelBooking(String code, String email, LocalDate date) {
 		long venueId = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
-				                   late_cancel_refund_bps)
-				VALUES ('Late Refund Club', 'Test Beach', 'Riviera', 'INSTANT', 1500, 'EUR', 5000)
+				                   late_cancel_refund_bps, booking_cutoff)
+				VALUES (:name, 'Test Beach', 'Riviera', 'INSTANT', 1500, 'EUR', 5000, TIME '00:00')
 				RETURNING id
-				""").query(Long.class).single();
+				""").param("name", "Late Refund Club " + code).query(Long.class).single();
 		long setId = jdbc.sql("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
 				                          price_currency, grid_x, grid_y)
@@ -101,21 +132,15 @@ class BookingViewIT {
 				RETURNING id
 				""").param("venue", venueId).query(Long.class).single();
 		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
-						+ "VALUES ('partial@e.com', 'Partial Guest', '+355600') RETURNING id")
-				.query(Long.class).single();
+						+ "VALUES (:email, 'Partial Guest', '+355600') RETURNING id")
+				.param("email", email).query(Long.class).single();
 		jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES ('VIEWPART1', :venue, :set, :cust, :date, 4500, 'EUR', 'CONFIRMED', NOW())
+				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', 'CONFIRMED', NOW())
 				""")
-				.param("venue", venueId).param("set", setId).param("cust", customerId)
-				.param("date", LocalDate.now().minusDays(1)).update();
-
-		mvc.perform(get("/api/bookings/{code}", "VIEWPART1"))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.beforeCutoff").value(false))
-				.andExpect(jsonPath("$.cancellable").value(true))
-				.andExpect(jsonPath("$.refundIfCancelledNow.minorUnits").value(2250)); // 4500 × 50%
+				.param("code", code).param("venue", venueId).param("set", setId)
+				.param("cust", customerId).param("date", date).update();
 	}
 
 	@Test

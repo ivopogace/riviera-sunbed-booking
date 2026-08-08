@@ -318,6 +318,27 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe(label);
   });
 
+  // A CONFIRMED booking past its service day: the server closes the window, so the affordance goes.
+  it('offers no cancel affordance when the server says a confirmed booking is not cancellable', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          cancellable: false,
+          beforeCutoff: false,
+          refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+    expect(host.querySelector('[data-testid="refund-terms"]')).toBeNull();
+    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe(
+      'Confirmed',
+    );
+  });
+
   it('flips the chip to Cancelled and shows the refunded row after cancelling (no reload)', async () => {
     // The post-cancel reload returns the backend's CANCELLED detail (refunded amount set).
     const cancelled: BookingDetail = {

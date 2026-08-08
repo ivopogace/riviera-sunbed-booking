@@ -242,18 +242,18 @@ mocked suite does not construct; the unit spec is the proportionate pin.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4 — docs + close-out)`
 
-**Next action:** Write the failing `ViewBookingServiceTest.pastBookingIsNotCancellableAndQuotesNothing`
-(AC-5), then AND the window into `ViewBookingService`'s `cancellable`.
+**Next action:** Amend ADR-0005 with the third tier, run `riviera-docs-freshness`, run both repo-hygiene
+guards, file the completion-sweep follow-up issue, then mark PR #574 ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `CancellationWindow` + the `BookingCutoff` boundary | ✅ | `dc6f9cc` |
 | 1 — `RefundPolicy` third tier | ✅ | `61b9818` |
 | 2 — Fence the cancel use case + its error code | ✅ | `1a776ca` |
-| 3 — Fence the view + FE pin | ⏳ | |
-| 4 — Docs, ADR-0005 amendment, close-out | | |
+| 3 — Fence the view + FE pin | ✅ | `0e0e822` |
+| 4 — Docs, ADR-0005 amendment, close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -383,6 +383,7 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|---|---|
 | 2026-08-08 | Phase 0 — the window classification | Any other place deriving a cancellation decision from a date | `grep -rn "freeCancellationOpen\|cancellationWindow\|isBefore(.*bookingDate)" platform/src/main` | Only `BookingCutoff` + its one caller `CancellationPolicy` | None needed — the rule was already centralized; the classification replaced the boolean in place |
 | 2026-08-08 | Phase 0 — the fence's reach | Every caller of the guarded `cancelConfirmed` transition | `grep -rln "cancelConfirmed" platform/src/main` | `CancelBookingService` (guest), `WeatherRefundService` (operator), plus the port + adapter + row record | Fence the guest path only; AC-7 pins the weather path staying open (A-3) |
+| 2026-08-08 | Phase 3 — the `BookingViewIT` regression | Every other test seeding a past date to mean "after the cutoff" | `grep -rn "minusDays\|LocalDate.of(20[012]" platform/src/test` | Only `BookingViewIT.viewComputesPartialRefundAfterCutoff`; the cancel/mail ITs all use 2027–2035 dates (still `FREE`), the rest are customer-retention fixtures unrelated to cancellation | Fixed that one to a genuine `LATE` window (tomorrow behind a `00:00` venue cutoff), which also removed its hidden dependence on the hour the suite runs at |
 | 2026-08-08 | Phase 2 — AC-7's pin | Whether a new past-date weather test was needed | Read `WeatherRefundServiceIT` | `fullRefundRegardlessOfCutoff` already seeds `2020-07-01` and asserts a full refund | Wrote **no** new test — cited the existing one and recorded the extra guarantee in its class Javadoc, rather than duplicating coverage |
 
 ---
