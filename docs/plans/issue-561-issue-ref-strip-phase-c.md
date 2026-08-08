@@ -162,23 +162,55 @@ Sparse-tier batching: 215 files ÷ 15/batch → batches S1–S14 (14×15) + S15 
 
 | # | File | Line | Rationale (one sentence) | Flagged in |
 |---|---|---|---|---|
-| _(none yet — populated per wave)_ | | | | |
+| 1 | `AdminOperatorController.java` | 25–67 (class Javadoc) | Five-paragraph argument for the suspend/revoke-bracket design — why controller-orchestrated not event-driven, why revoke brackets the transition, the over/under-revocation tradeoff, the can't-suspend-self rule | D1 |
+| 2 | `AdminOperatorController.java` | 133–137 (`suspend()` method doc) | Explains why the active-username pre-read must happen before the state transition commits — it's what makes the first revoke possible at all | D1 |
+| 3 | `booking/adapter/out/JdbcBookings.java` | 71–91 (`boundedClient` method doc) | Why the sweep candidate-reads use a finite-timeout `JdbcClient`: failure mode of an unbounded read, why the timeout can't be global (would also bound the availability-claim write, breaking invariant #2) | D3 |
+| 4 | `shared/ResubmissionThrottle.java` | 15–23 | Why this lever lives in the `shared` Kernel rather than either owning module, and that the plan first tried two per-module copies before landing here | D4 |
+| 5 | `shared/ResubmissionThrottle.java` | 35–38 | Why the cooldown window starts at construction (deploy-time boot republish counts as "sweep zero"), not at the first press | D4 |
+| 6 | `notification/application/Mailer.java` | 6–13 (class Javadoc opener) | States the locked seam decision: this port grows message kinds but keeps exactly two profile-swapped implementations, mirroring payment/SSO gateway pattern | D4 |
+| 7 | `CustomerRecovery.java` | 68–72 | Why the mail-suppression check is a separate method, not folded into `sendVerificationEmail` — folding it in would reopen a timing-oracle gap closed elsewhere | D4 |
+| 8 | `notification/api/MailDeliverability.java` | 1–31 (whole class Javadoc) | Multi-paragraph why-essay with 4 headers: why a second port vs. a `MailSender` return value, why only an address-owning caller may call it, why present-tense not a record, why it never throws | D5 |
+| 9 | `notification/adapter/out/SentEmail.java` | 18–27 (class Javadoc, 2nd paragraph) | Why booking-kind payloads use separate fields instead of a shared `Object` slot, using the payment-due/confirmation same-code-opposite-meaning edge case as the motivating example | D5 |
+| 10 | `RecoveryProperties.java` | 18 | Why both TTL bounds exist: the "born-expired token" failure mode from a zero/negative TTL, and why reset ceiling is 7× tighter than verification ceiling | D6 |
+| 11 | `RecoveryProperties.java` | 30 | Why validation happens in the compact constructor rather than `@Validated`/`@Min` — the project declined `spring-boot-starter-validation` | D6 |
+| 12 | `RecoveryProperties.java` | 48 | Why `MIN_TOKEN_TTL` must be above zero — recovery sends now leave the request thread via SMTP relay, so a too-short TTL can expire a token before delivery | D6 |
+| 13 | `OperatorAccountController.java` | 70 | Historical bug: the missing-current-password and weak-password checks used to funnel into one error code, confusing callers with a valid new password | D6 |
+| 14 | `OperatorAccountController.java` | 85 | Same historical-bug rationale restated in `changePassword`'s own doc | D6 |
+| 15 | `OperatorAccountController.java` | 91 | Cites a prior review that pinned the check-ordering (missing-current-password outranks policy check) as settled | D6 |
+| 16 | `OperatorAccountController.java` | 95 | Why the three success-path effects (hash write, session revokes, session rotate) are deliberately ordered rather than wrapped in `@Transactional` | D6 |
+| 17 | `OperatorAccountController.java` | 102 | Previous (worse) ordering: a transient revoke failure used to leave the password changed but return `500` | D6 |
+| 18 | `OperatorAccountController.java` | 154 | Notes the same bcrypt-comparison defect shipped twice before, hence the explicit method-doc callout | D6 |
+| 19 | `venue/application/VenuePhotoModeration.java` | 18 | Why the port is named for its ownership-free posture rather than its one action | D6 |
+| 20 | `venue/application/VenuePhotoModeration.java` | 31 | Non-obvious system property: content-addressed/deduplicated photo variants mean a takedown on one slot doesn't remove bytes still referenced by another slot | D6 |
+| 21 | `venue/application/VenuePhotoModeration.java` | 40 | Design decision that "emptiness IS the null URL" — gives callers a stable three-slot grid instead of a list to reconcile | D6 |
 
 ## Execution status
 
-**Stage pointer:** implement — dense-tier wave 1 starting (batches D1–D6).
+**Stage pointer:** implement — dense-tier wave 1 complete; wave 2 (D7–D13) next.
 
-**Next action:** dispatch D1–D6 as parallel worktree-isolated agents, integrate serially.
+**Next action:** dispatch D7–D13 as parallel worktree-isolated agents, integrate serially.
 
 | Wave | Scope | Status | Commits |
 |---|---|---|---|
-| Dense wave 1 (D1–D6) | 18 densest files | ⏳ | |
+| Dense wave 1 (D1–D6) | 18 densest files (17 edited, 1 fully RELOCATE-CANDIDATE, 0 edits) | ✅ | `0d110bc`, `04bae2d` (D2), `74e6b9c` (D1), `6020118` (D6), `954215f` (D5), `0bbedc2` (D4), `f79ec49` (D3) |
 | Dense wave 2 (D7–D13) | next 21 files | | |
 | Dense wave 3 (D14–D19) | remaining 16 files | | |
 | Sparse wave 1 (S1–S7) | 105 files | | |
 | Sparse wave 2 (S8–S15) | 110 files | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Dense wave 1 (D1–D6) summary:** 17 of 18 assigned files edited (`notification/api/MailDeliverability.java`
+had 0 edits — its entire class Javadoc is RELOCATE-CANDIDATE, see inventory row 8). Every batch's
+per-file triage breakdown recorded above and in the RELOCATE-CANDIDATE inventory. Gates run on the
+integrated, cumulative diff after every cherry-pick: `check-comment-only.mjs` (17 files verified
+code-identical against `origin/main`), `check-inline-comments.mjs` (clean throughout), the F-8
+pre-push grep (every `+`/`-` diff line is a whole-line `//`/`/*`/`*` comment change — zero
+trailing-on-code edits), `compileJava`/`compileTestJava` (BUILD SUCCESSFUL), and the structural net
+(`ModularityTests`/`JdbcOnlyArchitectureTests`/`PackageShapeArchitectureTests`, BUILD SUCCESSFUL).
+Self-review spot-checked the two highest-risk RELOCATE-CANDIDATE calls (`AdminOperatorController`'s
+class Javadoc, `JdbcBookings#boundedClient`) and the one F-8-EXPOSED hit (`VenueAdminService.java`
+line 70) directly in the diff — all three confirmed left byte-for-byte untouched.
 
 **Findings register**
 
@@ -188,7 +220,25 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## File structure
 
 - `docs/plans/issue-561-issue-ref-strip-phase-c.md` — **new**: this doc
-- _(populated per batch as files are touched — see per-wave sections below)_
+- **Dense wave 1 (D1–D6), comment-only `#nnn` strip, 17 files modified + 1 reviewed:**
+  - `platform/src/main/java/ai/riviera/platform/AuthController.java` — **modified** (D1)
+  - `platform/src/main/java/ai/riviera/platform/operator/application/Operators.java` — **modified** (D1)
+  - `platform/src/main/java/ai/riviera/platform/AdminOperatorController.java` — **modified** (D1); 2 RELOCATE-CANDIDATE blocks left untouched (inventory #1–#2)
+  - `platform/src/main/java/ai/riviera/platform/venue/application/Venues.java` — **modified** (D2)
+  - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueAdminController.java` — **modified** (D2)
+  - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/AdminVenueCommissionController.java` — **modified** (D2)
+  - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcBookings.java` — **modified** (D3); 1 RELOCATE-CANDIDATE block left untouched (inventory #3)
+  - `platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java` — **modified** (D3); 1 F-8-EXPOSED trailing-on-code line left untouched (`invariant #13` comment, line 70)
+  - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/AdminVenuePhotoController.java` — **modified** (D3)
+  - `platform/src/main/java/ai/riviera/platform/shared/ResubmissionThrottle.java` — **modified** (D4); 2 RELOCATE-CANDIDATE blocks left untouched (inventory #4–#5)
+  - `platform/src/main/java/ai/riviera/platform/notification/application/Mailer.java` — **modified** (D4); 1 RELOCATE-CANDIDATE block left untouched (inventory #6)
+  - `platform/src/main/java/ai/riviera/platform/CustomerRecovery.java` — **modified** (D4); 1 RELOCATE-CANDIDATE block left untouched (inventory #7)
+  - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — **modified** (D5)
+  - `platform/src/main/java/ai/riviera/platform/notification/api/MailDeliverability.java` — **reviewed, not modified** (D5): entire class Javadoc is RELOCATE-CANDIDATE (inventory #8)
+  - `platform/src/main/java/ai/riviera/platform/notification/adapter/out/SentEmail.java` — **modified** (D5); 1 RELOCATE-CANDIDATE block left untouched (inventory #9)
+  - `platform/src/main/java/ai/riviera/platform/RecoveryProperties.java` — **modified** (D6); 3 RELOCATE-CANDIDATE blocks left untouched (inventory #10–#12)
+  - `platform/src/main/java/ai/riviera/platform/OperatorAccountController.java` — **modified** (D6); 6 RELOCATE-CANDIDATE blocks left untouched (inventory #13–#18)
+  - `platform/src/main/java/ai/riviera/platform/venue/application/VenuePhotoModeration.java` — **modified** (D6); 3 RELOCATE-CANDIDATE blocks left untouched (inventory #19–#21)
 
 ## Generalization-audit log
 
