@@ -41,10 +41,11 @@ public class CancellationPolicy {
 		SetBookingInfo set = setFacts.setBookingInfo(booking.setId()).orElseThrow(() ->
 				new IllegalStateException("no set info for set " + booking.setId().value()));
 		CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), booking.bookingDate());
-		boolean beforeCutoff = window == CancellationWindow.FREE;
-		int lateBps = beforeCutoff ? 0 : rates.lateCancelRefundBps(booking.venueId()).orElse(0);
-		long refundMinor = RefundPolicy.refundMinor(booking.amountMinor(), beforeCutoff, lateBps);
-		return new RefundQuote(set, beforeCutoff, refundMinor);
+		int lateBps = window == CancellationWindow.LATE
+				? rates.lateCancelRefundBps(booking.venueId()).orElse(0)
+				: 0;
+		long refundMinor = RefundPolicy.refundMinor(booking.amountMinor(), window, lateBps);
+		return new RefundQuote(set, window == CancellationWindow.FREE, refundMinor);
 	}
 
 	/** The computed cancellation terms: set display, free-cancellation status, and the refund due. */

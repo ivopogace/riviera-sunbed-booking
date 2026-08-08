@@ -241,16 +241,16 @@ mocked suite does not construct; the unit spec is the proportionate pin.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Write the failing `RefundPolicyTest.closedWindowRefundsNothing` (AC-3) and migrate
-the two existing cases to the enum signature.
+**Next action:** Write the failing `CancelBookingIT.rejectsCancelAfterTheServiceDayHasPassed` (AC-4)
+and `closedWindowRejectionCarriesItsOwnCode` (AC-6), plus AC-7 in `WeatherRefundServiceIT`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `CancellationWindow` + the `BookingCutoff` boundary | ✅ | `dc6f9cc` |
-| 1 — `RefundPolicy` third tier | ⏳ | |
-| 2 — Fence the cancel use case + its error code | | |
+| 1 — `RefundPolicy` third tier | ✅ | `61b9818` |
+| 2 — Fence the cancel use case + its error code | ⏳ | |
 | 3 — Fence the view + FE pin | | |
 | 4 — Docs, ADR-0005 amendment, close-out | | |
 
