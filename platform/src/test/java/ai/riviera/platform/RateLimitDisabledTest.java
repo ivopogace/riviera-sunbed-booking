@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The master switch (issue #56, AC-8): with {@code riviera.ratelimit.enabled=false} no request is ever
+ * The master switch (AC-8): with {@code riviera.ratelimit.enabled=false} no request is ever
  * rate-limited, even with capacity set to 1 — far past which an enabled limiter would 429.
  */
 @WebMvcTest

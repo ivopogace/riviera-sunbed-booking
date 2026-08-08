@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Drift-regression guard (issue #56, AC-5): with the <strong>shipped</strong> defaults from
+ * Drift-regression guard (AC-5): with the <strong>shipped</strong> defaults from
  * {@code application.properties} (per-code 30/30s, per-IP 60/1min — deliberately no
  * {@code @TestPropertySource} override), the frontend payment-confirmation poll — ~20
  * {@code GET /api/bookings/{code}} within 30s on one code from one IP ({@code booking-pay.ts}) — must

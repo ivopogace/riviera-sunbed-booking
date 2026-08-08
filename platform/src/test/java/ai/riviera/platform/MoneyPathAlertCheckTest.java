@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Issue #100 (D4), AC-7: the money-path self-check logs exactly one structured {@code ERROR} per signal
+ * AC-7: the money-path self-check logs exactly one structured {@code ERROR} per signal
  * that crosses its threshold, and nothing when every signal is healthy. A plain unit test — the check
  * reads the three signals from a {@link SimpleMeterRegistry}, and a Logback {@link ListAppender}
  * captures the ERROR events (robust without a Spring context, unlike {@code OutputCaptureExtension}).

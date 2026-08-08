@@ -15,7 +15,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Issue #100 (D4), AC-4: the {@code riviera.outbox.pending} gauge reflects the number of incomplete
+ * AC-4: the {@code riviera.outbox.pending} gauge reflects the number of incomplete
  * Spring Modulith event publications (the outbox backlog). Testcontainers against real Postgres —
  * the gauge runs a live {@code count(*)} over {@code event_publication} at read time. Inserts use a
  * distinctive {@code listener_id} and are cleaned up so a reused container stays clean.

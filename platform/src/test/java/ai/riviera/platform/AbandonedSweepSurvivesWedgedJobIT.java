@@ -29,7 +29,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The property #395 exists for, end to end: <strong>a scheduled job that is stuck right now cannot
+ * What this test proves, end to end: <strong>a scheduled job that is stuck right now cannot
  * stop the abandoned-payment sweep from releasing an availability claim.</strong>
  *
  * <p>The two sibling tests each prove one instrument in isolation —
@@ -165,7 +165,7 @@ class AbandonedSweepSurvivesWedgedJobIT {
 	}
 
 	/**
-	 * A booking past its TTL with <strong>no payment row</strong> — the #125 shape, which the sweep
+	 * A booking past its TTL with <strong>no payment row</strong> — the shape, which the sweep
 	 * releases after {@code CancelPaymentPort} reports {@code NoCollection} without any Stripe call.
 	 * That keeps this test on the default profile, where the question it asks (does the job get a
 	 * thread?) is not entangled with a mocked gateway.

@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * mask the authorization answer) and a <strong>unique</strong> {@code X-Forwarded-For} from {@link
  * SessionLoginSupport#uniqueClientIp()}. The latter is not optional: {@code RateLimitFilter} runs
  * <em>ahead of</em> authorization in a cached Spring context, so probes sharing the default loopback
- * peer would exhaust a budget mid-run and answer {@code 429} — #127's failure, in which green scoped
+ * peer would exhaust a budget mid-run and answer {@code 429} — the failure mode in which green scoped
  * batches became a CI-only wall of rejections.
  */
 final class EndpointProbes {

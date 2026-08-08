@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Email S7 (#375) end to end through the real admin surface against Testcontainers Postgres: approving
+ * Email delivery end to end through the real admin surface against Testcontainers Postgres: approving
  * a self-registered operator mails it the sign-in link, and <em>nothing else in the lifecycle mails
  * anything</em>. The negative half is the load-bearing half — "sends one mail" is easy to satisfy by
  * accident from a lifecycle listener that also fires on reject or reinstate, and the operator learning

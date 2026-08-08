@@ -15,7 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S8 (#113, AC-4) the public account-recovery endpoints are rate-limited per-IP. With the recovery budget
+ * AC-4: the public account-recovery endpoints are rate-limited per-IP. With the recovery budget
  * pinned to a small capacity, the first N requests from one IP pass and the next is {@code 429 RATE_LIMITED};
  * a different IP is unaffected (its own bucket) — proving recovery has its OWN per-IP budget, not a shared
  * one (R-8, the S2 operator-lockout lesson). Recovery reuses the {@code login} limit, so the capacity is

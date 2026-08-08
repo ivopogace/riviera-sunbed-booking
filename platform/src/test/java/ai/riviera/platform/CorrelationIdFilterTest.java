@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * Issue #100 (D4), AC-1: the correlation-id filter puts a traceable id in the MDC for the duration of
+ * AC-1: the correlation-id filter puts a traceable id in the MDC for the duration of
  * the request, echoes it in the response header, clears it afterwards, and never reflects an unsafe
  * inbound value verbatim (log-injection guard, {@code riviera-java-conventions} §10). A plain unit
  * test — no Spring context, no Docker.

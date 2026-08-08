@@ -8,7 +8,7 @@ import ai.riviera.placementfixture.provider.vocabulary.MisplacedEvent;
 /**
  * The same violation as {@link BadListener}, written in {@code @ApplicationModuleListener}'s
  * <em>expanded</em> form — the shape a listener takes when it needs to name its own executor
- * (#383 did exactly that to keep mail off the money-path pool).
+ * (the notification module's mail listeners do exactly that to keep mail off the money-path pool).
  *
  * <p>Its own fixture because the placement rule used to key on the composite annotation alone, so
  * decomposing a listener quietly removed it from the rule's reach: the build stayed green while the
