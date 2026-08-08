@@ -11,7 +11,7 @@ import ai.riviera.platform.venue.application.VenueProfileView;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 
 /**
- * The wire response for {@code GET /api/venues/{venueId}/profile} (O8, issue #177): the owner's
+ * The wire response for {@code GET /api/venues/{venueId}/profile}: the owner's
  * venue-admin profile. Maps the application {@link VenueProfileView} to the shape the console form
  * consumes — booking mode + amenity codes as their token strings, and the cutoff as {@code "HH:mm"}
  * (matching {@code CreateVenueRequest.bookingCutoff}), so the round-trip to the widened
@@ -23,12 +23,12 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
  * {@code PUT /api/admin/venues/{venueId}/commission}; the {@code PATCH} here is unchanged and still
  * cannot reach the column.
  *
- * <p>{@code version} is the row's optimistic-concurrency token (#224): the tab echoes it back as
+ * <p>{@code version} is the row's optimistic-concurrency token: the tab echoes it back as
  * {@code expectedVersion} on the next {@code PATCH}, so a stale write is rejected with 409.
  *
  * <p>{@code photos} keys every slot (lower-case, matching the REST path vocabulary) to its
- * PREVIEW serving URL (#142), {@code null} when empty — always all three keys, so the tab renders
- * a stable grid. Emptiness is the null URL; no separate boolean (review F-11).
+ * PREVIEW serving URL, {@code null} when empty — always all three keys, so the tab renders
+ * a stable grid. Emptiness is the null URL; no separate boolean.
  */
 record VenueProfileResponse(String name, String beach, String region, String description,
 		String bookingMode, String bookingCutoff, int commissionBps, String payoutCurrency,
