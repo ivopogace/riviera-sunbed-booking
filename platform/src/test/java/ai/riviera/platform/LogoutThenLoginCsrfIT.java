@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Regression for #247: signed in &rarr; {@code POST /api/auth/logout} &rarr; immediate re-login must be
+ * Regression: signed in &rarr; {@code POST /api/auth/logout} &rarr; immediate re-login must be
  * accepted on the <strong>FIRST</strong> attempt, not {@code 403 INVALID_CSRF_TOKEN}.
  *
  * <p>The framework's {@code CsrfLogoutHandler} clears the {@code XSRF-TOKEN} cookie on logout, and
@@ -47,7 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code @SpringBootTest} property keeps this context un-cached from the {@code csrf()}-using ITs. The
  * fix lives in the one shared logout filter, so a single sequence is proven for BOTH principal types
  * (operator + customer). Each login presents a unique {@code X-Forwarded-For} so suite-cumulative
- * logins never share the per-IP login rate bucket (#127).
+ * logins never share the per-IP login rate bucket.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -85,7 +85,7 @@ class LogoutThenLoginCsrfIT {
 
 		operatorLogin(jar).andExpect(status().isOk());
 		logout(jar);
-		// #247: this first re-login must be accepted (was 403 INVALID_CSRF_TOKEN before the fix).
+		// This first re-login must be accepted (was 403 INVALID_CSRF_TOKEN before the fix).
 		operatorLogin(jar)
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.principalType").value("OPERATOR"));
@@ -100,7 +100,7 @@ class LogoutThenLoginCsrfIT {
 
 		customerLogin(jar).andExpect(status().isOk());
 		logout(jar);
-		// #247: this first re-login must be accepted (was 403 INVALID_CSRF_TOKEN before the fix).
+		// This first re-login must be accepted (was 403 INVALID_CSRF_TOKEN before the fix).
 		customerLogin(jar)
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.principalType").value("CUSTOMER"));

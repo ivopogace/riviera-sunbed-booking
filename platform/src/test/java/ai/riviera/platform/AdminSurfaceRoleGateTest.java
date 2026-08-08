@@ -24,11 +24,11 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 
 /**
  * Makes <em>"every {@code /api/admin/**} endpoint is gated to {@code ROLE_ADMIN}"</em> a build failure
- * rather than a review read (#528).
+ * rather than a review read.
  *
  * <p><strong>The hole this closes had a live instance.</strong> {@code /api/admin/payout-batches} was
- * gated {@code hasRole(OPERATOR)} from #70 until PR #521 tightened it — correct when written
- * ({@code is_admin} did not exist yet), and a cross-tenant hole the moment #115 made the marketplace
+ * gated {@code hasRole(OPERATOR)} until a later PR tightened it — correct when written
+ * ({@code is_admin} did not exist yet), and a cross-tenant hole the moment the marketplace became
  * genuinely multi-tenant: any approved operator could read every venue's gross/commission/net and mark
  * any venue's batch settled. Nothing failed. The namespace keeps growing, so the audit that caught it
  * runs here now, on every build.
@@ -107,7 +107,7 @@ class AdminSurfaceRoleGateTest {
 	RequestMappingHandlerMapping handlerMapping;
 
 	/**
-	 * An approved operator with no {@code is_admin} flag — the #521 attacker, and the principal that a
+	 * An approved operator with no {@code is_admin} flag — the attacker from that gap, and the principal that a
 	 * matcher downgraded to {@code hasRole(OPERATOR)} would silently admit.
 	 */
 	@Test
