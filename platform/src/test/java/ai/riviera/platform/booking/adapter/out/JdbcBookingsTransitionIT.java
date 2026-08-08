@@ -35,6 +35,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class JdbcBookingsTransitionIT {
 
+	/** Earlier than every fixture date here, so the service-day arm selects nothing. */
+	private static final LocalDate NO_SERVICE_DAY_OPEN = LocalDate.of(2020, 1, 1);
+
 	@Autowired
 	Bookings bookings;
 
@@ -138,7 +141,8 @@ class JdbcBookingsTransitionIT {
 		// TTL 15m / pay-window 12h: the stale instant booking is selected; the accepted request
 		// (1h into its 12h window, though 25h old by creation) is NOT.
 		var withinPayWindow = bookings.findExpirableAwaitingPayment(
-				now.minus(java.time.Duration.ofMinutes(15)), now.minus(java.time.Duration.ofHours(12)));
+				now.minus(java.time.Duration.ofMinutes(15)), now.minus(java.time.Duration.ofHours(12)),
+				NO_SERVICE_DAY_OPEN);
 		var ids = withinPayWindow.stream().map(BookingId::value).toList();
 		Assertions.assertTrue(ids.contains(instantBooking),
 				"a stale instant booking expires on the creation clock");
@@ -147,10 +151,21 @@ class JdbcBookingsTransitionIT {
 
 		// Once the pay-window has elapsed (window shrunk to 30m), the accepted request IS selected.
 		var pastPayWindow = bookings.findExpirableAwaitingPayment(
-				now.minus(Duration.ofMinutes(15)), now.minus(Duration.ofMinutes(30)));
+				now.minus(Duration.ofMinutes(15)), now.minus(Duration.ofMinutes(30)),
+				NO_SERVICE_DAY_OPEN);
 		var lateIds = pastPayWindow.stream().map(BookingId::value).toList();
 		Assertions.assertTrue(lateIds.contains(acceptedRequest),
 				"an accepted request past its pay-window is expirable");
+
+		// Third arm alone: both windows widened past every row, so only the date bound can select.
+		var serviceDayOpen = bookings.findExpirableAwaitingPayment(
+				now.minus(Duration.ofHours(24)), now.minus(Duration.ofHours(12)),
+				LocalDate.of(2027, 9, 1));
+		var openIds = serviceDayOpen.stream().map(BookingId::value).toList();
+		Assertions.assertTrue(openIds.contains(acceptedRequest),
+				"a booking for a day already underway is expirable whatever its window says");
+		Assertions.assertFalse(openIds.contains(instantBooking),
+				"one dated a day further out is not — the arm is a date bound, not a blanket");
 	}
 
 }

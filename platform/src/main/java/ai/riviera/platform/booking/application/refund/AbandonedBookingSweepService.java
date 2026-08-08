@@ -11,14 +11,16 @@ import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.application.cancel.BookingCutoff;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.api.CancelPaymentPort;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 
 /**
- * Expires abandoned {@code AWAITING_PAYMENT} bookings past their TTL and frees their sets,
- * implementing {@link ExpireAbandonedBookings}. For each stale booking it:
+ * Expires {@code AWAITING_PAYMENT} bookings that can no longer be paid — past their TTL, past the
+ * accepted request's pay window, or for a service day already underway (invariant #4) — and frees
+ * their sets, implementing {@link ExpireAbandonedBookings}. For each stale booking it:
  *
  * <ol>
  *   <li>cancels the Stripe PaymentIntent via {@link CancelPaymentPort} (collect-only — voids an
@@ -49,21 +51,24 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 	private final Bookings bookings;
 	private final CancelPaymentPort cancelPaymentPort;
 	private final ReleaseAbandonedBooking releaseAbandonedBooking;
+	private final BookingCutoff cutoff;
 	private final Clock clock;
 
 	AbandonedBookingSweepService(Bookings bookings, CancelPaymentPort cancelPaymentPort,
-			ReleaseAbandonedBooking releaseAbandonedBooking, Clock clock) {
+			ReleaseAbandonedBooking releaseAbandonedBooking, BookingCutoff cutoff, Clock clock) {
 		this.bookings = bookings;
 		this.cancelPaymentPort = cancelPaymentPort;
 		this.releaseAbandonedBooking = releaseAbandonedBooking;
+		this.cutoff = cutoff;
 		this.clock = clock;
 	}
 
 	@Override
 	public int sweep(Duration ttl, RequestWindows windows) {
+		// One reading, so all three arms of this run are bounded against the same instant.
 		Instant now = clock.instant();
-		List<BookingId> stale =
-				bookings.findExpirableAwaitingPayment(now.minus(ttl), windows.acceptedBefore(now));
+		List<BookingId> stale = bookings.findExpirableAwaitingPayment(now.minus(ttl),
+				windows.acceptedBefore(now), cutoff.lastOpenedServiceDay(now));
 		int expired = 0;
 		for (BookingId id : stale) {
 			try {

@@ -126,7 +126,7 @@ class ScheduledQueryTimeoutIT {
 		Instant now = Instant.now();
 
 		assertBounded("the abandoned-payment sweep's candidate read",
-				readWhileLocked("booking", () -> bookings.findExpirableAwaitingPayment(now, now)));
+				readWhileLocked("booking", () -> bookings.findExpirableAwaitingPayment(now, now, LocalDate.now())));
 		assertBounded("the request-expiry sweep's candidate read",
 				readWhileLocked("booking", () -> bookings.findOverduePendingRequests(now)));
 		assertBounded("the retention sweep's candidate read",

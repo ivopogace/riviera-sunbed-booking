@@ -128,6 +128,7 @@ both sides of it.
 | R-4 | A late-cutoff venue silently shrinks the guest's pay window — a 23:00 cutoff accepted at 22:55 gives 65 minutes, not 12 hours. | med | low | Correct under invariant #4 and not a defect, but it is a real behaviour change: the `#373` mail states the deadline, and because `payDeadline` is the *same* expression the sweep enforces, the mailed moment stays truthful. Recorded so review does not read it as an oversight. | phase 1 | open |
 | R-5 | Adding `payWindowClosed` to the `GET /api/bookings/{code}` body breaks the FE contract or an existing IT's strict body assertion. | low | low | Additive field, `false` for every pre-existing case; FE model updated in the same slice; `BookingCreationViewsContractTest` and `BookingViewIT` re-run. Error contract untouched (no new endpoint, no new `ProblemDetail` code). | phase 3 | open |
 | R-6 | The `ServiceDayBackdate` fixture is documented for a **confirmed** booking that is "deliberately never released"; the new sweep IT backdates an `AWAITING_PAYMENT` booking that *is* released. | low | low | Its `clearResidueAt` already makes it re-run safe, and a released row is strictly easier than a retained one. Its Javadoc gets one sentence widening it to the pay fence rather than a second copy of the helper. | phase 2 | open |
+| R-8 | **New full-suite coupling.** The service-day arm makes any past-dated `AWAITING_PAYMENT` row anywhere in the shared Testcontainers DB a sweep candidate, so `AbandonedBookingSweepIT`'s exact-count assertions could be broken by another test class's fixture. | low | med | Audited at phase 2 (see the generalization log): all 20 ITs that create `AWAITING_PAYMENT` rows date them in the future or go through the cutoff-guarded create path. `AbandonedBookingSweepIT` isolates the one opened date it writes. This is precisely the failure class only CI's full suite can show (`riviera-local-debug`), so the PR's CI run is the verification. | phase 2 | open — CI-verified |
 | R-7 | Flyway version contention. | n/a | n/a | **No migration in this slice.** V39 is the highest on `main`; no open PR claims V40 (only Dependabot PRs are open). If a parallel slice later needs one, nothing here collides. | plan | **closed — no migration** |
 
 ## Open questions / Assumptions
@@ -278,16 +279,16 @@ e2e. No new route, no new service call.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — widen the abandoned sweep's candidate read with the service-day arm and
-prove the release against real Postgres.
+**Next action:** Phase 3 — withhold payment credentials past the boundary and put `payWindowClosed`
+on the wire.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The service-day boundary on `BookingCutoff` | ✅ | `7d4562f` |
 | 1 — Cap the pay deadline (`RequestWindows` + the accept) | ✅ | `0abe8a8` |
-| 2 — The sweep enforces the capped deadline | | |
+| 2 — The sweep enforces the capped deadline | ✅ | `c5b0c1f` |
 | 3 — Withhold credentials + `payWindowClosed` on the wire | | |
 | 4 — The guest-facing closed-window panel + e2e | | |
 | 5 — Docs freshness + close-out | | |
@@ -727,6 +728,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-08 | phase 2 | other holders of past-dated `AWAITING_PAYMENT` rows, which the new arm turns into sweep candidates in the shared Testcontainers DB | `grep -rln "AWAITING_PAYMENT" platform/src/test/java --include=*IT.java` then the `booking_date` each writes | 20 ITs; every one dates its `AWAITING_PAYMENT` rows in the future (2027/2028) or creates them through the cutoff-guarded create path | **no change needed, but the coupling is new and worth naming** (R-8): before this arm a foreign row could only become a candidate by ageing past a TTL, which test rows never do; now a past `booking_date` alone suffices. `AbandonedBookingSweepIT`'s own isolation gains the one opened date it writes, and the exact-count assertions still hold. |
 | 2026-08-08 | phase 1 | every reader of the pay deadline, so none keeps the uncapped expression | `grep -rn "payDeadline\|payWindow" platform/src --include=*.java` | `RespondToRequestService` (the mail), `AbandonedBookingSweepService` via `acceptedBefore` (the sweep), `RequestProperties` (validation prose) | **all three reconciled.** The mail now passes the cap; the sweep's raw-window arm is unchanged by design and gains the service-day arm in phase 2; `RequestProperties`' "no such cap" sentence was the line issue #576 itself quoted and is rewritten. |
 | 2026-08-08 | phase 0 | a second civil-day computation that should share the new boundary | `grep -rn "atStartOfDay\|Europe/Tirane" platform/src/main --include=*.java` | 6 modules declare their own `TIRANE` constant (`customer`, `notification`, `venue`, `payout`, `availability`, and `booking`'s `StaffBookingController`) | **skip, deliberately.** Each is a different question about civil days (a retention cutoff, a mail render zone, an ISO week key, a staff "today" default), none is the service-day boundary, and a cross-module zone constant would need a `shared` admission that rests on ownership, not reuse. Inside `booking`'s pay/cancel path `BookingCutoff` remains the only site. |
 
