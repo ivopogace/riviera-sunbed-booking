@@ -278,15 +278,15 @@ e2e. No new route, no new service call.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — cap `RequestWindows#payDeadline` at the service-day opening and pass the
-cap from the accept.
+**Next action:** Phase 2 — widen the abandoned sweep's candidate read with the service-day arm and
+prove the release against real Postgres.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The service-day boundary on `BookingCutoff` | ✅ | `7d4562f` |
-| 1 — Cap the pay deadline (`RequestWindows` + the accept) | | |
+| 1 — Cap the pay deadline (`RequestWindows` + the accept) | ✅ | `0abe8a8` |
 | 2 — The sweep enforces the capped deadline | | |
 | 3 — Withhold credentials + `payWindowClosed` on the wire | | |
 | 4 — The guest-facing closed-window panel + e2e | | |
@@ -727,6 +727,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-08 | phase 1 | every reader of the pay deadline, so none keeps the uncapped expression | `grep -rn "payDeadline\|payWindow" platform/src --include=*.java` | `RespondToRequestService` (the mail), `AbandonedBookingSweepService` via `acceptedBefore` (the sweep), `RequestProperties` (validation prose) | **all three reconciled.** The mail now passes the cap; the sweep's raw-window arm is unchanged by design and gains the service-day arm in phase 2; `RequestProperties`' "no such cap" sentence was the line issue #576 itself quoted and is rewritten. |
 | 2026-08-08 | phase 0 | a second civil-day computation that should share the new boundary | `grep -rn "atStartOfDay\|Europe/Tirane" platform/src/main --include=*.java` | 6 modules declare their own `TIRANE` constant (`customer`, `notification`, `venue`, `payout`, `availability`, and `booking`'s `StaffBookingController`) | **skip, deliberately.** Each is a different question about civil days (a retention cutoff, a mail render zone, an ISO week key, a staff "today" default), none is the service-day boundary, and a cross-module zone constant would need a `shared` admission that rests on ownership, not reuse. Inside `booking`'s pay/cancel path `BookingCutoff` remains the only site. |
 
 ---
