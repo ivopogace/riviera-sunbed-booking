@@ -17,7 +17,7 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
  * The Instant-Book use case (issue #6), now <strong>two-phase</strong> to keep the Stripe network
- * call out of the locked availability transaction (issue #52, risk R-3):
+ * call out of the locked availability transaction:
  *
  * <ol>
  * <li><strong>Reserve (committed):</strong> {@link ReserveSetService#reserve} validates, claims the
@@ -36,14 +36,14 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
  *     after the reserve commit.</li>
  * <li>{@code Pending} (real Stripe): the booking stays {@code AWAITING_PAYMENT}; the verified
  *     webhook confirms it later, never the client → {@code AwaitingPayment}.</li>
- * <li>{@code Failed} (PI creation failed after commit): <strong>compensate</strong> — reuse the
- *     #51 {@link ReleaseAbandonedBooking} (guarded {@code AWAITING_PAYMENT → CANCELLED} + claim
+ * <li>{@code Failed} (PI creation failed after commit): <strong>compensate</strong> — reuse
+ *     {@link ReleaseAbandonedBooking} (guarded {@code AWAITING_PAYMENT → CANCELLED} + claim
  *     release) so the booking isn't left orphaned holding the set, then surface the failure. The
- *     #51 TTL sweep is the backstop if this process dies before compensating.</li>
- * <li><strong>A raw throw from {@code pay} itself</strong> (#125 — e.g. the payment-row insert
+ *     TTL sweep is the backstop if this process dies before compensating.</li>
+ * <li><strong>A raw throw from {@code pay} itself</strong> (e.g. the payment-row insert
  *     hitting a {@code DataAccessException} <em>after</em> Stripe created the intent, so no typed
  *     {@code Failed} is ever returned): compensate the same way as {@code Failed} (release the claim,
- *     then rethrow), then let the #51 sweep — which now also expires no-collection rows — backstop a
+ *     then rethrow), then let the sweep — which now also expires no-collection rows — backstop a
  *     crash before this runs.</li>
  * </ul>
  *
@@ -81,7 +81,7 @@ class CreateBookingService implements CreateBooking {
 		return switch (reserved) {
 			case ReserveOutcome.Rejected rejected -> rejected.reason();
 			case ReserveOutcome.Reserved r -> collect(r, command);
-			// Request-to-Book (issue #98): the request holds the set but there is NO collect phase —
+			// Request-to-Book: the request holds the set but there is NO collect phase —
 			// no PaymentIntent, no charge, until the venue accepts (payment-request-on-accept).
 			case ReserveOutcome.RequestPending pending -> {
 				log.info("pending request {} for set {} on {} (expires {})", pending.bookingId(),
@@ -108,9 +108,9 @@ class CreateBookingService implements CreateBooking {
 					new Money(set.price().minorUnits(), set.price().currency()));
 		}
 		catch (RuntimeException paymentBlewUp) {
-			// #125: not just the typed Failed — an unexpected throw (e.g. the payment-row insert failing
+			// Not just the typed Failed — an unexpected throw (e.g. the payment-row insert failing
 			// after Stripe created the intent) would otherwise strand the booking AWAITING_PAYMENT holding
-			// the set. Release the committed claim (same #51 seam as the Failed branch), then rethrow.
+			// the set. Release the committed claim (same seam as the Failed branch), then rethrow.
 			releaseAbandoned.release(new BookingId(reserved.bookingId()));
 			throw paymentBlewUp;
 		}
@@ -133,7 +133,7 @@ class CreateBookingService implements CreateBooking {
 						set.setId().value(), command.bookingDate());
 				// Same gate as the code-gated view: only a gateway that actually collects before
 				// confirming makes this post-payment, so the stub's synchronous Succeeded discloses
-				// nothing (#390). Today no shipped gateway both collects AND confirms in-process, so
+				// nothing. Today no shipped gateway both collects AND confirms in-process, so
 				// this branch is unreachable-but-correct rather than dead by construction.
 				boolean emailWithheld = collection.provenBeforeConfirmation()
 						&& confirmationMail.isWithheld(reserved.customerId());
@@ -153,7 +153,7 @@ class CreateBookingService implements CreateBooking {
 			}
 			case PaymentOutcome.Failed failed -> {
 				// PI creation failed after the booking + claim committed — compensate so the set isn't
-				// left held by an unpaid booking (the same #51 guarded cancel + release the webhook and
+				// left held by an unpaid booking (the same guarded cancel + release the webhook and
 				// the TTL sweep use; the sweep backstops a crash before this runs).
 				releaseAbandoned.release(new BookingId(reserved.bookingId()));
 				log.info("released claim for booking {} after payment initiation failed (set {} on {})",
