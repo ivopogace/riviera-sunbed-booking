@@ -3,7 +3,7 @@ package ai.riviera.platform;
 import java.util.regex.Pattern;
 
 /**
- * The {@code X-Audit-Reason} request header and its sanitizer (#507). Any mutating
+ * The {@code X-Audit-Reason} request header and its sanitizer. Any mutating
  * {@code /api/admin/**} request may carry free-text grounds for the action; the value is
  * client-supplied text, so before it is persisted (and later rendered in the admin console) it is
  * neutralized per {@code riviera-java-conventions} §10: runs of control characters — including the
