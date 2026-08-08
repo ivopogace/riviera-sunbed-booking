@@ -4,7 +4,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * Fail-fast guard (S4, epic #108, design D-4): a fake identity provider must never be reachable in
+ * Fail-fast guard (design D-4): a fake identity provider must never be reachable in
  * production. This bean exists <strong>only</strong> when the {@code prod} profile is active <em>and</em>
  * the {@code sso} profile is not (so the default {@code MockSsoGateway}/{@code MockSsoIdpController} would
  * be live) — the {@code @Profile("prod & !sso")} expression — and its constructor throws, aborting

@@ -1,7 +1,7 @@
 package ai.riviera.platform.venue.vocabulary;
 
 /**
- * The optional discovery filters a tourist narrows the venue list by (issue #61): an exact-match
+ * The optional discovery filters a tourist narrows the venue list by: an exact-match
  * {@code beach} and/or {@code region}. A {@code null} dimension means "no constraint" — both null
  * lists every venue. Filters are AND-combined (a venue must match every non-null dimension).
  *

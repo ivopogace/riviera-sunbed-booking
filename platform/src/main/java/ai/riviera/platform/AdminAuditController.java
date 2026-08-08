@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The platform-admin read over the audit trail (#507): the latest recorded admin actions, newest
+ * The platform-admin read over the audit trail: the latest recorded admin actions, newest
  * first — the surface the admin console's Audit tab renders. Role-gated to {@code ADMIN} in
  * {@link SecurityConfig} (the invariant-#13 {@code /api/admin/**} exemption, like its siblings);
  * itself a {@code GET}, so browsing the trail never writes to it.

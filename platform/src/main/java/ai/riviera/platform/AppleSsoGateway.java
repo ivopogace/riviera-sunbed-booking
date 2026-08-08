@@ -9,7 +9,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 /**
  * Real "Sign in with Apple" adapter — exists but is <strong>not implemented</strong> until the Apple
- * Developer credentials ship (S5, #116). Apple needs an ES256 client-secret JWT and {@code form_post}
+ * Developer credentials ship. Apple needs an ES256 client-secret JWT and {@code form_post}
  * response mode; those details land in S5. Under {@code @Profile("sso")} it throws
  * {@link UnsupportedOperationException} on any use, so activating the real profile without S5 fails
  * loudly rather than silently falling back to the mock (design D-4). Package-private (invariant #11).
