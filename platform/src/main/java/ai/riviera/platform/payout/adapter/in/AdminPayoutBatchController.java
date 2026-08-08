@@ -22,13 +22,13 @@ import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PeriodKey;
 
 /**
- * Admin endpoints for the weekly BKT payout report (U9, issue #12): generate/read the per-venue batches
+ * Admin endpoints for the weekly BKT payout report: generate/read the per-venue batches
  * for an ISO-week period and advance a batch's status. Driving adapter depending only on the payout
  * module's {@link PayoutReport} port (invariant #11).
  *
  * <p><strong>Platform-admin gated</strong> — {@code SecurityConfig} matches
  * {@code /api/admin/payout-batches} (and the item path) to role {@code ADMIN}, tightened from
- * {@code OPERATOR} by #348 A4. That gate is the <em>whole</em> authorization: nothing here is venue-scoped,
+ * {@code OPERATOR}. That gate is the <em>whole</em> authorization: nothing here is venue-scoped,
  * because nothing here belongs to one venue — the GET reports every venue's gross/commission/net for the
  * period and the PATCH addresses a batch by id. Invariant #13 exempts {@code /api/admin/**} from per-venue
  * ownership (an admin does not <em>own</em> a payout run), which is exactly why the role must be the
@@ -36,7 +36,7 @@ import ai.riviera.platform.payout.domain.PeriodKey;
  * competitors' payout figures and mark their batches settled. The POST/PATCH are session writes and
  * require a CSRF token like every other non-exempt write. A malformed {@code period} or {@code status} is
  * a {@code 400 INVALID_REQUEST} via {@code ApiErrorHandler}; errors are RFC-7807 {@link ProblemDetail}
- * built by {@link ApiProblem} (issue #97).
+ * built by {@link ApiProblem}.
  */
 @RestController
 @RequestMapping("/api/admin/payout-batches")
@@ -72,7 +72,7 @@ class AdminPayoutBatchController {
 	}
 
 
-	/** A malformed period token is a 400, while {@link PeriodKey}'s guard stays a 500 off the edge (#118). */
+	/** A malformed period token is a 400, while {@link PeriodKey}'s guard stays a 500 off the edge. */
 	private static PeriodKey parsePeriod(String period) {
 		return InvalidApiRequestException.parsing(() -> PeriodKey.of(period));
 	}
