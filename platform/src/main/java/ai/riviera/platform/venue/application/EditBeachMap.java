@@ -30,7 +30,7 @@ public interface EditBeachMap {
 	ChangeOutcome removeSet(OperatorId operator, VenueId venueId, SetId setId);
 
 	/**
-	 * Reprice <strong>every set in a row</strong> (O4, issue #174) — the operator console's Pricing tab.
+	 * Reprice <strong>every set in a row</strong> — the operator console's Pricing tab.
 	 * After asserting {@code operator} owns {@code venueId}, it applies {@code command}'s full-day price
 	 * to every set carrying {@code command.rowLabel()} in one non-destructive {@code UPDATE}: set identity,
 	 * pool, coordinates and any {@code set_availability} hold are untouched, so — unlike
@@ -38,7 +38,7 @@ public interface EditBeachMap {
 	 * charge was snapshotted at reserve time, so a reprice never alters it). Returns {@code Applied}, or
 	 * {@code Rejected(NO_SUCH_VENUE)} / {@code Rejected(NO_SUCH_ROW)} when the venue or the row is unknown.
 	 *
-	 * <p>Optimistic concurrency (#226): the caller passes the {@code expectedVersion} (the venue's
+	 * <p>Optimistic concurrency: the caller passes the {@code expectedVersion} (the venue's
 	 * {@code set_version}) the tab loaded with the map; the write is conditional on it. Another writer
 	 * having bumped it since the load yields {@link SetRejection#STALE_WRITE} (→ 409). It bumps the
 	 * <strong>same</strong> token {@link #replaceLayout} does — so a replace and a reprice racing off the
@@ -50,14 +50,14 @@ public interface EditBeachMap {
 			RowPriceCommand command);
 
 	/**
-	 * Replace the venue's <strong>whole</strong> beach-map layout in one transaction (O3, issue #172) —
+	 * Replace the venue's <strong>whole</strong> beach-map layout in one transaction —
 	 * the generate-grid + paint editor's bulk write. After asserting {@code operator} owns {@code venueId},
 	 * it is <em>reject-unless-unclaimed</em>: if any of the venue's existing sets has a booking (any status)
 	 * or an availability hold (any date), the replace is refused ({@link ReplaceRejection#LAYOUT_IN_USE}) and
 	 * nothing is deleted — so no claimed set is dropped and invariants #2/#3 hold. On a clear venue the
 	 * existing sets are deleted and {@code command}'s grid inserted atomically.
 	 *
-	 * <p>Optimistic concurrency (#226): the caller passes the {@code expectedVersion} (the venue's
+	 * <p>Optimistic concurrency: the caller passes the {@code expectedVersion} (the venue's
 	 * {@code set_version}) the tab loaded with the map; the write is conditional on it. Another writer having
 	 * bumped it since the load yields {@link ReplaceRejection#STALE_WRITE} (→ 409), so a stale layout tab
 	 * cannot silently clobber the map. The token is bumped <strong>before</strong> the reject-unless-unclaimed
