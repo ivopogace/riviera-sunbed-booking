@@ -47,30 +47,30 @@ for `bugfix/post-service-day-cancel-fence` (`riviera-sdlc` § Remote/cloud sessi
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a booking date whose service day has not started in `Europe/Tirane`, when the
+- [x] **AC-1:** Given a booking date whose service day has not started in `Europe/Tirane`, when the
       cancellation window is classified, then it is `FREE` before the evening-before cutoff and
       `LATE` between that cutoff and midnight opening the service day. *Pinned by:*
       `BookingCutoffTest.cancellationWindowSpansFreeThenLate`
-- [ ] **AC-2:** Given "now" is at or after midnight `Europe/Tirane` opening the booking date, when
+- [x] **AC-2:** Given "now" is at or after midnight `Europe/Tirane` opening the booking date, when
       the cancellation window is classified, then it is `CLOSED` — on the service day itself and on
       every later date. *Pinned by:* `BookingCutoffTest.cancellationWindowClosesWhenServiceDayStarts`
-- [ ] **AC-3:** Given a `CLOSED` window, when the refund is computed, then it is 0 minor units
+- [x] **AC-3:** Given a `CLOSED` window, when the refund is computed, then it is 0 minor units
       regardless of the venue's `late_cancel_refund_bps`. *Pinned by:*
       `RefundPolicyTest.closedWindowRefundsNothing`
-- [ ] **AC-4:** Given a `CONFIRMED` booking whose service day has passed, when the guest calls the
+- [x] **AC-4:** Given a `CONFIRMED` booking whose service day has passed, when the guest calls the
       cancel use case, then the outcome is `CancelOutcome.WindowClosed`, the booking stays
       `CONFIRMED`, the `(set, date)` row is **not** released, and no `BookingCancelled` is published
       (so no refund and no payout reversal). *Pinned by:*
       `CancelBookingIT.rejectsCancelAfterTheServiceDayHasPassed`
-- [ ] **AC-5:** Given that same booking, when it is viewed by code, then `cancellable` is `false`
+- [x] **AC-5:** Given that same booking, when it is viewed by code, then `cancellable` is `false`
       and `refundIfCancelledNow` is 0 — the UI never offers a cancel the server would reject.
       *Pinned by:* `ViewBookingServiceTest.pastBookingIsNotCancellableAndQuotesNothing`, and at
       HTTP level by `BookingViewIT.viewOffersNoCancelOnceTheServiceDayHasPassed`
-- [ ] **AC-6:** Given the cancel endpoint rejects on a closed window, when the response is written,
+- [x] **AC-6:** Given the cancel endpoint rejects on a closed window, when the response is written,
       then it is `409` with code `CANCELLATION_WINDOW_CLOSED` (distinct from `NOT_CANCELLABLE`, so
       the two rejections stay diagnosable). *Pinned by:*
       `BookingControllerIT.closedWindowRejectionCarriesItsOwnCode`
-- [ ] **AC-7:** Given a venue owner triggering a weather refund for a **past** date, when the
+- [x] **AC-7:** Given a venue owner triggering a weather refund for a **past** date, when the
       service runs, then it still cancels and fully refunds — the fence is scoped to the
       guest-initiated path only. *Pinned by:* `WeatherRefundServiceIT.fullRefundRegardlessOfCutoff`
       — the **existing** test, which already seeds on `2020-07-01`; no new test was written for
@@ -106,12 +106,12 @@ for `bugfix/post-service-day-cancel-fence` (`riviera-sdlc` § Remote/cloud sessi
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Timezone arithmetic wrong at the midnight boundary (invariants #4/#6) — a fence one day early would reject legitimate same-day-eve cancels | med | high | The boundary is computed via the existing `BookingCutoff` `Europe/Tirane` machinery from an injected `Clock`, never the JVM default; unit tests pin 23:59 the evening before (open) and 00:00 on the date (closed) | claude | open |
-| R-2 | The fence lands only on the cancel path, leaving the view offering a cancel that 409s | med | med | The classification is computed once in `CancellationPolicy` — the shared quote both use — and AC-5 pins the view side | claude | open |
-| R-3 | The fence accidentally catches the **weather** refund, silently removing the operator's post-storm goodwill tool | low | high | The fence sits in the guest cancel service, not in `cancelConfirmed`; AC-7 pins a past-date weather refund still working | claude | open |
-| R-4 | Narrowing the `LATE` window to ~6 hours makes `late_cancel_refund_bps` near-useless for venues that set it | high | med | Accepted and documented (see Open questions A-1); it is the deliberate consequence of closing a real-money exploit, and the boundary is a one-line change if the product call differs | claude | open |
-| R-5 | Changing `RefundPolicy.refundMinor`'s signature (boolean → enum) breaks a caller not in scope | low | med | Compile-time break, not runtime; `grep` shows exactly one production caller (`CancellationPolicy`) and one test | claude | open |
-| R-6 | Module boundary leak — a new type placed in a published surface it doesn't belong in (invariant #11) | low | med | `CancellationWindow` stays in `booking.domain`; no sibling module consumes it. `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` in the scoped run | claude | open |
+| R-1 | Timezone arithmetic wrong at the midnight boundary (invariants #4/#6) — a fence one day early would reject legitimate same-day-eve cancels | med | high | The boundary is computed via the existing `BookingCutoff` `Europe/Tirane` machinery from an injected `Clock`, never the JVM default; unit tests pin 23:59 the evening before (open) and 00:00 on the date (closed) | claude | **closed** — `BookingCutoffTest` pins 23:59→`LATE` and 00:00→`CLOSED`, plus a 23:30-cutoff case proving the two boundaries stay 30 min apart rather than inverting |
+| R-2 | The fence lands only on the cancel path, leaving the view offering a cancel that 409s | med | med | The classification is computed once in `CancellationPolicy` — the shared quote both use — and AC-5 pins the view side | claude | **closed** — one `quote.cancellationOpen()` read by both; pinned at unit *and* HTTP level |
+| R-3 | The fence accidentally catches the **weather** refund, silently removing the operator's post-storm goodwill tool | low | high | The fence sits in the guest cancel service, not in `cancelConfirmed`; AC-7 pins a past-date weather refund still working | claude | **closed** — `WeatherRefundServiceIT` green on its `2020-07-01` seed; the guarantee is now stated in its class Javadoc and on `WeatherRefundService` |
+| R-4 | Narrowing the `LATE` window to ~6 hours makes `late_cancel_refund_bps` near-useless for venues that set it | high | med | Accepted and documented (see Open questions A-1); it is the deliberate consequence of closing a real-money exploit, and the boundary is a one-line change if the product call differs | claude | **accepted, flagged** — surfaced in ADR-0005's amendment and PR #574's Scope notes for an explicit product call |
+| R-5 | Changing `RefundPolicy.refundMinor`'s signature (boolean → enum) breaks a caller not in scope | low | med | Compile-time break, not runtime; `grep` shows exactly one production caller (`CancellationPolicy`) and one test | claude | **closed** — the compiler found exactly the two predicted sites, plus `ViewBookingServiceTest`'s quote fixture |
+| R-6 | Module boundary leak — a new type placed in a published surface it doesn't belong in (invariant #11) | low | med | `CancellationWindow` stays in `booking.domain`; no sibling module consumes it. `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` in the scoped run | claude | **closed** — the full structural net passed on the phase-0 commit and nothing since added a cross-module reference |
 | R-7 | Flyway version collision with a parallel slice | none | — | No migration in this slice | claude | closed — n/a |
 
 ## Open questions / Assumptions
@@ -125,12 +125,7 @@ for `bugfix/post-service-day-cancel-fence` (`riviera-sdlc` § Remote/cloud sessi
   before planning; the session was non-interactive, so the recommendation was taken and recorded
   here.* One-line change if the product call differs: `closesAt(bookingDate)` → `bookingDate.plusDays(1)`
   in `BookingCutoff#cancellationWindow`. — *Owner:* ivopogace · *Resolves by:* review gate
-- **Assumption A-2 (direction):** ship the **temporal fence**, not the completion sweep. The sweep
-  is not a drop-in: `JdbcDailyTakings.grossOnlineTakings` filters `status = 'CONFIRMED'`, so
-  writing `COMPLETED` would zero out every past service date in the operator console's takings
-  read, and `NO_SHOW` needs staff check-in data that does not exist yet. That makes it a lifecycle
-  slice with its own ACs, not a bug fix. — *Owner:* claude · *Resolves by:* follow-up issue filed
-  at close-out
+*(A-2 resolved — see below.)*
 - **Assumption A-3 (weather refund unfenced):** a post-date weather refund is legitimate — the
   operator is voluntarily returning their own money for a storm that already happened, behind an
   `assertOwns` check (invariant #13). Fencing it would remove a real tool. — *Owner:* ivopogace ·
@@ -245,10 +240,9 @@ mocked suite does not construct; the unit spec is the proportionate pin.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4 — docs + close-out)`
+**Stage pointer:** `PR #574 — review gate`
 
-**Next action:** Amend ADR-0005 with the third tier, run `riviera-docs-freshness`, run both repo-hygiene
-guards, file the completion-sweep follow-up issue, then mark PR #574 ready for review.
+**Next action:** Run the review gate on PR #574 per `references/pr-gates.md` §1, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -256,7 +250,7 @@ guards, file the completion-sweep follow-up issue, then mark PR #574 ready for r
 | 1 — `RefundPolicy` third tier | ✅ | `61b9818` |
 | 2 — Fence the cancel use case + its error code | ✅ | `1a776ca` |
 | 3 — Fence the view + FE pin | ✅ | `0e0e822` |
-| 4 — Docs, ADR-0005 amendment, close-out | ⏳ | |
+| 4 — Docs, ADR-0005 amendment, close-out | ✅ | `185de01` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -401,36 +395,36 @@ ADR-0005, which `CancellationWindow`'s Javadoc points at.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `gradle test --tests "*BookingCutoffTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** `gradle test --tests "*BookingCutoffTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** `gradle test --tests "*RefundPolicyTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** `gradle test --tests "*CancelBookingIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** `gradle test --tests "*ViewBookingServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** `gradle test --tests "*CancelBookingIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** `gradle test --tests "*WeatherRefundServiceIT*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1:** `gradle test --tests "*BookingCutoffTest*"` → PASS. Verified at commit `88285af`.
+- [x] **AC-2:** `gradle test --tests "*BookingCutoffTest*"` → PASS. Verified at commit `88285af`.
+- [x] **AC-3:** `gradle test --tests "*RefundPolicyTest*"` → PASS. Verified at commit `85816c7`.
+- [x] **AC-4:** `gradle test --tests "*CancelBookingIT*"` → PASS. Verified at commit `98385d9`.
+- [x] **AC-5:** `gradle test --tests "*ViewBookingServiceTest*"` → PASS. Verified at commit `1a1e785`.
+- [x] **AC-6:** `gradle test --tests "*BookingControllerIT*"` → PASS. Verified at commit `98385d9`.
+- [x] **AC-7:** `gradle test --tests "*WeatherRefundServiceIT*"` → PASS. Verified at commit `98385d9`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; the claim path is provably untouched (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; the claim path is provably untouched (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new
       published surface (invariant #11).
-- [ ] **Payment/payout** section filled; no `BookingCancelled` on a closed window, so no refund and
+- [x] **Payment/payout** section filled; no `BookingCancelled` on a closed window, so no refund and
       no reversal (invariants #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for the boundary (invariant #6).
-- [ ] Booking codes unguessable and never logged (invariant #7).
-- [ ] No Flyway migration needed; none added (invariant #12).
-- [ ] **Frontend** — no component change; the added spec pins the server-driven affordance.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for the boundary (invariant #6).
+- [x] Booking codes unguessable and never logged (invariant #7).
+- [x] No Flyway migration needed; none added (invariant #12).
+- [x] **Frontend** — no component change; the added spec pins the server-driven affordance.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
 
