@@ -3,8 +3,8 @@ import { Service, signal } from '@angular/core';
 import { readStorage, writeStorage } from '../shared/safe-storage';
 
 /**
- * The two Liquid Glass themes — one dark, one light, the full set by decision (closed,
- * not-planned to grow). Palettes themselves are CSS custom properties under
+ * The two Liquid Glass themes — one dark, one light, the full set by deliberate decision —
+ * not planned to grow. Palettes themselves are CSS custom properties under
  * `[data-riv-theme="…"]` in `styles.scss` — this registry only carries what the switcher UI
  * needs; a palette change is a styles.scss block plus one row here.
  */

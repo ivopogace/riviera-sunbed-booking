@@ -14,8 +14,8 @@ import { VenueCommissionView } from './admin.model';
  * <p><strong>Where it renders, and why not everywhere.</strong> The design canvas draws the stats
  * once, above the tab strip, on every screen — because the canvas is a single demo page. Here the
  * console is seven independent lazy routes with no layout component, a shape the console's routing
- * decision chose deliberately and gave one revisit trigger: a <em>ninth</em> tab. So this strip renders on the
- * console <em>home</em> only, and <em>below</em> the tabs. Below, because with the strip on one page
+ * decision chose deliberately and gave one revisit trigger: a <em>ninth</em> tab. So this strip
+ * renders on the console <em>home</em> only, and <em>below</em> the tabs. Below, because with the strip on one page
  * only, putting it above would shift the pills down on `/admin` and back up on every other tab — the
  * control you just clicked would move. The day a layout component lands on that trigger, this strip
  * moves into it and becomes shell-wide for free; until then, seven copies each re-reading three
@@ -38,8 +38,8 @@ import { VenueCommissionView } from './admin.model';
  * read dashes only its own tile, never the others.
  *
  * <p>The strip is deliberately inert: no tile links anywhere. The tabs sit directly above it, and a
- * navigating tile would add exactly the focus-management surface that has cost comparable tiles
- * review findings elsewhere.
+ * navigating tile would add exactly the focus-management surface that has repeatedly cost console
+ * surfaces review findings.
  *
  * <p><strong>The labels are terse because the fold is measured, not guessed.</strong> At 360px a tile
  * is ~136px of inner width, so an uppercase 11px label past roughly sixteen characters wraps — and a

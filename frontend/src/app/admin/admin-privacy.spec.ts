@@ -203,7 +203,7 @@ describe('AdminPrivacy', () => {
   });
 
   /**
-   * The whole point of the slice. The wire has one success shape and it carries no information, so
+   * The whole point of this screen. The wire has one success shape and it carries no information, so
    * the screen must not manufacture one — and must say so, or an admin will read a bare
    * confirmation as "yes, they were in the system".
    */

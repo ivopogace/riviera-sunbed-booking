@@ -12,8 +12,8 @@ import { OutboxLever } from './admin-outbox-lever';
  * The admin console's Email tab: what the Event Publication Registry still owes — confirmation
  * mails whose send failed — and the lever that re-drives them without waiting for a deploy.
  *
- * <p><strong>The count is shown before the button is pressed</strong>, which is why the slice added a
- * status read the issue did not ask for: a lever with no number is one an admin presses hopefully. It
+ * <p><strong>The count is shown before the button is pressed</strong>, which is why a status read
+ * exists that was never asked for: a lever with no number is one an admin presses hopefully. It
  * is a count of publications, never of recipients — this surface cannot show an address or an arrival
  * code, because the endpoint does not return them (invariant #7).
  *
