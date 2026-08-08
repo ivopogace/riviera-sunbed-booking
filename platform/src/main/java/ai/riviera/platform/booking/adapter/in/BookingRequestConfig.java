@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 
 /**
- * Wires the Request-to-Book machinery (issue #98): binds {@link RequestProperties} and exposes it
+ * Wires the Request-to-Book machinery: binds {@link RequestProperties} and exposes it
  * to the application layer as the plain {@link RequestWindows} value. Deliberately <em>not</em>
  * profile-gated, unlike {@code BookingSchedulingConfig}: a pending request lingers (and must
  * expire) regardless of the payment profile — no Stripe is involved before accept — whereas the

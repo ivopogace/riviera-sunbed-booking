@@ -16,7 +16,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Admin endpoint for the weather refund (U9, issue #12): full refunds for a washed-out venue+date
+ * Admin endpoint for the weather refund (U9): full refunds for a washed-out venue+date
  * (invariant #10), regardless of cutoff. Driving adapter depending only on the booking module's
  * {@link RefundForWeather} port (invariant #11).
  *

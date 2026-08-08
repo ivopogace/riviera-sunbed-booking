@@ -12,7 +12,7 @@ import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 
 /**
- * Boot-time provisioning of the bootstrap operator's credential (#74) — how the initial platform-admin
+ * Boot-time provisioning of the bootstrap operator's credential — how the initial platform-admin
  * operator gets a login without committing a password. On startup, if {@code RIVIERA_OPERATOR_PASSWORD}
  * ({@link RivieraOperatorProperties#password}) is set, its value is encoded with the delegating
  * {@link PasswordEncoder} (all crypto stays at the edge) and stored on the seeded bootstrap operator
@@ -59,7 +59,7 @@ class OperatorCredentialInitializer implements ApplicationRunner {
 		boolean rotated = isGenuineRotation(username, password);
 		boolean updated = provisioning.setPassword(username, encoder.encode(password));
 		if (updated && rotated) {
-			// A restart does not clear SPRING_SESSION, so the rotated-away sessions must go (#128).
+			// A restart does not clear SPRING_SESSION, so the rotated-away sessions must go.
 			sessionRevoker.revokeAll(username);
 			log.info("RIVIERA_OPERATOR_PASSWORD changed for '{}' — live sessions revoked.", username);
 		}

@@ -18,7 +18,7 @@ import ai.riviera.platform.shared.InvalidApiRequestException;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * The in-app mock identity provider (S4, epic #108) — present only under {@code @Profile("!sso")} (and
+ * The in-app mock identity provider — present only under {@code @Profile("!sso")} (and
  * forbidden in prod by {@code MockSsoProdGuard}). It plays the IdP's authorize step: the browser arrives
  * here from {@code MockSsoGateway#authorizationRequest}, and it immediately 302-redirects back to the
  * real callback with a canned authorization {@code code} and the echoed {@code state} — making the full
