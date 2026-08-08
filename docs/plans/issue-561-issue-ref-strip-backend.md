@@ -204,9 +204,11 @@ reflects that stop.
 **Stage pointer:** ⏳ **B green-lit by the maintainer 2026-08-08; B-1 shipped this session. C stays
 not-recommended per the *Recommendation* above — no C batch runs without a separate go.**
 
-**Next action:** the dense tier (≥4 refs/file) has ~28 files left; continue at ~5 files/PR until it's
-exhausted, then switch to larger sparse-tail sweeps (~20–30 files/PR, matching Phase A's own
-dense→sparse transition) for the ~156 files carrying 1–3 refs. C stays parked.
+**Next action:** the dense tier (≥4 refs/file) has 33 files left (review-recount, `grep`-exact —
+corrects the "~28" eyeballed after B-4); continue at ~5 files/PR until it's exhausted, then switch to
+larger sparse-tail sweeps (~20–30 files/PR, matching Phase A's own dense→sparse transition) for the
+156 files carrying 1–3 refs (422 true-violation tokens remain tree-wide across both tiers). C stays
+parked.
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
@@ -217,7 +219,7 @@ dense→sparse transition) for the ~156 files carrying 1–3 refs. C stays parke
 | B-3 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `BookingMailFixtures`, `SetPasswordIT`, `ClientIpResolverTest`, `AdminOperatorControllerTest`, `OperatorPasswordChangeIT` — 51 true-violation tokens removed, 0 permitted refs lost (none of the 5 carried `invariant #n`/`D-n`), 0 R-4 hits. One edit briefly produced a 2-line inline comment (`SetPasswordIT`); the `PostToolUse` RV-STYLE-1 hook (§6c) caught it before the next tool call and it was compressed to one line. `compileJava`/`compileTestJava` clean; 4 of 5 files are directly testable (`BookingMailFixtures` is a shared IT fixture, no `@Test` of its own) and all 4 pass locally, 2 via Testcontainers | pushed | ✅ all gates green (AC-2, AC-5 non-vacuous, `compileJava`/`compileTestJava`, all 4 testable classes pass) |
 | B-4 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `ControllableMailer`, `WorkerContextArchitectureTest`, `AdminPayoutSecurityIT`, `OperatorLifecycleIT`, `EmailSuppressionIT` — 33 true-violation tokens removed, 2 `invariant #13` refs preserved (`AdminPayoutSecurityIT`), 0 R-4 hits. `OperatorLifecycleIT`'s class doc needed a fuller rewrite (two clauses briefly stacked after a ref's removal); caught and fixed by hand-reading the whole paragraph before moving on | pushed | ✅ all gates green (AC-2, AC-5 non-vacuous, `compileJava`/`compileTestJava`, all 4 directly-testable classes pass — `ControllableMailer` is an IT fixture, no `@Test` of its own) |
 | B-5 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `RegistryMailShedDurabilityIT`, `RegistryMailPropertiesTest`, `BookingConfirmationMailListenerTest`, `CreateBookingServiceTest`, `SessionIdentityTest` — 31 true-violation tokens removed, 0 R-4 hits. Applied the F-17 lesson proactively this time: 3 refs inside AssertJ `.as(...)` strings (2 files) were identified as code before editing and left untouched, alongside real Javadoc refs on nearby/same lines that were stripped | pushed | ✅ all gates green (AC-2, AC-5 non-vacuous, `compileJava`/`compileTestJava`, all 5 test classes pass — one via Testcontainers) |
-| B-6… | next ~5-file batch (dense tier, ~28 files left after B-5) | — | not started |
+| B-6… | next ~5-file batch (dense tier, 33 files left after B-5) | — | not started |
 | C-1… | backend main batches | — | not recommended; blocked on a separate maintainer go |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
