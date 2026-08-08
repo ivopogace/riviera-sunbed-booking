@@ -23,12 +23,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S4 (#112) end-to-end mock SSO flow (design D-3/D-4): a tourist runs the "Continue with Google/Apple"
+ * End-to-end mock SSO flow (design D-3/D-4): a tourist runs the "Continue with Google/Apple"
  * authorize→callback dance against the mock IdP, ends signed-in with a {@code SESSION} cookie
  * ({@code /me} reports {@code CUSTOMER}), first sign-in creates a password-less account + link and a
  * second reuses it, and a bad/missing {@code state} is rejected with no session and no account (AC-7).
  * Real Postgres via Testcontainers (exercises V27); unique {@code X-Forwarded-For} per flow keeps
- * suite-cumulative SSO GETs off one rate bucket (#127).
+ * suite-cumulative SSO GETs off one rate bucket.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

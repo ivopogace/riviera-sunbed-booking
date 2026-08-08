@@ -13,10 +13,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S4 (#112, AC-8): the SSO authorize/callback GETs are behind the {@code RateLimitFilter} per-IP budget
+ * AC-8: the SSO authorize/callback GETs are behind the {@code RateLimitFilter} per-IP budget
  * (design D-8) — an enumerator hammering the callback from one IP is throttled to {@code 429}, while a
  * fresh IP is unaffected. A dedicated unique IP exhausts its own bucket, so this test does not disturb —
- * and is not disturbed by — the suite's other per-IP budgets (#127).
+ * and is not disturbed by — the suite's other per-IP budgets.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

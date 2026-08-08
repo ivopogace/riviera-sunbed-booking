@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * The retention sweep's two knobs as <em>bound, validated</em> configuration (#414).
+ * The retention sweep's two knobs as <em>bound, validated</em> configuration.
  *
  * <p>Both degenerate values boot cleanly and are invisible, in opposite directions.
  * {@code batch-size=0} reaches {@code LIMIT 0}, so the scheduled sweep finds no candidates and returns
@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * or after today, irreversibly (ADR-0010, pseudonymize-in-place) — no later config fix undoes it.
  *
  * <p><strong>Why a compact constructor and not {@code @Validated} + {@code @Min}.</strong> There is
- * no JSR-303 implementation on the runtime classpath — #97 declined
+ * no JSR-303 implementation on the runtime classpath — the project declined
  * {@code spring-boot-starter-validation} deliberately, in favour of explicit checks in records — and
  * Boot only validates {@code @ConfigurationProperties} when an implementation is present. An
  * annotation here would therefore bind and validate <em>nothing</em>: the same silent degradation,

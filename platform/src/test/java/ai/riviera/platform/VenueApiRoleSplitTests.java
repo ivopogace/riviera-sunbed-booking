@@ -6,7 +6,7 @@ import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_CLASSES;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * Keeps the {@code VenueCatalog} role split honest (improvement-plan C2, issue #94) — the
+ * Keeps the {@code VenueCatalog} role split honest — the
  * machine-checkable half of {@code riviera-review-overlay} <strong>RV-BE-3c</strong> for this port.
  * A fast, context-free ArchUnit test (sibling to {@link PackageShapeArchitectureTests}).
  *

@@ -20,14 +20,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * End-to-end proof of the per-username login throttle (issue #292) on the <em>real</em> login path
+ * End-to-end proof of the per-username login throttle on the <em>real</em> login path
  * against DB-backed credentials — the half {@code RateLimitFilterTest}'s web slice cannot cover, since
  * that slice's stub stores can never authenticate a login (every attempt there is a 401). A tiny
  * per-username budget (capacity 2, an hour's refill so nothing replenishes mid-test) makes the boundary
  * cheap to hit; each login presents a unique client IP so the per-IP budget never trips first.
  *
  * <p>The two tests use <strong>distinct</strong> usernames so their buckets never bleed across methods
- * sharing this cached context (the #127 lesson): {@code throttle-success} proves a successful login is
+ * sharing this cached context: {@code throttle-success} proves a successful login is
  * refunded (never net-consumes), and {@code throttle-fail} proves failed logins for one username across
  * many IPs are throttled by the per-username dimension the per-IP buckets structurally miss.
  */

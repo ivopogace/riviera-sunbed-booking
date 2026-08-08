@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The cancellation/refund email end-to-end (#374, Email S6) — the {@code notification} listener on
+ * The cancellation/refund email end-to-end — the {@code notification} listener on
  * {@code BookingCancelled}, through the Event Publication Registry, to the recording
  * {@link MockMailer}:
  *
@@ -48,7 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       {@code republish-outstanding-events-on-restart} does at boot — produces no second email.</li>
  *   <li><strong>AC-7:</strong> a suppressed address is skipped, and the publication <em>completes</em>
  *       rather than parking in a permanent retry loop.</li>
- *   <li><strong>AC-9:</strong> the registry writes the listener id this module's #405 re-drive scopes
+ *   <li><strong>AC-9:</strong> the registry writes the listener id this module's admin re-drive scopes
  *       on — the live half of the two-link chain {@code MailOutboxScopeTest} holds the other end of.</li>
  * </ul>
  *
@@ -211,7 +211,7 @@ class BookingCancellationMailIT {
 	/**
 	 * AC-9, live half. {@code MailOutboxScopeTest} pins the module prefix against the constant below;
 	 * this pins the constant against the id the running registry actually writes. Both links are
-	 * needed — a constant that drifts from reality makes the #405 admin re-drive silently skip every
+	 * needed — a constant that drifts from reality makes the admin re-drive silently skip every
 	 * cancellation mail it is supposed to reach.
 	 *
 	 * <p><strong>Read from {@code event_publication_archive}, not {@code event_publication}.</strong>

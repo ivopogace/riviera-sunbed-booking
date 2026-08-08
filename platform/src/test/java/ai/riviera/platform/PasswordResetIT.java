@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S8 (#113) password-reset journey end-to-end against real Postgres + the mock mailer:
+ * Password-reset journey end-to-end against real Postgres + the mock mailer:
  * <ul>
  *   <li><strong>AC-3:</strong> a reset rotates the password AND invalidates the account's existing
  *       sessions — the old session cookie is unauthenticated afterward, the old password stops working,
@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li><strong>AC-6:</strong> an SSO-only (password-less) account gains its first password via the
  *       reset flow, then can password-login (a second path that closes S4 F-1).</li>
  * </ul>
- * Each request carries a unique {@code X-Forwarded-For} (#127 rate-bucket isolation).
+ * Each request carries a unique {@code X-Forwarded-For} (rate-bucket isolation).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

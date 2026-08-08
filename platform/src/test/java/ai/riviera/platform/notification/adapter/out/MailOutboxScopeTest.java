@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The scoping half of #405 — the decision that keeps a button labelled "mail" off the money path.
+ * The scoping half of the decision that keeps a button labelled "mail" off the money path.
  *
  * <p><strong>Why the scope is a listener-id prefix and not an event type.</strong>
  * {@code BookingConfirmed} fans out to <em>two</em> listeners: this module's confirmation mail and
@@ -57,8 +57,8 @@ class MailOutboxScopeTest {
 
 	/**
 	 * The prefix scope's payoff, claimed by {@link RegistryMailOutbox}'s Javadoc when only one listener
-	 * existed: "#373/#374's listeners are in scope the day they land, without anyone remembering to add
-	 * them." #374 is the first chance to check that rather than trust it — and the check matters
+	 * existed: "new listeners are in scope the day they land, without anyone remembering to add
+	 * them." This is the first chance to check that rather than trust it — and the check matters
 	 * precisely because {@code BookingCancelled} is the fan-out below, where a stuck refund (invariant
 	 * #8) and a stuck reversal (#9) sit under the same event as this mail.
 	 */

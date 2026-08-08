@@ -29,11 +29,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S3 (#114): {@code GET /api/me/bookings} lists only the authenticated customer's account-linked
+ * {@code GET /api/me/bookings} lists only the authenticated customer's account-linked
  * bookings, and is CUSTOMER-only. Proves AC-3 (cross-customer denial — customer A never sees B's
  * bookings, enforced by the {@code WHERE account_id = :account} scope, not a request param) and AC-4
  * (anonymous → 401, an operator session → 403, a customer → 200). Real security + Testcontainers;
- * skipped where Docker is absent. Each login rides a unique {@code X-Forwarded-For} (#127).
+ * skipped where Docker is absent. Each login rides a unique {@code X-Forwarded-For}.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

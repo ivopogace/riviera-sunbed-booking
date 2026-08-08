@@ -20,13 +20,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S6 #115 operator self-registration endpoint (design D-5/D-8). A fresh username creates a
+ * Operator self-registration endpoint (design D-5/D-8). A fresh username creates a
  * <strong>PENDING</strong> account and does <em>NOT</em> sign the operator in (no {@code SESSION}
  * cookie) — a PENDING operator cannot authenticate until a platform admin approves it. An
  * already-taken username returns a <strong>byte-identical</strong> {@code 202} response with no second
  * row (non-enumeration); the password policy is enforced server-side before any write. Real Postgres
  * via Testcontainers, so the full Flyway chain (incl. V29) backs the row. Each request carries a unique
- * {@code X-Forwarded-For} so suite-cumulative traffic never shares a rate bucket (#127).
+ * {@code X-Forwarded-For} so suite-cumulative traffic never shares a rate bucket.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

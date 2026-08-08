@@ -28,7 +28,7 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The declined request's record email end-to-end (#124) — the {@code notification} listener on
+ * The declined request's record email end-to-end — the {@code notification} listener on
  * {@code BookingRequestDeclined}, through the Event Publication Registry, to the recording
  * {@link MockMailer}. The publication branch — that the fact is raised only by the winning decline
  * leg, and never by withdraw or a lost race — belongs to {@code booking} and is pinned there by
@@ -144,7 +144,7 @@ class RequestDeclinedMailIT {
 				.isZero();
 	}
 
-	/** The #405 re-drive scopes on the listener id the running registry actually writes — pin it. */
+	/** The admin re-drive scopes on the listener id the running registry actually writes — pin it. */
 	@Test
 	void theRegistryWritesTheListenerIdTheReDriveScopesOn() {
 		BookingMailFixtures.SetRef set = fixtures.onlineSet();

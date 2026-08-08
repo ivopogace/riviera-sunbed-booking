@@ -28,7 +28,7 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The expired request's record email end-to-end (#124) — {@link RequestDeclinedMailIT}'s mirror for
+ * The expired request's record email end-to-end — {@link RequestDeclinedMailIT}'s mirror for
  * the sweep's fact, {@code BookingRequestExpired}, and everything its class Javadoc argues applies
  * unchanged. The one behavioural difference lives upstream and is pinned in {@code booking}: a
  * clean sweep publishes nothing, so a clean sweep also mails nothing.
@@ -128,7 +128,7 @@ class RequestExpiredMailIT {
 				.isZero();
 	}
 
-	/** The #405 re-drive scopes on the listener id the running registry actually writes — pin it. */
+	/** The admin re-drive scopes on the listener id the running registry actually writes — pin it. */
 	@Test
 	void theRegistryWritesTheListenerIdTheReDriveScopesOn() {
 		BookingMailFixtures.SetRef set = fixtures.onlineSet();

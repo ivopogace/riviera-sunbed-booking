@@ -23,12 +23,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The session-revocation proof for issue #128 (AC-1, AC-2) against Testcontainers Postgres and the
+ * The session-revocation proof (AC-1, AC-2) against Testcontainers Postgres and the
  * real Spring Session JDBC store.
  *
  * <p><strong>Why this class exists.</strong> Under the old HTTP Basic model credentials were
  * re-verified on <em>every</em> request, so suspending an operator revoked access on its next call —
- * a property {@code PerOperatorLoginIT} used to assert. The S1 (#109) move to server-side sessions
+ * a property {@code PerOperatorLoginIT} used to assert. The move to server-side sessions
  * deleted that assertion, because session auth deliberately has no per-request credential re-check,
  * and nothing replaced it: a live {@code SPRING_SESSION} row kept authenticating a suspended operator
  * until it expired. This class is that replacement coverage.

@@ -112,7 +112,7 @@ class CustomerAccountServiceTest {
 	void emailVerifiedForNormalizesTheEmail() {
 		registeredId("alice@example.com");
 
-		assertThat(service.emailVerifiedFor("  Alice@EXAMPLE.com ")) // byte-different input (#390 G-4)
+		assertThat(service.emailVerifiedFor("  Alice@EXAMPLE.com ")) // byte-different input
 				.contains(false);
 	}
 

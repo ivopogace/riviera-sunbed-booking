@@ -22,11 +22,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Freezes the three creation bodies' wire shape before the #126 dedup: the exact top-level key
+ * Freezes the three creation bodies' wire shape before the dedup: the exact top-level key
  * sets, the nested {@code amount} keys, and the deliberate asymmetries — the requested body has
  * <strong>no</strong> {@code clientSecret}/{@code paymentIntentId} (no payment exists until the
  * venue accepts), the awaiting-payment body no {@code requestExpiresAt}, and only the confirmed
- * body carries {@code emailWithheld} (#390, D-8). Value formats stay pinned by the MockMvc ITs
+ * body carries {@code emailWithheld} (D-8). Value formats stay pinned by the MockMvc ITs
  * ({@code CreateBookingStripeProfileIT}, {@code RequestToBookFlowIT}); this test guards the key
  * sets a refactor could silently nest.
  */
