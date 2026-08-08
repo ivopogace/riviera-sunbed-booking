@@ -4,8 +4,8 @@ import { CoverPhotoView } from './venue-views';
 
 /**
  * Resolve a photo serving path from the API (`/api/venues/{id}/photos/{hash}`) against the API
- * origin (#142 review F-7). The backend hands out root-relative paths; in production the app is
- * served same-origin (`apiBaseUrl` is `''`, #110) so this is a no-op — but in local dev the API
+ * origin. The backend hands out root-relative paths; in production the app is
+ * served same-origin (`apiBaseUrl` is `''`) so this is a no-op — but in local dev the API
  * lives on another origin (`localhost:8080`), and an unprefixed `<img src>` would resolve against
  * the Angular dev server and 404. Applied once, at the HTTP-service boundary, so components and
  * templates keep treating photo URLs as opaque strings.

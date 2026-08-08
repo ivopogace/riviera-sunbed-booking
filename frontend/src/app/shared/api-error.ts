@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
 /**
- * The API's RFC-7807 error body (issue #97): every backend error is
+ * The API's RFC-7807 error body: every backend error is
  * `application/problem+json` whose stable machine-readable identity is the `code`
  * extension — `type` stays `about:blank` in v1. Only the fields the client reads are
  * typed here.

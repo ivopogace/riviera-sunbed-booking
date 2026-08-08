@@ -2,7 +2,7 @@ import { SetView } from './venue-views';
 import { setLabel, setsById, tierLabel, tierSentenceLabel, touristTierLabel } from './set-label';
 
 /**
- * The shared set + tier labelling vocabulary (#218): the per-surface rendered strings are pinned
+ * The shared set + tier labelling vocabulary: the per-surface rendered strings are pinned
  * here so the consuming components' specs only need to verify wiring, not wording.
  */
 describe('set-label', () => {

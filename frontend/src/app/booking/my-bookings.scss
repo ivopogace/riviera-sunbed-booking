@@ -1,7 +1,4 @@
-// Liquid Glass "My bookings" list (issue #139, design: riviera-sunbeds-liquid-glass-v3.dc.html →
-// My bookings list card). Card-glass row buttons on the bare themed gradient; row text uses the
-// proven --riv-card-* tokens (asserted over both themes' worst-case stops in
-// my-bookings.contrast.spec.ts). The status chip is the shared `appStatusChip` directive (#477).
+// Liquid Glass "My bookings" list; card-glass row buttons on the bare themed gradient. Row text uses the proven --riv-card-* tokens, asserted over both themes' worst-case stops in my-bookings.contrast.spec.ts. The status chip is the shared `appStatusChip` directive.
 
 :host {
   display: block;
@@ -206,7 +203,7 @@ h1 {
   outline-offset: 2px;
 }
 
-// Motion guards next to the motion they guard (T1 rule).
+// Motion guards next to the motion they guard.
 @media (hover: hover) {
   .row:hover {
     transform: translateY(-2px);

@@ -1,12 +1,11 @@
 /**
  * Guarded `localStorage` access, shared by the core singletons that persist to the browser
- * (`ThemeService`, `DeviceLocalBookings` — issue #163). Every path degrades instead of throwing:
+ * (`ThemeService`, `DeviceLocalBookings`). Every path degrades instead of throwing:
  * a blocked store (private mode), a quota-exceeded write, a corrupt/malformed value, or the
  * absence of `localStorage` entirely (SSR / the unit-test jsdom) resolves to a null read or a
  * no-op write, so callers fall back to session-only state and never see an exception.
  *
- * <p>This is the single home for the storage-safety try/catch — before #163 the same guard was
- * hand-rolled in each consumer and could silently diverge.
+ * <p>This is the single home for the storage-safety try/catch, so it can't diverge between consumers.
  */
 
 /** Read a raw string, or `null` when the key is unset or storage is unavailable/blocked. */

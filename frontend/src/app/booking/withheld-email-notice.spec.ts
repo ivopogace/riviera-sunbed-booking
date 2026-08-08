@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { WithheldEmailNotice } from './withheld-email-notice';
 
 /**
- * The shared notice's own contract (#390): the copy both post-payment surfaces render, and the
+ * The shared notice's own contract: the copy both post-payment surfaces render, and the
  * `data-testid` their specs and the e2e suite query. Its consumers assert that it appears; this
  * asserts what it says, in one place.
  */

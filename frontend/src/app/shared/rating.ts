@@ -1,5 +1,5 @@
 /**
- * Rating helpers shared by the home venue card and the venue-map header (issue #154). A venue with
+ * Rating helpers shared by the home venue card and the venue-map header. A venue with
  * no reviews yet is "new / unrated", never "rated 0.0" — `isRated` gates that decision in one place
  * so the two surfaces can't drift. Score is carried on the wire as tenths of a star (no float).
  */

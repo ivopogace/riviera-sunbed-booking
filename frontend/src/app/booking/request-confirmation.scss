@@ -1,7 +1,4 @@
-// Liquid Glass request-sent screen (issue #137, design: riviera-sunbeds-liquid-glass-v3.dc.html →
-// Request sent). Mirrors the confirmation card (kept local per the rule of three) plus the amber
-// "waiting" info box. All text pairs are pinned as composited effective colours in
-// request-confirmation.contrast.spec.ts.
+// Liquid Glass request-sent screen; mirrors the confirmation card (kept local per the rule of three) plus the amber "waiting" info box. All text pairs are pinned as composited effective colours in request-confirmation.contrast.spec.ts.
 
 // The card-glass surface is now the shared appCardGlass directive; this stylesheet keeps only the
 // request card's bespoke blur/shadow/radius + inner layout.

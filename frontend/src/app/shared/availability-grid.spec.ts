@@ -8,7 +8,7 @@ import {
 } from './availability-grid';
 
 /**
- * The shared operator availability-grid logic (#175): row grouping, tile-state derivation, and the
+ * The shared operator availability-grid logic: row grouping, tile-state derivation, and the
  * tap action. Pure functions, exhaustively covered here so the console components can rely on them.
  */
 describe('availability-grid', () => {

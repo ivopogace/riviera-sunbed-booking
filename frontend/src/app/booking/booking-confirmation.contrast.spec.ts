@@ -12,9 +12,9 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the Liquid Glass "You're booked." confirmation card (issue #137,
- * AC-12; gate from #6). A centered card-glass surface on the bare themed gradient, so every pair is
- * the EFFECTIVE colour composited over the theme's worst-case stops (the venue-map pattern). Mirrors
+ * WCAG-AA contrast guard for the Liquid Glass "You're booked." confirmation card. A centered
+ * card-glass surface on the bare themed gradient, so every pair is the EFFECTIVE colour
+ * composited over the theme's worst-case stops (the venue-map pattern). Mirrors
  * booking-confirmation.scss. The ✓ badge is decorative (aria-hidden) — 1.4.11-exempt.
  */
 

@@ -152,7 +152,7 @@ describe('BookingPay', () => {
 
     expect(comp.state()).toBe('error');
     expect(comp.errorMessage()).toMatch(/publishable key/i);
-    // The failure triggers ONE status re-check (#126); still AWAITING_PAYMENT → retry in place.
+    // The failure triggers ONE status re-check; still AWAITING_PAYMENT → retry in place.
     httpMock.expectOne(STATUS_URL).flush(DETAIL);
     expect(comp.terminalError()).toBe(false);
     httpMock.verify();
@@ -258,7 +258,7 @@ describe('BookingPay', () => {
 
     expect(comp.state()).toBe('error');
     expect(comp.errorMessage()).toContain('declined');
-    // The re-check (#126) is a single GET, not a poll; still AWAITING_PAYMENT → retry in place.
+    // The re-check is a single GET, not a poll; still AWAITING_PAYMENT → retry in place.
     httpMock.expectOne(STATUS_URL).flush(DETAIL);
     expect(comp.terminalError()).toBe(false);
     httpMock.verify(); // nothing further in flight — no poll loop began

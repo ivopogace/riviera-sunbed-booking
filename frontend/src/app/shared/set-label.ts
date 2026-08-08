@@ -1,7 +1,7 @@
 import { SetView, Tier } from './venue-views';
 
 /**
- * The set + tier labelling vocabulary (issue #218) — the one place a set's identity and its tier
+ * The set + tier labelling vocabulary — the one place a set's identity and its tier
  * are turned into rendered text, extracted from per-component copies so a wording change touches
  * one file. Pure and side-effect free, like the sibling `availability-grid` helpers.
  *
@@ -9,7 +9,7 @@ import { SetView, Tier } from './venue-views';
  * the premium tier a "Front row" ({@link tierLabel}), accessible names need it lower-case
  * mid-sentence ({@link tierSentenceLabel}), and the tourist booking dialog names it "Premium"
  * ({@link touristTierLabel}). Reconciling the wording across surfaces is a product decision this
- * dedupe deliberately does not make (#218 non-goal: no rendered-output change).
+ * dedupe deliberately does not make — a non-goal: no rendered-output change.
  */
 
 /** Index a venue's sets by id for label resolution; `undefined` (map not loaded) indexes empty. */

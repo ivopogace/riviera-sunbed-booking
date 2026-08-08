@@ -1,13 +1,11 @@
 import { AA_NORMAL, contrastRatio } from '../../testing/contrast';
 
 /**
- * WCAG-AA contrast guard for the shared amenity chips (T7 #140). Like the status chips, they use
+ * WCAG-AA contrast guard for the shared amenity chips. Like the status chips, they use
  * OPAQUE SOLID fills (the css:S7924 treatment — see `shared/amenity-chip.ts`), so their text
  * contrast is theme-independent and asserted directly on the ink/fill pair — the same chip reads
  * AA on both the light Discover card and the dark glass beach-map header. This is the single home
- * of that proof; values mirror that directive's `classes()` list. (The `_glass.scss` `amenity-chip`
- * mixin this once cited was ported to that directive; `status-chip` followed at #477 and that file
- * is now retired.)
+ * of that proof; values mirror that directive's `classes()` list.
  */
 const CHIPS: readonly [name: string, ink: string, fill: string][] = [
   ['amenity-chip (neutral tag)', '#2f4a54', '#eef2f4'],

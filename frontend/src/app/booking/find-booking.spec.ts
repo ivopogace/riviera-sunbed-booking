@@ -228,8 +228,7 @@ describe('FindBooking', () => {
     expect(closes).toHaveBeenCalledTimes(3);
   });
 
-  // Review finding [2]: a whitespace/dash-only entry passes `required` (non-empty) but normalizes to
-  // empty — it must show the enter-a-code message, not silently do nothing.
+  // A whitespace/dash-only entry passes `required` (non-empty) but normalizes to empty — it must show the enter-a-code message, not silently do nothing.
   it('shows the enter-a-code message for a whitespace/dash-only entry and makes no request', async () => {
     const { service, getByCode } = foundService();
     const fixture = await render(service);
@@ -245,7 +244,7 @@ describe('FindBooking', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  // Review finding [3]: a stale server error must clear as the guest edits the code.
+  // A stale server error must clear as the guest edits the code.
   it('clears a stale lookup error when the guest edits the code', async () => {
     const { service } = erroringService({ status: 404 });
     const fixture = await render(service);
@@ -265,8 +264,7 @@ describe('FindBooking', () => {
     expect(errorText(fixture)).toBe('');
   });
 
-  // Review finding [1]: a no-op navigation (Angular drops a same-URL navigate → resolves false, no
-  // NavigationEnd) must still close the modal, not freeze it on "Opening…".
+  // A no-op navigation (Angular drops a same-URL navigate → resolves false, no NavigationEnd) must still close the modal, not freeze it on "Opening…".
   it('closes the modal without freezing when the navigation is a no-op (same URL)', async () => {
     const { service, takePrefetched } = foundService();
     const fixture = await render(service);
@@ -281,8 +279,7 @@ describe('FindBooking', () => {
     fixture.detectChanges();
 
     expect(closes).toHaveBeenCalledTimes(1);
-    // The un-navigated view never mounts to consume the prime, so it must be discarded here (#168)
-    // — otherwise a later deep-link to the same code would serve a now-stale detail.
+    // The un-navigated view never mounts to consume the prime, so it must be discarded here — otherwise a later deep-link to the same code would serve a now-stale detail.
     expect(takePrefetched).toHaveBeenCalledWith('ABCD234567');
     const button = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="find-submit"]',

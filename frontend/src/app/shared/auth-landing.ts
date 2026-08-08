@@ -1,5 +1,5 @@
 /**
- * Where a freshly signed-in principal lands (S9 #277) — pure functions, no Angular, no HTTP, so the
+ * Where a freshly signed-in principal lands — pure functions, no Angular, no HTTP, so the
  * whole decision table is unit-testable in isolation and the auth page, the operator guard and the
  * `/operator` home all agree by construction.
  *
@@ -36,7 +36,7 @@ export function safeReturnUrl(returnUrl: string | undefined): string | undefined
  * The route a signed-in **operator** lands on: an explicit (safe) `returnUrl` wins over everything —
  * it is the page they were trying to reach — otherwise the owned-venue count decides. Exactly one
  * venue skips the picker entirely; several render the picker at `/operator`; none also lands on
- * `/operator`, whose zero state renders the create-venue form inline (#278).
+ * `/operator`, whose zero state renders the create-venue form inline.
  */
 export function landingRouteFor(
   venues: readonly LandingVenue[],
@@ -49,7 +49,7 @@ export function landingRouteFor(
   if (venues.length === 1) {
     return `/operator/${venues[0].id}`;
   }
-  // 0 venues → still '/operator': the home renders the create form inline there (#278).
+  // 0 venues → still '/operator': the home renders the create form inline there.
   return '/operator';
 }
 

@@ -56,7 +56,7 @@ function stubService(
 
 /**
  * A {@link BookingService} whose per-code lookups stay open until the spec resolves them, exposing
- * the order codes were actually asked for — the observable the fan-out bound (#164) is about.
+ * the order codes were actually asked for — the observable the fan-out bound is about.
  */
 function pendingService(): Partial<BookingService> & {
   readonly inFlight: Map<string, Subject<BookingDetail>>;

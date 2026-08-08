@@ -100,7 +100,7 @@ export class OperatorChrome {
     { initialValue: this.router.url },
   );
 
-  /** Sign-in carries the page as `returnUrl` — it outranks the venue-count landing rule (S9). */
+  /** Sign-in carries the page as `returnUrl` — it outranks the venue-count landing rule. */
   protected readonly signInParams = computed(() => ({
     audience: 'operator',
     returnUrl: this.currentUrl(),

@@ -5,7 +5,7 @@ import {
 } from './commission-rate';
 
 /**
- * The percent↔bps boundary (A8, epic #348). Two properties carry the whole file: the formatter is
+ * The percent↔bps boundary. Two properties carry the whole file: the formatter is
  * byte-identical to the two inline `${bps / 100}%` expressions it was promoted from (so the operator
  * console's output cannot drift), and the parser never returns a number it had to invent — junk,
  * blank and out-of-range all answer `null` rather than a coerced 0.

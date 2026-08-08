@@ -16,7 +16,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the Liquid Glass payment page (issue #137, AC-12; gate from #50). The
+ * WCAG-AA contrast guard for the Liquid Glass payment page. The
  * page sits on the bare themed gradient with light card-glass panels, so every pair is the
  * EFFECTIVE colour: the glass composited over the theme's worst-case gradient stops, then the ink
  * over that (the `venue-map.contrast.spec.ts` pattern). Mirrors every text token in booking-pay.scss.

@@ -12,7 +12,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the Liquid Glass "My bookings" list (issue #139, AC-12). Row and
+ * WCAG-AA contrast guard for the Liquid Glass "My bookings" list. Row and
  * empty-state text sit on the translucent card glass over the bare gradient, so each pair is the
  * effective colour composited over the theme's worst-case stops (the shared card-glass pattern).
  * The status chips are proven separately (theme-independent solids) in

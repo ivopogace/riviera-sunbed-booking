@@ -8,7 +8,7 @@ import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
 
 /**
- * Screen shown after a Request-to-Book submission (issue #98; Liquid Glass restyle #137, route
+ * Screen shown after a Request-to-Book submission (route
  * `booking/requested`). Renders the `PENDING_REQUEST` hand-off as the "Request sent" glass card: the
  * code prominently (the guest's only key to the booking — a bearer credential, invariant #7), the
  * venue's response deadline (Europe/Tirane, invariant #6), and the amount charged only if the venue

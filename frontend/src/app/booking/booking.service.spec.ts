@@ -88,10 +88,7 @@ describe('BookingService', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
-    // BookingService remembers each created code through DeviceLocalBookings (globalThis.localStorage,
-    // #139). Install a FRESH fake store per test — the fake-storage.ts contract — so codes written by
-    // one test don't leak into the next (e.g. the "remembers 3 codes" test into the "empty body"
-    // assertion). Without this the suite's isolation depends on worker/order luck.
+    // BookingService remembers each created code through DeviceLocalBookings (globalThis.localStorage). Install a FRESH fake store per test — the fake-storage.ts contract — so codes written by one test don't leak into the next (e.g. the "remembers 3 codes" test into the "empty body" assertion). Without this the suite's isolation depends on worker/order luck.
     installFakeStorage();
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
@@ -292,7 +289,7 @@ describe('BookingService', () => {
 });
 
 describe('bookingErrorOf', () => {
-  /** A realistic RFC-7807 body (issue #97) — the `code` extension carries the identity. */
+  /** A realistic RFC-7807 body — the `code` extension carries the identity. */
   function httpError(status: number, code?: string): HttpErrorResponse {
     return new HttpErrorResponse({
       status,

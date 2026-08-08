@@ -8,7 +8,7 @@ import { booleanAttribute, computed, Directive, input } from '@angular/core';
  * the accent "Xm to water" tag. A variant directive, not a mixin (see `shared/retry-button.ts`).
  *
  * <p>The host owns its whole class list via one `[class]` computed, so the variant's classes live in
- * one place — **not** to avoid a clobber: #477 measured it, and in Angular 22 a static `class` on the
+ * one place — **not** to avoid a clobber: in Angular 22 a static `class` on the
  * element and a host `[class]` binding merge rather than replace one another. The literal marker
  * classes `amenity-chip` / `amenity-chip--water` are RETAINED as inert test hooks — here that claim
  * is real, `venue-map.spec.ts` and the discovery-flow / venue-map e2e do query them — while the

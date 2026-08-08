@@ -1,7 +1,7 @@
 /**
  * An amount of money as it travels the wire: integer minor units + ISO currency code
  * (invariant #5 — never floating point). The platform's money vocabulary lives here, in the
- * one home of the euros↔minor boundary, beside its renderer and parser (issue #489).
+ * one home of the euros↔minor boundary, beside its renderer and parser.
  */
 export interface MoneyView {
   readonly minorUnits: number;

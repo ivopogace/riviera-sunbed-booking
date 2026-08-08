@@ -16,7 +16,7 @@ export function defaultBookingDate(now: Date): string {
 
 /**
  * **Today** in Europe/Tirane (invariant #6), as an ISO `YYYY-MM-DD` string — the day staff are
- * working in the U8 daily view. Pure (computed from the injected `now`); derived via `Intl` with an
+ * working in the operator daily view. Pure (computed from the injected `now`); derived via `Intl` with an
  * explicit time zone, never `toISOString()` (which is UTC and can roll the day late in the evening).
  */
 export function todayBookingDate(now: Date): string {
@@ -64,7 +64,7 @@ export function isIsoDate(value: string): boolean {
  * like `"Tue 30 Jun 2026"`. Formatted in **UTC** because {@link parseIsoDate} anchors the day at
  * midnight UTC — so the label is the civil day itself, free of the viewer's zone. Locale pinned like
  * `shared/money.ts` / `shared/deadline.ts` for deterministic output. Shared by the operator console's
- * Daily-view and Requests tabs (issue #176) so the one date format doesn't drift between them.
+ * Daily-view and Requests tabs so the one date format doesn't drift between them.
  */
 export function formatCivilDate(isoDate: string): string {
   return new Intl.DateTimeFormat('en-IE', {

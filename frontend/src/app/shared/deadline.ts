@@ -1,5 +1,5 @@
 /**
- * Render an ISO-8601 UTC instant (e.g. a request-response deadline, issue #98) as a
+ * Render an ISO-8601 UTC instant (e.g. a request-response deadline) as a
  * human-readable wall-clock time in the riviera's civil zone. Times are reasoned about in
  * `Europe/Tirane` (invariant #6) — never the viewer's or the runtime's default zone — and the
  * locale is pinned like `shared/money.ts` so output is deterministic across environments.
@@ -20,7 +20,7 @@ const URGENT_WINDOW_MS = 8 * 60 * 60 * 1000;
 
 /**
  * True when the response deadline (`deadlineIso`, a UTC instant) is under the {@link URGENT_WINDOW_MS}
- * urgency window from `nowMs` — drives the Requests-tab amber time-left chip (issue #176, design). Pure:
+ * urgency window from `nowMs` — drives the Requests-tab amber time-left chip. Pure:
  * the caller passes `now` (captured once at the component boundary, never an ambient `new Date()`), so
  * the boundary is deterministic in tests. A deadline already in the past is not "urgent" (the sweep owns
  * it) — the queue only ever lists still-pending requests.

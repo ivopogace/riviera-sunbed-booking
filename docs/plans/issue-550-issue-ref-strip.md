@@ -159,13 +159,14 @@ stale as batches land.
 
 ## Execution status
 
-**Stage pointer:** implement — Phase A, batch 6 at the PR gate (batches 1–5 merged via
-PR #551–#555).
+**Stage pointer:** implement — Phase A, batch 7 at the PR gate (batches 1–6 merged via
+PR #551–#556). **Maintainer decision (2026-08-08): finish Phase A, then STOP** — Phases B/C do
+not proceed; the backend decays under A-5, and any future revival starts from the B-0/C-0
+mini-probes. Close-out follows A-9.
 
-**Next action:** open the batch-6 PR, run the review gate + read the Sonar new-issue list; on
-merge, restart the branch from `main` and cut batch A-7 (next directory sweeps: `shared/` +
-`booking/`, then `admin/` + the rest; `app.routes.ts` and its 44 inline-comment refs get their
-own careful pass).
+**Next action:** open the batch-7 PR, review gate + Sonar list; on merge → A-8 (last feature
+directories), then A-9 (app root + e2e), then close-out (plan-doc final state, freshness audit,
+final AC-1 census, close #550).
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
@@ -174,8 +175,10 @@ own careful pass).
 | A-3 | next 10 dense files — `app.ts`, `app.html`, `admin-venue-photos.service`, `console-stats-strip`, `pricing-tab`, `home`, `admin-console-tabs`, `admin-operators.service`, `booking-pay`, `device-local-bookings` — 101 refs + labels removed (80 numeric + 21 labels; review-measured, correcting the eyeballed "~70") under the full F-3–F-9 rule set from the start: 5 F-8 trailing-on-code refs left in `pricing-tab` by design, two 2-line inline comments compressed to one line (`pricing-tab`), two 2-line HTML comments compressed (`app.html`), `Sonar S2871` recognised as a rule id (not provenance), bare `U1`/`A6`/`Q1` labels rewritten or dropped | **merged via PR #553** | ✅ all gates green; Sonar first-try |
 | A-4 | next 10 dense files — `layout-editor`, `admin-outbox-lever`, `set-password`, `booking.model`, `booking.service`, `payouts-tab`, `requests-tab`, `glass-tokens`, `admin-audit.spec`, `admin-privacy.service` — ~89 refs + labels removed (72 numeric + ~17 labels incl. `O3`/`O6`/`O7`/`S4`/`S8`; review-measured, correcting the eyeballed "~60"); 17 F-8 trailing-on-code refs left by design (`layout-editor` 7, `payouts-tab` 5, `requests-tab` 5); one 4-line inline comment promoted to a method doc (`layout-editor.loadExisting`), three 2-line inline comments compressed; embedded `O1`/`O4`/`U3`/`U4 #8`/`U6`/`S3` labels rewritten to real nouns; review caught four more label sites the sweep missed (`payouts-tab` `O1`/`O7`, `glass-tokens` `T1/T2/T3–T5/epic`, a `plan Resolved`/`R-2` pointer pair) plus bare invariant shorthands normalized to `invariant #n` — all fixed | **merged via PR #554** | ✅ all gates green |
 | A-5 | the last dense band — all 13 files at 4 refs: `app.spec`, `sso-buttons`, `booking-view.contrast.spec`, `booking-view`, `operator-console.html`, `operator-console.service.spec`, `operator-console.spec`, `venue-create-card`, `venue-photo.service`, `home.contrast.spec`, `availability-grid`, `parent-venue-id`, `status-chip` — ~80 refs + labels removed. Spec-heavy: ~25 refs sit in `describe`/`it` **title strings** (code, F-1 — untouched). One 4-line inline comment promoted to a const doc (`CTA_STOPS`); multi-line inline/HTML comments compressed to one line; **F-11 minted**: two multi-line inline comments in `home.contrast.spec` are protected measurement records (the scrim-curve history) — their refs stay, since compressing loses the measurements and in-place edits trip the inline guard | **merged via PR #555** | ✅ all gates green |
-| A-6 | the first sparse-tail directory sweep — **all of `app/operator/`**, 44 of 50 files edited (~90 comment refs + labels removed; 6 files already compliant). Executed by three parallel editing agents on disjoint partitions under the full F-3–F-11 brief, then orchestrator-verified (whole-directory ref scan, AC-3 balance, code-line class check). ~96 refs in `describe`/`it` titles stay (code, F-1); wrapped `invariant #n` continuations preserved; one `(#7/#11)` normalized to `(invariants #7/#11)`; multi-line inline/HTML blocks compressed to one line throughout | this PR | ⏳ at gates |
-| A-7… | remaining sparse tail by directory — `shared/` (26 files), `booking/` (22), `admin/` (20), `auth`+`pages`+`core`+`venue` (~37), the `app.*` root files incl. `app.routes.ts` (44 inline-comment refs), `testing/`+`environments/`; then `frontend/e2e` | follow-up PRs | |
+| A-6 | the first sparse-tail directory sweep — `app/operator/`, 44 of its 69 files edited (~121 markers removed: 85 banned numeric refs + ~35 O-labels — the review-measured figures, correcting the eyeballed "~90"; the untouched 25 were zero-ref or title-string-only). Executed by three parallel editing agents on disjoint partitions under the full F-3–F-11 brief, then orchestrator-verified. The post-merge review found six residues — the `.scss` header ref (F-12's blind spot), two `(S9)` orphans in the `operator-chrome` pair, a bare `(#9)`, one lost "(never a silent discard)" clause (cross-partition drift), and one lost "Saved notice" clause — all fixed in the A-7 PR | **merged via PR #556** | ✅ gates green; Sonar first-try; residues fixed forward |
+| A-7 | `shared/` (26 files, ~48 refs) + `booking/` (28 files, ~70 markers — review-measured, correcting the eyeballed "~51"; incl. the `.scss` block comments F-12 exposed) by two editing agents, orchestrator-verified with the F-12-hardened scan (`/* */` blocks included, cross-partition idiom check); carries the six A-6 post-merge review fixes. F-6/F-7 applied: `booking-status.ts`'s union history rewritten to present tense, three completed-work history sentences deleted, `failure-panel.ts`'s 9-line inline header promoted to TSDoc | this PR | ⏳ at gates |
+| A-8… | the last feature directories — `admin/` (20 files), `auth` (11), `pages` (11), `core` (9), `venue` (6), ~113 refs | follow-up PR | |
+| A-9… | the final sweep — `app.*` root files (incl. `app.routes.ts`, 44 full-line `//` refs, hand-edited), `testing/`, `environments/`, `frontend/e2e` (10 files, 35 refs) | follow-up PR | |
 | A-n | sparse tail, ~30-file directory sweeps; then `frontend/e2e` | follow-up PRs | |
 | B-0 | 5-file backend-test mini-probe (R-4 rate) | | |
 | B-1… | backend test, per the mini-probe's verdict | | |
@@ -199,6 +202,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-9 | review | four 2-digit issue refs (`#97` ×3, `issue #98`) survived — the locator's 3–4-digit pattern exists to spare `invariant #1`–`#13`, but §6d bans **all** issue numbers, and 2-digit issues are real (`#97` error contract, `#98` Request-to-Book) | fixed (3 doc-comment strips + one 2-line inline compressed) — **rule: the locator must match `#14`–`#9999` context-aware (exclude `invariant #n`), not skip 2-digit refs** |
 | F-10 | review ×2 (A-3, A-4) | the ledger's merged-row flip trails one batch behind — batch N's PR updates the stage pointer but leaves batch N−1's row at "⏳ at gates", so the doc self-contradicts until the next review catches it | fixed both times — **rule: when writing batch N's ledger row, flip batch N−1's row to "merged via PR #NNN ✅" in the same edit** |
 | F-11 | batch A-5 | two multi-line inline comments in `home.contrast.spec.ts` carry refs inside **protected measurement records** (the photo-scrim curve history: 0.35→0.5→0.68 with the reasons) — compressing to one line loses the measurements, and editing a line inside a pre-existing multi-line inline comment trips the RV-STYLE-1 guard | left as-is — **rule: a ref inside a pre-existing multi-line inline comment whose content is a measurement record stays; the record outranks the ref** |
+| F-12 | A-6 post-merge review | the census locator reads `/**` doc blocks and `//`/`<!-- -->` comments but is blind to plain `/* */` block comments — `operator-console.scss:1` kept `(issue #170, epic #141)` through a "whole-directory" sweep | fixed forward in A-7 — **rule: directory sweeps must also grep `/* */` block comments (`.scss` especially), and multi-agent batches need a cross-partition idiom check before commit** |
 
 ## File structure
 

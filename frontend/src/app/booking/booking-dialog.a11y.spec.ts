@@ -19,7 +19,7 @@ const SET: SetView = {
 };
 
 /**
- * Structural axe audit of the Liquid Glass booking dialog (issue #137, AC-12): the modal exposes a
+ * Structural axe audit of the Liquid Glass booking dialog: the modal exposes a
  * dialog role, an accessible name (venue + set, via `aria-labelledby`), a labelled step form, and a
  * close control — on BOTH steps (Details and Review). Contrast is checked separately in
  * booking-dialog.contrast.spec.ts (axe can't measure it under jsdom).

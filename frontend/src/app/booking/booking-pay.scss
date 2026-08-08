@@ -1,7 +1,4 @@
-// Liquid Glass payment page (issue #137, design: riviera-sunbeds-liquid-glass-v3.dc.html →
-// Payment). Sits on the bare themed gradient (route un-legacied #137) with light card-glass
-// panels; every text-bearing pair is pinned as a composited effective colour in
-// booking-pay.contrast.spec.ts. Palette from the styles.scss tokens only.
+// Liquid Glass payment page; card-glass panels on the bare themed gradient; every text-bearing pair is pinned in booking-pay.contrast.spec.ts. Palette from the styles.scss tokens only.
 
 // Glass surfaces are the shared appCardGlass / appPanelGlass directives; %card-surface keeps only
 // the card EXTRAS (blur/shadow/radius) layered on that base.
@@ -312,7 +309,7 @@ h1 {
     transform: rotate(360deg);
   }
 }
-// Motion guard next to the motion it guards (T1 rule).
+// Motion guard next to the motion it guards.
 @media (prefers-reduced-motion: reduce) {
   .spinner {
     animation: none;

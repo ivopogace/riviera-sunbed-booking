@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 
 /**
- * The "we couldn't email you — save your code" notice (#390), shared by the two post-payment
+ * The "we couldn't email you — save your code" notice, shared by the two post-payment
  * surfaces (`booking-confirmation` and `booking-pay`'s done panel).
  *
  * <p>One component rather than the same markup in both: the copy is the product decision here, and
