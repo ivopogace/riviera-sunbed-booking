@@ -23,10 +23,10 @@ public interface Venues {
 	boolean venueExists(VenueId venueId);
 
 	/**
-	 * Lock the venue row and read its current {@code set_version} optimistic-concurrency token (#226) —
+	 * Lock the venue row and read its current {@code set_version} optimistic-concurrency token —
 	 * {@code SELECT set_version FROM venue WHERE id = :id FOR UPDATE}. The token is the SEPARATE counter
 	 * for the two operator set-position writes (beach-map replace + per-row reprice), distinct from the
-	 * profile {@code version} (#224). The caller (having pre-checked existence) compares the returned value
+	 * profile {@code version}. The caller (having pre-checked existence) compares the returned value
 	 * to the loaded {@code expectedVersion}: a mismatch means another writer advanced it since the load →
 	 * STALE_WRITE. This is the <strong>first</strong> lock both set-writes take — before
 	 * {@link #lockSetsOfVenue}'s / {@link #repriceRow}'s {@code set_position} locks — so both acquire the
@@ -38,7 +38,7 @@ public interface Venues {
 	long lockAndReadSetVersion(VenueId venueId);
 
 	/**
-	 * Advance the venue's {@code set_version} by one (#226) — {@code UPDATE venue SET set_version =
+	 * Advance the venue's {@code set_version} by one — {@code UPDATE venue SET set_version =
 	 * set_version + 1 WHERE id = :id} — called ONLY after a set-write commits (the layout was replaced /
 	 * the row repriced). The caller already holds the venue row lock from {@link #lockAndReadSetVersion},
 	 * so this is race-free; a concurrent writer blocked on that lock re-reads the advanced value and gets
@@ -69,7 +69,7 @@ public interface Venues {
 	int deleteSet(VenueId venueId, SetId setId);
 
 	/**
-	 * Reprice every set in a row of the venue in one non-destructive {@code UPDATE} (O4, issue #174):
+	 * Reprice every set in a row of the venue in one non-destructive {@code UPDATE}:
 	 * overwrite {@code price_minor}/{@code price_currency} for every {@code set_position} carrying
 	 * {@code command.rowLabel()}. Touches no other column, so set identity, pool and any
 	 * {@code set_availability} hold survive. Returns the number of set rows changed — {@code 0} means the
@@ -79,7 +79,7 @@ public interface Venues {
 
 	/**
 	 * The ids of every set currently on the venue's map, <strong>without locking</strong> — the
-	 * plain read the owner's daily availability view composes with the per-day states (issue #207).
+	 * plain read the owner's daily availability view composes with the per-day states.
 	 * Empty when the venue has no sets. For the bulk layout replace use {@link #lockSetsOfVenue},
 	 * whose {@code FOR UPDATE} is that write's invariant-#2 guard; a read must never take it.
 	 */
@@ -101,18 +101,18 @@ public interface Venues {
 	int deleteAllSets(VenueId venueId);
 
 	/**
-	 * Insert every set of a fresh layout for the venue in one unit of work (O3, issue #172). The caller
+	 * Insert every set of a fresh layout for the venue in one unit of work. The caller
 	 * runs this inside the same {@code @Transactional} boundary as {@link #deleteAllSets}, after having
 	 * verified the venue is unclaimed, so the map is never left partially replaced.
 	 */
 	void insertSets(VenueId venueId, List<SetCommand> sets);
 
 	/**
-	 * Replace a venue's editable profile fields in one unit of work (O8 #177; widened from the T7
-	 * amenities + distance): name/beach/region/description, booking mode, booking cutoff, the amenity
-	 * set, and distance-to-water. Commission and payout currency are read-only and never written. The
+	 * Replace a venue's editable profile fields in one unit of work: name/beach/region/description,
+	 * booking mode, booking cutoff, the amenity set, and distance-to-water. Commission and payout
+	 * currency are read-only and never written. The
 	 * write is <strong>conditional on {@code expectedVersion}</strong> — the optimistic-concurrency
-	 * token the tab loaded (#224) — and bumps the row's {@code version} by one on success. Returns the
+	 * token the tab loaded — and bumps the row's {@code version} by one on success. Returns the
 	 * number of venue rows changed: {@code 0} means the loaded version no longer matches (another writer
 	 * bumped it since the load — the caller, having already verified existence, returns STALE_WRITE);
 	 * {@code 1} means the profile was replaced. The amenity set is fully replaced (delete-then-insert),
@@ -122,16 +122,16 @@ public interface Venues {
 	int updateVenueProfile(VenueId venueId, long expectedVersion, VenueProfileCommand command);
 
 	/**
-	 * The venue's admin profile for the operator console (O8 #177) — the editable core plus the
+	 * The venue's admin profile for the operator console — the editable core plus the
 	 * commission + payout currency the owner may read but not write — or empty if no venue has this id
-	 * (read-only for the operator by O8 #177; the platform admin changes the rate through
+	 * (read-only for the operator; the platform admin changes the rate through
 	 * {@link CommissionRateStore}). Read-only; the
 	 * caller (application service) has already asserted ownership (invariant #13).
 	 */
 	Optional<VenueProfileView> findProfile(VenueId venueId);
 
 	/**
-	 * Picker summaries for the given venue ids, <strong>ordered by name</strong> (S9 #277). The caller
+	 * Picker summaries for the given venue ids, <strong>ordered by name</strong>. The caller
 	 * has already reduced {@code ids} to what the acting operator owns, so this is a plain PK-set
 	 * lookup with no authorization of its own — never call it with an unfiltered id set. Missing ids
 	 * are simply absent from the result (no exception, no placeholder row). Never called with an empty
