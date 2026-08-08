@@ -23,12 +23,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S2 #111 role separation (AC-5, invariant #13 posture). A signed-in CUSTOMER session carries
+ * Role separation (AC-5, invariant #13 posture). A signed-in CUSTOMER session carries
  * {@code ROLE_CUSTOMER}, which never satisfies an operator role-gate — hitting an operator-only
  * endpoint is a {@code 403} (authenticated, wrong role), not a {@code 401}. And the two identity
  * namespaces are disjoint: an operator credential presented to the customer login (and vice versa) is
  * unknown there, so it is a generic {@code 401}. Each login carries a unique {@code X-Forwarded-For}
- * to stay off a shared rate bucket (#127).
+ * to stay off a shared rate bucket.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

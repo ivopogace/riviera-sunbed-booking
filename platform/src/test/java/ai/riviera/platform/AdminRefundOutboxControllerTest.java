@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * HTTP contract for the ADMIN refund outbox ({@code /api/admin/refund-outbox}, #454) through the real
+ * HTTP contract for the ADMIN refund outbox ({@code /api/admin/refund-outbox}) through the real
  * filter chain — the {@code AdminMailOutboxControllerTest} pattern on the money path:
  *
  * <ol>
@@ -111,7 +111,7 @@ class AdminRefundOutboxControllerTest {
 	/**
 	 * The carry has to survive a sub-millisecond tail — the ordinary case for a
 	 * {@code Duration.between} on a nanosecond clock; a {@code plusMillis(999)} ceiling would truncate
-	 * it back down (#405's F-4, inherited as a test rather than re-learned).
+	 * it back down (inherited as a test rather than re-learned).
 	 */
 	@Test
 	void roundsUpARemainderThatIsNotAWholeMillisecond() throws Exception {

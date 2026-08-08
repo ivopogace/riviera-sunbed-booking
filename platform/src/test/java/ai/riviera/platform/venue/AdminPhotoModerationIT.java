@@ -35,8 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The platform-admin photo moderation <strong>read</strong> end to end (#511) — the half #504 was
- * missing. #504 shipped an admin that could delete a photo it had no way to see: the only per-slot
+ * The platform-admin photo moderation <strong>read</strong> end to end — the half the takedown was
+ * missing. That takedown shipped an admin that could delete a photo it had no way to see: the only per-slot
  * view is the venue-scoped {@code GET /api/venues/{v}/profile}, which asserts ownership and answers
  * a non-owner {@code 403 NOT_VENUE_OWNER} — refusing exactly the case moderation exists for.
  *
@@ -121,7 +121,7 @@ class AdminPhotoModerationIT {
 		VenueId unowned = venueOwnedByThePlainOperator("ab01");
 		Cookie admin = adminSession();
 
-		// The gap #511 closes: the venue-scoped per-slot view refuses the admin outright.
+		// The gap this class closes: the venue-scoped per-slot view refuses the admin outright.
 		mvc.perform(get("/api/venues/{v}/profile", unowned.value()).cookie(admin))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));

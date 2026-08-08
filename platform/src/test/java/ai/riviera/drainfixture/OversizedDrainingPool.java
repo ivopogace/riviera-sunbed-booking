@@ -4,7 +4,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * A deliberately oversized draining pool, in the fixture tree so the detector's positive case is
- * proven without mis-shaping production code (the {@code ai.riviera.*fixture} mechanism, #95).
+ * proven without mis-shaping production code (the {@code ai.riviera.*fixture} mechanism).
  *
  * <p>It exists to make {@code ShutdownDrainArchitectureTest}'s scan <strong>falsifiable</strong>: a
  * detector that silently found nothing — because ArchUnit failed to resolve the call target, or

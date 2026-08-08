@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Pins the SPA's CSRF bootstrap (issue #109): any response — here the public venue list a
+ * Pins the SPA's CSRF bootstrap: any response — here the public venue list a
  * fresh browser loads first — issues the JS-readable {@code XSRF-TOKEN} cookie the frontend
  * echoes back as {@code X-XSRF-TOKEN} on writes, without creating a server session.
  *

@@ -22,10 +22,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Verifies the U1 venue read API ({@code GET /api/venues/{id}}, issue #4; date-aware since
- * issue #44) against the seeded Miramar venue: shape, integer-minor-unit money (invariant #5),
- * 404 for an unknown id, public access, and — the #44 behaviour — that each set's availability is
- * sourced per-{@code (set, date)} from {@code set_availability} (invariant #2), with the date
+ * Verifies the venue read API ({@code GET /api/venues/{id}}, date-aware) against the seeded
+ * Miramar venue: shape, integer-minor-unit money (invariant #5), 404 for an unknown id, public
+ * access, and — the date-aware behaviour — that each set's availability is sourced
+ * per-{@code (set, date)} from {@code set_availability} (invariant #2), with the date
  * defaulting to tomorrow in {@code Europe/Tirane}. Testcontainers Postgres, so it runs in CI;
  * skipped where Docker is absent.
  */
@@ -86,10 +86,7 @@ class VenueReadControllerIT {
 
 	@Test
 	void mapReadCarriesSetVersion() throws Exception {
-		// #226, AC-7: the venue map read carries the layout's optimistic-concurrency stamp
-		// (set_version), distinct from the profile version (#224). A fresh/seeded venue starts at 0 (the
-		// V23 column DEFAULT); the operator layout + pricing tabs echo it back on the next beach-map
-		// replace / per-row reprice so a stale write is rejected (409) rather than clobbering the layout.
+		// AC-7: the venue map read carries the layout's optimistic-concurrency stamp (set_version), so a stale write is rejected (409) rather than clobbering the layout.
 		mvc.perform(get("/api/venues/{id}", MIRAMAR))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.setVersion").value(0));
@@ -146,7 +143,7 @@ class VenueReadControllerIT {
 
 	@Test
 	void detailCarriesAmenitiesAndDistance() throws Exception {
-		// T7 (#140), AC-2: amenities inserted OUT of catalogue order (SHOWERS, BEACH_BAR,
+		// AC-2: amenities inserted OUT of catalogue order (SHOWERS, BEACH_BAR,
 		// FREE_PARKING) must come back in canonical catalogue order (BEACH_BAR, FREE_PARKING,
 		// SHOWERS); the optional distance renders as an integer.
 		long id = insertVenueWithAmenities(15, "SHOWERS", "BEACH_BAR", "FREE_PARKING");
@@ -163,7 +160,7 @@ class VenueReadControllerIT {
 
 	@Test
 	void absentAmenitiesAreEmptyAndNullDistance() throws Exception {
-		// T7 (#140), AC-3: the seeded Miramar venue has no amenities and no stated distance, so the
+		// AC-3: the seeded Miramar venue has no amenities and no stated distance, so the
 		// read renders an empty array and a null distance — the card/map look exactly like today.
 		mvc.perform(get("/api/venues/{id}", MIRAMAR))
 				.andExpect(status().isOk())

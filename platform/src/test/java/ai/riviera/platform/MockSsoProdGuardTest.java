@@ -6,7 +6,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the fail-fast prod guard (S4 #112, AC-6): the mock SSO must never run in production. Under the
+ * Verifies the fail-fast prod guard (AC-6): the mock SSO must never run in production. Under the
  * {@code prod} profile without {@code sso} the guard bean is created and aborts startup; under
  * {@code prod,sso} (the intended production activation) and under the default profile the guard is absent
  * and startup succeeds. Uses {@link ApplicationContextRunner} — no Spring Boot context, fast, no Docker.

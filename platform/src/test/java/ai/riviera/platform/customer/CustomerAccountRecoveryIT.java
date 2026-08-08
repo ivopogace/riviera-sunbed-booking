@@ -22,7 +22,7 @@ import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the S8 (#113) account-recovery token store against real Postgres via Testcontainers — which
+ * Verifies the account-recovery token store against real Postgres via Testcontainers — which
  * boots the full Flyway chain, so this also exercises migration <strong>V28</strong> (the
  * {@code email_verified} columns + the {@code customer_account_token} table with its {@code token_hash}
  * UNIQUE constraint and the atomic single-use/expiry claim). Covers: a verification token redeems once
@@ -110,7 +110,7 @@ class CustomerAccountRecoveryIT {
 	}
 
 	/**
-	 * #357: the resolve-<em>without</em>-consume read that lets the edge revoke the account's sessions
+	 * The resolve-<em>without</em>-consume read that lets the edge revoke the account's sessions
 	 * before the reset writes anything. Reading it must not spend the single use — otherwise the reset it
 	 * precedes would fail as already-redeemed.
 	 */

@@ -7,7 +7,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the suppression-pepper fail-fast guard (#388, AC-3): under the {@code prod} profile the
+ * Verifies the suppression-pepper fail-fast guard (AC-3): under the {@code prod} profile the
  * pepper must be a real secret — an unset property (blank) and the committed dev default both abort
  * startup; a real value boots, and outside {@code prod} the guard is absent entirely (dev/tests run
  * on the committed default). Uses {@link ApplicationContextRunner} — no Spring Boot context, fast,

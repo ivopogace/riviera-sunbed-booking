@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The platform-admin audit trail end-to-end (#507, required by ADR-0013): a mutating
+ * The platform-admin audit trail end-to-end (required by ADR-0013): a mutating
  * {@code /api/admin/**} action past the gate writes an {@code admin_audit_record} row with the
  * actor, method, path, outcome status, UTC instant and optional sanitized grounds (AC-1/AC-2);
  * requests the security chain rejects — and all reads — leave no row (AC-3); the ADMIN-gated
@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>The audited action throughout is {@code POST /api/admin/erasure} on a never-registered email —
  * a harmless no-op that still answers {@code 204} (non-enumerating, D-8). Real Postgres via
  * Testcontainers (full Flyway chain incl. V38); logins carry unique {@code X-Forwarded-For}
- * addresses so suite traffic never shares a rate bucket (#127).
+ * addresses so suite traffic never shares a rate bucket.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

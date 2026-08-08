@@ -32,7 +32,7 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * What shedding <em>costs</em> (#407) — the half of {@link RegistryMailExecutorConfig}'s saturation
+ * What shedding <em>costs</em> — the half of {@link RegistryMailExecutorConfig}'s saturation
  * contract that was reasoning rather than coverage.
  *
  * <p>That contract has two clauses. The pool sheds rather than throwing or running on the caller's
@@ -42,12 +42,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link ThreadPoolTaskExecutor} — no registry, no {@code event_publication} table, no listener, so
  * it cannot see what a shed costs — and {@code RegistryMailBulkheadIT} wedges the transport without
  * ever overflowing the queue. This class closes that gap against the real registry, which matters
- * because the losslessness claim is exactly what #370 leans on the day a real relay is behind the
+ * because the losslessness claim is exactly what retuning the pool leans on the day a real relay is behind the
  * bulkhead: shedding a confirmation is only acceptable if the mail is still <em>owed</em>.
  *
  * <p><strong>Its own context, and therefore its own database — that is the isolation, not a
  * convention.</strong> Saturating a 2-thread/200-slot pool through the listener would mean 202
- * wedged sends, so the pool is shrunk to 1/1 via the properties #408 externalised. #406 did that
+ * wedged sends, so the pool is shrunk to 1/1 via the externalized properties. An earlier attempt did that
  * with a class-wide {@code @TestPropertySource} in a class whose other tests deliberately leave
  * publications outstanding, and the two halves produced a reproducible flake (1-in-7 clean runs).
  * Here the distinct property set makes a distinct context cache key, and the Testcontainers Postgres
@@ -177,7 +177,7 @@ class RegistryMailShedDurabilityIT {
 	 * dropped send from a merely delayed one; that its publication is still outstanding is what makes
 	 * the drop recoverable rather than a lost arrival code. The resubmit then closes the loop
 	 * {@code republish-outstanding-events-on-restart} performs at boot, with the predicate narrowed to
-	 * this booking — a blanket {@code publication -> true} is what made #406's branch flaky.
+	 * this booking — a blanket {@code publication -> true} is what made the earlier attempt's branch flaky.
 	 */
 	@Test
 	void aShedSendStaysOwedAndIsDeliveredByAResubmit() {

@@ -26,13 +26,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S2 #111 customer sign-in via the S1 session mechanism (design D-1/D-2/D-8): a registered customer
+ * Customer sign-in via the S1 session mechanism (design D-1/D-2/D-8): a registered customer
  * logs in, rides the {@code SESSION} cookie, {@code /me} reports {@code principalType=CUSTOMER}, and
  * logout invalidates the server session. Login failures are a single generic {@code 401
  * INVALID_CREDENTIALS} for unknown-email and wrong-password alike (no account enumeration). Real
  * Postgres via Testcontainers; the account is seeded through the module's provisioning port with an
  * edge-encoded hash. Unique {@code X-Forwarded-For} per login keeps suite-cumulative logins off one
- * rate bucket (#127).
+ * rate bucket.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

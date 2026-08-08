@@ -30,15 +30,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The {@code OPERATOR} role gate over the two venue-write {@code PUT}s (#328) — specifically that it
+ * The {@code OPERATOR} role gate over the two venue-write {@code PUT}s — specifically that it
  * holds <em>at the security filter layer</em>, not only inside the controller.
  *
  * <p><strong>The gap this pins.</strong> {@code SecurityConfig}'s {@code authorizeHttpRequests} block
  * gated {@code GET}/{@code POST}/{@code PATCH}/{@code DELETE} and {@code PUT} <em>zero</em> times,
  * while the app maps two operator-only {@code PUT}s. Both fell through to
  * {@code anyRequest().authenticated()}, so at the filter layer any authenticated principal — including
- * a signed-in tourist ({@code ROLE_CUSTOMER}) — passed. The same class of gap as #316 and #317, found
- * by #317's generalization audit.
+ * a signed-in tourist ({@code ROLE_CUSTOMER}) — passed. The same class of gap was found before, by
+ * a prior generalization audit.
  *
  * <p><strong>Why a status assertion would pin nothing.</strong> Both handlers open with
  * {@link CurrentOperator#require}, which throws {@code AccessDeniedException} for a principal that
@@ -64,7 +64,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>Unlike {@code MeSurfaceRoleGateTest}, no per-request {@code X-Forwarded-For} isolation is needed:
  * {@code RateLimitFilter} buckets only the booking, login, operator-register, recovery and SSO paths —
  * {@code /api/venues/**} draws on none of them, so these requests spend no token and cannot recreate
- * the #127 full-suite lockout.
+ * the full-suite lockout.
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})

@@ -15,7 +15,7 @@ import ai.riviera.platform.booking.events.BookingCancelled;
  * <p>They are safe to leave on the test classpath: they carry no {@code @Component}, so Spring never
  * instantiates them, and the rule discovers production listeners through
  * {@code ArchitectureTestSupport.productionClasses()}, which excludes the test source set. That
- * exclusion is not incidental — #409 found the mail rule's first cut scanning {@code classpath*:},
+ * exclusion is not incidental — the mail rule's first cut once scanned {@code classpath*:},
  * which under Gradle spans {@code build/classes/java/main} <em>and</em> {@code .../test}, so a fixture
  * like this one would have read as a production violation.
  */

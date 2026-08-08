@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * HTTP contract for creating a Request-to-Book booking (issue #98, AC-1/AC-2): on a REQUEST-mode
+ * HTTP contract for creating a Request-to-Book booking (AC-1/AC-2): on a REQUEST-mode
  * venue, {@code POST /api/bookings} returns {@code 202} with {@code PENDING_REQUEST}, a response
  * deadline, and <strong>no</strong> payment credentials (payment-request-on-accept — no
  * PaymentIntent exists yet); the soft-held {@code (set, date)} then blocks the online channel
@@ -74,7 +74,7 @@ class RequestToBookFlowIT {
 
 	@Test
 	void pendingQueueIsOperatorGated() throws Exception {
-		// #98 / SecurityConfig: the queue GET must be role-gated BEFORE the public venue GET —
+		// SecurityConfig: the queue GET must be role-gated BEFORE the public venue GET —
 		// an anonymous call is 401 (never a public read, never a 200). Accept/decline likewise.
 		long venueId = jdbc.sql("SELECT venue_id FROM set_position WHERE id = :s")
 				.param("s", requestSet).query(Long.class).single();
@@ -82,7 +82,7 @@ class RequestToBookFlowIT {
 						.get("/api/venues/{v}/booking-requests", venueId))
 				.andExpect(status().isUnauthorized());
 		// The anonymous POSTs carry a valid CSRF token so the 401 pins the AUTH gate — without
-		// one, CsrfFilter would answer first with 403 INVALID_CSRF_TOKEN (issue #109 posture).
+		// one, CsrfFilter would answer first with 403 INVALID_CSRF_TOKEN.
 		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", venueId, 1).with(csrf()))
 				.andExpect(status().isUnauthorized());
 		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", venueId, 1).with(csrf()))

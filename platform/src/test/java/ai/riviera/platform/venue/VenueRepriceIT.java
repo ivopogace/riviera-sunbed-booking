@@ -28,18 +28,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Verifies the O4 per-row reprice ({@code PUT /api/venues/{id}/rows/{rowLabel}/price}, issue #174) end
+ * Verifies the per-row reprice ({@code PUT /api/venues/{id}/rows/{rowLabel}/price}) end
  * to end against Testcontainers Postgres, through the real {@code JdbcVenues} adapter. Pins:
  * <ul>
  *   <li><strong>AC-1/AC-2/AC-8</strong>: a row edit fans out to <em>every</em> set in the row (both
  *       pools) and the new price round-trips through the U1 read API (so the tourist map + booking
  *       dialog reflect it); other rows are untouched.</li>
- *   <li><strong>Availability-untouched</strong> (the decisive contrast with the O3 layout replace):
+ *   <li><strong>Availability-untouched</strong> (the decisive contrast with the layout replace):
  *       repricing a row whose set has a {@code set_availability} hold <em>succeeds</em> and leaves the
  *       hold and the set id intact — invariant #2 is never engaged (no delete, no cascade, no lock).</li>
  *   <li><strong>AC-5</strong>: an unknown row / venue is {@code 404}.</li>
  *   <li><strong>AC-4</strong>: a negative or non-numeric price is {@code 400 INVALID_REQUEST} (§6b).</li>
- *   <li><strong>#226</strong>: the reprice is optimistic-locked on the venue's {@code set_version} — every
+ *   <li><strong>Optimistic locking</strong>: the reprice is optimistic-locked on the venue's {@code set_version} — every
  *       body carries the required {@code expectedVersion} the tab loaded, and a stale token is 409
  *       {@code STALE_WRITE} without clobbering the current prices ({@link #staleRepriceIs409StaleWrite}).</li>
  * </ul>
@@ -74,7 +74,7 @@ class VenueRepriceIT {
 				""".formatted(rowLabel, positionNo, tier, pool, minor, gridX, gridY);
 	}
 
-	/** The reprice body (#226): the price plus the required optimistic-concurrency token. */
+	/** The reprice body: the price plus the required optimistic-concurrency token. */
 	private static String priceBody(long minor, long expectedVersion) {
 		return "{\"price\":{\"minorUnits\":%d,\"currency\":\"EUR\"},\"expectedVersion\":%d}"
 				.formatted(minor, expectedVersion);
@@ -104,7 +104,7 @@ class VenueRepriceIT {
 	/** Seed a venue with row A (two ONLINE + one WALK_IN, all 3500) and row B (one ONLINE, 2000). */
 	private long seedVenue(String name) throws Exception {
 		long venue = createVenue(name);
-		// The seed replace runs off the fresh venue's set_version (0) and bumps it to 1 (#226); reprice
+		// The seed replace runs off the fresh venue's set_version (0) and bumps it to 1; reprice
 		// bodies below therefore load the current token rather than assume 0.
 		String layout = "{\"sets\":[" + String.join(",",
 				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
@@ -147,7 +147,7 @@ class VenueRepriceIT {
 
 	@Test
 	void repricingASetWithAnAvailabilityHoldSucceedsAndLeavesTheHold() throws Exception {
-		// The decisive contrast with the O3 layout replace: re-pricing is non-destructive, so it is
+		// The decisive contrast with the layout replace: re-pricing is non-destructive, so it is
 		// allowed on a claimed set and never touches the availability hold or the set id (invariant #2
 		// is not engaged).
 		long venue = seedVenue("Held Reprice Club");
@@ -172,7 +172,7 @@ class VenueRepriceIT {
 
 	@Test
 	void staleRepriceIs409StaleWrite() throws Exception {
-		// #226, AC-6: two tabs both loaded set_version V (post-seed); the first reprice bumps it to V+1,
+		// AC-6: two tabs both loaded set_version V (post-seed); the first reprice bumps it to V+1,
 		// then a second reprice still carrying the stale V is 409 STALE_WRITE (RFC-7807, code STALE_WRITE)
 		// — the winner's prices survive, never clobbered by the stale tab.
 		long venue = seedVenue("Stale Reprice Club");
@@ -207,7 +207,7 @@ class VenueRepriceIT {
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("NO_SUCH_ROW"));
 
-		// #226 review fix: a NO_SUCH_ROW reject must NOT advance set_version (no spurious bump), so the
+		// A NO_SUCH_ROW reject must NOT advance set_version (no spurious bump), so the
 		// acting tab's next edit of a real row off the same loaded token still works.
 		mvc.perform(get("/api/venues/{id}", venue))
 				.andExpect(jsonPath("$.setVersion").value((int) tokenBefore));
@@ -215,7 +215,7 @@ class VenueRepriceIT {
 
 	@Test
 	void unownedVenueIsForbidden() throws Exception {
-		// Owns-all retired (#115): ownership is asserted before existence (invariant #13), so repricing a
+		// Owns-all retired: ownership is asserted before existence (invariant #13), so repricing a
 		// venue the operator does not own — even a non-existent one — is 403 before the bump, not a 404
 		// existence leak (the token value is immaterial).
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", 999_999L, "A").cookie(operatorSession).with(csrf())

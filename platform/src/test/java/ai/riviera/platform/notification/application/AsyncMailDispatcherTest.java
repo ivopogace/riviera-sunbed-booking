@@ -28,14 +28,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
- * Unit spec for the production {@link MailDispatcher} (#369, #415). A recovery-email send must leave the
+ * Unit spec for the production {@link MailDispatcher}. A recovery-email send must leave the
  * request thread — that inline SMTP round-trip, taken only on the known-email branch, is the timing
  * account-enumeration oracle this slice closes — and it must land on a pool of its OWN, never Boot's shared
  * {@code applicationTaskExecutor}, which carries the Spring Modulith money-path listeners. A dispatch that
  * cannot be accepted is dropped, never thrown at the caller, whose HTTP response the send may not influence
  * (D-8).
  *
- * <p><strong>#415 added the drop's accounting, and its tests are asymmetric with the registry vehicle's on
+ * <p><strong>This slice added the drop's accounting, and its tests are asymmetric with the registry vehicle's on
  * purpose.</strong> {@code RegistryMailExecutorConfigTest} asserts that a saturation episode logs <em>once</em>;
  * here {@code everyDropIsLoggedBecauseEachIsTheOnlyRecordOfALoss} asserts the opposite — one line per drop.
  * That is not an inconsistency to tidy up: a shed send keeps a durable copy (its event publication) so each
@@ -48,7 +48,7 @@ class AsyncMailDispatcherTest {
 	private static final int AWAIT_SECONDS = 5;
 	private static final int DROPS = 5;
 	/**
-	 * The sends left in the queue at shutdown, <strong>deliberately not all the same flow</strong> (#442).
+	 * The sends left in the queue at shutdown, <strong>deliberately not all the same flow</strong>.
 	 * The drain path is the one that has to read the kind back off a task queued earlier rather than learn
 	 * it from the call happening right now, so a single-kind fixture would pass while attributing every
 	 * abandonment to whichever kind happened to be hard-coded.
@@ -62,7 +62,7 @@ class AsyncMailDispatcherTest {
 	/** The flow the saturation fixtures lose; a second kind is named wherever isolation is the point. */
 	private static final MailKind SATURATION_KIND = MailKind.PASSWORD_RESET;
 
-	/** #368's shipped relay budget, from which this pool's drain window is derived (#410). */
+	/** The shipped relay budget, from which this pool's drain window is derived. */
 	private static final MailTransportBudget SHIPPED_BUDGET = new MailTransportBudget(Duration.ofMillis(10_000));
 
 	/** A drain window a wedged send cannot possibly fit in, so the queue is still full when it expires. */
@@ -226,8 +226,8 @@ class AsyncMailDispatcherTest {
 	}
 
 	/**
-	 * #442. Until this slice the drop series carried {@code reason} alone, so a lost approval notice — the
-	 * one kind on this vehicle that nobody re-sends (ADR-0011 decision 5, amended #439) — was
+	 * Until this slice the drop series carried {@code reason} alone, so a lost approval notice — the
+	 * one kind on this vehicle that nobody re-sends (ADR-0011 decision 5) — was
 	 * indistinguishable from a lost password reset, and the runbook's remedy ("tell them") depended on
 	 * reconciling an unattributed increment against the window's approvals by hand.
 	 */
@@ -252,7 +252,7 @@ class AsyncMailDispatcherTest {
 	}
 
 	/**
-	 * The deliberate divergence from the registry vehicle (#415). Throttling to one line per episode is
+	 * The deliberate divergence from the registry vehicle. Throttling to one line per episode is
 	 * right where a durable copy makes the repeats redundant; here each line describes a distinct
 	 * unrecoverable loss and carries the correlation id of the request whose user is still waiting.
 	 */
@@ -275,7 +275,7 @@ class AsyncMailDispatcherTest {
 	}
 
 	/**
-	 * A redeploy can reject a send from an otherwise idle pool. Unlike the registry vehicle — where #408
+	 * A redeploy can reject a send from an otherwise idle pool. Unlike the registry vehicle — which
 	 * deliberately does not count that, the publication surviving for the next start's republish — here it
 	 * is a genuine loss and must be counted, or the counter under-reports what the runbook says it means.
 	 * The tag is what keeps it from reading as a degraded relay.
@@ -346,14 +346,13 @@ class AsyncMailDispatcherTest {
 	}
 
 	/**
-	 * AC-10 for this vehicle (#410 Part 2). Same decision as the registry pool's — the window is derived
+	 * AC-10 for this vehicle. Same decision as the registry pool's — the window is derived
 	 * from the relay budget, and when it expires the pool gives up rather than interrupting, because an
 	 * interrupt cannot tell a send that already reached the relay from one that has not. What differs is
 	 * the consequence: this vehicle has no publication to fall back on (ADR-0011 decision 5), so an
-	 * abandoned send is a mail the recipient must ask for again — or, on the approval notice, cannot
-	 * (amended #439).
+	 * abandoned send is a mail the recipient must ask for again — or, on the approval notice, cannot.
 	 *
-	 * <p><strong>And it is deliberately not counted</strong> (#434). A send the window catches
+	 * <p><strong>And it is deliberately not counted</strong>. A send the window catches
 	 * <em>running</em> may already have handed the message to the relay — that ambiguity is the whole
 	 * reason the pool gives up instead of interrupting — so charging it to
 	 * {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} would over-report a mail that arrived. Only the
@@ -395,7 +394,7 @@ class AsyncMailDispatcherTest {
 	}
 
 	/**
-	 * #442's hard half. The two rejection paths learn the kind from the {@code dispatch} call happening
+	 * This slice's hard half. The two rejection paths learn the kind from the {@code dispatch} call happening
 	 * right then; this one has to read it back off a task queued earlier and wrapped by the pool's
 	 * {@link MdcTaskDecorator} — which is why a half-tagged series was the risk worth a test of its own.
 	 * A {@code kind}-filtered query that silently under-counts is strictly worse than the honest absence
@@ -424,7 +423,7 @@ class AsyncMailDispatcherTest {
 	}
 
 	/**
-	 * The fourth loss shape (#434), and the one that moved nothing before this test existed. A send still
+	 * The fourth loss shape, and the one that moved nothing before this test existed. A send still
 	 * <em>queued</em> when the drain window expires is discarded with the pool: {@code execute} returned
 	 * normally so neither rejection reason fires, the task never ran so {@code MAIL_RECOVERY_FAILED} cannot,
 	 * and this vehicle keeps no durable copy (ADR-0011 decision 5) so {@code riviera.outbox.pending} has
@@ -479,7 +478,7 @@ class AsyncMailDispatcherTest {
 	}
 
 	/**
-	 * The #415 per-loss rule, applied where it needed help to stay true (#434). The line is emitted on the
+	 * The per-loss rule, applied where it needed help to stay true. The line is emitted on the
 	 * thread closing the context, not on the request's own, so it carries the correlation id only because
 	 * the abandoned task still holds the context it was submitted with. Invariant #7 keeps the address and
 	 * the link out, which leaves that id as the only handle on whose mail was lost.

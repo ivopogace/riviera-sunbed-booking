@@ -37,7 +37,7 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Branch coverage for the Instant-Book orchestration (issue #6, now two-phase per issue #52) with
+ * Branch coverage for the Instant-Book orchestration (now two-phase) with
  * in-memory fakes — no Spring, no DB. Proves outcome mapping, that the amount is the set price,
  * that the booking row is persisted <em>before</em> payment is attempted (R-3 ordering), that a
  * failed payment compensates by releasing the claim, and that the booking code is never logged
@@ -121,7 +121,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void flagsWithheldConfirmationMailOnInstantConfirm() {
-		// #390: the instant-confirm response is built before the after-commit mail listener runs, so
+		// The instant-confirm response is built before the after-commit mail listener runs, so
 		// the flag can only come from asking whether the mail WOULD be withheld — never from the send.
 		confirmationMail.withheld = true;
 		CreateBookingService service = service(set("ONLINE"),
@@ -152,7 +152,7 @@ class CreateBookingServiceTest {
 	@Test
 	void neverAsksAboutTheConfirmationMailWhenTheGatewayCollectedNothing() {
 		// The in-process stub answers Succeeded without taking money, so this 201 CONFIRMED is NOT
-		// post-payment and the flag would be a free suppression oracle for any address (#390 F-1).
+		// post-payment and the flag would be a free suppression oracle for any address.
 		collection.proven = false;
 		confirmationMail.withheld = true;
 		CreateBookingService service = service(set("ONLINE"),
@@ -170,7 +170,7 @@ class CreateBookingServiceTest {
 	@Test
 	void neverAsksAboutTheConfirmationMailBeforePayment() {
 		// The 202 hands the code out BEFORE the card is collected, so asking here would leak
-		// suppression status for any address a checkout can be started with (D-8, #390 constraint 1).
+		// suppression status for any address a checkout can be started with (D-8).
 		confirmationMail.withheld = true;
 		CreateBookingService service = service(set("ONLINE"),
 				claiming(ClaimOutcome.CLAIMED),
@@ -305,7 +305,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void requestModeCreatesPendingRequestWithoutPayment() {
-		// #98 AC-1: a REQUEST venue's booking is created PENDING_REQUEST and the payment gateway is
+		// AC-1: a REQUEST venue's booking is created PENDING_REQUEST and the payment gateway is
 		// NEVER invoked — no PaymentIntent, no charge, until the venue accepts.
 		boolean[] paymentTouched = {false};
 		CheckoutPort neverPay = (ref, money) -> {
@@ -333,7 +333,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void requestDeadlineCappedAtCutoff() {
-		// #98 / invariant #4: the response deadline never extends past the evening-before cutoff —
+		// Invariant #4: the response deadline never extends past the evening-before cutoff —
 		// for a next-day booking, min(now + 24h, cutoff) is the cutoff instant (18:00 Europe/Tirane = 17:00Z).
 		CreateBookingService service = service(
 				set("ONLINE", BookingMode.REQUEST),
@@ -361,7 +361,7 @@ class CreateBookingServiceTest {
 	@Test
 	void compensatesByReleasingWhenPaymentFails() {
 		// AC-3: the booking + claim are already committed when PI creation fails (the gateway returns
-		// Failed). The Failed branch must compensate — release the claim (the #51 ReleaseAbandonedBooking
+		// Failed). The Failed branch must compensate — release the claim (the ReleaseAbandonedBooking
 		// guarded cancel + free) — and surface the failure, never leaving an orphaned AWAITING_PAYMENT.
 		CreateBookingService service = service(set("ONLINE"),
 				claiming(ClaimOutcome.CLAIMED),
@@ -375,7 +375,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void compensatesByReleasingWhenPaymentThrows() {
-		// #125: a RAW throw from pay (not the typed Failed) — e.g. the payment-row insert failing after
+		// A RAW throw from pay (not the typed Failed) — e.g. the payment-row insert failing after
 		// Stripe created the intent — must still compensate: release the committed claim, then rethrow,
 		// never leaving an orphaned AWAITING_PAYMENT booking holding the set with no payment row.
 		CheckoutPort throwingCheckout = (_, _) -> {
@@ -574,7 +574,7 @@ class CreateBookingServiceTest {
 		}
 	}
 
-	/** Captures compensating releases (the #51 seam reused on the payment-failure path). */
+	/** Captures compensating releases (the seam reused on the payment-failure path). */
 	private static final class RecordingRelease implements ReleaseAbandonedBooking {
 		final List<BookingId> released = new ArrayList<>();
 
@@ -605,7 +605,7 @@ class CreateBookingServiceTest {
 	}
 
 	/**
-	 * A {@code ConfirmationMailDelivery} fake that records who was asked (#390) — so the confirmed
+	 * A {@code ConfirmationMailDelivery} fake that records who was asked — so the confirmed
 	 * branch can be shown to carry the answer, and the pre-payment branches to never ask at all.
 	 */
 	private static final class RecordingMailDelivery

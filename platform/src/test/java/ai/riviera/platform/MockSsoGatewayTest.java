@@ -9,7 +9,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit spec for the default-profile {@link MockSsoGateway} (S4 #112): it returns a verified, canned,
+ * Unit spec for the default-profile {@link MockSsoGateway}: it returns a verified, canned,
  * deterministic identity per provider (so a repeat sign-in reuses the account and a different provider is
  * a different account), and its authorize URL targets the in-app mock IdP on the callback host, carrying
  * the state and the callback to return to.

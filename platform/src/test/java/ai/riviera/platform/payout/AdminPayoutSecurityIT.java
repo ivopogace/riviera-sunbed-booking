@@ -30,12 +30,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * The two payout surfaces' authorization gates, which are deliberately <em>different</em> roles.
  *
  * <p><strong>The venue-scoped ledger read</strong> {@code GET /api/venues/{id}/payout-ledger}
- * (AC-8, issue #12) is operator financial data: unauthenticated is {@code 401}, and an operator
+ * (AC-8) is operator financial data: unauthenticated is {@code 401}, and an operator
  * reads its own venue's ledger. It is gated BEFORE the public {@code GET /api/venues/**}, and the
  * per-venue ownership check itself lives in the application service (invariant #13).
  *
  * <p><strong>The platform-wide batch report</strong> {@code /api/admin/payout-batches} is
- * <strong>ADMIN</strong>-gated since #348 A4. It has no venue scoping at all — the GET returns every
+ * <strong>ADMIN</strong>-gated. It has no venue scoping at all — the GET returns every
  * venue's gross/commission/net for the period and the PATCH marks any venue's batch by id — so under
  * the previous {@code OPERATOR} gate every approved operator in this multi-tenant marketplace could
  * read competitors' payout figures and mutate their settlement state (object-level authorization by
@@ -129,7 +129,7 @@ class AdminPayoutSecurityIT {
 	}
 
 	/**
-	 * AC-1 (#348 A4): the cross-tenant <em>read</em>. An authenticated operator that is not a platform
+	 * AC-1: the cross-tenant <em>read</em>. An authenticated operator that is not a platform
 	 * admin is refused at the edge, so {@code PayoutReport#forPeriod} never runs and no other venue's
 	 * gross/commission/net is disclosed.
 	 */
@@ -140,7 +140,7 @@ class AdminPayoutSecurityIT {
 	}
 
 	/**
-	 * AC-3 (#348 A4): batch <em>generation</em> is a write over every venue's ledger for the period,
+	 * AC-3: batch <em>generation</em> is a write over every venue's ledger for the period,
 	 * and is refused on the same gate as the read.
 	 */
 	@Test
@@ -151,7 +151,7 @@ class AdminPayoutSecurityIT {
 	}
 
 	/**
-	 * AC-2 (#348 A4): the cross-tenant <em>write</em>, and the sharper half of the hole — the batch is
+	 * AC-2: the cross-tenant <em>write</em>, and the sharper half of the hole — the batch is
 	 * addressed by id with no ownership check, so under the old gate any operator could mark any
 	 * venue's batch settled. A valid CSRF token is supplied so the {@code 403} is the authorization
 	 * gate's, not the {@code CsrfFilter}'s.

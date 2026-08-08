@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * The two Request-to-Book windows as <em>bound, validated</em> configuration (#426).
+ * The two Request-to-Book windows as <em>bound, validated</em> configuration.
  *
  * <p>Both degenerate values boot cleanly and present as "nothing happens". {@code expiry-window=PT0S}
  * makes {@code min(now + window, cutoff)} equal {@code now}, so every pending request is born expired
@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * from {@code now} in the sweep — so it is bounded at both ends.
  *
  * <p><strong>Why a compact constructor and not {@code @Validated} + {@code @Min}.</strong> There is no
- * JSR-303 implementation on the runtime classpath (#97 declined {@code spring-boot-starter-validation}),
+ * JSR-303 implementation on the runtime classpath (this project declined {@code spring-boot-starter-validation}),
  * and Boot validates {@code @ConfigurationProperties} only when one is present — an annotation would
  * bind and validate nothing.
  *

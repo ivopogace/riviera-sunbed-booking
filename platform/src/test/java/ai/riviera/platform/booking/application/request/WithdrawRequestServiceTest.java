@@ -23,7 +23,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Branch coverage for the guest withdraw orchestration (issue #123) with mocks — no Spring, no DB
+ * Branch coverage for the guest withdraw orchestration with mocks — no Spring, no DB
  * (the guarded-SQL semantics, including the deliberate absence of a deadline guard, are proven by
  * {@code WithdrawRequestIT} and {@code ConcurrentRequestTerminationIT} against real Postgres).
  * Proves: a withdrawn request releases its hold exactly once through the transactional seam, a

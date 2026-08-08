@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The view use case's <strong>withheld-confirmation-mail</strong> contract (#390): a confirmed
+ * The view use case's <strong>withheld-confirmation-mail</strong> contract: a confirmed
  * booking reports whether its confirmation mail was suppressed, so the post-payment surface can tell
  * the guest to save their code.
  *
@@ -97,7 +97,7 @@ class ViewBookingServiceTest {
 	@Test
 	void neverConsultsMailDeliveryWhenConfirmationDoesNotProveCollection() {
 		// The stub gateway reaches CONFIRMED having taken no money, so "post-payment" is not true
-		// there and the flag would be a free suppression oracle for any address (#390 F-1).
+		// there and the flag would be a free suppression oracle for any address.
 		givenBooking(BookingStatus.CONFIRMED);
 		when(collection.provenBeforeConfirmation()).thenReturn(false);
 
@@ -110,7 +110,7 @@ class ViewBookingServiceTest {
 	/**
 	 * The two flags are separate predicates over disjoint states, and the view must never conflate
 	 * them: a pending request has collected nothing, so the cancellation policy has no say in whether
-	 * it can be retracted (#123). The service carries a standing comment warning against exactly the
+	 * it can be retracted. The service carries a standing comment warning against exactly the
 	 * widening these two cases forbid.
 	 */
 	@Test

@@ -26,7 +26,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * AC-6 (issue #11): a {@link BookingCancelled} posts exactly one proportional {@code REVERSAL} that
+ * AC-6: a {@link BookingCancelled} posts exactly one proportional {@code REVERSAL} that
  * mirrors the booking's {@code ACCRUAL} (ADR-0005) — full for a full refund, partial for a partial
  * refund, none when nothing is refunded — and is idempotent under registry redelivery. End-to-end
  * through the async {@code @ApplicationModuleListener} + Event Publication Registry; Testcontainers.
@@ -128,7 +128,7 @@ class PayoutReversalIT {
 
 	@Test
 	void weatherReversalCarriesWeatherReason() {
-		// AC-5 (U9, issue #12): an admin weather refund cancels with reason WEATHER → the proportional
+		// AC-5: an admin weather refund cancels with reason WEATHER → the proportional
 		// REVERSAL (here full) records reason WEATHER so the ledger distinguishes it from a policy refund.
 		Ref b = bookingWithAccrual("REVWX001");
 

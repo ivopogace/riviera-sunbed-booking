@@ -111,7 +111,7 @@ class VenuePhotoServiceTest {
 	}
 
 	/**
-	 * The platform-admin case (#504). The fake ownership port throws for every venue but {@code VENUE},
+	 * The platform-admin case. The fake ownership port throws for every venue but {@code VENUE},
 	 * so a takedown of another venue <em>succeeding</em> is itself the proof that no ownership check
 	 * runs — the invariant-#13 exemption that {@code /api/admin/**} carries. The operator-scoped delete
 	 * over the very same slot still throws, which is what keeps the two ports' contracts distinguishable.
@@ -133,9 +133,9 @@ class VenuePhotoServiceTest {
 	}
 
 	/**
-	 * The moderation read (#511) — the takedown's companion, and the reason an admin can now see what
+	 * The moderation read — the takedown's companion, and the reason an admin can now see what
 	 * it is authorized to remove. Every slot comes back in declaration order so the console renders a
-	 * stable grid; emptiness IS the null URL (#142 review F-11), and an occupied slot carries the
+	 * stable grid; emptiness IS the null URL, and an occupied slot carries the
 	 * PREVIEW variant's URL — the surface sized for exactly this job.
 	 */
 	@Test

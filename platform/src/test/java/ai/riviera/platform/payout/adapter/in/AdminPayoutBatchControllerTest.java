@@ -22,9 +22,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Wire contract of the payout batch admin endpoints (issue #97) — the module's first wire-level
+ * Wire contract of the payout batch admin endpoints — the module's first wire-level
  * error test: RFC-7807 ProblemDetail with a <em>stable</em> {@code code}. Pins two fixes over the
- * pre-#97 behavior: {@code ILLEGAL_TRANSITION} no longer embeds the from→to pair in the code (it
+ * prior behavior: {@code ILLEGAL_TRANSITION} no longer embeds the from→to pair in the code (it
  * moves to {@code detail}), and a malformed period/status token maps to {@code INVALID_REQUEST}
  * instead of leaking {@code ex.getMessage()}. Standalone MockMvc + a stubbed {@link PayoutReport}
  * — status mapping only; the transition rules themselves are pinned by
@@ -86,7 +86,7 @@ class AdminPayoutBatchControllerTest {
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
-				// Pre-#97 this leaked ex.getMessage() as the error value — must stay generic now.
+				// This used to leak ex.getMessage() as the error value — must stay generic now.
 				.andExpect(jsonPath("$.detail").value("Request validation failed."));
 	}
 

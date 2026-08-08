@@ -32,7 +32,7 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Reinstatement against real Postgres (#391): the V35 {@code reinstated_at} flag, the three outcomes
+ * Reinstatement against real Postgres: the V35 {@code reinstated_at} flag, the three outcomes
  * {@code reinstate} distinguishes, and the properties the slice's contract change rests on — a
  * reinstated row stops suppressing, a later bounce cleanly re-suppresses it, and <strong>no path ever
  * deletes a row</strong>. That last one is the point of choosing a flag over a {@code DELETE}:
@@ -41,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * and a reinstatement loop stays visible to ops.
  *
  * <p>Rows are addressed by a <strong>unique per-test {@code domain}</strong> rather than by
- * recomputing the peppered HMAC: the key is deliberately unreadable (#388), and re-deriving it here
+ * recomputing the peppered HMAC: the key is deliberately unreadable, and re-deriving it here
  * would duplicate {@code EmailSuppressionIT}'s recomputation for no extra coverage. Suppressions are
  * never deleted, so — as in the sibling IT — there is no cleanup.
  */
@@ -150,8 +150,8 @@ class EmailSuppressionReinstatementIT {
 	}
 
 	/**
-	 * The lift that <em>loses</em> a race reports the winner's instant instead of crashing — the bug the
-	 * #398 review found, reproduced deterministically here.
+	 * The lift that <em>loses</em> a race reports the winner's instant instead of crashing — the bug
+	 * found in review, reproduced deterministically here.
 	 *
 	 * <p>The first implementation did the lift in one data-modifying CTE, reasoning that its
 	 * {@code UPDATE} and its outer {@code SELECT} share a snapshot. They do — until a second writer

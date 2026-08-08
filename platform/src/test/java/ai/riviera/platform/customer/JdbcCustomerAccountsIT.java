@@ -24,7 +24,7 @@ import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the customer-account storage slice (S2 #111) against real Postgres via Testcontainers —
+ * Verifies the customer-account storage slice against real Postgres via Testcontainers —
  * which also boots the full Flyway chain, so this exercises migration <strong>V25</strong> (Phase 0):
  * registration stores only the opaque hash under a normalized email; a duplicate email is a
  * non-enumerating no-op that neither writes a second row nor overwrites the hash; and the

@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The admin suspension surface's <strong>effect ordering</strong> (#357) — {@code POST
+ * The admin suspension surface's <strong>effect ordering</strong> — {@code POST
  * /api/admin/operators/{id}/suspend}. The transition itself, the role gate, and the end-to-end
  * "a suspended operator's cookie stops working" proof are covered against real Postgres by
  * {@code OperatorApprovalIT} and {@code OperatorSuspensionRevocationIT}; what neither can show
@@ -45,11 +45,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code OperatorLifecycleOutcome.Changed} carries the username — so a transient revoke failure
  * committed the suspension, raised {@code 500}, and left the suspended operator's sessions alive
  * with the admin's retry drawing {@code 409 WRONG_STATUS}. The fix pre-reads the username through
- * {@link OperatorLifecycle#activeUsername} and revokes on <em>both</em> sides (#357 D-1).
+ * {@link OperatorLifecycle#activeUsername} and revokes on <em>both</em> sides (D-1).
  *
  * <p>Lives in the root test package because the web slice imports the package-private edge config
  * ({@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}). Docker-free. Every request
- * carries a unique {@code X-Forwarded-For} (#127 rate-bucket isolation) — this surface has no bucket
+ * carries a unique {@code X-Forwarded-For} (rate-bucket isolation) — this surface has no bucket
  * today, and the header keeps that from becoming a full-suite-only surprise if one is ever added.
  */
 @WebMvcTest
@@ -75,13 +75,13 @@ class AdminOperatorControllerTest {
 	@MockitoBean
 	PrincipalSessionRevoker sessionRevoker;
 
-	/** Overrides {@link WebSliceStubs}' inert no-op so the approval mail is observable (#375). */
+	/** Overrides {@link WebSliceStubs}' inert no-op so the approval mail is observable. */
 	@MockitoBean
 	MailSender mails;
 
 	/**
-	 * #357: the revoke must run <strong>before</strong> the status transition commits. Ordered the other
-	 * way (as #128 shipped it), a transient failure in the revoke is raised after the operator is already
+	 * The revoke must run <strong>before</strong> the status transition commits. Ordered the other
+	 * way, a transient failure in the revoke is raised after the operator is already
 	 * SUSPENDED — so the admin is told the suspension failed, the retry is refused
 	 * {@code 409 WRONG_STATUS}, and the suspended operator keeps working until its session expires. That
 	 * is a security hole, not just a bad message, and nothing surfaces it.
@@ -99,10 +99,10 @@ class AdminOperatorControllerTest {
 	}
 
 	/**
-	 * The other half of the bracket (#357 D-1): revoking only first would open a window in which the
+	 * The other half of the bracket (D-1): revoking only first would open a window in which the
 	 * account is still ACTIVE, so the operator being suspended could sign in again and keep that session
 	 * indefinitely — with no admin recovery path, since a second suspend is {@code 409 WRONG_STATUS} and
-	 * revokes nothing. The trailing revoke #128 already had closes it, so it is kept rather than moved.
+	 * revokes nothing. The trailing revoke this surface already had closes it, so it is kept rather than moved.
 	 */
 	@Test
 	void revokesAgainAfterTheSuspensionCommits() throws Exception {
@@ -162,7 +162,7 @@ class AdminOperatorControllerTest {
 	}
 
 	/**
-	 * The self-suspend refusal (#128) still short-circuits ahead of every effect — the pre-read added
+	 * The self-suspend refusal still short-circuits ahead of every effect — the pre-read added
 	 * here must not become the first thing an admin's misclick does to its own account.
 	 */
 	@Test
@@ -177,7 +177,7 @@ class AdminOperatorControllerTest {
 	}
 
 	/**
-	 * AC-4's edge half (#375): the mail is issued <strong>after</strong> the transition, so it cannot
+	 * AC-4's edge half: the mail is issued <strong>after</strong> the transition, so it cannot
 	 * influence what the admin is told. The complementary half — that a dead relay is swallowed and
 	 * counted rather than raised — is pinned at the chokepoint by {@code TransactionalMailServiceTest},
 	 * which is where the swallow actually lives; asserting it again here by forcing

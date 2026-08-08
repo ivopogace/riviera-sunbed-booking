@@ -17,7 +17,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * The edge collaborator's own contract (#375) — the two things {@code OperatorApprovalMailIT} cannot
+ * The edge collaborator's own contract — the two things {@code OperatorApprovalMailIT} cannot
  * reach through a real approval: an address the schema still permits to be absent, and the exact link
  * built from the configured origin.
  *

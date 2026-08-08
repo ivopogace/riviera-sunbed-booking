@@ -14,9 +14,9 @@ import static ai.riviera.platform.ArchitectureTestSupport.assertNoViolations;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Locks the one-error-contract decision (issue #97, {@code riviera-java-conventions} §6b): the
+ * Locks the one-error-contract decision ({@code riviera-java-conventions} §6b): the
  * wire mapping for thrown failures lives in exactly one {@code @RestControllerAdvice} —
- * {@link ApiErrorHandler} — so a new endpoint (e.g. Request-to-Book, #98) cannot quietly
+ * {@link ApiErrorHandler} — so a new endpoint (e.g. Request-to-Book) cannot quietly
  * reintroduce a per-controller {@code @ExceptionHandler} with a bespoke error body. Controllers
  * keep mapping their own <em>typed outcomes</em>; what they may not do is intercept exceptions.
  *

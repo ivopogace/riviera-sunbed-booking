@@ -15,7 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Issue #110 (same-origin hosting): Spring Boot serves the bundled Angular SPA, so the app
+ * Same-origin hosting: Spring Boot serves the bundled Angular SPA, so the app
  * shell and its client-side deep links are <strong>public</strong> while {@code /api/**} keeps
  * its per-endpoint rules. Pins the {@link SecurityConfig} carve-out (a new SPA filter chain
  * must not widen the API surface — R-2) and the {@link SpaWebConfig} deep-link fallback (R-3).

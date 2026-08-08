@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * HTTP contract for the operator's own-venues read (S9 #277, AC-2) through the real filter chain —
+ * HTTP contract for the operator's own-venues read (AC-2) through the real filter chain —
  * the three things a unit test of the service cannot prove:
  *
  * <ol>

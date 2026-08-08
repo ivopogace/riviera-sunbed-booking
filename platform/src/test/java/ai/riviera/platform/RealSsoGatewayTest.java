@@ -10,8 +10,8 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Unit spec for the {@code sso}-profile real adapters (S4 #112, AC-5): both {@link GoogleSsoGateway} and
- * {@link AppleSsoGateway} throw {@link UnsupportedOperationException} until credentials ship (S5, #116),
+ * Unit spec for the {@code sso}-profile real adapters (AC-5): both {@link GoogleSsoGateway} and
+ * {@link AppleSsoGateway} throw {@link UnsupportedOperationException} until credentials ship,
  * and {@link RealSsoGateway} dispatches to them by provider — so activating the real profile without S5
  * fails loudly, with no silent fallback to the mock.
  */

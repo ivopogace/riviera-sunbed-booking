@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * The refund-resubmit cooldown as <em>bound, validated</em> configuration (#454, AC-9) — the
+ * The refund-resubmit cooldown as <em>bound, validated</em> configuration (AC-9) — the
  * {@code MailResubmissionPropertiesTest} shape on the money path, for a knob whose right value is
  * unknowable until the {@code stripe} profile takes real incident traffic.
  *

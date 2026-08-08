@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * context, no network. The same {@code stripe.*} keys are wired from {@code STRIPE_API_KEY} /
  * {@code STRIPE_WEBHOOK_SECRET} env placeholders in {@code application.properties}.
  *
- * <p>Also pins the explicit short {@link StripeClient} connect/read timeouts (issue #52, R-3):
+ * <p>Also pins the explicit short {@link StripeClient} connect/read timeouts:
  * the bound defaults (5s / 20s) and the wiring into the client builder.
  */
 class StripeConfigTest {
@@ -75,7 +75,7 @@ class StripeConfigTest {
 	}
 
 	/**
-	 * The worst case one refund may occupy a worker, pinned rather than asserted in prose (#404 AC-1).
+	 * The worst case one refund may occupy a worker, pinned rather than asserted in prose (AC-1).
 	 *
 	 * <p>The bounds of {@code booking}'s refund executor are sized against a budget, and that budget is
 	 * a derivation over three facts this method fixes:
@@ -96,7 +96,7 @@ class StripeConfigTest {
 	 * only sees a worker that will not come back.
 	 *
 	 * <p><strong>This test is deliberately gateway-specific and deliberately fragile to ADR-0009.</strong>
-	 * Epic #284 removes {@link StripeConfig} outright, so this method stops compiling on the P1 slice.
+	 * The migration epic removes {@link StripeConfig} outright, so this method stops compiling on the P1 slice.
 	 * That is the intended failure: the bulkhead's sizing must be re-derived from Paysera's client
 	 * timeouts and retry policy rather than inheriting a stale 25s.
 	 */

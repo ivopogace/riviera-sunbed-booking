@@ -68,7 +68,7 @@ class VenueAdminControllerIT {
 	}
 
 	/**
-	 * A full widened venue-profile PATCH body (O8 #177, versioned by #224): the editable core is fixed
+	 * A full widened venue-profile PATCH body: the editable core is fixed
 	 * and the amenity array + distance vary per test. The write REPLACES the whole profile, so every
 	 * field is required (except description/distance) — a partial body no longer suffices — and it
 	 * carries the required optimistic-concurrency {@code expectedVersion} the tab loaded.
@@ -82,7 +82,7 @@ class VenueAdminControllerIT {
 				""".formatted(name, mode, cutoff, amenitiesJson, distanceJson, expectedVersion);
 	}
 
-	/** The venue's current optimistic-concurrency token, read from the owner profile endpoint (#224). */
+	/** The venue's current optimistic-concurrency token, read from the owner profile endpoint. */
 	private long currentVersion(long venueId) throws Exception {
 		MvcResult result = mvc.perform(get("/api/venues/{v}/profile", venueId).cookie(operatorSession))
 				.andExpect(status().isOk())
@@ -118,7 +118,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void dailyAvailabilityReturnsPerSetStatesForTheOwner() throws Exception {
-		// #207 AC-2/AC-4: the state-aware read splits hold vs walk-in; the free third set is absent.
+		// AC-2/AC-4: the state-aware read splits hold vs walk-in; the free third set is absent.
 		long venue = createVenue("States Club");
 		long onlineHeld = addSet(venue, setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 		long staffMarked = addSet(venue, setBody("A", 2, "STANDARD", "ONLINE", 3000, "EUR", 2, 1));
@@ -149,7 +149,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void dailyAvailabilityRequiresOperator() throws Exception {
-		// #207 AC-4: gated OPERATOR ahead of the public venue GET — the hold split never serves publicly.
+		// AC-4: gated OPERATOR ahead of the public venue GET — the hold split never serves publicly.
 		mvc.perform(get("/api/venues/{v}/availability", MIRAMAR).param("date", "2026-09-14"))
 				.andExpect(status().isUnauthorized());
 	}
@@ -299,7 +299,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void addSetToUnownedVenueIs403() throws Exception {
-		// Owns-all retired (#115): a venue-scoped edit asserts ownership FIRST (invariant #13), so a
+		// Owns-all retired: a venue-scoped edit asserts ownership FIRST (invariant #13), so a
 		// venue the operator does not own — including one that doesn't exist — is 403 before any
 		// existence check, never a 404 that would leak whether the venue exists to a non-owner.
 		mvc.perform(post("/api/venues/{v}/sets", 999_999L).cookie(operatorSession).with(csrf())
@@ -345,7 +345,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void profileEditRoundTripsThroughReadApi() throws Exception {
-		// T7 (#140), AC-6: PATCH the venue profile, then the U1 read API reflects it. Amenities are
+		// AC-6: PATCH the venue profile, then the U1 read API reflects it. Amenities are
 		// sent OUT of catalogue order (WIFI, BEACH_BAR) and come back catalogue-ordered; a second
 		// edit REPLACES the set and clears the distance (proves replace + nullable-distance).
 		long venue = createVenue("Amenities Club");
@@ -362,7 +362,7 @@ class VenueAdminControllerIT {
 				.andExpect(jsonPath("$.amenities").value(
 						org.hamcrest.Matchers.contains("BEACH_BAR", "WIFI")));
 
-		// #224: the first PATCH bumped the version, so the second edit must load it afresh (mirrors the
+		// The first PATCH bumped the version, so the second edit must load it afresh (mirrors the
 		// FE load-then-save) — re-using the stale 0 would now be rejected as a stale write.
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
@@ -377,7 +377,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void widenedProfileEditPersistsCoreFieldsAndReadsBack() throws Exception {
-		// O8 (#177), AC-1/AC-2/AC-6: the widened write persists name/beach/region/description/mode/cutoff.
+		// AC-1/AC-2/AC-6: the widened write persists name/beach/region/description/mode/cutoff.
 		// The tourist read reflects the new name + mode; the owner profile read reflects the cutoff too.
 		long venue = createVenue("Before Name");
 
@@ -406,7 +406,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void getProfileReturnsCommissionAndPayoutCurrency() throws Exception {
-		// O8 (#177), AC-2: the owner profile read exposes the read-only display fields the form shows —
+		// AC-2: the owner profile read exposes the read-only display fields the form shows —
 		// commission (bps) + payout currency — which the PUBLIC tourist read must NOT carry (AC-3).
 		long venue = createVenue("Commission Club"); // created with 1500 bps / EUR
 
@@ -424,7 +424,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void profileReadCarriesVersion() throws Exception {
-		// #224, AC-3: the owner profile read carries the row's optimistic-concurrency token. A fresh
+		// AC-3: the owner profile read carries the row's optimistic-concurrency token. A fresh
 		// venue starts at version 0 (the V22 column DEFAULT); the FE echoes it back on the next PATCH.
 		long venue = createVenue("Versioned Club");
 
@@ -435,7 +435,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void profileWriteWithCurrentVersionSucceedsAndBumps() throws Exception {
-		// #224, AC-4: a PATCH echoing the loaded version applies (204) and bumps the row's version, so a
+		// AC-4: a PATCH echoing the loaded version applies (204) and bumps the row's version, so a
 		// subsequent read shows version = V+1 with the edited values.
 		long venue = createVenue("Bump Club");
 
@@ -453,9 +453,9 @@ class VenueAdminControllerIT {
 
 	@Test
 	void staleVersionPatchIs409() throws Exception {
-		// #224, AC-5: the venue moved to V+1 (a first PATCH), then a second PATCH still carrying the
+		// AC-5: the venue moved to V+1 (a first PATCH), then a second PATCH still carrying the
 		// stale V=0 is 409 STALE_WRITE — and booking_mode/booking_cutoff are left at the winner's values,
-		// never clobbered back (the exact #224 auto-charge-reversal scenario).
+		// never clobbered back (the exact auto-charge-reversal scenario).
 		long venue = createVenue("Stale Club");
 
 		// The venue is switched to REQUEST at version 0 → now at version 1.
@@ -480,7 +480,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void patchMissingExpectedVersionIs400() throws Exception {
-		// #224, AC-6: a body without expectedVersion is 400 INVALID_REQUEST — it is never treated as 0
+		// AC-6: a body without expectedVersion is 400 INVALID_REQUEST — it is never treated as 0
 		// (which would match a fresh venue and re-open the last-write-wins hole).
 		long venue = createVenue("No Version Club");
 
@@ -498,7 +498,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void replaceWithoutVersionIs400() throws Exception {
-		// #226, AC-5: a beach-map replace body without expectedVersion is 400 INVALID_REQUEST — never
+		// AC-5: a beach-map replace body without expectedVersion is 400 INVALID_REQUEST — never
 		// treated as 0 (which would match a fresh venue and re-open the last-write-wins hole), mirroring
 		// the profile PATCH. ExpectedVersion.require throws before the write.
 		long venue = createVenue("No Layout Version Club");
@@ -516,7 +516,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void repriceWithoutVersionIs400() throws Exception {
-		// #226, AC-5: a per-row reprice body without expectedVersion is 400 INVALID_REQUEST — never a
+		// AC-5: a per-row reprice body without expectedVersion is 400 INVALID_REQUEST — never a
 		// silent 0. ExpectedVersion.require throws before venue/row existence or the price command.
 		long venue = createVenue("No Reprice Version Club");
 
@@ -530,7 +530,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void profileWriteLeavesSetVersion() throws Exception {
-		// #226, AC-4 (token independence): a profile PATCH bumps the profile version but leaves set_version
+		// AC-4 (token independence): a profile PATCH bumps the profile version but leaves set_version
 		// untouched — a profile/amenity edit must NOT falsely stale an open layout or pricing tab.
 		long venue = createVenue("Independent Profile Club");
 		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
@@ -550,7 +550,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void setWriteLeavesProfileVersion() throws Exception {
-		// #226, AC-4 (token independence): a beach-map replace bumps set_version but leaves the profile
+		// AC-4 (token independence): a beach-map replace bumps set_version but leaves the profile
 		// version untouched — the two optimistic locks are independent counters.
 		long venue = createVenue("Independent Layout Club");
 		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
@@ -573,7 +573,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void getProfileRequiresOperatorAuth() throws Exception {
-		// O8 (#177), AC-3: the profile read is gated to role OPERATOR (above the public GET), so an
+		// AC-3: the profile read is gated to role OPERATOR (above the public GET), so an
 		// unauthenticated caller is 401 — commission never leaks to an anonymous request.
 		long venue = createVenue("Auth Profile Club");
 		mvc.perform(get("/api/venues/{v}/profile", venue))
@@ -582,7 +582,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void patchIgnoresReadOnlyCommissionAndCurrency() throws Exception {
-		// O8 (#177), AC-5: commission + payout currency are read-only. Even if a crafted body carries
+		// AC-5: commission + payout currency are read-only. Even if a crafted body carries
 		// them, the write cannot touch them (the DTO/command has no such field, so they are ignored).
 		long venue = createVenue("Read Only Club"); // 1500 bps / EUR
 
@@ -604,7 +604,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void unknownAmenityCodeIs400() throws Exception {
-		// T7 (#140), AC-7: an off-catalogue code is rejected at the DTO edge → 400 (error contract §6b).
+		// AC-7: an off-catalogue code is rejected at the DTO edge → 400 (error contract §6b).
 		long venue = createVenue("Bad Amenity Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
@@ -616,7 +616,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void nonPositiveDistanceIs400() throws Exception {
-		// T7 (#140), AC-7: distance must be a positive integer when present.
+		// AC-7: distance must be a positive integer when present.
 		long venue = createVenue("Bad Distance Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
@@ -627,7 +627,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void blankNameIs400() throws Exception {
-		// O8 (#177): the widened write requires a non-blank name — a blank one is 400 (error contract §6b).
+		// The widened write requires a non-blank name — a blank one is 400 (error contract §6b).
 		long venue = createVenue("Blank Name Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
@@ -638,7 +638,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void malformedBookingModeIs400() throws Exception {
-		// O8 (#177): an unknown booking mode is rejected at the command edge → 400.
+		// An unknown booking mode is rejected at the command edge → 400.
 		long venue = createVenue("Bad Mode Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
@@ -649,7 +649,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void malformedCutoffIs400() throws Exception {
-		// O8 (#177): a non-time cutoff is rejected at the DTO edge → 400.
+		// A non-time cutoff is rejected at the DTO edge → 400.
 		long venue = createVenue("Bad Cutoff Club");
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
@@ -660,7 +660,7 @@ class VenueAdminControllerIT {
 
 	@Test
 	void profileEditUnownedVenueIs403() throws Exception {
-		// Owns-all retired (#115): ownership is asserted before existence (invariant #13), so editing a
+		// Owns-all retired: ownership is asserted before existence (invariant #13), so editing a
 		// venue the operator does not own — even a non-existent one — is 403, not a 404 existence leak.
 		mvc.perform(patch("/api/venues/{v}", 999_999L).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)

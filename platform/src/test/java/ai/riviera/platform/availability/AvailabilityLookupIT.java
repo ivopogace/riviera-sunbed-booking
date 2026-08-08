@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verifies the date-aware availability lookup behind the live beach map (issue #44): a set with
+ * Verifies the date-aware availability lookup behind the live beach map: a set with
  * a {@code set_availability} row for a date is taken on that date and free on another; a set
  * with no row is free; any state ({@code BOOKED_ONLINE} / {@code STAFF_MARKED}) counts as taken;
  * an empty input is handled without a query. This is the read side of the dependency-inverted

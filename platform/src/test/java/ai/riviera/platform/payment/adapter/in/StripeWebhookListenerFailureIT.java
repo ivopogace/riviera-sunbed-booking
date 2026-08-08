@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Proves the durability the async {@code @ApplicationModuleListener} buys (PR #53 review). The
+ * Proves the durability the async {@code @ApplicationModuleListener} buys. The
  * webhook commits and acks Stripe ({@code 200}) <em>before</em> the listener runs, so reliability no
  * longer rests on the webhook transaction rolling back — it rests on the <strong>Event Publication
  * Registry</strong>. When {@code confirmFromPayment} throws on the async thread, the publication is

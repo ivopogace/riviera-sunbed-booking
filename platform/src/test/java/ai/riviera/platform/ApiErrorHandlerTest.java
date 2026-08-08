@@ -33,14 +33,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Pins the one advice's exception-to-ProblemDetail mapping (issue #97, narrowed by #118) without a
+ * Pins the one advice's exception-to-ProblemDetail mapping without a
  * Spring context: every thrown failure — domain authorization, typed edge validation, the
  * unique-constraint-race backstop, and a framework-raised type mismatch — lands as
  * {@code application/problem+json} with a stable {@code code}. The constraint-race case matters here
  * because no controller IT can trigger it (the pre-checks win the race in a sequential test); this is
  * its only wire-level pin.
  *
- * <p>Since #118 the advice deliberately does NOT map raw {@link IllegalArgumentException} or a
+ * <p>The advice deliberately does NOT map raw {@link IllegalArgumentException} or a
  * non-duplicate {@link DataIntegrityViolationException}: both signal a server-side defect (a domain
  * invariant tripping on stored data, a schema/FK/NOT-NULL bug), and mapping them to 4xx blamed the
  * caller and dropped the failure out of 5xx monitoring and the logs. The propagation tests below are
@@ -85,7 +85,7 @@ class ApiErrorHandlerTest {
 	}
 
 	/**
-	 * Issue #118: a raw {@code IllegalArgumentException} is a server bug (e.g. a {@code Money} or
+	 * A raw {@code IllegalArgumentException} is a server bug (e.g. a {@code Money} or
 	 * {@code PayoutLedgerEntry} invariant tripping on corrupt stored data), not client input — it must
 	 * propagate to the framework's 500 (which logs it with a stack trace), never be mapped to a 400
 	 * blamed on the caller.
@@ -104,7 +104,7 @@ class ApiErrorHandlerTest {
 	}
 
 	/**
-	 * Issue #118's DIVE half: only a unique-index race ({@link DuplicateKeyException}) is the designed
+	 * This rule's DIVE half: only a unique-index race ({@link DuplicateKeyException}) is the designed
 	 * 409; any other integrity violation (FK, NOT-NULL, CHECK) is a schema-level bug and must surface
 	 * as a 500, not be presented as a normal conflict.
 	 */
@@ -135,7 +135,7 @@ class ApiErrorHandlerTest {
 	}
 
 	/**
-	 * The multipart max-size backstop (#142): {@code MaxUploadSizeExceededException} is handled by
+	 * The multipart max-size backstop: {@code MaxUploadSizeExceededException} is handled by
 	 * the {@code ResponseEntityExceptionHandler} base class (its handler is {@code final}, so a
 	 * same-advice {@code @ExceptionHandler} would be an ambiguous duplicate), and the advice stamps
 	 * the pinned wire code — stable even if the 413 {@code HttpStatus} constant is renamed.

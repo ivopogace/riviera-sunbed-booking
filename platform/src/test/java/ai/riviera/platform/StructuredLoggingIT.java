@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Import;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Issue #100 (D4), AC-2: when the native Boot 4 structured console format is enabled
+ * D4, AC-2: when the native Boot 4 structured console format is enabled
  * ({@code logging.structured.format.console=ecs} — the ONE env var production flips), a log line is
  * emitted as JSON and carries the {@link CorrelationIdFilter#MDC_KEY} MDC field, so a correlation id
  * surfaces on every line. Boots the real application under the {@code ecs} property (Testcontainers,

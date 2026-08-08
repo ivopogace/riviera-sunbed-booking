@@ -22,7 +22,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Verifies the U8 staff mark/release outcomes (issue #10, AC-2..AC-7) against the seeded Miramar
+ * Verifies the staff mark/release outcomes (AC-2..AC-7) against the seeded Miramar
  * map. Marking a free set succeeds and blocks an online claim, marking a taken set is rejected,
  * release frees only a staff mark (never an online row), a past date is rejected, and an unknown
  * set is rejected. Each test uses a distinct far-future {@code booking_date} so methods are
@@ -45,7 +45,7 @@ class StaffAvailabilityIT {
 	@Autowired
 	OperatorDirectory operators;
 
-	/** The interim bootstrap operator (owns every venue, incl. Miramar) — resolves the guard (#73). */
+	/** The interim bootstrap operator (owns every venue, incl. Miramar) — resolves the guard. */
 	private OperatorId bootstrap() {
 		return operators.operatorFor("operator").orElseThrow();
 	}
@@ -77,7 +77,7 @@ class StaffAvailabilityIT {
 
 	@Test
 	void markingOnlinePoolSetSucceeds() {
-		// Pool-agnostic by decision (issue #10): an ONLINE-pool set can be staff-marked — the
+		// Pool-agnostic by decision: an ONLINE-pool set can be staff-marked — the
 		// collision-relevant case (marking removes it from the online pool).
 		SetId set = anyOnlineSet();
 		LocalDate date = LocalDate.of(2030, 7, 2);

@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Verifies the venue read models carry the photo URLs (#142, AC-8): the public discovery list and
+ * Verifies the venue read models carry the photo URLs (AC-8): the public discovery list and
  * beach-map read expose the COVER slot's card + banner serving URLs when a cover photo exists and
  * {@code null} otherwise, and the operator profile read exposes per-slot
  * {@code {present, previewUrl}}. URLs are the content-addressed serving path. The {@code bytea}
@@ -61,7 +61,7 @@ class VenuePhotoReadModelIT {
 		return new VenueId(id);
 	}
 
-	/** Make the bootstrap admin the explicit owner (owns-all retired, #115) so a venue-scoped read passes. */
+	/** Make the bootstrap admin the explicit owner (owns-all retired) so a venue-scoped read passes. */
 	private void grantToBootstrap(VenueId venue) {
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
 						+ "SELECT :v, id FROM operator WHERE username = 'operator'")
@@ -117,8 +117,7 @@ class VenuePhotoReadModelIT {
 
 	@Test
 	void operatorProfileExposesPerSlotPresenceAndPreviewUrl() throws Exception {
-		// The bootstrap admin must explicitly own this fresh venue (owns-all retired, #115) to pass the
-		// ownership check on the profile read (#177); ownership denial is CrossVenueDenialIT's job.
+		// The bootstrap admin must own this venue (owns-all retired); denial is CrossVenueDenialIT's job.
 		Cookie session = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");
 		VenueId venue = newVenue("RM profile venue");
 		grantToBootstrap(venue);

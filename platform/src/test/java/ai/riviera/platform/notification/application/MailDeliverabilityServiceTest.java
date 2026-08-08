@@ -10,12 +10,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * The query port's contract (#400): it answers the same do-not-mail list {@link TransactionalMailService}
+ * The query port's contract: it answers the same do-not-mail list {@link TransactionalMailService}
  * consults, and it <strong>degrades rather than fails</strong> — an unanswerable lookup reports "not
  * withheld", so the resend surface falls back to today's copy instead of turning a {@code 204}-shaped
  * flow into a {@code 500}.
  *
- * <p>The degrade is deliberately wider than the send path's transient-only carve-out (#386): dropping a
+ * <p>The degrade is deliberately wider than the send path's transient-only carve-out: dropping a
  * bearer-credential mail on a structurally broken lookup is a real harm, whereas showing one advisory
  * sentence too few is not.
  */
@@ -54,7 +54,7 @@ class MailDeliverabilityServiceTest {
 		assertThat(service.isWithheld(EMAIL)).isFalse();
 	}
 
-	/** The barrier is total, not data-access-shaped — the #390 F-2 lesson, applied here up front. */
+	/** The barrier is total, not data-access-shaped, applied here up front. */
 	@Test
 	void reportsDeliverableWhenTheLookupThrowsSomethingThatIsNotADataAccessFailure() {
 		when(suppressions.isSuppressed(any())).thenThrow(new IllegalStateException("programming error"));

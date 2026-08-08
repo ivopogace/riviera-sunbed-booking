@@ -30,14 +30,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The headline #224 concurrency test: two operators both load the same venue at {@code version = V}
+ * The headline concurrency test: two operators both load the same venue at {@code version = V}
  * and both save their edit off it — exactly one must {@code APPLY} and the other get
  * {@code STALE_WRITE}, so a stale tab can never silently clobber {@code booking_mode}/{@code booking_cutoff}
  * back (the auto-charge-reversal scenario). Backed by the conditional
  * {@code UPDATE … WHERE id AND version = :expected} against a real Postgres — an in-memory fake
  * could not prove the READ COMMITTED re-evaluation that makes the loser see 0 rows. Mirrors the
  * {@code ConcurrentReservationIT} discipline (RepeatedTest + a {@link CountDownLatch} start-gate) but
- * the invariant under test is #224's optimistic lock, not the availability claim (invariant #2).
+ * the invariant under test is the venue row's optimistic lock, not the availability claim (invariant #2).
  *
  * <p>Also asserts the row ends at {@code version = V+1} (bumped exactly once, never twice) and the
  * surviving {@code name} is one writer's — the winner's — never a half-merge of both.

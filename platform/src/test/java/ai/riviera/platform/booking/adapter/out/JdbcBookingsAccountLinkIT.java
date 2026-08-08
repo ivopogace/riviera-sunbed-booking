@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * S3 (#114): a booking created while signed in carries the customer's {@link CustomerAccountId} in
+ * A booking created while signed in carries the customer's {@link CustomerAccountId} in
  * {@code booking.account_id}; a guest booking leaves it NULL (AC-1 / AC-2). Tested at the persistence
  * seam — {@link Bookings#insertAwaitingPayment} with and without an account id — against real Postgres
  * (the nullable column + FK are DB behaviour). Testcontainers; skipped where Docker is absent.

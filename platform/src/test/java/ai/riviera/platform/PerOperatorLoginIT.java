@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The per-operator login proof (issue #74, AC-3/AC-4/AC-5) — the reference deliverable that the
+ * The per-operator login proof (AC-3/AC-4/AC-5) — the reference deliverable that the
  * shared {@code OPERATOR} password is gone and each operator authenticates as <strong>itself</strong>.
  * Unlike {@code CrossVenueDenialIT} (which mocks the principal→id seam), this runs the <em>real</em>
  * login path end to end: distinct DB-backed credentials are provisioned for two operators, and the
@@ -33,8 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * port with edge-encoded hashes: <strong>A</strong> ({@code op-a}) and <strong>B</strong>
  * ({@code op-b}) each own their own fresh venue. The seeded bootstrap {@code operator} is
  * credentialled at startup from {@code riviera.operator.password} by
- * {@link OperatorCredentialInitializer}; with owns-all retired (#115) it owns only its backfilled
- * venue (Miramar, venue 1). Since issue #109 the login is the SESSION flow: each
+ * {@link OperatorCredentialInitializer}; with owns-all retired it owns only its backfilled
+ * venue (Miramar, venue 1). The login is the SESSION flow: each
  * operator logs in once ({@code SessionLoginSupport}) and the staff daily-bookings read
  * ({@code GET /api/venues/{id}/bookings}) probes the resulting cookie: 200 for the owning
  * operator and 403 for any other, so the response encodes <em>which principal</em> the session
@@ -133,7 +133,7 @@ class PerOperatorLoginIT {
 		expectLoginRejected("ghost", "whatever");
 	}
 
-	// ---- AC-8 (#115): the bootstrap admin is credentialled at startup and owns only backfilled Miramar ----
+	// ---- AC-8: the bootstrap admin is credentialled at startup and owns only backfilled Miramar ----
 
 	@Test
 	void bootstrapIsProvisionedAndOwnsBackfilledMiramarOnly() throws Exception {

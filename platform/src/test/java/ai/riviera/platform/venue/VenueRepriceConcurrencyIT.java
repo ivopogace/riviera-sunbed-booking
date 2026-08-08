@@ -29,12 +29,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The #226 concurrency test for the per-row reprice (AC-2): two operators both load a venue at
+ * The concurrency test for the per-row reprice (AC-2): two operators both load a venue at
  * {@code set_version = V} and both submit a {@code repriceRow} for the same row off it — exactly one
  * must return {@code Applied} and the other {@code Rejected(STALE_WRITE)}, so a stale pricing tab can
  * never silently clobber another writer's prices. Backed by the conditional {@code set_version} bump
  * against a real Postgres (READ COMMITTED re-evaluation). Mirrors {@link VenueProfileConcurrencyIT} /
- * {@link BeachMapReplaceConcurrencyIT}, on the SAME {@code set_version} token the replace uses (#226).
+ * {@link BeachMapReplaceConcurrencyIT}, on the SAME {@code set_version} token the replace uses.
  *
  * <p>Also asserts the row ends at {@code set_version = V+1} (bumped exactly once) and the surviving
  * price is one writer's — the winner's — never a half-merge of both.

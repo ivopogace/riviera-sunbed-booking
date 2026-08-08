@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Pins the queue's guest-name resolution to ONE batch lookup (#126): N rows must not become N
+ * Pins the queue's guest-name resolution to ONE batch lookup: N rows must not become N
  * {@code findById} round-trips. A missing contact (impossible via FK, defensive anyway) still
  * renders as an empty name rather than failing the whole queue; an empty queue asks the
  * {@code customer} module nothing at all. The ownership-first rule is pinned separately by

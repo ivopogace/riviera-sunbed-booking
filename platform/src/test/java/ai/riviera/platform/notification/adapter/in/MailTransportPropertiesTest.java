@@ -16,19 +16,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * The SMTP socket budget as <em>one</em> bound, validated knob (#410 Part 2), and the proof that the
+ * The SMTP socket budget as <em>one</em> bound, validated knob, and the proof that the
  * three relay timeouts and the pools' shutdown drain all read it rather than restating it.
  *
- * <p><strong>Why the interpolation test is the important one.</strong> #368 gave the transport finite
+ * <p><strong>Why the interpolation test is the important one.</strong> The transport was given finite
  * timeouts because Jakarta Mail's defaults are <em>infinite</em> — long enough for a degraded relay to
  * pin a sending thread forever. Those three values living as literals in
  * {@code application-mailer.properties} while the drain window lived as a literal in two Java classes is
- * exactly the disagreement #410 is about; resolving all three through the environment is what shows the
+ * exactly the disagreement this test guards against; resolving all three through the environment is what shows the
  * relationship holds by construction and not by two people remembering the same number.
  *
  * <p><strong>Why a compact constructor and not {@code @Validated} + {@code @Min}</strong> — the same
  * reason as {@link RegistryMailProperties}: there is no JSR-303 implementation on the runtime classpath
- * (#97 declined {@code spring-boot-starter-validation} deliberately), so Boot would bind and validate
+ * (the platform declined {@code spring-boot-starter-validation} deliberately), so Boot would bind and validate
  * nothing. The context-level tests earn their place beside the direct-construction ones because only
  * they show Boot's binder <em>propagating</em> the record's exception into a startup failure instead of
  * swallowing it and falling back to a default.
@@ -71,7 +71,7 @@ class MailTransportPropertiesTest {
 	/**
 	 * AC-8, for <strong>every</strong> profile that drives the real {@code SmtpMailer} — {@code mailer}
 	 * (the deployment posture) and {@code smtp4dev} (the local sink). Both are parameterized because the
-	 * #410 generalization audit found the second still restating the literal after the first was fixed,
+	 * A generalization audit found the second still restating the literal after the first was fixed,
 	 * and a local profile is precisely where a divergence hides until it reproduces deployed.
 	 *
 	 * <p>The {@code mailer} profile's other placeholders ({@code RIVIERA_SMTP_HOST} and friends) have no
@@ -126,13 +126,13 @@ class MailTransportPropertiesTest {
 	}
 
 	/**
-	 * The stacking check that used to live here is gone, and its absence is the point (#456).
+	 * The stacking check that used to live here is gone, and its absence is the point.
 	 *
 	 * <p>It asserted {@code SHUTDOWN_BUDGET_MS * DRAINING_POOLS <= MAIL_SHUTDOWN_BUDGET_MS} where the
 	 * left operand was <em>defined</em> as the right divided by the same factor — {@code (a / b) * b <= a}
 	 * for every positive integer pair, so it could not fail. Its only live assertion was
 	 * {@code DRAINING_POOLS == 2}, a change-detector that fires when someone edits the very constant they
-	 * would have had to remember to edit; #404 landed a third draining pool in {@code booking} and it did
+	 * would have had to remember to edit; a third draining pool landed in {@code booking} and it did
 	 * not fire, because a mail-scoped count cannot see a {@code booking} pool and invariant #11 rightly
 	 * stops it trying.
 	 *

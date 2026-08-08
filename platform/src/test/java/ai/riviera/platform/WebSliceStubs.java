@@ -136,7 +136,7 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 @TestConfiguration(proxyBeanMethods = false)
 class WebSliceStubs {
 
-	/** #98 Request-to-Book web-slice stubs: the controller/scheduler ports with inert defaults. */
+	/** Request-to-Book web-slice stubs: the controller/scheduler ports with inert defaults. */
 	@Bean
 	PendingRequests pendingRequests() {
 		return (_, _) -> List.of();
@@ -206,8 +206,8 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * Credential store for the edge {@code UserDetailsService} imported via {@code SecurityConfig}
-	 * (#74). The web slices only hit permit-all endpoints / preflights, never an authenticated login,
+	 * Credential store for the edge {@code UserDetailsService} imported via {@code SecurityConfig}.
+	 * The web slices only hit permit-all endpoints / preflights, never an authenticated login,
 	 * so an empty store is enough — no operator can be authenticated here.
 	 */
 	@Bean
@@ -216,7 +216,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * Customer account ports (S2 #111) that {@code SecurityConfig}'s {@code customerAuthenticationManager}
+	 * Customer account ports that {@code SecurityConfig}'s {@code customerAuthenticationManager}
 	 * and {@code AuthController} require. Empty/inert like the operator store: the web slices never
 	 * authenticate or actually create a customer, so an empty credential store + an always-already-taken
 	 * registration are enough for the context to load and for a rate-limit attempt to reach the limiter.
@@ -232,7 +232,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * #101 [D5] right-to-erasure port that {@code MyErasureController} + {@code AdminErasureController}
+	 * [D5] right-to-erasure port that {@code MyErasureController} + {@code AdminErasureController}
 	 * register with. Inert (nothing to erase): the shared web slices never drive a real erasure, so a
 	 * {@code NOT_FOUND} is enough for the context to load. {@code MeErasureControllerTest} /
 	 * {@code AdminErasureControllerTest} replace this bean to drive the flow.
@@ -258,7 +258,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * #326: the credential-write port {@code OperatorAccountController} registers with. Inert — the shared
+	 * The credential-write port {@code OperatorAccountController} registers with. Inert — the shared
 	 * web slices never change a real password, and {@code setPassword} returning {@code false} is the
 	 * "no such operator" answer. {@code OperatorAccountControllerTest} replaces this bean to drive the flow.
 	 */
@@ -324,7 +324,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * S3 (#114): the customer account-id resolver + the edge helper that {@code BookingController}
+	 * The customer account-id resolver + the edge helper that {@code BookingController}
 	 * (signed-in checkout link) and {@code MyBookingsController} (my-bookings) now depend on. Inert:
 	 * the web slices hit permit-all / role-gated paths, never resolving a real account.
 	 */
@@ -339,7 +339,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * S4 (#112): the edge SSO ports {@code SsoController} requires. Inert — the web slices (CORS +
+	 * The edge SSO ports {@code SsoController} requires. Inert — the web slices (CORS +
 	 * rate-limit) never drive the SSO redirect/callback, so a pass-through gateway + a fixed account id
 	 * are enough for the context to load and for a rate-limit attempt to reach the limiter.
 	 */
@@ -364,7 +364,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * S8 (#113): the edge account-recovery collaborators the recovery/set-password controllers +
+	 * The edge account-recovery collaborators the recovery/set-password controllers +
 	 * {@code AuthController} depend on. All inert — the web slices (CORS + rate-limit) never redeem a token,
 	 * send mail, or revoke a session, so an always-invalid recovery port, a no-op send port, and an
 	 * empty-session repository are enough for the context to load and for a rate-limit attempt to reach the
@@ -389,7 +389,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * The edge collaborator behind the approval mail (#375). Deliberately the <strong>real</strong> one
+	 * The edge collaborator behind the approval mail. Deliberately the <strong>real</strong> one
 	 * over the inert {@link MailSender} above, not a stub: {@code AdminOperatorController} now depends on
 	 * it, and a stub here would make every web slice green against a class that never ran. A test wanting
 	 * the send to fail overrides the {@code MailSender} bean instead.
@@ -400,7 +400,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * {@code AdminEmailSuppressionController}'s port (#391). Inert: the web slices never lift a real
+	 * {@code AdminEmailSuppressionController}'s port. Inert: the web slices never lift a real
 	 * suppression, and "nothing was on the list" is the outcome that writes nothing.
 	 */
 	@Bean
@@ -409,7 +409,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * {@code AdminMailDeliveryController}'s two ports (#380). Inert: no bookings for any address, and a
+	 * {@code AdminMailDeliveryController}'s two ports. Inert: no bookings for any address, and a
 	 * resend that reports an unknown booking — so a slice that merely loads the controller mails nobody.
 	 * {@code AdminMailDeliveryControllerTest} overrides both with {@code @MockitoBean}s to drive the real
 	 * shapes.
@@ -425,7 +425,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * {@code AdminMailOutboxController}'s port (#405). Inert: an empty outbox with the lever accepting,
+	 * {@code AdminMailOutboxController}'s port. Inert: an empty outbox with the lever accepting,
 	 * so a slice that merely loads the controller re-drives nothing. {@code AdminMailOutboxControllerTest}
 	 * overrides it with a {@code @MockitoBean} to drive the real outcomes.
 	 */
@@ -445,7 +445,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * {@code AdminRefundOutboxController}'s port (#454). Inert: an empty outbox with the lever
+	 * {@code AdminRefundOutboxController}'s port. Inert: an empty outbox with the lever
 	 * accepting, so a slice that merely loads the controller re-drives nothing.
 	 * {@code AdminRefundOutboxControllerTest} overrides it with a {@code @MockitoBean}.
 	 */
@@ -496,7 +496,7 @@ class WebSliceStubs {
 
 			@Override
 			public Optional<Boolean> emailVerifiedFor(String email) {
-				// Empty = no account, mirroring the pre-#256 stub world (/me answered emailVerified: null).
+				// Empty = no account, mirroring the earlier stub world (/me answered emailVerified: null).
 				return Optional.empty();
 			}
 		};
@@ -515,7 +515,7 @@ class WebSliceStubs {
 				clock);
 	}
 
-	/** Nothing is suppressed in a web slice — the withheld branch is pinned where it is real (#400). */
+	/** Nothing is suppressed in a web slice — the withheld branch is pinned where it is real. */
 	@Bean
 	MailDeliverability mailDeliverability() {
 		return toEmail -> false;
@@ -575,7 +575,7 @@ class WebSliceStubs {
 		return (_, venueId) -> new VenueLedger(venueId, "EUR", 0, List.of());
 	}
 
-	/** #171 console takings read: an inert zero figure — the web slices don't exercise the amount. */
+	/** The console takings read: an inert zero figure — the web slices don't exercise the amount. */
 	@Bean
 	ViewDailyTakings viewDailyTakings() {
 		return (_, _, date) -> new DailyTakingsView(0, 0, 0, 0, "EUR", date);
@@ -772,20 +772,20 @@ class WebSliceStubs {
 		return (_, _, _, _) -> ProfileUpdateOutcome.NO_SUCH_VENUE;
 	}
 
-	/** O8 (#177): the venue admin-profile read the web slices register with {@code VenueAdminController}. */
+	/** The venue admin-profile read the web slices register with {@code VenueAdminController}. */
 	@Bean
 	ViewVenueProfile viewVenueProfile() {
 		return (_, _) -> Optional.empty();
 	}
 
-	/** #207: the owner daily availability-states read behind {@code GET /api/venues/{id}/availability}. */
+	/** The owner daily availability-states read behind {@code GET /api/venues/{id}/availability}. */
 	@Bean
 	ViewDailyAvailability viewDailyAvailability() {
 		return (_, _, _) -> Optional.empty();
 	}
 
 	/**
-	 * S9 (#277): the owned-venues read behind {@code GET /api/venues/mine} ({@code MyVenuesController}).
+	 * The owned-venues read behind {@code GET /api/venues/mine} ({@code MyVenuesController}).
 	 * Inert — the shared web slices (CORS + rate-limit + SPA shell) never authenticate an operator, so an
 	 * empty list is enough for the context to load. {@code MyVenuesControllerTest} replaces this bean to
 	 * drive the real payload.
@@ -795,7 +795,7 @@ class WebSliceStubs {
 		return _ -> List.of();
 	}
 
-	/** #142: the photo port {@code VenuePhotoController} registers with — inert not-found defaults. */
+	/** The photo port {@code VenuePhotoController} registers with — inert not-found defaults. */
 	@Bean
 	VenuePhotos venuePhotos() {
 		return new VenuePhotos() {
@@ -823,7 +823,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * #507: the audit trail {@code SecurityConfig}'s {@code AdminAuditFilter} + {@code AdminAuditController}
+	 * The audit trail {@code SecurityConfig}'s {@code AdminAuditFilter} + {@code AdminAuditController}
 	 * register with — inert, so the web slices exercise routing and the role gate, never the table.
 	 */
 	@Bean
@@ -841,7 +841,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * #504/#511: the moderation port {@code AdminVenuePhotoController} registers with — inert, so the
+	 * The moderation port {@code AdminVenuePhotoController} registers with — inert, so the
 	 * web slice exercises routing and the role gate, never storage. No longer a lambda: the port grew
 	 * a second method when the read joined the takedown.
 	 */

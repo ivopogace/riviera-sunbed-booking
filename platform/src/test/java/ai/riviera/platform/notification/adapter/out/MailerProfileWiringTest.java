@@ -15,7 +15,7 @@ import ai.riviera.platform.notification.application.Mailer;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Pins the SHIPPED {@code mailer}-profile boot posture (#368, AC-3/AC-4): the SMTP config lives in
+ * Pins the SHIPPED {@code mailer}-profile boot posture (AC-3/AC-4): the SMTP config lives in
  * {@code application-mailer.properties} as env placeholders WITHOUT defaults, so activating the profile
  * with the environment unset aborts at boot (unresolved placeholder) — never on first send — while the
  * default profile keeps the recording {@link MockMailer} and creates no mail session at all (the

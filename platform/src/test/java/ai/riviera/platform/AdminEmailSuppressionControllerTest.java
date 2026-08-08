@@ -25,8 +25,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * HTTP contract for lifting an email suppression ({@code POST /api/admin/email-suppressions/reinstate},
- * #391) through the real filter chain — the {@code AdminErasureControllerTest} pattern:
+ * HTTP contract for lifting an email suppression ({@code POST /api/admin/email-suppressions/reinstate})
+ * through the real filter chain — the {@code AdminErasureControllerTest} pattern:
  *
  * <ol>
  * <li><strong>ADMIN role gate</strong> (AC-7): an ADMIN succeeds; an OPERATOR / CUSTOMER is
@@ -104,7 +104,7 @@ class AdminEmailSuppressionControllerTest {
 	 * Every value that cannot be an address is {@code 400}, not a misleading {@code NOT_SUPPRESSED}.
 	 *
 	 * <p>The half-shaped cases are here because the first implementation tested only for an {@code @}
-	 * and let them through (#398 review): {@code "user@"} and {@code "@example.com"} answered
+	 * and let them through in review: {@code "user@"} and {@code "@example.com"} answered
 	 * {@code 200 NOT_SUPPRESSED}, which is technically true and reads to an admin as "nothing to do
 	 * here" — hiding the typo this branch exists to surface.
 	 */

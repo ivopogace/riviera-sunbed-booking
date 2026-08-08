@@ -39,16 +39,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The customer twin of {@link OperatorAccountControllerTest}, for {@code POST /api/me/password} — new with
- * #344, which is the point: no web slice pinned this endpoint's revoke/write <em>ordering</em> before it.
+ * The customer twin of {@link OperatorAccountControllerTest}, for {@code POST /api/me/password} — a new
+ * test, since no web slice pinned this endpoint's revoke/write <em>ordering</em> before it.
  * {@code MeSurfaceRoleGateTest} is a {@code @WebMvcTest} that POSTs here, but only to prove the role gate;
  * the ordering had nowhere cheap to live, so the two twins could drift without anything failing.
  *
- * <p>Scope is deliberately narrow — the ordering and session-rotation contract of #344 only. The
+ * <p>Scope is deliberately narrow — the ordering and session-rotation contract only. The
  * password-policy, SSO-only-account (S4 F-1) and role-gate behaviours are already pinned by
  * {@code SetPasswordIT} and {@code MeSurfaceRoleGateTest} and are not restated here.
  *
- * <p>Every request carries a unique {@code X-Forwarded-For} (#127 rate-bucket isolation) — the change path
+ * <p>Every request carries a unique {@code X-Forwarded-For} (rate-bucket isolation) — the change path
  * shares a per-IP budget across the cached context of a full-suite run.
  */
 @WebMvcTest
@@ -111,7 +111,7 @@ class MyAccountControllerTest {
 	/**
 	 * AC-2's mock-level half: the surviving session is rotated, and the revoke kept the PRE-rotation id.
 	 *
-	 * <p>Asserted on the <em>request's</em> session rather than the handle passed in: since #359 the rotation
+	 * <p>Asserted on the <em>request's</em> session rather than the handle passed in: the rotation
 	 * retires the old session outright and puts a fresh one in its place, instead of renaming it where a
 	 * concurrent request could write the old id back. Twin of
 	 * {@code OperatorAccountControllerTest.rotatesTheSurvivingSessionIdAfterKeepingItThroughTheRevoke}.
@@ -145,7 +145,7 @@ class MyAccountControllerTest {
 	}
 
 	/**
-	 * AC-1/AC-2 (#400): the resend answers {@code 200} carrying whether the mail was withheld, so the
+	 * AC-1/AC-2: the resend answers {@code 200} carrying whether the mail was withheld, so the
 	 * account page can stop claiming one was sent when the suppression list silently withheld it. The
 	 * disclosure is safe on <em>this</em> endpoint alone — it is {@code ROLE_CUSTOMER}-gated and answers
 	 * about the caller's own session principal, never a supplied address, so there is no account to

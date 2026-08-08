@@ -9,7 +9,7 @@ import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_CLASSES;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * Guards the #74 authentication-placement boundary (RV-BE-11, {@code RESPONSIBILITIES.md}): the
+ * Guards the authentication-placement boundary (RV-BE-11, {@code RESPONSIBILITIES.md}): the
  * <em>login/credential-checking machinery</em> is a platform/edge Spring Security concern and must
  * <strong>not</strong> grow inside the {@code operator} domain module. The module owns the account
  * identity and stores an <em>opaque</em> credential hash; it never imports a

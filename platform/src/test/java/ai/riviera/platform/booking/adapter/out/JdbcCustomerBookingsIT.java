@@ -20,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The {@code booking.api.CustomerBookings} read port (#380): which bookings belong to one guest
+ * The {@code booking.api.CustomerBookings} read port: which bookings belong to one guest
  * contact, for the admin mail-delivery view. Split from {@code BookingNotificationFacts} by consumer
- * role (the #94 rule) — that port answers "tell the guest about <em>this</em> booking", this one
+ * role — that port answers "tell the guest about <em>this</em> booking", this one
  * answers "which bookings does this person have".
  *
  * <p>It lives in {@code booking} because {@code booking} owns the table; {@code customer}'s Not-My-Job

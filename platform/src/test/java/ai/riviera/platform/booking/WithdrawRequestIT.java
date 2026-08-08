@@ -34,12 +34,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * HTTP contract for the guest withdraw (issue #123): {@code POST /api/bookings/{code}/withdraw}.
+ * HTTP contract for the guest withdraw: {@code POST /api/bookings/{code}/withdraw}.
  *
  * <p>The endpoint is a <strong>new public path</strong>, so this IT exists as much to pin its
  * <em>registration</em> as its handler — a path that exists in the controller but not in
  * {@code SecurityConfig} fails closed (401), and one missing from {@code RateLimitFilter} would be
- * an unthrottled booking-code oracle. Both are asserted here rather than assumed: the #98 review's
+ * an unthrottled booking-code oracle. Both are asserted here rather than assumed: a prior review's
  * first finding was exactly a dropped authorize matcher on this controller's sibling endpoints.
  */
 @EnabledIfDockerAvailable
@@ -183,7 +183,7 @@ class WithdrawRequestIT {
 	/**
 	 * The venue's queue can still hold a request the guest has withdrawn. Accept must then answer the
 	 * existing {@code REQUEST_NOT_PENDING} conflict, which the operator console already renders as
-	 * "already handled" — the whole reason this slice ships no venue-side notification (#123, #124).
+	 * "already handled" — the whole reason this slice ships no venue-side notification.
 	 */
 	@Test
 	void acceptAfterWithdrawIsNotPending() throws Exception {

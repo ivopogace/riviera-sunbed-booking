@@ -30,15 +30,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The #226 headline concurrency test for the beach-map replace (AC-1): two operators both load a venue's
+ * The headline concurrency test for the beach-map replace (AC-1): two operators both load a venue's
  * layout at {@code set_version = V} and both submit a {@code replaceLayout} off it — exactly one must
  * return {@code Replaced} and the other {@code Rejected(STALE_WRITE)}, so a stale layout tab can never
  * silently clobber another writer's map. Backed by the conditional
  * {@code UPDATE venue SET set_version = set_version + 1 WHERE id AND set_version = :expected} against a
  * real Postgres — an in-memory fake could not prove the READ COMMITTED re-evaluation that makes the loser
  * see 0 rows. Mirrors {@link VenueProfileConcurrencyIT} (RepeatedTest + a {@link CountDownLatch}
- * start-gate) but the token under test is the SEPARATE {@code set_version} (#226), not the profile
- * {@code version} (#224).
+ * start-gate) but the token under test is the SEPARATE {@code set_version}, not the profile
+ * {@code version}.
  *
  * <p>Also asserts the row ends at {@code set_version = V+1} (bumped exactly once, never twice) and the
  * surviving single-cell layout is one writer's — the winner's — never a half-merge of both.

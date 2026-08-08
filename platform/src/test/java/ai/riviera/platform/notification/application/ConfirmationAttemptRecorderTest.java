@@ -25,7 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 /**
- * The one policy both writers of the delivery log share (#380): stamp the clock, and let the
+ * The one policy both writers of the delivery log share: stamp the clock, and let the
  * <em>evidence</em> give way if the write itself fails.
  *
  * <p>That asymmetry is the whole subject of this class, and it is worth a test rather than a comment

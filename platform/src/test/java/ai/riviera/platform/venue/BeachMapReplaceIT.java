@@ -43,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Verifies the O3 bulk beach-map replace ({@code PUT /api/venues/{id}/beach-map}, issue #172) end to
+ * Verifies the bulk beach-map replace ({@code PUT /api/venues/{id}/beach-map}) end to
  * end against Testcontainers Postgres, through the real {@code JdbcVenues}, {@code JdbcBookingPresence},
  * and {@code JdbcSetAvailabilityLookup} adapters. Pins: the whole grid round-trips through the U1 read
  * API with row A priced front-row premium and the {@code WALK_IN} pool preserved (AC-1/AC-4/AC-7);
@@ -52,7 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * leaving the existing layout <em>and</em> the hold untouched (AC-6, invariant #2 / R-1: the
  * {@code set_availability} CASCADE must never silently fire).
  *
- * <p>Since #226 the replace is optimistic-locked on the venue's {@code set_version}: every replace body
+ * <p>The replace is optimistic-locked on the venue's {@code set_version}: every replace body
  * carries the required {@code expectedVersion} the tab loaded from the map read, and a stale token is
  * rejected 409 {@code STALE_WRITE} without clobbering the current layout
  * ({@link #staleReplaceIs409StaleWrite}). The bump is acquired before the invariant-#2 lock (R-1), so the
@@ -90,7 +90,7 @@ class BeachMapReplaceIT {
 	}
 
 	/**
-	 * The versioned replace body (#226): the sets array plus the required optimistic-concurrency token
+	 * The versioned replace body: the sets array plus the required optimistic-concurrency token
 	 * ({@code expectedVersion} = the {@code setVersion} the tab loaded from the map read).
 	 */
 	private static String layout(long expectedVersion, String... cells) {
@@ -181,7 +181,7 @@ class BeachMapReplaceIT {
 
 	@Test
 	void staleReplaceIs409StaleWrite() throws Exception {
-		// #226, AC-6: two tabs both loaded set_version 0; the first replace bumps it to 1, then a second
+		// AC-6: two tabs both loaded set_version 0; the first replace bumps it to 1, then a second
 		// replace still carrying the stale 0 is 409 STALE_WRITE (RFC-7807, code STALE_WRITE) — the winner's
 		// layout survives, never clobbered by the stale tab.
 		long venue = createVenue("Stale Layout Club");
@@ -209,7 +209,7 @@ class BeachMapReplaceIT {
 	void poolFlagPersistsAndReadsBack() throws Exception {
 		long venue = createVenue("Pool Club");
 
-		// AC-4: an ONLINE and a WALK_IN set in one layout — both pools round-trip distinctly (#3).
+		// AC-4: an ONLINE and a WALK_IN set in one layout — both pools round-trip distinctly.
 		putLayout(venue, layout(0,
 				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
 				cell("A", 2, "STANDARD", "WALK_IN", 2000, 2, 1)), 204);
@@ -238,7 +238,7 @@ class BeachMapReplaceIT {
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("LAYOUT_IN_USE"));
 
-		// The original two sets are untouched (no partial delete), and — #226 review fix — the LAYOUT_IN_USE
+		// The original two sets are untouched (no partial delete), and the LAYOUT_IN_USE
 		// reject did NOT advance set_version (no spurious bump), so the acting tab's token still matches and
 		// a retry after the lock clears would not falsely 409 STALE_WRITE.
 		mvc.perform(get("/api/venues/{id}", venue))
@@ -310,7 +310,7 @@ class BeachMapReplaceIT {
 				cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 1),
 				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1)), 204);
 		long setX = setIds(venue).getFirst();
-		// The venue was created via POST as the bootstrap session, so creator-owns-on-create (#115)
+		// The venue was created via POST as the bootstrap session, so creator-owns-on-create
 		// already made the bootstrap its owner — drive the replace as that owner (no second grant, which
 		// would violate the one-owner-per-venue PK).
 		OperatorId owner = new OperatorId(jdbc.sql("SELECT id FROM operator WHERE username = 'operator'")

@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * HTTP contract for admin data-subject erasure ({@code POST /api/admin/erasure}, #101 [D5]) through the real
+ * HTTP contract for admin data-subject erasure ({@code POST /api/admin/erasure}, [D5]) through the real
  * filter chain:
  *
  * <ol>

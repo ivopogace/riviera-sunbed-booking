@@ -11,13 +11,13 @@ import ai.riviera.platform.customer.application.ExpireGuestContacts;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Pins the retention job's <strong>ships-disabled</strong> posture (AC-7 of #101 Slice 2): with the shipped
+ * Pins the retention job's <strong>ships-disabled</strong> posture (AC-7): with the shipped
  * configuration no scheduler bean exists at all, so nothing can sweep until ops deliberately opts in — the
  * irreversible-erasure safety switch (R-2/R-6).
  *
  * <p>The same {@code @ConditionalOnProperty} does double duty as a <em>test</em> safeguard: {@code
  * @EnableScheduling} is global in this application, so an unconditional {@code @Scheduled} would fire during
- * the default-profile suite and could perturb other tests' timing windows (the #98/#122 lesson, R-3). A bean
+ * the default-profile suite and could perturb other tests' timing windows. A bean
  * that does not exist cannot fire.
  *
  * <p>Uses {@link ApplicationContextRunner} plus {@link ConfigDataApplicationContextInitializer} so the real

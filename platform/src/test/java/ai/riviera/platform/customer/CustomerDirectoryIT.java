@@ -20,11 +20,11 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Verifies the guest find-or-create seam (issue #6, AC-10): a new email creates a customer;
+ * Verifies the guest find-or-create seam (AC-10): a new email creates a customer;
  * a repeat email (in any case) returns the SAME id and refreshes name/phone. Real Postgres
  * via Testcontainers so the {@code ON CONFLICT} upsert is exercised against the constraint.
  *
- * <p>Since #380 it also covers the read-only twin, {@code CustomerLookup#findByEmail} — the same
+ * <p>It also covers the read-only twin, {@code CustomerLookup#findByEmail} — the same
  * canonical form, resolving without writing.
  */
 @EnabledIfDockerAvailable
@@ -60,7 +60,7 @@ class CustomerDirectoryIT {
 	}
 
 	/**
-	 * The read-only by-email resolve (#380), added for the admin mail-delivery view: the guest contact
+	 * The read-only by-email resolve, added for the admin mail-delivery view: the guest contact
 	 * is what a confirmation mail was addressed to, so an address is the key that view is searched by.
 	 * Canonicalisation is the module's own {@code Emails.normalize}, so a caller cannot spell the rule
 	 * a second way and miss rows the writer would have matched.
@@ -88,7 +88,7 @@ class CustomerDirectoryIT {
 	}
 
 	/**
-	 * The batch read (#126): one query resolves many ids; unknown ids are absent from the map, and
+	 * The batch read: one query resolves many ids; unknown ids are absent from the map, and
 	 * an empty input returns an empty map without touching the database (an empty {@code IN ()}
 	 * would be invalid SQL — the guard is the contract, this proves it holds).
 	 */

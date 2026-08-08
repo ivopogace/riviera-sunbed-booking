@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * The one relationship #410 Part 2 is about: the shutdown drain window is <em>derived from</em> the
+ * The one relationship this test class pins: the shutdown drain window is <em>derived from</em> the
  * relay's socket budget, not a second constant that happens to disagree with it.
  *
  * <p>Before this record, {@code AsyncMailDispatcher} and {@code RegistryMailExecutorConfig} each carried

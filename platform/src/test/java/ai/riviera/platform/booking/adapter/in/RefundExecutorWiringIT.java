@@ -16,8 +16,8 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The trap #383 sprang and this slice re-arms, pinned in the configuration #383 never had: <strong>two
- * bulkhead executors in one context</strong> (#404 AC-6).
+ * The trap that sprang once already, this slice re-arms — pinned this time in a configuration that
+ * earlier fix never had: <strong>two bulkhead executors in one context</strong> (AC-6).
  *
  * <p>Boot declares {@code applicationTaskExecutor} {@code @ConditionalOnMissingBean(Executor.class)}, so
  * merely <em>defining</em> an {@link Executor} bean makes it back off and not define the shared pool at
@@ -41,7 +41,7 @@ class RefundExecutorWiringIT {
 
 	private static final String APPLICATION_TASK_EXECUTOR = "applicationTaskExecutor";
 
-	/** #383's mail bulkhead, by name — see {@link #bothBulkheadExecutorsAreAddressableByNameAndDistinct}. */
+	/** The mail bulkhead, by name — see {@link #bothBulkheadExecutorsAreAddressableByNameAndDistinct}. */
 	private static final String MAIL_EXECUTOR_BEAN = "registryMailExecutor";
 
 	@Autowired

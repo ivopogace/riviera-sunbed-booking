@@ -40,7 +40,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The cancellation listener's own logic (#374): what it puts in the message, and what it does when a
+ * The cancellation listener's own logic: what it puts in the message, and what it does when a
  * fact it needs is missing. The end-to-end registry path is {@code BookingCancellationMailIT}'s;
  * these are three collaborators and no Spring context.
  *
@@ -51,7 +51,7 @@ import static org.mockito.Mockito.when;
  * copy-paste of the confirmation listener would pass every other assertion here while quietly
  * incrementing the wrong series.
  *
- * <p>The {@code reason} vocabulary <em>is</em> shared, deliberately (#442): both series are read
+ * <p>The {@code reason} vocabulary <em>is</em> shared, deliberately: both series are read
  * through the same three tag values, so a runbook filter written for one works on the other.
  */
 class BookingCancellationMailListenerTest {

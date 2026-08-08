@@ -53,7 +53,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
 @TestPropertySource(properties = {
-		// The deployed default is now empty (same-origin since #110); this preflight test needs
+		// The deployed default is now empty (same-origin); this preflight test needs
 		// an explicit allowed origin — declare it rather than lean on the default.
 		"app.web.cors.allowed-origins=https://ivopogace.github.io",
 		"riviera.ratelimit.enabled=true",
@@ -204,10 +204,10 @@ class RateLimitFilterTest {
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
-	// ---- The session login is per-IP limited on its own budget (issue #109, D-8) ----
+	// ---- The session login is per-IP limited on its own budget (D-8) ----
 
 	// A unique identity per call, so a test exercising ONLY the per-IP login dimension never
-	// accumulates on the per-username bucket (issue #292) — the username analogue of uniqueClientIp().
+	// accumulates on the per-username bucket — the username analogue of uniqueClientIp().
 	private static final AtomicInteger IDENTITY_SEQ = new AtomicInteger();
 
 	private static String uniqueUsername() {
@@ -264,7 +264,7 @@ class RateLimitFilterTest {
 		loginFromIp(ip).andExpect(status().isUnauthorized());
 	}
 
-	// ---- Customer login + registration ride the same login budget (S2 #111, D-8) ----
+	// ---- Customer login + registration ride the same login budget (D-8) ----
 
 	private ResultActions customerLoginFromIp(String ip) throws Exception {
 		return customerLogin(ip, uniqueEmail());
@@ -300,7 +300,7 @@ class RateLimitFilterTest {
 
 	@Test
 	void customerAuthBudgetIsSeparateFromOperatorLogin() throws Exception {
-		// F1 fix (S2 #111): exhaust the CUSTOMER-auth budget from an IP (a burst of tourist registers)…
+		// Exhaust the CUSTOMER-auth budget from an IP (a burst of tourist registers)…
 		String ip = "10.12.0.1";
 		registerFromIp(ip).andExpect(status().isCreated());
 		registerFromIp(ip).andExpect(status().isCreated());
@@ -311,7 +311,7 @@ class RateLimitFilterTest {
 		loginFromIp(ip).andExpect(status().isUnauthorized());
 	}
 
-	// ---- Operator self-service password change rides its OWN per-IP budget (#326, D-8) ----
+	// ---- Operator self-service password change rides its OWN per-IP budget (D-8) ----
 
 	/**
 	 * An <strong>anonymous</strong> attempt at the operator change endpoint. The filter runs ahead of
@@ -379,7 +379,7 @@ class RateLimitFilterTest {
 	@Test
 	void aPercentEncodedSpellingOfThePathDrawsOnTheSameBudget() throws Exception {
 		String ip = "10.30.0.9";
-		// Authenticated (#343): an anonymous drain is refunded, so it could no longer set up this probe.
+		// Authenticated: an anonymous drain is refunded, so it could no longer set up this probe.
 		authenticatedChangePasswordFromIp(ip).andExpect(status().isBadRequest());
 		authenticatedChangePasswordFromIp(ip).andExpect(status().isBadRequest());
 
@@ -393,7 +393,7 @@ class RateLimitFilterTest {
 				.andExpect(status().isTooManyRequests());
 	}
 
-	/** The same bypass on the pre-existing operator-login budget — the one the #127 lockout was about. */
+	/** The same bypass on the pre-existing operator-login budget — the one an earlier lockout was about. */
 	@Test
 	void aPercentEncodedLoginPathDrawsOnTheLoginBudget() throws Exception {
 		String ip = "10.30.0.10";
@@ -443,7 +443,7 @@ class RateLimitFilterTest {
 		authenticatedChangePasswordFromIp("10.30.0.3").andExpect(status().isBadRequest());
 	}
 
-	/** An <strong>anonymous</strong> attempt at the customer endpoint — refunded since #343, like its twin. */
+	/** An <strong>anonymous</strong> attempt at the customer endpoint — refunded, like its twin. */
 	private ResultActions customerPasswordChangeFromIp(String ip) throws Exception {
 		return mvc.perform(post("/api/me/password").with(fromIp(ip)).with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
@@ -485,7 +485,7 @@ class RateLimitFilterTest {
 		authenticatedChangePasswordFromIp(ip).andExpect(status().isBadRequest());
 	}
 
-	// ---- An anonymous flood must not drain an AUTHENTICATED endpoint's budget (issue #343) ----
+	// ---- An anonymous flood must not drain an AUTHENTICATED endpoint's budget ----
 
 	/** Deliberately not {@code operator}: the env-managed bootstrap admin is refused with a 409. */
 	private static final String TEST_OPERATOR = "venue-op";
@@ -591,7 +591,7 @@ class RateLimitFilterTest {
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
-	// ---- Per-submitted-identity login budget, keyed on username/email not IP (issue #292) ----
+	// ---- Per-submitted-identity login budget, keyed on username/email not IP ----
 
 	@Test
 	void perUsernameOverLimitIs429AcrossIps() throws Exception {
@@ -730,10 +730,10 @@ class RateLimitFilterTest {
 				.andExpect(status().isNotFound());
 	}
 
-	// ---- Trusted-proxy client-IP resolution closes the XFF-rotation bypass (#129) ----
+	// ---- Trusted-proxy client-IP resolution closes the XFF-rotation bypass ----
 
 	private ResultActions loginFromProxiedClient(String peer, String forwardedFor) throws Exception {
-		// Unique username per call so this per-IP-dimension test never trips the per-username bucket (#292).
+		// Unique username per call so this per-IP-dimension test never trips the per-username bucket.
 		return mvc.perform(post("/api/auth/operator/login").with(fromIp(peer)).with(csrf())
 				.header("X-Forwarded-For", forwardedFor)
 				.contentType(MediaType.APPLICATION_JSON)
@@ -753,10 +753,10 @@ class RateLimitFilterTest {
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
-	// ---- One client, many edge nodes: still ONE bucket (#286) ----
+	// ---- One client, many edge nodes: still ONE bucket ----
 
 	private ResultActions loginViaEdge(String client, String edge) throws Exception {
-		// Unique username per call so this per-IP-dimension test never trips the per-username bucket (#292).
+		// Unique username per call so this per-IP-dimension test never trips the per-username bucket.
 		return mvc.perform(post("/api/auth/operator/login").with(fromIp("10.14.0.1")).with(csrf())
 				.header("X-Forwarded-For", client + ", " + edge)
 				.header("CF-Connecting-IP", client)

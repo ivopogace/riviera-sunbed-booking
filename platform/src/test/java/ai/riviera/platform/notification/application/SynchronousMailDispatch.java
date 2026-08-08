@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
 /**
- * Runs recovery-mail sends inline in tests (#369). The production {@link AsyncMailDispatcher} takes the
+ * Runs recovery-mail sends inline in tests. The production {@link AsyncMailDispatcher} takes the
  * send off the request thread, which would race every {@code MockMailer.lastTo(...)} assertion and make the
  * recovery integration tests flaky. This override keeps them deterministic without weakening what they
  * assert: the off-thread dispatch itself is pinned structurally by {@code AsyncMailDispatcherTest} (it runs

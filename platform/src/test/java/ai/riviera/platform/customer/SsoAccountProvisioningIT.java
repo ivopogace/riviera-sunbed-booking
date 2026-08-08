@@ -27,7 +27,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the SSO identity linkage slice (S4 #112) against real Postgres via Testcontainers — which
+ * Verifies the SSO identity linkage slice against real Postgres via Testcontainers — which
  * boots the full Flyway chain, so this also exercises migration <strong>V27</strong>: first SSO sign-in
  * for an unknown {@code (provider, subject)} creates a password-less account and a link row; a returning
  * subject reuses it; a first-seen subject whose (verified) email already has an account auto-links to it

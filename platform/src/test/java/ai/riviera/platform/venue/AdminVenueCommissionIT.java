@@ -33,11 +33,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The platform-admin commission surface end to end (A7, epic #348) — the venues-with-commission read
+ * The platform-admin commission surface end to end — the venues-with-commission read
  * and the rate write, against Testcontainers Postgres through the real security filter chain.
  *
  * <p><strong>Why a second operator is provisioned</strong> (same reason as
- * {@code AdminPhotoModerationIT} / {@code AdminPhotoTakedownIT}, and the lesson A4/PR #521 paid for):
+ * {@code AdminPhotoModerationIT} / {@code AdminPhotoTakedownIT}):
  * the bootstrap {@code operator} account is the platform admin ({@code is_admin}, V29) and so carries
  * <em>both</em> {@code ADMIN} and {@code OPERATOR} — its session can never demonstrate a {@code 403}.
  * Neither can {@code CrossVenueDenialIT}'s {@code operatorA}, which has no {@code password_hash} and
@@ -48,7 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>{@link #theOwnerCannotChangeItsOwnRateThroughEitherSurface} is the slice's whole argument in one
  * place: the owner is refused on the admin path (wrong role) <em>and</em> the profile {@code PATCH}
- * still ignores the field (O8 #177). Keeping both halves in one test means a future change cannot
+ * still ignores the field. Keeping both halves in one test means a future change cannot
  * quietly satisfy one alone — widening the {@code PATCH} would look like a passing build otherwise.
  *
  * <p>Runs only when Docker is available; CI runs it.
@@ -153,7 +153,7 @@ class AdminVenueCommissionIT {
 						.contentType(MediaType.APPLICATION_JSON).content("{\"commissionBps\":100}"))
 				.andExpect(status().isForbidden());
 
-		// And its own profile PATCH still ignores the field entirely (O8 #177) — the DTO has none.
+		// And its own profile PATCH still ignores the field entirely — the DTO has none.
 		mvc.perform(patch("/api/venues/{v}", venueId).cookie(owner).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""

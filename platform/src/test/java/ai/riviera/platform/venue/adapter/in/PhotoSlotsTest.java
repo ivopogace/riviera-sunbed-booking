@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Pins the slot parser's contract at its own seam (#504). It was a private method on
+ * Pins the slot parser's contract at its own seam. It was a private method on
  * {@code VenuePhotoController} until the admin takedown gave it a second caller; extracting it made
  * one parse rule serve three endpoints, so the rule is tested here once rather than incidentally
  * through whichever controller IT happens to drive it. Both wire answers matter: a valid lower-case

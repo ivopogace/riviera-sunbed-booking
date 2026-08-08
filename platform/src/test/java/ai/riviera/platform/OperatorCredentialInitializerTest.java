@@ -20,7 +20,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Fast unit test for the boot-time credential provisioner (#74) — no Spring context, no DB. Pins the
+ * Fast unit test for the boot-time credential provisioner — no Spring context, no DB. Pins the
  * three branches of {@link OperatorCredentialInitializer#run}: a set password provisions the
  * bootstrap operator with an <em>encoded</em> hash; a blank password provisions nothing (write API
  * left locked); and a set password targeting a missing operator row is a no-op WARN, not a failure.
@@ -74,7 +74,7 @@ class OperatorCredentialInitializerTest {
 	}
 
 	/**
-	 * #128 AC-6. The initializer re-stamps the configured password on EVERY boot (bcrypt re-salts, so
+	 * AC-6: the initializer re-stamps the configured password on EVERY boot (bcrypt re-salts, so
 	 * the stored hash differs each time) — so "the hash changed" proves nothing and revoking on it
 	 * would sign the admin out on every deploy. A genuine rotation is the raw configured password no
 	 * longer matching the stored hash.

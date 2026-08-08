@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * AC-1 (issue #12): the per-venue payout ledger read returns every entry oldest-first with the
+ * AC-1: the per-venue payout ledger read returns every entry oldest-first with the
  * <strong>running net owed</strong>, and the total net owed = {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net)}
  * (invariant #9), all in integer minor units (invariant #5). Uses a dedicated venue so the per-venue
  * sum is isolated from other tests on the shared container. Testcontainers; skipped without Docker.
@@ -42,7 +42,7 @@ class PayoutLedgerViewIT {
 	@Autowired
 	OperatorDirectory operators;
 
-	/** The interim bootstrap operator (owns every venue) — resolves the ownership guard (#73). */
+	/** The interim bootstrap operator (owns every venue) — resolves the ownership guard. */
 	private OperatorId bootstrap() {
 		return operators.operatorFor("operator").orElseThrow();
 	}
@@ -55,7 +55,7 @@ class PayoutLedgerViewIT {
 				""").query(Long.class).single();
 	}
 
-	/** Make the bootstrap the explicit owner (owns-all retired, #115) so the venue-scoped ledger read passes. */
+	/** Make the bootstrap the explicit owner (owns-all retired) so the venue-scoped ledger read passes. */
 	private void grantToBootstrap(long venueId) {
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
 				.param("v", venueId).param("o", bootstrap().value()).update();

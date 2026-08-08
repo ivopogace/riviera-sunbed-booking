@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The payout-batch lifecycle (U9, issue #12): status advances strictly forward
+ * The payout-batch lifecycle: status advances strictly forward
  * {@code DRAFT → REPORTED → SETTLED}; every other transition is rejected. Pure unit test.
  */
 class PayoutBatchLifecycleTest {

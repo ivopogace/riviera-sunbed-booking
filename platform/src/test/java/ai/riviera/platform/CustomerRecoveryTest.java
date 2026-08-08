@@ -23,11 +23,11 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The edge orchestration around a recovery send (#369, reshaped by #382): {@code CustomerRecovery}
+ * The edge orchestration around a recovery send: {@code CustomerRecovery}
  * mints the raw token, stores only the digest — synchronously, on the caller's thread, because the
  * token store is NOT best-effort — and hands the fully-formed tokenized link to the
  * {@code notification} module's {@link MailSender}. Everything this class previously asserted about
- * <em>how</em> the send then runs (off-thread, failure swallowed — the #369 timing-oracle closure)
+ * <em>how</em> the send then runs (off-thread, failure swallowed — the timing-oracle closure)
  * moved behind that port and is pinned by {@code TransactionalMailServiceTest}; what remains here is
  * the edge's half of the D-8 contract: issue first, then fire-and-forget with the right link.
  */
@@ -74,10 +74,10 @@ class CustomerRecoveryTest {
 	}
 
 	/**
-	 * AC-3 (#400), and the regression guard the review round added: sending consults the do-not-mail list
+	 * AC-3: the regression guard the review round added — sending consults the do-not-mail list
 	 * <strong>not at all</strong>. {@code sendVerificationEmail}'s other caller is anonymous registration
 	 * ({@code AuthController}, {@code permitAll}), so a suppression SELECT folded in here would put a
-	 * discarded synchronous read on that request thread — widening the very D-8 latency gap #369 closed.
+	 * discarded synchronous read on that request thread — widening the very D-8 latency gap already closed.
 	 */
 	@Test
 	void sendingNeverConsultsTheDoNotMailList() {

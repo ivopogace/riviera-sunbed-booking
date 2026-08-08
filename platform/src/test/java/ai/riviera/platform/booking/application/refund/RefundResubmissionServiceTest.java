@@ -25,7 +25,7 @@ import ai.riviera.platform.shared.ResubmissionOutcome;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The sweep-throttle policy of #454 (AC-1, AC-4, AC-5, AC-7), driven at the application boundary
+ * The sweep-throttle policy (AC-1, AC-4, AC-5, AC-7), driven at the application boundary
  * against a fake {@link RefundOutbox} and a clock the test moves by hand — the
  * {@code MailResubmissionServiceTest} shape on the money path.
  *
@@ -151,7 +151,7 @@ class RefundResubmissionServiceTest {
 	/**
 	 * AC-5. {@code republish-outstanding-events-on-restart=true} means the platform has just
 	 * resubmitted every outstanding publication itself. A press landing in that window would report
-	 * success while moving nothing — #405's R-3, inherited verbatim.
+	 * success while moving nothing — inherited verbatim.
 	 */
 	@Test
 	@DisplayName("AC-5 — the boot republication counts as resubmission zero")

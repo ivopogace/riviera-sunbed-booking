@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * The {@code X-Audit-Reason} sanitizer (#507, AC-2): client-supplied grounds are flattened —
+ * The {@code X-Audit-Reason} sanitizer (AC-2): client-supplied grounds are flattened —
  * control-character runs (incl. CRLF, the log-forging vector of {@code riviera-java-conventions}
  * §10) collapse to one space, the result is trimmed, blank collapses to absent, and the persisted
  * length is capped at 500.

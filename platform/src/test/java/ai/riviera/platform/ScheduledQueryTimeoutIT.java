@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Every query a {@code @Scheduled} job issues before it starts mutating is <strong>bounded</strong>
- * (#395) — the second half of the fix, the first being the thread-per-job isolation
+ * — the second half of the fix, the first being the thread-per-job isolation
  * {@code ScheduledWorkArchitectureTest} pins.
  *
  * <p>Isolation alone would leave each job free to wedge <em>itself</em> forever: Postgres's default
@@ -48,7 +48,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code ACCESS EXCLUSIVE} lock on the table, which in Postgres blocks even a plain {@code SELECT}.
  * A test that mocked a slow query would prove only that the mock was slow; this proves the driver
  * actually issues the cancel — the part that could silently not work. The shape is
- * {@code SuppressionQueryTimeoutIT}'s (#386), which is where this slice's instrument comes from.
+ * {@code SuppressionQueryTimeoutIT}'s, which is where this slice's instrument comes from.
  *
  * <p><strong>Why the read runs on a worker thread.</strong> Holding the lock and reading from one
  * thread would, before the fix, deadlock outright — an unbounded read waiting on a lock this same
@@ -59,7 +59,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p><strong>Five reads, not the four the issue named.</strong> The issue counted one entry query per
  * scheduled job. The retention sweep has two — the candidate read against {@code customer} and the
  * retention-basis read against {@code booking} — and both run before it writes anything, so bounding
- * only the first would have left the sweep able to wedge on the second. #395's phase-1 generalization
+ * only the first would have left the sweep able to wedge on the second. A phase-1 generalization
  * audit walked each job's call graph down to its first write and found it.
  *
  * <p><strong>The lower bound is the non-vacuity guard.</strong> Asserting only "finished within 15 s"
@@ -72,7 +72,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = {
 		"riviera.scheduled.query-timeout-seconds=1",
-		// Long initial delays keep the platform's own sweeps out of this lock window (#98/#122).
+		// Long initial delays keep the platform's own sweeps out of this lock window.
 		"booking.request.initial-delay=PT30M",
 		"booking.awaiting-payment.initial-delay=PT30M",
 		"customer.retention.initial-delay=PT30M",

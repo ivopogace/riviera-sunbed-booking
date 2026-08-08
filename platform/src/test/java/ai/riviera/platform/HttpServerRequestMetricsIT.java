@@ -16,7 +16,7 @@ import org.springframework.web.client.RestClient;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * Issue #100 (D4), AC-6: the webhook-5xx signal is a {@code (uri, status)} slice of the standard Boot
+ * AC-6: the webhook-5xx signal is a {@code (uri, status)} slice of the standard Boot
  * {@code http.server.requests} timer, so this IT proves that timer is <em>live</em> in this app —
  * recording real web requests with {@code uri} + {@code status} tags. A real HTTP round-trip
  * (RANDOM_PORT) so the server-side observation filter actually runs; the webhook uri + a 5xx status

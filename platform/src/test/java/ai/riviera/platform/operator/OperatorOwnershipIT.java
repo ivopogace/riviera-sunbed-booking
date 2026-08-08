@@ -23,12 +23,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 /**
- * Module test for the {@code operator} ownership port (issue #73, AC-1/AC-2; extended by #115) against
+ * Module test for the {@code operator} ownership port (AC-1/AC-2) against
  * Testcontainers Postgres — the real {@link VenueOwnership}/{@link OperatorDirectory} beans over
  * {@code JdbcOperators} and the schema. Seeds synthetic per-venue operators over fresh venues, and
  * proves {@code assertOwns}/{@link VenueOwnership#assignOwner} pass/deny correctly, {@code ownedVenues}
  * returns the explicit mapping, and {@code operatorFor} resolves an ACTIVE username but not an
- * unknown/suspended one. With the owns-all bootstrap retired (#115), the seeded {@code operator} owns
+ * unknown/suspended one. With the owns-all bootstrap retired, the seeded {@code operator} owns
  * only its <em>backfilled</em> venue (Miramar, V29), not an arbitrary one.
  */
 @EnabledIfDockerAvailable
@@ -92,7 +92,7 @@ class OperatorOwnershipIT {
 
 	@Test
 	void assignOwnerRecordsTheMapping() {
-		// The write side (#115, creator-owns-on-create): assignOwner then assertOwns passes for the
+		// The write side (creator-owns-on-create): assignOwner then assertOwns passes for the
 		// owner and denies anyone else.
 		OperatorId owner = insertOperator("owner-w", "ACTIVE");
 		OperatorId other = insertOperator("owner-x", "ACTIVE");
@@ -117,7 +117,7 @@ class OperatorOwnershipIT {
 
 	@Test
 	void bootstrapOwnsOnlyBackfilledVenuesNotAll() {
-		// Owns-all retired (#115): the bootstrap owns Miramar via the V29 backfill (explicit mapping)…
+		// Owns-all retired: the bootstrap owns Miramar via the V29 backfill (explicit mapping)…
 		OperatorId bootstrap = directory.operatorFor("operator").orElseThrow();
 		assertDoesNotThrow(() -> ownership.assertOwns(bootstrap, new VenueRef(MIRAMAR)));
 

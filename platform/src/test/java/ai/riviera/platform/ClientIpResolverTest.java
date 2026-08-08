@@ -14,8 +14,8 @@ import ch.qos.logback.core.read.ListAppender;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Pins client-IP resolution for per-IP rate-limit keying (issue #56 AC-6, tightened by #129, made
- * durable by #286): the forwarding headers are honored only behind a <em>trusted</em> proxy peer.
+ * Pins client-IP resolution for per-IP rate-limit keying (AC-6): the forwarding headers are honored
+ * only behind a <em>trusted</em> proxy peer.
  * Behind one, an edge-supplied client-IP header wins outright when it is usable; otherwise the key is
  * the right-most <em>untrusted</em> {@code X-Forwarded-For} hop, which a client cannot forge (ADR-0006
  * R-2). Absence, blankness, or an all-trusted chain falls back to the socket address; control
@@ -29,7 +29,7 @@ class ClientIpResolverTest {
 			"169.254.0.0/16", "::1/128", "fc00::/7", "fe80::/10");
 	private static final String CF_HEADER = "CF-Connecting-IP";
 
-	/** No edge header configured — every #129 case below asserts the walk is unchanged (#286 AC-3). */
+	/** No edge header configured — every case below asserts the walk is unchanged (AC-3). */
 	private final ClientIpResolver resolver = new ClientIpResolver(DEFAULT_TRUSTED, "");
 	private final ClientIpResolver edgeAware = new ClientIpResolver(DEFAULT_TRUSTED, CF_HEADER);
 
@@ -165,7 +165,7 @@ class ClientIpResolverTest {
 	}
 
 	/**
-	 * AC-4 / #127: the IT corpus isolates its rate buckets with a unique single-hop
+	 * AC-4: the IT corpus isolates its rate buckets with a unique single-hop
 	 * {@code X-Forwarded-For} from the loopback MockMvc peer. That only works while the generated
 	 * address is <em>untrusted</em> — a private-range one would be skipped as a proxy hop and every IT
 	 * in the suite would collapse onto the one {@code 127.0.0.1} bucket.
@@ -189,7 +189,7 @@ class ClientIpResolverTest {
 		assertEquals("127.0.0.1", new ClientIpResolver(List.of(), CF_HEADER).resolve(request));
 	}
 
-	// ---- The edge-supplied client-IP header is preferred over the chain walk (#286) ----
+	// ---- The edge-supplied client-IP header is preferred over the chain walk ----
 
 	@Test
 	void prefersTheEdgeSuppliedClientOverTheForwardedChain() {
@@ -242,7 +242,7 @@ class ClientIpResolverTest {
 	}
 
 	/**
-	 * The measured production shape (#286): client → Cloudflare edge → Render → app, with only the
+	 * The measured production shape: client → Cloudflare edge → Render → app, with only the
 	 * SHIPPED private ranges trusted. The chain's right-most hop is the public, per-request-varying
 	 * Cloudflare edge, so the walk keys on the edge node; the edge-supplied header keys on the client.
 	 */
@@ -297,12 +297,12 @@ class ClientIpResolverTest {
 		assertEquals(1, warningsWhileResolving(request));
 	}
 
-	// ---- A client-IP header from an UNTRUSTED peer names the trust-list gap (#290) ----
+	// ---- A client-IP header from an UNTRUSTED peer names the trust-list gap ----
 
 	/**
 	 * The fingerprint of a trust list no longer covering the upstream edge's ranges: the configured
 	 * header arrives, but from an untrusted peer, so it is (correctly) ignored — the key stays the
-	 * socket address, #129's bypass closure untouched — and exactly one WARN names the likely cause.
+	 * socket address, an earlier bypass closure untouched — and exactly one WARN names the likely cause.
 	 */
 	@Test
 	void warnsWhenAClientIpHeaderArrivesFromAnUntrustedPeer() {

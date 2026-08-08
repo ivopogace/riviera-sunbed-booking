@@ -18,7 +18,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The per-service-date rate read against real Postgres (A7, epic #348) — {@code VenueRates
+ * The per-service-date rate read against real Postgres — {@code VenueRates
  * #commissionBpsOn} over the {@code venue_commission_rate} schedule (V39), and the write sequence that
  * makes it total.
  *

@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The contract of the platform's one canonical email normalization (#386 item 4). Before this
+ * The contract of the platform's one canonical email normalization. Before this
  * existed the rule lived in six private copies, and {@code notification}'s suppression list keys a
  * peppered HMAC on the result — so a one-character divergence in any copy would silently produce a
  * key that never matches at send time, on the module's defining invariant.

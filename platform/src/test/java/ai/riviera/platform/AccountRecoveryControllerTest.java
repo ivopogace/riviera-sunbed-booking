@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The password-reset endpoint's <strong>effect ordering</strong> (#357) — {@code POST
+ * The password-reset endpoint's <strong>effect ordering</strong> — {@code POST
  * /api/auth/customer/reset-password}. The token lifecycle itself (single-use, expiry, the uniform
  * rejection) is pinned against real Postgres by {@code PasswordResetIT} and
  * {@code CustomerAccountRecoveryIT}; what those cannot show cheaply is the order of the two
@@ -47,7 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>Lives in the root test package because the web slice imports the package-private edge config
  * ({@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}). Docker-free. Every request
  * carries a unique {@code X-Forwarded-For}: this path rides the recovery per-IP budget, so without it
- * the class would pass alone and {@code 429} inside the full suite (#127).
+ * the class would pass alone and {@code 429} inside the full suite.
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
@@ -70,7 +70,7 @@ class AccountRecoveryControllerTest {
 	PrincipalSessionRevoker sessionRevoker;
 
 	/**
-	 * #357: the revoke must run <strong>before</strong> the token is consumed and the password written,
+	 * The revoke must run <strong>before</strong> the token is consumed and the password written,
 	 * which is only possible because the account can now be named without consuming the token.
 	 */
 	@Test
@@ -85,7 +85,7 @@ class AccountRecoveryControllerTest {
 	}
 
 	/**
-	 * The other half of the bracket (#357 D-1): revoking only first would open a window in which the OLD
+	 * The other half of the bracket (D-1): revoking only first would open a window in which the OLD
 	 * password still works — precisely the credential an attacker holds in the flow this endpoint exists
 	 * to recover from. The trailing revoke this endpoint already had closes it, so it is kept, not moved.
 	 */

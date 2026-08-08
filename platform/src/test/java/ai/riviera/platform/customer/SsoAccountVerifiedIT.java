@@ -18,7 +18,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * S8 (#113, AC-8): an SSO email is provider-verified (design D-6), so a first SSO sign-in creates the
+ * AC-8: an SSO email is provider-verified (design D-6), so a first SSO sign-in creates the
  * account already {@code email_verified = true}, and auto-linking an SSO identity to an existing
  * (unverified) password account flips that account to verified. Also exercises the V28 backfill UPDATE —
  * which cannot run against pre-existing data in a fresh-container migration — by inserting a simulated

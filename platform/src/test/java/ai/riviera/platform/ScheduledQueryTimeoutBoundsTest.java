@@ -7,13 +7,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@code riviera.scheduled.query-timeout-seconds} is <strong>range-checked at boot</strong>, because the
- * degenerate value does not look degenerate (#395, review gate).
+ * degenerate value does not look degenerate (caught at review).
  *
  * <p>The trap is a JDBC contract detail: {@code Statement#setQueryTimeout(0)} means <em>no limit</em>,
  * and {@code JdbcTemplate} treats a negative as "leave the driver's default alone" — so
  * {@code riviera.scheduled.query-timeout-seconds=0} would boot clean, log nothing, and silently restore
  * the exact unbounded scheduled query this slice exists to remove. A knob whose failure mode is "the
- * feature quietly turns itself off" is the #414/#426 house pattern's whole subject, and its answer is a
+ * feature quietly turns itself off" is a familiar house pattern's whole subject, and its answer is a
  * floor and a ceiling checked in a constructor — there is no JSR-303 validator on this classpath, so
  * {@code @Min}/{@code @Validated} would validate nothing at all.
  *

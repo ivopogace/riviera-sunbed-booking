@@ -16,7 +16,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Pins the V31 listener_id rewrite (#382, AC-7): {@code BookingConfirmationMailListener} moved from
+ * Pins the V31 listener_id rewrite (AC-7): {@code BookingConfirmationMailListener} moved from
  * the platform root into {@code notification.adapter.in}, and the Event Publication Registry's
  * {@code listener_id} embeds the listener class FQCN — restart republication matches it string-equal
  * against live listeners and dead-letters a row nothing matches (the V18 lesson). Flyway has already

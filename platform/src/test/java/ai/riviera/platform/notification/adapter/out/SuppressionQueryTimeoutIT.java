@@ -20,10 +20,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The suppression lookup is <strong>bounded</strong> (#386). {@code isSuppressed} runs on
+ * The suppression lookup is <strong>bounded</strong>. {@code isSuppressed} runs on
  * {@code AsyncMailDispatcher}'s single drainer thread behind a 100-slot queue, and Postgres's default
  * statement timeout is infinite — so before this, one wedged read stalled the entire recovery-mail
- * queue and then silently dropped every new send once the buffer filled. #368 gave the SMTP half
+ * queue and then silently dropped every new send once the buffer filled. The SMTP half already had
  * finite timeouts; the database half arrived later, with the suppression list, and had none.
  *
  * <p>The wedge here is real rather than simulated: a second connection holds an
@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * driver actually issues the cancel, which is the part that could silently not work.
  *
  * <p>The timeout is set to one second here purely to keep the test quick; production uses the
- * adapter's two-second default ({@code DEFAULT_QUERY_TIMEOUT_SECONDS}, lowered from five in #390 once
+ * adapter's two-second default ({@code DEFAULT_QUERY_TIMEOUT_SECONDS}, lowered from five once
  * a request-path caller made it a user-facing latency ceiling). Note what is <em>not</em> asserted:
  * nothing global. The whole point of the design is that {@code spring.jdbc.template.query-timeout}
  * stays unset, so this bound cannot reach {@code availability}'s {@code INSERT … ON CONFLICT} claim,

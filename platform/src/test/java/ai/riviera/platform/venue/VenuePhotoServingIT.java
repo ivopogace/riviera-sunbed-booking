@@ -32,14 +32,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Verifies the public venue-photo serving endpoint ({@code GET /api/venues/{venueId}/photos/{hash}},
- * issue #142, AC-7) at the HTTP level: the bytes come back with a <strong>revalidating</strong>
+ * AC-7) at the HTTP level: the bytes come back with a <strong>revalidating</strong>
  * cache directive + a strong {@code ETag}, a matching {@code If-None-Match} short-circuits to
  * {@code 304} <em>without a blob read</em> while the variant exists but {@code 404}s once it is
  * removed, and the route is venue-scoped, hex-guarded, and public (no session anywhere in this
  * class). Photos are seeded through the real {@link PhotoStorage} adapter against Testcontainers
  * Postgres; skipped where Docker is absent (CI runs it).
  *
- * <p><strong>#508:</strong> this class previously asserted the opposite of its two cache cases — a
+ * <p>This class previously asserted the opposite of its two cache cases — a
  * one-year {@code immutable} directive, and a {@code 304} that survived deleting the rows outright.
  * Both were sound for a <em>replace</em> (content-addressing mints a new URL) and wrong for a
  * <em>takedown</em>, which mints nothing; the assertions are rewritten, not dropped.
@@ -74,7 +74,7 @@ class VenuePhotoServingIT {
 	@Test
 	void servesBytesWithRevalidatingCacheAndStrongEtag() throws Exception {
 		// AC-7 happy path — and public by construction: no session cookie is sent anywhere here.
-		// #508: still stored and reused via 304, but revalidated, so a takedown reaches shared caches.
+		// Still stored and reused via 304, but revalidated, so a takedown reaches shared caches.
 		byte[] payload = {21, 42, 63, 84};
 		VenueId venue = newVenueWithCover("a11a01", payload);
 
@@ -104,7 +104,7 @@ class VenuePhotoServingIT {
 
 	@Test
 	void revalidationAfterRemovalIs404() throws Exception {
-		// #508: answered from the URL alone, this 304'd forever for any client holding the ETag.
+		// Answered from the URL alone, this 304'd forever for any client holding the ETag.
 		VenueId venue = newVenueWithCover("b22b03", new byte[] {1, 2, 3});
 
 		jdbc.sql("DELETE FROM venue_photo WHERE venue_id = :v").param("v", venue.value()).update();

@@ -29,12 +29,12 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The suppression list against real Postgres (#382, hashed-key shape #388/ADR-0012): the V33
+ * The suppression list against real Postgres (hashed-key shape ADR-0012): the V33
  * {@code email_suppression} table plus the {@code JdbcEmailSuppressions} adapter behind the
  * {@link EmailSuppressions} port. Pins the pieces the unit tests cannot: the unique-key upsert
  * ({@code ON CONFLICT} refreshes reason + {@code last_event_at}, keeps {@code first_suppressed_at}),
  * the normalization contract — matching is on the trimmed, lower-cased address on <em>both</em> the
- * write and the read — and, since #388, the storage posture: the row holds a {@code v1:}-tagged
+ * write and the read — and the storage posture: the row holds a {@code v1:}-tagged
  * peppered HMAC-SHA-256 key plus the cleartext domain, never the address itself, and the pepper
  * demonstrably participates in the key. Unique addresses per test method against the shared
  * container; suppressions are deliberately never deleted (the table is a do-not-mail record), so
@@ -134,10 +134,10 @@ class EmailSuppressionIT {
 				.isInstanceOf(IllegalArgumentException.class);
 		assertThatThrownBy(() -> suppressions.suppress("@no-local-part.example.com", SuppressionReason.MANUAL, at))
 				.isInstanceOf(IllegalArgumentException.class);
-		// #386: lastIndexOf('@') >= 1 passed this one, then stored an EMPTY domain.
+		// lastIndexOf('@') >= 1 passed this one, then stored an EMPTY domain.
 		assertThatThrownBy(() -> suppressions.suppress("no-domain-part@", SuppressionReason.MANUAL, at))
 				.isInstanceOf(IllegalArgumentException.class);
-		// #386 review: normalize() trims the whole address, never the domain substring, so a space right
+		// normalize() trims the whole address, never the domain substring, so a space right
 		// after the '@' survived and produced a padded domain the V34 CHECK rejects — a
 		// DataIntegrityViolationException raised on the drainer thread instead of a clean rejection here.
 		assertThatThrownBy(() -> suppressions.suppress("user@ padded.example.com", SuppressionReason.MANUAL, at))
@@ -155,7 +155,7 @@ class EmailSuppressionIT {
 	}
 
 	/**
-	 * The DB must reject every {@code domain} the Java writer could not have produced (V34, #386).
+	 * The DB must reject every {@code domain} the Java writer could not have produced (V34).
 	 * V33 carried over V32's {@code domain = lower(btrim(domain))}, and one-arg {@code btrim} strips
 	 * <em>spaces only</em> — so a tab- or newline-padded value satisfied it, and
 	 * {@code suppress("user@")} stored an <em>empty</em> domain that satisfied it too. Neither is

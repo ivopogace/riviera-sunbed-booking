@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * O8 (issue #177), AC-4: changing a venue's booking mode via the widened profile write flips the
+ * AC-4: changing a venue's booking mode via the widened profile write flips the
  * tourist booking flow. The reserve path branches on {@code SetBookingInfo.bookingMode}, resolved
  * <em>live</em> per booking attempt from {@code venue.booking_mode} — so flipping the mode changes
  * whether a subsequent reserve auto-confirms ({@code INSTANT}) or starts as a pending request

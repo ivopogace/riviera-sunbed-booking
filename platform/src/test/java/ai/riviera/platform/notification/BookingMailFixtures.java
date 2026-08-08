@@ -24,9 +24,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * event that drives the mail so the after-commit registry vehicle actually runs, and a read of what
  * the Event Publication Registry still owes for it.
  *
- * <p>Extracted at #407 from {@code RegistryMailBulkheadIT}, which had all of it inline, so the
+ * <p>Extracted from {@code RegistryMailBulkheadIT}, which had all of it inline, so the
  * saturation IT could reuse rather than re-derive it — and so the two disciplines below are stated
- * once. Renamed from {@code ConfirmationMailFixtures} at #374, when the cancellation mail became a
+ * once. Renamed from {@code ConfirmationMailFixtures} when the cancellation mail became a
  * second registry vehicle needing the identical seed: the disciplines below are properties of
  * <em>this database and this registry</em>, not of one message kind, and a name saying otherwise
  * would have invited a second near-copy. Not a Spring bean: each IT builds one from its own
@@ -46,7 +46,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public final class BookingMailFixtures {
 
 	/**
-	 * The registry's id for the confirmation listener, exactly as V31 (#382) migrated it. It embeds
+	 * The registry's id for the confirmation listener, exactly as V31 migrated it. It embeds
 	 * the listener FQCN and signature, and republication matches it string-equal, so drift here
 	 * dead-letters every outstanding row.
 	 */
@@ -54,7 +54,7 @@ public final class BookingMailFixtures {
 			+ "BookingConfirmationMailListener.on(ai.riviera.platform.booking.events.BookingConfirmed)";
 
 	/**
-	 * The registry's id for the cancellation listener (#374). It needs no migration, unlike
+	 * The registry's id for the cancellation listener. It needs no migration, unlike
 	 * {@link #LISTENER_ID}: the class is new, so its default id is correct on first write and there is
 	 * no historical spelling to rewrite. Pinned the same two ways — {@code MailOutboxScopeTest} against
 	 * the module prefix, {@code BookingCancellationMailIT} against what the running registry writes.
@@ -63,17 +63,17 @@ public final class BookingMailFixtures {
 			+ "BookingCancellationMailListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
 
 	/**
-	 * The registry's id for the payment-due listener (#373). Like {@link #CANCELLATION_LISTENER_ID} it
+	 * The registry's id for the payment-due listener. Like {@link #CANCELLATION_LISTENER_ID} it
 	 * needs no migration — the class is new, so its default id is correct on first write.
 	 */
 	public static final String PAYMENT_DUE_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
 			+ "RequestPaymentDueMailListener.on(ai.riviera.platform.booking.events.BookingPaymentDue)";
 
-	/** The registry's id for the request-declined listener (#124); new class, no migration needed. */
+	/** The registry's id for the request-declined listener; new class, no migration needed. */
 	public static final String REQUEST_DECLINED_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
 			+ "RequestDeclinedMailListener.on(ai.riviera.platform.booking.events.BookingRequestDeclined)";
 
-	/** The registry's id for the request-expired listener (#124); new class, no migration needed. */
+	/** The registry's id for the request-expired listener; new class, no migration needed. */
 	public static final String REQUEST_EXPIRED_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
 			+ "RequestExpiredMailListener.on(ai.riviera.platform.booking.events.BookingRequestExpired)";
 
@@ -125,7 +125,7 @@ public final class BookingMailFixtures {
 	}
 
 	/**
-	 * The cancellation an IT publishes to drive the mail (#374). {@code refundMinor} doubles as the
+	 * The cancellation an IT publishes to drive the mail. {@code refundMinor} doubles as the
 	 * amount fragment {@link #outstandingPublicationsFor} matches on, so callers pass an improbable
 	 * value here for the same reason confirmations do.
 	 */
@@ -136,7 +136,7 @@ public final class BookingMailFixtures {
 	}
 
 	/**
-	 * The payment-due fact an IT publishes to drive the mail (#373). {@code amountMinor} doubles as the
+	 * The payment-due fact an IT publishes to drive the mail. {@code amountMinor} doubles as the
 	 * fragment {@link #outstandingPublicationsFor} matches on, so callers pass an improbable value for
 	 * the reason the class Javadoc gives.
 	 */
@@ -146,12 +146,12 @@ public final class BookingMailFixtures {
 				new SetId(set.setId()), date, payBy, amountMinor, "EUR");
 	}
 
-	/** The decline fact an IT publishes to drive the mail (#124); the date is the matching fragment. */
+	/** The decline fact an IT publishes to drive the mail; the date is the matching fragment. */
 	public BookingRequestDeclined requestDeclinedOf(SetRef set, long bookingId, LocalDate date) {
 		return new BookingRequestDeclined(new BookingId(bookingId), new SetId(set.setId()), date);
 	}
 
-	/** The expiry fact an IT publishes to drive the mail (#124); the date is the matching fragment. */
+	/** The expiry fact an IT publishes to drive the mail; the date is the matching fragment. */
 	public BookingRequestExpired requestExpiredOf(SetRef set, long bookingId, LocalDate date) {
 		return new BookingRequestExpired(new BookingId(bookingId), new SetId(set.setId()), date);
 	}
@@ -167,7 +167,7 @@ public final class BookingMailFixtures {
 	}
 
 	/**
-	 * The amount-fragment read generalized (#124): the request-outcome events carry no amount, so
+	 * The amount-fragment read, generalized: the request-outcome events carry no amount, so
 	 * their ITs match on the booking-<em>date</em> fragment instead — unique by this class's
 	 * dates-per-IT discipline, and just as improbable to collide as an amount.
 	 */

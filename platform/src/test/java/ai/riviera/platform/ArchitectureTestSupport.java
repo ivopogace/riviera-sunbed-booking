@@ -14,17 +14,16 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Shared support for the architecture (fitness-function) tests — extracted per the #94/#95
- * review-gate notes on epic #93 once a fifth arch-test class arrived (issue #96): one
- * production classpath scan instead of one per test class, and one copy each of the
- * module/surface package arithmetic, the constant-pool bytecode reader, and the
- * violation-report assertion, instead of a copy per class.
+ * Shared support for the architecture (fitness-function) tests — extracted once a fifth
+ * arch-test class arrived: one production classpath scan instead of one per test class, and
+ * one copy each of the module/surface package arithmetic, the constant-pool bytecode reader,
+ * and the violation-report assertion, instead of a copy per class.
  *
  * <p>{@link #PRODUCTION_CLASSES} is the single production-code import every rule checks
  * against (tests excluded); {@link #fixtureClasses(String)} imports a deliberately
  * mis-shaped fixture tree (test scope included) so negative cases are proven without
- * breaking production code — the {@code ai.riviera.placementfixture} mechanism from
- * issue #95. The package arithmetic follows the ADR-0007 layout,
+ * breaking production code — the {@code ai.riviera.placementfixture} mechanism. The package
+ * arithmetic follows the ADR-0007 layout,
  * {@code <base>.<module>.<surface>...}, and takes the base package as a parameter so the
  * same arithmetic runs against production and fixture trees.
  *
@@ -33,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * uses {@link #bytecode(Path)}, and {@code notification}'s
  * {@code MailListenerExecutorArchitectureTest} uses {@link #productionClasses()} — it must
  * sit in {@code notification.adapter.in} to name the package-private mail-executor bean
- * constant, but its rule is only meaningful over main-source classes (#409). This is a
+ * constant, but its rule is only meaningful over main-source classes. This is a
  * test-scope utility, not a published surface.
  */
 public final class ArchitectureTestSupport {

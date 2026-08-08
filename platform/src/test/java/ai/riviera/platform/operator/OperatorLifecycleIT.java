@@ -24,11 +24,11 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Module test for the {@code operator} lifecycle transitions added by #128 (AC-3, AC-4) against
+ * Module test for the {@code operator} lifecycle transitions (AC-3, AC-4) against
  * Testcontainers Postgres — the real {@link OperatorLifecycle} bean over {@code JdbcOperators} and the
- * schema. Suspension is the transition #128 needs to exist before session revocation has anything to
- * hang off: before this slice, {@code SUSPENDED} was a token the enum and the V29 check constraint
- * both knew but nothing in the application could ever write.
+ * schema. Suspension is the prerequisite transition session revocation hangs off: before this slice,
+ * {@code SUSPENDED} was a token the enum and the V29 check constraint both knew but nothing in the
+ * application could ever write.
  *
  * <p>The guard lives in the {@code UPDATE … WHERE status = :expected}, so a transition is atomic and
  * two concurrent suspends cannot both report success — the same shape as the shipped approve/reject
@@ -115,7 +115,7 @@ class OperatorLifecycleIT {
 	}
 
 	/**
-	 * #357: the pre-read that lets the edge revoke an operator's sessions <em>before</em> the suspension
+	 * The pre-read that lets the edge revoke an operator's sessions <em>before</em> the suspension
 	 * commits. It must apply exactly the ACTIVE-only rule the rest of the module resolves by — a username
 	 * for a PENDING/REJECTED/SUSPENDED account would revoke sessions for a transition that is then refused.
 	 */
@@ -144,9 +144,9 @@ class OperatorLifecycleIT {
 	}
 
 	/**
-	 * #375: the approval outcome reports the address the operator registered with, so the edge can mail
+	 * The approval outcome reports the address the operator registered with, so the edge can mail
 	 * it the "you can sign in now" notice without a second read — the same reasoning that put the
-	 * username on {@link OperatorLifecycleOutcome.Changed} (#128/#357). The address comes from the
+	 * username on {@link OperatorLifecycleOutcome.Changed}. The address comes from the
 	 * {@code RETURNING} clause of the PENDING-guarded {@code UPDATE}, which is what ties it to the call
 	 * that actually flipped the row rather than to the id that was asked about.
 	 */

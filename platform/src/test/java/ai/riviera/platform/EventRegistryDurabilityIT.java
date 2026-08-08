@@ -22,7 +22,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Pins the Event Publication Registry's durability configuration (#371 AC-5), because that
+ * Pins the Event Publication Registry's durability configuration (AC-5), because that
  * configuration <em>is</em> the booking-confirmation email's idempotency and retry story — there is
  * no dedupe table behind it. Two properties carry the whole contract, and a future edit that flips
  * either would silently change delivery semantics:

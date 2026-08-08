@@ -36,8 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The platform-admin photo takedown end to end (#504) — the "remove" half of report-and-remove
- * (#230). It proves the thing the operator's own delete cannot do: reach a venue the caller does
+ * The platform-admin photo takedown end to end — the "remove" half of report-and-remove.
+ * It proves the thing the operator's own delete cannot do: reach a venue the caller does
  * <strong>not</strong> own. The venue-scoped {@code DELETE /api/venues/{v}/photos/{slot}} answers a
  * non-owner {@code 403 NOT_VENUE_OWNER} before it looks at the slot (invariant #13,
  * {@code CrossVenueDenialIT}) — i.e. it refuses exactly the case moderation exists for — so the
@@ -55,7 +55,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Postgres, and each venue gets its own single-slot cover, so the "the URL 404s afterwards"
  * assertion is honest: no other slot duplicates those bytes, which is the one case where the
  * content-addressed serving read would keep answering (V24's deliberately non-unique
- * {@code (venue_id, content_hash)} index, #142 F-2). Skipped where Docker is absent; CI runs it.
+ * {@code (venue_id, content_hash)} index). Skipped where Docker is absent; CI runs it.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

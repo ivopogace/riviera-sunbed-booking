@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * The one link this module builds (#373). Its guarantees are all boundary conditions: an absolute
+ * The one link this module builds. Its guarantees are all boundary conditions: an absolute
  * origin, no doubled or missing slash, and a code that survives into the path unmangled.
  *
  * <p>Validation is at construction rather than per send, because the failure it prevents is a

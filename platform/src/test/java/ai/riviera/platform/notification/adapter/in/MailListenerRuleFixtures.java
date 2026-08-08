@@ -9,7 +9,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * The deliberately-shaped listeners {@link MailListenerExecutorArchitectureTest} proves itself
- * against (#409). They are <strong>load-bearing test scope</strong> — do not "tidy" them away —
+ * against. They are <strong>load-bearing test scope</strong> — do not "tidy" them away —
  * and they earn their keep twice:
  *
  * <ol>
@@ -76,7 +76,7 @@ final class MailListenerRuleFixtures {
 		}
 	}
 
-	/** #409 hole 2: right executor, no transactional binding — no publication, no commit barrier. */
+	/** Right executor, no transactional binding — no publication, no commit barrier. */
 	static class PlainAsyncListener {
 
 		@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)

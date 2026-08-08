@@ -25,7 +25,7 @@ import ai.riviera.platform.shared.ResubmissionOutcome;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The sweep-throttle policy of #405 (AC-1, AC-3, AC-4, AC-7), driven at the application boundary
+ * The sweep-throttle policy (AC-1, AC-3, AC-4, AC-7), driven at the application boundary
  * against a fake {@link MailOutbox} and a clock the test moves by hand.
  *
  * <p>What is <em>not</em> under test here is duplicate mail: the registry prevents that itself, one
@@ -152,7 +152,7 @@ class MailResubmissionServiceTest {
 	/**
 	 * AC-4. {@code republish-outstanding-events-on-restart=true} means the platform has just resubmitted
 	 * every outstanding publication itself, from {@code afterSingletonsInstantiated}. A press landing in
-	 * that window is the restart race #405 names, and it is refused for the same reason any other rapid
+	 * that window is exactly the restart race this guard exists to catch, and it is refused for the same reason any other rapid
 	 * second press is.
 	 */
 	@Test

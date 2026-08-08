@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S8 (#113) review fix: the recovery-email send is <strong>best-effort</strong>. A mail-transport failure
+ * The recovery-email send is <strong>best-effort</strong>. A mail-transport failure
  * must never fail the triggering request (registration would 500 <em>after</em> the account+session
  * already exist) nor turn forgot-password's uniform 204 into a 500-vs-204 account-enumeration oracle (D-8).
  * Here the {@link Mailer} is replaced with one that throws on every send (simulating a mail-transport

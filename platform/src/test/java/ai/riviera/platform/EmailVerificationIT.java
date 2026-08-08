@@ -29,12 +29,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S8 (#113) email-verification journey end-to-end against real Postgres + the mock mailer (AC-7, AC-9):
+ * Email-verification journey end-to-end against real Postgres + the mock mailer (AC-7, AC-9):
  * registering signs the customer in AND issues a verification link via the {@code Mailer} port; visiting
  * the link (the SPA-issued {@code POST /api/auth/customer/verify-email}) marks the email verified and
  * {@code /api/auth/me} flips {@code emailVerified} true; a second use of the token, and a bogus token,
  * both fail with the neutral {@code 400 INVALID_OR_EXPIRED_TOKEN}. The account stays usable throughout
- * (soft verification). Each request carries a unique {@code X-Forwarded-For} (#127 rate-bucket isolation).
+ * (soft verification). Each request carries a unique {@code X-Forwarded-For} (rate-bucket isolation).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -98,13 +98,13 @@ class EmailVerificationIT {
 	}
 
 	/**
-	 * AC-6 (#400): the withheld fact on the wire, through the <strong>real</strong> chain — bean wiring,
+	 * AC-6: the withheld fact on the wire, through the <strong>real</strong> chain — bean wiring,
 	 * the peppered-HMAC {@code email_suppression} read, and the published field name. Every unit test on
 	 * this path mocks the seam it proves, so this is what catches a wiring break or a pepper mismatch.
 	 *
 	 * <p>The row is written in a differently-cased, space-padded form of the address the caller signs in
 	 * with, so dropping {@code Emails.normalize} on either side fails this test rather than passing on
-	 * byte-identical inputs (the #390 G-4 lesson).
+	 * byte-identical inputs.
 	 */
 	@Test
 	void reportsWithheldForASuppressedAddress() throws Exception {
