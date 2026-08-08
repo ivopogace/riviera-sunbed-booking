@@ -194,7 +194,7 @@ export class FindBooking {
 
 /**
  * Map a lookup failure to displayable copy. `404` → not found (echoes the guest's own on-screen
- * input, not a log — invariant #7); `429` → the #56 rate-limit retry copy (the `operator-auth`
+ * input, not a log — invariant #7); `429` → the rate-limit retry copy (the `operator-auth`
  * `status === 429` precedent); anything else (transport / 5xx) → a generic retry.
  */
 function messageFor(error: unknown, code: string): string {

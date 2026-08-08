@@ -4,7 +4,7 @@
  * so it lives beside `money.ts` rather than inside it: they share a divisor, not a concept.
  *
  * <p>Basis points are the contract everywhere — `venue_commission_bps_check`, `NewVenueCommand`, and
- * A7's admin write all speak bps, and 1500 means 15.00%. Percent is a **rendering**, and the one
+ * the admin rate write all speak bps, and 1500 means 15.00%. Percent is a **rendering**, and the one
  * place it travels the other way (an editor) must show the exact integer it will store, which is why
  * {@link commissionPercentToBps} returns that integer rather than writing it anywhere itself.
  */

@@ -16,7 +16,7 @@ export function defaultBookingDate(now: Date): string {
 
 /**
  * **Today** in Europe/Tirane (invariant #6), as an ISO `YYYY-MM-DD` string — the day staff are
- * working in the U8 daily view. Pure (computed from the injected `now`); derived via `Intl` with an
+ * working in the operator daily view. Pure (computed from the injected `now`); derived via `Intl` with an
  * explicit time zone, never `toISOString()` (which is UTC and can roll the day late in the evening).
  */
 export function todayBookingDate(now: Date): string {
