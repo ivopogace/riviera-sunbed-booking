@@ -3,7 +3,7 @@ package ai.riviera.platform.shared;
 import java.util.Collection;
 
 /**
- * The platform's SIGTERM→SIGKILL grace, and how the pools that drain on shutdown divide it (#456).
+ * The platform's SIGTERM→SIGKILL grace, and how the pools that drain on shutdown divide it.
  *
  * <p><strong>Why the budget is platform-wide and cannot be stated in a module.</strong> Pools that
  * drain are separate beans — or, for the recovery dispatcher, not beans at all — and Spring's
@@ -57,7 +57,7 @@ public final class ShutdownBudget {
 	public static final int MAIL_POOL_CLAIM_MS = 10_000;
 
 	/**
-	 * {@code booking}'s refund bulkhead (#404), short on purpose: an abandoned refund is replayed from
+	 * {@code booking}'s refund bulkhead, short on purpose: an abandoned refund is replayed from
 	 * the Event Publication Registry at the next start under the idempotency key
 	 * {@code booking-<id>-refund}, so the drain only needs to catch the sub-second common case. The
 	 * pathological gateway round-trip is precisely the one it is safe to give up on.
