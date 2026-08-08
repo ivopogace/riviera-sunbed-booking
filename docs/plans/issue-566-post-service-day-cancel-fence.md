@@ -241,15 +241,15 @@ mocked suite does not construct; the unit spec is the proportionate pin.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Load `riviera-local-debug`, then write the failing `BookingCutoffTest` cases for
-AC-1/AC-2 (phase 0 step 1).
+**Next action:** Write the failing `RefundPolicyTest.closedWindowRefundsNothing` (AC-3) and migrate
+the two existing cases to the enum signature.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `CancellationWindow` + the `BookingCutoff` boundary | | |
-| 1 — `RefundPolicy` third tier | | |
+| 0 — `CancellationWindow` + the `BookingCutoff` boundary | ✅ | `dc6f9cc` |
+| 1 — `RefundPolicy` third tier | ⏳ | |
 | 2 — Fence the cancel use case + its error code | | |
 | 3 — Fence the view + FE pin | | |
 | 4 — Docs, ADR-0005 amendment, close-out | | |
@@ -380,6 +380,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-08 | Phase 0 — the window classification | Any other place deriving a cancellation decision from a date | `grep -rn "freeCancellationOpen\|cancellationWindow\|isBefore(.*bookingDate)" platform/src/main` | Only `BookingCutoff` + its one caller `CancellationPolicy` | None needed — the rule was already centralized; the classification replaced the boolean in place |
+| 2026-08-08 | Phase 0 — the fence's reach | Every caller of the guarded `cancelConfirmed` transition | `grep -rln "cancelConfirmed" platform/src/main` | `CancelBookingService` (guest), `WeatherRefundService` (operator), plus the port + adapter + row record | Fence the guest path only; AC-7 pins the weather path staying open (A-3) |
 
 ---
 

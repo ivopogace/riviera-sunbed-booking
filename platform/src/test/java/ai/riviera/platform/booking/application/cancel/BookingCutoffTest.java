@@ -8,6 +8,9 @@ import java.time.ZonedDateTime;
 
 import org.junit.jupiter.api.Test;
 
+import ai.riviera.platform.booking.domain.CancellationWindow;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -55,14 +58,36 @@ class BookingCutoffTest {
 	}
 
 	@Test
-	void freeCancellationOpenSharesTheEveningBeforeBoundary() {
-		// U6 (invariant #4: one rule, two jobs) — free cancellation closes at the same instant
-		// booking closes. Open at 17:59 the evening before; closed at 18:00 and on the day.
-		assertTrue(at(ZonedDateTime.of(2026, 7, 14, 17, 59, 0, 0, TIRANE))
-				.freeCancellationOpen(CUTOFF, BOOKING_DATE));
-		assertFalse(at(ZonedDateTime.of(2026, 7, 14, 18, 0, 0, 0, TIRANE))
-				.freeCancellationOpen(CUTOFF, BOOKING_DATE));
-		assertFalse(at(ZonedDateTime.of(2026, 7, 15, 9, 0, 0, 0, TIRANE))
-				.freeCancellationOpen(CUTOFF, BOOKING_DATE));
+	void cancellationWindowSpansFreeThenLate() {
+		// FREE shares the evening-before boundary that closes booking (invariant #4: one rule, two jobs).
+		assertEquals(CancellationWindow.FREE, at(ZonedDateTime.of(2026, 7, 14, 17, 59, 0, 0, TIRANE))
+				.cancellationWindow(CUTOFF, BOOKING_DATE));
+		assertEquals(CancellationWindow.LATE, at(ZonedDateTime.of(2026, 7, 14, 18, 0, 0, 0, TIRANE))
+				.cancellationWindow(CUTOFF, BOOKING_DATE));
+		assertEquals(CancellationWindow.LATE, at(ZonedDateTime.of(2026, 7, 14, 23, 59, 0, 0, TIRANE))
+				.cancellationWindow(CUTOFF, BOOKING_DATE));
+	}
+
+	@Test
+	void cancellationWindowClosesWhenServiceDayStarts() {
+		// The fence: once the guest can start consuming the stay, cancelling is refused.
+		assertEquals(CancellationWindow.CLOSED, at(ZonedDateTime.of(2026, 7, 15, 0, 0, 0, 0, TIRANE))
+				.cancellationWindow(CUTOFF, BOOKING_DATE));
+		assertEquals(CancellationWindow.CLOSED, at(ZonedDateTime.of(2026, 7, 15, 9, 0, 0, 0, TIRANE))
+				.cancellationWindow(CUTOFF, BOOKING_DATE));
+		assertEquals(CancellationWindow.CLOSED, at(ZonedDateTime.of(2026, 7, 22, 9, 0, 0, 0, TIRANE))
+				.cancellationWindow(CUTOFF, BOOKING_DATE));
+	}
+
+	@Test
+	void cancellationWindowIgnoresACutoffLaterThanMidnight() {
+		// A 23:30 cutoff leaves FREE and CLOSED 30 minutes apart, not inverted.
+		LocalTime lateCutoff = LocalTime.of(23, 30);
+		assertEquals(CancellationWindow.FREE, at(ZonedDateTime.of(2026, 7, 14, 23, 29, 0, 0, TIRANE))
+				.cancellationWindow(lateCutoff, BOOKING_DATE));
+		assertEquals(CancellationWindow.LATE, at(ZonedDateTime.of(2026, 7, 14, 23, 31, 0, 0, TIRANE))
+				.cancellationWindow(lateCutoff, BOOKING_DATE));
+		assertEquals(CancellationWindow.CLOSED, at(ZonedDateTime.of(2026, 7, 15, 0, 1, 0, 0, TIRANE))
+				.cancellationWindow(lateCutoff, BOOKING_DATE));
 	}
 }

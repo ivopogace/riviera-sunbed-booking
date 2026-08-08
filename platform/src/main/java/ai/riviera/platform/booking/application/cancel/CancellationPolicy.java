@@ -3,6 +3,7 @@ package ai.riviera.platform.booking.application.cancel;
 import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.booking.application.view.BookingRecord;
+import ai.riviera.platform.booking.domain.CancellationWindow;
 import ai.riviera.platform.booking.domain.RefundPolicy;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetBookingFacts;
@@ -39,7 +40,8 @@ public class CancellationPolicy {
 	public RefundQuote quote(BookingRecord booking) {
 		SetBookingInfo set = setFacts.setBookingInfo(booking.setId()).orElseThrow(() ->
 				new IllegalStateException("no set info for set " + booking.setId().value()));
-		boolean beforeCutoff = cutoff.freeCancellationOpen(set.bookingCutoff(), booking.bookingDate());
+		CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), booking.bookingDate());
+		boolean beforeCutoff = window == CancellationWindow.FREE;
 		int lateBps = beforeCutoff ? 0 : rates.lateCancelRefundBps(booking.venueId()).orElse(0);
 		long refundMinor = RefundPolicy.refundMinor(booking.amountMinor(), beforeCutoff, lateBps);
 		return new RefundQuote(set, beforeCutoff, refundMinor);
