@@ -9,7 +9,7 @@ import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 
 /**
- * Tells a self-registered operator that a platform admin approved it (#375, Email S7). Until this
+ * Tells a self-registered operator that a platform admin approved it. Until this
  * slice the only signal was retrying sign-in until it stopped failing.
  *
  * <p><strong>Edge machinery, like every other mail decision</strong> (RV-BE-11): the {@code operator}
@@ -25,7 +25,7 @@ import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
  *
  * <p><strong>The link reuses {@code riviera.recovery.link-base-url}</strong> rather than introducing a
  * second origin property. Despite the name, that value is already documented as the absolute origin
- * emailed links point at (#368) and is already an env-injected deploy secret — a second knob would be a
+ * emailed links point at and is already an env-injected deploy secret — a second knob would be a
  * second thing to mis-set, with a dead link as the symptom either way.
  */
 @Component
@@ -40,7 +40,7 @@ class OperatorApprovalMail {
 	/**
 	 * The link is built <strong>here, once</strong>, not per send: it carries no per-request data, so a
 	 * malformed origin should fail the deploy — the posture {@link RecoveryProperties} already takes for
-	 * its TTLs (#426) — rather than raise {@code 500} on an approval that has already committed.
+	 * its TTLs — rather than raise {@code 500} on an approval that has already committed.
 	 */
 	OperatorApprovalMail(MailSender mails, RecoveryProperties properties) {
 		this.mails = mails;

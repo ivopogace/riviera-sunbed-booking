@@ -10,7 +10,7 @@ import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 /**
- * Self-service right-to-erasure endpoint (#101 [D5]): a signed-in customer erases their own account +
+ * Self-service right-to-erasure endpoint: a signed-in customer erases their own account +
  * contact PII. Under {@code /api/me/**}, session-principal-scoped (BOLA-safe — no id in the path; the
  * account is resolved from the session via {@link CurrentCustomer}, never a request parameter).
  * Platform-edge machinery (RV-BE-11) — it only reads the security context and revokes sessions; the scrub
@@ -41,11 +41,11 @@ class MyErasureController {
 
 	/**
 	 * Erase the signed-in customer's account + contact PII, with the session revoke <strong>bracketing</strong>
-	 * the scrub (#357).
+	 * the scrub.
 	 *
 	 * <p><strong>Before</strong>, because the two effects are not atomic and never can be — the scrub belongs
 	 * to the {@code customer} module's transaction, the session deletes to Spring Session's repository, so a
-	 * {@code @Transactional} here would look atomic without being atomic (#344 D-1). Ordered the other way, a
+	 * {@code @Transactional} here would look atomic without being atomic (D-1). Ordered the other way, a
 	 * transient revoke failure raised {@code 500} <em>after</em> the PII was gone: the tourist is told the
 	 * erasure failed, their sessions are still alive on an erased account, and no retry restores either.
 	 * Revoking first leaves the PII intact however the revoke fails — including <em>partway</em>, since
