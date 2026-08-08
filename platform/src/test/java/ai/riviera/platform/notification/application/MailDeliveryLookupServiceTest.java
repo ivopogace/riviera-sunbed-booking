@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The assembly behind the admin mail-delivery view (#380): address → guest contact → bookings →
+ * The assembly behind the admin mail-delivery view: address → guest contact → bookings →
  * attempts, with the venue name read live.
  *
  * <p>Three of these specs pin decisions rather than mechanics. The <strong>same empty answer</strong>

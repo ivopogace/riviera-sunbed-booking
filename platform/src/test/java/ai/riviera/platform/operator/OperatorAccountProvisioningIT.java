@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Module test for the {@code operator} credential ports (issue #74, AC-1/AC-2) against Testcontainers
+ * Module test for the {@code operator} credential ports (AC-1/AC-2) against Testcontainers
  * Postgres — the real {@link OperatorAccounts}/{@link OperatorProvisioning} beans over
  * {@code JdbcOperators} and the V17 {@code password_hash} column. Proves provisioning stores a
  * per-operator credential, {@code findByUsername} reads it back with the right {@code active} flag,

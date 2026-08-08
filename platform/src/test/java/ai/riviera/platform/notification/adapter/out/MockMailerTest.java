@@ -16,8 +16,8 @@ import ai.riviera.platform.notification.application.PaymentDueMail;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit spec for {@link MockMailer} (S8 #113, AC-10 mock side; extended for the booking-confirmation
- * kind in #371): it records each email instead of sending, and {@link MockMailer#lastTo} returns the
+ * Unit spec for {@link MockMailer} (AC-10 mock side; extended for the booking-confirmation
+ * kind): it records each email instead of sending, and {@link MockMailer#lastTo} returns the
  * most recent one for an address — the hook a backend IT uses to pull the tokenized link out of a
  * verify/reset journey, or to assert what a confirmation carried.
  */

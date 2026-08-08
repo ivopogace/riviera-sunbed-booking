@@ -15,7 +15,7 @@ import ai.riviera.platform.customer.vocabulary.EraseOutcome;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit spec for the GDPR right-to-erasure outcome logic (Slice 1 of #101), against a hand fake of the
+ * Unit spec for the GDPR right-to-erasure outcome logic, against a hand fake of the
  * {@link AccountErasureStore} port (no Spring, no DB). The real tombstone SQL, the RESTRICT-FK survival
  * of retained booking/payment/payout rows, the SSO/token child deletes, and tombstone-email uniqueness
  * are proven separately by {@code AccountErasureIT}.

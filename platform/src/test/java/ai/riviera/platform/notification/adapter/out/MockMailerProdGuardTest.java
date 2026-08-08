@@ -6,7 +6,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the fail-fast prod guard (S8 #113, AC-10): the mock mailer must never run in production. Under
+ * Verifies the fail-fast prod guard (AC-10): the mock mailer must never run in production. Under
  * {@code prod} without {@code mailer} the guard bean is created and aborts startup; under {@code prod,mailer}
  * (the intended production activation) and under the default profile the guard is absent and startup
  * succeeds. Uses {@link ApplicationContextRunner} — no Spring Boot context, fast, no Docker (sibling to

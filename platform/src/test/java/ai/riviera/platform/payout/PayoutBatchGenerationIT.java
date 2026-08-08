@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * AC-2/AC-3/AC-7 (issue #12): the weekly BKT report generates one persisted {@link PayoutBatch} per
+ * AC-2/AC-3/AC-7: the weekly BKT report generates one persisted {@link PayoutBatch} per
  * venue for a period with {@code total = Σ(ACCRUAL.net) − Σ(REVERSAL.net)} (integer minor units),
  * starts batches {@code DRAFT}, is idempotent on re-generation (refreshes a draft, freezes a
  * reported/settled one), and advances status DRAFT→REPORTED→SETTLED while rejecting illegal moves.

@@ -17,7 +17,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * The {@code booking.spi.ConfirmationMailDelivery} answer (#390): the same pair the
+ * The {@code booking.spi.ConfirmationMailDelivery} answer: the same pair the
  * {@code BookingConfirmed} listener consults before sending — resolve the address via
  * {@code customer}, then the do-not-mail list — so the confirmation surface's claim and the send
  * decision cannot diverge.

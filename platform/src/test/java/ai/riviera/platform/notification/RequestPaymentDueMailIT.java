@@ -30,7 +30,7 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The accepted request's payment-due email end-to-end (#373, Email S5) — the {@code notification}
+ * The accepted request's payment-due email end-to-end — the {@code notification}
  * listener on {@code BookingPaymentDue}, through the Event Publication Registry, to the recording
  * {@link MockMailer}.
  *
@@ -220,7 +220,7 @@ class RequestPaymentDueMailIT {
 
 	/**
 	 * AC-9 (the re-drive's live half). {@code MailOutboxScopeTest} pins the module prefix; this pins
-	 * the constant against the id the running registry actually writes, so #405's admin re-drive cannot
+	 * the constant against the id the running registry actually writes, so the admin re-drive cannot
 	 * silently skip this kind. Read from the archive, because a delivered mail's row is moved there the
 	 * moment the listener returns.
 	 */

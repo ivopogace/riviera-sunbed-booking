@@ -12,7 +12,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Verifies the V8 migration (issue #8, PR #53) creates the Spring Modulith Event Publication
+ * Verifies the V8 migration creates the Spring Modulith Event Publication
  * Registry tables that the async {@code @ApplicationModuleListener} path relies on (invariant #12:
  * Flyway owns the schema, not auto-init). ARCHIVE completion mode needs <strong>both</strong> the
  * live {@code event_publication} table and the {@code event_publication_archive} table. Confirms the
