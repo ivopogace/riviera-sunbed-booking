@@ -244,9 +244,9 @@ mocked suite does not construct; the unit spec is the proportionate pin.
 
 ## Execution status
 
-**Stage pointer:** `PR #574 — review-fix round pushed; Sonar gate next`
+**Stage pointer:** `DONE — merged via PR #574`
 
-**Next action:** Re-check CI on the fix push, then pull the Sonar issue list for PR 574 per §2.
+**Next action:** None — the slice is complete. Follow-ups live on #575 (completion sweep) and #576 (the uncapped pay window).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -265,6 +265,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| S-1 | sonar gate | Pulled the reported list per §2 (not the badge): **0 new issues, 0 vulnerabilities, 0 code smells, 0 duplicated blocks**, new-code coverage **91.3%** over 158 new lines. The 2 uncovered lines are `CancelBookingService`'s `case CLOSED -> throw` — unreachable by design, since the fence returns before `tierFor`. Kept: the exhaustive switch is the convention, and an unreachable throw beats a silent wrong tier | cleared — nothing to fix |
 | F-1 | CI — `Repo hygiene (diff-scoped)` on `1a1e785` | `BookingControllerIT.java` and `BookingViewIT.java` were changed by the diff but absent from the File-structure section | fixed — both listed, guard green |
 | F-2 | review gate (`/code-review`, high) | **A booking can reach `CONFIRMED` after its service day opened** (uncapped Request-to-Book pay window, or a late webhook) — the fence then leaves that guest with no cancellation path at all, where before they had the `LATE` tier | **deferred → issue #576.** Verified exact: `RequestProperties`'s own Javadoc says `payWindow` "has no such cap". This is a pre-existing **invariant #4** hole (the platform sells a day already underway) that the fence made visible; the fix belongs at the point of sale, not by relaxing the fence |
 | F-3 | review gate | A `409 CANCELLATION_WINDOW_CLOSED` rendered "please try again" and left the Cancel button up — a newly reachable, unrecoverable loop when the window closes between render and confirm | fixed — `booking-view.ts` reads the code, shows a specific message, and re-loads the detail so the affordance withdraws; pinned by a new spec |
@@ -392,12 +393,12 @@ ADR-0005, which `CancellationWindow`'s Javadoc points at.
 
 **Files:** Modify `docs/adr/0005-…md`, `CONTEXT.md`, `CLAUDE.md`, this plan
 
-- [ ] **Step 1:** Amend ADR-0005 with the third tier, in the style of its #428 amendment.
-- [ ] **Step 2:** Run `riviera-docs-freshness` over the slice's diff; patch what it flags.
-- [ ] **Step 3:** Run `node scripts/check-plan-file-structure.mjs --diff origin/main` and
+- [x] **Step 1:** Amend ADR-0005 with the third tier, in the style of its #428 amendment.
+- [x] **Step 2:** Run `riviera-docs-freshness` over the slice's diff; patch what it flags.
+- [x] **Step 3:** Run `node scripts/check-plan-file-structure.mjs --diff origin/main` and
       `node scripts/check-inline-comments.mjs --diff origin/main`.
-- [ ] **Step 4:** File the completion-sweep follow-up issue (A-2) and link it here.
-- [ ] **Step 5:** Finalize Execution status citing `merged via PR #NN`; commit.
+- [x] **Step 4:** Completion-sweep follow-up filed as **#575**; the review gate's deferred finding as **#576**.
+- [x] **Step 5:** Execution status finalized; **merged via PR #574**.
 
 ---
 
@@ -445,7 +446,7 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] **Frontend** — no component change; the added spec pins the server-driven affordance.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] **Close-out written in THIS PR** — **merged via PR #574**.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
 
