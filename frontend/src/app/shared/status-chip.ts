@@ -18,9 +18,9 @@ const FILLS: Record<string, string> = {
 };
 
 /**
- * The booking-status pill, shared by the booking detail view (#138) and the "My bookings" list
- * (#139). Tailwind twin of the `shared/_glass.scss` `status-chip` mixin, ported at #477 — the last
- * recipe in that file, which retires with it. A directive, not a mixin: Tailwind has no CSS-level
+ * The booking-status pill, shared by the booking detail view and the "My bookings" list.
+ * Tailwind twin of the retired `shared/_glass.scss` `status-chip` mixin — the last
+ * recipe that file carried. A directive, not a mixin: Tailwind has no CSS-level
  * sharing primitive, so a recipe applied to arbitrary hosts moves to the directive layer (the
  * `shared/amenity-chip.ts` precedent).
  *
@@ -37,7 +37,7 @@ const FILLS: Record<string, string> = {
  * <p>The marker classes `chip` and `chip--*` are emitted by the directive rather than left on the
  * consuming template, so the vocabulary and the styling it selects cannot drift apart and no
  * consumer can forget them. Note they are **not** load-bearing for any existing test — unlike
- * `amenity-chip`'s markers, nothing queried `.chip` in the DOM before #477 (both e2e suites select
+ * `amenity-chip`'s markers, nothing queries `.chip` in the DOM (both e2e suites select
  * the chip by `data-testid`, and `booking-status.spec.ts` asserts the modifier as *data* out of
  * {@link STATUS_META}, not as a rendered class). They are kept because that `STATUS_META` vocabulary
  * is what the modifier means, so rendering it keeps the DOM and the vocabulary in agreement — and

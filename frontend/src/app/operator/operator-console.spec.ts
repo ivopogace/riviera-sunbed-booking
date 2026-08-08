@@ -31,7 +31,7 @@ function venueMap(name: string, id = VENUE): VenueMapView {
   };
 }
 
-/** BehaviorSubject-backed route stub — the param-change tests (#180) push new maps through it. */
+/** BehaviorSubject-backed route stub — the param-change tests push new maps through it. */
 function routeStub(venueId: string): {
   params$: BehaviorSubject<ParamMap>;
   route: Partial<ActivatedRoute>;
@@ -65,8 +65,8 @@ function flushRequests(httpMock: HttpTestingController, pending: number, venue =
 }
 
 /**
- * The stats-strip reads the signed-in shell now mounts (#171): the booked-online count, the daily
- * takings and the availability states (#207). URLs pinned (owner-asserted server-side, invariant
+ * The stats-strip reads the signed-in shell mounts: the booked-online count, the daily
+ * takings and the availability states. URLs pinned (owner-asserted server-side, invariant
  * #13); all best-effort in the strip, so flushing zeros keeps every shell-rendering test green
  * without asserting on the strip itself.
  */
@@ -88,7 +88,7 @@ function flushStrip(httpMock: HttpTestingController, venue = VENUE): void {
 }
 
 /**
- * The console shell. Since S9 (#277) it carries NO sign-in gate: `operatorSessionGuard` owns that
+ * The console shell. It carries NO sign-in gate: `operatorSessionGuard` owns that
  * and awaits the session restore, so the component only ever mounts for a signed-in operator — which
  * is what every test here models by answering the startup `/me` with a principal. The signed-out
  * redirect itself is pinned by `core/operator-session.guard.spec.ts`.
@@ -122,7 +122,7 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     await fixture.whenStable(); // the signedIn effect fires the venue-title + badge-count loads
     flushVenue(httpMock, name);
     flushRequests(httpMock, pending);
-    flushStrip(httpMock); // the stats strip mounts in the shell and fires its two reads (#171)
+    flushStrip(httpMock); // the stats strip mounts in the shell and fires its two reads
     await fixture.whenStable();
   }
 
@@ -147,7 +147,7 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
   });
 
   it('leaves for the unified auth page on sign-out, clearing venue + badge state', async () => {
-    // The guard gates on ACTIVATION, so the console must navigate away itself (#277).
+    // The guard gates on ACTIVATION, so the console must navigate away itself.
     await createSignedIn('Miramar Beach Club', 2);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
@@ -163,7 +163,7 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     });
     expect(TestBed.inject(PendingRequestsStore).count()).toBe(0);
 
-    // Sign-out drops the shared snapshot, so the next operator cannot inherit it (#486 R-3).
+    // Sign-out drops the shared snapshot, so the next operator cannot inherit it.
     let refetched: string | undefined;
     TestBed.inject(ConsoleVenueMap)
       .load(VENUE, todayBookingDate(new Date()))
@@ -266,7 +266,7 @@ describe('OperatorConsole — restored session (reload survival, #170 AC-3)', ()
     await fixture.whenStable();
     flushVenue(httpMock, 'Miramar Beach Club');
     flushRequests(httpMock, 0);
-    flushStrip(httpMock); // the stats strip mounts with the restored session too (#171)
+    flushStrip(httpMock); // the stats strip mounts with the restored session too
     await fixture.whenStable();
 
     const host = fixture.nativeElement as HTMLElement;

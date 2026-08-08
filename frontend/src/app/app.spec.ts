@@ -15,7 +15,7 @@ import { SignOutNotice } from './core/sign-out-notice';
 class BlankPage {}
 
 /**
- * A CustomerAuth fake (S2 #111): the shell injects CustomerAuth, which would otherwise fire a real
+ * A CustomerAuth fake: the shell injects CustomerAuth, which would otherwise fire a real
  * `GET /api/auth/me` on construction. Signal-backed so a test can flip the signed-in state before
  * rendering; reset to signed-out in each `beforeEach`.
  */
@@ -55,9 +55,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     customerAuth.signOut.mockClear();
     await TestBed.configureTestingModule({
       imports: [App],
-      // provideHttpClient: the shell renders the find-a-booking modal (#148), whose BookingService
-      // injects HttpClient — no request is made in these tests. The CustomerAuth fake replaces the
-      // real one so no startup /me call fires (S2 #111).
+      // The find modal's BookingService injects HttpClient (no request fires); the fake stops the /me call.
       providers: [
         provideRouter(surfaceRoutes),
         provideHttpClient(),
@@ -124,11 +122,11 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(
       nav?.querySelector<HTMLAnchorElement>('[data-testid="nav-signin"]')?.getAttribute('href'),
     ).toBe('/account/sign-in');
-    // S9 (#277): Register now deep-links into the unified card's register mode.
+    // Register deep-links into the unified card's register mode.
     expect(
       nav?.querySelector<HTMLAnchorElement>('[data-testid="nav-register"]')?.getAttribute('href'),
     ).toBe('/account/sign-in?mode=register');
-    // No signed-in affordances when signed out — including the #351 account menu.
+    // No signed-in affordances when signed out — including the account menu.
     expect(nav?.querySelector('[data-testid="nav-user"]')).toBeNull();
     expect(nav?.querySelector('[data-testid="nav-signout"]')).toBeNull();
     expect(nav?.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
@@ -146,7 +144,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     // The signed-out links are gone.
     expect(el.querySelector('[data-testid="nav-signin"]')).toBeNull();
 
-    // Sign out now lives inside the account menu (#351), so it opens first.
+    // Sign out lives inside the account menu, so it opens first.
     el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!.click();
     fixture.detectChanges();
     el.querySelector<HTMLButtonElement>('[data-testid="nav-signout"]')!.click();
@@ -237,7 +235,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
   });
 
   /**
-   * #128 gap 2. A sign-out that never reached the server leaves the HttpOnly SESSION cookie alive, so
+   * A sign-out that never reached the server leaves the HttpOnly SESSION cookie alive, so
    * the next visitor on a shared device would be silently restored. The shell is where that warning
    * belongs: it renders above the chrome conditional, so it shows on the operator console too.
    */
@@ -340,7 +338,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     await router.navigate(['/glass']);
     fixture.detectChanges();
 
-    // Without the restore, focus falls to body (the #148 find-modal bug, WCAG 2.4.3).
+    // Without the restore, focus falls to body (the find-modal bug, WCAG 2.4.3).
     expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
     expect(document.activeElement).toBe(el.querySelector('main'));
   });
@@ -486,24 +484,20 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     signOut.click();
     fixture.detectChanges();
 
-    // The #148/#351 F-8 class: signOut() unmounts the focused button — focus must land on
-    // <main tabindex="-1">, never document.body.
+    // The recurring stranded-focus class: signOut() unmounts the focused button — focus lands on <main>.
     expect(operatorAuth.signOut).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(el.querySelector('main'));
   });
 });
 
 describe('app.routes legacy-surface flags (issue #134)', () => {
-  // Restyled routes render on the bare themed background; each T2–T6/operator slice
-  // moves its route from LEGACY to this list. T2 (#135): Discover (''). T3 (#136): the beach map.
-  // T4 (#137): booking/confirmation, booking/pay, booking/requested. T5 (#138): booking/:code.
-  // T6 (#139): my-bookings (new glass route, born un-legacied).
+  // Restyled routes render on the bare themed background; each restyle slice moves its route here.
   const RESTYLED_PATHS = [
     '',
     'my-bookings',
-    // S9 (#277): account/register + operator/register are redirect-only now, so they left this list.
+    // account/register + operator/register are redirect-only, so they left this list.
     'account/sign-in',
-    // S8 (#113): the account-recovery pages (forgot / reset / verify) + the account page — new glass routes.
+    // The account-recovery pages (forgot / reset / verify) + the account page — new glass routes.
     'account/forgot',
     'account/reset',
     'account/verify',
@@ -513,17 +507,17 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'booking/pay',
     'booking/requested',
     'booking/:code',
-    // #101 Slice 3: the legal pages — new glass routes, born un-legacied.
+    // The legal pages — new glass routes, born un-legacied.
     'legal/privacy',
     'legal/terms',
   ];
 
   /**
    * Operator/admin surfaces — a THIRD category outside the tourist legacy/restyled binary. The
-   * console (#170) owns its whole porcelain shell (`operatorConsole`); every other operator/admin
+   * console owns its whole porcelain shell (`operatorConsole`); every other operator/admin
    * page carries `operatorChrome`, so the shell swaps in the shared operator header/footer — the
    * fix for those pages wearing the tourist chrome ("Sign in / Register" while signed in as an
-   * operator) or none at all (the #326 password page, the S9 '/operator' picker).
+   * operator) or none at all (the operator password page, the '/operator' picker).
    */
   const OPERATOR_SURFACE_PATHS = [
     'operator/:venueId',
@@ -564,8 +558,7 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
   });
 
   it('has no legacy compat-surface routes left (O8 #177 retired the last one)', () => {
-    // O6 retired the StaffDaily route; O8 (#177) slimmed /venue-admin to onboarding and dropped its
-    // legacySurface flag — the whole operator surface is now Liquid Glass (console) + bare onboarding.
+    // /venue-admin is a bare redirect to the operator home's create state — the operator surface is all glass.
     const legacy = routes.filter((r) => r.data?.['legacySurface'] === true);
     expect(legacy.map((r) => r.path)).toEqual([]);
   });

@@ -12,12 +12,12 @@ import { VenueAdminErrorCode } from './venue-admin.model';
 import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 
 /**
- * The create-venue form inside the operator console surface (#278) — the retired
+ * The create-venue form inside the operator console surface — the retired
  * `/venue-admin` editor's one surviving job, restyled to Liquid Glass. Rendered by
  * `OperatorHome` for an operator with no venue (the zero state) and for the deliberate
- * `/operator?create=1` entry. On success it resets the cached owned-venues list (S9 #277 —
- * the landing decision reads it) and navigates straight into the new venue's beach-map tab:
- * laying out the map is the operator's next real step, and creator-owns-on-create (S6 #115)
+ * `/operator?create=1` entry. On success it resets the cached owned-venues list (the
+ * landing decision reads it) and navigates straight into the new venue's beach-map tab:
+ * laying out the map is the operator's next real step, and creator-owns-on-create
  * means the console is immediately theirs. The server re-validates every field (invariants
  * #3/#5/#12); numeric fields are parsed on submit.
  */
@@ -77,7 +77,7 @@ export class VenueCreateCard {
             bookingCutoff: m.bookingCutoff,
           }),
         );
-        // Reset BEFORE navigating: the console we land in is fed by this cached list (S9 #277).
+        // Reset BEFORE navigating: the console we land in is fed by this cached list.
         this.ownedVenues.reset();
         await this.router.navigateByUrl(`/operator/${created.id}/beach-map`);
       } catch (error) {
@@ -89,7 +89,7 @@ export class VenueCreateCard {
   }
 
   /**
-   * Map a write failure to its message and, on a 401, drop the lost session (issue #109): the
+   * Map a write failure to its message and, on a 401, drop the lost session: the
    * server session can expire/invalidate mid-create, and without clearing local auth state the
    * operator would keep retrying a dead session — the shared operator header flips to its sign-in
    * link and the guarded create form hides.

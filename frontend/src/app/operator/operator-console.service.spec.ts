@@ -20,8 +20,8 @@ import {
 const BASE = environment.apiBaseUrl;
 
 /**
- * The Daily-view walk-in mark/release error mappers (O5 #175). They narrow an HTTP failure's RFC-7807
- * `code` (issue #97) — or a 401 / non-HTTP failure — to the displayable union each surface maps to
+ * The Daily-view walk-in mark/release error mappers. They narrow an HTTP failure's RFC-7807
+ * `code` — or a 401 / non-HTTP failure — to the displayable union each surface maps to
  * operator copy. Pure functions; exhaustively covered here.
  */
 describe('operator-console mark/release error mappers (#175)', () => {
@@ -95,7 +95,7 @@ describe('operator-console mark/release error mappers (#175)', () => {
 });
 
 /**
- * The Request-to-Book client moved onto the console service (O6 #176): the queue read, accept, decline,
+ * The Request-to-Book client on the console service: the queue read, accept, decline,
  * and the badge count that reuses the same read. Owner-asserted server-side (invariant #13); the queue
  * carries no booking code (invariant #7).
  */
@@ -165,9 +165,9 @@ describe('OperatorConsoleService — Request-to-Book client (#176)', () => {
 });
 
 /**
- * The O7 Payouts-tab error mapper (#173) — one mapper for both the ledger read and the weather refund,
+ * The Payouts-tab error mapper — one mapper for both the ledger read and the weather refund,
  * because their meaningful failure surface is identical (403 owner / 401 session / else). Narrows the
- * RFC-7807 `code` (issue #97) or a 401 to the union the tab maps to operator copy. Pure; covered here.
+ * RFC-7807 `code` or a 401 to the union the tab maps to operator copy. Pure; covered here.
  */
 describe('payoutErrorOf (ledger read + weather refund, #173)', () => {
   function problem(status: number, code?: string): HttpErrorResponse {
@@ -190,9 +190,10 @@ describe('payoutErrorOf (ledger read + weather refund, #173)', () => {
 });
 
 /**
- * The O7 payout client on the console service (#173): the per-venue ledger read and the per-date
+ * The payout client on the console service: the per-venue ledger read and the per-date
  * weather refund — both existing, owner-asserted endpoints (invariant #13). Money is integer minor
- * units (invariant #5); the ledger carries only `bookingId`, never a code or guest identity (#7/#11).
+ * units (invariant #5); the ledger carries only `bookingId`, never a code or guest identity
+ * (invariants #7/#11).
  */
 describe('OperatorConsoleService — payout ledger + weather refund (#173)', () => {
   let service: OperatorConsoleService;

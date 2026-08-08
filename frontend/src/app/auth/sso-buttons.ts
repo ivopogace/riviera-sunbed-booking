@@ -4,7 +4,7 @@ import { CustomerAuth } from '../core/customer-auth';
 import { SsoProviderId } from '../core/sso-redirect';
 
 /**
- * Shared "Continue with Google / Continue with Apple" affordance (S4 #112) for the sign-in and register
+ * Shared "Continue with Google / Continue with Apple" affordance for the sign-in and register
  * cards — one place so the SSO buttons never drift between the two pages, and adding a provider is a
  * one-row change. Starting SSO is a full-page navigation to the backend authorize endpoint (via
  * {@link CustomerAuth.startSso}); the buttons are secondary — they reuse the AA-proven field tokens
@@ -39,8 +39,8 @@ import { SsoProviderId } from '../core/sso-redirect';
 export class SsoButtons {
   /**
    * Which audience the host card is showing. SSO is **tourist-only** today: the operator IdP flows
-   * are #276, and the real Google/Apple adapters are S5 (#116). Rendering nothing (rather than
-   * disabled buttons) for `operator` keeps the card honest; #276 lights this up additively.
+   * and the real Google/Apple adapters are still to come. Rendering nothing (rather than
+   * disabled buttons) for `operator` keeps the card honest; operator SSO lights this up additively.
    */
   readonly audience = input<'tourist' | 'operator'>('tourist');
 

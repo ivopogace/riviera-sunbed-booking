@@ -21,22 +21,22 @@ import {
 } from '../../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the Liquid Glass Discover page (issue #135; gate from #38).
+ * WCAG-AA contrast guard for the Liquid Glass Discover page.
  * Glass surfaces are translucent, so every pair is checked as the EFFECTIVE colour — the
  * glass rgba composited over the worst-case stops of the theme's background gradient, and
- * alpha inks composited over that result (the `app.contrast.spec.ts` pattern from #134).
+ * alpha inks composited over that result (the `app.contrast.spec.ts` pattern).
  * Shared token mirrors + the AA-over-stops loop live in `testing/glass-tokens.ts`.
  *
  * This table mirrors every text-bearing token in `styles.scss` + `home.scss`; a token edit
- * there must re-pass here. Deviations from the design file, on purpose (plan R-1/R-2, same
- * class as T1's header): the list-state panels (and, in the riviera theme, the hero) sit on
+ * there must re-pass here. Deviations from the design file, on purpose (the same
+ * class as the shell header's): the list-state panels (and, in the riviera theme, the hero) sit on
  * the AA-proven header glass instead of the bare gradient — the porcelain hero matches the
  * design (bare dark ink); the riviera card glass is 0.78 (design 0.55); the muted
  * card inks are 0.78/0.72 (design 0.7/0.55); the teal accent is #085a6e (design #0a6e85);
  * the field border is a dark tint (design white) for the 1.4.11 component boundary; the
- * CTA-button gradient is darkened for white-text AA (#149, see CTA_STOPS below).
+ * CTA-button gradient is darkened for white-text AA (see CTA_STOPS below).
  *
- * T2b (#149) additions reuse already-pinned tokens: the failure panel sits on the same
+ * The failure-panel additions reuse already-pinned tokens: the failure panel sits on the same
  * `--riv-card-glass` as the cards with `--riv-card-ink` (title) / `--riv-card-ink-soft`
  * (body copy), and the cutoff explainer line uses `--riv-card-ink-soft` on that card glass —
  * both covered by the "card ink" / "card ink-soft" cases above. The genuinely new surface is
@@ -50,10 +50,12 @@ import {
 
 const ACCENT = '#085a6e'; // --riv-accent-ink
 
-// --riv-cta-grad stops (theme-invariant; consumed by the Discover failure-panel "Try again"
-// button, #149). Deviation from the design file, on purpose (plan R-1): the design's brighter
-// #2bb8d4→#0e8aa8 gives white body-size text only 2.4–4.0:1 (< AA); darkened for AA. Both stops
-// are pinned because the text sits over the whole gradient (worst case is the lighter stop).
+/**
+ * --riv-cta-grad stops (theme-invariant; consumed by the Discover failure-panel "Try again"
+ * button). Deviation from the design file, on purpose: the design's brighter
+ * #2bb8d4→#0e8aa8 gives white body-size text only 2.4–4.0:1 (< AA); darkened for AA. Both stops
+ * are pinned because the text sits over the whole gradient (worst case is the lighter stop).
+ */
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 
 // styles.scss card-surface tokens (theme-invariant ones live in the :root block)

@@ -12,16 +12,16 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the Liquid Glass booking view (issue #138, AC-10). Two families:
+ * WCAG-AA contrast guard for the Liquid Glass booking view. Two families:
  *
  *  1. Card-surface text sits on the translucent card glass over the bare gradient, so each pair is
  *     the EFFECTIVE colour composited over the theme's worst-case stops (the confirmation-card
  *     pattern) — proven with `expectAaOverStops`.
  *  2. Status banners and the cancel buttons use OPAQUE SOLID fills (the css:S7924 treatment), so
  *     their text contrast is theme-independent and asserted directly with `contrastRatio`. Values
- *     mirror the `CLS` recipes in `booking-view.ts` — the component's SCSS was retired at #477, so
+ *     mirror the `CLS` recipes in `booking-view.ts` — the component's SCSS is retired, so
  *     the utilities on those elements are what these numbers must track. (The status **chips**
- *     moved to a shared recipe at #139 and to the `shared/status-chip.ts` directive at #477 — their
+ *     live in the `shared/status-chip.ts` directive — their
  *     AA proof lives in `shared/booking-status.contrast.spec.ts`.)
  */
 

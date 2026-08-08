@@ -7,7 +7,7 @@ import { problemCodeOf } from '../shared/api-error';
 import { apiPhotoUrl } from '../shared/photo-url';
 import { PhotoSlotKey } from '../shared/venue-views';
 
-/** One stored variant of an uploaded photo (#142): its surface, serving URL, and dimensions. */
+/** One stored variant of an uploaded photo: its surface, serving URL, and dimensions. */
 export interface PhotoVariantView {
   readonly surface: 'card' | 'banner' | 'preview';
   readonly url: string;
@@ -15,14 +15,14 @@ export interface PhotoVariantView {
   readonly height: number;
 }
 
-/** The upload response (#142): the slot plus each stored variant's content-addressed serving URL. */
+/** The upload response: the slot plus each stored variant's content-addressed serving URL. */
 export interface PhotoUploadView {
   readonly slot: PhotoSlotKey;
   readonly variants: readonly PhotoVariantView[];
 }
 
 /**
- * The venue-photo client (#142) — upload/replace (one multipart POST per slot; a re-upload
+ * The venue-photo client — upload/replace (one multipart POST per slot; a re-upload
  * replaces server-side) and delete, both venue-scoped and owner-asserted server-side (invariant
  * #13); the session cookie + CSRF ride the `apiSessionInterceptor`. HTTP only — the per-slot UI
  * state lives in the Venue tab. Serving URLs in the responses are opaque content-addressed
@@ -44,7 +44,7 @@ export class VenuePhotoService {
     return this.http
       .post<PhotoUploadView>(`${this.base}/api/venues/${venueId}/photos/${slot}`, body)
       .pipe(
-        // Variant paths resolve against the API origin (#142 review F-7; no-op same-origin prod).
+        // Variant paths resolve against the API origin (no-op same-origin prod).
         map((uploaded) => ({
           ...uploaded,
           variants: uploaded.variants.map((v) => ({ ...v, url: apiPhotoUrl(v.url) })),
@@ -64,7 +64,7 @@ export function previewUrlOf(upload: PhotoUploadView): string | null {
 }
 
 /**
- * A known photo upload/delete failure (#142), mapped from the RFC-7807 `code` (#97) for
+ * A known photo upload/delete failure, mapped from the RFC-7807 `code` for
  * operator-facing copy. The four validation rejections come from the server-side processor
  * (the client never trusts its own pre-checks); `PAYLOAD_TOO_LARGE` is the multipart 413
  * backstop; `NO_SUCH_PHOTO` is a delete on an already-empty slot.
