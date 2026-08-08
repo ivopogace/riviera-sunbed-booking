@@ -5,7 +5,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * Real-render behaviour + a11y audit of the admin console's Email tab (#405): an admin sees what the
+ * Real-render behaviour + a11y audit of the admin console's Email tab: an admin sees what the
  * Event Publication Registry still owes, presses Resubmit, and is told what happened — including when
  * the answer is "nothing, the lever is cooling down", which is a `200` and must not read as a failure.
  *

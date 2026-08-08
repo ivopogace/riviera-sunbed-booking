@@ -1,13 +1,12 @@
 import { expect, Locator, Page } from '@playwright/test';
 
 /**
- * Page Object for signing an operator in (issue #109; POM convention from #120).
+ * Page Object for signing an operator in.
  *
- * Since S9 (#277) there is no per-page operator sign-in card: `operatorSessionGuard` redirects every
+ * There is no per-page operator sign-in card: `operatorSessionGuard` redirects every
  * operator surface to the **one** auth page at `/account/sign-in?audience=operator&returnUrl=…`, and
- * the card labels its credential field "Username" on that tab. The gesture is unchanged, which is
- * why the 15 specs that use this object needed no edits — the locators are accessible-name based and
- * the unified card exposes the same names.
+ * the card labels its credential field "Username" on that tab. The locators are accessible-name
+ * based, and the unified card exposes the same names.
  *
  * Shared by the CI-safe mocked suite and the local real-backend suite, so the selectors and the
  * sign-in gesture live in ONE place.

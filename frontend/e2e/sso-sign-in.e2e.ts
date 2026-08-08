@@ -6,7 +6,7 @@ import { mockCustomerSsoApi } from './support/auth-mocks';
 import { CustomerAuthPage } from './support/pages/customer-auth.page';
 
 /**
- * Mocked (CI-safe) audit of the customer SSO flow (S4 #112, AC-6): the "Continue with Google / Continue
+ * Mocked (CI-safe) audit of the customer SSO flow: the "Continue with Google / Continue
  * with Apple" buttons on the sign-in and register cards run the redirect/callback dance through to a
  * signed-in tourist — a different provider signs in as a different account. The SSO API is mocked
  * statefully (`support/auth-mocks.ts`) — the button's real full-page navigation is intercepted and 302'd

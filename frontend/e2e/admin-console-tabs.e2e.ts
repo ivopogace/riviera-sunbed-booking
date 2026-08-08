@@ -5,18 +5,17 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * The admin console tab strip's small-screen budget — the guard that keeps epic #348's open
- * question Q1 answered once it has been answered.
+ * The admin console tab strip's small-screen budget — the guard that keeps the strip's
+ * group-vs-flat question answered once it has been answered.
  *
- * Q1 asked whether the strip should group, overflow, or stay flat once Commissions (A8), Privacy
- * (A3) and Payouts (A6) took it from five tabs to eight; A8 and A3 have since landed the sixth and
- * seventh. It was
- * settled by measurement in favour of staying flat: at 360px the wrap costs 2 rows at five tabs and
- * **3 rows at six, seven and eight alike**,
- * never clipping and never scrolling horizontally at any width. Accepting eight is therefore only
- * defensible while those numbers hold, so they are asserted here rather than left in a plan doc —
- * a ninth tab, or a label long enough to force a fourth row, fails CI instead of quietly making the
- * nav eat the page.
+ * The question was whether the strip should group, overflow, or stay flat once Commissions,
+ * Privacy and Payouts took it from five tabs to eight; Commissions and Privacy have since landed
+ * the sixth and seventh. It was settled by measurement in favour of staying flat: at 360px the
+ * wrap costs 2 rows at five tabs and **3 rows at six, seven and eight alike**, never clipping and
+ * never scrolling horizontally at any width. Accepting eight is therefore only defensible while
+ * those numbers hold, so they are asserted here rather than left in a plan doc — a ninth tab, or
+ * a label long enough to force a fourth row, fails CI instead of quietly making the nav eat the
+ * page.
  *
  * Row count is asserted rather than pixel height on purpose: it survives font-metric differences
  * between environments while still catching the thing that actually degrades the page.
@@ -24,7 +23,7 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 const ADMIN = { username: 'operator', password: 'admin-pw' };
 
-/** The measured eight-tab budget at 360px — see the Q1 decision on #348. */
+/** The measured eight-tab budget at 360px — the flat-strip decision's ceiling. */
 const MAX_ROWS_AT_360 = 3;
 
 test.use({ viewport: { width: 360, height: 740 } });

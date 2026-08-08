@@ -1,5 +1,5 @@
 /**
- * WCAG 2.1 colour-contrast maths (issue #38, AC-4). Pure functions so contrast can be
+ * WCAG 2.1 colour-contrast maths. Pure functions so contrast can be
  * verified deterministically in a unit test, without a browser — axe-core's
  * `color-contrast` rule cannot run under jsdom (it needs real rendering/layout).
  *
@@ -41,10 +41,10 @@ export function contrastRatio(foreground: string, background: string): number {
 }
 
 /*
- * Alpha-compositing helpers for TRANSLUCENT surfaces (Liquid Glass, issue #134): a glass
+ * Alpha-compositing helpers for TRANSLUCENT Liquid Glass surfaces: a glass
  * rgba over a gradient stop has no single hex, so specs composite the effective colour first
  * and then assert `contrastRatio` on the result. Shared here because every glass restyle
- * slice (T2–T5, operator epic) writes the same math.
+ * writes the same math.
  */
 
 export type Rgb = readonly [number, number, number];

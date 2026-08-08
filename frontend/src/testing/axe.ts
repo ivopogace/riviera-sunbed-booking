@@ -2,13 +2,13 @@ import axe from 'axe-core';
 import { expect } from 'vitest';
 
 /**
- * Structural accessibility audit for component specs (issue #38). Runs axe-core over a
+ * Structural accessibility audit for component specs. Runs axe-core over a
  * rendered host element and fails the test on any **critical or serious** violation.
  *
  * Two rules are deliberately disabled:
  *  - `color-contrast` — axe needs real layout/rendering to measure contrast; under jsdom
  *    it can only return "incomplete", never a true pass/fail. Contrast is instead
- *    guaranteed deterministically by `venue-map.contrast.spec.ts` (issue #38, AC-4).
+ *    guaranteed deterministically by `venue-map.contrast.spec.ts`.
  *  - `region` — a single component rendered in isolation is a DOM fragment, not a full
  *    page, so the "all content in a landmark" rule does not apply at this scope.
  *

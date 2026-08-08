@@ -12,7 +12,7 @@ import { CustomerAuthPage } from './support/pages/customer-auth.page';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * The unified auth card (S9 #277, AC-12) — all four flows on one surface, plus the operator landing
+ * The unified auth card — all four flows on one surface, plus the operator landing
  * rules. Replaces the four retired specs' coverage of `auth/sign-in`, `auth/register` and
  * `operator/operator-register`, which no longer exist as pages.
  *
@@ -173,7 +173,7 @@ test('an operator registration lands pending approval, with no session', async (
   const pending = page.getByTestId('auth-pending');
   await expect(pending).toBeVisible();
   await expect(pending).toContainText('approv');
-  // No session is established — a PENDING operator cannot sign in until an admin approves (#115).
+  // No session is established — a PENDING operator cannot sign in until an admin approves.
   await expect(page.getByTestId('nav-user')).toHaveCount(0);
   await expectNoSeriousAxeViolations(page, 'operator registration pending');
 

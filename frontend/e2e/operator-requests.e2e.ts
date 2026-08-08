@@ -4,7 +4,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * CI-safe mocked e2e for the O6 Requests tab (#176, epic #141). Drives sign-in → the console shell →
+ * CI-safe mocked e2e for the Requests tab. Drives sign-in → the console shell →
  * the Requests tab: the venue-wide pending queue (guest, set + tier, date, price, respond-by, urgency
  * chip — and NO booking code, invariant #7) → Accept sends to payment and decrements the badge (never
  * self-confirms, invariant #8) → confirm-gated Decline empties the queue → a lost sweep race surfaces
@@ -119,7 +119,7 @@ async function mockRequests(
     });
   });
 
-  // The stats strip's reads (#171) + the tab's venue-map read for set labels.
+  // The stats strip's reads + the tab's venue-map read for set labels.
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
@@ -141,7 +141,7 @@ async function mockRequests(
 
 async function signInAndOpenRequests(page: Page): Promise<void> {
   await page.goto(`/operator/${VENUE}`);
-  // S9 (#277): the guard sends us to the unified card's operator tab; returnUrl brings us back.
+  // The guard sends us to the unified card's operator tab; returnUrl brings us back.
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();

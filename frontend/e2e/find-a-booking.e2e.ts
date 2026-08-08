@@ -4,8 +4,8 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * Real-render e2e for the "Find a booking" flow (issue #148): a guest opens the glass modal from
- * the nav, types their booking code, and is taken to the existing T5 detail view — and an unknown
+ * Real-render e2e for the "Find a booking" flow: a guest opens the glass modal from
+ * the nav, types their booking code, and is taken to the existing booking detail view — and an unknown
  * code shows an inline error WITHOUT navigating. The booking API is mocked (`page.route`), so the
  * suite is CI-safe like its siblings. Axe runs on the open modal in both themes.
  */
@@ -52,8 +52,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('finds a booking by code and opens its detail view (+ axe, riviera)', async ({ page }) => {
-  // Count GETs to the code endpoint: the prefetch hand-off (#168) means a successful lookup opens
-  // the detail view with exactly ONE GET, not two (the second could 429 near the #56 ceiling).
+  // The prefetch hand-off means one GET total — a second fetch could 429 near the rate-limit ceiling.
   let getCount = 0;
   await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) => {
     getCount += 1;

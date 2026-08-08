@@ -1,7 +1,7 @@
 import { expectNoAxeViolations } from './axe';
 
 /**
- * Proves the axe harness is not a no-op (issue #38, AC-1): a deliberately inaccessible
+ * Proves the axe harness is not a no-op: a deliberately inaccessible
  * DOM must make `expectNoAxeViolations` fail. Without this, a passing component audit
  * could just mean the audit never checks anything.
  */

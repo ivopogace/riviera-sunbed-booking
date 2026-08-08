@@ -7,7 +7,7 @@ import { vi } from 'vitest';
  *
  * Why: a spec once hardcoded `'2026-08-01'` as a "different" date for a date-change
  * interaction; the day the real calendar reached it, the value equalled "today", the change
- * never fired, and CI went red repo-wide for exactly one day (PR #480). Freezing `Date`
+ * never fired, and CI went red repo-wide for exactly one day. Freezing `Date`
  * makes "today" deterministic forever: literals can never drift into collision, and a
  * date-dependent test fails on the day it is written or never.
  *

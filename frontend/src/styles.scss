@@ -5,11 +5,11 @@
  * Themes are CSS custom properties scoped by `data-riv-theme` on <html> — the attribute is
  * written only by core/theme.ts. Components consume tokens, never palette literals; a palette
  * change is one block here + one row in core/theme.ts. The set is fixed at these two — one
- * dark, one light (#143 closed not-planned).
+ * dark, one light — the full set by deliberate decision, not planned to grow.
  *
  * Deviation from the design file, on purpose: the riviera header glass is a DARK tint
  * (design: white 0.13) because white ink on the gradient's light top stops fails WCAG AA;
- * the dark tint keeps the glass look and passes (pinned by app.contrast.spec.ts, plan R-2).
+ * the dark tint keeps the glass look and passes (pinned by app.contrast.spec.ts).
  */
 
 :root,
@@ -44,11 +44,11 @@
   --riv-cta-grad: linear-gradient(180deg, #0c7288, #0a5f74);
   --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
 
-  /* Card surfaces (issue #135; consumed by the T2–T5 glass panels/cards). Declared in
-     this :root block, so they are theme-invariant unless a theme block overrides them
-     (porcelain overrides only --riv-card-glass).
-     0.78 (design: 0.55): the darkest riviera stop needs the extra opacity for the dark
-     card inks to reach AA — see home.contrast.spec.ts, plan R-2. */
+  /** Card surfaces (consumed by the glass panels/cards). Declared in
+      this :root block, so they are theme-invariant unless a theme block overrides them
+      (porcelain overrides only --riv-card-glass).
+      0.78 (design: 0.55): the darkest riviera stop needs the extra opacity for the dark
+      card inks to reach AA — see home.contrast.spec.ts. */
   --riv-card-glass: rgba(255, 255, 255, 0.78);
   --riv-card-border: rgba(255, 255, 255, 0.6);
   --riv-card-ink: #0a2a33;

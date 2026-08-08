@@ -14,7 +14,7 @@ import { OperatorChrome } from './operator/operator-chrome';
  * responsive nav (inline on desktop, hamburger menu below 640px — CSS decides, both live here),
  * and the theme switcher. Routes not yet restyled to glass carry `data.legacySurface`, which
  * wraps <main> in an opaque light panel so their pre-redesign styling stays legible;
- * each restyle slice removes its route's flag.
+ * a route's restyle removes its flag.
  */
 @Component({
   selector: 'app-root',
@@ -199,7 +199,7 @@ export class App {
     this.signOutNotice.dismiss();
   }
 
-  /** Closes whichever surface is open and hands focus back to its trigger (AC-3). */
+  /** Closes whichever surface is open and hands focus back to its trigger. */
   protected closeMenus(): void {
     if (this.menuOpen()) {
       this.menuOpen.set(false);

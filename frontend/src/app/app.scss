@@ -51,7 +51,7 @@
 
 /* Inside the component style so the override carries the same emulated-encapsulation
    attribute as the animation rules above — the global styles.scss guard alone loses that
-   specificity contest (issue #134, AC-5). */
+   specificity contest. */
 @media (prefers-reduced-motion: reduce) {
   .riv-blob-1,
   .riv-blob-2,
@@ -171,7 +171,7 @@
   font-size: inherit;
 }
 
-// The "Signed in as …" account-menu trigger (S2 #111, #351): full contrast (no opacity) for AA.
+// The "Signed in as …" account-menu trigger: full contrast (no opacity) for AA.
 .riv-nav-user {
   display: inline-flex;
   align-items: center;
@@ -404,7 +404,7 @@
   font-family: inherit;
 }
 
-// The "Signed in as …" label in the mobile menu (S2 #111): non-interactive, sharing the mobile-link
+// The "Signed in as …" label in the mobile menu: non-interactive, sharing the mobile-link
 // ink for AA on the popover.
 .riv-mobile-user {
   display: block;
@@ -464,7 +464,7 @@
 }
 
 /* Opaque pre-redesign surface: keeps legacy pages exactly on the background their contrast
-   specs assume (#f8fafc) until their restyle slice lands (plan R-1 / AC-6). */
+   specs assume (#f8fafc) until their restyle lands. */
 .riv-legacy-surface {
   background: #f8fafc;
   color: #0f172a;

@@ -5,17 +5,17 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * Real-render behaviour + a11y audit of the admin console's Privacy tab (A3, epic #348): an admin
+ * Real-render behaviour + a11y audit of the admin console's Privacy tab: an admin
  * actions a data-subject erasure request through form → confirm → done, offers grounds that ride the
  * audit trail, and is told an outcome that reveals nothing about whether the address was known.
  *
  * Run at **360px**, the project's small-screen bar, because the canvas's two-column layout has to
- * collapse there and the strip is at seven tabs since this slice — the narrow viewport is the honest
+ * collapse there and the strip is at seven tabs with Privacy in it — the narrow viewport is the honest
  * place to prove both still fit.
  *
  * The erasure endpoint is mocked below so the spec is self-contained and runs in CI
  * (`npm run test:e2e:a11y`). What it cannot prove — that the scrub really is pseudonymize-in-place
- * and that a plain operator gets `403` — is #101's, proven against a real Postgres by
+ * and that a plain operator gets `403` — is the backend's, proven against a real Postgres by
  * `AccountErasureIT`; this spec proves the console sends exactly one request carrying exactly the
  * address, that nothing is sent before the confirmation, and that the two possible realities behind
  * a `204` are indistinguishable on screen.
@@ -186,7 +186,7 @@ test('the tab strip marks Privacy in slot 7 and never scrolls sideways at 360px'
   await expect(privacy).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('admin-tab-photos')).not.toHaveAttribute('aria-current', 'page');
 
-  // Q1 (#348) put Privacy after Photos and before Audit; the strip is where that is visible.
+  // The console's tab-order decision put Privacy after Photos and before Audit; the strip is where that is visible.
   const labels = await page
     .getByRole('navigation', { name: 'Admin console sections' })
     .getByRole('link')

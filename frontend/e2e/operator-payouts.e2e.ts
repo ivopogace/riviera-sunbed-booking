@@ -4,7 +4,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * CI-safe mocked e2e for the O7 Payouts tab (#173, epic #141). Drives sign-in → the console shell →
+ * CI-safe mocked e2e for the Payouts tab. Drives sign-in → the console shell →
  * the Payouts tab: the payout ledger (accruals + a negative refund reversal with a reason chip, the
  * "Owed to you" hero = the server's net owed, and NO booking code / guest identity — invariants
  * #5/#7/#9/#11) → the display-only statement modal (total due + "assigned at settlement" placeholder)
@@ -142,7 +142,7 @@ async function mockPayouts(
     return route.fulfill({ json: { refundedCount: 1, totalRefundedMinor: 4500, currency: 'EUR' } });
   });
 
-  // The shell's own reads on mount (stats strip #171 + requests badge #176 + venue header).
+  // The shell's own reads on mount (stats strip + requests badge + venue header).
   await page.route(/\/api\/venues\/1\/booking-requests$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
@@ -161,7 +161,7 @@ async function mockPayouts(
 
 async function signInAndOpenPayouts(page: Page): Promise<void> {
   await page.goto(`/operator/${VENUE}`);
-  // S9 (#277): the guard sends us to the unified card's operator tab; returnUrl brings us back.
+  // The guard sends us to the unified card's operator tab; returnUrl brings us back.
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();

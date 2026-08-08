@@ -4,7 +4,7 @@ import { OperatorSignInPage } from '../support/pages/operator-sign-in.page';
 import { OPERATOR_PASSWORD, OPERATOR_USERNAME } from './support/operator';
 
 /**
- * Real-backend e2e for the O5 Daily view (issue #175). A real Chromium drives the operator console's
+ * Real-backend e2e for the Daily view. A real Chromium drives the operator console's
  * Daily view tab, which calls the REAL Spring Boot backend, which writes the REAL Flyway-migrated
  * Postgres `availability` table — nothing is mocked. Proves the wired round-trip the unit/IT layers
  * can only prove in halves: mark a walk-in in the console → it flips → and survives a reload because

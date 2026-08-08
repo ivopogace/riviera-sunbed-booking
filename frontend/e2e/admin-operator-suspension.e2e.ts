@@ -5,7 +5,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * Real-render behaviour + a11y audit of admin-driven operator suspension (#128): a platform admin
+ * Real-render behaviour + a11y audit of admin-driven operator suspension: a platform admin
  * suspends an approved operator, that operator can no longer sign in, and reinstating restores it.
  * The lifecycle API is mocked statefully (`support/auth-mocks.ts`) — including the fact that
  * suspension revokes the target's session — so the spec is self-contained and runs in CI
@@ -49,7 +49,7 @@ test('an admin suspends an operator, which blocks its sign-in, then reinstates i
   await expect(row.getByText(`Suspend ${OP.username}?`)).toBeVisible();
   await expectNoSeriousAxeViolations(page, 'admin suspend confirmation armed');
 
-  // Typed grounds ride the X-Audit-Reason header into the #507 audit trail (#519).
+  // Typed grounds ride the X-Audit-Reason header into the admin audit trail.
   await row.getByLabel('Reason (optional)').fill('repeated guest reports');
   const suspendRequest = page.waitForRequest(
     (request) => request.method() === 'POST' && request.url().includes('/suspend'),
