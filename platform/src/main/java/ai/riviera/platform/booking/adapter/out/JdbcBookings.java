@@ -58,7 +58,7 @@ class JdbcBookings implements Bookings {
 
 	/**
 	 * The two sweep candidate reads run on the scheduler, never on a request thread, and they alone
-	 * use this bounded client (#395). See {@link #boundedClient}.
+	 * use this bounded client. See {@link #boundedClient}.
 	 */
 	private final JdbcClient sweepJdbc;
 
@@ -96,7 +96,7 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * The nullable account link (S3, #114) as a bindable {@code Long}: the signed-in
+	 * The nullable account link as a bindable {@code Long}: the signed-in
 	 * {@link ai.riviera.platform.customer.vocabulary.CustomerAccountId} value, or {@code null} for a
 	 * guest booking (the guest checkout path leaves {@code account_id} NULL).
 	 */
@@ -111,12 +111,12 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public OptionalLong insertPendingRequest(NewBooking b, Instant requestExpiresAt) {
-		// Request-to-Book (issue #98): the deadline is stored on the row so accept guard + expiry sweep share it.
+		// Request-to-Book: the deadline is stored on the row so accept guard + expiry sweep share it.
 		return insert(b, BookingStatus.PENDING_REQUEST, requestExpiresAt);
 	}
 
 	/**
-	 * The one creation INSERT both entry statuses share (#126). {@code ON CONFLICT (code) DO NOTHING}
+	 * The one creation INSERT both entry statuses share. {@code ON CONFLICT (code) DO NOTHING}
 	 * makes a code collision a no-op (empty result), NOT a thrown unique violation — so the caller's
 	 * regenerate-and-retry works WITHOUT aborting the surrounding transaction (a thrown violation
 	 * would poison it). FK/CHECK failures still throw, as they should. RETURNING yields the id only
@@ -151,7 +151,7 @@ class JdbcBookings implements Bookings {
 	@Override
 	public Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
 			long bookingId, VenueId venueId, Instant now) {
-		// Guarded venue-scoped accept (#98); accepted_at is read back so #373's deadline anchors to it.
+		// Guarded venue-scoped accept; accepted_at is read back so the payment-due deadline anchors to it.
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :awaiting, accepted_at = :now
@@ -250,7 +250,7 @@ class JdbcBookings implements Bookings {
 	@Override
 	public List<ai.riviera.platform.booking.application.request.PendingRequestRow> findPendingRequestsForVenue(
 			VenueId venueId) {
-		// Operator queue (issue #98): pending requests, most urgent deadline first. Deliberately
+		// Operator queue: pending requests, most urgent deadline first. Deliberately
 		// does NOT select the code (invariant #7 — the operator acts by id). Served by
 		// booking_venue_id_idx; the PENDING_REQUEST slice per venue is tiny.
 		return jdbc.sql("""
@@ -287,7 +287,7 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public List<BookingRecord> findByAccountId(CustomerAccountId accountId) {
-		// The signed-in customer's bookings (S3, #114), newest first — account-scoped by account_id
+		// The signed-in customer's bookings, newest first — account-scoped by account_id
 		// (the session principal's id, never a request param). Served by booking_account_id_idx (V26,
 		// partial on the non-NULL slice). Same row shape as findByCode so MyBookingsService enriches
 		// uniformly; a guest booking (NULL account_id) can never match.
@@ -303,7 +303,7 @@ class JdbcBookings implements Bookings {
 				.list();
 	}
 
-	/** Shared {@link BookingRecord} row mapper for the by-code + by-account reads (S3, #114). */
+	/** Shared {@link BookingRecord} row mapper for the by-code + by-account reads. */
 	private static BookingRecord mapBookingRecord(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
 		java.sql.Timestamp cancelledAt = rs.getTimestamp("cancelled_at");
 		Long refundMinor = rs.getObject("refund_minor", Long.class);
@@ -426,12 +426,12 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public List<BookingId> findExpirableAwaitingPayment(Instant createdBefore, Instant acceptedBefore) {
-		// Abandoned-payment sweep candidates, two clocks (issues #51/#98): an instant booking
+		// Abandoned-payment sweep candidates, two clocks: an instant booking
 		// (accepted_at IS NULL) expires on the creation clock — served by
 		// booking_awaiting_created_idx (V13); an accepted request expires on the accept clock —
 		// served by booking_awaiting_accepted_idx (V19). Never the other way around: an accepted
 		// request judged by created_at would be swept the moment it was accepted.
-		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded (#395).
+		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded.
 		return sweepJdbc.sql("""
 				SELECT id
 				FROM booking
@@ -449,9 +449,9 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public List<BookingId> findOverduePendingRequests(Instant now) {
-		// Request-expiry sweep candidates (issue #98), served by booking_pending_expires_idx
+		// Request-expiry sweep candidates, served by booking_pending_expires_idx
 		// (V19, partial). Ids only — each is then expired via the guarded per-row transition.
-		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded (#395).
+		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded.
 		return sweepJdbc.sql("""
 				SELECT id
 				FROM booking
