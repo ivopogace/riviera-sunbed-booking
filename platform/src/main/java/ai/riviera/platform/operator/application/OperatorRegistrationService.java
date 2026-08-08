@@ -16,8 +16,8 @@ import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 
 /**
- * Application service for operator self-registration + the admin-driven account lifecycle (#115, S6;
- * suspend/reinstate added by #128). Package-private
+ * Application service for operator self-registration + the admin-driven account lifecycle (S6),
+ * including the later-added suspend/reinstate. Package-private
  * behind the published {@link OperatorRegistration} / {@link OperatorLifecycle} ports (invariant #11);
  * constructor injection into the {@code final} {@link Operators} driven port. A self-registered operator
  * is created {@code PENDING} and cannot authenticate until a platform admin approves it (D-5) — this

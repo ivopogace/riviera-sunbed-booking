@@ -66,7 +66,7 @@ class JdbcOperators implements Operators {
 	public Optional<OperatorCredential> credentialByUsername(String username) {
 		// Any status — the edge builds a disabled principal for a non-ACTIVE account so the framework
 		// rejects it before the password check. active is derived from the status token (invariant #6a);
-		// is_admin drives the edge's ROLE_ADMIN grant (#115).
+		// is_admin drives the edge's ROLE_ADMIN grant.
 		return jdbc.sql("SELECT username, password_hash, status, is_admin FROM operator WHERE username = :username")
 				.param(USERNAME, username)
 				.query((rs, rowNum) -> new OperatorCredential(
@@ -190,7 +190,7 @@ class JdbcOperators implements Operators {
 	/**
 	 * Move a PENDING operator to {@code target}, reporting the row it wrote. The conditional
 	 * {@code WHERE status = PENDING} is the single source of truth, so two concurrent approvals cannot
-	 * both win; {@code RETURNING} hands the winner the stored contact email in the same statement (#375),
+	 * both win; {@code RETURNING} hands the winner the stored contact email in the same statement,
 	 * which is what lets {@code activate}'s caller mail an approved operator without a second read and
 	 * without the loser being able to mail anything at all.
 	 */

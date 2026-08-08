@@ -6,7 +6,7 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * Which of the three facts a booking mail needs did not resolve — the {@code reason} dimension both
  * registry-listener abandon counters are read through
  * ({@link ObservabilityMetrics#MAIL_CONFIRMATION_ABANDONED},
- * {@link ObservabilityMetrics#MAIL_CANCELLATION_ABANDONED} and, since #373,
+ * {@link ObservabilityMetrics#MAIL_CANCELLATION_ABANDONED} and
  * {@link ObservabilityMetrics#MAIL_PAYMENT_DUE_ABANDONED}).
  *
  * <p><strong>One type rather than three string constants per listener</strong> — the {@code MailKind}
