@@ -14,20 +14,27 @@ class RefundPolicyTest {
 	@Test
 	void fullRefundBeforeCutoff() {
 		// Before the cutoff the late-cancel bps is irrelevant — always the full gross.
-		assertEquals(4500L, RefundPolicy.refundMinor(4500L, true, 0));
-		assertEquals(4500L, RefundPolicy.refundMinor(4500L, true, 5000));
+		assertEquals(4500L, RefundPolicy.refundMinor(4500L, CancellationWindow.FREE, 0));
+		assertEquals(4500L, RefundPolicy.refundMinor(4500L, CancellationWindow.FREE, 5000));
 	}
 
 	@Test
 	void configurableShareAfterCutoff() {
-		assertEquals(2250L, RefundPolicy.refundMinor(4500L, false, 5000)); // 50%
-		assertEquals(0L, RefundPolicy.refundMinor(4500L, false, 0));        // non-refundable
-		assertEquals(4500L, RefundPolicy.refundMinor(4500L, false, 10000)); // full late refund
+		assertEquals(2250L, RefundPolicy.refundMinor(4500L, CancellationWindow.LATE, 5000)); // 50%
+		assertEquals(0L, RefundPolicy.refundMinor(4500L, CancellationWindow.LATE, 0));       // none
+		assertEquals(4500L, RefundPolicy.refundMinor(4500L, CancellationWindow.LATE, 10000)); // full
 	}
 
 	@Test
 	void afterCutoffRoundsDown() {
 		// 4505 × 50% = 2252.5 → 2252 (floorDiv); the platform keeps the half-cent (invariant #5).
-		assertEquals(2252L, RefundPolicy.refundMinor(4505L, false, 5000));
+		assertEquals(2252L, RefundPolicy.refundMinor(4505L, CancellationWindow.LATE, 5000));
+	}
+
+	@Test
+	void closedWindowRefundsNothing() {
+		// The stay is consumable, so no share of it is reclaimable at any venue's bps setting.
+		assertEquals(0L, RefundPolicy.refundMinor(4500L, CancellationWindow.CLOSED, 5000));
+		assertEquals(0L, RefundPolicy.refundMinor(4500L, CancellationWindow.CLOSED, 10000));
 	}
 }

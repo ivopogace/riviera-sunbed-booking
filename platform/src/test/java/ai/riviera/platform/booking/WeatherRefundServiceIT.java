@@ -28,7 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * booking for a venue+date <em>regardless of the cutoff</em> (invariant #10), records reason
  * {@code WEATHER}, frees each {@code (set, date)} (invariant #2), and publishes one
  * {@link BookingCancelled} per booking. Seeds confirmed bookings directly on a <strong>past</strong>
- * date (after the cutoff, when a tourist cancel would refund nothing) to prove the cutoff is ignored.
+ * date (after the cutoff, when a tourist cancel is refused outright) to prove the cutoff is ignored.
+ * That past-date seeding also pins the guest-cancel fence's scope: the operator path stays open once
+ * the service day has passed, because a post-storm refund returns the venue's own money.
  * Drives the real {@link RefundForWeather} port against Testcontainers Postgres. Each test uses its
  * own past date so the per-(venue, date) counts are deterministic on the shared container.
  */

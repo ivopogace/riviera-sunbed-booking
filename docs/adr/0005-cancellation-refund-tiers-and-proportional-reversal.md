@@ -99,3 +99,53 @@ quietly pays out on a refunded booking.
 Recorded so a future session does not "simplify" the throw back into a silent return. Rationale in
 full on `BookingCancelledPayoutListener`; found by #428's generalization audit, filed as #431 and
 fixed in PR #430.
+
+## Amendment (2026-08-08, #566) — a third tier: the window closes when the service day opens
+
+The **decision** above is unchanged for the two tiers it names, and re-affirmed: full before the
+cutoff, the venue's `late_cancel_refund_bps` share after it, with the reversal mirroring the stored
+accrual. What is amended is the tiers' **domain**. This ADR fixed *what* "after the cutoff" pays
+without bounding *how long* it lasts, and the answer turned out to be "forever".
+
+**The gap.** `CancelBookingService` guarded only on `status == CONFIRMED`, and nothing in the
+codebase writes `COMPLETED` or `NO_SHOW` — the enum values and the V5/V19/V37 CHECK constraint admit
+them, but there is no writer. So a confirmed booking stayed cancellable indefinitely, and
+"after the cutoff" silently included "after the guest spent the day on the sunbeds". At a venue
+offering 5000 bps, every guest could reclaim half their money after consuming the service: a real
+idempotency-keyed Stripe refund, plus a proportional payout reversal against a venue that had
+delivered in full. Even at the default 0 bps a post-date cancel flipped a delivered booking to
+`CANCELLED`, sent a cancellation mail, and retroactively shrank the venue's historical
+`grossOnlineTakings`.
+
+**The amendment.** Cancellation is now classified by a `CancellationWindow` with **three** values,
+computed in `Europe/Tirane` (invariants #4/#6) by `BookingCutoff`:
+
+- **`FREE`** — before the venue's evening-before cutoff. Full refund. *Unchanged.*
+- **`LATE`** — from that cutoff until the service day opens. `floorDiv(gross × bps, 10000)`.
+  *Unchanged arithmetic, newly bounded at the far end.*
+- **`CLOSED`** — from `00:00` on the booking date onward. The cancellation is **refused**
+  (`CancelOutcome.WindowClosed` → `409 CANCELLATION_WINDOW_CLOSED`), so nothing is refunded, the
+  `(set, date)` row is not released, and **no `BookingCancelled` is published** — which is what
+  keeps the refund and the payout reversal from happening at all, rather than computing them as 0.
+
+**Why the service day's *start*, not its end.** Closing at the end would still let a guest consume
+the entire day and cancel at 23:00; only the start actually closes consume-then-reclaim. The
+accepted cost is that the `LATE` tier's window shrinks to roughly the hours between the venue's
+cutoff and midnight, making `late_cancel_refund_bps` a narrow goodwill lever rather than a
+day-of-service one.
+
+**Scope: the guest path only.** `WeatherRefundService` deliberately stays outside the fence. A storm
+is only known afterwards, the refund is full rather than a reclaimed share, and it returns the
+venue's own money behind an `assertOwns` check (invariant #13). Pinned by
+`WeatherRefundServiceIT.fullRefundRegardlessOfCutoff`, which seeds on a past date, so a later
+"consistency" edit cannot quietly close it.
+
+**Not the completion sweep.** Writing `COMPLETED` after the service day is the other way to make the
+`status == CONFIRMED` guard sufficient, and it is deliberately *not* what shipped here:
+`JdbcDailyTakings.grossOnlineTakings` filters `status = 'CONFIRMED'`, so writing `COMPLETED` would
+zero out every past service date in the operator console's takings read, and `NO_SHOW` needs staff
+check-in data that does not exist. That is a lifecycle slice with its own acceptance criteria, and
+the fence is correct independently of whether it ever ships.
+
+Recorded so a future session does not read "two tiers" as the whole rule, or fence the weather
+refund for symmetry. Reported as #566, fixed in PR #574.

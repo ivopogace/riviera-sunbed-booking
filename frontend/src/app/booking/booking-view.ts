@@ -9,6 +9,9 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { HttpErrorResponse } from '@angular/common/http';
+
+import { problemCodeOf } from '../shared/api-error';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
@@ -319,6 +322,8 @@ const CLS = {
         <p [class]="cls.result" role="status" aria-live="polite" data-testid="cancel-result">
           @if (cancellation(); as c) {
             Booking cancelled. {{ refundSentence(c.tier, c.refund) }}
+          } @else if (cancelWindowClosed()) {
+            This booking can no longer be cancelled — its date has already begun.
           } @else if (cancelFailed()) {
             We couldn’t cancel the booking. Please try again.
           }
@@ -398,6 +403,8 @@ export class BookingView {
   protected readonly confirming = signal(false);
   protected readonly cancelling = signal(false);
   protected readonly cancelFailed = signal(false);
+  /** The server refused because the service day has begun — a retry can never succeed. */
+  protected readonly cancelWindowClosed = signal(false);
   protected readonly cancellation = signal<Cancellation | undefined>(undefined);
   protected readonly confirmingWithdraw = signal(false);
   protected readonly withdrawing = signal(false);
@@ -424,6 +431,7 @@ export class BookingView {
       this.confirming.set(false);
       this.cancelling.set(false);
       this.cancelFailed.set(false);
+      this.cancelWindowClosed.set(false);
       this.cancellation.set(undefined);
       this.confirmingWithdraw.set(false);
       this.withdrawing.set(false);
@@ -500,9 +508,15 @@ export class BookingView {
         this.cancelling.set(false);
         this.load(true); // refresh to the CANCELLED detail (chip flips + refunded row appears, no reload)
       },
-      error: () => {
-        this.cancelFailed.set(true);
+      error: (e: unknown) => {
+        const closed =
+          e instanceof HttpErrorResponse && problemCodeOf(e) === 'CANCELLATION_WINDOW_CLOSED';
+        this.cancelWindowClosed.set(closed);
+        this.cancelFailed.set(!closed);
         this.cancelling.set(false);
+        this.confirming.set(false);
+        // Re-read: the window may have closed since load, and only the server knows.
+        this.load(true);
       },
     });
   }

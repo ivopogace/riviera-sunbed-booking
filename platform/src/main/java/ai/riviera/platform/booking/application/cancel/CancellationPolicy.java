@@ -3,6 +3,7 @@ package ai.riviera.platform.booking.application.cancel;
 import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.booking.application.view.BookingRecord;
+import ai.riviera.platform.booking.domain.CancellationWindow;
 import ai.riviera.platform.booking.domain.RefundPolicy;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetBookingFacts;
@@ -39,13 +40,29 @@ public class CancellationPolicy {
 	public RefundQuote quote(BookingRecord booking) {
 		SetBookingInfo set = setFacts.setBookingInfo(booking.setId()).orElseThrow(() ->
 				new IllegalStateException("no set info for set " + booking.setId().value()));
-		boolean beforeCutoff = cutoff.freeCancellationOpen(set.bookingCutoff(), booking.bookingDate());
-		int lateBps = beforeCutoff ? 0 : rates.lateCancelRefundBps(booking.venueId()).orElse(0);
-		long refundMinor = RefundPolicy.refundMinor(booking.amountMinor(), beforeCutoff, lateBps);
-		return new RefundQuote(set, beforeCutoff, refundMinor);
+		CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), booking.bookingDate());
+		int lateBps = window == CancellationWindow.LATE
+				? rates.lateCancelRefundBps(booking.venueId()).orElse(0)
+				: 0;
+		long refundMinor = RefundPolicy.refundMinor(booking.amountMinor(), window, lateBps);
+		return new RefundQuote(set, window, refundMinor);
 	}
 
-	/** The computed cancellation terms: set display, free-cancellation status, and the refund due. */
-	public record RefundQuote(SetBookingInfo set, boolean beforeCutoff, long refundMinor) {
+	/**
+	 * The computed cancellation terms: set display, which {@link CancellationWindow} the request
+	 * falls in, and the refund due. {@code beforeCutoff} is derived rather than stored so the
+	 * window stays the single carrier of the temporal decision.
+	 */
+	public record RefundQuote(SetBookingInfo set, CancellationWindow window, long refundMinor) {
+
+		/** Whether free cancellation is still open — what the booking view reports on the wire. */
+		public boolean beforeCutoff() {
+			return window == CancellationWindow.FREE;
+		}
+
+		/** Whether a cancellation may still be actioned at all (invariant #10). */
+		public boolean cancellationOpen() {
+			return window != CancellationWindow.CLOSED;
+		}
 	}
 }

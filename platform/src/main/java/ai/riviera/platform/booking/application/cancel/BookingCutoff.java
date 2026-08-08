@@ -8,6 +8,8 @@ import java.time.ZonedDateTime;
 
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.booking.domain.CancellationWindow;
+
 /**
  * Enforces the no-same-day booking rule (invariant #4): bookings for a date close at the
  * venue's cutoff time the <strong>evening before</strong>. This single rule also serves as
@@ -39,12 +41,24 @@ public class BookingCutoff {
 	}
 
 	/**
-	 * Whether free cancellation is still open for {@code bookingDate} — the same evening-before
-	 * boundary as {@link #isBookable} (invariant #4: one rule, two jobs). Before it, a cancellation
-	 * is fully refundable (invariant #10); after it, the venue's late-cancel policy applies.
+	 * Which cancellation window {@code bookingDate} is in right now (invariant #10). Two boundaries:
+	 * the evening-before cutoff {@link #isBookable} already enforces (invariant #4: one rule, two
+	 * jobs), then the start of the service day, past which cancellation is refused outright.
 	 */
-	boolean freeCancellationOpen(LocalTime cutoff, LocalDate bookingDate) {
-		return isBeforeCutoff(cutoff, bookingDate);
+	CancellationWindow cancellationWindow(LocalTime cutoff, LocalDate bookingDate) {
+		// One reading of the clock, so both boundaries classify the same instant.
+		java.time.Instant now = clock.instant();
+		if (now.isBefore(closesAt(cutoff, bookingDate))) {
+			return CancellationWindow.FREE;
+		}
+		return now.isBefore(serviceDayOpensAt(bookingDate))
+				? CancellationWindow.LATE
+				: CancellationWindow.CLOSED;
+	}
+
+	/** The instant the stay becomes consumable — midnight in {@code Europe/Tirane} (invariant #6). */
+	private java.time.Instant serviceDayOpensAt(LocalDate bookingDate) {
+		return bookingDate.atStartOfDay(TIRANE).toInstant();
 	}
 
 	/**

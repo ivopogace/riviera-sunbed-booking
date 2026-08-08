@@ -74,8 +74,9 @@ class BookingController {
 
 	/**
 	 * Cancel a booking by its code (U6). The refund is computed server-side (invariant #10) — no
-	 * request body. {@code Cancelled}→200, {@code NotFound}→404, {@code NotCancellable}→409. The code
-	 * is the bearer credential (invariant #7) and is never logged.
+	 * request body. {@code Cancelled}→200, {@code NotFound}→404, {@code NotCancellable} and
+	 * {@code WindowClosed}→409 under distinct codes. The code is the bearer credential (invariant #7)
+	 * and is never logged.
 	 */
 	@PostMapping("/{code}/cancel")
 	ResponseEntity<?> cancel(@PathVariable String code) {
@@ -86,6 +87,9 @@ class BookingController {
 					error(HttpStatus.NOT_FOUND, UNKNOWN_CODE, UNKNOWN_CODE_DETAIL);
 			case CancelOutcome.NotCancellable ignored -> error(HttpStatus.CONFLICT, "NOT_CANCELLABLE",
 					"This booking can no longer be cancelled.");
+			case CancelOutcome.WindowClosed ignored ->
+					error(HttpStatus.CONFLICT, "CANCELLATION_WINDOW_CLOSED",
+							"Cancellation closed when the booking date began.");
 		};
 	}
 

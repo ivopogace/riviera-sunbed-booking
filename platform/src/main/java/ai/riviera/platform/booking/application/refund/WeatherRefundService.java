@@ -31,6 +31,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * idempotency-keyed refund (invariant #8) and the {@code payout} listener posts a full {@code REVERSAL}
  * carrying the weather reason (invariant #9).
  *
+ * <p><strong>Deliberately outside the guest-cancel fence.</strong> A guest may not cancel once the
+ * service day has opened, but an operator may still weather-refund a past date: the storm is only
+ * known afterwards, the refund is full rather than a reclaimed share, and it returns the venue's own
+ * money behind an {@code assertOwns} check (invariant #13). Pinned by
+ * {@code WeatherRefundServiceIT.fullRefundRegardlessOfCutoff}, which seeds on a past date.
+ *
  * <p><strong>The refund is not issued here</strong> — same reasoning as {@code CancelBookingService}:
  * no Stripe round-trip inside the transaction. The per-booking transition is the guarded
  * {@link Bookings#cancelConfirmed} ({@code WHERE status='CONFIRMED'}), so a concurrent cancel (tourist

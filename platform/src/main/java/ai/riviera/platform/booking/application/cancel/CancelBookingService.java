@@ -17,12 +17,20 @@ import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQ
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.domain.CancellationWindow;
 
 /**
  * The cancel-a-booking use case (U6, issue #11). In one transaction it loads the booking by code,
  * computes the refund <strong>server-side</strong> via the shared {@link CancellationPolicy}
  * (invariant #10), transitions {@code CONFIRMED → CANCELLED} (guarded), frees the {@code (set, date)}
  * via {@link AvailabilityClaim#release} (invariant #2), and publishes {@link BookingCancelled}.
+ *
+ * <p>Status alone does not authorize the cancellation: nothing writes {@code COMPLETED}, so a
+ * {@code CONFIRMED} booking would otherwise stay cancellable — and late-cancel-refundable — long
+ * after the guest consumed the stay. The quote's {@link CancellationPolicy.RefundQuote#cancellationOpen}
+ * is the end-of-life fence, checked before the transition so a spent day is never released and no
+ * {@link BookingCancelled} is published for it. The operator's weather refund is deliberately
+ * outside this fence: it is a full refund of the venue's own money for a storm that already happened.
  *
  * <p><strong>The refund is not issued here.</strong> Moving real money is a side effect that must not
  * sit inside this transaction (a post-refund commit failure would diverge money from state, and a
@@ -65,6 +73,9 @@ class CancelBookingService implements CancelBooking {
 		}
 
 		RefundQuote quote = cancellationPolicy.quote(booking);
+		if (!quote.cancellationOpen()) {
+			return new CancelOutcome.WindowClosed();
+		}
 		long refundMinor = quote.refundMinor();
 
 		Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(
@@ -86,15 +97,21 @@ class CancelBookingService implements CancelBooking {
 		log.info("cancelled booking {} and released set {} on {} (refund {} minor)", cancelled.id(),
 				cancelled.setId().value(), cancelled.bookingDate(), refundMinor);
 
-		CancelOutcome.Tier tier = tierFor(quote.beforeCutoff(), refundMinor);
+		CancelOutcome.Tier tier = tierFor(quote.window(), refundMinor);
 		return new CancelOutcome.Cancelled(refundMinor, cancelled.currency(), tier);
 	}
 
-	/** Full before the cutoff; after it, partial when something is refunded, else none (ADR-0005). */
-	private static CancelOutcome.Tier tierFor(boolean beforeCutoff, long refundMinor) {
-		if (beforeCutoff) {
-			return CancelOutcome.Tier.FULL;
-		}
-		return refundMinor > 0 ? CancelOutcome.Tier.PARTIAL : CancelOutcome.Tier.NONE;
+	/**
+	 * The tier to report for a cancellation that actually happened (ADR-0005): full in the
+	 * {@code FREE} window, and after it partial when something is refunded, else none. Reads the
+	 * window rather than a boolean derived from it, so the temporal decision has one representation.
+	 * {@code CLOSED} cannot reach here — the fence returns above — hence the throw rather than a tier.
+	 */
+	private static CancelOutcome.Tier tierFor(CancellationWindow window, long refundMinor) {
+		return switch (window) {
+			case FREE -> CancelOutcome.Tier.FULL;
+			case LATE -> refundMinor > 0 ? CancelOutcome.Tier.PARTIAL : CancelOutcome.Tier.NONE;
+			case CLOSED -> throw new IllegalStateException("a closed window cannot be cancelled");
+		};
 	}
 }

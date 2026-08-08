@@ -227,7 +227,9 @@ guidance — decided at Phase 4 with the MCP best practices loaded.
   > (#142), `STALE_WRITE` (#224/#226), `INVALID_SIGNATURE` + `PAYMENT_INIT_FAILED` (U4),
   > `NO_SUCH_REQUEST` / `REQUEST_EXPIRED` / `REQUEST_NOT_PENDING` / `WRONG_STATUS` (#98),
   > `INVALID_CURRENT_PASSWORD` + `ACCOUNT_NOT_ACTIVE` + `BOOTSTRAP_CREDENTIAL_MANAGED` (#326),
-  > **`MISSING_CURRENT_PASSWORD` (#345)**. Gone since: `CELL_TAKEN`, `DUPLICATE_POSITION`.
+  > `MISSING_CURRENT_PASSWORD` (#345), **`CANCELLATION_WINDOW_CLOSED` (#566)** — a `409` kept
+  > distinct from `NOT_CANCELLABLE` because the booking is still `CONFIRMED` and only the service
+  > day has opened. Gone since: `CELL_TAKEN`, `DUPLICATE_POSITION`.
   > Regenerate rather than trust this paragraph:
   > `grep -rhoE '"[A-Z][A-Z_]{3,}"' platform/src/main/java --include="*Controller.java" --include="ApiErrorHandler.java" --include="RateLimitFilter.java" | sort -u`
   > (filter out the role/enum tokens it also catches: `ADMIN`, `CUSTOMER`, `OPERATOR`, `PENDING`,

@@ -169,6 +169,18 @@ class BookingControllerIT {
 	}
 
 	@Test
+	void closedWindowRejectionCarriesItsOwnCode() throws Exception {
+		String code = createAndGetCode(onlineSet(), bookable().plusDays(7));
+		new ServiceDayBackdate(jdbc).moveToPast(code, LocalDate.of(2021, 8, 14));
+
+		mvc.perform(post("/api/bookings/{code}/cancel", code))
+				.andExpect(status().isConflict())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("CANCELLATION_WINDOW_CLOSED"))
+				.andExpect(content().string(not(containsString(code))));
+	}
+
+	@Test
 	void endpointIsPublic() throws Exception {
 		// No auth header → not 401. Guest checkout is permitted (and CSRF is exempt for it).
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)

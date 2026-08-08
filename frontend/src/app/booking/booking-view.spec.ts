@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
@@ -59,6 +60,7 @@ function stubService(opts: {
   detailAfterCancel?: BookingDetail;
   getError?: unknown;
   cancel?: Cancellation;
+  cancelError?: unknown;
   cancelCalls?: string[];
   withdrawCalls?: string[];
   withdrawError?: unknown;
@@ -75,7 +77,9 @@ function stubService(opts: {
     },
     cancel: (code: string) => {
       opts.cancelCalls?.push(code);
-      return of(opts.cancel ?? CANCELLATION);
+      return (
+        opts.cancelError ? throwError(() => opts.cancelError) : of(opts.cancel ?? CANCELLATION)
+      ) as Observable<Cancellation>;
     },
     withdraw: (code: string) => {
       opts.withdrawCalls?.push(code);
@@ -316,6 +320,62 @@ describe('BookingView', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe(label);
+  });
+
+  // The window can close between render and confirm; retrying then can never succeed.
+  it('explains a closed window and withdraws the cancel affordance instead of inviting a retry', async () => {
+    const closed: BookingDetail = {
+      ...DETAIL,
+      cancellable: false,
+      beforeCutoff: false,
+      refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+    };
+    const fixture = await render(
+      stubService({
+        detail: DETAIL,
+        detailAfterCancel: closed,
+        cancelError: new HttpErrorResponse({
+          status: 409,
+          error: { code: 'CANCELLATION_WINDOW_CLOSED' },
+        }),
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="cancel-result"]')?.textContent).toContain(
+      'no longer be cancelled',
+    );
+    expect(host.querySelector('[data-testid="cancel-result"]')?.textContent).not.toContain(
+      'try again',
+    );
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+  });
+
+  // A CONFIRMED booking past its service day: the server closes the window, so the affordance goes.
+  it('offers no cancel affordance when the server says a confirmed booking is not cancellable', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          cancellable: false,
+          beforeCutoff: false,
+          refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+    expect(host.querySelector('[data-testid="refund-terms"]')).toBeNull();
+    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe(
+      'Confirmed',
+    );
   });
 
   it('flips the chip to Cancelled and shows the refunded row after cancelling (no reload)', async () => {

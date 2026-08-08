@@ -263,10 +263,13 @@ The skills reference them by number.
    for the venue in the period) − commission (commission rate stored per venue).
    Payouts are settled manually via BKT; the ledger is the record of what is owed.
 10. **Cancellation/refund policy is enforced server-side.** Free cancellation until
-    the #4 cutoff → full refund; after → non-refundable (or partial); weather
-    exception → **manual admin-triggered** full refund (v1, no forecast
-    automation). Refund decisions and amounts are computed on the server, then
-    actioned via Stripe.
+    the #4 cutoff → full refund; after → non-refundable (or partial); **and the
+    window closes entirely when the service day opens** (`00:00 Europe/Tirane` on
+    the booking date) — a guest cancel is then refused, not refunded at a tier, so a
+    delivered stay can never be reclaimed (ADR-0005's 2026-08-08 amendment). The
+    venue's weather exception → **manual admin-triggered** full refund (v1, no
+    forecast automation) is deliberately outside that fence. Refund decisions and
+    amounts are computed on the server, then actioned via Stripe.
 11. **Spring Modulith boundaries are hexagonal and id-based.** Module layout is the
     **ADR-0007 graduated two-template shape** (as amended by issues #95 and #371 — the latter adding
     a third, *non-context* template: the `shared` OPEN Shared Kernel, which matches neither template

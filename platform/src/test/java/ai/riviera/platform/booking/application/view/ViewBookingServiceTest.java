@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.domain.CancellationWindow;
 import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
@@ -143,13 +144,32 @@ class ViewBookingServiceTest {
 		assertThat(detail.cancellable()).isFalse();
 	}
 
+	/**
+	 * The refund figure is deliberately NOT asserted here: this service copies {@code refundMinor}
+	 * straight off the quote, so a stubbed 0 would only pin the stub. {@code RefundPolicyTest} owns
+	 * the closed-window amount, and {@code BookingViewIT} pins the two together end to end.
+	 */
+	@Test
+	void pastBookingIsNotCancellableEvenThoughItIsConfirmed() {
+		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.CLOSED, 0L);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellable()).isFalse();
+		assertThat(detail.beforeCutoff()).isFalse();
+	}
+
 	private void givenBooking(BookingStatus status) {
+		givenBooking(status, CancellationWindow.FREE, 4500L);
+	}
+
+	private void givenBooking(BookingStatus status, CancellationWindow window, long refundMinor) {
 		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, status, VENUE, SET, GUEST, DATE,
 				4500L, "EUR", null, null, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
-				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), true, 4500L));
+				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), window, refundMinor));
 	}
 
 	private static SetBookingInfo setInfo() {
