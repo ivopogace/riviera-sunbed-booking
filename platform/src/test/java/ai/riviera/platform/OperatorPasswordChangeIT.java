@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * AC-7 for #326: the operator's self-service password change, proved against Testcontainers Postgres
+ * AC-7: the operator's self-service password change, proved against Testcontainers Postgres
  * and the <strong>real</strong> {@code AuthenticationManager} — the new credential authenticates and
  * the old one stops doing so.
  *
@@ -40,12 +40,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code OperatorProvisioning}, so it can only assert that a hash was <em>handed over</em>; whether the
  * hash it handed over is one the login path will later accept is exactly the question a mock cannot
  * answer. That gap is where R-1 lives: bcrypt re-salts, so an {@code encode(input).equals(stored)}
- * comparison is always false — a defect that shipped twice already (#128 rotate-detection, S8
+ * comparison is always false — a defect that shipped twice already (an earlier rotate-detection, S8
  * set-password). Here the whole loop is real: real encoder, real {@code operator} row, real login.
  *
- * <p>Every call to the change endpoint presents a UNIQUE {@code X-Forwarded-For}: #326 put the path on
+ * <p>Every call to the change endpoint presents a UNIQUE {@code X-Forwarded-For}: this path has
  * its own per-IP budget, and the limiter lives in the CACHED Spring context, so a shared loopback key
- * would recreate the #127 full-suite 429 wall that scoped runs cannot see.
+ * would recreate the full-suite 429 wall that scoped runs cannot see.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -99,7 +99,7 @@ class OperatorPasswordChangeIT {
 	 * really gone from {@code SPRING_SESSION}, and the session that did the change really survives —
 	 * signing you out of the device you are actively using is bad UX and is not what the guidance asks.
 	 *
-	 * <p>"Survives" is asserted through the <strong>re-issued</strong> cookie since #344, because the
+	 * <p>"Survives" is asserted through the <strong>re-issued</strong> cookie, because the
 	 * calling session is now rotated: the session lives on, but under a new id. A browser applies the
 	 * replacement {@code Set-Cookie} automatically and notices nothing; MockMvc does not, so the test has
 	 * to carry it forward by hand. That the pre-change value is dead is
@@ -121,9 +121,9 @@ class OperatorPasswordChangeIT {
 	}
 
 	/**
-	 * AC-1 for #344, and the half no mock can reach: the calling session survives the change but does so
+	 * AC-1, and the half no mock can reach: the calling session survives the change but does so
 	 * under a <strong>new id</strong>, so the cookie value that made the change stops authenticating.
-	 * That is what closes the gap the #342 runbook had to document — an exfiltrated cookie names the very
+	 * That is what closes the gap an earlier runbook had to document — an exfiltrated cookie names the very
 	 * session {@code revokeAllExcept} deliberately spares, and before this it kept full operator authority.
 	 *
 	 * <p>Driven end-to-end because the guarantee lives in machinery a web slice stubs out: the real
@@ -146,7 +146,7 @@ class OperatorPasswordChangeIT {
 	}
 
 	/**
-	 * AC-1 for #359: the rotation must survive a request that overlaps it. A second request on the same
+	 * AC-1: the rotation must survive a request that overlaps it. A second request on the same
 	 * session — the operator console's pending-request poll is the realistic one — loads the session before
 	 * the change commits and saves it after, and Spring Session's save writes <em>that</em> request's
 	 * in-memory id ({@code UPDATE … SET SESSION_ID = ? WHERE PRIMARY_ID = ?}). Before this slice that wrote
@@ -242,7 +242,7 @@ class OperatorPasswordChangeIT {
 				.andExpect(jsonPath("$.code").value("BOOTSTRAP_CREDENTIAL_MANAGED"));
 
 		// Asserted on the stored hash rather than by logging in again: the bootstrap username's per-identity
-		// login budget (#292) is shared with every other IT in this cached context.
+		// login budget is shared with every other IT in this cached context.
 		assertTrue(encoder.matches(BOOTSTRAP_PASSWORD, passwordHashOf(BOOTSTRAP_ADMIN)));
 		mvc.perform(get(ME_PATH).cookie(admin)).andExpect(status().isOk());
 	}

@@ -30,11 +30,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S8 (#113, AC-5) authenticated set-password — closes the S4 F-1 gap. An SSO-only (password-less)
+ * Authenticated set-password (AC-5) — closes the S4 F-1 gap. An SSO-only (password-less)
  * account sets its first password from within its own session (its SSO email is provider-verified), then
  * can password-login. An account that already has a password must supply the correct current one; an omitted
  * one is {@code 400 MISSING_CURRENT_PASSWORD} and a supplied-but-wrong one {@code 400 INVALID_CURRENT_PASSWORD}
- * (#345 — one code for both told a caller a password it never sent was incorrect), and the stored password is
+ * (one code for both told a caller a password it never sent was incorrect), and the stored password is
  * unchanged either way. The signed-in principal is faked with {@code user(email).roles("CUSTOMER")} so the SSO-only
  * case (which cannot password-login) can still be driven; {@code CurrentCustomer} resolves it to the real
  * DB account by email. Never a register-time UPSERT.
@@ -91,7 +91,7 @@ class SetPasswordIT {
 	}
 
 	/**
-	 * #345: an account that HAS a password and sends none is told the field is missing — not that what it
+	 * An account that HAS a password and sends none is told the field is missing — not that what it
 	 * sent was wrong, because it sent nothing. Until this slice both answered {@code INVALID_CURRENT_PASSWORD}.
 	 * {@link #ssoOnlyAccountSetsFirstPasswordThenCanLogin} is the other half of the pair: the same omission
 	 * stays legal where there is no credential to prove, so the two branches can never collapse into one answer.
@@ -119,7 +119,7 @@ class SetPasswordIT {
 	 * omission as the winner. The asymmetry is <strong>forced, not an oversight</strong>: whether a current
 	 * password is required at all depends on whether this account has one, so the presence check cannot be
 	 * hoisted above {@code CustomerPasswords.validate} without moving the credential read ahead of the policy
-	 * check — the ordering the #342 review pinned against. Each endpoint therefore keeps the precedence it
+	 * check — the ordering an earlier review pinned against. Each endpoint therefore keeps the precedence it
 	 * already had. Pinned so the divergence stays a decision rather than something a later edit flips unseen.
 	 */
 	@Test
@@ -143,12 +143,12 @@ class SetPasswordIT {
 	}
 
 	/**
-	 * #128 generalization: changing your password must not leave your OTHER sessions alive — the same
+	 * A generalization: changing your password must not leave your OTHER sessions alive — the same
 	 * bug class the issue names for operator suspend, found by the Phase-1 generalization audit. The
 	 * session doing the change survives (signing you out of the device you are actively using is bad
 	 * UX and is not what the OWASP guidance asks for); every other session of that principal dies.
 	 *
-	 * <p>Since #344 "survives" is asserted through the <strong>re-issued</strong> cookie: the calling
+	 * <p>"Survives" is asserted through the <strong>re-issued</strong> cookie: the calling
 	 * session is rotated, so it lives on under a new id. A browser applies the replacement
 	 * {@code Set-Cookie} silently; MockMvc must carry it forward by hand. That the pre-change value is
 	 * dead is {@link #theSurvivingSessionIsRotatedSoTheOldCookieValueDies}'s assertion, not this one's.
@@ -163,8 +163,7 @@ class SetPasswordIT {
 		mvc.perform(get(ME_PATH).cookie(otherDevice)).andExpect(status().isOk());
 
 		Cookie thisDeviceReissued = mvc.perform(post(SET_PASSWORD_PATH).cookie(thisDevice).with(csrf())
-				// #326 put this path on its own per-IP budget; without a unique key this call would share
-				// the loopback bucket with the rest of a cached-context full-suite run (the #127 class).
+				// This path has its own per-IP budget; without a unique key this call would share the loopback bucket.
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -178,7 +177,7 @@ class SetPasswordIT {
 	}
 
 	/**
-	 * AC-2 for #344 — the customer twin of {@code OperatorPasswordChangeIT}'s rotation proof: the calling
+	 * AC-2 — the customer twin of {@code OperatorPasswordChangeIT}'s rotation proof: the calling
 	 * session stays signed in but under a new id, so a stolen copy of the cookie that made the change dies
 	 * with the credential it was proving. Only reachable end-to-end: the rotation is persisted to
 	 * {@code SPRING_SESSION} and re-issued as a cookie by the real {@code SessionRepositoryFilter}.
@@ -204,7 +203,7 @@ class SetPasswordIT {
 	}
 
 	/**
-	 * AC-3 for #359 — the customer twin of {@code OperatorPasswordChangeIT}'s concurrent-save proof, kept
+	 * AC-3 — the customer twin of {@code OperatorPasswordChangeIT}'s concurrent-save proof, kept
 	 * so the two password endpoints do not drift. A second request on the same session (a background poll,
 	 * a second tab) loads it before the change commits and saves it after; Spring Session's save writes
 	 * that request's in-memory id, which before this slice put the retired id back on the row.
