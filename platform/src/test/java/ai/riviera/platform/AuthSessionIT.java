@@ -34,10 +34,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The session-auth foundation proof (issue #109, S1 of epic #108 — design D-1/D-2/D-8): an
+ * The session-auth foundation proof (design D-1/D-2/D-8): an
  * operator signs in ONCE via {@code POST /api/auth/operator/login} and rides an
  * {@code HttpOnly; Secure; SameSite=Lax} session cookie afterwards — no more per-request
- * {@code Authorization: Basic}. Auth errors are on the RFC-7807 contract (#97): a failed login is
+ * {@code Authorization: Basic}. Auth errors are on the RFC-7807 contract: a failed login is
  * {@code 401 INVALID_CREDENTIALS} with an <em>identical</em> body for wrong-password / unknown-user /
  * suspended (no account enumeration, D-8), and an unauthenticated request to a protected endpoint
  * gets {@code 401 UNAUTHENTICATED} from the entry point (hand-mirrored shape, the
@@ -74,7 +74,7 @@ class AuthSessionIT {
 		jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
 				+ "(SELECT id FROM operator WHERE username IN ('op-a', 'op-c'))").update();
 		jdbc.sql("DELETE FROM operator WHERE username IN ('op-a', 'op-c')").update();
-		// Sessions outlive the operator row, and the #359 test expects only its own in the index.
+		// Sessions outlive the operator row, and the concurrent-save test expects only its own in the index.
 		jdbc.sql("DELETE FROM spring_session WHERE principal_name IN ('op-a', 'op-c')").update();
 
 		venueOwnedByA = jdbc.sql("""
@@ -180,7 +180,7 @@ class AuthSessionIT {
 	}
 
 	/**
-	 * AC-2 for #359: the fixation rotation must survive a request that overlaps it. This is the same lost
+	 * AC-2: the fixation rotation must survive a request that overlaps it. This is the same lost
 	 * update {@code OperatorPasswordChangeIT} pins on the password path — both go through
 	 * {@code SessionIdentity.rotate} — but here it is the more serious instance, because the overlap is
 	 * <strong>attacker-controllable</strong> rather than incidental: whoever planted the pre-login cookie can
@@ -244,7 +244,7 @@ class AuthSessionIT {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.username").value("op-a"))
 				.andExpect(jsonPath("$.principalType").value("OPERATOR"))
-				// #256 (AC-5): not a customer concept — the role check answers null with no customer lookup.
+				// AC-5: not a customer concept — the role check answers null with no customer lookup.
 				.andExpect(jsonPath("$.emailVerified").value(nullValue()));
 
 		// Anonymous → the entry point's hand-mirrored RFC-7807 401 (same pattern as RATE_LIMITED).

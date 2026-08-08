@@ -21,22 +21,22 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Locks the root-package discipline #382 restores: the composition root orchestrates the platform
+ * Locks the root-package discipline: the composition root orchestrates the platform
  * edge (auth, sessions, SSO, recovery flows — RV-BE-11) and composes modules, but it is not a home
  * for cross-module <em>domain</em> orchestration. After the mail machinery moved into the
  * {@code notification} module, the only module surfaces the root still touches are
  * {@code customer}/{@code operator} (the two principal types), {@code notification::api} (the send
  * port) and {@code shared} — never the booking spine. A root class importing
- * {@code booking}/{@code venue}/{@code payment}/{@code payout}/{@code availability} is the #371
- * cycle pattern reappearing (an edge listener assembling module facts); such a listener belongs in
- * a module — see {@code notification.adapter.in.BookingConfirmationMailListener}, which is exactly
- * that listener, moved.
+ * {@code booking}/{@code venue}/{@code payment}/{@code payout}/{@code availability} is the
+ * shared-kernel cycle pattern reappearing (an edge listener assembling module facts); such a
+ * listener belongs in a module — see {@code notification.adapter.in.BookingConfirmationMailListener},
+ * which is exactly that listener, moved.
  *
- * <p><strong>Stated as an allowlist, deliberately (#386).</strong> This rule used to deny the five
+ * <p><strong>Stated as an allowlist, deliberately.</strong> This rule used to deny the five
  * 2026 spine modules by name, which was strictly weaker than the paragraph above in two ways a
  * review fan-out found: a root class reaching {@code notification.application.Mailer} (the raw
  * transport, bypassing both suppression enforcement and the off-thread dispatch that closes the
- * D-8/#369 timing oracle) passed, and a ninth module would never have entered the deny set at all.
+ * D-8 timing oracle) passed, and a ninth module would never have entered the deny set at all.
  * An allowlist is self-maintaining — a new module is out of bounds until someone deliberately
  * grants it — and it makes {@code MockMailer}'s Javadoc claim, that root access here is pinned to
  * {@code notification::api}, actually true.
