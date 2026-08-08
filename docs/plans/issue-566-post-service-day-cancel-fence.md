@@ -38,7 +38,11 @@ stated the tiers with no closing bound) · `riviera-modulith`
 `CancelOutcome` gains a `WindowClosed` variant so the controller `switch` stays exhaustive —
 a typed outcome, not an exception, §6; the enum replaces a second boolean parameter per §6a) ·
 `riviera-stripe-payments` (confirmed the fence belongs on the refund *decision* in `booking`,
-never in `payment`, which only executes) · `postgres` (`N/A — no migration; no schema change`).
+never in `payment`, which only executes) · `riviera-frontend` (review-fix round — confirmed the
+error-state fix stays inside the `booking` feature folder and that `problemCodeOf` is the shared
+`api-error` helper, not a new one) · `angular-developer` (review-fix round — the `HttpErrorResponse`
+narrowing + signal-per-state shape used for `cancelWindowClosed`) · `postgres` (`N/A — no migration;
+no schema change`).
 
 **Branch:** `claude/sdlc-566-3rq5ap` — the cloud session's designated remote branch stands in
 for `bugfix/post-service-day-cancel-fence` (`riviera-sdlc` § Remote/cloud session addendum).
@@ -240,9 +244,9 @@ mocked suite does not construct; the unit spec is the proportionate pin.
 
 ## Execution status
 
-**Stage pointer:** `PR #574 — review gate`
+**Stage pointer:** `PR #574 — review-fix round pushed; Sonar gate next`
 
-**Next action:** Run the review gate on PR #574 per `references/pr-gates.md` §1, then the Sonar gate.
+**Next action:** Re-check CI on the fix push, then pull the Sonar issue list for PR 574 per §2.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -250,6 +254,7 @@ mocked suite does not construct; the unit spec is the proportionate pin.
 | 1 — `RefundPolicy` third tier | ✅ | `61b9818` |
 | 2 — Fence the cancel use case + its error code | ✅ | `1a776ca` |
 | 3 — Fence the view + FE pin | ✅ | `0e0e822` |
+| 5 — Review-fix round (12 findings) | ✅ | `c1d4397` |
 | 4 — Docs, ADR-0005 amendment, close-out | ✅ | `185de01` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -261,6 +266,18 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI — `Repo hygiene (diff-scoped)` on `1a1e785` | `BookingControllerIT.java` and `BookingViewIT.java` were changed by the diff but absent from the File-structure section | fixed — both listed, guard green |
+| F-2 | review gate (`/code-review`, high) | **A booking can reach `CONFIRMED` after its service day opened** (uncapped Request-to-Book pay window, or a late webhook) — the fence then leaves that guest with no cancellation path at all, where before they had the `LATE` tier | **deferred → issue #576.** Verified exact: `RequestProperties`'s own Javadoc says `payWindow` "has no such cap". This is a pre-existing **invariant #4** hole (the platform sells a day already underway) that the fence made visible; the fix belongs at the point of sale, not by relaxing the fence |
+| F-3 | review gate | A `409 CANCELLATION_WINDOW_CLOSED` rendered "please try again" and left the Cancel button up — a newly reachable, unrecoverable loop when the window closes between render and confirm | fixed — `booking-view.ts` reads the code, shows a specific message, and re-loads the detail so the affordance withdraws; pinned by a new spec |
+| F-4 | review gate | `BookingDetail`'s Javadoc still defined `cancellable` as "({@code CONFIRMED})" — the very doc `ViewBookingService`'s comment points readers at | fixed |
+| F-5 | review gate | The backdate helpers left a permanently-claimed `set_availability` row on a hard-coded past date in the shared container, so a re-run would violate the `(set_id, booking_date)` unique constraint | fixed — one `ServiceDayBackdate` helper that clears residue at the target date first |
+| F-6 | review gate | `CANCELLATION_WINDOW_CLOSED` was not appended to the maintained error-code list in `docs/plans/error-contract-problemdetail.md` | fixed |
+| F-7 | review gate | `tierFor` re-derived the tier from the collapsed `(beforeCutoff, refundMinor)` pair despite holding the window, and `CancellationWindow`'s Javadoc wrongly claimed 1:1 correspondence with `CancelOutcome.Tier` | fixed — `tierFor` switches on the window; the Javadoc now states the non-correspondence |
+| F-8 | review gate | `cancellationWindow` sampled `clock.instant()` twice, so one classification was built from two clock readings | fixed — one `now`, both boundaries compared against it |
+| F-9 | review gate | AC-5's money assertion was tautological — the 0 asserted was the 0 the test stubbed | fixed — assertion dropped with a Javadoc note; `RefundPolicyTest` owns the amount, `BookingViewIT` the end-to-end pairing |
+| F-10 | review gate | `backdateServiceDay` was copy-pasted into two ITs with divergent implementations | fixed — folded into `ServiceDayBackdate` (same fix as F-5) |
+| F-11 | review gate | The `LATE`-window reseed left `viewComputesPartialRefundAfterCutoff` insensitive to `set.bookingCutoff()`, so its name over-claimed | fixed — renamed to `viewComputesPartialRefundInTheLateWindow`; the class Javadoc states the determinism/fidelity trade and points at `BookingCutoffTest` |
+| F-12 | review gate | `NOTHING` was a single-use alias for `0L`, adding indirection without removing a magic number | fixed — inlined |
+| F-13 | review gate | PR #574's body named a pinning test that does not exist (`refundsAPastDateBecauseTheFenceIsGuestOnly`) | fixed — PR body corrected to `fullRefundRegardlessOfCutoff` |
 | D-1 | docs-freshness (step 3) | `CONTEXT.md`'s **Refund tier** entry described *none* as "after the cutoff, non-refundable", implying a cancel is always available after the cutoff — the exact belief the fence removes | patched — tier entry corrected to the 0-bps case, new **Cancellation window** term added |
 | D-2 | docs-freshness (step 3) | `CLAUDE.md` invariant #10 stated "after → non-refundable (or partial)" with no end, so the canonical rule under-specified the fence | patched — **substantive wording change to an invariant, flagged for reviewer attention** rather than left silent |
 
@@ -284,7 +301,11 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/booking/BookingViewIT.java` — the AC-5 twin at HTTP level, and the `LATE`-window reseed of the partial-refund test
 - `platform/src/test/java/ai/riviera/platform/booking/application/view/ViewBookingServiceTest.java` — AC-5
 - `platform/src/test/java/ai/riviera/platform/booking/WeatherRefundServiceIT.java` — AC-7
-- `frontend/src/app/booking/booking-view.spec.ts` — pins no cancel affordance when `cancellable` is false on a `CONFIRMED` booking
+- `frontend/src/app/booking/booking-view.spec.ts` — pins no cancel affordance when `cancellable` is false on a `CONFIRMED` booking, and the closed-window error state (F-3)
+- `frontend/src/app/booking/booking-view.ts` — the closed-window error message + detail re-read (F-3)
+- `platform/src/test/java/ai/riviera/platform/booking/ServiceDayBackdate.java` — **new**; the one re-run-safe backdating fixture (F-5, F-10)
+- `platform/src/main/java/ai/riviera/platform/booking/application/view/BookingDetail.java` — `cancellable`'s definition (F-4)
+- `docs/plans/error-contract-problemdetail.md` — the maintained error-code list (F-6)
 - `docs/adr/0005-cancellation-refund-tiers-and-proportional-reversal.md` — the third-tier amendment
 - `docs/plans/issue-566-post-service-day-cancel-fence.md` — this plan
 - `CONTEXT.md` — the `Refund tier` glossary entry, plus the new `Cancellation window` term (freshness finding D-1)

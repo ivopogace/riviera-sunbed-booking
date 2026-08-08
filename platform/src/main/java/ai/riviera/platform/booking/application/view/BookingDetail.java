@@ -9,8 +9,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * Everything the booking-view screen shows (U6): the booking summary (code, {@code status}, venue +
  * set display, date, the gross {@code amount} paid) plus the <strong>server-computed</strong>
- * cancellation terms (invariant #10) — whether it is still {@code cancellable} ({@code CONFIRMED}),
- * whether free cancellation is still open ({@code beforeCutoff}), the {@code refundIfCancelledNow},
+ * cancellation terms (invariant #10) — whether it is still {@code cancellable} ({@code CONFIRMED}
+ * <em>and</em> the cancellation window still open, so a stay whose service day has begun reports
+ * {@code false}), whether free cancellation is still open ({@code beforeCutoff}), the
+ * {@code refundIfCancelledNow} (0 once the window has closed),
  * and, once cancelled, the {@code refundedAmount} actually issued ({@code null} otherwise). Money is
  * integer minor units (invariant #5). Request-to-Book adds {@code requestExpiresAt}
  * (the venue-response deadline; {@code null} for instant bookings) and {@code payment} — the open

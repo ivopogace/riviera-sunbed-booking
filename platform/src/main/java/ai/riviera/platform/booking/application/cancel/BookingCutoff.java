@@ -46,10 +46,12 @@ public class BookingCutoff {
 	 * jobs), then the start of the service day, past which cancellation is refused outright.
 	 */
 	CancellationWindow cancellationWindow(LocalTime cutoff, LocalDate bookingDate) {
-		if (isBeforeCutoff(cutoff, bookingDate)) {
+		// One reading of the clock, so both boundaries classify the same instant.
+		java.time.Instant now = clock.instant();
+		if (now.isBefore(closesAt(cutoff, bookingDate))) {
 			return CancellationWindow.FREE;
 		}
-		return clock.instant().isBefore(serviceDayOpensAt(bookingDate))
+		return now.isBefore(serviceDayOpensAt(bookingDate))
 				? CancellationWindow.LATE
 				: CancellationWindow.CLOSED;
 	}

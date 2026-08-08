@@ -171,25 +171,13 @@ class BookingControllerIT {
 	@Test
 	void closedWindowRejectionCarriesItsOwnCode() throws Exception {
 		String code = createAndGetCode(onlineSet(), bookable().plusDays(7));
-		backdateServiceDay(code, LocalDate.of(2021, 8, 14));
+		new ServiceDayBackdate(jdbc).moveToPast(code, LocalDate.of(2021, 8, 14));
 
 		mvc.perform(post("/api/bookings/{code}/cancel", code))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("CANCELLATION_WINDOW_CLOSED"))
 				.andExpect(content().string(not(containsString(code))));
-	}
-
-	/** Move a confirmed booking's service day into the past, as if the stay had been consumed. */
-	private void backdateServiceDay(String code, LocalDate past) {
-		long setId = jdbc.sql("SELECT set_id FROM booking WHERE code = :c")
-				.param("c", code).query(Long.class).single();
-		LocalDate booked = jdbc.sql("SELECT booking_date FROM booking WHERE code = :c")
-				.param("c", code).query(LocalDate.class).single();
-		jdbc.sql("UPDATE set_availability SET booking_date = :past WHERE set_id = :s AND booking_date = :d")
-				.param("past", past).param("s", setId).param("d", booked).update();
-		jdbc.sql("UPDATE booking SET booking_date = :past WHERE code = :c")
-				.param("past", past).param("c", code).update();
 	}
 
 	@Test

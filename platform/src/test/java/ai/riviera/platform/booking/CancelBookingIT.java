@@ -124,7 +124,7 @@ class CancelBookingIT {
 		LocalDate booked = LocalDate.of(2035, 5, 11);
 		Created booking = confirmBookingOn(booked);
 		LocalDate spent = LocalDate.of(2021, 6, 3);
-		backdateServiceDay(booking, booked, spent);
+		new ServiceDayBackdate(jdbc).moveToPast(booking.code(), spent);
 
 		CancelOutcome outcome = cancelBooking.cancel(booking.code());
 
@@ -140,13 +140,5 @@ class CancelBookingIT {
 				"the spent day is not released back into the pool");
 		assertEquals(0, events.stream(BookingCancelled.class).count(),
 				"no BookingCancelled means no Stripe refund and no payout reversal");
-	}
-
-	/** Move a confirmed booking's service day into the past, as if the stay had been consumed. */
-	private void backdateServiceDay(Created booking, LocalDate from, LocalDate past) {
-		jdbc.sql("UPDATE set_availability SET booking_date = :past WHERE set_id = :s AND booking_date = :d")
-				.param("past", past).param("s", booking.setId()).param("d", from).update();
-		jdbc.sql("UPDATE booking SET booking_date = :past WHERE id = :id")
-				.param("past", past).param("id", booking.id()).update();
 	}
 }

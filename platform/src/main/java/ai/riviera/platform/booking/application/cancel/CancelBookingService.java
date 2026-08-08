@@ -17,6 +17,7 @@ import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQ
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.domain.CancellationWindow;
 
 /**
  * The cancel-a-booking use case (U6, issue #11). In one transaction it loads the booking by code,
@@ -96,15 +97,21 @@ class CancelBookingService implements CancelBooking {
 		log.info("cancelled booking {} and released set {} on {} (refund {} minor)", cancelled.id(),
 				cancelled.setId().value(), cancelled.bookingDate(), refundMinor);
 
-		CancelOutcome.Tier tier = tierFor(quote.beforeCutoff(), refundMinor);
+		CancelOutcome.Tier tier = tierFor(quote.window(), refundMinor);
 		return new CancelOutcome.Cancelled(refundMinor, cancelled.currency(), tier);
 	}
 
-	/** Full before the cutoff; after it, partial when something is refunded, else none (ADR-0005). */
-	private static CancelOutcome.Tier tierFor(boolean beforeCutoff, long refundMinor) {
-		if (beforeCutoff) {
-			return CancelOutcome.Tier.FULL;
-		}
-		return refundMinor > 0 ? CancelOutcome.Tier.PARTIAL : CancelOutcome.Tier.NONE;
+	/**
+	 * The tier to report for a cancellation that actually happened (ADR-0005): full in the
+	 * {@code FREE} window, and after it partial when something is refunded, else none. Reads the
+	 * window rather than a boolean derived from it, so the temporal decision has one representation.
+	 * {@code CLOSED} cannot reach here — the fence returns above — hence the throw rather than a tier.
+	 */
+	private static CancelOutcome.Tier tierFor(CancellationWindow window, long refundMinor) {
+		return switch (window) {
+			case FREE -> CancelOutcome.Tier.FULL;
+			case LATE -> refundMinor > 0 ? CancelOutcome.Tier.PARTIAL : CancelOutcome.Tier.NONE;
+			case CLOSED -> throw new IllegalStateException("a closed window cannot be cancelled");
+		};
 	}
 }

@@ -29,7 +29,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * HTTP contract for {@code GET /api/bookings/{code}} (U6, AC-1/AC-2): 200 + summary and
  * <strong>server-computed</strong> refund terms (full before the cutoff; the venue's configurable
  * share after), 404 for an unknown code. Testcontainers Postgres + the real flow with the stub
- * gateway; an after-cutoff case is seeded directly (the create cutoff blocks past dates).
+ * gateway; the non-{@code FREE} cases are seeded directly (the create cutoff blocks past dates).
+ *
+ * <p>Those seeded venues carry a {@code 00:00} cutoff so the window classification is the same at
+ * every hour the suite might run at. The trade is deliberate: this class pins which <em>window</em>
+ * the HTTP response reflects, while {@code BookingCutoffTest} pins the boundary arithmetic against a
+ * real evening cutoff time.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -86,7 +91,7 @@ class BookingViewIT {
 	}
 
 	@Test
-	void viewComputesPartialRefundAfterCutoff() throws Exception {
+	void viewComputesPartialRefundInTheLateWindow() throws Exception {
 		// Tomorrow behind a 00:00 cutoff is LATE at every hour of the run, so the tier is deterministic.
 		seedLateCancelBooking("VIEWPART1", "partial@e.com", tirane().plusDays(1));
 

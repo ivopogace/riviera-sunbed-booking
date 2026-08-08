@@ -14,7 +14,6 @@ package ai.riviera.platform.booking.domain;
 public final class RefundPolicy {
 
 	private static final long BPS_DENOMINATOR = 10_000L;
-	private static final long NOTHING = 0L;
 
 	private RefundPolicy() {
 	}
@@ -34,7 +33,7 @@ public final class RefundPolicy {
 		return switch (window) {
 			case FREE -> grossMinor;
 			case LATE -> Math.floorDiv(grossMinor * lateCancelBps, BPS_DENOMINATOR);
-			case CLOSED -> NOTHING;
+			case CLOSED -> 0L;
 		};
 	}
 }

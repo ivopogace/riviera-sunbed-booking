@@ -144,14 +144,18 @@ class ViewBookingServiceTest {
 		assertThat(detail.cancellable()).isFalse();
 	}
 
+	/**
+	 * The refund figure is deliberately NOT asserted here: this service copies {@code refundMinor}
+	 * straight off the quote, so a stubbed 0 would only pin the stub. {@code RefundPolicyTest} owns
+	 * the closed-window amount, and {@code BookingViewIT} pins the two together end to end.
+	 */
 	@Test
-	void pastBookingIsNotCancellableAndQuotesNothing() {
+	void pastBookingIsNotCancellableEvenThoughItIsConfirmed() {
 		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.CLOSED, 0L);
 
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
 		assertThat(detail.cancellable()).isFalse();
-		assertThat(detail.refundIfCancelledNow().minorUnits()).isZero();
 		assertThat(detail.beforeCutoff()).isFalse();
 	}
 
