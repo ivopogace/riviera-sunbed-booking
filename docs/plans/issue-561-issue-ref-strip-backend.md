@@ -201,16 +201,19 @@ reflects that stop.
 
 ## Execution status
 
-**Stage pointer:** ⏳ **B green-lit by the maintainer 2026-08-08; B-1 through B-6 shipped this
-session. C stays not-recommended per the *Recommendation* above — no C batch runs without a
-separate go.**
+**Stage pointer:** ⏳ **B green-lit by the maintainer 2026-08-08; B-1 through B-12 shipped this
+session — the dense tier (≥4 refs/file) is now fully exhausted. C stays not-recommended per the
+*Recommendation* above — no C batch runs without a separate go.**
 
-**Next action:** the dense tier (≥4 refs/file) has 29 files left (review-recount, `grep`-exact —
-see F-19 for the count-drift this recount exposed); continue at ~5 files/PR until it's exhausted,
-then switch to larger sparse-tail sweeps (~20–30 files/PR, matching Phase A's own dense→sparse
-transition) for the 155 files carrying 1–3 refs (357 true-violation tokens remain tree-wide across
-both tiers, `#[0-9]{2,4}\b` raw minus `invariant #[0-9]{1,2}\b`, same method as every prior count in
-this doc). C stays parked.
+**Next action:** switch to larger sparse-tail sweeps (~20–30 files/PR, matching Phase A's own
+dense→sparse transition) for the 155 files carrying 1–3 refs (217 true-violation tokens remain
+tree-wide, all in the sparse tier now, `#[0-9]{2,4}\b` raw minus `invariant #[0-9]{1,2}\b`, same
+method as every prior count in this doc). C stays parked.
+
+**B-7 through B-12 ran as a parallel wave** (F-20): 6 worktree-isolated subagents drafted batches
+concurrently, each committing locally without pushing; a serial integration step (cherry-pick →
+gate → self-review) landed each one onto the branch in turn, so history and the plan doc stayed
+linear despite the concurrent drafting. See F-20 for what that review caught.
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
@@ -222,7 +225,14 @@ this doc). C stays parked.
 | B-4 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `ControllableMailer`, `WorkerContextArchitectureTest`, `AdminPayoutSecurityIT`, `OperatorLifecycleIT`, `EmailSuppressionIT` — 33 true-violation tokens removed, 2 `invariant #13` refs preserved (`AdminPayoutSecurityIT`), 0 R-4 hits. `OperatorLifecycleIT`'s class doc needed a fuller rewrite (two clauses briefly stacked after a ref's removal); caught and fixed by hand-reading the whole paragraph before moving on | pushed | ✅ all gates green (AC-2, AC-5 non-vacuous, `compileJava`/`compileTestJava`, all 4 directly-testable classes pass — `ControllableMailer` is an IT fixture, no `@Test` of its own) |
 | B-5 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `RegistryMailShedDurabilityIT`, `RegistryMailPropertiesTest`, `BookingConfirmationMailListenerTest`, `CreateBookingServiceTest`, `SessionIdentityTest` — 31 true-violation tokens removed, 0 R-4 hits. Applied the F-17 lesson proactively this time: 3 refs inside AssertJ `.as(...)` strings (2 files) were identified as code before editing and left untouched, alongside real Javadoc refs on nearby/same lines that were stripped | pushed | ✅ all gates green (AC-2, AC-5 non-vacuous, `compileJava`/`compileTestJava`, all 5 test classes pass — one via Testcontainers) |
 | B-6 | the next 5 densest `platform/src/test` files by raw `#nnn` count — `EndpointRoleGateCoverageTest`, `BeachMapReplaceIT`, `RefundOutboxScopeTest`, `VenueRepriceIT`, `RefundOutboxScopeIT` — 33 true-violation tokens removed (per-file table below), 0 R-4 hits, all `invariant #n` refs preserved. One ref (`#428`) intentionally left inside a `RefundOutboxScopeIT` AssertJ `.as(...)` string (F-17) | pushed | ✅ all gates green (AC-2 comment-only over all 30 touched files, AC-5 non-vacuous 0-violation scan, `compileJava`/`compileTestJava` clean, all 5 test classes pass — 3 via Testcontainers, 29 tests total, 0 failures) — CI/Sonar pending a PR |
-| B-7… | next ~5-file batch (dense tier, 29 files left after B-6) | — | not started |
+| B-7 | (parallel wave, worktree-isolated) `ScheduledQueryTimeoutIT`, `CompositionRootDisciplineTests`, `AuthSessionIT`, `ArchitectureTestSupport`, `ApiErrorHandlerTest` — 27 true-violation tokens removed, `invariant #7`/`D-1`/`D-2`/`D-8` preserved, `S1` orphan label dropped with its ref, 3 F-17 code-string refs left untouched, 0 R-4 hits | pushed | ✅ gates green, integrated by cherry-pick, 27 tests pass |
+| B-8 | (parallel wave) `ActuatorHardeningIT`, `payment/adapter/out/StripePropertiesTest`, `operator/OperatorOwnershipIT`, `booking/application/request/RequestTerminationEventPublicationIT`, `VenueWriteRoleGateTest` — 22 true-violation tokens removed, `invariant #13` preserved, `D4`/`R-3` orphan labels dropped with their refs, 2 F-17 code-string refs left untouched, 0 R-4 hits. Integration review fixed one thing before landing: the subagent's `check-inline-comments.mjs` fix for `ActuatorHardeningIT` had collapsed a pre-existing 3-line `//` comment into one 206-character line — technically one-line-compliant but bad style; re-trimmed to a genuinely short line (125 chars) by dropping a redundant clause instead of just removing the line-wraps | pushed | ✅ gates green after the line-length fix, integrated by cherry-pick, tests pass |
+| B-9 | (parallel wave) `RecoveryPropertiesBindingTest`, `RateLimitPropertiesBindingTest`, `PublishedSurfacePlacementArchitectureTests` (0 edits — its only `#nnn` hits are ArchUnit violation-message string literals, F-17, or the permitted `invariant #11`), `MyAccountControllerTest`, `MeErasureControllerTest` — 20 true-violation tokens removed across the 4 edited files, `invariant #11`/`D-1`/`[D5]`/`AC-n` preserved, `S8` orphan label dropped with its ref, 0 R-4 hits | pushed | ✅ gates green, integrated by cherry-pick, tests pass |
+| B-10 | (parallel wave) `LogoutThenLoginCsrfIT`, `CustomerRecoveryTest`, `AdminSurfaceRoleGateTest`, `venue/application/VenuePhotoServiceTest`, `venue/VenueReadControllerIT` — 24 true-violation tokens removed, `invariant #13`/`invariant-#13` preserved, `U1`/`T7` orphan labels dropped with their refs, 1 F-17 code-string ref left untouched, 0 R-4 hits. **Integration review caught F-20 here**: the subagent dropped 3 `AC-n` labels (`AC-3`, `AC-7`, `AC-2`×2/`AC-3`) alongside their stripped `#nnn` refs, misapplying the orphan-label precedent (S2/S4/O-n/T-n/U-n are tracker/slice provenance and correctly dropped; `AC-n` is durable test-documentation content, same class as `D-n`/`invariant #n`, and B-6/B-7/B-9 had already correctly kept it) — restored all 3 `AC-n` labels before cherry-picking, and while there, re-trimmed another `check-inline-comments.mjs` collapse-to-one-giant-line fix (`VenueReadControllerIT`, same class of issue as B-8's) down to a real one-liner | pushed | ✅ gates green after both fixes, integrated by cherry-pick, tests pass |
+| B-11 | (parallel wave) `venue/VenuePhotoServingIT`, `venue/VenuePhotoReadModelIT`, `venue/AdminPhotoModerationIT`, `shared/MdcTaskDecoratorTest`, `booking/adapter/in/RefundExecutorWiringIT` — 17 true-violation tokens removed, `invariant #11` preserved, `AC-7`/`AC-8`/`AC-9` (test-internal labels, not `#`-tokens) plus assorted orphan labels dropped with their refs, 0 R-4 hits. **Same F-20 mistake as B-10**: 3 `AC-n` labels (`AC-6`, `AC-7`, `AC-8`) dropped alongside their refs — restored all 3 before cherry-picking | pushed | ✅ gates green after the F-20 fix, integrated by cherry-pick, tests pass |
+| B-12 | (parallel wave) `PerOperatorLoginIT`, `EventRegistryDurabilityIT`, `EmailVerificationIT`, `AccountRecoveryControllerTest` (4 files — the dense tier's last, odd-sized batch) — 13 true-violation tokens removed, `D-1` preserved, `S8`/`G-4` orphan labels dropped with their refs, 1 F-17 code-string ref left untouched, 0 R-4 hits | pushed | ✅ gates green, integrated by cherry-pick, tests pass |
+| **Dense-tier wave total (B-7..B-12)** | 29 files, 128 true-violation tokens removed (grep-verified before/after against `origin/main`) — **the dense tier (≥4 refs/file) is now fully exhausted** | pushed | ✅ consolidated pass after all 6 landed: `check-comment-only.mjs` (58 files code-identical), `check-inline-comments.mjs` (clean), `compileJava`/`compileTestJava` clean, 159 tests across 27 directly-testable classes pass (0 failures), the structural net (`ModularityTests`/`JdbcOnlyArchitectureTests`/`PackageShapeArchitectureTests`/`PublishedSurfacePlacementArchitectureTests`) green |
+| B-13… | next sparse-tail sweep (~20–30 files, 155 sparse files remain) | — | not started |
 | C-1… | backend main batches | — | not recommended; blocked on a separate maintainer go |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -304,6 +314,7 @@ doc — new findings start at F-14 to stay globally unambiguous across both plan
 | F-17 | B-2, `check-comment-only.mjs` (caught before push) | Test-tree comments are not the only place a ref hides: `AssertJ`'s `.as("…")` description strings are Java **code** (`String` literal arguments), the same class F-1 already named for `describe()` titles — but the strip pass's own instinct reads them as prose because they read like sentences. 5 refs across 2 files (`AsyncMailDispatcherTest` 1, `MailTransportPropertiesTest` 4) were edited inside `.as(...)` calls, which `check-comment-only.mjs` correctly flagged as code changed before the batch was pushed | fixed — all 5 reverted to their original text (still carrying their `#nnn`); **rule: before editing any line, confirm it is a `//`/`/* */`/`/** */` comment or Javadoc, never a method-argument string literal, no matter how sentence-like the string reads — `.as(...)`, `.withMessage(...)`, JUnit `assertThat(...).describedAs(...)`, and log-message string literals are the recurring instances of this class** |
 | F-18 | B-3, `PostToolUse` RV-STYLE-1 hook | Compressing a ref out of a comment can flip a one-line comment into two (a mid-sentence citation removed left the surrounding clause wrapping onto a second line) — `SetPasswordIT`'s `check-inline-comments.mjs` hook fired live on the edit that did this, exactly as designed (riviera-java-conventions §6c: authoring-time, not just review-time) | fixed immediately — reflowed to one line before the next edit; **rule: after any strip edit that reflows a `//` comment, re-check its line count — removing text can lengthen as easily as shorten a wrapped clause** |
 | F-19 | B-6, tree-wide recount | The dense/sparse file-count and total-token figures drift across sessions even with no other tree change, because the counting method itself is under-specified: (a) `invariant #n` sometimes appears hyphenated (`invariant-#2`) rather than with a space, and a `grep` for the space-only form leaves the hyphenated instance uncounted as permitted, inflating the "true violation" figure for that file; (b) single-digit invariant refs (`#7`, `#8`, `#9`) never match a `#[0-9]{2,4}` raw pattern in the first place, so subtracting an `invariant #n` count found via a *separate*, wider pattern against that raw total silently undercounts true violations in files that cite single-digit invariants. Recomputing B-6's candidate list with a corrected `#[0-9]{1,4}` raw pattern moved `EndpointRoleGateCoverageTest` from "true=6" to the correct "true=9" (it was still the top pick either way, so B-6's file selection was unaffected) | recorded; **rule: state the exact regex pair used for any dense/sparse/total figure in this doc (this batch used `#[0-9]{2,4}\b` raw minus `invariant #[0-9]{1,2}\b`, matching every prior count here), and always recompute fresh — do not carry a prior session's tree-wide total forward as fact** |
+| F-20 | B-7..B-12 parallel wave, integration review | Dispatching the F-2 orphan-label rule to 6 independent subagents in one prompt (worded "Slice/epic labels like O3, O8, S2, S4 ... are NOT in the permitted list (only D-n is) — strip the label together with the ref") caused 2 of 6 (`B-10`, `B-11`) to over-generalize it to `AC-n` (acceptance-criteria labels) — dropping `AC-3`/`AC-6`/`AC-7`/`AC-8`/`AC-2` alongside their stripped `#nnn` refs. This is wrong: `AC-n` identifies *which acceptance criterion this test proves* — durable, content-bearing test documentation local to the file, same class as `D-n`/`invariant #n` — not tracker/slice provenance like `S-n`/`O-n`/`T-n`/`U-n`/`G-n`, which *do* only resolve against a specific epic's now-historical slice list and are correctly dropped. B-6 (this session, hand-edited) and B-7/B-9 (parallel wave, correctly generalized) all kept `AC-n`, stripping only the adjacent `#nnn`; caught by diffing the two inconsistent batches against that established majority precedent before cherry-picking, and fixed in both worktrees pre-integration (5 `AC-n` labels restored total: B-10 got `AC-3`×1, `AC-7`×1, `AC-2`/`AC-3`×1 each; B-11 got `AC-6`, `AC-7`, `AC-8`). Also caught in the same review: 2 of 6 subagents (`B-8`, `B-10`), when their `check-inline-comments.mjs` fix required collapsing a pre-existing multi-line `//` comment to one line, did so by concatenating all the original content onto one very long line (206 and 164 chars) rather than shortening the content — technically passes the one-line rule but reads as a wall of text; both re-trimmed to shorter one-liners by dropping a redundant clause, closer to the file's own ~100–120-char convention | fixed in both worktrees before cherry-pick; **rule: when delegating the orphan-label rule to a fresh agent, name the permitted class by what it *is* (durable test/spec documentation: `AC-n`, `D-n`, `invariant #n`) rather than only by example (`D-n` alone) — an incomplete positive list invites the negative space to swallow a case it shouldn't; and when `check-inline-comments.mjs` forces a multi-line comment down to one line, that is a cue to shorten content, not just remove line-wraps: check the resulting line length against the file's own convention, don't cram to satisfy the gate literally** |
 
 ## File structure
 
@@ -363,7 +374,68 @@ doc — new findings start at F-14 to stay globally unambiguous across both plan
 - `platform/src/test/java/ai/riviera/platform/venue/VenueRepriceIT.java` — **modified** (B-6): same
 - `platform/src/test/java/ai/riviera/platform/booking/RefundOutboxScopeIT.java` — **modified**
   (B-6): comment-only, `#nnn` refs stripped (1 left inside an `.as(...)` string, F-17)
-- Stage 0 itself (the probe tables above) touched no file — only B-1 through B-6's batches did.
+- `platform/src/test/java/ai/riviera/platform/ScheduledQueryTimeoutIT.java` — **modified** (B-7):
+  comment-only, `#nnn` refs stripped
+- `platform/src/test/java/ai/riviera/platform/CompositionRootDisciplineTests.java` — **modified**
+  (B-7): same
+- `platform/src/test/java/ai/riviera/platform/AuthSessionIT.java` — **modified** (B-7): same
+- `platform/src/test/java/ai/riviera/platform/ArchitectureTestSupport.java` — **modified** (B-7):
+  same
+- `platform/src/test/java/ai/riviera/platform/ApiErrorHandlerTest.java` — **modified** (B-7): same
+- `platform/src/test/java/ai/riviera/platform/ActuatorHardeningIT.java` — **modified** (B-8):
+  comment-only, `#nnn` refs stripped; one pre-existing multi-line `//` comment re-trimmed to a
+  genuinely short one-liner (F-20), not just collapsed onto one long line
+- `platform/src/test/java/ai/riviera/platform/payment/adapter/out/StripePropertiesTest.java` —
+  **modified** (B-8): comment-only, `#nnn` refs stripped (1 left inside an `.as(...)` string, F-17)
+- `platform/src/test/java/ai/riviera/platform/operator/OperatorOwnershipIT.java` — **modified**
+  (B-8): same
+- `platform/src/test/java/ai/riviera/platform/booking/application/request/RequestTerminationEventPublicationIT.java`
+  — **modified** (B-8): comment-only, `#nnn` refs stripped (1 left inside an `.as(...)` string, F-17)
+- `platform/src/test/java/ai/riviera/platform/VenueWriteRoleGateTest.java` — **modified** (B-8):
+  comment-only, `#nnn` refs stripped
+- `platform/src/test/java/ai/riviera/platform/RecoveryPropertiesBindingTest.java` — **modified**
+  (B-9): same
+- `platform/src/test/java/ai/riviera/platform/RateLimitPropertiesBindingTest.java` — **modified**
+  (B-9): same
+- `platform/src/test/java/ai/riviera/platform/PublishedSurfacePlacementArchitectureTests.java` —
+  **reviewed, not modified** (B-9): all `#nnn` hits are F-17 code-string literals or the permitted
+  `invariant #11`
+- `platform/src/test/java/ai/riviera/platform/MyAccountControllerTest.java` — **modified** (B-9):
+  comment-only, `#nnn` refs stripped
+- `platform/src/test/java/ai/riviera/platform/MeErasureControllerTest.java` — **modified** (B-9):
+  same
+- `platform/src/test/java/ai/riviera/platform/LogoutThenLoginCsrfIT.java` — **modified** (B-10):
+  comment-only, `#nnn` refs stripped (1 left inside an `.as(...)` string, F-17)
+- `platform/src/test/java/ai/riviera/platform/CustomerRecoveryTest.java` — **modified** (B-10):
+  comment-only, `#nnn` refs stripped; `AC-3` restored after the F-20 review fix
+- `platform/src/test/java/ai/riviera/platform/AdminSurfaceRoleGateTest.java` — **modified** (B-10):
+  comment-only, `#nnn` refs stripped
+- `platform/src/test/java/ai/riviera/platform/venue/application/VenuePhotoServiceTest.java` —
+  **modified** (B-10): same
+- `platform/src/test/java/ai/riviera/platform/venue/VenueReadControllerIT.java` — **modified**
+  (B-10): comment-only, `#nnn` refs stripped; 3 `AC-n` labels restored after the F-20 review fix,
+  one multi-line-comment collapse re-trimmed to a real one-liner
+- `platform/src/test/java/ai/riviera/platform/venue/VenuePhotoServingIT.java` — **modified**
+  (B-11): comment-only, `#nnn` refs stripped; `AC-7` restored after the F-20 review fix
+- `platform/src/test/java/ai/riviera/platform/venue/VenuePhotoReadModelIT.java` — **modified**
+  (B-11): comment-only, `#nnn` refs stripped; `AC-8` restored after the F-20 review fix
+- `platform/src/test/java/ai/riviera/platform/venue/AdminPhotoModerationIT.java` — **modified**
+  (B-11): comment-only, `#nnn` refs stripped
+- `platform/src/test/java/ai/riviera/platform/shared/MdcTaskDecoratorTest.java` — **modified**
+  (B-11): same
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/in/RefundExecutorWiringIT.java` —
+  **modified** (B-11): comment-only, `#nnn` refs stripped; `AC-6` restored after the F-20 review fix
+- `platform/src/test/java/ai/riviera/platform/PerOperatorLoginIT.java` — **modified** (B-12):
+  comment-only, `#nnn` refs stripped
+- `platform/src/test/java/ai/riviera/platform/EventRegistryDurabilityIT.java` — **modified**
+  (B-12): comment-only, `#nnn` refs stripped (1 left inside an `.as(...)` string, F-17)
+- `platform/src/test/java/ai/riviera/platform/EmailVerificationIT.java` — **modified** (B-12): same
+- `platform/src/test/java/ai/riviera/platform/AccountRecoveryControllerTest.java` — **modified**
+  (B-12): same
+- `.gitignore` — **modified**: added `.claude/worktrees/`, the harness's local scratch directory
+  for the isolated worktrees the B-7..B-12 parallel wave used — not repo content, unrelated to the
+  `#nnn` strip itself
+- Stage 0 itself (the probe tables above) touched no file — only B-1 through B-12's batches did.
 
 ## Generalization-audit log
 
