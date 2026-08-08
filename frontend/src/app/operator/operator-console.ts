@@ -28,7 +28,7 @@ interface ConsoleTab {
  *
  * <p><strong>Always porcelain</strong>: the `data-riv-theme="porcelain"` host attribute re-scopes the
  * `--riv-*` tokens for the console subtree WITHOUT writing the document-level theme — so a tourist who
- * chose the dark `riviera` theme still sees a light console, and their choice is preserved on return
+ * chose the dark `riviera` theme still sees a light console, and their choice is preserved on return.
  * The console never injects `ThemeService` and exposes no theme switcher.
  *
  * <p>It carries <strong>no sign-in gate</strong>: {@code operatorSessionGuard} owns
