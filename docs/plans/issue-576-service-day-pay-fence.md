@@ -279,17 +279,18 @@ e2e. No new route, no new service call.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5 — docs freshness + close-out)`
 
-**Next action:** Phase 4 — the guest-facing closed-window panel plus its unit, contrast and e2e cover.
+**Next action:** Phase 5 — run `riviera-docs-freshness` over `origin/main..HEAD`, then mark the PR
+ready for review and run the Review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The service-day boundary on `BookingCutoff` | ✅ | `379064d` |
 | 1 — Cap the pay deadline (`RequestWindows` + the accept) | ✅ | `19de5c9` |
 | 2 — The sweep enforces the capped deadline | ✅ | `1a48270` |
-| 3 — Withhold credentials + `payWindowClosed` on the wire | ✅ | next commit |
-| 4 — The guest-facing closed-window panel + e2e | | |
+| 3 — Withhold credentials + `payWindowClosed` on the wire | ✅ | `4cfb763` |
+| 4 — The guest-facing closed-window panel + e2e | ✅ | next commit |
 | 5 — Docs freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -332,8 +333,9 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/booking/booking.model.ts` — `payWindowClosed`
 - `frontend/src/app/booking/booking-view.ts` — the closed-window panel
 - `frontend/src/app/booking/booking-view.spec.ts` — AC-7 unit half
-- `frontend/src/app/booking/booking-view.contrast.spec.ts` — the new panel's contrast proof
+- `frontend/src/app/booking/booking.service.spec.ts|../find-booking.spec.ts|../my-bookings.spec.ts|../booking-pay.spec.ts` — the `BookingDetail` fixtures the new required field forces (the three `BookingConfirmation` fixtures are a different type and stay untouched)
 - `frontend/e2e/request-to-book.e2e.ts` — AC-7 e2e half
+- **No contrast spec change.** The panel reuses the `expired` banner recipe, whose fill/eyebrow/body/strong are already pinned by `booking-view.contrast.spec.ts`'s `BANNERS` table — which is the payoff of reusing a base rather than minting a token pair.
 - `CLAUDE.md` — invariant #4's job list (close-out, `riviera-docs-freshness`)
 - `RESPONSIBILITIES.md` — §`booking` (close-out, `riviera-docs-freshness`)
 

@@ -47,6 +47,7 @@ const DETAIL: BookingDetail = {
   requestExpiresAt: null,
   payment: null,
   emailWithheld: false,
+  payWindowClosed: false,
 };
 
 const CREATE_URL = `${environment.apiBaseUrl}/api/bookings`;

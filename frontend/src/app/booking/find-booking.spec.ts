@@ -24,6 +24,7 @@ const DETAIL: BookingDetail = {
   requestExpiresAt: null,
   payment: null,
   emailWithheld: false,
+  payWindowClosed: false,
 };
 
 /** A found-by-code stub; `getByCode`/`primeDetail`/`takePrefetched` are spies for assertions. */
