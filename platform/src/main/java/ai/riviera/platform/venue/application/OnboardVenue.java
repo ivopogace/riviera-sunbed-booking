@@ -13,7 +13,7 @@ public interface OnboardVenue {
 
 	/**
 	 * Create a venue from a validated command and record {@code creator} as its owner atomically
-	 * (creator-owns-on-create, #115) — the venue starts owned by the operator that created it, so the
+	 * (creator-owns-on-create) — the venue starts owned by the operator that created it, so the
 	 * invariant-#13 ownership checks pass for the creator and reject everyone else. The venue starts
 	 * with no rating and no reviews. A malformed command surfaces as {@link IllegalArgumentException}
 	 * (mapped to {@code 400} by the adapter); validation lives in {@link NewVenueCommand}.

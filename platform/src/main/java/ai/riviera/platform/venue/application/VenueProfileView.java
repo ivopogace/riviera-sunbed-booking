@@ -7,7 +7,7 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 
 /**
- * The operator's own view of a venue's admin profile (O8, issue #177) — everything the console's
+ * The operator's own view of a venue's admin profile — everything the console's
  * Venue &amp; commodities tab needs to render its form: the editable core
  * (name/beach/region/description, booking mode, booking cutoff, amenities, distance-to-water) plus
  * the two <strong>read-only</strong> display fields, {@code commissionBps} (shown as a %; the
@@ -18,13 +18,13 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
  * payout currency, which must never reach the anonymous read (that is why the read endpoint is
  * gated to the owning operator, not permitted like {@code GET /api/venues/*}).
  *
- * <p>{@code version} is the row's optimistic-concurrency token (#224): the tab loads it here and
+ * <p>{@code version} is the row's optimistic-concurrency token: the tab loads it here and
  * echoes it back on the next profile {@code PATCH}, so a stale write is rejected with 409 rather
  * than clobbering {@code bookingMode}/{@code bookingCutoff}. Read-only for the operator — the write
  * never sets it directly; the conditional {@code UPDATE} bumps it.
  *
  * <p>{@code photos} carries every {@code PhotoSlot} in declaration order with its preview URL
- * ({@code null} = empty slot, #142) — always all three slots, so the tab renders a stable grid.
+ * ({@code null} = empty slot) — always all three slots, so the tab renders a stable grid.
  */
 public record VenueProfileView(String name, String beach, String region, String description,
 		BookingMode bookingMode, LocalTime bookingCutoff, int commissionBps, String payoutCurrency,

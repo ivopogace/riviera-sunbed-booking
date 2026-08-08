@@ -14,12 +14,12 @@ public enum SetRejection {
 	NO_SUCH_VENUE,
 	/** No set with the given id belongs to the venue. */
 	NO_SUCH_SET,
-	/** No set on the venue carries the given row label (O4 reprice, issue #174). */
+	/** No set on the venue carries the given row label. */
 	NO_SUCH_ROW,
 	/**
 	 * The venue's {@code set_version} was bumped by another writer (a concurrent reprice or replace) since
 	 * the tab loaded the map, so the conditional bump matched no row — the reprice is rejected rather than
-	 * clobbering the current prices (optimistic-concurrency loss, #226). Reprice-only, like
+	 * clobbering the current prices (optimistic-concurrency loss). Reprice-only, like
 	 * {@link #NO_SUCH_ROW} (the shared {@code addSet}/{@code editSet}/{@code removeSet} paths never reach
 	 * it). Maps to 409 {@code STALE_WRITE}.
 	 */
