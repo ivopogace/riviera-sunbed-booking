@@ -14,7 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Session-login helper for MockMvc integration tests (issue #109): performs the real
+ * Session-login helper for MockMvc integration tests: performs the real
  * {@code POST /api/auth/operator/login} against the DB-backed credentials and returns the
  * {@code SESSION} cookie subsequent requests ride — the session-auth replacement for the retired
  * {@code .with(httpBasic(…))} post-processor. Public so module-package ITs (venue, availability,
@@ -36,9 +36,9 @@ public final class SessionLoginSupport {
 
 	/**
 	 * A unique per-call test client IP, so suite-cumulative logins never share a rate bucket. Drawn from
-	 * the RFC 2544 benchmarking range, which is deliberately <em>outside</em> the trusted-proxy defaults
-	 * (#129): a private-range address would be skipped as a proxy hop and every IT in the suite would
-	 * collapse onto the one loopback MockMvc bucket — the #127 lockout, again.
+	 * the RFC 2544 benchmarking range, which is deliberately <em>outside</em> the trusted-proxy defaults:
+	 * a private-range address would be skipped as a proxy hop and every IT in the suite would
+	 * collapse onto the one loopback MockMvc bucket — the same lockout, again.
 	 */
 	public static String uniqueClientIp() {
 		int n = CLIENT_COUNTER.incrementAndGet();

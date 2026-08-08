@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * S6 #115 admin approval surface (design D-5). The demoted bootstrap operator is the platform ADMIN
+ * The admin approval surface (design D-5). The demoted bootstrap operator is the platform ADMIN
  * (is_admin via V29); it lists pending registrations and approves/rejects them under the role-gated,
  * NOT-venue-scoped {@code /api/admin/operators/**} surface (invariant #13's admin exemption). Approval
  * flips PENDING→ACTIVE and ENABLES login; reject flips PENDING→REJECTED and keeps login blocked; a plain
@@ -135,7 +135,7 @@ class OperatorApprovalIT {
 		mvc.perform(post("/api/admin/operators/{id}/reject", 1).cookie(plain).with(csrf()))
 				.andExpect(status().isForbidden());
 
-		// The #128 surfaces are gated identically — a role-gated endpoint added without this
+		// The suspend/reinstate surfaces are gated identically — a role-gated endpoint added without this
 		// assertion is exactly how one silently ships open.
 		mvc.perform(get("/api/admin/operators/accounts").cookie(plain))
 				.andExpect(status().isForbidden());
@@ -147,7 +147,7 @@ class OperatorApprovalIT {
 
 	@Test
 	void anonymousIsUnauthorizedOnTheSuspensionSurface() throws Exception {
-		// No session at all → 401 from the entry point, before any role check (#128).
+		// No session at all → 401 from the entry point, before any role check.
 		mvc.perform(get("/api/admin/operators/accounts")).andExpect(status().isUnauthorized());
 		mvc.perform(post("/api/admin/operators/{id}/suspend", 1).with(csrf()))
 				.andExpect(status().isUnauthorized());

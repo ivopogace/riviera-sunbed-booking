@@ -10,11 +10,11 @@ import ai.riviera.platform.notification.application.SynchronousMailDispatch;
  * integration tests in module sub-packages (e.g. {@code ai.riviera.platform.venue}) can
  * {@code @Import} it and reuse the one container definition.
  *
- * <p>It also pulls in {@link SynchronousMailDispatch} (#369) so recovery-mail sends stay inline in every
- * integration test. That rides here deliberately rather than on each test class: since #369 the production
+ * <p>It also pulls in {@link SynchronousMailDispatch} so recovery-mail sends stay inline in every
+ * integration test. That rides here deliberately rather than on each test class: the production
  * dispatcher is asynchronous, and a test class that missed the override would not fail — it would flake.
  *
- * <p>The container bean itself moved to {@link PostgresContainerConfiguration} in #386, so a test whose
+ * <p>The container bean itself moved to {@link PostgresContainerConfiguration}, so a test whose
  * subject <em>is</em> the asynchrony can take the container without the override. This class keeps
  * importing both, so every existing test is unaffected and the default stays the safe one — see
  * {@link PostgresContainerConfiguration} for when opting out is legitimate.

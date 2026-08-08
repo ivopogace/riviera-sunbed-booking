@@ -24,13 +24,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The wire contract of the admin commission endpoints (A7, epic #348): the list shape, and the write's
+ * The wire contract of the admin commission endpoints: the list shape, and the write's
  * three answers — {@code 200} with the updated venue, {@code 404 NO_SUCH_VENUE}, and
  * {@code 400 INVALID_REQUEST} for a rate the range guard rejects.
  *
  * <p>Standalone MockMvc over a stubbed port, so this pins <strong>mapping and status</strong> only:
  * the forward-only scheduling is {@code VenueCommissionServiceTest}'s and the ADMIN gate is
- * {@code AdminVenueCommissionIT}'s. Errors go through the one {@link ApiErrorHandler} advice (#97) —
+ * {@code AdminVenueCommissionIT}'s. Errors go through the one {@link ApiErrorHandler} advice —
  * registered here precisely so a per-controller handler would show up as a difference.
  *
  * <p><strong>Why absence and zero are tested separately.</strong> Zero basis points is a legitimate

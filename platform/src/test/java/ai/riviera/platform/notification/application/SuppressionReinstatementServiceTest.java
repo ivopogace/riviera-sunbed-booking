@@ -16,8 +16,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * The reinstatement use case (#391): stamp the lift with the injected clock, and leave one audit
- * line behind carrying <strong>technical data only</strong> (the #100 structured-logging pattern, as
+ * The reinstatement use case: stamp the lift with the injected clock, and leave one audit
+ * line behind carrying <strong>technical data only</strong> (the structured-logging pattern, as
  * applied by {@code AccountErasureService}).
  *
  * <p>The PII assertions here are the point of the class, not decoration. The port takes a

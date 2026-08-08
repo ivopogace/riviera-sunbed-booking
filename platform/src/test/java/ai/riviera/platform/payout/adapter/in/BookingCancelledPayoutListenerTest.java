@@ -35,7 +35,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * The reversal listener's behaviour when the accrual it must mirror is <strong>not there yet</strong>
- * — the money-path sibling of #428, found by that slice's generalization audit.
+ * — a money-path sibling case, found by that slice's generalization audit.
  *
  * <p>The two publications are independent, so their delivery order is not guaranteed across a crash
  * or a shed send: {@code BookingCancelled} can reach this listener while {@code BookingConfirmed}'s
@@ -43,7 +43,7 @@ import static org.mockito.Mockito.when;
  * normally, which completed the publication — so the reversal was lost, the ledger kept overstating
  * what the venue was owed (invariant #9), and no gauge moved.
  *
- * <p>It now <strong>throws</strong>, which is the correct half of the #423/#428 asymmetry for a fact
+ * <p>It now <strong>throws</strong>, which is the correct half of the accrual/reversal asymmetry for a fact
  * that <em>can</em> appear later: the publication stays outstanding, {@code riviera.outbox.pending}
  * rises (already watched by {@code MoneyPathAlertCheck}), and the restart republish retries the
  * reversal against a ledger that by then has the accrual. Idempotency makes the retry safe.

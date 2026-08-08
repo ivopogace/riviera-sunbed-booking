@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The admin resend's own logic (#380): the two refusals it makes before sending anything, the mail it
+ * The admin resend's own logic: the two refusals it makes before sending anything, the mail it
  * builds from re-read facts, and the fact that <strong>every</strong> path an admin can reach reports an
  * outcome rather than throwing — a human pressed a button and is owed an answer, not a {@code 500}.
  *
@@ -68,7 +68,7 @@ class BookingConfirmationResendServiceTest {
 
 	/**
 	 * The mail is rebuilt from the booking's own facts, since a resend has no event payload to take the
-	 * date, amount and currency from. Asserted field-by-field for the reason #374 gave: positional
+	 * date, amount and currency from. Asserted field-by-field for a simple reason: positional
 	 * records make a transposition of two same-typed neighbours invisible to the compiler.
 	 */
 	@Test

@@ -24,8 +24,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The assembly every booking mail needs, and the one thing it must say when it cannot finish
- * (#374). Extracted from {@code BookingConfirmationMailListener} so the cancellation listener is a
+ * The assembly every booking mail needs, and the one thing it must say when it cannot finish.
+ * Extracted from {@code BookingConfirmationMailListener} so the cancellation listener is a
  * second <em>caller</em> rather than a second copy — the duplication that would otherwise be
  * literal, down to the field block and the three reason literals.
  *
@@ -98,7 +98,7 @@ class BookingMailFactsServiceTest {
 	/**
 	 * The tag values are the metric vocabulary both abandon counters are read through, and the
 	 * observability runbook tells an on-call reader to filter on them by name. Changing one breaks a
-	 * dashboard rather than renaming a constant — the {@code MailKind} argument (#442), applied to
+	 * dashboard rather than renaming a constant — the {@code MailKind} argument, applied to
 	 * the dimension those two counters do <em>not</em> share.
 	 */
 	@Test

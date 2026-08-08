@@ -24,7 +24,7 @@ import static ai.riviera.platform.ArchitectureTestSupport.assertNoViolations;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The two fitness functions behind #395 — one per instrument, because the finding had two
+ * The two fitness functions here — one per instrument, because the finding had two
  * independent halves and each can regress on its own.
  *
  * <p><strong>Why a rule and not just a value.</strong> The finding was never that someone chose a
@@ -49,8 +49,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * statement in the application, including the {@code INSERT … ON CONFLICT (set_id, booking_date)}
  * whose loser waits on the winner's index tuple lock — the serialization point of the platform's
  * single most important correctness guarantee. Bounding it would turn a legitimate contention wait
- * into an abort, i.e. trade a flaky guarantee for a scheduler fix. #386 made that argument in a
- * Javadoc; a Javadoc does not fail a build, and the property is one line away at all times. This
+ * into an abort, i.e. trade a flaky guarantee for a scheduler fix. That argument used to live only
+ * in a Javadoc; a Javadoc does not fail a build, and the property is one line away at all times. This
  * rule is that argument made mechanical.
  *
  * <p>Both rules read the <em>committed</em> configuration, which is the thing under review; an
