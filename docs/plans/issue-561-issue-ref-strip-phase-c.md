@@ -204,19 +204,33 @@ Sparse-tier batching: 215 files ÷ 15/batch → batches S1–S14 (14×15) + S15 
 | 40 | `notification/application/MailDeliverabilityService.java` | 23–29 | Why the class deliberately deviates from the catch-narrowly convention, citing a prior review finding that unswallowed throwers reached a caller that couldn't act on them | D11 |
 | 41 | `notification/adapter/out/RegistryMailOutbox.java` | 44 | Documentation-correction historical note: an earlier note reported the opposite behavior because it was read against the v1 repository rather than the v2 JDBC repository this deployment runs | D11 |
 | 42 | `booking/api/package-info.java` | 12–14 | Explains why the confirmation-email read was widened: the admin resend flow has no event payload to read booking facts from, plus the guest-bookings-by-contact lookup for support calls | D13 |
+| 43 | `operator/api/OperatorProvisioning.java` | 6–17 (whole Javadoc block) | Port history: how an original "no self-service HTTP endpoint" decision was superseded twice (self-service registration, then self-service password change), and what invariant the original decision still protects | D14 |
+| 44 | `notification/application/MailKind.java` | 10–16 | Why `MailKind` is a real type rather than string constants — the two-classes/two-threads/two-moments argument and the concrete divergence failure mode it forecloses | D14 |
+| 45 | `notification/application/MailKind.java` | 19–21 | Why shipped metric names still say "recovery" even after a non-recovery flow was added — a shipped-metric-name stability argument | D14 |
+| 46 | `notification/application/MailKind.java` | 35–38 | Why one mail kind is the one whose loss doesn't self-heal, and why that's what required the `kind` dimension on the drop path | D14 |
+| 47 | `notification/adapter/in/AddressShape.java` | 9 | Why this validation was extracted into its own class rather than duplicated — names a real past incident (a prior half-check bug) as the concrete reason | D16 |
+| 48 | `notification/adapter/in/AddressShape.java` | 11 | Ties the "check both the local-part and domain-part, not just presence of `@`" rule to the review that established it, with a multi-sentence justification | D16 |
+| 49 | `booking/adapter/out/RegistryRefundOutbox.java` | ~52 | Why the listener id's class/method/parameter type are deliberately unchanged — byte-identity with every historical publication row, avoiding a Flyway rewrite | D17 |
+| 50 | `OperatorApprovalMail.java` | 58 | Names an established failure pattern as the reason there's no try/catch around the mail send — an escaping exception would return a false 500 on work that succeeded | D18 |
+| 51 | `MyErasureController.java` | 24 | Historical "used to..." rationale — the method-agnostic matcher previously needed a dedicated erasure-only rule before a later change broadened it | D18 |
+| 52 | `AccountRecoveryController.java` | 92–106 | Multi-paragraph justification for why session revocation brackets the password write (before AND after, not just once), including why a spanning `@Transactional` would only look atomic | D19 |
 
 ## Execution status
 
-**Stage pointer:** implement — dense-tier waves 1 and 2 complete (D1–D13, 37 of 39 files edited);
-wave 3 (D14–D19, remaining 16 dense files) next.
+**Stage pointer:** implement — **the entire dense tier (D1–D19, all 55 files) is complete.** Sparse
+tier next: wave 1 (S1–S7, 105 files).
 
-**Next action:** dispatch D14–D19 as parallel worktree-isolated agents, integrate serially.
+**Next action:** dispatch S1–S7 as parallel worktree-isolated agents, integrate serially. Sparse
+batches are larger (~15 files each) than dense batches (~3), per the kickoff brief's sizing —
+priced for edit count, not the same per-file judgment density as the dense tier (though the
+triage rule still applies to every file).
 
 | Wave | Scope | Status | Commits |
 |---|---|---|---|
 | Dense wave 1 (D1–D6) | 18 densest files (17 edited, 1 fully RELOCATE-CANDIDATE, 0 edits) | ✅ | `0d110bc`, `04bae2d` (D2), `74e6b9c` (D1), `6020118` (D6), `954215f` (D5), `0bbedc2` (D4), `f79ec49` (D3) |
 | Dense wave 2 (D7–D13) | next 21 files (19 edited, 2 fully RELOCATE-CANDIDATE, 0 edits) | ✅ | `da57ce0` (D8), `c607bc0` (D9), `eb5f33c` (D10), `40f4286` (D13), `75819b4` (D11), `0c3e635` (D12), `3b65889` (D7) |
-| Dense wave 3 (D14–D19) | remaining 16 files | | |
+| Dense wave 3 (D14–D19) | remaining 16 files (12 edited, 2 fully RELOCATE-CANDIDATE, 0 edits) | ✅ | `f41b078`→`7b896f1` (D19), `c269191`→`0f66720` (D14), `ab6a5d5`→`ed7c074` (D15), `d3d9f44`→`b84786a` (D18), `f3936af`→`6272727` (D16), `fc42d01`→`a035a35` (D17) |
+| **Dense tier total (D1–D19)** | **all 55 files** (51 edited, 4 fully RELOCATE-CANDIDATE with 0 edits) | ✅ | 51 files code-identical to `origin/main` except comments; 52-row RELOCATE-CANDIDATE inventory |
 | Sparse wave 1 (S1–S7) | 105 files | | |
 | Sparse wave 2 (S8–S15) | 110 files | | |
 
@@ -242,6 +256,19 @@ cumulative diff after all 7 cherry-picks: `check-comment-only.mjs` (37 files ver
 against `origin/main`), `check-inline-comments.mjs` clean, the F-8 pre-push grep clean (zero
 trailing-on-code edits across the whole branch), `compileJava`/`compileTestJava` BUILD SUCCESSFUL,
 structural net BUILD SUCCESSFUL. Pushed incrementally after each batch's integration (7 pushes).
+
+**Dense wave 3 (D14–D19) summary — closes out the dense tier:** 12 of 16 assigned files edited
+(`OperatorProvisioning.java` and `MailKind.java` had 0 edits — entire content RELOCATE-CANDIDATE,
+inventory rows 43–46). 10 new RELOCATE-CANDIDATE hits recorded (rows 43–52), 1 new F-17
+string-literal ref (`ScheduledQueryTimeout.java`), 0 new F-8-EXPOSED hits. Gates on the cumulative
+diff after all 6 cherry-picks: `check-comment-only.mjs` (51 files verified code-identical against
+`origin/main` — the dense tier's final total), `check-inline-comments.mjs` clean, the F-8 pre-push
+grep clean, `compileJava`/`compileTestJava` BUILD SUCCESSFUL, structural net BUILD SUCCESSFUL.
+Pushed incrementally after each batch (6 pushes). **Dense-tier grand total: 55 files targeted, 51
+edited (677 candidate true-violation tokens reduced to the MECHANICAL subset actually stripped —
+exact before/after token counts are in each batch's ledger entry above), 4 files left fully
+untouched as pure RELOCATE-CANDIDATE, 52 RELOCATE-CANDIDATE items catalogued, 0 F-8-EXPOSED hits
+edited, 0 permitted labels lost.**
 
 **Findings register**
 
@@ -292,6 +319,23 @@ structural net BUILD SUCCESSFUL. Pushed incrementally after each batch's integra
   - `platform/src/main/java/ai/riviera/platform/booking/package-info.java` — **modified** (D13)
   - `platform/src/main/java/ai/riviera/platform/booking/api/package-info.java` — **modified** (D13); 1 RELOCATE-CANDIDATE block left untouched (inventory #42)
   - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/VenueMapView.java` — **modified** (D13)
+- **Dense wave 3 (D14–D19, last dense-tier wave), comment-only `#nnn` strip, 12 files modified + 4 reviewed:**
+  - `platform/src/main/java/ai/riviera/platform/venue/application/EditBeachMap.java` — **modified** (D14)
+  - `platform/src/main/java/ai/riviera/platform/operator/api/OperatorProvisioning.java` — **reviewed, not modified** (D14): entire Javadoc is RELOCATE-CANDIDATE (inventory #43)
+  - `platform/src/main/java/ai/riviera/platform/notification/application/MailKind.java` — **reviewed, not modified** (D14): entire content is RELOCATE-CANDIDATE (inventory #44–#46)
+  - `platform/src/main/java/ai/riviera/platform/notification/api/MailSender.java` — **modified** (D15)
+  - `platform/src/main/java/ai/riviera/platform/notification/adapter/in/MailResubmissionProperties.java` — **modified** (D15)
+  - `platform/src/main/java/ai/riviera/platform/notification/adapter/in/BookingLinkConfig.java` — **modified** (D15)
+  - `platform/src/main/java/ai/riviera/platform/notification/adapter/in/AdminMailDeliveryController.java` — **modified** (D16)
+  - `platform/src/main/java/ai/riviera/platform/notification/adapter/in/AddressShape.java` — **modified** (D16); 2 RELOCATE-CANDIDATE blocks left untouched (inventory #47–#48)
+  - `platform/src/main/java/ai/riviera/platform/booking/application/view/ViewBookingService.java` — **modified** (D16)
+  - `platform/src/main/java/ai/riviera/platform/booking/application/request/RequestReleaseService.java` — **modified** (D17)
+  - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/RegistryRefundOutbox.java` — **modified** (D17); 1 RELOCATE-CANDIDATE block left untouched (inventory #49)
+  - `platform/src/main/java/ai/riviera/platform/ScheduledQueryTimeout.java` — **modified** (D17); 1 F-17 string-literal ref left untouched
+  - `platform/src/main/java/ai/riviera/platform/OperatorUserDetailsService.java` — **modified** (D18)
+  - `platform/src/main/java/ai/riviera/platform/OperatorApprovalMail.java` — **modified** (D18); 1 RELOCATE-CANDIDATE block left untouched (inventory #50)
+  - `platform/src/main/java/ai/riviera/platform/MyErasureController.java` — **modified** (D18); 1 RELOCATE-CANDIDATE block left untouched (inventory #51)
+  - `platform/src/main/java/ai/riviera/platform/AccountRecoveryController.java` — **modified** (D19); 1 RELOCATE-CANDIDATE block left untouched (inventory #52)
 
 ## Generalization-audit log
 
