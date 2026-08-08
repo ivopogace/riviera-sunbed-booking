@@ -96,7 +96,7 @@ class AdminOperatorController {
 	}
 
 	/**
-	 * Approve a registration and, if that is what actually happened, tell the operator by email (#375).
+	 * Approve a registration and, if that is what actually happened, tell the operator by email.
 	 * The mail is deliberately <em>after</em> the transition and gated on its outcome: the address
 	 * arrives on {@link ApprovalOutcome.Approved} straight from the guarded {@code UPDATE}, so a second
 	 * admin racing the same registration is handed none and cannot send a duplicate. Unlike the
@@ -172,8 +172,8 @@ class AdminOperatorController {
 	}
 
 	/**
-	 * The three wire answers, unchanged since #115 — the sealed rewrite of {@link ApprovalOutcome}
-	 * (#375) changed what the outcome <em>carries</em>, never what it maps to. No {@code default}, so a
+	 * The three wire answers, unchanged — the sealed rewrite of {@link ApprovalOutcome}
+	 * changed what the outcome <em>carries</em>, never what it maps to. No {@code default}, so a
 	 * future case is a compile error here rather than a silent {@code 204}.
 	 */
 	private static ResponseEntity<?> toResponse(ApprovalOutcome outcome) {
