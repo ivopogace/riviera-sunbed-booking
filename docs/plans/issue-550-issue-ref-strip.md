@@ -90,7 +90,7 @@ N/A — comment-only; no surface retired or replaced, proved per batch by AC-2.
 | R-1 | A regex auto-fix mangles prose (`"#252, review F3"` → dangling `, review F3`); AC-2 would certify it as clean | high if scripted | med | the locator only *locates*; every edit is by hand. Batch 1 held to this: 28 hand edits, zero auto-fix | agent | standing rule |
 | R-2 | Over-stripping permitted refs (`invariant #11`, `{@link Foo#bar}`) | low | med | only 3–4-digit `#nnn` matched; AC-3 counts per batch | agent | standing rule |
 | R-3 | Churn across ~680 files, zero volume win | — | — | **resolved: go**, maintainer green-light 2026-08-07; rationale in *The decision this plan records* | maintainer | closed |
-| R-4 | A ref is the sole pointer to load-bearing rationale and deletion loses it (#544's R-7/R-9, hit three times there) | low (FE), unknown (BE) | high | relocate before deleting, read the target for the **specific claim**; probe measured **0/83** such refs in `admin/`, but that is one homogeneous directory — B and C each get a 5-file mini-probe before their batch sizes are trusted | agent | open |
+| R-4 | A ref is the sole pointer to load-bearing rationale and deletion loses it (#544's R-7/R-9, hit three times there) | low (FE), unknown (BE) | high | relocate before deleting, read the target for the **specific claim**; probe measured **0/83** such refs in `admin/`, but that is one homogeneous directory — B and C each get a 5-file mini-probe before their batch sizes are trusted | agent | closed — Phase A hit zero sole-rationale refs across all nine batches; B/C do not proceed (maintainer decision), so the mini-probes fire only on revival |
 | R-5 | The pass spans many sessions/PRs and loses its place | high | med | this doc is the rule-11 state store; ledger updated per batch in the same commit window | agent | standing rule |
 | R-6 | Gates pass vacuously when run before committing (both select files from the committed diff) | med | high | commit first, then gate — written into AC-2/AC-5 themselves | agent | standing rule |
 | R-7 | `origin/main` stale in a fresh container → inertness check diffs a 20-commit span | med | low | `git fetch origin main` before the first gate of every session | agent | standing rule |
@@ -107,9 +107,11 @@ N/A — comment-only; no surface retired or replaced, proved per batch by AC-2.
   (`the recurring #148/#351/#462/#505 stranded-focus class` → "the recurring stranded-focus
   class" covered ~48 % of the probe's embedded refs; expect backend siblings like
   "the #454 contract"). New idioms append to the Generalization-audit log. — *standing rule*
-- **Open question:** do Phases B/C hold the probe's finding that no ref is a sole rationale
-  pointer (R-4)? — *Owner:* agent · *Resolves by:* a 5-file mini-probe at the start of each
-  phase, recorded here.
+- **Open question (resolved as moot, 2026-08-08):** do Phases B/C hold the probe's finding that
+  no ref is a sole rationale pointer (R-4)? — B/C do not proceed by maintainer decision, so the
+  question never needs an answer under this plan; a future revival answers it with the B-0/C-0
+  mini-probes before trusting any batch size. Phase A's own answer: zero sole-rationale refs in
+  ~300 files.
 
 ## Availability & concurrency (invariant #2)
 
@@ -159,14 +161,14 @@ stale as batches land.
 
 ## Execution status
 
-**Stage pointer:** implement — Phase A, batch 9 (the final batch) at the PR gate (batches 1–8
-merged via PR #551–#558). **Maintainer decision (2026-08-08): finish Phase A, then STOP** —
-Phases B/C do not proceed; the backend decays under A-5, and any future revival starts from the
-B-0/C-0 mini-probes. Close-out follows A-9.
+**Stage pointer:** ✅ **COMPLETE — the pass is closed.** Phase A (the entire `frontend/` tree)
+shipped in nine batches, PR #551–#559, plus the close-out sweep commit; the final AC-1 census is
+clean (3 documented domain-vocabulary leaves, nothing else). **Maintainer decision (2026-08-08):
+Phases B/C do not proceed** — the backend decays under A-5 (§6d governs each file as it is edited
+for other reasons), and any future revival starts from the B-0/C-0 mini-probes, not from this
+plan's batch sizes. This doc is now a historical record.
 
-**Next action:** open the batch-9 PR, review gate + Sonar list; on merge → close-out (plan-doc
-final state, freshness audit, final AC-1 census, close #550 recording Phase A complete and
-Phases B/C deliberately not proceeding).
+**Next action:** none — issue #550 closed with the Phase A summary.
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
@@ -178,7 +180,8 @@ Phases B/C deliberately not proceeding).
 | A-6 | the first sparse-tail directory sweep — `app/operator/`, 44 of its 69 files edited (~121 markers removed: 85 banned numeric refs + ~35 O-labels — the review-measured figures, correcting the eyeballed "~90"; the untouched 25 were zero-ref or title-string-only). Executed by three parallel editing agents on disjoint partitions under the full F-3–F-11 brief, then orchestrator-verified. The post-merge review found six residues — the `.scss` header ref (F-12's blind spot), two `(S9)` orphans in the `operator-chrome` pair, a bare `(#9)`, one lost "(never a silent discard)" clause (cross-partition drift), and one lost "Saved notice" clause — all fixed in the A-7 PR | **merged via PR #556** | ✅ gates green; Sonar first-try; residues fixed forward |
 | A-7 | `shared/` (26 files, ~48 refs) + `booking/` (28 files, ~70 markers — review-measured, correcting the eyeballed "~51"; incl. the `.scss` block comments F-12 exposed) by two editing agents, orchestrator-verified with the F-12-hardened scan (`/* */` blocks included, cross-partition idiom check); carries the six A-6 post-merge review fixes. F-6/F-7 applied: `booking-status.ts`'s union history rewritten to present tense, three completed-work history sentences deleted, `failure-panel.ts`'s 9-line inline header promoted to TSDoc | **merged via PR #557** | ✅ all gates green |
 | A-8 | the last five feature directories — `admin/` (23 files), `auth/` (12), `pages/` (12), `core/` (10), `venue/` (6): 63 files, ~196 markers removed (120 banned `#` refs + 76 standalone bare labels — review-measured; the raw label-token count is 104, of which 28 are fused to an already-counted `#`-ref like `S9 #277`; none re-added). Three parallel editing agents on disjoint partitions (admin ∥ auth+pages ∥ core+venue), orchestrator-verified with the F-12-hardened scan (`.scss` + HTML block comments, bare-label sweep — which caught one missed `R-12:` in `auth-page.spec.ts`, fixed by hand). F-11 honoured: the two protected measurement records in `home.contrast.spec.ts` keep their refs. F-6 corrections: `sign-out-notice.ts` dropped the retired venue editor from its surface list; `auth.scss`'s header now names its real consumer set (the recovery/verify/set-password + operator password-change pages, not just customer sign-in/register). Beach-map seat codes (`A1`, `B7` in `venue-map.*`) recognized as domain vocabulary, not labels — left. Review pass fixed forward: four residual `slice`/`issue` orphan nouns (A-1 class — two in files the diff hadn't touched), three wording touch-ups (`theme.ts` dangling "closed", `admin-console-stats.ts` noun pileup, `home.html`'s dropped "the heading carries the meaning" clause), and one F-8 spec-file trailing-comment edit kept under the refinement recorded at F-8 | **merged via PR #558** | ✅ all gates green |
-| A-9 | the final sweep — the census re-scoped it well past the estimate: 65 source files, ~249 `#`-ref tokens + ~200 label tokens net removed (review-measured: 204 raw, 4 re-added on the rewritten seat-code fixture line). Three partitions: the `src/` roots hand-edited by the orchestrator per the mandate (`app.routes.ts` 34 comment sites incl. two header blocks promoted to TSDoc; `app.*` siblings, `testing/`, `environments/`, `styles.scss` — whose card-surfaces block became a `/** */` doc comment to clear the guard, `test-setup.ts`), plus two e2e agents (a–l ∥ m–z + `support/` + `real-backend/`). New domain-vocabulary classes recognized and left: mock-seeded booking ids `#5/#7/#9/#11` in `operator-payouts.e2e.ts` (fixture data, not issue refs) and seat codes `A1`–`A4` in `operator-daily.e2e.ts`. F-6 fold-in: the routes-file `legacySurface` header now records that no production route carries the flag. Review pass caught 10 refs the orchestrator census missed — all-numeric 3-digit refs (`#109`, `#134`, `#135`, `#142`, `#148`, `#149`, `#351`) eaten by the census's 3-digit-hex filter (minted F-13) — fixed in `app.config.ts`, `app.scss`, `styles.scss` (the two block-start sites converted to `/** */` docs). Post-fix census with the hex blind spot closed: exactly 3 residues, the documented leaves (`operator-daily.e2e.ts:15` seat codes; `operator-payouts.e2e.ts:10,93` booking seeds) | this PR | ⏳ at gates |
+| A-9 | the final sweep — the census re-scoped it well past the estimate: 65 source files, ~249 `#`-ref tokens + ~200 label tokens net removed (review-measured: 204 raw, 4 re-added on the rewritten seat-code fixture line). Three partitions: the `src/` roots hand-edited by the orchestrator per the mandate (`app.routes.ts` 34 comment sites incl. two header blocks promoted to TSDoc; `app.*` siblings, `testing/`, `environments/`, `styles.scss` — whose card-surfaces block became a `/** */` doc comment to clear the guard, `test-setup.ts`), plus two e2e agents (a–l ∥ m–z + `support/` + `real-backend/`). New domain-vocabulary classes recognized and left: mock-seeded booking ids `#5/#7/#9/#11` in `operator-payouts.e2e.ts` (fixture data, not issue refs) and seat codes `A1`–`A4` in `operator-daily.e2e.ts`. F-6 fold-in: the routes-file `legacySurface` header now records that no production route carries the flag. Review pass caught 10 refs the orchestrator census missed — all-numeric 3-digit refs (`#109`, `#134`, `#135`, `#142`, `#148`, `#149`, `#351`) eaten by the census's 3-digit-hex filter (minted F-13) — fixed in `app.config.ts`, `app.scss`, `styles.scss` (the two block-start sites converted to `/** */` docs). Post-fix census with the hex blind spot closed: exactly 3 residues, the documented leaves (`operator-daily.e2e.ts:15` seat codes; `operator-payouts.e2e.ts:10,93` booking seeds) | **merged via PR #559** | ✅ all gates green |
+| Close-out | the final AC-1 census over the **whole** `frontend/` Phase A scope (src + e2e, F-13-corrected scanner) surfaced 16 label residues that had survived the A-6/A-7 sweeps and their reviews (`AC-n`/`R-n`/`F-7` labels and orphan "slice" nouns in `operator/` + `shared/`, plus one spec-file trailing `(#224)` newly in scope under the A-8 F-8 refinement) — all fixed in the close-out commit. Post-fix census residue: **the 3 documented domain-vocabulary leaves and nothing else**; every other hit class is permitted (F-1 titles, `invariant #n` incl. wrapped continuations, F-8 non-spec trailing comments, F-11 records, hex/entities). `riviera-docs-freshness` over PR #551–#559: one finding, patched (`comment-volume-trim.md` stage line now records the #550 outcome; pre-#550 frontend figures labelled as historical) | close-out commit | ✅ |
 | B-0 | 5-file backend-test mini-probe (R-4 rate) | | |
 | B-1… | backend test, per the mini-probe's verdict | | |
 | C-0 | 5-file backend-main mini-probe (R-4 rate) | | |
@@ -233,6 +236,18 @@ restored — F-3), AC-5 ✅ (10 files scanned, 0 violations), AC-4 ✅ (review r
 all 5 lenses reported, findings F-3–F-5 fixed), AC-6 ✅ (CI green on `2f51e3b`; Sonar: 0 new
 issues on the list, 0 duplication, 0 hotspots — no coverable new lines, comment-only).
 
+**Phase A final (batches A-2…A-9 + close-out):** the per-batch pattern held for all nine PRs —
+AC-2 (comment-only) and AC-5 (inline guard, non-vacuous scan asserted) green on every merged
+commit; AC-3 balance 1:1 per batch with zero net loss of permitted refs across the phase; AC-4
+review ran per PR with every lens explicitly reported (its catches are the F-3…F-13 register);
+AC-6 CI green + the Sonar new-issue **list** (via API, not the badge) empty on every merge —
+first-try green from A-3 onward. **AC-1 (phase close): the whole-scope census over
+`frontend/src` + `frontend/e2e` with the F-13-corrected scanner returns exactly the 3 documented
+domain-vocabulary leaves** (`operator-daily.e2e.ts:15`, `operator-payouts.e2e.ts:10,93`); every
+other remaining `#`/label token is a permitted class (F-1 title strings, `invariant #n` and
+wrapped continuations, F-8 non-spec trailing comments, F-11 measurement records, hex colors,
+HTML entities, `design D-n`/`§n.n`, RFC numbers).
+
 ## Self-review checklist (before merge / PR)
 
 - [x] Every AC has a verifying gate or a named review owner (AC-4 is review-owned by design).
@@ -241,6 +256,7 @@ issues on the list, 0 duplication, 0 hotspots — no coverable new lines, commen
       or timezone surface exists in this diff to violate them).
 - [x] Frontend standards: no component behavior touched; the engaged standard is the TSDoc twin.
 - [x] Execution status at HEAD matches reality.
-- [ ] Risk register: R-4 stays open until the B/C mini-probes report; every other row standing
-      or closed.
-- [ ] The review gate ran in full (per batch — due at each PR).
+- [x] Risk register: R-4 closed (Phase A: zero sole-rationale refs; B/C moot by maintainer
+      decision); every other row standing-rule or closed.
+- [x] The review gate ran in full — every batch PR (#551–#559) carried a full-diff review with
+      all lenses reported before merge.

@@ -59,7 +59,7 @@ export class PayoutsTab {
   protected readonly selectedDate = signal(todayBookingDate(new Date()));
   /** True while the amber "Issue full weather refund" confirm is open (a two-step, no accidental refund). */
   protected readonly weatherConfirm = signal(false);
-  /** True while a weather refund is in flight — disables the confirm button (no double-issue, R-7). */
+  /** True while a weather refund is in flight — disables the confirm button (no double-issue). */
   protected readonly refunding = signal(false);
   /** A transient action notice (weather-refund outcome, or a failure). */
   protected readonly notice = signal<string | undefined>(undefined);
@@ -123,7 +123,7 @@ export class PayoutsTab {
 
   protected readonly isEmpty = computed(() => this.entries().length === 0);
 
-  /** The "Owed to you" figure — the SERVER's net owed, rendered as-is (invariant #9, R-1). */
+  /** The "Owed to you" figure — the SERVER's net owed, rendered as-is (invariant #9). */
   protected readonly owedStr = computed(() => money(this.ledger()?.netOwedMinor ?? 0, this.currency()));
 
   /** The ledger's ISO currency, for the statement header/footnote (EUR collection currency, invariant #5). */

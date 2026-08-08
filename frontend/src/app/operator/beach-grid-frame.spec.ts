@@ -6,7 +6,7 @@ import { BeachGridFrame } from './beach-grid-frame';
 /**
  * The shared sea-facing beach-grid frame. Verifies it renders the ▲/▼ orientation banners
  * and projects the consumer's grid body between them — the chrome both the layout editor and the
- * Daily view tab consume (AC-7).
+ * Daily view tab consume.
  */
 @Component({
   imports: [BeachGridFrame],

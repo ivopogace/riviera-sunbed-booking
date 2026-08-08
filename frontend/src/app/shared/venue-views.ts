@@ -5,7 +5,7 @@ import { MoneyView } from './money';
  * The venue read APIs' published view vocabulary — the frontend mirror of the backend's
  * `venue::vocabulary` surface, exactly as it travels the wire. No `any` anywhere. The venue
  * feature is this file's **editor of record**: it lives in `shared/` because
- * every feature, `pages/`, and `shared/` itself consume it, but changes ride venue API slices.
+ * every feature, `pages/`, and `shared/` itself consume it, but changes ride venue API work.
  */
 
 /**

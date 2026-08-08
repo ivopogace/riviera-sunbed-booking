@@ -45,7 +45,7 @@ describe('VenuePhotoService (#142)', () => {
         { surface: 'preview', url: '/api/venues/1/photos/cc03', width: 480, height: 360 },
       ],
     });
-    // The wire paths are root-relative; the service prefixes the API origin (F-7) so <img> works
+    // The wire paths are root-relative; the service prefixes the API origin so <img> works
     // in local dev where the API is another origin (a no-op in same-origin prod).
     expect(response?.variants.map((v) => v.url)).toEqual([
       'http://localhost:8080/api/venues/1/photos/aa01',
@@ -82,7 +82,7 @@ describe('VenuePhotoService (#142)', () => {
     const problem = (status: number, code: string) =>
       new HttpErrorResponse({ status, error: { code } });
 
-    // The server-side validation rejections (AC-5) + the 413 multipart backstop.
+    // The server-side validation rejections + the 413 multipart backstop.
     expect(photoErrorOf(problem(400, 'TOO_LARGE'))).toBe('TOO_LARGE');
     expect(photoErrorOf(problem(400, 'UNSUPPORTED_FORMAT'))).toBe('UNSUPPORTED_FORMAT');
     expect(photoErrorOf(problem(400, 'DIMENSIONS_EXCEEDED'))).toBe('DIMENSIONS_EXCEEDED');
