@@ -242,6 +242,13 @@ The skills reference them by number.
 4. **No same-day booking (v1).** Bookings for a given day close the **evening
    before** (default 18:00 `Europe/Tirane`, configurable). This is collision-
    prevention Layer 2 and also the cancellation cutoff — one rule, two jobs.
+   **Closing the sale is not enough — the *payment* is fenced too**, at the service
+   day's opening (`00:00 Europe/Tirane`, the same instant invariant #10 closes
+   cancellation at): the guest's pay deadline is `min(accepted_at + pay-window,
+   service-day open)`, the abandoned sweep expires on that capped deadline so the set
+   returns to the pool at midnight, and the code-gated view issues no payment
+   credentials past it. Otherwise a request accepted at 17:30 could still be paid — and
+   confirmed — hours into a day already underway.
 5. **Money is integer minor units, never floating point.** Store amounts as
    `long`/`int` minor units (cents) with an explicit ISO currency code. Commission
    and payout arithmetic is exact-integer; rounding rules are written down where

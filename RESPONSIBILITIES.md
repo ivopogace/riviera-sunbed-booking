@@ -149,7 +149,19 @@ availability read — `venue` composes; I answer state.
 
 ## `booking`
 **Job:** Own bookings, booking codes, and the lifecycle (confirmed / cancelled /
-completed / no-show). Enforce the cancellation policy and the same-day cutoff.
+completed / no-show). Enforce the cancellation policy and the same-day cutoff — **both of the
+day's boundaries**, since `BookingCutoff` owns the service day's opening as well as the
+evening-before close. That second boundary fences the *pay* path as well as the cancel path
+(#576): the guest's deadline is `min(accepted_at + pay-window, service-day open)`, the
+abandoned sweep carries a third, disjoint `booking_date` arm so a set stops being held
+unsellable into its own service day, and the code-gated view withholds the `clientSecret`
+past it. **The confirm path is deliberately not fenced.** A guest already holding a live
+`clientSecret` who pays between midnight and the next sweep run still confirms. Refusing
+without refunding would strand the money on an `AWAITING_PAYMENT` booking the sweep can never
+release (`NotCancellable` forever), and refunding cannot reuse `BookingCancelled`: a
+never-confirmed booking has no `ACCRUAL`, so `payout`'s listener would defer that publication
+permanently and hold `riviera.outbox.pending` non-zero. The residual is a sub-sweep-interval
+race the guest opts into and is paid for with the full stay.
 Orchestrate the reserve → pay → confirm flow across `availability` and `payment`.
 Own the request lifecycle's three terminal legs on `RequestReleaseService` — decline,
 the expiry sweep, and the guest's own **withdraw** (#123): withdraw is authorized by the
