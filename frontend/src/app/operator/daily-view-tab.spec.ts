@@ -10,8 +10,8 @@ import { ConsoleVenueMap } from './console-venue-map';
 import { DailyViewTab } from './daily-view-tab';
 
 /**
- * The O5 Daily view tab (#175). Reads `:venueId` from the PARENT route (child routes don't inherit
- * it — O1 finding), loads the venue map + the day's confirmed bookings, and renders the sea-facing
+ * The Daily view tab. Reads `:venueId` from the PARENT route (child routes don't inherit
+ * it), loads the venue map + the day's confirmed bookings, and renders the sea-facing
  * availability grid + the Arrivals list. Drives: the three tile states (FREE / booked-online-locked /
  * staff-marked); tap-to-mark and tap-to-release round-trips with optimistic flip + reconcile; the
  * online-booked lock; the arrivals code chips (display-only, invariant #7); the Tirane default date +
@@ -32,7 +32,7 @@ describe('DailyViewTab (#175)', () => {
     seat(4, 'B', 1, 'STANDARD', 'WALK_IN', 'FREE'),
   ];
   const BOOKINGS = [{ setId: 2, code: 'ABC12345' }]; // set 2 is held by a confirmed online booking
-  // #207 server states — the tile-classification authority; FREE sets are absent.
+  // Server states — the tile-classification authority; FREE sets are absent.
   const STATES = [
     { setId: 2, state: 'BOOKED_ONLINE' },
     { setId: 3, state: 'STAFF_MARKED' },
@@ -66,7 +66,7 @@ describe('DailyViewTab (#175)', () => {
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
   }
 
-  /** Flush one load cycle: the venue-map, daily-bookings and availability-states GETs (#207). */
+  /** Flush one load cycle: the venue-map, daily-bookings and availability-states GETs. */
   function flushLoad(
     sets: SetView[] = SEED,
     bookings = BOOKINGS,

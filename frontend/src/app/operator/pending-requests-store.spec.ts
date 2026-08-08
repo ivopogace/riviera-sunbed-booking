@@ -1,7 +1,7 @@
 import { PendingRequestsStore } from './pending-requests-store';
 
 /**
- * The badge-sync store (issue #176): one writable count the shell reads and the Requests tab writes,
+ * The badge-sync store: one writable count the shell reads and the Requests tab writes,
  * so the tab badge stays in sync with the queue after every action. Depless — constructed directly.
  */
 describe('PendingRequestsStore', () => {

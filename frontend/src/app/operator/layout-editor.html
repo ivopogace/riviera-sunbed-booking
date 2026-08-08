@@ -221,8 +221,7 @@
     }
   </div>
 
-  <!-- #226: a stale-write 409 is a distinct, recoverable conflict — not a plain error. Keep the
-       operator's painted grid, explain what happened, and offer a Reload (never a silent discard). -->
+  <!-- A stale-write 409 is a recoverable conflict, not a plain error — keep the grid, explain, offer Reload. -->
   @if (errorCode() === 'STALE_WRITE') {
     <app-stale-write-banner
       class="mt-3"

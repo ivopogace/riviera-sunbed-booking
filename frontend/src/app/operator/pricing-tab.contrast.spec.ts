@@ -11,7 +11,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the O4 Pricing tab (#174). The tab is always porcelain (console host),
+ * WCAG-AA contrast guard for the Pricing tab. The tab is always porcelain (console host),
  * its panel uses `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs: the heading + row
  * label chip + € input value use `--riv-card-ink`; the subheader, tier descriptions, € symbol and
  * projected label use `--riv-card-ink-soft` (0.78); the projected figure + "Saved" notice use the

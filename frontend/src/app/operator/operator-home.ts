@@ -19,9 +19,9 @@ import { RetryButton } from '../shared/retry-button';
 import { VenueCreateCard } from './venue-create-card';
 
 /**
- * `/operator` — where a signed-in operator lands when the destination isn't already known (S9 #277).
+ * `/operator` — where a signed-in operator lands when the destination isn't already known.
  * It resolves the owned-venue count and then forwards (1 → straight into that console), renders the
- * picker (2+), or renders the create-venue card inline (#278): the **zero state** for an operator
+ * picker (2+), or renders the create-venue card inline: the **zero state** for an operator
  * with no venue yet, and the deliberate **`?create=1`** state ("Add another venue", reachable from
  * the picker and both operator headers) for one who already owns some. The decision table itself is
  * {@link landingRouteFor}, shared with the auth page so the two can't drift; the create param is
@@ -29,7 +29,7 @@ import { VenueCreateCard } from './venue-create-card';
  * (picker → create and back).
  *
  * A **failed** read renders a retry rather than the zero state: treating "couldn't load" as "owns
- * nothing" would push an established operator into venue creation on a network blip (R-12).
+ * nothing" would push an established operator into venue creation on a network blip.
  *
  * Behind {@code operatorSessionGuard}, so this component never renders for a signed-out visitor and
  * needs no session state of its own. Porcelain like the rest of the operator surface.
@@ -134,7 +134,7 @@ export class OperatorHome implements OnInit {
   protected readonly failed = signal(false);
   private readonly loaded = signal(false);
 
-  /** The deliberate "Add another venue" entry (#278) — reactive: the router reuses this instance. */
+  /** The deliberate "Add another venue" entry — reactive: the router reuses this instance. */
   protected readonly creating = computed(
     () => this.query().get('create') === '1' || (this.loaded() && this.venues().length === 0),
   );

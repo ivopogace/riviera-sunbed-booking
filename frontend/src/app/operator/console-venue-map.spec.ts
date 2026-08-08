@@ -8,7 +8,7 @@ import { VenueMapView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 
 /**
- * The operator console's shared venue-map snapshot (#486). The shell, the Requests tab and the
+ * The operator console's shared venue-map snapshot. The shell, the Requests tab and the
  * Pricing tab all want the same `(venue, today)` read, so opening the console on a tab used to fire
  * `GET /api/venues/{id}?date=` twice. This pins the four properties that make sharing safe: identical
  * asks coalesce into one request, a settled snapshot replays, a failure is never retained, and both

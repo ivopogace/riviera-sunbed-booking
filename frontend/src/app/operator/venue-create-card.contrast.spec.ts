@@ -9,7 +9,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the create-venue card (#278). The card renders only on the porcelain
+ * WCAG-AA contrast guard for the create-venue card. The card renders only on the porcelain
  * operator surface (`OperatorHome` pins the theme); it reuses the venue-tab form idiom: headings +
  * field labels + input values in `--riv-card-ink` on `appCardGlass`, sub-copy in
  * `--riv-card-ink-soft`, field/create errors in `#a3160e`, and the submit CTA's solid white ink on

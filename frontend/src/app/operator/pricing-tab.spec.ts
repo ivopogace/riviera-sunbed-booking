@@ -11,8 +11,8 @@ import { ConsoleVenueMap } from './console-venue-map';
 import { PricingTab } from './pricing-tab';
 
 /**
- * The O4 Pricing tab (#174). Reads `:venueId` from the PARENT route (child routes don't inherit it —
- * O1 finding) and loads the venue map to build the per-row list. Drives: one row per label with its
+ * The Pricing tab. Reads `:venueId` from the PARENT route (child routes don't inherit it) and loads
+ * the venue map to build the per-row list. Drives: one row per label with its
  * tier description; the projected take summing ONLY online-pool sets from minor units; a per-row € edit
  * committing an integer-minor-unit reprice PUT and recomputing the projection; empty-input safety (no
  * €0 reprice); a scoped revert that survives a concurrent edit; the mixed-row and load-error states;
@@ -125,7 +125,7 @@ describe('PricingTab (#174)', () => {
     const req = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
     );
-    // #226: the body carries the price AND the loaded optimistic-concurrency token (0 for the fresh mock).
+    // The body carries the price AND the loaded optimistic-concurrency token (0 for the fresh mock).
     expect(req.request.body).toEqual({
       price: { minorUnits: 4250, currency: 'EUR' },
       expectedVersion: 0,
@@ -189,8 +189,7 @@ describe('PricingTab (#174)', () => {
   });
 
   it('serializes reprices: a second edit while one is in flight is ignored, not a concurrent PUT', async () => {
-    // #226 review fix (#4): the single shared set_version token cannot admit two concurrent reprices, so a
-    // save disables the inputs; a change that still slips through mid-flight is ignored (no overlap race).
+    // The shared set_version token admits only one reprice at a time, so a save disables the inputs.
     render(SEED, 5);
 
     // Start editing A — its PUT is in flight (not yet flushed).
@@ -230,8 +229,7 @@ describe('PricingTab (#174)', () => {
   });
 
   it('reverts the row, shows the stale banner, and Reload re-loads on a 409 STALE_WRITE', async () => {
-    // #226, AC-9: a stale-write conflict reverts the row's optimistic value and shows the recover-and-
-    // reload banner (a venue-level conflict, not the per-row inline error); Reload re-seeds from the server.
+    // A stale-write conflict reverts the row's value and shows the recover-and-reload banner, not a per-row error.
     render(SEED, 3); // loaded at set_version 3
     editRow('A', '99');
     http
@@ -262,8 +260,7 @@ describe('PricingTab (#174)', () => {
   });
 
   it('advances the token on a successful reprice so a second reprice is not falsely stale', async () => {
-    // #226: the conditional write bumps set_version by one; the tab advances its token so a following
-    // sequential row edit sends the new value, not the stale one.
+    // The conditional write bumps set_version by one; the tab advances its token for the next edit.
     render(SEED, 5);
     editRow('A', '40');
     const first = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'));

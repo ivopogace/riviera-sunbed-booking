@@ -10,7 +10,7 @@ import { apiSessionInterceptor } from '../core/api-session.interceptor';
 import { VenueCreateCard } from './venue-create-card';
 
 /**
- * Venue creation inside the operator console (#278) — the retired /venue-admin editor's create
+ * Venue creation inside the operator console — the retired /venue-admin editor's create
  * behavior, ledgered row by row in docs/plans/create-venue-into-console.md. Everything the old
  * page did on this path is pinned here as preserved, except the success state, which now
  * navigates straight into the new venue's beach-map tab instead of rendering a "created" card.
@@ -126,13 +126,13 @@ describe('VenueCreateCard (#278)', () => {
       payoutCurrency: 'EUR',
       bookingCutoff: '18:00',
     });
-    // Session model (issue #109): the HttpOnly cookie is the credential — withCredentials, no header.
+    // Session model: the HttpOnly cookie is the credential — withCredentials, no header.
     expect(createReq.request.headers.has('Authorization')).toBe(false);
     expect(createReq.request.withCredentials).toBe(true);
     createReq.flush({ id: 31 }, { status: 201, statusText: 'Created' });
     await fixture.whenStable();
 
-    // S9 (#277): the stale landing cache is dropped BEFORE navigating into the console it feeds.
+    // The stale landing cache is dropped BEFORE navigating into the console it feeds.
     expect(reset).toHaveBeenCalledTimes(1);
     expect(router.navigateByUrl).toHaveBeenCalledWith('/operator/31/beach-map');
     expect(reset.mock.invocationCallOrder[0]).toBeLessThan(

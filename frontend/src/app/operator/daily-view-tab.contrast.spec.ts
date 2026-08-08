@@ -12,7 +12,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the O5 Daily view tab (#175). The tab is always porcelain (console
+ * WCAG-AA contrast guard for the Daily view tab. The tab is always porcelain (console
  * host); its date + arrivals panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text
  * pairs: the headings, row/date labels, arrivals labels and the availability strong counts use
  * `--riv-card-ink`; the helper/availability text uses `--riv-card-ink-soft` (0.78); the "Date"

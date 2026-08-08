@@ -4,7 +4,7 @@ import { trapFocusWithin } from '../shared/focus-trap';
 import { LedgerRow } from './operator-console.model';
 
 /**
- * The O7 payout **statement** modal (issue #173) — a **display-only** view of the ledger for the manual
+ * The payout **statement** modal — a **display-only** view of the ledger for the manual
  * BKT batch (invariant #9: the ledger is the auditable record of what is owed). It formats the SAME
  * {@link LedgerRow}s the tab shows and the SERVER's total due ({@link owed}); it computes no money and
  * moves none. The bank beneficiary/IBAN/reference are shown as an <em>"assigned at settlement"</em>

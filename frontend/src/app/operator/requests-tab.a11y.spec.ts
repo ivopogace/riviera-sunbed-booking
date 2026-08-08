@@ -10,7 +10,7 @@ import { Pool, SetView, Tier } from '../shared/venue-views';
 import { RequestsTab } from './requests-tab';
 
 /**
- * Structural a11y audit for the O6 Requests tab (#176). Accept/Decline/Confirm-decline are labelled
+ * Structural a11y audit for the Requests tab. Accept/Decline/Confirm-decline are labelled
  * `<button>`s (`aria-label` names the guest + set + date), the urgency chip carries its "time left"
  * as text (not colour alone) with the ⏰ glyph `aria-hidden`, and the expired-race notice is a
  * `role="status"` with the ⚠ glyph `aria-hidden`. axe runs over the populated queue, an open

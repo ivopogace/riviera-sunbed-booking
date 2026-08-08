@@ -9,12 +9,12 @@ import { VenueProfileView } from './operator-console.model';
 import { VenueTab } from './venue-tab';
 
 /**
- * The O8 Venue & commodities tab (#177). Reads `:venueId` from the PARENT route (child routes don't
- * inherit it — the O1 finding), loads the owner profile, and seeds: the details form, the read-only
+ * The Venue & commodities tab. Reads `:venueId` from the PARENT route (child routes don't
+ * inherit it), loads the owner profile, and seeds: the details form, the read-only
  * commission (as a %) + payout currency, the amenity toggle set, and the distance. Drives: the
  * widened owner-asserted save (commission + payout currency are NEVER in the body); the amenity
  * toggle reflected in the save; the required-name guard disabling save; the 403 / load-error copy;
- * and the real photo slots (#142): seeding from the profile, multipart upload with the returned
+ * and the real photo slots: seeding from the profile, multipart upload with the returned
  * preview, delete, server-side validation copy, and the 401 session drop.
  */
 describe('VenueTab (#177)', () => {
@@ -340,7 +340,7 @@ describe('VenueTab (#177)', () => {
     expect(host.querySelector('form')).toBeNull();
   });
 
-  // ---- Photo slots (#142): pick = upload = replace; server-validated; per-slot state ----
+  // ---- Photo slots: pick = upload = replace; server-validated; per-slot state ----
 
   /** Simulate the operator picking `file` in a slot's (hidden) file input — jsdom has no picker. */
   function pickFile(slot: string, file: File): void {

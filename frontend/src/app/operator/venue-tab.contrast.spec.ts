@@ -10,7 +10,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the O8 Venue & commodities tab (#177). The tab is always porcelain
+ * WCAG-AA contrast guard for the Venue & commodities tab. The tab is always porcelain
  * (console host); its cards use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs:
  * headings + field labels + input values use `--riv-card-ink`; sub-copy, soft labels and the
  * INACTIVE amenity chip use `--riv-card-ink-soft` (0.78) — an inactive chip sits on a lighter
@@ -26,7 +26,7 @@ const CHIP_TEAL_ALPHA = 0.22;
 const ACTIVE_CHIP_INK = '#0a4f5e';
 const ACCENT_TEAL = '#0a6e85';
 const ERROR_INK = '#a3160e';
-/** The #224 stale-write banner: an amber wash (#f59e0b @ 0.14) over the card glass; ink is --riv-card-ink. */
+/** The stale-write banner: an amber wash (#f59e0b @ 0.14) over the card glass; ink is --riv-card-ink. */
 const BANNER_TINT: [number, number, number] = [245, 158, 11];
 const BANNER_TINT_ALPHA = 0.14;
 

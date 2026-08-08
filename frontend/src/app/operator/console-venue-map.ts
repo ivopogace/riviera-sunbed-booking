@@ -15,7 +15,7 @@ import { VenueService } from '../venue/venue.service';
 const SNAPSHOT_TTL_MS = 30_000;
 
 /**
- * The operator console's shared `(venue, date)` beach-map snapshot (issue #486). The shell reads the
+ * The operator console's shared `(venue, date)` beach-map snapshot. The shell reads the
  * map for its header title and the stats strip's Free-today tile, and two of the tabs rendered inside
  * that shell wanted the byte-identical read — so opening the console on Requests or Pricing fired
  * `GET /api/venues/{id}?date=` **twice**, each transferring every set position and running the
@@ -39,8 +39,8 @@ const SNAPSHOT_TTL_MS = 30_000;
  *
  * <p><strong>Invalidation is the sharp edge.</strong> {@link reset} is called on sign-out and after
  * every successful write to the map — a layout save and a row reprice — or the tabs would render
- * retired sets and stale prices. It is also called *before* the two `409 STALE_WRITE` recovery reads
- * (#226): serving that read from the snapshot whose `setVersion` lost the race would make the
+ * retired sets and stale prices. It is also called *before* the two `409 STALE_WRITE` recovery
+ * reads: serving that read from the snapshot whose `setVersion` lost the race would make the
  * conflict unrecoverable.
  *
  * <p>Lives in `operator/` rather than `core/` for the reason {@code PendingRequestsStore} does: both

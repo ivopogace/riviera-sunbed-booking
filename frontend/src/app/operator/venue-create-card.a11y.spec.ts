@@ -7,7 +7,7 @@ import { expectNoAxeViolations } from '../../testing/axe';
 import { VenueCreateCard } from './venue-create-card';
 
 /**
- * Structural a11y audit for the create-venue card (#278). Every field is a labelled control; the
+ * Structural a11y audit for the create-venue card. Every field is a labelled control; the
  * card is a labelled region; field and submit errors are `role="alert"`s. axe runs over the idle
  * form and the failed-submit state. (Colour contrast is proven by
  * `venue-create-card.contrast.spec.ts` — axe can't measure it under jsdom.)

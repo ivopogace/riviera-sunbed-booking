@@ -13,8 +13,8 @@ import { PendingRequestsStore } from './pending-requests-store';
 import { RequestsTab } from './requests-tab';
 
 /**
- * The O6 Requests tab (#176). Reads `:venueId` from the PARENT route (child routes don't inherit it —
- * O1 finding), loads the venue map (labels/tier, best-effort) + the venue-wide pending-request queue,
+ * The Requests tab. Reads `:venueId` from the PARENT route (child routes don't inherit it),
+ * loads the venue map (labels/tier, best-effort) + the venue-wide pending-request queue,
  * and renders one card per request — guest, set + tier, date, price, "Respond by", and an amber
  * time-left chip when urgent — with NO booking code (invariant #7). Drives: accept → payment (card
  * leaves, badge decrements, never self-confirms — invariant #8); confirm-gated decline; the
@@ -179,7 +179,7 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
       .flush({ bookingId: 11, status: 'AWAITING_PAYMENT' });
     fixture.detectChanges();
-    // The reconcile re-reads the queue; the #98 sweep expired request 12 too → server returns [].
+    // The reconcile re-reads the queue; the sweep expired request 12 too → server returns [].
     flushReconcile([]);
     expect(cards()).toHaveLength(0);
     expect(store.count()).toBe(0);

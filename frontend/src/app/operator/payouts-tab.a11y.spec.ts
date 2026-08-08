@@ -9,7 +9,7 @@ import { PayoutLedgerView } from './operator-console.model';
 import { PayoutsTab } from './payouts-tab';
 
 /**
- * Structural a11y audit for the O7 Payouts tab (#173). The ledger is a semantic `<table>` (sr-only
+ * Structural a11y audit for the Payouts tab. The ledger is a semantic `<table>` (sr-only
  * caption, `scope="col"` headers); reversal state is conveyed by a text reason chip + the negative
  * amount (not colour alone); the weather-refund confirm/actions are labelled `<button>`s and the
  * statement is a `role="dialog"` + `aria-modal` with a focus trap. axe runs over the populated ledger,

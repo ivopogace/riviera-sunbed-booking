@@ -14,7 +14,7 @@ import { OperatorConsole } from './operator-console';
 const BASE = environment.apiBaseUrl;
 
 /**
- * The #180 integration proof, on the REAL route config: `/operator/1/beach-map` →
+ * The in-place venue-switch integration proof, on the REAL route config: `/operator/1/beach-map` →
  * `/operator/2/beach-map` REUSES the console shell and the tab component (same route config, only
  * the param differs — the router never re-constructs), and the reactive `venueId` signals still
  * re-load everything for venue 2. This is the exact navigation an in-app venue switcher would
@@ -42,7 +42,7 @@ describe('Operator console — in-place venue switch over the real routes (#180)
 
   /** Flush every read the shell + strip + layout tab fire for a venue (order-independent). */
   function flushVenueReads(id: number, name: string): void {
-    // Two venue-map GETs: the shell's shared-snapshot read + the layout editor's direct read (#486).
+    // Two venue-map GETs: the shell's shared-snapshot read + the layout editor's direct read.
     http
       .match((r) => r.method === 'GET' && r.url === `${BASE}/api/venues/${id}`)
       .forEach((req) =>
@@ -109,7 +109,7 @@ describe('Operator console — in-place venue switch over the real routes (#180)
     flushVenueReads(2, 'Second Venue');
     harness.fixture.detectChanges();
 
-    // The regression #180 fixed: the router REUSED both instances (no re-construction)…
+    // The router REUSED both instances (no re-construction)…
     expect(shell()).toBe(firstShell);
     expect(tab()).toBe(firstTab);
     // …and the reactive param still re-loaded the header, badge and tab links for venue 2.

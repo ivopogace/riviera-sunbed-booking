@@ -11,7 +11,7 @@ import { VenueMapView } from '../shared/venue-views';
 import { OperatorConsole } from './operator-console';
 
 /**
- * Automated axe-core audit of the operator console shell (issue #170): the signed-out sign-in card
+ * Automated axe-core audit of the operator console shell: the signed-out sign-in card
  * and the signed-in porcelain shell (header + pill tabs + Requests badge). Colour contrast is proven
  * deterministically in `operator-console.contrast.spec.ts` — axe cannot measure contrast under jsdom.
  */
@@ -76,7 +76,7 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET')
       .flush(Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })));
-    // The stats strip mounts in the shell and fires its three reads (#171, #207) — audit WITH it.
+    // The stats strip mounts in the shell and fires its three reads — audit WITH it.
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET')
       .flush([]);
