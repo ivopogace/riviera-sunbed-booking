@@ -3,7 +3,7 @@ package ai.riviera.platform.operator.api;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 
 /**
- * Published write port for operator <strong>self-registration</strong> (#115, S6). The platform edge
+ * Published write port for operator <strong>self-registration</strong>. The platform edge
  * encodes the password BEFORE calling this (the module receives an already-encoded, opaque hash —
  * exactly as {@link OperatorProvisioning} does), so no Spring Security type crosses into the
  * {@code operator} module (RV-BE-11). A synchronous inbound command the edge calls → {@code api}, not

@@ -2,17 +2,17 @@ package ai.riviera.platform.notification.application;
 
 /**
  * What the Event Publication Registry still owes <em>this module</em>, and the lever to re-drive it
- * (#405) — a driven port, implemented by {@code adapter/out} against the registry.
+ * — a driven port, implemented by {@code adapter/out} against the registry.
  *
  * <p><strong>Scoped by construction.</strong> Both methods speak only of publications targeted at a
  * listener this module owns. That is not a convenience filter: the registry is shared infrastructure
  * whose outstanding rows also carry {@code payout}'s ledger accruals (invariant #9) and the refund
- * that calls Stripe (invariant #8), and the whole point of #405 is an admin lever that cannot reach
+ * that calls Stripe (invariant #8), and the whole point here is an admin lever that cannot reach
  * them. Naming the port after the module's own outbox — rather than after the registry — is what
  * keeps the scope from being an argument a caller could widen.
  *
  * <p><strong>Neither method is a delivery guarantee.</strong> Resubmission hands publications back to
- * the framework, which invokes the listener on {@code registryMailExecutor} (#383); whether the relay
+ * the framework, which invokes the listener on {@code registryMailExecutor}; whether the relay
  * accepts them is settled later and independently. A publication that fails again simply stays
  * outstanding, which is the registry's whole contract and why {@code riviera.outbox.pending} remains
  * the signal to watch.

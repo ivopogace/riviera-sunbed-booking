@@ -11,7 +11,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 
 /**
- * The {@code operator} module's credential application service (issue #74): the read side of an
+ * The {@code operator} module's credential application service: the read side of an
  * account's stored credential ({@link OperatorAccounts}) and the provisioning/rotation write side
  * ({@link OperatorProvisioning}). Package-private behind the published ports (invariant #11);
  * constructor injection into a {@code final} {@link Operators}. Kept separate from

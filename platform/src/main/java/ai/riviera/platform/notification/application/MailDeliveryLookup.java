@@ -3,7 +3,7 @@ package ai.riviera.platform.notification.application;
 import java.util.List;
 
 /**
- * What happened to the confirmation mail for each booking made with one email address (#380) — the
+ * What happened to the confirmation mail for each booking made with one email address — the
  * driving port behind the admin console's mail-delivery lookup.
  *
  * <p><strong>Keyed on the address, because that is what a support call contains.</strong> Anyone able

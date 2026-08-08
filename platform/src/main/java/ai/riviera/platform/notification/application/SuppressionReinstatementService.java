@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * The reinstatement use case (#391), package-private behind the {@link ReinstateSuppression} driving
+ * The reinstatement use case, package-private behind the {@link ReinstateSuppression} driving
  * port (invariant #11) with constructor injection into {@code final} fields.
  *
  * <p>It exists for the two things that must not live in a driving adapter: the lift instant comes
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
  * does the whole lift in one statement, so a surrounding transaction would only look meaningful.
  *
  * <p><strong>The audit line carries technical data only</strong> — the outcome token and the
- * suppression reason, both closed sets — following the shipped structured logger (#100) exactly as
+ * suppression reason, both closed sets — following the shipped structured logger exactly as
  * {@code AccountErasureService} does. Never the address, and deliberately never the {@code domain}
  * either: ADR-0012 calls a bare domain non-PII, which makes logging it look free, but V34's CHECK
  * bans only <em>edge</em> whitespace, so a junk address yields a domain that may contain a newline —

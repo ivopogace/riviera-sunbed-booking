@@ -17,7 +17,7 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * Assembles the admin mail-delivery view (#380): address → guest contact → that contact's bookings →
+ * Assembles the admin mail-delivery view: address → guest contact → that contact's bookings →
  * each booking's recorded mail attempts, with the venue name read live.
  *
  * <p><strong>The address stops at {@code customer::api}.</strong> It is resolved to a

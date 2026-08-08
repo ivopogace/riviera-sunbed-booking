@@ -22,7 +22,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
  * <p>It performs no enforcement of its own beyond answering: each venue-scoped service calls
  * {@link #assertOwns} and maps the failure to {@code 403}. That keeps {@code operator} out of every
  * request path (RESPONSIBILITIES.md — it owns the mapping, not the check site). The one write is
- * {@link #assignOwner} (creator-owns-on-create, #115), which joins the caller's transaction.
+ * {@link #assignOwner} (creator-owns-on-create), which joins the caller's transaction.
  */
 @Service
 class OperatorService implements VenueOwnership, OperatorDirectory {
