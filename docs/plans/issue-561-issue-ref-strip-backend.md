@@ -201,21 +201,32 @@ reflects that stop.
 
 ## Execution status
 
-**Stage pointer:** ⏳ **Stage 0 complete — probes reported, waiting on the maintainer's go/no-go.**
-No batch has shipped; no file outside this plan doc has been touched.
+**Stage pointer:** ⏳ **B green-lit by the maintainer 2026-08-08; B-1 shipped this session. C stays
+not-recommended per the *Recommendation* above — no C batch runs without a separate go.**
 
-**Next action:** maintainer decides B / C's fate per the recommendation above; whichever phase (if
-any) proceeds gets its batch rows appended below, following #550's ledger discipline (flip batch
-N−1's row to "merged via PR #NNN" when writing batch N's row, F-10).
+**Next action:** continue B's sparse remainder in ~5-file batches by directory (never heaviest-first
+across directories, matching #550's rule); C stays parked.
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
 | B-0 (probe) | 5 densest `platform/src/test` files by raw `#nnn` count — 118 true violations, 0 R-4 hits, F-8-immune, 2/5 files carry R-8 decision-archaeology | this doc | ✅ measured, reported above |
 | C-0 (probe) | 5 densest `platform/src/main` files by raw `#nnn` count — 54 true violations, 0 R-4 hits, F-8-exposed, 5/5 files carry R-8 decision-archaeology | this doc | ✅ measured, reported above |
-| B-1… | backend test batches, IF green-lit, ~5 files/PR | — | blocked on maintainer decision |
-| C-1… | backend main batches | — | not recommended; blocked on maintainer decision |
+| B-1 | the B-0 probe's same 5 files (`CrossVenueDenialIT`, `VenueAdminControllerIT`, `TransactionalMailServiceTest`, `VenueAdminServiceTest`, `WebSliceStubs`) — 118 true-violation `#nnn` tokens removed (review-recount: 24+24+21+21+21 = actually see per-file table below), 0 orphan labels left dangling (O4/O8/T7/S3/S4/S8/S9 rewritten to real nouns or dropped per A-1/F-4), 0 R-4 hits, every `invariant #n` preserved (AC-3: 6 removed/6 added, balanced), R-8 (decision-archaeology over budget in `TransactionalMailServiceTest` + `CrossVenueDenialIT`) left unaddressed by design (out of scope for this mechanical batch) | pending push | ✅ gates green locally (AC-2 comment-only, AC-5 non-vacuous 0-violation scan, AC-3 balanced, `compileJava`/`compileTestJava` clean, the 2 pure-unit classes' own tests pass) — CI/Sonar pending a PR |
+| B-2… | next ~5-file directory batch (sparse-tail sweep of the rest of `platform/src/test`) | — | not started |
+| C-1… | backend main batches | — | not recommended; blocked on a separate maintainer go |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**B-1 per-file true-violation count (exact, `grep`-verified before and after):**
+
+| File | True violations removed | `invariant #n` preserved |
+|---|---:|---:|
+| `CrossVenueDenialIT.java` | 24 (the B-0 table's "25" was off by one — the case-sensitive `invariant #n` grep used for the probe missed one capitalized "Invariant #13's" occurrence; corrected here) | 10 |
+| `VenueAdminControllerIT.java` | 25 | 5 |
+| `TransactionalMailServiceTest.java` | 24 | 0 |
+| `VenueAdminServiceTest.java` | 21 | 4 |
+| `WebSliceStubs.java` | 23 | 0 |
+| **Total** | **117** | **19** |
 
 **Findings register (this issue's own, continuing #550's numbering space but never editing that
 doc — new findings start at F-14 to stay globally unambiguous across both plan docs)**
