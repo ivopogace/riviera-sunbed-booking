@@ -10,7 +10,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the O3 layout editor (#172). The editor is always porcelain (console
+ * WCAG-AA contrast guard for the layout editor. The editor is always porcelain (console
  * host), its control/grid panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55), and its
  * primary buttons reuse the project's AA-safe `--riv-cta-grad` teal (NOT the design's brighter
  * `#2bb8d4/#0e8aa8`, which fails AA with white). Grid cells carry no text — state is conveyed by

@@ -9,7 +9,7 @@ import { SetView } from '../shared/venue-views';
 import { PricingTab } from './pricing-tab';
 
 /**
- * Structural a11y audit for the O4 Pricing tab (#174). Each row's € field is a labelled number
+ * Structural a11y audit for the Pricing tab. Each row's € field is a labelled number
  * `<input>` (`aria-label` names the row), so the grid of prices is keyboard + AT operable. axe runs
  * over the populated rows and the empty state. (Colour contrast is proven by
  * `pricing-tab.contrast.spec.ts` — axe can't measure it under jsdom.)

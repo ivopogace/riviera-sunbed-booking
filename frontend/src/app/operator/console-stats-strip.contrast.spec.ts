@@ -9,7 +9,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the console stats strip (#171). The strip's tiles use `appCardGlass`
+ * WCAG-AA contrast guard for the console stats strip. The strip's tiles use `appCardGlass`
  * (porcelain `--riv-card-glass` = white @ 0.55), so every ink sits over that glass composited over
  * the console's porcelain background stops. The label uses `--riv-card-ink-faint` (0.72) —
  * deliberately brighter than the design file's `rgba(12,42,51,0.5)`, which would fail AA. Values

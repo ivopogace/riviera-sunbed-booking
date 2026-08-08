@@ -1,9 +1,9 @@
 import { Component, input, output } from '@angular/core';
 
 /**
- * The shared recover-and-reload banner for a `409 STALE_WRITE` optimistic-concurrency loss
- * (#229 — dedup of the #224/#226 triplicate across the venue, layout and pricing tabs). The
- * <em>banner</em> is shared; the per-surface recovery semantics are not — the layout editor keeps
+ * The recover-and-reload banner for a `409 STALE_WRITE` optimistic-concurrency loss, shared
+ * across the venue, layout and pricing tabs. The <em>banner</em> is shared; the per-surface
+ * recovery semantics are not — the layout editor keeps
  * the painted grid, the pricing tab reverts the row — so consumers project their own message,
  * react to {@link reload}, and keep their own state. The host element IS the amber alert surface
  * (`role="alert"` + the container classes), so a consumer's `data-testid` and margin utility land

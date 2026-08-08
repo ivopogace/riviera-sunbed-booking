@@ -10,8 +10,8 @@ import { PayoutLedgerEntryView, PayoutLedgerView } from './operator-console.mode
 import { PayoutsTab } from './payouts-tab';
 
 /**
- * The O7 Payouts tab (#173). Reads `:venueId` from the PARENT route (child routes don't inherit it —
- * O1 finding) and loads the venue's payout ledger. Renders: the "Owed to you" hero = the server's
+ * The Payouts tab. Reads `:venueId` from the PARENT route (child routes don't inherit it) and loads
+ * the venue's payout ledger. Renders: the "Owed to you" hero = the server's
  * `netOwedMinor` (never recomputed, invariant #5/#9); a ledger table (a `#<bookingId>` reference — NO
  * booking code or guest identity, invariants #7/#11 — gross/commission/net from integer minor units,
  * reversals as negative rows with a reason chip); a period-total row; the empty/loading/error states;
@@ -110,7 +110,7 @@ describe('PayoutsTab (#173) — ledger', () => {
     expect(text).toContain(formatMoney({ minorUnits: 4500, currency: 'EUR' })); // gross €45
     expect(text).toContain(formatMoney({ minorUnits: 675, currency: 'EUR' })); // commission
     expect(text).toContain(formatMoney({ minorUnits: 3825, currency: 'EUR' })); // net
-    // No bearer credential / no tourist identity anywhere in the payouts region (#7/#11).
+    // No bearer credential / no tourist identity anywhere in the payouts region (invariants #7/#11).
     expect(host.querySelector('[data-testid="payouts-tab"] code')).toBeNull();
     expect(text).not.toMatch(/guest/i);
   });
@@ -142,8 +142,7 @@ describe('PayoutsTab (#173) — ledger', () => {
   });
 
   it('renders the "Owed to you" hero and period total from the SERVER netOwedMinor, never a client sum', () => {
-    // The naive entry sum (3825 + 2125 = 5950) deliberately differs from netOwedMinor — the tab must
-    // show the server figure, proving it never recomputes the owed total (invariant #5/#9, R-1).
+    // netOwedMinor ≠ the naive sum (3825+2125=5950) — the tab shows the server figure (invariant #5/#9).
     render(
       ledger({
         netOwedMinor: 1700,

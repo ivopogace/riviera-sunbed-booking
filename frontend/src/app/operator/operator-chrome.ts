@@ -108,8 +108,7 @@ export class OperatorChrome {
 
   /** Sign out, then leave for the operator sign-in — the guarded operator routes would bounce anyway. */
   protected async onSignOut(): Promise<void> {
-    // Park focus on the shell's <main tabindex="-1"> before the button unmounts (WCAG 2.4.3, the
-    // #148/#351 F-8 class) — signOut() flips signedIn(), destroying the focused control.
+    // Park focus on the shell's <main> before the button unmounts (WCAG 2.4.3) — signOut() destroys it.
     this.document.querySelector<HTMLElement>('main')?.focus();
     await this.operator.signOut();
     await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });

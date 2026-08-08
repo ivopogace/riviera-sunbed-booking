@@ -3,12 +3,12 @@ import { Component, input } from '@angular/core';
 import { CardGlass } from '../shared/card-glass';
 
 /**
- * The sea-facing beach-grid frame (O5, #175) — the porcelain glass card with the "▲ Facing the sea"
+ * The sea-facing beach-grid frame — the porcelain glass card with the "▲ Facing the sea"
  * and "▼ Promenade · Entrance" orientation banners that make a grid of tiles read as a beach map.
  *
- * <p>Extracted at O5 as the shared chrome of the two operator-console grids (the rule of three, same
- * discipline as the #133/T6 chip extraction): the O3 layout editor's paint grid and this slice's
- * Daily view availability grid both project their rows into it. The <strong>tiles differ by purpose</strong>
+ * <p>Extracted as the shared chrome of the two operator-console grids (the rule of three): the
+ * layout editor's paint grid and this slice's Daily view availability grid both project their
+ * rows into it. The <strong>tiles differ by purpose</strong>
  * — the editor paints tier/pool/gap, the daily grid shows FREE / booked-online / walk-in availability —
  * so only the framing (card + banners + orientation) is shared here; each consumer owns its own tile
  * rendering and interaction, projected via {@code <ng-content>}. Always porcelain (inherited from the

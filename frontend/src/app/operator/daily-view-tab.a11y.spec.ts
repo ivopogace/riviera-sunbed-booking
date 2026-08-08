@@ -9,7 +9,7 @@ import { Pool, SetView, Tier } from '../shared/venue-views';
 import { DailyViewTab } from './daily-view-tab';
 
 /**
- * Structural a11y audit for the O5 Daily view tab (#175). Each actionable tile is a labelled
+ * Structural a11y audit for the Daily view tab. Each actionable tile is a labelled
  * `<button>` (`aria-label` names row, position, tier, price and the tap action) and each locked tile
  * a labelled `<span>`, so tile STATE is conveyed by an accessible name, not colour alone. axe runs
  * over the populated grid + arrivals and the empty arrivals state. (Contrast is proven by

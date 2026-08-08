@@ -11,7 +11,7 @@ import { CreatedId, CreateVenueRequest, VenueAdminErrorCode } from './venue-admi
  * HTTP for the create-venue call; the session cookie + CSRF are attached by the
  * {@link import('../core/api-session.interceptor').apiSessionInterceptor}, not here, and no state is
  * held. The per-set write + profile-edit calls moved to `OperatorConsoleService` when their editing
- * surfaces graduated to console tabs (layout O3, pricing O4, details/commodities O8 #177).
+ * surfaces graduated to console tabs.
  */
 @Service()
 export class VenueAdminService {
@@ -23,7 +23,7 @@ export class VenueAdminService {
   }
 }
 
-/** Map an onboarding HTTP failure to a known {@link VenueAdminErrorCode} (RFC-7807 `code`, issue #97). */
+/** Map an onboarding HTTP failure to a known {@link VenueAdminErrorCode} (RFC-7807 `code`). */
 export function venueAdminErrorOf(error: unknown): VenueAdminErrorCode {
   if (error instanceof HttpErrorResponse) {
     if (error.status === 401) {

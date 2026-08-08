@@ -54,8 +54,7 @@
         }
       }
 
-      <!-- #226: a stale-write 409 is a distinct, recoverable conflict — not a per-row error. The failing
-           row's optimistic value has already reverted; explain what happened and offer a Reload. -->
+      <!-- A stale-write 409 is recoverable, not a per-row error — the value reverted; explain, offer Reload. -->
       @if (staleConflict()) {
         <app-stale-write-banner
           class="mt-3"

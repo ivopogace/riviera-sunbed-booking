@@ -10,9 +10,9 @@ import {
 } from './venue-photo.service';
 
 /**
- * The venue-photo client (#142): upload posts ONE multipart `file` part to the slot path (the
+ * The venue-photo client: upload posts ONE multipart `file` part to the slot path (the
  * server replaces the slot, so upload and replace are the same call), remove DELETEs the slot,
- * and the error mapper narrows the RFC-7807 `code` (#97) to displayable copy — including the
+ * and the error mapper narrows the RFC-7807 `code` to displayable copy — including the
  * server-side validation rejections the client never second-guesses.
  */
 describe('VenuePhotoService (#142)', () => {

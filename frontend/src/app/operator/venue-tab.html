@@ -159,8 +159,7 @@
               >{{ msg }}</span
             >
           }
-          <!-- #224: a stale-write 409 is a distinct, recoverable conflict — not a plain error. Keep
-               the operator's edits, explain what happened, and offer a Reload (never a silent discard). -->
+          <!-- A stale-write 409 is a recoverable conflict: keep edits, explain, offer a Reload (never a silent discard). -->
           @if (errorCode() === 'STALE_WRITE') {
             <app-stale-write-banner
               class="mt-1"

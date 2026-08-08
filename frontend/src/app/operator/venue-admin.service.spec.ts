@@ -44,7 +44,7 @@ describe('VenueAdminService', () => {
 });
 
 describe('venueAdminErrorOf', () => {
-  /** A realistic RFC-7807 body (issue #97) — the `code` extension carries the identity. */
+  /** A realistic RFC-7807 body — the `code` extension carries the identity. */
   function httpError(status: number, code?: string): HttpErrorResponse {
     return new HttpErrorResponse({
       status,

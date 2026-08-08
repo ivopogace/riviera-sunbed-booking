@@ -11,7 +11,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the O7 Payouts tab (#173). The tab is always porcelain (console host);
+ * WCAG-AA contrast guard for the Payouts tab. The tab is always porcelain (console host);
  * surfaces use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs: the heading, ledger ink
  * (`#<bookingId>` reference, gross), period-total label and statement ink use `--riv-card-ink`; the
  * intro/dates/commission/empty sub-copy use `--riv-card-ink-soft` (0.78); the "Owed to you" label,

@@ -8,7 +8,7 @@ import { expectNoAxeViolations } from '../../testing/axe';
 import { LayoutEditor } from './layout-editor';
 
 /**
- * Structural a11y audit for the O3 layout editor (#172). The grid must be keyboard + AT operable
+ * Structural a11y audit for the layout editor. The grid must be keyboard + AT operable
  * (an AC): every cell is a labelled `<button>`. axe runs over the empty state, the generated grid,
  * and a painted grid. (Colour contrast is proven by `layout-editor.contrast.spec.ts` — axe can't
  * measure it under jsdom.)

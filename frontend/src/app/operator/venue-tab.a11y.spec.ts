@@ -9,9 +9,9 @@ import { VenueProfileView } from './operator-console.model';
 import { VenueTab } from './venue-tab';
 
 /**
- * Structural a11y audit for the O8 Venue & commodities tab (#177). Every field is a labelled control;
+ * Structural a11y audit for the Venue & commodities tab. Every field is a labelled control;
  * the amenity chips are `aria-pressed` toggle buttons with text; commission + payout currency are
- * read-only `<output>`s; the photo slots (#142) are labelled buttons with an `alt`-texted preview
+ * read-only `<output>`s; the photo slots are labelled buttons with an `alt`-texted preview
  * image. axe runs over the loaded form and the load-error state. (Colour contrast is proven by
  * `venue-tab.contrast.spec.ts` — axe can't measure it under jsdom.)
  */

@@ -9,7 +9,7 @@ import { OwnedVenues, OwnedVenuesResult } from '../core/owned-venues';
 import { OperatorHome } from './operator-home';
 
 /**
- * Structural a11y audit for the `/operator` home (S9 #277, create state #278). Audited states: the
+ * Structural a11y audit for the `/operator` home. Audited states: the
  * multi-venue picker (a labelled list of links + the Add-another-venue entry), the load-failure card
  * with its retry, and the zero state rendering the create card inline (its form internals are
  * audited by `venue-create-card.a11y.spec.ts`). The 1-venue case renders nothing — it navigates.

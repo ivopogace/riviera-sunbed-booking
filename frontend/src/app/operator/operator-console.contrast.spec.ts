@@ -7,7 +7,7 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * WCAG-AA contrast guard for the operator console (issue #170). The console is ALWAYS porcelain
+ * WCAG-AA contrast guard for the operator console. The console is ALWAYS porcelain
  * (its host scopes `data-riv-theme="porcelain"`), so every pair is proven over the porcelain
  * background stops / header glass. Interactive chrome (sign-in card, active tab pill, Requests badge,
  * buttons) uses OPAQUE SOLID fills instead of translucent ones — the `css:S7924` treatment — so both the WCAG

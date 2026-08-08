@@ -3,8 +3,8 @@ import { BookingMode } from '../shared/venue-views';
 /**
  * Typed views of the venue **onboarding** write API (`POST /api/venues`). Money travels as integer
  * minor units + ISO currency (invariant #5). The per-set write + profile-edit types moved to the
- * operator console when their editing surfaces graduated to console tabs (layout O3, pricing O4,
- * details/commodities O8 #177 — see `operator/operator-console.model.ts`). No `any` anywhere.
+ * operator console when their editing surfaces graduated to console tabs (see
+ * `operator/operator-console.model.ts`). No `any` anywhere.
  */
 
 /** `POST /api/venues` body — create a venue. Rating/reviews are server-defaulted to zero. */
@@ -25,7 +25,7 @@ export interface CreatedId {
   readonly id: number;
 }
 
-/** The server error codes onboarding maps to operator-facing messages (RFC-7807 `code`, issue #97). */
+/** The server error codes onboarding maps to operator-facing messages (RFC-7807 `code`). */
 export type VenueAdminErrorCode =
   | 'NO_SUCH_VENUE'
   | 'INVALID_REQUEST'

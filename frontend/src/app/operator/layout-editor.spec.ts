@@ -10,7 +10,7 @@ import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
 
 /**
- * The O3 layout editor (#172). Reads `:venueId` from the PARENT route (child routes don't inherit it)
+ * The layout editor. Reads `:venueId` from the PARENT route (child routes don't inherit it)
  * and loads the venue map to seed its grid; the mock mirrors that. Drives generate, drag-paint, save
  * (asserting the one bulk PUT payload), and the LAYOUT_IN_USE lock message.
  */
@@ -49,8 +49,7 @@ describe('LayoutEditor (#172)', () => {
 
   function render(initialSets: SetView[] = [], setVersion = 0): void {
     configure();
-    // The constructor loads the current layout — flush it so the grid seeds (or stays empty) and the
-    // optimistic-concurrency token (#226 setVersion) is captured for the next save.
+    // Flush the constructor's layout load so the grid seeds and the optimistic-concurrency token is captured.
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
       .flush({ id: 1, name: 'V', sets: initialSets, setVersion });
@@ -58,7 +57,7 @@ describe('LayoutEditor (#172)', () => {
     host = fixture.nativeElement as HTMLElement;
   }
 
-  /** The initial map read FAILS — no #226 token is captured (loadFailed), so Save must not silently no-op. */
+  /** The initial map read FAILS — no token is captured (loadFailed), so Save must not silently no-op. */
   function renderWithFailedLoad(): void {
     configure();
     http
@@ -182,7 +181,7 @@ describe('LayoutEditor (#172)', () => {
       gridY: 1,
     });
     expect(req.request.body.sets[0].price.minorUnits).toBe(3500);
-    // #226: the loaded optimistic-concurrency token rides the write body (0 for the fresh render mock).
+    // The loaded optimistic-concurrency token rides the write body (0 for the fresh render mock).
     expect(req.request.body.expectedVersion).toBe(0);
     req.flush(null);
     await fixture.whenStable(); // onSave awaits the PUT — settle the notice
@@ -217,8 +216,7 @@ describe('LayoutEditor (#172)', () => {
   });
 
   it('keeps edits and offers Reload on a 409 STALE_WRITE, then Reload re-seeds from the server', async () => {
-    // #226, AC-9: a stale-write conflict must NOT discard the operator's in-progress edits — it shows a
-    // banner and offers an explicit Reload that re-seeds from the latest server layout.
+    // AC-9: a stale-write conflict must not discard edits — it shows a banner and offers Reload.
     render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3); // loaded at set_version 3
     expect(cells()).toHaveLength(1);
     // Paint the loaded cell to walk-in — an in-progress edit that must survive the 409.
@@ -251,8 +249,7 @@ describe('LayoutEditor (#172)', () => {
   });
 
   it('keeps the grid + banner and shows a retry hint when the Reload GET fails (no data loss)', async () => {
-    // #226 review fix: reloadAfterStale must not clear the grid until the reload succeeds — a failed
-    // reload keeps the painted work, the stale token, and the banner, and shows a retry hint.
+    // reloadAfterStale must not clear the grid until the reload succeeds — a failed reload keeps the work.
     render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3);
     byId('layout-tool-walkin').click();
     fixture.detectChanges();
@@ -282,8 +279,7 @@ describe('LayoutEditor (#172)', () => {
   });
 
   it('shows a load-failed message (not a silent no-op) when Save is pressed after a failed initial load', () => {
-    // #226 review fix: with no token (the initial map read failed), Save must surface an error prompting a
-    // refresh — not silently do nothing (the pre-fix behaviour).
+    // With no token (the initial map read failed), Save must surface an error prompting a refresh.
     renderWithFailedLoad();
     generate('1', '1');
 
@@ -295,8 +291,7 @@ describe('LayoutEditor (#172)', () => {
   });
 
   it('advances the loaded token on a successful save so a second save is not falsely stale', async () => {
-    // #226: the conditional write bumps set_version by exactly one; the editor advances its token so a
-    // second consecutive save by the same operator sends the new value, not the stale one.
+    // The conditional write bumps set_version by exactly one; the editor advances its token to match.
     render([], 5); // loaded at set_version 5, empty venue
     generate('1', '1');
 
@@ -372,8 +367,7 @@ describe('LayoutEditor (#172)', () => {
   });
 
   it('ignores the first visit’s late response after switching away and back (#180, A→B→A)', () => {
-    // A value check on venueId passes again after A→B→A — only an epoch/identity guard drops it
-    // (the #487 ConsoleVenueMap precedent: "the key recurs after a reset").
+    // A value check on venueId passes again after A→B→A — only an epoch/identity guard drops it.
     configure();
     params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
@@ -396,8 +390,7 @@ describe('LayoutEditor (#172)', () => {
   });
 
   it('drops a superseded save’s outcome after a venue switch (#180)', async () => {
-    // A save for venue 1 resolving after a switch must not stamp venue 1's advanced #226 token
-    // (or its Saved notice) onto venue 2's freshly-loaded editor.
+    // A save for venue 1 resolving after a switch must not stamp its advanced token onto venue 2's editor.
     render([], 7);
     generate('1', '1');
     byId('layout-save').click();

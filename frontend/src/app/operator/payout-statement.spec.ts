@@ -4,7 +4,7 @@ import { LedgerRow } from './operator-console.model';
 import { PayoutStatement } from './payout-statement';
 
 /**
- * The O7 payout-statement modal (#173) — display-only. Lists the SAME ledger rows the tab passes in and
+ * The payout-statement modal — display-only. Lists the SAME ledger rows the tab passes in and
  * the server's total due (no money computed here), shows the "assigned at settlement" transfer
  * placeholder (payout details not stored, reconciliation #4), and emits `dismissed` on Close / ESC /
  * backdrop click (accessible modal, mirroring BookingDialog).
