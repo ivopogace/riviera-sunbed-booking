@@ -201,19 +201,33 @@ reflects that stop.
 
 ## Execution status
 
-**Stage pointer:** ⏳ **B green-lit by the maintainer 2026-08-08; B-1 through B-12 shipped this
-session — the dense tier (≥4 refs/file) is now fully exhausted. C stays not-recommended per the
-*Recommendation* above — no C batch runs without a separate go.**
+**Stage pointer:** ✅ **Phase B is complete.** B-1 through B-19 shipped this session — both the
+dense tier (≥4 refs/file, 29 files) and the sparse tail (1–3 refs/file, 155 files) are fully
+exhausted; `platform/src/test` carries **zero** remaining true-violation `#nnn` tokens (confirmed
+by a full tree re-scan after B-19 landed — every hit still present is either a permitted
+`invariant #n` or an F-17 code-string ref inside a string literal, verified by direct inspection of
+all 27 files the scan flagged). C stays not-recommended per the *Recommendation* above; the
+maintainer confirmed **not** overriding that no-go this session ("Ok we wait for phase c") — no C
+batch runs without a separate, later go.
 
-**Next action:** switch to larger sparse-tail sweeps (~20–30 files/PR, matching Phase A's own
-dense→sparse transition) for the 155 files carrying 1–3 refs (217 true-violation tokens remain
-tree-wide, all in the sparse tier now, `#[0-9]{2,4}\b` raw minus `invariant #[0-9]{1,2}\b`, same
-method as every prior count in this doc). C stays parked.
+**B-7 through B-19 ran as two parallel waves** (F-20): Wave 1 (B-7..B-12, dense tier, 6 subagents)
+and Wave 2 (B-13..B-19, sparse tail, 7 subagents), each worktree-isolated and drafting concurrently
+without pushing; a serial integration step (cherry-pick → gate → self-review) landed every batch
+onto the branch in turn, so history and the plan doc stayed linear despite the concurrent drafting.
+See F-20 for the two mistakes that review caught and fixed pre-merge.
 
-**B-7 through B-12 ran as a parallel wave** (F-20): 6 worktree-isolated subagents drafted batches
-concurrently, each committing locally without pushing; a serial integration step (cherry-pick →
-gate → self-review) landed each one onto the branch in turn, so history and the plan doc stayed
-linear despite the concurrent drafting. See F-20 for what that review caught.
+**Verification, both waves combined:** `check-comment-only.mjs` — every touched file code-identical
+against `origin/main`; `check-inline-comments.mjs` — clean; `compileJava`/`compileTestJava` — clean
+across the whole tree; the structural net (`ModularityTests`/`JdbcOnlyArchitectureTests`/
+`PackageShapeArchitectureTests`/`PublishedSurfacePlacementArchitectureTests`) — green; every touched
+test class run in scoped batches (159 tests / 27 classes for the dense tier, ~150+ tests across 4
+chunked gradle invocations for the sparse tail) — 0 failures. One self-inflicted, non-code false
+alarm during sparse-tier verification: running the structural-net check concurrently with a
+background chunked test run caused a Gradle report-file write collision on the shared
+`build/test-results/` directory (`Could not write XML test results for ...`) — not a real test
+failure; the affected chunk re-ran alone afterward and passed clean. Lesson: never run two `gradle
+test` invocations against the same build directory concurrently, even for unrelated `--tests`
+filters.
 
 | Phase / batch | Scope | Ships in | Status |
 |---|---|---|---|
@@ -232,8 +246,15 @@ linear despite the concurrent drafting. See F-20 for what that review caught.
 | B-11 | (parallel wave) `venue/VenuePhotoServingIT`, `venue/VenuePhotoReadModelIT`, `venue/AdminPhotoModerationIT`, `shared/MdcTaskDecoratorTest`, `booking/adapter/in/RefundExecutorWiringIT` — 17 true-violation tokens removed, `invariant #11` preserved, `AC-7`/`AC-8`/`AC-9` (test-internal labels, not `#`-tokens) plus assorted orphan labels dropped with their refs, 0 R-4 hits. **Same F-20 mistake as B-10**: 3 `AC-n` labels (`AC-6`, `AC-7`, `AC-8`) dropped alongside their refs — restored all 3 before cherry-picking | pushed | ✅ gates green after the F-20 fix, integrated by cherry-pick, tests pass |
 | B-12 | (parallel wave) `PerOperatorLoginIT`, `EventRegistryDurabilityIT`, `EmailVerificationIT`, `AccountRecoveryControllerTest` (4 files — the dense tier's last, odd-sized batch) — 13 true-violation tokens removed, `D-1` preserved, `S8`/`G-4` orphan labels dropped with their refs, 1 F-17 code-string ref left untouched, 0 R-4 hits | pushed | ✅ gates green, integrated by cherry-pick, tests pass |
 | **Dense-tier wave total (B-7..B-12)** | 29 files, 128 true-violation tokens removed (grep-verified before/after against `origin/main`) — **the dense tier (≥4 refs/file) is now fully exhausted** | pushed | ✅ consolidated pass after all 6 landed: `check-comment-only.mjs` (58 files code-identical), `check-inline-comments.mjs` (clean), `compileJava`/`compileTestJava` clean, 159 tests across 27 directly-testable classes pass (0 failures), the structural net (`ModularityTests`/`JdbcOnlyArchitectureTests`/`PackageShapeArchitectureTests`/`PublishedSurfacePlacementArchitectureTests`) green |
-| B-13… | next sparse-tail sweep (~20–30 files, 155 sparse files remain) | — | not started |
-| C-1… | backend main batches | — | not recommended; blocked on a separate maintainer go |
+| B-13 | (sparse wave, worktree-isolated) 22 files — see File structure — 55 true-violation tokens removed (2 commits: main batch + one F-20-part-2 line-length fix caught by the subagent itself, `VenueSeedMigrationIT`), 1 file (`RefundListenerExecutorArchitectureTest`) needed no edit, `AC-n`/`invariant #n`/Flyway-`Vnn` preserved throughout, 0 R-4 hits | pushed | ✅ gates green, integrated by cherry-pick (2 commits) |
+| B-14 | (sparse wave) 22 files — see File structure — 54 true-violation tokens removed, `invariant #n`/`AC-n`/`design D-5` preserved, 5 F-17 code-string refs left untouched, 0 R-4 hits | pushed | ✅ gates green, integrated by cherry-pick |
+| B-15 | (sparse wave) 22 files — see File structure — 47 true-violation tokens removed, `invariant #n`/`AC-n`/`design D-n` preserved, 2 F-17 code-string refs left untouched, 0 R-4 hits | pushed | ✅ gates green, integrated by cherry-pick |
+| B-16 | (sparse wave) 22 files — see File structure — 35 true-violation tokens removed, `invariant #n`/`AC-n`/`D-n`/Flyway-`Vnn` preserved, 1 F-17 code-string ref left untouched, 0 R-4 hits. Review-worthy call: `F-5`/`F3` plan-doc finding-register labels treated as droppable review/tracker provenance (same class as `R-n`/`G-n`), consistent with precedent — spot-checked, confirmed reasonable | pushed | ✅ gates green, integrated by cherry-pick |
+| B-17 | (sparse wave) 22 files — see File structure — 23 true-violation tokens removed, `invariant #n`/`AC-n`/`design D-6`/Flyway-`V31` preserved, 0 F-17 refs, 0 R-4 hits | pushed | ✅ gates green, integrated by cherry-pick |
+| B-18 | (sparse wave) 22 files — see File structure — 30 true-violation tokens removed, `invariant #n`/`AC-n`/`D-1`/`D4`/`AC-2..10` preserved, 1 file's `invariant #2` inside a string was already-permitted content, 0 R-4 hits. Review-worthy call: "the #1 correctness invariant" (CLAUDE.md's own idiom for invariant #2's priority) left as-is, not tracker syntax — spot-checked, confirmed reasonable | pushed | ✅ gates green, integrated by cherry-pick |
+| B-19 | (sparse wave, last sparse batch) 23 files — see File structure — 21 true-violation tokens removed, 1 file (`PackageShapeArchitectureTests`) needed no edit, `AC-n`/`[D5]`/`invariant #n` preserved, `D4` (no hyphen, roadmap-milestone label) correctly distinguished from `D-n` and dropped per B-8 precedent, 2 F-17 refs left untouched, 0 R-4 hits | pushed | ✅ gates green, integrated by cherry-pick |
+| **Sparse-tail wave total (B-13..B-19)** | 155 files, 275 true-violation tokens removed (grep-verified before/after against `origin/main`) — **the sparse tail is now fully exhausted; Phase B is complete** | pushed | ✅ consolidated pass after all 7 landed: `check-comment-only.mjs` (211 files code-identical cumulative), `check-inline-comments.mjs` clean, `compileJava`/`compileTestJava` clean, all 4 chunked test runs (covering all 155 files) `BUILD SUCCESSFUL`, structural net green |
+| C-1… | backend main batches | — | not recommended; blocked on a separate maintainer go — maintainer confirmed waiting, not overriding, 2026-08-08 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -435,7 +456,54 @@ doc — new findings start at F-14 to stay globally unambiguous across both plan
 - `.gitignore` — **modified**: added `.claude/worktrees/`, the harness's local scratch directory
   for the isolated worktrees the B-7..B-12 parallel wave used — not repo content, unrelated to the
   `#nnn` strip itself
-- Stage 0 itself (the probe tables above) touched no file — only B-1 through B-12's batches did.
+- Stage 0 itself (the probe tables above) touched no file — only B-1 through B-19's batches did.
+- **B-13..B-19 (the sparse-tail wave, 155 files, comment-only `#nnn` strip)** — a large mechanical
+  sweep; listed as directory groups per batch rather than per-file, per this section's own allowance
+  for that scale:
+  - B-13 (22 files): `platform/src/test/java/ai/riviera/platform/venue/{VenueSeedMigrationIT,JdbcPhotoStorageIT,BeachMapReplaceConcurrencyIT,AdminVenueCommissionIT,AdminPhotoTakedownIT}.java`,
+    `.../payout/adapter/in/AdminPayoutBatchControllerTest.java`,
+    `.../notification/application/{MailTransportBudgetTest,MailKindTest,MailDeliverabilityServiceTest}.java`,
+    `.../notification/adapter/out/EmailSuppressionReinstatementIT.java`,
+    `.../notification/adapter/in/{RegistryMailExecutorWiringIT,MailResubmissionPropertiesTest,MailListenerExecutorArchitectureTest}.java`,
+    `.../notification/MailSenderWiringIT.java`,
+    `.../customer/adapter/in/GuestContactRetentionSchedulerConfigTest.java`, `.../customer/CustomerDirectoryIT.java`,
+    `.../booking/application/view/ViewBookingServiceTest.java`, `.../booking/application/request/{RequestWindowsTest,PaymentDueAnnouncerIT}.java`,
+    `.../booking/adapter/in/{RefundListenerExecutorArchitectureTest,RefundExecutorPropertiesTest,RefundExecutorConfigTest}.java`
+  - B-14 (22 files): `.../booking/adapter/in/BookingListenerIds.java`, `platform/src/test/java/ai/riviera/platform/{TestcontainersConfiguration,SessionLoginSupport,ScheduledWorkArchitectureTest,ScheduledQueryTimeoutBoundsTest,PostgresContainerConfiguration,OperatorApprovalIT,MeSurfaceRoleGateTest,ErrorContractArchitectureTests}.java`,
+    `platform/src/test/java/ai/riviera/{workercontextfixture/UndecoratedWorkerPool,rootfixture/package-info,responsibilityfixture/package-info}.java`,
+    `.../venue/adapter/in/AdminVenueCommissionControllerTest.java`, `.../venue/VenueRepriceConcurrencyIT.java`,
+    `.../payout/adapter/in/BookingCancelledPayoutListenerTest.java`, `.../payout/PayoutReversalIT.java`,
+    `.../payment/adapter/out/StripeConfigTest.java`,
+    `.../notification/application/{SuppressionReinstatementServiceTest,MailResubmissionServiceTest,BookingMailFactsServiceTest,BookingConfirmationResendServiceTest}.java`,
+    `.../notification/adapter/out/SuppressionQueryTimeoutIT.java`
+  - B-15 (22 files): `.../notification/adapter/out/MailOutboxScopeTest.java`, `.../notification/adapter/in/{MailListenerRuleFixtures,BookingCancellationMailListenerTest}.java`,
+    `.../notification/{RequestExpiredMailIT,RequestDeclinedMailIT,BookingCancellationMailIT}.java`,
+    `.../customer/application/CustomerAccountServiceTest.java`, `.../customer/adapter/in/CustomerRetentionPropertiesTest.java`, `.../customer/CustomerAccountRecoveryIT.java`,
+    `.../booking/adapter/out/JdbcCustomerBookingsIT.java`, `.../booking/adapter/in/BookingCreationViewsContractTest.java`,
+    `.../booking/{RequestToBookFlowIT,MyBookingsIT}.java`, `.../availability/StaffAvailabilityIT.java`,
+    `platform/src/test/java/ai/riviera/platform/{VenueApiRoleSplitTests,SsoRateLimitIT,SsoCallbackIT,RealSsoGatewayTest,PerUsernameLoginThrottleIT,PasswordResetIT,OperatorSuspensionRevocationIT,OperatorRegistrationIT}.java`
+  - B-16 (22 files): `platform/src/test/java/ai/riviera/platform/{OperatorCredentialInitializerTest,OperatorAuthPlacementTests,MyVenuesIT,CustomerRoleSeparationIT,CustomerRegisterIT,CustomerLoginIT,AdminEmailSuppressionControllerTest,AdminAuditTrailIT}.java`,
+    `.../venue/application/{VenueProfileCommandTest,RowPriceCommandTest,PhotoProcessorTest,DailyAvailabilityServiceTest}.java`,
+    `.../venue/adapter/in/PhotoSlotsTest.java`,
+    `.../venue/{VenueSetWriteConcurrencyIT,VenueProfileConcurrencyIT,VenueCommissionScheduleMigrationIT,VenueAmenityMigrationIT,SetBookingInfoIT,JdbcVenueCommissionScheduleIT,BookingModeSwitchIT}.java`,
+    `.../shared/ShutdownBudgetTest.java`, `.../payout/PayoutLedgerViewIT.java`
+  - B-17 (22 files): `.../payout/{PayoutBatchLifecycleTest,PayoutBatchGenerationIT}.java`,
+    `.../payment/application/RefundFailureMetricTest.java`, `.../payment/adapter/in/StripeWebhookListenerFailureIT.java`, `.../payment/EventRegistryMigrationIT.java`,
+    `.../operator/OperatorAccountProvisioningIT.java`,
+    `.../notification/application/{SynchronousMailDispatch,MailDeliveryLookupServiceTest,ConfirmationAttemptRecorderTest,BookingLinksTest}.java`,
+    `.../notification/adapter/out/{SuppressionPepperProdGuardTest,SuppressedConfirmationMailDeliveryTest,MockMailerTest,MockMailerProdGuardTest,MailerProfileWiringTest}.java`,
+    `.../notification/{RequestPaymentDueMailIT,ListenerMoveMigrationIT,ControllableMailerConfiguration}.java`,
+    `.../customer/vocabulary/EmailsTest.java`, `.../customer/application/AccountErasureServiceTest.java`, `.../customer/{SsoAccountVerifiedIT,SsoAccountProvisioningIT}.java`
+  - B-18 (22 files): `.../customer/JdbcCustomerAccountsIT.java`,
+    `.../booking/application/request/{WithdrawRequestServiceTest,PendingRequestsServiceTest}.java`,
+    `.../booking/application/refund/{RefundResubmissionServiceTest,AbandonedBookingSweepServiceTest}.java`,
+    `.../booking/adapter/out/JdbcBookingsAccountLinkIT.java`, `.../booking/adapter/in/{RequestPropertiesTest,RefundResubmissionPropertiesTest,RefundListenerRuleFixtures}.java`,
+    `.../booking/{WithdrawRequestIT,WeatherRefundSecurityIT,CreateBookingPaymentFailureIT}.java`,
+    `.../availability/{StaffMarkVsOnlineClaimConcurrencyIT,StaffAvailabilityControllerIT,AvailabilityLookupIT}.java`,
+    `platform/src/test/java/ai/riviera/platform/{WebCorsConfigTest,WebCorsConfigEmptyOriginsTest,TokenBucketTest,StructuredLoggingIT,SpaShellTest,SpaFallbackResolverTest,SessionPersistenceIT}.java`
+  - B-19 (23 files): `platform/src/test/java/ai/riviera/platform/{RecoveryRateLimitIT,RecoveryMailerFailureIT,RateLimitDisabledTest,RateLimitDefaultsTest,PackageShapeArchitectureTests,OutboxBacklogGaugeIT,OperatorApprovalMailTest,OperatorApprovalMailIT,MyVenuesControllerTest,MoneyPathAlertCheckTest,MockSsoProdGuardTest,MockSsoGatewayTest,HttpServerRequestMetricsIT,EndpointProbes,CsrfCookieBootstrapIT,CorrelationIdFilterTest,AdminRefundOutboxControllerTest,AdminErasureControllerTest,AdminAuditReasonsTest,AbandonedSweepSurvivesWedgedJobIT}.java`,
+    `platform/src/test/java/ai/riviera/placementfixture/{package-info,consumer/adapter/in/BadDecomposedListener}.java`,
+    `platform/src/test/java/ai/riviera/drainfixture/OversizedDrainingPool.java`
 
 ## Generalization-audit log
 
