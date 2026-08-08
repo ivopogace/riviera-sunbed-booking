@@ -6,8 +6,8 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Platform moderation of venue photos (#504) — the "remove" half of the report-and-remove
- * moderation stance (#230). Deliberately a <strong>separate port from {@link VenuePhotos}</strong>
+ * Platform moderation of venue photos — the "remove" half of the report-and-remove
+ * moderation stance. Deliberately a <strong>separate port from {@link VenuePhotos}</strong>
  * rather than extra methods on it: {@code VenuePhotos} promises that its writes assert per-venue
  * ownership <em>first</em> (invariant #13), and an ownership-free method hung off it would turn that
  * promise into a per-method detail every caller has to re-read. It is also a different conversation —
@@ -37,7 +37,7 @@ public interface VenuePhotoModeration {
 	/**
 	 * Every {@link PhotoSlot} of {@code venueId} in declaration order — an occupied slot carrying its
 	 * PREVIEW variant's serving URL, an empty one carrying {@code null} — <strong>without any
-	 * ownership check</strong> (#511). Emptiness IS the null URL (#142 review F-11), so the caller
+	 * ownership check</strong>. Emptiness IS the null URL (#142 review F-11), so the caller
 	 * gets a stable three-slot grid rather than a list it has to reconcile against the slot vocabulary.
 	 *
 	 * <p>This read exists because the only other per-slot view is the venue-scoped operator profile,
