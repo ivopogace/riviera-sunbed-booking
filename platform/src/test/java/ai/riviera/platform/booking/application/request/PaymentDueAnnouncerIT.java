@@ -21,7 +21,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * That {@link PaymentDueAnnouncer} actually opens a transaction — the one property the rest of #373
+ * That {@link PaymentDueAnnouncer} actually opens a transaction — the one property the rest of the slice
  * silently depends on, and the one no other test in the slice touches.
  *
  * <p><strong>Why it needs its own IT.</strong> {@code RespondToRequestServiceTest} constructs the
@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * assertion in both files would still pass while production sent no mail at all: with no transaction
  * there is no commit for {@code @TransactionalEventListener} to fire after (its
  * {@code fallbackExecution} is false, so the event is simply dropped) and no
- * {@code event_publication} row for the restart republish or the #405 re-drive to find.
+ * {@code event_publication} row for the restart republish or the re-drive to find.
  *
  * <p><strong>The review round is why the method is public and this test still exists.</strong>
  * Spring's {@code AnnotationTransactionAttributeSource} is <em>public-methods-only</em> by default, so

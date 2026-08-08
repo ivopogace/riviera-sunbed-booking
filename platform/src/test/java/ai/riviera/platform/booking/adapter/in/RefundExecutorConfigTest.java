@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The saturation contract of the refund executor (#404 AC-7). The pool exists to be a
+ * The saturation contract of the refund executor (AC-7). The pool exists to be a
  * <strong>bulkhead</strong>, so the two properties that make it one are asserted rather than left to a
  * reader of the builder: it is bounded on every axis, and once both are full it <em>sheds</em> — the
  * submission neither throws back at the caller nor runs the task on the caller's thread.
@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>Both halves matter and neither is the default. A throw would surface on the thread committing the
  * cancellation (an {@code AFTER_COMMIT} listener is dispatched from inside {@code commit()}), so a
  * cancellation that already succeeded would report a server error; and a caller-runs fallback would put
- * the gateway round-trip on that same thread — the exact defect #404 is about, reached from the other
+ * the gateway round-trip on that same thread — the exact defect this pool exists to prevent, reached from the other
  * direction.
  *
  * <p><strong>What a shed refund means is not what a shed mail means, and the difference is why the
@@ -185,7 +185,7 @@ class RefundExecutorConfigTest {
 	}
 
 	/**
-	 * AC-4 (#455) — a refund <em>worker's</em> own lines are attributable to the request that cancelled
+	 * AC-4 — a refund <em>worker's</em> own lines are attributable to the request that cancelled
 	 * the booking. Invariant #7 keeps the booking code out of them, so the correlation id is the only
 	 * handle on which cancellation the listener's {@code refunded cancelled booking} INFO — or a gateway
 	 * failure — describes.

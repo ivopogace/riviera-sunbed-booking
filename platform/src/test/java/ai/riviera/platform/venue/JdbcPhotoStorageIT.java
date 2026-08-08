@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Verifies the {@code venue} photo-storage adapter against real Postgres (Testcontainers): variants
  * round-trip, {@code listMetadata} is blob-free, {@code loadBytes} finds by hash, {@code exists}
- * answers the same question blob-free (#508), a re-upload replaces the slot (at most one photo per
+ * answers the same question blob-free, a re-upload replaces the slot (at most one photo per
  * {@code (venue, slot)}), and delete erases metadata + bytes in one shot. JDBC-only (invariant #1);
  * skipped where Docker is absent (CI runs it).
  */
@@ -104,7 +104,7 @@ class JdbcPhotoStorageIT {
 
 	@Test
 	void theSameImageCanOccupyTwoSlotsOfOneVenue() {
-		// #142 review F-2: the pipeline is deterministic, so the same source image uploaded to two
+		// The pipeline is deterministic, so the same source image uploaded to two
 		// slots yields byte-identical PREVIEW variants with the same SHA-256. Both must store (the
 		// old UNIQUE(venue_id, content_hash) made the second upload die), and the content-addressed
 		// serving read stays well-defined — identical hash = identical bytes, any row serves.
@@ -124,7 +124,7 @@ class JdbcPhotoStorageIT {
 
 	@Test
 	void concurrentReplacesOfTheSameSlotSerializeToOnePhoto() throws Exception {
-		// #142 review F-3: two concurrent replaces of one (venue, slot) — a double-submit from two
+		// Two concurrent replaces of one (venue, slot) — a double-submit from two
 		// tabs — must serialize on the slot row's upsert lock (last writer wins), never die on
 		// venue_photo_slot_uniq the way delete-then-insert did. Both calls succeed; one photo remains.
 		VenueId v = newVenue();
@@ -148,7 +148,7 @@ class JdbcPhotoStorageIT {
 
 	@Test
 	void existsTracksTheVariantRowWithoutReadingBytes() {
-		// #508: the conditional-GET path asks this, so a revalidation is an index probe, not a blob read.
+		// The conditional-GET path asks this, so a revalidation is an index probe, not a blob read.
 		VenueId v = newVenue();
 		storage.replace(v, PhotoSlot.COVER, new ProcessedPhoto(List.of(
 				variant(PhotoSurface.CARD, "7a7a", new byte[] {8, 8}))));

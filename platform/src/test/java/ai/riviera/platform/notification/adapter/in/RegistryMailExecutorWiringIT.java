@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>Boot's {@code applicationTaskExecutor} is declared {@code @ConditionalOnMissingBean(Executor.class)}:
  * defining <em>any</em> {@link Executor} bean makes Boot back off and not define it at all. A mail
- * executor is an {@code Executor} bean, so #383's first cut silently deleted the shared pool from the
+ * executor is an {@code Executor} bean, so the first cut silently deleted the shared pool from the
  * context — and with it the bounded pool the money-path listeners run on. {@code @Async} then fell
  * through to an unbounded {@code SimpleAsyncTaskExecutor} (a fresh thread per event, forever), which
  * is why <em>every</em> test still passed, {@code RegistryMailBulkheadIT} included: unbounded threads
@@ -72,7 +72,7 @@ class RegistryMailExecutorWiringIT {
 	}
 
 	/**
-	 * The half of #408's AC-1 the unit tests cannot reach: that the pool the <em>container</em> builds
+	 * The half of AC-1 the unit tests cannot reach: that the pool the <em>container</em> builds
 	 * carries the shipped bounds. {@code RegistryMailExecutorConfigTest} feeds the factory a
 	 * hand-written record and {@code RegistryMailPropertiesTest} binds the properties without touching
 	 * a pool, so before this test the two halves were joined only by the same literals appearing in

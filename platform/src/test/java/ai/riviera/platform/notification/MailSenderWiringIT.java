@@ -26,9 +26,9 @@ import ai.riviera.platform.notification.application.RequestExpiredMail;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The fire-and-forget contract, proven on the <strong>real wiring</strong> (#386).
+ * The fire-and-forget contract, proven on the <strong>real wiring</strong>.
  *
- * <p>"A recovery send does no mail work on the caller's thread" is the structural closure of the #369
+ * <p>"A recovery send does no mail work on the caller's thread" is the structural closure of the
  * timing account-enumeration oracle, and until this test it was proven only half-by-half, never
  * end-to-end: {@code CustomerRecoveryTest} mocks {@link MailSender} entirely,
  * {@code TransactionalMailServiceTest} proves the class in isolation with a capturing dispatcher, and

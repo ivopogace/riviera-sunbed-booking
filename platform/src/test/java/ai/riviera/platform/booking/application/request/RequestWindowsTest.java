@@ -10,13 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The pay window read from both ends (#373). The payment-due mail promises a deadline and the
- * abandoned sweep enforces one; #373's AC is that they are the <em>same</em> instant, which this
+ * The pay window read from both ends. The payment-due mail promises a deadline and the
+ * abandoned sweep enforces one; the AC is that they are the <em>same</em> instant, which this
  * pins as an arithmetic identity rather than as two hand-checked formulas.
  *
  * <p>The identity is what makes it structural: {@link RequestWindows#payDeadline} is what the accept
  * mails, {@link RequestWindows#acceptedBefore} is the cutoff the sweep's {@code accepted_at <
- * :acceptedBefore} predicate binds, and they are exact inverses off one field. Before #373 the
+ * :acceptedBefore} predicate binds, and they are exact inverses off one field. Previously the
  * second half lived as {@code now.minus(payWindow)} inside {@code AbandonedBookingSweepService}, so
  * a mailed deadline could only ever have been checked against it by eye.
  */

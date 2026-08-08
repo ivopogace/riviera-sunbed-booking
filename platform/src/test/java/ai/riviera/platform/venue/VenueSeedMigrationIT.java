@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Verifies the U1 schema + demo seed (Flyway V2/V3, issue #4): the {@code venue} and
+ * Verifies the schema + demo seed (Flyway V2/V3): the {@code venue} and
  * {@code set_position} tables exist and the Miramar Beach Club demo fixture loaded with
  * the design's 4×6 map. Runs only when Docker is available (Testcontainers Postgres) —
  * the Postgres-specific DDL (BIGINT identity, TIMESTAMPTZ, CHECK constraints) is validated
@@ -51,7 +51,7 @@ class VenueSeedMigrationIT {
 
 	@Test
 	void dropsTheSeedAvailabilityPlaceholder() {
-		// Issue #44 / V6: the render-only placeholder column is gone — availability is now
+		// V6: the render-only placeholder column is gone — availability is now
 		// sourced per-(set, date) from set_availability, never from this dead column.
 		Integer column = jdbc.queryForObject(
 				"SELECT count(*) FROM information_schema.columns "
@@ -77,8 +77,8 @@ class VenueSeedMigrationIT {
 
 	@Test
 	void seedsTheSetVersionOptimisticConcurrencyColumn() {
-		// #226 (V23): venue.set_version is the SEPARATE optimistic-concurrency token for the beach-map
-		// replace + per-row reprice writes (distinct from the #224 profile version). NOT NULL DEFAULT 0,
+		// V23: venue.set_version is the SEPARATE optimistic-concurrency token for the beach-map
+		// replace + per-row reprice writes (distinct from the profile version). NOT NULL DEFAULT 0,
 		// so the seeded Miramar venue starts at 0 and the map read always has a token to hand out.
 		Long setVersion = jdbc.queryForObject(
 				"SELECT set_version FROM venue WHERE name = 'Miramar Beach Club'", Long.class);

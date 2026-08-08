@@ -12,9 +12,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * The resubmit cooldown as <em>bound, validated</em> configuration (#405) — the
+ * The resubmit cooldown as <em>bound, validated</em> configuration — the
  * {@link RegistryMailPropertiesTest} shape, for a knob whose right value is likewise unknowable until
- * #370 puts a real relay's drain rate behind it.
+ * a real relay's drain rate goes behind it.
  *
  * <p>The lower bound is the one that matters. A zero or near-zero cooldown boots cleanly and reduces
  * the duplicate guard to the single-flight lock alone — which cannot see a send still draining on

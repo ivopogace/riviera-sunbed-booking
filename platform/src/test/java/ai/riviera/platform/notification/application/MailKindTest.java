@@ -19,15 +19,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * The in-memory vehicle's {@code kind} vocabulary (#442), and why it is one type rather than a set of
+ * The in-memory vehicle's {@code kind} vocabulary, and why it is one type rather than a set of
  * string constants.
  *
  * <p>Both of this vehicle's loss counters are read through {@code kind}:
- * {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} for the send it accepted and could not deliver, and —
- * since #442 — {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} for the send it never ran. They are
+ * {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED} for the send it accepted and could not deliver, and
+ * {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} for the send it never ran. They are
  * raised from two different classes, on two different threads, at two different moments. <strong>A kind
  * spelled {@code password_reset} on one and {@code password-reset} on the other would pass every other
- * test in this package</strong> and quietly re-open the attribution gap #442 closed — the query that
+ * test in this package</strong> and quietly re-open the attribution gap this vocabulary closed — the query that
  * joins them would just return nothing, exactly as filtering the {@code dropped} series by {@code kind}
  * did for the two slices before this one.
  */

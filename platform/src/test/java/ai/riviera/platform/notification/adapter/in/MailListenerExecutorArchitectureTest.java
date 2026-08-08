@@ -114,7 +114,7 @@ class MailListenerExecutorArchitectureTest {
 		}
 	}
 
-	// ---- the boundaries (#409) ---------------------------------------------------------------
+	// ---- the boundaries ------------------------------------------------------------------------
 
 	@Test
 	void testScopeListenersAreNotCollected() {
