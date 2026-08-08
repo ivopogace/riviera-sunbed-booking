@@ -12,7 +12,7 @@ import ai.riviera.platform.notification.application.MailResubmission;
 import ai.riviera.platform.shared.ResubmissionOutcome;
 
 /**
- * The platform-admin surface for the mail outbox (#405): what the Event Publication Registry still
+ * The platform-admin surface for the mail outbox: what the Event Publication Registry still
  * owes this module, and the lever that re-drives it without waiting for the next deploy. Driving
  * adapter depending only on the module's {@link MailResubmission} driving port.
  *
@@ -23,14 +23,14 @@ import ai.riviera.platform.shared.ResubmissionOutcome;
  * {@code 401}.
  *
  * <p><strong>Lives in the module, not at the composition root</strong> — the
- * {@code AdminEmailSuppressionController} precedent (#391), for the same reason: hosting it at the
+ * {@code AdminEmailSuppressionController} precedent, for the same reason: hosting it at the
  * root would force a new published {@code notification::api} port for a single same-module consumer.
  *
  * <p><strong>Why every outcome is {@code 200}.</strong> All three are expected flows an admin acts on
  * rather than errors ({@code riviera-java-conventions} §6), and the two refusals carry the fact the
  * admin actually needs — how long until the lever accepts — which a bare {@code 409} could not. There
  * is no request body to reject, so this controller validates nothing; anything genuinely thrown
- * becomes RFC-7807 through the single {@code ApiErrorHandler} (issue #97), never a per-controller
+ * becomes RFC-7807 through the single {@code ApiErrorHandler}, never a per-controller
  * {@code @ExceptionHandler}.
  *
  * <p><strong>What the responses deliberately do not carry</strong> (invariant #7): no address, no

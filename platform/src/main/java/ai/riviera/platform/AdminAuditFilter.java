@@ -18,7 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Records every mutating {@code /api/admin/**} action in the {@link AdminAuditLog} (#507, required
+ * Records every mutating {@code /api/admin/**} action in the {@link AdminAuditLog} (required
  * by ADR-0013): actor, method, path, outcome status, and the optional sanitized
  * {@link AdminAuditReasons#HEADER} grounds. Blanket coverage by construction — a new admin surface
  * is audited the day it ships, with no per-controller instrumentation to forget.
@@ -47,7 +47,7 @@ final class AdminAuditFilter extends OncePerRequestFilter {
 
 	private static final Logger log = LoggerFactory.getLogger(AdminAuditFilter.class);
 
-	/** Reads are never audited — the record is action-level, not a request log (#507 decision 1). */
+	/** Reads are never audited — the record is action-level, not a request log. */
 	private static final Set<String> MUTATING_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
 
 	private final AdminAuditLog auditLog;

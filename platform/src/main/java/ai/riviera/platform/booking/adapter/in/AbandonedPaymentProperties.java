@@ -5,7 +5,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * The TTL for the abandoned-payment sweep (issue #51), bound from {@code booking.awaiting-payment.ttl}:
+ * The TTL for the abandoned-payment sweep, bound from {@code booking.awaiting-payment.ttl}:
  * how long a booking may stay {@code AWAITING_PAYMENT} before it is considered abandoned and swept.
  * Default 15 minutes — comfortably longer than a real Stripe checkout, so a live payer is never swept,
  * yet short enough to free an abandoned set the same day. A {@link Duration} parsed from an ISO-8601 /
@@ -18,7 +18,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * {@code stripe} profile only (see {@code BookingSchedulingConfig}) — the default stub profile confirms
  * synchronously, so no booking ever lingers {@code AWAITING_PAYMENT}.
  *
- * <p><strong>The TTL is bounded at both ends (#426), because both typos boot cleanly on the money
+ * <p><strong>The TTL is bounded at both ends, because both typos boot cleanly on the money
  * path.</strong> {@code AbandonedBookingSweepService} asks for bookings older than
  * {@code now.minus(ttl)}, so {@code PT0S} makes every {@code AWAITING_PAYMENT} booking expirable the
  * instant it is inserted: the sweep cancels the PaymentIntent and releases the {@code (set, date)} claim
@@ -27,10 +27,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * <p>Validated in the compact constructor rather than with {@code @Validated} + {@code @Min} because
  * Boot validates {@code @ConfigurationProperties} only when a JSR-303 implementation is on the
- * classpath, and there is none: #97 declined {@code spring-boot-starter-validation} deliberately, in
- * favour of explicit checks in records. An annotation here would bind and validate nothing — the same
- * silent degradation, reached from the other side. Prior art: {@code RegistryMailProperties} (#408),
- * {@code CustomerRetentionProperties} (#414).
+ * classpath, and there is none: the project declined {@code spring-boot-starter-validation}
+ * deliberately, in favour of explicit checks in records. An annotation here would bind and validate
+ * nothing — the same silent degradation, reached from the other side. Prior art:
+ * {@code RegistryMailProperties}, {@code CustomerRetentionProperties}.
  *
  * @param ttl how long a booking may stay {@code AWAITING_PAYMENT}; default {@code PT15M}, bounded by
  *        {@link #MIN_TTL} and {@link #MAX_TTL}

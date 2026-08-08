@@ -21,7 +21,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 
 /**
- * The one {@code @RestControllerAdvice} owning exception-to-wire mapping (issue #97): every
+ * The one {@code @RestControllerAdvice} owning exception-to-wire mapping: every
  * thrown failure becomes an RFC-7807 {@link ProblemDetail} with a stable {@code code} via
  * {@link ApiProblem}. Per-controller {@code @ExceptionHandler}s are forbidden
  * ({@code ErrorContractArchitectureTests}); controllers map their own <em>typed outcomes</em>
@@ -37,7 +37,7 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
  *       to no active operator → {@code 403 ACCESS_DENIED}. Intentionally broad: any authorization
  *       denial reaching MVC dispatch gets the one uniform {@code 403} shape; role-gate denials in
  *       the security filter chain never reach this advice, so 401/403 filter behavior is untouched.</li>
- *   <li>{@link InvalidApiRequestException} — typed edge validation (#118): request-DTO
+ *   <li>{@link InvalidApiRequestException} — typed edge validation: request-DTO
  *       {@code toCommand()} conversion, bad enum / period tokens, the password policy →
  *       {@code 400 INVALID_REQUEST}. The detail is generic on purpose: an exception message may echo
  *       internals or user input, and validation style is centralized-explicit per the §6b decision
@@ -47,7 +47,7 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
  *       correctness guarantee (invariant #12). Logged at WARN so the race stays diagnosable.</li>
  * </ul>
  *
- * <p><strong>Deliberately unmapped since #118</strong> (plan doc {@code typed-edge-validation}): a raw
+ * <p><strong>Deliberately unmapped</strong> (plan doc {@code typed-edge-validation}): a raw
  * {@link IllegalArgumentException} and a non-duplicate
  * {@link org.springframework.dao.DataIntegrityViolationException} signal server-side defects — a
  * domain invariant tripping on stored data, a schema/FK/NOT-NULL bug — and propagate to the
@@ -74,7 +74,7 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 	}
 
 	/**
-	 * A failed session login (issue #109): {@code AuthController} drives the
+	 * A failed session login: {@code AuthController} drives the
 	 * {@code AuthenticationManager} from MVC, so — unlike the old filter-chain Basic — its
 	 * failures DO reach this advice. One deliberately indistinguishable body for every cause
 	 * (wrong password, unknown username, suspended account): distinguishing them is account
@@ -120,7 +120,7 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 	 * the HTTP status name ({@code METHOD_NOT_ALLOWED}, {@code NOT_ACCEPTABLE}, …) — derived, so
 	 * stable, and documented in §6b as part of the contract's vocabulary.
 	 *
-	 * <p>413 is pinned literally: the multipart max-size backstop (#142) is handled by the
+	 * <p>413 is pinned literally: the multipart max-size backstop is handled by the
 	 * {@code ResponseEntityExceptionHandler} base class (its handler is {@code final}, so declaring
 	 * our own would be an ambiguous duplicate), and its {@code HttpStatus} constant name is mid-rename
 	 * across framework versions — the wire code must not drift with it.

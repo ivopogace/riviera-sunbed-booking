@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The cooldown behind the ADMIN refund-resubmit lever (#454), externalised so the window can be
+ * The cooldown behind the ADMIN refund-resubmit lever, externalised so the window can be
  * matched to real gateway behaviour without a deploy — the {@code MailResubmissionProperties}
  * argument, for a knob whose right value is likewise unknowable until the {@code stripe} profile
  * takes real incident traffic.
@@ -23,12 +23,12 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *
  * <p>The ceiling bounds the typo from the other side: an oversized value does not fail — it refuses
  * every press for hours, so the lever an admin reaches for during an incident answers
- * {@code COOLING_DOWN} and nothing else. The whole point of #454 is to shorten a retry horizon that
- * used to be "the next deploy", not to lengthen it.
+ * {@code COOLING_DOWN} and nothing else. The whole point of this lever is to shorten a retry horizon
+ * that used to be "the next deploy", not to lengthen it.
  *
- * <p>Validated in the compact constructor rather than with {@code @Validated} + {@code @Min}: #97
- * declined {@code spring-boot-starter-validation} deliberately, so an annotation here would bind and
- * validate nothing.
+ * <p>Validated in the compact constructor rather than with {@code @Validated} + {@code @Min}: the
+ * project declined {@code spring-boot-starter-validation} deliberately, so an annotation here would
+ * bind and validate nothing.
  *
  * @param cooldownMs how long an accepted resubmission refuses the next one
  */

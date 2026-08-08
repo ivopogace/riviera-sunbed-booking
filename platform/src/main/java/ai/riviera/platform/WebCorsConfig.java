@@ -10,7 +10,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * Cross-origin policy for browser callers. Since #110 the deployed sandbox is
+ * Cross-origin policy for browser callers. The deployed sandbox is
  * <strong>same-origin</strong> (Spring Boot serves the SPA), so the default origin list is
  * empty — no cross-origin caller, so no CORS is needed there. The list is still configurable
  * ({@code app.web.cors.allowed-origins}, overridable via the {@code CORS_ALLOWED_ORIGINS} env
@@ -35,7 +35,7 @@ class WebCorsConfig {
 	CorsConfigurationSource corsConfigurationSource() {
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		if (allowedOrigins.isEmpty()) {
-			// Same-origin deployment (#110): no cross-origin browser caller, so register NO mapping —
+			// Same-origin deployment: no cross-origin browser caller, so register NO mapping —
 			// getCorsConfiguration then returns null for every request. This matters behind Render's
 			// TLS-terminating proxy: with no forward-headers strategy Spring sees the internal scheme
 			// as http while the browser's Origin is https, so CorsUtils.isCorsRequest treats a
@@ -48,7 +48,7 @@ class WebCorsConfig {
 		config.setAllowedOrigins(allowedOrigins);
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		config.setAllowedHeaders(List.of("*"));
-		// Session auth (issue #109): the browser only attaches/accepts the session + CSRF cookies
+		// Session auth: the browser only attaches/accepts the session + CSRF cookies
 		// cross-origin when credentials are allowed — safe here because the origins above are an
 		// explicit allowlist, never "*". (Local dev and the real-backend e2e run :4200 → :8080.)
 		config.setAllowCredentials(true);

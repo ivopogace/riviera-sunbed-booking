@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.customer.application.ExpireGuestContacts;
 
 /**
- * Periodically runs the guest-contact retention sweep (#101 Slice 2) — the {@code customer} module's own
+ * Periodically runs the guest-contact retention sweep — the {@code customer} module's own
  * driving adapter, sibling of {@code booking}'s {@code RequestSweepScheduler} / {@code
  * AbandonedBookingScheduler}.
  *
@@ -16,7 +16,7 @@ import ai.riviera.platform.customer.application.ExpireGuestContacts;
  * has no undo), so nothing may sweep until the window has been set per counsel and ops deliberately opts in
  * (R-2/R-6). And it keeps the bean out of every default-profile test context — {@code @EnableScheduling} is
  * global in this application, so an unconditional {@code @Scheduled} would fire during the full suite and
- * could perturb the booking sweeps' timing windows (the #98/#122 lesson, R-3). A bean that does not exist
+ * could perturb the booking sweeps' timing windows. A bean that does not exist
  * cannot fire. Pinned by {@code GuestContactRetentionSchedulerConfigTest}.
  *
  * <p>{@code fixedDelay} so runs never overlap on this instance; multi-instance safety needs no distributed

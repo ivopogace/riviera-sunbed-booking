@@ -4,7 +4,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * The platform's <strong>one canonical email normalization</strong> (#386). An address is compared,
+ * The platform's <strong>one canonical email normalization</strong>. An address is compared,
  * stored and keyed in exactly one form: surrounding whitespace trimmed, lower-cased in
  * {@link Locale#ROOT}.
  *
@@ -17,7 +17,7 @@ import java.util.Objects;
  * consumer ({@code notification}, the composition root) already holds {@code customer::vocabulary},
  * so this needed no new grant.
  *
- * <p><strong>Why one definition and not six agreeing copies.</strong> Since #388/ADR-0012 the
+ * <p><strong>Why one definition and not six agreeing copies.</strong> Since ADR-0012 the
  * {@code notification} suppression list stores {@code v1:} + peppered HMAC-SHA-256 of the
  * <em>normalized</em> address, on both the write and the read. Normalization is therefore the hash's
  * input contract: a one-character divergence between the copy that suppresses and the copy that
