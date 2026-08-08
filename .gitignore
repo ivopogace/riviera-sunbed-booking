@@ -24,3 +24,6 @@ replay_pid*.log
 
 # Claude Code personal/local settings (not team-wide)
 .claude/settings.local.json
+
+# Claude Code isolated-worktree agent scratch space (not team-wide)
+.claude/worktrees/
