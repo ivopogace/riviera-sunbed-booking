@@ -240,7 +240,16 @@ doc — new findings start at F-14 to stay globally unambiguous across both plan
 ## File structure
 
 - `docs/plans/issue-561-issue-ref-strip-backend.md` — **new**: this doc
-- No other file changed — Stage 0 is read-only investigation.
+- `platform/src/test/java/ai/riviera/platform/CrossVenueDenialIT.java` — **modified** (B-1):
+  comment-only, `#nnn` refs stripped
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — **modified** (B-1): same
+- `platform/src/test/java/ai/riviera/platform/notification/application/TransactionalMailServiceTest.java`
+  — **modified** (B-1): same
+- `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java` — **modified**
+  (B-1): same
+- `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` —
+  **modified** (B-1): same
+- Stage 0 itself (the probe tables above) touched no file — only B-1's batch did.
 
 ## Generalization-audit log
 
