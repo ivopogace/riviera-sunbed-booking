@@ -21,11 +21,11 @@ import ai.riviera.platform.notification.application.RequestExpiredMail;
 
 /**
  * A transport whose latency and failure are the test's to choose — the "deliberately blocking
- * mailer" #383's AC-1 asks for. It also records the sending thread's transactional context, which
+ * mailer" AC-1 asks for. It also records the sending thread's transactional context, which
  * is {@code RegistryMailBulkheadIT}'s AC-7 assertion.
  *
- * <p>Shared by the two ITs that drive the registry mail vehicle (extracted from the bulkhead class
- * at #407 — behaviour identical, visibility widened to cross the package boundary):
+ * <p>Shared by the two ITs that drive the registry mail vehicle (extracted from the bulkhead class —
+ * behaviour identical, visibility widened to cross the package boundary):
  * {@code RegistryMailBulkheadIT} wedges it to prove the money path overtakes a
  * hanging relay, and {@code RegistryMailShedDurabilityIT} wedges it to fill the bulkhead's pool and
  * queue so the next send is shed. One implementation rather than two near-copies, because the
@@ -37,7 +37,7 @@ import ai.riviera.platform.notification.application.RequestExpiredMail;
  * {@code AbstractPlatformTransactionManager} takes its "empty transaction" branch,
  * {@code newSynchronization} follows the default {@code SYNCHRONIZATION_ALWAYS}, and
  * {@code DataSourceUtils} then binds the first read's {@code ConnectionHolder} for the whole method
- * scope. The connection — the resource #383 is actually about — stays pinned across the SMTP
+ * scope. The connection — the resource this class exists to protect — stays pinned across the SMTP
  * round-trip. Only {@code hasResource(dataSource)} sees that, and only dropping {@code @Transactional}
  * outright makes it false.
  */
@@ -73,7 +73,7 @@ public final class ControllableMailer implements Mailer {
 
 	@Override
 	public void sendEmailVerification(String toEmail, URI verificationLink) {
-		// Not exercised here; the recovery vehicle has its own pool (#369) and its own tests.
+		// Not exercised here; the recovery vehicle has its own pool and its own tests.
 	}
 
 	@Override
@@ -83,7 +83,7 @@ public final class ControllableMailer implements Mailer {
 
 	@Override
 	public void sendOperatorApproved(String toEmail, URI signInLink) {
-		// See above — also a recovery-vehicle kind (#375), so also not this pool's business.
+		// See above — also a recovery-vehicle kind, so also not this pool's business.
 	}
 
 	@Override
@@ -92,7 +92,7 @@ public final class ControllableMailer implements Mailer {
 	}
 
 	/**
-	 * The cancellation rides the same vehicle (#374), so it is observed identically rather than
+	 * The cancellation rides the same vehicle, so it is observed identically rather than
 	 * stubbed out. A no-op here would make a cancellation invisible to every bulkhead assertion —
 	 * "the spine stays responsive while the transport hangs" would silently stop covering half the
 	 * registry traffic the day someone pointed one of these ITs at a cancellation.
@@ -102,13 +102,13 @@ public final class ControllableMailer implements Mailer {
 		observeRegistrySend(toEmail);
 	}
 
-	/** #373's payment-due notice is the third kind on this vehicle — observed, for the reason above. */
+	/** The payment-due notice is the third kind on this vehicle — observed, for the reason above. */
 	@Override
 	public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
 		observeRegistrySend(toEmail);
 	}
 
-	/** #124's two request-outcome records are the fourth and fifth — observed, same reason. */
+	/** The two request-outcome records are the fourth and fifth — observed, same reason. */
 	@Override
 	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
 		observeRegistrySend(toEmail);

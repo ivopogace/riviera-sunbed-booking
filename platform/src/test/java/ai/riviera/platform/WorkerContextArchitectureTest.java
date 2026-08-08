@@ -19,10 +19,10 @@ import static ai.riviera.platform.ArchitectureTestSupport.fixtureClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Every pool the platform configures itself must carry the submitting request's logging context (#455).
+ * Every pool the platform configures itself must carry the submitting request's logging context.
  *
- * <p><strong>The defect this exists to prevent is one that already happened.</strong> #410 gave both
- * mail pools an {@link MdcTaskDecorator} and wrote the rule down in prose. #404 then added a third
+ * <p><strong>The defect this exists to prevent is one that already happened.</strong> An earlier slice gave both
+ * mail pools an {@link MdcTaskDecorator} and wrote the rule down in prose. A later one then added a third
  * bounded pool, {@code bookingRefundExecutor}, without one — and nothing failed, because a comment is
  * not an assertion. Its worker lines were unattributable for two releases. This is the same shape, and
  * the same remedy, as {@code ShutdownDrainArchitectureTest}: encode the rule's <em>reason</em> so the
@@ -34,10 +34,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * than a tidiness point.
  *
  * <p><strong>Scoped to {@code ThreadPoolTaskExecutor}, deliberately.</strong> A
- * {@code ThreadPoolTaskScheduler} — #395 gave each scheduled sweep its own — has no <em>submitting
+ * {@code ThreadPoolTaskScheduler} — which gives each scheduled sweep its own — has no <em>submitting
  * request</em> to inherit from, so requiring a decorator there would be meaningless. Boot's shared
  * {@code applicationTaskExecutor} is auto-configured rather than declared here, so it is structurally
- * invisible to this scan and stays undecorated on purpose (#410's Non-goals: it carries the
+ * invisible to this scan and stays undecorated on purpose (a stated non-goal: it carries the
  * invariant-#8/#9 spine listeners and decorating it changes money-path behaviour).
  *
  * <p><strong>What the scan deliberately cannot see.</strong> ArchUnit reads a class's dependencies, not
@@ -73,7 +73,7 @@ class WorkerContextArchitectureTest {
 			"ai.riviera.platform.notification.adapter.in.RegistryMailExecutorConfig",
 			"ai.riviera.platform.booking.adapter.in.RefundExecutorConfig");
 
-	/** The deliberately mis-shaped tree this detector's own proof runs against (#95's mechanism). */
+	/** The deliberately mis-shaped tree this detector's own proof runs against. */
 	private static final String WORKER_FIXTURES = "ai.riviera.workercontextfixture";
 
 	@Test
@@ -102,7 +102,7 @@ class WorkerContextArchitectureTest {
 	/**
 	 * Non-vacuity: a detector that finds nothing satisfies
 	 * {@link #everySelfConfiguredWorkerPoolCarriesTheSubmittersContext} trivially, which is exactly how
-	 * #410's prose rule stayed "green" while #404 shipped the pool it forbade.
+	 * an earlier prose rule stayed "green" while the pool it forbade shipped anyway.
 	 */
 	@Test
 	void theDetectorFindsAnUndecoratedFixturePool() {
