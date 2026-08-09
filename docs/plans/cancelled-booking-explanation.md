@@ -56,27 +56,27 @@ recipe + a new `bannerCancelled`/`eyebrowCancelled` pair rather than `@apply`) �
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a booking cancelled by the abandoned-payment sweep (`CANCELLED`,
+- [x] **AC-1:** Given a booking cancelled by the abandoned-payment sweep (`CANCELLED`,
   `refundedAmount: null`), when the guest opens `/booking/{code}`, then a panel states the
   booking was cancelled because payment was not completed **and that no payment was taken**.
   *Pinned by:* `booking-view.spec.ts › explains a CANCELLED booking that was never charged`
-- [ ] **AC-2:** Given a booking cancelled under the policy with a refund
+- [x] **AC-2:** Given a booking cancelled under the policy with a refund
   (`cancelReason: 'POLICY'`, `refundedAmount > 0`), when the guest opens the view, then the
   panel attributes the cancellation to the guest and states the refunded amount.
   *Pinned by:* `booking-view.spec.ts › explains a POLICY cancellation with a refund`
-- [ ] **AC-3:** Given a booking cancelled under the policy after the cutoff
+- [x] **AC-3:** Given a booking cancelled under the policy after the cutoff
   (`cancelReason: 'POLICY'`, `refundedAmount.minorUnits === 0`), when the guest opens the view,
   then the panel states the cancellation was non-refundable — and **no** "Refunded" detail row
   renders (the existing `> 0` guard).
   *Pinned by:* `booking-view.spec.ts › explains a non-refundable POLICY cancellation`
-- [ ] **AC-4:** Given a venue weather refund (`cancelReason: 'WEATHER'`, `refundedAmount > 0`),
+- [x] **AC-4:** Given a venue weather refund (`cancelReason: 'WEATHER'`, `refundedAmount > 0`),
   when the guest opens the view, then the panel attributes the cancellation to the **venue**
   (never the guest) and states the full refund.
   *Pinned by:* `booking-view.spec.ts › attributes a WEATHER cancellation to the venue`
-- [ ] **AC-5:** Given a `CANCELLED` booking with `refundedAmount: null`, when the view renders
+- [x] **AC-5:** Given a `CANCELLED` booking with `refundedAmount: null`, when the view renders
   the amount row, then its label reads `Amount`, **not** `Paid`.
   *Pinned by:* `booking-view.spec.ts › labels a never-charged cancellation Amount, not Paid`
-- [ ] **AC-6:** Given a `CANCELLED` booking with a refund but an unknown/absent reason (a
+- [x] **AC-6:** Given a `CANCELLED` booking with a refund but an unknown/absent reason (a
   pre-V14 row, or a future `CONFLICT`), when the guest opens the view, then the panel renders the
   neutral refunded copy and attributes the cancellation to nobody — it never throws and never
   falls through to an empty panel.
@@ -93,9 +93,12 @@ recipe + a new `bannerCancelled`/`eyebrowCancelled` pair rather than `@apply`) �
   assembly, and a column stamped but never projected is indistinguishable from a null one.
   *Pinned by:* `CancelBookingIT.cancellationReasonRoundTripsOntoTheBookingDetail` /
   `.aBookingThatWasNeverPaidHasNoCancellationReason`
-- [ ] **AC-9:** Given the mocked e2e suite serves a `CANCELLED`/never-charged detail, when the
-  page loads, then the explanation panel is visible and the page has no serious axe violations.
-  *Pinned by:* `frontend/e2e/booking-flow.e2e.ts › cancelled booking explains itself`
+- [x] **AC-9:** Given the mocked e2e suite serves a `CANCELLED`/never-charged detail, when the
+  page loads, then the explanation panel is visible, **no `Paid` label renders**, and the page has
+  no serious axe violations; the weather case is covered as a second spec because attribution is
+  the finding a jsdom text assertion is weakest at.
+  *Pinned by:* `frontend/e2e/booking-flow.e2e.ts › a swept booking explains itself and never claims
+  the guest paid` / `› a weather-refunded booking is attributed to the venue`
 
 ## Non-goals
 
@@ -219,16 +222,16 @@ one branch renders and the id can never duplicate.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — ready for review; review + sonar gates due`
 
-**Next action:** Phase 2 — write the failing `booking-view.spec.ts` cases for AC-1…AC-6.
+**Next action:** Run the review gate (`/code-review` per pr-gates §1) + `riviera-review-overlay`, then re-pull the Sonar new-issue list for the final push.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Carry `cancel_reason` to the view use case (AC-7, AC-8) | ✅ | `<phase-0>` |
 | 1 — Expose `cancelReason` on the wire + FE contract | ✅ | `<phase-1>` |
-| 2 — The `CANCELLED` panel + amount-label fix (AC-1…AC-6) | ⏳ | |
-| 3 — e2e + a11y coverage (AC-9) | | |
+| 2 — The `CANCELLED` panel + amount-label fix (AC-1…AC-6) | ✅ | `<phase-2>` |
+| 3 — e2e + a11y coverage (AC-9) | ✅ | `<phase-3>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -239,6 +242,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (`Repo hygiene (diff-scoped)`, run 31297913413) | The File-structure section omitted `WithdrawRequestServiceTest.java` — a construction site the generalization audit fixed, i.e. exactly the "not the interesting file" shape #533 exists to catch | fixed-in-`<phase-1>` |
+| F-2 | CI (`Repo hygiene (diff-scoped)`, run 31298017413) | Same check, same class, one phase later: the four `BookingDetail` fixture specs widened by the new field were unlisted. Root cause was **when** the guard ran, not whether — it was run mid-phase, before the edits it would have caught. Guard now runs immediately before every push (Phase 2 step 4 amended) | fixed-in-`<phase-2>` |
 
 ---
 
@@ -256,6 +260,10 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/booking/booking.model.ts` — `CancelReason` union + `BookingDetail.cancelReason`
 - `frontend/src/app/booking/booking-view.ts` — the `CANCELLED` panel + amount-label refinement
 - `frontend/src/app/booking/booking-view.spec.ts` — AC-1…AC-6
+- `frontend/src/app/booking/booking-pay.spec.ts` — `BookingDetail` fixture widened by the new field
+- `frontend/src/app/booking/booking.service.spec.ts` — same (two fixture sites)
+- `frontend/src/app/booking/find-booking.spec.ts` — same
+- `frontend/src/app/booking/my-bookings.spec.ts` — same (the shared `detail()` builder)
 - `frontend/src/app/booking/booking-view.contrast.spec.ts` — the new banner's AA proof
 - `frontend/e2e/booking-flow.e2e.ts` — AC-9
 
@@ -308,7 +316,10 @@ Skill-routing gate for what the fix touches *before* editing).
       never-charged → `WEATHER` → refunded → non-refundable (R-1/R-2), plus the amount-label
       refinement for AC-5; add `bannerCancelled`/`eyebrowCancelled` to `CLS`.
 - [ ] **Step 4: Run, verify they pass** — `npm test -- booking-view`, then `npm run lint`,
-      `npm run test:a11y`, `npm test` (full Vitest — it is fast, unlike the Gradle suite).
+      `npm run test:a11y`, `npm test` (full Vitest — it is fast, unlike the Gradle suite). Then
+      **both hygiene guards, immediately before the push** (`check-plan-file-structure.mjs
+      --diff origin/main` and `check-inline-comments.mjs --diff origin/main`) — running them
+      mid-phase is what let F-1 and F-2 reach CI.
 - [ ] **Step 5: Generalization-audit pass** — does any other surface render a terminal status
       with no explanation? (`request-confirmation`, `my-bookings` — record the decision.)
 - [ ] **Step 6: Commit** — `git commit -m "Explain a cancelled booking to the guest (#578)"`
@@ -322,7 +333,10 @@ Skill-routing gate for what the fix touches *before* editing).
 
 - [ ] **Step 1:** Add the mocked `CANCELLED`/never-charged route + assertions (AC-9), using
       `expectNoSeriousAxeViolations` from `e2e/support/axe.ts` — never a hand-rolled AxeBuilder.
-- [ ] **Step 2: Run** — `npm run test:e2e:a11y`
+- [x] **Step 2: Run** — `npm run test:e2e:a11y`. **Cloud-session note:** the sandbox ships
+      Chromium 1194 while the pinned `@playwright/test` wants 1228, so the run needs
+      `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` (the escape hatch the config already
+      documents) — never `npx playwright install`. Full mocked suite: 155/155.
 - [ ] **Step 3: Commit** — `git commit -m "Cover the cancelled-booking explanation with e2e (#578)"`
 - [ ] **Step 4: Update plan-doc execution status.**
 
@@ -335,6 +349,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-09 | Phase 0 — widened `BookingRecord` | every construction site of the record, since `mapBookingRecord` is shared by `findByCode` **and** `findByAccountId` (R-3) | `grep -rn "new BookingRecord(" platform/src --include=*.java` | 3 (the JDBC mapper + 2 test helpers) | Fixed all 3; `MyBookings*` re-run green, so the account-scoped read is unaffected |
+| 2026-08-09 | Phase 2 — new "explain a terminal status" pattern | any other surface rendering a terminal booking status with no explanation | `grep -rln "@switch (.*status\|CANCELLED" src/app --include=*.ts` | 2 beyond the view (`booking-pay.ts`, `my-bookings.ts`) | **Skip both, no gap.** `booking-pay` already renders an honest terminal-failure panel for a server-side `CANCELLED`; `my-bookings` already carries a `'Booking cancelled'` subtitle and cannot say more — `MyBookingSummary` has neither `refundedAmount` nor a reason (the documented non-goal, and why AC-5 is fixed in the view rather than in shared `STATUS_META`) |
 
 ---
 

@@ -47,6 +47,7 @@ const CLS = {
   bannerDeclined: `${BANNER} border-[#eed6ce] bg-[#faefec]`,
   bannerExpired: `${BANNER} border-[#dde1e3] bg-[#f0f2f3]`,
   bannerWithdrawn: `${BANNER} border-[#ddd8e8] bg-[#f0eef6]`,
+  bannerCancelled: `${BANNER} border-[#dde1e3] bg-[#f0f2f3]`,
   eyebrow: 'm-0 text-[11px] font-bold tracking-[0.1em] uppercase',
   // The banner inks are FIXED per banner fill — themed tokens would drift between themes.
   eyebrowAwaiting: 'text-[#0a5e7a]',
@@ -54,6 +55,7 @@ const CLS = {
   eyebrowDeclined: 'text-[#8a3a2a]',
   eyebrowExpired: 'text-[#4f5f67]',
   eyebrowWithdrawn: 'text-[#5c5470]',
+  eyebrowCancelled: 'text-[#4f5f67]',
   bannerBody: 'mx-0 mt-1.5 mb-0 text-[14px] leading-[1.5] text-[#334a52] [&_strong]:text-[#0a2a33]',
   row: 'flex items-center justify-between gap-3 border-b border-(--riv-card-track) py-2.5 text-[14.5px] last:border-b-0',
   rowLabel: 'text-(--riv-card-ink-soft)',
@@ -250,6 +252,46 @@ const CLS = {
               </p>
             </section>
           }
+          @case ('CANCELLED') {
+            <section
+              [class]="cls.bannerCancelled"
+              data-testid="booking-cancelled"
+              aria-labelledby="request-state-title"
+            >
+              @if (b.refundedAmount; as refunded) {
+                @if (b.cancelReason === 'WEATHER') {
+                  <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowCancelled }}">
+                    Cancelled by the venue
+                  </h2>
+                  <p [class]="cls.bannerBody">
+                    {{ b.venueName }} cancelled this booking because of the weather.
+                    <strong>{{ formatMoney(refunded) }} is on its way back to your card.</strong>
+                  </p>
+                } @else {
+                  <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowCancelled }}">
+                    Booking cancelled
+                  </h2>
+                  <p [class]="cls.bannerBody">
+                    {{ cancelledOpener(b) }}&ngsp;
+                    @if (refunded.minorUnits > 0) {
+                      <strong>{{ formatMoney(refunded) }} is on its way back to your card.</strong>
+                    } @else {
+                      <strong>No refund applies under the cancellation policy.</strong>
+                    }
+                  </p>
+                }
+              } @else {
+                <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowCancelled }}">
+                  Booking cancelled
+                </h2>
+                <p [class]="cls.bannerBody">
+                  This booking was cancelled because the payment wasn’t completed in time, so the
+                  spot was released. <strong>You haven’t been charged.</strong> Pick another set or
+                  date to book again.
+                </p>
+              }
+            </section>
+          }
           @case ('DECLINED') {
             <section
               [class]="cls.bannerDeclined"
@@ -311,7 +353,7 @@ const CLS = {
             <dd [class]="cls.rowValue">{{ dateLabel(b.bookingDate) }}</dd>
           </div>
           <div [class]="cls.row">
-            <dt [class]="cls.rowLabel">{{ amountLabel(b.status) }}</dt>
+            <dt [class]="cls.rowLabel">{{ amountLabel(b) }}</dt>
             <dd [class]="cls.rowAmount">{{ formatMoney(b.amount) }}</dd>
           </div>
           @if (b.refundedAmount && b.refundedAmount.minorUnits > 0) {
@@ -575,9 +617,25 @@ export class BookingView {
     return metaFor(status).chip;
   }
 
-  /** "Paid" once money has actually moved; "Amount" while the request/payment is still open. */
-  protected amountLabel(status: string): string {
-    return metaFor(status).amount;
+  /**
+   * "Paid" once money has actually moved; "Amount" while the request/payment is still open — or
+   * when a cancellation never charged at all, which the status alone cannot say. `STATUS_META` maps
+   * `CANCELLED` to "Paid" because it is shared with the device-local list, whose rows carry no
+   * `refundedAmount` to refine it; here that field exists, so a swept booking stops claiming money
+   * changed hands.
+   */
+  protected amountLabel(b: BookingDetail): string {
+    if (b.status === 'CANCELLED' && !b.refundedAmount) {
+      return 'Amount';
+    }
+    return metaFor(b.status).amount;
+  }
+
+  /** Only a POLICY cancellation is the guest's own act; a weather refund or an absent reason is not. */
+  protected cancelledOpener(b: BookingDetail): string {
+    return b.cancelReason === 'POLICY'
+      ? 'You cancelled this booking.'
+      : 'This booking was cancelled.';
   }
 
   /** The booking date as a friendly civil-date label (UTC-parsed, invariant #6). */

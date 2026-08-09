@@ -208,3 +208,64 @@ test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', asy
   await expect(page.getByTestId('booking-code')).toContainText('WXYZ345678');
   await expectNoSeriousAxeViolations(page, 'payment page (confirmed)');
 });
+
+/**
+ * The abandoned-payment sweep's guest lands here, on a terminal `CANCELLED` booking, with no email
+ * to explain it — the sweep publishes no event. The panel is their only channel, so it is asserted
+ * in a real browser alongside the axe run.
+ */
+test('a swept booking explains itself and never claims the guest paid', async ({ page }) => {
+  await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: {
+        ...AWAITING_DETAIL,
+        status: 'CANCELLED',
+        cancellable: false,
+        withdrawable: false,
+        requestExpiresAt: null,
+        payment: null,
+        emailWithheld: false,
+        payWindowClosed: false,
+        cancelReason: null,
+      },
+    }),
+  );
+
+  await page.goto('/booking/WXYZ345678');
+
+  const panel = page.getByTestId('booking-cancelled');
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText('haven’t been charged');
+  await expect(page.getByTestId('booking-status')).toHaveText('Cancelled');
+  // Never charged, so the amount row must not read "Paid".
+  await expect(page.locator('dt', { hasText: /^Paid$/ })).toHaveCount(0);
+  await expectNoSeriousAxeViolations(page, 'booking view (cancelled, never charged)');
+});
+
+/** A storm the venue called is not the guest's doing — the copy must not say they cancelled. */
+test('a weather-refunded booking is attributed to the venue', async ({ page }) => {
+  await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: {
+        ...AWAITING_DETAIL,
+        status: 'CANCELLED',
+        cancellable: false,
+        withdrawable: false,
+        requestExpiresAt: null,
+        payment: null,
+        emailWithheld: false,
+        payWindowClosed: false,
+        refundedAmount: { minorUnits: 4500, currency: 'EUR' },
+        cancelReason: 'WEATHER',
+      },
+    }),
+  );
+
+  await page.goto('/booking/WXYZ345678');
+
+  const panel = page.getByTestId('booking-cancelled');
+  await expect(panel).toContainText('Miramar Beach Club');
+  await expect(panel).toContainText('weather');
+  await expect(panel).not.toContainText('You cancelled');
+  await expectNoSeriousAxeViolations(page, 'booking view (weather refund)');
+});
