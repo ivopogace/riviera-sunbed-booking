@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { CardGlass } from '../shared/card-glass';
+import { BookingQr } from './booking-qr';
 import { WithheldEmailNotice } from './withheld-email-notice';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
@@ -24,7 +25,7 @@ import { BookingService } from './booking.service';
  */
 @Component({
   selector: 'app-booking-confirmation',
-  imports: [RouterLink, CardGlass, WithheldEmailNotice],
+  imports: [RouterLink, CardGlass, BookingQr, WithheldEmailNotice],
   template: `
     @if (confirmation(); as c) {
       <section class="confirmation" appCardGlass aria-labelledby="confirmation-title">
@@ -43,6 +44,9 @@ import { BookingService } from './booking.service';
         <div class="code-card" data-testid="booking-code">
           <span class="code-label">Booking code</span>
           <div class="code">{{ c.code }}</div>
+          <div class="mt-3 flex justify-center">
+            <app-booking-qr [code]="c.code" />
+          </div>
           <p class="code-note">
             Show this code to staff when you arrive.
             @if (!c.emailWithheld) {

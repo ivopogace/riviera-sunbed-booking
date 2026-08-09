@@ -211,16 +211,16 @@ files live inside their feature; `shared/booking-status.ts` already carries `COM
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** implement (phase 4)
 
-**Next action:** phase 3 — FE tourist QR (load angular-developer + MCP + riviera-tailwind first).
+**Next action:** phase 4 — operator scanner (token + adapters + Daily view UI + service).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V40 + guarded transition in `Bookings`/`JdbcBookings` (+ concurrency IT) | ✅ | 2e7def7 |
 | 1 — `CheckInBooking` port + `CheckInService` + endpoint + SecurityConfig + error contract | ✅ | 25dc2cd |
-| 2 — widen arrivals + takings reads (`checkedIn` flag; `IN (CONFIRMED, COMPLETED)`) | ✅ | (this commit) |
-| 3 — FE tourist QR (component + 3 surfaces) | | |
+| 2 — widen arrivals + takings reads (`checkedIn` flag; `IN (CONFIRMED, COMPLETED)`) | ✅ | 403f4de + 024900a |
+| 3 — FE tourist QR (component + 3 surfaces) | ✅ | (this commit) |
 | 4 — FE operator scanner (token/adapters, tab UI, service) | | |
 | 5 — e2e (mocked suite) + a11y | | |
 | 6 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, BookingStatus Javadoc, plan final state) | | |
