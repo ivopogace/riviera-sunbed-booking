@@ -364,7 +364,14 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/booking/CheckInFlowIT.java` ·
   `WeatherRefundServiceIT.java` · `StaffBookingControllerIT.java` ·
   `CancelBookingIT.java` — amended for the widened reads and the terminal-state guards
-- `frontend/src/app/operator/operator-console.model.ts|.service.ts` — the status token
+- `frontend/src/app/operator/operator-console.model.ts` — the status token
+- `frontend/src/app/operator/operator-console.service.ts` — the endpoint's documented row shape
+- `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancelBookingService.java` —
+  drops the now-constant `reason` argument
+- `platform/src/main/java/ai/riviera/platform/payout/application/DailyTakingsService.java` ·
+  `DailyTakingsView.java` — `payout`'s consumer-side docs, which stated a `CONFIRMED`-only takings
+  basis the widened read no longer has
+- `platform/src/main/java/ai/riviera/platform/payout/adapter/in/VenueTakingsController.java` — same
 - `frontend/src/app/operator/daily-view-tab.ts|.html` — the no-show arrivals row
 - `frontend/src/app/operator/daily-view-tab.spec.ts` — the no-show and no-badge specs
 - `frontend/e2e/operator-daily.e2e.ts` — the mocked-suite spec for a swept past day
