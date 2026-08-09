@@ -45,6 +45,26 @@ export const STATUS_META: Record<BookingStatus, StatusMeta> = {
   WITHDRAWN: { label: 'Withdrawn', chip: 'chip--withdrawn', amount: 'Amount' },
 };
 
+/**
+ * The label for the money figure: `Paid` once money has actually moved, `Amount` while the
+ * request/payment is still open — or when a cancellation never took any.
+ *
+ * `STATUS_META` maps `CANCELLED` to `Paid` because status alone cannot tell the two cancellations
+ * apart; a booking released by the abandoned-payment sweep was never charged, and labelling its
+ * figure `Paid` states the opposite. Callers that hold the refund fact pass it, so the detail view
+ * and the list answer identically — `undefined` keeps the status-only reading for callers that
+ * genuinely have no such fact.
+ */
+export function amountLabelFor(
+  status: string,
+  refundedAmount?: { readonly minorUnits: number } | null,
+): StatusMeta['amount'] {
+  if (status === 'CANCELLED' && refundedAmount === null) {
+    return 'Amount';
+  }
+  return metaFor(status).amount;
+}
+
 /** Humanize a raw status token ("NO_SHOW" → "No show") — the graceful fallback for FE/BE skew. */
 export function humanizeStatus(status: string): string {
   return status.charAt(0) + status.slice(1).toLowerCase().replaceAll('_', ' ');

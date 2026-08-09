@@ -6,7 +6,7 @@ import { EMPTY, Observable, catchError, defer, from, mergeMap, tap } from 'rxjs'
 import { CustomerAuth } from '../core/customer-auth';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
 import { formatBookingDate } from '../shared/booking-date-label';
-import { metaFor } from '../shared/booking-status';
+import { amountLabelFor, metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
@@ -51,7 +51,7 @@ interface RowView {
   readonly subLine: string;
   readonly statusLabel: string;
   readonly chipClass: string;
-  /** 'Paid' once money has moved; 'Amount' while open / no charge — disambiguates the figure. */
+  /** 'Paid' once money has moved; 'Amount' while open, or when a cancellation never charged. */
   readonly amountLabel: string;
   readonly amountStr: string;
 }
@@ -66,7 +66,7 @@ function buildView(b: MyBookingSummary): RowView {
     subLine: subLineOf(b),
     statusLabel: meta.label,
     chipClass: meta.chip,
-    amountLabel: meta.amount,
+    amountLabel: amountLabelFor(b.status, b.refundedAmount),
     amountStr: formatMoney(b.amount),
   };
 }

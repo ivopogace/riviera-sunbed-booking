@@ -13,13 +13,15 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * A booking row loaded by {@link Bookings#findByCode} — the persisted facts the view and cancel use
  * cases (U6) need: identity + lifecycle {@code status}, the {@code (venue, set, date)} ids, the gross
  * {@code amountMinor} paid (integer minor units + ISO currency, invariant #5), and the cancellation
- * audit ({@code cancelledAt} / {@code refundMinor} / {@code cancelReason}, all {@code null} until the
- * booking is cancelled). A flat read DTO, not the aggregate.
+ * audit ({@code cancelledAt} / {@code refundMinor} / {@code cancelReason}). A flat read DTO, not the
+ * aggregate.
  *
- * <p>{@code cancelReason} stays {@code null} even for some cancelled bookings: only a cancellation
- * that took a refund decision stamps one, so an abandoned-payment release leaves it unset. Null
- * therefore reads as "cancelled without ever being charged" — except on rows cancelled before the
- * column existed (V14), which carry a refund with no reason.
+ * <p><strong>All three stay {@code null} on a cancellation that never charged</strong>, not merely
+ * until the booking is cancelled: the abandoned-payment release flips the status alone, so a swept
+ * booking is {@code CANCELLED} with no {@code cancelledAt}, no refund and no reason. Only a
+ * cancellation that took a refund decision stamps the three together — which is what lets a null
+ * reason be read as "never charged", except on rows cancelled before the column existed (V14), which
+ * carry a refund with no reason.
  *
  * <p>{@code customerId} is the guest-contact link ({@code booking.customer_id}, NOT NULL since V5).
  * The view carries the id only — never the contact itself, which belongs to {@code customer} — so a

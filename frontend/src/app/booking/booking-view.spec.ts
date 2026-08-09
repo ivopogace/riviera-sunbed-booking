@@ -507,6 +507,20 @@ describe('BookingView', () => {
     await expectNoAxeViolations(host);
   });
 
+  /** A zero refund is still a refund *decision* — but "€0.00 is on its way back" is not a sentence. */
+  it.each<[CancelReason | null]>([['WEATHER'], ['POLICY'], [null]])(
+    'never claims a zero refund is on its way (%s)',
+    async (reason) => {
+      const fixture = await render(stubService({ detail: cancelled(reason, 0) }));
+      const panel = (fixture.nativeElement as HTMLElement).querySelector(
+        '[data-testid="booking-cancelled"]',
+      );
+
+      expect(panel?.textContent).toContain('No refund applies');
+      expect(panel?.textContent).not.toContain('on its way');
+    },
+  );
+
   /** A row cancelled before V14 carries a refund but no reason; CONFLICT is reserved and unused. */
   it('falls back to neutral copy for an unknown cancel reason', async () => {
     const fixture = await render(stubService({ detail: cancelled(null, 4500) }));

@@ -102,6 +102,7 @@ function summary(code: string, extra: Partial<MyBookingSummary> = {}): MyBooking
     bookingDate: '2026-12-01',
     amount: { minorUnits: 4500, currency: 'EUR' },
     requestExpiresAt: null,
+    refundedAmount: null,
     ...extra,
   };
 }
@@ -222,7 +223,9 @@ describe('MyBookings (device-local list, issue #139)', () => {
   it.each<[BookingStatus, Partial<BookingDetail>, string]>([
     ['CONFIRMED', {}, 'Paid'],
     ['COMPLETED', {}, 'Paid'],
-    ['CANCELLED', {}, 'Paid'],
+    // A cancellation that refunded something did take money; one that never charged did not.
+    ['CANCELLED', { refundedAmount: { minorUnits: 4500, currency: 'EUR' } }, 'Paid'],
+    ['CANCELLED', {}, 'Amount'],
     ['NO_SHOW', {}, 'Paid'],
     ['DECLINED', {}, 'Amount'],
     ['EXPIRED', {}, 'Amount'],

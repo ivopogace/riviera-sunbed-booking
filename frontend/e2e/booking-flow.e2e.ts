@@ -68,6 +68,21 @@ const AWAITING_DETAIL = {
   refundedAmount: null,
 };
 
+/** A terminal CANCELLED detail as an arriving guest sees it — the two cases differ only in these. */
+function cancelledDetail(over: { refundedAmount: unknown; cancelReason: string | null }) {
+  return {
+    ...AWAITING_DETAIL,
+    status: 'CANCELLED',
+    cancellable: false,
+    withdrawable: false,
+    requestExpiresAt: null,
+    payment: null,
+    emailWithheld: false,
+    payWindowClosed: false,
+    ...over,
+  };
+}
+
 test.beforeEach(async ({ page }) => {
   // Match with or without the `?date=` query the map appends.
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
@@ -216,19 +231,7 @@ test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', asy
  */
 test('a swept booking explains itself and never claims the guest paid', async ({ page }) => {
   await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
-    route.fulfill({
-      json: {
-        ...AWAITING_DETAIL,
-        status: 'CANCELLED',
-        cancellable: false,
-        withdrawable: false,
-        requestExpiresAt: null,
-        payment: null,
-        emailWithheld: false,
-        payWindowClosed: false,
-        cancelReason: null,
-      },
-    }),
+    route.fulfill({ json: cancelledDetail({ refundedAmount: null, cancelReason: null }) }),
   );
 
   await page.goto('/booking/WXYZ345678');
@@ -246,18 +249,10 @@ test('a swept booking explains itself and never claims the guest paid', async ({
 test('a weather-refunded booking is attributed to the venue', async ({ page }) => {
   await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
     route.fulfill({
-      json: {
-        ...AWAITING_DETAIL,
-        status: 'CANCELLED',
-        cancellable: false,
-        withdrawable: false,
-        requestExpiresAt: null,
-        payment: null,
-        emailWithheld: false,
-        payWindowClosed: false,
+      json: cancelledDetail({
         refundedAmount: { minorUnits: 4500, currency: 'EUR' },
         cancelReason: 'WEATHER',
-      },
+      }),
     }),
   );
 

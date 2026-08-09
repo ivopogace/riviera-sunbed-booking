@@ -123,12 +123,16 @@ class CancelBookingIT {
 		assertEquals(booking.amountMinor(), detail.refundedAmount().minorUnits());
 	}
 
-	/** An abandoned-payment release takes no refund decision, so it stamps no reason to read back. */
+	/**
+	 * The null half of the mapper: a row with no refund decision reads back no reason. Asserted on a
+	 * live booking rather than a hand-cancelled one — the real never-charged path is
+	 * {@code cancelAwaitingPayment}, which needs an {@code AWAITING_PAYMENT} row this stub-profile
+	 * class cannot create, and faking {@code CONFIRMED → CANCELLED} by hand would assert against a
+	 * state production never produces (and strand the availability claim these tests count).
+	 */
 	@Test
-	void aBookingThatWasNeverPaidHasNoCancellationReason() {
+	void aBookingWithNoRefundDecisionHasNoCancellationReason() {
 		Created booking = confirmBookingOn(LocalDate.of(2035, 5, 15));
-		jdbc.sql("UPDATE booking SET status = 'CANCELLED' WHERE id = :id")
-				.param("id", booking.id()).update();
 
 		BookingDetail detail = viewBooking.byCode(booking.code()).orElseThrow();
 

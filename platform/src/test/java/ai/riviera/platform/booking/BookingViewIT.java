@@ -88,7 +88,31 @@ class BookingViewIT {
 				.andExpect(jsonPath("$.amount.minorUnits").value(price))
 				// before the cutoff the refund-if-cancelled-now equals the amount paid (full).
 				.andExpect(jsonPath("$.refundIfCancelledNow.minorUnits").value(price))
-				.andExpect(jsonPath("$.refundedAmount").doesNotExist());
+				.andExpect(jsonPath("$.refundedAmount").doesNotExist())
+				.andExpect(jsonPath("$.cancelReason").doesNotExist());
+	}
+
+	/**
+	 * The wire mapping of the cancellation reason. Asserted here rather than only at the application
+	 * layer because the one expression that puts it on the JSON is in the adapter: wired to the wrong
+	 * field it would ship a permanently-null reason, every weather refund would silently lose its
+	 * venue attribution, and nothing below this level would fail.
+	 */
+	@Test
+	void viewCarriesTheCancellationReasonOfAWeatherRefund() throws Exception {
+		seedLateCancelBooking("VIEWWTHR1", "weather@e.com", tirane().plusDays(1));
+		// The three fields a refund decision stamps together, exactly as cancelConfirmed writes them.
+		jdbc.sql("""
+				UPDATE booking SET status = 'CANCELLED', cancelled_at = NOW(), refund_minor = 4500,
+				                   cancel_reason = 'WEATHER'
+				WHERE code = :code
+				""").param("code", "VIEWWTHR1").update();
+
+		mvc.perform(get("/api/bookings/{code}", "VIEWWTHR1"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("CANCELLED"))
+				.andExpect(jsonPath("$.cancelReason").value("WEATHER"))
+				.andExpect(jsonPath("$.refundedAmount.minorUnits").value(4500));
 	}
 
 	@Test

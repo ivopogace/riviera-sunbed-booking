@@ -163,6 +163,12 @@ export interface MyBookingSummary {
   readonly bookingDate: string;
   readonly amount: MoneyView;
   readonly requestExpiresAt: string | null;
+  /**
+   * The refund actually issued, or null when none was — including for a cancellation that never
+   * charged. Carried on the summary, unlike the rest of the refund terms, because without it a row
+   * cannot tell a swept booking from a refunded one and would label both "Paid".
+   */
+  readonly refundedAmount: MoneyView | null;
 }
 
 /**

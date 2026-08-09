@@ -254,10 +254,10 @@ class ViewBookingServiceTest {
 		givenBooking(status, CancellationWindow.FREE, 4500L);
 	}
 
+	/** A cancelled row: the refund decision's three fields move together, or none of them is set. */
 	private void givenCancelledBooking(RefundReason reason, Long refundMinor) {
-		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.CANCELLED, VENUE, SET, GUEST,
-				DATE, 4500L, "EUR", Instant.EPOCH, refundMinor, null, reason);
+				DATE, 4500L, "EUR", refundMinor == null ? null : Instant.EPOCH, refundMinor, null, reason);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
 				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L));
