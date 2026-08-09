@@ -286,9 +286,11 @@ e2e. No new route, no new service call.
 
 ## Execution status
 
-**Stage pointer:** `review gate run, 11 findings resolved — Sonar gate next`
+**Stage pointer:** `CI re-run after a pre-existing flake (F-12) — Sonar gate next`
 
-**Next action:** Re-read the Sonar issue list for the fix push, then merge.
+**Next action:** Confirm backend CI is green on this push (the F-12 flake blocked the previous one and
+the token cannot re-run jobs), then read the Sonar issue list — `SonarCloud scan` reported `skipped`
+on the red run, which means **unanalyzed, not clean** — and merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -318,6 +320,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-8 | review | `lastOpenedServiceDay(Instant)` was an instance method on a clock-carrying component that ignores the clock, next to one that doesn't. | **fixed** — `static`, with the Javadoc saying that is the contract |
 | F-9 | review | The sweep held two clock sources, so "one reading bounds all three arms" depended on both being wired to the same bean. | **fixed** — F-8's static projection removes the `BookingCutoff` dependency entirely |
 | F-10 | review | `payWindowClosed` was computed for every status, reporting `true` on delivered `CONFIRMED`/`CANCELLED` bookings where its own documented contract is nonsense. | **fixed** — scoped to `AWAITING_PAYMENT`, pinned by `neverReportsAClosedPayWindowForABookingThatIsNotAwaitingPayment` |
+| F-12 | CI (red, `3c5adad`) | `JdbcBookingsDailyTakingsIT.sumsOnlyConfirmedOnlineForVenueAndDate` — expected 11000, got 14000. Unrelated to the fence: the test sums every `CONFIRMED` booking for the shared seed venue on a hardcoded date, with no isolation, so another test's row inflates it. | **deferred → issue #579, not mine.** Reproduced on `origin/main` in a clean worktree with identical numbers (1540 tests, 1 failed), and a third run of the same branch code **passed** — order-dependent and pre-existing. `main`'s own CI is green, which is why it had gone unnoticed. Not fixed here: it is a different test in a different module, and a hermetic-fixture fix needs its own review. |
 | F-11 | review | `ScheduledQueryTimeoutIT` passed `LocalDate.now()` — the JVM default zone, in the file a future author copies the signature from. | **fixed** — explicit `Europe/Tirane` |
 
 ---
