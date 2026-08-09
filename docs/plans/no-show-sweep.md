@@ -402,6 +402,14 @@ Skill-routing gate for what the fix touches *before* editing).
   takings unchanged by the sweep
 - `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` —
   the `Bookings` test fake gains the new method
+- `platform/src/main/java/ai/riviera/platform/booking/application/view/DailyBookingsService.java` —
+  the renamed read (`findConfirmedForVenueOn` → `findSettledForVenueOn`)
+- `platform/src/test/java/ai/riviera/platform/booking/BookingViewIT.java` ·
+  `AbandonedBookingSweepIT.java` · `BookingControllerIT.java` ·
+  `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingsTransitionIT.java` ·
+  `platform/src/test/java/ai/riviera/platform/customer/AccountErasureIT.java` ·
+  `platform/src/test/java/ai/riviera/platform/customer/GuestContactRetentionIT.java` — the
+  `booking.no-show.enabled=false` opt-out; each seeds a past-day `CONFIRMED` row and asserts on it
 - `platform/src/test/java/ai/riviera/platform/booking/CheckInFlowIT.java` ·
   `WeatherRefundServiceIT.java` · `StaffBookingControllerIT.java` ·
   `CancelBookingIT.java` — amended for the widened reads and the terminal-state guards
