@@ -56,6 +56,9 @@ class CheckInFlowIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	ai.riviera.platform.booking.application.checkin.MarkNoShows markNoShows;
+
 	private Cookie operatorSession;
 
 	@BeforeEach
@@ -180,6 +183,26 @@ class CheckInFlowIT {
 
 		assertEquals("CONFIRMED", statusOf(foreignBooking));
 		assertNoCodeLeak(foreignResult, foreign);
+	}
+
+	@Test
+	void sweptNoShowScanNamesTheDate() throws Exception {
+		long venue = newOwnedVenue("CI No-Show Club");
+		String code = uniqueCode("CINOSHOW");
+		LocalDate past = today().minusDays(5);
+		long bookingId = insertConfirmed(code, venue, past);
+		markNoShows.sweep();
+		assertEquals("NO_SHOW", statusOf(bookingId), "the sweep must actually have run on this row");
+
+		MvcResult result = mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("WRONG_SERVICE_DATE"))
+				.andExpect(jsonPath("$.bookingDate").value(past.toString()))
+				.andReturn();
+
+		assertEquals("NO_SHOW", statusOf(bookingId), "a no-show is terminal — the scan changes nothing");
+		assertNoCodeLeak(result, code);
 	}
 
 	@Test

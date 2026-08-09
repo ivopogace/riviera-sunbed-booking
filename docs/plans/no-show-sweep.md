@@ -269,17 +269,17 @@ rather than growing a second boolean branch.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — terminal-state guards: `NO_SHOW` is not guest-cancellable (AC-7) and
-scans as `WrongServiceDate`, not `NotFound` (AC-8).
+**Next action:** Phase 3 — widen the admin weather refund to reach swept `NO_SHOW` rows (AC-9),
+via a `cancelForWeather` port method so the guest-cancel guard stays `CONFIRMED`-only.
 `findConfirmedForVenueOn` to carry the status token (AC-10, backend half).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Sweep core (port, service, JDBC bulk update, V41 index) | ✅ | `0a9fdde` |
 | 1 — Read audit: takings + arrivals widening | ✅ | `996a27b` |
-| 2 — Terminal-state guards (cancel, check-in classify) | | |
+| 2 — Terminal-state guards (cancel, check-in classify) | ✅ | `025c5cf` |
 | 3 — Weather-refund widening (`cancelForWeather`) | | |
 | 4 — Scheduler + config pinning test | | |
 | 5 — Frontend: status token + no-show arrivals row + e2e | | |
@@ -316,6 +316,8 @@ Skill-routing gate for what the fix touches *before* editing).
   scheduled driving adapter
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/DailyBooking.java` — carry
   the status token
+- `platform/src/main/java/ai/riviera/platform/booking/application/view/ListDailyBookings.java` —
+  the port contract for the widened arrivals read
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/DailyBookingView.java` — wire shape
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/StaffBookingController.java` —
   row mapping

@@ -58,6 +58,9 @@ class CancelBookingIT {
 	@Autowired
 	ApplicationEvents events;
 
+	@Autowired
+	ai.riviera.platform.booking.application.checkin.MarkNoShows markNoShows;
+
 	private record Created(String code, long id, long setId, long amountMinor) {
 	}
 
@@ -151,6 +154,26 @@ class CancelBookingIT {
 				"a re-cancel is a no-op guarded by the CONFIRMED transition");
 		List<BookingCancelled> published = events.stream(BookingCancelled.class).toList();
 		assertEquals(1, published.size(), "the second cancel publishes nothing (exactly-once)");
+	}
+
+	@Test
+	void noShowIsNotCancellable() {
+		Created booking = confirmBookingOn(LocalDate.of(2035, 5, 12));
+		LocalDate spent = LocalDate.of(2021, 7, 4);
+		new ServiceDayBackdate(jdbc).moveToPast(booking.code(), spent);
+		markNoShows.sweep();
+
+		CancelOutcome outcome = cancelBooking.cancel(booking.code());
+
+		assertInstanceOf(CancelOutcome.NotCancellable.class, outcome,
+				"a swept no-show is terminal — the status guard rejects it before the window check");
+		assertEquals("NO_SHOW", jdbc.sql("SELECT status FROM booking WHERE id = :id")
+				.param("id", booking.id()).query(String.class).single());
+		assertNull(jdbc.sql("SELECT refund_minor FROM booking WHERE id = :id")
+				.param("id", booking.id()).query(Long.class).optional().orElse(null),
+				"no refund is stamped");
+		assertEquals(0, events.stream(BookingCancelled.class).count(),
+				"no BookingCancelled means no Stripe refund and no payout reversal");
 	}
 
 	@Test
