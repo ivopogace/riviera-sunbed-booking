@@ -68,8 +68,12 @@ const AWAITING_DETAIL = {
   refundedAmount: null,
 };
 
-/** A terminal CANCELLED detail as an arriving guest sees it — the two cases differ only in these. */
-function cancelledDetail(over: { refundedAmount: unknown; cancelReason: string | null }) {
+/** A terminal CANCELLED detail as an arriving guest sees it — the cases differ only in these. */
+function cancelledDetail(over: {
+  refundedAmount: unknown;
+  cancelReason: string | null;
+  refundOutstanding?: boolean;
+}) {
   return {
     ...AWAITING_DETAIL,
     status: 'CANCELLED',
@@ -79,6 +83,7 @@ function cancelledDetail(over: { refundedAmount: unknown; cancelReason: string |
     payment: null,
     emailWithheld: false,
     payWindowClosed: false,
+    refundOutstanding: false,
     ...over,
   };
 }
@@ -263,4 +268,28 @@ test('a weather-refunded booking is attributed to the venue', async ({ page }) =
   await expect(panel).toContainText('weather');
   await expect(panel).not.toContainText('You cancelled');
   await expectNoSeriousAxeViolations(page, 'booking view (weather refund)');
+});
+
+/**
+ * A refund stuck in the refund outbox: the money has not moved, so the panel says the refund is
+ * being processed and must not claim it is on its way to the card.
+ */
+test('a stuck refund says it is being processed, not on its way', async ({ page }) => {
+  await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: cancelledDetail({
+        refundedAmount: { minorUnits: 4500, currency: 'EUR' },
+        cancelReason: 'POLICY',
+        refundOutstanding: true,
+      }),
+    }),
+  );
+
+  await page.goto('/booking/WXYZ345678');
+
+  const panel = page.getByTestId('booking-cancelled');
+  await expect(panel).toContainText('is being processed');
+  await expect(panel).not.toContainText('on its way');
+  await expect(panel).not.toContainText('to your card');
+  await expectNoSeriousAxeViolations(page, 'booking view (refund outstanding)');
 });

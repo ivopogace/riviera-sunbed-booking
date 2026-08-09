@@ -7,8 +7,6 @@ import org.junit.jupiter.api.Test;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
-import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
-import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,10 +28,14 @@ class RefundFailureMetricTest {
 		return meters.counter(ObservabilityMetrics.REFUNDS_FAILED).count();
 	}
 
+	private RefundService service(RefundOnlyGateway gateway) {
+		return new RefundService(gateway, meters, new ThrowingPayments() {
+		});
+	}
+
 	@Test
 	void aFailedRefundIncrementsTheCounter() {
-		RefundOnlyGateway gateway = (booking, amount) -> new RefundResult.Failed("gateway_error");
-		RefundService service = new RefundService(gateway, meters);
+		RefundService service = service((booking, amount) -> new RefundResult.Failed("gateway_error"));
 
 		RefundResult result = service.refund(BOOKING, AMOUNT);
 
@@ -43,28 +45,10 @@ class RefundFailureMetricTest {
 
 	@Test
 	void aSuccessfulRefundDoesNotIncrementTheCounter() {
-		RefundOnlyGateway gateway = (booking, amount) -> new RefundResult.Refunded("re_test_123");
-		RefundService service = new RefundService(gateway, meters);
+		RefundService service = service((booking, amount) -> new RefundResult.Refunded("re_test_123"));
 
 		service.refund(BOOKING, AMOUNT);
 
 		assertEquals(0.0, failedRefundCount());
-	}
-
-	/**
-	 * A {@link PaymentGateway} whose only abstract (hence lambda-targetable) method is {@code refund};
-	 * the collection/cancel legs are not exercised by this test and throw if called.
-	 */
-	@FunctionalInterface
-	private interface RefundOnlyGateway extends PaymentGateway {
-		@Override
-		default PaymentOutcome initiate(BookingRef booking, Money amount) {
-			throw new UnsupportedOperationException("not exercised by RefundFailureMetricTest");
-		}
-
-		@Override
-		default PaymentCancellation cancel(BookingRef booking) {
-			throw new UnsupportedOperationException("not exercised by RefundFailureMetricTest");
-		}
 	}
 }

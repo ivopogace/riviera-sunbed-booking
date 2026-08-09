@@ -16,7 +16,9 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.api.PaymentCredentialsLookup;
+import ai.riviera.platform.payment.api.RefundStatusLookup;
 import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
+import ai.riviera.platform.payment.vocabulary.RefundProgress;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
@@ -53,9 +55,10 @@ class ViewBookingServiceTest {
 	private final PaymentCredentialsLookup checkout = mock(PaymentCredentialsLookup.class);
 	private final ConfirmationMailDelivery mailDelivery = mock(ConfirmationMailDelivery.class);
 	private final CollectionGuarantee collection = mock(CollectionGuarantee.class);
+	private final RefundStatusLookup refundStatus = mock(RefundStatusLookup.class);
 
-	private final ViewBookingService service =
-			new ViewBookingService(bookings, cancellationPolicy, checkout, mailDelivery, collection);
+	private final ViewBookingService service = new ViewBookingService(bookings, cancellationPolicy,
+			checkout, mailDelivery, collection, refundStatus);
 
 	@Test
 	void flagsWithheldConfirmationMailForSuppressedGuest() {
@@ -248,6 +251,57 @@ class ViewBookingServiceTest {
 
 		assertThat(detail.cancelReason()).isNull();
 		assertThat(detail.refundedAmount()).isNull();
+	}
+
+	/**
+	 * The disclosure is about the guest's money, so it must track the gateway, not the decision:
+	 * {@code OUTSTANDING} — collected but no refund accepted yet (the stuck-outbox case) — is
+	 * the one state where the panel must stop claiming the money is on its way.
+	 */
+	@Test
+	void flagsAStuckRefundAsOutstanding() {
+		givenCancelledBooking(RefundReason.POLICY, 4500L);
+		when(refundStatus.progressOf(any())).thenReturn(RefundProgress.OUTSTANDING);
+
+		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isTrue();
+	}
+
+	@Test
+	void doesNotFlagAnAcceptedRefundAsOutstanding() {
+		givenCancelledBooking(RefundReason.POLICY, 4500L);
+		when(refundStatus.progressOf(any())).thenReturn(RefundProgress.ACCEPTED);
+
+		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isFalse();
+	}
+
+	/**
+	 * Absence of a payment row means the wired gateway never collected (the stub profile), never that
+	 * the refund failed. The copy must stay exactly as today.
+	 */
+	@Test
+	void doesNotFlagARefundWhenNothingWasCollected() {
+		givenCancelledBooking(RefundReason.POLICY, 4500L);
+		when(refundStatus.progressOf(any())).thenReturn(RefundProgress.NO_COLLECTION);
+
+		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isFalse();
+	}
+
+	/**
+	 * The lazy-consult shape of the other payment reads: no refund decision (or no cancellation)
+	 * means there is nothing to track, so the port is not asked at all.
+	 */
+	@Test
+	void neverConsultsRefundStatusWithoutARefundDecision() {
+		givenCancelledBooking(null, null);
+		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isFalse();
+
+		givenCancelledBooking(RefundReason.POLICY, 0L);
+		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isFalse();
+
+		givenBooking(BookingStatus.CONFIRMED);
+		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isFalse();
+
+		verifyNoInteractions(refundStatus);
 	}
 
 	private void givenBooking(BookingStatus status) {

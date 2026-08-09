@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
+import ai.riviera.platform.payment.application.RefundState;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 
 /**
@@ -92,6 +93,15 @@ class JdbcPayments implements Payments {
 		return jdbc.sql("SELECT payment_intent_id FROM payment WHERE booking_ref = :ref")
 				.param("ref", booking.value())
 				.query(String.class)
+				.optional();
+	}
+
+	@Override
+	public Optional<RefundState> findRefundState(BookingRef booking) {
+		return jdbc.sql("SELECT status, refunded_minor FROM payment WHERE booking_ref = :ref")
+				.param("ref", booking.value())
+				.query((rs, rowNum) -> new RefundState(
+						PaymentStatus.valueOf(rs.getString(PARAM_STATUS)), rs.getLong("refunded_minor")))
 				.optional();
 	}
 

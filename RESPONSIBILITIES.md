@@ -181,6 +181,11 @@ Publish the **notification-facts** reads a mail needs: the arrival code + contac
 booking". Neither publishes the lifecycle enum: both answer `everConfirmed` (read from
 `confirmed_at`, so a booking cancelled *after* confirmation still reads as having had one), which is
 what a consumer actually needs and keeps `BookingStatus` internal.
+The code-gated view also tells a guest when a cancelled booking's refund is still
+**outstanding** (#581): decided by me, not yet accepted by the gateway — asked lazily through
+`payment.api.RefundStatusLookup`, the same lazy-consult shape as the credentials read, so the
+panel can say "being processed" instead of claiming the money is in transit while the refund
+sits in the outbox.
 
 **Not My Job:**
 - Owning the `(set, date)` availability state → **`availability`** (I *ask* it to
@@ -244,7 +249,10 @@ what a consumer actually needs and keeps `BookingStatus` internal.
 ## `payment`
 **Job:** Own Stripe collection — PaymentIntents, refunds, and webhook handling.
 Reconcile payment state from **signature-verified Stripe webhooks** (never the
-client). Collection only.
+client). Collection only. Publish the read side of the refund conversation
+(`payment.api.RefundStatusLookup`, #581): how far a booking's refund has travelled —
+`NO_COLLECTION` / `OUTSTANDING` / `ACCEPTED` — answered from this module's own row, with
+"no row" meaning the wired gateway never collected, never that a refund failed.
 
 **Not My Job:**
 - Deciding *whether* to refund or *how much* → **`booking`** owns the refund policy;

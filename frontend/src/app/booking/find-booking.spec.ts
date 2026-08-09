@@ -21,6 +21,7 @@ const DETAIL: BookingDetail = {
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
+  refundOutstanding: false,
   requestExpiresAt: null,
   payment: null,
   emailWithheld: false,

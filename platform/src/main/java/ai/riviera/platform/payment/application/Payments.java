@@ -49,4 +49,10 @@ public interface Payments {
 	 * the collected amount. A 0-row no-op when no payment row exists (the stub profile).
 	 */
 	void markRefunded(BookingRef booking, long refundedMinor, String refundId);
+
+	/**
+	 * The refund-relevant state of the booking's payment row — status plus {@code refunded_minor} —
+	 * or empty when no row exists (the stub profile records no payment).
+	 */
+	Optional<RefundState> findRefundState(BookingRef booking);
 }

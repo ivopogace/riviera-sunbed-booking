@@ -88,6 +88,30 @@ class JdbcPaymentsIT {
 	}
 
 	@Test
+	void readsRefundStateBackAfterMarkRefunded() {
+		payments.register(new NewPayment(new BookingRef(9301L), "pi_refund_state", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_refund_state", PaymentStatus.SUCCEEDED);
+
+		var beforeRefund = payments.findRefundState(new BookingRef(9301L));
+		assertTrue(beforeRefund.isPresent(), "a collected payment has readable refund state");
+		assertEquals(PaymentStatus.SUCCEEDED, beforeRefund.get().status());
+		assertEquals(0L, beforeRefund.get().refundedMinor(), "nothing refunded before the gateway accepts");
+
+		payments.markRefunded(new BookingRef(9301L), 4500L, "re_state");
+
+		var afterRefund = payments.findRefundState(new BookingRef(9301L));
+		assertEquals(PaymentStatus.REFUNDED, afterRefund.orElseThrow().status());
+		assertEquals(4500L, afterRefund.orElseThrow().refundedMinor(),
+				"markRefunded's write is readable back through the same port");
+	}
+
+	@Test
+	void findRefundStateIsEmptyWithoutAPaymentRow() {
+		assertTrue(payments.findRefundState(new BookingRef(9302L)).isEmpty(),
+				"no payment row (stub profile) reads as empty, never as a failed refund");
+	}
+
+	@Test
 	void markRefundedPartialMovesToPartiallyRefunded() {
 		payments.register(new NewPayment(new BookingRef(9202L), "pi_refund_part", 4500L, "EUR", "cs_test_secret"));
 

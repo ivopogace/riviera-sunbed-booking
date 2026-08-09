@@ -271,7 +271,11 @@ const CLS = {
                 </h2>
                 <p [class]="cls.bannerBody">
                   {{ cancelledOpener(b) }}&ngsp;
-                  <strong>{{ refundSentence(tierOf(refunded), refunded) }}</strong>
+                  @if (b.refundOutstanding) {
+                    <strong>{{ processingSentence(refunded) }}</strong>
+                  } @else {
+                    <strong>{{ refundSentence(tierOf(refunded), refunded) }}</strong>
+                  }
                 </p>
               } @else {
                 <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowCancelled }}">
@@ -351,7 +355,7 @@ const CLS = {
           </div>
           @if (b.refundedAmount && b.refundedAmount.minorUnits > 0) {
             <div [class]="cls.row">
-              <dt [class]="cls.rowLabel">Refunded</dt>
+              <dt [class]="cls.rowLabel">{{ b.refundOutstanding ? 'Refund' : 'Refunded' }}</dt>
               <dd [class]="cls.rowValue" data-testid="refunded-amount">
                 {{ formatMoney(b.refundedAmount) }}
               </dd>
@@ -371,7 +375,10 @@ const CLS = {
         <!-- Live result of a cancellation, announced to assistive tech. -->
         <p [class]="cls.result" role="status" aria-live="polite" data-testid="cancel-result">
           @if (cancellation(); as c) {
-            Booking cancelled. {{ refundSentence(c.tier, c.refund) }}
+            Booking cancelled.
+            {{
+              b.refundOutstanding ? processingSentence(c.refund) : refundSentence(c.tier, c.refund)
+            }}
           } @else if (cancelWindowClosed()) {
             This booking can no longer be cancelled — its date has already begun.
           } @else if (cancelFailed()) {
@@ -678,6 +685,14 @@ export class BookingView {
       return `The free-cancellation cutoff has passed — you’ll be refunded ${formatMoney(b.refundIfCancelledNow)}.`;
     }
     return 'The free-cancellation cutoff has passed — this cancellation is non-refundable.';
+  }
+
+  /**
+   * Sentence for a refund the gateway has not accepted yet: states processing, never transit —
+   * "on its way to your card" would be a claim the money's state does not support.
+   */
+  protected processingSentence(refund: MoneyView): string {
+    return `Your refund of ${formatMoney(refund)} is being processed.`;
   }
 
   /** Sentence describing the refund that was issued. */

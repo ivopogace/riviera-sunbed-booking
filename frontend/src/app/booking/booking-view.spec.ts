@@ -30,6 +30,7 @@ const DETAIL: BookingDetail = {
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
+  refundOutstanding: false,
   requestExpiresAt: null,
   payment: null,
   emailWithheld: false,
@@ -520,6 +521,67 @@ describe('BookingView', () => {
       expect(panel?.textContent).not.toContain('on its way');
     },
   );
+
+  /**
+   * A refund can sit unaccepted in the refund outbox for as long as nobody re-drives it; the
+   * panel persists indefinitely, so it must not keep telling the guest the money is in transit.
+   */
+  it('says a stuck refund is being processed, never on its way to the card', async () => {
+    const fixture = await render(
+      stubService({ detail: { ...cancelled('POLICY', 4500), refundOutstanding: true } }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+    const panel = host.querySelector('[data-testid="booking-cancelled"]');
+
+    expect(panel?.textContent).toContain('is being processed');
+    expect(panel?.textContent).toContain('45');
+    expect(panel?.textContent).not.toContain('on its way');
+    expect(panel?.textContent).not.toContain('to your card');
+    // The detail row must not contradict the banner: no past-tense "Refunded" while outstanding.
+    const labels = [...host.querySelectorAll('dt')].map((dt) => dt.textContent?.trim());
+    expect(labels).toContain('Refund');
+    expect(labels).not.toContain('Refunded');
+    await expectNoAxeViolations(host);
+  });
+
+  /**
+   * The same claim, in-session: the aria-live cancel announcement must not tell a screen-reader
+   * user the money is heading to their card while the panel beside it says it is still processing.
+   */
+  it('announces a still-processing refund after an in-session cancel, never "to your card"', async () => {
+    const stuck: BookingDetail = {
+      ...DETAIL,
+      status: 'CANCELLED',
+      cancellable: false,
+      refundedAmount: { minorUnits: 4500, currency: 'EUR' },
+      refundOutstanding: true,
+      cancelReason: 'POLICY',
+    };
+    const fixture = await render(stubService({ detail: DETAIL, detailAfterCancel: stuck }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const result = host.querySelector('[data-testid="cancel-result"]')?.textContent;
+    expect(result).toContain('Booking cancelled.');
+    expect(result).toContain('is being processed');
+    expect(result).not.toContain('to your card');
+  });
+
+  it('keeps the usual copy once the gateway accepted the refund', async () => {
+    const fixture = await render(stubService({ detail: cancelled('POLICY', 4500) }));
+    const panel = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="booking-cancelled"]',
+    );
+
+    expect(panel?.textContent).toContain('will be refunded to your card');
+    expect(panel?.textContent).not.toContain('is being processed');
+  });
 
   /** A row cancelled before V14 carries a refund but no reason; CONFLICT is reserved and unused. */
   it('falls back to neutral copy for an unknown cancel reason', async () => {
