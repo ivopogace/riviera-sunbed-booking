@@ -13,7 +13,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.booking.application.Bookings;
-import ai.riviera.platform.booking.application.cancel.BookingCutoff;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.payment.api.CancelPaymentPort;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
@@ -54,8 +53,7 @@ class AbandonedBookingSweepServiceTest {
 		Bookings bookings = mock(Bookings.class);
 		when(bookings.findExpirableAwaitingPayment(any(), any(), any())).thenReturn(List.of(STALE));
 		CancelPaymentPort cancel = booking -> cancelOutcome;
-		return new AbandonedBookingSweepService(bookings, cancel, recordingRelease,
-				new BookingCutoff(CLOCK), CLOCK);
+		return new AbandonedBookingSweepService(bookings, cancel, recordingRelease, CLOCK);
 	}
 
 	@Test
@@ -102,7 +100,7 @@ class AbandonedBookingSweepServiceTest {
 		when(bookings.findExpirableAwaitingPayment(any(), any(), any())).thenReturn(List.of());
 
 		new AbandonedBookingSweepService(bookings, booking -> new PaymentCancellation.Canceled(),
-				recordingRelease, new BookingCutoff(CLOCK), CLOCK).sweep(TTL, WINDOWS);
+				recordingRelease, CLOCK).sweep(TTL, WINDOWS);
 
 		Instant now = CLOCK.instant();
 		verify(bookings).findExpirableAwaitingPayment(now.minus(TTL), WINDOWS.acceptedBefore(now),

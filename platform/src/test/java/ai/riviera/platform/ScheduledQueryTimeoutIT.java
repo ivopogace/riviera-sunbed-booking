@@ -5,6 +5,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -126,7 +127,8 @@ class ScheduledQueryTimeoutIT {
 		Instant now = Instant.now();
 
 		assertBounded("the abandoned-payment sweep's candidate read",
-				readWhileLocked("booking", () -> bookings.findExpirableAwaitingPayment(now, now, LocalDate.now())));
+				readWhileLocked("booking", () -> bookings.findExpirableAwaitingPayment(now, now,
+						LocalDate.ofInstant(now, ZoneId.of("Europe/Tirane")))));
 		assertBounded("the request-expiry sweep's candidate read",
 				readWhileLocked("booking", () -> bookings.findOverduePendingRequests(now)));
 		assertBounded("the retention sweep's candidate read",

@@ -169,8 +169,9 @@ const CLS = {
                   Payment window closed
                 </h2>
                 <p [class]="cls.bannerBody">
-                  {{ dateLabel(b.bookingDate) }} has already started, so this booking can no longer
-                  be paid and the spot has been released. <strong>You haven’t been charged.</strong>
+                  {{ dateLabel(b.bookingDate) }} has already started, so this booking
+                  <strong>can no longer be paid</strong> and stays unconfirmed. If you completed a
+                  payment in the last few minutes, reload this page — it may still be confirming.
                 </p>
               </section>
             }

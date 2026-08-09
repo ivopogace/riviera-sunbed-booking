@@ -77,10 +77,14 @@ public class BookingCutoff {
 	/**
 	 * The latest booking date whose service day has already begun at {@code now} — the set-based form
 	 * of {@link #serviceDayHasOpened}, for a sweep that selects rows by {@code booking_date} rather
-	 * than asking per booking. Takes the caller's reading instead of the clock so a sweep bounds every
-	 * arm against one instant.
+	 * than asking per booking.
+	 *
+	 * <p><strong>Static, and that is the contract:</strong> it is a pure projection of the caller's
+	 * own instant onto the Tirane civil day, so a sweep bounds every arm of one run against one
+	 * reading. An instance method here would read as clock-backed like its neighbour and silently is
+	 * not.
 	 */
-	public LocalDate lastOpenedServiceDay(java.time.Instant now) {
+	public static LocalDate lastOpenedServiceDay(java.time.Instant now) {
 		return LocalDate.ofInstant(now, TIRANE);
 	}
 

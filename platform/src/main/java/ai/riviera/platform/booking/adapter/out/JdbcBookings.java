@@ -426,7 +426,7 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public List<BookingId> findExpirableAwaitingPayment(Instant createdBefore, Instant acceptedBefore,
-			java.time.LocalDate serviceDayOnOrBefore) {
+			LocalDate serviceDayOnOrBefore) {
 		// Abandoned-payment sweep candidates, two clocks: an instant booking
 		// (accepted_at IS NULL) expires on the creation clock — served by
 		// booking_awaiting_created_idx (V13); an accepted request expires on the accept clock —
@@ -446,7 +446,7 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
 				.param("createdBefore", java.sql.Timestamp.from(createdBefore))
 				.param("acceptedBefore", java.sql.Timestamp.from(acceptedBefore))
-				.param("serviceDayOnOrBefore", java.sql.Date.valueOf(serviceDayOnOrBefore))
+				.param("serviceDayOnOrBefore", serviceDayOnOrBefore)
 				.query((rs, rowNum) -> new BookingId(rs.getLong("id")))
 				.list();
 	}

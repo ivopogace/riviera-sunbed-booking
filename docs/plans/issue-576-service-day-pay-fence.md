@@ -286,10 +286,9 @@ e2e. No new route, no new service call.
 
 ## Execution status
 
-**Stage pointer:** `PR ready for review — review gate next`
+**Stage pointer:** `review gate run, 11 findings resolved — Sonar gate next`
 
-**Next action:** Run the Review gate (`/code-review` per the invocation ladder + `riviera-review-overlay`),
-then the Sonar gate's issue list, then merge.
+**Next action:** Re-read the Sonar issue list for the fix push, then merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -298,7 +297,8 @@ then the Sonar gate's issue list, then merge.
 | 2 — The sweep enforces the capped deadline | ✅ | `1a48270` |
 | 3 — Withhold credentials + `payWindowClosed` on the wire | ✅ | `4cfb763` |
 | 4 — The guest-facing closed-window panel + e2e | ✅ | `0bccb10` |
-| 5 — Docs freshness + close-out | ✅ | this commit |
+| 5 — Docs freshness + close-out | ✅ | `32cddf6` |
+| 6 — Review-gate fixes (F-1…F-11) | ✅ | this commit — **merged via PR #577** |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -308,7 +308,17 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (`/code-review`, high) | The closed-window panel asserted "You haven't been charged" and "the spot has been released" — `payWindowClosed` is calendar-only and carries neither fact, and the sweep is `@Profile("stripe")` on a 5-minute cadence. | **fixed** — the copy now states only what the flag knows (can no longer be paid, stays unconfirmed) and tells a guest mid-payment to reload |
+| F-2 | review | `payWindowClosed` took a second, independent clock reading when the `CancellationPolicy` quote's `CLOSED` window already carried the same instant from the reading it documents as authoritative — a response could offer a cancel and declare the day open at once. | **fixed** — reads `RefundQuote#serviceDayOpen()`; `ViewBookingService` no longer depends on `BookingCutoff` at all |
+| F-3 | review | `BookingViewIT` left a permanent today-dated `AWAITING_PAYMENT` row — exactly the class R-8's phase-2 audit certified absent, added at phase 3 — which the new sweep arm would select and count, breaking two other ITs' exact counts. | **fixed** — `@AfterEach` drops this class's `AWAITING_PAYMENT` rows; R-8's audit now holds for the PR's own code |
+| F-4 | review | The panel is unreachable for most guests: once the sweep runs the booking is `CANCELLED`, and the template has no `CANCELLED` branch, so they get a bare chip. | **deferred → issue #578** — pre-existing and wider than this slice (it covers every abandoned-payment cancellation); #577 only made it visible |
+| F-5 | review | The new date bound via `java.sql.Date.valueOf`, a JVM-default-zone conversion, where every other `LocalDate` in the adapter binds directly — invariant #6 forbids relying on that zone. | **fixed** — binds the `LocalDate`; the signature drops the redundant FQN |
+| F-6 | review | `CLAUDE.md` invariant #4 claimed the set "returns to the pool at midnight" and that "the payment is fenced" — neither holds (5-minute cadence, `stripe`-profile-only, confirm path deliberately open). | **fixed** — states three layers, not a guarantee, and points at the R-1 residual so a future review does not read a late confirm as a bug |
+| F-7 | review | `payDeadlineKeepsTheRawWindowWhenItEndsFirst` was byte-identical to `payDeadlineRunsFromTheAcceptClock`. | **fixed** — re-pointed at the 1 ms margin, the tightest case where the window beats the cap (a reversed comparison now fails it) |
+| F-8 | review | `lastOpenedServiceDay(Instant)` was an instance method on a clock-carrying component that ignores the clock, next to one that doesn't. | **fixed** — `static`, with the Javadoc saying that is the contract |
+| F-9 | review | The sweep held two clock sources, so "one reading bounds all three arms" depended on both being wired to the same bean. | **fixed** — F-8's static projection removes the `BookingCutoff` dependency entirely |
+| F-10 | review | `payWindowClosed` was computed for every status, reporting `true` on delivered `CONFIRMED`/`CANCELLED` bookings where its own documented contract is nonsense. | **fixed** — scoped to `AWAITING_PAYMENT`, pinned by `neverReportsAClosedPayWindowForABookingThatIsNotAwaitingPayment` |
+| F-11 | review | `ScheduledQueryTimeoutIT` passed `LocalDate.now()` — the JVM default zone, in the file a future author copies the signature from. | **fixed** — explicit `Europe/Tirane` |
 
 ---
 
@@ -779,4 +789,4 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
 - [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.

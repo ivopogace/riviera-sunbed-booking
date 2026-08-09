@@ -51,15 +51,13 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 	private final Bookings bookings;
 	private final CancelPaymentPort cancelPaymentPort;
 	private final ReleaseAbandonedBooking releaseAbandonedBooking;
-	private final BookingCutoff cutoff;
 	private final Clock clock;
 
 	AbandonedBookingSweepService(Bookings bookings, CancelPaymentPort cancelPaymentPort,
-			ReleaseAbandonedBooking releaseAbandonedBooking, BookingCutoff cutoff, Clock clock) {
+			ReleaseAbandonedBooking releaseAbandonedBooking, Clock clock) {
 		this.bookings = bookings;
 		this.cancelPaymentPort = cancelPaymentPort;
 		this.releaseAbandonedBooking = releaseAbandonedBooking;
-		this.cutoff = cutoff;
 		this.clock = clock;
 	}
 
@@ -68,7 +66,7 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 		// One reading, so all three arms of this run are bounded against the same instant.
 		Instant now = clock.instant();
 		List<BookingId> stale = bookings.findExpirableAwaitingPayment(now.minus(ttl),
-				windows.acceptedBefore(now), cutoff.lastOpenedServiceDay(now));
+				windows.acceptedBefore(now), BookingCutoff.lastOpenedServiceDay(now));
 		int expired = 0;
 		for (BookingId id : stale) {
 			try {

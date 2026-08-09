@@ -27,19 +27,16 @@ class ViewBookingService implements ViewBooking {
 	private final ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout;
 	private final ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail;
 	private final ai.riviera.platform.payment.api.CollectionGuarantee collection;
-	private final ai.riviera.platform.booking.application.cancel.BookingCutoff cutoff;
 
 	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy,
 			ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout,
 			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail,
-			ai.riviera.platform.payment.api.CollectionGuarantee collection,
-			ai.riviera.platform.booking.application.cancel.BookingCutoff cutoff) {
+			ai.riviera.platform.payment.api.CollectionGuarantee collection) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
 		this.checkout = checkout;
 		this.confirmationMail = confirmationMail;
 		this.collection = collection;
-		this.cutoff = cutoff;
 	}
 
 	@Override
@@ -78,10 +75,11 @@ class ViewBookingService implements ViewBooking {
 
 		MoneyView refunded = b.refundMinor() == null ? null
 				: new MoneyView(b.refundMinor(), b.currency());
-		boolean payWindowClosed = cutoff.serviceDayHasOpened(b.bookingDate());
-		// Only an AWAITING_PAYMENT booking still inside its pay window has a payable intent.
+		boolean awaitingPayment = b.status() == BookingStatus.AWAITING_PAYMENT;
+		// Off the same quote as cancellable, so one response cannot straddle the midnight boundary.
+		boolean payWindowClosed = awaitingPayment && quote.serviceDayOpen();
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment =
-				b.status() == BookingStatus.AWAITING_PAYMENT && !payWindowClosed
+				awaitingPayment && !payWindowClosed
 						? checkout.pendingCredentials(
 								new ai.riviera.platform.payment.vocabulary.BookingRef(b.id())).orElse(null)
 						: null;

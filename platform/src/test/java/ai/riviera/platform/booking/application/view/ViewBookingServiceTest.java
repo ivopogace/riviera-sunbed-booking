@@ -1,16 +1,12 @@
 package ai.riviera.platform.booking.application.view;
 
-import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.booking.application.Bookings;
-import ai.riviera.platform.booking.application.cancel.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.CancellationWindow;
@@ -56,15 +52,8 @@ class ViewBookingServiceTest {
 	private final ConfirmationMailDelivery mailDelivery = mock(ConfirmationMailDelivery.class);
 	private final CollectionGuarantee collection = mock(CollectionGuarantee.class);
 
-	/** A month before {@link #DATE}'s service day opens, so the pay fence is inert for every case
-	 *  that is not about it. */
-	private final ViewBookingService service = serviceAt("2026-07-01T09:00:00Z");
-
-	private ViewBookingService serviceAt(String instant) {
-		Clock clock = Clock.fixed(Instant.parse(instant), ZoneId.of("UTC"));
-		return new ViewBookingService(bookings, cancellationPolicy, checkout, mailDelivery, collection,
-				new BookingCutoff(clock));
-	}
+	private final ViewBookingService service =
+			new ViewBookingService(bookings, cancellationPolicy, checkout, mailDelivery, collection);
 
 	@Test
 	void flagsWithheldConfirmationMailForSuppressedGuest() {
@@ -179,9 +168,9 @@ class ViewBookingServiceTest {
 	 */
 	@Test
 	void withholdsPaymentCredentialsOnceTheServiceDayHasOpened() {
-		givenBooking(BookingStatus.AWAITING_PAYMENT);
+		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.CLOSED, 0L);
 
-		BookingDetail detail = serviceAt("2026-08-01T09:00:00Z").byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
 		assertThat(detail.payment()).isNull();
 		assertThat(detail.payWindowClosed()).isTrue();
@@ -200,18 +189,33 @@ class ViewBookingServiceTest {
 		assertThat(detail.payWindowClosed()).isFalse();
 	}
 
+	/**
+	 * The pay fence hangs off the service-day boundary, not the evening-before cutoff: between the
+	 * two — the {@code LATE} window — the guest may still pay. Reading the fence off the quote is
+	 * what makes that automatic; a second clock read could disagree with the very same response's
+	 * {@code cancellable}.
+	 */
 	@Test
-	void reportsTheClosedPayWindowOnTheLastMinuteBeforeMidnight() {
-		givenBooking(BookingStatus.AWAITING_PAYMENT);
+	void stillIssuesCredentialsAfterTheCutoffWhileTheServiceDayIsStillClosed() {
+		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.LATE, 2250L);
 		when(checkout.pendingCredentials(any()))
 				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
 
-		// 2026-07-31T21:59:59Z is 23:59:59 in Tirane — the last second the guest may still pay.
-		BookingDetail open = serviceAt("2026-07-31T21:59:59Z").byCode(CODE).orElseThrow();
-		BookingDetail closed = serviceAt("2026-07-31T22:00:00Z").byCode(CODE).orElseThrow();
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
-		assertThat(open.payWindowClosed()).isFalse();
-		assertThat(closed.payWindowClosed()).isTrue();
+		assertThat(detail.payment()).isNotNull();
+		assertThat(detail.payWindowClosed()).isFalse();
+	}
+
+	/**
+	 * The flag answers a question only an unpaid booking has, so it stays {@code false} on a
+	 * delivered stay — where "no payment may be taken any more" would be a nonsense reading.
+	 */
+	@Test
+	void neverReportsAClosedPayWindowForABookingThatIsNotAwaitingPayment() {
+		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.CLOSED, 0L);
+
+		assertThat(service.byCode(CODE).orElseThrow().payWindowClosed()).isFalse();
 	}
 
 	private void givenBooking(BookingStatus status) {

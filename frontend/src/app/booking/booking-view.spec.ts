@@ -520,8 +520,9 @@ describe('BookingView', () => {
 
     const panel = host.querySelector('[data-testid="pay-window-closed"]');
     expect(panel?.textContent).toContain('Payment window closed');
-    expect(panel?.textContent).toContain('can no longer');
-    expect(panel?.textContent).toContain('haven’t been charged');
+    expect(panel?.textContent).toContain('can no longer be paid');
+    // Calendar-only flag: a payment may be in flight, so no "you weren't charged" claim.
+    expect(panel?.textContent).not.toContain('haven’t been charged');
     expect(host.querySelector('[data-testid="pay-now"]')).toBeNull();
     await expectNoAxeViolations(host);
   });

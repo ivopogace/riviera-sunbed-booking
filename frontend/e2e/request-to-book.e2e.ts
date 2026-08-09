@@ -271,7 +271,8 @@ test('an accepted request whose service day has opened cannot be paid', async ({
   await page.goto(`/booking/${CODE}`);
   const panel = page.getByTestId('pay-window-closed');
   await expect(panel).toContainText('Payment window closed');
-  await expect(panel).toContainText('haven’t been charged');
+  await expect(panel).toContainText('can no longer be paid');
+  await expect(panel).not.toContainText('haven’t been charged');
   await expect(page.getByTestId('pay-now')).toHaveCount(0);
   await expectNoSeriousAxeViolations(page, 'booking view (pay window closed)');
 });

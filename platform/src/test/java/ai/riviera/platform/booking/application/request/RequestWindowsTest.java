@@ -61,8 +61,11 @@ class RequestWindowsTest {
 
 	@Test
 	void payDeadlineKeepsTheRawWindowWhenItEndsFirst() {
-		assertEquals(ACCEPTED_AT.plus(PAY_WINDOW), WINDOWS.payDeadline(ACCEPTED_AT, DISTANT_SERVICE_DAY),
-				"a request accepted days ahead is bounded by the window, not by the service day");
+		// One millisecond of margin — the tightest case in which the window, not the cap, wins.
+		Instant serviceDayOpensAt = ACCEPTED_AT.plus(PAY_WINDOW).plusMillis(1);
+
+		assertEquals(ACCEPTED_AT.plus(PAY_WINDOW), WINDOWS.payDeadline(ACCEPTED_AT, serviceDayOpensAt),
+				"a comparison the wrong way round would take the cap here");
 	}
 
 	@Test
