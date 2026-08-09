@@ -188,11 +188,11 @@
               data-testid="daily-arrival-row"
             >
               <span class="text-[13.5px] font-semibold text-(--riv-card-ink)">{{ a.label }}</span>
-              @if (a.checkedIn) {
+              @if (a.chip; as chip) {
                 <span
-                  class="rounded-full border border-[#bfe0c8] bg-[#e7f5ea] px-2.5 py-1 text-[11.5px] font-bold text-[#1d6b34]"
-                  data-testid="arrival-checked-in"
-                  >Checked in</span
+                  [appStatusChip]="chip.modifier"
+                  [attr.data-testid]="chip.testId"
+                  >{{ chip.label }}</span
                 >
               }
               <code

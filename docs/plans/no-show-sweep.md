@@ -44,8 +44,10 @@ status = 'CONFIRMED'`, following the V13/V19 sweep-index precedent) · `riviera-
 (confirmed the weather-refund widening reuses the U6 refund spine unchanged — reversal via the
 existing `BookingCancelled` listener, exactly-once, invariant #9) · `riviera-frontend` (the daily
 view's model change stays in `operator/`; the status vocabulary stays in `shared/booking-status.ts`)
-· `angular-developer` + angular-cli MCP (<v22 signal APIs for the arrivals row>) · `playwright-cli`
-(<the mocked-suite e2e spec for a swept past day>) · `riviera-local-debug` (scoped test runs)
+· `angular-developer` + angular-cli MCP (confirmed the v22 rules for the arrivals view-model — the
+test-hook ternary moved out of the template into `ARRIVAL_CHIPS`) · `riviera-tailwind` (reuse the
+shared `StatusChip` directive instead of a second hand-rolled inline chip, so the `chip--no-show`
+fill keeps its existing AA proof) · `playwright-cli` (the mocked-suite spec for a swept past day) · `riviera-local-debug` (scoped test runs)
 
 **Branch:** `claude/sdlc-584-spwjmh` — the cloud session's designated remote branch stands in for
 `feature/no-show-sweep` (`riviera-sdlc` § Remote/cloud session addendum).
@@ -270,10 +272,10 @@ rather than growing a second boolean branch.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** Phase 5 — frontend: the arrivals row reads the status token and renders the
-existing NO_SHOW chip; plus the mocked-suite e2e spec.
+**Next action:** Phase 6 — docs sweep (`riviera-docs-freshness` over the branch range), then
+mark the PR ready for review.
 `findConfirmedForVenueOn` to carry the status token (AC-10, backend half).
 
 | Phase | Status | Commits |
@@ -283,7 +285,7 @@ existing NO_SHOW chip; plus the mocked-suite e2e spec.
 | 2 — Terminal-state guards (cancel, check-in classify) | ✅ | `025c5cf` |
 | 3 — Weather-refund widening (`cancelForWeather`) | ✅ | `bc77276` |
 | 4 — Scheduler + config pinning test | ✅ | `2f28bb1` |
-| 5 — Frontend: status token + no-show arrivals row + e2e | | |
+| 5 — Frontend: status token + no-show arrivals row + e2e | ✅ | `204ae7c` |
 | 6 — Docs sweep + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -344,8 +346,8 @@ Skill-routing gate for what the fix touches *before* editing).
   `CancelBookingIT.java` — amended for the widened reads and the terminal-state guards
 - `frontend/src/app/operator/operator-console.model.ts|.service.ts` — the status token
 - `frontend/src/app/operator/daily-view-tab.ts|.html` — the no-show arrivals row
-- `frontend/src/app/operator/daily-view-tab.spec.ts` · `operator-console.service.spec.ts` — specs
-- `frontend/e2e/` — the mocked-suite spec for a swept past day
+- `frontend/src/app/operator/daily-view-tab.spec.ts` — the no-show and no-badge specs
+- `frontend/e2e/operator-daily.e2e.ts` — the mocked-suite spec for a swept past day
 - `CONTEXT.md` · `RESPONSIBILITIES.md` · `CLAUDE.md` — docs sweep (phase 6)
 - `docs/plans/no-show-sweep.md` — this plan
 

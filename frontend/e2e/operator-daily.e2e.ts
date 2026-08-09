@@ -13,7 +13,7 @@ import { settle } from './support/booking-dialog';
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
 // A1 free, A2 held by a CONFIRMED booking, A3 free, A4 an UNPAID online hold.
-const BOOKINGS = [{ setId: 2, code: 'ABC12345', checkedIn: false }];
+const BOOKINGS = [{ setId: 2, code: 'ABC12345', status: 'CONFIRMED' }];
 
 function seat(
   id: number,
@@ -63,7 +63,7 @@ async function mockDaily(page: Page): Promise<void> {
     return route.fulfill({ status: 204, body: '' });
   });
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
-    route.fulfill({ json: [{ ...BOOKINGS[0], checkedIn: guestArrived }] }),
+    route.fulfill({ json: [{ ...BOOKINGS[0], status: guestArrived ? 'COMPLETED' : 'CONFIRMED' }] }),
   );
   // Check-in (#583): first scan completes, any further scan answers the single-use 409.
   await page.route(/\/api\/venues\/1\/bookings\/[A-Z0-9]+\/check-in$/, (route) => {
@@ -193,6 +193,24 @@ test('checks a guest in by QR scan — single-use, announced, and the row stays 
   // Scanning the same code again is refused distinctly — the QR is single-use.
   await page.getByTestId('checkin-scan-toggle').click();
   await expect(page.getByTestId('checkin-result')).toContainText('Already checked in');
+});
+
+test('a swept no-show still lists, badged, so a past day is not an empty page', async ({ page }) => {
+  await mockDaily(page);
+  // The sweep has already run on this day: the booking is terminal, not awaited.
+  await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
+    route.fulfill({ json: [{ setId: 2, code: 'ABC12345', status: 'NO_SHOW' }] }),
+  );
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  await expect(page.getByTestId('daily-arrival-row')).toHaveCount(1);
+  await expect(page.getByTestId('arrival-no-show')).toHaveText('No-show');
+  await expect(page.getByTestId('arrival-checked-in')).toHaveCount(0);
+  await expect(page.getByTestId('daily-arrivals-empty')).toHaveCount(0);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view tab with a swept no-show');
 });
 
 test('checks a guest in by typed code — the keyboard path needs no camera (#583)', async ({
