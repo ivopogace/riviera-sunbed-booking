@@ -258,10 +258,12 @@ unchanged. The only addition is a 5xx on a previously-silent failure path.
 
 ## Execution status
 
-**Stage pointer:** `review gate — run, findings fixed; Sonar re-check, then merge`
+**Stage pointer:** `DONE — merged via PR #590`
 
-**Next action:** Confirm CI green on the review-fix push and re-pull the Sonar issue list for the
-new head, then merge and run the close-out (the plan doc is already at its final state).
+**Next action:** None. All gates cleared: CI green on the final head (backend, frontend, hygiene,
+CodeQL), the review gate ran with all five findings resolved, and the Sonar gate is green **with
+its reported list pulled and empty** — `new_lines=90` (so an analysis genuinely exists, not the
+false-clean zero), 0 issues, 0 vulnerabilities, 0 duplicated blocks, 100.0% new-code coverage.
 
 **Review gate:** ran on PR #590 at head `b824345` per `pr-gates.md` §1 — the `code-review` plugin's
 workflow (its subagent fan-out, authorized by the maintainer since this session carries a standing
@@ -274,7 +276,8 @@ register below; the three overlay Blockers (RV-BE-1, RV-BE-7/RV-CT-3, RV-BE-9) p
 | 0 — Guard `markStatus` at the SQL seam (#568) | ✅ | `0216f86` |
 | 1 — Gate event publication on a real transition (#568) | ✅ | `ba6cc7b` |
 | 2 — Make an unreadable handled event retryable (#570) | ✅ | `b1cf41f` |
-| 3 — Docs freshness + close-out | ✅ | this commit |
+| 3 — Docs freshness + close-out | ✅ | `b824345` |
+| 4 — Review-gate findings (F-1, F-4) | ✅ | `094b81d`, `4e8ea16` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -384,7 +387,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - [x] **Step 1:** Run `riviera-docs-freshness` over the merge span; patch what the diff contradicts.
 - [x] **Step 2:** Reconcile the File-structure section —
       `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [x] **Step 3:** Finalize Execution status (`merged via PR #NN`), close every risk row, empty Open
+- [x] **Step 3:** Finalize Execution status (`merged via PR #590`), close every risk row, empty Open
       Questions.
 - [x] **Step 4: Commit** — `git commit -m "Close out the webhook state-guard slice (#568, #570)"`
 
@@ -432,7 +435,7 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] **Frontend** standards — N/A, backend-only.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
-- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #590`.
 - [x] **The review gate ran in full** — the `code-review` plugin's workflow (ladder rung 2, its
       subagent fan-out, maintainer-authorized) *plus* `riviera-review-overlay`, at high effort.
       Five findings, all resolved; two produced code changes in `094b81d`.
