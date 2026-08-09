@@ -50,6 +50,17 @@ tell. **Do not "fix" it by making that listener return normally:** the branch di
 the one failing (a venue with no commission rate makes it throw), because the reversal cannot post
 until the accrual does.
 
+**One webhook-5xx cause worth recognising by name: a verified event we could not read** (#570).
+`UnreadableWebhookEventException` answers `503` when a `payment_intent.succeeded`/`.canceled`/
+`.payment_failed` payload yields no PaymentIntent id — a deliberate rollback, so the event-id dedup
+insert is undone and Stripe re-delivers rather than the payment fact being consumed. Its `WARN` —
+*"could not deserialize event evt_… (payment_intent.succeeded)"* — is the tell. **Unlike a transient
+5xx, this one will not clear on its own:** the same payload fails every re-delivery, so treat it as a
+deserialization defect (usually API-version divergence beyond what the SDK tolerates) and fix the
+adapter. The booking stays `AWAITING_PAYMENT` and holds its `(set, date)` claim meanwhile; the event
+id is *not* blacklisted, so once the fix ships, re-send the event from the Stripe dashboard — or wait
+for a re-delivery still inside Stripe's retry window.
+
 ## Other platform metrics (not money-path)
 
 `ObservabilityMetrics` is the one place metric names are declared; not every name in it is a

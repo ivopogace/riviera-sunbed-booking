@@ -32,8 +32,11 @@ for a paid intent, so the fix gates event publication, not just the write) · `r
 (this template — forced the Behavior-parity ledger, which is what pinned `findPendingCredentials`'s
 payable set as the same set as the new open-state guard) · `tdd` (each phase is red-first: the
 late-event ITs fail against today's unguarded `UPDATE` before the guard lands) ·
-`riviera-review-overlay` (review gate — runs at ready-for-review) · `riviera-docs-freshness`
-(merge close-out step 5, over this PR's merge span) · `riviera-stripe-payments` (confirmed the
+`riviera-review-overlay` (review gate — run at ready-for-review) · `riviera-docs-freshness`
+(**ran** over `origin/main..HEAD`, 1 finding — no substrate fact was contradicted and the counting
+sweep found no N−1 statement, but the diff makes the observability runbook's webhook-5xx row
+incomplete: it reads every 5xx as transient, and the new `503` is deterministic, so a named cause
+was added there) · `riviera-stripe-payments` (confirmed the
 collect-only model is untouched, and that webhook duplicate/out-of-order handling is the module's
 named test obligation — this slice adds the missing out-of-order half) · `riviera-modulith`
 (placement: the guard belongs in `adapter/out` SQL behind the internal `application.Payments`
@@ -53,35 +56,35 @@ session addendum). Exists in git before phase 0.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a `payment` row in `SUCCEEDED`, when a `payment_failed` outcome is applied
+- [x] **AC-1:** Given a `payment` row in `SUCCEEDED`, when a `payment_failed` outcome is applied
       for that PaymentIntent, then the row stays `SUCCEEDED` and the port reports the transition
       as not applied. *Pinned by:* `JdbcPaymentsIT.lateFailureCannotOverwriteASucceededCollection`
-- [ ] **AC-2:** Given a `payment` row in `REFUNDED` with `refunded_minor > 0`, when a
+- [x] **AC-2:** Given a `payment` row in `REFUNDED` with `refunded_minor > 0`, when a
       `payment_failed` outcome is applied, then status and `refunded_minor` are both unchanged —
       no self-contradictory row. *Pinned by:* `JdbcPaymentsIT.lateFailureCannotOverwriteARefundedCollection`
-- [ ] **AC-3:** Given a `payment` row in `REQUIRES_PAYMENT` or `FAILED` (the open states), when a
+- [x] **AC-3:** Given a `payment` row in `REQUIRES_PAYMENT` or `FAILED` (the open states), when a
       webhook outcome is applied, then the transition applies and is reported as applied — a
       declined-then-retried intent still reaches `SUCCEEDED`.
       *Pinned by:* `JdbcPaymentsIT.anOpenCollectionStillTransitions`
-- [ ] **AC-4:** Given a booking whose payment already succeeded, when a **late**
+- [x] **AC-4:** Given a booking whose payment already succeeded, when a **late**
       `payment_intent.payment_failed` arrives under a fresh event id, then the payment record
       stays `SUCCEEDED` and the response is `200` (the event is consumed — it is genuinely applied,
       as a no-op). *Pinned by:* `StripeWebhookIT.lateFailureAfterSuccessLeavesThePaymentSucceeded`
-- [ ] **AC-5:** Given a booking whose payment already succeeded, when a **late**
+- [x] **AC-5:** Given a booking whose payment already succeeded, when a **late**
       `payment_intent.canceled` arrives under a fresh event id, then the payment stays `SUCCEEDED`
       and **no `PaymentCanceled` is published** — the claim-release path is never entered for a
       collected payment. *Pinned by:* `StripeWebhookIT.lateCancelAfterSuccessPublishesNoRelease`
-- [ ] **AC-6:** Given a verified `payment_intent.succeeded` whose `data.object` cannot be read as
+- [x] **AC-6:** Given a verified `payment_intent.succeeded` whose `data.object` cannot be read as
       a PaymentIntent, when it is delivered, then the response is a 5xx, **no** `stripe_webhook_event`
       row is committed for that event id, and the payment row is unchanged — Stripe redelivers.
       *Pinned by:* `StripeWebhookIT.unreadableHandledEventIsRetryableAndNotConsumed`
-- [ ] **AC-7:** Given a verified event of a type this app does not act on, when its payload is
+- [x] **AC-7:** Given a verified event of a type this app does not act on, when its payload is
       unreadable, then it is still `200` and consumed — the retryable failure is scoped to the
       three handled types. *Pinned by:* `StripeWebhookIT.unreadableIgnoredEventTypeIsStillConsumed`
-- [ ] **AC-8:** Given a verified `payment_intent.succeeded` for an intent this app never recorded,
+- [x] **AC-8:** Given a verified `payment_intent.succeeded` for an intent this app never recorded,
       when it is delivered, then it is `200` with no state change and no event — unchanged
       behavior, not a retry. *Pinned by:* `StripeWebhookIT.unknownIntentIsIgnoredNotRetried`
-- [ ] **AC-9:** Given the existing happy paths (succeeded confirms, canceled releases, duplicate
+- [x] **AC-9:** Given the existing happy paths (succeeded confirms, canceled releases, duplicate
       delivery is idempotent, bad/absent signature is `400`), when the guard ships, then all of
       them still hold. *Pinned by:* the pre-existing `StripeWebhookIT` + `StripeWebhookListenerFailureIT` methods.
 
@@ -122,25 +125,30 @@ session addendum). Exists in git before phase 0.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The open-state set is drawn too narrow and a **legitimate** transition is silently swallowed (e.g. a retried intent that failed once can no longer reach `SUCCEEDED`) | med | high | `FAILED` is explicitly **open**, not terminal — Stripe's `payment_failed` is non-terminal and the guest may retry the same intent (the reason `findPendingCredentials` already treats `FAILED` as payable). AC-3 pins it | Claude | open |
-| R-2 | Gating event publication on the guard suppresses a *needed* `PaymentConfirmed` — e.g. a redelivery meant to re-drive a failed confirm | low | high | Confirm re-drive is the **Event Publication Registry**'s job, not the webhook's (`StripeWebhookListenerFailureIT`): a failed async listener leaves an incomplete publication for resubmission, so nothing depends on a second webhook re-publishing. AC-9 keeps that IT green | Claude | open |
-| R-3 | The new 5xx turns a permanently-undeserializable event into a 3-day redelivery storm plus repeating ERROR lines | low | med | That is the intended trade (visible + recoverable beats silent + lost). The id is never blacklisted, so a manual dashboard replay works after a fix; the log line carries event id + type only | Claude | open |
-| R-4 | Throwing from the controller leaks a non-RFC-7807 body, against the one-error-contract rule (`riviera-java-conventions` §6b) | low | low | Deliberate and documented: the webhook's only client is Stripe, which reads the status code and ignores the body. No per-controller `@ExceptionHandler` is added (forbidden, `ErrorContractArchitectureTests`); the exception carries `@ResponseStatus` so the status is deterministic and testable | Claude | open |
-| R-5 | Widening `markStatus` to `boolean` breaks the three test doubles implementing `Payments` | high | low | Mechanical: `WebSliceStubs`, `PaymentServiceTest`'s inline stub, `ThrowingPayments`. Compile failure is the detector | Claude | open |
-| R-6 | Money/payout consequence: a guarded write changes when `PaymentConfirmed` fires, which is what `payout` accrues on (invariant #9) | low | high | The gate only suppresses publication where the payment row did **not** transition — i.e. where the accrual either already happened (terminal `SUCCEEDED`) or must not happen (`REFUNDED`/`CANCELED`). `payout`'s accrual is idempotent per booking regardless | Claude | open |
+| R-1 | The open-state set is drawn too narrow and a **legitimate** transition is silently swallowed (e.g. a retried intent that failed once can no longer reach `SUCCEEDED`) | med | high | `FAILED` is explicitly **open**, not terminal — Stripe's `payment_failed` is non-terminal and the guest may retry the same intent (the reason `findPendingCredentials` already treats `FAILED` as payable). AC-3 pins it | Claude | closed — `anOpenCollectionStillTransitions` green in `0216f86` |
+| R-2 | Gating event publication on the guard suppresses a *needed* `PaymentConfirmed` — e.g. a redelivery meant to re-drive a failed confirm | low | high | Confirm re-drive is the **Event Publication Registry**'s job, not the webhook's (`StripeWebhookListenerFailureIT`): a failed async listener leaves an incomplete publication for resubmission, so nothing depends on a second webhook re-publishing. AC-9 keeps that IT green | Claude | closed — `StripeWebhookListenerFailureIT` green in `ba6cc7b` |
+| R-3 | The new 5xx turns a permanently-undeserializable event into a 3-day redelivery storm plus repeating ERROR lines | low | med | That is the intended trade (visible + recoverable beats silent + lost). The id is never blacklisted, so a manual dashboard replay works after a fix; the log line carries event id + type only | Claude | closed — accepted, and named in `docs/runbooks/observability.md` so an operator reads the repeat as a defect to fix rather than a transient to wait out |
+| R-4 | Throwing from the controller leaks a non-RFC-7807 body, against the one-error-contract rule (`riviera-java-conventions` §6b) | low | low | Deliberate and documented: the webhook's only client is Stripe, which reads the status code and ignores the body. No per-controller `@ExceptionHandler` is added (forbidden, `ErrorContractArchitectureTests`); the exception carries `@ResponseStatus` so the status is deterministic and testable | Claude | closed — `ErrorContractArchitectureTests` green in `b1cf41f`; the trade is stated in the PR's Scope notes |
+| R-5 | Widening `markStatus` to `boolean` breaks the three test doubles implementing `Payments` | high | low | Mechanical: `WebSliceStubs`, `PaymentServiceTest`'s inline stub, `ThrowingPayments`. Compile failure is the detector | Claude | closed — all three updated in `0216f86` |
+| R-6 | Money/payout consequence: a guarded write changes when `PaymentConfirmed` fires, which is what `payout` accrues on (invariant #9) | low | high | The gate only suppresses publication where the payment row did **not** transition — i.e. where the accrual either already happened (terminal `SUCCEEDED`) or must not happen (`REFUNDED`/`CANCELED`). `payout`'s accrual is idempotent per booking regardless | Claude | closed — no accrual path changed; `payout`'s idempotent listener is untouched |
 | R-7 | Flyway version collision | n/a | n/a | **No migration in this slice.** Next free number on `main` is `V42`; unclaimed either way — the only open PRs are dependabot bumps | Claude | closed — no DDL |
 
 ## Open questions / Assumptions
 
-- **Assumption:** an intent's **open** set and its **payable** set are the same two states
-  (`REQUIRES_PAYMENT`, `FAILED`), so one named constant can serve both queries in `JdbcPayments`.
-  Grounded in `findPendingCredentials`' existing comment ("an intent is payable while OPEN") —
-  *Owner:* Claude · *Resolves by:* phase 0
-- **Assumption:** the SDK's `deserializeUnsafe` can be made to fail in a test by pairing a
-  mismatched `api_version` with an unknown `data.object.object` value; if it does not throw, the
-  wrong-object-type arm (a well-formed non-PaymentIntent object) still exercises the same
-  "no intent id extracted" branch and AC-6 is pinned through it —
-  *Owner:* Claude · *Resolves by:* phase 2
+*(empty — both entries resolved below.)*
+
+### Resolved
+
+- **Assumption (confirmed):** an intent's **open** set and its **payable** set are the same two
+  states (`REQUIRES_PAYMENT`, `FAILED`), so one named `OPEN_STATUSES` constant serves both queries
+  in `JdbcPayments` — grounded in `findPendingCredentials`' existing "payable while OPEN" comment.
+  Resolved in `0216f86`.
+- **Assumption (superseded, and the better test for it):** rather than trying to force the SDK's
+  `deserializeUnsafe` to throw, AC-6 drives the same "no intent id extracted" branch with a
+  well-formed **non-PaymentIntent** `data.object`, which is deterministic across SDK versions. The
+  version-skew case turned out to deserve the *opposite* test: `apiVersionSkewStillReadsTheIntentId`
+  proves the `deserializeUnsafe` fallback still confirms an event from another API version, so the
+  new throw cannot over-trigger on the very case the fallback exists for. Resolved in `b1cf41f`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -238,16 +246,17 @@ unchanged. The only addition is a 5xx on a previously-silent failure path.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3 — docs freshness + close-out)`
+**Stage pointer:** `PR #590 ready for review — review gate next, then the Sonar gate`
 
-**Next action:** Phase 3 — run the docs-freshness audit, then mark the PR ready for review.
+**Next action:** Run `/code-review` over PR #590 per `riviera-sdlc` `references/pr-gates.md` §1
+with `riviera-review-overlay` layered on, then pull the Sonar new-issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Guard `markStatus` at the SQL seam (#568) | ✅ | `0216f86` |
 | 1 — Gate event publication on a real transition (#568) | ✅ | `ba6cc7b` |
-| 2 — Make an unreadable handled event retryable (#570) | ✅ | `<phase-2>` |
-| 3 — Docs freshness + close-out | | |
+| 2 — Make an unreadable handled event retryable (#570) | ✅ | `b1cf41f` |
+| 3 — Docs freshness + close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -279,6 +288,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/payment/application/ThrowingPayments.java` — stub signature
 - `RESPONSIBILITIES.md` — `payment` § gains the state-machine + unreadable-event rules (the
   rationale §6d keeps out of Javadoc)
+- `docs/runbooks/observability.md` — names the deterministic webhook-5xx cause the new `503`
+  introduces (docs-freshness finding)
 
 ---
 
@@ -288,69 +299,69 @@ Skill-routing gate for what the fix touches *before* editing).
 `payment/adapter/out/StripePaymentGateway.java:170` · Test `payment/adapter/out/JdbcPaymentsIT.java`
 · stubs (`WebSliceStubs`, `PaymentServiceTest`, `ThrowingPayments`)
 
-- [ ] **Step 1: Write the failing tests** — `JdbcPaymentsIT`: a `SUCCEEDED` row refuses `FAILED`
+- [x] **Step 1: Write the failing tests** — `JdbcPaymentsIT`: a `SUCCEEDED` row refuses `FAILED`
       (AC-1); a `REFUNDED` row refuses `FAILED` and keeps `refunded_minor` (AC-2); an open row
       (`REQUIRES_PAYMENT`, then `FAILED`) still transitions and reports `true` (AC-3).
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*JdbcPaymentsIT*"` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*JdbcPaymentsIT*"` → FAIL
       (today's unconditional `UPDATE` overwrites, and `markStatus` returns `void`, so it will not
       even compile against the new assertions — write the port change with the test).
-- [ ] **Step 3: Minimal implementation** — `boolean markStatus(...)` on the port; `AND status IN
+- [x] **Step 3: Minimal implementation** — `boolean markStatus(...)` on the port; `AND status IN
       (:openStates)` in the SQL, returning `update() == 1`; update the three stubs.
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*JdbcPaymentsIT*"` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — search every write to `payment.status`
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*JdbcPaymentsIT*"` → PASS.
+- [x] **Step 5: Generalization-audit pass** — search every write to `payment.status`
       (`grep -rn "UPDATE payment" platform/src/main`) and every `markStatus` call site; decide
       whether `markRefunded` needs the same guard.
-- [ ] **Step 6: Commit** — `git commit -m "Guard the payment record's webhook transitions (#568)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Guard the payment record's webhook transitions (#568)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Gate event publication on a real transition (#568)
 
 **Files:** Modify `payment/adapter/in/StripeWebhookController.java` · Test
 `payment/adapter/in/StripeWebhookIT.java`
 
-- [ ] **Step 1: Write the failing tests** — AC-4 (late `payment_failed` after success leaves
+- [x] **Step 1: Write the failing tests** — AC-4 (late `payment_failed` after success leaves
       `SUCCEEDED`, `200`) and AC-5 (late `canceled` after success publishes no `PaymentCanceled`).
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*StripeWebhookIT*"` → FAIL on
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*StripeWebhookIT*"` → FAIL on
       the published `PaymentCanceled` (AC-4 may already pass from phase 0 — that is the phase-0
       guard doing its job; keep the test, it pins the HTTP-level contract).
-- [ ] **Step 3: Minimal implementation** — `onSucceeded`/`onCanceled` publish only when
+- [x] **Step 3: Minimal implementation** — `onSucceeded`/`onCanceled` publish only when
       `markStatus` returned `true`; log the suppression at WARN with event ids only.
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*StripeWebhookIT*"` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — any other publisher that announces a fact it did not
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*StripeWebhookIT*"` → PASS.
+- [x] **Step 5: Generalization-audit pass** — any other publisher that announces a fact it did not
       verify happened?
-- [ ] **Step 6: Commit** — `git commit -m "Publish a payment outcome only when the record moved (#568)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Publish a payment outcome only when the record moved (#568)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — Make an unreadable handled event retryable (#570)
 
 **Files:** Create `payment/adapter/in/UnreadableWebhookEventException.java` · Modify
 `payment/adapter/in/StripeWebhookController.java` · Test `payment/adapter/in/StripeWebhookIT.java`
 
-- [ ] **Step 1: Write the failing tests** — AC-6 (unreadable `succeeded` → 5xx, **no**
+- [x] **Step 1: Write the failing tests** — AC-6 (unreadable `succeeded` → 5xx, **no**
       `stripe_webhook_event` row, payment unchanged), AC-7 (unreadable ignored type → still `200`),
       AC-8 (unknown intent → still `200`, no retry).
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*StripeWebhookIT*"` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*StripeWebhookIT*"` → FAIL
       (today: `200` and a committed dedup row).
-- [ ] **Step 3: Minimal implementation** — for the three handled types, an absent intent id throws
+- [x] **Step 3: Minimal implementation** — for the three handled types, an absent intent id throws
       `UnreadableWebhookEventException`; the `@Transactional` rollback un-does the dedup insert.
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*StripeWebhookIT*"` → PASS,
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*StripeWebhookIT*"` → PASS,
       then broaden: `--tests "*payment*"` plus `*ModularityTests*` `*PackageShapeArchitectureTests*`
       `*ErrorContractArchitectureTests*`.
-- [ ] **Step 5: Generalization-audit pass** — any other endpoint that records "seen" before it has
+- [x] **Step 5: Generalization-audit pass** — any other endpoint that records "seen" before it has
       applied the fact?
-- [ ] **Step 6: Commit** — `git commit -m "Redeliver, never consume, an unreadable verified webhook event (#570)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Redeliver, never consume, an unreadable verified webhook event (#570)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 3 — Docs freshness + close-out
 
 **Files:** Modify `RESPONSIBILITIES.md` · `docs/plans/stripe-webhook-payment-state-guard.md`
 
-- [ ] **Step 1:** Run `riviera-docs-freshness` over the merge span; patch what the diff contradicts.
-- [ ] **Step 2:** Reconcile the File-structure section —
+- [x] **Step 1:** Run `riviera-docs-freshness` over the merge span; patch what the diff contradicts.
+- [x] **Step 2:** Reconcile the File-structure section —
       `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 3:** Finalize Execution status (`merged via PR #NN`), close every risk row, empty Open
+- [x] **Step 3:** Finalize Execution status (`merged via PR #NN`), close every risk row, empty Open
       Questions.
-- [ ] **Step 4: Commit** — `git commit -m "Close out the webhook state-guard slice (#568, #570)"`
+- [x] **Step 4: Commit** — `git commit -m "Close out the webhook state-guard slice (#568, #570)"`
 
 ---
 
@@ -368,27 +379,33 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-3:** Run `./gradlew test --tests "*JdbcPaymentsIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4..AC-9:** Run `./gradlew test --tests "*StripeWebhookIT*" --tests "*StripeWebhookListenerFailureIT*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1..AC-3:** Run `gradle -p platform test --tests "*JdbcPaymentsIT*"` → PASS (12 tests).
+      Verified at commit `0216f86`.
+- [x] **AC-4..AC-9:** Run `gradle -p platform test --tests "*StripeWebhookIT*"
+      --tests "*StripeWebhookListenerFailureIT*"` → PASS (12 + 1 tests). Verified at commit `b1cf41f`,
+      alongside the structural net (`ModularityTests`, `PackageShapeArchitectureTests`,
+      `PublishedSurfacePlacementArchitectureTests`, `ErrorContractArchitectureTests`,
+      `JdbcOnlyArchitectureTests`) — all green. Docker was available, so none of the ITs skipped.
+      CI owns the full suite.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; no new write path, and the indirect release-request path is closed (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, stated.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads unchanged (invariant #11).
-- [ ] **Payment/payout** section filled; webhooks are source of truth; idempotent; money untouched; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — unchanged, and a refunded record is now protected from overwrite.
-- [ ] Timezone correct (invariant #6) — N/A, no time arithmetic.
-- [ ] Booking codes unguessable (invariant #7) — no code logged; the new WARN carries event ids only.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no DDL; stated in the risk register.
-- [ ] **Frontend** standards — N/A, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; no new write path, and the indirect release-request path is closed (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, stated.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads unchanged (invariant #11).
+- [x] **Payment/payout** section filled; webhooks are source of truth; idempotent; money untouched; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — unchanged, and a refunded record is now protected from overwrite.
+- [x] Timezone correct (invariant #6) — N/A, no time arithmetic.
+- [x] Booking codes unguessable (invariant #7) — no code logged; the new WARN carries event ids only.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no DDL; stated in the risk register.
+- [x] **Frontend** standards — N/A, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
