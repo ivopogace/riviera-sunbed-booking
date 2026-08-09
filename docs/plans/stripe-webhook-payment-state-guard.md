@@ -42,8 +42,17 @@ named test obligation — this slice adds the missing out-of-order half) · `riv
 (placement: the guard belongs in `adapter/out` SQL behind the internal `application.Payments`
 port; the new exception stays package-private in `adapter/in`, published nowhere) ·
 `riviera-java-conventions` (§6a named the `OPEN_STATUSES` token list instead of inlining
-literals; §6b confirmed a per-controller `@ExceptionHandler` is forbidden, so the retryable
-failure is a `@ResponseStatus` exception rather than a bespoke handler) · `postgres` (the
+literals; §6b is what review finding F-1 turned on — the retryable failure now extends
+`ErrorResponseException` so its `503` still leaves through the one advice as RFC-7807, instead
+of `@ResponseStatus` opening a third mapping path) · `codebase-design` (loaded at the review
+gate on RV-PROC-1; re-vetted the `void`→`boolean` seam: the guard is *hidden* behind the same
+one-method interface, so the module got **deeper**, and a typed outcome enum was rejected because
+no caller distinguishes "already terminal" from "no such payment" — `firstSeen`'s boolean is the
+in-repo precedent) · `domain-modeling` (same trigger; concluded no `CONTEXT.md` term and no ADR
+are due — open-vs-terminal is an implementation state machine, not ubiquitous language, and the
+change fails all three ADR tests: one `WHERE` clause to reverse, unsurprising as the repo's
+existing guarded-transition idiom, no trade-off left open. The rationale lives in
+`RESPONSIBILITIES.md` §`payment`) · `postgres` (the
 guarded `UPDATE … WHERE status IN (…)` idiom; confirmed no index is warranted — the predicate
 rides the existing `payment_intent_uniq` unique index) · `riviera-local-debug` (scoped test
 recipe for the session's first Gradle run).
@@ -246,10 +255,16 @@ unchanged. The only addition is a 5xx on a previously-silent failure path.
 
 ## Execution status
 
-**Stage pointer:** `PR #590 ready for review — review gate next, then the Sonar gate`
+**Stage pointer:** `review gate — run, findings fixed; Sonar re-check, then merge`
 
-**Next action:** Run `/code-review` over PR #590 per `riviera-sdlc` `references/pr-gates.md` §1
-with `riviera-review-overlay` layered on, then pull the Sonar new-issue list.
+**Next action:** Confirm CI green on the review-fix push and re-pull the Sonar issue list for the
+new head, then merge and run the close-out (the plan doc is already at its final state).
+
+**Review gate:** ran on PR #590 at head `b824345` per `pr-gates.md` §1 — the `code-review` plugin's
+workflow (its subagent fan-out, authorized by the maintainer since this session carries a standing
+"no Agent tool" instruction), with `riviera-review-overlay`'s RV-BE/RV-CT/RV-PROC/RV-STYLE bank
+layered on. **High effort**, as required for a money-path slice. Five findings, all resolved in the
+register below; the three overlay Blockers (RV-BE-1, RV-BE-7/RV-CT-3, RV-BE-9) passed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -266,7 +281,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (CLAUDE.md/conventions agent) | `UnreadableWebhookEventException` carried `@ResponseStatus`, so Spring's `ResponseStatusExceptionResolver` answered it directly — a **third** error-mapping path beside `ApiProblem` and the one `ApiErrorHandler` advice, which `riviera-java-conventions` §6b forbids and `ErrorContractArchitectureTests` cannot catch (it only scans for `@ExceptionHandler`). Fixed by extending `ErrorResponseException`, which the advice's `ResponseEntityExceptionHandler` base already handles: the `503` now leaves as an RFC-7807 problem with `code` stamped by `handleExceptionInternal`, through the **one** advice, with no new handler and the rollback unchanged. The agent's third suggestion — return `ResponseEntity.status(503)` instead of throwing — was **rejected**: returning commits the transaction, so the dedup insert would survive and the event would still be consumed, defeating the fix. Re-entry: `riviera-java-conventions` (§6b) + `riviera-modulith` (the type stays package-private in `adapter/in`; publishing it to `vocabulary/` just to let the root advice name it would publish a type no other module needs) | fixed-in-`<review-fix>` |
+| F-2 | review (comment-compliance agent) | `StripePaymentGateway.cancel` ignores the now-`boolean` `markStatus`, and its comment *"Canceled now, or already canceled: either way the payment can no longer succeed"* was read as no longer guaranteed. **Not a defect** — the sentence is about the **Stripe intent** (which `cancel()` has just voided, or found already void), not the local row, and it stays true. The local guard's `false` there means the row was already terminal: already `CANCELED` (a repeat sweep — releasing is still right), or `SUCCEEDED`/`REFUNDED`, which contradicts what Stripe just said and cannot arise, since Stripe refuses to cancel a succeeded intent (that path returns `Failed`). Trusting Stripe over the local row is exactly invariant #8. A one-line note was added at the call site so the deliberate ignore is not re-raised at the next review | closed — no code change beyond the clarifying line |
+| F-3 | review (bug-scan agent, passing note) | The `Payments` test doubles now `return false` from `markStatus`, which would suppress event publication in any *other* test relying on them to simulate a real transition. **Checked:** `WebSliceStubs` backs controller web-slice tests, and the only tests asserting on `PaymentConfirmed`/`PaymentCanceled` are ITs running the real `JdbcPayments`. No test depends on the stub's return | closed — verified, no change |
+| F-4 | review (overlay bank, RV-PROC-1) | *Skills consulted* named `riviera-modulith` but not `codebase-design` + `domain-modeling`, which the routing table's "any backend module / structure" row requires together — and the `void`→`boolean` port change is exactly the seam decision `codebase-design` exists to vet. Both loaded at the gate and the section re-vetted; their conclusions (seam re-vet, no `CONTEXT.md` term, no ADR) are now on the line, not just implied. Every other RV-BE/RV-CT item passed or was N/A, including the three Blockers | fixed-in-`<review-fix>` |
+| F-5 | sonar | Quality gate **passed** on `b824345`: 0 new issues, 0 accepted issues, 0 security hotspots, 100.0% coverage on new code, 0.0% duplication. Re-verified against the API after the review-fix push (green is necessary, not sufficient — pr-gates §2) | closed |
 
 ---
 
@@ -288,6 +307,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/payment/application/ThrowingPayments.java` — stub signature
 - `RESPONSIBILITIES.md` — `payment` § gains the state-machine + unreadable-event rules (the
   rationale §6d keeps out of Javadoc)
+- `platform/src/main/java/ai/riviera/platform/payment/adapter/out/StripePaymentGateway.java` — one
+  line recording that the guard's no-op is expected at this call site (review finding F-2)
 - `docs/runbooks/observability.md` — names the deterministic webhook-5xx cause the new `503`
   introduces (docs-freshness finding)
 

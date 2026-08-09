@@ -172,8 +172,11 @@ class StripeWebhookController {
 	 * read, which would consume the event and blacklist its id (invariant #8).
 	 */
 	private String requiredPaymentIntentId(Event event) {
-		return paymentIntentId(event).orElseThrow(
-				() -> new UnreadableWebhookEventException(event.getId(), event.getType()));
+		return paymentIntentId(event).orElseThrow(() -> {
+			log.error("no PaymentIntent in verified event {} ({}) — not applying it, asking Stripe to re-deliver",
+					event.getId(), event.getType());
+			return new UnreadableWebhookEventException();
+		});
 	}
 
 	/**

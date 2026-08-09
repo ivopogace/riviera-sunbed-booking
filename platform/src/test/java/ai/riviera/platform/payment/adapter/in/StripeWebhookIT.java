@@ -222,7 +222,9 @@ class StripeWebhookIT {
 		String payload = eventJson("evt_unreadable_1", "payment_intent.succeeded",
 				Stripe.API_VERSION, NOT_AN_INTENT_OBJECT);
 
-		postSigned(payload, sign(payload), 503);
+		postSigned(payload, sign(payload), 503)
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"));
 
 		assertEquals("REQUIRES_PAYMENT", statusOf("pi_unreadable"),
 				"an event whose fact could not be applied changes nothing");
