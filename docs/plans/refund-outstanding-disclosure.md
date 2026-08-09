@@ -74,7 +74,8 @@ mocked-suite spec).
 - [ ] **AC-5:** `RefundProgress` mapping is total: no row → `NO_COLLECTION`; row that never
   succeeded (`REQUIRES_PAYMENT`/`FAILED`/`CANCELED`) → `NO_COLLECTION`; `SUCCEEDED` with
   `refunded_minor = 0` → `OUTSTANDING`; `refunded_minor > 0` (incl. `PARTIALLY_REFUNDED`)
-  → `ACCEPTED`. *Pinned by:* `RefundStatusServiceTest` (all arms) +
+  → `ACCEPTED`. *Pinned by:* `RefundServiceTest` (`progress*` cases — the port landed on
+  `RefundService`, mirroring `PaymentService` carrying `PaymentCredentialsLookup`) +
   `JdbcPaymentsIT.readsRefundStateBackAfterMarkRefunded` (real-Postgres read-back)
 - [ ] **AC-6:** Given a view response with `refundOutstanding: true`, when the guest opens
   `/booking/{code}`, then the panel says the refund **is being processed** and contains
@@ -203,16 +204,15 @@ never arrival or card. Accepted/stub copy byte-identical to today.
 > Session-recovery anchor — update in the same commit window as the change it records,
 > at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** plan committed → implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** open the draft PR for CI, then phase 1 red tests
-(`RefundStatusServiceTest`).
+**Next action:** phase 2 red tests in `ViewBookingServiceTest` (AC-1..AC-4).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc committed, draft PR opened | ⏳ | |
-| 1 — `payment`: `RefundProgress` + `RefundStatusLookup` + JDBC read | | |
-| 2 — `booking`: view consults port, discloses `refundOutstanding` | | |
+| 0 — plan doc committed, draft PR opened (PR #582) | ✅ | `e9dcb54` |
+| 1 — `payment`: `RefundProgress` + `RefundStatusLookup` + JDBC read | ✅ | `e957367` |
+| 2 — `booking`: view consults port, discloses `refundOutstanding` | ⏳ | |
 | 3 — frontend: model + panel branch + unit/e2e specs | | |
 | 4 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, package-info freshness) | | |
 
@@ -231,10 +231,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/payment/vocabulary/RefundProgress.java` — new enum (published vocabulary)
 - `platform/src/main/java/ai/riviera/platform/payment/api/RefundStatusLookup.java` — new query port
 - `platform/src/main/java/ai/riviera/platform/payment/api/package-info.java` — freshness: name all the ports actually published
-- `platform/src/main/java/ai/riviera/platform/payment/application/RefundStatusService.java` — package-private port impl (row → `RefundProgress` mapping)
+- `platform/src/main/java/ai/riviera/platform/payment/application/RefundService.java` — implements the new port beside `RefundPort` (row → `RefundProgress` mapping)
+- `platform/src/main/java/ai/riviera/platform/payment/application/RefundState.java` — internal status+refunded record returned by `Payments`
 - `platform/src/main/java/ai/riviera/platform/payment/application/Payments.java` — new read for the refund state
-- `platform/src/main/java/ai/riviera/platform/payment/adapter/out/JdbcPayments.java` — the `SELECT status, refunded_minor` text block
-- `platform/src/test/java/ai/riviera/platform/payment/application/RefundStatusServiceTest.java` — AC-5 arms
+- `platform/src/main/java/ai/riviera/platform/payment/adapter/out/JdbcPayments.java` — the `SELECT status, refunded_minor` query
+- `platform/src/test/java/ai/riviera/platform/payment/application/RefundServiceTest.java` — AC-5 arms
+- `platform/src/test/java/ai/riviera/platform/payment/application/RefundFailureMetricTest.java` — constructor gains the unused `Payments` stub
+- `platform/src/test/java/ai/riviera/platform/payment/application/PaymentServiceTest.java` — anonymous `Payments` stub gains the new method
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — shared `Payments` stub gains the new method
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/out/JdbcPaymentsIT.java` — read-back after `markRefunded`
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/ViewBookingService.java` — lazy consult
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/BookingDetail.java` — `refundOutstanding` field
