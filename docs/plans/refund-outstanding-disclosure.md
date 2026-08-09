@@ -114,17 +114,22 @@ cases staying green.
 
 ## Open questions / Assumptions
 
-- **Assumption:** the `payment` row for a booking reaching the cancelled-with-refund view
-  can only be `SUCCEEDED` / `REFUNDED` / `PARTIALLY_REFUNDED` at consult time (guest cancel
-  requires `CONFIRMED`, which requires collection); the never-succeeded arms of AC-5 are
-  defense-in-depth. — *Owner:* session · *Resolves by:* phase 1 (verify in code while
-  writing the mapping)
-- **Open question:** does `BookingViewIT` (stub-profile) need any assertion beyond
-  `refundOutstanding=false` on existing cancelled cases, given the stub profile can never
-  produce a payment row? — *Owner:* session · *Resolves by:* phase 2
 - **Open question:** does `/my-bookings` (`MyBookingSummary.refundedAmount`) make the same
   misleading claim anywhere in its copy? — *Owner:* session · *Resolves by:* phase 3
   generalization audit
+
+### Resolved
+
+- **Assumption:** the `payment` row for a booking reaching the cancelled-with-refund view
+  can only be `SUCCEEDED` / `REFUNDED` / `PARTIALLY_REFUNDED` at consult time. *Confirmed
+  while writing the mapping: guest cancel requires `CONFIRMED` (collection succeeded); the
+  sweep's cancel stamps no refund decision, so the never-succeeded arms of AC-5 are
+  defense-in-depth only.* — `e957367`
+- **Open question:** what does `BookingViewIT` assert? *Resolved: one wire-level
+  `refundOutstanding=false` assertion on the existing weather-refund case — the stub
+  profile can never produce a payment row, so the wire IT proves the `NO_COLLECTION` path;
+  the `OUTSTANDING`/`ACCEPTED` arms are pinned at the service seam (AC-1/2) and the JDBC
+  seam (AC-5), and `BookingDetailView.of` is a field copy.* — `5f2ae60`
 
 ## Availability & concurrency (invariant #2)
 
@@ -204,16 +209,16 @@ never arrival or card. Accepted/stub copy byte-identical to today.
 > Session-recovery anchor — update in the same commit window as the change it records,
 > at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** phase 2 red tests in `ViewBookingServiceTest` (AC-1..AC-4).
+**Next action:** phase 3 red specs in `booking-view.spec.ts` + the mocked e2e case.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc committed, draft PR opened (PR #582) | ✅ | `e9dcb54` |
 | 1 — `payment`: `RefundProgress` + `RefundStatusLookup` + JDBC read | ✅ | `e957367` |
-| 2 — `booking`: view consults port, discloses `refundOutstanding` | ⏳ | |
-| 3 — frontend: model + panel branch + unit/e2e specs | | |
+| 2 — `booking`: view consults port, discloses `refundOutstanding` | ✅ | `5f2ae60` |
+| 3 — frontend: model + panel branch + unit/e2e specs | ⏳ | |
 | 4 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, package-info freshness) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
