@@ -15,6 +15,8 @@ import {
   payoutErrorOf,
   releaseErrorOf,
   requestErrorOf,
+  checkInErrorOf,
+  checkInWrongDateOf,
 } from './operator-console.service';
 
 const BASE = environment.apiBaseUrl;
@@ -259,5 +261,32 @@ describe('OperatorConsoleService — payout ledger + weather refund (#173)', () 
     expect(req.request.params.get('date')).toBe('2026-07-05');
     req.flush({ refundedCount: 2, totalRefundedMinor: 7000, currency: 'EUR' });
     expect(actual).toEqual({ refundedCount: 2, totalRefundedMinor: 7000, currency: 'EUR' });
+  });
+});
+
+describe('check-in error mapping (#583)', () => {
+  function http(status: number, body: unknown): HttpErrorResponse {
+    return new HttpErrorResponse({ status, error: body });
+  }
+
+  it('maps the RFC-7807 codes the Daily view explains', () => {
+    expect(checkInErrorOf(http(409, { code: 'ALREADY_CHECKED_IN' }))).toBe('ALREADY_CHECKED_IN');
+    expect(checkInErrorOf(http(409, { code: 'WRONG_SERVICE_DATE' }))).toBe('WRONG_SERVICE_DATE');
+    expect(checkInErrorOf(http(404, { code: 'BOOKING_NOT_FOUND' }))).toBe('BOOKING_NOT_FOUND');
+    expect(checkInErrorOf(http(403, { code: 'NOT_VENUE_OWNER' }))).toBe('NOT_VENUE_OWNER');
+  });
+
+  it('maps 401 to UNAUTHORIZED and everything unrecognized to UNKNOWN', () => {
+    expect(checkInErrorOf(http(401, { code: 'UNAUTHENTICATED' }))).toBe('UNAUTHORIZED');
+    expect(checkInErrorOf(http(500, { code: 'SOMETHING_ELSE' }))).toBe('UNKNOWN');
+    expect(checkInErrorOf(new Error('offline'))).toBe('UNKNOWN');
+  });
+
+  it('reads the bookingDate extension only when the problem body really carries one', () => {
+    expect(checkInWrongDateOf(http(409, { code: 'WRONG_SERVICE_DATE', bookingDate: '2026-08-15' })))
+      .toBe('2026-08-15');
+    expect(checkInWrongDateOf(http(409, { code: 'WRONG_SERVICE_DATE' }))).toBeUndefined();
+    expect(checkInWrongDateOf(http(409, { code: 'WRONG_SERVICE_DATE', bookingDate: 7 }))).toBeUndefined();
+    expect(checkInWrongDateOf(new Error('offline'))).toBeUndefined();
   });
 });

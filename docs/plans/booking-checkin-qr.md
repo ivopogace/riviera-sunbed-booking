@@ -234,6 +234,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | CI (Backend, fee5803) | `@WebMvcTest` contexts broke — `StaffBookingController`'s new `CheckInBooking` dependency had no `WebSliceStubs` bean (163 cascade failures) | fixed — inert stub added |
 | F-2 | CI (Backend, dc996e9) | full-suite test worker OOM (`Java heap space`) — ~30 cached Spring contexts against Gradle's 512m default; this slice tipped the margin | fixed — explicit `maxHeapSize = '1g'` |
 | F-3 | CI (Frontend, 5303d19) | QR never rendered in the e2e: the lazy `import('qrcode')` tripped Vite's first-use dependency optimization, reloading the page and wiping the in-memory confirmation | fixed — static import + SVG render (canvas-free, real lib in jsdom specs) |
+| F-4 | Sonar (bc8d9e7) | new-code coverage 73.7% < 80% — camera adapter, tab error branches, error mappers and the config factory untested | fixed — specs added (camera adapter with mocked media APIs, denial branches, mapper units, factory branches) |
 
 ---
 
@@ -269,6 +270,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/qr-scanner.ts` · `camera-qr-scanner.ts` · `fake-qr-scanner.ts` — token + adapters
 - `frontend/src/app/operator/scan-input.ts` · `scan-input.spec.ts` — URL/code parse
 - `frontend/src/app/operator/fake-qr-scanner.spec.ts` — the fake adapter's queue contract
+- `frontend/src/app/operator/camera-qr-scanner.spec.ts` — camera adapter against mocked media APIs (F-4)
+- `frontend/src/app/app.config.spec.ts` — the scanner factory's swap branches (F-4)
+- `frontend/src/app/operator/operator-console.service.spec.ts` — check-in error-mapper units (F-4)
 - `frontend/src/app/operator/daily-view-tab.a11y.spec.ts` — scanner-token provider for the axe specs
 - `frontend/src/app/shared/booking-code.ts` — `normalizeCode`, promoted from Find-a-booking (2nd consumer)
 - `frontend/src/app/booking/find-booking.ts` — imports the promoted normalizer

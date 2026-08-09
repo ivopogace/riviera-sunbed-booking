@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
+import { vi } from 'vitest';
 
 import { defaultBookingDate, todayBookingDate } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
@@ -285,6 +286,64 @@ describe('DailyViewTab (#175)', () => {
 
     expect(byId('checkin-result')!.textContent).toContain('doesn’t look like a booking code');
     http.verify();
+  });
+
+  it('scans via the armed fake scanner: toggle starts it, a payload checks in, garbage is rejected (#583)', () => {
+    (globalThis as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__ = [
+      'not a booking payload!',
+      'http://localhost/booking/ABC12345',
+    ];
+    try {
+      render();
+      (byId('checkin-scan-toggle') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(byId('checkin-result')!.textContent).toContain('isn’t a booking');
+
+      (byId('checkin-scan-toggle') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      http
+        .expectOne((r) => r.method === 'POST' && r.url.includes('/bookings/ABC12345/check-in'))
+        .flush({ setId: 2, bookingDate: '2026-06-15' });
+      fixture.detectChanges();
+      expect(byId('checkin-result')!.textContent).toContain('Checked in');
+      flushLoad(SEED, [{ setId: 2, code: 'ABC12345', checkedIn: true }]);
+    } finally {
+      delete (globalThis as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__;
+    }
+  });
+
+  it('falls back to typing when the camera is unavailable, with the notice explaining it (#583)', async () => {
+    render();
+    const scanner = TestBed.inject(QrScanner);
+    vi.spyOn(scanner, 'start').mockRejectedValue(new Error('NotAllowedError'));
+
+    (byId('checkin-scan-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('checkin-result')!.textContent).toContain('Camera unavailable');
+    expect(byId('checkin-video')).toBeNull();
+  });
+
+  it('explains every check-in denial in operator terms (#583)', () => {
+    render();
+    const submit = (status: number, body: object) => {
+      const input = byId('checkin-code-input') as HTMLInputElement;
+      input.value = 'ABC12345';
+      (byId('checkin-submit') as HTMLButtonElement).click();
+      http
+        .expectOne((r) => r.method === 'POST' && r.url.includes('/check-in'))
+        .flush(body, { status, statusText: 'x' });
+      fixture.detectChanges();
+      return byId('checkin-result')!.textContent!;
+    };
+
+    expect(submit(404, { code: 'BOOKING_NOT_FOUND' })).toContain('No booking with that code');
+    expect(submit(403, { code: 'NOT_VENUE_OWNER' })).toContain('don’t manage this venue');
+    expect(submit(409, { code: 'WRONG_SERVICE_DATE' })).toContain('different day');
+    expect(submit(500, { code: 'BOOM' })).toContain('Couldn’t check in');
+    expect(submit(401, { code: 'UNAUTHENTICATED' })).toContain('session expired');
   });
 
   it('shows an empty arrivals state when there are no confirmed bookings', () => {
