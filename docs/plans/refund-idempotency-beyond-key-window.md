@@ -223,16 +223,16 @@ No published surface changes: `RefundResult` keeps its two variants, no `spi/` i
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write `adoptsAnExistingStripeRefundInsteadOfCreatingASecond` and
-watch it fail by creating a second refund.
+**Next action:** Phase 1 — write `recoversAndRecordsWhenRefundCreateTimesOut` and watch it fail
+with a single attempt.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Adopt an existing Stripe refund instead of creating a second | ⏳ | |
-| 1 — Same-key immediate replay on a lost refund response | | |
-| 2 — Observability + the false-premise claim sweep | | |
+| 0 — Adopt an existing Stripe refund instead of creating a second (+ the adoption counter) | ✅ | see the Phase-0 commit |
+| 1 — Same-key immediate replay on a lost refund response | ⏳ | |
+| 2 — The false-premise claim sweep + runbook | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -268,10 +268,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 0 — Adopt an existing Stripe refund instead of creating a second
 
-**Files:** Modify `payment/adapter/out/StripePaymentGateway.java` · Test `payment/adapter/out/StripePaymentGatewayTest.java`
+**Files:** Modify `payment/adapter/out/StripePaymentGateway.java` · `shared/ObservabilityMetrics.java` · Test `payment/adapter/out/StripePaymentGatewayTest.java`
+
+> AC-7 (the adoption counter) lands here rather than in Phase 2: it is an assertion *about the
+> adopt path*, and the `MeterRegistry` constructor parameter it needs touches every construction
+> site in the test class. Deferring it would churn those sites twice.
 
 - [ ] **Step 1: Write the failing tests** — AC-1 (adopt), AC-3 (fail closed), AC-6 (dead refund
-      is not adopted), plus the existing happy-path test extended to stub an empty list.
+      is not adopted), AC-7 (counter), plus the existing happy-path test extended to stub an empty list.
 - [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*StripePaymentGatewayTest*"`
       → FAIL: a second refund is created (AC-1), and the list is never consulted.
 - [ ] **Step 3: Minimal implementation** — read the intent's refunds inside the existing `try`;
@@ -301,14 +305,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ---
 
-## Phase 2 — Observability + the false-premise claim sweep
+## Phase 2 — The false-premise claim sweep + runbook
 
-**Files:** Modify `shared/ObservabilityMetrics.java` · `payment/adapter/out/StripePaymentGateway.java` · the nine claim-sweep files · `RESPONSIBILITIES.md` · `docs/runbooks/observability.md` · `docs/plans/refund-outbox-resubmission.md`
+**Files:** Modify the nine claim-sweep files · `RESPONSIBILITIES.md` · `docs/runbooks/observability.md` · `docs/plans/refund-outbox-resubmission.md`
 
-- [ ] **Step 1: Write the failing test** — AC-7: adopting increments `riviera.refunds.adopted`.
-- [ ] **Step 2: Run it, verify it fails** — `--tests "*StripePaymentGatewayTest*"` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the counter, then the grep-driven claim sweep.
-- [ ] **Step 4: Run it, verify it passes** — plus the structural net
+- [ ] **Step 1: No new test** — this phase changes documentation only; the behavior it describes
+      is already pinned by AC-1…AC-7. The verification is the regression run in Step 4.
+- [ ] **Step 2: Grep the false premise** — the exact phrases, recorded in the audit log.
+- [ ] **Step 3: Correct each claim** — mechanism, not just conclusion.
+- [ ] **Step 4: Run the regression** — plus the structural net
       (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`, `*PackageShapeArchitectureTests*`)
       and `*RefundServiceTest*`, `*RefundExecutorConfigTest*`, `*RefundOutboxScopeTest*`.
 - [ ] **Step 5: Generalization-audit pass** — the sweep itself; record the grep and every hit.
@@ -323,6 +328,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-09 | Phase 0 | Any other gateway call trusting the idempotency key alone for safety across a replay that may outlive the key window | `grep -n "IdempotencyKey\|idempotencyKey(" StripePaymentGateway.java` then `grep -rn "\.pay(\|CheckoutPort" platform/src/main/java` | 2 keyed calls: `initiate` (`booking-<id>-pi`) and `refund` (`booking-<id>-refund`); plus `cancel`, unkeyed | **Fixed `refund` only, deliberately.** `initiate` is reached only from the synchronous request path (`CreateBookingService`, `RespondToRequestService`) — no event-publication replay vehicle can re-drive it days later, and its worst case after key pruning is a second *unconfirmed* intent that Stripe auto-expires, not money leaving. `cancel` already retrieves the intent's state from Stripe before acting — the same read-before-write posture this slice gives `refund`, which is why it needed no change |
 
 ---
 

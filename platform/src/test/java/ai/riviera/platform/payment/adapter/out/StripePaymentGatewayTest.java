@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.stripe.StripeClient;
@@ -7,16 +8,20 @@ import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Refund;
+import com.stripe.model.StripeCollection;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.RefundCreateParams;
+import com.stripe.param.RefundListParams;
 import com.stripe.service.PaymentIntentService;
 import com.stripe.service.RefundService;
 
 import com.stripe.service.V1Services;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import ai.riviera.platform.shared.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
@@ -29,6 +34,7 @@ import ai.riviera.platform.payment.domain.PaymentStatus;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -47,6 +53,49 @@ import static org.mockito.Mockito.when;
  */
 class StripePaymentGatewayTest {
 
+	private static final BookingRef BOOKING = new BookingRef(42L);
+	private static final String INTENT = "pi_abc";
+	private static final String REFUND_SUCCEEDED = "succeeded";
+
+	/**
+	 * The refund-path fixture: a gateway wired to a mocked Stripe refund service, the booking's
+	 * recorded PaymentIntent, and a real registry so the adoption counter can be read back.
+	 */
+	private record RefundFixture(StripePaymentGateway gateway, RefundService refunds, Payments payments,
+			SimpleMeterRegistry meters) {
+
+		double adoptedCount() {
+			return meters.counter(ObservabilityMetrics.REFUNDS_ADOPTED).count();
+		}
+	}
+
+	private static RefundFixture refundFixture() {
+		StripeClient stripe = mock(StripeClient.class);
+		RefundService refunds = mock(RefundService.class);
+		V1Services v1 = mock(V1Services.class);
+		Payments payments = mock(Payments.class);
+		when(stripe.v1()).thenReturn(v1);
+		when(v1.refunds()).thenReturn(refunds);
+		when(payments.findIntentByBookingRef(BOOKING)).thenReturn(Optional.of(INTENT));
+		SimpleMeterRegistry meters = new SimpleMeterRegistry();
+		return new RefundFixture(new StripePaymentGateway(stripe, payments, meters), refunds, payments, meters);
+	}
+
+	/** Stub what Stripe already holds against the intent — no arguments means "no refund yet". */
+	private static void stripeHolds(RefundService refunds, Refund... existing) throws StripeException {
+		StripeCollection<Refund> page = new StripeCollection<>();
+		page.setData(List.of(existing));
+		when(refunds.list(any(RefundListParams.class))).thenReturn(page);
+	}
+
+	private static Refund stripeRefund(String id, String status, long amount) {
+		Refund refund = mock(Refund.class);
+		when(refund.getId()).thenReturn(id);
+		when(refund.getStatus()).thenReturn(status);
+		when(refund.getAmount()).thenReturn(amount);
+		return refund;
+	}
+
 	@Test
 	void createsIntentWithIdempotencyKeyAndMinorUnits() throws StripeException {
 		StripeClient stripe = mock(StripeClient.class);
@@ -62,7 +111,8 @@ class StripePaymentGatewayTest {
 		when(intents.create(any(PaymentIntentCreateParams.class), any(RequestOptions.class)))
 				.thenReturn(created);
 
-		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		StripePaymentGateway gateway =
+				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
 		PaymentOutcome outcome = gateway.initiate(new BookingRef(42L), new Money(4500L, "EUR"));
 
 		PaymentOutcome.Pending pending = assertInstanceOf(PaymentOutcome.Pending.class, outcome,
@@ -98,7 +148,8 @@ class StripePaymentGatewayTest {
 		when(intents.create(any(PaymentIntentCreateParams.class), any(RequestOptions.class)))
 				.thenThrow(boom);
 
-		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		StripePaymentGateway gateway =
+				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
 		PaymentOutcome outcome = gateway.initiate(new BookingRef(7L), new Money(3000L, "EUR"));
 
 		PaymentOutcome.Failed failed = assertInstanceOf(PaymentOutcome.Failed.class, outcome,
@@ -125,7 +176,8 @@ class StripePaymentGatewayTest {
 				.thenThrow(new ApiConnectionException("simulated read timeout"))
 				.thenReturn(created);
 
-		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		StripePaymentGateway gateway =
+				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
 		PaymentOutcome outcome = gateway.initiate(new BookingRef(42L), new Money(4500L, "EUR"));
 
 		PaymentOutcome.Pending pending = assertInstanceOf(PaymentOutcome.Pending.class, outcome,
@@ -158,7 +210,8 @@ class StripePaymentGatewayTest {
 				.thenThrow(new ApiConnectionException("timeout 1"))
 				.thenThrow(new ApiConnectionException("timeout 2"));
 
-		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		StripePaymentGateway gateway =
+				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
 		PaymentOutcome outcome = gateway.initiate(new BookingRef(7L), new Money(3000L, "EUR"));
 
 		assertInstanceOf(PaymentOutcome.Failed.class, outcome,
@@ -170,32 +223,98 @@ class StripePaymentGatewayTest {
 
 	@Test
 	void refundUsesIdempotencyKeyAndRecordsTheRefund() throws StripeException {
-		StripeClient stripe = mock(StripeClient.class);
-		RefundService refunds = mock(RefundService.class);
-		V1Services v1 = mock(V1Services.class);
-		Payments payments = mock(Payments.class);
-		when(stripe.v1()).thenReturn(v1);
-		when(v1.refunds()).thenReturn(refunds);
-		when(payments.findIntentByBookingRef(new BookingRef(42L))).thenReturn(Optional.of("pi_abc"));
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds());
 
-		Refund created = mock(Refund.class);
-		when(created.getId()).thenReturn("re_xyz");
-		when(refunds.create(any(RefundCreateParams.class), any(RequestOptions.class))).thenReturn(created);
+		Refund created = stripeRefund("re_xyz", REFUND_SUCCEEDED, 2250L);
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenReturn(created);
 
-		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
-		RefundResult result = gateway.refund(new BookingRef(42L), new Money(2250L, "EUR"));
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
 
 		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result);
 		assertEquals("re_xyz", refunded.refundId());
 
 		ArgumentCaptor<RefundCreateParams> params = ArgumentCaptor.forClass(RefundCreateParams.class);
 		ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
-		verify(refunds).create(params.capture(), options.capture());
-		assertEquals("pi_abc", params.getValue().getPaymentIntent(), "refund targets the booking's PaymentIntent");
+		verify(fixture.refunds()).create(params.capture(), options.capture());
+		assertEquals(INTENT, params.getValue().getPaymentIntent(), "refund targets the booking's PaymentIntent");
 		assertEquals(2250L, params.getValue().getAmount(), "amount is integer minor units (invariant #5)");
 		assertEquals("booking-42-refund", options.getValue().getIdempotencyKey(),
 				"refund idempotency key is derived from the booking id (invariant #8/#10)");
-		verify(payments).markRefunded(new BookingRef(42L), 2250L, "re_xyz");
+		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_xyz");
+		assertEquals(0.0, fixture.adoptedCount(), "a freshly created refund is not an adoption");
+	}
+
+	@Test
+	void adoptsAnExistingStripeRefundInsteadOfCreatingASecond() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds(), stripeRefund("re_first", REFUND_SUCCEEDED, 2250L));
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		// The key window has passed, so the key would no longer stop a second refund — the read does.
+		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
+		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result,
+				"the refund already happened at Stripe — the caller is told it succeeded, not that it failed");
+		assertEquals("re_first", refunded.refundId());
+		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_first");
+	}
+
+	@Test
+	void countsAnAdoptedRefund() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds(), stripeRefund("re_first", REFUND_SUCCEEDED, 2250L));
+
+		fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		assertEquals(1.0, fixture.adoptedCount(),
+				"adopting a refund means an earlier attempt lost its response — ops can see it happened");
+	}
+
+	@Test
+	void adoptsWhatStripeActuallyRefundedWhenItDiffersFromTheRequest() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds(), stripeRefund("re_first", REFUND_SUCCEEDED, 2250L));
+
+		fixture.gateway().refund(BOOKING, new Money(4500L, "EUR"));
+
+		// Money that already moved is the truth; topping up the difference is booking's decision.
+		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
+		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_first");
+	}
+
+	@Test
+	void failsClosedWhenTheExistingRefundReadFails() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		StripeException boom = mock(StripeException.class);
+		when(boom.getCode()).thenReturn("rate_limit");
+		when(fixture.refunds().list(any(RefundListParams.class))).thenThrow(boom);
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
+		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
+				"an unreadable refund list must not be read as 'no refund exists'");
+		assertEquals("rate_limit", failed.reason());
+		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+	}
+
+	@Test
+	void createsAFreshRefundWhenTheOnlyStripeRefundIsDead() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds(), stripeRefund("re_dead", "failed", 2250L));
+		Refund created = stripeRefund("re_new", REFUND_SUCCEEDED, 2250L);
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenReturn(created);
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		// A failed refund returned no money, so the tourist is still owed it.
+		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result);
+		assertEquals("re_new", refunded.refundId());
+		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_new");
+		assertEquals(0.0, fixture.adoptedCount());
 	}
 
 	@Test
@@ -204,7 +323,8 @@ class StripePaymentGatewayTest {
 		Payments payments = mock(Payments.class);
 		when(payments.findIntentByBookingRef(new BookingRef(99L))).thenReturn(Optional.empty());
 
-		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		StripePaymentGateway gateway =
+				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
 		RefundResult result = gateway.refund(new BookingRef(99L), new Money(1000L, "EUR"));
 
 		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
@@ -226,7 +346,8 @@ class StripePaymentGatewayTest {
 		when(intent.getStatus()).thenReturn("requires_payment_method");
 		when(intents.retrieve("pi_abc")).thenReturn(intent);
 
-		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		StripePaymentGateway gateway =
+				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
 		PaymentCancellation outcome = gateway.cancel(new BookingRef(42L));
 
 		assertInstanceOf(PaymentCancellation.Canceled.class, outcome,
@@ -249,7 +370,8 @@ class StripePaymentGatewayTest {
 		when(intent.getStatus()).thenReturn("canceled");
 		when(intents.retrieve("pi_abc")).thenReturn(intent);
 
-		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		StripePaymentGateway gateway =
+				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
 		PaymentCancellation outcome = gateway.cancel(new BookingRef(42L));
 
 		assertInstanceOf(PaymentCancellation.Canceled.class, outcome,
@@ -272,7 +394,8 @@ class StripePaymentGatewayTest {
 		when(intent.getStatus()).thenReturn("succeeded");
 		when(intents.retrieve("pi_abc")).thenReturn(intent);
 
-		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		StripePaymentGateway gateway =
+				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
 		PaymentCancellation outcome = gateway.cancel(new BookingRef(42L));
 
 		PaymentCancellation.NotCancellable nc = assertInstanceOf(PaymentCancellation.NotCancellable.class,
@@ -288,7 +411,8 @@ class StripePaymentGatewayTest {
 		Payments payments = mock(Payments.class);
 		when(payments.findIntentByBookingRef(new BookingRef(99L))).thenReturn(Optional.empty());
 
-		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		StripePaymentGateway gateway =
+				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
 		PaymentCancellation outcome = gateway.cancel(new BookingRef(99L));
 
 		// #125: distinct from NotCancellable (which means "succeeded, the webhook wins"). NoCollection
@@ -311,7 +435,8 @@ class StripePaymentGatewayTest {
 		when(boom.getCode()).thenReturn("lock_timeout");
 		when(intents.retrieve("pi_boom")).thenThrow(boom);
 
-		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments);
+		StripePaymentGateway gateway =
+				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
 		PaymentCancellation outcome = gateway.cancel(new BookingRef(7L));
 
 		PaymentCancellation.Failed failed = assertInstanceOf(PaymentCancellation.Failed.class, outcome,

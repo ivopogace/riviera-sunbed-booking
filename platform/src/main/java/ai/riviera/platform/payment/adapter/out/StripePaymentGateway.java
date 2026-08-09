@@ -1,8 +1,10 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.util.List;
 import java.util.Locale;
 
 import java.util.Optional;
+import java.util.Set;
 
 import com.stripe.StripeClient;
 import com.stripe.exception.ApiConnectionException;
@@ -12,12 +14,17 @@ import com.stripe.model.Refund;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.RefundCreateParams;
+import com.stripe.param.RefundListParams;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.shared.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
@@ -55,12 +62,20 @@ class StripePaymentGateway implements PaymentGateway {
 	private static final String STATUS_SUCCEEDED = "succeeded";
 	private static final String STATUS_CANCELED = "canceled";
 
+	/** Stripe Refund statuses in which no money reached the tourist, so the refund is still owed. */
+	private static final Set<String> DEAD_REFUND_STATUSES = Set.of("failed", "canceled");
+
+	/** Far above any real count — a booking gets one refund, so page one is always decisive. */
+	private static final long REFUND_PAGE_LIMIT = 100L;
+
 	private final StripeClient stripe;
 	private final Payments payments;
+	private final Counter adoptedRefunds;
 
-	StripePaymentGateway(StripeClient stripe, Payments payments) {
+	StripePaymentGateway(StripeClient stripe, Payments payments, MeterRegistry meters) {
 		this.stripe = stripe;
 		this.payments = payments;
+		this.adoptedRefunds = meters.counter(ObservabilityMetrics.REFUNDS_ADOPTED);
 	}
 
 	@Override
@@ -117,6 +132,23 @@ class StripePaymentGateway implements PaymentGateway {
 		}
 	}
 
+	/**
+	 * Refund a booking's collection <strong>at most once</strong>, whatever the caller's replay
+	 * distance in time.
+	 *
+	 * <p>The idempotency key alone cannot carry that promise: Stripe prunes keys after roughly a
+	 * day, and the replay vehicles behind this call — the restart republish and the admin re-drive —
+	 * routinely fire later than that. So the gateway is asked what it already holds against the
+	 * PaymentIntent, and a refund that already returned money is <em>adopted</em>: recorded locally
+	 * and reported as success, never created a second time. Reading the gateway rather than
+	 * {@code payment.refunded_minor} is invariant #8 applied to refunds — the local row is written
+	 * only after a call returns, so it is silent about exactly the lost-response case this guards.
+	 *
+	 * <p>Fail-closed: if the read itself fails, the answer is {@link RefundResult.Failed} and no
+	 * refund is created, leaving the event publication outstanding to retry.
+	 *
+	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
+	 */
 	@Override
 	public RefundResult refund(BookingRef booking, Money amount) {
 		Optional<String> intentId = payments.findIntentByBookingRef(booking);
@@ -124,15 +156,13 @@ class StripePaymentGateway implements PaymentGateway {
 			log.warn("no PaymentIntent on record for booking {} — cannot refund", booking.value());
 			return new RefundResult.Failed("no_collection");
 		}
-		RefundCreateParams params = RefundCreateParams.builder()
-				.setPaymentIntent(intentId.get())
-				.setAmount(amount.minor())                                   // integer minor units (#5)
-				.build();
-		RequestOptions options = RequestOptions.builder()
-				.setIdempotencyKey(refundIdempotencyKey(booking))            // derived from booking id (#8)
-				.build();
 		try {
-			Refund refund = stripe.v1().refunds().create(params, options);
+			List<Refund> alreadyPaid = refundsThatReturnedMoney(intentId.get());
+			if (!alreadyPaid.isEmpty()) {
+				return adopt(booking, alreadyPaid, amount);
+			}
+			Refund refund = stripe.v1().refunds().create(refundParams(intentId.get(), amount),
+					refundOptions(booking));
 			payments.markRefunded(booking, amount.minor(), refund.getId());
 			return new RefundResult.Refunded(refund.getId());
 		}
@@ -141,6 +171,61 @@ class StripePaymentGateway implements PaymentGateway {
 			log.warn("Stripe refund failed for booking {}: code={}", booking.value(), e.getCode());
 			return new RefundResult.Failed(e.getCode() == null ? STRIPE_ERROR : e.getCode());
 		}
+	}
+
+	/**
+	 * The refunds Stripe holds against the intent that actually returned money. A {@code failed} or
+	 * {@code canceled} refund returned none, so it is not one of these and must not stop a fresh
+	 * attempt. One page suffices: the platform issues at most one refund per booking, and any single
+	 * live refund is already decisive.
+	 */
+	private List<Refund> refundsThatReturnedMoney(String intentId) throws StripeException {
+		RefundListParams params = RefundListParams.builder()
+				.setPaymentIntent(intentId)
+				.setLimit(REFUND_PAGE_LIMIT)
+				.build();
+		return stripe.v1().refunds().list(params).getData().stream()
+				.filter(StripePaymentGateway::returnedMoney)
+				.toList();
+	}
+
+	private static boolean returnedMoney(Refund refund) {
+		String status = refund.getStatus();
+		// An unrecognised status counts as live — never create a second refund on a guess.
+		return status == null || !DEAD_REFUND_STATUSES.contains(status);
+	}
+
+	/**
+	 * Record what Stripe already refunded and report success. The amount recorded is
+	 * <strong>Stripe's</strong>, not the requested one: money that has already moved is the truth,
+	 * and paying the difference would be a refund <em>decision</em>, which belongs to
+	 * {@code booking}. A mismatch is therefore logged rather than corrected.
+	 */
+	private RefundResult adopt(BookingRef booking, List<Refund> alreadyPaid, Money requested) {
+		long refunded = alreadyPaid.stream().mapToLong(Refund::getAmount).sum();
+		String refundId = alreadyPaid.getFirst().getId();
+		if (refunded != requested.minor()) {
+			log.warn("booking {} already carries a refund of {} minor units at Stripe, but {} was "
+					+ "requested — recording what Stripe holds", booking.value(), refunded, requested.minor());
+		}
+		payments.markRefunded(booking, refunded, refundId);
+		adoptedRefunds.increment();
+		log.info("adopted the refund Stripe already holds for booking {} — no second refund created",
+				booking.value());
+		return new RefundResult.Refunded(refundId);
+	}
+
+	private static RefundCreateParams refundParams(String intentId, Money amount) {
+		return RefundCreateParams.builder()
+				.setPaymentIntent(intentId)
+				.setAmount(amount.minor())                                   // integer minor units (#5)
+				.build();
+	}
+
+	private static RequestOptions refundOptions(BookingRef booking) {
+		return RequestOptions.builder()
+				.setIdempotencyKey(refundIdempotencyKey(booking))            // derived from booking id (#8)
+				.build();
 	}
 
 	@Override
@@ -184,7 +269,11 @@ class StripePaymentGateway implements PaymentGateway {
 		return "booking-" + booking.value() + "-pi";
 	}
 
-	/** One refund per booking: a stable key so a retried cancel never double-refunds (#8/#10). */
+	/**
+	 * One refund per booking: a stable key so a replay <em>inside</em> Stripe's key window returns
+	 * the original refund. Beyond that window the key is pruned and {@link #refund}'s existence read
+	 * is what prevents a second one (invariant #8/#10).
+	 */
 	private static String refundIdempotencyKey(BookingRef booking) {
 		return "booking-" + booking.value() + "-refund";
 	}
