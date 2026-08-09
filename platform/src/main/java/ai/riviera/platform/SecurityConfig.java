@@ -90,6 +90,9 @@ class SecurityConfig {
 	private static final String SET_AVAILABILITY_PATH = "/api/venues/*/sets/*/availability";
 	/** The operator-only staff daily-bookings read. Order-sensitive — see the ordering rule below. */
 	private static final String STAFF_BOOKINGS_PATH = "/api/venues/*/bookings";
+
+	/** Staff check-in (#583): flips lifecycle state off a bearer code — operator-gated (invariant #7). */
+	private static final String BOOKING_CHECK_IN_PATH = "/api/venues/*/bookings/*/check-in";
 	/** The admin weather-refund write; an operator-session POST, CSRF-protected like every write. */
 	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
 	/** The operator-only per-venue payout ledger read. Order-sensitive. */
@@ -292,6 +295,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, SSO_PATHS).permitAll()
 						// Order-sensitive: booking codes are bearer credentials (invariant #7).
 						.requestMatchers(HttpMethod.GET, STAFF_BOOKINGS_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, BOOKING_CHECK_IN_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: venue financial data.
 						.requestMatchers(HttpMethod.GET, PAYOUT_LEDGER_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: returns the commission rate + payout currency.
