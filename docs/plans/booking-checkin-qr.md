@@ -231,6 +231,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (Backend, fee5803) | `@WebMvcTest` contexts broke — `StaffBookingController`'s new `CheckInBooking` dependency had no `WebSliceStubs` bean (163 cascade failures) | fixed — inert stub added |
 
 ---
 
@@ -257,6 +258,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/booking/CheckInConcurrencyIT.java` — AC-3
 - `platform/src/test/java/ai/riviera/platform/CrossVenueDenialIT.java` — AC-6 row for check-in
 - `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — `RecordingBookings` fake gains the two new port stubs
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — inert `CheckInBooking` stub for every `@WebMvcTest` context (red-CI fix F-1)
 - `frontend/package.json` · `frontend/package-lock.json` — `qrcode`, `jsqr` (+ `@types/qrcode`)
 - `frontend/src/app/booking/booking-qr.ts` · `booking-qr.spec.ts` — QR component + spec
 - `frontend/src/app/booking/booking-confirmation.ts|.html` — QR on the code card
