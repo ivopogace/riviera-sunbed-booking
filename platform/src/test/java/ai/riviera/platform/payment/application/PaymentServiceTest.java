@@ -74,6 +74,11 @@ class PaymentServiceTest {
 					BookingRef booking) {
 				return Optional.empty();
 			}
+
+			@Override
+			public Optional<RefundState> findRefundState(BookingRef booking) {
+				return Optional.empty();
+			}
 		};
 	}
 

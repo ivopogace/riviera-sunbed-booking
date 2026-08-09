@@ -30,10 +30,13 @@ class RefundFailureMetricTest {
 		return meters.counter(ObservabilityMetrics.REFUNDS_FAILED).count();
 	}
 
+	private RefundService service(RefundOnlyGateway gateway) {
+		return new RefundService(gateway, meters, new UnusedPayments());
+	}
+
 	@Test
 	void aFailedRefundIncrementsTheCounter() {
-		RefundOnlyGateway gateway = (booking, amount) -> new RefundResult.Failed("gateway_error");
-		RefundService service = new RefundService(gateway, meters);
+		RefundService service = service((booking, amount) -> new RefundResult.Failed("gateway_error"));
 
 		RefundResult result = service.refund(BOOKING, AMOUNT);
 
@@ -43,8 +46,7 @@ class RefundFailureMetricTest {
 
 	@Test
 	void aSuccessfulRefundDoesNotIncrementTheCounter() {
-		RefundOnlyGateway gateway = (booking, amount) -> new RefundResult.Refunded("re_test_123");
-		RefundService service = new RefundService(gateway, meters);
+		RefundService service = service((booking, amount) -> new RefundResult.Refunded("re_test_123"));
 
 		service.refund(BOOKING, AMOUNT);
 
@@ -64,6 +66,46 @@ class RefundFailureMetricTest {
 
 		@Override
 		default PaymentCancellation cancel(BookingRef booking) {
+			throw new UnsupportedOperationException("not exercised by RefundFailureMetricTest");
+		}
+	}
+
+	/** A {@link Payments} no path of this test reaches; every method throws. */
+	private static final class UnusedPayments implements Payments {
+		@Override
+		public void register(NewPayment payment) {
+			throw new UnsupportedOperationException("not exercised by RefundFailureMetricTest");
+		}
+
+		@Override
+		public java.util.Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials>
+				findPendingCredentials(BookingRef booking) {
+			throw new UnsupportedOperationException("not exercised by RefundFailureMetricTest");
+		}
+
+		@Override
+		public java.util.Optional<BookingRef> findBookingRefByIntent(String paymentIntentId) {
+			throw new UnsupportedOperationException("not exercised by RefundFailureMetricTest");
+		}
+
+		@Override
+		public void markStatus(String paymentIntentId,
+				ai.riviera.platform.payment.domain.PaymentStatus status) {
+			throw new UnsupportedOperationException("not exercised by RefundFailureMetricTest");
+		}
+
+		@Override
+		public java.util.Optional<String> findIntentByBookingRef(BookingRef booking) {
+			throw new UnsupportedOperationException("not exercised by RefundFailureMetricTest");
+		}
+
+		@Override
+		public void markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+			throw new UnsupportedOperationException("not exercised by RefundFailureMetricTest");
+		}
+
+		@Override
+		public java.util.Optional<RefundState> findRefundState(BookingRef booking) {
 			throw new UnsupportedOperationException("not exercised by RefundFailureMetricTest");
 		}
 	}
