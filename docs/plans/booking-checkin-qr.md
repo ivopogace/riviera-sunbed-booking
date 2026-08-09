@@ -256,6 +256,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/booking/CheckInFlowIT.java` — the flow ACs (1,2,4,5,7,8)
 - `platform/src/test/java/ai/riviera/platform/booking/CheckInConcurrencyIT.java` — AC-3
 - `platform/src/test/java/ai/riviera/platform/CrossVenueDenialIT.java` — AC-6 row for check-in
+- `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — `RecordingBookings` fake gains the two new port stubs
 - `frontend/package.json` · `frontend/package-lock.json` — `qrcode`, `jsqr` (+ `@types/qrcode`)
 - `frontend/src/app/booking/booking-qr.ts` · `booking-qr.spec.ts` — QR component + spec
 - `frontend/src/app/booking/booking-confirmation.ts|.html` — QR on the code card
