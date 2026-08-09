@@ -36,7 +36,8 @@ review-only.
    (idempotently). `availability` needs no listener — the set was already claimed
    atomically at step 3; confirmation changes nothing in its table. No listener
    reaches back into `booking`.
-8. On arrival, venue staff verify the booking code at the lane/set. Staff can also
+8. On arrival, venue staff check the guest in — scanning the booking's QR (or typing
+   its code) flips the booking `CONFIRMED → COMPLETED`, exactly once. Staff can also
    tap-to-mark a walk-in, which **`availability`** records against the **walk-in**
    pool — a separate pool from online bookings.
 9. If the tourist cancels, **`booking`** applies the cancellation policy, frees the

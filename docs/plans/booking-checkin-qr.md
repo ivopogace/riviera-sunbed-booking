@@ -27,8 +27,8 @@ e2e uses a deterministic fake.
 **Skills consulted:** `riviera-sdlc` (routing + the issue-intake grill gate — caught that the ask
 extends #575, split into #583/#584 with maintainer decisions) · `riviera-plan-doc` (this template —
 forced the read-widening audit and the parity ledger N/A check) · `tdd` (each phase red-green at the
-service/adapter seam) · `riviera-review-overlay` (review gate — runs at ready-for-review) ·
-`riviera-docs-freshness` (due at merge close-out over this slice's range) · `riviera-modulith`
+service/adapter seam) · `riviera-review-overlay` (review gate — ran via /code-review 6-agent fan-out at ready-for-review; findings F-6..F-9 fixed) ·
+`riviera-docs-freshness` (**ran** pre-merge over `origin/main...HEAD` — 1 finding: RESPONSIBILITIES main-use-case step 8 still called arrival verification unrecorded; patched) · `riviera-modulith`
 (check-in is a new `application/checkin/` use-case slice in `booking`; port stays internal — only
 this module's REST adapter calls it, so NOT `api/`; no new published surface, no
 `allowedDependencies` change) · `riviera-java-conventions` (sealed `CheckInResult` outcome — a lost
@@ -49,36 +49,36 @@ standing in for `feature/booking-checkin-qr` per the riviera-sdlc remote addendu
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a booking `CONFIRMED` for today (Europe/Tirane) at venue V, when V's operator
+- [x] **AC-1:** Given a booking `CONFIRMED` for today (Europe/Tirane) at venue V, when V's operator
   submits its code to check-in, then the outcome is `CheckedIn(setId, bookingDate)`, the booking is
   `COMPLETED` with `completed_at` stamped. *Pinned by:* `CheckInFlowIT.checksInConfirmedBookingOnServiceDate`
-- [ ] **AC-2:** Given a booking already `COMPLETED`, when checked in again, then the outcome is
+- [x] **AC-2:** Given a booking already `COMPLETED`, when checked in again, then the outcome is
   `AlreadyCheckedIn` (HTTP `409`, code `ALREADY_CHECKED_IN`) and nothing changes. *Pinned by:*
   `CheckInFlowIT.secondCheckInIsRefusedDistinctly`
-- [ ] **AC-3:** Given two concurrent check-ins of the same code, when both submit, then exactly one
+- [x] **AC-3:** Given two concurrent check-ins of the same code, when both submit, then exactly one
   observes `CheckedIn` and the other `AlreadyCheckedIn`. *Pinned by:*
   `CheckInConcurrencyIT.concurrentScansYieldExactlyOneTransition`
-- [ ] **AC-4:** Given a booking `CONFIRMED` for a date other than today, when checked in, then the
+- [x] **AC-4:** Given a booking `CONFIRMED` for a date other than today, when checked in, then the
   outcome is `WrongServiceDate(bookingDate)` (HTTP `409`, code `WRONG_SERVICE_DATE`, detail naming
   the date, never the code) and status stays `CONFIRMED`. *Pinned by:*
   `CheckInFlowIT.wrongDayScanIsRefusedNamingTheDate`
-- [ ] **AC-5:** Given an unknown code, or a code belonging to a different venue, when checked in,
+- [x] **AC-5:** Given an unknown code, or a code belonging to a different venue, when checked in,
   then the outcome is `NotFound` (HTTP `404`, code `BOOKING_NOT_FOUND`) — indistinguishable between
   the two cases (non-enumerating). *Pinned by:* `CheckInFlowIT.foreignVenueCodeReadsAsNotFound`
-- [ ] **AC-6:** Given an operator who does not own the path venue, when they check in any code, then
+- [x] **AC-6:** Given an operator who does not own the path venue, when they check in any code, then
   `403 NOT_VENUE_OWNER` before any existence check. *Pinned by:* `CrossVenueDenialIT` (extended)
-- [ ] **AC-7:** Given a day with one `CONFIRMED` and one `COMPLETED` booking, when the arrivals list
+- [x] **AC-7:** Given a day with one `CONFIRMED` and one `COMPLETED` booking, when the arrivals list
   and daily takings are read, then both bookings are listed (the completed one flagged
   `checkedIn`) and takings equal the sum of both. *Pinned by:*
   `CheckInFlowIT.arrivalsAndTakingsCountCheckedInBookings`
-- [ ] **AC-8:** Given a `COMPLETED` booking, when a guest cancel or a weather refund targets it,
+- [x] **AC-8:** Given a `COMPLETED` booking, when a guest cancel or a weather refund targets it,
   then cancel answers not-cancellable and the weather refund skips it (guards stay
   `CONFIRMED`-only). *Pinned by:* `CheckInFlowIT.completedBookingIsNeitherCancellableNorWeatherRefundable`
-- [ ] **AC-9:** Given a confirmed booking on the tourist surfaces (confirmation page, code-gated
+- [x] **AC-9:** Given a confirmed booking on the tourist surfaces (confirmation page, code-gated
   view, My bookings), when rendered, then a scannable QR encoding the absolute `/booking/{code}` URL
   is shown with an accessible label. *Pinned by:* `booking-qr.spec.ts` + `booking-flow.e2e.ts` (QR
   present + axe)
-- [ ] **AC-10:** Given the operator Daily view with the fake scanner armed, when a QR (URL or bare
+- [x] **AC-10:** Given the operator Daily view with the fake scanner armed, when a QR (URL or bare
   code) is scanned or a code typed, then the check-in outcome is announced and the arrivals row
   shows checked-in; a second scan announces already-checked-in. *Pinned by:*
   `operator-daily.e2e.ts` (extended)
@@ -101,23 +101,24 @@ deliberately (widened to include `COMPLETED`); AC-7 pins the no-regression half.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Concurrent scans of one code double-complete | med | high | guarded `UPDATE … RETURNING`; race classified by post-update re-read; `CheckInConcurrencyIT` | this slice | open |
-| R-2 | Widening misses a `status='CONFIRMED'` read → console shows wrong money/rows | med | high | audit found exactly 4 predicates; 2 widen (arrivals, takings), 2 stay narrow deliberately (cancel guard, weather refund) — AC-7/AC-8 pin both directions | this slice | open |
-| R-3 | Wrong-day logic drifts from `Europe/Tirane` (invariant #6) | low | med | service compares `LocalDate.ofInstant(clock.instant(), TIRANE)` — same idiom as `StaffBookingController`; fixed-`Clock` tests either side of midnight | this slice | open |
-| R-4 | Check-in endpoint leaks the code (invariant #7) into logs/problem bodies | low | high | outcomes carry `BookingId`/set/date only; ProblemDetail details name the date, never the code; endpoint IT asserts body contains no code | this slice | open |
-| R-5 | Venue-mismatch answer enumerates foreign codes | low | med | one `NotFound` for unknown *and* foreign-venue codes (AC-5); ownership 403 fires before any lookup (AC-6) | this slice | open |
-| R-6 | Camera/QR decode flaky or unavailable in CI | high (CI) | med | camera never runs in CI: `QrScanner` DI token + `FakeQrScanner` armed by `window.__RIVIERA_FAKE_QR__` (Stripe-gateway precedent); manual code entry is the always-available fallback | this slice | open |
-| R-7 | `V40` collides with a parallel slice | low | med | verified free on `main` (top is V39) and no open PR claims it (all open PRs are dependabot); renumber rule: whoever merges second | this slice | open |
-| R-8 | New FE deps (`qrcode`, `jsqr`) bloat the tourist bundle | med | low | both lazy: QR component dynamic-imports `qrcode`; `jsqr` is imported only by the operator tab's scanner adapter (lazy route) | this slice | open |
-| R-9 | Error contract drift (per-controller handler temptation) | low | med | typed-outcome `switch` + `ApiProblem` in the controller; no `@ExceptionHandler` (§6b, `ErrorContractArchitectureTests`) | this slice | open |
+| R-1 | Concurrent scans of one code double-complete | med | high | guarded `UPDATE … RETURNING`; race classified by post-update re-read; `CheckInConcurrencyIT` | this slice | closed — IT green (AC-3) |
+| R-2 | Widening misses a `status='CONFIRMED'` read → console shows wrong money/rows | med | high | audit found exactly 4 predicates; 2 widen (arrivals, takings), 2 stay narrow deliberately (cancel guard, weather refund) — AC-7/AC-8 pin both directions | this slice | closed — generalization audit re-grep clean |
+| R-3 | Wrong-day logic drifts from `Europe/Tirane` (invariant #6) | low | med | service compares `LocalDate.ofInstant(clock.instant(), TIRANE)` — same idiom as `StaffBookingController`; fixed-`Clock` tests either side of midnight | this slice | closed — fixed-idiom + `wrongDayScanIsRefusedNamingTheDate` |
+| R-4 | Check-in endpoint leaks the code (invariant #7) into logs/problem bodies | low | high | outcomes carry `BookingId`/set/date only; ProblemDetail details name the date, never the code; endpoint IT asserts body contains no code | this slice | closed — `assertNoCodeLeak` on every error path |
+| R-5 | Venue-mismatch answer enumerates foreign codes | low | med | one `NotFound` for unknown *and* foreign-venue codes (AC-5); ownership 403 fires before any lookup (AC-6) | this slice | closed — one `NotFound`; 403-before-lookup pinned |
+| R-6 | Camera/QR decode flaky or unavailable in CI | high (CI) | med | camera never runs in CI: `QrScanner` DI token + `FakeQrScanner` armed by `window.__RIVIERA_FAKE_QR__` (Stripe-gateway precedent); manual code entry is the always-available fallback | this slice | closed — fake scanner in CI; camera race generation-guarded (F-6) |
+| R-7 | `V40` collides with a parallel slice | low | med | verified free on `main` (top is V39) and no open PR claims it (all open PRs are dependabot); renumber rule: whoever merges second | this slice | closed — V40 merged unopposed |
+| R-8 | New FE deps (`qrcode`, `jsqr`) bloat the tourist bundle | med | low | both lazy: QR component dynamic-imports `qrcode`; `jsqr` is imported only by the operator tab's scanner adapter (lazy route) | this slice | closed — qrcode static in lazy booking chunks (SVG, F-3); jsqr lazy in camera adapter only |
+| R-9 | Error contract drift (per-controller handler temptation) | low | med | typed-outcome `switch` + `ApiProblem` in the controller; no `@ExceptionHandler` (§6b, `ErrorContractArchitectureTests`) | this slice | closed — ApiProblem switch; ErrorContractArchitectureTests green |
 
 ## Open questions / Assumptions
 
+### Resolved
+
 - **Assumption:** operator devices grant `getUserMedia`; where denied, manual entry is the flow —
-  no camera-permission UX beyond the browser prompt in v1. — *Owner:* maintainer · *Resolves by:*
-  accepted at plan (recorded in #583).
-- **Assumption:** My-bookings renders the QR inline per `CONFIRMED` booking card (component reuse);
-  non-confirmed cards show status only. — *Owner:* this slice · *Resolves by:* phase 4.
+  resolved: the camera-unavailable catch names the fallback, manual entry always present (dc996e9).
+- **Assumption:** My-bookings renders the QR inline per `CONFIRMED` booking card — resolved as
+  designed in fee5803 (`showQr` gate).
 
 ## Availability & concurrency (invariant #2)
 
@@ -211,9 +212,9 @@ files live inside their feature; `shared/booking-status.ts` already carries `COM
 
 ## Execution status
 
-**Stage pointer:** implement done — merge main, mark PR ready, run the review gate
+**Stage pointer:** DONE — merged via PR #585
 
-**Next action:** merge latest origin/main, mark PR #585 ready for review, run /code-review + riviera-review-overlay (pr-gates §1).
+**Next action:** none — slice complete; the NO_SHOW sweep continues in #584.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -222,8 +223,8 @@ files live inside their feature; `shared/booking-status.ts` already carries `COM
 | 2 — widen arrivals + takings reads (`checkedIn` flag; `IN (CONFIRMED, COMPLETED)`) | ✅ | 403f4de + 024900a |
 | 3 — FE tourist QR (component + 3 surfaces) | ✅ | fee5803 |
 | 4 — FE operator scanner (token/adapters, tab UI, service) | ✅ | dc996e9 |
-| 5 — e2e (mocked suite) + a11y | ✅ | 5303d19 + (this commit) |
-| 6 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, BookingStatus Javadoc, plan final state) | ✅ | (this commit; plan final state at close-out) |
+| 5 — e2e (mocked suite) + a11y | ✅ | 5303d19 + bc8d9e7 |
+| 6 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, BookingStatus Javadoc, plan final state) | ✅ | bc8d9e7 + the close-out commit (merged via PR #585) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -300,11 +301,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Create `V40__booking_completed_at.sql`, `CheckInFacts.java`, `CompletedCheckIn.java`,
 `CheckInConcurrencyIT.java` · Modify `Bookings.java`, `JdbcBookings.java`
 
-- [ ] **Step 1: Write the failing test** — `CheckInConcurrencyIT`: seed a `CONFIRMED` booking for
+- [x] **Step 1: Write the failing test** — `CheckInConcurrencyIT`: seed a `CONFIRMED` booking for
   today; two threads call `bookings.completeConfirmed(code, venueId, today, now)`; assert exactly
   one non-empty `Optional`, final status `COMPLETED`, `completed_at` set once.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*CheckInConcurrencyIT*"` → FAIL (no such methods).
-- [ ] **Step 3: Minimal implementation** — migration:
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*CheckInConcurrencyIT*"` → FAIL (no such methods).
+- [x] **Step 3: Minimal implementation** — migration:
 
 ```sql
 -- V40__booking_completed_at.sql
@@ -329,10 +330,10 @@ RETURNING id, set_id, booking_date
 ```
 
   and the classification read: `SELECT status, booking_date FROM booking WHERE code = :code AND venue_id = :venue`.
-- [ ] **Step 4: Run it, verify it passes**, then module regression `./gradlew test --tests "ai.riviera.platform.booking.*"`.
-- [ ] **Step 5: Generalization-audit pass** — N/A unless a bug surfaces.
-- [ ] **Step 6: Commit** — `Add the guarded check-in transition (#583)`
-- [ ] **Step 7: Update Execution status** (same commit window). Open the **draft PR** now (CI vehicle).
+- [x] **Step 4: Run it, verify it passes**, then module regression `./gradlew test --tests "ai.riviera.platform.booking.*"`.
+- [x] **Step 5: Generalization-audit pass** — N/A unless a bug surfaces.
+- [x] **Step 6: Commit** — `Add the guarded check-in transition (#583)`
+- [x] **Step 7: Update Execution status** (same commit window). Open the **draft PR** now (CI vehicle).
 
 ## Phase 1 — `CheckInService` + endpoint + error contract
 
@@ -340,9 +341,9 @@ RETURNING id, set_id, booking_date
 `CheckInView.java`, `CheckInFlowIT.java` · Modify `StaffBookingController.java`,
 `SecurityConfig.java`, `CrossVenueDenialIT.java`
 
-- [ ] **Step 1: Failing tests** — `CheckInFlowIT` (ACs 1, 2, 4, 5) + `CrossVenueDenialIT` check-in row (AC-6).
-- [ ] **Step 2:** scoped run → FAIL.
-- [ ] **Step 3: Implementation** — sealed outcome + service:
+- [x] **Step 1: Failing tests** — `CheckInFlowIT` (ACs 1, 2, 4, 5) + `CrossVenueDenialIT` check-in row (AC-6).
+- [x] **Step 2:** scoped run → FAIL.
+- [x] **Step 3: Implementation** — sealed outcome + service:
 
 ```java
 public sealed interface CheckInResult {
@@ -361,37 +362,37 @@ public sealed interface CheckInResult {
   Controller: `POST /{venueId}/bookings/{code}/check-in` → exhaustive `switch` mapping to
   `CheckInView` / `ApiProblem` (`ALREADY_CHECKED_IN` 409, `WRONG_SERVICE_DATE` 409 + `bookingDate`
   extension, `BOOKING_NOT_FOUND` 404). SecurityConfig: `POST /api/venues/*/bookings/*/check-in → OPERATOR`.
-- [ ] **Step 4:** scoped pass + `--tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*ErrorContractArchitectureTests*"`.
-- [ ] **Step 5: Generalization audit** — does any other operator command classify-after-guarded-update? (decline/expire return boolean; no action expected — record.)
-- [ ] **Step 6–7: Commit** — `Check a guest in by booking code (#583)` + status update.
+- [x] **Step 4:** scoped pass + `--tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*ErrorContractArchitectureTests*"`.
+- [x] **Step 5: Generalization audit** — does any other operator command classify-after-guarded-update? (decline/expire return boolean; no action expected — record.)
+- [x] **Step 6–7: Commit** — `Check a guest in by booking code (#583)` + status update.
 
 ## Phase 2 — widen the arrivals + takings reads
 
 **Files:** Modify `DailyBooking.java`, `ListDailyBookings.java`, `JdbcBookings.java`,
 `JdbcDailyTakings.java`, `DailyBookingView.java`, `StaffBookingController.java`, `CheckInFlowIT.java`
 
-- [ ] **Step 1: Failing test** — AC-7 in `CheckInFlowIT`: one CONFIRMED + one COMPLETED booking →
+- [x] **Step 1: Failing test** — AC-7 in `CheckInFlowIT`: one CONFIRMED + one COMPLETED booking →
   arrivals returns both (`checkedIn` true on the completed row), takings = sum of both. AC-8 test
   beside it: cancel → not-cancellable; weather refund refunds only the CONFIRMED one.
-- [ ] **Step 2:** scoped run → FAIL.
-- [ ] **Step 3:** arrivals SQL `status IN (:confirmed, :completed)` + `status` selected →
+- [x] **Step 2:** scoped run → FAIL.
+- [x] **Step 3:** arrivals SQL `status IN (:confirmed, :completed)` + `status` selected →
   `DailyBooking(setId, code, checkedIn)`; takings SQL `status IN (:confirmed, :completed)`;
   `DailyBookingView(setId, code, checkedIn)`.
-- [ ] **Step 4:** booking-package regression + `payout` module tests (console takings consumer).
-- [ ] **Step 5:** Generalization audit — re-grep `status = :confirmed` / `CONFIRMED.name()`; confirm the remaining narrow reads are the two deliberate ones.
-- [ ] **Step 6–7: Commit** — `Count checked-in bookings in arrivals and takings (#583)` + status.
+- [x] **Step 4:** booking-package regression + `payout` module tests (console takings consumer).
+- [x] **Step 5:** Generalization audit — re-grep `status = :confirmed` / `CONFIRMED.name()`; confirm the remaining narrow reads are the two deliberate ones.
+- [x] **Step 6–7: Commit** — `Count checked-in bookings in arrivals and takings (#583)` + status.
 
 ## Phase 3 — FE tourist QR
 
 **Files:** Create `booking-qr.ts`, `booking-qr.spec.ts` · Modify `booking-confirmation.ts|.html`,
 `booking-view.ts|.html`, `my-bookings.ts|.html`, `package.json`, `package-lock.json`
 
-- [ ] Load `angular-developer` + angular-cli MCP `get_best_practices` + `riviera-tailwind` before authoring.
-- [ ] **Step 1: Failing spec** — `booking-qr.spec.ts`: renders an `<img>` whose `src` is a data URL
+- [x] Load `angular-developer` + angular-cli MCP `get_best_practices` + `riviera-tailwind` before authoring.
+- [x] **Step 1: Failing spec** — `booking-qr.spec.ts`: renders an `<img>` whose `src` is a data URL
   and `alt`/`aria-label` names the booking; encodes `location.origin + '/booking/' + code`.
-- [ ] **Step 3:** `qrcode` lazy import (`await import('qrcode')` → `toDataURL`), signal `input.required<string>()` for the code.
-- [ ] **Step 4:** `npm test` scoped; `npm run lint`.
-- [ ] **Step 6–7: Commit** — `Show the booking as a QR code (#583)` + status.
+- [x] **Step 3:** `qrcode` lazy import (`await import('qrcode')` → `toDataURL`), signal `input.required<string>()` for the code.
+- [x] **Step 4:** `npm test` scoped; `npm run lint`.
+- [x] **Step 6–7: Commit** — `Show the booking as a QR code (#583)` + status.
 
 ## Phase 4 — FE operator scanner + check-in UI
 
@@ -399,37 +400,37 @@ public sealed interface CheckInResult {
 `scan-input.spec.ts` · Modify `daily-view-tab.ts|.html`, `daily-view-tab.spec.ts`,
 `operator-console.service.ts` + spec, `operator-console.model.ts`, `app.config.ts`
 
-- [ ] **Step 1: Failing specs** — `scan-input.spec.ts` (URL + bare-code + noise normalization);
+- [x] **Step 1: Failing specs** — `scan-input.spec.ts` (URL + bare-code + noise normalization);
   service spec for `checkIn` (POST shape, typed outcomes incl. 409 codes); tab spec: outcome notice
   + `checkedIn` chip + refresh after success.
-- [ ] **Step 3:** abstract `QrScanner { start(onCode): Promise<void>; stop(): void }`; camera adapter
+- [x] **Step 3:** abstract `QrScanner { start(onCode): Promise<void>; stop(): void }`; camera adapter
   (getUserMedia + rAF loop over a canvas + lazy `jsqr`); fake adapter reading
   `window.__RIVIERA_FAKE_QR__` codes; factory in `app.config.ts`. Manual entry submits through the
   same normalized path.
-- [ ] **Step 4:** scoped Vitest + lint.
-- [ ] **Step 6–7: Commit** — `Scan a booking QR to check the guest in (#583)` + status.
+- [x] **Step 4:** scoped Vitest + lint.
+- [x] **Step 6–7: Commit** — `Scan a booking QR to check the guest in (#583)` + status.
 
 ## Phase 5 — e2e (mocked suite)
 
 **Files:** Modify `frontend/e2e/booking-flow.e2e.ts`, `frontend/e2e/operator-daily.e2e.ts`
 
-- [ ] Load `playwright-cli`; suite placement is the CI-safe mocked suite (RV-FE-E2E: user-facing
+- [x] Load `playwright-cli`; suite placement is the CI-safe mocked suite (RV-FE-E2E: user-facing
   flow, API mocked via `page.route`).
-- [ ] Tourist: after mocked confirmation, the QR img is visible with its label (+ axe via
+- [x] Tourist: after mocked confirmation, the QR img is visible with its label (+ axe via
   `expectNoSeriousAxeViolations`).
-- [ ] Operator: arm `window.__RIVIERA_FAKE_QR__`, mock the check-in POST (200 then 409
+- [x] Operator: arm `window.__RIVIERA_FAKE_QR__`, mock the check-in POST (200 then 409
   `ALREADY_CHECKED_IN`), assert row chip + both outcome notices; keyboard path through manual entry.
-- [ ] **Commit** — `Cover QR check-in end to end (#583)` + status.
+- [x] **Commit** — `Cover QR check-in end to end (#583)` + status.
 
 ## Phase 6 — docs close-out
 
-- [ ] `CONTEXT.md`: **Check-in** — staff recording, by scanning/typing the booking code on the
+- [x] `CONTEXT.md`: **Check-in** — staff recording, by scanning/typing the booking code on the
   service date, that the guest arrived; transitions the booking to `Completed`.
-- [ ] `RESPONSIBILITIES.md` §`booking`: the check-in leg (guarded transition; reads widened; no event — withdraw's precedent).
-- [ ] `BookingStatus` Javadoc: `COMPLETED` written by check-in (#583); `NO_SHOW` still pending #584.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` + finalize Execution status
+- [x] `RESPONSIBILITIES.md` §`booking`: the check-in leg (guarded transition; reads widened; no event — withdraw's precedent).
+- [x] `BookingStatus` Javadoc: `COMPLETED` written by check-in (#583); `NO_SHOW` still pending #584.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` + finalize Execution status
   (`merged via PR #NN` form), risk rows closed, Open Questions resolved.
-- [ ] **Commit** — `Record the check-in vocabulary and close out the plan (#583)`.
+- [x] **Commit** — `Record the check-in vocabulary and close out the plan (#583)`.
 
 ---
 
@@ -442,25 +443,25 @@ public sealed interface CheckInResult {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..8:** `./gradlew test --tests "*CheckInFlowIT*" --tests "*CheckInConcurrencyIT*" --tests "*CrossVenueDenialIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-9..10:** `npm test` + `npm run test:e2e:a11y` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1..8:** `./gradlew test --tests "*CheckInFlowIT*" --tests "*CheckInConcurrencyIT*" --tests "*CrossVenueDenialIT*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-9..10:** `npm test` (1251) + `npm run test:e2e:a11y` (158) → PASS locally at 583b19c; green in CI (PR #585).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section filled; concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
-- [ ] **Payment/payout** N/A holds — no money path touched (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side, unchanged (invariant #10).
-- [ ] Timezone correct: UTC stored (`completed_at`), `Europe/Tirane` for the service-date rule (invariant #6).
-- [ ] Booking codes unguessable and never logged/echoed (invariant #7).
-- [ ] Flyway V40 present; CHECK already admits `COMPLETED` (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register closed; Open Questions empty or deferred with an issue #.
-- [ ] **Close-out written in THIS PR** (`merged via PR #NN`).
-- [ ] **The review gate ran in full** (invocation ladder + `riviera-review-overlay`).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section filled; concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
+- [x] **Payment/payout** N/A holds — no money path touched (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side, unchanged (invariant #10).
+- [x] Timezone correct: UTC stored (`completed_at`), `Europe/Tirane` for the service-date rule (invariant #6).
+- [x] Booking codes unguessable and never logged/echoed (invariant #7).
+- [x] Flyway V40 present; CHECK already admits `COMPLETED` (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register closed; Open Questions empty or deferred with an issue #.
+- [x] **Close-out written in THIS PR** (`merged via PR #NN`).
+- [x] **The review gate ran in full** (invocation ladder + `riviera-review-overlay`).
