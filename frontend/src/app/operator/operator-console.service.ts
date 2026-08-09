@@ -148,8 +148,8 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The venue's CONFIRMED-or-checked-in bookings for `date`, each as `(setId, code, checkedIn)` —
-   * the Daily view's Arrivals list. Owner-asserted server-side (invariant #13); the code is
+   * The venue's settled bookings for `date` — confirmed, checked-in and no-show alike — each as
+   * `(setId, code, status)`, the Daily view's Arrivals list. Owner-asserted server-side (invariant #13); the code is
    * display-only (invariant #7) — shown for arrival verification, never logged.
    */
   dailyBookings(venueId: number, date: string): Observable<ConsoleDailyBooking[]> {

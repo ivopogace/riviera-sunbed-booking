@@ -48,7 +48,7 @@ import static org.mockito.Mockito.when;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest
+@SpringBootTest(properties = "booking.no-show.enabled=false")
 @ActiveProfiles("stripe")
 @TestPropertySource(properties = {
 		"stripe.api-key=sk_test_dummy",

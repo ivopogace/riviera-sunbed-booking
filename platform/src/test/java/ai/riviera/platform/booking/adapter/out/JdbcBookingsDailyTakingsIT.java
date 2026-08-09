@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.adapter.out;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,11 +27,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest
+@SpringBootTest(properties = "booking.no-show.enabled=false")
 class JdbcBookingsDailyTakingsIT {
 
 	@Autowired
 	DailyTakings dailyTakings;
+
+	@Autowired
+	ai.riviera.platform.booking.application.checkin.MarkNoShows markNoShows;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -106,6 +110,25 @@ class JdbcBookingsDailyTakingsIT {
 
 		assertEquals(11000L, takings.grossMinor(), "sums CONFIRMED + COMPLETED bookings for the venue + date");
 		assertEquals("EUR", takings.currency());
+	}
+
+	@Test
+	void noShowSweepDoesNotChangeTakings() {
+		SetRef target = ownVenueWithOnlineSet("No-Show Venue");
+		LocalDate past = LocalDate.now(ZoneId.of("Europe/Tirane")).minusDays(3);
+
+		insertBooking("TAKE0007", target.venueId(), target.setId(), past, 4000, "CONFIRMED");
+		insertBooking("TAKE0008", target.venueId(), target.setId(), past, 3000, "COMPLETED");
+
+		OnlineTakings before = dailyTakings.grossOnlineTakings(new VenueId(target.venueId()), past);
+		markNoShows.sweep();
+		OnlineTakings after = dailyTakings.grossOnlineTakings(new VenueId(target.venueId()), past);
+
+		assertEquals("NO_SHOW", jdbc.sql("SELECT status FROM booking WHERE code = 'TAKE0007'")
+				.query(String.class).single(), "the sweep must actually have run on this row");
+		assertEquals(7000L, before.grossMinor());
+		assertEquals(before.grossMinor(), after.grossMinor(),
+				"a paid no-show is not refunded (invariant #10), so the venue's day must not shrink");
 	}
 
 	@Test

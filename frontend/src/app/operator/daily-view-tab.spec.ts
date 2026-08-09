@@ -8,13 +8,14 @@ import { vi } from 'vitest';
 import { defaultBookingDate, todayBookingDate } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleDailyBooking } from './operator-console.model';
 import { DailyViewTab } from './daily-view-tab';
 import { FakeQrScanner } from './fake-qr-scanner';
 import { QrScanner } from './qr-scanner';
 
 /**
  * The Daily view tab. Reads `:venueId` from the PARENT route (child routes don't inherit
- * it), loads the venue map + the day's confirmed bookings, and renders the sea-facing
+ * it), loads the venue map + the day's settled bookings, and renders the sea-facing
  * availability grid + the Arrivals list. Drives: the three tile states (FREE / booked-online-locked /
  * staff-marked); tap-to-mark and tap-to-release round-trips with optimistic flip + reconcile; the
  * online-booked lock; the arrivals code chips (display-only, invariant #7); the Tirane default date +
@@ -34,7 +35,8 @@ describe('DailyViewTab (#175)', () => {
     seat(3, 'A', 3, 'PREMIUM', 'ONLINE', 'TAKEN'),
     seat(4, 'B', 1, 'STANDARD', 'WALK_IN', 'FREE'),
   ];
-  const BOOKINGS = [{ setId: 2, code: 'ABC12345', checkedIn: false }]; // set 2 is held by a confirmed online booking
+  // set 2 is held by a confirmed online booking
+  const BOOKINGS: ConsoleDailyBooking[] = [{ setId: 2, code: 'ABC12345', status: 'CONFIRMED' }];
   // Server states — the tile-classification authority; FREE sets are absent.
   const STATES = [
     { setId: 2, state: 'BOOKED_ONLINE' },
@@ -225,6 +227,26 @@ describe('DailyViewTab (#175)', () => {
     expect(code.textContent).toContain('ABC12345');
   });
 
+  it('renders a no-show arrivals row so a swept past day is not empty', () => {
+    render(SEED, [{ setId: 2, code: 'ABC12345', status: 'NO_SHOW' }]);
+
+    const rows = host.querySelectorAll('[data-testid="daily-arrival-row"]');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain('A \u00b7 2');
+    const chip = byId('arrival-no-show')!;
+    expect(chip.textContent).toContain('No-show');
+    expect(chip.className).toContain('chip--no-show');
+    expect(byId('arrival-checked-in')).toBeNull();
+  });
+
+  it('shows no badge on a still-expected CONFIRMED arrival', () => {
+    render();
+
+    expect(byId('arrival-no-show')).toBeNull();
+    expect(byId('arrival-checked-in')).toBeNull();
+    expect(host.querySelectorAll('[data-testid="daily-arrival-row"]')).toHaveLength(1);
+  });
+
   it('checks a typed code in: POST, success notice, then a reconcile shows the checked-in chip (#583)', () => {
     render();
     const input = byId('checkin-code-input') as HTMLInputElement;
@@ -238,7 +260,7 @@ describe('DailyViewTab (#175)', () => {
     fixture.detectChanges();
     expect(byId('checkin-result')!.textContent).toContain('Checked in');
 
-    flushLoad(SEED, [{ setId: 2, code: 'ABC12345', checkedIn: true }]);
+    flushLoad(SEED, [{ setId: 2, code: 'ABC12345', status: 'COMPLETED' }]);
     expect(byId('arrival-checked-in')).toBeTruthy();
     expect(input.value).toBe('');
   });
@@ -306,7 +328,7 @@ describe('DailyViewTab (#175)', () => {
         .flush({ setId: 2, bookingDate: '2026-06-15' });
       fixture.detectChanges();
       expect(byId('checkin-result')!.textContent).toContain('Checked in');
-      flushLoad(SEED, [{ setId: 2, code: 'ABC12345', checkedIn: true }]);
+      flushLoad(SEED, [{ setId: 2, code: 'ABC12345', status: 'COMPLETED' }]);
     } finally {
       delete (globalThis as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__;
     }

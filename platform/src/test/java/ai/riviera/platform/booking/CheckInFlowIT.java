@@ -42,7 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=test-operator-pw")
+@SpringBootTest(properties = { "riviera.operator.password=test-operator-pw",
+		"booking.no-show.enabled=false" })
 @AutoConfigureMockMvc
 class CheckInFlowIT {
 
@@ -55,6 +56,9 @@ class CheckInFlowIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	ai.riviera.platform.booking.application.checkin.MarkNoShows markNoShows;
 
 	private Cookie operatorSession;
 
@@ -183,6 +187,26 @@ class CheckInFlowIT {
 	}
 
 	@Test
+	void sweptNoShowScanNamesTheDate() throws Exception {
+		long venue = newOwnedVenue("CI No-Show Club");
+		String code = uniqueCode("CINOSHOW");
+		LocalDate past = today().minusDays(5);
+		long bookingId = insertConfirmed(code, venue, past);
+		markNoShows.sweep();
+		assertEquals("NO_SHOW", statusOf(bookingId), "the sweep must actually have run on this row");
+
+		MvcResult result = mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("WRONG_SERVICE_DATE"))
+				.andExpect(jsonPath("$.bookingDate").value(past.toString()))
+				.andReturn();
+
+		assertEquals("NO_SHOW", statusOf(bookingId), "a no-show is terminal — the scan changes nothing");
+		assertNoCodeLeak(result, code);
+	}
+
+	@Test
 	void cancelledCodeReadsAsNotFound() throws Exception {
 		long venue = newOwnedVenue("CI Gone Club");
 		String code = uniqueCode("CIGONE");
@@ -233,8 +257,8 @@ class CheckInFlowIT {
 						.param("date", today().toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(2))
-				.andExpect(jsonPath("$[?(@.code == '%s')].checkedIn".formatted(checkedIn)).value(true))
-				.andExpect(jsonPath("$[?(@.code == '%s')].checkedIn".formatted(upcoming)).value(false));
+				.andExpect(jsonPath("$[?(@.code == '%s')].status".formatted(checkedIn)).value("COMPLETED"))
+				.andExpect(jsonPath("$[?(@.code == '%s')].status".formatted(upcoming)).value("CONFIRMED"));
 
 		mvc.perform(get("/api/venues/{v}/takings", venue).cookie(operatorSession)
 						.param("date", today().toString()))

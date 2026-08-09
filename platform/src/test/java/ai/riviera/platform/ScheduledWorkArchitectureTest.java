@@ -73,6 +73,7 @@ class ScheduledWorkArchitectureTest {
 			"AbandonedBookingScheduler#sweep",
 			"GuestContactRetentionScheduler#sweep",
 			"MoneyPathAlertCheck#check",
+			"NoShowSweepScheduler#sweep",
 			"RequestSweepScheduler#sweep");
 
 	@Test

@@ -1,4 +1,5 @@
 import { Amenity } from '../shared/amenities';
+import { BookingStatus } from '../shared/booking-status';
 import { HeldSetState } from '../shared/availability-grid';
 import { MoneyView } from '../shared/money';
 import { BookingMode, PhotoSlotKey, Pool, Tier } from '../shared/venue-views';
@@ -56,15 +57,15 @@ export type RepriceErrorCode =
   | 'UNKNOWN';
 
 /**
- * One confirmed booking in the Daily view's arrivals list (`GET /api/venues/{id}/bookings?date`) — which
- * set it holds and its arrival code. The code is a bearer credential (invariant #7): shown for arrival
- * verification at the beach, never logged.
+ * One booking in the Daily view's arrivals list (`GET /api/venues/{id}/bookings?date`) — which set
+ * it holds, its arrival code, and its `status`: `CONFIRMED` (expected), `COMPLETED` (scanned in) or
+ * `NO_SHOW` (the service day passed unscanned), so a past day still lists who was booked. The code
+ * is a bearer credential (invariant #7): shown for arrival verification, never logged.
  */
 export interface ConsoleDailyBooking {
   readonly setId: number;
   readonly code: string;
-  /** Already checked in (COMPLETED) — the row stays listed, flagged, after a scan. */
-  readonly checkedIn: boolean;
+  readonly status: BookingStatus;
 }
 
 /** Successful check-in: which set the guest holds and the service date (never echoes the code). */

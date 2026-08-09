@@ -23,9 +23,11 @@ import {
   tileTapAction,
 } from '../shared/availability-grid';
 import { CardGlass } from '../shared/card-glass';
+import { StatusChip } from '../shared/status-chip';
 import { formatMoney, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
+import { BookingStatus, metaFor } from '../shared/booking-status';
 import { setLabel, setsById, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
@@ -41,13 +43,40 @@ import {
 import { QrScanner } from './qr-scanner';
 import { codeFromScan } from './scan-input';
 
-/** One arrivals row: set label, display-only arrival code (invariant #7), and whether already checked in. */
+/**
+ * One arrivals row: set label, display-only arrival code (invariant #7), and — for a booking that
+ * has settled — the chip announcing how. `chip` is `null` for a still-expected `CONFIRMED` booking,
+ * which needs no badge; the operator wording ("Checked in") is deliberately not `STATUS_META`'s
+ * tourist-facing "Completed".
+ */
 interface ArrivalRow {
   readonly setId: number;
   readonly code: string;
   readonly label: string;
-  readonly checkedIn: boolean;
+  readonly chip: ArrivalChip | null;
 }
+
+/** The settled-status badge: shared-directive modifier, operator wording, and its test hook. */
+interface ArrivalChip {
+  readonly modifier: string;
+  readonly label: string;
+  readonly testId: string;
+}
+
+/**
+ * The arrivals badge per settled status; a still-expected `CONFIRMED` row shows none. Only the
+ * wording and the test hook are local — the modifier is read from `STATUS_META`, the one map that
+ * owns the status→modifier vocabulary, so a rename there cannot silently drop this chip to the
+ * neutral fallback fill.
+ */
+const ARRIVAL_CHIPS: Partial<Record<BookingStatus, ArrivalChip>> = {
+  COMPLETED: {
+    modifier: metaFor('COMPLETED').chip,
+    label: 'Checked in',
+    testId: 'arrival-checked-in',
+  },
+  NO_SHOW: { modifier: metaFor('NO_SHOW').chip, label: 'No-show', testId: 'arrival-no-show' },
+};
 
 /** The check-in panel's announced outcome; tone drives the ink, the text carries the meaning. */
 interface CheckInNotice {
@@ -59,7 +88,8 @@ interface CheckInNotice {
  * The Daily view tab — the operator console's restyle of the staff
  * daily-operations surface: a sea-facing availability grid (tap a FREE set to mark a walk-in, tap a
  * `STAFF_MARKED` set to release; an online-booked set is locked), a Europe/Tirane date picker, and
- * an Arrivals card listing the day's confirmed bookings with their booking-code chips.
+ * an Arrivals card listing the day's bookings — confirmed, checked-in and no-show — with their
+ * booking-code chips.
  *
  * <p>A restyle only — <strong>no change to the availability invariants</strong>. It is the second
  * driving adapter onto the existing owner-asserted staff mark/release writes (invariant #13):
@@ -80,7 +110,7 @@ interface CheckInNotice {
  */
 @Component({
   selector: 'app-daily-view-tab',
-  imports: [CardGlass, BeachGridFrame],
+  imports: [CardGlass, BeachGridFrame, StatusChip],
   templateUrl: './daily-view-tab.html',
 })
 export class DailyViewTab {
@@ -245,7 +275,7 @@ export class DailyViewTab {
       setId: b.setId,
       code: b.code,
       label: setLabel(byId, b.setId),
-      checkedIn: b.checkedIn,
+      chip: ARRIVAL_CHIPS[b.status] ?? null,
     }));
   });
 

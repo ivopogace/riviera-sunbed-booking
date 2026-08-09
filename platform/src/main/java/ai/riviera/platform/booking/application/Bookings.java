@@ -123,14 +123,27 @@ public interface Bookings {
 	Optional<ClaimRef> cancelAwaitingPayment(long bookingId);
 
 	/**
-	 * Cancel a confirmed booking: transition {@code CONFIRMED → CANCELLED}, stamping
-	 * {@code cancelled_at}, the server-computed {@code refundMinor} and the {@code reason}, returning
-	 * the facts for the refund + {@code BookingCancelled} payload via SQL {@code RETURNING}. The guarded
-	 * {@code WHERE status = 'CONFIRMED'} makes a double-cancel a 0-row {@code empty} no-op, so the
-	 * release, refund and event fire exactly once.
+	 * Cancel a confirmed booking on the guest/policy path: transition {@code CONFIRMED → CANCELLED},
+	 * stamping {@code cancelled_at}, the server-computed {@code refundMinor} and reason
+	 * {@code POLICY}, returning the facts for the refund + {@code BookingCancelled} payload via SQL
+	 * {@code RETURNING}. The guarded {@code WHERE status = 'CONFIRMED'} makes a double-cancel a 0-row
+	 * {@code empty} no-op, so the release, refund and event fire exactly once — and keeps a swept
+	 * {@code NO_SHOW} out of the guest's reach.
 	 */
 	Optional<CancelledBooking> cancelConfirmed(long bookingId, java.time.Instant cancelledAt,
-			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason);
+			long refundMinor);
+
+	/**
+	 * The admin weather refund's transition: like {@link #cancelConfirmed} but admitting
+	 * {@code NO_SHOW} beside {@code CONFIRMED}, and always stamping reason {@code WEATHER}. A storm
+	 * is only known afterwards, by which time the sweep has marked that day's unscanned bookings
+	 * {@code NO_SHOW} — the guests who stayed home because of it. Separate from
+	 * {@link #cancelConfirmed} so the guest path stays {@code CONFIRMED}-only: a no-show is never
+	 * guest-cancellable. Guarded and {@code RETURNING}, so a re-run or a concurrent cancel is a
+	 * 0-row {@code empty} no-op and each booking refunds exactly once.
+	 */
+	Optional<CancelledBooking> cancelForWeather(long bookingId, java.time.Instant cancelledAt,
+			long refundMinor);
 
 	/**
 	 * Check a guest in: the guarded {@code CONFIRMED → COMPLETED} transition, keyed on the booking
@@ -144,6 +157,20 @@ public interface Bookings {
 			String code, VenueId venueId, LocalDate serviceDate, Instant completedAt);
 
 	/**
+	 * Mark up to {@code batchSize} {@code CONFIRMED} bookings dated before {@code today} as
+	 * {@code NO_SHOW}, returning how many transitioned. The {@code status = 'CONFIRMED'} guard
+	 * serializes against a concurrent check-in or cancel, so a lost race and a repeated run are
+	 * alike 0-row no-ops.
+	 *
+	 * <p>Batched because the statement runs on the bounded scheduled client: one unbounded
+	 * {@code UPDATE} over a large backlog would be cancelled by the timeout and roll back whole,
+	 * leaving the sweep unable to make progress on any run. A batch commits on its own, so a
+	 * cancelled run keeps what it already did. Fewer than {@code batchSize} rows means the backlog
+	 * is drained.
+	 */
+	int markPastConfirmedAsNoShow(LocalDate today, int batchSize);
+
+	/**
 	 * The status + service date behind a code at one venue, for classifying a check-in whose guarded
 	 * transition matched 0 rows. Venue-scoped: a foreign venue's code reads as {@code empty},
 	 * indistinguishable from an unknown one (non-enumerating; the code never travels further,
@@ -153,22 +180,23 @@ public interface Bookings {
 			String code, VenueId venueId);
 
 	/**
-	 * The {@code CONFIRMED} and {@code COMPLETED} bookings for {@code venueId} on {@code date} as
-	 * {@code (setId, code, checkedIn)} rows ordered by set, for the staff daily view — a checked-in
-	 * arrival stays listed, flagged. Excludes awaiting-payment and cancelled bookings. The
-	 * {@code code} is the bearer credential (invariant #7) — carried to the operator-gated caller,
-	 * never logged.
+	 * The {@code CONFIRMED}, {@code COMPLETED} and {@code NO_SHOW} bookings for {@code venueId} on
+	 * {@code date} as {@code (setId, code, status)} rows ordered by set, for the staff daily view —
+	 * a settled arrival stays listed, flagged by its status, so a past day is not empty. Excludes
+	 * awaiting-payment and cancelled bookings. The {@code code} is the bearer credential (invariant
+	 * #7) — carried to the operator-gated caller, never logged.
 	 */
-	List<DailyBooking> findConfirmedForVenueOn(VenueId venueId, LocalDate date);
+	List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date);
 
 	/**
-	 * The {@code CONFIRMED} bookings for {@code venueId} on {@code date} as {@code (id, amountMinor)}
-	 * rows — the candidate set for the admin weather refund. Excludes awaiting-payment and
-	 * already-cancelled bookings. The caller force-cancels each via the guarded
-	 * {@link #cancelConfirmed}, so a concurrent cancel makes the matching row a no-op. Ordered by id for
-	 * stable iteration.
+	 * The {@code CONFIRMED} and {@code NO_SHOW} bookings for {@code venueId} on {@code date} as
+	 * {@code (id, amountMinor)} rows — the candidate set for the admin weather refund, which reaches
+	 * a swept no-show because a washed-out day is where those rows come from. Excludes
+	 * awaiting-payment and already-cancelled bookings. The caller force-cancels each via the guarded
+	 * {@link #cancelForWeather}, whose admitted statuses match this read; a concurrent cancel makes
+	 * the matching row a no-op. Ordered by id for stable iteration.
 	 */
-	List<RefundableBooking> findConfirmedForWeatherRefund(VenueId venueId, LocalDate date);
+	List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date);
 
 	/**
 	 * The ids of bookings still {@code AWAITING_PAYMENT} that can no longer be paid — the

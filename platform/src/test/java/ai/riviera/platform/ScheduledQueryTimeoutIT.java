@@ -57,11 +57,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * pre-fix behaviour into a {@link TimeoutException} with a message, and the post-fix behaviour into
  * a normal completion well inside the ceiling.
  *
- * <p><strong>Five reads, not the four the issue named.</strong> The issue counted one entry query per
- * scheduled job. The retention sweep has two — the candidate read against {@code customer} and the
- * retention-basis read against {@code booking} — and both run before it writes anything, so bounding
- * only the first would have left the sweep able to wedge on the second. A phase-1 generalization
- * audit walked each job's call graph down to its first write and found it.
+ * <p><strong>More statements than scheduled jobs.</strong> The obvious count is one entry query per
+ * scheduled job; it is wrong in both directions. The retention sweep has two — the candidate read
+ * against {@code customer} and the retention-basis read against {@code booking} — and both run
+ * before it writes anything, so bounding only the first would have left the sweep able to wedge on
+ * the second. The no-show sweep has no candidate read at all: its entry statement <em>is</em> its
+ * write, a single guarded bulk {@code UPDATE}, and it is bounded on the same client for the same
+ * reason. What the rule tracks is each job's first statement, whatever its shape — walk each job's call
+ * graph down to its first database round-trip.
  *
  * <p><strong>The lower bound is the non-vacuity guard.</strong> Asserting only "finished within 15 s"
  * would also pass if the read never touched the locked table at all — a test that proves nothing
@@ -77,6 +80,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 		"booking.request.initial-delay=PT30M",
 		"booking.awaiting-payment.initial-delay=PT30M",
 		"customer.retention.initial-delay=PT30M",
+		"booking.no-show.initial-delay=PT30M",
 		"riviera.observability.alert.initial-delay=PT30M" })
 class ScheduledQueryTimeoutIT {
 
@@ -88,6 +92,13 @@ class ScheduledQueryTimeoutIT {
 
 	/** Any date: the retention-basis read under test is cancelled long before its result matters. */
 	private static final LocalDate SOME_CUTOFF = LocalDate.of(2027, 6, 1);
+
+	/**
+	 * The no-show case is the one statement here that <em>writes</em>. Postgres takes the table lock
+	 * before scanning, so a cutoff no booking can precede still blocks and still proves the bound —
+	 * while making the case incapable of mutating the shared database if it ever completes instead.
+	 */
+	private static final LocalDate BEFORE_ANY_BOOKING = LocalDate.of(1970, 1, 1);
 
 	@Autowired
 	Bookings bookings;
@@ -137,6 +148,8 @@ class ScheduledQueryTimeoutIT {
 				readWhileLocked("booking",
 						() -> guestBookingHistory.withBookingOnOrAfter(List.of(new CustomerId(1L)),
 								SOME_CUTOFF)));
+		assertBounded("the no-show sweep's guarded batch UPDATE",
+				readWhileLocked("booking", () -> bookings.markPastConfirmedAsNoShow(BEFORE_ANY_BOOKING, 1)));
 	}
 
 	private static void assertBounded(String what, Outcome outcome) {

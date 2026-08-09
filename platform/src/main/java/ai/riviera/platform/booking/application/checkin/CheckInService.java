@@ -22,6 +22,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * the {@code UPDATE}, so a lost race reads the winner's {@code COMPLETED} and answers
  * {@link CheckInResult.AlreadyCheckedIn}, never a double transition. Publishes no event: nothing
  * accrues and nothing refunds (the withdraw precedent).
+ *
+ * <p>A swept {@code NO_SHOW} answers {@link CheckInResult.WrongServiceDate} beside {@code CONFIRMED}
+ * rather than falling through to {@code NotFound}: the booking exists and is this venue's, so
+ * "no booking with that code here" would be false — its day has simply passed.
  */
 @Service
 class CheckInService implements CheckInBooking {
@@ -53,7 +57,7 @@ class CheckInService implements CheckInBooking {
 		return bookings.findCheckInFacts(code, venueId)
 				.<CheckInResult>map(facts -> switch (facts.status()) {
 					case COMPLETED -> new CheckInResult.AlreadyCheckedIn(facts.bookingDate());
-					case CONFIRMED -> new CheckInResult.WrongServiceDate(facts.bookingDate());
+					case CONFIRMED, NO_SHOW -> new CheckInResult.WrongServiceDate(facts.bookingDate());
 					default -> new CheckInResult.NotFound();
 				})
 				.orElseGet(CheckInResult.NotFound::new);
