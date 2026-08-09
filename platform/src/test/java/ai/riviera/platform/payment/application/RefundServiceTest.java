@@ -9,9 +9,6 @@ import org.junit.jupiter.api.Test;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
-import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
-import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
-import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundProgress;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 
@@ -29,8 +26,15 @@ class RefundServiceTest {
 
 	private static final BookingRef BOOKING = new BookingRef(42L);
 
+	/** A {@link ThrowingPayments} whose only lambda-targetable method is {@code findRefundState}. */
+	@FunctionalInterface
+	private interface StateOnlyPayments extends ThrowingPayments {
+		@Override
+		Optional<RefundState> findRefundState(BookingRef booking);
+	}
+
 	private RefundService serviceWithState(Optional<RefundState> state) {
-		PaymentGateway gateway = (RefundOnlyGateway) (booking, amount) -> {
+		RefundOnlyGateway gateway = (booking, amount) -> {
 			throw new UnsupportedOperationException("progressOf must not touch the gateway");
 		};
 		return new RefundService(gateway, new SimpleMeterRegistry(), (StateOnlyPayments) booking -> state);
@@ -38,11 +42,10 @@ class RefundServiceTest {
 
 	@Test
 	void delegatesRefundToGateway() {
-		PaymentGateway fake = (RefundOnlyGateway) (booking, amount) ->
+		RefundOnlyGateway fake = (booking, amount) ->
 				new RefundResult.Refunded("re-" + booking.value() + "-" + amount.minor());
-		RefundService service = new RefundService(fake, new SimpleMeterRegistry(),
-				(StateOnlyPayments) booking -> {
-					throw new UnsupportedOperationException("refund must not read the payment row");
+		RefundService service =
+				new RefundService(fake, new SimpleMeterRegistry(), new ThrowingPayments() {
 				});
 
 		RefundResult result = service.refund(BOOKING, new Money(2250L, "EUR"));
@@ -56,7 +59,7 @@ class RefundServiceTest {
 		RefundService service = serviceWithState(Optional.empty());
 
 		assertEquals(RefundProgress.NO_COLLECTION, service.progressOf(BOOKING),
-				"no payment row means this gateway never collected — never a failed refund (issue #581 trap 1)");
+				"no payment row means this gateway never collected — never a failed refund");
 	}
 
 	@Test
@@ -87,53 +90,5 @@ class RefundServiceTest {
 		assertEquals(RefundProgress.ACCEPTED, full.progressOf(BOOKING));
 		assertEquals(RefundProgress.ACCEPTED, partial.progressOf(BOOKING),
 				"a partial after-cutoff refund is accepted the same as a full one");
-	}
-
-	/** A {@link PaymentGateway} whose only lambda-targetable method is {@code refund}. */
-	@FunctionalInterface
-	private interface RefundOnlyGateway extends PaymentGateway {
-		@Override
-		default PaymentOutcome initiate(BookingRef booking, Money amount) {
-			throw new UnsupportedOperationException("not exercised by RefundServiceTest");
-		}
-
-		@Override
-		default PaymentCancellation cancel(BookingRef booking) {
-			throw new UnsupportedOperationException("not exercised by RefundServiceTest");
-		}
-	}
-
-	/** A {@link Payments} whose only lambda-targetable method is {@code findRefundState}. */
-	@FunctionalInterface
-	private interface StateOnlyPayments extends Payments {
-		@Override
-		default void register(NewPayment payment) {
-			throw new UnsupportedOperationException("not exercised by RefundServiceTest");
-		}
-
-		@Override
-		default Optional<PaymentCredentials> findPendingCredentials(BookingRef booking) {
-			throw new UnsupportedOperationException("not exercised by RefundServiceTest");
-		}
-
-		@Override
-		default Optional<BookingRef> findBookingRefByIntent(String paymentIntentId) {
-			throw new UnsupportedOperationException("not exercised by RefundServiceTest");
-		}
-
-		@Override
-		default void markStatus(String paymentIntentId, PaymentStatus status) {
-			throw new UnsupportedOperationException("not exercised by RefundServiceTest");
-		}
-
-		@Override
-		default Optional<String> findIntentByBookingRef(BookingRef booking) {
-			throw new UnsupportedOperationException("not exercised by RefundServiceTest");
-		}
-
-		@Override
-		default void markRefunded(BookingRef booking, long refundedMinor, String refundId) {
-			throw new UnsupportedOperationException("not exercised by RefundServiceTest");
-		}
 	}
 }

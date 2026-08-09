@@ -271,8 +271,8 @@ test('a weather-refunded booking is attributed to the venue', async ({ page }) =
 });
 
 /**
- * A refund stuck in the refund outbox (issue #581): the money has not moved, so the panel says the
- * refund is being processed and must not claim it is on its way to the card.
+ * A refund stuck in the refund outbox: the money has not moved, so the panel says the refund is
+ * being processed and must not claim it is on its way to the card.
  */
 test('a stuck refund says it is being processed, not on its way', async ({ page }) => {
   await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>

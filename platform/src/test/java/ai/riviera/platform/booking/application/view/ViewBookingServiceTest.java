@@ -255,8 +255,8 @@ class ViewBookingServiceTest {
 
 	/**
 	 * The disclosure is about the guest's money, so it must track the gateway, not the decision:
-	 * {@code OUTSTANDING} — collected but no refund accepted yet (the stuck-outbox case, #454) — is
-	 * the one state the panel must stop claiming the money is on its way (issue #581).
+	 * {@code OUTSTANDING} — collected but no refund accepted yet (the stuck-outbox case) — is
+	 * the one state where the panel must stop claiming the money is on its way.
 	 */
 	@Test
 	void flagsAStuckRefundAsOutstanding() {
@@ -276,7 +276,7 @@ class ViewBookingServiceTest {
 
 	/**
 	 * Absence of a payment row means the wired gateway never collected (the stub profile), never that
-	 * the refund failed — issue #581's trap 1. The copy must stay exactly as today.
+	 * the refund failed. The copy must stay exactly as today.
 	 */
 	@Test
 	void doesNotFlagARefundWhenNothingWasCollected() {
