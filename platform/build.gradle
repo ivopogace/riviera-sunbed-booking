@@ -45,7 +45,7 @@ dependencies {
 	implementation 'org.springframework.modulith:spring-modulith-events-core'
 	// Stripe collection only (PaymentIntents + webhook signature verification) — NO Connect
 	// (ADR-0002 / invariant #8). Lives behind the payment module's outbound PaymentGateway.
-	implementation 'com.stripe:stripe-java:33.1.1'
+	implementation 'com.stripe:stripe-java:33.2.0'
 	// Venue photo pipeline (#142): TwelveMonkeys ImageIO plugins (JPEG + WebP readers, auto-registered
 	// via ServiceLoader) for robust decode of real-world uploads, and Thumbnailator for high-quality
 	// resize + EXIF-orientation. Output is re-encoded JPEG, which drops all source metadata incl. GPS
