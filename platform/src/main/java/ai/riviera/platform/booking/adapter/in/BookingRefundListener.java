@@ -19,11 +19,14 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
  * round-trip, no money/state divergence on a post-refund commit failure) while still driving the
  * refund through {@code payment::api} ({@code booking → payment}, no cycle — invariant #11).
  *
- * <p><strong>Asynchronous and registry-backed, at-least-once:</strong> the refund is server-initiated
- * with an idempotency key (invariant #8/#10), so a redelivery never double-refunds. On a gateway
+ * <p><strong>Asynchronous and registry-backed, at-least-once:</strong> a redelivery never
+ * double-refunds, because the gateway asks what refunds it already holds before creating one
+ * (invariant #8/#10; {@code RESPONSIBILITIES.md} §{@code payment}). That, rather than the
+ * idempotency key, is what makes the retry safe at the distances this listener actually replays
+ * over — the next start's republish can be days out, well past the key's lifetime. On a gateway
  * {@link RefundResult.Failed} it <strong>throws</strong> so the Event Publication Registry retains the
- * publication and re-submits it (loud over silent for money — the same posture as the payout accrual;
- * the idempotency key makes the retry safe). No refund is issued when nothing is owed.
+ * publication and re-submits it (loud over silent for money — the same posture as the payout
+ * accrual). No refund is issued when nothing is owed.
  *
  * <p><strong>Why the annotations are spelled out rather than composed (#404).</strong>
  * {@code @ApplicationModuleListener} is the obvious way to write this, and it expands to exactly

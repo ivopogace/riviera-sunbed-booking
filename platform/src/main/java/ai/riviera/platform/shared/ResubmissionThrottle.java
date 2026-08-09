@@ -25,7 +25,8 @@ import java.util.function.IntSupplier;
  * <p><strong>Duplicate work is prevented one layer down, and this is not that layer.</strong> The v2
  * registry's {@code markResubmitted} claim ({@code UPDATE … WHERE ID = ? AND STATUS !=
  * 'RESUBMITTED'}) skips a publication whose previous resubmission is still in flight — durably,
- * across instances — and the refund lever's gateway call is idempotency-keyed besides. What this
+ * across instances — and the refund lever's gateway refuses to create a refund it already holds
+ * besides. What this
  * class bounds is redundant <em>sweeps</em>: during an outage every re-driven attempt fails fast and
  * is immediately eligible again, so an unthrottled button drives a retry storm at the dependency
  * that is already struggling, each press reporting success while moving nothing. The

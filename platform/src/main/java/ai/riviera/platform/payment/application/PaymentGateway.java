@@ -28,10 +28,11 @@ public interface PaymentGateway {
 	PaymentOutcome initiate(BookingRef booking, Money amount);
 
 	/**
-	 * Refund {@code amount} for the booking (U6). Server-initiated with an idempotency key derived
-	 * from the booking id (invariant #8/#10): the stub succeeds in-process; the Stripe adapter
-	 * creates a {@code Refund} against the booking's PaymentIntent and records it. Returns a typed
-	 * outcome (never throws on an expected gateway failure / a missing collection).
+	 * Refund {@code amount} for the booking (U6). Server-initiated and <strong>at most once per
+	 * booking</strong>, however often it is called (invariant #8/#10): the stub succeeds in-process;
+	 * the Stripe adapter adopts the refund it already holds against the booking's PaymentIntent, or
+	 * creates one and records it. Returns a typed outcome (never throws on an expected gateway
+	 * failure / a missing collection).
 	 */
 	RefundResult refund(BookingRef booking, Money amount);
 

@@ -24,7 +24,9 @@ public interface RefundResubmission {
 	/**
 	 * Re-drive every outstanding refund publication, once.
 	 *
-	 * <p>"Once" is layered: the gateway's idempotency key makes a duplicate refund impossible, the
+	 * <p>"Once" is layered: the gateway refuses to create a second refund when it already holds one
+	 * ({@code RESPONSIBILITIES.md} §{@code payment} — the layer that does not expire, unlike the
+	 * idempotency key this lever can easily outlive), the
 	 * registry's {@code markResubmitted} claim skips a publication whose previous resubmission is still
 	 * in flight, and what this port adds is a bound on how often the whole scope is swept — with a
 	 * caller-visible reason when it refuses ({@link ResubmissionOutcome.AlreadyRunning},

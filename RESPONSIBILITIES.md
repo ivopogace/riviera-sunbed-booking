@@ -239,8 +239,8 @@ sits in the outbox.
   #383 applied at ≈50 min. **Drain 5s** is deliberately far short of one round-trip, for two reasons:
   the shutdown budget *stacks* rather than overlaps (§`shared`'s `ShutdownBudget` owns that sum), and
   abandoning a refund is cheap in a way abandoning a mail is not — the publication stays outstanding
-  and the `booking-<id>-refund` idempotency key makes the replay return the original refund rather
-  than move money twice, so the drain need only catch the sub-second common case and the pathological
+  and the replay cannot move money twice however late it lands (§`payment`: the gateway is asked what
+  it already holds), so the drain need only catch the sub-second common case and the pathological
   25s one is precisely what it is safe to give up on. Re-deriving these against a different gateway
   (ADR-0009) is then a config change, not a code change. The
   executor rule is structural: `RefundListenerExecutorArchitectureTest`, scoped to `booking`
@@ -303,9 +303,32 @@ Stripe promises neither ordering nor a single delivery, and the handler widens t
   was the rejected alternative — a table plus an admin re-drive surface, and the id staying
   un-blacklisted already leaves a dashboard replay open.
 
+**One more rule governs refund *execution*, and it is not the idempotency key** (#569). The key
+(`booking-<id>-refund`) is a **time-bounded** defence: Stripe prunes keys after roughly a day, so a
+replay beyond that window is a brand-new request with the same parameters — and the vehicles that
+replay this call are precisely the slow ones (the restart republish, which on Render can be days
+away, and the admin re-drive, pressed exactly when someone notices `riviera.outbox.pending` late).
+Stripe's refundable-amount ceiling catches the *full*-refund case, so what got through was the
+partial one: two 50% refunds fit inside the charge and both succeed.
+
+- **A refund is never created without first asking the gateway what it already holds.** The adapter
+  lists the refunds on the booking's PaymentIntent and **adopts** a live one — records it and reports
+  success — instead of creating a second. A `failed`/`canceled` refund returned no money, so it is
+  not adoptable and a fresh attempt proceeds. This is invariant #8 applied to refunds, and it is why
+  the check is not the cheaper read of our own `refunded_minor`: that column is written *after* a
+  call returns, so it is silent about exactly the lost-response case being guarded — a partial refund
+  that posted but whose response was lost leaves it at 0. The read **fails closed**: an unreadable
+  list is `Failed`, never "no refund exists", so the publication stays outstanding and retries.
+- **Adoption is visible, not silent** — `riviera.refunds.adopted`. An increment means an earlier
+  attempt moved the money and lost the response; the money was always right, the record just caught up.
+- The refund create also **replays once on a connection timeout** with the same key, the twin of the
+  PaymentIntent path, so the common lost-response case resolves while the key still holds.
+
 **Not My Job:**
 - Deciding *whether* to refund or *how much* → **`booking`** owns the refund policy;
-  I execute the refund it decided
+  I execute the refund it decided. Note the line this puts under adoption: when the gateway already
+  holds a refund for a *different* amount than the one requested, I record what Stripe holds and warn
+  — paying the difference would be a refund decision, which is not mine to make
 - The booking lifecycle → **`booking`**
 - The payout ledger or commission → **`payout`**
 - Paying venues out / Stripe Connect → nobody uses Connect; **`payout`** records what's

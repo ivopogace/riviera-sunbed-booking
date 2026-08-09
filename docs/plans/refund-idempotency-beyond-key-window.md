@@ -223,15 +223,17 @@ No published surface changes: `RefundResult` keeps its two variants, no `spi/` i
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — pushing the branch; the draft PR that makes CI run is pending the user's
+go-ahead (see Open questions)`
 
-**Next action:** Phase 2 — grep the false premise and correct each claim, then the runbook entry.
+**Next action:** Open the draft PR (CI fires on `pull_request` only, so until one exists this branch
+gets no CI at all), then run the Review and Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Adopt an existing Stripe refund instead of creating a second (+ the adoption counter) | ✅ | `2ff5b5d` |
-| 1 — Same-key immediate replay on a lost refund response | ✅ | see the Phase-1 commit |
-| 2 — The false-premise claim sweep + runbook | ⏳ | |
+| 1 — Same-key immediate replay on a lost refund response | ✅ | `8e524af` |
+| 2 — The false-premise claim sweep + runbook | ✅ | see the Phase-2 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -248,16 +250,18 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/out/StripePaymentGateway.java` — the fix: existence read, adopt-or-create, same-key refund replay, adoption counter
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/out/StripePaymentGatewayTest.java` — AC-1…AC-7
 - `platform/src/main/java/ai/riviera/platform/shared/ObservabilityMetrics.java` — `REFUNDS_ADOPTED` name
-- `platform/src/main/java/ai/riviera/platform/payment/api/RefundPort.java` — claim sweep
-- `platform/src/main/java/ai/riviera/platform/payment/vocabulary/RefundResult.java` — claim sweep
-- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingRefundListener.java` — claim sweep
-- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/RefundExecutorConfig.java` — claim sweep
-- `platform/src/main/java/ai/riviera/platform/booking/application/refund/RefundOutbox.java` — claim sweep
-- `platform/src/main/java/ai/riviera/platform/booking/application/refund/RefundResubmissionService.java` — claim sweep
-- `platform/src/main/java/ai/riviera/platform/booking/application/refund/WeatherRefundService.java` — claim sweep
-- `platform/src/main/java/ai/riviera/platform/shared/ResubmissionThrottle.java` — claim sweep
-- `platform/src/main/java/ai/riviera/platform/shared/ResubmissionOutcome.java` — claim sweep
-- `platform/src/test/java/ai/riviera/platform/booking/adapter/in/RefundExecutorConfigTest.java` — claim sweep
+Claim sweep — the sites that named the idempotency key as a **sufficient** reason a replay is safe
+(descriptive mentions of "idempotency-keyed", which stay true, were deliberately left alone):
+
+- `platform/src/main/java/ai/riviera/platform/payment/api/RefundPort.java`
+- `platform/src/main/java/ai/riviera/platform/payment/vocabulary/RefundResult.java`
+- `platform/src/main/java/ai/riviera/platform/payment/application/PaymentGateway.java`
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingRefundListener.java`
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/RefundExecutorProperties.java`
+- `platform/src/main/java/ai/riviera/platform/booking/application/refund/RefundOutbox.java`
+- `platform/src/main/java/ai/riviera/platform/booking/application/refund/RefundResubmission.java`
+- `platform/src/main/java/ai/riviera/platform/shared/ResubmissionThrottle.java`
+- `platform/src/main/java/ai/riviera/platform/shared/ResubmissionOutcome.java`
 - `RESPONSIBILITIES.md` — §`payment` gains the refund-execution rule (the relocated rationale, per `riviera-java-conventions` §6d)
 - `docs/runbooks/observability.md` — `riviera.refunds.adopted`: what it means, when to chase it
 - `docs/plans/refund-outbox-resubmission.md` — R-3's "closed" verdict superseded by this slice
@@ -327,6 +331,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-09 | Phase 2 | Every place the codebase states the idempotency key as the *reason* a refund replay is safe — the premise #569 disproved | `grep -rn "idempotency-keyed\|never double-refund\|double-refunds\|idempotency key" --include=*.java --include=*.md platform/src RESPONSIBILITIES.md docs/` | ~45 hits; **9 live-source sites** asserted *sufficiency*, the rest are descriptive ("the idempotency-keyed call", still true) or historical plan docs | Corrected the 9, each pointing at the one canonical statement now in `RESPONSIBILITIES.md` §`payment` (`riviera-java-conventions` §6d: relocate the rationale, leave a pointer). Left descriptive mentions alone — rewriting a true adjective is churn. Of the historical plan docs, only `refund-outbox-resubmission.md` R-3 was touched, because it *closed a risk* on the false premise; the others record what was believed at their time and are not corrected retroactively. **`V11__payment_refund.sql`'s comment says the same wrong thing and was deliberately NOT edited** — it is applied, and Flyway validates checksums (invariant #12) |
 | 2026-08-09 | Phase 0 | Any other gateway call trusting the idempotency key alone for safety across a replay that may outlive the key window | `grep -n "IdempotencyKey\|idempotencyKey(" StripePaymentGateway.java` then `grep -rn "\.pay(\|CheckoutPort" platform/src/main/java` | 2 keyed calls: `initiate` (`booking-<id>-pi`) and `refund` (`booking-<id>-refund`); plus `cancel`, unkeyed | **Fixed `refund` only, deliberately.** `initiate` is reached only from the synchronous request path (`CreateBookingService`, `RespondToRequestService`) — no event-publication replay vehicle can re-drive it days later, and its worst case after key pruning is a second *unconfirmed* intent that Stripe auto-expires, not money leaving. `cancel` already retrieves the intent's state from Stripe before acting — the same read-before-write posture this slice gives `refund`, which is why it needed no change |
 
 ---

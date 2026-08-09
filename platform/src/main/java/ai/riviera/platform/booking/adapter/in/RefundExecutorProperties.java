@@ -46,9 +46,9 @@ record RefundExecutorProperties(Integer poolSize, Integer queueCapacity, Duratio
 
 	/**
 	 * Deliberately far short of one round-trip. Abandoning a refund is cheap — the publication stays
-	 * outstanding, the next start republishes, and the {@code booking-<id>-refund} idempotency key makes
-	 * the replay return the original rather than move money twice — so the drain need only catch the
-	 * sub-second common case.
+	 * outstanding, the next start republishes, and that replay cannot move money twice however long
+	 * the restart takes, because the gateway checks what it already holds before creating a refund —
+	 * so the drain need only catch the sub-second common case.
 	 */
 	static final Duration DEFAULT_SHUTDOWN_DRAIN = Duration.ofSeconds(5);
 
