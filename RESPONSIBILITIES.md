@@ -278,6 +278,31 @@ client). Collection only. Publish the read side of the refund conversation
 `NO_COLLECTION` / `OUTSTANDING` / `ACCEPTED` — answered from this module's own row, with
 "no row" meaning the wired gateway never collected, never that a refund failed.
 
+**Two rules make that reconciliation faithful under Stripe's delivery guarantees** (#568, #570).
+Stripe promises neither ordering nor a single delivery, and the handler widens the window itself
+(a transient failure rolls the whole transaction back, so the same event returns hours later):
+
+- **The payment record has a state machine, in the SQL.** `markStatus` is a guarded
+  `UPDATE … WHERE status IN (REQUIRES_PAYMENT, FAILED)` — the *open* states, `FAILED` among them
+  because a declined intent is retryable at Stripe (the same set `findPendingCredentials` calls
+  payable). Everything else is terminal, so a late `payment_intent.payment_failed` can no longer
+  record collected money as failed, or contradict a `REFUNDED` row carrying `refunded_minor > 0`.
+  The guard is one statement, never a read-then-write, so two concurrent deliveries cannot both
+  see "open". Its consequence for the spine: `PaymentConfirmed`/`PaymentCanceled` are published
+  **only when a row actually moved** — a late `canceled` on a collected payment must not ask
+  `booking` to release the claim of a paid booking (invariant #2). `booking`'s own guarded
+  `AWAITING_PAYMENT` transitions stay as the second layer; they were the only one.
+- **A verified event is never consumed unapplied.** For the three handled types, a payload that
+  yields no PaymentIntent id raises `UnreadableWebhookEventException` (`503`) instead of logging a
+  warning and answering `200`. The rollback un-does the event-id dedup insert, so Stripe
+  re-delivers and the id is not locally blacklisted — otherwise a paid booking could sit in
+  `AWAITING_PAYMENT` forever, holding its `(set, date)` claim, with the abandoned sweep skipping it
+  by design ("the confirm webhook wins" — a webhook that had already been consumed). Types the
+  handler does not act on, and events for intents this app never recorded, stay `200`: there is no
+  fact to lose in the first, and re-delivery cannot help the second. Parking raw events for replay
+  was the rejected alternative — a table plus an admin re-drive surface, and the id staying
+  un-blacklisted already leaves a dashboard replay open.
+
 **Not My Job:**
 - Deciding *whether* to refund or *how much* → **`booking`** owns the refund policy;
   I execute the refund it decided

@@ -70,11 +70,25 @@ class StripeWebhookIT {
 				.param("i", intentId).query(String.class).single();
 	}
 
+	private static final String INTENT_OBJECT = """
+			{"id":"%s","object":"payment_intent"}""";
+
+	private static final String NOT_AN_INTENT_OBJECT = """
+			{"id":"ch_not_an_intent","object":"charge"}""";
+
+	private long webhookEventRows(String eventId) {
+		return jdbc.sql("SELECT COUNT(*) FROM stripe_webhook_event WHERE event_id = :id")
+				.param("id", eventId).query(Long.class).single();
+	}
+
 	private static String eventJson(String eventId, String type, String paymentIntentId) {
+		return eventJson(eventId, type, Stripe.API_VERSION, INTENT_OBJECT.formatted(paymentIntentId));
+	}
+
+	private static String eventJson(String eventId, String type, String apiVersion, String dataObject) {
 		return """
-				{"id":"%s","object":"event","api_version":"%s","type":"%s",\
-				"data":{"object":{"id":"%s","object":"payment_intent"}}}\
-				""".formatted(eventId, Stripe.API_VERSION, type, paymentIntentId);
+				{"id":"%s","object":"event","api_version":"%s","type":"%s","data":{"object":%s}}\
+				""".formatted(eventId, apiVersion, type, dataObject);
 	}
 
 	private static String sign(String payload) throws Exception {
@@ -200,6 +214,53 @@ class StripeWebhookIT {
 		assertEquals(0, events.stream(PaymentCanceled.class)
 				.filter(e -> e.bookingRef().equals(new BookingRef(7102L))).count(),
 				"no claim release is announced for a booking whose payment went through (invariant #2)");
+	}
+
+	@Test
+	void unreadableHandledEventIsRetryableAndNotConsumed() throws Exception {
+		payments.register(new NewPayment(new BookingRef(7201L), "pi_unreadable", 4500L, "EUR", "cs_test_secret"));
+		String payload = eventJson("evt_unreadable_1", "payment_intent.succeeded",
+				Stripe.API_VERSION, NOT_AN_INTENT_OBJECT);
+
+		postSigned(payload, sign(payload), 503);
+
+		assertEquals("REQUIRES_PAYMENT", statusOf("pi_unreadable"),
+				"an event whose fact could not be applied changes nothing");
+		assertEquals(0L, webhookEventRows("evt_unreadable_1"),
+				"the dedup insert rolls back, so Stripe re-delivers instead of the id being blacklisted");
+	}
+
+	@Test
+	void unreadableIgnoredEventTypeIsStillConsumed() throws Exception {
+		String payload = eventJson("evt_unreadable_other", "payment_intent.created",
+				Stripe.API_VERSION, NOT_AN_INTENT_OBJECT);
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals(1L, webhookEventRows("evt_unreadable_other"),
+				"a type we never act on is consumed as before — there is no fact to lose");
+	}
+
+	@Test
+	void unknownIntentIsIgnoredNotRetried() throws Exception {
+		String payload = eventJson("evt_unknown_intent", "payment_intent.succeeded", "pi_never_registered");
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals(1L, webhookEventRows("evt_unknown_intent"),
+				"an event for an intent this app never created is consumed — re-delivery cannot help");
+	}
+
+	@Test
+	void apiVersionSkewStillReadsTheIntentId() throws Exception {
+		payments.register(new NewPayment(new BookingRef(7202L), "pi_skew", 4500L, "EUR", "cs_test_secret"));
+		String payload = eventJson("evt_skew_1", "payment_intent.succeeded", "2017-01-27",
+				INTENT_OBJECT.formatted("pi_skew"));
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals("SUCCEEDED", statusOf("pi_skew"),
+				"an event from another API version still confirms through the deserializeUnsafe fallback");
 	}
 
 	@Test

@@ -238,15 +238,15 @@ unchanged. The only addition is a 5xx on a previously-silent failure path.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3 — docs freshness + close-out)`
 
-**Next action:** Phase 2 — make an unreadable handled event a rolled-back, retryable failure.
+**Next action:** Phase 3 — run the docs-freshness audit, then mark the PR ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Guard `markStatus` at the SQL seam (#568) | ✅ | `0216f86` |
-| 1 — Gate event publication on a real transition (#568) | ✅ | `<phase-1>` |
-| 2 — Make an unreadable handled event retryable (#570) | | |
+| 1 — Gate event publication on a real transition (#568) | ✅ | `ba6cc7b` |
+| 2 — Make an unreadable handled event retryable (#570) | ✅ | `<phase-2>` |
 | 3 — Docs freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -360,6 +360,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-09 | Phase 2 — "seen" recorded before the fact is applied | any other site that marks an external fact processed ahead of applying it | `grep -rn "firstSeen\|ON CONFLICT DO NOTHING" --include=*.java platform/src/main/java` | 6, all outside `payment` | **Skip — none share the shape.** `payout`'s accrual/reversal inserts *are* the fact (idempotent on `UNIQUE(booking_id, entry_type)`), and the `customer`/`operator` hits are registration claims. `stripe_webhook_event` is the only table that records "processed" as a **separate** row from the effect, which is what made a no-op application indistinguishable from a real one |
+| 2026-08-09 | Phase 1 — announcing an unverified fact | a publisher that emits an event without checking the write happened | reviewed the three publish sites in `StripeWebhookController` + `PaymentDueAnnouncer` / `RequestReleaseService` (per `CLAUDE.md`'s publication-site notes) | 2 fixed here | **Fixed both.** The other two publish from a guarded `UPDATE … RETURNING` that already settles the outcome, so they cannot announce a transition that did not happen |
 | 2026-08-09 | Phase 0 — the guarded transition | every write to `payment.status` | `grep -rn "UPDATE payment" platform/src/main/java` | 2: `markStatus` (guarded now), `markRefunded` | **Subset.** `markRefunded` deliberately stays unguarded: it is not webhook-driven — it records a refund the app *itself* just obtained from the gateway (`StripePaymentGateway.refund` writes it only after Stripe returns a `Refund`), so there is no late-event ordering to defend against. Guarding it on the open states would be actively wrong, since it must move a **`SUCCEEDED`** row |
 
 ---
