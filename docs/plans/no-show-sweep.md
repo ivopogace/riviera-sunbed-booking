@@ -321,6 +321,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/resources/application.properties` — scheduling pool 4 → 5, one thread per job
 - `platform/src/test/java/ai/riviera/platform/ScheduledWorkArchitectureTest.java` — the fifth job
   joins the non-vacuity list
+- `platform/src/test/java/ai/riviera/platform/ScheduledQueryTimeoutIT.java` — asserts the sweep's
+  bulk `UPDATE` is bounded too (phase 6, docs-freshness finding)
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/DailyBooking.java` — carry
   the status token
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/ListDailyBookings.java` —
