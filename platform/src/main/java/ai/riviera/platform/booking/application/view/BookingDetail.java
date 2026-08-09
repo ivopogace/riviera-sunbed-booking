@@ -43,11 +43,16 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * never charged (the abandoned-payment release stamps no reason). It is carried because
  * {@code refundedAmount} alone cannot separate a venue's weather refund from the guest's own
  * cancellation — both return money, only one is news to the guest.
+ *
+ * <p>{@code refundOutstanding} says the gateway has collected for this cancelled booking but not yet
+ * accepted its refund, so the surface must say the refund is being processed rather than on its way
+ * to the card. {@code false} everywhere else — including when the wired gateway never collected
+ * (the stub profile), where the refund decision reads as it always has.
  */
 public record BookingDetail(String code, BookingStatus status, VenueId venueId, String venueName,
 		String rowLabel, int positionNo, LocalDate bookingDate, MoneyView amount, boolean cancellable,
 		boolean withdrawable, boolean beforeCutoff, MoneyView refundIfCancelledNow,
-		MoneyView refundedAmount,
+		MoneyView refundedAmount, boolean refundOutstanding,
 		java.time.Instant requestExpiresAt,
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld,
 		boolean payWindowClosed, RefundReason cancelReason) {

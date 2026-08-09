@@ -112,7 +112,9 @@ class BookingViewIT {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("CANCELLED"))
 				.andExpect(jsonPath("$.cancelReason").value("WEATHER"))
-				.andExpect(jsonPath("$.refundedAmount.minorUnits").value(4500));
+				.andExpect(jsonPath("$.refundedAmount.minorUnits").value(4500))
+				// No payment row under the stub profile: never read as a stuck refund (issue #581 trap 1).
+				.andExpect(jsonPath("$.refundOutstanding").value(false));
 	}
 
 	@Test

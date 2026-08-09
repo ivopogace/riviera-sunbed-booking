@@ -27,16 +27,19 @@ class ViewBookingService implements ViewBooking {
 	private final ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout;
 	private final ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail;
 	private final ai.riviera.platform.payment.api.CollectionGuarantee collection;
+	private final ai.riviera.platform.payment.api.RefundStatusLookup refundStatus;
 
 	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy,
 			ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout,
 			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail,
-			ai.riviera.platform.payment.api.CollectionGuarantee collection) {
+			ai.riviera.platform.payment.api.CollectionGuarantee collection,
+			ai.riviera.platform.payment.api.RefundStatusLookup refundStatus) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
 		this.checkout = checkout;
 		this.confirmationMail = confirmationMail;
 		this.collection = collection;
+		this.refundStatus = refundStatus;
 	}
 
 	@Override
@@ -75,6 +78,11 @@ class ViewBookingService implements ViewBooking {
 
 		MoneyView refunded = b.refundMinor() == null ? null
 				: new MoneyView(b.refundMinor(), b.currency());
+		// Lazy like the credentials read: only a cancelled booking with money owed has a refund to track.
+		boolean refundOutstanding = b.status() == BookingStatus.CANCELLED
+				&& b.refundMinor() != null && b.refundMinor() > 0
+				&& refundStatus.progressOf(new ai.riviera.platform.payment.vocabulary.BookingRef(b.id()))
+						== ai.riviera.platform.payment.vocabulary.RefundProgress.OUTSTANDING;
 		boolean awaitingPayment = b.status() == BookingStatus.AWAITING_PAYMENT;
 		// Off the same quote as cancellable, so one response cannot straddle the midnight boundary.
 		boolean payWindowClosed = awaitingPayment && quote.serviceDayOpen();
@@ -87,7 +95,7 @@ class ViewBookingService implements ViewBooking {
 				set.positionNo(), b.bookingDate(), new MoneyView(b.amountMinor(), b.currency()),
 				cancellable, withdrawable, quote.beforeCutoff(),
 				new MoneyView(quote.refundMinor(), b.currency()),
-				refunded, b.requestExpiresAt(), payment, emailWithheld, payWindowClosed,
-				b.cancelReason());
+				refunded, refundOutstanding, b.requestExpiresAt(), payment, emailWithheld,
+				payWindowClosed, b.cancelReason());
 	}
 }

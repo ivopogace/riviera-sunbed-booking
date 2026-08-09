@@ -16,11 +16,14 @@ import java.time.Instant;
  * {@code payment} is {@code null} and no payment may still be taken (invariant #4).
  * {@code cancelReason} names which cancellation a cancelled booking went through
  * ({@code POLICY}/{@code WEATHER}/{@code CONFLICT}), and is {@code null} both for a live booking and
- * for one cancelled without ever being charged. Mirrors the FE {@code BookingDetail} type.
+ * for one cancelled without ever being charged. {@code refundOutstanding} is {@code true} only while
+ * a cancelled booking's refund is decided but not yet accepted by the gateway — the panel then says
+ * the refund is being processed instead of on its way. Mirrors the FE {@code BookingDetail} type.
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, MoneyView amount, boolean cancellable, boolean withdrawable,
 		boolean beforeCutoff, MoneyView refundIfCancelledNow, MoneyView refundedAmount,
+		boolean refundOutstanding,
 		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld,
 		boolean payWindowClosed, String cancelReason) {
 
@@ -28,7 +31,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		return new BookingDetailView(d.code(), d.status().name(), d.venueId().value(), d.venueName(),
 				d.rowLabel(), d.positionNo(), d.bookingDate().toString(), d.amount(), d.cancellable(),
 				d.withdrawable(), d.beforeCutoff(), d.refundIfCancelledNow(), d.refundedAmount(),
-				d.requestExpiresAt(),
+				d.refundOutstanding(), d.requestExpiresAt(),
 				d.payment() == null ? null
 						: new PaymentCredentialsView(d.payment().clientSecret(),
 								d.payment().paymentIntentId()),
