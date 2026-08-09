@@ -11,6 +11,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
+import { BookingQr } from './booking-qr';
 import { MyBookingSummary } from './booking.model';
 import { BookingService } from './booking.service';
 
@@ -54,6 +55,8 @@ interface RowView {
   /** 'Paid' once money has moved; 'Amount' while open, or when a cancellation never charged. */
   readonly amountLabel: string;
   readonly amountStr: string;
+  /** CONFIRMED only — gates the row's scannable QR; terminal rows show status text alone. */
+  readonly showQr: boolean;
 }
 
 function buildView(b: MyBookingSummary): RowView {
@@ -68,6 +71,7 @@ function buildView(b: MyBookingSummary): RowView {
     chipClass: meta.chip,
     amountLabel: amountLabelFor(b.status, b.refundedAmount),
     amountStr: formatMoney(b.amount),
+    showQr: b.status === 'CONFIRMED',
   };
 }
 
@@ -152,7 +156,7 @@ function isNotFound(error: unknown): boolean {
  */
 @Component({
   selector: 'app-my-bookings',
-  imports: [RouterLink, CardGlass, StatusChip],
+  imports: [RouterLink, CardGlass, StatusChip, BookingQr],
   template: `
     <section class="my-bookings" aria-labelledby="mb-title">
       <a routerLink="/" class="back-link">← All beaches</a>
@@ -200,6 +204,9 @@ function isNotFound(error: unknown): boolean {
                         <span class="subline" data-testid="row-subline">{{ row.view.subLine }}</span>
                       }
                       <span class="code">{{ row.view.code }}</span>
+                      @if (row.view.showQr) {
+                        <app-booking-qr class="mt-2" [code]="row.view.code" [size]="104" />
+                      }
                     </span>
                     <span class="row-side">
                       <!-- Status conveyed in text (the chip label), never colour alone (WCAG AA). -->

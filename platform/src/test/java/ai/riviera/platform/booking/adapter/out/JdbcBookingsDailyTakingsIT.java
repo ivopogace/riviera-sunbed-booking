@@ -18,9 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * The {@code booking.api.DailyTakings} SQL aggregate (#171, O2): gross of a venue's
- * {@code CONFIRMED} online bookings for one service date, summed in the query (invariant #1, no
- * JPA). Pins that the sum counts only the target venue + date + {@code CONFIRMED} status and that
- * an empty day is {@code (0, "EUR")}. Testcontainers; skipped where Docker is absent.
+ * {@code CONFIRMED}-or-{@code COMPLETED} online bookings for one service date, summed in the query
+ * (invariant #1, no JPA). Pins that the sum counts only the target venue + date +
+ * {@code CONFIRMED}/{@code COMPLETED} statuses — a checked-in booking still counts, so a scan never
+ * shrinks the day — and that an empty day is {@code (0, "EUR")}. Testcontainers; skipped where
+ * Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -85,14 +87,14 @@ class JdbcBookingsDailyTakingsIT {
 	}
 
 	@Test
-	void sumsOnlyConfirmedOnlineForVenueAndDate() {
+	void sumsConfirmedAndCheckedInOnlineForVenueAndDate() {
 		SetRef target = ownVenueWithOnlineSet("Sum Venue");
 		LocalDate day = LocalDate.of(2027, 8, 10);
 
-		// Three CONFIRMED online bookings for the target venue on the day: gross = 11000.
+		// Two CONFIRMED + one COMPLETED (checked-in) booking on the day: gross = 11000.
 		insertBooking("TAKE0001", target.venueId(), target.setId(), day, 4000, "CONFIRMED");
 		insertBooking("TAKE0002", target.venueId(), target.setId(), day, 4000, "CONFIRMED");
-		insertBooking("TAKE0003", target.venueId(), target.setId(), day, 3000, "CONFIRMED");
+		insertBooking("TAKE0003", target.venueId(), target.setId(), day, 3000, "COMPLETED");
 
 		// Decoys that must NOT be counted:
 		insertBooking("TAKE0004", target.venueId(), target.setId(), day, 5000, "AWAITING_PAYMENT"); // status
@@ -102,7 +104,7 @@ class JdbcBookingsDailyTakingsIT {
 
 		OnlineTakings takings = dailyTakings.grossOnlineTakings(new VenueId(target.venueId()), day);
 
-		assertEquals(11000L, takings.grossMinor(), "sums only CONFIRMED online bookings for the venue + date");
+		assertEquals(11000L, takings.grossMinor(), "sums CONFIRMED + COMPLETED bookings for the venue + date");
 		assertEquals("EUR", takings.currency());
 	}
 

@@ -8,6 +8,8 @@ import { apiPhotoUrl } from '../shared/photo-url';
 import { MoneyView } from '../shared/money';
 import {
   BeachMapLayoutRequest,
+  CheckInErrorCode,
+  CheckInResultView,
   ConsoleDailyBooking,
   LayoutErrorCode,
   MarkErrorCode,
@@ -134,9 +136,21 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The venue's CONFIRMED online bookings for `date`, each as `(setId, code)` — the Daily view's
-   * Arrivals list. Owner-asserted server-side (invariant #13); the code is display-only
-   * (invariant #7) — shown for arrival verification, never logged.
+   * Check a guest in by scanned or typed booking code: the guarded `CONFIRMED -> COMPLETED`
+   * transition, single-use and service-date-only server-side. The code rides the URL path (the
+   * platform's standing code-in-path contract) and never appears in an error body or a log.
+   */
+  checkIn(venueId: number, code: string): Observable<CheckInResultView> {
+    return this.http.post<CheckInResultView>(
+      `${this.base}/api/venues/${venueId}/bookings/${encodeURIComponent(code)}/check-in`,
+      null,
+    );
+  }
+
+  /**
+   * The venue's CONFIRMED-or-checked-in bookings for `date`, each as `(setId, code, checkedIn)` —
+   * the Daily view's Arrivals list. Owner-asserted server-side (invariant #13); the code is
+   * display-only (invariant #7) — shown for arrival verification, never logged.
    */
   dailyBookings(venueId: number, date: string): Observable<ConsoleDailyBooking[]> {
     return this.http.get<ConsoleDailyBooking[]>(`${this.base}/api/venues/${venueId}/bookings`, {
@@ -368,4 +382,33 @@ export function layoutErrorOf(error: unknown): LayoutErrorCode {
     }
   }
   return 'UNKNOWN';
+}
+
+/** Map an HTTP failure of a check-in to a known {@link CheckInErrorCode} (RFC-7807 `code`; or 401). */
+export function checkInErrorOf(error: unknown): CheckInErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'ALREADY_CHECKED_IN':
+      case 'WRONG_SERVICE_DATE':
+      case 'BOOKING_NOT_FOUND':
+      case 'NOT_VENUE_OWNER':
+        return code;
+      default:
+        return 'UNKNOWN';
+    }
+  }
+  return 'UNKNOWN';
+}
+
+/** The `bookingDate` extension a WRONG_SERVICE_DATE problem carries, for the operator's message. */
+export function checkInWrongDateOf(error: unknown): string | undefined {
+  if (error instanceof HttpErrorResponse && typeof error.error === 'object' && error.error !== null) {
+    const date = (error.error as { bookingDate?: unknown }).bookingDate;
+    return typeof date === 'string' ? date : undefined;
+  }
+  return undefined;
 }

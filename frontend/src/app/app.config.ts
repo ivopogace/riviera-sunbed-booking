@@ -7,6 +7,9 @@ import {
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 
+import { CameraQrScanner } from './operator/camera-qr-scanner';
+import { FakeQrScanner } from './operator/fake-qr-scanner';
+import { QrScanner } from './operator/qr-scanner';
 import { apiSessionInterceptor } from './core/api-session.interceptor';
 import { SsoRedirect, WindowSsoRedirect } from './core/sso-redirect';
 import { ThemeService } from './core/theme';
@@ -24,12 +27,22 @@ import { routes } from './app.routes';
  * specs override the {@link StripePaymentGateway} token directly.
  */
 function stripeGatewayFactory(): StripePaymentGateway {
-  // `globalThis` is always defined (browser/SSR/test); in a browser it is `window`, so the
-  // Playwright-set flag is read the same way without a `window` reference.
+  // `globalThis` is `window` in a browser and always defined, so the Playwright flag reads uniformly.
   const useFake =
     (globalThis as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ === true;
   return useFake ? new FakeStripePaymentGateway() : new StripeJsPaymentGateway();
 }
+
+/**
+ * Real camera scanning in the browser. The Playwright a11y e2e sets `window.__RIVIERA_FAKE_QR__`
+ * (a queue of payloads) to swap in a deterministic fake — same shape as the Stripe swap above.
+ */
+function qrScannerFactory(): QrScanner {
+  const armed =
+    (globalThis as unknown as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__ !== undefined;
+  return armed ? new FakeQrScanner() : new CameraQrScanner();
+}
+
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -44,6 +57,7 @@ export const appConfig: ApplicationConfig = {
       inject(ThemeService);
     }),
     { provide: StripePaymentGateway, useFactory: stripeGatewayFactory },
+    { provide: QrScanner, useFactory: qrScannerFactory },
     // SSO start is a full-page navigation out of the SPA; the seam lets unit specs record the
     // URL without a real navigation (mirrors the Stripe adapter swap). The e2e uses the real redirect and
     // intercepts the navigation with page.route.

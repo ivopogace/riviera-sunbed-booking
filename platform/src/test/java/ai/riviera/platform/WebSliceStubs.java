@@ -34,6 +34,8 @@ import ai.riviera.platform.booking.application.request.PendingRequests;
 import ai.riviera.platform.booking.application.request.RespondToRequest;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
+import ai.riviera.platform.booking.application.checkin.CheckInBooking;
+import ai.riviera.platform.booking.application.checkin.CheckInResult;
 import ai.riviera.platform.booking.application.view.ListDailyBookings;
 import ai.riviera.platform.booking.application.view.MyBookings;
 import ai.riviera.platform.booking.application.view.ViewBooking;
@@ -564,6 +566,11 @@ class WebSliceStubs {
 	@Bean
 	ListDailyBookings listDailyBookings() {
 		return (_, _, _) -> List.of();
+	}
+
+	@Bean
+	CheckInBooking checkInBooking() {
+		return (_, _, _) -> new CheckInResult.NotFound();
 	}
 
 	@Bean

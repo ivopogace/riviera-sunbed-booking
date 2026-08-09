@@ -136,9 +136,13 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   await expectNoSeriousAxeViolations(page, 'booking dialog (Review)');
   await dialog.getByRole('button', { name: 'Continue to payment' }).click();
 
-  // Lands on the confirmation with the booking code.
+  // Lands on the confirmation with the booking code — and its scannable QR twin (#583).
   await expect(page).toHaveURL(/\/booking\/confirmation/);
   await expect(page.getByTestId('booking-code')).toContainText('ABCD234567');
+  const qr = page.getByTestId('booking-qr');
+  await expect(qr).toBeVisible();
+  await expect(qr).toHaveAttribute('src', /^data:image\//);
+  await expect(qr).toHaveAttribute('alt', /ABCD234567/);
   await expectNoSeriousAxeViolations(page, 'booking confirmation');
 });
 

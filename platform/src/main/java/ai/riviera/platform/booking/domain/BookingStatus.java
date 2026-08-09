@@ -11,8 +11,9 @@ package ai.riviera.platform.booking.domain;
  * request deadline → {@link #EXPIRED}; the guest retracted their own request → {@link #WITHDRAWN}.
  * Venue accept → {@link #AWAITING_PAYMENT} (then the identical payment spine). An
  * accepted-but-unpaid request is swept to {@link #CANCELLED} like any abandoned payment.
- * {@link #COMPLETED}/{@link #NO_SHOW} are admitted by the schema (closed value set) and exercised
- * by later slices.
+ * {@link #COMPLETED} is written by the staff check-in — the guarded scan-to-complete transition on
+ * the service date; {@link #NO_SHOW} is admitted by the schema and stays unwritten until the
+ * never-checked-in sweep ships.
  *
  * <p>{@link #WITHDRAWN} is deliberately NOT {@link #CANCELLED}: no money was ever collected (a
  * pending request has no PaymentIntent on record — payment-request-on-accept), so

@@ -36,7 +36,8 @@ review-only.
    (idempotently). `availability` needs no listener — the set was already claimed
    atomically at step 3; confirmation changes nothing in its table. No listener
    reaches back into `booking`.
-8. On arrival, venue staff verify the booking code at the lane/set. Staff can also
+8. On arrival, venue staff check the guest in — scanning the booking's QR (or typing
+   its code) flips the booking `CONFIRMED → COMPLETED`, exactly once. Staff can also
    tap-to-mark a walk-in, which **`availability`** records against the **walk-in**
    pool — a separate pool from online bookings.
 9. If the tourist cancels, **`booking`** applies the cancellation policy, frees the
@@ -149,7 +150,14 @@ availability read — `venue` composes; I answer state.
 
 ## `booking`
 **Job:** Own bookings, booking codes, and the lifecycle (confirmed / cancelled /
-completed / no-show). Enforce the cancellation policy and the same-day cutoff — **both of the
+completed / no-show). Own the staff **check-in** (#583): the venue-scoped, service-date-only
+guarded `CONFIRMED → COMPLETED` transition off the scanned or typed booking code — single-use by
+the row lock (a second scan classifies against committed state as "already checked in"), keyed on
+the code but authorized by venue ownership (both invariant #13 and #7 apply, unlike withdraw's
+code-only leg); it publishes **no** event (the withdraw precedent: nothing accrues, nothing
+refunds, no mail decided). The arrivals list and daily takings count `COMPLETED` alongside
+`CONFIRMED` so a check-in never shrinks the console's day; the cancel and weather-refund guards
+deliberately stay `CONFIRMED`-only (a delivered stay is never reclaimed). Enforce the cancellation policy and the same-day cutoff — **both of the
 day's boundaries**, since `BookingCutoff` owns the service day's opening as well as the
 evening-before close. That second boundary fences the *pay* path as well as the cancel path
 (#576): the guest's deadline is `min(accepted_at + pay-window, service-day open)`, the

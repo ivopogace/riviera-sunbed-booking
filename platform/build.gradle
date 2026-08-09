@@ -84,6 +84,8 @@ dependencyManagement {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// The full suite holds ~30 cached Spring contexts in one worker; Gradle's 512m default OOMs.
+	maxHeapSize = '1g'
 	finalizedBy tasks.named('jacocoTestReport')
 }
 

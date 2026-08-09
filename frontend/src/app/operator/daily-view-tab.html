@@ -127,8 +127,59 @@
     <section appCardGlass class="mt-4 rounded-[20px] px-[18px] py-4" aria-labelledby="arrivals-title">
       <h2 id="arrivals-title" class="text-[15px] font-bold text-(--riv-card-ink)">Arrivals</h2>
       <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
-        Verify the booking code on arrival.
+        Scan the guest's QR code — or type their booking code — to check them in.
       </p>
+
+      <!-- Check-in: scan or type the bearer code; outcomes announced below (role=status). -->
+      <div class="mb-3 flex flex-col gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="cursor-pointer rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[14px] py-[9px] text-[13.5px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/85 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) disabled:cursor-not-allowed disabled:opacity-65"
+            [disabled]="checkInBusy()"
+            (click)="toggleScan()"
+            data-testid="checkin-scan-toggle"
+          >
+            {{ scanOpen() ? 'Stop scanning' : 'Scan QR' }}
+          </button>
+          <label class="sr-only" for="checkin-code">Booking code</label>
+          <input
+            id="checkin-code"
+            #checkinCode
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Booking code"
+            class="w-[170px] rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] font-mono text-[14px] tracking-[0.06em] text-(--riv-card-ink) uppercase placeholder:font-sans placeholder:normal-case"
+            (keydown.enter)="submitCode(checkinCode)"
+            data-testid="checkin-code-input"
+          />
+          <button
+            type="button"
+            class="cursor-pointer rounded-[12px] border border-transparent bg-(--riv-accent-ink) px-[14px] py-[9px] text-[13.5px] font-bold text-white [transition:filter_0.15s_ease] hover:brightness-110 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) disabled:cursor-not-allowed disabled:opacity-65"
+            [disabled]="checkInBusy()"
+            (click)="submitCode(checkinCode)"
+            data-testid="checkin-submit"
+          >
+            Check in
+          </button>
+        </div>
+        @if (scanOpen()) {
+          <video
+            #scanVideo
+            class="w-full max-w-[320px] rounded-[14px] border border-(--riv-card-border) bg-black/80"
+            muted
+            playsinline
+            aria-label="Camera preview — point at the guest's booking QR"
+            data-testid="checkin-video"
+          ></video>
+        }
+        <output
+          class="m-0 block text-[13px] leading-[1.45] font-semibold empty:hidden"
+          [class]="checkInNotice()?.tone === 'ok' ? 'text-(--riv-accent-ink)' : 'text-[#a3372a]'"
+          data-testid="checkin-result"
+        >{{ checkInNotice()?.text }}</output>
+      </div>
       @if (arrivals().length) {
         <ul class="flex list-none flex-col gap-1.5 p-0">
           @for (a of arrivals(); track a.setId) {
@@ -137,6 +188,13 @@
               data-testid="daily-arrival-row"
             >
               <span class="text-[13.5px] font-semibold text-(--riv-card-ink)">{{ a.label }}</span>
+              @if (a.checkedIn) {
+                <span
+                  class="rounded-full border border-[#bfe0c8] bg-[#e7f5ea] px-2.5 py-1 text-[11.5px] font-bold text-[#1d6b34]"
+                  data-testid="arrival-checked-in"
+                  >Checked in</span
+                >
+              }
               <code
                 class="rounded-[8px] bg-(--riv-chip-bg) px-2 py-1 font-mono text-[13px] font-bold tracking-[0.06em] text-(--riv-card-ink)"
                 data-testid="daily-arrival-code"

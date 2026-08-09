@@ -23,6 +23,8 @@ import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
+import ai.riviera.platform.booking.application.checkin.CheckInFacts;
+import ai.riviera.platform.booking.application.checkin.CompletedCheckIn;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
@@ -48,6 +50,7 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_AWAITING = "awaiting";
 	private static final String PARAM_PENDING = "pending";
 	private static final String PARAM_CONFIRMED = "confirmed";
+	private static final String PARAM_COMPLETED = "completed";
 	private static final String PARAM_VENUE = "venue";
 	private static final String PARAM_ACCOUNT = "account";
 
@@ -417,22 +420,63 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
+	public Optional<CompletedCheckIn> completeConfirmed(String code, VenueId venueId,
+			LocalDate serviceDate, Instant completedAt) {
+		// Guarded CONFIRMED -> COMPLETED (#583): the row lock leaves exactly one winner per code.
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :completed, completed_at = :at
+				WHERE code = :code AND venue_id = :venue AND status = :confirmed AND booking_date = :date
+				RETURNING id, set_id, booking_date
+				""")
+				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
+				.param("at", java.sql.Timestamp.from(completedAt))
+				.param("code", code)
+				.param(PARAM_VENUE, venueId.value())
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param("date", serviceDate)
+				.query((rs, rowNum) -> new CompletedCheckIn(
+						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+				.optional();
+	}
+
+	@Override
+	public Optional<CheckInFacts> findCheckInFacts(String code, VenueId venueId) {
+		// Venue-scoped on purpose: a foreign venue's code reads as empty, same as an unknown one.
+		return jdbc.sql("""
+				SELECT status, booking_date
+				FROM booking
+				WHERE code = :code AND venue_id = :venue
+				""")
+				.param("code", code)
+				.param(PARAM_VENUE, venueId.value())
+				.query((rs, rowNum) -> new CheckInFacts(
+						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+				.optional();
+	}
+
+	@Override
 	public List<DailyBooking> findConfirmedForVenueOn(VenueId venueId, LocalDate date) {
 		// Staff daily view (U8): a venue's CONFIRMED bookings for one day, ordered by set. Served by
 		// booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's rows. The
 		// code is selected for staff verification (invariant #7) — returned to the operator-gated
 		// caller, never logged here.
+		// COMPLETED rides along since #583: a checked-in arrival stays listed, flagged, not vanished.
 		return jdbc.sql("""
-				SELECT set_id, code
+				SELECT set_id, code, status
 				FROM booking
-				WHERE venue_id = :venue AND booking_date = :date AND status = :confirmed
+				WHERE venue_id = :venue AND booking_date = :date AND status IN (:confirmed, :completed)
 				ORDER BY set_id
 				""")
 				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
 				.query((rs, rowNum) -> new DailyBooking(
-						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code")))
+						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code"),
+						BookingStatus.COMPLETED.name().equals(rs.getString(PARAM_STATUS))))
 				.list();
 	}
 

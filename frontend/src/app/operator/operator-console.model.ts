@@ -63,7 +63,24 @@ export type RepriceErrorCode =
 export interface ConsoleDailyBooking {
   readonly setId: number;
   readonly code: string;
+  /** Already checked in (COMPLETED) — the row stays listed, flagged, after a scan. */
+  readonly checkedIn: boolean;
 }
+
+/** Successful check-in: which set the guest holds and the service date (never echoes the code). */
+export interface CheckInResultView {
+  readonly setId: number;
+  readonly bookingDate: string;
+}
+
+/** The check-in POST's RFC-7807 `code` values the Daily view explains, plus the transport buckets. */
+export type CheckInErrorCode =
+  | 'ALREADY_CHECKED_IN'
+  | 'WRONG_SERVICE_DATE'
+  | 'BOOKING_NOT_FOUND'
+  | 'NOT_VENUE_OWNER'
+  | 'UNAUTHORIZED'
+  | 'UNKNOWN';
 
 /**
  * One held set on the owner's daily availability read (`GET /api/venues/{id}/availability?date`) — the

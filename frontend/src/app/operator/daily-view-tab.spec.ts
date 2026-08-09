@@ -3,11 +3,14 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
+import { vi } from 'vitest';
 
 import { defaultBookingDate, todayBookingDate } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { DailyViewTab } from './daily-view-tab';
+import { FakeQrScanner } from './fake-qr-scanner';
+import { QrScanner } from './qr-scanner';
 
 /**
  * The Daily view tab. Reads `:venueId` from the PARENT route (child routes don't inherit
@@ -31,7 +34,7 @@ describe('DailyViewTab (#175)', () => {
     seat(3, 'A', 3, 'PREMIUM', 'ONLINE', 'TAKEN'),
     seat(4, 'B', 1, 'STANDARD', 'WALK_IN', 'FREE'),
   ];
-  const BOOKINGS = [{ setId: 2, code: 'ABC12345' }]; // set 2 is held by a confirmed online booking
+  const BOOKINGS = [{ setId: 2, code: 'ABC12345', checkedIn: false }]; // set 2 is held by a confirmed online booking
   // Server states — the tile-classification authority; FREE sets are absent.
   const STATES = [
     { setId: 2, state: 'BOOKED_ONLINE' },
@@ -44,6 +47,7 @@ describe('DailyViewTab (#175)', () => {
     TestBed.configureTestingModule({
       imports: [DailyViewTab],
       providers: [
+        { provide: QrScanner, useClass: FakeQrScanner },
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -219,6 +223,146 @@ describe('DailyViewTab (#175)', () => {
     const code = rows[0].querySelector('[data-testid="daily-arrival-code"]')!;
     expect(code.tagName).toBe('CODE'); // display-only, never an input
     expect(code.textContent).toContain('ABC12345');
+  });
+
+  it('checks a typed code in: POST, success notice, then a reconcile shows the checked-in chip (#583)', () => {
+    render();
+    const input = byId('checkin-code-input') as HTMLInputElement;
+    input.value = 'abc-123 45';
+    (byId('checkin-submit') as HTMLButtonElement).click();
+
+    const post = http.expectOne(
+      (r) => r.method === 'POST' && r.url.includes('/api/venues/1/bookings/ABC12345/check-in'),
+    );
+    post.flush({ setId: 2, bookingDate: '2026-08-09' });
+    fixture.detectChanges();
+    expect(byId('checkin-result')!.textContent).toContain('Checked in');
+
+    flushLoad(SEED, [{ setId: 2, code: 'ABC12345', checkedIn: true }]);
+    expect(byId('arrival-checked-in')).toBeTruthy();
+    expect(input.value).toBe('');
+  });
+
+  it('explains a second scan distinctly — ALREADY_CHECKED_IN is not a failure to retry (#583)', () => {
+    render();
+    const input = byId('checkin-code-input') as HTMLInputElement;
+    input.value = 'ABC12345';
+    (byId('checkin-submit') as HTMLButtonElement).click();
+
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/check-in'))
+      .flush(
+        { code: 'ALREADY_CHECKED_IN' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    fixture.detectChanges();
+    expect(byId('checkin-result')!.textContent).toContain('Already checked in');
+  });
+
+  it('names the booking’s real day on WRONG_SERVICE_DATE, never the code (#583)', () => {
+    render();
+    const input = byId('checkin-code-input') as HTMLInputElement;
+    input.value = 'ABC12345';
+    (byId('checkin-submit') as HTMLButtonElement).click();
+
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/check-in'))
+      .flush(
+        { code: 'WRONG_SERVICE_DATE', bookingDate: '2026-08-15' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    fixture.detectChanges();
+    const notice = byId('checkin-result')!.textContent!;
+    expect(notice).toContain('2026-08-15');
+    expect(notice).not.toContain('ABC12345');
+  });
+
+  it('rejects a scan payload that is not a booking code without calling the server (#583)', () => {
+    render();
+    const input = byId('checkin-code-input') as HTMLInputElement;
+    input.value = 'https://example.com/not-a-booking';
+    (byId('checkin-submit') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(byId('checkin-result')!.textContent).toContain('doesn’t look like a booking code');
+    http.verify();
+  });
+
+  it('scans via the armed fake scanner: toggle starts it, a payload checks in, garbage is rejected (#583)', () => {
+    (globalThis as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__ = [
+      'not a booking payload!',
+      'http://localhost/booking/ABC12345',
+    ];
+    try {
+      render();
+      (byId('checkin-scan-toggle') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(byId('checkin-result')!.textContent).toContain('isn’t a booking');
+
+      (byId('checkin-scan-toggle') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      http
+        .expectOne((r) => r.method === 'POST' && r.url.includes('/bookings/ABC12345/check-in'))
+        .flush({ setId: 2, bookingDate: '2026-06-15' });
+      fixture.detectChanges();
+      expect(byId('checkin-result')!.textContent).toContain('Checked in');
+      flushLoad(SEED, [{ setId: 2, code: 'ABC12345', checkedIn: true }]);
+    } finally {
+      delete (globalThis as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__;
+    }
+  });
+
+  it('falls back to typing when the camera is unavailable, with the notice explaining it (#583)', async () => {
+    render();
+    const scanner = TestBed.inject(QrScanner);
+    vi.spyOn(scanner, 'start').mockRejectedValue(new Error('NotAllowedError'));
+
+    (byId('checkin-scan-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('checkin-result')!.textContent).toContain('Camera unavailable');
+    expect(byId('checkin-video')).toBeNull();
+  });
+
+  it('explains every check-in denial in operator terms (#583)', () => {
+    render();
+    const submit = (status: number, body: object) => {
+      const input = byId('checkin-code-input') as HTMLInputElement;
+      input.value = 'ABC12345';
+      (byId('checkin-submit') as HTMLButtonElement).click();
+      http
+        .expectOne((r) => r.method === 'POST' && r.url.includes('/check-in'))
+        .flush(body, { status, statusText: 'x' });
+      fixture.detectChanges();
+      return byId('checkin-result')!.textContent!;
+    };
+
+    expect(submit(404, { code: 'BOOKING_NOT_FOUND' })).toContain('No booking with that code');
+    expect(submit(403, { code: 'NOT_VENUE_OWNER' })).toContain('don’t manage this venue');
+    expect(submit(409, { code: 'WRONG_SERVICE_DATE' })).toContain('different day');
+    expect(submit(500, { code: 'BOOM' })).toContain('Couldn’t check in');
+    expect(submit(401, { code: 'UNAUTHENTICATED' })).toContain('session expired');
+  });
+
+  it('closes the scanner when the venue switches in place (camera must not outlive the venue)', () => {
+    render();
+    const scanner = TestBed.inject(QrScanner);
+    const stop = vi.spyOn(scanner, 'stop');
+    (byId('checkin-scan-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    expect(stop).toHaveBeenCalled();
+    expect(byId('checkin-video')).toBeNull();
+    http.expectOne((r) => r.url.includes('/api/venues/2/bookings')).flush([]);
+    http.expectOne((r) => r.url.includes('/api/venues/2/availability')).flush([]);
+    http
+      .expectOne((r) => r.url.includes('/api/venues/2') && !r.url.includes('/bookings') && !r.url.includes('/availability'))
+      .flush({ id: 2, name: 'V2', beach: 'B', region: 'R', sets: [] });
   });
 
   it('shows an empty arrivals state when there are no confirmed bookings', () => {

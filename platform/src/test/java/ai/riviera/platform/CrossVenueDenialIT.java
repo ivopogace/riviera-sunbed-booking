@@ -325,7 +325,26 @@ class CrossVenueDenialIT {
 				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
 	}
 
+	@Test
+	void checkInByNonOwnerIs403() throws Exception {
+		// Ownership fires BEFORE any lookup: even a nonexistent code is 403, never 404 (invariant #13).
+		actingAs(operatorA);
+		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", MIRAMAR, "ZZZZ99999X")
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
 	// ---- The owner (B) is NOT forbidden on the same surfaces ----
+
+	@Test
+	void ownerCheckInOfUnknownCodeIs404NotForbidden() throws Exception {
+		actingAs(operatorB);
+		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venueOwnedByB, "ZZZZ99999X")
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("BOOKING_NOT_FOUND"));
+	}
 
 	@Test
 	void ownerRequestSurfacesAreNotForbidden() throws Exception {

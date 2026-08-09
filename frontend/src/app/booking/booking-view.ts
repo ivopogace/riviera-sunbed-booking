@@ -18,6 +18,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney, MoneyView } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
+import { BookingQr } from './booking-qr';
 import { BookingDetail, Cancellation } from './booking.model';
 import { BookingService } from './booking.service';
 
@@ -112,7 +113,7 @@ const CLS = {
  */
 @Component({
   selector: 'app-booking-view',
-  imports: [RouterLink, CardGlass, StatusChip],
+  imports: [RouterLink, CardGlass, StatusChip, BookingQr],
   template: `
     @if (notFound()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
@@ -331,6 +332,11 @@ const CLS = {
           <div class="mt-[5px] text-[27px] font-bold tracking-[0.12em] text-(--riv-accent-ink)">
             {{ b.code }}
           </div>
+          @if (b.status === 'CONFIRMED') {
+            <div class="mt-3 flex justify-center">
+              <app-booking-qr [code]="b.code" />
+            </div>
+          }
           <p class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-(--riv-card-ink-soft)">
             Show this code to staff when you arrive to claim your set.
           </p>
