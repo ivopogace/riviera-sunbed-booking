@@ -144,7 +144,7 @@ export class DailyViewTab {
 
   private startScanner(video: HTMLVideoElement | undefined): void {
     this.scanner.start(video, (payload) => this.onScanPayload(payload)).catch((error: unknown) => {
-      this.scanOpen.set(false);
+      this.closeScan();
       this.checkInNotice.set({ tone: 'error', text: cameraUnavailableMessage(error) });
     });
   }

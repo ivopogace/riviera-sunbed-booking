@@ -41,7 +41,15 @@ export class CameraQrScanner extends QrScanner {
     video.playsInline = true;
     video.autoplay = true;
     video.srcObject = stream;
-    await CameraQrScanner.playWithMetadataRetry(video);
+    try {
+      await CameraQrScanner.playWithMetadataRetry(video);
+    } catch (error_) {
+      // A superseded attempt's late failure is not this session's news — swallow it as stale.
+      if (generation !== this.generation) {
+        return;
+      }
+      throw error_;
+    }
     if (generation !== this.generation) {
       return;
     }

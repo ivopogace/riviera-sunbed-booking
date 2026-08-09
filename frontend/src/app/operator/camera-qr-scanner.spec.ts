@@ -111,6 +111,25 @@ describe('CameraQrScanner', () => {
     });
   });
 
+  it('discards a superseded attempt’s late play() failure instead of reporting it (stale retry race)', async () => {
+    const scanner = new CameraQrScanner();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    const abandoned = fakeVideo(640);
+    (abandoned.play as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new DOMException('gesture', 'NotAllowedError'),
+    );
+
+    const first = scanner.start(abandoned, vi.fn());
+    await vi.advanceTimersByTimeAsync(0);
+    scanner.stop();
+    const second = scanner.start(fakeVideo(640), vi.fn());
+    await vi.advanceTimersByTimeAsync(3100);
+
+    await expect(first).resolves.toBeUndefined();
+    await second;
+    scanner.stop();
+  });
+
   it('releases a camera granted only after stop() was already called (stop-during-start race)', async () => {
     const scanner = new CameraQrScanner();
     let grant: (s: MediaStream) => void;
