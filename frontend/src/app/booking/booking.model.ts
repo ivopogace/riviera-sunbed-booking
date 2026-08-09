@@ -118,6 +118,12 @@ export interface BookingDetail {
   readonly beforeCutoff: boolean;
   readonly refundIfCancelledNow: MoneyView;
   readonly refundedAmount: MoneyView | null;
+  /**
+   * The refund is decided but the gateway has not accepted it yet — say it is being processed,
+   * never that it is on its way. `false` when the gateway accepted it, and always `false` when
+   * nothing was ever collected (the panel then keeps its usual copy).
+   */
+  readonly refundOutstanding: boolean;
   /** The venue's response deadline while the request is open; null otherwise. */
   readonly requestExpiresAt: string | null;
   /** Open-intent credentials, present only while `AWAITING_PAYMENT` with an open PaymentIntent. */

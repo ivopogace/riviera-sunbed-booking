@@ -30,6 +30,7 @@ const DETAIL: BookingDetail = {
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
+  refundOutstanding: false,
   requestExpiresAt: null,
   payment: null,
   emailWithheld: false,
@@ -520,6 +521,34 @@ describe('BookingView', () => {
       expect(panel?.textContent).not.toContain('on its way');
     },
   );
+
+  /**
+   * A refund can sit unaccepted in the refund outbox for as long as nobody re-drives it; the
+   * panel persists indefinitely, so it must not keep telling the guest the money is in transit.
+   */
+  it('says a stuck refund is being processed, never on its way to the card', async () => {
+    const fixture = await render(
+      stubService({ detail: { ...cancelled('POLICY', 4500), refundOutstanding: true } }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+    const panel = host.querySelector('[data-testid="booking-cancelled"]');
+
+    expect(panel?.textContent).toContain('is being processed');
+    expect(panel?.textContent).toContain('45');
+    expect(panel?.textContent).not.toContain('on its way');
+    expect(panel?.textContent).not.toContain('to your card');
+    await expectNoAxeViolations(host);
+  });
+
+  it('keeps the usual copy once the gateway accepted the refund', async () => {
+    const fixture = await render(stubService({ detail: cancelled('POLICY', 4500) }));
+    const panel = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="booking-cancelled"]',
+    );
+
+    expect(panel?.textContent).toContain('will be refunded to your card');
+    expect(panel?.textContent).not.toContain('is being processed');
+  });
 
   /** A row cancelled before V14 carries a refund but no reason; CONFLICT is reserved and unused. */
   it('falls back to neutral copy for an unknown cancel reason', async () => {
