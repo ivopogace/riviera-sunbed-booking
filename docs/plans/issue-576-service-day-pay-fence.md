@@ -333,6 +333,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/booking/application/refund/AbandonedBookingSweepService.java` — inject `BookingCutoff`; bind the service-day arm off the sweep's single `now`
 - `platform/src/main/java/ai/riviera/platform/booking/application/refund/ExpireAbandonedBookings.java` — Javadoc: the accepted arm's deadline is the capped one
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/ViewBookingService.java` — gate `pendingCredentials` on the service day; compute `payWindowClosed`
+- `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancellationPolicy.java` — `RefundQuote#serviceDayOpen()`, the single carrier the pay fence reads (review finding F-2)
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/BookingDetail.java` — the new field
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingDetailView.java` — the new wire field
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/RequestProperties.java` — Javadoc: `payWindow` is now capped at the use site too
