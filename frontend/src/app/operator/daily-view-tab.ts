@@ -1,5 +1,15 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { catchError, forkJoin, of, tap } from 'rxjs';
 
@@ -21,13 +31,28 @@ import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
 import { BeachGridFrame } from './beach-grid-frame';
 import { ConsoleDailyBooking, MarkErrorCode, ReleaseErrorCode } from './operator-console.model';
-import { OperatorConsoleService, markErrorOf, releaseErrorOf } from './operator-console.service';
+import {
+  OperatorConsoleService,
+  checkInErrorOf,
+  checkInWrongDateOf,
+  markErrorOf,
+  releaseErrorOf,
+} from './operator-console.service';
+import { QrScanner } from './qr-scanner';
+import { codeFromScan } from './scan-input';
 
 /** One arrivals row: the confirmed booking's set label + its display-only arrival code (invariant #7). */
 interface ArrivalRow {
   readonly setId: number;
   readonly code: string;
   readonly label: string;
+  readonly checkedIn: boolean;
+}
+
+/** The check-in panel's announced outcome; tone drives the ink, the text carries the meaning. */
+interface CheckInNotice {
+  readonly tone: 'ok' | 'error';
+  readonly text: string;
 }
 
 /**
@@ -82,6 +107,15 @@ export class DailyViewTab {
   /** The day the view reflects (ISO YYYY-MM-DD); defaults to today in Europe/Tirane (invariant #6). */
   protected readonly selectedDate = signal(todayBookingDate(new Date()));
 
+  private readonly scanner = inject(QrScanner);
+  /** The check-in scanner panel is open (camera live for the real adapter). */
+  protected readonly scanOpen = signal(false);
+  /** An in-flight check-in POST — gates the buttons so one scan cannot double-submit. */
+  protected readonly checkInBusy = signal(false);
+  /** The last check-in outcome, announced via the panel's status region. */
+  protected readonly checkInNotice = signal<CheckInNotice | undefined>(undefined);
+  protected readonly scanVideo = viewChild<ElementRef<HTMLVideoElement>>('scanVideo');
+
   /** Optimistic per-set overrides applied on tap, cleared once a reconcile confirms server truth. */
   private readonly overrides = signal<ReadonlyMap<number, TileState>>(new Map());
   /** Sets with an in-flight mark/release — disabled until it settles. */
@@ -96,6 +130,77 @@ export class DailyViewTab {
     effect(() => {
       const id = this.venueId();
       untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
+    });
+    // Start the scanner once the panel is open AND its <video> exists (the fake needs no video).
+    effect(() => {
+      const open = this.scanOpen();
+      const video = this.scanVideo()?.nativeElement;
+      if (open) {
+        untracked(() => this.startScanner(video));
+      }
+    });
+    inject(DestroyRef).onDestroy(() => this.scanner.stop());
+  }
+
+  private startScanner(video: HTMLVideoElement | undefined): void {
+    this.scanner.start(video, (payload) => this.onScanPayload(payload)).catch(() => {
+      this.scanOpen.set(false);
+      this.checkInNotice.set({ tone: 'error', text: 'Camera unavailable — type the code instead.' });
+    });
+  }
+
+  protected toggleScan(): void {
+    if (this.scanOpen()) {
+      this.closeScan();
+      return;
+    }
+    this.checkInNotice.set(undefined);
+    this.scanOpen.set(true);
+  }
+
+  private closeScan(): void {
+    this.scanner.stop();
+    this.scanOpen.set(false);
+  }
+
+  protected submitCode(input: HTMLInputElement): void {
+    const code = codeFromScan(input.value);
+    if (code === null) {
+      this.checkInNotice.set({ tone: 'error', text: 'That doesn’t look like a booking code.' });
+      return;
+    }
+    input.value = '';
+    this.checkIn(code);
+  }
+
+  private onScanPayload(payload: string): void {
+    this.closeScan();
+    const code = codeFromScan(payload);
+    if (code === null) {
+      this.checkInNotice.set({ tone: 'error', text: 'That QR code isn’t a booking.' });
+      return;
+    }
+    this.checkIn(code);
+  }
+
+  private checkIn(code: string): void {
+    const venueId = this.venueId();
+    if (venueId === undefined || this.checkInBusy()) {
+      return;
+    }
+    this.checkInBusy.set(true);
+    this.console.checkIn(venueId, code).subscribe({
+      next: (result) => {
+        this.checkInBusy.set(false);
+        const label = setLabel(setsById(this.venue()?.sets), result.setId);
+        this.checkInNotice.set({ tone: 'ok', text: `Checked in — ${label}.` });
+        this.load();
+      },
+      error: (error: unknown) => {
+        this.checkInBusy.set(false);
+        this.dropSessionIfUnauthorized(error);
+        this.checkInNotice.set({ tone: 'error', text: checkInMessage(error) });
+      },
     });
   }
 
@@ -133,7 +238,12 @@ export class DailyViewTab {
   /** The arrivals rows, each labelled with its set's position (else the raw set id). */
   protected readonly arrivals = computed<readonly ArrivalRow[]>(() => {
     const byId = setsById(this.venue()?.sets);
-    return this.bookings().map((b) => ({ setId: b.setId, code: b.code, label: setLabel(byId, b.setId) }));
+    return this.bookings().map((b) => ({
+      setId: b.setId,
+      code: b.code,
+      label: setLabel(byId, b.setId),
+      checkedIn: b.checkedIn,
+    }));
   });
 
   protected readonly markedCount = computed(
@@ -407,5 +517,27 @@ function tileAction(state: TileState): string {
       return 'walk-in marked — tap to release';
     default:
       return 'booked online';
+  }
+}
+
+/** The operator-facing message for a failed check-in; dates render like the rest of the console. */
+function checkInMessage(error: unknown): string {
+  switch (checkInErrorOf(error)) {
+    case 'ALREADY_CHECKED_IN':
+      return 'Already checked in — this code was used before.';
+    case 'WRONG_SERVICE_DATE': {
+      const date = checkInWrongDateOf(error);
+      return date === undefined
+        ? 'This booking is for a different day.'
+        : `This booking is for ${date}.`;
+    }
+    case 'BOOKING_NOT_FOUND':
+      return 'No booking with that code at this venue.';
+    case 'NOT_VENUE_OWNER':
+      return 'You don’t manage this venue.';
+    case 'UNAUTHORIZED':
+      return 'Your session expired — sign in again.';
+    default:
+      return 'Couldn’t check in. Try again.';
   }
 }

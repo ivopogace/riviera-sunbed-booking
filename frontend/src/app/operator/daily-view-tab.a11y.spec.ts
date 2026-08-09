@@ -7,6 +7,8 @@ import { of } from 'rxjs';
 import { expectNoAxeViolations } from '../../testing/axe';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { DailyViewTab } from './daily-view-tab';
+import { FakeQrScanner } from './fake-qr-scanner';
+import { QrScanner } from './qr-scanner';
 
 /**
  * Structural a11y audit for the Daily view tab. Each actionable tile is a labelled
@@ -27,6 +29,7 @@ describe('DailyViewTab a11y (#175)', () => {
     TestBed.configureTestingModule({
       imports: [DailyViewTab],
       providers: [
+        { provide: QrScanner, useClass: FakeQrScanner },
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),

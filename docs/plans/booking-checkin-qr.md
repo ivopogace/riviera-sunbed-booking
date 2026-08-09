@@ -211,17 +211,17 @@ files live inside their feature; `shared/booking-status.ts` already carries `COM
 
 ## Execution status
 
-**Stage pointer:** implement (phase 4)
+**Stage pointer:** implement (phase 5)
 
-**Next action:** phase 4 — operator scanner (token + adapters + Daily view UI + service).
+**Next action:** phase 5 — e2e (mocked suite): tourist QR + operator check-in flows.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V40 + guarded transition in `Bookings`/`JdbcBookings` (+ concurrency IT) | ✅ | 2e7def7 |
 | 1 — `CheckInBooking` port + `CheckInService` + endpoint + SecurityConfig + error contract | ✅ | 25dc2cd |
 | 2 — widen arrivals + takings reads (`checkedIn` flag; `IN (CONFIRMED, COMPLETED)`) | ✅ | 403f4de + 024900a |
-| 3 — FE tourist QR (component + 3 surfaces) | ✅ | (this commit) |
-| 4 — FE operator scanner (token/adapters, tab UI, service) | | |
+| 3 — FE tourist QR (component + 3 surfaces) | ✅ | fee5803 |
+| 4 — FE operator scanner (token/adapters, tab UI, service) | ✅ | (this commit) |
 | 5 — e2e (mocked suite) + a11y | | |
 | 6 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, BookingStatus Javadoc, plan final state) | | |
 
@@ -266,6 +266,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/booking/my-bookings.ts|.html` — QR per confirmed card
 - `frontend/src/app/operator/qr-scanner.ts` · `camera-qr-scanner.ts` · `fake-qr-scanner.ts` — token + adapters
 - `frontend/src/app/operator/scan-input.ts` · `scan-input.spec.ts` — URL/code parse
+- `frontend/src/app/operator/fake-qr-scanner.spec.ts` — the fake adapter's queue contract
+- `frontend/src/app/operator/daily-view-tab.a11y.spec.ts` — scanner-token provider for the axe specs
+- `frontend/src/app/shared/booking-code.ts` — `normalizeCode`, promoted from Find-a-booking (2nd consumer)
+- `frontend/src/app/booking/find-booking.ts` — imports the promoted normalizer
 - `frontend/src/app/operator/daily-view-tab.ts|.html` · `daily-view-tab.spec.ts` — check-in UI + chip
 - `frontend/src/app/operator/operator-console.service.ts` · `operator-console.service.spec.ts` — `checkIn`
 - `frontend/src/app/operator/operator-console.model.ts` — `checkedIn` + outcome types
