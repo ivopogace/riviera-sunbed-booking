@@ -67,8 +67,8 @@ class JdbcBookings implements Bookings {
 	private final JdbcClient jdbc;
 
 	/**
-	 * The two sweep candidate reads run on the scheduler, never on a request thread, and they alone
-	 * use this bounded client. See {@link #boundedClient}.
+	 * The scheduled sweeps' statements run on the scheduler, never on a request thread, and they
+	 * alone use this bounded client. See {@link #boundedClient}.
 	 */
 	private final JdbcClient sweepJdbc;
 
@@ -80,8 +80,8 @@ class JdbcBookings implements Bookings {
 
 	/**
 	 * A {@link JdbcClient} of this adapter's own with a finite {@code queryTimeout}, used by the
-	 * abandoned-payment and request-expiry sweeps' candidate reads and by nothing else (#395) — the
-	 * #386 idiom ({@code JdbcEmailSuppressions#boundedClient}) applied to scheduled work.
+	 * abandoned-payment, request-expiry and no-show sweeps and by nothing else — the
+	 * {@code JdbcEmailSuppressions#boundedClient} idiom applied to scheduled work.
 	 *
 	 * <p>Postgres's default statement timeout is infinite, so a wedged candidate read — a migration
 	 * holding {@code ACCESS EXCLUSIVE} on {@code booking} during a rolling deploy is the realistic
@@ -439,6 +439,20 @@ class JdbcBookings implements Bookings {
 						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
 				.optional();
+	}
+
+	@Override
+	public int markPastConfirmedAsNoShow(LocalDate today) {
+		// sweepJdbc, not jdbc: this statement opens a scheduled run and is bounded.
+		return sweepJdbc.sql("""
+				UPDATE booking
+				SET status = :noShow
+				WHERE status = :confirmed AND booking_date < :today
+				""")
+				.param("noShow", BookingStatus.NO_SHOW.name())
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param("today", today)
+				.update();
 	}
 
 	@Override

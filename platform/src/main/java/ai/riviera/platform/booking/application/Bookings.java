@@ -144,6 +144,13 @@ public interface Bookings {
 			String code, VenueId venueId, LocalDate serviceDate, Instant completedAt);
 
 	/**
+	 * Mark every {@code CONFIRMED} booking dated before {@code today} as {@code NO_SHOW}, returning
+	 * how many transitioned. The {@code status = 'CONFIRMED'} guard serializes against a concurrent
+	 * check-in or cancel, so a lost race and a repeated run are alike 0-row no-ops.
+	 */
+	int markPastConfirmedAsNoShow(LocalDate today);
+
+	/**
 	 * The status + service date behind a code at one venue, for classifying a check-in whose guarded
 	 * transition matched 0 rows. Venue-scoped: a foreign venue's code reads as {@code empty},
 	 * indistinguishable from an unknown one (non-enumerating; the code never travels further,

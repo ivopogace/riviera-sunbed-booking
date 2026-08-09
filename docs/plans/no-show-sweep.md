@@ -56,21 +56,21 @@ view's model change stays in `operator/`; the status vocabulary stays in `shared
 
 - [ ] **AC-1:** Given a `CONFIRMED` booking whose `booking_date` is before today in `Europe/Tirane`,
   when `MarkNoShows#sweep` runs, then that booking is `NO_SHOW`. *Pinned by:*
-  `NoShowSweepServiceIT.sweepsPastConfirmedBooking`
+  `NoShowSweepIT.sweepsPastConfirmedBooking`
 - [ ] **AC-2:** Given `CONFIRMED` bookings dated today and tomorrow (`Europe/Tirane`), when the
   sweep runs, then both remain `CONFIRMED`. *Pinned by:*
-  `NoShowSweepServiceIT.leavesTodayAndFutureUntouched`
+  `NoShowSweepIT.leavesTodayAndFutureUntouched`
 - [ ] **AC-3:** Given a past-day booking already `COMPLETED` by check-in (#583), when the sweep
-  runs, then it stays `COMPLETED`. *Pinned by:* `NoShowSweepServiceIT.neverTouchesCheckedInBooking`
+  runs, then it stays `COMPLETED`. *Pinned by:* `NoShowSweepIT.neverTouchesCheckedInBooking`
 - [ ] **AC-4:** Given a past-day `CONFIRMED` booking, when the sweep runs twice, then the second run
-  reports 0 rows and no row changes. *Pinned by:* `NoShowSweepServiceIT.secondRunIsANoOp`
+  reports 0 rows and no row changes. *Pinned by:* `NoShowSweepIT.secondRunIsANoOp`
 - [ ] **AC-5:** Given past-day bookings in every non-`CONFIRMED` status (`CANCELLED`, `EXPIRED`,
   `DECLINED`, `WITHDRAWN`, `AWAITING_PAYMENT`, `PENDING_REQUEST`), when the sweep runs, then none
-  changes status. *Pinned by:* `NoShowSweepServiceIT.onlyConfirmedIsSwept`
+  changes status. *Pinned by:* `NoShowSweepIT.onlyConfirmedIsSwept`
 - [ ] **AC-6:** Given a venue's past service date with one `CONFIRMED`, one `COMPLETED` and (after
   the sweep) one `NO_SHOW` booking, when `DailyTakings#grossOnlineTakings` is read before and after
   the sweep, then the gross is identical. *Pinned by:*
-  `JdbcDailyTakingsIT.noShowSweepDoesNotChangeTakings`
+  `JdbcBookingsDailyTakingsIT.noShowSweepDoesNotChangeTakings`
 - [ ] **AC-7:** Given a swept `NO_SHOW` booking, when the guest calls `CancelBooking`, then the
   outcome is `NotCancellable` and no refund is issued. *Pinned by:*
   `CancelBookingServiceTest.noShowIsNotCancellable`
@@ -180,7 +180,7 @@ view's model change stays in `operator/`; the status vocabulary stays in `shared
 - **Cutoff rule (invariant #4):** the sweep's boundary is the same instant invariant #4/#10 use —
   `00:00 Europe/Tirane` on the service date — computed as `LocalDate.ofInstant(clock.instant(),
   TIRANE)` and applied as `booking_date < today`. Never the JVM default zone (invariant #6).
-- **Pinning test:** `NoShowSweepServiceIT.concurrentSweepAndCheckInLeaveOneWinner` — a check-in and
+- **Pinning test:** `NoShowSweepIT.concurrentSweepsYieldExactlyOneTransition` — a check-in and
   the sweep racing the same past-dated row end with exactly one transition applied, never both.
 
 ## Spring Modulith — modules, interfaces, events
@@ -204,7 +204,7 @@ view's model change stays in `operator/`; the status vocabulary stays in `shared
 
 | # | Event | Published by | Payload (ids) | Subscribers | Sync/async | Pinned by test |
 |---|---|---|---|---|---|---|
-| — | **none** | — | — | — | — | `NoShowSweepServiceIT.publishesNoEvent` (asserts `PublishedEvents` is empty after a sweep) |
+| — | **none** | — | — | — | — | structural, not a test: `NoShowSweepService` takes no `ApplicationEventPublisher`, so publishing one would not compile |
 
 ### Module ownership (§4a)
 
@@ -236,7 +236,7 @@ All four sit inside `booking`; **no boundary change, no new published surface, n
   the service date, so a no-show is non-refundable). The **weather-admin** exception stays
   deliberately outside that fence and now reaches swept rows too.
 - **Pinning tests:** `WeatherRefundServiceIT.refundsSweptNoShowsOnAPastDate` (AC-9),
-  `JdbcDailyTakingsIT.noShowSweepDoesNotChangeTakings` (AC-6),
+  `JdbcBookingsDailyTakingsIT.noShowSweepDoesNotChangeTakings` (AC-6),
   `CancelBookingServiceTest.noShowIsNotCancellable` (AC-7).
 
 ## Angular — frontend surfaces touched
@@ -269,14 +269,14 @@ rather than growing a second boolean branch.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan — complete, awaiting implement phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Start phase 0 — write `NoShowSweepServiceIT` red against a not-yet-existing
-`MarkNoShows` port (load `riviera-local-debug` before the first `./gradlew`).
+**Next action:** Phase 1 — widen `JdbcDailyTakings` to `NO_SHOW` (AC-6) and
+`findConfirmedForVenueOn` to carry the status token (AC-10, backend half).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Sweep core (port, service, JDBC bulk update, V41 index) | | |
+| 0 — Sweep core (port, service, JDBC bulk update, V41 index) | ✅ | `0a9fdde` |
 | 1 — Read audit: takings + arrivals widening | | |
 | 2 — Terminal-state guards (cancel, check-in classify) | | |
 | 3 — Weather-refund widening (`cancelForWeather`) | | |
@@ -324,9 +324,9 @@ Skill-routing gate for what the fix touches *before* editing).
   call `cancelForWeather`
 - `platform/src/main/java/ai/riviera/platform/booking/domain/BookingStatus.java` — Javadoc: `NO_SHOW`
   is now written
-- `platform/src/test/java/ai/riviera/platform/booking/**` — `NoShowSweepServiceIT`,
+- `platform/src/test/java/ai/riviera/platform/booking/**` — `NoShowSweepIT`,
   `NoShowSweepSchedulerConfigTest`, and the amended `CheckInServiceTest`,
-  `CancelBookingServiceTest`, `WeatherRefundServiceIT`, `JdbcDailyTakingsIT`,
+  `CancelBookingServiceTest`, `WeatherRefundServiceIT`, `JdbcBookingsDailyTakingsIT`,
   `StaffBookingControllerIT`, `BookingMigrationIT`
 - `frontend/src/app/operator/operator-console.model.ts|.service.ts` — the status token
 - `frontend/src/app/operator/daily-view-tab.ts|.html` — the no-show arrivals row
@@ -340,15 +340,15 @@ Skill-routing gate for what the fix touches *before* editing).
 ## Phase 0 — Sweep core
 
 **Files:** Create `MarkNoShows.java`, `NoShowSweepService.java`, `V41__…sql`,
-`NoShowSweepServiceIT.java` · Modify `Bookings.java`, `JdbcBookings.java`
+`NoShowSweepIT.java` · Modify `Bookings.java`, `JdbcBookings.java`
 
-- [ ] **Step 1: Write the failing test** — `NoShowSweepServiceIT` covering AC-1..AC-5 and the
+- [ ] **Step 1: Write the failing test** — `NoShowSweepIT` covering AC-1..AC-5 and the
   concurrency case, seeded through the existing booking IT fixtures against Testcontainers Postgres.
 - [ ] **Step 2: Run it, verify it fails** —
-  `./gradlew test --tests "*NoShowSweepServiceIT*"` → FAIL (`MarkNoShows` does not exist)
+  `./gradlew test --tests "*NoShowSweepIT*"` → FAIL (`MarkNoShows` does not exist)
 - [ ] **Step 3: Minimal implementation** — the port, the service (`Clock` → `LocalDate` in
   `Europe/Tirane`), the `sweepJdbc` bulk guarded UPDATE, and `V41`'s partial index.
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*NoShowSweepServiceIT*"` → PASS
+- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*NoShowSweepIT*"` → PASS
 - [ ] **Step 5: Generalization-audit pass** — search every `status = 'CONFIRMED'` predicate; record
   the verdict per site against the Behavior-parity ledger (this seeds phases 1–3).
 - [ ] **Step 6: Commit** — `git commit -m "Mark past unchecked-in bookings as no-shows (#584)"`
@@ -370,8 +370,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-5, concurrency:** `./gradlew test --tests "*NoShowSweepServiceIT*"` → PASS
-- [ ] **AC-6:** `./gradlew test --tests "*JdbcDailyTakingsIT*"` → PASS
+- [ ] **AC-1..AC-5, concurrency:** `./gradlew test --tests "*NoShowSweepIT*"` → PASS
+- [ ] **AC-6:** `./gradlew test --tests "*JdbcBookingsDailyTakingsIT*"` → PASS
 - [ ] **AC-7:** `./gradlew test --tests "*CancelBookingServiceTest*"` → PASS
 - [ ] **AC-8:** `./gradlew test --tests "*CheckInServiceTest*"` → PASS
 - [ ] **AC-9:** `./gradlew test --tests "*WeatherRefundServiceIT*"` → PASS

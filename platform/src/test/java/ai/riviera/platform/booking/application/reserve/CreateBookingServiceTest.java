@@ -475,6 +475,11 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public int markPastConfirmedAsNoShow(java.time.LocalDate today) {
+			return 0;
+		}
+
+		@Override
 		public Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
 				long bookingId, ai.riviera.platform.venue.vocabulary.VenueId venueId, Instant now) {
 			return Optional.empty();
