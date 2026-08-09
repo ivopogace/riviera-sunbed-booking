@@ -143,9 +143,9 @@ export class DailyViewTab {
   }
 
   private startScanner(video: HTMLVideoElement | undefined): void {
-    this.scanner.start(video, (payload) => this.onScanPayload(payload)).catch(() => {
+    this.scanner.start(video, (payload) => this.onScanPayload(payload)).catch((error: unknown) => {
       this.scanOpen.set(false);
-      this.checkInNotice.set({ tone: 'error', text: 'Camera unavailable — type the code instead.' });
+      this.checkInNotice.set({ tone: 'error', text: cameraUnavailableMessage(error) });
     });
   }
 
@@ -520,6 +520,25 @@ function tileAction(state: TileState): string {
       return 'walk-in marked — tap to release';
     default:
       return 'booked online';
+  }
+}
+
+/** Why the camera didn't open, in operator terms — the browser's error name picks the guidance. */
+function cameraUnavailableMessage(error: unknown): string {
+  const name = error instanceof DOMException ? error.name : undefined;
+  switch (name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Camera access is blocked for this site — allow it in the browser settings, or type the code.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'No usable camera was found — type the code instead.';
+    case 'NotReadableError':
+      return 'The camera is in use by another app — close it, or type the code.';
+    case 'NotSupportedError':
+      return 'This browser can’t open the camera here — type the code instead.';
+    default:
+      return `Camera unavailable${name === undefined ? '' : ` (${name})`} — type the code instead.`;
   }
 }
 

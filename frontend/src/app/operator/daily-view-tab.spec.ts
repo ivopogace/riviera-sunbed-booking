@@ -326,6 +326,25 @@ describe('DailyViewTab (#175)', () => {
     expect(byId('checkin-video')).toBeNull();
   });
 
+  it('names the cure when the camera is blocked or absent (Safari guidance) (#583)', async () => {
+    render();
+    const scanner = TestBed.inject(QrScanner);
+    const start = vi.spyOn(scanner, 'start');
+    const attempt = async (error: Error) => {
+      start.mockRejectedValueOnce(error);
+      (byId('checkin-scan-toggle') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      return byId('checkin-result')!.textContent!;
+    };
+
+    expect(await attempt(new DOMException('denied', 'NotAllowedError'))).toContain('blocked');
+    expect(await attempt(new DOMException('none', 'NotFoundError'))).toContain('No usable camera');
+    expect(await attempt(new DOMException('busy', 'NotReadableError'))).toContain('another app');
+    expect(await attempt(new DOMException('nope', 'NotSupportedError'))).toContain('can’t open the camera');
+  });
+
   it('explains every check-in denial in operator terms (#583)', () => {
     render();
     const submit = (status: number, body: object) => {

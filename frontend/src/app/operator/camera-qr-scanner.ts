@@ -22,6 +22,9 @@ export class CameraQrScanner extends QrScanner {
     if (video === undefined) {
       throw new Error('camera scanning needs a preview element');
     }
+    if (navigator.mediaDevices?.getUserMedia === undefined) {
+      throw new DOMException('camera capture is not available in this browser', 'NotSupportedError');
+    }
     this.stop();
     const generation = this.generation;
     const [{ default: jsQR }, stream] = await Promise.all([
@@ -33,8 +36,12 @@ export class CameraQrScanner extends QrScanner {
       return;
     }
     this.stream = stream;
+    // WebKit gates play() on the PROPERTIES — the template's attributes alone don't set them.
+    video.muted = true;
+    video.playsInline = true;
+    video.autoplay = true;
     video.srcObject = stream;
-    await video.play();
+    await CameraQrScanner.playWithMetadataRetry(video);
     if (generation !== this.generation) {
       return;
     }
@@ -54,6 +61,26 @@ export class CameraQrScanner extends QrScanner {
         onCode(hit.data);
       }
     }, DECODE_INTERVAL_MS);
+  }
+
+  /** Safari can reject the first play() before metadata; one retry after it loads is the cure. */
+  private static async playWithMetadataRetry(video: HTMLVideoElement): Promise<void> {
+    try {
+      await video.play();
+    } catch (first) {
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(first), 3000);
+        video.addEventListener(
+          'loadedmetadata',
+          () => {
+            clearTimeout(timer);
+            resolve();
+          },
+          { once: true },
+        );
+      });
+      await video.play();
+    }
   }
 
   override stop(): void {
