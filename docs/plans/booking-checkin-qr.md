@@ -232,6 +232,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (Backend, fee5803) | `@WebMvcTest` contexts broke — `StaffBookingController`'s new `CheckInBooking` dependency had no `WebSliceStubs` bean (163 cascade failures) | fixed — inert stub added |
+| F-2 | CI (Backend, dc996e9) | full-suite test worker OOM (`Java heap space`) — ~30 cached Spring contexts against Gradle's 512m default; this slice tipped the margin | fixed — explicit `maxHeapSize = '1g'` |
 
 ---
 
@@ -279,6 +280,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `CONTEXT.md` — **Check-in** term
 - `RESPONSIBILITIES.md` — §`booking`: the check-in leg
 - `CLAUDE.md` — booking-module row mention (docs-freshness sweep decides exact wording)
+- `platform/build.gradle` — explicit test-worker heap (F-2)
 
 ---
 

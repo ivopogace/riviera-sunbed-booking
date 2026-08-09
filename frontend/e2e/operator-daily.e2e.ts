@@ -13,7 +13,7 @@ import { settle } from './support/booking-dialog';
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
 // A1 free, A2 held by a CONFIRMED booking, A3 free, A4 an UNPAID online hold.
-const BOOKINGS = [{ setId: 2, code: 'ABC12345' }];
+const BOOKINGS = [{ setId: 2, code: 'ABC12345', checkedIn: false }];
 
 function seat(
   id: number,
@@ -38,6 +38,7 @@ function seat(
 async function mockDaily(page: Page): Promise<void> {
   const marked = new Set<number>();
   let sessionLive = false;
+  let guestArrived = false;
   await page.route(/\/api\/auth\/me$/, (route) =>
     sessionLive
       ? route.fulfill({ json: PRINCIPAL })
@@ -61,7 +62,17 @@ async function mockDaily(page: Page): Promise<void> {
     }
     return route.fulfill({ status: 204, body: '' });
   });
-  await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: BOOKINGS }));
+  await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
+    route.fulfill({ json: [{ ...BOOKINGS[0], checkedIn: guestArrived }] }),
+  );
+  // Check-in (#583): first scan completes, any further scan answers the single-use 409.
+  await page.route(/\/api\/venues\/1\/bookings\/[A-Z0-9]+\/check-in$/, (route) => {
+    if (guestArrived) {
+      return route.fulfill({ status: 409, json: { code: 'ALREADY_CHECKED_IN' } });
+    }
+    guestArrived = true;
+    return route.fulfill({ json: { setId: 2, bookingDate: '2026-07-08' } });
+  });
   // The per-set states read: sets 2 + 4 are online holds (4 unpaid, so absent from the bookings read).
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({
@@ -149,4 +160,50 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   // Tap the free set 1 → mark walk-in; after the reconcile it stays walk-in marked.
   await page.locator('[data-set-id="1"]').click();
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'STAFF_MARKED');
+});
+
+test('checks a guest in by QR scan — single-use, announced, and the row stays flagged (#583)', async ({
+  page,
+}) => {
+  // Arm the deterministic scanner: first a foreign QR, then the tourist QR URL, then a re-scan.
+  await page.addInitScript(() => {
+    (window as unknown as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__ = [
+      'https://example.com/not-a-booking',
+      'http://localhost:4200/booking/ABC12345',
+      'ABC12345',
+    ];
+  });
+  await mockDaily(page);
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  // A non-booking QR is rejected client-side; nothing is posted.
+  await page.getByTestId('checkin-scan-toggle').click();
+  await expect(page.getByTestId('checkin-result')).toContainText('isn’t a booking');
+
+  // The tourist QR (the /booking/{code} URL) checks the guest in; the row gains the chip.
+  await page.getByTestId('checkin-scan-toggle').click();
+  await expect(page.getByTestId('checkin-result')).toContainText('Checked in');
+  await expect(page.getByTestId('arrival-checked-in')).toBeVisible();
+  await expect(page.getByTestId('daily-arrival-row')).toHaveCount(1);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view tab after check-in');
+
+  // Scanning the same code again is refused distinctly — the QR is single-use.
+  await page.getByTestId('checkin-scan-toggle').click();
+  await expect(page.getByTestId('checkin-result')).toContainText('Already checked in');
+});
+
+test('checks a guest in by typed code — the keyboard path needs no camera (#583)', async ({
+  page,
+}) => {
+  await mockDaily(page);
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  await page.getByTestId('checkin-code-input').fill('abc-123 45');
+  await page.getByTestId('checkin-code-input').press('Enter');
+  await expect(page.getByTestId('checkin-result')).toContainText('Checked in');
+  await expect(page.getByTestId('arrival-checked-in')).toBeVisible();
 });
