@@ -443,6 +443,30 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
+	public Optional<CancelledBooking> cancelForWeather(long bookingId, Instant cancelledAt,
+			long refundMinor) {
+		// Admits NO_SHOW beside CONFIRMED: the sweep gets to a washed-out day before the operator does.
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund, cancel_reason = :reason
+				WHERE id = :id AND status IN (:confirmed, :noShow)
+				RETURNING id, venue_id, set_id, booking_date, amount_minor, amount_currency
+				""")
+				.param("cancelled", BookingStatus.CANCELLED.name())
+				.param("at", java.sql.Timestamp.from(cancelledAt))
+				.param("refund", refundMinor)
+				.param("reason", RefundReason.WEATHER.name())
+				.param("id", bookingId)
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
+				.query((rs, rowNum) -> new CancelledBooking(
+						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
+						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
+				.optional();
+	}
+
+	@Override
 	public int markPastConfirmedAsNoShow(LocalDate today) {
 		// sweepJdbc, not jdbc: this statement opens a scheduled run and is bounded.
 		return sweepJdbc.sql("""
@@ -498,19 +522,21 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public List<RefundableBooking> findConfirmedForWeatherRefund(VenueId venueId, LocalDate date) {
-		// Admin weather refund (U9): a venue's CONFIRMED bookings for one washed-out day, id + amount.
+	public List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date) {
+		// Weather refund (U9): CONFIRMED + the NO_SHOWs the sweep made of guests who stayed home.
 		// Served by booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's
-		// rows. The amount is the FULL refund the caller stamps via the guarded cancelConfirmed.
+		// rows. The amount is the FULL refund the caller stamps via the guarded cancelForWeather.
 		return jdbc.sql("""
 				SELECT id, amount_minor
 				FROM booking
-				WHERE venue_id = :venue AND booking_date = :date AND status = :confirmed
+				WHERE venue_id = :venue AND booking_date = :date
+				  AND status IN (:confirmed, :noShow)
 				ORDER BY id
 				""")
 				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
 				.query((rs, rowNum) -> new RefundableBooking(
 						rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR)))
 				.list();

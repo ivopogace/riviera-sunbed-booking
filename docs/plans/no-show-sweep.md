@@ -269,10 +269,10 @@ rather than growing a second boolean branch.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** Phase 3 — widen the admin weather refund to reach swept `NO_SHOW` rows (AC-9),
-via a `cancelForWeather` port method so the guest-cancel guard stays `CONFIRMED`-only.
+**Next action:** Phase 4 — the scheduler + its config-pinning test (AC-11), with the long
+initial delay that keeps the sweep out of every IT window.
 `findConfirmedForVenueOn` to carry the status token (AC-10, backend half).
 
 | Phase | Status | Commits |
@@ -280,7 +280,7 @@ via a `cancelForWeather` port method so the guest-cancel guard stays `CONFIRMED`
 | 0 — Sweep core (port, service, JDBC bulk update, V41 index) | ✅ | `0a9fdde` |
 | 1 — Read audit: takings + arrivals widening | ✅ | `996a27b` |
 | 2 — Terminal-state guards (cancel, check-in classify) | ✅ | `025c5cf` |
-| 3 — Weather-refund widening (`cancelForWeather`) | | |
+| 3 — Weather-refund widening (`cancelForWeather`) | ✅ | `bc77276` |
 | 4 — Scheduler + config pinning test | | |
 | 5 — Frontend: status token + no-show arrivals row + e2e | | |
 | 6 — Docs sweep + close-out | | |
@@ -323,8 +323,9 @@ Skill-routing gate for what the fix touches *before* editing).
   row mapping
 - `platform/src/main/java/ai/riviera/platform/booking/application/checkin/CheckInService.java` —
   `NO_SHOW` → `WrongServiceDate`
-- `platform/src/main/java/ai/riviera/platform/booking/application/refund/WeatherRefundService.java` —
-  call `cancelForWeather`
+- `platform/src/main/java/ai/riviera/platform/booking/application/refund/WeatherRefundService.java` ·
+  `RefundForWeather.java` · `RefundableBooking.java` — call `cancelForWeather`; the read is renamed
+  `findConfirmedForWeatherRefund` → `findRefundableForWeather` now that it returns more than one status
 - `platform/src/main/java/ai/riviera/platform/booking/domain/BookingStatus.java` — Javadoc: `NO_SHOW`
   is now written
 - `platform/src/test/java/ai/riviera/platform/booking/NoShowSweepIT.java` — the sweep's ITs

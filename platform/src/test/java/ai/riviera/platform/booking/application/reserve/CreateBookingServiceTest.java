@@ -480,6 +480,12 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelForWeather(
+				long bookingId, Instant cancelledAt, long refundMinor) {
+			return Optional.empty();
+		}
+
+		@Override
 		public Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
 				long bookingId, ai.riviera.platform.venue.vocabulary.VenueId venueId, Instant now) {
 			return Optional.empty();
@@ -564,7 +570,7 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public List<ai.riviera.platform.booking.application.refund.RefundableBooking> findConfirmedForWeatherRefund(
+		public List<ai.riviera.platform.booking.application.refund.RefundableBooking> findRefundableForWeather(
 				ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
 			return List.of();
 		}

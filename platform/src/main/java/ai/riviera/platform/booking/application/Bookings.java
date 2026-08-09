@@ -133,6 +133,18 @@ public interface Bookings {
 			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason);
 
 	/**
+	 * The admin weather refund's transition: like {@link #cancelConfirmed} but admitting
+	 * {@code NO_SHOW} beside {@code CONFIRMED}, and always stamping reason {@code WEATHER}. A storm
+	 * is only known afterwards, by which time the sweep has marked that day's unscanned bookings
+	 * {@code NO_SHOW} — the guests who stayed home because of it. Separate from
+	 * {@link #cancelConfirmed} so the guest path stays {@code CONFIRMED}-only: a no-show is never
+	 * guest-cancellable. Guarded and {@code RETURNING}, so a re-run or a concurrent cancel is a
+	 * 0-row {@code empty} no-op and each booking refunds exactly once.
+	 */
+	Optional<CancelledBooking> cancelForWeather(long bookingId, java.time.Instant cancelledAt,
+			long refundMinor);
+
+	/**
 	 * Check a guest in: the guarded {@code CONFIRMED → COMPLETED} transition, keyed on the booking
 	 * {@code code} and scoped to {@code venueId} and the {@code serviceDate} (today in
 	 * {@code Europe/Tirane}, invariant #6), stamping {@code completed_at}. Returns the completed facts
@@ -175,7 +187,7 @@ public interface Bookings {
 	 * {@link #cancelConfirmed}, so a concurrent cancel makes the matching row a no-op. Ordered by id for
 	 * stable iteration.
 	 */
-	List<RefundableBooking> findConfirmedForWeatherRefund(VenueId venueId, LocalDate date);
+	List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date);
 
 	/**
 	 * The ids of bookings still {@code AWAITING_PAYMENT} that can no longer be paid — the

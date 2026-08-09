@@ -52,6 +52,9 @@ class WeatherRefundServiceIT {
 	@Autowired
 	OperatorDirectory operators;
 
+	@Autowired
+	ai.riviera.platform.booking.application.checkin.MarkNoShows markNoShows;
+
 	/** The interim bootstrap operator (owns every venue) — resolves the ownership guard (#73). */
 	private OperatorId bootstrap() {
 		return operators.operatorFor("operator").orElseThrow();
@@ -137,6 +140,41 @@ class WeatherRefundServiceIT {
 				.filter(e -> e.bookingDate().equals(day)).toList();
 		assertEquals(2, published.size(), "one BookingCancelled per refunded booking");
 		assertEquals(RefundReason.WEATHER, published.getFirst().reason(), "event carries the weather reason");
+	}
+
+	/**
+	 * The no-show sweep must not silently close the post-storm refund window. It marks every past-day
+	 * {@code CONFIRMED} booking {@code NO_SHOW} within the hour, and a washed-out day is precisely
+	 * where those rows come from — the guests who stayed home because of the weather.
+	 */
+	@Test
+	void refundsSweptNoShowsOnAPastDate() {
+		LocalDate day = LocalDate.of(2020, 7, 9);
+		long venueId = venueWithOnlineSets();
+		List<Long> sets = onlineSets(venueId, 2);
+		Seeded stayedHome = confirmedBooking(venueId, sets.get(0), day, "WX00000009", 4500L);
+		Seeded alsoStayedHome = confirmedBooking(venueId, sets.get(1), day, "WX00000010", 3500L);
+
+		markNoShows.sweep();
+		assertEquals("NO_SHOW", status(stayedHome.bookingId()), "the sweep ran on this day");
+		assertEquals("NO_SHOW", status(alsoStayedHome.bookingId()));
+
+		WeatherRefundOutcome outcome =
+				refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), day);
+
+		assertEquals(2, outcome.refundedCount(), "a swept no-show is still weather-refundable");
+		assertEquals(8000L, outcome.totalRefundedMinor(), "full refund of 4500 + 3500");
+		for (Seeded s : List.of(stayedHome, alsoStayedHome)) {
+			assertEquals("CANCELLED", status(s.bookingId()));
+			assertEquals(s.amountMinor(), jdbc.sql("SELECT refund_minor FROM booking WHERE id = :id")
+					.param("id", s.bookingId()).query(Long.class).single());
+			assertEquals("WEATHER", jdbc.sql("SELECT cancel_reason FROM booking WHERE id = :id")
+					.param("id", s.bookingId()).query(String.class).single());
+			assertEquals(0, availabilityRows(s.setId(), day), "the set is freed (invariant #2)");
+		}
+		assertEquals(2, events.stream(BookingCancelled.class)
+				.filter(e -> e.bookingDate().equals(day)).count(),
+				"one BookingCancelled per booking, so payout reverses exactly once (invariant #9)");
 	}
 
 	@Test
