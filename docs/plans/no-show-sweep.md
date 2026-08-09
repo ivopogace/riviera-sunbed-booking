@@ -73,10 +73,10 @@ view's model change stays in `operator/`; the status vocabulary stays in `shared
   `JdbcBookingsDailyTakingsIT.noShowSweepDoesNotChangeTakings`
 - [ ] **AC-7:** Given a swept `NO_SHOW` booking, when the guest calls `CancelBooking`, then the
   outcome is `NotCancellable` and no refund is issued. *Pinned by:*
-  `CancelBookingServiceTest.noShowIsNotCancellable`
+  `CancelBookingIT.noShowIsNotCancellable`
 - [ ] **AC-8:** Given a swept `NO_SHOW` booking, when an operator scans its code, then the result is
   `WrongServiceDate` carrying the booking date and the status stays `NO_SHOW`. *Pinned by:*
-  `CheckInServiceTest.noShowIsNotCheckInable`
+  `CheckInFlowIT.sweptNoShowScanNamesTheDate`
 - [ ] **AC-9:** Given a washed-out **past** date whose bookings the sweep has marked `NO_SHOW`, when
   the admin runs the weather refund for that `(venue, date)`, then each is `CANCELLED` with a full
   refund and one `BookingCancelled` is published per booking. *Pinned by:*
@@ -237,7 +237,7 @@ All four sit inside `booking`; **no boundary change, no new published surface, n
   deliberately outside that fence and now reaches swept rows too.
 - **Pinning tests:** `WeatherRefundServiceIT.refundsSweptNoShowsOnAPastDate` (AC-9),
   `JdbcBookingsDailyTakingsIT.noShowSweepDoesNotChangeTakings` (AC-6),
-  `CancelBookingServiceTest.noShowIsNotCancellable` (AC-7).
+  `CancelBookingIT.noShowIsNotCancellable` (AC-7).
 
 ## Angular — frontend surfaces touched
 
@@ -269,15 +269,16 @@ rather than growing a second boolean branch.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — widen `JdbcDailyTakings` to `NO_SHOW` (AC-6) and
+**Next action:** Phase 2 — terminal-state guards: `NO_SHOW` is not guest-cancellable (AC-7) and
+scans as `WrongServiceDate`, not `NotFound` (AC-8).
 `findConfirmedForVenueOn` to carry the status token (AC-10, backend half).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Sweep core (port, service, JDBC bulk update, V41 index) | ✅ | `0a9fdde` |
-| 1 — Read audit: takings + arrivals widening | | |
+| 1 — Read audit: takings + arrivals widening | ✅ | `996a27b` |
 | 2 — Terminal-state guards (cancel, check-in classify) | | |
 | 3 — Weather-refund widening (`cancelForWeather`) | | |
 | 4 — Scheduler + config pinning test | | |
@@ -324,10 +325,16 @@ Skill-routing gate for what the fix touches *before* editing).
   call `cancelForWeather`
 - `platform/src/main/java/ai/riviera/platform/booking/domain/BookingStatus.java` — Javadoc: `NO_SHOW`
   is now written
-- `platform/src/test/java/ai/riviera/platform/booking/**` — `NoShowSweepIT`,
-  `NoShowSweepSchedulerConfigTest`, and the amended `CheckInServiceTest`,
-  `CancelBookingServiceTest`, `WeatherRefundServiceIT`, `JdbcBookingsDailyTakingsIT`,
-  `StaffBookingControllerIT`, `BookingMigrationIT`
+- `platform/src/test/java/ai/riviera/platform/booking/NoShowSweepIT.java` — the sweep's ITs
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/in/NoShowSweepSchedulerConfigTest.java` —
+  pins the initial-delay floor
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingsDailyTakingsIT.java` —
+  takings unchanged by the sweep
+- `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` —
+  the `Bookings` test fake gains the new method
+- `platform/src/test/java/ai/riviera/platform/booking/CheckInFlowIT.java` ·
+  `WeatherRefundServiceIT.java` · `StaffBookingControllerIT.java` ·
+  `CancelBookingIT.java` — amended for the widened reads and the terminal-state guards
 - `frontend/src/app/operator/operator-console.model.ts|.service.ts` — the status token
 - `frontend/src/app/operator/daily-view-tab.ts|.html` — the no-show arrivals row
 - `frontend/src/app/operator/daily-view-tab.spec.ts` · `operator-console.service.spec.ts` — specs
@@ -372,8 +379,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 - [ ] **AC-1..AC-5, concurrency:** `./gradlew test --tests "*NoShowSweepIT*"` → PASS
 - [ ] **AC-6:** `./gradlew test --tests "*JdbcBookingsDailyTakingsIT*"` → PASS
-- [ ] **AC-7:** `./gradlew test --tests "*CancelBookingServiceTest*"` → PASS
-- [ ] **AC-8:** `./gradlew test --tests "*CheckInServiceTest*"` → PASS
+- [ ] **AC-7:** `./gradlew test --tests "*CancelBookingIT*"` → PASS
+- [ ] **AC-8:** `./gradlew test --tests "*CheckInFlowIT*"` → PASS
 - [ ] **AC-9:** `./gradlew test --tests "*WeatherRefundServiceIT*"` → PASS
 - [ ] **AC-10:** `./gradlew test --tests "*StaffBookingControllerIT*"` + `npm test` → PASS
 - [ ] **AC-11:** `./gradlew test --tests "*NoShowSweepSchedulerConfigTest*"` → PASS

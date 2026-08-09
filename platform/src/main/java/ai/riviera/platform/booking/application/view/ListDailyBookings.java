@@ -17,10 +17,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public interface ListDailyBookings {
 
 	/**
-	 * The {@code CONFIRMED} and {@code COMPLETED} bookings for {@code venueId} on {@code date} (a
-	 * {@code LocalDate} in {@code Europe/Tirane}, invariant #6), as {@code (setId, code, checkedIn)}
-	 * rows ordered by set — a checked-in arrival stays listed, flagged. Excludes
-	 * awaiting-payment and cancelled bookings. Empty (never {@code null}) when there are none.
+	 * The {@code CONFIRMED}, {@code COMPLETED} and {@code NO_SHOW} bookings for {@code venueId} on
+	 * {@code date} (a {@code LocalDate} in {@code Europe/Tirane}, invariant #6), as
+	 * {@code (setId, code, status)} rows ordered by set — a settled arrival stays listed, flagged by
+	 * its status, so a past day is not empty. Excludes awaiting-payment and cancelled bookings.
+	 * Empty (never {@code null}) when there are none.
 	 *
 	 * <p>Booking codes are bearer credentials (invariant #7), so this read is venue-scoped: the
 	 * implementation asserts {@code operator} owns {@code venueId} first (invariant #13) and returns

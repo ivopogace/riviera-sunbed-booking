@@ -233,8 +233,8 @@ class CheckInFlowIT {
 						.param("date", today().toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(2))
-				.andExpect(jsonPath("$[?(@.code == '%s')].checkedIn".formatted(checkedIn)).value(true))
-				.andExpect(jsonPath("$[?(@.code == '%s')].checkedIn".formatted(upcoming)).value(false));
+				.andExpect(jsonPath("$[?(@.code == '%s')].status".formatted(checkedIn)).value("COMPLETED"))
+				.andExpect(jsonPath("$[?(@.code == '%s')].status".formatted(upcoming)).value("CONFIRMED"));
 
 		mvc.perform(get("/api/venues/{v}/takings", venue).cookie(operatorSession)
 						.param("date", today().toString()))

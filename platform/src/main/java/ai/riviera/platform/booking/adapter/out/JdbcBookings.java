@@ -51,6 +51,7 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_PENDING = "pending";
 	private static final String PARAM_CONFIRMED = "confirmed";
 	private static final String PARAM_COMPLETED = "completed";
+	private static final String PARAM_NO_SHOW = "noShow";
 	private static final String PARAM_VENUE = "venue";
 	private static final String PARAM_ACCOUNT = "account";
 
@@ -473,24 +474,26 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public List<DailyBooking> findConfirmedForVenueOn(VenueId venueId, LocalDate date) {
-		// Staff daily view (U8): a venue's CONFIRMED bookings for one day, ordered by set. Served by
+		// Staff daily view (U8): a venue's settled bookings for one day, ordered by set. Served by
 		// booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's rows. The
 		// code is selected for staff verification (invariant #7) — returned to the operator-gated
 		// caller, never logged here.
-		// COMPLETED rides along since #583: a checked-in arrival stays listed, flagged, not vanished.
+		// COMPLETED and NO_SHOW ride along, so a past day lists who was booked instead of nothing.
 		return jdbc.sql("""
 				SELECT set_id, code, status
 				FROM booking
-				WHERE venue_id = :venue AND booking_date = :date AND status IN (:confirmed, :completed)
+				WHERE venue_id = :venue AND booking_date = :date
+				  AND status IN (:confirmed, :completed, :noShow)
 				ORDER BY set_id
 				""")
 				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
+				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
 				.query((rs, rowNum) -> new DailyBooking(
 						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code"),
-						BookingStatus.COMPLETED.name().equals(rs.getString(PARAM_STATUS))))
+						BookingStatus.valueOf(rs.getString(PARAM_STATUS))))
 				.list();
 	}
 

@@ -28,7 +28,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Operator endpoints for the staff daily view (U8): a venue's confirmed-or-checked-in bookings for
- * one day, each with its set, booking code and {@code checkedIn} flag — plus the check-in POST that
+ * one day, each with its set, booking code and lifecycle {@code status} — plus the check-in POST that
  * flips a scanned booking {@code CONFIRMED → COMPLETED}. Driving adapter depending only on the
  * booking module's {@link ListDailyBookings} and {@link CheckInBooking} ports (invariant #11).
  *
@@ -63,7 +63,7 @@ class StaffBookingController {
 		OperatorId operator = currentOperator.require(authentication);
 		LocalDate effectiveDate = date != null ? date : LocalDate.ofInstant(clock.instant(), TIRANE);
 		return dailyBookings.forVenueOn(operator, new VenueId(venueId), effectiveDate).stream()
-				.map(b -> new DailyBookingView(b.setId().value(), b.code(), b.checkedIn()))
+				.map(b -> new DailyBookingView(b.setId().value(), b.code(), b.status().name()))
 				.toList();
 	}
 

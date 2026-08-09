@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +47,9 @@ class StaffBookingControllerIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	@Autowired
+	ai.riviera.platform.booking.application.checkin.MarkNoShows markNoShows;
+
 	private Cookie operatorSession;
 
 	@BeforeEach
@@ -67,13 +71,18 @@ class StaffBookingControllerIT {
 	}
 
 	private void seedBooking(String code, long setId, long customerId, String status) {
+		seedBookingOn(code, setId, customerId, status, DAY);
+	}
+
+	private void seedBookingOn(String code, long setId, long customerId, String status,
+			LocalDate date) {
 		jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status)
 				VALUES (:code, :venue, :set, :customer, :date, 4500, 'EUR', :status)
 				""")
 				.param("code", code).param("venue", MIRAMAR).param("set", setId)
-				.param("customer", customerId).param("date", DAY).param("status", status)
+				.param("customer", customerId).param("date", date).param("status", status)
 				.update();
 	}
 
@@ -94,6 +103,24 @@ class StaffBookingControllerIT {
 				.andExpect(jsonPath("$[0].code").value("U8CONFIRMA"))
 				.andExpect(jsonPath("$[1].setId").value(sets.get(1)))
 				.andExpect(jsonPath("$[1].code").value("U8CONFIRMB"));
+	}
+
+	@Test
+	void dailyViewListsSweptNoShows() throws Exception {
+		LocalDate past = LocalDate.now(ZoneId.of("Europe/Tirane")).minusDays(4);
+		List<Long> sets = venueSets(2);
+		long customer = newCustomer("noshow-" + past + "@e.com");
+		seedBookingOn("U8NOSHOW1", sets.get(0), customer, "CONFIRMED", past);
+		seedBookingOn("U8DONE1", sets.get(1), customer, "COMPLETED", past);
+
+		markNoShows.sweep();
+
+		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+						.param("date", past.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[?(@.code == 'U8NOSHOW1')].status").value("NO_SHOW"))
+				.andExpect(jsonPath("$[?(@.code == 'U8DONE1')].status").value("COMPLETED"));
 	}
 
 	@Test
