@@ -101,7 +101,7 @@ class JdbcPayments implements Payments {
 		return jdbc.sql("SELECT status, refunded_minor FROM payment WHERE booking_ref = :ref")
 				.param("ref", booking.value())
 				.query((rs, rowNum) -> new RefundState(
-						PaymentStatus.valueOf(rs.getString("status")), rs.getLong("refunded_minor")))
+						PaymentStatus.valueOf(rs.getString(PARAM_STATUS)), rs.getLong("refunded_minor")))
 				.optional();
 	}
 

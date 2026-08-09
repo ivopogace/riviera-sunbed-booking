@@ -113,6 +113,13 @@ model in `docs/architecture/domain-model.md`.
 - **Payout batch** — a period's worth of ledger entries settled together, paid to
   the venue manually via BKT.
 - **Refund** — money returned to a tourist, by reason: policy, weather, or conflict.
+- **Refund progress** — how far a decided refund has actually travelled: **decided**
+  (the cancellation fixed an amount the platform owes), **accepted** (the payment
+  gateway has acknowledged it will return the money), **settled** (it has reached the
+  guest's statement — not tracked in v1). A refund decided but not yet accepted is
+  **outstanding**; guest-facing copy then says the refund is being processed, never
+  that it is on its way. Where the gateway never collected, there is nothing to track
+  and the question does not arise — absence is not a stuck refund.
 - **Refund tier** — the policy outcome of a cancellation: **full** (cancelled before
   the cutoff), **partial** (after the cutoff, the venue's configurable late-cancel
   share), or **none** (after the cutoff, the venue offering 0 bps). Always computed

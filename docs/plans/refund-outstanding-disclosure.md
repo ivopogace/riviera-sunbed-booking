@@ -34,8 +34,10 @@ issue against code: fact exists unread in `payment`; only Dependabot PRs in flig
 Flyway collision; ownership split matches `RESPONSIBILITIES.md`) · `riviera-plan-doc` (this
 template — forced the parity-ledger look at the shared `refundSentence` and the trap-#1
 risk row) · `tdd` (each phase red-green at the service seam) · `riviera-review-overlay`
-(review gate — due at ready-for-review) · `riviera-docs-freshness` (due at close-out over
-`9709fed..HEAD` — will be recorded here when run) · `riviera-modulith` (port →
+(review gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over
+`9709fed..HEAD` — 1 finding: the stale `payment/api/package-info.java` port list, patched
+in phase 1; the counting sweep's hits all count other subjects, none falsified) ·
+`riviera-modulith` (port →
 `payment/api/`, enum → `payment/vocabulary/`; no new grant — `booking` already lists
 `payment::api` + `::vocabulary`) · `riviera-java-conventions` (enum outcome over boolean;
 package-private service; text-block SQL; total port, no `Optional` leak) ·
@@ -210,11 +212,10 @@ never arrival or card. Accepted/stub copy byte-identical to today.
 > Session-recovery anchor — update in the same commit window as the change it records,
 > at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** implement (phase 4 — docs close-out)
+**Stage pointer:** PR — marking ready for review
 
-**Next action:** CONTEXT.md glossary rows + RESPONSIBILITIES.md one-liners; then the
-Sonar-gate issue pull (one new issue reported on the phase-2 analysis) and
-ready-for-review.
+**Next action:** verify this push's CI, mark PR #582 ready, run the review gate
+(`/code-review` + overlay), then the Sonar gate re-pull.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -222,7 +223,7 @@ ready-for-review.
 | 1 — `payment`: `RefundProgress` + `RefundStatusLookup` + JDBC read | ✅ | `e957367` |
 | 2 — `booking`: view consults port, discloses `refundOutstanding` | ✅ | `5f2ae60` |
 | 3 — frontend: model + panel branch + unit/e2e specs | ✅ | `9c37662` |
-| 4 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, package-info freshness) | ⏳ | |
+| 4 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, docs-freshness run) + Sonar S1192 fix | ✅ | see below |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -230,6 +231,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | sonar (phase-2 analysis) | `java:S1192` — `rs.getString("status")` in `JdbcPayments.findRefundState` duplicates the `PARAM_STATUS` constant's value | fixed in phase 4's commit (uses `PARAM_STATUS`) |
 
 ---
 
