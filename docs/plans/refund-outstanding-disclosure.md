@@ -114,11 +114,12 @@ cases staying green.
 
 ## Open questions / Assumptions
 
-- **Open question:** does `/my-bookings` (`MyBookingSummary.refundedAmount`) make the same
-  misleading claim anywhere in its copy? — *Owner:* session · *Resolves by:* phase 3
-  generalization audit
-
 ### Resolved
+
+- **Open question:** does `/my-bookings` make the same misleading claim? *Resolved at the
+  phase-3 generalization audit: no — the list renders an amount label via `amountLabelFor`,
+  no transit prose; the only claim-making surfaces are the panel (now branched) and the
+  mail (`SmtpMailer.refundLine`, a non-goal by design).*
 
 - **Assumption:** the `payment` row for a booking reaching the cancelled-with-refund view
   can only be `SUCCEEDED` / `REFUNDED` / `PARTIALLY_REFUNDED` at consult time. *Confirmed
@@ -209,17 +210,19 @@ never arrival or card. Accepted/stub copy byte-identical to today.
 > Session-recovery anchor — update in the same commit window as the change it records,
 > at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** implement (phase 4 — docs close-out)
 
-**Next action:** phase 3 red specs in `booking-view.spec.ts` + the mocked e2e case.
+**Next action:** CONTEXT.md glossary rows + RESPONSIBILITIES.md one-liners; then the
+Sonar-gate issue pull (one new issue reported on the phase-2 analysis) and
+ready-for-review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc committed, draft PR opened (PR #582) | ✅ | `e9dcb54` |
 | 1 — `payment`: `RefundProgress` + `RefundStatusLookup` + JDBC read | ✅ | `e957367` |
 | 2 — `booking`: view consults port, discloses `refundOutstanding` | ✅ | `5f2ae60` |
-| 3 — frontend: model + panel branch + unit/e2e specs | ⏳ | |
-| 4 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, package-info freshness) | | |
+| 3 — frontend: model + panel branch + unit/e2e specs | ✅ | `9c37662` |
+| 4 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, package-info freshness) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -253,6 +256,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/booking/booking.model.ts` — `refundOutstanding: boolean`
 - `frontend/src/app/booking/booking-view.ts` — panel branch + processing copy
 - `frontend/src/app/booking/booking-view.spec.ts` — AC-6 branches + fixture field
+- `frontend/src/app/booking/find-booking.spec.ts` — fixture gains the field (required on the type)
+- `frontend/src/app/booking/my-bookings.spec.ts` — fixture gains the field
+- `frontend/src/app/booking/booking.service.spec.ts` — fixtures gain the field
+- `frontend/src/app/booking/booking-pay.spec.ts` — fixture gains the field
 - `frontend/e2e/booking-flow.e2e.ts` — mocked-suite stuck-refund case
 - `CONTEXT.md` — glossary: refund decided / accepted / settled, outstanding refund
 - `RESPONSIBILITIES.md` — §`payment` (publishes the acceptance read), §`booking` (view disclosure)
@@ -320,6 +327,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-09 | phase 3 | other surfaces claiming a refund is in transit | `grep -rn "on its way\|to your card" frontend/src platform/src/main` | `refundSentence` (branched this slice); `SmtpMailer.refundLine` + `BookingCancellationMail` Javadoc (mail — non-goal); `/my-bookings` shows only `amountLabelFor`, no claim | panel-only fix stands; no further sites |
 
 ---
 
