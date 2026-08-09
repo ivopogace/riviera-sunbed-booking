@@ -469,6 +469,10 @@ class JdbcBookings implements Bookings {
 	 * <p>{@code FOR UPDATE} <strong>without</strong> {@code SKIP LOCKED}, deliberately: skipping a
 	 * contended row would return a short batch, which the caller reads as "backlog drained" and
 	 * stops on — leaving that row unswept until a later run found it uncontended.
+	 *
+	 * <p>Ordered by {@code booking_date}, the partial sweep index's own order, so the batch walks it
+	 * instead of sorting the filtered set. Any deterministic order batches correctly; this one is
+	 * free, and it drains the oldest backlog first.
 	 */
 	@Override
 	public int markPastConfirmedAsNoShow(LocalDate today, int batchSize) {
@@ -478,7 +482,7 @@ class JdbcBookings implements Bookings {
 				WHERE id IN (SELECT id
 				             FROM booking
 				             WHERE status = :confirmed AND booking_date < :today
-				             ORDER BY id
+				             ORDER BY booking_date
 				             LIMIT :batch
 				             FOR UPDATE)
 				""")
