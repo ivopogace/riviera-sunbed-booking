@@ -148,8 +148,10 @@ export interface BookingPayment {
 
 /**
  * Typed view of one row from `GET /api/me/bookings` — the signed-in "my bookings" list.
- * Mirrors the backend `MyBookingView`: a **subset** of {@link BookingDetail} (the refund terms +
- * payment credentials are loaded only on the code-gated detail view, not the list). Money as integer
+ * Mirrors the backend `MyBookingView`: a **subset** of {@link BookingDetail} (the refund *terms* +
+ * payment credentials are loaded only on the code-gated detail view; `refundedAmount` is the one
+ * refund fact the list carries, because without it a row cannot tell a cancellation that took money
+ * from one that never did). Money as integer
  * minor units (invariant #5); date as ISO `LocalDate`; `requestExpiresAt` null for instant bookings.
  * `BookingDetail` is structurally a superset, so both feed the shared list-row builder.
  */

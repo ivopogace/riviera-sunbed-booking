@@ -34,8 +34,9 @@ is **not** frontend-only as labelled, and surfaced the "Paid €45.00" mislabel 
 mentioned) · `riviera-plan-doc` (this template — forced the Behavior-parity ledger, which is what
 turned the legacy pre-V14 row into AC-6 instead of a production surprise) · `tdd` (each phase is
 red→green: spec first, then the branch) · `riviera-review-overlay` (review gate — run at
-ready-for-review) · `riviera-docs-freshness` (**ran** at close-out over the PR's merge range —
-see Execution status) · `riviera-modulith` (confirmed the whole change is intra-`booking`: the
+ready-for-review) · `riviera-docs-freshness` (**ran** pre-merge over
+`origin/main...HEAD`, 3 findings, all patched in this PR — the counting sweep caught that this slice
+made the **6th** status banner where the component's own class doc said "five") · `riviera-modulith` (confirmed the whole change is intra-`booking`: the
 view record, its adapter DTO and the JDBC read are one module, so no new grant, no `api`/`spi`
 question — and `RefundReason` is already `booking::vocabulary`) · `riviera-java-conventions`
 (records for the DTO, the `Optional`-free nullable-field idiom the sibling fields already use,
@@ -134,21 +135,23 @@ recipe rather than `@apply`; at F-12 collapsed the cancelled/expired pair into o
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Copy attributes a **weather** cancellation to the guest ("you cancelled this") — the exact wrong sentence this slice exists to prevent | med | high | `WEATHER` is branched **before** the generic refunded branch; AC-4 pins the attribution wording | claude | open |
-| R-2 | A pre-V14 cancelled row (refund set, `cancel_reason NULL`) hits an unhandled branch and renders an empty panel | low | med | Branch order ends in a neutral `@else`, never an exhaustive assumption; AC-6 pins it | claude | open |
-| R-3 | Adding a column to the shared `mapBookingRecord` breaks `findByAccountId` (My bookings) — both reads share the mapper | med | med | Both `SELECT` lists updated in the same commit; `MyBookingsServiceTest` + the my-bookings e2e run in phase 1's scope | claude | open |
-| R-4 | Exposing a cancellation reason on a code-gated view leaks something (D-8 oracle shape) | low | med | The field is about the holder's **own** booking, requires the bearer code (invariant #7), and is `NULL` until the booking is terminal — it answers nothing about any address or any other booking. No `CollectionGuarantee`-style gate needed; contrast `emailWithheld`, which is gated precisely because it is answerable *pre*-payment | claude | open |
-| R-5 | `cancelReason` on the wire drifts from the SQL `CHECK` token set | low | low | The wire carries `RefundReason.name()`, already kept in lockstep with V14 by its own Javadoc; the FE union mirrors it and falls back rather than throwing (AC-6) | claude | open |
-| R-6 | Money rendered from a non-integer / recomputed client value (invariant #5) | low | high | The panel renders `formatMoney(b.refundedAmount)` — the server's minor units, never arithmetic | claude | open |
+| R-1 | Copy attributes a **weather** cancellation to the guest ("you cancelled this") — the exact wrong sentence this slice exists to prevent | med | high | `WEATHER` is branched **before** the generic refunded branch; AC-4 pins the attribution wording | claude | **closed** — `cancelledOpener` switches on the reason and AC-4 asserts the panel never contains "You cancelled"; the e2e asserts it in a real browser too |
+| R-2 | A pre-V14 cancelled row (refund set, `cancel_reason NULL`) hits an unhandled branch and renders an empty panel | low | med | Branch order ends in a neutral `@else`, never an exhaustive assumption; AC-6 pins it | claude | **closed** — `cancelledOpener`'s `default` arm covers null and `CONFLICT`; F-10 extended the same tolerance to the backend parse |
+| R-3 | Adding a column to the shared `mapBookingRecord` breaks `findByAccountId` (My bookings) — both reads share the mapper | med | med | Both `SELECT` lists updated in the same commit; `MyBookingsServiceTest` + the my-bookings e2e run in phase 1's scope | claude | **closed, and it paid off twice** — the generalization audit caught the 3 construction sites, and the review then found the *semantic* half of the same shared-mapper risk (F-3, F-10): the list both mislabelled the row and would have thrown on an unknown token |
+| R-4 | Exposing a cancellation reason on a code-gated view leaks something (D-8 oracle shape) | low | med | The field is about the holder's **own** booking, requires the bearer code (invariant #7), and is `NULL` until the booking is terminal — it answers nothing about any address or any other booking. No `CollectionGuarantee`-style gate needed; contrast `emailWithheld`, which is gated precisely because it is answerable *pre*-payment | claude | **closed** — no gate needed; re-checked at the review gate against RV-BE-9, and the widened `/api/me/bookings` still derives its account id from the session principal (`currentCustomer.require`), never a request param |
+| R-5 | `cancelReason` on the wire drifts from the SQL `CHECK` token set | low | low | The wire carries `RefundReason.name()`, already kept in lockstep with V14 by its own Javadoc; the FE union mirrors it and falls back rather than throwing (AC-6) | claude | **closed** — and the review sharpened it: F-10 found the *backend* was the intolerant end, throwing out of every `/api/me/bookings` row on an unknown token while the FE degraded gracefully. Both ends are now tolerant |
+| R-6 | Money rendered from a non-integer / recomputed client value (invariant #5) | low | high | The panel renders `formatMoney(b.refundedAmount)` — the server's minor units, never arithmetic | claude | **closed** — verified at the review gate (RV-CT-2); the only client-side reading of the amount is `minorUnits > 0`, a comparison, not arithmetic |
 
 ## Open questions / Assumptions
 
-- **Assumption:** A guest arriving at a swept booking wants "payment wasn't completed, you were
-  not charged" rather than a precise cause. Grounded in the sweep having no other guest channel
-  at all (it publishes no event → no mail). — *Owner:* claude · *Resolves by:* phase 2 review
+*(empty — every entry resolved below.)*
 
 ### Resolved
 
+- **Assumption (resolved, phase 2):** A guest arriving at a swept booking wants "payment wasn't
+  completed, you were not charged" rather than a precise cause. Held: the sweep and the
+  `payment_intent.canceled` webhook are indistinguishable in the read model *and* equivalent to the
+  guest, so no precise cause exists to give. Pinned by AC-1.
 - **Open question (from #578, "settle at planning"):** does a *reason* need to ride the wire to
   separate a sweep cancellation from a failed payment? — **Resolved: yes to the wire, no to that
   particular split.** The sweep and the failed-payment webhook are indistinguishable *and
@@ -226,17 +229,18 @@ one branch renders and the id can never duplicate.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-review + sonar gate due`
+**Stage pointer:** `merge close-out — plan doc final; awaiting CI + Sonar on the last push`
 
-**Next action:** Re-walk the overlay bank items over the fix diff, then pull the Sonar new-issue list for the final push.
+**Next action:** Confirm CI green + the Sonar reported list empty on the final push, then merge. Post-merge, only GitHub edits remain (close #578; no epic parent).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Carry `cancel_reason` to the view use case (AC-7, AC-8) | ✅ | `<phase-0>` |
-| 1 — Expose `cancelReason` on the wire + FE contract | ✅ | `<phase-1>` |
-| 2 — The `CANCELLED` panel + amount-label fix (AC-1…AC-6) | ✅ | `<phase-2>` |
-| 3 — e2e + a11y coverage (AC-9) | ✅ | `<phase-3>` |
-| 4 — Review-gate findings (F-3…F-14) | ✅ | `<review>` |
+| 0 — Carry `cancel_reason` to the view use case (AC-7, AC-8) | ✅ | `155e23c` |
+| 1 — Expose `cancelReason` on the wire + FE contract | ✅ | `db9bfe1` |
+| 2 — The `CANCELLED` panel + amount-label fix (AC-1…AC-6) | ✅ | `122a97d` |
+| 3 — e2e + a11y coverage (AC-9) | ✅ | `122a97d` |
+| 4 — Review-gate findings (F-3…F-14) | ✅ | `e5bc118` |
+| 5 — Docs-freshness patches + close-out | ✅ | this PR's last commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -246,20 +250,20 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI (`Repo hygiene (diff-scoped)`, run 31297913413) | The File-structure section omitted `WithdrawRequestServiceTest.java` — a construction site the generalization audit fixed, i.e. exactly the "not the interesting file" shape #533 exists to catch | fixed-in-`<phase-1>` |
-| F-2 | CI (`Repo hygiene (diff-scoped)`, run 31298017413) | Same check, same class, one phase later: the four `BookingDetail` fixture specs widened by the new field were unlisted. Root cause was **when** the guard ran, not whether — it was run mid-phase, before the edits it would have caught. Guard now runs immediately before every push (Phase 2 step 4 amended) | fixed-in-`<phase-2>` |
-| F-3 | review (`/code-review`, high) | **The list still said "Paid".** The AC-5 fix landed only in the detail view, but `buildView` serves *both* the account rows and the per-code rows of one list, and the per-code path already had the full `BookingDetail` — so the same swept booking read "Amount" in the view and "Paid €45.00" in the list. The Non-goal's premise (the list has no such data) held for one of the two call sites only | fixed-in-`<review>` — `refundedAmount` added to the list read model end-to-end, and the rule single-sourced as `shared/booking-status.ts#amountLabelFor` so both surfaces answer identically. An existing spec pinned `['CANCELLED', {}, 'Paid']` — the wrong behaviour — and was corrected |
-| F-4 | review (`/code-review`, high) | The one expression putting `cancelReason` on the wire had no test at any layer; `BookingViewIT` (which asserts its siblings via `jsonPath`) was untouched, so mis-wiring it would ship a permanently-null reason and silently lose every weather attribution | fixed-in-`<review>` — `BookingViewIT.viewCarriesTheCancellationReasonOfAWeatherRefund` + a `doesNotExist` assertion on the live-booking case |
-| F-5 | review (`/code-review`, high) | The `WEATHER` branch rendered the refund sentence unguarded while its sibling guarded on `minorUnits > 0`, so a zero-amount weather refund would read "€0.00 is on its way back to your card" | fixed-in-`<review>` — branch restructured so the guard is shared; pinned by an `it.each` over all three reasons |
+| F-1 | CI (`Repo hygiene (diff-scoped)`, run 31297913413) | The File-structure section omitted `WithdrawRequestServiceTest.java` — a construction site the generalization audit fixed, i.e. exactly the "not the interesting file" shape #533 exists to catch | fixed-in-`db9bfe1` |
+| F-2 | CI (`Repo hygiene (diff-scoped)`, run 31298017413) | Same check, same class, one phase later: the four `BookingDetail` fixture specs widened by the new field were unlisted. Root cause was **when** the guard ran, not whether — it was run mid-phase, before the edits it would have caught. Guard now runs immediately before every push (Phase 2 step 4 amended) | fixed-in-`122a97d` |
+| F-3 | review (`/code-review`, high) | **The list still said "Paid".** The AC-5 fix landed only in the detail view, but `buildView` serves *both* the account rows and the per-code rows of one list, and the per-code path already had the full `BookingDetail` — so the same swept booking read "Amount" in the view and "Paid €45.00" in the list. The Non-goal's premise (the list has no such data) held for one of the two call sites only | fixed-in-`e5bc118` — `refundedAmount` added to the list read model end-to-end, and the rule single-sourced as `shared/booking-status.ts#amountLabelFor` so both surfaces answer identically. An existing spec pinned `['CANCELLED', {}, 'Paid']` — the wrong behaviour — and was corrected |
+| F-4 | review (`/code-review`, high) | The one expression putting `cancelReason` on the wire had no test at any layer; `BookingViewIT` (which asserts its siblings via `jsonPath`) was untouched, so mis-wiring it would ship a permanently-null reason and silently lose every weather attribution | fixed-in-`e5bc118` — `BookingViewIT.viewCarriesTheCancellationReasonOfAWeatherRefund` + a `doesNotExist` assertion on the live-booking case |
+| F-5 | review (`/code-review`, high) | The `WEATHER` branch rendered the refund sentence unguarded while its sibling guarded on `minorUnits > 0`, so a zero-amount weather refund would read "€0.00 is on its way back to your card" | fixed-in-`e5bc118` — branch restructured so the guard is shared; pinned by an `it.each` over all three reasons |
 | F-6 | review (`/code-review`, high) | "on its way back to your card" asserts a refund is in flight when the transfer can still be sitting in the refund outbox (#454) | **declined, with rationale.** The claim is the *decision*, which is exactly what the read model holds, and it is the repo's settled phrasing for it: `refundSentence` already says "will be refunded", and `BookingCancellationMail`'s contract states the copy must say the refund is on its way and never that it arrived, because "a 'your refund has settled' mail would need a fact no event carries today". Fixing F-7 made the panel *reuse* `refundSentence`, so it now makes the same claim as the surface beside it rather than a new one. A settlement-aware surface needs a fact to exist first — out of scope here |
-| F-7 | review (`/code-review`, high) | After an in-session cancel the new panel and the pre-existing `cancel-result` live region stated the same refund in two different wordings (a11y: duplicated prose) | fixed-in-`<review>` — the panel now calls `refundSentence`, so there is one sentence with one author |
-| F-8 | review (`/code-review`, high) | `'No refund applies under the cancellation policy.'` was duplicated verbatim between the template and `refundSentence` | fixed-in-`<review>` — same fix as F-7 |
-| F-9 | review (`/code-review`, high) | `givenCancelledBooking` stubbed `collection.provenBeforeConfirmation()`, which a `CANCELLED` record can never reach — a dead stub reading as if the D-8 gate were exercised | fixed-in-`<review>` — stub dropped; the helper now also ties `cancelledAt` to the refund decision, so it can only build states production can produce |
-| F-10 | review (`/code-review`, high) | `RefundReason.valueOf` in the **shared** row mapper: a fourth V14 token landing ahead of the enum would throw out of every row of `GET /api/me/bookings`, not just the one view that reads it — the backend taking the intolerant posture on the wider blast radius while R-5 gave the FE the tolerant one | fixed-in-`<review>` — `refundReasonOf` logs and degrades an unknown token to `null`, matching the FE posture and the `metaFor` precedent |
-| F-11 | review (`/code-review`, high) | The never-charged IT hand-`UPDATE`d `CONFIRMED → CANCELLED`, a state production cannot produce (no `cancelled_at`, availability claim stranded) in a class whose siblings count availability rows | fixed-in-`<review>` — reworked to assert the null branch on a live booking, which needs no fake state; the real release path needs an `AWAITING_PAYMENT` row this stub-profile class cannot create |
-| F-12 | review (`/code-review`, high) | `bannerCancelled`/`eyebrowCancelled` were byte-identical to their `expired` twins, so the added contrast row could never fail independently and a palette change had to be made twice | fixed-in-`<review>` — one `BANNER_NEUTRAL`/`EYEBROW_NEUTRAL` recipe shared by both |
-| F-13 | review (`/code-review`, high) | The widened `BookingRecord` Javadoc said the three cancellation fields are null "until the booking is cancelled" and then corrected only `cancelReason`, leaving `cancelledAt` documented as non-null once cancelled — which a swept booking falsifies | fixed-in-`<review>` — the paragraph now states all three move together |
-| F-14 | review (`/code-review`, high) | The two new e2e specs each inlined an eleven-field `CANCELLED` payload differing in two fields | fixed-in-`<review>` — `cancelledDetail()` helper |
+| F-7 | review (`/code-review`, high) | After an in-session cancel the new panel and the pre-existing `cancel-result` live region stated the same refund in two different wordings (a11y: duplicated prose) | fixed-in-`e5bc118` — the panel now calls `refundSentence`, so there is one sentence with one author |
+| F-8 | review (`/code-review`, high) | `'No refund applies under the cancellation policy.'` was duplicated verbatim between the template and `refundSentence` | fixed-in-`e5bc118` — same fix as F-7 |
+| F-9 | review (`/code-review`, high) | `givenCancelledBooking` stubbed `collection.provenBeforeConfirmation()`, which a `CANCELLED` record can never reach — a dead stub reading as if the D-8 gate were exercised | fixed-in-`e5bc118` — stub dropped; the helper now also ties `cancelledAt` to the refund decision, so it can only build states production can produce |
+| F-10 | review (`/code-review`, high) | `RefundReason.valueOf` in the **shared** row mapper: a fourth V14 token landing ahead of the enum would throw out of every row of `GET /api/me/bookings`, not just the one view that reads it — the backend taking the intolerant posture on the wider blast radius while R-5 gave the FE the tolerant one | fixed-in-`e5bc118` — `refundReasonOf` logs and degrades an unknown token to `null`, matching the FE posture and the `metaFor` precedent |
+| F-11 | review (`/code-review`, high) | The never-charged IT hand-`UPDATE`d `CONFIRMED → CANCELLED`, a state production cannot produce (no `cancelled_at`, availability claim stranded) in a class whose siblings count availability rows | fixed-in-`e5bc118` — reworked to assert the null branch on a live booking, which needs no fake state; the real release path needs an `AWAITING_PAYMENT` row this stub-profile class cannot create |
+| F-12 | review (`/code-review`, high) | `bannerCancelled`/`eyebrowCancelled` were byte-identical to their `expired` twins, so the added contrast row could never fail independently and a palette change had to be made twice | fixed-in-`e5bc118` — one `BANNER_NEUTRAL`/`EYEBROW_NEUTRAL` recipe shared by both |
+| F-13 | review (`/code-review`, high) | The widened `BookingRecord` Javadoc said the three cancellation fields are null "until the booking is cancelled" and then corrected only `cancelReason`, leaving `cancelledAt` documented as non-null once cancelled — which a swept booking falsifies | fixed-in-`e5bc118` — the paragraph now states all three move together |
+| F-14 | review (`/code-review`, high) | The two new e2e specs each inlined an eleven-field `CANCELLED` payload differing in two fields | fixed-in-`e5bc118` — `cancelledDetail()` helper |
 
 ---
 
@@ -297,20 +301,20 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `BookingRecord.java` · `BookingDetail.java` · `ViewBookingService.java` ·
 `JdbcBookings.java` · Test `ViewBookingServiceTest.java`, `CancelBookingIT.java`
 
-- [ ] **Step 1: Write the failing test** (AC-7) — two cases in `ViewBookingServiceTest`:
+- [x] **Step 1: Write the failing test** (AC-7) — two cases in `ViewBookingServiceTest`:
       a `WEATHER` row surfaces `RefundReason.WEATHER`; a `NULL`-reason row surfaces `null`.
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
       `gradle --no-daemon --console=plain test --tests "*ViewBookingServiceTest*"` → FAIL (no such accessor)
-- [ ] **Step 3: Minimal implementation** — add the component to `BookingRecord` and
+- [x] **Step 3: Minimal implementation** — add the component to `BookingRecord` and
       `BookingDetail`, map `cancel_reason` in `mapBookingRecord`, add it to **both** `SELECT`
       lists (`findByCode`, `findByAccountId` — R-3), pass it in `toDetail`.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS, then broaden to
+- [x] **Step 4: Run it, verify it passes** — same command → PASS, then broaden to
       `--tests "*booking*"` for the module's unit tests plus the structural net
       (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`, `*PackageShapeArchitectureTests*`).
-- [ ] **Step 5: Generalization-audit pass** — search every `BookingRecord` construction site
+- [x] **Step 5: Generalization-audit pass** — search every `BookingRecord` construction site
       (the mapper is shared with `findByAccountId`; `MyBookingsService` must still compile and pass).
-- [ ] **Step 6: Commit** — `git commit -m "Carry the cancellation reason to the booking view use case (#578)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Carry the cancellation reason to the booking view use case (#578)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -318,13 +322,13 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `BookingDetailView.java` · `frontend/src/app/booking/booking.model.ts`
 
-- [ ] **Step 1:** Add `String cancelReason` to `BookingDetailView`, mapped null-safely from the
+- [x] **Step 1:** Add `String cancelReason` to `BookingDetailView`, mapped null-safely from the
       enum (`d.cancelReason() == null ? null : d.cancelReason().name()`).
-- [ ] **Step 2:** Add the `CancelReason` union + the nullable field to the FE `BookingDetail`.
-- [ ] **Step 3: Run** — `gradle … --tests "*ViewBooking*"` and `npm test` (the FE compiles
+- [x] **Step 2:** Add the `CancelReason` union + the nullable field to the FE `BookingDetail`.
+- [x] **Step 3: Run** — `gradle … --tests "*ViewBooking*"` and `npm test` (the FE compiles
       against the widened interface; existing fixtures need the new field).
-- [ ] **Step 4: Commit** — `git commit -m "Expose the cancellation reason on the booking detail API (#578)"`
-- [ ] **Step 5: Update plan-doc execution status.**
+- [x] **Step 4: Commit** — `git commit -m "Expose the cancellation reason on the booking detail API (#578)"`
+- [x] **Step 5: Update plan-doc execution status.**
 
 ---
 
@@ -332,21 +336,21 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `booking-view.ts` · Test `booking-view.spec.ts`, `booking-view.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — AC-1…AC-6, each asserting the rendered sentence
+- [x] **Step 1: Write the failing specs** — AC-1…AC-6, each asserting the rendered sentence
       (text, not colour) via a `data-testid="booking-cancelled"` panel.
-- [ ] **Step 2: Run, verify they fail** — `npm test -- booking-view` → FAIL
-- [ ] **Step 3: Minimal implementation** — the `@case ('CANCELLED')` branch, ordered
+- [x] **Step 2: Run, verify they fail** — `npm test -- booking-view` → FAIL
+- [x] **Step 3: Minimal implementation** — the `@case ('CANCELLED')` branch, ordered
       never-charged → `WEATHER` → refunded → non-refundable (R-1/R-2), plus the amount-label
       refinement for AC-5; add `bannerCancelled`/`eyebrowCancelled` to `CLS`.
-- [ ] **Step 4: Run, verify they pass** — `npm test -- booking-view`, then `npm run lint`,
+- [x] **Step 4: Run, verify they pass** — `npm test -- booking-view`, then `npm run lint`,
       `npm run test:a11y`, `npm test` (full Vitest — it is fast, unlike the Gradle suite). Then
       **both hygiene guards, immediately before the push** (`check-plan-file-structure.mjs
       --diff origin/main` and `check-inline-comments.mjs --diff origin/main`) — running them
       mid-phase is what let F-1 and F-2 reach CI.
-- [ ] **Step 5: Generalization-audit pass** — does any other surface render a terminal status
+- [x] **Step 5: Generalization-audit pass** — does any other surface render a terminal status
       with no explanation? (`request-confirmation`, `my-bookings` — record the decision.)
-- [ ] **Step 6: Commit** — `git commit -m "Explain a cancelled booking to the guest (#578)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Explain a cancelled booking to the guest (#578)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -354,14 +358,14 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `frontend/e2e/booking-flow.e2e.ts`
 
-- [ ] **Step 1:** Add the mocked `CANCELLED`/never-charged route + assertions (AC-9), using
+- [x] **Step 1:** Add the mocked `CANCELLED`/never-charged route + assertions (AC-9), using
       `expectNoSeriousAxeViolations` from `e2e/support/axe.ts` — never a hand-rolled AxeBuilder.
 - [x] **Step 2: Run** — `npm run test:e2e:a11y`. **Cloud-session note:** the sandbox ships
       Chromium 1194 while the pinned `@playwright/test` wants 1228, so the run needs
       `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` (the escape hatch the config already
       documents) — never `npx playwright install`. Full mocked suite: 155/155.
-- [ ] **Step 3: Commit** — `git commit -m "Cover the cancelled-booking explanation with e2e (#578)"`
-- [ ] **Step 4: Update plan-doc execution status.**
+- [x] **Step 3: Commit** — `git commit -m "Cover the cancelled-booking explanation with e2e (#578)"`
+- [x] **Step 4: Update plan-doc execution status.**
 
 ---
 
@@ -378,28 +382,31 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1…AC-6:** Run `npm test -- booking-view` → all green. Verified at commit `<sha>`.
-- [ ] **AC-7:** Run `gradle … --tests "*ViewBookingServiceTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-8:** Run `gradle … --tests "*CancelBookingIT*"` → PASS (or skipped without Docker →
-      proven by CI). Verified at `<sha>`.
-- [ ] **AC-9:** Run `npm run test:e2e:a11y` → PASS. Verified at `<sha>`.
+- [x] **AC-1…AC-6:** Run `npm test -- booking-view` → all green. Verified at commit `122a97d` (re-verified after the review fixes at `e5bc118`).
+- [x] **AC-7:** Run `gradle … --tests "*ViewBookingServiceTest*"` → PASS. Verified at `155e23c`.
+- [x] **AC-8:** Run `gradle … --tests "*CancelBookingIT*"` **and** `--tests "*BookingViewIT*"` → PASS.
+      Both ran for real against Testcontainers Postgres in-session (not skipped). Verified at `e5bc118`.
+- [x] **AC-9:** Run `npm run test:e2e:a11y` → 155/155 PASS. Verified at `e5bc118`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified N/A — read-only slice); no write path touched (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new grant (invariant #11).
-- [ ] **Payment/payout** section filled (N/A — no money moves); money rendered in minor units (invariant #5).
-- [ ] Refund policy enforced server-side (invariant #10) — the client only renders persisted facts.
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — untouched.
-- [ ] Booking codes unguessable (invariant #7); no code logged by the new paths.
-- [ ] Flyway migration present for schema changes (invariant #12) — **none needed**, V14 already ships the column.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified N/A — read-only slice); no write path touched (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new grant (invariant #11).
+- [x] **Payment/payout** section filled (N/A — no money moves); money rendered in minor units (invariant #5).
+- [x] Refund policy enforced server-side (invariant #10) — the client only renders persisted facts.
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6) — untouched.
+- [x] Booking codes unguessable (invariant #7); no code logged by the new paths.
+- [x] Flyway migration present for schema changes (invariant #12) — **none needed**, V14 already ships the column.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — this plan doc's final state is committed here; **merged via PR #580**.
+- [x] **The review gate ran in full** — `/code-review` at **high** effort (rung 1 of the invocation
+      ladder: `Skill("code-review")` was accepted) over `origin/main...HEAD`, **plus**
+      `riviera-review-overlay` walked on top (all three banks — the diff changes a wire shape).
+      12 findings; 11 fixed, 1 declined with rationale (F-6). See the findings register.

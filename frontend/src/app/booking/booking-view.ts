@@ -96,11 +96,13 @@ const CLS = {
  * `AWAITING_PAYMENT` with open-intent credentials offers "Pay now" (primes
  * {@link BookingService#beginPayment} and routes to `/booking/pay` — the same flow as the 202
  * create path, so confirmation still only ever comes from the verified webhook, invariant #8);
- * `DECLINED`/`EXPIRED`/`WITHDRAWN` explain the terminal, no-charge outcome.
+ * `DECLINED`/`EXPIRED`/`WITHDRAWN` explain the terminal, no-charge outcome, and `CANCELLED` explains
+ * the one terminal outcome that may have moved money — which of the cancellations happened, and
+ * whether anything was refunded.
  *
  * <p>Styling is Tailwind-only (the component's SCSS is retired). The recipes live in the
  * module-local {@link CLS} map rather than inline so the shared *bases* stay single-sourced — the
- * banner shell across five banners, the row across five rows, the button chrome across six buttons —
+ * banner shell across six banners, the row across five rows, the button chrome across six buttons —
  * which the retired SCSS shared through selectors. Many individual `CLS` entries are then used once;
  * they sit there to name the variant beside its siblings, not because each one repeats.
  * Conflicting utilities are never concatenated onto one element: two competing `border-*` or
