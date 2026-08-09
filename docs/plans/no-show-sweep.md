@@ -85,9 +85,10 @@ view's model change stays in `operator/`; the status vocabulary stays in `shared
   the console's Daily view for that date, then the arrivals list still lists the booking, carrying
   status `NO_SHOW`. *Pinned by:* `StaffBookingControllerIT.dailyViewListsSweptNoShows` and
   `daily-view-tab.spec.ts` ("renders a no-show arrivals row")
-- [ ] **AC-11:** Given the application context under the default profile, when it starts, then the
-  no-show scheduler bean exists with an `initialDelay` ≥ the configured floor, so no sweep fires
-  inside an integration test's window. *Pinned by:* `NoShowSweepSchedulerConfigTest`
+- [ ] **AC-11:** Given the committed scheduler configuration, when its `@Scheduled` defaults are
+  read, then both the initial delay and the interval are ≥ 30 minutes and the trigger is
+  `fixedDelay`, so no sweep can fire inside a suite's window. *Pinned by:*
+  `NoShowSweepSchedulerConfigTest`
 
 ## Non-goals
 
@@ -125,7 +126,7 @@ view's model change stays in `operator/`; the status vocabulary stays in `shared
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The sweep fires **during** an integration test and flips a fixture's `CONFIRMED` booking to `NO_SHOW`, causing intermittent full-suite-only failures (case history #98/#122) | med | high | `initialDelay` ≥ `PT1M` (no test runs that long) + a default cadence of `PT1H`; `NoShowSweepSchedulerConfigTest` pins the floor; ITs call `MarkNoShows#sweep` directly, never wait for the scheduler | this slice | open |
+| R-1 | The sweep fires **during** an integration test and flips a fixture's `CONFIRMED` booking to `NO_SHOW`, causing intermittent full-suite-only failures (case history #98/#122) | med | high | `initialDelay` **and** interval default to `PT1H`; `NoShowSweepSchedulerConfigTest` pins a 30-minute floor on both; ITs call `MarkNoShows#sweep` directly, never wait for the scheduler | this slice | closed — `2f28bb1` |
 | R-2 | A widened read is missed, so a past day's money or arrivals silently change when the sweep runs | med | high | The `CONFIRMED` predicate audit is enumerated in the Behavior-parity ledger — every site in `platform/src/main` is listed with a verdict; AC-6/AC-9/AC-10 pin the three that widen | this slice | open |
 | R-3 | Past-date weather refunds silently become impossible once the sweep runs | high | high | Caught at the intake grill **before** planning; resolved by widening the weather path to `NO_SHOW` (Resolved Q-1), pinned by AC-9 | this slice | open |
 | R-4 | `V41` collides with a parallel slice's migration | low | med | Verified free: `V40` is the max on `main` and the only open PRs are dependabot bumps (no migrations). Default renumbering rule: whoever merges second | this slice | open |
@@ -269,10 +270,10 @@ rather than growing a second boolean branch.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** Phase 4 — the scheduler + its config-pinning test (AC-11), with the long
-initial delay that keeps the sweep out of every IT window.
+**Next action:** Phase 5 — frontend: the arrivals row reads the status token and renders the
+existing NO_SHOW chip; plus the mocked-suite e2e spec.
 `findConfirmedForVenueOn` to carry the status token (AC-10, backend half).
 
 | Phase | Status | Commits |
@@ -281,7 +282,7 @@ initial delay that keeps the sweep out of every IT window.
 | 1 — Read audit: takings + arrivals widening | ✅ | `996a27b` |
 | 2 — Terminal-state guards (cancel, check-in classify) | ✅ | `025c5cf` |
 | 3 — Weather-refund widening (`cancelForWeather`) | ✅ | `bc77276` |
-| 4 — Scheduler + config pinning test | | |
+| 4 — Scheduler + config pinning test | ✅ | `2f28bb1` |
 | 5 — Frontend: status token + no-show arrivals row + e2e | | |
 | 6 — Docs sweep + close-out | | |
 
@@ -314,6 +315,9 @@ Skill-routing gate for what the fix touches *before* editing).
   `NO_SHOW`
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/NoShowSweepScheduler.java` — the
   scheduled driving adapter
+- `platform/src/main/resources/application.properties` — scheduling pool 4 → 5, one thread per job
+- `platform/src/test/java/ai/riviera/platform/ScheduledWorkArchitectureTest.java` — the fifth job
+  joins the non-vacuity list
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/DailyBooking.java` — carry
   the status token
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/ListDailyBookings.java` —
