@@ -29,7 +29,7 @@ interface ThrowingPayments extends Payments {
 	}
 
 	@Override
-	default void markStatus(String paymentIntentId, PaymentStatus status) {
+	default boolean markStatus(String paymentIntentId, PaymentStatus status) {
 		throw new UnsupportedOperationException("not stubbed by this test");
 	}
 

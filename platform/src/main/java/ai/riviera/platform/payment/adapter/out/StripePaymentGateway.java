@@ -167,6 +167,7 @@ class StripePaymentGateway implements PaymentGateway {
 				intent.cancel();
 			}
 			// Canceled now, or already canceled: either way the payment can no longer succeed.
+			// A guarded no-op here means the record was already terminal — Stripe's answer still stands.
 			payments.markStatus(id, PaymentStatus.CANCELED);
 			return new PaymentCancellation.Canceled();
 		}
