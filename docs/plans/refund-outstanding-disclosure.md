@@ -223,7 +223,7 @@ never arrival or card. Accepted/stub copy byte-identical to today.
 | 1 — `payment`: `RefundProgress` + `RefundStatusLookup` + JDBC read | ✅ | `e957367` |
 | 2 — `booking`: view consults port, discloses `refundOutstanding` | ✅ | `5f2ae60` |
 | 3 — frontend: model + panel branch + unit/e2e specs | ✅ | `9c37662` |
-| 4 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, docs-freshness run) + Sonar S1192 fix | ✅ | see below |
+| 4 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, docs-freshness run) + Sonar S1192 fix | ✅ | `fc3eb0f` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
