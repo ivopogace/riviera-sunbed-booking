@@ -133,6 +133,26 @@ public interface Bookings {
 			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason);
 
 	/**
+	 * Check a guest in: the guarded {@code CONFIRMED → COMPLETED} transition, keyed on the booking
+	 * {@code code} and scoped to {@code venueId} and the {@code serviceDate} (today in
+	 * {@code Europe/Tirane}, invariant #6), stamping {@code completed_at}. Returns the completed facts
+	 * via SQL {@code RETURNING} <strong>iff</strong> a row actually transitioned — the row lock, not
+	 * the predicate, makes concurrent scans yield exactly one winner; a 0-row {@code empty} is the
+	 * caller's signal to classify against {@link #findCheckInFacts committed state}.
+	 */
+	Optional<ai.riviera.platform.booking.application.checkin.CompletedCheckIn> completeConfirmed(
+			String code, VenueId venueId, LocalDate serviceDate, Instant completedAt);
+
+	/**
+	 * The status + service date behind a code at one venue, for classifying a check-in whose guarded
+	 * transition matched 0 rows. Venue-scoped: a foreign venue's code reads as {@code empty},
+	 * indistinguishable from an unknown one (non-enumerating; the code never travels further,
+	 * invariant #7).
+	 */
+	Optional<ai.riviera.platform.booking.application.checkin.CheckInFacts> findCheckInFacts(
+			String code, VenueId venueId);
+
+	/**
 	 * The {@code CONFIRMED} bookings for {@code venueId} on {@code date} as {@code (setId, code)} rows
 	 * ordered by set, for the staff daily view. Excludes awaiting-payment and cancelled bookings. The
 	 * {@code code} is the bearer credential (invariant #7) — carried to the operator-gated caller, never

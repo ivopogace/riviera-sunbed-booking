@@ -462,6 +462,19 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public Optional<ai.riviera.platform.booking.application.checkin.CompletedCheckIn> completeConfirmed(
+				String code, ai.riviera.platform.venue.vocabulary.VenueId venueId,
+				java.time.LocalDate serviceDate, Instant completedAt) {
+			return Optional.empty();
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.application.checkin.CheckInFacts> findCheckInFacts(
+				String code, ai.riviera.platform.venue.vocabulary.VenueId venueId) {
+			return Optional.empty();
+		}
+
+		@Override
 		public Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
 				long bookingId, ai.riviera.platform.venue.vocabulary.VenueId venueId, Instant now) {
 			return Optional.empty();

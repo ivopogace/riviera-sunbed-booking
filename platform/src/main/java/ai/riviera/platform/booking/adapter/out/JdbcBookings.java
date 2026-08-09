@@ -23,6 +23,8 @@ import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
+import ai.riviera.platform.booking.application.checkin.CheckInFacts;
+import ai.riviera.platform.booking.application.checkin.CompletedCheckIn;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
@@ -413,6 +415,44 @@ class JdbcBookings implements Bookings {
 						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
 						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
+				.optional();
+	}
+
+	@Override
+	public Optional<CompletedCheckIn> completeConfirmed(String code, VenueId venueId,
+			LocalDate serviceDate, Instant completedAt) {
+		// Guarded CONFIRMED -> COMPLETED (#583): the row lock leaves exactly one winner per code.
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :completed, completed_at = :at
+				WHERE code = :code AND venue_id = :venue AND status = :confirmed AND booking_date = :date
+				RETURNING id, set_id, booking_date
+				""")
+				.param("completed", BookingStatus.COMPLETED.name())
+				.param("at", java.sql.Timestamp.from(completedAt))
+				.param("code", code)
+				.param(PARAM_VENUE, venueId.value())
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param("date", serviceDate)
+				.query((rs, rowNum) -> new CompletedCheckIn(
+						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+				.optional();
+	}
+
+	@Override
+	public Optional<CheckInFacts> findCheckInFacts(String code, VenueId venueId) {
+		// Venue-scoped on purpose: a foreign venue's code reads as empty, same as an unknown one.
+		return jdbc.sql("""
+				SELECT status, booking_date
+				FROM booking
+				WHERE code = :code AND venue_id = :venue
+				""")
+				.param("code", code)
+				.param(PARAM_VENUE, venueId.value())
+				.query((rs, rowNum) -> new CheckInFacts(
+						BookingStatus.valueOf(rs.getString("status")),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
 				.optional();
 	}
 

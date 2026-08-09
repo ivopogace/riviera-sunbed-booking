@@ -211,13 +211,13 @@ files live inside their feature; `shared/booking-status.ts` already carries `COM
 
 ## Execution status
 
-**Stage pointer:** plan committed — next stage: implement (phase 0)
+**Stage pointer:** implement (phase 1)
 
-**Next action:** open the draft PR (CI vehicle), then phase 0 red test (`V40` + `Bookings` port).
+**Next action:** phase 1 — `CheckInService` + endpoint + error contract (red: `CheckInFlowIT`). Draft PR #585 open.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V40 + guarded transition in `Bookings`/`JdbcBookings` (+ concurrency IT) | | |
+| 0 — V40 + guarded transition in `Bookings`/`JdbcBookings` (+ concurrency IT) | ✅ | (this commit) |
 | 1 — `CheckInBooking` port + `CheckInService` + endpoint + SecurityConfig + error contract | | |
 | 2 — widen arrivals + takings reads (`checkedIn` flag; `IN (CONFIRMED, COMPLETED)`) | | |
 | 3 — FE tourist QR (component + 3 surfaces) | | |
