@@ -88,6 +88,12 @@ model in `docs/architecture/domain-model.md`.
 - **Check-in** — staff recording, by scanning the booking's QR code or typing its
   booking code on the service date, that the guest arrived; transitions a confirmed
   booking to `COMPLETED`, exactly once.
+- **No-show** — a confirmed booking whose service day passed without a check-in
+  (`NO_SHOW`), written by the scheduled sweep, never by hand. Terminal: not cancellable and
+  not check-in-able. It is **not** a refund — the guest paid and the venue held the set, so
+  every money read that counts a delivered stay counts a no-show too. The one exception is
+  the admin **weather refund**, which reaches a no-show on purpose: on a washed-out day
+  those are the guests who stayed home because of the storm.
 - **Cutoff** — the moment online bookings for a day close (default 18:00 the
   evening before, `Europe/Tirane`). Doubles as the free-cancellation deadline.
 - **Booking mode** — how a venue accepts bookings: **Instant Book** (auto-confirm)

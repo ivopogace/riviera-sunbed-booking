@@ -155,9 +155,18 @@ guarded `CONFIRMED → COMPLETED` transition off the scanned or typed booking co
 the row lock (a second scan classifies against committed state as "already checked in"), keyed on
 the code but authorized by venue ownership (both invariant #13 and #7 apply, unlike withdraw's
 code-only leg); it publishes **no** event (the withdraw precedent: nothing accrues, nothing
-refunds, no mail decided). The arrivals list and daily takings count `COMPLETED` alongside
-`CONFIRMED` so a check-in never shrinks the console's day; the cancel and weather-refund guards
-deliberately stay `CONFIRMED`-only (a delivered stay is never reclaimed). Enforce the cancellation policy and the same-day cutoff — **both of the
+refunds, no mail decided). Own the **no-show sweep** (#584), check-in's counterpart: a scheduled
+guarded bulk `UPDATE` marking every `CONFIRMED` booking dated before today (`Europe/Tirane`)
+`NO_SHOW`. One statement, not the per-row loop the abandoned-payment and request-expiry sweeps
+use — those loop because each row must also release its `(set, date)` claim and publish an event,
+whereas a no-show does neither. It writes **no availability row at all**, deliberately: the set was
+sold and held for a date now past, so freeing that claim would rewrite history and make it
+re-claimable (invariant #2). The arrivals list and daily takings count `COMPLETED` **and
+`NO_SHOW`** alongside `CONFIRMED`, so neither a check-in nor the sweep shrinks the console's day.
+The guest-cancel guard stays `CONFIRMED`-only (a delivered stay is never reclaimed); the **admin
+weather refund does not** — it admits `NO_SHOW` on its own `cancelForWeather` transition, because
+the storm is only known afterwards, by which time the sweep has marked exactly the guests who
+stayed home. That split is why the two share no port method. Enforce the cancellation policy and the same-day cutoff — **both of the
 day's boundaries**, since `BookingCutoff` owns the service day's opening as well as the
 evening-before close. That second boundary fences the *pay* path as well as the cancel path
 (#576): the guest's deadline is `min(accepted_at + pay-window, service-day open)`, the

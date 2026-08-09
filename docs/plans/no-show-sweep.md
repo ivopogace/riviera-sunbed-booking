@@ -34,8 +34,9 @@ would silently kill past-date weather refunds, a capability `WeatherRefundServic
 Q-1) · `riviera-plan-doc` (this template — forced the Behavior-parity ledger that surfaced the
 empty-past-day arrivals regression and the `CheckInService.classify` message regression) · `tdd`
 (each phase red-green: the sweep's guard, then each widened read, then the FE chip) ·
-`riviera-review-overlay` (review gate — <ran at ready-for-review>) · `riviera-docs-freshness`
-(<ran over the slice's merge range>) · `riviera-modulith` (kept the sweep inside `booking`,
+`riviera-review-overlay` (review gate — ran at ready-for-review) · `riviera-docs-freshness`
+(**ran** over `origin/main..claude/sdlc-584-spwjmh`, 5 findings, all patched — see the docs-sweep note
+below) · `riviera-modulith` (kept the sweep inside `booking`,
 no new published surface, no event; placed the service in the existing `application/checkin/`
 attendance group rather than minting a 7th use-case package) · `riviera-java-conventions`
 (`sweepJdbc` bounded client for scheduled work, typed-outcome-free `int` return, package-private
@@ -272,10 +273,10 @@ rather than growing a second boolean branch.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `PR — marking ready for review`
 
-**Next action:** Phase 6 — docs sweep (`riviera-docs-freshness` over the branch range), then
-mark the PR ready for review.
+**Next action:** Mark PR #589 ready for review, then run the Review gate (`/code-review`) and the
+Sonar gate (pull the new-issue list from the API — the bot already reports 2 new issues).
 `findConfirmedForVenueOn` to carry the status token (AC-10, backend half).
 
 | Phase | Status | Commits |
@@ -286,7 +287,7 @@ mark the PR ready for review.
 | 3 — Weather-refund widening (`cancelForWeather`) | ✅ | `bc77276` |
 | 4 — Scheduler + config pinning test | ✅ | `2f28bb1` |
 | 5 — Frontend: status token + no-show arrivals row + e2e | ✅ | `204ae7c` |
-| 6 — Docs sweep + close-out | | |
+| 6 — Docs sweep + close-out | ✅ | `9bb0b95` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -383,6 +384,27 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|---|---|
 
 ---
+
+## Docs-freshness run (phase 6)
+
+Range `origin/main..claude/sdlc-584-spwjmh`. **5 findings, all patched in phase 6.**
+
+| Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `RESPONSIBILITIES.md` §`booking` | "the cancel and weather-refund guards deliberately stay `CONFIRMED`-only" | the weather refund now admits `NO_SHOW` (AC-9) | patched |
+| `RESPONSIBILITIES.md` §`booking` | "arrivals list and daily takings count `COMPLETED` alongside `CONFIRMED`" | both now count `NO_SHOW` too | patched |
+| `CLAUDE.md` module table, `booking` row | the same two facts, plus no mention of the sweep | this slice | patched |
+| `CONTEXT.md` glossary | no **No-show** term — `NO_SHOW` was an unwritten state, so none existed | `NO_SHOW` is now written, and terminal-except-weather | added |
+| `ScheduledQueryTimeoutIT` Javadoc | "Five reads, not the four the issue named… one entry query per scheduled job" | a job whose entry statement is a *write*, not a read | patched, **and** the fitness function extended to assert the sweep's `UPDATE` is bounded |
+
+Counting sweep — three near-misses read and confirmed **still true**, deliberately not churned:
+
+- `JdbcAccountErasure` "the widest of the **three** scheduled candidate queries" — the no-show sweep
+  has no candidate read at all (its entry statement is its write), so the three are unchanged.
+- `ScheduledQueryTimeout` "the **four** bounded clients" / "the **three** module adapters" — the
+  sweep reuses `JdbcBookings`'s existing `sweepJdbc`; no new bounded client.
+- `ScheduledQueryTimeout` "above the **5-minute** sweep cadence it no longer bounds" — 5 minutes is
+  still the tightest cadence; this sweep's hourly one is looser.
 
 ## Acceptance-criteria verification (final)
 
