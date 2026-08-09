@@ -211,9 +211,9 @@ files live inside their feature; `shared/booking-status.ts` already carries `COM
 
 ## Execution status
 
-**Stage pointer:** implement (phase 5)
+**Stage pointer:** implement done — merge main, mark PR ready, run the review gate
 
-**Next action:** phase 5 — e2e (mocked suite): tourist QR + operator check-in flows.
+**Next action:** merge latest origin/main, mark PR #585 ready for review, run /code-review + riviera-review-overlay (pr-gates §1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -221,9 +221,9 @@ files live inside their feature; `shared/booking-status.ts` already carries `COM
 | 1 — `CheckInBooking` port + `CheckInService` + endpoint + SecurityConfig + error contract | ✅ | 25dc2cd |
 | 2 — widen arrivals + takings reads (`checkedIn` flag; `IN (CONFIRMED, COMPLETED)`) | ✅ | 403f4de + 024900a |
 | 3 — FE tourist QR (component + 3 surfaces) | ✅ | fee5803 |
-| 4 — FE operator scanner (token/adapters, tab UI, service) | ✅ | (this commit) |
-| 5 — e2e (mocked suite) + a11y | | |
-| 6 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, BookingStatus Javadoc, plan final state) | | |
+| 4 — FE operator scanner (token/adapters, tab UI, service) | ✅ | dc996e9 |
+| 5 — e2e (mocked suite) + a11y | ✅ | 5303d19 + (this commit) |
+| 6 — docs close-out (CONTEXT.md, RESPONSIBILITIES.md, BookingStatus Javadoc, plan final state) | ✅ | (this commit; plan final state at close-out) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -233,6 +233,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | CI (Backend, fee5803) | `@WebMvcTest` contexts broke — `StaffBookingController`'s new `CheckInBooking` dependency had no `WebSliceStubs` bean (163 cascade failures) | fixed — inert stub added |
 | F-2 | CI (Backend, dc996e9) | full-suite test worker OOM (`Java heap space`) — ~30 cached Spring contexts against Gradle's 512m default; this slice tipped the margin | fixed — explicit `maxHeapSize = '1g'` |
+| F-3 | CI (Frontend, 5303d19) | QR never rendered in the e2e: the lazy `import('qrcode')` tripped Vite's first-use dependency optimization, reloading the page and wiping the in-memory confirmation | fixed — static import + SVG render (canvas-free, real lib in jsdom specs) |
 
 ---
 

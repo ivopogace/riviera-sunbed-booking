@@ -1,11 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it, vi } from 'vitest';
+import { toString as qrSvg } from 'qrcode';
+import { describe, expect, it } from 'vitest';
 
-import { BookingQr } from './booking-qr';
-
-vi.mock('qrcode', () => ({
-  toDataURL: vi.fn(async (text: string) => `data:image/png;base64,MOCK-${encodeURIComponent(text)}`),
-}));
+import { BookingQr, QR_OPTIONS } from './booking-qr';
 
 describe('BookingQr', () => {
   async function render(code: string): Promise<HTMLElement> {
@@ -24,8 +21,10 @@ describe('BookingQr', () => {
 
     const img = el.querySelector<HTMLImageElement>('[data-testid="booking-qr"]');
     expect(img).not.toBeNull();
-    expect(img!.src).toContain('data:image/png;base64,MOCK-');
-    expect(decodeURIComponent(img!.src)).toContain(`${location.origin}/booking/ABCD123456`);
+    const expected = await qrSvg(`${location.origin}/booking/ABCD123456`, QR_OPTIONS);
+    expect(img!.getAttribute('src')).toBe(
+      `data:image/svg+xml;charset=utf-8,${encodeURIComponent(expected)}`,
+    );
   });
 
   it('labels the image for screen readers without relying on the visual alone', async () => {

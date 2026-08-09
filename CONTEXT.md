@@ -85,6 +85,9 @@ model in `docs/architecture/domain-model.md`.
   a refund decision: a withdrawn request was never charged, so there is nothing to refund.
   Distinct from **decline** (the venue's no) and **expire** (nobody's answer) only in who acted.
 - **Booking code** — the unguessable bearer credential staff verify on arrival.
+- **Check-in** — staff recording, by scanning the booking's QR code or typing its
+  booking code on the service date, that the guest arrived; transitions a confirmed
+  booking to `COMPLETED`, exactly once.
 - **Cutoff** — the moment online bookings for a day close (default 18:00 the
   evening before, `Europe/Tirane`). Doubles as the free-cancellation deadline.
 - **Booking mode** — how a venue accepts bookings: **Instant Book** (auto-confirm)
