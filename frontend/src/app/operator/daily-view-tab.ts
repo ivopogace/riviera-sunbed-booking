@@ -131,8 +131,7 @@ export class DailyViewTab {
       const id = this.venueId();
       untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
     });
-    // Start the scanner only once the panel is open AND its <video> exists — the effect's first
-    // run precedes the @if render, and starting with undefined fails every scan on the spot.
+    // Start only once the panel is open AND its <video> exists — the first run precedes the render.
     effect(() => {
       const open = this.scanOpen();
       const video = this.scanVideo()?.nativeElement;
