@@ -452,7 +452,7 @@ class JdbcBookings implements Bookings {
 				.param("code", code)
 				.param(PARAM_VENUE, venueId.value())
 				.query((rs, rowNum) -> new CheckInFacts(
-						BookingStatus.valueOf(rs.getString("status")),
+						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
 				.optional();
 	}

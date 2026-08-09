@@ -235,6 +235,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | CI (Backend, dc996e9) | full-suite test worker OOM (`Java heap space`) — ~30 cached Spring contexts against Gradle's 512m default; this slice tipped the margin | fixed — explicit `maxHeapSize = '1g'` |
 | F-3 | CI (Frontend, 5303d19) | QR never rendered in the e2e: the lazy `import('qrcode')` tripped Vite's first-use dependency optimization, reloading the page and wiping the in-memory confirmation | fixed — static import + SVG render (canvas-free, real lib in jsdom specs) |
 | F-4 | Sonar (bc8d9e7) | new-code coverage 73.7% < 80% — camera adapter, tab error branches, error mappers and the config factory untested | fixed — specs added (camera adapter with mocked media APIs, denial branches, mapper units, factory branches) |
+| F-5 | Sonar (a57c9e9) | `Web:S6819` role=status → `<output>`; `java:S1192` duplicated 'status' literal vs `PARAM_STATUS` | fixed — both in-code |
 
 ---
 

@@ -174,12 +174,11 @@
             data-testid="checkin-video"
           ></video>
         }
-        <p
-          class="m-0 text-[13px] leading-[1.45] font-semibold empty:hidden"
+        <output
+          class="m-0 block text-[13px] leading-[1.45] font-semibold empty:hidden"
           [class]="checkInNotice()?.tone === 'ok' ? 'text-(--riv-accent-ink)' : 'text-[#a3372a]'"
-          role="status"
           data-testid="checkin-result"
-        >{{ checkInNotice()?.text }}</p>
+        >{{ checkInNotice()?.text }}</output>
       </div>
       @if (arrivals().length) {
         <ul class="flex list-none flex-col gap-1.5 p-0">
