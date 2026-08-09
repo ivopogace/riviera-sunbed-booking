@@ -29,17 +29,17 @@ class JdbcDailyTakings implements DailyTakings {
 		this.jdbc = jdbc;
 	}
 
+	/**
+	 * Sums {@code CONFIRMED} and {@code COMPLETED} alike — a check-in must not shrink the venue's
+	 * day — aggregated in SQL for one service date ({@code booking_date} in {@code Europe/Tirane},
+	 * invariant #6), served by {@code booking_venue_id_idx}. No pool filter is needed for "online":
+	 * a booking row only ever exists for an online-pool set (invariant #3 — walk-ins are
+	 * staff-marked availability rows, never bookings). {@code COALESCE} keeps an empty day a
+	 * {@code (0, 'EUR')} result (invariant #5); the figure is indicative and independent of the
+	 * payout ledger's ISO-week accrual.
+	 */
 	@Override
 	public OnlineTakings grossOnlineTakings(VenueId venueId, LocalDate date) {
-		// Gross of a venue's CONFIRMED or COMPLETED (checked-in, #583) online bookings for one service
-		// date (booking_date in Europe/Tirane, invariant #6), aggregated in SQL. Served by
-		// booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's rows.
-		// No pool filter is needed to make this "online": a booking row only ever exists for an
-		// online-pool set (invariant #3 — walk-ins are staff-marked availability rows, never bookings),
-		// so summing the booking table is already online-only; joining set_position for the pool would
-		// only make booking read venue's layout.
-		// COALESCE keeps an empty day a (0, 'EUR') result rather than a NULL row (invariant #5).
-		// Indicative per-service-date figure — independent of the payout ledger's ISO-week accrual.
 		return jdbc.sql("""
 				SELECT COALESCE(SUM(amount_minor), 0)                    AS gross_minor,
 				       COALESCE(MAX(amount_currency), :fallbackCurrency) AS currency
