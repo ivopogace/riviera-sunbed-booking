@@ -81,14 +81,18 @@ recipe + a new `bannerCancelled`/`eyebrowCancelled` pair rather than `@apply`) �
   neutral refunded copy and attributes the cancellation to nobody — it never throws and never
   falls through to an empty panel.
   *Pinned by:* `booking-view.spec.ts › falls back to neutral copy for an unknown cancel reason`
-- [ ] **AC-7:** Given a cancelled booking row whose `cancel_reason` is `WEATHER`, when the view
+- [x] **AC-7:** Given a cancelled booking row whose `cancel_reason` is `WEATHER`, when the view
   use case assembles the detail, then `BookingDetail.cancelReason()` is `RefundReason.WEATHER`;
   and given a swept row whose `cancel_reason` is `NULL`, then it is `null`.
   *Pinned by:* `ViewBookingServiceTest.carriesTheCancellationReason` /
   `.reportsNoReasonForANeverChargedCancellation`
-- [ ] **AC-8:** Given the booking row persisted with `cancel_reason = 'POLICY'`, when
-  `Bookings#findByCode` reads it back, then `BookingRecord.cancelReason()` round-trips the enum.
-  *Pinned by:* `CancelBookingIT.cancellationReasonRoundTripsOnTheBookingRecord`
+- [x] **AC-8:** Given the booking row persisted with `cancel_reason = 'POLICY'`, when the view use
+  case reads it back, then `BookingDetail.cancelReason()` round-trips the enum; and given a row
+  cancelled without a refund decision, then it reads back `null`. Pinned through `ViewBooking`
+  rather than `Bookings#findByCode` — it covers the same `SELECT` + mapper step **plus** the detail
+  assembly, and a column stamped but never projected is indistinguishable from a null one.
+  *Pinned by:* `CancelBookingIT.cancellationReasonRoundTripsOntoTheBookingDetail` /
+  `.aBookingThatWasNeverPaidHasNoCancellationReason`
 - [ ] **AC-9:** Given the mocked e2e suite serves a `CANCELLED`/never-charged detail, when the
   page loads, then the explanation panel is visible and the page has no serious axe violations.
   *Pinned by:* `frontend/e2e/booking-flow.e2e.ts › cancelled booking explains itself`
@@ -215,14 +219,14 @@ one branch renders and the id can never duplicate.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, ready for phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write the failing backend test (`ViewBookingServiceTest`) for AC-7.
+**Next action:** Phase 1 — add `cancelReason` to `BookingDetailView` + the FE `BookingDetail`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Carry `cancel_reason` to the view use case (AC-7, AC-8) | | |
-| 1 — Expose `cancelReason` on the wire + FE contract (AC-8 read paths) | | |
+| 0 — Carry `cancel_reason` to the view use case (AC-7, AC-8) | ✅ | `<phase-0>` |
+| 1 — Expose `cancelReason` on the wire + FE contract | ⏳ | |
 | 2 — The `CANCELLED` panel + amount-label fix (AC-1…AC-6) | | |
 | 3 — e2e + a11y coverage (AC-9) | | |
 
@@ -329,6 +333,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-09 | Phase 0 — widened `BookingRecord` | every construction site of the record, since `mapBookingRecord` is shared by `findByCode` **and** `findByAccountId` (R-3) | `grep -rn "new BookingRecord(" platform/src --include=*.java` | 3 (the JDBC mapper + 2 test helpers) | Fixed all 3; `MyBookings*` re-run green, so the account-scoped read is unaffected |
 
 ---
 

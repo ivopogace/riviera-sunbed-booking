@@ -19,6 +19,9 @@ import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
+import ai.riviera.platform.booking.application.view.BookingDetail;
+import ai.riviera.platform.booking.application.view.ViewBooking;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
@@ -45,6 +48,9 @@ class CancelBookingIT {
 
 	@Autowired
 	CancelBooking cancelBooking;
+
+	@Autowired
+	ViewBooking viewBooking;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -99,6 +105,35 @@ class CancelBookingIT {
 		assertEquals(1, published.size(), "exactly one BookingCancelled is published");
 		assertEquals(booking.id(), published.getFirst().bookingId().value());
 		assertEquals(booking.amountMinor(), published.getFirst().refundMinor(), "event carries the refund");
+	}
+
+	/**
+	 * The reason is only useful if it survives the read back out. This drives the whole chain the view
+	 * uses — the {@code SELECT}, the row mapper's token→enum step, and the detail assembly — because a
+	 * column stamped correctly but never projected reads exactly like a never-charged cancellation.
+	 */
+	@Test
+	void cancellationReasonRoundTripsOntoTheBookingDetail() {
+		Created booking = confirmBookingOn(LocalDate.of(2035, 5, 14));
+		cancelBooking.cancel(booking.code());
+
+		BookingDetail detail = viewBooking.byCode(booking.code()).orElseThrow();
+
+		assertEquals(RefundReason.POLICY, detail.cancelReason());
+		assertEquals(booking.amountMinor(), detail.refundedAmount().minorUnits());
+	}
+
+	/** An abandoned-payment release takes no refund decision, so it stamps no reason to read back. */
+	@Test
+	void aBookingThatWasNeverPaidHasNoCancellationReason() {
+		Created booking = confirmBookingOn(LocalDate.of(2035, 5, 15));
+		jdbc.sql("UPDATE booking SET status = 'CANCELLED' WHERE id = :id")
+				.param("id", booking.id()).update();
+
+		BookingDetail detail = viewBooking.byCode(booking.code()).orElseThrow();
+
+		assertNull(detail.cancelReason(), "no refund decision was taken, so no reason is stamped");
+		assertNull(detail.refundedAmount(), "and nothing was refunded");
 	}
 
 	@Test

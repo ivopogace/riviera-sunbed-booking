@@ -53,6 +53,7 @@ class JdbcBookings implements Bookings {
 	private static final String COL_AMOUNT_CURRENCY = "amount_currency";
 	private static final String COL_REQUEST_EXPIRES_AT = "request_expires_at";
 	private static final String COL_CUSTOMER_ID = "customer_id";
+	private static final String COL_CANCEL_REASON = "cancel_reason";
 
 	private final JdbcClient jdbc;
 
@@ -276,7 +277,8 @@ class JdbcBookings implements Bookings {
 	public Optional<BookingRecord> findByCode(String code) {
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
-				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at
+				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
+				       cancel_reason
 				FROM booking
 				WHERE code = :code
 				""")
@@ -293,7 +295,8 @@ class JdbcBookings implements Bookings {
 		// uniformly; a guest booking (NULL account_id) can never match.
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
-				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at
+				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
+				       cancel_reason
 				FROM booking
 				WHERE account_id = :account
 				ORDER BY booking_date DESC, id DESC
@@ -308,6 +311,7 @@ class JdbcBookings implements Bookings {
 		java.sql.Timestamp cancelledAt = rs.getTimestamp("cancelled_at");
 		Long refundMinor = rs.getObject("refund_minor", Long.class);
 		java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
+		String cancelReason = rs.getString(COL_CANCEL_REASON);
 		return new BookingRecord(
 				rs.getLong("id"), rs.getString("code"),
 				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
@@ -316,7 +320,9 @@ class JdbcBookings implements Bookings {
 				rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 				cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
-				requestExpiresAt == null ? null : requestExpiresAt.toInstant());
+				requestExpiresAt == null ? null : requestExpiresAt.toInstant(),
+				cancelReason == null ? null
+						: ai.riviera.platform.booking.vocabulary.RefundReason.valueOf(cancelReason));
 	}
 
 	@Override

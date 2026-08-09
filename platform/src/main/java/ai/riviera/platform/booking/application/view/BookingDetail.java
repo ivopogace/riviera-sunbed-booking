@@ -3,6 +3,7 @@ package ai.riviera.platform.booking.application.view;
 import java.time.LocalDate;
 
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -36,6 +37,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * for it any more (invariant #4) and {@code payment} is {@code null} whatever the status. It is
  * carried rather than derived on the client because the boundary is a civil-day instant in
  * {@code Europe/Tirane} and the server owns that zone and clock (invariant #6).
+ *
+ * <p>{@code cancelReason} says <em>which</em> cancellation a {@code CANCELLED} booking went through,
+ * so the guest can be told; {@code null} for every other status, and also for a cancellation that
+ * never charged (the abandoned-payment release stamps no reason). It is carried because
+ * {@code refundedAmount} alone cannot separate a venue's weather refund from the guest's own
+ * cancellation — both return money, only one is news to the guest.
  */
 public record BookingDetail(String code, BookingStatus status, VenueId venueId, String venueName,
 		String rowLabel, int positionNo, LocalDate bookingDate, MoneyView amount, boolean cancellable,
@@ -43,5 +50,5 @@ public record BookingDetail(String code, BookingStatus status, VenueId venueId, 
 		MoneyView refundedAmount,
 		java.time.Instant requestExpiresAt,
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld,
-		boolean payWindowClosed) {
+		boolean payWindowClosed, RefundReason cancelReason) {
 }

@@ -91,6 +91,6 @@ class WithdrawRequestServiceTest {
 
 	private static BookingRecord confirmedRecord() {
 		return new BookingRecord(BOOKING_ID, CODE, BookingStatus.CONFIRMED, new VenueId(1), SET,
-				new CustomerId(5), BOOKING_DATE, 4500L, "EUR", null, null, null);
+				new CustomerId(5), BOOKING_DATE, 4500L, "EUR", null, null, null, null);
 	}
 }
