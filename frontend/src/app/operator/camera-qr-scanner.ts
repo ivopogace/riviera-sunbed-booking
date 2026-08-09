@@ -67,9 +67,9 @@ export class CameraQrScanner extends QrScanner {
   private static async playWithMetadataRetry(video: HTMLVideoElement): Promise<void> {
     try {
       await video.play();
-    } catch (first) {
+    } catch (error_) {
       await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(() => reject(first), 3000);
+        const timer = setTimeout(() => reject(error_), 3000);
         video.addEventListener(
           'loadedmetadata',
           () => {

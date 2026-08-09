@@ -537,8 +537,10 @@ function cameraUnavailableMessage(error: unknown): string {
       return 'The camera is in use by another app — close it, or type the code.';
     case 'NotSupportedError':
       return 'This browser can’t open the camera here — type the code instead.';
-    default:
-      return `Camera unavailable${name === undefined ? '' : ` (${name})`} — type the code instead.`;
+    default: {
+      const suffix = name === undefined ? '' : ` (${name})`;
+      return `Camera unavailable${suffix} — type the code instead.`;
+    }
   }
 }
 
