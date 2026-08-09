@@ -34,7 +34,8 @@ issue against code: fact exists unread in `payment`; only Dependabot PRs in flig
 Flyway collision; ownership split matches `RESPONSIBILITIES.md`) · `riviera-plan-doc` (this
 template — forced the parity-ledger look at the shared `refundSentence` and the trap-#1
 risk row) · `tdd` (each phase red-green at the service seam) · `riviera-review-overlay`
-(review gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over
+(review gate — bank walked over the fullstack diff at ready-for-review; clean, with
+`/code-review`'s 4 findings as the work list) · `riviera-docs-freshness` (**ran** over
 `9709fed..HEAD` — 1 finding: the stale `payment/api/package-info.java` port list, patched
 in phase 1; the counting sweep's hits all count other subjects, none falsified) ·
 `riviera-modulith` (port →
@@ -45,10 +46,9 @@ package-private service; text-block SQL; total port, no `Optional` leak) ·
 `RefundPort` — different consumer role, #94) · `domain-modeling` (fixed the decided /
 accepted / settled vocabulary; `OUTSTANDING` used consistently BE↔wire↔FE) ·
 `riviera-frontend` (all FE edits stay inside `booking/`; e2e in the CI-safe mocked suite) ·
-`postgres` (to load at implement, before the SELECT — single-row lookup on the existing
-`payment_booking_uniq` key expected) · `angular-developer` + angular-cli MCP (to load at
-implement, before the panel edit) · `playwright-cli` (to load at implement, before the
-mocked-suite spec).
+`postgres` (single-row SELECT on the existing `payment_booking_uniq` unique key — no index
+work needed) · `angular-developer` + angular-cli MCP (v22 `@if`
+branches in the panel + live region) · `playwright-cli` (the mocked-suite stuck-refund spec, route-fulfilled payload).
 
 **Branch:** `claude/sdlc-581-toozou` — the session's designated remote branch stands in for
 `bugfix/refund-outstanding-disclosure` (riviera-sdlc cloud addendum).
@@ -57,29 +57,29 @@ mocked-suite spec).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a `CANCELLED` booking with a positive refund decision whose `payment`
+- [x] **AC-1:** Given a `CANCELLED` booking with a positive refund decision whose `payment`
   row shows `refunded_minor > 0` (gateway accepted), when the booking is viewed by code,
   then `BookingDetail.refundOutstanding` is `false`. *Pinned by:*
   `ViewBookingServiceTest.doesNotFlagAnAcceptedRefundAsOutstanding`
-- [ ] **AC-2:** Given a `CANCELLED` booking with a positive refund decision whose `payment`
+- [x] **AC-2:** Given a `CANCELLED` booking with a positive refund decision whose `payment`
   row shows `status = SUCCEEDED` and `refunded_minor = 0` (collected, refund not yet
   accepted — the stuck-outbox case), when viewed by code, then `refundOutstanding` is
   `true`. *Pinned by:* `ViewBookingServiceTest.flagsAStuckRefundAsOutstanding`
-- [ ] **AC-3:** Given a `CANCELLED` booking with a positive refund decision and **no
+- [x] **AC-3:** Given a `CANCELLED` booking with a positive refund decision and **no
   `payment` row** (stub gateway — nothing ever collected), when viewed by code, then
   `refundOutstanding` is `false` and the detail is unchanged from today. *Pinned by:*
   `ViewBookingServiceTest.doesNotFlagARefundWhenNothingWasCollected`
-- [ ] **AC-4:** Given a `CANCELLED` booking with **no refund decision** (`refund_minor`
+- [x] **AC-4:** Given a `CANCELLED` booking with **no refund decision** (`refund_minor`
   NULL or 0) or a booking in any non-cancelled status, when viewed by code, then the
   refund-status port is **never consulted** and `refundOutstanding` is `false`. *Pinned
   by:* `ViewBookingServiceTest.neverConsultsRefundStatusWithoutARefundDecision`
-- [ ] **AC-5:** `RefundProgress` mapping is total: no row → `NO_COLLECTION`; row that never
+- [x] **AC-5:** `RefundProgress` mapping is total: no row → `NO_COLLECTION`; row that never
   succeeded (`REQUIRES_PAYMENT`/`FAILED`/`CANCELED`) → `NO_COLLECTION`; `SUCCEEDED` with
   `refunded_minor = 0` → `OUTSTANDING`; `refunded_minor > 0` (incl. `PARTIALLY_REFUNDED`)
   → `ACCEPTED`. *Pinned by:* `RefundServiceTest` (`progress*` cases — the port landed on
   `RefundService`, mirroring `PaymentService` carrying `PaymentCredentialsLookup`) +
   `JdbcPaymentsIT.readsRefundStateBackAfterMarkRefunded` (real-Postgres read-back)
-- [ ] **AC-6:** Given a view response with `refundOutstanding: true`, when the guest opens
+- [x] **AC-6:** Given a view response with `refundOutstanding: true`, when the guest opens
   `/booking/{code}`, then the panel says the refund **is being processed** and contains
   neither "on its way" nor "to your card"; with `refundOutstanding: false` the copy is
   byte-identical to today. *Pinned by:* `booking-view.spec.ts` (both branches) +
@@ -100,19 +100,20 @@ mocked-suite spec).
 
 N/A — new behavior on an existing surface; nothing retired. The one shared-code hazard:
 `refundSentence` (booking-view.ts) is shared between the cancelled panel and the in-session
-cancel live region (F-7 on #578). The panel **branches before** calling it; the function
-itself and the live region stay untouched — pinned by the existing `booking-view.spec.ts`
-cases staying green.
+cancel live region (F-7 on #578). The panel **branches before** calling it, and — after
+review finding F-3 — the live region takes the same branch, so both surfaces speak with one
+voice; the shared function itself is unchanged and the pre-existing `booking-view.spec.ts`
+cases stayed green throughout.
 
 ## Risk register
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | No-payment-row read as "refund failed" → every stub-profile cancellation shows "being processed" forever (issue trap #1) | med | high | `NO_COLLECTION` is a first-class outcome arm; AC-3 pins it; existing e2e payloads default `refundOutstanding: false`, proving the unchanged path | session | open |
-| R-2 | Extra DB query on every booking view | low | low | consult only when `CANCELLED` && refund decision > 0 (mirrors the lazy `PaymentCredentialsLookup` consult); AC-4 pins it | session | open |
-| R-3 | Boundary leak: `booking` reading `payment` internals | low | high | new port in `payment/api/` + enum in `payment/vocabulary/`; no new grant needed; `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` | session | open |
-| R-4 | Copy regression on the shared `refundSentence` (also used by the in-session cancel live region) | med | med | panel branches on the flag *before* the shared sentence; existing specs (incl. "never claims a zero refund is on its way") must stay green | session | open |
-| R-5 | Flipped-profile edge: deployment moves stub→stripe, old bookings have no row → a `CollectionGuarantee`-gated design would read "processing" forever | low | med | per-booking row presence (not deployment posture) decides; no row → `NO_COLLECTION` → unchanged copy | session | open |
+| R-1 | No-payment-row read as "refund failed" → every stub-profile cancellation shows "being processed" forever (issue trap #1) | med | high | `NO_COLLECTION` is a first-class outcome arm; AC-3 pins it; existing e2e payloads default `refundOutstanding: false`, proving the unchanged path | session | closed — AC-3/AC-5 green (`e957367`, `5f2ae60`) |
+| R-2 | Extra DB query on every booking view | low | low | consult only when `CANCELLED` && refund decision > 0 (mirrors the lazy `PaymentCredentialsLookup` consult); AC-4 pins it | session | closed — AC-4 green (`5f2ae60`) |
+| R-3 | Boundary leak: `booking` reading `payment` internals | low | high | new port in `payment/api/` + enum in `payment/vocabulary/`; no new grant needed; `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` | session | closed — structural net green on every push |
+| R-4 | Copy regression on the shared `refundSentence` (also used by the in-session cancel live region) | med | med | panel branches on the flag *before* the shared sentence; existing specs (incl. "never claims a zero refund is on its way") stayed green — and review F-3 extended the same branch to the live region | session | closed — FE suite green (`9c37662`, `b314423`) |
+| R-5 | Flipped-profile edge: deployment moves stub→stripe, old bookings have no row → a `CollectionGuarantee`-gated design would read "processing" forever | low | med | per-booking row presence (not deployment posture) decides; no row → `NO_COLLECTION` → unchanged copy | session | closed — by design; AC-3 pins it |
 
 ## Open questions / Assumptions
 
@@ -212,10 +213,11 @@ never arrival or card. Accepted/stub copy byte-identical to today.
 > Session-recovery anchor — update in the same commit window as the change it records,
 > at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** PR — marking ready for review
+**Stage pointer:** DONE — merged via PR #582 (close-out written pre-merge, per
+pr-gates §3 step 4).
 
-**Next action:** verify this push's CI, mark PR #582 ready, run the review gate
-(`/code-review` + overlay), then the Sonar gate re-pull.
+**Next action:** none — slice closed. (Post-merge items are GitHub-only: issue #581
+closes via the PR; no parent epic.)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -231,7 +233,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | sonar (phase-2 analysis) | `java:S1192` — `rs.getString("status")` in `JdbcPayments.findRefundState` duplicates the `PARAM_STATUS` constant's value | fixed in phase 4's commit (uses `PARAM_STATUS`) |
+| F-1 | sonar (phase-2 analysis) | `java:S1192` — `rs.getString("status")` in `JdbcPayments.findRefundState` duplicates the `PARAM_STATUS` constant's value | fixed-in-`fc3eb0f` (uses `PARAM_STATUS`); Sonar re-analysis reports 0 new issues |
+| F-2 | review (/code-review, high effort) | the detail row still said past-tense "Refunded" while `refundOutstanding`, contradicting the banner on the same page | fixed-in-`b314423` — label branches to "Refund"; pinned in the stuck-refund spec |
+| F-3 | review (/code-review, high effort) | the in-session cancel aria-live region announced "will be refunded to your card" while the refreshed detail said outstanding | fixed-in-`b314423` — live region branches on `b.refundOutstanding` to `processingSentence`; new spec pins it |
+| F-4 | review (/code-review, high effort) | new doc comments carried issue numbers (`(issue #581)`), against §6d / the FE no-issue-numbers rule | fixed-in-`b314423` — provenance stays in git blame + this plan |
+| F-5 | review (/code-review, high effort) | `RefundOnlyGateway` + full throwing `Payments` stubs duplicated across `RefundServiceTest` / `RefundFailureMetricTest` | fixed-in-`b314423` — shared package-private `RefundOnlyGateway` + `ThrowingPayments` test doubles |
 
 ---
 
@@ -246,6 +252,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/payment/application/Payments.java` — new read for the refund state
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/out/JdbcPayments.java` — the `SELECT status, refunded_minor` query
 - `platform/src/test/java/ai/riviera/platform/payment/application/RefundServiceTest.java` — AC-5 arms
+- `platform/src/test/java/ai/riviera/platform/payment/application/RefundOnlyGateway.java` — shared refund-seam gateway double (review F-5)
+- `platform/src/test/java/ai/riviera/platform/payment/application/ThrowingPayments.java` — shared throwing `Payments` double (review F-5)
 - `platform/src/test/java/ai/riviera/platform/payment/application/RefundFailureMetricTest.java` — constructor gains the unused `Payments` stub
 - `platform/src/test/java/ai/riviera/platform/payment/application/PaymentServiceTest.java` — anonymous `Payments` stub gains the new method
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — shared `Payments` stub gains the new method
@@ -274,52 +282,52 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `RefundStatusService.java`, `RefundStatusServiceTest.java` · Modify `Payments.java`,
 `JdbcPayments.java`, `JdbcPaymentsIT.java`, `api/package-info.java`
 
-- [ ] **Step 1: Write the failing tests** — `RefundStatusServiceTest` (all AC-5 arms
+- [x] **Step 1: Write the failing tests** — `RefundStatusServiceTest` (all AC-5 arms
   against a fake `Payments`), `JdbcPaymentsIT.readsRefundStateBackAfterMarkRefunded`
-- [ ] **Step 2: Run, verify FAIL** — `gradle test --tests "*RefundStatusServiceTest*"`
+- [x] **Step 2: Run, verify FAIL** — `gradle test --tests "*RefundStatusServiceTest*"`
   (cloud recipe per `riviera-local-debug`)
-- [ ] **Step 3: Minimal implementation** — enum + port + package-private service +
+- [x] **Step 3: Minimal implementation** — enum + port + package-private service +
   `Payments` read + `JdbcPayments` SELECT
-- [ ] **Step 4: Run, verify PASS** — service test + `JdbcPaymentsIT` (skips cleanly
+- [x] **Step 4: Run, verify PASS** — service test + `JdbcPaymentsIT` (skips cleanly
   without Docker) + `--tests "*ModularityTests*" --tests "*PackageShape*" --tests
   "*PublishedSurfacePlacement*"`
-- [ ] **Step 5: Generalization audit** — n/a unless a fix emerges
-- [ ] **Step 6: Commit** — `<imperative subject> (#581)`
-- [ ] **Step 7: Update execution status** in the same commit window
+- [x] **Step 5: Generalization audit** — n/a unless a fix emerges
+- [x] **Step 6: Commit** — `<imperative subject> (#581)`
+- [x] **Step 7: Update execution status** in the same commit window
 
 ## Phase 2 — `booking`: disclose it on the code-gated view
 
 **Files:** Modify `ViewBookingService.java`, `BookingDetail.java`,
 `BookingDetailView.java`, `ViewBookingServiceTest.java`, `BookingViewIT.java`
 
-- [ ] **Steps 1–2:** failing tests AC-1..AC-4 (mirror the `neverConsultsMailDelivery`
+- [x] **Steps 1–2:** failing tests AC-1..AC-4 (mirror the `neverConsultsMailDelivery`
   pattern with a stub `RefundStatusLookup`) → RED
-- [ ] **Step 3:** lazy consult in `toDetail`; new field on both records
-- [ ] **Step 4:** `--tests "*ViewBookingServiceTest*" --tests "*BookingViewIT*"` +
+- [x] **Step 3:** lazy consult in `toDetail`; new field on both records
+- [x] **Step 4:** `--tests "*ViewBookingServiceTest*" --tests "*BookingViewIT*"` +
   structural net → PASS
-- [ ] **Step 5: Generalization audit** — other consumers of the refund decision
-- [ ] **Steps 6–7:** commit + status
+- [x] **Step 5: Generalization audit** — other consumers of the refund decision
+- [x] **Steps 6–7:** commit + status
 
 ## Phase 3 — frontend: the processing copy
 
 **Files:** Modify `booking.model.ts`, `booking-view.ts`, `booking-view.spec.ts`,
 `booking-flow.e2e.ts`
 
-- [ ] **Steps 1–2:** failing unit specs (outstanding → "is being processed", no "on its
+- [x] **Steps 1–2:** failing unit specs (outstanding → "is being processed", no "on its
   way"/"card"; not-outstanding → today's copy) + mocked e2e case → RED
-- [ ] **Step 3:** model field + `@if` branch before `refundSentence`
-- [ ] **Step 4:** `npm test` (booking specs) + the mocked e2e booking-flow spec → PASS
-- [ ] **Step 5: Generalization audit** — `/my-bookings` copy check (open question above)
-- [ ] **Steps 6–7:** commit + status
+- [x] **Step 3:** model field + `@if` branch before `refundSentence`
+- [x] **Step 4:** `npm test` (booking specs) + the mocked e2e booking-flow spec → PASS
+- [x] **Step 5: Generalization audit** — `/my-bookings` copy check (open question above)
+- [x] **Steps 6–7:** commit + status
 
 ## Phase 4 — docs close-out
 
 **Files:** Modify `CONTEXT.md`, `RESPONSIBILITIES.md`, this plan
 
-- [ ] Glossary rows (refund decided/accepted/settled; outstanding refund) — `CONTEXT.md`
-- [ ] `RESPONSIBILITIES.md` §`payment` + §`booking` one-liners for the new read
-- [ ] `riviera-docs-freshness` run over `9709fed..HEAD`; record findings in Skills consulted
-- [ ] Commit + status
+- [x] Glossary rows (refund decided/accepted/settled; outstanding refund) — `CONTEXT.md`
+- [x] `RESPONSIBILITIES.md` §`payment` + §`booking` one-liners for the new read
+- [x] `riviera-docs-freshness` run over `9709fed..HEAD`; record findings in Skills consulted
+- [x] Commit + status
 
 ---
 
@@ -330,6 +338,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-09 | phase 3 | other surfaces claiming a refund is in transit | `grep -rn "on its way\|to your card" frontend/src platform/src/main` | `refundSentence` (branched this slice); `SmtpMailer.refundLine` + `BookingCancellationMail` Javadoc (mail — non-goal); `/my-bookings` shows only `amountLabelFor`, no claim | panel-only fix stands; no further sites |
+| 2026-08-09 | review fixes (`b314423`) | past-tense / transit claims the phase-3 grep's terms missed (labels, live regions) | walked every render site of `refundedAmount` + the cancel result region | the "Refunded" `dt` label (F-2) and the in-session cancel announcement (F-3) — both fixed; `amountLabel`'s "Paid" is money-in, stays true while a refund is outstanding | both sites branch on `refundOutstanding`; no further sites |
 
 ---
 
@@ -337,26 +346,28 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1..AC-4:** run the `ViewBookingServiceTest` class → new cases PASS. Verified at `<sha>`.
-- [ ] **AC-5:** run `RefundStatusServiceTest` + `JdbcPaymentsIT` → PASS. Verified at `<sha>`.
-- [ ] **AC-6:** run the booking-view unit specs + the mocked e2e booking-flow spec → PASS. Verified at `<sha>`.
+- [x] **AC-1..AC-4:** run the `ViewBookingServiceTest` class → new cases PASS. Verified at `<sha>`.
+- [x] **AC-5:** run `RefundStatusServiceTest` + `JdbcPaymentsIT` → PASS. Verified at `<sha>`.
+- [x] **AC-6:** run the booking-view unit specs + the mocked e2e booking-flow spec → PASS. Verified at `<sha>`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A — read-only slice (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
-- [ ] **Payment/payout** section filled — no money moves; webhook-written state is the read's source of truth (invariants #5, #8, #9).
-- [ ] Refund policy untouched, still server-side (invariant #10).
-- [ ] Timezone untouched (invariant #6). Booking codes never logged (invariant #7).
-- [ ] No schema change → no migration (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` + `riviera-review-overlay`, per the
-      invocation ladder in `references/pr-gates.md` §1.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A — read-only slice (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
+- [x] **Payment/payout** section filled — no money moves; webhook-written state is the read's source of truth (invariants #5, #8, #9).
+- [x] Refund policy untouched, still server-side (invariant #10).
+- [x] Timezone untouched (invariant #6). Booking codes never logged (invariant #7).
+- [x] No schema change → no migration (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — merged via PR #582.
+- [x] **The review gate ran in full** — `/code-review` at high effort (rung 1 of the ladder;
+      single-pass inline, the fan-out could not run in the forked context — stated here per §1)
+      + the `riviera-review-overlay` bank walked over the fullstack diff; 4 findings, all fixed
+      (`b314423`), fix surface re-walked.
