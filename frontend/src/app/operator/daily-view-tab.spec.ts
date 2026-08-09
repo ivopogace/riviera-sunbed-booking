@@ -365,6 +365,18 @@ describe('DailyViewTab (#175)', () => {
     expect(submit(401, { code: 'UNAUTHENTICATED' })).toContain('session expired');
   });
 
+  it('starts the scanner only once its video element exists — never with undefined', () => {
+    render();
+    const scanner = TestBed.inject(QrScanner);
+    const start = vi.spyOn(scanner, 'start').mockResolvedValue(undefined);
+
+    (byId('checkin-scan-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(start.mock.calls[0][0]).toBeInstanceOf(HTMLVideoElement);
+  });
+
   it('closes the scanner when the venue switches in place (camera must not outlive the venue)', () => {
     render();
     const scanner = TestBed.inject(QrScanner);

@@ -131,11 +131,11 @@ export class DailyViewTab {
       const id = this.venueId();
       untracked(() => (id === undefined ? this.markInvalid() : this.resetForVenue()));
     });
-    // Start the scanner once the panel is open AND its <video> exists (the fake needs no video).
+    // Start only once the panel is open AND its <video> exists — the first run precedes the render.
     effect(() => {
       const open = this.scanOpen();
       const video = this.scanVideo()?.nativeElement;
-      if (open) {
+      if (open && video !== undefined) {
         untracked(() => this.startScanner(video));
       }
     });
