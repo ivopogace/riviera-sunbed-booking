@@ -32,7 +32,9 @@ for a paid intent, so the fix gates event publication, not just the write) · `r
 (this template — forced the Behavior-parity ledger, which is what pinned `findPendingCredentials`'s
 payable set as the same set as the new open-state guard) · `tdd` (each phase is red-first: the
 late-event ITs fail against today's unguarded `UPDATE` before the guard lands) ·
-`riviera-review-overlay` (review gate — run at ready-for-review) · `riviera-docs-freshness`
+`riviera-review-overlay` (review gate — **ran** at ready-for-review on `b824345`, layered on the
+`code-review` plugin's fan-out; every RV-BE/RV-CT item passed or was N/A, and RV-PROC-1 caught the
+two missing skills below) · `riviera-docs-freshness`
 (**ran** over `origin/main..HEAD`, 1 finding — no substrate fact was contradicted and the counting
 sweep found no N−1 statement, but the diff makes the observability runbook's webhook-5xx row
 incomplete: it reads every 5xx as transient, and the new `503` is deterministic, so a named cause
@@ -107,8 +109,9 @@ session addendum). Exists in git before phase 0.
   *behind* the webhook; this slice fixes the webhook itself.
 - **No DB-level transition constraint.** A CHECK cannot see the previous row; a trigger would hide
   logic from the JDBC-only stack (invariant #1). The guarded `UPDATE` is the repo idiom.
-- **No new metric.** A suppressed late event is logged at WARN with ids only; wiring
-  `ObservabilityMetrics` is not in scope.
+- **No new metric.** A suppressed late event is logged at WARN with ids only, and an unreadable one
+  at ERROR; wiring `ObservabilityMetrics` is not in scope. The webhook-5xx money-path alert already
+  covers the second (`docs/runbooks/observability.md`).
 - **No change to `findPendingCredentials`' payable set**, to the booking-side guarded transitions,
   or to any frontend surface.
 
@@ -137,7 +140,7 @@ session addendum). Exists in git before phase 0.
 | R-1 | The open-state set is drawn too narrow and a **legitimate** transition is silently swallowed (e.g. a retried intent that failed once can no longer reach `SUCCEEDED`) | med | high | `FAILED` is explicitly **open**, not terminal — Stripe's `payment_failed` is non-terminal and the guest may retry the same intent (the reason `findPendingCredentials` already treats `FAILED` as payable). AC-3 pins it | Claude | closed — `anOpenCollectionStillTransitions` green in `0216f86` |
 | R-2 | Gating event publication on the guard suppresses a *needed* `PaymentConfirmed` — e.g. a redelivery meant to re-drive a failed confirm | low | high | Confirm re-drive is the **Event Publication Registry**'s job, not the webhook's (`StripeWebhookListenerFailureIT`): a failed async listener leaves an incomplete publication for resubmission, so nothing depends on a second webhook re-publishing. AC-9 keeps that IT green | Claude | closed — `StripeWebhookListenerFailureIT` green in `ba6cc7b` |
 | R-3 | The new 5xx turns a permanently-undeserializable event into a 3-day redelivery storm plus repeating ERROR lines | low | med | That is the intended trade (visible + recoverable beats silent + lost). The id is never blacklisted, so a manual dashboard replay works after a fix; the log line carries event id + type only | Claude | closed — accepted, and named in `docs/runbooks/observability.md` so an operator reads the repeat as a defect to fix rather than a transient to wait out |
-| R-4 | Throwing from the controller leaks a non-RFC-7807 body, against the one-error-contract rule (`riviera-java-conventions` §6b) | low | low | Deliberate and documented: the webhook's only client is Stripe, which reads the status code and ignores the body. No per-controller `@ExceptionHandler` is added (forbidden, `ErrorContractArchitectureTests`); the exception carries `@ResponseStatus` so the status is deterministic and testable | Claude | closed — `ErrorContractArchitectureTests` green in `b1cf41f`; the trade is stated in the PR's Scope notes |
+| R-4 | Throwing from the controller leaks a non-RFC-7807 body, against the one-error-contract rule (`riviera-java-conventions` §6b) | low | low | Originally accepted as a documented trade (Stripe reads the status, not the body). **The review gate refused the trade and it turned out to be avoidable** — see F-1: extending `ErrorResponseException` puts the `503` back through the single advice as a proper problem body, so the risk is not mitigated but *eliminated* | Claude | closed — `094b81d`; `unreadableHandledEventIsRetryableAndNotConsumed` now asserts `application/problem+json` + `code=SERVICE_UNAVAILABLE` |
 | R-5 | Widening `markStatus` to `boolean` breaks the three test doubles implementing `Payments` | high | low | Mechanical: `WebSliceStubs`, `PaymentServiceTest`'s inline stub, `ThrowingPayments`. Compile failure is the detector | Claude | closed — all three updated in `0216f86` |
 | R-6 | Money/payout consequence: a guarded write changes when `PaymentConfirmed` fires, which is what `payout` accrues on (invariant #9) | low | high | The gate only suppresses publication where the payment row did **not** transition — i.e. where the accrual either already happened (terminal `SUCCEEDED`) or must not happen (`REFUNDED`/`CANCELED`). `payout`'s accrual is idempotent per booking regardless | Claude | closed — no accrual path changed; `payout`'s idempotent listener is untouched |
 | R-7 | Flyway version collision | n/a | n/a | **No migration in this slice.** Next free number on `main` is `V42`; unclaimed either way — the only open PRs are dependabot bumps | Claude | closed — no DDL |
@@ -281,10 +284,10 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (CLAUDE.md/conventions agent) | `UnreadableWebhookEventException` carried `@ResponseStatus`, so Spring's `ResponseStatusExceptionResolver` answered it directly — a **third** error-mapping path beside `ApiProblem` and the one `ApiErrorHandler` advice, which `riviera-java-conventions` §6b forbids and `ErrorContractArchitectureTests` cannot catch (it only scans for `@ExceptionHandler`). Fixed by extending `ErrorResponseException`, which the advice's `ResponseEntityExceptionHandler` base already handles: the `503` now leaves as an RFC-7807 problem with `code` stamped by `handleExceptionInternal`, through the **one** advice, with no new handler and the rollback unchanged. The agent's third suggestion — return `ResponseEntity.status(503)` instead of throwing — was **rejected**: returning commits the transaction, so the dedup insert would survive and the event would still be consumed, defeating the fix. Re-entry: `riviera-java-conventions` (§6b) + `riviera-modulith` (the type stays package-private in `adapter/in`; publishing it to `vocabulary/` just to let the root advice name it would publish a type no other module needs) | fixed-in-`<review-fix>` |
+| F-1 | review (CLAUDE.md/conventions agent) | `UnreadableWebhookEventException` carried `@ResponseStatus`, so Spring's `ResponseStatusExceptionResolver` answered it directly — a **third** error-mapping path beside `ApiProblem` and the one `ApiErrorHandler` advice, which `riviera-java-conventions` §6b forbids and `ErrorContractArchitectureTests` cannot catch (it only scans for `@ExceptionHandler`). Fixed by extending `ErrorResponseException`, which the advice's `ResponseEntityExceptionHandler` base already handles: the `503` now leaves as an RFC-7807 problem with `code` stamped by `handleExceptionInternal`, through the **one** advice, with no new handler and the rollback unchanged. The agent's third suggestion — return `ResponseEntity.status(503)` instead of throwing — was **rejected**: returning commits the transaction, so the dedup insert would survive and the event would still be consumed, defeating the fix. Re-entry: `riviera-java-conventions` (§6b) + `riviera-modulith` (the type stays package-private in `adapter/in`; publishing it to `vocabulary/` just to let the root advice name it would publish a type no other module needs) | fixed-in-`094b81d` |
 | F-2 | review (comment-compliance agent) | `StripePaymentGateway.cancel` ignores the now-`boolean` `markStatus`, and its comment *"Canceled now, or already canceled: either way the payment can no longer succeed"* was read as no longer guaranteed. **Not a defect** — the sentence is about the **Stripe intent** (which `cancel()` has just voided, or found already void), not the local row, and it stays true. The local guard's `false` there means the row was already terminal: already `CANCELED` (a repeat sweep — releasing is still right), or `SUCCEEDED`/`REFUNDED`, which contradicts what Stripe just said and cannot arise, since Stripe refuses to cancel a succeeded intent (that path returns `Failed`). Trusting Stripe over the local row is exactly invariant #8. A one-line note was added at the call site so the deliberate ignore is not re-raised at the next review | closed — no code change beyond the clarifying line |
 | F-3 | review (bug-scan agent, passing note) | The `Payments` test doubles now `return false` from `markStatus`, which would suppress event publication in any *other* test relying on them to simulate a real transition. **Checked:** `WebSliceStubs` backs controller web-slice tests, and the only tests asserting on `PaymentConfirmed`/`PaymentCanceled` are ITs running the real `JdbcPayments`. No test depends on the stub's return | closed — verified, no change |
-| F-4 | review (overlay bank, RV-PROC-1) | *Skills consulted* named `riviera-modulith` but not `codebase-design` + `domain-modeling`, which the routing table's "any backend module / structure" row requires together — and the `void`→`boolean` port change is exactly the seam decision `codebase-design` exists to vet. Both loaded at the gate and the section re-vetted; their conclusions (seam re-vet, no `CONTEXT.md` term, no ADR) are now on the line, not just implied. Every other RV-BE/RV-CT item passed or was N/A, including the three Blockers | fixed-in-`<review-fix>` |
+| F-4 | review (overlay bank, RV-PROC-1) | *Skills consulted* named `riviera-modulith` but not `codebase-design` + `domain-modeling`, which the routing table's "any backend module / structure" row requires together — and the `void`→`boolean` port change is exactly the seam decision `codebase-design` exists to vet. Both loaded at the gate and the section re-vetted; their conclusions (seam re-vet, no `CONTEXT.md` term, no ADR) are now on the line, not just implied. Every other RV-BE/RV-CT item passed or was N/A, including the three Blockers | fixed-in-`094b81d` |
 | F-5 | sonar | Quality gate **passed** on `b824345`: 0 new issues, 0 accepted issues, 0 security hotspots, 100.0% coverage on new code, 0.0% duplication. Re-verified against the API after the review-fix push (green is necessary, not sufficient — pr-gates §2) | closed |
 
 ---
@@ -299,7 +302,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/in/StripeWebhookController.java` —
   publish only on a real transition; throw on an unreadable handled event
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/in/UnreadableWebhookEventException.java`
-  — new, package-private, `@ResponseStatus(SERVICE_UNAVAILABLE)`
+  — new, package-private; extends `ErrorResponseException` (503) so the one advice still shapes the
+  body (review finding F-1)
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/out/JdbcPaymentsIT.java` — AC-1..AC-3
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/in/StripeWebhookIT.java` — AC-4..AC-9
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — stub signature
@@ -429,4 +433,6 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
 - [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **The review gate ran in full** — the `code-review` plugin's workflow (ladder rung 2, its
+      subagent fan-out, maintainer-authorized) *plus* `riviera-review-overlay`, at high effort.
+      Five findings, all resolved; two produced code changes in `094b81d`.
