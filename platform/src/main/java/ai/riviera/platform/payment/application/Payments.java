@@ -33,8 +33,13 @@ public interface Payments {
 	 */
 	Optional<BookingRef> findBookingRefByIntent(String paymentIntentId);
 
-	/** Apply a webhook-derived status transition to the PaymentIntent's record. */
-	void markStatus(String paymentIntentId, PaymentStatus status);
+	/**
+	 * Apply a webhook-derived outcome to the PaymentIntent's record, guarded: only an <em>open</em>
+	 * collection ({@code REQUIRES_PAYMENT} or {@code FAILED}, which is retryable at Stripe) moves, so
+	 * a late or out-of-order event cannot overwrite a terminal one (invariant #8). Returns whether a
+	 * row actually transitioned — {@code false} for a terminal record and for an unknown intent alike.
+	 */
+	boolean markStatus(String paymentIntentId, PaymentStatus status);
 
 	/**
 	 * The PaymentIntent id collecting for a booking, or empty if none is known (e.g. the stub

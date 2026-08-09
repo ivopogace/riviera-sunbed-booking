@@ -56,8 +56,9 @@ class PaymentServiceTest {
 			}
 
 			@Override
-			public void markStatus(String paymentIntentId,
+			public boolean markStatus(String paymentIntentId,
 					ai.riviera.platform.payment.domain.PaymentStatus status) {
+				return false;
 			}
 
 			@Override

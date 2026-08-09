@@ -16,6 +16,7 @@ import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -58,6 +59,50 @@ class JdbcPaymentsIT {
 		payments.markStatus("pi_mark_b", PaymentStatus.SUCCEEDED);
 
 		assertEquals("SUCCEEDED", statusOf("pi_mark_b"), "markStatus moves the payment to the new state");
+	}
+
+	@Test
+	void lateFailureCannotOverwriteASucceededCollection() {
+		payments.register(new NewPayment(new BookingRef(9401L), "pi_late_fail", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_late_fail", PaymentStatus.SUCCEEDED);
+
+		boolean applied = payments.markStatus("pi_late_fail", PaymentStatus.FAILED);
+
+		assertFalse(applied, "a collected payment is terminal — the transition reports no move");
+		assertEquals("SUCCEEDED", statusOf("pi_late_fail"),
+				"a late payment_failed never overwrites money Stripe collected (invariant #8)");
+	}
+
+	@Test
+	void lateFailureCannotOverwriteARefundedCollection() {
+		payments.register(new NewPayment(new BookingRef(9402L), "pi_late_refunded", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_late_refunded", PaymentStatus.SUCCEEDED);
+		payments.markRefunded(new BookingRef(9402L), 4500L, "re_late");
+
+		assertFalse(payments.markStatus("pi_late_refunded", PaymentStatus.FAILED),
+				"a refunded payment is terminal too");
+
+		var state = payments.findRefundState(new BookingRef(9402L)).orElseThrow();
+		assertEquals(PaymentStatus.REFUNDED, state.status(),
+				"a late payment_failed never contradicts a recorded refund");
+		assertEquals(4500L, state.refundedMinor(), "the refunded amount survives the late event");
+	}
+
+	@Test
+	void anOpenCollectionStillTransitions() {
+		payments.register(new NewPayment(new BookingRef(9403L), "pi_retry", 4500L, "EUR", "cs_test_secret"));
+
+		assertTrue(payments.markStatus("pi_retry", PaymentStatus.FAILED),
+				"a freshly recorded intent is open to a webhook outcome");
+		assertTrue(payments.markStatus("pi_retry", PaymentStatus.SUCCEEDED),
+				"a declined intent may be retried — FAILED is not terminal in Stripe");
+		assertEquals("SUCCEEDED", statusOf("pi_retry"), "the retry's success is recorded");
+	}
+
+	@Test
+	void markStatusOnAnUnknownIntentReportsNoTransition() {
+		assertFalse(payments.markStatus("pi_never_recorded", PaymentStatus.SUCCEEDED),
+				"an event for an intent this app never recorded moves nothing");
 	}
 
 	@Test

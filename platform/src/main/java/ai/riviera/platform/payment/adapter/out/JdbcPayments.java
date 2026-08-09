@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
@@ -24,6 +25,11 @@ class JdbcPayments implements Payments {
 	// The PaymentIntent-id named-parameter key, reused across the correlation queries.
 	private static final String PARAM_INTENT = "intent";
 	private static final String PARAM_STATUS = "status";
+	private static final String PARAM_OPEN = "open";
+
+	/** The non-terminal statuses: an intent here can still be paid, so it is also still transitionable. */
+	private static final List<String> OPEN_STATUSES =
+			List.of(PaymentStatus.REQUIRES_PAYMENT.name(), PaymentStatus.FAILED.name());
 
 	private final JdbcClient jdbc;
 
@@ -60,8 +66,7 @@ class JdbcPayments implements Payments {
 				WHERE booking_ref = :ref AND status IN (:payable) AND client_secret IS NOT NULL
 				""")
 				.param("ref", booking.value())
-				.param("payable", java.util.List.of(PaymentStatus.REQUIRES_PAYMENT.name(),
-						PaymentStatus.FAILED.name()))
+				.param("payable", OPEN_STATUSES)
 				.query((rs, rowNum) -> new ai.riviera.platform.payment.vocabulary.PaymentCredentials(
 						rs.getString("client_secret"), rs.getString("payment_intent_id")))
 				.optional();
@@ -77,15 +82,17 @@ class JdbcPayments implements Payments {
 	}
 
 	@Override
-	public void markStatus(String paymentIntentId, PaymentStatus status) {
-		jdbc.sql("""
+	public boolean markStatus(String paymentIntentId, PaymentStatus status) {
+		// Guarded in the one statement, never read-then-write: two deliveries cannot both see "open".
+		return jdbc.sql("""
 				UPDATE payment
 				SET status = :status, updated_at = NOW()
-				WHERE payment_intent_id = :intent
+				WHERE payment_intent_id = :intent AND status IN (:open)
 				""")
 				.param(PARAM_STATUS, status.name())
 				.param(PARAM_INTENT, paymentIntentId)
-				.update();
+				.param(PARAM_OPEN, OPEN_STATUSES)
+				.update() == 1;
 	}
 
 	@Override

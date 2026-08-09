@@ -708,7 +708,8 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public void markStatus(String paymentIntentId, PaymentStatus status) {
+			public boolean markStatus(String paymentIntentId, PaymentStatus status) {
+				return false;
 			}
 
 			@Override

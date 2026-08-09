@@ -238,13 +238,13 @@ unchanged. The only addition is a 5xx on a previously-silent failure path.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write the failing `JdbcPaymentsIT` cases for the guarded transition.
+**Next action:** Phase 1 — gate `PaymentConfirmed`/`PaymentCanceled` publication on a real transition.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Guard `markStatus` at the SQL seam (#568) | | |
+| 0 — Guard `markStatus` at the SQL seam (#568) | ✅ | `<phase-0>` |
 | 1 — Gate event publication on a real transition (#568) | | |
 | 2 — Make an unreadable handled event retryable (#570) | | |
 | 3 — Docs freshness + close-out | | |
@@ -272,8 +272,6 @@ Skill-routing gate for what the fix touches *before* editing).
   publish only on a real transition; throw on an unreadable handled event
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/in/UnreadableWebhookEventException.java`
   — new, package-private, `@ResponseStatus(SERVICE_UNAVAILABLE)`
-- `platform/src/main/java/ai/riviera/platform/payment/adapter/out/StripePaymentGateway.java` —
-  call-site adjustment for the widened return (behavior unchanged)
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/out/JdbcPaymentsIT.java` — AC-1..AC-3
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/in/StripeWebhookIT.java` — AC-4..AC-9
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — stub signature
@@ -362,6 +360,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-09 | Phase 0 — the guarded transition | every write to `payment.status` | `grep -rn "UPDATE payment" platform/src/main/java` | 2: `markStatus` (guarded now), `markRefunded` | **Subset.** `markRefunded` deliberately stays unguarded: it is not webhook-driven — it records a refund the app *itself* just obtained from the gateway (`StripePaymentGateway.refund` writes it only after Stripe returns a `Refund`), so there is no late-event ordering to defend against. Guarding it on the open states would be actively wrong, since it must move a **`SUCCEEDED`** row |
 
 ---
 
