@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest
+@SpringBootTest(properties = "booking.no-show.enabled=false")
 @RecordApplicationEvents
 class WeatherRefundServiceIT {
 

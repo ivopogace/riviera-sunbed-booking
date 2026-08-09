@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.adapter.in;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -11,16 +12,21 @@ import ai.riviera.platform.booking.application.checkin.MarkNoShows;
  * lingers in {@code AWAITING_PAYMENT} under the stub profile — a payment-specific reason. Bookings
  * reach {@code CONFIRMED} under both profiles, so this sweep always has work.
  *
- * <p>The cadence is deliberately slack, and that is a test-isolation decision as much as a
- * behavioural one. A booking becomes a no-show at a <em>day</em> boundary, so sweeping often buys
- * nothing; meanwhile {@code @EnableScheduling} is global here, and this sweep's blast radius is
- * every past-day {@code CONFIRMED} row in the database — several ITs seed exactly those. An hour of
- * initial delay puts the first run beyond any suite, so no test can race it (case history: #98/#122).
- * {@code fixedDelay} so runs never overlap on this instance; multi-instance safety needs no
- * distributed lock — the bulk guarded {@code UPDATE … WHERE status = 'CONFIRMED'} makes a second
- * runner a 0-row no-op.
+ * <p><strong>Ships enabled, and the switch is a test-isolation seam, not an ops safety switch</strong>
+ * (the inverse of {@code GuestContactRetentionScheduler}, which ships disabled because erasure is
+ * irreversible). {@code NO_SHOW} has no other writer, so a sweep that never runs means the state
+ * never exists — hence {@code matchIfMissing = true}. The condition earns its place on the test
+ * side: {@code @EnableScheduling} is global here and this sweep's blast radius is <em>every</em>
+ * past-day {@code CONFIRMED} row in the shared test container, so an integration test that seeds
+ * one must set {@code booking.no-show.enabled=false} and get a context where the bean does not
+ * exist. A bean that does not exist cannot fire; a long initial delay only makes the race unlikely.
+ *
+ * <p>{@code fixedDelay} so runs never overlap on this instance; multi-instance safety needs no
+ * distributed lock — the guarded batched {@code UPDATE … WHERE status = 'CONFIRMED'} makes the
+ * loser of a contended row wait and then match nothing, so each row transitions exactly once.
  */
 @Component
+@ConditionalOnProperty(name = "booking.no-show.enabled", havingValue = "true", matchIfMissing = true)
 class NoShowSweepScheduler {
 
 	private final MarkNoShows markNoShows;
@@ -29,8 +35,8 @@ class NoShowSweepScheduler {
 		this.markNoShows = markNoShows;
 	}
 
-	@Scheduled(fixedDelayString = "${booking.no-show.sweep-interval:PT1H}",
-			initialDelayString = "${booking.no-show.initial-delay:PT1H}")
+	@Scheduled(fixedDelayString = "${booking.no-show.sweep-interval:PT15M}",
+			initialDelayString = "${booking.no-show.initial-delay:PT2M}")
 	void sweep() {
 		markNoShows.sweep();
 	}

@@ -18,7 +18,7 @@ import ai.riviera.platform.payout.application.ViewDailyTakings;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Operator-gated read of a venue's "online takings today" (#171, O2): the gross of CONFIRMED online
+ * Operator-gated read of a venue's "online takings today" (#171, O2): the gross of the online
  * bookings for a service date + the net after the venue commission ({@code payout} computes it,
  * invariant #9). Driving adapter depending on the payout module's {@link ViewDailyTakings} port
  * (invariant #11) plus the edge {@link CurrentOperator} resolver and the app {@link Clock}.

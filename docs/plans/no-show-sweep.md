@@ -121,6 +121,7 @@ fill keeps its existing AA proof) · `playwright-cli` (the mocked-suite spec for
 | `cancelConfirmed` guards `status = 'CONFIRMED'` (guest cancel **and** weather) | **preserved** for guest cancel | stays `CONFIRMED`-only; the weather path moves to its own `cancelForWeather`, so a `NO_SHOW` never becomes guest-cancellable (AC-7) |
 | `CheckInService.classify` answers `WrongServiceDate` for a `CONFIRMED` code scanned off-date | **preserved** | a swept booking would otherwise fall to `default -> NotFound` ("no booking with that code at this venue"), which is false. Adds `case NO_SHOW -> WrongServiceDate` so the operator still gets the true message (AC-8) |
 | `ViewBookingService.cancellable` requires `CONFIRMED` | **preserved** | a `NO_SHOW` is not `CONFIRMED`, so the code-gated view already renders it non-cancellable with no change |
+| The console's "Checked in" arrivals badge (#583) is a bespoke inline chip: `#1d6b34` on `#e7f5ea`, `text-[11.5px] px-2.5 py-1` | **changed** | it moves to the shared `StatusChip` directive, so it renders `chip--completed` (`#0a5e6e` on `#e1f5f9`, `text-[12px] px-3 py-[5px]`) — a deliberate restyle of a surface this slice did not otherwise touch. Taken because the alternative was hand-rolling a second inline chip for `NO_SHOW`, duplicating hex pairs that already exist in `status-chip.ts`; the reuse also inherits that file's AA proof instead of needing a new one. Recorded here because it is a visible change with no other home |
 | Tourist views render the status chip from `STATUS_META` | **preserved** | `NO_SHOW` already has a label, chip and contrast test (`booking-status.ts:43`, `status-chip.ts:16`) and `my-bookings.ts:37` already reads "Marked as no-show" — the FE was built for this state; AC #6 of the issue is pre-satisfied |
 | `JdbcGuestBookingHistory` / `JdbcBookingPresence` / `JdbcCustomerBookings` | **preserved** | all three are deliberately status-agnostic (retention basis, set presence, `everConfirmed` from `confirmed_at`) — verified, no change |
 | `ViewBookingService.emailWithheld` requires `CONFIRMED` | **changed (accepted)** | a swept booking stops reporting the withheld-mail flag. The flag tells a guest their *confirmation* mail was suppressed; on a past, undelivered stay it is moot |
@@ -273,10 +274,10 @@ rather than growing a second boolean branch.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `PR — marking ready for review`
+**Stage pointer:** `review gate — findings fixed, re-review due`
 
-**Next action:** Mark PR #589 ready for review, then run the Review gate (`/code-review`) and the
-Sonar gate (pull the new-issue list from the API — the bot already reports 2 new issues).
+**Next action:** Re-run the review gate over the fix commit, then the Sonar gate (pull the
+new-issue list from the API — the bot reports 2 new issues under a green gate).
 `findConfirmedForVenueOn` to carry the status token (AC-10, backend half).
 
 | Phase | Status | Commits |
@@ -287,7 +288,9 @@ Sonar gate (pull the new-issue list from the API — the bot already reports 2 n
 | 3 — Weather-refund widening (`cancelForWeather`) | ✅ | `bc77276` |
 | 4 — Scheduler + config pinning test | ✅ | `2f28bb1` |
 | 5 — Frontend: status token + no-show arrivals row + e2e | ✅ | `204ae7c` |
-| 6 — Docs sweep + close-out | ✅ | `9bb0b95` |
+| 6 — Docs sweep | ✅ | `9bb0b95` |
+
+| 7 — Review-gate findings (15) | ✅ | `6526eb1` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -297,7 +300,21 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI | `ScheduledQueryTimeoutIT` / `ListDailyBookings` absent from the plan's File-structure section (twice) | fixed-in-`979d914`, `ee2a880` |
+| F-2 | review | **The sweep could never make progress on a real backlog.** One unbatched `UPDATE` on the 10 s-bounded client rolls back whole when it times out, so a first run over historical data fails identically forever | fixed — batched with a per-run cap, each batch its own commit |
+| F-3 | review | Scheduler leaned on a 1 h `initialDelay` as its only test isolation: a wall-clock bandaid that also meant any instance restarting hourly never swept, and pinned a 30-min floor on a **production** knob for a test reason | fixed — `@ConditionalOnProperty` seam (ships enabled), `PT2M`/`PT15M`, floor assertion dropped |
+| F-4 | review-fix (self-found) | **`SKIP LOCKED` + "short batch means drained" left contended rows unswept** — reproduced as a real flake in the scoped batch | fixed — plain `FOR UPDATE`, so a contended row is waited for, not skipped |
+| F-5 | review | The fitness case ran a destructive platform-wide `UPDATE` inside `readWhileLocked`; if it ever completed it would corrupt the shared DB | fixed — cutoff no booking can precede, so it still blocks but cannot mutate |
+| F-6 | review | `BookingStatus` Javadoc still said `NO_SHOW` "stays unwritten until the sweep ships" — and the file was listed in File structure without being touched | fixed |
+| F-7 | review | `Bookings#findRefundableForWeather` doc still said "The `CONFIRMED` bookings" and named `cancelConfirmed` | fixed |
+| F-8 | review | `RefundableBooking` doc half-updated — transition link still `cancelConfirmed` | fixed |
+| F-9 | review | `operator-console.service.ts` TSDoc still named the removed `checkedIn` wire field | fixed |
+| F-10 | review | `cancelForWeather` near-duplicated `cancelConfirmed`; the latter's `reason` param became dead flexibility | fixed — one guarded `cancelReturningFacts` helper; `reason` dropped from `cancelConfirmed` |
+| F-11 | review | `onlyConfirmedIsSwept` seeded impossible rows, incl. a `PENDING_REQUEST` with NULL `request_expires_at` that arms an NPE in the venue's request-queue read | fixed — companion columns now match the status |
+| F-12 | review | `payout`'s consumer docs still stated a `CONFIRMED`-only takings basis (3 sites; the phase-6 freshness run missed them) | fixed |
+| F-13 | review | Literal `"noShow"` bound instead of the `PARAM_NO_SHOW` constant the same diff introduced | fixed |
+| F-14 | review | The shared-`StatusChip` swap silently restyled #583's "Checked in" badge with no parity-ledger row | fixed — recorded as an explicit **changed** row |
+| F-15 | review | `ConsoleDailyBooking` TSDoc carried rejected-alternative rationale and ran past the frontend 6-line type budget | fixed — trimmed to the contract |
 
 ---
 

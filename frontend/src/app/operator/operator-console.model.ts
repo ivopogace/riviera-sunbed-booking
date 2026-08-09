@@ -57,13 +57,10 @@ export type RepriceErrorCode =
   | 'UNKNOWN';
 
 /**
- * One settled booking in the Daily view's arrivals list (`GET /api/venues/{id}/bookings?date`) — which
- * set it holds, its arrival code, and its lifecycle status. The code is a bearer credential
- * (invariant #7): shown for arrival verification at the beach, never logged.
- *
- * `status` carries the whole outcome rather than a flag per outcome: `CONFIRMED` (expected),
- * `COMPLETED` (scanned in) or `NO_SHOW` (the service day passed unscanned). A past day therefore
- * still lists who was booked instead of rendering empty.
+ * One booking in the Daily view's arrivals list (`GET /api/venues/{id}/bookings?date`) — which set
+ * it holds, its arrival code, and its `status`: `CONFIRMED` (expected), `COMPLETED` (scanned in) or
+ * `NO_SHOW` (the service day passed unscanned), so a past day still lists who was booked. The code
+ * is a bearer credential (invariant #7): shown for arrival verification, never logged.
  */
 export interface ConsoleDailyBooking {
   readonly setId: number;

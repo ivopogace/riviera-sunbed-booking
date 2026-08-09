@@ -475,7 +475,7 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public int markPastConfirmedAsNoShow(java.time.LocalDate today) {
+		public int markPastConfirmedAsNoShow(java.time.LocalDate today, int batchSize) {
 			return 0;
 		}
 
@@ -558,8 +558,7 @@ class CreateBookingServiceTest {
 
 		@Override
 		public Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelConfirmed(
-				long bookingId, Instant cancelledAt, long refundMinor,
-				ai.riviera.platform.booking.vocabulary.RefundReason reason) {
+				long bookingId, Instant cancelledAt, long refundMinor) {
 			return Optional.empty();
 		}
 

@@ -79,7 +79,7 @@ class CancelBookingService implements CancelBooking {
 		long refundMinor = quote.refundMinor();
 
 		Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(
-				booking.id(), clock.instant(), refundMinor, RefundReason.POLICY);
+				booking.id(), clock.instant(), refundMinor);
 		if (transitioned.isEmpty()) {
 			// Lost a concurrent cancel race — the other cancel already released and published.
 			return new CancelOutcome.NotCancellable(BookingStatus.CANCELLED);

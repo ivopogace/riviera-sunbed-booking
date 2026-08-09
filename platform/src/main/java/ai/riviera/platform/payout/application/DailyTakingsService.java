@@ -15,7 +15,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Computes a venue's "online takings today" for the operator console: reads the gross of
- * a venue's CONFIRMED online bookings for the service date from {@code booking::api}, then applies
+ * a venue's online bookings that the venue keeps the money for on the service date — confirmed,
+ * checked-in and no-show alike — from {@code booking::api}, then applies
  * the venue's commission to yield net owed. {@code payout} owns the commission arithmetic
  * ({@code venue} stores the rate; invariant #9) and reuses the same {@link CommissionSplit} as the
  * ledger accrual, so the formula never diverges. Read-only, so no {@code @Transactional}.

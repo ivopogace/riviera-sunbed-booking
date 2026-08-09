@@ -93,6 +93,13 @@ class ScheduledQueryTimeoutIT {
 	/** Any date: the retention-basis read under test is cancelled long before its result matters. */
 	private static final LocalDate SOME_CUTOFF = LocalDate.of(2027, 6, 1);
 
+	/**
+	 * The no-show case is the one statement here that <em>writes</em>. Postgres takes the table lock
+	 * before scanning, so a cutoff no booking can precede still blocks and still proves the bound —
+	 * while making the case incapable of mutating the shared database if it ever completes instead.
+	 */
+	private static final LocalDate BEFORE_ANY_BOOKING = LocalDate.of(1970, 1, 1);
+
 	@Autowired
 	Bookings bookings;
 
@@ -141,9 +148,8 @@ class ScheduledQueryTimeoutIT {
 				readWhileLocked("booking",
 						() -> guestBookingHistory.withBookingOnOrAfter(List.of(new CustomerId(1L)),
 								SOME_CUTOFF)));
-		assertBounded("the no-show sweep's guarded bulk UPDATE",
-				readWhileLocked("booking", () -> bookings.markPastConfirmedAsNoShow(
-						LocalDate.ofInstant(now, ZoneId.of("Europe/Tirane")))));
+		assertBounded("the no-show sweep's guarded batch UPDATE",
+				readWhileLocked("booking", () -> bookings.markPastConfirmedAsNoShow(BEFORE_ANY_BOOKING, 1)));
 	}
 
 	private static void assertBounded(String what, Outcome outcome) {

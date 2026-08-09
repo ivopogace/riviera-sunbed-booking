@@ -396,15 +396,33 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<CancelledBooking> cancelConfirmed(long bookingId, Instant cancelledAt,
-			long refundMinor, RefundReason reason) {
-		// Guarded CONFIRMED -> CANCELLED. RETURNING yields the facts only on a real transition, so a
-		// double-cancel (already CANCELLED) is a 0-row empty no-op — the caller then releases the set,
-		// refunds, and publishes BookingCancelled exactly once. The reason (POLICY/WEATHER, U9) is the
-		// audit of why the cancellation happened (invariant #10).
+			long refundMinor) {
+		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, RefundReason.POLICY,
+				List.of(BookingStatus.CONFIRMED));
+	}
+
+	@Override
+	public Optional<CancelledBooking> cancelForWeather(long bookingId, Instant cancelledAt,
+			long refundMinor) {
+		// Admits NO_SHOW beside CONFIRMED: the sweep gets to a washed-out day before the operator does.
+		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, RefundReason.WEATHER,
+				List.of(BookingStatus.CONFIRMED, BookingStatus.NO_SHOW));
+	}
+
+	/**
+	 * The one cancellation write, guarded on {@code admitted}. {@code RETURNING} yields the facts only
+	 * on a real transition, so a double-cancel — or a status outside {@code admitted} — is a 0-row
+	 * {@code empty} no-op and the caller releases the set, refunds and publishes exactly once. The
+	 * reason (POLICY/WEATHER) is the audit of why it happened (invariant #10). Shared so the two
+	 * entry points cannot drift in the columns they stamp or the facts they return; only the admitted
+	 * statuses and the reason differ, which is exactly what the guest/admin split is about.
+	 */
+	private Optional<CancelledBooking> cancelReturningFacts(long bookingId, Instant cancelledAt,
+			long refundMinor, RefundReason reason, List<BookingStatus> admitted) {
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund, cancel_reason = :reason
-				WHERE id = :id AND status = :confirmed
+				WHERE id = :id AND status = ANY (:admitted)
 				RETURNING id, venue_id, set_id, booking_date, amount_minor, amount_currency
 				""")
 				.param("cancelled", BookingStatus.CANCELLED.name())
@@ -412,7 +430,7 @@ class JdbcBookings implements Bookings {
 				.param("refund", refundMinor)
 				.param("reason", reason.name())
 				.param("id", bookingId)
-				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param("admitted", admitted.stream().map(BookingStatus::name).toArray(String[]::new))
 				.query((rs, rowNum) -> new CancelledBooking(
 						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
 						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
@@ -442,41 +460,32 @@ class JdbcBookings implements Bookings {
 				.optional();
 	}
 
-	@Override
-	public Optional<CancelledBooking> cancelForWeather(long bookingId, Instant cancelledAt,
-			long refundMinor) {
-		// Admits NO_SHOW beside CONFIRMED: the sweep gets to a washed-out day before the operator does.
-		return jdbc.sql("""
-				UPDATE booking
-				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund, cancel_reason = :reason
-				WHERE id = :id AND status IN (:confirmed, :noShow)
-				RETURNING id, venue_id, set_id, booking_date, amount_minor, amount_currency
-				""")
-				.param("cancelled", BookingStatus.CANCELLED.name())
-				.param("at", java.sql.Timestamp.from(cancelledAt))
-				.param("refund", refundMinor)
-				.param("reason", RefundReason.WEATHER.name())
-				.param("id", bookingId)
-				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
-				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
-				.query((rs, rowNum) -> new CancelledBooking(
-						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
-						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
-						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
-				.optional();
-	}
 
+
+	/**
+	 * On {@code sweepJdbc}, not {@code jdbc}: this statement opens a scheduled run and is bounded.
+	 * Batched via a keyed subquery so a run cut off by that bound keeps the batches it committed.
+	 *
+	 * <p>{@code FOR UPDATE} <strong>without</strong> {@code SKIP LOCKED}, deliberately: skipping a
+	 * contended row would return a short batch, which the caller reads as "backlog drained" and
+	 * stops on — leaving that row unswept until a later run found it uncontended.
+	 */
 	@Override
-	public int markPastConfirmedAsNoShow(LocalDate today) {
-		// sweepJdbc, not jdbc: this statement opens a scheduled run and is bounded.
+	public int markPastConfirmedAsNoShow(LocalDate today, int batchSize) {
 		return sweepJdbc.sql("""
 				UPDATE booking
 				SET status = :noShow
-				WHERE status = :confirmed AND booking_date < :today
+				WHERE id IN (SELECT id
+				             FROM booking
+				             WHERE status = :confirmed AND booking_date < :today
+				             ORDER BY id
+				             LIMIT :batch
+				             FOR UPDATE)
 				""")
-				.param("noShow", BookingStatus.NO_SHOW.name())
+				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.param("today", today)
+				.param("batch", batchSize)
 				.update();
 	}
 
@@ -496,13 +505,15 @@ class JdbcBookings implements Bookings {
 				.optional();
 	}
 
+	/**
+	 * Staff daily view (U8): a venue's settled bookings for one day, ordered by set — {@code
+	 * COMPLETED} and {@code NO_SHOW} ride along with {@code CONFIRMED}, so a past day lists who was
+	 * booked instead of nothing. Served by {@code booking_venue_id_idx} (V5); the
+	 * {@code (booking_date, status)} filter narrows the venue's rows. The code is selected for staff
+	 * verification (invariant #7) — returned to the operator-gated caller, never logged here.
+	 */
 	@Override
 	public List<DailyBooking> findConfirmedForVenueOn(VenueId venueId, LocalDate date) {
-		// Staff daily view (U8): a venue's settled bookings for one day, ordered by set. Served by
-		// booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's rows. The
-		// code is selected for staff verification (invariant #7) — returned to the operator-gated
-		// caller, never logged here.
-		// COMPLETED and NO_SHOW ride along, so a past day lists who was booked instead of nothing.
 		return jdbc.sql("""
 				SELECT set_id, code, status
 				FROM booking
@@ -521,11 +532,14 @@ class JdbcBookings implements Bookings {
 				.list();
 	}
 
+	/**
+	 * Weather refund (U9): {@code CONFIRMED} plus the {@code NO_SHOW}s the sweep made of guests who
+	 * stayed home. Served by {@code booking_venue_id_idx} (V5); the {@code (booking_date, status)}
+	 * filter narrows the venue's rows. The amount is the FULL refund the caller stamps via the
+	 * guarded {@link #cancelForWeather}.
+	 */
 	@Override
 	public List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date) {
-		// Weather refund (U9): CONFIRMED + the NO_SHOWs the sweep made of guests who stayed home.
-		// Served by booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's
-		// rows. The amount is the FULL refund the caller stamps via the guarded cancelForWeather.
 		return jdbc.sql("""
 				SELECT id, amount_minor
 				FROM booking

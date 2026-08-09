@@ -5,7 +5,7 @@ package ai.riviera.platform.booking.application.refund;
  * gross {@code amountMinor} paid (integer minor units, invariant #5). Read by
  * {@link Bookings#findRefundableForWeather} so {@code WeatherRefundService} knows the
  * <strong>full</strong> amount to refund per booking; the remaining cancellation facts come back from
- * the guarded {@link Bookings#cancelConfirmed} transition ({@link CancelledBooking}). A thin read row,
+ * the guarded {@link Bookings#cancelForWeather} transition ({@link CancelledBooking}). A thin read row,
  * not the aggregate.
  */
 public record RefundableBooking(long bookingId, long amountMinor) {

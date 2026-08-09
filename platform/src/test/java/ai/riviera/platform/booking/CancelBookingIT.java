@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest
+@SpringBootTest(properties = "booking.no-show.enabled=false")
 @RecordApplicationEvents
 class CancelBookingIT {
 
@@ -162,6 +162,9 @@ class CancelBookingIT {
 		LocalDate spent = LocalDate.of(2021, 7, 4);
 		new ServiceDayBackdate(jdbc).moveToPast(booking.code(), spent);
 		markNoShows.sweep();
+		assertEquals("NO_SHOW", jdbc.sql("SELECT status FROM booking WHERE id = :id")
+				.param("id", booking.id()).query(String.class).single(),
+				"the sweep must actually have run on this row");
 
 		CancelOutcome outcome = cancelBooking.cancel(booking.code());
 

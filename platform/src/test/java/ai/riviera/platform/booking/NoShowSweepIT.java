@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest
+@SpringBootTest(properties = "booking.no-show.enabled=false")
 class NoShowSweepIT {
 
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
@@ -71,20 +71,33 @@ class NoShowSweepIT {
 		return prefix + System.nanoTime() % 1_000_000;
 	}
 
+	/**
+	 * Seeds a booking whose companion columns match the status, rather than stamping every row as if
+	 * it had been confirmed. A {@code PENDING_REQUEST} row with a NULL {@code request_expires_at} is
+	 * not merely unrealistic — {@code findPendingRequestsForVenue} dereferences that timestamp, so
+	 * leaving one in the shared container arms an NPE for any later test reading this venue's queue.
+	 */
 	private long insert(String code, LocalDate date, String status) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
 		long set = jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v ORDER BY id LIMIT 1")
 				.param("v", venueId).query(Long.class).single();
+		boolean everConfirmed = !List.of("PENDING_REQUEST", "AWAITING_PAYMENT", "DECLINED", "EXPIRED",
+				"WITHDRAWN").contains(status);
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
-				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', :status, now())
+				                     amount_minor, amount_currency, status, confirmed_at,
+				                     request_expires_at)
+				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', :status,
+				        CASE WHEN :confirmed THEN now() END,
+				        CASE WHEN :pending THEN now() + interval '1 day' END)
 				RETURNING id
 				""")
 				.param("code", code).param("venue", venueId).param("set", set)
 				.param("cust", customer).param("date", date).param("status", status)
+				.param("confirmed", everConfirmed)
+				.param("pending", "PENDING_REQUEST".equals(status))
 				.query(Long.class).single();
 	}
 
@@ -151,7 +164,7 @@ class NoShowSweepIT {
 
 		for (int i = 0; i < untouchable.size(); i++) {
 			assertEquals(untouchable.get(i), statusOf(ids.get(i)),
-					"a booking that already left CONFIRMED is terminal for the sweep");
+					"only CONFIRMED is swept; every other status is left exactly as it was");
 		}
 	}
 
