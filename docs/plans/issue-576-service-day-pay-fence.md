@@ -286,11 +286,13 @@ e2e. No new route, no new service call.
 
 ## Execution status
 
-**Stage pointer:** `F-12 fixed — awaiting green CI, then the Sonar gate`
+**Stage pointer:** `DONE — all gates green, merging`
 
-**Next action:** Confirm backend CI is green on this push (the F-12 flake blocked the previous one and
-the token cannot re-run jobs), then read the Sonar issue list — `SonarCloud scan` reported `skipped`
-on the red run, which means **unanalyzed, not clean** — and merge.
+**Next action:** None — merge. All three gates cleared on `dff415a`: CI 8/8 green (backend included),
+the review gate run in full, and the Sonar gate green **with its reported list actually read**:
+`total: 0` issues, `new_duplicated_blocks: 0`, `new_coverage: 100.0`, and `new_lines: 135` present —
+the last of which is what distinguishes a real analysis from the `skipped`-means-unanalyzed false
+clean the two red runs produced.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -300,7 +302,8 @@ on the red run, which means **unanalyzed, not clean** — and merge.
 | 3 — Withhold credentials + `payWindowClosed` on the wire | ✅ | `4cfb763` |
 | 4 — The guest-facing closed-window panel + e2e | ✅ | `0bccb10` |
 | 5 — Docs freshness + close-out | ✅ | `32cddf6` |
-| 6 — Review-gate fixes (F-1…F-11) | ✅ | this commit — **merged via PR #577** |
+| 6 — Review-gate fixes (F-1…F-11) | ✅ | `421762b`, `3c5adad` |
+| 7 — CI: fix the takings-test collision (F-12) | ✅ | `db16f21`, `dff415a` — **merged via PR #577** |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -320,7 +323,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-8 | review | `lastOpenedServiceDay(Instant)` was an instance method on a clock-carrying component that ignores the clock, next to one that doesn't. | **fixed** — `static`, with the Javadoc saying that is the contract |
 | F-9 | review | The sweep held two clock sources, so "one reading bounds all three arms" depended on both being wired to the same bean. | **fixed** — F-8's static projection removes the `BookingCutoff` dependency entirely |
 | F-10 | review | `payWindowClosed` was computed for every status, reporting `true` on delivered `CONFIRMED`/`CANCELLED` bookings where its own documented contract is nonsense. | **fixed** — scoped to `AWAITING_PAYMENT`, pinned by `neverReportsAClosedPayWindowForABookingThatIsNotAwaitingPayment` |
-| F-12 | CI (red, `3c5adad` **and** `db16f21`) | `JdbcBookingsDailyTakingsIT.sumsOnlyConfirmedOnlineForVenueAndDate` — expected 11000, got 14000. Unrelated to the fence: the test sums every `CONFIRMED` booking for the shared seed venue on a hardcoded date, with no isolation, so another test's row inflates it. | **fixed here** (issue #579 filed with the evidence). First deferred as a pre-existing flake — it reproduces on `origin/main` in a clean worktree with identical numbers, and a third local run of unchanged branch code passed. That deferral did not survive contact with CI: it went red **twice** on this branch while `main`'s CI stays green, and the session token cannot re-run jobs (`403`), so there was no path to green that left it alone. The fix is the one #579 recommends — the test owns its venue, so its sum can only contain its own rows. Confined to one test class; no production code. |
+| F-12 | CI (red, `3c5adad` **and** `db16f21`) | `JdbcBookingsDailyTakingsIT.sumsOnlyConfirmedOnlineForVenueAndDate` — expected 11000, got 14000. Unrelated to the fence: the test sums every `CONFIRMED` booking for the shared seed venue on a hardcoded date, with no isolation, so another test's row inflates it. | **fixed here** (issue #579 filed with the evidence). First deferred as a pre-existing flake — it reproduces on `origin/main` in a clean worktree with identical numbers, and a third local run of unchanged branch code passed. That deferral did not survive contact with CI: it went red **twice** on this branch while `main`'s CI stays green, and the session token cannot re-run jobs (`403`), so there was no path to green that left it alone. The fix is the one #579 recommends — the test owns its venue, so its sum can only contain its own rows. Confined to one test class; no production code. Verified twice over: the local full suite (1555 tests) and CI's backend job both green on `dff415a`. |
 | F-11 | review | `ScheduledQueryTimeoutIT` passed `LocalDate.now()` — the JVM default zone, in the file a future author copies the signature from. | **fixed** — explicit `Europe/Tirane` |
 
 ---
