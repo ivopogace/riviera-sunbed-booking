@@ -19,6 +19,7 @@ import org.springframework.dao.QueryTimeoutException;
 import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.application.cancel.BookingCutoff;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.ConfirmBooking;
@@ -78,9 +79,13 @@ class RespondToRequestServiceTest {
 	private final Clock clock = Clock.fixed(NOW, ZoneId.of("UTC"));
 
 	private RespondToRequestService service() {
+		return serviceOn(clock);
+	}
+
+	private RespondToRequestService serviceOn(Clock at) {
 		return new RespondToRequestService(ownership, bookings,
 				new RequestReleaseService(bookings, availability, publisher), checkout, confirmBooking,
-				releaseAbandoned, new PaymentDueAnnouncer(publisher), WINDOWS, clock);
+				releaseAbandoned, new PaymentDueAnnouncer(publisher), WINDOWS, new BookingCutoff(at), at);
 	}
 
 	/** The facts the guarded accept transition RETURNINGs — every one of them a payload field. */
@@ -126,6 +131,26 @@ class RespondToRequestServiceTest {
 
 		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, BOOKING_DATE,
 				NOW.plus(PAY_WINDOW), 4500L, "EUR"));
+	}
+
+	@Test
+	void announcesAPayDeadlineCappedAtTheServiceDay() {
+		// The shape from issue #576: accepted 17:30 Tirane, one date ahead, 12h window.
+		Instant eveningBefore = Instant.parse("2026-07-10T15:30:00Z");
+		LocalDate tomorrow = LocalDate.of(2026, 7, 11);
+		Clock atAccept = Clock.fixed(eveningBefore, ZoneId.of("UTC"));
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, eveningBefore)).thenReturn(
+				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, tomorrow, eveningBefore,
+						4500L, "EUR")));
+		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+
+		serviceOn(atAccept).accept(OPERATOR, VENUE, BOOKING);
+
+		Instant serviceDayOpensAt = Instant.parse("2026-07-10T22:00:00Z");
+		assertTrue(serviceDayOpensAt.isBefore(eveningBefore.plus(PAY_WINDOW)),
+				"the raw window must genuinely outrun the service day, or this pins nothing");
+		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, tomorrow,
+				serviceDayOpensAt, 4500L, "EUR"));
 	}
 
 	@Test

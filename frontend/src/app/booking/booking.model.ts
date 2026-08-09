@@ -123,6 +123,11 @@ export interface BookingDetail {
   /** Open-intent credentials, present only while `AWAITING_PAYMENT` with an open PaymentIntent. */
   readonly payment: BookingPayment | null;
   /**
+   * The service day has started, so no payment may be taken any more and `payment` is null.
+   * Server-computed: the boundary is midnight in Europe/Tirane and the server owns that clock.
+   */
+  readonly payWindowClosed: boolean;
+  /**
    * The confirmation email was suppressed. Only ever `true` for a `CONFIRMED` booking — the
    * backend does not even ask the question before payment, so this can't be read as an oracle.
    */

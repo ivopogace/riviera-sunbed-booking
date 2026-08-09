@@ -14,6 +14,7 @@ import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.api.PaymentCredentialsLookup;
+import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
@@ -157,6 +158,64 @@ class ViewBookingServiceTest {
 
 		assertThat(detail.cancellable()).isFalse();
 		assertThat(detail.beforeCutoff()).isFalse();
+	}
+
+	/**
+	 * The pay fence is a short-circuit, not a filter on the answer — the same shape as the D-8 mail
+	 * gate above it. Past the service day's opening the credentials port must not be
+	 * <em>consulted</em>: a {@code clientSecret} handed out then buys a stay already underway
+	 * (invariant #4), which #566's cancellation fence would immediately refuse to undo.
+	 */
+	@Test
+	void withholdsPaymentCredentialsOnceTheServiceDayHasOpened() {
+		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.CLOSED, 0L);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNull();
+		assertThat(detail.payWindowClosed()).isTrue();
+		verifyNoInteractions(checkout);
+	}
+
+	@Test
+	void stillIssuesCredentialsBeforeTheServiceDayOpens() {
+		givenBooking(BookingStatus.AWAITING_PAYMENT);
+		when(checkout.pendingCredentials(any()))
+				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNotNull();
+		assertThat(detail.payWindowClosed()).isFalse();
+	}
+
+	/**
+	 * The pay fence hangs off the service-day boundary, not the evening-before cutoff: between the
+	 * two — the {@code LATE} window — the guest may still pay. Reading the fence off the quote is
+	 * what makes that automatic; a second clock read could disagree with the very same response's
+	 * {@code cancellable}.
+	 */
+	@Test
+	void stillIssuesCredentialsAfterTheCutoffWhileTheServiceDayIsStillClosed() {
+		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.LATE, 2250L);
+		when(checkout.pendingCredentials(any()))
+				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNotNull();
+		assertThat(detail.payWindowClosed()).isFalse();
+	}
+
+	/**
+	 * The flag answers a question only an unpaid booking has, so it stays {@code false} on a
+	 * delivered stay — where "no payment may be taken any more" would be a nonsense reading.
+	 */
+	@Test
+	void neverReportsAClosedPayWindowForABookingThatIsNotAwaitingPayment() {
+		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.CLOSED, 0L);
+
+		assertThat(service.byCode(CODE).orElseThrow().payWindowClosed()).isFalse();
 	}
 
 	private void givenBooking(BookingStatus status) {

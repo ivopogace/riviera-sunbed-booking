@@ -77,8 +77,9 @@ model in `docs/architecture/domain-model.md`.
   the response deadline (`EXPIRED`), or the guest **withdraws** it (`WITHDRAWN`). Each frees
   the soft-hold. The deadline is
   min(request + `booking.request.expiry-window`, the evening-before cutoff); after accept
-  the guest has `booking.request.pay-window` (from accept) to pay before the abandoned
-  sweep cancels.
+  the guest has min(accept + `booking.request.pay-window`, the service day's opening) to pay
+  before the abandoned sweep cancels — capped, so a request accepted the evening before can
+  never be paid into the day it was booked for (invariant #4).
 - **Withdraw** — the guest's own retraction of their pending request, before the venue has
   decided (`WITHDRAWN`). Distinct from **cancel**, which ends a *confirmed* booking and carries
   a refund decision: a withdrawn request was never charged, so there is nothing to refund.

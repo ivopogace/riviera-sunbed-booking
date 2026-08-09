@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.application.cancel.BookingCutoff;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.application.reserve.ConfirmBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
@@ -62,12 +63,13 @@ class RespondToRequestService implements RespondToRequest {
 	private final ReleaseAbandonedBooking releaseAbandoned;
 	private final PaymentDueAnnouncer paymentDue;
 	private final RequestWindows windows;
+	private final BookingCutoff cutoff;
 	private final Clock clock;
 
 	RespondToRequestService(VenueOwnership ownership, Bookings bookings,
 			RequestReleaseService declineRelease, CheckoutPort checkout, ConfirmBooking confirmBooking,
 			ReleaseAbandonedBooking releaseAbandoned, PaymentDueAnnouncer paymentDue,
-			RequestWindows windows, Clock clock) {
+			RequestWindows windows, BookingCutoff cutoff, Clock clock) {
 		this.ownership = ownership;
 		this.bookings = bookings;
 		this.declineRelease = declineRelease;
@@ -76,6 +78,7 @@ class RespondToRequestService implements RespondToRequest {
 		this.releaseAbandoned = releaseAbandoned;
 		this.paymentDue = paymentDue;
 		this.windows = windows;
+		this.cutoff = cutoff;
 		this.clock = clock;
 	}
 
@@ -174,8 +177,9 @@ class RespondToRequestService implements RespondToRequest {
 		try {
 			paymentDue.announce(new BookingPaymentDue(new BookingId(accepted.bookingId()),
 					accepted.venueId(), accepted.setId(), accepted.bookingDate(),
-					windows.payDeadline(accepted.acceptedAt()), accepted.amountMinor(),
-					accepted.currency()));
+					windows.payDeadline(accepted.acceptedAt(),
+							cutoff.serviceDayOpensAt(accepted.bookingDate())),
+					accepted.amountMinor(), accepted.currency()));
 		}
 		catch (RuntimeException notAnnounced) {
 			log.warn("payment-due fact not published for accepted booking {} — the accept and its payment "

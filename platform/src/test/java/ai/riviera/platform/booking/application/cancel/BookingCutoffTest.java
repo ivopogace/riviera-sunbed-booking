@@ -80,6 +80,32 @@ class BookingCutoffTest {
 	}
 
 	@Test
+	void serviceDayOpensAtMidnightInTirane() {
+		// 2026-07-14T22:00Z is 2026-07-15T00:00 in Tirane (CEST, UTC+2).
+		assertEquals(ZonedDateTime.of(2026, 7, 15, 0, 0, 0, 0, TIRANE).toInstant(),
+				at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE)).serviceDayOpensAt(BOOKING_DATE));
+	}
+
+	@Test
+	void serviceDayHasOpenedOnlyFromMidnight() {
+		assertFalse(at(ZonedDateTime.of(2026, 7, 14, 23, 59, 59, 0, TIRANE))
+				.serviceDayHasOpened(BOOKING_DATE));
+		assertTrue(at(ZonedDateTime.of(2026, 7, 15, 0, 0, 0, 0, TIRANE))
+				.serviceDayHasOpened(BOOKING_DATE));
+		assertTrue(at(ZonedDateTime.of(2026, 7, 16, 9, 0, 0, 0, TIRANE))
+				.serviceDayHasOpened(BOOKING_DATE));
+	}
+
+	@Test
+	void lastOpenedServiceDayIsTheTiraneCivilDate() {
+		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE));
+		assertEquals(LocalDate.of(2026, 7, 14),
+				cutoff.lastOpenedServiceDay(ZonedDateTime.of(2026, 7, 14, 23, 59, 0, 0, TIRANE).toInstant()));
+		assertEquals(BOOKING_DATE,
+				cutoff.lastOpenedServiceDay(ZonedDateTime.of(2026, 7, 15, 0, 0, 0, 0, TIRANE).toInstant()));
+	}
+
+	@Test
 	void cancellationWindowIgnoresACutoffLaterThanMidnight() {
 		// A 23:30 cutoff leaves FREE and CLOSED 30 minutes apart, not inverted.
 		LocalTime lateCutoff = LocalTime.of(23, 30);

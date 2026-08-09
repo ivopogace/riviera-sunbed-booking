@@ -32,6 +32,7 @@ const DETAIL: BookingDetail = {
   requestExpiresAt: null,
   payment: null,
   emailWithheld: false,
+  payWindowClosed: false,
 };
 
 const WITHDRAWAL: Withdrawal = { code: 'ABCD234567', status: 'WITHDRAWN' };
@@ -500,6 +501,30 @@ describe('BookingView', () => {
 
     expect(host.querySelector('[data-testid="pay-now"]')).toBeNull();
     expect(host.querySelector('[data-testid="request-accepted"]')).toBeNull();
+    expect(host.querySelector('[data-testid="pay-window-closed"]')).toBeNull();
+  });
+
+  it('shows the closed pay-window panel instead of Pay now', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          status: 'AWAITING_PAYMENT',
+          cancellable: false,
+          payment: null,
+          payWindowClosed: true,
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    const panel = host.querySelector('[data-testid="pay-window-closed"]');
+    expect(panel?.textContent).toContain('Payment window closed');
+    expect(panel?.textContent).toContain('can no longer be paid');
+    // Calendar-only flag: a payment may be in flight, so no "you weren't charged" claim.
+    expect(panel?.textContent).not.toContain('haven’t been charged');
+    expect(host.querySelector('[data-testid="pay-now"]')).toBeNull();
+    await expectNoAxeViolations(host);
   });
 
   it('shows terminal no-charge copy for a DECLINED request', async () => {

@@ -242,6 +242,18 @@ The skills reference them by number.
 4. **No same-day booking (v1).** Bookings for a given day close the **evening
    before** (default 18:00 `Europe/Tirane`, configurable). This is collision-
    prevention Layer 2 and also the cancellation cutoff — one rule, two jobs.
+   **Closing the sale is not enough — the point of sale is fenced again** at the service
+   day's opening (`00:00 Europe/Tirane`, the same instant invariant #10 closes
+   cancellation at): the guest's pay deadline is `min(accepted_at + pay-window,
+   service-day open)`, the abandoned sweep's third arm expires a booking whose service
+   day has opened (so a set stops being held into the day it was sold for), and the
+   code-gated view issues no payment credentials past it. Otherwise a request accepted at
+   17:30 could still be paid — and confirmed — hours into a day already underway.
+   **The confirm path is deliberately NOT fenced**, so this is three layers, not a
+   guarantee: a payment already in flight at midnight still confirms, and the sweep is
+   `@Profile("stripe")` on a 5-minute cadence rather than an instant at 00:00. The
+   argument for that residual is in `RESPONSIBILITIES.md` §`booking` — cite it before
+   reading a late confirm as a bug.
 5. **Money is integer minor units, never floating point.** Store amounts as
    `long`/`int` minor units (cents) with an explicit ISO currency code. Commission
    and payout arithmetic is exact-integer; rounding rules are written down where

@@ -24,6 +24,12 @@ public interface ExpireAbandonedBookings {
 	 * only a pay window after {@code accepted_at} — never on the creation clock, which may be
 	 * hours older than the accept.
 	 *
+	 * <p>A third arm cuts across both: whichever clock applies, a booking whose <em>service day</em>
+	 * has opened is expired regardless of how much window is left, because a payment past that
+	 * instant would buy a stay the guest can already consume (invariant #4). It is what makes the
+	 * capped {@code RequestWindows#payDeadline} enforceable — the raw-window cutoff alone would let
+	 * an accepted request hold its set into the day it was booked for.
+	 *
 	 * <p>The second clock arrives as the whole {@link RequestWindows} rather than a bare
 	 * {@code Duration} (#373): the cutoff it derives is the same instant the payment-due mail
 	 * promises the guest, and the record owns both directions of that arithmetic so the promise and

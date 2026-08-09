@@ -5,6 +5,7 @@ import java.time.Duration;
 
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -49,7 +51,7 @@ class AbandonedBookingSweepServiceTest {
 
 	private AbandonedBookingSweepService sweepWith(PaymentCancellation cancelOutcome) {
 		Bookings bookings = mock(Bookings.class);
-		when(bookings.findExpirableAwaitingPayment(any(), any())).thenReturn(List.of(STALE));
+		when(bookings.findExpirableAwaitingPayment(any(), any(), any())).thenReturn(List.of(STALE));
 		CancelPaymentPort cancel = booking -> cancelOutcome;
 		return new AbandonedBookingSweepService(bookings, cancel, recordingRelease, CLOCK);
 	}
@@ -89,5 +91,19 @@ class AbandonedBookingSweepServiceTest {
 
 		assertEquals(1, expired, "a canceled PaymentIntent expires the booking");
 		assertEquals(List.of(STALE), released, "and releases its claim");
+	}
+
+	@Test
+	void bindsTheServiceDayArmToTheTiraneCivilDate() {
+		// CLOCK is 09:00Z on 2026-11-01, which is 10:00 in Tirane — the day is already underway.
+		Bookings bookings = mock(Bookings.class);
+		when(bookings.findExpirableAwaitingPayment(any(), any(), any())).thenReturn(List.of());
+
+		new AbandonedBookingSweepService(bookings, booking -> new PaymentCancellation.Canceled(),
+				recordingRelease, CLOCK).sweep(TTL, WINDOWS);
+
+		Instant now = CLOCK.instant();
+		verify(bookings).findExpirableAwaitingPayment(now.minus(TTL), WINDOWS.acceptedBefore(now),
+				LocalDate.of(2026, 11, 1));
 	}
 }

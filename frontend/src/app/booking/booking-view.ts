@@ -159,6 +159,21 @@ const CLS = {
                   Pay now
                 </button>
               </section>
+            } @else if (b.payWindowClosed) {
+              <section
+                [class]="cls.bannerExpired"
+                data-testid="pay-window-closed"
+                aria-labelledby="request-state-title"
+              >
+                <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowExpired }}">
+                  Payment window closed
+                </h2>
+                <p [class]="cls.bannerBody">
+                  {{ dateLabel(b.bookingDate) }} has already started, so this booking
+                  <strong>can no longer be paid</strong> and stays unconfirmed. If you completed a
+                  payment in the last few minutes, reload this page — it may still be confirming.
+                </p>
+              </section>
             }
           }
           @case ('PENDING_REQUEST') {

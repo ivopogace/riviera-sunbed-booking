@@ -65,7 +65,9 @@ pin this down rather than re-derive it:
   are identical, so the payment/confirmation code is written once.
 - **Windows & sweep:** venue accept deadline = `booking.request.expiry-window`
   (capped at the evening-before cutoff); guest pay window = `booking.request.pay-window`,
-  measured from `accepted_at` — never the instant TTL's creation clock.
+  measured from `accepted_at` — never the instant TTL's creation clock — and **capped at the
+  service day's opening** (`00:00 Europe/Tirane`), which the abandoned sweep enforces as its
+  own `booking_date` arm and the code-gated view enforces by withholding the `clientSecret`.
   `ExpireRequestsService` + `RequestSweepScheduler` run **lockless** like the
   abandoned-payment sweep (guarded `UPDATE … RETURNING`; single-instance posture per
   `docs/deploy/production-hardening.md`); ShedLock only when scaling out — improvement-plan D3.

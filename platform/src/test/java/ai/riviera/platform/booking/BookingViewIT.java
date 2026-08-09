@@ -5,6 +5,7 @@ import java.time.ZoneId;
 
 import com.jayway.jsonpath.JsonPath;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -111,6 +112,48 @@ class BookingViewIT {
 				.andExpect(jsonPath("$.status").value("CONFIRMED"))
 				.andExpect(jsonPath("$.cancellable").value(false))
 				.andExpect(jsonPath("$.refundIfCancelledNow.minorUnits").value(0));
+	}
+
+	@Test
+	void reportsPayWindowClosedForAnOpenServiceDay() throws Exception {
+		seedLateCancelBooking("VIEWPAY01", "toolate@e.com", tirane());
+		markAwaitingPayment("VIEWPAY01");
+
+		mvc.perform(get("/api/bookings/{code}", "VIEWPAY01"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("AWAITING_PAYMENT"))
+				.andExpect(jsonPath("$.payWindowClosed").value(true))
+				.andExpect(jsonPath("$.payment").doesNotExist());
+	}
+
+	@Test
+	void leavesThePayWindowOpenBeforeTheServiceDay() throws Exception {
+		seedLateCancelBooking("VIEWPAY02", "intime@e.com", tirane().plusDays(2));
+		markAwaitingPayment("VIEWPAY02");
+
+		mvc.perform(get("/api/bookings/{code}", "VIEWPAY02"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.payWindowClosed").value(false));
+	}
+
+	/** The seed helper writes a CONFIRMED booking; the pay fence only ever bites before that. */
+	private void markAwaitingPayment(String code) {
+		jdbc.sql("UPDATE booking SET status = 'AWAITING_PAYMENT', confirmed_at = NULL WHERE code = :c")
+				.param("c", code).update();
+	}
+
+	/**
+	 * Drop this class's {@code AWAITING_PAYMENT} rows before the next test class runs.
+	 *
+	 * <p>Not hygiene — correctness for everyone else. The container is shared across the suite, and
+	 * the abandoned sweep's service-day arm selects <em>any</em> {@code AWAITING_PAYMENT} row dated
+	 * on or before today. A surviving {@code VIEWPAY01} would be swept and counted by
+	 * {@code AbandonedBookingSweepIT} and {@code AbandonedSweepSurvivesWedgedJobIT}, both of which
+	 * assert exact counts.
+	 */
+	@AfterEach
+	void dropAwaitingPaymentRows() {
+		jdbc.sql("DELETE FROM booking WHERE code LIKE 'VIEWPAY%'").update();
 	}
 
 	private static LocalDate tirane() {

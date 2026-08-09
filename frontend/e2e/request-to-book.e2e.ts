@@ -59,6 +59,7 @@ const DETAIL_BASE = {
   refundedAmount: null,
   requestExpiresAt: '2026-11-30T16:00:00Z',
   payment: null,
+  payWindowClosed: false,
 };
 
 test.beforeEach(async ({ page }) => {
@@ -251,6 +252,29 @@ test('an expired request shows terminal no-charge copy', async ({ page }) => {
   await expect(page.getByTestId('request-expired')).toContainText('Request expired');
   await expect(page.getByTestId('request-expired')).toContainText('haven’t');
   await expectNoSeriousAxeViolations(page, 'booking view (expired request)');
+});
+
+test('an accepted request whose service day has opened cannot be paid', async ({ page }) => {
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: {
+        ...DETAIL_BASE,
+        status: 'AWAITING_PAYMENT',
+        withdrawable: false,
+        requestExpiresAt: null,
+        payment: null,
+        payWindowClosed: true,
+      },
+    }),
+  );
+
+  await page.goto(`/booking/${CODE}`);
+  const panel = page.getByTestId('pay-window-closed');
+  await expect(panel).toContainText('Payment window closed');
+  await expect(panel).toContainText('can no longer be paid');
+  await expect(panel).not.toContainText('haven’t been charged');
+  await expect(page.getByTestId('pay-now')).toHaveCount(0);
+  await expectNoSeriousAxeViolations(page, 'booking view (pay window closed)');
 });
 
 test('a declined request shows terminal no-charge copy', async ({ page }) => {

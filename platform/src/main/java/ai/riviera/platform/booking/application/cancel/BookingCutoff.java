@@ -13,7 +13,11 @@ import ai.riviera.platform.booking.domain.CancellationWindow;
 /**
  * Enforces the no-same-day booking rule (invariant #4): bookings for a date close at the
  * venue's cutoff time the <strong>evening before</strong>. This single rule also serves as
- * collision-prevention Layer 2 and (later, U6) the cancellation cutoff.
+ * collision-prevention Layer 2 and the cancellation cutoff.
+ *
+ * <p>It owns the day's <em>other</em> boundary too — {@link #serviceDayOpensAt}, midnight opening
+ * the stay — past which a cancellation is refused (invariant #10) and a payment may no longer be
+ * taken. Rationale: {@code RESPONSIBILITIES.md} §{@code booking}.
  *
  * <p>The civil day is reasoned in {@code Europe/Tirane} (invariant #6) from an injected UTC
  * {@link Clock} — never the JVM default zone, never {@code LocalDateTime.now()}. A date is
@@ -56,9 +60,32 @@ public class BookingCutoff {
 				: CancellationWindow.CLOSED;
 	}
 
-	/** The instant the stay becomes consumable — midnight in {@code Europe/Tirane} (invariant #6). */
-	private java.time.Instant serviceDayOpensAt(LocalDate bookingDate) {
+	/**
+	 * The instant the stay becomes consumable — midnight in {@code Europe/Tirane} (invariant #6).
+	 * Public for the guest's pay deadline, which is capped here the way the accept deadline is capped
+	 * at {@link #closesAt}: past this instant a payment would buy a day already underway.
+	 */
+	public java.time.Instant serviceDayOpensAt(LocalDate bookingDate) {
 		return bookingDate.atStartOfDay(TIRANE).toInstant();
+	}
+
+	/** Whether {@code bookingDate}'s stay is already underway — the per-booking pay-window bound. */
+	public boolean serviceDayHasOpened(LocalDate bookingDate) {
+		return !clock.instant().isBefore(serviceDayOpensAt(bookingDate));
+	}
+
+	/**
+	 * The latest booking date whose service day has already begun at {@code now} — the set-based form
+	 * of {@link #serviceDayHasOpened}, for a sweep that selects rows by {@code booking_date} rather
+	 * than asking per booking.
+	 *
+	 * <p><strong>Static, and that is the contract:</strong> it is a pure projection of the caller's
+	 * own instant onto the Tirane civil day, so a sweep bounds every arm of one run against one
+	 * reading. An instance method here would read as clock-backed like its neighbour and silently is
+	 * not.
+	 */
+	public static LocalDate lastOpenedServiceDay(java.time.Instant now) {
+		return LocalDate.ofInstant(now, TIRANE);
 	}
 
 	/**

@@ -150,13 +150,20 @@ public interface Bookings {
 	List<RefundableBooking> findConfirmedForWeatherRefund(VenueId venueId, LocalDate date);
 
 	/**
-	 * The ids of bookings still {@code AWAITING_PAYMENT} created strictly before {@code olderThan} — the
-	 * abandoned-payment TTL sweep's candidate set. A closed tab produces no terminating webhook, so such
-	 * a booking lingers and keeps its {@code (set, date)} claimed; the sweep cancels the PaymentIntent
-	 * and releases the claim. Ordered by id for stable iteration. Served by the partial index on
-	 * {@code (created_at) WHERE status = 'AWAITING_PAYMENT'}.
+	 * The ids of bookings still {@code AWAITING_PAYMENT} that can no longer be paid — the
+	 * abandoned-payment sweep's candidate set, on three disjoint arms. A closed tab produces no
+	 * terminating webhook, so such a booking lingers and keeps its {@code (set, date)} claimed; the
+	 * sweep cancels the PaymentIntent and releases the claim. Ordered by id for stable iteration.
+	 *
+	 * @param createdBefore        an instant booking expires on its creation clock (the TTL)
+	 * @param acceptedBefore       an accepted request expires on its accept clock, per
+	 *        {@link ai.riviera.platform.booking.application.request.RequestWindows#acceptedBefore}
+	 * @param serviceDayOnOrBefore any booking for a service day already underway expires regardless of
+	 *        either window (invariant #4) — a payment past that instant would buy a day the guest can
+	 *        already consume
 	 */
-	List<BookingId> findExpirableAwaitingPayment(Instant createdBefore, Instant acceptedBefore);
+	List<BookingId> findExpirableAwaitingPayment(Instant createdBefore, Instant acceptedBefore,
+			LocalDate serviceDayOnOrBefore);
 
 	/**
 	 * The ids of {@code PENDING_REQUEST} bookings past their stored deadline — the request-expiry sweep's

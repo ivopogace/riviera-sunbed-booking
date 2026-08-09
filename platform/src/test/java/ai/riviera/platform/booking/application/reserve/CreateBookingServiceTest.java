@@ -553,7 +553,7 @@ class CreateBookingServiceTest {
 
 		@Override
 		public List<ai.riviera.platform.booking.vocabulary.BookingId> findExpirableAwaitingPayment(
-				Instant createdBefore, Instant acceptedBefore) {
+				Instant createdBefore, Instant acceptedBefore, java.time.LocalDate serviceDayOnOrBefore) {
 			return List.of();
 		}
 	}
