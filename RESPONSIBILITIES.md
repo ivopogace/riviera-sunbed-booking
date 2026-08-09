@@ -157,9 +157,16 @@ the code but authorized by venue ownership (both invariant #13 and #7 apply, unl
 code-only leg); it publishes **no** event (the withdraw precedent: nothing accrues, nothing
 refunds, no mail decided). Own the **no-show sweep** (#584), check-in's counterpart: a scheduled
 guarded bulk `UPDATE` marking every `CONFIRMED` booking dated before today (`Europe/Tirane`)
-`NO_SHOW`. One statement, not the per-row loop the abandoned-payment and request-expiry sweeps
-use — those loop because each row must also release its `(set, date)` claim and publish an event,
-whereas a no-show does neither. It writes **no availability row at all**, deliberately: the set was
+`NO_SHOW`, in **batches** (500 rows, at most 20 batches a run) rather than the per-row loop the
+abandoned-payment and request-expiry sweeps use — those loop because each row must also release its
+`(set, date)` claim and publish an event, whereas a no-show does neither, so there is no second
+write per row to isolate. Batched rather than one statement because it runs on the bounded scheduled
+client: an all-or-nothing `UPDATE` over a backlog larger than the timeout rolls back whole and can
+never make progress. Each batch commits on its own, so a run cut short by the timeout **or by the
+per-run cap** keeps what it did and the next tick resumes — which means a booking can stay
+`CONFIRMED` for an extra tick when the backlog exceeds 10 000 rows. `FOR UPDATE` without
+`SKIP LOCKED`, because a skipped row would shorten the batch and the caller reads a short batch as
+"drained". It writes **no availability row at all**, deliberately: the set was
 sold and held for a date now past, so freeing that claim would rewrite history and make it
 re-claimable (invariant #2). The arrivals list and daily takings count `COMPLETED` **and
 `NO_SHOW`** alongside `CONFIRMED`, so neither a check-in nor the sweep shrinks the console's day.

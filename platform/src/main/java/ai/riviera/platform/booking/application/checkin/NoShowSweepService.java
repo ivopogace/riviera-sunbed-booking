@@ -54,22 +54,38 @@ class NoShowSweepService implements MarkNoShows {
 	public int sweep() {
 		LocalDate today = LocalDate.ofInstant(clock.instant(), TIRANE);
 		int marked = 0;
-		for (int batch = 0; batch < MAX_BATCHES_PER_RUN; batch++) {
-			int inBatch = bookings.markPastConfirmedAsNoShow(today, BATCH_SIZE);
-			marked += inBatch;
-			if (inBatch < BATCH_SIZE) {
-				logIfAny(marked);
-				return marked;
+		boolean drained = false;
+		try {
+			for (int batch = 0; batch < MAX_BATCHES_PER_RUN; batch++) {
+				int inBatch = bookings.markPastConfirmedAsNoShow(today, BATCH_SIZE);
+				marked += inBatch;
+				if (inBatch < BATCH_SIZE) {
+					drained = true;
+					break;
+				}
 			}
 		}
-		log.info("no-show sweep marked {} past-day booking(s) as NO_SHOW and stopped at its"
-				+ " {}-batch cap — the remainder is swept on the next run", marked, MAX_BATCHES_PER_RUN);
+		finally {
+			logOutcome(marked, drained);
+		}
 		return marked;
 	}
 
-	private static void logIfAny(int marked) {
-		if (marked > 0) {
+	/**
+	 * In a {@code finally} because the interesting run is the one that throws: a batch cancelled by
+	 * the bounded client's timeout is the case batching exists for, and the batches already committed
+	 * before it are exactly the number an operator needs. Logged only when there is something to say.
+	 */
+	private static void logOutcome(int marked, boolean drained) {
+		if (marked == 0) {
+			return;
+		}
+		if (drained) {
 			log.info("no-show sweep marked {} past-day booking(s) as NO_SHOW", marked);
+		}
+		else {
+			log.info("no-show sweep marked {} past-day booking(s) as NO_SHOW without draining the"
+					+ " backlog — the remainder is swept on the next run", marked);
 		}
 	}
 }

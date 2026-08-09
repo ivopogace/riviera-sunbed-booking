@@ -27,8 +27,9 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Operator endpoints for the staff daily view (U8): a venue's confirmed-or-checked-in bookings for
- * one day, each with its set, booking code and lifecycle {@code status} — plus the check-in POST that
+ * Operator endpoints for the staff daily view (U8): a venue's settled bookings for one day —
+ * confirmed, checked-in and no-show alike, each with its set, booking code and lifecycle
+ * {@code status} — plus the check-in POST that
  * flips a scanned booking {@code CONFIRMED → COMPLETED}. Driving adapter depending only on the
  * booking module's {@link ListDailyBookings} and {@link CheckInBooking} ports (invariant #11).
  *

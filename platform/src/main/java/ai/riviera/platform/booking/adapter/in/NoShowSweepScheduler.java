@@ -19,7 +19,13 @@ import ai.riviera.platform.booking.application.checkin.MarkNoShows;
  * side: {@code @EnableScheduling} is global here and this sweep's blast radius is <em>every</em>
  * past-day {@code CONFIRMED} row in the shared test container, so an integration test that seeds
  * one must set {@code booking.no-show.enabled=false} and get a context where the bean does not
- * exist. A bean that does not exist cannot fire; a long initial delay only makes the race unlikely.
+ * exist. A bean that does not exist cannot fire.
+ *
+ * <p>The 30-minute initial delay is <strong>defense in depth for the fixtures nobody enumerated</strong>,
+ * not the mechanism: no suite reaches the first tick, so an IT that seeds a past-day
+ * {@code CONFIRMED} row and forgets the opt-out is still safe. It costs nothing in production —
+ * nothing is gated on how quickly {@code NO_SHOW} appears (even the weather refund now reaches a
+ * swept row), and only the <em>first</em> run after a boot is delayed; the interval is 15 minutes.
  *
  * <p>{@code fixedDelay} so runs never overlap on this instance; multi-instance safety needs no
  * distributed lock — the guarded batched {@code UPDATE … WHERE status = 'CONFIRMED'} makes the
@@ -36,7 +42,7 @@ class NoShowSweepScheduler {
 	}
 
 	@Scheduled(fixedDelayString = "${booking.no-show.sweep-interval:PT15M}",
-			initialDelayString = "${booking.no-show.initial-delay:PT2M}")
+			initialDelayString = "${booking.no-show.initial-delay:PT30M}")
 	void sweep() {
 		markNoShows.sweep();
 	}

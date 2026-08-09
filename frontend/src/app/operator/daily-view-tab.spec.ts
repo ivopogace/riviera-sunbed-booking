@@ -15,7 +15,7 @@ import { QrScanner } from './qr-scanner';
 
 /**
  * The Daily view tab. Reads `:venueId` from the PARENT route (child routes don't inherit
- * it), loads the venue map + the day's confirmed bookings, and renders the sea-facing
+ * it), loads the venue map + the day's settled bookings, and renders the sea-facing
  * availability grid + the Arrivals list. Drives: the three tile states (FREE / booked-online-locked /
  * staff-marked); tap-to-mark and tap-to-release round-trips with optimistic flip + reconcile; the
  * online-booked lock; the arrivals code chips (display-only, invariant #7); the Tirane default date +

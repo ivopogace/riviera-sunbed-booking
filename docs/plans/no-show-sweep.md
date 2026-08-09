@@ -13,12 +13,14 @@
 (`Europe/Tirane`) as `NO_SHOW`, so an undelivered stay stops looking like a live upcoming
 booking — without changing any venue's money facts for that day.
 
-**Architecture:** The sweep is a **single bulk guarded `UPDATE`** (`WHERE status = 'CONFIRMED'
+**Architecture:** The sweep is **guarded bulk `UPDATE`s in batches** (`WHERE status = 'CONFIRMED'
 AND booking_date < :today`), not the read-ids-then-per-row shape the two existing sweeps use.
 That deviation is the significant decision: the abandoned-payment and request-expiry sweeps loop
 per row because each row must also *release* its `(set, date)` availability claim and publish an
-event. A no-show releases nothing and publishes nothing, so there is no second write to isolate —
-one statement is atomic, idempotent, concurrency-safe by construction, and cannot half-finish.
+event. A no-show releases nothing and publishes nothing, so there is no second write per row to
+isolate. Batched rather than one statement — that correction came from the review gate: on the
+bounded scheduled client an all-or-nothing `UPDATE` over a real backlog would be cancelled and roll
+back whole, so the sweep could never make progress on any run.
 The second decision is that `CONFIRMED` stops being an open-ended state: every read filtering on it
 was audited and split into "live upcoming booking" (stays narrow) vs "was delivered/paid" (widens).
 
@@ -77,8 +79,9 @@ fill keeps its existing AA proof) · `playwright-cli` (the mocked-suite spec for
   the sweep, then the gross is identical. *Pinned by:*
   `JdbcBookingsDailyTakingsIT.noShowSweepDoesNotChangeTakings`
 - [x] **AC-7:** Given a swept `NO_SHOW` booking, when the guest calls `CancelBooking`, then the
-  outcome is `NotCancellable` and no refund is issued. *Pinned by:*
-  `CancelBookingIT.noShowIsNotCancellable`
+  outcome is `WindowClosed` — the same answer an unswept spent day gives, so the guest reads "its
+  date has already begun" rather than a retryable failure — and no refund is issued. *Pinned by:*
+  `CancelBookingIT.noShowAnswersWindowClosedLikeAnUnsweptSpentDay`
 - [x] **AC-8:** Given a swept `NO_SHOW` booking, when an operator scans its code, then the result is
   `WrongServiceDate` carrying the booking date and the status stays `NO_SHOW`. *Pinned by:*
   `CheckInFlowIT.sweptNoShowScanNamesTheDate`
@@ -90,10 +93,12 @@ fill keeps its existing AA proof) · `playwright-cli` (the mocked-suite spec for
   the console's Daily view for that date, then the arrivals list still lists the booking, carrying
   status `NO_SHOW`. *Pinned by:* `StaffBookingControllerIT.dailyViewListsSweptNoShows` and
   `daily-view-tab.spec.ts` ("renders a no-show arrivals row")
-- [x] **AC-11:** Given the committed scheduler configuration, when its `@Scheduled` defaults are
-  read, then both the initial delay and the interval are ≥ 30 minutes and the trigger is
-  `fixedDelay`, so no sweep can fire inside a suite's window. *Pinned by:*
-  `NoShowSweepSchedulerConfigTest`
+- [x] **AC-11:** Given the committed configuration, when the context starts, then the scheduler bean
+  **exists** (the sweep ships enabled — `NO_SHOW` has no other writer), disappears when
+  `booking.no-show.enabled=false`, and is `fixedDelay` so runs never overlap. *Pinned by:*
+  `NoShowSweepSchedulerConfigTest`. The cadence itself is deliberately **not** floor-asserted: the
+  property is the test-isolation mechanism, so pinning a production knob for a test's benefit was
+  dropped at the review-fix round.
 
 ## Non-goals
 
@@ -121,6 +126,7 @@ fill keeps its existing AA proof) · `playwright-cli` (the mocked-suite spec for
 | `findConfirmedForVenueOn` lists `CONFIRMED` + `COMPLETED` (arrivals) | **changed** | widens to `+ NO_SHOW`; without it a past day's arrivals list renders **empty** and the operator loses the record of who was booked. Row carries the status token instead of #583's `checkedIn` boolean (see FE↔BE contract) |
 | `findConfirmedForWeatherRefund` lists `CONFIRMED` for a `(venue, date)` | **changed** | widens to `+ NO_SHOW`, and the transition moves to a new `cancelForWeather` admitting both. Preserves the past-date capability `WeatherRefundService` documents — a no-show on a washed-out day is precisely the guest who stayed home (Resolved Q-1) |
 | `cancelConfirmed` guards `status = 'CONFIRMED'` (guest cancel **and** weather) | **preserved** for guest cancel | stays `CONFIRMED`-only; the weather path moves to its own `cancelForWeather`, so a `NO_SHOW` never becomes guest-cancellable (AC-7) |
+| A guest cancelling a **spent** day gets `CANCELLATION_WINDOW_CLOSED` → "its date has already begun" | **preserved — but only after a review finding** | the sweep made the booking `NO_SHOW`, which fell into the status guard *before* the window check and answered `NOT_CANCELLABLE` → the SPA's generic "please try again", inviting a retry that can never succeed. `CancelBookingService` now answers `WindowClosed` for `NO_SHOW` **and** `COMPLETED`; the latter had the same flaw since #583 |
 | `CheckInService.classify` answers `WrongServiceDate` for a `CONFIRMED` code scanned off-date | **preserved** | a swept booking would otherwise fall to `default -> NotFound` ("no booking with that code at this venue"), which is false. Adds `case NO_SHOW -> WrongServiceDate` so the operator still gets the true message (AC-8) |
 | `ViewBookingService.cancellable` requires `CONFIRMED` | **preserved** | a `NO_SHOW` is not `CONFIRMED`, so the code-gated view already renders it non-cancellable with no change |
 | The console's "Checked in" arrivals badge (#583) is a bespoke inline chip: `#1d6b34` on `#e7f5ea`, `text-[11.5px] px-2.5 py-1` | **changed** | it moves to the shared `StatusChip` directive, so it renders `chip--completed` (`#0a5e6e` on `#e1f5f9`, `text-[12px] px-3 py-[5px]`) — a deliberate restyle of a surface this slice did not otherwise touch. Taken because the alternative was hand-rolling a second inline chip for `NO_SHOW`, duplicating hex pairs that already exist in `status-chip.ts`; the reuse also inherits that file's AA proof instead of needing a new one. Recorded here because it is a visible change with no other home |
@@ -312,7 +318,9 @@ were cleared by the review-fix round.
 | 5 — Frontend: status token + no-show arrivals row + e2e | ✅ | `204ae7c` |
 | 6 — Docs sweep | ✅ | `9bb0b95` |
 
-| 7 — Review-gate findings (15) | ✅ | `6526eb1` |
+| 7 — Review-gate findings (16) | ✅ | `6526eb1` |
+
+| 8 — Scoped re-review findings (11) | ✅ | `6226cd5` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -327,6 +335,16 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-3 | review | Scheduler leaned on a 1 h `initialDelay` as its only test isolation: a wall-clock bandaid that also meant any instance restarting hourly never swept, and pinned a 30-min floor on a **production** knob for a test reason | fixed — `@ConditionalOnProperty` seam (ships enabled), `PT2M`/`PT15M`, floor assertion dropped |
 | F-4 | review-fix (self-found) | **`SKIP LOCKED` + "short batch means drained" left contended rows unswept** — reproduced as a real flake in the scoped batch | fixed — plain `FOR UPDATE`, so a contended row is waited for, not skipped |
 | F-16 | overlay re-walk | The batch ordered by `id`, so it sorted the filtered set instead of walking V41's partial index | fixed — ordered by `booking_date`, the index's own order |
+| G-1 | re-review | **A swept booking told the guest to retry.** `NO_SHOW` hit the status guard before the window check, so a guest cancel answered `NOT_CANCELLABLE` → the SPA's generic "please try again" instead of "its date has already begun". `COMPLETED` had the same flaw since #583 | fixed — both answer `WindowClosed`; AC-7 and the parity ledger corrected |
+| G-2 | re-review | `BookingViewIT` and `AccountErasureIT` seed past-day `CONFIRMED` rows and assert they stay `CONFIRMED`, with no opt-out — the #98/#122 flake class | fixed — audit found **8** exposed ITs; the 6 that assert now opt out, and the initial delay went back to `PT30M` as defense in depth for the ones nobody enumerated |
+| G-3 | re-review | `RESPONSIBILITIES.md` and `CLAUDE.md` still said the sweep is "one statement, no per-row loop" after the fix round made it batched | fixed |
+| G-4 | re-review | AC-11 and the R-1 risk row still described the superseded `PT1H`/30-minute-floor design that F-3 replaced | fixed |
+| G-5 | re-review | `ARRIVAL_CHIPS` re-declared the `chip--*` modifiers `STATUS_META` owns — a third copy that drifts silently to the neutral fill | fixed — reads `metaFor(status).chip` |
+| G-6 | re-review | `findConfirmedForVenueOn` still named for a status it no longer filters on, the same reason the weather read was renamed in this diff | fixed — `findSettledForVenueOn` |
+| G-7 | re-review | Doc drift on touched lines: the controller, the tab's Javadoc and its template still enumerated "the day's confirmed bookings" | fixed |
+| G-8 | re-review | Three consecutive blank lines left where an inline comment became Javadoc | fixed |
+| G-9 | re-review | `booking.no-show.enabled` — the only kill switch for a sweep that writes a terminal status — was declared nowhere in `application.properties` | fixed — switch + cadence documented |
+| G-10 | re-review | A run cut short by the timeout logged nothing, losing the count of batches it had already committed — the run an operator most needs it from | fixed — logged in a `finally` |
 | F-5 | review | The fitness case ran a destructive platform-wide `UPDATE` inside `readWhileLocked`; if it ever completed it would corrupt the shared DB | fixed — cutoff no booking can precede, so it still blocks but cannot mutate |
 | F-6 | review | `BookingStatus` Javadoc still said `NO_SHOW` "stays unwritten until the sweep ships" — and the file was listed in File structure without being touched | fixed |
 | F-7 | review | `Bookings#findRefundableForWeather` doc still said "The `CONFIRMED` bookings" and named `cancelConfirmed` | fixed |

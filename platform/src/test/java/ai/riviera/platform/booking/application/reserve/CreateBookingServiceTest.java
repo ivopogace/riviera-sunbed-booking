@@ -563,7 +563,7 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public List<ai.riviera.platform.booking.application.view.DailyBooking> findConfirmedForVenueOn(
+		public List<ai.riviera.platform.booking.application.view.DailyBooking> findSettledForVenueOn(
 				ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
 			return List.of();
 		}

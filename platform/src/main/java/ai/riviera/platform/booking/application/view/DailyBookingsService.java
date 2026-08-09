@@ -35,6 +35,6 @@ class DailyBookingsService implements ListDailyBookings {
 	@Override
 	public List<DailyBooking> forVenueOn(OperatorId operator, VenueId venueId, LocalDate date) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
-		return bookings.findConfirmedForVenueOn(venueId, date);
+		return bookings.findSettledForVenueOn(venueId, date);
 	}
 }

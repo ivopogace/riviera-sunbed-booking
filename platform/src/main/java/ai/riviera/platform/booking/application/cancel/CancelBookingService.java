@@ -26,7 +26,13 @@ import ai.riviera.platform.booking.domain.CancellationWindow;
  * via {@link AvailabilityClaim#release} (invariant #2), and publishes {@link BookingCancelled}.
  *
  * <p>Status alone does not authorize the cancellation: nothing writes {@code COMPLETED}, so a
- * {@code CONFIRMED} booking would otherwise stay cancellable — and late-cancel-refundable — long
+ * A booking whose service day is over answers {@link CancelOutcome.WindowClosed} whichever terminal
+ * status it carries — still {@code CONFIRMED}, swept to {@code NO_SHOW}, or checked in to
+ * {@code COMPLETED}. All three mean the same thing to the guest, and only that outcome renders the
+ * accurate "its date has already begun" copy; {@code NotCancellable} renders a generic
+ * please-try-again the guest can never satisfy.
+ *
+ * <p>A {@code CONFIRMED} booking would otherwise stay cancellable — and late-cancel-refundable — long
  * after the guest consumed the stay. The quote's {@link CancellationPolicy.RefundQuote#cancellationOpen}
  * is the end-of-life fence, checked before the transition so a spent day is never released and no
  * {@link BookingCancelled} is published for it. The operator's weather refund is deliberately
@@ -68,6 +74,9 @@ class CancelBookingService implements CancelBooking {
 			return new CancelOutcome.NotFound();
 		}
 		BookingRecord booking = found.get();
+		if (booking.status() == BookingStatus.NO_SHOW || booking.status() == BookingStatus.COMPLETED) {
+			return new CancelOutcome.WindowClosed();
+		}
 		if (booking.status() != BookingStatus.CONFIRMED) {
 			return new CancelOutcome.NotCancellable(booking.status());
 		}

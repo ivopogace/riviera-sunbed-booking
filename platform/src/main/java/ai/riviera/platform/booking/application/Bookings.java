@@ -186,7 +186,7 @@ public interface Bookings {
 	 * awaiting-payment and cancelled bookings. The {@code code} is the bearer credential (invariant
 	 * #7) — carried to the operator-gated caller, never logged.
 	 */
-	List<DailyBooking> findConfirmedForVenueOn(VenueId venueId, LocalDate date);
+	List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date);
 
 	/**
 	 * The {@code CONFIRMED} and {@code NO_SHOW} bookings for {@code venueId} on {@code date} as

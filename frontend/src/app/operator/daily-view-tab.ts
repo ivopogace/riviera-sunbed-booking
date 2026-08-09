@@ -27,7 +27,7 @@ import { StatusChip } from '../shared/status-chip';
 import { formatMoney, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
-import { BookingStatus } from '../shared/booking-status';
+import { BookingStatus, metaFor } from '../shared/booking-status';
 import { setLabel, setsById, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
@@ -63,10 +63,19 @@ interface ArrivalChip {
   readonly testId: string;
 }
 
-/** The arrivals badge per settled status; a still-expected CONFIRMED row shows none. */
+/**
+ * The arrivals badge per settled status; a still-expected `CONFIRMED` row shows none. Only the
+ * wording and the test hook are local — the modifier is read from `STATUS_META`, the one map that
+ * owns the status→modifier vocabulary, so a rename there cannot silently drop this chip to the
+ * neutral fallback fill.
+ */
 const ARRIVAL_CHIPS: Partial<Record<BookingStatus, ArrivalChip>> = {
-  COMPLETED: { modifier: 'chip--completed', label: 'Checked in', testId: 'arrival-checked-in' },
-  NO_SHOW: { modifier: 'chip--no-show', label: 'No-show', testId: 'arrival-no-show' },
+  COMPLETED: {
+    modifier: metaFor('COMPLETED').chip,
+    label: 'Checked in',
+    testId: 'arrival-checked-in',
+  },
+  NO_SHOW: { modifier: metaFor('NO_SHOW').chip, label: 'No-show', testId: 'arrival-no-show' },
 };
 
 /** The check-in panel's announced outcome; tone drives the ink, the text carries the meaning. */
@@ -79,7 +88,8 @@ interface CheckInNotice {
  * The Daily view tab — the operator console's restyle of the staff
  * daily-operations surface: a sea-facing availability grid (tap a FREE set to mark a walk-in, tap a
  * `STAFF_MARKED` set to release; an online-booked set is locked), a Europe/Tirane date picker, and
- * an Arrivals card listing the day's confirmed bookings with their booking-code chips.
+ * an Arrivals card listing the day's bookings — confirmed, checked-in and no-show — with their
+ * booking-code chips.
  *
  * <p>A restyle only — <strong>no change to the availability invariants</strong>. It is the second
  * driving adapter onto the existing owner-asserted staff mark/release writes (invariant #13):

@@ -460,8 +460,6 @@ class JdbcBookings implements Bookings {
 				.optional();
 	}
 
-
-
 	/**
 	 * On {@code sweepJdbc}, not {@code jdbc}: this statement opens a scheduled run and is bounded.
 	 * Batched via a keyed subquery so a run cut off by that bound keeps the batches it committed.
@@ -517,7 +515,7 @@ class JdbcBookings implements Bookings {
 	 * verification (invariant #7) — returned to the operator-gated caller, never logged here.
 	 */
 	@Override
-	public List<DailyBooking> findConfirmedForVenueOn(VenueId venueId, LocalDate date) {
+	public List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date) {
 		return jdbc.sql("""
 				SELECT set_id, code, status
 				FROM booking
