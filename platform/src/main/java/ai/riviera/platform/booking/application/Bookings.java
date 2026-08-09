@@ -153,10 +153,11 @@ public interface Bookings {
 			String code, VenueId venueId);
 
 	/**
-	 * The {@code CONFIRMED} bookings for {@code venueId} on {@code date} as {@code (setId, code)} rows
-	 * ordered by set, for the staff daily view. Excludes awaiting-payment and cancelled bookings. The
-	 * {@code code} is the bearer credential (invariant #7) — carried to the operator-gated caller, never
-	 * logged.
+	 * The {@code CONFIRMED} and {@code COMPLETED} bookings for {@code venueId} on {@code date} as
+	 * {@code (setId, code, checkedIn)} rows ordered by set, for the staff daily view — a checked-in
+	 * arrival stays listed, flagged. Excludes awaiting-payment and cancelled bookings. The
+	 * {@code code} is the bearer credential (invariant #7) — carried to the operator-gated caller,
+	 * never logged.
 	 */
 	List<DailyBooking> findConfirmedForVenueOn(VenueId venueId, LocalDate date);
 

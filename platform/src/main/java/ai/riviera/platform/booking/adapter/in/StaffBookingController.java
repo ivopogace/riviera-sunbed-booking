@@ -27,9 +27,10 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Operator read endpoint for the staff daily view (U8, issue #10): a venue's confirmed bookings for
- * one day, each with its set and booking code. Driving adapter depending only on the booking
- * module's {@link ListDailyBookings} port (invariant #11).
+ * Operator endpoints for the staff daily view (U8): a venue's confirmed-or-checked-in bookings for
+ * one day, each with its set, booking code and {@code checkedIn} flag — plus the check-in POST that
+ * flips a scanned booking {@code CONFIRMED → COMPLETED}. Driving adapter depending only on the
+ * booking module's {@link ListDailyBookings} and {@link CheckInBooking} ports (invariant #11).
  *
  * <p><strong>Operator-gated</strong> — booking codes are bearer credentials (invariant #7), so this
  * read must never be public. {@code SecurityConfig} matches the staff-bookings GET to role
@@ -67,7 +68,7 @@ class StaffBookingController {
 	}
 
 	/**
-	 * The staff check-in (#583): scan or type the booking code, transition it
+	 * The staff check-in: scan or type the booking code, transition it
 	 * {@code CONFIRMED → COMPLETED} exactly once. The code travels in the path (ADR-0006's standing
 	 * convention) and never comes back: the success view carries set + date, and every problem body
 	 * keeps the redacted/overridden {@code instance} plus a date-only detail (invariant #7).

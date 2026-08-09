@@ -26,9 +26,16 @@ import { routes } from './app.routes';
  * to swap in a deterministic fake (no js.stripe.com) — never set in production. Component unit
  * specs override the {@link StripePaymentGateway} token directly.
  */
+function stripeGatewayFactory(): StripePaymentGateway {
+  // `globalThis` is `window` in a browser and always defined, so the Playwright flag reads uniformly.
+  const useFake =
+    (globalThis as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ === true;
+  return useFake ? new FakeStripePaymentGateway() : new StripeJsPaymentGateway();
+}
+
 /**
  * Real camera scanning in the browser. The Playwright a11y e2e sets `window.__RIVIERA_FAKE_QR__`
- * (a queue of payloads) to swap in a deterministic fake — same shape as the Stripe swap below.
+ * (a queue of payloads) to swap in a deterministic fake — same shape as the Stripe swap above.
  */
 function qrScannerFactory(): QrScanner {
   const armed =
@@ -36,13 +43,6 @@ function qrScannerFactory(): QrScanner {
   return armed ? new FakeQrScanner() : new CameraQrScanner();
 }
 
-function stripeGatewayFactory(): StripePaymentGateway {
-  // `globalThis` is always defined (browser/SSR/test); in a browser it is `window`, so the
-  // Playwright-set flag is read the same way without a `window` reference.
-  const useFake =
-    (globalThis as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ === true;
-  return useFake ? new FakeStripePaymentGateway() : new StripeJsPaymentGateway();
-}
 
 export const appConfig: ApplicationConfig = {
   providers: [

@@ -66,6 +66,23 @@ describe('CameraQrScanner', () => {
     expect(stream.getTracks()[0].stop).toHaveBeenCalled();
   });
 
+  it('releases a camera granted only after stop() was already called (stop-during-start race)', async () => {
+    const scanner = new CameraQrScanner();
+    let grant: (s: MediaStream) => void;
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: vi.fn(() => new Promise<MediaStream>((r) => (grant = r))) },
+    });
+
+    const pending = scanner.start(fakeVideo(640), vi.fn());
+    scanner.stop();
+    grant!(stream);
+    await pending;
+
+    expect(stream.getTracks()[0].stop).toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(600);
+  });
+
   it('skips decoding while the camera has no frame yet (videoWidth 0), and stop() is idempotent', async () => {
     const scanner = new CameraQrScanner();
     const onCode = vi.fn();

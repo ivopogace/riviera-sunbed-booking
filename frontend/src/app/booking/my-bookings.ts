@@ -55,7 +55,7 @@ interface RowView {
   /** 'Paid' once money has moved; 'Amount' while open, or when a cancellation never charged. */
   readonly amountLabel: string;
   readonly amountStr: string;
-  /** CONFIRMED only — gates the row's scannable QR (#583); terminal rows show status text alone. */
+  /** CONFIRMED only — gates the row's scannable QR; terminal rows show status text alone. */
   readonly showQr: boolean;
 }
 

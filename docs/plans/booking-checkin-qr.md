@@ -236,6 +236,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | CI (Frontend, 5303d19) | QR never rendered in the e2e: the lazy `import('qrcode')` tripped Vite's first-use dependency optimization, reloading the page and wiping the in-memory confirmation | fixed — static import + SVG render (canvas-free, real lib in jsdom specs) |
 | F-4 | Sonar (bc8d9e7) | new-code coverage 73.7% < 80% — camera adapter, tab error branches, error mappers and the config factory untested | fixed — specs added (camera adapter with mocked media APIs, denial branches, mapper units, factory branches) |
 | F-5 | Sonar (a57c9e9) | `Web:S6819` role=status → `<output>`; `java:S1192` duplicated 'status' literal vs `PARAM_STATUS` | fixed — both in-code |
+| F-6 | review (/code-review, 6-agent fan-out) | camera leak: `stop()` during an in-flight `start()` couldn't cancel it (stream + interval survive); venue switch never closed the scanner | fixed — generation guard in `CameraQrScanner` (both await gaps) + `resetForVenue` closes the scan; regression specs |
+| F-7 | review | doc placement/staleness: `dailyBookings`/`stripeGatewayFactory` docs orphaned by insertions; `Bookings.findConfirmedForVenueOn` Javadoc still CONFIRMED-only; `ArrivalRow` missing `checkedIn`; controller class doc read-only | fixed — docs reattached/updated |
+| F-8 | review | TSDoc discipline: `BookingQr` doc over budget with decision history; issue numbers in new doc comments (FE + Java) | fixed — trimmed to pointer (plan F-3); issue refs stripped from doc comments |
+| F-9 | review (prior-PR #579 lesson) | `CheckInFlowIT` seeded the shared seed venue for the real today with no cleanup; `JdbcBookingsDailyTakingsIT` (owner of the takings SQL) had no `COMPLETED` case and stale Javadoc | fixed — every flow test on its own owned venue; takings IT pins CONFIRMED+COMPLETED |
 
 ---
 
@@ -258,7 +262,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/DailyBookingView.java` — gains `checkedIn`
 - `platform/src/main/java/ai/riviera/platform/booking/domain/BookingStatus.java` — Javadoc: `COMPLETED` now written by check-in
 - `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — `BOOKING_CHECK_IN_PATH` matcher
-- `platform/src/test/java/ai/riviera/platform/booking/CheckInFlowIT.java` — the flow ACs (1,2,4,5,7,8)
+- `platform/src/test/java/ai/riviera/platform/booking/CheckInFlowIT.java` — the flow ACs (1,2,4,5,7,8), each test on its own owned venue (F-9)
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingsDailyTakingsIT.java` — takings aggregate pins CONFIRMED+COMPLETED (F-9)
 - `platform/src/test/java/ai/riviera/platform/booking/CheckInConcurrencyIT.java` — AC-3
 - `platform/src/test/java/ai/riviera/platform/CrossVenueDenialIT.java` — AC-6 row for check-in
 - `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — `RecordingBookings` fake gains the two new port stubs

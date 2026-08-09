@@ -41,7 +41,7 @@ import {
 import { QrScanner } from './qr-scanner';
 import { codeFromScan } from './scan-input';
 
-/** One arrivals row: the confirmed booking's set label + its display-only arrival code (invariant #7). */
+/** One arrivals row: set label, display-only arrival code (invariant #7), and whether already checked in. */
 interface ArrivalRow {
   readonly setId: number;
   readonly code: string;
@@ -213,6 +213,9 @@ export class DailyViewTab {
    *  today's date (the same state a full navigation would mount with). */
   private resetForVenue(): void {
     this.epoch++;
+    this.closeScan();
+    this.checkInBusy.set(false);
+    this.checkInNotice.set(undefined);
     this.selectedDate.set(todayBookingDate(new Date()));
     this.overrides.set(new Map());
     this.pendingSets.set(new Set());

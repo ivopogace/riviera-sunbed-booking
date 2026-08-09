@@ -19,7 +19,7 @@ public interface ListDailyBookings {
 	/**
 	 * The {@code CONFIRMED} and {@code COMPLETED} bookings for {@code venueId} on {@code date} (a
 	 * {@code LocalDate} in {@code Europe/Tirane}, invariant #6), as {@code (setId, code, checkedIn)}
-	 * rows ordered by set — a checked-in arrival stays listed, flagged (#583). Excludes
+	 * rows ordered by set — a checked-in arrival stays listed, flagged. Excludes
 	 * awaiting-payment and cancelled bookings. Empty (never {@code null}) when there are none.
 	 *
 	 * <p>Booking codes are bearer credentials (invariant #7), so this read is venue-scoped: the

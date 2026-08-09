@@ -63,7 +63,7 @@ export type RepriceErrorCode =
 export interface ConsoleDailyBooking {
   readonly setId: number;
   readonly code: string;
-  /** Already checked in (COMPLETED) — the row stays listed, flagged, after a scan (#583). */
+  /** Already checked in (COMPLETED) — the row stays listed, flagged, after a scan. */
   readonly checkedIn: boolean;
 }
 

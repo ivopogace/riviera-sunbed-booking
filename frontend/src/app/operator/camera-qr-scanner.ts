@@ -12,6 +12,8 @@ const DECODE_INTERVAL_MS = 250;
 export class CameraQrScanner extends QrScanner {
   private stream: MediaStream | undefined;
   private timer: ReturnType<typeof setInterval> | undefined;
+  /** Bumped by every start()/stop(): an await-crossing start only keeps a stream it still owns. */
+  private generation = 0;
 
   override async start(
     video: HTMLVideoElement | undefined,
@@ -21,13 +23,21 @@ export class CameraQrScanner extends QrScanner {
       throw new Error('camera scanning needs a preview element');
     }
     this.stop();
+    const generation = this.generation;
     const [{ default: jsQR }, stream] = await Promise.all([
       import('jsqr'),
       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }),
     ]);
+    if (generation !== this.generation) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
     this.stream = stream;
     video.srcObject = stream;
     await video.play();
+    if (generation !== this.generation) {
+      return;
+    }
 
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -47,6 +57,7 @@ export class CameraQrScanner extends QrScanner {
   }
 
   override stop(): void {
+    this.generation++;
     if (this.timer !== undefined) {
       clearInterval(this.timer);
       this.timer = undefined;

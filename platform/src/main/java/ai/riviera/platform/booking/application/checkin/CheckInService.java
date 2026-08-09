@@ -15,7 +15,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The check-in use case (#583). Per-venue authorization first (invariant #13):
+ * The check-in use case. Per-venue authorization first (invariant #13):
  * {@link VenueOwnership#assertOwns} on the acting operator, before any code lookup, so denial
  * discloses nothing. Then the guarded {@code CONFIRMED → COMPLETED} transition, scoped to today in
  * {@code Europe/Tirane} (invariant #6); a 0-row miss is classified against committed state — after

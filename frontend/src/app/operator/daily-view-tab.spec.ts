@@ -346,6 +346,25 @@ describe('DailyViewTab (#175)', () => {
     expect(submit(401, { code: 'UNAUTHENTICATED' })).toContain('session expired');
   });
 
+  it('closes the scanner when the venue switches in place (camera must not outlive the venue)', () => {
+    render();
+    const scanner = TestBed.inject(QrScanner);
+    const stop = vi.spyOn(scanner, 'stop');
+    (byId('checkin-scan-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    expect(stop).toHaveBeenCalled();
+    expect(byId('checkin-video')).toBeNull();
+    http.expectOne((r) => r.url.includes('/api/venues/2/bookings')).flush([]);
+    http.expectOne((r) => r.url.includes('/api/venues/2/availability')).flush([]);
+    http
+      .expectOne((r) => r.url.includes('/api/venues/2') && !r.url.includes('/bookings') && !r.url.includes('/availability'))
+      .flush({ id: 2, name: 'V2', beach: 'B', region: 'R', sets: [] });
+  });
+
   it('shows an empty arrivals state when there are no confirmed bookings', () => {
     render(SEED, []);
     expect(byId('daily-arrivals-empty')).toBeTruthy();

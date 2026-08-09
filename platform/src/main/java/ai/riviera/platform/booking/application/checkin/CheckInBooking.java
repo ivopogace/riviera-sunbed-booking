@@ -4,7 +4,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The staff check-in command (#583) — the inbound port the booking module's operator REST adapter
+ * The staff check-in command — the inbound port the booking module's operator REST adapter
  * calls to record, off the scanned or typed booking code, that the guest arrived: the guarded
  * {@code CONFIRMED → COMPLETED} transition, valid only on the booking's service date (today in
  * {@code Europe/Tirane}, invariant #6). Internal to {@code booking}, not cross-module {@code api/}

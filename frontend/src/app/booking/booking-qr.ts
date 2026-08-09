@@ -3,16 +3,11 @@ import { Component, effect, inject, input, signal } from '@angular/core';
 import { toString as qrSvg } from 'qrcode';
 
 /**
- * Renders a booking's code as a scannable QR image encoding the absolute `/booking/{code}` URL —
- * the same place the code already lives (the URL-path contract), so a generic phone camera lands
- * on the booking page and the operator console's scanner reads the code out of it. Rendering is
- * client-side only, as an SVG data URL via the `qrcode` lib — canvas-free, so the same real
- * encoder runs in jsdom specs; statically imported, because the consuming surfaces are already
- * lazy route chunks and a dynamic import trips the dev-server's first-use dependency
- * optimization mid-e2e. The code travels nowhere new (invariant #7). The
- * image sits on its own white tile so the QR keeps its quiet zone and scan contrast on glass and
- * porcelain surfaces alike; the status it attests is conveyed by the surrounding surface, and the
- * `alt` names the booking for screen readers (WCAG AA).
+ * Renders a booking as a scannable QR image encoding the absolute `/booking/{code}` URL, so a
+ * phone camera lands on the booking page and the console scanner reads the code out of it.
+ * Client-side only — an SVG data URL via a static, canvas-free `qrcode` import (rationale:
+ * `docs/plans/booking-checkin-qr.md`, F-3); the code travels nowhere new (invariant #7). The
+ * white tile keeps the QR's quiet zone on glass and porcelain; `alt` names the booking (WCAG AA).
  */
 /** One shared options object so the spec can reproduce the exact expected SVG. */
 export const QR_OPTIONS = { type: 'svg', errorCorrectionLevel: 'M', margin: 1 } as const;

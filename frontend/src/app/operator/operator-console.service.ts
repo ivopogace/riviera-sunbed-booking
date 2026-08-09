@@ -136,11 +136,6 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The venue's CONFIRMED online bookings for `date`, each as `(setId, code)` — the Daily view's
-   * Arrivals list. Owner-asserted server-side (invariant #13); the code is display-only
-   * (invariant #7) — shown for arrival verification, never logged.
-   */
-  /**
    * Check a guest in by scanned or typed booking code: the guarded `CONFIRMED -> COMPLETED`
    * transition, single-use and service-date-only server-side. The code rides the URL path (the
    * platform's standing code-in-path contract) and never appears in an error body or a log.
@@ -152,6 +147,11 @@ export class OperatorConsoleService {
     );
   }
 
+  /**
+   * The venue's CONFIRMED-or-checked-in bookings for `date`, each as `(setId, code, checkedIn)` —
+   * the Daily view's Arrivals list. Owner-asserted server-side (invariant #13); the code is
+   * display-only (invariant #7) — shown for arrival verification, never logged.
+   */
   dailyBookings(venueId: number, date: string): Observable<ConsoleDailyBooking[]> {
     return this.http.get<ConsoleDailyBooking[]>(`${this.base}/api/venues/${venueId}/bookings`, {
       params: new HttpParams().set('date', date),

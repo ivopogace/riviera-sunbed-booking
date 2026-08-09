@@ -36,8 +36,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * wrong-day answers name the booking's <em>date</em>; an unknown code and a foreign venue's code
  * are indistinguishable {@code BOOKING_NOT_FOUND} (non-enumerating).
  *
- * <p>Venue 1 (Miramar) is owned by the bootstrap operator the test logs in as; the service date is
- * "today in {@code Europe/Tirane}" (invariant #6), computed here exactly as the service does.
+ * <p>Every test books against its own freshly-created venue (granted to the bootstrap operator),
+ * so no residue lands on the shared seed venue; the service date is "today in
+ * {@code Europe/Tirane}" (invariant #6), computed here exactly as the service does.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -47,7 +48,6 @@ class CheckInFlowIT {
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
-	private static final long MIRAMAR = 1L;
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
@@ -57,22 +57,22 @@ class CheckInFlowIT {
 	JdbcClient jdbc;
 
 	private Cookie operatorSession;
-	private long setId;
 
 	@BeforeEach
-	void logInAndPickSet() throws Exception {
+	void logIn() throws Exception {
 		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
-		setId = jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v ORDER BY id LIMIT 1")
-				.param("v", MIRAMAR).query(Long.class).single();
+	}
+
+	private long firstSetOf(long venueId) {
+		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v ORDER BY id LIMIT 1")
+				.param("v", venueId).query(Long.class).single();
 	}
 
 	private long insertConfirmed(String code, long venueId, LocalDate date) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
-		long set = venueId == MIRAMAR ? setId
-				: jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v ORDER BY id LIMIT 1")
-						.param("v", venueId).query(Long.class).single();
+		long set = firstSetOf(venueId);
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
@@ -99,13 +99,14 @@ class CheckInFlowIT {
 
 	@Test
 	void checksInConfirmedBookingOnServiceDate() throws Exception {
+		long venue = newOwnedVenue("CI Ok Club");
 		String code = uniqueCode("CIOK");
-		long bookingId = insertConfirmed(code, MIRAMAR, today());
+		long bookingId = insertConfirmed(code, venue, today());
 
-		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", MIRAMAR, code)
+		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.setId").value(setId))
+				.andExpect(jsonPath("$.setId").value(firstSetOf(venue)))
 				.andExpect(jsonPath("$.bookingDate").value(today().toString()));
 
 		assertEquals("COMPLETED", statusOf(bookingId));
@@ -115,13 +116,14 @@ class CheckInFlowIT {
 
 	@Test
 	void secondCheckInIsRefusedDistinctly() throws Exception {
+		long venue = newOwnedVenue("CI Twice Club");
 		String code = uniqueCode("CITWICE");
-		long bookingId = insertConfirmed(code, MIRAMAR, today());
+		long bookingId = insertConfirmed(code, venue, today());
 
-		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", MIRAMAR, code)
+		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isOk());
-		MvcResult second = mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", MIRAMAR, code)
+		MvcResult second = mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("ALREADY_CHECKED_IN"))
@@ -133,11 +135,12 @@ class CheckInFlowIT {
 
 	@Test
 	void wrongDayScanIsRefusedNamingTheDate() throws Exception {
+		long venue = newOwnedVenue("CI Day Club");
 		String code = uniqueCode("CIDAY");
 		LocalDate tomorrow = today().plusDays(1);
-		long bookingId = insertConfirmed(code, MIRAMAR, tomorrow);
+		long bookingId = insertConfirmed(code, venue, tomorrow);
 
-		MvcResult result = mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", MIRAMAR, code)
+		MvcResult result = mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("WRONG_SERVICE_DATE"))
@@ -150,6 +153,7 @@ class CheckInFlowIT {
 
 	@Test
 	void foreignVenueCodeReadsAsNotFound() throws Exception {
+		long venue = newOwnedVenue("CI Foreign Base");
 		String foreign = uniqueCode("CIFOREIGN");
 		long otherVenue = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
@@ -164,12 +168,12 @@ class CheckInFlowIT {
 		long foreignBooking = insertConfirmed(foreign, otherVenue, today());
 
 		MvcResult foreignResult = mvc.perform(
-						post("/api/venues/{v}/bookings/{code}/check-in", MIRAMAR, foreign)
+						post("/api/venues/{v}/bookings/{code}/check-in", venue, foreign)
 								.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("BOOKING_NOT_FOUND"))
 				.andReturn();
-		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", MIRAMAR, "ZZZZ99999X")
+		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, "ZZZZ99999X")
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("BOOKING_NOT_FOUND"));
@@ -180,12 +184,13 @@ class CheckInFlowIT {
 
 	@Test
 	void cancelledCodeReadsAsNotFound() throws Exception {
+		long venue = newOwnedVenue("CI Gone Club");
 		String code = uniqueCode("CIGONE");
-		long bookingId = insertConfirmed(code, MIRAMAR, today());
+		long bookingId = insertConfirmed(code, venue, today());
 		jdbc.sql("UPDATE booking SET status = 'CANCELLED', cancelled_at = now() WHERE id = :id")
 				.param("id", bookingId).update();
 
-		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", MIRAMAR, code)
+		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("BOOKING_NOT_FOUND"));

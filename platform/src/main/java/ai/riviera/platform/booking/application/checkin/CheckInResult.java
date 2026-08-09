@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * The check-in outcomes (#583) — a closed set the adapter switches over exhaustively. Expected,
+ * The check-in outcomes — a closed set the adapter switches over exhaustively. Expected,
  * caller-handled flow (a lost race, a wrong day, an unknown code), so values rather than
  * exceptions; none carries the booking code (invariant #7).
  */
