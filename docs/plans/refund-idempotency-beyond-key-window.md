@@ -223,16 +223,15 @@ No published surface changes: `RefundResult` keeps its two variants, no `spi/` i
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — write `recoversAndRecordsWhenRefundCreateTimesOut` and watch it fail
-with a single attempt.
+**Next action:** Phase 2 — grep the false premise and correct each claim, then the runbook entry.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Adopt an existing Stripe refund instead of creating a second (+ the adoption counter) | ✅ | see the Phase-0 commit |
-| 1 — Same-key immediate replay on a lost refund response | ⏳ | |
-| 2 — The false-premise claim sweep + runbook | | |
+| 0 — Adopt an existing Stripe refund instead of creating a second (+ the adoption counter) | ✅ | `2ff5b5d` |
+| 1 — Same-key immediate replay on a lost refund response | ✅ | see the Phase-1 commit |
+| 2 — The false-premise claim sweep + runbook | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

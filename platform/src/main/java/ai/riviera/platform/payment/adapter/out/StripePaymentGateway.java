@@ -92,7 +92,7 @@ class StripePaymentGateway implements PaymentGateway {
 				.setIdempotencyKey(idempotencyKey(booking))                  // derived from booking id (#8)
 				.build();
 		try {
-			PaymentIntent intent = createWithRecovery(params, options, booking);
+			PaymentIntent intent = createIntentWithRecovery(params, options, booking);
 			payments.register(new NewPayment(booking, intent.getId(), amount.minor(), amount.currency(),
 					intent.getClientSecret()));
 			return new PaymentOutcome.Pending(intent.getClientSecret(), intent.getId());
@@ -118,7 +118,7 @@ class StripePaymentGateway implements PaymentGateway {
 	 * caller's {@code Failed} mapping. A second consecutive timeout also propagates: Stripe
 	 * auto-expires the unconfirmed intent (no charge), the documented low-impact residual.
 	 */
-	private PaymentIntent createWithRecovery(PaymentIntentCreateParams params, RequestOptions options,
+	private PaymentIntent createIntentWithRecovery(PaymentIntentCreateParams params, RequestOptions options,
 			BookingRef booking) throws StripeException {
 		try {
 			return stripe.v1().paymentIntents().create(params, options);
@@ -161,8 +161,7 @@ class StripePaymentGateway implements PaymentGateway {
 			if (!alreadyPaid.isEmpty()) {
 				return adopt(booking, alreadyPaid, amount);
 			}
-			Refund refund = stripe.v1().refunds().create(refundParams(intentId.get(), amount),
-					refundOptions(booking));
+			Refund refund = createRefundWithRecovery(booking, intentId.get(), amount);
 			payments.markRefunded(booking, amount.minor(), refund.getId());
 			return new RefundResult.Refunded(refund.getId());
 		}
@@ -215,17 +214,31 @@ class StripePaymentGateway implements PaymentGateway {
 		return new RefundResult.Refunded(refundId);
 	}
 
-	private static RefundCreateParams refundParams(String intentId, Money amount) {
-		return RefundCreateParams.builder()
+	/**
+	 * Create the refund, recovering from one whose response was lost to a timeout — the refund twin
+	 * of {@link #createIntentWithRecovery}. The key is still valid this instant, so replaying once
+	 * returns the refund Stripe may already have made rather than making a second. A non-connection
+	 * {@link StripeException} is a definitive answer and is not replayed. A second consecutive
+	 * timeout propagates to {@code Failed}; the refund is then recovered by the next replay's
+	 * existence read, which is the layer that does not expire.
+	 */
+	private Refund createRefundWithRecovery(BookingRef booking, String intentId, Money amount)
+			throws StripeException {
+		RefundCreateParams params = RefundCreateParams.builder()
 				.setPaymentIntent(intentId)
 				.setAmount(amount.minor())                                   // integer minor units (#5)
 				.build();
-	}
-
-	private static RequestOptions refundOptions(BookingRef booking) {
-		return RequestOptions.builder()
+		RequestOptions options = RequestOptions.builder()
 				.setIdempotencyKey(refundIdempotencyKey(booking))            // derived from booking id (#8)
 				.build();
+		try {
+			return stripe.v1().refunds().create(params, options);
+		}
+		catch (ApiConnectionException e) {
+			log.warn("Stripe refund create timed out for booking {} — replaying with the same "
+					+ "idempotency key to recover any refund made (code={})", booking.value(), e.getCode());
+			return stripe.v1().refunds().create(params, options);
+		}
 	}
 
 	@Override

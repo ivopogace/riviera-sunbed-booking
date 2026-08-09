@@ -318,6 +318,45 @@ class StripePaymentGatewayTest {
 	}
 
 	@Test
+	void recoversAndRecordsWhenRefundCreateTimesOut() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds());
+		Refund recovered = stripeRefund("re_recovered", REFUND_SUCCEEDED, 2250L);
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenThrow(new ApiConnectionException("simulated read timeout"))
+				.thenReturn(recovered);
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result,
+				"the replay resolves the lost response inside the key window");
+		assertEquals("re_recovered", refunded.refundId());
+
+		ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+		verify(fixture.refunds(), times(2)).create(any(RefundCreateParams.class), options.capture());
+		options.getAllValues().forEach(o -> assertEquals("booking-42-refund", o.getIdempotencyKey(),
+				"both attempts carry the same key, so Stripe returns the refund it already made"));
+		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_recovered");
+		assertEquals(0.0, fixture.adoptedCount(), "a same-key replay is a recovery, not an adoption");
+	}
+
+	@Test
+	void failsWhenBothRefundAttemptsTimeOut() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds());
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenThrow(new ApiConnectionException("timeout 1"))
+				.thenThrow(new ApiConnectionException("timeout 2"));
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		assertInstanceOf(RefundResult.Failed.class, result,
+				"the publication stays outstanding; the next replay adopts whatever Stripe ended up holding");
+		verify(fixture.refunds(), times(2)).create(any(RefundCreateParams.class), any(RequestOptions.class));
+		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+	}
+
+	@Test
 	void refundWithoutAKnownCollectionFails() {
 		StripeClient stripe = mock(StripeClient.class);
 		Payments payments = mock(Payments.class);
