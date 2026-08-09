@@ -36,9 +36,29 @@ class JdbcBookingsDailyTakingsIT {
 	private record SetRef(long setId, long venueId) {
 	}
 
-	private SetRef onlineSet() {
-		return jdbc.sql("SELECT id, venue_id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"))).single();
+	/**
+	 * A venue of this test's own, with one online set.
+	 *
+	 * <p>Deliberately not the shared seed venue. {@code grossOnlineTakings} sums <em>every</em>
+	 * {@code CONFIRMED} booking for a {@code (venue_id, booking_date)} — no set filter — and this class
+	 * deletes nothing, so booking against a venue other tests also use makes the expected total a
+	 * function of test order and of the real calendar (several ITs date bookings
+	 * {@code LocalDate.now().plusYears(1).plusDays(N)}). Owning the venue makes the sum contain only
+	 * this test's rows, whatever else the suite does.
+	 */
+	private SetRef ownVenueWithOnlineSet(String name) {
+		long venueId = jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
+				VALUES (:name, 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
+				RETURNING id
+				""").param("name", "Takings " + name).query(Long.class).single();
+		long setId = jdbc.sql("""
+				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
+				                          price_currency, grid_x, grid_y)
+				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1)
+				RETURNING id
+				""").param("venue", venueId).query(Long.class).single();
+		return new SetRef(setId, venueId);
 	}
 
 	private void insertBooking(String code, long venueId, long setId, LocalDate date,
@@ -66,7 +86,7 @@ class JdbcBookingsDailyTakingsIT {
 
 	@Test
 	void sumsOnlyConfirmedOnlineForVenueAndDate() {
-		SetRef target = onlineSet();
+		SetRef target = ownVenueWithOnlineSet("Sum Venue");
 		LocalDate day = LocalDate.of(2027, 8, 10);
 
 		// Three CONFIRMED online bookings for the target venue on the day: gross = 11000.
@@ -88,7 +108,7 @@ class JdbcBookingsDailyTakingsIT {
 
 	@Test
 	void emptyDayYieldsZeroInEur() {
-		SetRef target = onlineSet();
+		SetRef target = ownVenueWithOnlineSet("Empty Venue");
 		OnlineTakings takings =
 				dailyTakings.grossOnlineTakings(new VenueId(target.venueId()), LocalDate.of(2099, 1, 1));
 

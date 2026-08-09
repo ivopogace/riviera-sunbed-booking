@@ -286,7 +286,7 @@ e2e. No new route, no new service call.
 
 ## Execution status
 
-**Stage pointer:** `CI re-run after a pre-existing flake (F-12) — Sonar gate next`
+**Stage pointer:** `F-12 fixed — awaiting green CI, then the Sonar gate`
 
 **Next action:** Confirm backend CI is green on this push (the F-12 flake blocked the previous one and
 the token cannot re-run jobs), then read the Sonar issue list — `SonarCloud scan` reported `skipped`
@@ -320,7 +320,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-8 | review | `lastOpenedServiceDay(Instant)` was an instance method on a clock-carrying component that ignores the clock, next to one that doesn't. | **fixed** — `static`, with the Javadoc saying that is the contract |
 | F-9 | review | The sweep held two clock sources, so "one reading bounds all three arms" depended on both being wired to the same bean. | **fixed** — F-8's static projection removes the `BookingCutoff` dependency entirely |
 | F-10 | review | `payWindowClosed` was computed for every status, reporting `true` on delivered `CONFIRMED`/`CANCELLED` bookings where its own documented contract is nonsense. | **fixed** — scoped to `AWAITING_PAYMENT`, pinned by `neverReportsAClosedPayWindowForABookingThatIsNotAwaitingPayment` |
-| F-12 | CI (red, `3c5adad`) | `JdbcBookingsDailyTakingsIT.sumsOnlyConfirmedOnlineForVenueAndDate` — expected 11000, got 14000. Unrelated to the fence: the test sums every `CONFIRMED` booking for the shared seed venue on a hardcoded date, with no isolation, so another test's row inflates it. | **deferred → issue #579, not mine.** Reproduced on `origin/main` in a clean worktree with identical numbers (1540 tests, 1 failed), and a third run of the same branch code **passed** — order-dependent and pre-existing. `main`'s own CI is green, which is why it had gone unnoticed. Not fixed here: it is a different test in a different module, and a hermetic-fixture fix needs its own review. |
+| F-12 | CI (red, `3c5adad` **and** `db16f21`) | `JdbcBookingsDailyTakingsIT.sumsOnlyConfirmedOnlineForVenueAndDate` — expected 11000, got 14000. Unrelated to the fence: the test sums every `CONFIRMED` booking for the shared seed venue on a hardcoded date, with no isolation, so another test's row inflates it. | **fixed here** (issue #579 filed with the evidence). First deferred as a pre-existing flake — it reproduces on `origin/main` in a clean worktree with identical numbers, and a third local run of unchanged branch code passed. That deferral did not survive contact with CI: it went red **twice** on this branch while `main`'s CI stays green, and the session token cannot re-run jobs (`403`), so there was no path to green that left it alone. The fix is the one #579 recommends — the test owns its venue, so its sum can only contain its own rows. Confined to one test class; no production code. |
 | F-11 | review | `ScheduledQueryTimeoutIT` passed `LocalDate.now()` — the JVM default zone, in the file a future author copies the signature from. | **fixed** — explicit `Europe/Tirane` |
 
 ---
@@ -351,6 +351,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — the in-test `Bookings` fake's new parameter
 - `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingsTransitionIT.java` — the JDBC-level three-arm proof: the new date bound selects on its own and does not over-select
 - `platform/src/test/java/ai/riviera/platform/ScheduledQueryTimeoutIT.java` — the sweep read's bounded-query assertion, whose call gains the third argument
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingsDailyTakingsIT.java` — F-12: the takings test owns its venue instead of sharing the seed one (see the findings register; issue #579)
 - `frontend/src/app/booking/booking.model.ts` — `payWindowClosed`
 - `frontend/src/app/booking/booking-view.ts` — the closed-window panel
 - `frontend/src/app/booking/booking-view.spec.ts` — AC-7 unit half
