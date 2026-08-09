@@ -19,6 +19,8 @@ import com.stripe.service.RefundService;
 import com.stripe.service.V1Services;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import ai.riviera.platform.shared.ObservabilityMetrics;
@@ -88,7 +90,7 @@ class StripePaymentGatewayTest {
 		when(refunds.list(any(RefundListParams.class))).thenReturn(page);
 	}
 
-	private static Refund stripeRefund(String id, String status, long amount) {
+	private static Refund stripeRefund(String id, String status, Long amount) {
 		Refund refund = mock(Refund.class);
 		when(refund.getId()).thenReturn(id);
 		when(refund.getStatus()).thenReturn(status);
@@ -262,6 +264,23 @@ class StripePaymentGatewayTest {
 	}
 
 	@Test
+	void looksForExistingRefundsOnlyOnThisBookingsPaymentIntent() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds());
+		Refund created = stripeRefund("re_xyz", REFUND_SUCCEEDED, 2250L);
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenReturn(created);
+
+		fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		// Unscoped, the read would return the account's refunds and every booking would adopt a stranger's.
+		ArgumentCaptor<RefundListParams> params = ArgumentCaptor.forClass(RefundListParams.class);
+		verify(fixture.refunds()).list(params.capture());
+		assertEquals(INTENT, params.getValue().getPaymentIntent(),
+				"the existence read is scoped to this booking's PaymentIntent — the whole guarantee rests on it");
+	}
+
+	@Test
 	void countsAnAdoptedRefund() throws StripeException {
 		RefundFixture fixture = refundFixture();
 		stripeHolds(fixture.refunds(), stripeRefund("re_first", REFUND_SUCCEEDED, 2250L));
@@ -273,15 +292,46 @@ class StripePaymentGatewayTest {
 	}
 
 	@Test
-	void adoptsWhatStripeActuallyRefundedWhenItDiffersFromTheRequest() throws StripeException {
+	void refusesToActWhenTheHeldRefundIsSmallerThanTheOneRequested() throws StripeException {
 		RefundFixture fixture = refundFixture();
-		stripeHolds(fixture.refunds(), stripeRefund("re_first", REFUND_SUCCEEDED, 2250L));
+		stripeHolds(fixture.refunds(), stripeRefund("re_manual", REFUND_SUCCEEDED, 1000L));
 
-		fixture.gateway().refund(BOOKING, new Money(4500L, "EUR"));
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(4500L, "EUR"));
 
-		// Money that already moved is the truth; topping up the difference is booking's decision.
+		// Reporting success here would complete the publication and strand a guest still owed 3500.
 		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
-		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_first");
+		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
+				"a shortfall is neither adopted nor topped up — it stays outstanding for a human");
+		assertEquals("refund_mismatch", failed.reason());
+		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+		assertEquals(0.0, fixture.adoptedCount());
+	}
+
+	@Test
+	void refusesToActWhenSeveralLiveRefundsAreHeld() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds(), stripeRefund("re_a", REFUND_SUCCEEDED, 1125L),
+				stripeRefund("re_b", REFUND_SUCCEEDED, 1125L));
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		// Summing them would record one refund's id against another's money; the pair needs a human.
+		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
+		assertInstanceOf(RefundResult.Failed.class, result);
+		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+	}
+
+	@Test
+	void refusesToActWhenTheHeldRefundReportsNoAmount() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds(), stripeRefund("re_amountless", REFUND_SUCCEEDED, null));
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		// An unboxing NPE here would escape the StripeException catch and wedge the publication forever.
+		assertInstanceOf(RefundResult.Failed.class, result,
+				"an amount the gateway did not report is refused, not unboxed");
+		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
 	}
 
 	@Test
@@ -300,17 +350,18 @@ class StripePaymentGatewayTest {
 		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
 	}
 
-	@Test
-	void createsAFreshRefundWhenTheOnlyStripeRefundIsDead() throws StripeException {
+	@ParameterizedTest
+	@ValueSource(strings = {"failed", "canceled"})
+	void createsAFreshRefundWhenTheOnlyStripeRefundIsDead(String deadStatus) throws StripeException {
 		RefundFixture fixture = refundFixture();
-		stripeHolds(fixture.refunds(), stripeRefund("re_dead", "failed", 2250L));
+		stripeHolds(fixture.refunds(), stripeRefund("re_dead", deadStatus, 2250L));
 		Refund created = stripeRefund("re_new", REFUND_SUCCEEDED, 2250L);
 		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
 				.thenReturn(created);
 
 		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
 
-		// A failed refund returned no money, so the tourist is still owed it.
+		// A dead refund returned no money, so the tourist is still owed it.
 		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result);
 		assertEquals("re_new", refunded.refundId());
 		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_new");

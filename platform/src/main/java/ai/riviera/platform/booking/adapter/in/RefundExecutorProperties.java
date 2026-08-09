@@ -8,9 +8,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * The bounds of the refund bulkhead ({@link RefundExecutorConfig}), externalised because every number
- * here is sized against a <em>gateway</em> budget — one refund is one blocking round-trip, bounded
- * today at 25s by Stripe's configured connect + read timeouts with no SDK retries (pinned by
- * {@code StripeConfigTest}). The full sizing argument: {@code RESPONSIBILITIES.md} §{@code booking}.
+ * here is sized against a <em>gateway</em> budget. One Stripe call is one blocking round-trip, bounded
+ * at 25s by the configured connect + read timeouts with no SDK retries (pinned by
+ * {@code StripeConfigTest}); one <em>refund</em> is up to <strong>three</strong> such calls — the
+ * existence read, the create, and the create's same-key replay — so the worst-case occupancy a worker
+ * can reach is 75s, and only in the mixed degradation where reads answer but writes time out (a read
+ * that times out ends the refund at 25s). The full sizing argument:
+ * {@code RESPONSIBILITIES.md} §{@code booking}.
  *
  * <p>The shipped values live in {@code application.properties}; the defaults below are a backstop for a
  * context bound without it. The {@code ${RIVIERA_REFUND_*:…}} placeholders are also the only reason the

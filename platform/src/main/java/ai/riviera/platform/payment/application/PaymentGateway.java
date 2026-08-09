@@ -28,11 +28,17 @@ public interface PaymentGateway {
 	PaymentOutcome initiate(BookingRef booking, Money amount);
 
 	/**
-	 * Refund {@code amount} for the booking (U6). Server-initiated and <strong>at most once per
-	 * booking</strong>, however often it is called (invariant #8/#10): the stub succeeds in-process;
-	 * the Stripe adapter adopts the refund it already holds against the booking's PaymentIntent, or
-	 * creates one and records it. Returns a typed outcome (never throws on an expected gateway
-	 * failure / a missing collection).
+	 * Refund {@code amount} for the booking (U6). Server-initiated (invariant #8/#10): the stub
+	 * succeeds in-process; the Stripe adapter adopts the refund it already holds against the booking's
+	 * PaymentIntent, or creates one and records it. Returns a typed outcome (never throws on an
+	 * expected gateway failure / a missing collection).
+	 *
+	 * <p><strong>At-most-once is the collecting adapter's guarantee, not this interface's.</strong>
+	 * The caller may replay this call at any distance in time and the Stripe adapter will not move
+	 * money twice; the stub collects nothing and records nothing, so it has nothing to be idempotent
+	 * about. A future collecting adapter owes the same guarantee — there is no shared conformance test
+	 * that would force it, which is a known gap rather than an oversight
+	 * ({@code RESPONSIBILITIES.md} §{@code payment}).
 	 */
 	RefundResult refund(BookingRef booking, Money amount);
 
