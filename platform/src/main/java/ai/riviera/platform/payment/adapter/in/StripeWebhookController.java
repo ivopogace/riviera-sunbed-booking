@@ -50,6 +50,10 @@ import ai.riviera.platform.payment.adapter.out.StripeProperties;
  *       in Stripe — the intent may be retried, so the claim is <em>not</em> released).</li>
  * </ol>
  *
+ * <p>Every outcome goes through the <strong>guarded</strong> transition ({@code Payments#markStatus}):
+ * only an open record moves, and the event is published only when one did — so a late or out-of-order
+ * delivery is a no-op rather than an overwrite, and Stripe's lack of ordering guarantees costs nothing.
+ *
  * <p>The whole handler is one transaction: if it fails after the dedup insert, the transaction
  * (including that insert) rolls back and Stripe re-delivers — at-least-once without a broker.
  * The {@code booking} module reacts to the published events; this controller never imports
@@ -103,7 +107,7 @@ class StripeWebhookController {
 			case EVENT_SUCCEEDED -> paymentIntentId(event).ifPresent(this::onSucceeded);
 			case EVENT_CANCELED -> paymentIntentId(event).ifPresent(this::onCanceled);
 			case EVENT_PAYMENT_FAILED -> paymentIntentId(event)
-					.ifPresent(id -> payments.markStatus(id, PaymentStatus.FAILED));
+					.ifPresent(id -> applied(id, PaymentStatus.FAILED));
 			default -> log.debug("ignoring Stripe event type {}", event.getType());
 		}
 		return ResponseEntity.ok("ok");
@@ -121,15 +125,34 @@ class StripeWebhookController {
 	}
 
 	private void onSucceeded(String paymentIntentId) {
-		payments.markStatus(paymentIntentId, PaymentStatus.SUCCEEDED);
+		if (!applied(paymentIntentId, PaymentStatus.SUCCEEDED)) {
+			return;
+		}
 		bookingRef(paymentIntentId).ifPresent(
 				ref -> publisher.publishEvent(new PaymentConfirmed(ref, paymentIntentId)));
 	}
 
 	private void onCanceled(String paymentIntentId) {
-		payments.markStatus(paymentIntentId, PaymentStatus.CANCELED);
+		if (!applied(paymentIntentId, PaymentStatus.CANCELED)) {
+			return;
+		}
 		bookingRef(paymentIntentId).ifPresent(
 				ref -> publisher.publishEvent(new PaymentCanceled(ref)));
+	}
+
+	/**
+	 * Whether the outcome moved the payment record. A terminal record does not move, and its event
+	 * is then <strong>not</strong> published: a late {@code canceled} must not ask {@code booking} to
+	 * release the claim of a booking whose payment went through (invariant #2), and a late
+	 * {@code succeeded} must not announce a confirmation for a refunded collection.
+	 */
+	private boolean applied(String paymentIntentId, PaymentStatus status) {
+		boolean applied = payments.markStatus(paymentIntentId, status);
+		if (!applied) {
+			log.warn("no open payment record for PaymentIntent {} — {} not applied",
+					paymentIntentId, status);
+		}
+		return applied;
 	}
 
 	private Optional<BookingRef> bookingRef(String paymentIntentId) {

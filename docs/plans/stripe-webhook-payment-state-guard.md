@@ -238,14 +238,14 @@ unchanged. The only addition is a 5xx on a previously-silent failure path.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — gate `PaymentConfirmed`/`PaymentCanceled` publication on a real transition.
+**Next action:** Phase 2 — make an unreadable handled event a rolled-back, retryable failure.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Guard `markStatus` at the SQL seam (#568) | ✅ | `<phase-0>` |
-| 1 — Gate event publication on a real transition (#568) | | |
+| 0 — Guard `markStatus` at the SQL seam (#568) | ✅ | `0216f86` |
+| 1 — Gate event publication on a real transition (#568) | ✅ | `<phase-1>` |
 | 2 — Make an unreadable handled event retryable (#570) | | |
 | 3 — Docs freshness + close-out | | |
 

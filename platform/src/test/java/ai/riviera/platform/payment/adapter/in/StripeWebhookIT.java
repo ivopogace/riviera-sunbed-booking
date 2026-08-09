@@ -173,6 +173,36 @@ class StripeWebhookIT {
 	}
 
 	@Test
+	void lateFailureAfterSuccessLeavesThePaymentSucceeded() throws Exception {
+		payments.register(new NewPayment(new BookingRef(7101L), "pi_late_fail", 4500L, "EUR", "cs_test_secret"));
+		String succeeded = eventJson("evt_late_ok_1", "payment_intent.succeeded", "pi_late_fail");
+		postSigned(succeeded, sign(succeeded), 200);
+
+		// Stripe does not guarantee order: the declined attempt's event can arrive after the retry's.
+		String failed = eventJson("evt_late_fail_1", "payment_intent.payment_failed", "pi_late_fail");
+		postSigned(failed, sign(failed), 200);
+
+		assertEquals("SUCCEEDED", statusOf("pi_late_fail"),
+				"a late payment_failed never records collected money as failed (invariant #8)");
+	}
+
+	@Test
+	void lateCancelAfterSuccessPublishesNoRelease() throws Exception {
+		payments.register(new NewPayment(new BookingRef(7102L), "pi_late_cancel", 4500L, "EUR", "cs_test_secret"));
+		String succeeded = eventJson("evt_late_ok_2", "payment_intent.succeeded", "pi_late_cancel");
+		postSigned(succeeded, sign(succeeded), 200);
+
+		String canceled = eventJson("evt_late_cancel_1", "payment_intent.canceled", "pi_late_cancel");
+		postSigned(canceled, sign(canceled), 200);
+
+		assertEquals("SUCCEEDED", statusOf("pi_late_cancel"),
+				"a late canceled never voids a collected payment");
+		assertEquals(0, events.stream(PaymentCanceled.class)
+				.filter(e -> e.bookingRef().equals(new BookingRef(7102L))).count(),
+				"no claim release is announced for a booking whose payment went through (invariant #2)");
+	}
+
+	@Test
 	void canceledPublishesPaymentCanceled() throws Exception {
 		payments.register(new NewPayment(new BookingRef(7005L), "pi_hook_cancel", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_cancel_1", "payment_intent.canceled", "pi_hook_cancel");
