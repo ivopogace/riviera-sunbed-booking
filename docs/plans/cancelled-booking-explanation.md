@@ -219,15 +219,15 @@ one branch renders and the id can never duplicate.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — add `cancelReason` to `BookingDetailView` + the FE `BookingDetail`.
+**Next action:** Phase 2 — write the failing `booking-view.spec.ts` cases for AC-1…AC-6.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Carry `cancel_reason` to the view use case (AC-7, AC-8) | ✅ | `<phase-0>` |
-| 1 — Expose `cancelReason` on the wire + FE contract | ⏳ | |
-| 2 — The `CANCELLED` panel + amount-label fix (AC-1…AC-6) | | |
+| 1 — Expose `cancelReason` on the wire + FE contract | ✅ | `<phase-1>` |
+| 2 — The `CANCELLED` panel + amount-label fix (AC-1…AC-6) | ⏳ | |
 | 3 — e2e + a11y coverage (AC-9) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -238,7 +238,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (`Repo hygiene (diff-scoped)`, run 31297913413) | The File-structure section omitted `WithdrawRequestServiceTest.java` — a construction site the generalization audit fixed, i.e. exactly the "not the interesting file" shape #533 exists to catch | fixed-in-`<phase-1>` |
 
 ---
 
@@ -252,6 +252,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingDetailView.java` — the wire field
 - `platform/src/test/java/ai/riviera/platform/booking/application/view/ViewBookingServiceTest.java` — AC-7
 - `platform/src/test/java/ai/riviera/platform/booking/CancelBookingIT.java` — AC-8 round-trip
+- `platform/src/test/java/ai/riviera/platform/booking/application/request/WithdrawRequestServiceTest.java` — construction site of the widened `BookingRecord` (generalization audit, R-3)
 - `frontend/src/app/booking/booking.model.ts` — `CancelReason` union + `BookingDetail.cancelReason`
 - `frontend/src/app/booking/booking-view.ts` — the `CANCELLED` panel + amount-label refinement
 - `frontend/src/app/booking/booking-view.spec.ts` — AC-1…AC-6

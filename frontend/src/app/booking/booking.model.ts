@@ -132,6 +132,12 @@ export interface BookingDetail {
    * backend does not even ask the question before payment, so this can't be read as an oracle.
    */
   readonly emailWithheld: boolean;
+  /**
+   * Which cancellation this booking went through; null while live, and null for a cancellation
+   * that never charged. Server-owned: `refundedAmount` alone cannot tell a venue's weather refund
+   * from the guest's own cancellation, and only one of those is news to the guest.
+   */
+  readonly cancelReason: CancelReason | null;
 }
 
 /** The open PaymentIntent of an `AWAITING_PAYMENT` booking (the "Pay now" resume path). */
@@ -158,6 +164,14 @@ export interface MyBookingSummary {
   readonly amount: MoneyView;
   readonly requestExpiresAt: string | null;
 }
+
+/**
+ * Why a booking was cancelled, mirroring the backend `RefundReason` (and the V14 `cancel_reason`
+ * CHECK tokens). Only a cancellation that took a refund decision carries one, so it is `null` for a
+ * booking released without ever being charged — the abandoned-payment sweep and the
+ * `payment_intent.canceled` webhook both leave it unset. `CONFLICT` is reserved and unused in v1.
+ */
+export type CancelReason = 'POLICY' | 'WEATHER' | 'CONFLICT';
 
 /** The refund tier returned with a cancellation (mirrors the backend `CancelOutcome.Tier`). */
 export type RefundTier = 'FULL' | 'PARTIAL' | 'NONE';

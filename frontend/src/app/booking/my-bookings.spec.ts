@@ -36,6 +36,7 @@ function detail(
     payment: null,
     emailWithheld: false,
     payWindowClosed: false,
+    cancelReason: null,
     ...extra,
   };
 }

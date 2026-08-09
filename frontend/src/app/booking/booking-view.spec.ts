@@ -33,6 +33,7 @@ const DETAIL: BookingDetail = {
   payment: null,
   emailWithheld: false,
   payWindowClosed: false,
+  cancelReason: null,
 };
 
 const WITHDRAWAL: Withdrawal = { code: 'ABCD234567', status: 'WITHDRAWN' };

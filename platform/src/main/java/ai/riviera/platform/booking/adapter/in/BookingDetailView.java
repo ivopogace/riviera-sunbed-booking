@@ -14,13 +14,15 @@ import java.time.Instant;
  * confirmation mail was suppressed — never before payment, so this code-gated view cannot be used as
  * a suppression oracle (D-8). {@code payWindowClosed} says the service day has opened, so
  * {@code payment} is {@code null} and no payment may still be taken (invariant #4).
- * Mirrors the FE {@code BookingDetail} type.
+ * {@code cancelReason} names which cancellation a cancelled booking went through
+ * ({@code POLICY}/{@code WEATHER}/{@code CONFLICT}), and is {@code null} both for a live booking and
+ * for one cancelled without ever being charged. Mirrors the FE {@code BookingDetail} type.
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, MoneyView amount, boolean cancellable, boolean withdrawable,
 		boolean beforeCutoff, MoneyView refundIfCancelledNow, MoneyView refundedAmount,
 		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld,
-		boolean payWindowClosed) {
+		boolean payWindowClosed, String cancelReason) {
 
 	static BookingDetailView of(BookingDetail d) {
 		return new BookingDetailView(d.code(), d.status().name(), d.venueId().value(), d.venueName(),
@@ -30,7 +32,8 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 				d.payment() == null ? null
 						: new PaymentCredentialsView(d.payment().clientSecret(),
 								d.payment().paymentIntentId()),
-				d.emailWithheld(), d.payWindowClosed());
+				d.emailWithheld(), d.payWindowClosed(),
+				d.cancelReason() == null ? null : d.cancelReason().name());
 	}
 
 	/** The open PaymentIntent's credentials — present only while {@code AWAITING_PAYMENT}. */
