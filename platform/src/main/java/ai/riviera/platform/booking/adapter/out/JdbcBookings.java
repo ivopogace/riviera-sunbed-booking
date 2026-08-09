@@ -14,7 +14,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.Bookings;
@@ -37,6 +41,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 @Repository
 class JdbcBookings implements Bookings {
 
+	private static final Logger log = LoggerFactory.getLogger(JdbcBookings.class);
+
 	// Named-parameter keys reused across the lifecycle SQL (keep them in lockstep, no typos).
 	private static final String PARAM_STATUS = "status";
 	private static final String PARAM_AWAITING = "awaiting";
@@ -53,6 +59,7 @@ class JdbcBookings implements Bookings {
 	private static final String COL_AMOUNT_CURRENCY = "amount_currency";
 	private static final String COL_REQUEST_EXPIRES_AT = "request_expires_at";
 	private static final String COL_CUSTOMER_ID = "customer_id";
+	private static final String COL_CANCEL_REASON = "cancel_reason";
 
 	private final JdbcClient jdbc;
 
@@ -276,7 +283,8 @@ class JdbcBookings implements Bookings {
 	public Optional<BookingRecord> findByCode(String code) {
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
-				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at
+				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
+				       cancel_reason
 				FROM booking
 				WHERE code = :code
 				""")
@@ -293,7 +301,8 @@ class JdbcBookings implements Bookings {
 		// uniformly; a guest booking (NULL account_id) can never match.
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
-				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at
+				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
+				       cancel_reason
 				FROM booking
 				WHERE account_id = :account
 				ORDER BY booking_date DESC, id DESC
@@ -308,6 +317,7 @@ class JdbcBookings implements Bookings {
 		java.sql.Timestamp cancelledAt = rs.getTimestamp("cancelled_at");
 		Long refundMinor = rs.getObject("refund_minor", Long.class);
 		java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
+		String cancelReason = rs.getString(COL_CANCEL_REASON);
 		return new BookingRecord(
 				rs.getLong("id"), rs.getString("code"),
 				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
@@ -316,7 +326,28 @@ class JdbcBookings implements Bookings {
 				rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 				cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
-				requestExpiresAt == null ? null : requestExpiresAt.toInstant());
+				requestExpiresAt == null ? null : requestExpiresAt.toInstant(),
+				refundReasonOf(cancelReason));
+	}
+
+	/**
+	 * The {@code cancel_reason} token as a {@link RefundReason}, or {@code null} when it is absent
+	 * <em>or</em> not a constant this build knows. Tolerant on purpose: this mapper also serves the
+	 * account-scoped list, so a token added to the V14 CHECK ahead of the enum would otherwise throw
+	 * out of every row of {@code GET /api/me/bookings}, not just the one view that reads the field.
+	 * An unknown reason degrades to the same neutral copy an absent one gets.
+	 */
+	private static RefundReason refundReasonOf(String token) {
+		if (token == null) {
+			return null;
+		}
+		try {
+			return RefundReason.valueOf(token);
+		}
+		catch (IllegalArgumentException unknownToken) {
+			log.warn("ignoring unknown booking.cancel_reason token '{}' — treating it as no reason", token);
+			return null;
+		}
 	}
 
 	@Override
@@ -361,7 +392,7 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<CancelledBooking> cancelConfirmed(long bookingId, Instant cancelledAt,
-			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason) {
+			long refundMinor, RefundReason reason) {
 		// Guarded CONFIRMED -> CANCELLED. RETURNING yields the facts only on a real transition, so a
 		// double-cancel (already CANCELLED) is a 0-row empty no-op — the caller then releases the set,
 		// refunds, and publishes BookingCancelled exactly once. The reason (POLICY/WEATHER, U9) is the

@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.application.view;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Optional;
@@ -11,6 +12,7 @@ import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.CancellationWindow;
 import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.api.PaymentCredentialsLookup;
@@ -218,14 +220,53 @@ class ViewBookingServiceTest {
 		assertThat(service.byCode(CODE).orElseThrow().payWindowClosed()).isFalse();
 	}
 
+	/**
+	 * The reason separates the two cancellations that carry a refund: a venue's weather refund is one
+	 * the guest never asked for, and {@code refundedAmount} alone cannot tell it from their own
+	 * cancellation. Carried verbatim off the row — this service classifies nothing.
+	 */
+	@Test
+	void carriesTheCancellationReason() {
+		givenCancelledBooking(RefundReason.WEATHER, 4500L);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancelReason()).isEqualTo(RefundReason.WEATHER);
+		assertThat(detail.refundedAmount()).isEqualTo(new MoneyView(4500L, "EUR"));
+	}
+
+	/**
+	 * The abandoned-payment sweep and the {@code payment_intent.canceled} webhook both flip the status
+	 * without stamping a reason, because no refund decision was ever taken. A null reason beside a null
+	 * refund is what tells the guest they were never charged.
+	 */
+	@Test
+	void reportsNoReasonForANeverChargedCancellation() {
+		givenCancelledBooking(null, null);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancelReason()).isNull();
+		assertThat(detail.refundedAmount()).isNull();
+	}
+
 	private void givenBooking(BookingStatus status) {
 		givenBooking(status, CancellationWindow.FREE, 4500L);
+	}
+
+	/** A cancelled row: the refund decision's three fields move together, or none of them is set. */
+	private void givenCancelledBooking(RefundReason reason, Long refundMinor) {
+		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.CANCELLED, VENUE, SET, GUEST,
+				DATE, 4500L, "EUR", refundMinor == null ? null : Instant.EPOCH, refundMinor, null, reason);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
+		when(cancellationPolicy.quote(record))
+				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L));
 	}
 
 	private void givenBooking(BookingStatus status, CancellationWindow window, long refundMinor) {
 		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, status, VENUE, SET, GUEST, DATE,
-				4500L, "EUR", null, null, null);
+				4500L, "EUR", null, null, null, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
 				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), window, refundMinor));

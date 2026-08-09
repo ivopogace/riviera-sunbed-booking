@@ -87,6 +87,7 @@ class ViewBookingService implements ViewBooking {
 				set.positionNo(), b.bookingDate(), new MoneyView(b.amountMinor(), b.currency()),
 				cancellable, withdrawable, quote.beforeCutoff(),
 				new MoneyView(quote.refundMinor(), b.currency()),
-				refunded, b.requestExpiresAt(), payment, emailWithheld, payWindowClosed);
+				refunded, b.requestExpiresAt(), payment, emailWithheld, payWindowClosed,
+				b.cancelReason());
 	}
 }

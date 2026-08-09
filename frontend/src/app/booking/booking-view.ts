@@ -13,7 +13,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 import { problemCodeOf } from '../shared/api-error';
 import { formatBookingDate } from '../shared/booking-date-label';
-import { metaFor } from '../shared/booking-status';
+import { amountLabelFor, metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney, MoneyView } from '../shared/money';
@@ -33,6 +33,10 @@ const BTN_OUTLINE = `${BTN} border-[1.5px] bg-[#f4f6f7] font-semibold [transitio
 const LINK =
   'text-[14.5px] font-semibold text-(--riv-accent-ink) underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)';
 
+/** The neutral terminal-outcome treatment, shared by the expired and cancelled banners. */
+const BANNER_NEUTRAL = `${BANNER} border-[#dde1e3] bg-[#f0f2f3]`;
+const EYEBROW_NEUTRAL = 'text-[#4f5f67]';
+
 /** The repeated Tailwind recipes of this view — see {@link BookingView} for why they live here. */
 const CLS = {
   card: `${CARD_SURFACE} mx-auto my-8 max-w-[560px] px-[26px] pt-[26px] pb-6`,
@@ -45,15 +49,18 @@ const CLS = {
   bannerAwaiting: `${BANNER} border-[#bfe6ee] bg-[#ddf4f8]`,
   bannerPending: `${BANNER} border-[#f3e3bf] bg-[#fdf5e6]`,
   bannerDeclined: `${BANNER} border-[#eed6ce] bg-[#faefec]`,
-  bannerExpired: `${BANNER} border-[#dde1e3] bg-[#f0f2f3]`,
+  bannerExpired: BANNER_NEUTRAL,
   bannerWithdrawn: `${BANNER} border-[#ddd8e8] bg-[#f0eef6]`,
+  // Cancelled and expired share the neutral terminal treatment — one recipe, so they cannot drift.
+  bannerCancelled: BANNER_NEUTRAL,
   eyebrow: 'm-0 text-[11px] font-bold tracking-[0.1em] uppercase',
   // The banner inks are FIXED per banner fill — themed tokens would drift between themes.
   eyebrowAwaiting: 'text-[#0a5e7a]',
   eyebrowPending: 'text-[#8a5410]',
   eyebrowDeclined: 'text-[#8a3a2a]',
-  eyebrowExpired: 'text-[#4f5f67]',
+  eyebrowExpired: EYEBROW_NEUTRAL,
   eyebrowWithdrawn: 'text-[#5c5470]',
+  eyebrowCancelled: EYEBROW_NEUTRAL,
   bannerBody: 'mx-0 mt-1.5 mb-0 text-[14px] leading-[1.5] text-[#334a52] [&_strong]:text-[#0a2a33]',
   row: 'flex items-center justify-between gap-3 border-b border-(--riv-card-track) py-2.5 text-[14.5px] last:border-b-0',
   rowLabel: 'text-(--riv-card-ink-soft)',
@@ -89,11 +96,13 @@ const CLS = {
  * `AWAITING_PAYMENT` with open-intent credentials offers "Pay now" (primes
  * {@link BookingService#beginPayment} and routes to `/booking/pay` — the same flow as the 202
  * create path, so confirmation still only ever comes from the verified webhook, invariant #8);
- * `DECLINED`/`EXPIRED`/`WITHDRAWN` explain the terminal, no-charge outcome.
+ * `DECLINED`/`EXPIRED`/`WITHDRAWN` explain the terminal, no-charge outcome, and `CANCELLED` explains
+ * the one terminal outcome that may have moved money — which of the cancellations happened, and
+ * whether anything was refunded.
  *
  * <p>Styling is Tailwind-only (the component's SCSS is retired). The recipes live in the
  * module-local {@link CLS} map rather than inline so the shared *bases* stay single-sourced — the
- * banner shell across five banners, the row across five rows, the button chrome across six buttons —
+ * banner shell across six banners, the row across five rows, the button chrome across six buttons —
  * which the retired SCSS shared through selectors. Many individual `CLS` entries are then used once;
  * they sit there to name the variant beside its siblings, not because each one repeats.
  * Conflicting utilities are never concatenated onto one element: two competing `border-*` or
@@ -250,6 +259,32 @@ const CLS = {
               </p>
             </section>
           }
+          @case ('CANCELLED') {
+            <section
+              [class]="cls.bannerCancelled"
+              data-testid="booking-cancelled"
+              aria-labelledby="request-state-title"
+            >
+              @if (b.refundedAmount; as refunded) {
+                <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowCancelled }}">
+                  {{ b.cancelReason === 'WEATHER' ? 'Cancelled by the venue' : 'Booking cancelled' }}
+                </h2>
+                <p [class]="cls.bannerBody">
+                  {{ cancelledOpener(b) }}&ngsp;
+                  <strong>{{ refundSentence(tierOf(refunded), refunded) }}</strong>
+                </p>
+              } @else {
+                <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowCancelled }}">
+                  Booking cancelled
+                </h2>
+                <p [class]="cls.bannerBody">
+                  This booking was cancelled because the payment wasn’t completed in time, so the
+                  spot was released. <strong>You haven’t been charged.</strong> Pick another set or
+                  date to book again.
+                </p>
+              }
+            </section>
+          }
           @case ('DECLINED') {
             <section
               [class]="cls.bannerDeclined"
@@ -311,7 +346,7 @@ const CLS = {
             <dd [class]="cls.rowValue">{{ dateLabel(b.bookingDate) }}</dd>
           </div>
           <div [class]="cls.row">
-            <dt [class]="cls.rowLabel">{{ amountLabel(b.status) }}</dt>
+            <dt [class]="cls.rowLabel">{{ amountLabel(b) }}</dt>
             <dd [class]="cls.rowAmount">{{ formatMoney(b.amount) }}</dd>
           </div>
           @if (b.refundedAmount && b.refundedAmount.minorUnits > 0) {
@@ -575,9 +610,30 @@ export class BookingView {
     return metaFor(status).chip;
   }
 
-  /** "Paid" once money has actually moved; "Amount" while the request/payment is still open. */
-  protected amountLabel(status: string): string {
-    return metaFor(status).amount;
+  /** "Paid" once money has actually moved; "Amount" while open, or when nothing was ever charged. */
+  protected amountLabel(b: BookingDetail): string {
+    return amountLabelFor(b.status, b.refundedAmount);
+  }
+
+  /**
+   * Who cancelled, for the arriving guest's panel. Only `POLICY` is the guest's own act; a weather
+   * cancellation is the venue's, and an unknown or absent reason (a row predating the column, the
+   * reserved `CONFLICT`) attributes it to nobody rather than guessing.
+   */
+  protected cancelledOpener(b: BookingDetail): string {
+    switch (b.cancelReason) {
+      case 'POLICY':
+        return 'You cancelled this booking.';
+      case 'WEATHER':
+        return `${b.venueName} cancelled this booking because of the weather.`;
+      default:
+        return 'This booking was cancelled.';
+    }
+  }
+
+  /** The tier a stamped refund implies — the amount is the decision, so it is the only input. */
+  protected tierOf(refunded: MoneyView): Cancellation['tier'] {
+    return refunded.minorUnits > 0 ? 'PARTIAL' : 'NONE';
   }
 
   /** The booking date as a friendly civil-date label (UTC-parsed, invariant #6). */

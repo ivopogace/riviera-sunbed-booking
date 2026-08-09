@@ -59,6 +59,7 @@ const BANNERS: readonly [name: string, fill: string, eyebrow: string][] = [
   ['declined', '#faefec', '#8a3a2a'],
   ['expired', '#f0f2f3', '#4f5f67'],
   ['withdrawn', '#f0eef6', '#5c5470'],
+  ['cancelled', '#f0f2f3', '#4f5f67'],
 ];
 const BANNER_BODY = '#334a52';
 const BANNER_STRONG = '#0a2a33';

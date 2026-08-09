@@ -132,6 +132,12 @@ export interface BookingDetail {
    * backend does not even ask the question before payment, so this can't be read as an oracle.
    */
   readonly emailWithheld: boolean;
+  /**
+   * Which cancellation this booking went through; null while live, and null for a cancellation
+   * that never charged. Server-owned: `refundedAmount` alone cannot tell a venue's weather refund
+   * from the guest's own cancellation, and only one of those is news to the guest.
+   */
+  readonly cancelReason: CancelReason | null;
 }
 
 /** The open PaymentIntent of an `AWAITING_PAYMENT` booking (the "Pay now" resume path). */
@@ -142,8 +148,10 @@ export interface BookingPayment {
 
 /**
  * Typed view of one row from `GET /api/me/bookings` — the signed-in "my bookings" list.
- * Mirrors the backend `MyBookingView`: a **subset** of {@link BookingDetail} (the refund terms +
- * payment credentials are loaded only on the code-gated detail view, not the list). Money as integer
+ * Mirrors the backend `MyBookingView`: a **subset** of {@link BookingDetail} (the refund *terms* +
+ * payment credentials are loaded only on the code-gated detail view; `refundedAmount` is the one
+ * refund fact the list carries, because without it a row cannot tell a cancellation that took money
+ * from one that never did). Money as integer
  * minor units (invariant #5); date as ISO `LocalDate`; `requestExpiresAt` null for instant bookings.
  * `BookingDetail` is structurally a superset, so both feed the shared list-row builder.
  */
@@ -157,7 +165,21 @@ export interface MyBookingSummary {
   readonly bookingDate: string;
   readonly amount: MoneyView;
   readonly requestExpiresAt: string | null;
+  /**
+   * The refund actually issued, or null when none was — including for a cancellation that never
+   * charged. Carried on the summary, unlike the rest of the refund terms, because without it a row
+   * cannot tell a swept booking from a refunded one and would label both "Paid".
+   */
+  readonly refundedAmount: MoneyView | null;
 }
+
+/**
+ * Why a booking was cancelled, mirroring the backend `RefundReason` (and the V14 `cancel_reason`
+ * CHECK tokens). Only a cancellation that took a refund decision carries one, so it is `null` for a
+ * booking released without ever being charged — the abandoned-payment sweep and the
+ * `payment_intent.canceled` webhook both leave it unset. `CONFLICT` is reserved and unused in v1.
+ */
+export type CancelReason = 'POLICY' | 'WEATHER' | 'CONFLICT';
 
 /** The refund tier returned with a cancellation (mirrors the backend `CancelOutcome.Tier`). */
 export type RefundTier = 'FULL' | 'PARTIAL' | 'NONE';

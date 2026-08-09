@@ -9,6 +9,7 @@ import {
   BookingDetail,
   BookingStatus,
   Cancellation,
+  CancelReason,
   PaymentHandoff,
   Withdrawal,
 } from './booking.model';
@@ -33,6 +34,7 @@ const DETAIL: BookingDetail = {
   payment: null,
   emailWithheld: false,
   payWindowClosed: false,
+  cancelReason: null,
 };
 
 const WITHDRAWAL: Withdrawal = { code: 'ABCD234567', status: 'WITHDRAWN' };
@@ -46,6 +48,17 @@ const PENDING: BookingDetail = {
   // 16:00Z on a CET (winter, UTC+1) date -> 17:00 Europe/Tirane wall clock.
   requestExpiresAt: '2026-11-30T16:00:00Z',
 };
+
+/** A terminal CANCELLED detail as the guest arrives at it, with the refund the server stamped. */
+function cancelled(reason: CancelReason | null, refundMinor: number): BookingDetail {
+  return {
+    ...DETAIL,
+    status: 'CANCELLED',
+    cancellable: false,
+    refundedAmount: { minorUnits: refundMinor, currency: 'EUR' },
+    cancelReason: reason,
+  };
+}
 
 const CANCELLATION: Cancellation = {
   code: 'ABCD234567',
@@ -430,6 +443,93 @@ describe('BookingView', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     expect(host.querySelector('[data-testid="refunded-amount"]')).toBeNull();
+  });
+
+  /**
+   * A swept booking is the common arrival: the "payment window closed" state lasts only until the
+   * next sweep run, so most affected guests land here, after the transition.
+   */
+  it('explains a CANCELLED booking that was never charged', async () => {
+    const fixture = await render(
+      stubService({
+        detail: { ...DETAIL, status: 'CANCELLED', cancellable: false, refundedAmount: null },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+    const panel = host.querySelector('[data-testid="booking-cancelled"]');
+
+    expect(panel?.textContent).toContain('payment');
+    expect(panel?.textContent).toContain('haven’t been charged');
+    await expectNoAxeViolations(host);
+  });
+
+  it('labels a never-charged cancellation Amount, not Paid', async () => {
+    const fixture = await render(
+      stubService({
+        detail: { ...DETAIL, status: 'CANCELLED', cancellable: false, refundedAmount: null },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    const labels = [...host.querySelectorAll('dt')].map((dt) => dt.textContent?.trim());
+    expect(labels).toContain('Amount');
+    expect(labels).not.toContain('Paid');
+  });
+
+  it('explains a POLICY cancellation with a refund', async () => {
+    const fixture = await render(stubService({ detail: cancelled('POLICY', 4500) }));
+    const host = fixture.nativeElement as HTMLElement;
+    const panel = host.querySelector('[data-testid="booking-cancelled"]');
+
+    expect(panel?.textContent).toContain('You cancelled this booking');
+    expect(panel?.textContent).toContain('45');
+  });
+
+  it('explains a non-refundable POLICY cancellation', async () => {
+    const fixture = await render(stubService({ detail: cancelled('POLICY', 0) }));
+    const host = fixture.nativeElement as HTMLElement;
+    const panel = host.querySelector('[data-testid="booking-cancelled"]');
+
+    expect(panel?.textContent).toContain('You cancelled this booking');
+    expect(panel?.textContent).toContain('No refund applies');
+    expect(host.querySelector('[data-testid="refunded-amount"]')).toBeNull();
+  });
+
+  /** A storm the venue called is not the guest's doing — "you cancelled this" would be a lie. */
+  it('attributes a WEATHER cancellation to the venue', async () => {
+    const fixture = await render(stubService({ detail: cancelled('WEATHER', 4500) }));
+    const host = fixture.nativeElement as HTMLElement;
+    const panel = host.querySelector('[data-testid="booking-cancelled"]');
+
+    expect(panel?.textContent).toContain('Miramar Beach Club');
+    expect(panel?.textContent).toContain('weather');
+    expect(panel?.textContent).not.toContain('You cancelled');
+    await expectNoAxeViolations(host);
+  });
+
+  /** A zero refund is still a refund *decision* — but "€0.00 is on its way back" is not a sentence. */
+  it.each<[CancelReason | null]>([['WEATHER'], ['POLICY'], [null]])(
+    'never claims a zero refund is on its way (%s)',
+    async (reason) => {
+      const fixture = await render(stubService({ detail: cancelled(reason, 0) }));
+      const panel = (fixture.nativeElement as HTMLElement).querySelector(
+        '[data-testid="booking-cancelled"]',
+      );
+
+      expect(panel?.textContent).toContain('No refund applies');
+      expect(panel?.textContent).not.toContain('on its way');
+    },
+  );
+
+  /** A row cancelled before V14 carries a refund but no reason; CONFLICT is reserved and unused. */
+  it('falls back to neutral copy for an unknown cancel reason', async () => {
+    const fixture = await render(stubService({ detail: cancelled(null, 4500) }));
+    const host = fixture.nativeElement as HTMLElement;
+    const panel = host.querySelector('[data-testid="booking-cancelled"]');
+
+    expect(panel?.textContent).toContain('This booking was cancelled');
+    expect(panel?.textContent).not.toContain('You cancelled');
+    expect(panel?.textContent).toContain('45');
   });
 
   it('shows neutral resume copy for an unpaid instant booking (never "request accepted")', async () => {

@@ -58,6 +58,7 @@ class MyBookingsService implements MyBookings {
 		}
 		return new MyBookingSummary(
 				b.code(), b.status(), b.venueId(), set.venueName(), set.rowLabel(), set.positionNo(),
-				b.bookingDate(), new MoneyView(b.amountMinor(), b.currency()), b.requestExpiresAt());
+				b.bookingDate(), new MoneyView(b.amountMinor(), b.currency()), b.requestExpiresAt(),
+				b.refundMinor() == null ? null : new MoneyView(b.refundMinor(), b.currency()));
 	}
 }
