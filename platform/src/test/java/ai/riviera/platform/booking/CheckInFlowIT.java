@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -190,6 +191,73 @@ class CheckInFlowIT {
 				.andExpect(jsonPath("$.code").value("BOOKING_NOT_FOUND"));
 
 		assertEquals("CANCELLED", statusOf(bookingId));
+	}
+
+	/** A fresh venue granted to the bootstrap operator — isolates money/list assertions (AC-7/8). */
+	private long newOwnedVenue(String name) {
+		long venue = jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
+				VALUES (:n, 'CI Beach', 'CI Region', 'INSTANT', 1500, 'EUR')
+				RETURNING id
+				""").param("n", name).query(Long.class).single();
+		jdbc.sql("""
+				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
+				                          price_currency, grid_x, grid_y)
+				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1),
+				       (:venue, 'A', 2, 'STANDARD', 'ONLINE', 4500, 'EUR', 2, 1)
+				""").param("venue", venue).update();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
+						+ "SELECT :v, id FROM operator WHERE username = :u")
+				.param("v", venue).param("u", OPERATOR).update();
+		return venue;
+	}
+
+	@Test
+	void arrivalsAndTakingsCountCheckedInBookings() throws Exception {
+		long venue = newOwnedVenue("CI Widen Club");
+		String checkedIn = uniqueCode("CILIST1");
+		String upcoming = uniqueCode("CILIST2");
+		insertConfirmed(checkedIn, venue, today());
+		insertConfirmed(upcoming, venue, today());
+
+		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, checkedIn)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isOk());
+
+		mvc.perform(get("/api/venues/{v}/bookings", venue).cookie(operatorSession)
+						.param("date", today().toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[?(@.code == '%s')].checkedIn".formatted(checkedIn)).value(true))
+				.andExpect(jsonPath("$[?(@.code == '%s')].checkedIn".formatted(upcoming)).value(false));
+
+		mvc.perform(get("/api/venues/{v}/takings", venue).cookie(operatorSession)
+						.param("date", today().toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.gross.minorUnits").value(9000));
+	}
+
+	@Test
+	void completedBookingIsNeitherCancellableNorWeatherRefundable() throws Exception {
+		long venue = newOwnedVenue("CI Fence Club");
+		String checkedIn = uniqueCode("CIFENCE1");
+		String upcoming = uniqueCode("CIFENCE2");
+		long completedId = insertConfirmed(checkedIn, venue, today());
+		insertConfirmed(upcoming, venue, today());
+
+		mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, checkedIn)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isOk());
+
+		mvc.perform(post("/api/bookings/{code}/cancel", checkedIn).with(csrf()))
+				.andExpect(status().is4xxClientError());
+		assertEquals("COMPLETED", statusOf(completedId));
+
+		mvc.perform(post("/api/venues/{v}/weather-refund", venue).cookie(operatorSession)
+						.with(csrf()).param("date", today().toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.refundedCount").value(1));
+		assertEquals("COMPLETED", statusOf(completedId));
 	}
 
 	/** Invariant #7: no error body may echo the bearer credential — not even in {@code instance}. */

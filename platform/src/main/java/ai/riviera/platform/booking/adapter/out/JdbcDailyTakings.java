@@ -31,8 +31,8 @@ class JdbcDailyTakings implements DailyTakings {
 
 	@Override
 	public OnlineTakings grossOnlineTakings(VenueId venueId, LocalDate date) {
-		// Gross of a venue's CONFIRMED online bookings for one service date (booking_date in
-		// Europe/Tirane, invariant #6), aggregated in SQL — not a row-sum in Java. Served by
+		// Gross of a venue's CONFIRMED or COMPLETED (checked-in, #583) online bookings for one service
+		// date (booking_date in Europe/Tirane, invariant #6), aggregated in SQL. Served by
 		// booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's rows.
 		// No pool filter is needed to make this "online": a booking row only ever exists for an
 		// online-pool set (invariant #3 — walk-ins are staff-marked availability rows, never bookings),
@@ -44,11 +44,12 @@ class JdbcDailyTakings implements DailyTakings {
 				SELECT COALESCE(SUM(amount_minor), 0)                    AS gross_minor,
 				       COALESCE(MAX(amount_currency), :fallbackCurrency) AS currency
 				FROM booking
-				WHERE venue_id = :venue AND booking_date = :date AND status = :confirmed
+				WHERE venue_id = :venue AND booking_date = :date AND status IN (:confirmed, :completed)
 				""")
 				.param("venue", venueId.value())
 				.param("date", date)
 				.param("confirmed", BookingStatus.CONFIRMED.name())
+				.param("completed", BookingStatus.COMPLETED.name())
 				.param("fallbackCurrency", DEFAULT_CURRENCY)
 				.query((rs, rowNum) -> new OnlineTakings(
 						rs.getLong("gross_minor"), rs.getString("currency")))

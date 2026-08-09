@@ -50,6 +50,7 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_AWAITING = "awaiting";
 	private static final String PARAM_PENDING = "pending";
 	private static final String PARAM_CONFIRMED = "confirmed";
+	private static final String PARAM_COMPLETED = "completed";
 	private static final String PARAM_VENUE = "venue";
 	private static final String PARAM_ACCOUNT = "account";
 
@@ -428,7 +429,7 @@ class JdbcBookings implements Bookings {
 				WHERE code = :code AND venue_id = :venue AND status = :confirmed AND booking_date = :date
 				RETURNING id, set_id, booking_date
 				""")
-				.param("completed", BookingStatus.COMPLETED.name())
+				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
 				.param("at", java.sql.Timestamp.from(completedAt))
 				.param("code", code)
 				.param(PARAM_VENUE, venueId.value())
@@ -462,17 +463,20 @@ class JdbcBookings implements Bookings {
 		// booking_venue_id_idx (V5); the (booking_date, status) filter narrows the venue's rows. The
 		// code is selected for staff verification (invariant #7) — returned to the operator-gated
 		// caller, never logged here.
+		// COMPLETED rides along since #583: a checked-in arrival stays listed, flagged, not vanished.
 		return jdbc.sql("""
-				SELECT set_id, code
+				SELECT set_id, code, status
 				FROM booking
-				WHERE venue_id = :venue AND booking_date = :date AND status = :confirmed
+				WHERE venue_id = :venue AND booking_date = :date AND status IN (:confirmed, :completed)
 				ORDER BY set_id
 				""")
 				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
 				.query((rs, rowNum) -> new DailyBooking(
-						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code")))
+						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code"),
+						BookingStatus.COMPLETED.name().equals(rs.getString(PARAM_STATUS))))
 				.list();
 	}
 

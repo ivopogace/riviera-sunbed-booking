@@ -62,7 +62,7 @@ class StaffBookingController {
 		OperatorId operator = currentOperator.require(authentication);
 		LocalDate effectiveDate = date != null ? date : LocalDate.ofInstant(clock.instant(), TIRANE);
 		return dailyBookings.forVenueOn(operator, new VenueId(venueId), effectiveDate).stream()
-				.map(b -> new DailyBookingView(b.setId().value(), b.code()))
+				.map(b -> new DailyBookingView(b.setId().value(), b.code(), b.checkedIn()))
 				.toList();
 	}
 

@@ -8,7 +8,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The staff daily-bookings read (U8, issue #10) — the inbound port the booking module's operator
- * REST adapter calls to list a venue's <strong>confirmed</strong> bookings for one day, each with
+ * REST adapter calls to list a venue's <strong>confirmed or checked-in</strong> bookings for one day, each with
  * its set and booking code. Internal to {@code booking} ({@code application.in}), not cross-module
  * {@code api/} (invariant #11): the only caller is this module's own REST adapter, and keeping the
  * read here avoids an {@code availability → booking} cycle (the staff daily view is composed on the
@@ -17,8 +17,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public interface ListDailyBookings {
 
 	/**
-	 * The {@code CONFIRMED} bookings for {@code venueId} on {@code date} (a {@code LocalDate} in
-	 * {@code Europe/Tirane}, invariant #6), as {@code (setId, code)} rows ordered by set. Excludes
+	 * The {@code CONFIRMED} and {@code COMPLETED} bookings for {@code venueId} on {@code date} (a
+	 * {@code LocalDate} in {@code Europe/Tirane}, invariant #6), as {@code (setId, code, checkedIn)}
+	 * rows ordered by set — a checked-in arrival stays listed, flagged (#583). Excludes
 	 * awaiting-payment and cancelled bookings. Empty (never {@code null}) when there are none.
 	 *
 	 * <p>Booking codes are bearer credentials (invariant #7), so this read is venue-scoped: the
