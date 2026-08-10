@@ -100,10 +100,13 @@ Both scopes now guard, with the scope following what the write destroys: the bul
 every set, so it asks the venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet` touch one
 set, so they ask the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row. The
 asymmetry between the two per-set writes is deliberate and worth stating once, and it runs along
-exactly **one** axis — **which bookings count**: `removeSet` refuses on a booking of any status
-ever recorded, `editSet` only on a non-terminal one (and only for a pool-or-position change). On
-the **availability** arm they now ask the *same* question, a hold dated today or later. The single
-axis is forced by the one asymmetry in the database: the RESTRICT `booking.set_id` FK makes a set
+**two** axes — but no longer the two #567 named, because the availability arm dropped out of the
+first. **What each write asks:** `removeSet` refuses on a booking of any status ever recorded,
+`editSet` only on a non-terminal one; on the **availability** arm they now ask the *same* question,
+a hold dated today or later. **When it asks at all:** the delete always probes, while the edit
+probes only when the command would repool or reposition the set — a price-or-tier-only edit is
+never refused, however live the claim. The surviving claim-breadth difference is forced by the one
+asymmetry in the database: the RESTRICT `booking.set_id` FK makes a set
 carrying any booking physically undeletable, so refusing early is what turns a 500 into an honest
 409 — nothing equivalent forces the availability arm, because `set_availability`'s CASCADE means a
 *past* hold is simply removed along with the day it describes. Neither write may retroactively harm

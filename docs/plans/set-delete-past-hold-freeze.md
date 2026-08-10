@@ -34,7 +34,7 @@ new port and no `allowedDependencies` change — the narrower question is an exi
 method, so the `venue → availability` inversion is untouched) · `riviera-java-conventions` (the
 shared live-hold arm extracted as one private predicate rather than duplicating the
 `LocalDate.now(clock.withZone(TIRANE))` expression; Javadoc §6d — contract not archaeology) ·
-`riviera-review-overlay` (review gate — see Execution status) · `riviera-local-debug` (scoped test
+`riviera-review-overlay` (review gate — layered on `/code-review` at **high** effort, the no-exceptions tier for an availability-touching slice; RV-BE-1/9/11 walked explicitly and clean, added no findings beyond the three the generic banks found) · `riviera-local-debug` (scoped test
 runs; Docker was available, so the ITs ran for real rather than skipping) · `riviera-docs-freshness`
 (**ran** over `origin/main...HEAD`, **2 findings, both patched**: `RESPONSIBILITIES.md` §`venue`'s
 two-axis asymmetry paragraph, and — the sweep's own catch, in a file the diff never touched —
@@ -213,9 +213,9 @@ code; only the server-side predicate behind the 409 narrows.
 
 ## Execution status
 
-**Stage pointer:** `PR ready for review — review gate + Sonar gate due`
+**Stage pointer:** `review gate run (high) — 3 findings fixed; Sonar gate due`
 
-**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then pull the Sonar new-issue list for PR #601.
+**Next action:** Pull the SonarCloud issue + duplication list for PR #601 from the API (green gate is necessary, not sufficient), then merge once CI is green on the fix round.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -241,6 +241,9 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | docs-freshness sweep (phase 2) | `SetRejection.SET_IN_USE`'s Javadoc stated "a *remove* is refused by any hold on any date" — false after phase 0, and in a file the diff never touched, so no review of the diff could have found it | fixed-in-`ec2bfd0` |
+| F-2 | review (`/code-review`, high) | `docs/plans/o3-layout-editor.md:117` still stated "a set with any claim ever recorded refuses **removal** outright" — the phase-2 sweep amended the sibling plan doc and missed this one, leaving a reader grounds to reinstate the old probe as a "regression fix" | fixed-in-`181c278` |
+| F-3 | review (`/code-review`, high) | My own phase-2 rewrite over-corrected: `RESPONSIBILITIES.md` claimed the asymmetry runs along "exactly **one** axis", contradicting its own parenthetical — `editSet` probes only when `disturbedBy`, `removeSet` always. Read literally it implies a price-only edit on a held set is refused, which it is not. `EditBeachMap#removeSet`'s Javadoc repeated it | fixed-in-`181c278` — restored as two axes, with the second named explicitly (*what* each asks vs *when* it asks at all) |
+| F-4 | review (`/code-review`, high) | `VenueAdminControllerIT`'s today-dated hold is computed from the test JVM's clock while the guard reads the application's; a run crossing 00:00 `Europe/Tirane` between the INSERT and the DELETE flips the expected 409 to a 204 — the residual of the very date-sensitivity R-3 hardened against | fixed-in-`181c278` — the hold moves to tomorrow (live under either reading); the inclusive today edge stays pinned where the clock *is* controlled, by `AvailabilityLookupIT` (SQL predicate) and `VenueAdminServiceTest` (fixed clock) |
 
 ---
 
@@ -255,6 +258,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/venue/application/SetRejection.java` — `SET_IN_USE`'s Javadoc: both writes share the availability question (docs-freshness sweep)
 - `RESPONSIBILITIES.md` — §`venue`: the two-axis asymmetry becomes one axis
 - `docs/plans/per-set-layout-write-claim-guard.md` — #567's behavior table + its deferred-question note follow what shipped
+- `docs/plans/o3-layout-editor.md` — its guard-policy amendment note follows too (review finding F-2)
 
 ---
 
@@ -457,4 +461,4 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, **merged via PR #601**.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.

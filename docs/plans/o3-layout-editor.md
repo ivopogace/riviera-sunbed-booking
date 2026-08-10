@@ -118,7 +118,9 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
   while an **edit** is refused only when it would repool or reposition the set *and* a claim is still
   live (a hold dated today or later, a booking that can still be honoured). Price and tier edits are
   never refused. So "unclaimed" was never the right word for the edit half — dead history does not
-  freeze the map.
+  freeze the map. — **Amended again by #599:** the removal's *availability* arm was narrowed to the
+  same live question, so dead history no longer freezes the delete either; only a booking of any
+  status still refuses it, which the RESTRICT FK forces.
 - **Bulk write shape** → **one full-replace `PUT` endpoint, single transaction** (engineering call): atomic,
   idempotent, matches "generate 72 sets in one action" + bulk repaint. Rejected N single-set calls (non-atomic).
 - **Flyway version** → **none needed** (no schema change); V22 verified free on `main` + no open PR claims it.

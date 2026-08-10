@@ -241,15 +241,21 @@ class VenueAdminControllerIT {
 		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(0));
 	}
 
+	/**
+	 * The hold is dated tomorrow rather than today because this test reads its own clock while the
+	 * guard reads the application's: a midnight rollover between the two would turn a today-dated
+	 * hold into history and flip the expected 409 to a 204. The inclusive today edge is pinned
+	 * where the clock is controlled — {@code AvailabilityLookupIT} on the SQL predicate,
+	 * {@code VenueAdminServiceTest} on the date the guard passes.
+	 */
 	@Test
 	void removeSetKeepsAStaffHoldAndAnswers409() throws Exception {
 		long venue = createVenue("Held Club");
 		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "WALK_IN", 3000, "EUR", 1, 1));
-		// Today: the inclusive edge of the guard's window, and a walk-in still on the sand.
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
 						+ "VALUES (:set, :day, 'STAFF_MARKED')")
 				.param("set", setId)
-				.param("day", LocalDate.now(ZoneId.of("Europe/Tirane")))
+				.param("day", LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(1))
 				.update();
 
 		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
