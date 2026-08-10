@@ -185,15 +185,15 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 step 1 — write the four completed-action focus specs (AC-3…AC-6) one at a
-time and prove each RED, applying the R-1 gate to any that passes before its leg exists.
+**Next action:** Phase 2 step 1 — add the real-browser focus assertions to `my-bookings.e2e.ts` and
+`request-to-book.e2e.ts`, which is the half that can actually observe the busy-`[disabled]` blur.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Adopt the shared helper + the two keep return legs | ✅ | |
-| 1 — The completed-action legs + the `tabindex="-1"` landmarks | | |
+| 0 — Adopt the shared helper + the two keep return legs | ✅ | `1df3bb2` |
+| 1 — The completed-action legs + the `tabindex="-1"` landmarks | ✅ | |
 | 2 — Real-browser e2e coverage + full verification | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -246,19 +246,21 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `frontend/src/app/booking/booking-view.ts` · Test
 `frontend/src/app/booking/booking-view.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — AC-3, AC-4, AC-5, AC-6, one at a time (tracer-bullet
-      order: success, success, closed-window, failure).
-- [ ] **Step 2: Run each, verify it fails** — `npm test -- booking-view`. **R-1 gate:** if a spec
-      passes before its leg exists, jsdom is masking the blur; record that on the spec and rely on
-      the Phase 2 e2e for that leg rather than banking a false green.
-- [ ] **Step 3: Implement** — `tabindex="-1"` on both result `<p>`s; `focusAfterRender('cancel-result')`
+- [x] **Step 1: Write the failing specs** — AC-3/AC-4 (the success twins), then AC-5, then AC-6.
+- [x] **Step 2: Run each, verify it fails** — success twins `2 failed | 51 passed`; AC-5
+      `1 failed | 53 passed`; AC-6 `1 failed | 54 passed`. **The R-1 gate fired on AC-6**, exactly
+      where predicted: the withdraw-failure leg keeps its prompt open, so the only thing that
+      strands focus there is the `[disabled]` blur, which jsdom does not implement. The spec models
+      it with an explicit `blur()` — named in a comment as standing in for the browser — which is
+      what lets it fail; the real behaviour is pinned in Chromium by AC-9.
+- [x] **Step 3: Implement** — `tabindex="-1"` on both result `<p>`s; `focusAfterRender('cancel-result')`
       on `confirmCancel`'s success **and** error legs; `focusAfterRender('withdraw-result')` on
       `confirmWithdraw`'s success leg; `focusAfterRender('confirm-withdraw')` on its error leg.
-- [ ] **Step 4: Run them, verify they pass** — `npm test -- booking-view` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — check the other tourist surfaces that destroy their
-      trigger (find-booking, booking-dialog, the pay flow) for the same missing landmark.
-- [ ] **Step 6: Commit** — `git commit -m "Park focus on the outcome when a cancel or withdrawal completes (#614)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass** — `71 passed` across `booking-view*.spec.ts`.
+- [x] **Step 5: Generalization-audit pass** — the landmark idiom already ships in
+      `auth/operator-password.ts`; the one real gap is inside #616. See the audit log.
+- [x] **Step 6: Commit** — `git commit -m "Park focus on the outcome when a cancel or withdrawal completes (#614)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -288,6 +290,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Phase 1 — making a live result region a focus landmark | other surfaces whose completed action destroys the trigger, leaving an outcome region nothing can land on | `grep -rn "role=\"status\"\|role=\"alert\"" src/app --include=*.ts --include=*.html -A2` cross-read against `tabindex` | `auth/operator-password.ts` already does exactly this (`tabindex="-1"` on `oppw-notice` **and** `oppw-error`); every other hit is a form whose trigger *survives*, except `set-password`'s `erase-done` | **No change needed, and the choice is not novel** — `operator-password` is the shipped precedent this slice follows rather than invents. The one real gap, `set-password`'s terminal erased state, is already inside **#616** |
 | 2026-08-10 | Phase 0 — adopting the shared helper in the last confirm surface | every remaining confirm-before-destroy surface, re-checked transition by transition rather than trusting #604's audit row | `grep -rn "afterRenderEffect\|afterNextRender" src/app --include=*.ts` + `grep -rn "confirming\|confirmRemove\|confirmRegen\|confirmingId" src/app --include=*.ts` then reading each hit's handlers | 3 open gaps: `auth/set-password.ts`'s erase confirm (**all three** transitions, and no focus specs at all), `admin-venue-photos`' takedown **failure** path, `admin-operators`' completed-action leg | **Filed as #616, not widened here** — three other feature areas, matching #604's own reason for spawning #614. The material find is that **#604's audit cleared `set-password` in error**: what it read as "focuses in and out" is the page-mount leg focusing the first `<input>`, not the confirm surface, which moves focus nowhere in any direction |
 
 ---

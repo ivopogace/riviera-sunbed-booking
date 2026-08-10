@@ -363,7 +363,13 @@ const CLS = {
         </dl>
 
         <!-- Outside the status switch on purpose: scoped to PENDING_REQUEST it would unmount on success. -->
-        <p [class]="cls.result" role="status" aria-live="polite" data-testid="withdraw-result">
+        <p
+          [class]="cls.result"
+          role="status"
+          aria-live="polite"
+          tabindex="-1"
+          data-testid="withdraw-result"
+        >
           @if (withdrawn()) {
             Request withdrawn. The spot is free for other guests again.
           } @else if (withdrawFailed()) {
@@ -372,7 +378,13 @@ const CLS = {
         </p>
 
         <!-- Live result of a cancellation, announced to assistive tech. -->
-        <p [class]="cls.result" role="status" aria-live="polite" data-testid="cancel-result">
+        <p
+          [class]="cls.result"
+          role="status"
+          aria-live="polite"
+          tabindex="-1"
+          data-testid="cancel-result"
+        >
           @if (cancellation(); as c) {
             Booking cancelled.
             {{
@@ -553,6 +565,8 @@ export class BookingView {
         this.cancellation.set(c);
         this.confirming.set(false);
         this.cancelling.set(false);
+        // The refresh below is async, so focus aims at the result this write populates synchronously.
+        this.focusAfterRender('cancel-result');
         this.load(true); // refresh to the CANCELLED detail (chip flips + refunded row appears, no reload)
       },
       error: (e: unknown) => {
@@ -562,6 +576,8 @@ export class BookingView {
         this.cancelFailed.set(!closed);
         this.cancelling.set(false);
         this.confirming.set(false);
+        // Not the trigger: the re-read below can withdraw it, and a refused cancel explains itself here.
+        this.focusAfterRender('cancel-result');
         // Re-read: the window may have closed since load, and only the server knows.
         this.load(true);
       },
@@ -590,11 +606,14 @@ export class BookingView {
         this.withdrawn.set(true);
         this.confirmingWithdraw.set(false);
         this.withdrawing.set(false);
+        this.focusAfterRender('withdraw-result');
         this.load(true);
       },
       error: () => {
         this.withdrawFailed.set(true);
         this.withdrawing.set(false);
+        // The prompt stays open here, so focus goes back to the retry the disabling blurred.
+        this.focusAfterRender('confirm-withdraw');
       },
     });
   }

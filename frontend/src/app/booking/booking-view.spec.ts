@@ -177,6 +177,23 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="cancel-result"]')?.textContent).toContain('refunded');
   });
 
+  it('parks focus on the result when a cancellation completes', async () => {
+    const fixture = await render(stubService({ detail: DETAIL }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // The whole cancel section goes with the action, so the outcome is the only place left to land.
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="cancel-result"]'));
+  });
+
   it('moves focus to the destructive confirm button when the cancel prompt appears', async () => {
     // Twin of the withdraw focus test — the component claims this for BOTH prompts.
     const fixture = await render(stubService({ detail: DETAIL }));
@@ -309,6 +326,22 @@ describe('BookingView', () => {
     expect(document.activeElement).toBe(host.querySelector('[data-testid="withdraw-request"]'));
   });
 
+  it('parks focus on the result when a withdrawal completes', async () => {
+    const fixture = await render(stubService({ detail: PENDING }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(host.querySelector('[data-testid="withdraw-request"]')).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="withdraw-result"]'));
+  });
+
   it('asks before withdrawing, and "Keep request" backs out without calling the API', async () => {
     const withdrawCalls: string[] = [];
     const fixture = await render(stubService({ detail: PENDING, withdrawCalls }));
@@ -345,6 +378,26 @@ describe('BookingView', () => {
       'couldn’t withdraw',
     );
     expect(host.querySelector('[data-testid="request-pending"]')).not.toBeNull();
+  });
+
+  it('returns focus to the withdraw confirm button when the withdrawal fails', async () => {
+    const fixture = await render(stubService({ detail: PENDING, withdrawError: { status: 409 } }));
+    const host = fixture.nativeElement as HTMLElement;
+    const confirm = () =>
+      host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // Stands in for the disable-blur a real browser does and jsdom does not (plan doc, R-1).
+    confirm().blur();
+    confirm().click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // The prompt survives a failure, so the retry is where the guest left it — not on <body>.
+    expect(document.activeElement).toBe(confirm());
   });
 
   it('renders no withdraw control when the server says the request is not withdrawable', async () => {
@@ -410,6 +463,33 @@ describe('BookingView', () => {
       'try again',
     );
     expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+  });
+
+  it('parks focus on the result when the cancel window has closed', async () => {
+    const closed: BookingDetail = { ...DETAIL, cancellable: false, beforeCutoff: false };
+    const fixture = await render(
+      stubService({
+        detail: DETAIL,
+        detailAfterCancel: closed,
+        cancelError: new HttpErrorResponse({
+          status: 409,
+          error: { code: 'CANCELLATION_WINDOW_CLOSED' },
+        }),
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // The refusal withdraws the trigger too, so returning focus there would have stranded it.
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="cancel-result"]'));
   });
 
   // A CONFIRMED booking past its service day: the server closes the window, so the affordance goes.
