@@ -196,6 +196,79 @@ describe('SetEditor (#600)', () => {
     expect((byId('set-pool-ONLINE') as HTMLElement).getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('removesASet: confirm, then DELETE, then the selection clears and the map re-reads (AC-4)', async () => {
+    render();
+    selectSet(12);
+
+    // The first click only arms the confirm — a destructive action is never one tap away.
+    click(byId('set-remove'));
+    http.expectNone((r) => r.method === 'DELETE');
+    expect(byId('set-remove-confirm')).toBeTruthy();
+
+    click(byId('set-remove-yes'));
+    http
+      .expectOne((r) => r.method === 'DELETE' && r.url.endsWith('/api/venues/1/sets/12'))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(changed).toBe(1);
+    expect(byId('set-panel-empty')).toBeTruthy();
+  });
+
+  it('lets the operator back out of a remove without touching the server', () => {
+    render();
+    selectSet(12);
+
+    click(byId('set-remove'));
+    click(byId('set-remove-no'));
+
+    http.expectNone((r) => r.method === 'DELETE');
+    expect(byId('set-remove-confirm')).toBeFalsy();
+    expect(byId('set-panel-empty')).toBeFalsy();
+  });
+
+  it('moves focus with the remove confirmation, and parks it when the panel empties (WCAG 2.4.3)', async () => {
+    render();
+    selectSet(12);
+
+    click(byId('set-remove'));
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(byId('set-remove-yes'));
+
+    click(byId('set-remove-no'));
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(byId('set-remove'));
+
+    click(byId('set-remove'));
+    await fixture.whenStable();
+    click(byId('set-remove-yes'));
+    http.expectOne((r) => r.method === 'DELETE').flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // The Remove button it was on is gone with the selection, so focus parks on the panel itself.
+    expect(document.activeElement).toBe(byId('set-panel'));
+  });
+
+  it('explainsARefusedRemove: a booked set stays on the map with the reason (AC-4)', async () => {
+    render();
+    selectSet(12);
+
+    click(byId('set-remove'));
+    click(byId('set-remove-yes'));
+    http
+      .expectOne((r) => r.method === 'DELETE')
+      .flush({ code: 'SET_IN_USE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(cellForSet(12)).toBeTruthy();
+    expect(changed).toBe(0);
+    expect(byId('set-error').textContent).toMatch(/booked or held/i);
+  });
+
   it('drops the selection when the selected set is gone from a re-read', () => {
     render();
     selectSet(12);

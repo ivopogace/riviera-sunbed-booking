@@ -1,7 +1,12 @@
 <section class="mx-auto w-full max-w-[1100px]" data-testid="set-editor">
   <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[300px_1fr]">
     <!-- The panel leads on every viewport: it is the stable place the selection is confirmed and edited. -->
-    <section appCardGlass class="rounded-[20px] px-[18px] py-4" data-testid="set-panel">
+    <section
+      appCardGlass
+      class="rounded-[20px] px-[18px] py-4"
+      tabindex="-1"
+      data-testid="set-panel"
+    >
       <h2 class="text-[15px] font-bold text-(--riv-card-ink)">Edit one set</h2>
 
       @if (selectedSet(); as selected) {
@@ -88,7 +93,48 @@
           >
             {{ busy() ? 'Saving…' : 'Save set' }}
           </button>
+          <button
+            type="button"
+            (click)="askRemove()"
+            [disabled]="busy()"
+            data-testid="set-remove"
+            class="min-h-11 rounded-[14px] border border-[#a3160e]/40 px-4 py-2.5 text-[13.5px] font-bold text-[#a3160e] disabled:opacity-50"
+          >
+            Remove
+          </button>
         </div>
+
+        @if (confirmRemove()) {
+          <div
+            class="mt-3 rounded-[12px] border border-[#e0a03a]/60 bg-[#fff4e0] px-3 py-2.5"
+            role="alertdialog"
+            aria-label="Confirm remove set"
+            data-testid="set-remove-confirm"
+          >
+            <p class="text-[12.5px] font-semibold leading-[1.45] text-[#7a4a08]">
+              Remove {{ selectedLabel() }} from the map? A set that is booked, or held from today on,
+              can’t be removed.
+            </p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                (click)="onRemove()"
+                data-testid="set-remove-yes"
+                class="min-h-11 rounded-[10px] bg-[#a3160e] px-4 py-1.5 text-[12.5px] font-bold text-white"
+              >
+                Remove set
+              </button>
+              <button
+                type="button"
+                (click)="cancelRemove()"
+                data-testid="set-remove-no"
+                class="min-h-11 rounded-[10px] border border-(--riv-card-border) px-4 py-1.5 text-[12.5px] font-semibold text-(--riv-card-ink)"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        }
 
         @if (saved()) {
           <output class="mt-2.5 block text-[12.5px] font-semibold text-[#0a6e85]" data-testid="set-saved">

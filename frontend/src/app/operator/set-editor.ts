@@ -1,4 +1,15 @@
-import { Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  Injector,
+  input,
+  linkedSignal,
+  output,
+  signal,
+} from '@angular/core';
 import { disabled, form, FormField } from '@angular/forms/signals';
 import { firstValueFrom, Observable } from 'rxjs';
 
@@ -53,6 +64,8 @@ const EMPTY_DRAFT: SetDraft = { tier: 'STANDARD', pool: 'ONLINE', priceEur: '', 
 })
 export class SetEditor {
   private readonly console = inject(OperatorConsoleService);
+  private readonly hostRef: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly injector = inject(Injector);
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue whose map is being edited — owner-asserted server-side on every write (invariant #13). */
@@ -68,6 +81,8 @@ export class SetEditor {
   protected readonly saved = signal(false);
   /** The last write failure, mapped to operator-facing copy, or undefined. */
   protected readonly errorCode = signal<SetWriteErrorCode | undefined>(undefined);
+  /** True while awaiting confirmation of a remove — a destructive action is never one tap away. */
+  protected readonly confirmRemove = signal(false);
 
   /**
    * The selected set, kept across a re-read while it still exists and dropped when it does not — the
@@ -162,6 +177,7 @@ export class SetEditor {
     this.selection.set({ kind: 'set', setId });
     this.saved.set(false);
     this.errorCode.set(undefined);
+    this.confirmRemove.set(false);
   }
 
   protected chooseTier(tier: Tier): void {
@@ -197,6 +213,42 @@ export class SetEditor {
     await this.write(() => this.console.editSet(this.venueId(), selected.id, request));
   }
 
+  /**
+   * Open the remove confirmation, or close it, moving focus with the surface. Each transition
+   * destroys the element that was just activated, which strands keyboard/AT focus on `<body>` unless
+   * it is moved deliberately (WCAG 2.4.3) — the same treatment the admin photo takedown carries.
+   */
+  protected askRemove(): void {
+    this.confirmRemove.set(true);
+    this.focusAfterRender('set-remove-yes');
+  }
+
+  protected cancelRemove(): void {
+    this.confirmRemove.set(false);
+    this.focusAfterRender('set-remove');
+  }
+
+  /**
+   * Remove the selected set. On success the selection is dropped here rather than waiting for the
+   * parent's re-read: the set is gone the moment the server says so, and leaving it selected would
+   * offer an edit panel over nothing.
+   */
+  protected async onRemove(): Promise<void> {
+    const selected = this.selectedSet();
+    if (selected === undefined || this.busy()) {
+      return;
+    }
+    this.confirmRemove.set(false);
+    await this.write(
+      () => this.console.removeSet(this.venueId(), selected.id),
+      () => {
+        this.selection.set(null);
+        // Both the confirm and the Remove button are gone with the selection, so focus parks on the panel.
+        this.focusAfterRender('set-panel');
+      },
+    );
+  }
+
   /** The operator-facing message for the current failure, or undefined. */
   protected errorMessage(): string | undefined {
     switch (this.errorCode()) {
@@ -223,19 +275,22 @@ export class SetEditor {
   }
 
   /**
-   * Run one per-set write: on success announce {@link changed} so the parent re-reads (the ONLY way
-   * this grid changes); on failure surface the code and leave the map untouched.
+   * Run one per-set write: on success run {@link onApplied} and announce {@link changed} so the
+   * parent re-reads (the ONLY way this grid changes); on failure surface the code and leave the map
+   * untouched. The follow-up rides the success path rather than a resolved promise the caller awaits,
+   * so it lands in the same turn as the announcement — and never at all for a superseded write.
    */
-  private async write(call: () => Observable<unknown>): Promise<void> {
+  private async write<T>(call: () => Observable<T>, onApplied?: (result: T) => void): Promise<void> {
     const venueId = this.venueId();
     this.busy.set(true);
     this.saved.set(false);
     this.errorCode.set(undefined);
     try {
-      await firstValueFrom(call());
+      const result = await firstValueFrom(call());
       if (this.venueId() !== venueId) {
         return; // a venue switch superseded this write; busy still clears in finally
       }
+      onApplied?.(result);
       this.saved.set(true);
       this.changed.emit();
     } catch (error) {
@@ -250,6 +305,17 @@ export class SetEditor {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  private focusAfterRender(testId: string): void {
+    afterNextRender(
+      {
+        earlyRead: () =>
+          this.hostRef.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`),
+        write: (target) => target?.focus(),
+      },
+      { injector: this.injector },
+    );
   }
 }
 
