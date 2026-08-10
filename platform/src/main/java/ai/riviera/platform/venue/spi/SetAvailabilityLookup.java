@@ -53,6 +53,21 @@ public interface SetAvailabilityLookup {
 	boolean anyClaims(Collection<SetId> setIds);
 
 	/**
+	 * Whether any of {@code setIds} has an availability row dated {@code from} or later. The
+	 * per-set <em>edit</em> guard's narrower question: a hold whose day has already passed can no
+	 * longer be stranded by moving the set, so only a hold that is still ahead should block a
+	 * reposition. {@link #anyClaims} stays the right question for a <em>delete</em>, which would
+	 * CASCADE away history too.
+	 *
+	 * @param setIds the set positions to probe
+	 * @param from   the first day that still counts, a {@code LocalDate} in {@code Europe/Tirane}
+	 *               (invariant #6)
+	 * @return {@code true} if at least one has a row on or after {@code from}; an empty input
+	 *         yields {@code false} without touching the database
+	 */
+	boolean anyClaimsFrom(Collection<SetId> setIds, LocalDate from);
+
+	/**
 	 * The per-set availability <em>state</em> of the held subset of {@code setIds} on {@code date} — the
 	 * state token ({@code BOOKED_ONLINE} or {@code STAFF_MARKED}) keyed by set id; a set with no
 	 * availability row is simply absent (it is free). Unlike {@link #takenOn} this is deliberately

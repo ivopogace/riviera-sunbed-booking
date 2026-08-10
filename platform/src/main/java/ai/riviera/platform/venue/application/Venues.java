@@ -68,14 +68,17 @@ public interface Venues {
 	long insertSet(VenueId venueId, SetCommand command);
 
 	/**
-	 * Overwrite a set position's layout fields. Returns the number of rows changed — {@code 0}
-	 * means no such set belongs to the venue (e.g. it was deleted concurrently after the caller's
-	 * existence check), so the caller must not report success.
+	 * Overwrite a set position's layout fields. The caller has already pinned the row with
+	 * {@link #lockSet} in the same transaction, so the set cannot vanish underneath this write and
+	 * there is no rows-affected signal to interpret.
 	 */
-	int updateSet(VenueId venueId, SetId setId, SetCommand command);
+	void updateSet(VenueId venueId, SetId setId, SetCommand command);
 
-	/** Remove a set position. Returns the number of rows deleted — {@code 0} means no such set. */
-	int deleteSet(VenueId venueId, SetId setId);
+	/**
+	 * Remove a set position. As with {@link #updateSet}, the caller holds the row lock from
+	 * {@link #lockSet}, so a 0-row delete is not reachable and is not reported.
+	 */
+	void deleteSet(VenueId venueId, SetId setId);
 
 	/**
 	 * Reprice every set in a row of the venue in one non-destructive {@code UPDATE}:

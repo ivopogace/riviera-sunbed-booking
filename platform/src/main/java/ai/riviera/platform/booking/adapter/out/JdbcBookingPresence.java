@@ -1,7 +1,12 @@
 package ai.riviera.platform.booking.adapter.out;
 
+import java.util.List;
+import java.util.stream.Stream;
+
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+
+import ai.riviera.platform.booking.domain.BookingStatus;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -26,6 +31,16 @@ import ai.riviera.platform.venue.spi.BookingPresence;
 @Repository
 class JdbcBookingPresence implements BookingPresence {
 
+	/**
+	 * The statuses a booking can still be honoured from — everything the lifecycle has not yet
+	 * ended. Derived from {@link BookingStatus} rather than listed by hand so a new live state
+	 * cannot silently fall out of the edit guard; the terminal legs are the exclusions.
+	 */
+	private static final List<String> LIVE_STATUSES = Stream.of(BookingStatus.values())
+			.filter(status -> !status.isTerminal())
+			.map(Enum::name)
+			.toList();
+
 	private final JdbcClient jdbc;
 
 	JdbcBookingPresence(JdbcClient jdbc) {
@@ -45,6 +60,18 @@ class JdbcBookingPresence implements BookingPresence {
 		// Served by booking_set_date_idx (set_id, booking_date) on its leftmost prefix (V5).
 		return jdbc.sql("SELECT EXISTS(SELECT 1 FROM booking WHERE set_id = :set)")
 				.param("set", setId.value())
+				.query(Boolean.class)
+				.single();
+	}
+
+	@Override
+	public boolean hasLiveBookings(SetId setId) {
+		return jdbc.sql("""
+				SELECT EXISTS(SELECT 1 FROM booking
+				               WHERE set_id = :set AND status IN (:live))
+				""")
+				.param("set", setId.value())
+				.param("live", LIVE_STATUSES)
 				.query(Boolean.class)
 				.single();
 	}

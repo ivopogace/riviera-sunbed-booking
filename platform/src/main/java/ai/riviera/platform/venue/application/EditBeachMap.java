@@ -23,10 +23,28 @@ public interface EditBeachMap {
 	/** Place a new set on the venue's map (after asserting {@code operator} owns {@code venueId}). */
 	AddSetOutcome addSet(OperatorId operator, VenueId venueId, SetCommand command);
 
-	/** Re-place an existing set (tier, pool, price, coordinates) — the pool split is editable. */
+	/**
+	 * Re-place an existing set (tier, pool, price, coordinates) — the pool split is editable, but
+	 * not while someone is still owed the spot. If the command would change the pool or the
+	 * position (row label, position number, grid cell) of a set that carries a hold dated today or
+	 * later, or a booking in a non-terminal status, the edit is refused with
+	 * {@link SetRejection#SET_IN_USE} (→ 409) and nothing is written — otherwise a repool would
+	 * strand an online booking on walk-in inventory (invariant #3) and a move would re-seat a
+	 * guest who was told this row and number. Price and tier are never refused: a booking's charge
+	 * is snapshotted at reserve time, the same reason {@link #repriceRow} is allowed on a claimed
+	 * venue. History does not block an edit — a cancelled or completed booking pins the row
+	 * against deletion but strands nobody.
+	 */
 	ChangeOutcome editSet(OperatorId operator, VenueId venueId, SetId setId, SetCommand command);
 
-	/** Remove a set from the venue's map. */
+	/**
+	 * Remove a set from the venue's map — refused with {@link SetRejection#SET_IN_USE} (→ 409) if
+	 * the set carries any availability hold on any date, or any booking of any status including
+	 * terminal history. Stricter than {@link #editSet} because a delete is destructive either way:
+	 * {@code set_availability} would CASCADE the hold away silently, and the RESTRICT
+	 * {@code booking.set_id} FK refuses the delete outright (the guard turns what would surface as
+	 * a server error into the honest conflict).
+	 */
 	ChangeOutcome removeSet(OperatorId operator, VenueId venueId, SetId setId);
 
 	/**

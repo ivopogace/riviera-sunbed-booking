@@ -66,12 +66,12 @@ in for `bugfix/per-set-layout-write-claim-guard` (`riviera-sdlc` § Remote/cloud
       `Rejected(SET_IN_USE)` and no `DataIntegrityViolationException` is raised.
       *Pinned by:* `VenueAdminServiceTest.removeSetIsRefusedWhenTheSetHasAnyBooking` +
       `VenueAdminControllerIT.removeSetOnABookedSetAnswers409NotAServerError`
-- [x] **AC-3 (no pool flip under a claim):** Given set S is claimed (a hold on any date or a
-      booking of any status), when the owner calls `editSet` with a command whose `pool`,
+- [x] **AC-3 (no pool flip under a LIVE claim):** Given set S is live-claimed (a hold dated today
+      or later, or a booking in a non-terminal status), when the owner calls `editSet` with a command whose `pool`,
       `rowLabel`, `positionNo`, `gridX` or `gridY` differs from the stored row, then the
       outcome is `Rejected(SET_IN_USE)` and the stored pool is unchanged (invariant #3).
       *Pinned by:* `VenueAdminServiceTest.editSetIsRefusedWhenAClaimedSetWouldBeRepositioned`
-- [x] **AC-4 (price and tier stay editable on a claimed set):** Given set S is claimed, when
+- [x] **AC-4 (price and tier stay editable on a claimed set):** Given set S is live-claimed, when
       the owner calls `editSet` with a command that changes only `priceMinor`,
       `priceCurrency` or `tier`, then the outcome is `Applied` and the write lands.
       *Pinned by:* `VenueAdminServiceTest.editSetAppliesAPriceOnlyChangeToAClaimedSet`
@@ -142,7 +142,7 @@ in for `bugfix/per-set-layout-write-claim-guard` (`riviera-sdlc` § Remote/cloud
 | R-5 | Renaming `SetBookingFacts#poolOf` → `poolForClaim` is a published `api/` port change | low | med | exactly one production caller (`JdbcAvailabilityClaim`) plus two test doubles; the rename is the point — a locking read must not be reachable from a read path (it errors inside a `readOnly` transaction), so the name warns callers off | agent | closed — one caller + two doubles updated; substrate greps clean |
 | R-6 | Per-venue authorization regressed while reordering the guards (invariant #13, BOLA) | low | high | `ownership.assertOwns` stays the **first** statement of both methods, before `venueExists` and before any lock; `CrossVenueDenialIT` pins it | agent | closed — `assertOwns` is still statement one in both methods |
 | R-7 | Flyway version collision | none | — | **no migration in this slice**; the set-scoped booking probe rides `booking_set_date_idx` (V5). Open PRs at plan time were Dependabot-only, no `db/migration` diff | agent | closed — N/A |
-| R-9 | A staff tap-to-mark racing a `removeSet` on an **unclaimed** set still surfaces as a `500`: the mark's `setBookingInfo` read is unlocked, so its `set_availability` insert blocks on the delete's `FOR UPDATE` and then fails the FK against a set that is gone | low | low | **Accepted, not a regression** — the same race predates this slice, and the guard *narrows* it (a set with any existing hold now refuses the delete outright, so only the both-empty instant remains). It fails closed: the DB refuses, no phantom hold is written; only the status code is imprecise. The fix would be to lock in `setBookingInfo`, which also serves the my-bookings list and mail-facts reads — row locks on a list read are a worse hazard than the race (Generalization-audit log, Phase 3) | agent | accepted |
+| R-9 | A staff tap-to-mark racing a `removeSet` on an **unclaimed** set surfaces as a `500`: the mark's `setBookingInfo` read is unlocked, so its `set_availability` insert blocks on the delete's `FOR UPDATE` and then fails the FK against a set that is gone | low | low | **Accepted — and the review corrected my first wording of this row, which claimed "not a regression".** It *is* a widening: the delete used to take the row lock only for the DELETE statement itself, whereas it is now held across the claim probes too, so that interleaving goes from unlikely to near-certain once it starts. What stays true is the severity: it fails closed (the DB refuses; no phantom hold is written), only the status code is imprecise, and the guard removes the far worse case — a set carrying a hold is now refused outright rather than cascading it away. The fix would be to lock in `setBookingInfo`, which also serves the my-bookings list and mail-facts reads, where row locks on a list read are a worse hazard than the race (Generalization-audit log, Phase 3) | agent | accepted, wording corrected at the review gate |
 | R-8 | **The Testcontainers ITs cannot run in this session**, so AC-1/AC-2 (HTTP) and AC-6/AC-7 (the two races) get no local green — a guard could ship unverified | high (certain) | high | Docker Hub returned `toomanyrequests` on `postgres:17`, so the daemon was stopped by pidfile per `docs/agents/docker-testcontainers.md` and the ITs now **skip cleanly** rather than fail for an environmental reason. Local verification is therefore unit-level only; **CI owns every IT in this slice**, and no phase may be declared green until its PR CI run is read (`riviera-sdlc` CI-gate rule). Every guard also has a unit-level twin in `VenueAdminServiceTest`, so the ITs are the concurrency proof, not the only proof of the policy | agent | open |
 
 ## Open questions / Assumptions
@@ -268,10 +268,10 @@ money fact is that `repriceRow` must keep working during bookings, which R-2 pro
 
 ## Execution status
 
-**Stage pointer:** `PR — marking ready for review (review + sonar gates due)`
+**Stage pointer:** `review gate — findings fixed, awaiting re-review + CI`
 
-**Next action:** Mark PR #597 ready for review, read the CI run for `skipped=0` on the ITs
-(R-8), then run the review gate per `riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** Push the review-fix round, re-read CI (`skipped=0` on the ITs, R-8), re-run the
+review over the changed surface, then re-pull the Sonar list before merge.
 
 > **Phases 1 and 2 landed in one commit.** Phase 2's guard is what makes the `editSet` half of
 > `VenueAdminControllerIT` pass, and the ITs cannot run locally (R-8), so splitting them would
@@ -290,6 +290,8 @@ money fact is that `repriceRow` must keep working during bookings, which R-2 pro
 | 3 — Close the claim race (`poolForClaim`, `FOR KEY SHARE`) + both concurrency ITs | ✅ | `d7b0f86` |
 | 4 — Docs (RESPONSIBILITIES, o3 + u2 corrections, freshness audit) | ✅ | `920d92d` |
 
+| 5 — Review-gate fix round (F-2..F-12) | ✅ | `810e1cc` |
+
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
@@ -298,7 +300,18 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (repo hygiene) | The new `JdbcBookingPresenceIT` was missing from the plan's File-structure section | fixed-in-`aded935` |
+| F-2 | review (`/code-review`, high) | `editSet`'s probe counted a booking of ANY status and ANY date, so one cancelled booking froze a set's position and pool forever — and no FK forces that for an `UPDATE` | fixed-in-`810e1cc` — **escalated to the user** (`AskUserQuestion`): editSet now asks the *live* question (`hasLiveBookings` + `anyClaimsFrom(today)`); `removeSet` keeps the any-claim question the FK does force |
+| F-3 | review | `ExecutorService.close()` blocks uninterruptibly, so a lock-order regression would hang CI instead of failing it | fixed-in-`810e1cc` — `race()` helper with `shutdownNow()` in a finally |
+| F-4 | review | Three of `disturbedBy`'s five conditions were never evaluated true by any test (`||` short-circuited first), so a copy-paste error there would ship green | fixed-in-`810e1cc` — `everyPlacementFieldOnItsOwnDisturbsAClaimedSet` exercises each field alone |
+| F-5 | review | The `SET_IN_USE` copy said "walk-in holds" but the guard also fires for `BOOKED_ONLINE` | fixed-in-`810e1cc` — "This set is booked or held" |
+| F-6 | review | `EditBeachMap`'s port Javadoc still advertised the pre-guard contract, though the plan listed the file as changed | fixed-in-`810e1cc` — both methods now document their rejection and why they differ |
+| F-7 | review | `FakeAvailability.anyClaims` ignored its argument, so nothing pinned that the per-set writes ask a set-scoped question | fixed-in-`810e1cc` — the fake records the ids; two tests assert `List.of(SET)` |
+| F-8 | review | `removeSetLocksTheSetRowBeforeProbingForClaims` asserted a call *count*, not the ordering it is named for | fixed-in-`810e1cc` — one shared `callLog` across both fakes asserts `[lockSet, anyClaims]` |
+| F-9 | review | `removeSet` discarded `deleteSet`'s rows-affected while the port still documented it as the existence signal | fixed-in-`810e1cc` — `updateSet`/`deleteSet` return `void`; the Javadoc states the lock is why |
+| F-10 | review | `editSet`'s `updated == 0` backstop became unreachable, and its test only passed by forcing the fake into a state the row lock makes impossible | fixed-in-`810e1cc` — branch and test removed with F-9 |
+| F-11 | review | `editSet` takes the exclusive lock before evaluating `disturbedBy`, so an allowed price-only edit briefly blocks concurrent claims on that set | **rejected, with rationale** — the proposed fix (read placement unlocked, escalate only when disturbed) reintroduces a lost update: a concurrent reposition committing between the unlocked read and the write would be silently reverted by the price-only edit writing back the stale placement. The contention is three short indexed statements on an operator action that has no UI caller; a lost layout write is worse than a millisecond of lock wait |
+| F-12 | review | Neither race test asserted that both interleavings actually occurred, so the branch proving `poolForClaim`'s lock could silently never run | fixed-in-`810e1cc` — repetitions 1–2 race simultaneously, 3–6 force each order via a head start; `@AfterAll` fails the class if either branch went unexercised |
 
 ---
 

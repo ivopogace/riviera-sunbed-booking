@@ -3,6 +3,9 @@ package ai.riviera.platform.venue;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import java.time.LocalDate;
+import java.time.ZoneId;
+
 import jakarta.servlet.http.Cookie;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -280,9 +283,12 @@ class VenueAdminControllerIT {
 	void editSetKeepsAClaimedSetInItsPoolButStillTakesAPriceChange() throws Exception {
 		long venue = createVenue("Repool Club");
 		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
+		// Relative to today: the edit guard only counts holds from today onwards.
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
-						+ "VALUES (:set, DATE '2027-07-01', 'BOOKED_ONLINE')")
-				.param("set", setId).update();
+						+ "VALUES (:set, :day, 'BOOKED_ONLINE')")
+				.param("set", setId)
+				.param("day", LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(30))
+				.update();
 
 		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)

@@ -1,5 +1,8 @@
 package ai.riviera.platform.venue.application;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -39,17 +42,21 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 class VenueAdminService
 		implements OnboardVenue, EditBeachMap, EditVenueProfile, ViewVenueProfile, ListOwnedVenues {
 
+	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
+
 	private final Venues venues;
 	private final VenueOwnership ownership;
 	private final SetAvailabilityLookup availability;
 	private final BookingPresence bookings;
+	private final Clock clock;
 
 	VenueAdminService(Venues venues, VenueOwnership ownership, SetAvailabilityLookup availability,
-			BookingPresence bookings) {
+			BookingPresence bookings, Clock clock) {
 		this.venues = venues;
 		this.ownership = ownership;
 		this.availability = availability;
 		this.bookings = bookings;
+		this.clock = clock;
 	}
 
 	@Override
@@ -127,19 +134,15 @@ class VenueAdminService
 		if (placement.isEmpty()) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
 		}
-		if (placement.get().disturbedBy(command) && isClaimed(setId)) {
+		if (placement.get().disturbedBy(command) && isLivelyClaimed(setId)) {
 			return new ChangeOutcome.Rejected(SetRejection.SET_IN_USE);
 		}
 		Optional<Venues.Conflict> conflict = venues.findConflict(venueId, command, Optional.of(setId));
 		if (conflict.isPresent()) {
 			return new ChangeOutcome.Rejected(toRejection(conflict.get()));
 		}
-		// Rows-affected is the race backstop: if the set was deleted concurrently after the
-		// existence check above, the UPDATE touches 0 rows and we must not report success.
-		int updated = venues.updateSet(venueId, setId, command);
-		return updated == 0
-				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET)
-				: ChangeOutcome.Applied.APPLIED;
+		venues.updateSet(venueId, setId, command);
+		return ChangeOutcome.Applied.APPLIED;
 	}
 
 	@Override
@@ -153,7 +156,7 @@ class VenueAdminService
 		if (venues.lockSet(venueId, setId).isEmpty()) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
 		}
-		if (isClaimed(setId)) {
+		if (isClaimedEver(setId)) {
 			return new ChangeOutcome.Rejected(SetRejection.SET_IN_USE);
 		}
 		venues.deleteSet(venueId, setId);
@@ -161,14 +164,24 @@ class VenueAdminService
 	}
 
 	/**
-	 * Whether anything depends on this set staying where it is: an availability hold on any date
-	 * (which a delete would silently CASCADE away) or a booking of any status (which the RESTRICT
-	 * FK pins, and whose guest was told this exact spot). Deliberately as conservative as the bulk
-	 * replace's venue-wide probe, only narrowed to the one set — so the two layout paths answer
-	 * "is this claimed?" the same way. Callers must already hold the row lock.
+	 * Whether anything at all is recorded against this set — a hold on any date, a booking of any
+	 * status. The <em>delete</em> question, and deliberately as conservative as the bulk replace's
+	 * venue-wide probe: a delete CASCADEs the holds away and the RESTRICT FK refuses outright, so
+	 * history counts. Callers must already hold the row lock.
 	 */
-	private boolean isClaimed(SetId setId) {
+	private boolean isClaimedEver(SetId setId) {
 		return availability.anyClaims(List.of(setId)) || bookings.hasBookings(setId);
+	}
+
+	/**
+	 * Whether anyone is still owed this exact spot — a hold from today onwards, or a booking that
+	 * has not reached a terminal state. The <em>edit</em> question, and narrower on purpose: an
+	 * `UPDATE` of pool or coordinates strands only a guest who is still coming, so last season's
+	 * cancelled booking must not freeze the map forever. Callers must already hold the row lock.
+	 */
+	private boolean isLivelyClaimed(SetId setId) {
+		return availability.anyClaimsFrom(List.of(setId), LocalDate.now(clock.withZone(TIRANE)))
+				|| bookings.hasLiveBookings(setId);
 	}
 
 	@Override

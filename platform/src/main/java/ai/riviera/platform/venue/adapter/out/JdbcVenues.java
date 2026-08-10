@@ -257,11 +257,11 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	@Override
-	public int updateSet(VenueId venueId, SetId setId, SetCommand c) {
+	public void updateSet(VenueId venueId, SetId setId, SetCommand c) {
 		Map<String, Object> params = new HashMap<>(setParams(c));
 		params.put(P_VENUE, venueId.value());
 		params.put(P_SET_ID, setId.value());
-		return jdbc.sql("""
+		jdbc.sql("""
 				UPDATE set_position
 				SET row_label = :rowLabel, position_no = :positionNo, tier = :tier, pool = :pool,
 				    price_minor = :priceMinor, price_currency = :priceCurrency,
@@ -273,8 +273,8 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	@Override
-	public int deleteSet(VenueId venueId, SetId setId) {
-		return jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue")
+	public void deleteSet(VenueId venueId, SetId setId) {
+		jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue")
 				.param(P_SET_ID, setId.value())
 				.param(P_VENUE, venueId.value())
 				.update();

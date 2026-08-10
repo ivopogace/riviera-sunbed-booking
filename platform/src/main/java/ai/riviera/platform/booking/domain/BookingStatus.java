@@ -30,5 +30,17 @@ public enum BookingStatus {
 	NO_SHOW,
 	DECLINED,
 	EXPIRED,
-	WITHDRAWN
+	WITHDRAWN;
+
+	/**
+	 * Whether the lifecycle has ended here — nothing further will be honoured. The complement is
+	 * "live": a booking that a guest may still turn up for, which is what the layout-edit guard
+	 * asks about (a cancelled booking still pins its set row, but moving that set strands nobody).
+	 */
+	public boolean isTerminal() {
+		return switch (this) {
+			case CANCELLED, COMPLETED, NO_SHOW, DECLINED, EXPIRED, WITHDRAWN -> true;
+			case PENDING_REQUEST, AWAITING_PAYMENT, CONFIRMED -> false;
+		};
+	}
 }

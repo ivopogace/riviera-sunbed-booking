@@ -43,4 +43,17 @@ public interface BookingPresence {
 	 * @return {@code true} if at least one booking row references the set
 	 */
 	boolean hasBookings(SetId setId);
+
+	/**
+	 * Whether this set has a booking that can <strong>still be honoured</strong> — one in a
+	 * non-terminal status. Serves the per-set <em>edit</em> guard, where the question is not "was
+	 * this set ever sold?" but "would moving it strand a guest who is still coming?": a cancelled
+	 * or completed booking pins the row against deletion, yet nothing is harmed by repositioning
+	 * the set afterwards. Which statuses count as live is <strong>this module's</strong> call, not
+	 * the caller's — {@code venue} must never enumerate booking statuses.
+	 *
+	 * @param setId the set position to probe
+	 * @return {@code true} if at least one non-terminal booking references the set
+	 */
+	boolean hasLiveBookings(SetId setId);
 }

@@ -1,13 +1,16 @@
 package ai.riviera.platform.venue;
 
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +48,69 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SetWriteVsClaimConcurrencyIT {
 
 	private static final LocalDate DAY = LocalDate.of(2027, 9, 12);
+	/**
+	 * A head start long enough for one side to take its row lock before the other starts. Half the
+	 * repetitions give it to the claim and half to the layout write, so BOTH branches are exercised
+	 * every run — a race left to the scheduler can pass six times having only ever taken one, and the
+	 * branch it skips is the one that proves {@code poolForClaim}'s lock.
+	 */
+	private static final long HEAD_START_MS = 150;
+
+	private static final Set<String> POOL_FLIP_BRANCHES = ConcurrentHashMap.newKeySet();
+	private static final Set<String> REMOVE_BRANCHES = ConcurrentHashMap.newKeySet();
+
+	@AfterAll
+	static void bothInterleavingsWereExercised() {
+		assertEquals(Set.of("claim", "write"), POOL_FLIP_BRANCHES,
+				"claim-vs-pool-flip never took both orders, so one guard went unproven");
+		assertEquals(Set.of("claim", "write"), REMOVE_BRANCHES,
+				"claim-vs-remove never took both orders, so one guard went unproven");
+	}
+
+	/**
+	 * Repetitions 1–2 race with no head start (the genuine simultaneous case); 3 and 5 let the
+	 * claim reach its lock first; 4 and 6 let the layout write. The forced pairs are what make
+	 * {@link #bothInterleavingsWereExercised} deterministic instead of scheduler-dependent.
+	 */
+	private static Ordering orderingFor(int rep) {
+		if (rep <= 2) {
+			return Ordering.SIMULTANEOUS;
+		}
+		return rep % 2 == 1 ? Ordering.CLAIM_FIRST : Ordering.WRITE_FIRST;
+	}
+
+	private enum Ordering { SIMULTANEOUS, CLAIM_FIRST, WRITE_FIRST }
+
+	/** Releases on the gate, then yields for {@code HEAD_START_MS} when the other side goes first. */
+	private static void start(CountDownLatch gate, Ordering ordering, Ordering goesFirst)
+			throws InterruptedException {
+		gate.await();
+		if (ordering != Ordering.SIMULTANEOUS && ordering != goesFirst) {
+			Thread.sleep(HEAD_START_MS);
+		}
+	}
+
+	/**
+	 * Runs the two sides concurrently and returns their outcomes. {@code shutdownNow} in a finally
+	 * rather than try-with-resources: {@code ExecutorService.close()} waits for termination without
+	 * interrupting, so a future lock-order regression would hang the job with no failure message
+	 * instead of failing on the 20-second {@code get}.
+	 */
+	private static <A, B> Outcomes<A, B> race(Callable<A> first, Callable<B> second,
+			CountDownLatch gate) throws Exception {
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		try {
+			Future<A> firstF = pool.submit(first);
+			Future<B> secondF = pool.submit(second);
+			gate.countDown();
+			return new Outcomes<>(firstF.get(20, TimeUnit.SECONDS), secondF.get(20, TimeUnit.SECONDS));
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	private record Outcomes<A, B>(A claim, B write) {
+	}
 
 	@Autowired
 	EditBeachMap editBeachMap;
@@ -64,40 +130,38 @@ class SetWriteVsClaimConcurrencyIT {
 		OperatorId owner = insertOperator("flip-owner-" + rep);
 		grant(owner, venueId);
 
+		Ordering ordering = orderingFor(rep);
 		CountDownLatch gate = new CountDownLatch(1);
-		Callable<ClaimOutcome> claim = () -> {
-			gate.await();
-			return availability.claim(new SetId(setId), DAY);
-		};
-		Callable<ChangeOutcome> flip = () -> {
-			gate.await();
-			return editBeachMap.editSet(owner, venue, new SetId(setId),
-					new SetCommand("A", 1, "PREMIUM", "WALK_IN", 3500, "EUR", 1, 1));
-		};
+		Outcomes<ClaimOutcome, ChangeOutcome> outcomes = race(
+				() -> {
+					start(gate, ordering, Ordering.CLAIM_FIRST);
+					return availability.claim(new SetId(setId), DAY);
+				},
+				() -> {
+					start(gate, ordering, Ordering.WRITE_FIRST);
+					return editBeachMap.editSet(owner, venue, new SetId(setId),
+							new SetCommand("A", 1, "PREMIUM", "WALK_IN", 3500, "EUR", 1, 1));
+				},
+				gate);
+		ClaimOutcome claimed = outcomes.claim();
+		ChangeOutcome flipped = outcomes.write();
 
-		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
-			Future<ClaimOutcome> claimedF = pool.submit(claim);
-			Future<ChangeOutcome> flippedF = pool.submit(flip);
-			gate.countDown();
-			ClaimOutcome claimed = claimedF.get(20, TimeUnit.SECONDS);
-			ChangeOutcome flipped = flippedF.get(20, TimeUnit.SECONDS);
-
-			boolean claimWon = claimed == ClaimOutcome.CLAIMED;
-			boolean flipWon = flipped instanceof ChangeOutcome.Applied;
-			assertTrue(claimWon != flipWon,
-					() -> "exactly one of claim/flip may win, got claim=" + claimed + " flip=" + flipped);
-			if (claimWon) {
-				assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) flipped).reason(),
-						"the claim committed first, so the flip must see the hold");
-				assertEquals("ONLINE", poolOf(setId));
-			} else {
-				assertEquals(ClaimOutcome.NOT_ONLINE_POOL, claimed,
-						"the flip committed first, so the claim must re-read the new pool");
-				assertEquals("WALK_IN", poolOf(setId));
-			}
-			assertEquals(claimWon ? 1 : 0, holdsOn(setId),
-					"a BOOKED_ONLINE row on a WALK_IN set would break invariant #3");
+		boolean claimWon = claimed == ClaimOutcome.CLAIMED;
+		boolean flipWon = flipped instanceof ChangeOutcome.Applied;
+		assertTrue(claimWon != flipWon,
+				() -> "exactly one of claim/flip may win, got claim=" + claimed + " flip=" + flipped);
+		if (claimWon) {
+			assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) flipped).reason(),
+					"the claim committed first, so the flip must see the hold");
+			assertEquals("ONLINE", poolOf(setId));
+		} else {
+			assertEquals(ClaimOutcome.NOT_ONLINE_POOL, claimed,
+					"the flip committed first, so the claim must re-read the new pool");
+			assertEquals("WALK_IN", poolOf(setId));
 		}
+		assertEquals(claimWon ? 1 : 0, holdsOn(setId),
+				"a BOOKED_ONLINE row on a WALK_IN set would break invariant #3");
+		POOL_FLIP_BRANCHES.add(claimWon ? "claim" : "write");
 	}
 
 	@RepeatedTest(6)
@@ -109,39 +173,37 @@ class SetWriteVsClaimConcurrencyIT {
 		OperatorId owner = insertOperator("remove-owner-" + rep);
 		grant(owner, venueId);
 
+		Ordering ordering = orderingFor(rep);
 		CountDownLatch gate = new CountDownLatch(1);
-		Callable<ClaimOutcome> claim = () -> {
-			gate.await();
-			return availability.claim(new SetId(setId), DAY);
-		};
-		Callable<ChangeOutcome> remove = () -> {
-			gate.await();
-			return editBeachMap.removeSet(owner, venue, new SetId(setId));
-		};
+		Outcomes<ClaimOutcome, ChangeOutcome> outcomes = race(
+				() -> {
+					start(gate, ordering, Ordering.CLAIM_FIRST);
+					return availability.claim(new SetId(setId), DAY);
+				},
+				() -> {
+					start(gate, ordering, Ordering.WRITE_FIRST);
+					return editBeachMap.removeSet(owner, venue, new SetId(setId));
+				},
+				gate);
+		ClaimOutcome claimed = outcomes.claim();
+		ChangeOutcome removed = outcomes.write();
 
-		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
-			Future<ClaimOutcome> claimedF = pool.submit(claim);
-			Future<ChangeOutcome> removedF = pool.submit(remove);
-			gate.countDown();
-			ClaimOutcome claimed = claimedF.get(20, TimeUnit.SECONDS);
-			ChangeOutcome removed = removedF.get(20, TimeUnit.SECONDS);
-
-			boolean claimWon = claimed == ClaimOutcome.CLAIMED;
-			boolean removeWon = removed instanceof ChangeOutcome.Applied;
-			assertTrue(claimWon != removeWon,
-					() -> "exactly one of claim/remove may win, got claim=" + claimed
-							+ " remove=" + removed);
-			if (claimWon) {
-				assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) removed).reason(),
-						"the claim committed first, so the delete must be refused");
-				assertEquals(1, setRowsFor(setId), "the set must survive so its hold is not cascaded");
-				assertEquals(1, holdsOn(setId));
-			} else {
-				assertEquals(ClaimOutcome.NO_SUCH_SET, claimed,
-						"the delete committed first, so the claim must find no set — never an FK error");
-				assertEquals(0, setRowsFor(setId));
-			}
+		boolean claimWon = claimed == ClaimOutcome.CLAIMED;
+		boolean removeWon = removed instanceof ChangeOutcome.Applied;
+		assertTrue(claimWon != removeWon,
+				() -> "exactly one of claim/remove may win, got claim=" + claimed
+						+ " remove=" + removed);
+		if (claimWon) {
+			assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) removed).reason(),
+					"the claim committed first, so the delete must be refused");
+			assertEquals(1, setRowsFor(setId), "the set must survive so its hold is not cascaded");
+			assertEquals(1, holdsOn(setId));
+		} else {
+			assertEquals(ClaimOutcome.NO_SUCH_SET, claimed,
+					"the delete committed first, so the claim must find no set — never an FK error");
+			assertEquals(0, setRowsFor(setId));
 		}
+		REMOVE_BRANCHES.add(claimWon ? "claim" : "write");
 	}
 
 	private String poolOf(long setId) {
