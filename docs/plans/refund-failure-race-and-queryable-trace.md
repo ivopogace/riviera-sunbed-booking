@@ -155,14 +155,23 @@ earns its place:
 
 ## Open questions / Assumptions
 
-- **Assumption:** `RefundService#refund` is never invoked inside a caller-owned transaction,
-  so the `refund_attempted_at` stamp commits before the gateway call. Evidence: the only
-  production `RefundPort` consumer is `BookingRefundListener`, whose transaction #404
-  deliberately dropped; the admin re-drive and the restart republish both re-enter through
-  that same listener. — *Owner:* this slice · *Resolves by:* phase 2 (R-4's visibility IT)
-- **Assumption:** clearing `refund_failed_at` (but **keeping** `failed_refund_id`) on a
-  successful later record is the wanted semantics — the flag means "owed **now**", the id
-  keeps the last death for traceability. — *Owner:* this slice · *Resolves by:* phase 1
+None outstanding.
+
+### Resolved
+
+- **Assumption (confirmed):** `RefundService#refund` is never invoked inside a caller-owned
+  transaction, so the `refund_attempted_at` stamp commits before the gateway call. Verified two
+  ways in `55f18b4`: `RefundAttemptVisibilityIT` reads the stamp back on a second connection
+  during the gateway call, and the review gate's history pass independently confirmed the only
+  production `RefundPort` consumer is `BookingRefundListener` (transaction-free since #404) —
+  `WeatherRefundService` and `CancelBookingService` are `@Transactional` but only publish
+  `BookingCancelled`, and the admin resubmission path carries no transaction either.
+- **Assumption (confirmed, then sharpened):** clearing `refund_failed_at` while **keeping**
+  `failed_refund_id` is the wanted semantics — "owed **now**" versus "what died". Shipped in
+  `3826949`, pinned by `aSucceedingRetryClearsTheOwedFlag`. The review gate then found the
+  neighbouring field needed the same treatment for the opposite reason: `refund_attempted_at`
+  had to be **cleared** at every terminal outcome, because a stamp that outlives its attempt
+  stops discriminating (F-4, fixed in `0102d07`).
 
 ## Availability & concurrency (invariant #2)
 
