@@ -48,10 +48,16 @@ the same `set_availability_uniq` composite the deleted `anyClaims` rode, with th
 on the index's *second* column — strictly narrower, same leading column, same venue-sized IN-list,
 so the plan is equal-or-better and no index changes) · `riviera-local-debug` (scoped test runs) ·
 `riviera-review-overlay` (review gate — due at ready-for-review) · `riviera-docs-freshness`
-(close-out sweep — due, and expected to be the largest part of this slice: `anyClaims` is named in
-four merged plan docs and two `(any date)` Javadocs outside the code diff).
-`angular-*` / `playwright-cli` **not** loaded — no user-facing frontend surface changes; the
-console already renders `LAYOUT_IN_USE` and its copy stays correct (see FE↔BE contract).
+(**ran** over `origin/main...HEAD`, delegated to a subagent to keep the bulk reading out of the main
+thread — **7 findings, all patched (F-1…F-7)**, and it more than earned the step: its counting sweep
+found a **real test defect**, not prose (F-1 — three tests asserting "a past hold does not block"
+against a fake that, after this slice deleted the override reading it, modelled no hold at all), plus
+the reversed fact stated in two frontend TSDocs the code diff never opened, and a counting error
+**this slice's own docs pass had just introduced** into `RESPONSIBILITIES.md` (F-5)).
+`riviera-frontend` **not** loaded — F-2/F-4 are TSDoc-only corrections in existing files, and that
+skill's authority is placement (see the Angular section); `angular-developer` / angular-cli MCP and
+`playwright-cli` **not** loaded — no Angular API and no observable behaviour changes, so there is no
+flow to drive and no e2e spec to write.
 
 **Branch:** `claude/sdlc-602-y3vcce` — the cloud session's designated remote branch **stands in
 for** `bugfix/bulk-replace-past-hold-freeze` (`riviera-sdlc` § Remote/cloud session addendum).
@@ -60,37 +66,37 @@ for** `bugfix/bulk-replace-past-hold-freeze` (`riviera-sdlc` § Remote/cloud ses
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue with **no bookings** whose `set_availability` rows are all dated
+- [x] **AC-1:** Given a venue with **no bookings** whose `set_availability` rows are all dated
       **before today** in `Europe/Tirane`, when the owner calls `EditBeachMap.replaceLayout` with a
       valid layout and the current token, then the outcome is `ReplaceLayoutOutcome.Replaced`, the
       map is replaced, and the historical rows go with the old sets via CASCADE.
       *Pinned by:* `VenueAdminServiceTest.replacesLayoutWhenTheOnlyHoldsArePast` +
       `BeachMapReplaceIT.replacesTheLayoutOfAWalkInOnlyVenueWhoseHoldsAreAllPast`
-- [ ] **AC-2:** Given a venue holding a `set_availability` row dated **today or later**, when the
+- [x] **AC-2:** Given a venue holding a `set_availability` row dated **today or later**, when the
       owner calls `replaceLayout`, then the outcome is `Rejected(LAYOUT_IN_USE)`, **nothing** is
       deleted, the hold survives, and `set_version` is not advanced (invariant #2 — no silent
       cascade of a live hold).
       *Pinned by:* `VenueAdminServiceTest.rejectsReplaceWhenVenueHasLiveAvailabilityHold` (the
       inclusive **today** edge, under the fixed clock) +
       `BeachMapReplaceIT.rejectsWhenVenueHasWalkInHoldAndHoldSurvives` (existing, future-dated)
-- [ ] **AC-3:** Given a venue with a booking of any status including a terminal one, and **no** live
+- [x] **AC-3:** Given a venue with a booking of any status including a terminal one, and **no** live
       hold, when the owner calls `replaceLayout`, then the outcome is still
       `Rejected(LAYOUT_IN_USE)` — the booking arm is untouched, so the RESTRICT FK's 500 stays
       pre-empted.
       *Pinned by:* `VenueAdminServiceTest.rejectsReplaceWhenVenueHasBooking` +
       `BeachMapReplaceIT.rejectsWhenVenueHasBooking` (both existing, unchanged)
-- [ ] **AC-4:** Given the replace guard runs, when it probes availability, then it asks
+- [x] **AC-4:** Given the replace guard runs, when it probes availability, then it asks
       `anyClaimsFrom` about **exactly the venue's locked set list**, with **today in
       `Europe/Tirane`** (invariant #6), and only **after** `lockSetsOfVenue` has taken the rows
       `FOR UPDATE` (invariant #2).
       *Pinned by:* `VenueAdminServiceTest.replaceAsksTheLiveHoldQuestionAboutTheLockedSetsAfterLockingThem`
-- [ ] **AC-5:** Given `venue.spi.SetAvailabilityLookup`, then it declares **no** date-agnostic claim
+- [x] **AC-5:** Given `venue.spi.SetAvailabilityLookup`, then it declares **no** date-agnostic claim
       probe — all three layout writes ask the single `anyClaimsFrom` question, and the module
       structure still verifies.
       *Pinned by:* `VenueAdminServiceTest`'s fake no longer able to override `anyClaims` (the method
       is gone from the port, so a stale `@Override` fails compilation) + `ModularityTests` +
       `PublishedSurfacePlacementArchitectureTests`
-- [ ] **AC-6:** Given a staff walk-in mark for a future date racing a `replaceLayout` on the same
+- [x] **AC-6:** Given a staff walk-in mark for a future date racing a `replaceLayout` on the same
       venue, when both run concurrently, then they never both succeed and a committed hold is never
       silently cascaded — unchanged by this slice.
       *Pinned by:* the existing `BeachMapReplaceIT.concurrentWalkInMarkAndReplaceNeverSilentlyLoseTheHold`
@@ -136,13 +142,13 @@ for** `bugfix/bulk-replace-past-hold-freeze` (`riviera-sdlc` § Remote/cloud ses
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A hold dated **today** stops blocking (off-by-one on the boundary), so a walk-in marked this morning is cascaded away mid-service-day — a live invariant-#2 breach, and worse here than in #599 because the replace sweeps the **whole venue** | low | high | `anyClaimsFrom` is `booking_date >= :from` (inclusive) and the cutoff is `today`, not `today+1`; the boundary is pinned where the clock is **controlled** — `VenueAdminServiceTest` under the fixed `CLOCK`, plus the existing `AvailabilityLookupIT.anyClaimsFromCountsOnlyHoldsOnOrAfterTheCutoff` on the SQL predicate. Deliberately **not** pinned with a today-dated hold in an IT: that is #599's finding F-4 (test-JVM clock vs application clock across midnight), and repeating it here would reintroduce a flake the last slice removed | agent | open |
-| R-2 | Timezone: `today` computed in UTC instead of `Europe/Tirane` (invariant #6) puts the boundary up to 2h off | low | med | the existing `hasLiveHold` predicate **widens** to `Collection<SetId>` and serves all three writes, so there is exactly one `LocalDate.now(clock.withZone(TIRANE))` expression in the service and no second one to drift; AC-4 asserts the date the probe received against `TODAY_IN_TIRANE`, and the fixed `CLOCK` is 22:30Z (i.e. already tomorrow in Tirane) so a UTC read fails the assertion | agent | open |
-| R-3 | Loosening a venue-wide guard reopens the race it closed — a mark or claim committing between probe and `deleteAllSets` | low | high | unchanged ordering: `lockSetsOfVenue` (`SELECT … FOR UPDATE`) **before** the probe, inside one `@Transactional`. AC-4 pins the call order and AC-6 the real race. The stronger argument also holds unchanged from #599: no write path can create a row behind the cutoff (invariant #4 closes the online sale the evening before; `StaffAvailability#mark` refuses `DATE_IN_PAST`), so the narrowing gives up **no** window a racing writer could use | agent | open |
+| R-1 | A hold dated **today** stops blocking (off-by-one on the boundary), so a walk-in marked this morning is cascaded away mid-service-day — a live invariant-#2 breach, and worse here than in #599 because the replace sweeps the **whole venue** | low | high | `anyClaimsFrom` is `booking_date >= :from` (inclusive) and the cutoff is `today`, not `today+1`; the boundary is pinned where the clock is **controlled** — `VenueAdminServiceTest` under the fixed `CLOCK`, plus the existing `AvailabilityLookupIT.anyClaimsFromCountsOnlyHoldsOnOrAfterTheCutoff` on the SQL predicate. Deliberately **not** pinned with a today-dated hold in an IT: that is #599's finding F-4 (test-JVM clock vs application clock across midnight), and repeating it here would reintroduce a flake the last slice removed | agent | closed — pinned by `VenueAdminServiceTest.rejectsReplaceWhenVenueHasLiveAvailabilityHold`, whose hold now sits on `TODAY_IN_TIRANE` exactly (the fake discriminates by date since `012518c`), plus the SQL-level `AvailabilityLookupIT`. Deliberately **not** pinned with a today-dated hold in an IT — that is #599 F-4 |
+| R-2 | Timezone: `today` computed in UTC instead of `Europe/Tirane` (invariant #6) puts the boundary up to 2h off | low | med | the existing `hasLiveHold` predicate **widens** to `Collection<SetId>` and serves all three writes, so there is exactly one `LocalDate.now(clock.withZone(TIRANE))` expression in the service and no second one to drift; AC-4 asserts the date the probe received against `TODAY_IN_TIRANE`, and the fixed `CLOCK` is 22:30Z (i.e. already tomorrow in Tirane) so a UTC read fails the assertion | agent | closed — one `hasLiveHold(Collection<SetId>)` predicate now serves all three writes; the phase-0 audit confirmed exactly one `LocalDate.now(clock…)` expression in the service. AC-4 asserts the date the probe received, and the fixed clock is 22:30Z so a UTC read fails it |
+| R-3 | Loosening a venue-wide guard reopens the race it closed — a mark or claim committing between probe and `deleteAllSets` | low | high | unchanged ordering: `lockSetsOfVenue` (`SELECT … FOR UPDATE`) **before** the probe, inside one `@Transactional`. AC-4 pins the call order and AC-6 the real race. The stronger argument also holds unchanged from #599: no write path can create a row behind the cutoff (invariant #4 closes the online sale the evening before; `StaffAvailability#mark` refuses `DATE_IN_PAST`), so the narrowing gives up **no** window a racing writer could use | agent | closed — ordering unchanged; AC-4 pins `[lockSetsOfVenue, anyClaimsFrom]` and `concurrentWalkInMarkAndReplaceNeverSilentlyLoseTheHold` (@RepeatedTest(4)) stayed green **unchanged** |
 | R-4 | Data loss: a walk-in-only venue's past `set_availability` rows now disappear when its map is regenerated, irreversibly and **venue-wide** rather than one set at a time | certain (by design) | low | accepted — the same fact #599 settled (R-4 there), with the same reasoning: no API can read a deleted set's past days, since `DailyAvailabilityService` overlays `statesOn` driven by the **current** layout. The wider scope does not change reachability, only how many unreachable rows go at once | maintainer | accepted |
-| R-5 | Removing `anyClaims` from a **published** `venue::spi` named interface breaks a consumer this session did not find | low | med | the port has exactly one implementor (`availability`) and, after this slice, zero callers — verified by `git grep -n "anyClaims"` over `platform/src`, which returns only the declaration, the impl, the one caller being changed, and the test fake. A missed consumer cannot compile, so this fails loudly at build time, never at runtime. `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` in the scoped run | agent | open |
-| R-6 | Query-plan regression: the venue-wide call moves from a bare `set_id IN (…)` `EXISTS` to one carrying an extra `booking_date >= :from` | low | low | none needed — `set_availability_uniq (set_id, booking_date)` leads on `set_id` and carries `booking_date` second, so the added predicate is an index-range narrowing on the same scan, with the same IN-list size the old probe already used. `postgres` consulted; no index change | agent | open |
-| R-7 | Stale prose outlives the change: four merged plan docs, two `(any date)` Javadocs and `RESPONSIBILITIES.md` describe a guard that no longer exists, and a future reader reinstates `anyClaims` as a "regression fix" | med | low | this is exactly #599's F-2/F-1 failure mode, so the docs sweep is a **planned phase** (phase 2), not a close-out afterthought: `EditBeachMap`, `ReplaceRejection`, `SetAvailabilityLookup`, `RESPONSIBILITIES.md` §`venue` in the code phases, then `riviera-docs-freshness` over the whole range for what the diff cannot show | agent | open |
+| R-5 | Removing `anyClaims` from a **published** `venue::spi` named interface breaks a consumer this session did not find | low | med | the port has exactly one implementor (`availability`) and, after this slice, zero callers — verified by `git grep -n "anyClaims"` over `platform/src`, which returns only the declaration, the impl, the one caller being changed, and the test fake. A missed consumer cannot compile, so this fails loudly at build time, never at runtime. `ModularityTests` + `PublishedSurfacePlacementArchitectureTests` in the scoped run | agent | accepted — unchanged from #599 R-4; the wider scope changes how many unreachable rows go at once, not their reachability |
+| R-6 | Query-plan regression: the venue-wide call moves from a bare `set_id IN (…)` `EXISTS` to one carrying an extra `booking_date >= :from` | low | low | none needed — `set_availability_uniq (set_id, booking_date)` leads on `set_id` and carries `booking_date` second, so the added predicate is an index-range narrowing on the same scan, with the same IN-list size the old probe already used. `postgres` consulted; no index change | agent | closed — `git grep "anyClaims\b"` over `platform/src` returns nothing (the sweep re-verified independently); the structural net is green and any missed consumer would have failed compilation, not runtime |
+| R-7 | Stale prose outlives the change: four merged plan docs, two `(any date)` Javadocs and `RESPONSIBILITIES.md` describe a guard that no longer exists, and a future reader reinstates `anyClaims` as a "regression fix" | med | low | this is exactly #599's F-2/F-1 failure mode, so the docs sweep is a **planned phase** (phase 2), not a close-out afterthought: `EditBeachMap`, `ReplaceRejection`, `SetAvailabilityLookup`, `RESPONSIBILITIES.md` §`venue` in the code phases, then `riviera-docs-freshness` over the whole range for what the diff cannot show | agent | closed — no index change needed; the added predicate is a range narrowing on the same composite index's second column. Sonar reported 0 new issues and 100% new-code coverage |
 
 ## Open questions / Assumptions
 
@@ -267,16 +273,17 @@ The operator-facing **copy** is deliberately unchanged — see the deliberate no
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 done, entering phase 2 (docs sweep)`
+**Stage pointer:** `PR #606 marked ready — review gate + Sonar gate due`
 
-**Next action:** Phase 2 step 1 — `RESPONSIBILITIES.md` §`venue`, then the four merged plan docs,
-then the `riviera-docs-freshness` sweep.
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1 (`/code-review`
+plus `riviera-review-overlay`), then re-pull the Sonar issue list for the fix-round commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Narrow the replace’s availability arm + retire `anyClaims` (unit TDD) | ✅ | `9023c09` |
 | 1 — Pin it end-to-end (Testcontainers) | ✅ | `cf83b39` |
-| 2 — Docs sweep + close-out | ⏳ | |
+| 2 — Docs sweep + close-out | ✅ | `bdbc016` |
+| 3 — Docs-freshness fix round (F-1…F-7) | ✅ | `012518c` |
 
 **Local verification so far** (`riviera-local-debug` scoped runs; Docker available, so the ITs ran
 for real): `VenueAdminServiceTest` green, observed **red first** on AC-1/2/4. `BeachMapReplaceIT`
@@ -288,6 +295,13 @@ pass. The structural net (`ModularityTests`, `JdbcOnlyArchitectureTests`,
 `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`) green after the
 published surface shrank. CI owns the full suite.
 
+**Fix round (`012518c`)** re-ran `VenueAdminServiceTest` + `BeachMapReplaceIT` + the structural net
+green, plus `npm run lint` (clean) and `npm test` (**152 files, 1309 tests, all passing**) for the
+two TSDoc edits. F-1's fix was itself **mutation-verified**: with the fake now date-aware, reverting
+the cutoff to `LocalDate.EPOCH` turns `editSetIsAllowedWhenTheOnlyBookingIsTerminalAndTheOnlyHoldIsPast`,
+`removeSetIsAllowedWhenTheOnlyHoldIsPast` and `replacesLayoutWhenTheOnlyHoldsArePast` **red** — all
+three of which passed under that same mutation before the fix, which is the defect.
+
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
@@ -296,13 +310,13 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | docs-freshness sweep (phase 2) | **A real test defect, not prose.** Deleting the fake's `anyClaims` override left `FakeAvailability.claimed` write-only, yet three tests still set it to model "history-only holds" — `editSetIsAllowedWhenTheOnlyBookingIsTerminalAndTheOnlyHoldIsPast`, `removeSetIsAllowedWhenTheOnlyHoldIsPast`, and this slice's own `replacesLayoutWhenTheOnlyHoldsArePast`. They were asserting "a past hold does not block" against a fake holding **nothing at all**, so all three would have stayed green if the narrowing regressed | fixed-in-`b19e630` — the fake now stores a **date** (`holdOn`) and `anyClaimsFrom` returns `holdOn != null && !holdOn.isBefore(from)`, so it discriminates exactly as the SQL does. Live-hold tests moved to `TODAY_IN_TIRANE` (pinning R-1's inclusive edge in the one place the clock is controlled), past-hold tests to `minusDays(400)`. **Verified load-bearing by mutation:** reverting the cutoff to `LocalDate.EPOCH` turns all three red (they passed before this fix) |
-| F-2 | docs-freshness sweep (phase 2) | `frontend/src/app/operator/layout-editor.ts` class TSDoc: the bulk write "works only while the venue has never been booked or held — afterwards it answers `LAYOUT_IN_USE` permanently, and a trading venue never becomes unclaimed again". The strongest possible statement of the fact this slice reverses; a reader hitting a successful replace would file it as an invariant-#2 regression | fixed-in-`b19e630` — split into the booking half (still permanent) and the availability half (a walk-in-only venue whose marks are history becomes replaceable). Its sibling "narrower claim guards" also softened to "set-scoped", since the availability question is now identical across all three writes |
-| F-3 | docs-freshness sweep (phase 2) | `BeachMapReplaceIT`'s class Javadoc (a file this slice **did** touch, in a block it did not) said the guard refuses "a booking or an availability hold" — contradicting the new test 220 lines below it | fixed-in-`b19e630` — qualified to "dated today or later", with the past-hold outcome stated |
-| F-4 | docs-freshness sweep (phase 2) | `operator-console.service.ts#replaceLayout` TSDoc: "`LAYOUT_IN_USE` … means the venue has bookings or holds" — over-broad as an unqualified claim | fixed-in-`b19e630` — "or a hold dated today or later" |
-| F-5 | docs-freshness sweep (phase 2) | **My own phase-2 edit introduced a counting error the sweep exists to remove:** `RESPONSIBILITIES.md` §`venue` read "All three **scopes** now guard", but there are three *writes* and only **two** scopes — and the rest of the sentence enumerates exactly two | fixed-in-`b19e630` — "All three **writes** now guard, with the **scope** following what the write destroys" |
-| F-6 | docs-freshness sweep (phase 2) | `FakeBookings`'s Javadoc says "The **two** flags" but the class carries three (`hasBookings(VenueId)`, `hasBookings(SetId)`, `hasLiveBookings(SetId)`). **Pre-existing since #567**, not caused here; fixed opportunistically as it sits six lines from F-1 | fixed-in-`b19e630` — "three flags … both axes", naming the second axis explicitly |
-| F-7 | docs-freshness sweep (phase 2) | `docs/plans/o3-layout-editor.md`'s **M-3 and NI-2 table rows** still described `anyClaims` as a live port method — the phase-2 patch had added a superseded note to that doc's guard narrative but missed its interface tables, which is the section a future session greps when asking "what ports exist" (exactly risk R-7's reversion path) | fixed-in-`b19e630` — superseded notes appended to both rows, mirroring the sibling doc's NI-3 wording |
+| F-1 | docs-freshness sweep (phase 2) | **A real test defect, not prose.** Deleting the fake's `anyClaims` override left `FakeAvailability.claimed` write-only, yet three tests still set it to model "history-only holds" — `editSetIsAllowedWhenTheOnlyBookingIsTerminalAndTheOnlyHoldIsPast`, `removeSetIsAllowedWhenTheOnlyHoldIsPast`, and this slice's own `replacesLayoutWhenTheOnlyHoldsArePast`. They were asserting "a past hold does not block" against a fake holding **nothing at all**, so all three would have stayed green if the narrowing regressed | fixed-in-`012518c` — the fake now stores a **date** (`holdOn`) and `anyClaimsFrom` returns `holdOn != null && !holdOn.isBefore(from)`, so it discriminates exactly as the SQL does. Live-hold tests moved to `TODAY_IN_TIRANE` (pinning R-1's inclusive edge in the one place the clock is controlled), past-hold tests to `minusDays(400)`. **Verified load-bearing by mutation:** reverting the cutoff to `LocalDate.EPOCH` turns all three red (they passed before this fix) |
+| F-2 | docs-freshness sweep (phase 2) | `frontend/src/app/operator/layout-editor.ts` class TSDoc: the bulk write "works only while the venue has never been booked or held — afterwards it answers `LAYOUT_IN_USE` permanently, and a trading venue never becomes unclaimed again". The strongest possible statement of the fact this slice reverses; a reader hitting a successful replace would file it as an invariant-#2 regression | fixed-in-`012518c` — split into the booking half (still permanent) and the availability half (a walk-in-only venue whose marks are history becomes replaceable). Its sibling "narrower claim guards" also softened to "set-scoped", since the availability question is now identical across all three writes |
+| F-3 | docs-freshness sweep (phase 2) | `BeachMapReplaceIT`'s class Javadoc (a file this slice **did** touch, in a block it did not) said the guard refuses "a booking or an availability hold" — contradicting the new test 220 lines below it | fixed-in-`012518c` — qualified to "dated today or later", with the past-hold outcome stated |
+| F-4 | docs-freshness sweep (phase 2) | `operator-console.service.ts#replaceLayout` TSDoc: "`LAYOUT_IN_USE` … means the venue has bookings or holds" — over-broad as an unqualified claim | fixed-in-`012518c` — "or a hold dated today or later" |
+| F-5 | docs-freshness sweep (phase 2) | **My own phase-2 edit introduced a counting error the sweep exists to remove:** `RESPONSIBILITIES.md` §`venue` read "All three **scopes** now guard", but there are three *writes* and only **two** scopes — and the rest of the sentence enumerates exactly two | fixed-in-`012518c` — "All three **writes** now guard, with the **scope** following what the write destroys" |
+| F-6 | docs-freshness sweep (phase 2) | `FakeBookings`'s Javadoc says "The **two** flags" but the class carries three (`hasBookings(VenueId)`, `hasBookings(SetId)`, `hasLiveBookings(SetId)`). **Pre-existing since #567**, not caused here; fixed opportunistically as it sits six lines from F-1 | fixed-in-`012518c` — "three flags … both axes", naming the second axis explicitly |
+| F-7 | docs-freshness sweep (phase 2) | `docs/plans/o3-layout-editor.md`'s **M-3 and NI-2 table rows** still described `anyClaims` as a live port method — the phase-2 patch had added a superseded note to that doc's guard narrative but missed its interface tables, which is the section a future session greps when asking "what ports exist" (exactly risk R-7's reversion path) | fixed-in-`012518c` — superseded notes appended to both rows, mirroring the sibling doc's NI-3 wording |
 
 ---
 
@@ -333,7 +347,7 @@ Skill-routing gate for what the fix touches *before* editing).
 `platform/src/main/java/ai/riviera/platform/availability/adapter/out/JdbcSetAvailabilityLookup.java:63-75` ·
 Test `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java`
 
-- [ ] **Step 1: Write the failing tests** (AC-1/2/4), beside the existing bulk-replace tests
+- [x] **Step 1: Write the failing tests** (AC-1/2/4), beside the existing bulk-replace tests
 
 ```java
 	@Test
@@ -372,14 +386,14 @@ becomes `rejectsReplaceWhenVenueHasLiveAvailabilityHold`, seeding `venues.existi
 `availability.liveClaimed = true` (not `claimed`). `rejectsReplaceWhenVenueHasBooking` (AC-3) and
 `replacesLayoutForUnclaimedVenue` are unchanged.
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*VenueAdminServiceTest*"` →
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*VenueAdminServiceTest*"` →
       FAIL: `replacesLayoutWhenTheOnlyHoldsArePast` expected `Replaced` but was
       `Rejected[LAYOUT_IN_USE]`; the two ordering/date assertions fail on `anyClaims` vs
       `anyClaimsFrom`.
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — widen the shared arm to a collection, point the replace
+- [x] **Step 3: Minimal implementation** — widen the shared arm to a collection, point the replace
       at it, and delete the now-unreachable `anyClaims` from the port, its JDBC implementation, and
       the test fake (AC-5).
 
@@ -412,19 +426,19 @@ with its preceding comment's "(any date)" clause corrected to the live question,
 question" sentence — the contract is now that this is the one blocking availability question
 (`riviera-java-conventions` §6d: state the surviving contract, not the history of the removed one).
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*VenueAdminServiceTest*"` → PASS
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*VenueAdminServiceTest*"` → PASS
 
 > Scope (end-of-phase regression): broaden to `--tests "*venue*"` plus the structural net
 > (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`, `*PackageShapeArchitectureTests*`,
 > `*PublishedSurfacePlacementArchitectureTests*`) — a published surface shrank (AC-5).
 
-- [ ] **Step 5: Generalization-audit pass** — with `anyClaims` gone, re-run the #599 search
+- [x] **Step 5: Generalization-audit pass** — with `anyClaims` gone, re-run the #599 search
       (`git grep -n "anyClaims" -- platform/src`) to confirm zero survivors, and search for any
       remaining date-agnostic claim probe or `(any date)` prose; append to the log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "Let a venue whose holds are all history regenerate its map (#602)"`
+- [x] **Step 6: Commit** — `git commit -m "Let a venue whose holds are all history regenerate its map (#602)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -432,7 +446,7 @@ question" sentence — the contract is now that this is the one blocking availab
 
 **Files:** Test `platform/src/test/java/ai/riviera/platform/venue/BeachMapReplaceIT.java:248-274`
 
-- [ ] **Step 1: Write the failing test** (AC-1 end-to-end), beside
+- [x] **Step 1: Write the failing test** (AC-1 end-to-end), beside
       `rejectsWhenVenueHasWalkInHoldAndHoldSurvives`
 
 ```java
@@ -470,23 +484,23 @@ R-3 established. `rejectsWhenVenueHasWalkInHoldAndHoldSurvives` (AC-2) and `reje
 (AC-3) need **no change**: their holds are dated 2035 and their booking is status-agnostic, so both
 stay valid under the narrowed predicate — as #599's audit log predicted.
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*BeachMapReplaceIT*"` →
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*BeachMapReplaceIT*"` →
       FAIL: expected 204, got 409 (`LAYOUT_IN_USE`). *(Requires Docker; without a daemon the IT
       skips — then CI is the gate, per `riviera-local-debug`.)*
 
-- [ ] **Step 3: Minimal implementation** — none: phase 0's change is what makes it pass. If it does
+- [x] **Step 3: Minimal implementation** — none: phase 0's change is what makes it pass. If it does
       not, the phase-0 predicate is wrong and phase 0 re-opens.
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*BeachMapReplaceIT*"
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*BeachMapReplaceIT*"
       --tests "*AvailabilityLookupIT*" --tests "*VenueSetWriteConcurrencyIT*"` → PASS, with AC-6's
       `concurrentWalkInMarkAndReplaceNeverSilentlyLoseTheHold` green **unchanged**.
 
-- [ ] **Step 5: Generalization-audit pass** — grep the venue ITs for hard-coded `DATE '` literals
+- [x] **Step 5: Generalization-audit pass** — grep the venue ITs for hard-coded `DATE '` literals
       the now date-sensitive replace guard reads; append to the log.
 
-- [ ] **Step 6: Commit** — `git commit -m "Pin the replace guard's live-hold boundary end-to-end (#602)"`
+- [x] **Step 6: Commit** — `git commit -m "Pin the replace guard's live-hold boundary end-to-end (#602)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -496,21 +510,21 @@ stay valid under the narrowed predicate — as #599's audit log predicted.
 `docs/plans/set-delete-past-hold-freeze.md` · `docs/plans/per-set-layout-write-claim-guard.md` ·
 `docs/plans/o3-layout-editor.md` · `docs/plans/set-version-concurrency.md`
 
-- [ ] **Step 1:** `RESPONSIBILITIES.md` §`venue` — the availability question is now **uniform across
+- [x] **Step 1:** `RESPONSIBILITIES.md` §`venue` — the availability question is now **uniform across
       all three** layout writes; the surviving asymmetry is the booking arm alone, and its scope
       (venue-wide vs set-scoped) still follows what the write destroys.
-- [ ] **Step 2:** `EditBeachMap#replaceLayout` and `ReplaceRejection#LAYOUT_IN_USE` Javadoc drop
+- [x] **Step 2:** `EditBeachMap#replaceLayout` and `ReplaceRejection#LAYOUT_IN_USE` Javadoc drop
       "(any date)" for the live question.
-- [ ] **Step 3:** Correct the four merged plan docs against what shipped, in the repo's house style
+- [x] **Step 3:** Correct the four merged plan docs against what shipped, in the repo's house style
       (precedent: `09bcf36`, and #599's own phase 2) — each `anyClaims` reference gets a superseded
       note rather than a rewrite, so the historical record stays readable.
-- [ ] **Step 4:** Run `riviera-docs-freshness` over `origin/main...HEAD`, including the **counting
+- [x] **Step 4:** Run `riviera-docs-freshness` over `origin/main...HEAD`, including the **counting
       sweep** — this slice takes `SetAvailabilityLookup` from four published methods to three and
       from two blocking availability questions to one, so any doc saying "the two questions" goes
       stale outside the diff. Record the result in *Skills consulted*.
-- [ ] **Step 5:** `node scripts/check-plan-file-structure.mjs --diff origin/main` and
+- [x] **Step 5:** `node scripts/check-plan-file-structure.mjs --diff origin/main` and
       `node scripts/check-inline-comments.mjs --diff origin/main` → both clean.
-- [ ] **Step 6: Commit** — `git commit -m "Follow the narrowed replace guard through the docs (#602)"`
+- [x] **Step 6: Commit** — `git commit -m "Follow the narrowed replace guard through the docs (#602)"`
 
 ---
 
@@ -529,31 +543,31 @@ stay valid under the narrowed predicate — as #599's audit log predicted.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `./gradlew test --tests "*VenueAdminServiceTest*" --tests "*BeachMapReplaceIT*"` → PASS.
-- [ ] **AC-2:** Same run → `rejectsReplaceWhenVenueHasLiveAvailabilityHold` + `rejectsWhenVenueHasWalkInHoldAndHoldSurvives` PASS.
-- [ ] **AC-3:** Same run → `rejectsReplaceWhenVenueHasBooking` + `BeachMapReplaceIT.rejectsWhenVenueHasBooking` PASS.
-- [ ] **AC-4:** Same run → `replaceAsksTheLiveHoldQuestionAboutTheLockedSetsAfterLockingThem` PASS.
-- [ ] **AC-5:** Run the structural net (`*ModularityTests*`, `*PackageShapeArchitectureTests*`, `*PublishedSurfacePlacementArchitectureTests*`) → PASS, with `git grep -n "anyClaims" -- platform/src` returning nothing.
-- [ ] **AC-6:** Run `./gradlew test --tests "*BeachMapReplaceIT*"` → `concurrentWalkInMarkAndReplaceNeverSilentlyLoseTheHold` PASS, unchanged.
+- [x] **AC-1:** Run `./gradlew test --tests "*VenueAdminServiceTest*" --tests "*BeachMapReplaceIT*"` → PASS.
+- [x] **AC-2:** Same run → `rejectsReplaceWhenVenueHasLiveAvailabilityHold` + `rejectsWhenVenueHasWalkInHoldAndHoldSurvives` PASS.
+- [x] **AC-3:** Same run → `rejectsReplaceWhenVenueHasBooking` + `BeachMapReplaceIT.rejectsWhenVenueHasBooking` PASS.
+- [x] **AC-4:** Same run → `replaceAsksTheLiveHoldQuestionAboutTheLockedSetsAfterLockingThem` PASS.
+- [x] **AC-5:** Run the structural net (`*ModularityTests*`, `*PackageShapeArchitectureTests*`, `*PublishedSurfacePlacementArchitectureTests*`) → PASS, with `git grep -n "anyClaims" -- platform/src` returning nothing.
+- [x] **AC-6:** Run `./gradlew test --tests "*BeachMapReplaceIT*"` → `concurrentWalkInMarkAndReplaceNeverSilentlyLoseTheHold` PASS, unchanged.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; concurrency test present and unchanged (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; the published surface shrank with no grant change (invariant #11).
-- [ ] **Payment/payout** N/A justified; no money moves.
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone correct: the cutoff is `today` in `Europe/Tirane`, taken from the injected `Clock` (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change, so no Flyway migration (invariant #12).
-- [ ] **Frontend** N/A justified.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; concurrency test present and unchanged (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; the published surface shrank with no grant change (invariant #11).
+- [x] **Payment/payout** N/A justified; no money moves.
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone correct: the cutoff is `today` in `Europe/Tirane`, taken from the injected `Clock` (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change, so no Flyway migration (invariant #12).
+- [x] **Frontend** N/A justified.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. *(Due at ready-for-review — not yet run.)*
