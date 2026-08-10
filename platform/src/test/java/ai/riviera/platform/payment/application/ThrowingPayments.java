@@ -62,4 +62,9 @@ interface ThrowingPayments extends Payments {
 	default boolean markUnrecordedRefundFailed(String paymentIntentId, String refundId) {
 		throw new UnsupportedOperationException("not stubbed by this test");
 	}
+
+	@Override
+	default long owedRefundCount() {
+		throw new UnsupportedOperationException("not stubbed by this test");
+	}
 }

@@ -758,6 +758,11 @@ class WebSliceStubs {
 			public boolean markUnrecordedRefundFailed(String paymentIntentId, String refundId) {
 				return false;
 			}
+
+			@Override
+			public long owedRefundCount() {
+				return 0L;
+			}
 		};
 	}
 

@@ -269,6 +269,31 @@ class JdbcPaymentsIT {
 	}
 
 	@Test
+	void owedRefundCountCountsDistinctOwedRefunds() {
+		long before = payments.owedRefundCount();
+		owedRefundOn(9806L, "pi_owed_a", "re_owed_a");
+		owedRefundOn(9807L, "pi_owed_b", "re_owed_b");
+		payments.markRefundFailed("re_owed_b");
+
+		assertEquals(before + 2, payments.owedRefundCount(),
+				"two bookings are owed money, however many failure observations produced them");
+
+		payments.markRefunded(new BookingRef(9807L), 4500L, "re_owed_b_retry");
+
+		assertEquals(before + 1, payments.owedRefundCount(),
+				"a retry that worked leaves the booking off the list — the count is owed-now");
+	}
+
+	/** A collected payment whose recorded refund the gateway then reported dead. */
+	private void owedRefundOn(long bookingRef, String intentId, String refundId) {
+		payments.register(new NewPayment(new BookingRef(bookingRef), intentId, 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus(intentId, PaymentStatus.SUCCEEDED);
+		payments.markRefundAttempted(new BookingRef(bookingRef));
+		payments.markRefunded(new BookingRef(bookingRef), 4500L, refundId);
+		payments.markRefundFailed(refundId);
+	}
+
+	@Test
 	void markUnrecordedRefundFailedMarksTheRacingAttempt() {
 		payments.register(new NewPayment(new BookingRef(9801L), "pi_racing", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_racing", PaymentStatus.SUCCEEDED);

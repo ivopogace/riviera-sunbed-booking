@@ -42,27 +42,12 @@ class RefundServiceTest {
 		return new RefundService(gateway, new SimpleMeterRegistry(), (StateOnlyPayments) booking -> state);
 	}
 
-	/** A {@link ThrowingPayments} that only records the attempt, in the order it was made. */
-	private static final class AttemptRecordingPayments implements ThrowingPayments {
-
-		private final List<String> calls;
-
-		private AttemptRecordingPayments(List<String> calls) {
-			this.calls = calls;
-		}
-
-		@Override
-		public void markRefundAttempted(BookingRef booking) {
-			calls.add("attempt:" + booking.value());
-		}
-	}
-
 	@Test
 	void delegatesRefundToGateway() {
 		RefundOnlyGateway fake = (booking, amount) ->
 				new RefundResult.Refunded("re-" + booking.value() + "-" + amount.minor());
-		RefundService service = new RefundService(fake, new SimpleMeterRegistry(),
-				new AttemptRecordingPayments(new ArrayList<>()));
+		RefundService service =
+				new RefundService(fake, new SimpleMeterRegistry(), new AttemptRecordingPayments());
 
 		RefundResult result = service.refund(BOOKING, new Money(2250L, "EUR"));
 

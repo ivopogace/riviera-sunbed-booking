@@ -245,18 +245,17 @@ responses (`200`/`400`/`503`) are unchanged.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR #596 — draft, marking ready for review`
 
-**Next action:** Phase 3 — add `Payments#owedRefundCount` + the `riviera.refunds.owed`
-gauge, then the docs sweep (`RESPONSIBILITIES.md` §`payment`, the observability runbook's
-sixth failure shape and enumeration query).
+**Next action:** Mark PR #596 ready for review, then run the Review gate (pr-gates §1
+ladder + `riviera-review-overlay`) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `V42` migration: the refund-failure trace columns | ✅ | `0f30527` |
 | 1 — Guard the refund record; make the un-record leave a trace (items 2 + 3a) | ✅ | `3826949` |
 | 2 — Close the race: attempt stamp, by-intent fallback, gateway refusal (item 1) | ✅ | `55f18b4` |
-| 3 — Owed-refund gauge + docs sweep (item 3b) | ⏳ | |
+| 3 — Owed-refund gauge + docs sweep (item 3b) | ✅ | PHASE3SHA |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -266,7 +265,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI — `Repo hygiene (diff-scoped)` | The plan's File-structure section omitted `StripeRefundContractTest.java` and listed `RefundAttemptVisibilityIT.java` under the wrong package; a multi-line inline comment in `JdbcPayments` (RV-STYLE-1) was re-flagged because this diff rewrote its opening line | fixed-in-`PHASE3SHA` |
+| F-2 | CI — `Backend (build + test)` | `RefundFailureMetricTest` used the strict `ThrowingPayments`, which now throws on the new `markRefundAttempted` — a full-suite-visible break my scoped runs missed because that class was not in the `--tests` selection | fixed-in-`PHASE3SHA` (shared `AttemptRecordingPayments` double; scoped runs widened to `ai.riviera.platform.payment.*` + `*Refund*`) |
 
 ---
 
@@ -283,7 +283,10 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/shared/ObservabilityMetrics.java` — `REFUNDS_OWED`
 - `platform/src/test/java/ai/riviera/platform/payment/PaymentMigrationIT.java` — AC-8
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/out/JdbcPaymentsIT.java` — AC-1, AC-2, AC-4, AC-5, AC-6
-- `platform/src/test/java/ai/riviera/platform/payment/adapter/out/RefundAttemptVisibilityIT.java` — R-4: the stamp is committed before the gateway call
+- `platform/src/test/java/ai/riviera/platform/payment/application/RefundAttemptVisibilityIT.java` — R-4: the stamp is committed before the gateway call
+- `platform/src/test/java/ai/riviera/platform/payment/application/AttemptRecordingPayments.java` — the shared `Payments` double that tolerates the attempt write
+- `platform/src/test/java/ai/riviera/platform/payment/application/RefundFailureMetricTest.java` — uses that double instead of the strict one
+- `platform/src/test/java/ai/riviera/platform/payment/adapter/out/StripeRefundContractTest.java` — the contract fixture stubs the record as accepting
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/out/StripePaymentGatewayTest.java` — AC-3 + the `markRefunded` stubbing (R-3)
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/in/StripeWebhookIT.java` — AC-1, AC-7
 - `platform/src/test/java/ai/riviera/platform/payment/application/PaymentServiceTest.java` — `Payments` test double signature
@@ -408,6 +411,8 @@ Closes the read half of issue item **3**.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Phase 2 | Does the same "recorded after the gateway already knows" race exist on the **collection** path? | read `StripePaymentGateway#initiate` + `Payments#register` | 1 (`register` after `paymentIntents().create`) | **No fix needed, and the reason is not symmetry:** a PaymentIntent id is minted *and recorded* before Stripe can emit any event naming it, and `markStatus`'s open-state guard already makes a late event a no-op rather than a loss. The refund case differs because the gateway knows the refund first |
+| 2026-08-10 | F-2 (CI) | Every `Payments` implementor/double that must tolerate the two new writes | `grep -rn "new RefundService(\|ThrowingPayments() {" --include=*.java platform/src/test` | 3 constructions, 3 doubles (`WebSliceStubs`, `ThrowingPayments`, `PaymentServiceTest`) | Fixed all: strict double kept strict, shared `AttemptRecordingPayments` added for the two refund-seam tests. `RefundServiceTest.serviceWithState` needed nothing — its cases never call `refund()` |
 
 ---
 

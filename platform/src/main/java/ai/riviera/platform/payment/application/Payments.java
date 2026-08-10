@@ -65,7 +65,8 @@ public interface Payments {
 	 * Record a refund against the booking's collection (U6): set {@code refunded_minor} and the
 	 * gateway {@code refundId}, and move the status to {@code REFUNDED} (fully refunded) or
 	 * {@code PARTIALLY_REFUNDED} (a partial after-cutoff refund) — decided by comparing the refund to
-	 * the collected amount.
+	 * the collected amount. A refund that lands clears the owed flag {@link #markRefundFailed} set:
+	 * the flag means "owed now", so a retry that worked takes the booking off the owed list.
 	 *
 	 * <p>Guarded twice, and returns whether a row actually moved. It moves only a
 	 * <strong>collected</strong> payment, so a refund can never assert money the gateway never took;
@@ -109,4 +110,12 @@ public interface Payments {
 	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
 	boolean markUnrecordedRefundFailed(String paymentIntentId, String refundId);
+
+	/**
+	 * How many collections currently owe a refund the gateway would not issue — <strong>distinct
+	 * refunds owed, not observations</strong>, which is what the failure counter beside it cannot
+	 * answer (a stuck refund re-increments that on every resubmission). Falls back to zero as bookings
+	 * are settled by hand or by a retry that works.
+	 */
+	long owedRefundCount();
 }

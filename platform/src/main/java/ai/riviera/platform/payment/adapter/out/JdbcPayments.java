@@ -137,8 +137,7 @@ class JdbcPayments implements Payments {
 
 	@Override
 	public boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
-		// Status is decided from the collected amount: a refund covering the whole amount is REFUNDED,
-		// otherwise PARTIALLY_REFUNDED. Clearing refund_failed_at is what "owed now" means.
+		// A refund covering the whole collected amount is REFUNDED, a smaller one PARTIALLY_REFUNDED.
 		return jdbc.sql("""
 				UPDATE payment
 				SET refunded_minor = :refunded, refund_id = :refundId, refund_failed_at = NULL,
@@ -186,5 +185,13 @@ class JdbcPayments implements Payments {
 				.param(PARAM_INTENT, paymentIntentId)
 				.param("succeeded", PaymentStatus.SUCCEEDED.name())
 				.update() == 1;
+	}
+
+	@Override
+	public long owedRefundCount() {
+		// Served by payment_refund_owed_idx, the partial index over exactly these rows (V42).
+		return jdbc.sql("SELECT COUNT(*) FROM payment WHERE refund_failed_at IS NOT NULL")
+				.query(Long.class)
+				.single();
 	}
 }
