@@ -58,36 +58,36 @@ token rule is why the ring reuses `--riv-accent-ink` rather than a literal, matc
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the cancel confirmation open, when the guest activates **Keep booking**,
+- [x] **AC-1:** Given the cancel confirmation open, when the guest activates **Keep booking**,
   then the prompt closes and focus returns to the **Cancel booking** trigger it replaced.
   *Pinned by:* `booking-view.spec.ts` › `returns focus to the cancel trigger when the guest keeps the booking`
-- [ ] **AC-2:** Given the withdraw confirmation open, when the guest activates **Keep request**,
+- [x] **AC-2:** Given the withdraw confirmation open, when the guest activates **Keep request**,
   then the prompt closes and focus returns to the **Withdraw request** trigger it replaced.
   *Pinned by:* `booking-view.spec.ts` › `returns focus to the withdraw trigger when the guest keeps the request`
-- [ ] **AC-3:** Given the cancel confirmation open, when the cancellation succeeds, then the whole
+- [x] **AC-3:** Given the cancel confirmation open, when the cancellation succeeds, then the whole
   cancel section is gone and focus lands on the live result region stating the outcome.
   *Pinned by:* `booking-view.spec.ts` › `parks focus on the result when a cancellation completes`
-- [ ] **AC-4:** Given the withdraw confirmation open, when the withdrawal succeeds, then the
+- [x] **AC-4:** Given the withdraw confirmation open, when the withdrawal succeeds, then the
   withdraw affordance is gone and focus lands on the live result region stating the outcome.
   *Pinned by:* `booking-view.spec.ts` › `parks focus on the result when a withdrawal completes`
-- [ ] **AC-5:** Given the cancel confirmation open, when the server refuses because the service day
+- [x] **AC-5:** Given the cancel confirmation open, when the server refuses because the service day
   has begun, then the cancel affordance is withdrawn and focus lands on the result region carrying
   the explanation — not on `<body>`.
   *Pinned by:* `booking-view.spec.ts` › `parks focus on the result when the cancel window has closed`
-- [ ] **AC-6:** Given the withdraw confirmation open, when the withdrawal fails, then the prompt
+- [x] **AC-6:** Given the withdraw confirmation open, when the withdrawal fails, then the prompt
   closes, the booking is **re-read**, and focus lands on the result region carrying the explanation —
   never on a retry button the server has already refused.
   *Pinned by:* `booking-view.spec.ts` › `parks focus on the result when a withdrawal fails, and re-reads`
   **and** `e2e/request-to-book.e2e.ts` › `a failed withdrawal parks focus on the outcome and re-reads the booking`
-- [ ] **AC-7:** Given either surface, when the guest opens its confirmation, then focus still moves
+- [x] **AC-7:** Given either surface, when the guest opens its confirmation, then focus still moves
   onto the destructive confirm button exactly as before the helper swap.
   *Pinned by:* the **existing, unmodified** `booking-view.spec.ts` ›
   `moves focus to the destructive confirm button when the cancel prompt appears` and its withdraw twin
-- [ ] **AC-8:** Given a real browser, when the cancel flow is driven open → keep → open → confirm,
+- [x] **AC-8:** Given a real browser, when the cancel flow is driven open → keep → open → confirm,
   then focus lands on the confirm button, back on the trigger, and finally on the result region,
   and axe reports no serious violations.
   *Pinned by:* `e2e/my-bookings.e2e.ts` › `the cancel confirmation moves focus in and back out (WCAG 2.4.3)`
-- [ ] **AC-9:** Given a real browser, when the withdraw flow is driven open → keep → open → confirm,
+- [x] **AC-9:** Given a real browser, when the withdraw flow is driven open → keep → open → confirm,
   then focus lands on the confirm button, back on the trigger, and finally on the result region.
   *Pinned by:* `e2e/request-to-book.e2e.ts` › `the withdraw confirmation moves focus in and back out (WCAG 2.4.3)`
 
@@ -324,12 +324,36 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ---
 
+## Phase 3 — Review-gate fixes
+
+**Files:** Modify `frontend/src/app/booking/booking-view.ts`, `booking-view.spec.ts`,
+`frontend/e2e/request-to-book.e2e.ts`, `frontend/e2e/my-bookings.e2e.ts`
+
+- [x] **Step 1: Re-run the routing gate for what the fixes touch** — F-6's focus ring is Tailwind,
+      an area the plan had declared untriggered, so `riviera-tailwind` was loaded **before** the
+      edit and *Skills consulted* updated (RV-PROC-1).
+- [x] **Step 2: Fix F-1 test-first** — reshape the AC-6 spec to the new contract, prove it RED on
+      the pre-fix error leg (`1 failed | 54 passed`), then re-read + land on the result.
+- [x] **Step 3: Fix F-2** — the Chromium test for a *failing* withdrawal, which is what R-1 had
+      claimed and not delivered.
+- [x] **Step 4: Fix F-3, F-6, F-7, F-8** — test ids on both Keep buttons (which made F-7's helper
+      unnecessary rather than merely deduplicated), the focus ring, the trimmed TSDoc.
+- [x] **Step 5: Generalization-audit pass** on F-1's pattern — see the log.
+- [x] **Step 6: Full verification** — `ng lint` clean · `npm test` **1335 passed** ·
+      `npm run test:e2e:a11y` **168 passed** · both hygiene guards clean over the whole diff.
+- [x] **Step 7: Propagate the deferred findings** — F-4/R-7 and F-5 written onto **#616** with
+      their reasoning (close-out step 3), not left in the review transcript.
+- [x] **Step 8: Commit + update plan-doc execution status** in the same commit window.
+
+---
+
 ## Generalization-audit log
 
 > Append-only. One row per bug-fix / pattern-introducing phase.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-11 | Phase 3 — fixing F-1 (a failure leg that left a dead retry live) | every other settle leg whose **failure cause is itself evidence the server moved on**, and which therefore must re-read rather than re-offer | read each `catch` / `error:` leg in `booking-view.ts`, `set-editor.ts`, `admin-venue-photos.ts`, `admin-operators.ts` and ask whether the failure implies changed server state | 2 in `booking-view` (cancel — already re-read; withdraw — the F-1 bug) | **Both now correct; nothing else qualifies.** The distinguishing test is not "does the leg re-read" but "does *this* failure mean the state moved on". `admin-venue-photos`' takedown `catch` deliberately does not re-read and is right not to — its message is "Nothing was changed", so the local slots are still accurate. `admin-operators.act()` already reconciles unconditionally (the O6 #176 lesson). No new issue filed |
 | 2026-08-10 | Phase 1 — making a live result region a focus landmark | other surfaces whose completed action destroys the trigger, leaving an outcome region nothing can land on | `grep -rn "role=\"status\"\|role=\"alert\"" src/app --include=*.ts --include=*.html -A2` cross-read against `tabindex` | `auth/operator-password.ts` already does exactly this (`tabindex="-1"` on `oppw-notice` **and** `oppw-error`); every other hit is a form whose trigger *survives*, except `set-password`'s `erase-done` | **No change needed, and the choice is not novel** — `operator-password` is the shipped precedent this slice follows rather than invents. The one real gap, `set-password`'s terminal erased state, is already inside **#616** |
 | 2026-08-10 | Phase 0 — adopting the shared helper in the last confirm surface | every remaining confirm-before-destroy surface, re-checked transition by transition rather than trusting #604's audit row | `grep -rn "afterRenderEffect\|afterNextRender" src/app --include=*.ts` + `grep -rn "confirming\|confirmRemove\|confirmRegen\|confirmingId" src/app --include=*.ts` then reading each hit's handlers | 3 open gaps: `auth/set-password.ts`'s erase confirm (**all three** transitions, and no focus specs at all), `admin-venue-photos`' takedown **failure** path, `admin-operators`' completed-action leg | **Filed as #616, not widened here** — three other feature areas, matching #604's own reason for spawning #614. The material find is that **#604's audit cleared `set-password` in error**: what it read as "focuses in and out" is the page-mount leg focusing the first `<input>`, not the confirm surface, which moves focus nowhere in any direction |
 
@@ -355,23 +379,23 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A); invariant #2 untouched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section filled (N/A, frontend-only); no new cross-feature FE import (RV-FE-8).
-- [ ] **Payment/payout** section filled (N/A).
-- [ ] Refund policy enforced server-side (invariant #10) — unchanged; no client-side computation added.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A.
-- [ ] **Frontend** standards met; no `as any`; every `data-testid` preserved.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section filled (N/A, frontend-only); no new cross-feature FE import (RV-FE-8).
+- [x] **Payment/payout** section filled (N/A).
+- [x] Refund policy enforced server-side (invariant #10) — unchanged; no client-side computation added.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A.
+- [x] **Frontend** standards met; no `as any`; every `data-testid` preserved.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
       `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
