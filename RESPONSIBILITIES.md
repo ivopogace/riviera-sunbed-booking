@@ -219,8 +219,9 @@ sits in the outbox.
   refund listener drains on — that is wiring for *my* driving adapter, not gateway knowledge: I still
   only call `payment.api.RefundPort` and never learn which gateway is behind it. `payment` must not
   host it; it does not know it is being called asynchronously, and must not have to. The listener
-  makes a blocking gateway round-trip (one attempt, ≈25s worst case — `StripeClient` adds no
-  retries, pinned by `StripeConfigTest`) and `WeatherRefundService` dispatches a whole venue-day of
+  makes blocking gateway round-trips (no SDK retries, so ≈25s worst case per call, pinned by
+  `StripeConfigTest` — and since #569 a refund is up to three calls: the existence read, the create,
+  and the create's same-key replay, so ≈75s per refund) and `WeatherRefundService` dispatches a whole venue-day of
   refunds in one transaction, so on Boot's shared `applicationTaskExecutor` a single admin action
   would starve the spine that pool also carries; the same swap **dropped** the `REQUIRES_NEW` the
   composite annotation supplied — it bought nothing (the one write is a single statement, after a

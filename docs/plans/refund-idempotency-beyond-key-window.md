@@ -247,11 +247,10 @@ No published surface changes: `RefundResult` keeps its two variants, no `spi/` i
 
 ## Execution status
 
-**Stage pointer:** `CI + Sonar gates — PR #591 open, checks running`
+**Stage pointer:** `merge close-out — all gates green; merged via PR #591`
 
-**Next action:** Wait for CI to complete on PR #591, then pull SonarCloud's actual new-issue +
-duplication list (a green gate conclusion is necessary, not sufficient) and clear every entry.
-Only then tick the two gate boxes below and merge.
+**Next action:** None. Gate order run: review gate (13 findings resolved) → PR #591 → CI green →
+Sonar verified via API → docs-freshness sweep → merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -304,6 +303,9 @@ Claim sweep — the sites that named the idempotency key as a **sufficient** rea
 - `RESPONSIBILITIES.md` — §`payment` gains the refund-execution rule (the relocated rationale, per `riviera-java-conventions` §6d)
 - `docs/runbooks/observability.md` — `riviera.refunds.adopted`: what it means, when to chase it
 - `docs/plans/refund-outbox-resubmission.md` — R-3's "closed" verdict superseded by this slice
+- `docs/architecture/improvement-plan.md` — docs-freshness: the renamed replay helper
+- `platform/src/main/java/ai/riviera/platform/booking/application/request/RespondToRequestService.java` — docs-freshness: same rename in a comment
+- `platform/src/test/java/ai/riviera/platform/booking/RefundBulkheadIT.java` — docs-freshness: a refund is now up to three round-trips
 - `docs/plans/refund-idempotency-beyond-key-window.md` — this plan
 
 ---
@@ -389,6 +391,7 @@ Claim sweep — the sites that named the idempotency key as a **sufficient** rea
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Merge close-out step 5 (`riviera-docs-freshness`, range `origin/main...HEAD`) | (a) renamed/removed helper identifiers; (b) the counting sweep — this slice made a refund **three** gateway calls where every doc said one, and added a counter | `grep -rniE 'createWithRecovery\|returnedMoney\|...'` over the substrate; then `grep -rniE '(the\|both\|only) (two\|three)\|round.trip\|25s'` narrowed to refund/metric/gateway vocabulary | **4 stale statements, none in the diff**: `improvement-plan.md:24` and `RespondToRequestService:152` naming the renamed `createWithRecovery`; `StripeConfigTest:83` and `RESPONSIBILITIES.md:222` stating the per-refund budget as one 25s round-trip. The new counter falsified nothing — `riviera.refunds.adopted` is deliberately **not** a money-path signal, so "signal N of 3" and `MoneyPathAlertCheck` stay true | All four patched in this PR (step 5's rule: fold into the code PR, never a docs-only follow-up). Sweep re-run after the fixes — clean |
 | 2026-08-09 | Phase 3 (review fixes) | Where else does "a nullable gateway field is unboxed / a non-`StripeException` escapes the adapter's catch" apply? — the shape behind F-3 and F-8 | Re-read every `catch (StripeException` block in `StripePaymentGateway` and every gateway getter it dereferences | `refund`'s catch is the only one that wrapped a *local* computation (the sum + unboxing) rather than just the Stripe call; `initiate` and `cancel` dereference `getId()`/`getClientSecret()`/`getStatus()` but pass them straight through, and `cancel` already null-guards `getStatus()` via `.equals` on the constant | Fixed `refund` by removing the computation from inside the catch's reach (no sum, explicit null refusal). Left `initiate`/`cancel` alone: a null id there flows into `register`/`markStatus` and fails as a DB error on a **synchronous request path**, which surfaces to the caller rather than wedging a replayed publication — the asymmetry that made this a defect only in the refund path |
 | 2026-08-09 | Phase 2 | Every place the codebase states the idempotency key as the *reason* a refund replay is safe — the premise #569 disproved | `grep -rn "idempotency-keyed\|never double-refund\|double-refunds\|idempotency key" --include=*.java --include=*.md platform/src RESPONSIBILITIES.md docs/` | ~45 hits; **9 live-source sites** asserted *sufficiency*, the rest are descriptive ("the idempotency-keyed call", still true) or historical plan docs | Corrected the 9, each pointing at the one canonical statement now in `RESPONSIBILITIES.md` §`payment` (`riviera-java-conventions` §6d: relocate the rationale, leave a pointer). Left descriptive mentions alone — rewriting a true adjective is churn. Of the historical plan docs, only `refund-outbox-resubmission.md` R-3 was touched, because it *closed a risk* on the false premise; the others record what was believed at their time and are not corrected retroactively. **`V11__payment_refund.sql`'s comment says the same wrong thing and was deliberately NOT edited** — it is applied, and Flyway validates checksums (invariant #12) |
 | 2026-08-09 | Phase 0 | Any other gateway call trusting the idempotency key alone for safety across a replay that may outlive the key window | `grep -n "IdempotencyKey\|idempotencyKey(" StripePaymentGateway.java` then `grep -rn "\.pay(\|CheckoutPort" platform/src/main/java` | 2 keyed calls: `initiate` (`booking-<id>-pi`) and `refund` (`booking-<id>-refund`); plus `cancel`, unkeyed | **Fixed `refund` only, deliberately.** `initiate` is reached only from the synchronous request path (`CreateBookingService`, `RespondToRequestService`) — no event-publication replay vehicle can re-drive it days later, and its worst case after key pruning is a second *unconfirmed* intent that Stripe auto-expires, not money leaving. `cancel` already retrieves the intent's state from Stripe before acting — the same read-before-write posture this slice gives `refund`, which is why it needed no change |
@@ -400,7 +403,7 @@ Claim sweep — the sites that named the idempotency key as a **sufficient** rea
 - [x] **AC-1…AC-10:** `gradle --no-daemon --console=plain test --tests "*StripePaymentGatewayTest*"` → BUILD SUCCESSFUL (21 tests). Verified after the review-fix commit.
 - [x] **Regression:** `--tests "*StripeConfigTest*" --tests "*RefundServiceTest*" --tests "*RefundFailureMetricTest*" --tests "*RefundExecutorPropertiesTest*" --tests "*RefundExecutorConfigTest*" --tests "*RefundOutboxScopeTest*" --tests "*StubPaymentGatewayTest*" --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*JdbcOnlyArchitectureTests*"` → BUILD SUCCESSFUL.
 - [x] **Repo hygiene:** both diff-scoped guards clean (`check-inline-comments.mjs`, `check-plan-file-structure.mjs`, exit 0).
-- [ ] **Full suite:** CI on PR #591 — **running.** This is the half scoped runs cannot prove (the full-suite-only failure class: shared-state beans accumulating across tests).
+- [x] **Full suite:** CI green on PR #591 — all 8 checks success. This is the half scoped runs cannot prove (the full-suite-only failure class: shared-state beans accumulating across tests). ITs ran rather than skipping: the backend job took 4m09s on `ubuntu-latest`, matching `ci.yml`'s own documented baseline for the full suite *incl. Testcontainers ITs*. The literal `skipped=0` line could not be read — the proxy denies the Actions log blob host.
 
 ## Self-review checklist (before merge / PR)
 
@@ -421,4 +424,4 @@ Claim sweep — the sites that named the idempotency key as a **sufficient** rea
 - [x] Risk register has no stale `open` rows (R-1…R-8 all closed); Open Questions empty.
 - [x] **Close-out written in THIS PR** — **merged via PR #591**; no docs-only follow-up needed.
 - [x] **The review gate ran in full** — `/code-review` over `origin/main...HEAD` (subagent fan-out) *plus* `riviera-review-overlay`, not the overlay alone. 13 findings, all resolved in the register above.
-- [ ] **Sonar gate** — **not yet run.** SonarCloud analyzes the PR only after backend + frontend pass; the gate needs its reported new-issue + duplication list cleared, not just a green conclusion.
+- [x] **Sonar gate** — green **and the reported list verified via the API**, not the gate conclusion or the bot comment: `new_lines=192` (proves a real analysis, not a false-clean zero), 0 bugs / 0 vulnerabilities / 0 code smells, **0 duplicated blocks**, **97.9% new-code coverage** (bar 80%); `api/issues/search` total 0.

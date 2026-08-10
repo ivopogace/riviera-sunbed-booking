@@ -50,7 +50,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code REQUIRES_NEW}.
  *
  * <p>{@link ai.riviera.platform.booking.adapter.in.BookingRefundListener} drives {@code payment}'s
- * {@link RefundPort} — a blocking gateway round-trip — so on Boot's shared
+ * {@link RefundPort} — up to three blocking gateway round-trips — so on Boot's shared
  * {@code applicationTaskExecutor} a degraded gateway could occupy the pool that also carries
  * {@code booking}'s {@code PaymentEventListener} (invariant #8) and {@code payout}'s accrual listener
  * (invariant #9). These tests hold the fix in place from four angles:
