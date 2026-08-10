@@ -138,6 +138,9 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
   CASCADE`, silently erase holds. The guard **`SetAvailabilityLookup.anyClaims(venueSetIds)`** (extends the
   existing venue→availability SPI; availability remains the sole reader/writer of `set_availability`) is consulted
   **before** any delete; any hold → `LAYOUT_IN_USE`, nothing deleted. This is the highest-stakes line of the slice.
+  **Superseded by #602:** the guard now asks `anyClaimsFrom(today)` — only a hold that is still ahead blocks,
+  because a past one describes a day already gone; `anyClaims` was removed from the port. The lock-before-probe
+  ordering and the "nothing deleted" outcome are unchanged.
 - **Uniqueness guarantee (unchanged):** `set_availability` `UNIQUE(set_id, booking_date)` still guards double-sell;
   `set_position` `UNIQUE(venue_id,row_label,position_no)` + `UNIQUE(venue_id,grid_x,grid_y)` guard the grid.
 - **Concurrency strategy:** the replace is a single serialisable-enough transaction: read the venue's set ids →
@@ -161,7 +164,7 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
 |---|---|---|---|---|
 | M-1 | `venue` | existing | `Venue`, `BeachMap` | Owns the beach map / set positions / pool assignment (CLAUDE.md table). The bulk layout write + its guard live here. |
 | M-2 | `booking` | existing | `Booking` | Implements the new `venue/spi/BookingPresence` driven port (only `booking` may read the `booking` table). |
-| M-3 | `availability` | existing | `SetAvailability` | Implements the extended `SetAvailabilityLookup.anyClaims` (sole reader of `set_availability`). |
+| M-3 | `availability` | existing | `SetAvailability` | Implements the extended `SetAvailabilityLookup.anyClaims` (sole reader of `set_availability`). *(Superseded: #602 removed `anyClaims` once `replaceLayout`, its last caller, moved to `anyClaimsFrom`)* |
 | M-4 | `operator` | existing | `Operator` | `VenueOwnership.assertOwns` consulted by the new write (invariant #13). |
 
 **Cross-module named interfaces (ports)**
@@ -169,7 +172,7 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
 | # | Surface | Port | Public types | Direction / consumers |
 |---|---|---|---|---|
 | NI-1 | `venue.spi` | `BookingPresence#hasBookings(VenueId)` → `boolean` | `venue.vocabulary.VenueId` | **New driven port** (spi) — implemented by `booking` (`booking → venue::spi`, existing acyclic direction; grant `venue::spi` to `booking`). "Implement-me", so `spi/` not `api/`. |
-| NI-2 | `venue.spi` | `SetAvailabilityLookup#anyClaims(Collection<SetId>)` → `boolean` | `venue.vocabulary.SetId` | **Extend existing** spi (already implemented by `availability`; grant unchanged). |
+| NI-2 | `venue.spi` | `SetAvailabilityLookup#anyClaims(Collection<SetId>)` → `boolean` | `venue.vocabulary.SetId` | **Extend existing** spi (already implemented by `availability`; grant unchanged). *(Superseded: #602 removed `anyClaims` from the port once `replaceLayout`, its last caller, moved to `anyClaimsFrom`)* |
 | NI-3 | `operator.api` | `VenueOwnership#assertOwns(OperatorId, VenueRef)` | existing | Consumed by `venue` (grant already present). |
 | NI-4 | `venue.api` | `VenueCatalog#findVenueMap(...)` (unchanged) | `VenueMapView`/`SetView` | Read-back the replaced layout (AC-7). |
 
