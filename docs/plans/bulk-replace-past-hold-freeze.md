@@ -170,7 +170,8 @@ for** `bugfix/bulk-replace-past-hold-freeze` (`riviera-sdlc` § Remote/cloud ses
   maintainer**, not a freshness defect — raised here rather than taken unilaterally.
   **Superseded by #607:** the maintainer settled the wording (lifetime-neutral — the hold clause
   now says the hold has not passed, without restating the guard's date arithmetic), and both codes
-  moved together so the parity argued for here is preserved. See `merged via PR #608`.
+  moved together so the parity argued for here is preserved. Plan: `docs/plans/layout-lock-copy.md`,
+  merged via PR #608.
 
 ### Resolved
 
