@@ -237,7 +237,7 @@ test('the withdraw confirmation can be backed out of without calling the API', a
 
   await page.goto(`/booking/${CODE}`);
   await page.getByTestId('withdraw-request').click();
-  await page.getByRole('button', { name: 'Keep request' }).click();
+  await page.getByTestId('keep-request').click();
 
   await expect(page.getByTestId('withdraw-request')).toBeVisible();
   expect(withdrawCalled).toBe(false);
@@ -261,7 +261,7 @@ test('the withdraw confirmation moves focus in and back out (WCAG 2.4.3)', async
   await page.getByTestId('withdraw-request').click();
   await expect(page.getByTestId('confirm-withdraw')).toBeFocused();
 
-  await page.getByRole('button', { name: 'Keep request' }).click();
+  await page.getByTestId('keep-request').click();
   await expect(page.getByTestId('withdraw-request')).toBeFocused();
 
   await page.getByTestId('withdraw-request').click();
@@ -271,6 +271,33 @@ test('the withdraw confirmation moves focus in and back out (WCAG 2.4.3)', async
   await expect(page.getByTestId('booking-status')).toContainText('Withdrawn');
   await expect(page.getByTestId('withdraw-request')).toHaveCount(0);
   await expect(page.getByTestId('withdraw-result')).toBeFocused();
+});
+
+test('a failed withdrawal parks focus on the outcome and re-reads the booking', async ({ page }) => {
+  // A 409 is what the backend answers once the venue has already responded — the retry is dead.
+  let answered = false;
+  await page.route(new RegExp(`/api/bookings/${CODE}/withdraw$`), (route) => {
+    answered = true;
+    return route.fulfill({ status: 409, json: { code: 'NOT_WITHDRAWABLE' } });
+  });
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: answered
+        ? { ...DETAIL_BASE, status: 'DECLINED', withdrawable: false, requestExpiresAt: null }
+        : DETAIL_BASE,
+    }),
+  );
+
+  await page.goto(`/booking/${CODE}`);
+  await page.getByTestId('withdraw-request').click();
+  await page.getByTestId('confirm-withdraw').click();
+
+  await expect(page.getByTestId('withdraw-result')).toContainText('couldn’t withdraw');
+  await expect(page.getByTestId('withdraw-result')).toBeFocused();
+
+  // The re-read is the point: focus must never be parked on a retry that can only 409 again.
+  await expect(page.getByTestId('request-declined')).toBeVisible();
+  await expect(page.getByTestId('confirm-withdraw')).toHaveCount(0);
 });
 
 test('an expired request shows terminal no-charge copy', async ({ page }) => {

@@ -41,12 +41,16 @@ five-edge table is untouched) · `angular-developer` + angular-cli MCP (`search_
 for a read-then-focus, which is why the imperative helper replaces the `afterRenderEffect` pair
 rather than sitting beside it) · `playwright-cli` (the real-browser half — jsdom does not implement
 unfocus-on-disable, so the busy-blur legs are only observable in Chromium; see R-1) ·
-`riviera-local-debug` (Windows dev machine: `npm test`, `npm run test:e2e:a11y` for the mocked suite)
+`riviera-local-debug` (Windows dev machine: `npm test`, `npm run test:e2e:a11y` for the mocked suite) ·
+`riviera-tailwind` (**loaded at the review-fix round, not at plan time** — F-6 added a
+`focus-visible:outline-*` recipe to `CLS.result`, which is the slice's only Tailwind; the skill's
+token rule is why the ring reuses `--riv-accent-ink` rather than a literal, matching the six other
+`focus-visible` recipes already in this file)
 
-> `riviera-tailwind` is **deliberately absent**: this slice writes no Tailwind. The two landmark
-> elements gain a bare `tabindex="-1"` attribute and no class changes, matching every other
-> `tabindex="-1"` landmark in the repo (`set-panel`, `admin-privacy-done-panel`,
-> `admin-photo-slot-*`), none of which carry focus styling either.
+> The plan originally recorded `riviera-tailwind` as **not triggered**, on the grounds that the two
+> landmarks gain a bare `tabindex="-1"` and no class changes. That was true of the slice as planned
+> and stopped being true when F-6 landed a focus ring — the routing gate is re-run per fix, so the
+> skill was loaded **before** that edit and this line updated with it (RV-PROC-1).
 
 **Branch:** `bugfix/booking-view-confirm-focus` — created before phase 0.
 
@@ -71,8 +75,10 @@ unfocus-on-disable, so the busy-blur legs are only observable in Chromium; see R
   the explanation — not on `<body>`.
   *Pinned by:* `booking-view.spec.ts` › `parks focus on the result when the cancel window has closed`
 - [ ] **AC-6:** Given the withdraw confirmation open, when the withdrawal fails, then the prompt
-  stays open and focus returns to its confirm button so the retry is one keystroke away.
-  *Pinned by:* `booking-view.spec.ts` › `returns focus to the withdraw confirm button when the withdrawal fails`
+  closes, the booking is **re-read**, and focus lands on the result region carrying the explanation —
+  never on a retry button the server has already refused.
+  *Pinned by:* `booking-view.spec.ts` › `parks focus on the result when a withdrawal fails, and re-reads`
+  **and** `e2e/request-to-book.e2e.ts` › `a failed withdrawal parks focus on the outcome and re-reads the booking`
 - [ ] **AC-7:** Given either surface, when the guest opens its confirmation, then focus still moves
   onto the destructive confirm button exactly as before the helper swap.
   *Pinned by:* the **existing, unmodified** `booking-view.spec.ts` ›
@@ -93,9 +99,13 @@ unfocus-on-disable, so the busy-blur legs are only observable in Chromium; see R
   inks (on-card vs on-banner) as flags — the same "variant axis imposes drift" argument that made
   #604 ship two components rather than one.
 - **No re-styling and no copy change.** Every class string, ink, and sentence stays as shipped.
-- **Not switching the busy state from `[disabled]` to `aria-disabled`.** That would avoid the
-  blur at source, but it is a different fix to a different surface contract and would touch every
-  disabled button in the view. Restoring focus is the minimal honest fix here.
+- **Not switching the busy state from `[disabled]` to `aria-disabled`, and therefore not closing
+  the in-flight focus window.** While a cancel or withdrawal is in flight, the browser blurs the
+  disabled confirm button and focus sits on `<body>` until the response lands — where this slice
+  then places it deliberately. The review confirmed that window twice (F-5); it is pre-existing on
+  `main`, applies to every busy button in the view, and the coherent fix is the `aria-disabled`
+  posture change. **Deferred to #616**, and stated here rather than left implied: this slice makes
+  every *settled* transition land somewhere, not every instant of the interaction.
 - **No testid renames.** Every existing hook is preserved so no unit or e2e spec is rewritten.
 - **No focus trap.** These are inline confirmations, not modals; `shared/focus-trap.ts` stays with
   the real modals (booking dialog, find-booking).
@@ -118,19 +128,20 @@ unfocus-on-disable, so the busy-blur legs are only observable in Chromium; see R
 | `confirmCancel()` success sets `cancellation`, closes the prompt, refreshes | preserved (extended) | body unchanged apart from the added return leg |
 | `confirmCancel()` error distinguishes `CANCELLATION_WINDOW_CLOSED` from a generic failure and re-reads | preserved (extended) | body unchanged apart from the added return leg |
 | `confirmWithdraw()` success sets `withdrawn`, closes the prompt, refreshes | preserved (extended) | body unchanged apart from the added return leg |
-| `confirmWithdraw()` error leaves the prompt **open** and retryable | preserved | deliberately kept — which is why AC-6 returns focus to the confirm button rather than to a landmark |
+| `confirmWithdraw()` error leaves the prompt **open** and retryable, and does **not** re-read | **changed → fixed (review F-1)** | it now closes the prompt, calls `load(true)` and lands on the result, exactly like the cancel twin. The original plan preserved this row; the review showed preserving it was the bug — a 409 on withdraw means the venue already answered, so the "retry" this slice was about to park focus on could only ever 409 again while the stale *Waiting for the venue* banner stayed on screen |
 | `cancel-result` / `withdraw-result` are `role="status" aria-live="polite"` and `empty:hidden` | preserved | both keep every attribute and class; they gain `tabindex="-1"` only |
 
 ## Risk register
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **jsdom does not implement unfocus-on-disable.** A real browser blurs the confirm button the instant `[disabled]="cancelling()"` goes true, so focus is on `<body>` for the whole in-flight request; jsdom leaves it where it was. A unit spec for a failure leg can therefore pass **without** the fix — a false green | high | high | Every new spec is proven RED on pre-fix code before its leg is written; any leg jsdom cannot show red is stated as such and pinned in the Chromium e2e instead (AC-8/AC-9), never claimed on the unit spec alone | Ivo | open |
-| R-2 | The chosen landing spot is `role="status" aria-live="polite"`, so a screen reader may announce the outcome twice — once as a live update, once as the newly focused element | med | low | Accepted deliberately (decision below): a mild duplicate beats a hard 2.4.3 failure, and the alternative landmark races the async reload (R-4). The `<p>` gains no accessible name of its own, so what is read is the same sentence, not a second unrelated label | Ivo | open |
-| R-3 | Deleting the two `viewChild` refs could regress focus-**in**, which currently has passing specs | med | med | The two existing focus-in specs are left **unmodified** and re-run as the parity net (AC-7); the `#confirmBtn` / `#withdrawConfirmBtn` template refs are deleted in the same commit so a stale ref cannot linger | Ivo | open |
-| R-4 | A completed cancel/withdrawal calls `load(true)`; the focus move fires on the **next render**, which lands before that GET resolves. Aiming at anything the reload produces (the `CANCELLED` / `WITHDRAWN` banner) would race it, and the helper no-ops on a missing target — stranding focus silently | med | high | Both completed legs aim at the result `<p>`, populated **synchronously** by the same signal write that closed the prompt. Explicitly rejected: the status banner (see the resolved decision below) | Ivo | open |
-| R-5 | The result `<p>`s are `empty:hidden`, so a focus move that arrived while one was empty would silently no-op | low | med | Every focus move to them is on a leg that sets its own populating signal (`cancellation`, `cancelWindowClosed`, `cancelFailed`, `withdrawn`) in the same tick; each is asserted by its own spec rather than assumed | Ivo | open |
-| R-6 | The cancel **error** leg calls `load(true)`, which can flip `cancellable` to false and unmount the trigger — so a return leg aimed at `start-cancel` would work or not depending on a race | med | med | The error leg aims at the result region too, not the trigger. Pinned by AC-5, which drives exactly the closed-window path the existing spec already proves withdraws the affordance | Ivo | open |
+| R-1 | **jsdom does not implement unfocus-on-disable.** A real browser blurs the confirm button the instant `[disabled]="cancelling()"` goes true, so focus is on `<body>` for the whole in-flight request; jsdom leaves it where it was. A unit spec for a failure leg can therefore pass **without** the fix — a false green | high | high | Every new spec is proven RED on pre-fix code before its leg is written; any leg jsdom cannot show red is pinned in the Chromium e2e instead, never claimed on the unit spec alone | Ivo | **closed** — the mitigation was initially *claimed* rather than done: the plan said the busy-blur legs were pinned by AC-9, but AC-9 drives a **successful** withdrawal. The review caught the overclaim (F-2) and it is now actually true: `a failed withdrawal parks focus on the outcome and re-reads the booking` drives the failing leg in Chromium. F-1 also removed the artificial `blur()` the unit spec needed, because the leg now destroys its prompt like its three siblings |
+| R-2 | The chosen landing spot is `role="status" aria-live="polite"`, so a screen reader may announce the outcome twice — once as a live update, once as the newly focused element | med | low | Accepted deliberately (decision below): a mild duplicate beats a hard 2.4.3 failure, and the alternative landmark races the async reload (R-4). The `<p>` gains no accessible name of its own, so what is read is the same sentence, not a second unrelated label | Ivo | **closed — accepted.** Re-raised independently by the review and re-affirmed. The inverse hazard turned out to matter more: `auth/operator-password.ts:38` documents that a live region entering the tree *with* its text is often **not** announced at all, and these regions are `empty:hidden` — so parking focus on them is what guarantees the outcome is read, not merely a tolerable duplicate |
+| R-3 | Deleting the two `viewChild` refs could regress focus-**in**, which currently has passing specs | med | med | The two existing focus-in specs are left **unmodified** and re-run as the parity net (AC-7); the `#confirmBtn` / `#withdrawConfirmBtn` template refs are deleted in the same commit so a stale ref cannot linger | Ivo | **closed** — both specs green and untouched through the whole slice, including the fix round |
+| R-4 | A completed cancel/withdrawal calls `load(true)`; the focus move fires on the **next render**, which lands before that GET resolves. Aiming at anything the reload produces (the `CANCELLED` / `WITHDRAWN` banner) would race it, and the helper no-ops on a missing target — stranding focus silently | med | high | Both completed legs aim at the result `<p>`, populated **synchronously** by the same signal write that closed the prompt. Explicitly rejected: the status banner (see the resolved decision below) | Ivo | **closed** — and vindicated by F-1: making the withdraw-failure leg re-read too would have been unsafe against any target the reload owns, which is why that leg lands on the result region rather than on `withdraw-request` |
+| R-5 | The result `<p>`s are `empty:hidden`, so a focus move that arrived while one was empty would silently no-op | low | med | Every focus move to them is on a leg that sets its own populating signal (`cancellation`, `cancelWindowClosed`, `cancelFailed`, `withdrawn`) in the same tick; each is asserted by its own spec rather than assumed | Ivo | **closed** — all five legs assert the landing node by identity, so an empty-region no-op cannot pass |
+| R-6 | The cancel **error** leg calls `load(true)`, which can flip `cancellable` to false and unmount the trigger — so a return leg aimed at `start-cancel` would work or not depending on a race | med | med | The error leg aims at the result region too, not the trigger. Pinned by AC-5, which drives exactly the closed-window path the existing spec already proves withdraws the affordance | Ivo | **closed** — AC-5 green |
+| R-7 | *(raised by the review, F-4)* The two **open-the-prompt** legs aim at a confirm button that lives inside `@if (b.cancellable …)`, so an in-flight `load(true)` from a prior failed attempt could unmount the target between the click and the render, leaving the helper to no-op | low | med | **Accepted as a residual, not fixed here** — and deferred to **#616** rather than papered over. The honest fix is a fallback landing spot inside `focusMover()` itself, which would change behaviour for all **seven** adopters and belongs with the other helper-wide work, not in a tourist-surface bugfix. Requires a second cancel attempt racing an unresolved refresh | Ivo | **deferred → #616** |
 
 ## Open questions / Assumptions
 
@@ -188,28 +199,48 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `PR #617 — merging main in, then ready for review`
+**Stage pointer:** `merge — all gates cleared, close-out written`
 
-**Next action:** Merge the latest `origin/main` into the branch with full phase discipline, then
-mark PR #617 ready for review, which is what makes the Review and Sonar gates due.
+**Next action:** Merge PR #617. Post-merge items are GitHub-only: confirm #614 closed by the
+`Closes` line, and #616 already carries the two deferred findings (F-4/R-7 and F-5).
 
 PR: **#617** (opened as a draft at the first phase commit, per `riviera-sdlc` rule 3 — CI fires on
-the `pull_request` event only).
+the `pull_request` event only). **Merged via PR #617.**
+
+**Gates:** CI green (backend, frontend, repo hygiene ×2, CodeQL) · review gate **run in full** —
+`/code-review` at high effort via ladder rung 1, 24 agents, 10 verified findings, 6 fixed and the
+fix diff re-verified · Sonar green **with its reported list actually pulled**: 0 issues, 0 new bugs
+/ vulnerabilities / code smells, 0 duplicated blocks, new-code coverage **100.0%** (`measures`
+non-empty at `new_lines: 35` and the check-run `success`, so not a false-clean read) ·
+docs-freshness ran over `origin/main...HEAD`, 0 findings.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Adopt the shared helper + the two keep return legs | ✅ | `1df3bb2` |
 | 1 — The completed-action legs + the `tabindex="-1"` landmarks | ✅ | `3ba7784` |
-| 2 — Real-browser e2e coverage + full verification | ✅ | |
+| 2 — Real-browser e2e coverage + full verification | ✅ | `21321cb` |
+| 3 — Review-gate fixes (F-1, F-2, F-3, F-6, F-7, F-8) | ✅ | `4b1e0e0` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix
 re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
+> The review ran `/code-review` at **high** effort (rung 1 of the invocation ladder succeeded —
+> a 24-agent fan-out: 4 finders, 18 independent verifiers, 1 synthesizer) with
+> `riviera-review-overlay` layered on. 13 candidates survived verification and merged to **10**.
+
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (CONFIRMED, + 2 PLAUSIBLE on the same root cause) | **The slice's own bug.** `confirmWithdraw()`'s error leg parked focus on `confirm-withdraw` but — alone among the four settle legs — never re-read. A 409 means the venue already answered, so the slice deliberately placed a keyboard guest on a permanently dead retry beside a stale *Waiting for the venue* banner. Two verifiers separately added that the failure text likely goes **unannounced**, since it is the one leg whose focus moves *away* from the `empty:hidden` live region it just populated | fixed-in-`4b1e0e0` — the leg now closes the prompt, `load(true)`s, and lands on `withdraw-result`, exactly mirroring the cancel twin. Verified RED first |
+| F-2 | review (CONFIRMED) | **The plan doc overclaimed.** R-1 said legs jsdom cannot show red are pinned in Chromium, and AC-6 leaned on that — but no e2e drove a *failing* withdrawal, so the one leg with that justification was backed only by a jsdom spec with a hand-written `blur()` | fixed-in-`4b1e0e0` — added the Chromium test; F-1 independently removed the need for the `blur()` |
+| F-3 | review (CONFIRMED, cleanup) | The two back-out buttons carry no `data-testid`, forcing five call sites across three files to select them by visible copy | fixed-in-`4b1e0e0` — `keep-booking` / `keep-request` added; all five sites converted |
+| F-4 | review (PLAUSIBLE) | The two open-the-prompt legs aim at a target a concurrent refresh can unmount | **deferred → #616** as risk R-7; the honest fix is a fallback inside `focusMover()`, which changes behaviour for all seven adopters |
+| F-5 | review (CONFIRMED, ×2 verifiers) | The in-flight `[disabled]` window blurs focus to `<body>` for the whole request, and no interim park was considered | **deferred → #616.** Pre-existing on `main`, present on every busy button in the view, and the coherent fix is an `[disabled]`→`aria-disabled` posture change — folding it in would bury the #614 fix, the same reasoning that produced #614 from #604 |
+| F-6 | review (PLAUSIBLE, cleanup) | Focus parks on a paragraph with no focus styling, so a sighted keyboard guest sees nothing | fixed-in-`4b1e0e0` — `focus-visible` ring on `CLS.result`, using the same token as the view's six other rings. **Pulled `riviera-tailwind` into the routing gate**; loaded before the edit and recorded in *Skills consulted* |
+| F-7 | review (CONFIRMED, cleanup) | The new `keepButton()` spec helper left the identical hand-rolled lookup it replaced in place further down the file | fixed-in-`4b1e0e0` — F-3's test ids made the helper unnecessary; deleted, all three sites now query by id |
+| F-8 | review (CONFIRMED, cleanup) | 6-line TSDoc on `startCancel()` over the nested `CLAUDE.md`'s ~3-line member budget, stating whole-slice policy on the member least related to it — the same finding #604 took as its F-4 | fixed-in-`4b1e0e0` — trimmed to a two-line pointer at this doc |
+| F-9 | review (PLAUSIBLE) | `tabindex="-1"` on a polite live region can double-announce | **accepted** — R-2, Ivo's plan-time decision, re-affirmed. The opposite hazard (an `empty:hidden` region entering the tree with its text is often not announced at all) makes the focus park the thing that *guarantees* delivery |
 
 ---
 
@@ -312,7 +343,13 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
       an assertion of it.
 - [x] **AC-8/AC-9:** `npx playwright test --config playwright.a11y.config.ts my-bookings request-to-book`
       → **13 passed**; both new tests verified RED against `origin/main`'s `booking-view.ts`
-      (`Received: inactive`). Whole mocked suite **167 passed**.
+      (`Received: inactive`).
+- [x] **AC-6 (re-verified after F-1 reshaped it):** the unit spec proven RED again on the
+      pre-fix error leg (`1 failed | 54 passed`), and the new Chromium test
+      `a failed withdrawal parks focus on the outcome and re-reads the booking` covers the leg
+      R-1 said jsdom cannot show.
+- [x] **Post-fix full verification:** `ng lint` clean · `npm test` **1335 passed (155 files)** ·
+      `npm run test:e2e:a11y` **168 passed (5.9m)** · both repo-hygiene guards clean.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 

@@ -141,15 +141,6 @@ async function render(
   return fixture;
 }
 
-/** The two back-out buttons carry no test id, so they are addressed the way a guest reads them. */
-function keepButton(host: HTMLElement, label: string): HTMLButtonElement {
-  const found = [...host.querySelectorAll('button')].find((b) => b.textContent?.includes(label));
-  if (!found) {
-    throw new Error(`No "${label}" button on screen`);
-  }
-  return found;
-}
-
 describe('BookingView', () => {
   it('shows details and the full-refund terms, and has no axe violations', async () => {
     const fixture = await render(stubService({ detail: DETAIL }));
@@ -215,7 +206,7 @@ describe('BookingView', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    keepButton(host, 'Keep booking').click();
+    (host.querySelector('[data-testid="keep-booking"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -319,7 +310,7 @@ describe('BookingView', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    keepButton(host, 'Keep request').click();
+    (host.querySelector('[data-testid="keep-request"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -351,10 +342,7 @@ describe('BookingView', () => {
     fixture.detectChanges();
     expect(host.textContent).toContain('Withdraw this request?');
 
-    const keep = [...host.querySelectorAll('button')].find((b) =>
-      b.textContent?.includes('Keep request'),
-    ) as HTMLButtonElement;
-    keep.click();
+    (host.querySelector('[data-testid="keep-request"]') as HTMLButtonElement).click();
     fixture.detectChanges();
 
     expect(withdrawCalls).toEqual([]);
@@ -380,24 +368,25 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="request-pending"]')).not.toBeNull();
   });
 
-  it('returns focus to the withdraw confirm button when the withdrawal fails', async () => {
-    const fixture = await render(stubService({ detail: PENDING, withdrawError: { status: 409 } }));
+  it('parks focus on the result when a withdrawal fails, and re-reads', async () => {
+    const withdrawCalls: string[] = [];
+    const fixture = await render(
+      stubService({ detail: PENDING, withdrawCalls, withdrawError: { status: 409 } }),
+    );
     const host = fixture.nativeElement as HTMLElement;
-    const confirm = () =>
-      host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement;
 
     (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
     fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
     await fixture.whenStable();
-
-    // Stands in for the disable-blur a real browser does and jsdom does not (plan doc, R-1).
-    confirm().blur();
-    confirm().click();
     fixture.detectChanges();
     await fixture.whenStable();
 
-    // The prompt survives a failure, so the retry is where the guest left it — not on <body>.
-    expect(document.activeElement).toBe(confirm());
+    // A 409 usually means the venue already answered, so the retry is re-read, never re-offered blind.
+    expect(withdrawCalls).toEqual(['ABCD234567']);
+    expect(host.querySelector('[data-testid="confirm-withdraw"]')).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="withdraw-result"]'));
   });
 
   it('renders no withdraw control when the server says the request is not withdrawable', async () => {

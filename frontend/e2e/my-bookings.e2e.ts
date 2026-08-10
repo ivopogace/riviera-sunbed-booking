@@ -135,7 +135,7 @@ test('the cancel confirmation moves focus in and back out (WCAG 2.4.3)', async (
   await expect(page.getByTestId('confirm-cancel')).toBeFocused();
 
   // Backing out destroys the confirm button, so Cancel booking must take focus back.
-  await page.getByRole('button', { name: 'Keep booking' }).click();
+  await page.getByTestId('keep-booking').click();
   await expect(page.getByTestId('start-cancel')).toBeFocused();
 
   await page.getByTestId('start-cancel').click();

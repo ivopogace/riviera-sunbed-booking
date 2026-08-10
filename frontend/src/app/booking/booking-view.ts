@@ -62,8 +62,9 @@ const CLS = {
   rowValue: 'm-0 text-right font-bold text-(--riv-card-ink)',
   rowAmount: 'm-0 text-right font-bold text-(--riv-accent-ink)',
   // `empty:hidden` is the twin of the retired `.result:empty` — both regions render an empty <p>.
+  // The outline shows a keyboard guest where a settled cancel/withdrawal parked their focus.
   result:
-    'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-(--riv-accent-ink) empty:hidden',
+    'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-(--riv-accent-ink) empty:hidden focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)',
   confirmQ: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-(--riv-card-ink)',
   confirmQOnBanner: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-[#334a52]',
   actions: 'flex flex-wrap gap-2.5',
@@ -219,6 +220,7 @@ const CLS = {
                         [class]="cls.btnOutline"
                         [disabled]="withdrawing()"
                         (click)="keepRequest()"
+                        data-testid="keep-request"
                       >
                         Keep request
                       </button>
@@ -429,6 +431,7 @@ const CLS = {
                   [class]="cls.btnOutline"
                   [disabled]="cancelling()"
                   (click)="keepBooking()"
+                  data-testid="keep-booking"
                 >
                   Keep booking
                 </button>
@@ -541,11 +544,8 @@ export class BookingView {
   }
 
   /**
-   * Open the cancel confirmation. Both confirm surfaces move focus deliberately in **and** back
-   * out: each transition destroys the control focus is sitting on, which would otherwise strand
-   * keyboard and AT users on `<body>` (WCAG 2.4.3). Where the trigger survives it gets focus back;
-   * where the action destroys it, focus parks on the live result region.
-   * Why that landing spot rather than the status banner: `docs/plans/booking-view-confirm-focus.md`.
+   * Open the cancel confirmation. Every focus move on both confirm surfaces, and why it lands
+   * where it does (WCAG 2.4.3): `docs/plans/booking-view-confirm-focus.md`.
    */
   protected startCancel(): void {
     this.confirming.set(true);
@@ -612,8 +612,10 @@ export class BookingView {
       error: () => {
         this.withdrawFailed.set(true);
         this.withdrawing.set(false);
-        // The prompt stays open here, so focus goes back to the retry the disabling blurred.
-        this.focusAfterRender('confirm-withdraw');
+        this.confirmingWithdraw.set(false);
+        this.focusAfterRender('withdraw-result');
+        // Re-read for the same reason the cancel leg does: a refusal usually means it moved on.
+        this.load(true);
       },
     });
   }
