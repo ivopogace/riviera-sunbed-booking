@@ -360,6 +360,27 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-move-blocked')).toBeTruthy();
   });
 
+  it('does not leave a move armed for a set that is gone, which would freeze the whole grid', async () => {
+    render();
+    selectSet(12);
+    click(byId('set-add-col'));
+    click(byId('set-move'));
+    expect(byId('set-move-armed')).toBeTruthy();
+
+    // Remove the set the move was armed for: the arm loses its subject AND its own Cancel button.
+    click(byId('set-remove'));
+    click(byId('set-remove-yes'));
+    http.expectOne((r) => r.method === 'DELETE').flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('set-move-armed')).toBeFalsy();
+    // The grid is still operable: another set selects normally rather than reading as a move target.
+    selectSet(10);
+    expect(byId('set-selected').textContent).toContain('Row A');
+    expect(byId('set-move-armed')).toBeFalsy();
+  });
+
   it('surfaces a refused move without moving anything on the map', async () => {
     render();
     selectSet(12);

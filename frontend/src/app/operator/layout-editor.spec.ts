@@ -474,6 +474,32 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('set-editor')).toBeFalsy();
   });
 
+  it('re-seeds the bulk grid after a per-set write, so a later bulk save cannot revert it', async () => {
+    // Frozen at first load, the bulk grid's Save is accepted (no set_version bump) and reverts the edit.
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1), seat(2, 'STANDARD', 'ONLINE', 2, 1)]);
+
+    byId('set-cell').click();
+    fixture.detectChanges();
+    byId('set-pool-WALK_IN').click();
+    fixture.detectChanges();
+    byId('set-save').click();
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.includes('/api/venues/1/sets/1'))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The re-read carries the server's new truth: set 1 repooled, set 2 removed elsewhere meanwhile.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 });
+    fixture.detectChanges();
+
+    useBulkMode();
+    expect(cells()).toHaveLength(1);
+    expect(cells()[0].getAttribute('data-state')).toBe('walkin');
+  });
+
   it('drops the shared snapshot and re-reads the map after a per-set write (#486 rule, AC-1)', async () => {
     render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
     const reset = vi.spyOn(TestBed.inject(ConsoleVenueMap), 'reset');

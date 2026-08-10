@@ -109,8 +109,9 @@ server rather than asserting one request in isolation).
 | Seeds the grid from the server map, preserving each set's loaded price | preserved | untouched; the same read now also feeds `SetEditor` |
 | Captures `setVersion`; Save echoes it; `409 STALE_WRITE` → keep grid + Reload banner | preserved | untouched — per-set writes never touch that token (R-3) |
 | `loadFailed` → Save refuses and prompts a refresh instead of a silent no-op | preserved | untouched. **Per-set mode is deliberately NOT gated on the token** — it needs no `expectedVersion`, so a failed read blocks per-set editing only by leaving no sets to edit |
-| Epoch guard drops a superseded venue-switch continuation (#180) | preserved | `SetEditor` gets its own epoch guard over each write |
-| `venueMap.reset()` after a successful bulk save | preserved, **extended** | now also after every successful per-set write, or the other tabs render a set this tab just removed |
+| Epoch guard drops a superseded venue-switch continuation (#180) | preserved, by a different mechanism | the bulk editor keeps its epoch counter. `SetEditor` re-checks `venueId` after each await instead — and is anyway torn down on a venue switch, because `resetForVenue` clears `chosenMode` and `loadedSets`, which flips `mode()` to `bulk` before the new read lands. Corrected at the review gate: this row previously claimed an epoch counter that never shipped |
+| `venueMap.reset()` after a successful bulk save | preserved, **extended** | now also after every successful per-set write, or the other tabs render a set this tab just removed. `ConsoleVenueMap`'s own TSDoc enumerates its reset call sites, so it is updated in the same PR |
+| The bulk grid, once seeded, is never re-seeded from a later read (`seedFrom` refuses to clobber an in-progress paint) | **changed** | a per-set write now clears the bulk draft and lets the re-read re-seed it. Leaving it frozen made the Bulk-layout tab offer a stale grid whose Save the server would accept — per-set writes don't bump `set_version` — silently reverting the operator's own edits (review finding F-2) |
 | `LAYOUT_IN_USE` copy: "Layout changes are not possible while sets are in use." | **changed** | factually wrong since #567. Now: the venue is live, so the whole-map replace is locked — edit sets one at a time instead, with the toggle right there |
 | Cell rendering via the component-local `CELL_CLASS` map | changed (mechanical) | moved to the `appBeachCell` variant directive so both modes render the identical cell; pinned byte-for-byte against the old strings by `beach-cell.spec.ts` |
 
@@ -251,6 +252,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | Review gate (agent: shallow bug scan) | An armed Move outlived its subject: removing the selected set left `moving` true with its own Cancel button gone, disabling every occupied cell and routing every empty one into a move with nothing to move — a silently inert grid with no way out but a mode toggle or a reload | fixed — the armed state is now **derived** (`armed = moving && a set is selected`), so it cannot outlive the selection by construction; pinned by `SetEditorSpec.doesNotLeaveAMoveArmedForASetThatIsGone`, verified RED first |
+| F-2 | Review gate (agent: git history) | A per-set write left the bulk grid frozen at first load. Switching to Bulk layout then showed the pre-write map with Save enabled, and since per-set writes don't bump `set_version` the server **accepted** it — silently reverting the operator's own edits on any venue with sets but no bookings yet | fixed — `onSetsChanged` now clears the bulk draft so the re-read re-seeds it; pinned by `LayoutEditorSpec.reSeedsTheBulkGridAfterAPerSetWrite`, verified RED first |
+| F-3 | Review gate (agent: prior PR comments) | The Behavior-parity ledger claimed `SetEditor` "gets its own epoch guard", which is not what shipped | fixed — ledger row corrected to describe the `venueId` re-check and the teardown-on-switch that makes it sufficient |
+| F-4 | Review gate (agent: in-code comments) | `console-venue-map.ts`'s TSDoc enumerates its `reset()` call sites as "a layout save and a row reprice"; this slice adds a third | fixed — enumeration updated in the same PR (the docs-freshness counting-sweep class) |
+| F-5 | Review gate (agent: in-code comments) | `onSetsChanged`'s TSDoc claimed the bulk grid is "deliberately NOT re-seeded", which overstated what `seedFrom` guarantees | fixed — subsumed by F-2; the TSDoc now states the opposite rule and why |
+| F-6 | Review gate (agent: CLAUDE.md compliance) | `SetEditor`'s and `SetWriteErrorCode`'s TSDoc carried issue numbers and ran well past the ~6-line budget, against `frontend/.claude/CLAUDE.md` ("No issue numbers … relocate it — an ADR, or the feature's plan doc — and leave a one-line pointer") | fixed — both trimmed, with a one-line pointer to this plan doc |
+| F-7 | Review gate (agent: prior PR comments) | The `venueId` re-check ships without a supersede race spec, unlike every sibling path | accepted, not fixed — the component is destroyed on a venue switch (F-3), so the input cannot change on a live instance and the spec would assert an unreachable path. Recorded here rather than left implicit |
 | F-0 | CI (Repo hygiene, RV-STYLE-1) | Four two-line inline comments in the new specs. **The interesting half is why local runs missed them:** `check-inline-comments.mjs` and `check-plan-file-structure.mjs` gate their CLI on ``import.meta.url === `file://${process.argv[1]}` ``, which can never match a Windows path — so on the primary dev machine both guards, *and the `PostToolUse` hook built on them*, exited 0 without running. `check-comment-only.mjs` already used the correct `pathToFileURL` idiom; the other two had drifted from it | fixed — comments shortened, both guards switched to `pathToFileURL`, verified by reproducing the CI failure locally first |
 
 ---
@@ -271,6 +279,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/layout-editor.ts` — mode toggle, default-mode rule, corrected copy
 - `frontend/src/app/operator/layout-editor.html` — the toggle + the `SetEditor` branch
 - `frontend/src/app/operator/layout-editor.spec.ts` — mode-default + copy specs
+- `frontend/src/app/operator/console-venue-map.ts` — TSDoc: its reset call sites gain a third (F-4)
 - `frontend/e2e/operator-set-editing.e2e.ts` — CI-safe mocked e2e for the per-set flow
 - `docs/plans/o3-layout-editor.md` — the O3 plan states the tab is bulk-only; corrected here
 - `scripts/check-inline-comments.mjs` · `scripts/check-plan-file-structure.mjs` — CLI entry fix: the

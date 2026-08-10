@@ -68,17 +68,14 @@ function draftForNewCell(gridY: number): SetDraft {
  * the panel edits tier, pool and price and saves one `PATCH` carrying the whole set body (a partial
  * body is rejected `400`).
  *
- * <p><strong>Nothing is applied optimistically.</strong> The claim guard (#567/#599) refuses a repool
- * or reposition of a set someone is still owed, and the console has no read that predicts it — a
- * pre-warn probe is a standing non-goal (O3 #172). So a refusal must leave the map exactly as the
- * server still has it: the grid re-renders only from the parent's re-read, which {@link changed}
- * asks for. Selection and draft are `linkedSignal`s over {@link sets}, so that re-read re-seeds them
- * instead of stranding an edit whose basis has moved.
+ * <p><strong>Nothing is applied optimistically.</strong> The server's claim guard refuses a repool or
+ * reposition of a set someone is still owed, and no read predicts it, so a refusal must leave the map
+ * exactly as the server still has it: the grid re-renders only from the parent's re-read, which
+ * {@link changed} asks for. Selection and draft are `linkedSignal`s over {@link sets}, so that
+ * re-read re-seeds them instead of stranding an edit whose basis has moved.
  *
- * <p>An in-flight write is guarded by re-reading {@link venueId} rather than by the sibling tabs'
- * epoch counter (#180): this component holds no venue-scoped draft that could outlive a switch — the
- * parent replaces {@link sets}, which resets both linked signals — so the only thing worth dropping
- * is a superseded write's outcome.
+ * <p>Rationale for the reactive-only guard discovery, the no-`expectedVersion` writes and the
+ * venue-switch guard: `docs/plans/per-set-beach-map-editing.md`.
  */
 @Component({
   selector: 'app-set-editor',
@@ -106,8 +103,8 @@ export class SetEditor {
   protected readonly errorCode = signal<SetWriteErrorCode | undefined>(undefined);
   /** True while awaiting confirmation of a remove — a destructive action is never one tap away. */
   protected readonly confirmRemove = signal(false);
-  /** True while a Move is armed: the next empty cell clicked becomes the set's new spot. */
-  protected readonly moving = signal(false);
+  /** Whether a Move has been armed. Read {@link armed}, never this — an arm outlives its own subject. */
+  private readonly moving = signal(false);
 
   /**
    * Rows and positions added on top of the sets' own bounding box, so a set can be placed where none
@@ -218,7 +215,7 @@ export class SetEditor {
     const bySlot = new Map(this.sets().map((s) => [slot(s.gridX, s.gridY), s]));
     const selectedId = this.selectedSet()?.id;
     const cell = this.selectedCell();
-    const moving = this.moving();
+    const moving = this.armed();
     return Array.from({ length: this.rowCount() }, (_, y) => ({
       label: gridRowLabel(y),
       cells: Array.from({ length: this.colCount() }, (_, x) => {
@@ -244,6 +241,15 @@ export class SetEditor {
       }),
     }));
   });
+
+  /**
+   * Whether a Move is really armed: a set must still be selected for one to mean anything. Deriving
+   * it rather than trusting the flag is what keeps the arm from outliving its subject — the flag's
+   * own Cancel button lives inside the selected-set panel, so an arm left standing after the
+   * selection collapses (a removal, most obviously) would disable every occupied cell and route
+   * every empty one into a move with nothing to move: a silently inert grid with no way out.
+   */
+  protected readonly armed = computed(() => this.moving() && this.selectedSet() !== undefined);
 
   /** Whether the panel has something to edit — a saved set, or an empty cell to add into. */
   protected readonly hasSelection = computed(
@@ -275,7 +281,7 @@ export class SetEditor {
    * cell selects its set, or offers to add one where there is none.
    */
   protected onCell(gridX: number, gridY: number, setId: number | null): void {
-    if (this.moving()) {
+    if (this.armed()) {
       if (setId === null) {
         void this.onMoveTo(gridX, gridY);
       }
@@ -285,6 +291,7 @@ export class SetEditor {
     this.saved.set(false);
     this.errorCode.set(undefined);
     this.confirmRemove.set(false);
+    this.moving.set(false);
   }
 
   protected addRow(): void {
@@ -409,6 +416,7 @@ export class SetEditor {
       () => this.console.removeSet(this.venueId(), selected.id),
       () => {
         this.selection.set(null);
+        this.moving.set(false);
         // Both the confirm and the Remove button are gone with the selection, so focus parks on the panel.
         this.focusAfterRender('set-panel');
       },

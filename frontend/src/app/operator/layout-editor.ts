@@ -221,15 +221,25 @@ export class LayoutEditor {
 
   /**
    * A per-set write landed: drop the console's shared snapshot (the other tabs would serve a set this
-   * one just changed or removed) and re-read the map, which re-seeds {@link SetEditor}'s selection
-   * and draft. The bulk grid is deliberately NOT re-seeded from it — {@link seedFrom} leaves an
-   * in-progress painted grid alone, so per-set work never discards bulk work.
+   * one just changed or removed), discard the bulk draft, and re-read the map — which re-seeds both
+   * {@link SetEditor}'s selection/draft and the bulk grid.
+   *
+   * <p><strong>Clearing the bulk draft is the load-bearing part.</strong> {@link seedFrom} refuses to
+   * overwrite a grid that already has content, so without this the bulk grid would stay frozen at the
+   * map as it was when the tab opened. Per-set writes do not bump `set_version`, so the token stays
+   * valid — and switching to Bulk layout would then offer a Save that the server accepts and that
+   * silently reverts the operator's own per-set edits. An unsaved paint is a draft; a per-set write is
+   * already committed, so the committed state wins.
    */
   protected onSetsChanged(): void {
     const venueId = this.venueId();
     if (venueId === undefined) {
       return;
     }
+    this.grid.set([]);
+    this.priceByCoord.clear();
+    this.savedNotice.set(false);
+    this.errorCode.set(undefined);
     this.venueMap.reset();
     this.loadExisting(venueId);
   }

@@ -67,10 +67,10 @@ export interface CreatedSet {
 
 /**
  * A known per-set write failure, mapped from the RFC-7807 `code` for operator-facing copy.
- * `SET_IN_USE` is the #567/#599 claim guard — a repool or reposition of a set carrying a live hold
- * or a non-terminal booking, or a delete of a set carrying any booking at all. It is the **ordinary**
+ * `SET_IN_USE` is the server's claim guard — a repool or reposition of a set carrying a live hold or
+ * a non-terminal booking, or a delete of a set carrying any booking at all. It is the **ordinary**
  * answer on a trading venue rather than a fault, and it is discovered only by attempting the write:
- * the console has no read that predicts it (a pre-warn probe was rejected as a non-goal in O3 #172).
+ * no console read predicts it, and a pre-warn probe is a standing non-goal.
  */
 export type SetWriteErrorCode =
   | 'SET_IN_USE'
