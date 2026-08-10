@@ -110,11 +110,10 @@ class PaymentGatewayContractCoverageArchitectureTest {
 		Map<Set<String>, Boolean> answers = new HashMap<>();
 		for (JavaClass guarantee : productionImplementationsOf(CollectionGuarantee.class)) {
 			Set<String> profile = profileOf(guarantee);
-			Boolean collects = provenBeforeConfirmation(guarantee);
-			Boolean clash = answers.putIfAbsent(profile, collects);
-			if (clash != null && !clash.equals(collects)) {
-				fail("two CollectionGuarantees bound to @Profile" + profile + " disagree — whichever the "
-						+ "classpath yields second would silently decide whether the gateway is exempt");
+			if (answers.putIfAbsent(profile, provenBeforeConfirmation(guarantee)) != null) {
+				fail("two CollectionGuarantees are bound to @Profile" + profile + " — the first the "
+						+ "classpath yields would silently decide whether that gateway is exempt, so even "
+						+ "agreeing duplicates are one edit away from deciding it wrongly");
 			}
 		}
 		return answers;

@@ -83,8 +83,9 @@ class StripeWebhookController {
 	private static final String EVENT_PAYMENT_FAILED = "payment_intent.payment_failed";
 	private static final String CODE_INVALID_SIGNATURE = "INVALID_SIGNATURE";
 
-	// The two authoritative refund-failure types: the current one, and the charge-scoped legacy one.
+	// The one type that only ever reports a failure, and the two that report every transition.
 	private static final String EVENT_REFUND_FAILED = "refund.failed";
+	private static final String EVENT_REFUND_UPDATED = "refund.updated";
 	private static final String EVENT_CHARGE_REFUND_UPDATED = "charge.refund.updated";
 
 	private final StripeProperties properties;
@@ -126,7 +127,9 @@ class StripeWebhookController {
 			case EVENT_SUCCEEDED -> onSucceeded(requiredPaymentIntentId(event));
 			case EVENT_CANCELED -> onCanceled(requiredPaymentIntentId(event));
 			case EVENT_PAYMENT_FAILED -> applied(requiredPaymentIntentId(event), PaymentStatus.FAILED);
-			case EVENT_REFUND_FAILED, EVENT_CHARGE_REFUND_UPDATED -> onRefundDied(requiredRefund(event));
+			case EVENT_REFUND_FAILED -> onRefundDied(requiredRefund(event));
+			case EVENT_REFUND_UPDATED, EVENT_CHARGE_REFUND_UPDATED ->
+					readableRefund(event).ifPresent(this::onRefundDied);
 			default -> log.debug("ignoring Stripe event type {}", event.getType());
 		}
 		return ResponseEntity.ok("ok");
@@ -227,11 +230,12 @@ class StripeWebhookController {
 	}
 
 	/**
-	 * The refund of an event this handler acts on, or {@link UnreadableWebhookEventException}.
+	 * The refund of {@code refund.failed}, or {@link UnreadableWebhookEventException}.
 	 *
-	 * <p>Both the id and the <strong>status</strong> are required, because the status is what the
-	 * branch decides on: a payload that yields none would be read as "still live" and consumed as a
-	 * {@code 200} no-op, which is the unapplied-fact case this exception exists to prevent.
+	 * <p>Both the id and the <strong>status</strong> are required, because the status is what the branch
+	 * decides on: a payload yielding none would be read as "still live" and consumed as a {@code 200}
+	 * no-op, which is the unapplied-fact case this exception exists to prevent. Fail-closed is right
+	 * here because this type reports nothing but failures — an unreadable one is a lost failure.
 	 */
 	private Refund requiredRefund(Event event) {
 		Refund refund = required(event, Refund.class);
@@ -240,6 +244,30 @@ class StripeWebhookController {
 		}
 		if (refund.getStatus() == null) {
 			throw unreadable(event, "refund status");
+		}
+		return refund;
+	}
+
+	/**
+	 * The refund of an <strong>every-transition</strong> type, if the payload yields one.
+	 *
+	 * <p>These types carry the {@code canceled} transition, which has no failure-only event of its own,
+	 * so they must be handled. But they also announce {@code created}/{@code pending}/{@code succeeded},
+	 * for refunds this app never issued as much as its own — so an unreadable one is overwhelmingly not
+	 * a failure, and answering {@code 503} would put a permanent retry loop on the endpoint. Stripe
+	 * disables an endpoint that keeps failing, and this endpoint also carries the payment spine: the
+	 * booking confirmations would stop, leaving paid bookings holding their {@code (set, date)} claim
+	 * (invariants #2/#8). Losing an advisory duplicate is the smaller harm, so this one is fail-open.
+	 */
+	private Optional<Refund> readableRefund(Event event) {
+		Optional<Refund> refund = dataObject(event)
+				.filter(Refund.class::isInstance)
+				.map(Refund.class::cast)
+				.filter(candidate -> candidate.getId() != null && candidate.getStatus() != null);
+		if (refund.isEmpty()) {
+			log.warn("could not read a refund from verified event {} ({}) — ignoring, since this type "
+					+ "announces every transition and the failure-only type carries the same fact",
+					event.getId(), event.getType());
 		}
 		return refund;
 	}

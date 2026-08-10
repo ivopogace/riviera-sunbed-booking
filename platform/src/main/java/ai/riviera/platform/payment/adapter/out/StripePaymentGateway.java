@@ -154,9 +154,10 @@ class StripePaymentGateway implements PaymentGateway {
 			if (isAlreadyKnownDead(held, refund)) {
 				return new RefundResult.Failed(REFUND_KEY_REPLAY);
 			}
-			if (RefundLifecycle.returnedNoMoney(refund.getStatus())) {
-				log.warn("Stripe answered the refund for booking {} as {} — no money left the account, "
-						+ "so it is not recorded", booking.value(), refund.getStatus());
+			if (!isLive(refund)) {
+				log.warn("Stripe answered booking {}'s refund with {}, already {} — no money left the "
+						+ "account, so it is not recorded", booking.value(), refund.getId(),
+						refund.getStatus());
 				return new RefundResult.Failed(REFUND_BORN_DEAD);
 			}
 			payments.markRefunded(booking, amount.minor(), refund.getId());

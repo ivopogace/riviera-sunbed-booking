@@ -342,39 +342,53 @@ class StripeWebhookIT {
 		postSigned(first, sign(first), 200);
 		double afterFirst = refundsFailedCount();
 
-		String second = refundEventJson("evt_ref_twice_2", "charge.refund.updated", "re_hook_twice", "failed",
+		String second = refundEventJson("evt_ref_twice_2", "refund.updated", "re_hook_twice", "failed",
 				"pi_ref_twice");
 		postSigned(second, sign(second), 200);
 
 		assertEquals("SUCCEEDED", statusOf("pi_ref_twice"), "the second delivery changes nothing");
 		assertEquals(afterFirst, refundsFailedCount(),
-				"one failed refund is one alert, however many of the two types announce it");
+				"one failed refund is one alert, however many types announce the same transition");
 	}
 
 	@Test
-	void aLiveRefundOnAHandledTypeChangesNothing() throws Exception {
+	void aStillPendingRefundChangesNothing() throws Exception {
 		collectionRefundedWith(7304L, "pi_ref_live", "re_hook_live");
-		String payload = refundEventJson("evt_ref_live_1", "charge.refund.updated", "re_hook_live",
-				"succeeded", "pi_ref_live");
+		String payload = refundEventJson("evt_ref_live_1", "refund.updated", "re_hook_live", "pending",
+				"pi_ref_live");
 		double before = refundsFailedCount();
 
 		postSigned(payload, sign(payload), 200);
 
 		assertEquals("REFUNDED", statusOf("pi_ref_live"),
-				"a refund that reached the guest is not a refund that failed");
+				"pending is where a refund lives, not where it dies — un-recording it would create a second");
 		assertEquals(before, refundsFailedCount(), "and nothing is owed, so nothing is counted");
 	}
 
 	@Test
-	void refundUpdatedIsNotSubscribedSoItIsIgnored() throws Exception {
-		collectionRefundedWith(7308L, "pi_ref_unsubscribed", "re_hook_unsubscribed");
-		String payload = refundEventJson("evt_ref_unsub_1", "refund.updated", "re_hook_unsubscribed",
-				"failed", "pi_ref_unsubscribed");
+	void aCancelledRefundIsUnrecordedThoughOnlyTheEveryTransitionTypeCarriesIt() throws Exception {
+		collectionRefundedWith(7308L, "pi_ref_cancelled", "re_hook_cancelled");
+		String payload = refundEventJson("evt_ref_cancelled_1", "refund.updated", "re_hook_cancelled",
+				"canceled", "pi_ref_cancelled");
 
 		postSigned(payload, sign(payload), 200);
 
-		assertEquals("REFUNDED", statusOf("pi_ref_unsubscribed"),
-				"refund.updated announces every transition, so refund.failed is the one we act on");
+		assertEquals("SUCCEEDED", statusOf("pi_ref_cancelled"),
+				"Stripe has no refund.canceled, so dropping refund.updated would strand this guest");
+	}
+
+	@Test
+	void anUnreadableEveryTransitionRefundEventIsConsumed() throws Exception {
+		collectionRefundedWith(7309L, "pi_ref_advisory", "re_hook_advisory");
+		String payload = eventJson("evt_ref_advisory_1", "refund.updated", Stripe.API_VERSION,
+				NOT_AN_INTENT_OBJECT);
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals("REFUNDED", statusOf("pi_ref_advisory"), "nothing was applied");
+		assertEquals(1L, webhookEventRows("evt_ref_advisory_1"),
+				"an every-transition type is fail-open: a permanent 503 here would get the endpoint "
+						+ "disabled and take the payment spine with it");
 	}
 
 	@Test

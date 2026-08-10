@@ -97,9 +97,9 @@ in for it (`riviera-sdlc` § Remote/cloud session addendum).
   transient error, and the existing publication has already completed (archive completion mode), so
   a re-drive would need a *new* trigger. Recorded as R-3; the deliberate answer is the alert plus a
   human at the gateway, exactly as `refund_mismatch` already works.
-- **A refund-settlement webhook beyond failure.** `refund.updated` for a *succeeded* refund is a
-  200 no-op; `RefundProgress.ACCEPTED` already means "accepted, not settled" and this slice does not
-  add a settled state.
+- **A refund-settlement webhook beyond failure.** A refund event for a *live* refund (`pending`,
+  `succeeded`) is a 200 no-op; `RefundProgress.ACCEPTED` already means "accepted, not settled" and
+  this slice does not add a settled state.
 - **Making `StubPaymentGateway` stateful.** #592 offered this or an exemption marker; the marker
   already exists as `payment.api.CollectionGuarantee`, so the stub is untouched.
 - **Any frontend change.** The guest-facing half closes through existing wiring (see R-5).
@@ -130,10 +130,12 @@ None outstanding.
 
 ### Resolved
 
-- **Assumption (phase 1, `a16a771`):** the refund-lifecycle event types are `charge.refund.updated`,
-  `refund.updated` and `refund.failed`. **Held, and made moot by construction** — the handler
-  branches on the *Refund's status*, not the event type, so a type this deployment never receives is
-  dead-but-harmless config and a type carrying a live refund is a `200` no-op (AC-3).
+- **Assumption (phase 1, `a16a771`; revised at the re-review, F-23):** the refund-lifecycle event
+  types are `charge.refund.updated`, `refund.updated` and `refund.failed`. **Held — but "the type
+  doesn't matter, only the status" did not.** All three are handled, because `canceled` has no
+  failure-only event and is announced solely on the every-transition types. What the *type* decides
+  is the unreadable-payload policy: fail-closed (`503`) on `refund.failed`, fail-open (`200`) on the
+  two every-transition types, whose permanent retry loop would get the shared endpoint disabled.
 - **Assumption (phase 0, `12a3368`):** reverting to `SUCCEEDED` beats inventing a `REFUND_FAILED`
   status. **Held** — no money went back so the collection stands in full; `SUCCEEDED` is terminal for
   `markStatus`, so a late `payment_intent.*` event still cannot move the row; and it needs no
@@ -220,9 +222,9 @@ to `true` after a failure.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `PR #593 — review gate run twice (14 + 10 findings; 19 fixed, 3 deferred to #594, 2 accepted-with-rationale); re-checking CI + Sonar`
+**Stage pointer:** `PR #593 — review gate run three times at high effort; 31 registered findings (F-1…F-31): 27 fixed here, 4 carried to issue #594's three items, 1 accepted with its limit documented on the test; re-checking CI + Sonar`
 
-**Next action:** Confirm CI green on the fix-round push and pull the Sonar new-issue list, then merge.
+**Next action:** Confirm CI green on the third fix round and pull the Sonar new-issue list, then merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -282,6 +284,15 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-20 | re-review of the fix round | `HashMap#put` let two `CollectionGuarantee`s on one profile silently overwrite each other, so classpath order could decide whether the collecting adapter is exempt | fixed-in-`adbb4c4` — a conflicting answer fails the build; `Set.of` swapped for a collector so a repeated `@Profile` value cannot throw instead |
 | F-21 | re-review of the fix round | `riviera.refunds.failed` now increments from two sites and a stuck refund re-increments on every resubmission, so "any increase" cannot mean "N new failures" | **fixed as documentation** — the runbook says to read the delta as *something is owed*, never as a count of distinct refunds, and points at the WARN lines for the which |
 | F-22 | re-review of the fix round | The race (F-2) is wider than first estimated — `withLostResponseReplay` can spend 20–45s on a read timeout between Stripe minting the refund and the row being written | **carried to issue #594** — F-15's guard closes the instant-fail half of it; the timeout half remains, and #594 now also records that a blanket `503` is *not* an available fix, since a permanently-failing endpoint gets disabled and takes the payment spine with it |
+| F-23 | 2nd re-review | Dropping `refund.updated` orphaned the `canceled` half of `returnedNoMoney`: Stripe has no `refund.canceled`, so a cancelled refund would never be un-recorded on a modern account — a hole F-16 opened | fixed-in-`<fix-round-3>` — all three types handled again, with the fail-open policy applied to the every-transition pair instead of dropping them; pinned by `aCancelledRefundIsUnrecordedThoughOnlyTheEveryTransitionTypeCarriesIt` |
+| F-24 | 2nd re-review | F-16's endpoint-disabling `503` was still open on `charge.refund.updated`, which is the same every-transition advisory type — the blast radius was narrowed to legacy accounts, not closed | fixed-in-`<fix-round-3>` — the policy is now per-type rather than per-subscription; pinned by `anUnreadableEveryTransitionRefundEventIsConsumed` |
+| F-25 | 2nd re-review | `RESPONSIBILITIES.md`, the runbook's 5xx list, and this plan's Resolved-assumption block all stated the reversed rule ("branched on the status, never the event type") | fixed-in-`<fix-round-3>` — all three now describe the two-tier policy |
+| F-26 | 2nd re-review | `refund_returned_nothing` and `refund_key_replay` had no entry in the runbook's failure-reason vocabulary, though they need different remedies from the others | fixed-in-`<fix-round-3>` |
+| F-27 | 2nd re-review | No test pinned the actual point of the last round — that an *unreadable* every-transition payload answers `200`; re-adding the type to the fail-closed branch would have left every test green | fixed-in-`<fix-round-3>` |
+| F-28 | 2nd re-review | The born-dead branch re-spelled `isLive`'s expression instead of calling it, and its WARN omitted the refund id — the only link between the incident and the refund object left at Stripe | fixed-in-`<fix-round-3>` |
+| F-29 | 2nd re-review | Rewriting the live-refund test to `succeeded` removed the only webhook-path coverage of `pending`, the status the whole adoption rule turns on; and the duplicate-delivery test modelled a pair no single account receives | fixed-in-`<fix-round-3>` — `pending` restored, and the duplicate is the realistic `refund.failed` → `refund.updated` |
+| F-30 | 2nd re-review | The clash guard accepted *agreeing* duplicate profile bindings and its message named the wrong winner | fixed-in-`<fix-round-3>` — any duplicate fails, message corrected |
+| F-31 | 2nd re-review | The stage pointer's tallies did not reconcile with the register it summarises | fixed-in-`<fix-round-3>` — counted from the rows |
 
 ---
 
