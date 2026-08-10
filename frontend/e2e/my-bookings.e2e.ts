@@ -118,6 +118,38 @@ test('a booking made here appears in My bookings, and a cancellation reflects th
   await expect(page.getByTestId('booking-row').getByTestId('row-status')).toHaveText('Cancelled');
 });
 
+test('the cancel confirmation moves focus in and back out (WCAG 2.4.3)', async ({ page }) => {
+  let cancelled = false;
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({ json: cancelled ? CANCELLED_DETAIL : CONFIRMED_DETAIL }),
+  );
+  await page.route(`**/api/bookings/${CODE}/cancel`, (route) => {
+    cancelled = true;
+    route.fulfill({
+      json: { code: CODE, status: 'CANCELLED', refund: { minorUnits: 4500, currency: 'EUR' }, tier: 'FULL' },
+    });
+  });
+
+  await page.goto(`/booking/${CODE}`);
+  await page.getByTestId('start-cancel').click();
+  await expect(page.getByTestId('confirm-cancel')).toBeFocused();
+
+  // Backing out destroys the confirm button, so Cancel booking must take focus back.
+  await page.getByTestId('keep-booking').click();
+  await expect(page.getByTestId('start-cancel')).toBeFocused();
+
+  await page.getByTestId('start-cancel').click();
+  await page.getByTestId('confirm-cancel').click();
+
+  // A completed cancellation takes the whole section with it — only the outcome is left to hold focus.
+  await expect(page.getByTestId('booking-status')).toHaveText('Cancelled');
+  await expect(page.getByTestId('start-cancel')).toHaveCount(0);
+  await expect(page.getByTestId('cancel-result')).toBeFocused();
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'booking view (cancelled, focus parked on the outcome)');
+});
+
 test('the empty My bookings state is accessible (no bookings on this device)', async ({ page }) => {
   await page.goto('/my-bookings');
   await expect(page.getByTestId('my-bookings-empty')).toBeVisible();

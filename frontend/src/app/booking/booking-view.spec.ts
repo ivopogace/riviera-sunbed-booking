@@ -77,6 +77,8 @@ function stubService(opts: {
   cancel?: Cancellation;
   cancelError?: unknown;
   cancelCalls?: string[];
+  /** Every getByCode, so a spec can assert the post-action re-read actually happened. */
+  getCalls?: string[];
   withdrawCalls?: string[];
   withdrawError?: unknown;
   handoffs?: PaymentHandoff[];
@@ -86,7 +88,8 @@ function stubService(opts: {
   let served = 0;
   let prefetched = opts.prefetched;
   return {
-    getByCode: () => {
+    getByCode: (code: string) => {
+      opts.getCalls?.push(code);
       const detail = served++ === 0 ? opts.detail! : (opts.detailAfterCancel ?? opts.detail!);
       return (opts.getError ? throwError(() => opts.getError) : of(detail)) as Observable<BookingDetail>;
     },
@@ -168,6 +171,23 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="cancel-result"]')?.textContent).toContain('refunded');
   });
 
+  it('parks focus on the result when a cancellation completes', async () => {
+    const fixture = await render(stubService({ detail: DETAIL }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // The whole cancel section goes with the action, so the outcome is the only place left to land.
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="cancel-result"]'));
+  });
+
   it('moves focus to the destructive confirm button when the cancel prompt appears', async () => {
     // Twin of the withdraw focus test — the component claims this for BOTH prompts.
     const fixture = await render(stubService({ detail: DETAIL }));
@@ -179,6 +199,24 @@ describe('BookingView', () => {
     fixture.detectChanges();
 
     expect(document.activeElement).toBe(host.querySelector('[data-testid="confirm-cancel"]'));
+  });
+
+  it('returns focus to the cancel trigger when the guest keeps the booking', async () => {
+    const fixture = await render(stubService({ detail: DETAIL }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const keep = host.querySelector('[data-testid="keep-booking"]') as HTMLButtonElement;
+    expect(keep.textContent?.trim()).toBe('Keep booking');
+    keep.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // Backing out destroys the confirm button focus was on; Cancel booking is what it replaced.
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="start-cancel"]'));
   });
 
   it('shows a not-found message for an unknown code', async () => {
@@ -269,6 +307,37 @@ describe('BookingView', () => {
     expect(document.activeElement).toBe(host.querySelector('[data-testid="confirm-withdraw"]'));
   });
 
+  it('returns focus to the withdraw trigger when the guest keeps the request', async () => {
+    const fixture = await render(stubService({ detail: PENDING }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    (host.querySelector('[data-testid="keep-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="withdraw-request"]'));
+  });
+
+  it('parks focus on the result when a withdrawal completes', async () => {
+    const fixture = await render(stubService({ detail: PENDING }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(host.querySelector('[data-testid="withdraw-request"]')).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="withdraw-result"]'));
+  });
+
   it('asks before withdrawing, and "Keep request" backs out without calling the API', async () => {
     const withdrawCalls: string[] = [];
     const fixture = await render(stubService({ detail: PENDING, withdrawCalls }));
@@ -278,9 +347,9 @@ describe('BookingView', () => {
     fixture.detectChanges();
     expect(host.textContent).toContain('Withdraw this request?');
 
-    const keep = [...host.querySelectorAll('button')].find((b) =>
-      b.textContent?.includes('Keep request'),
-    ) as HTMLButtonElement;
+    const keep = host.querySelector('[data-testid="keep-request"]') as HTMLButtonElement;
+    // The escape from a destructive prompt must say what it does, not just carry a test hook.
+    expect(keep.textContent?.trim()).toBe('Keep request');
     keep.click();
     fixture.detectChanges();
 
@@ -305,6 +374,83 @@ describe('BookingView', () => {
       'couldn’t withdraw',
     );
     expect(host.querySelector('[data-testid="request-pending"]')).not.toBeNull();
+  });
+
+  it('parks focus on the result when a withdrawal fails, and re-reads', async () => {
+    const withdrawCalls: string[] = [];
+    const getCalls: string[] = [];
+    const fixture = await render(
+      stubService({ detail: PENDING, withdrawCalls, getCalls, withdrawError: { status: 500 } }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(withdrawCalls).toEqual(['ABCD234567']);
+    // The re-read is the point of the fix, so it is asserted rather than implied by the title.
+    expect(getCalls).toEqual(['ABCD234567', 'ABCD234567']);
+    expect(host.querySelector('[data-testid="confirm-withdraw"]')).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="withdraw-result"]'));
+  });
+
+  it('says the venue already answered instead of inviting a retry that cannot succeed', async () => {
+    const answered: BookingDetail = { ...PENDING, status: 'DECLINED', withdrawable: false };
+    const fixture = await render(
+      stubService({
+        detail: PENDING,
+        detailAfterCancel: answered,
+        withdrawError: new HttpErrorResponse({
+          status: 409,
+          error: { code: 'REQUEST_NOT_PENDING' },
+        }),
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const result = host.querySelector('[data-testid="withdraw-result"]')?.textContent;
+    expect(result).toContain('no longer waiting for the venue');
+    // The banner beside it now says DECLINED — "try again" there would contradict the page.
+    expect(result).not.toContain('try again');
+    expect(host.querySelector('[data-testid="request-declined"]')).not.toBeNull();
+  });
+
+  it('retires a failed withdrawal once the guest arms or abandons another', async () => {
+    const fixture = await render(
+      stubService({ detail: PENDING, withdrawError: { status: 500 } }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+    const result = () => host.querySelector('[data-testid="withdraw-result"]')?.textContent ?? '';
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(result()).toContain('couldn’t withdraw');
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(result()).not.toContain('couldn’t withdraw');
+
+    (host.querySelector('[data-testid="keep-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(result()).not.toContain('couldn’t withdraw');
   });
 
   it('renders no withdraw control when the server says the request is not withdrawable', async () => {
@@ -370,6 +516,33 @@ describe('BookingView', () => {
       'try again',
     );
     expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+  });
+
+  it('parks focus on the result when the cancel window has closed', async () => {
+    const closed: BookingDetail = { ...DETAIL, cancellable: false, beforeCutoff: false };
+    const fixture = await render(
+      stubService({
+        detail: DETAIL,
+        detailAfterCancel: closed,
+        cancelError: new HttpErrorResponse({
+          status: 409,
+          error: { code: 'CANCELLATION_WINDOW_CLOSED' },
+        }),
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // The refusal withdraws the trigger too, so returning focus there would have stranded it.
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="cancel-result"]'));
   });
 
   // A CONFIRMED booking past its service day: the server closes the window, so the affordance goes.
