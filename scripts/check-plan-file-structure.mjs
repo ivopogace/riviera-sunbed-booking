@@ -11,10 +11,9 @@
  * doc entirely, and a guard must not invent a requirement the SDLC does not make.
  */
 
-import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-import { changedPaths, git, rangeFor } from './git-diff.mjs';
+import { changedPaths, git, mergeBase, readText } from './git-diff.mjs';
 
 /** The heading that opens the section, as the plan-doc template writes it. */
 const HEADING = /^##\s+File structure\s*$/i;
@@ -246,15 +245,6 @@ export function report(omissions) {
   return `Paths changed by this diff but absent from the plan doc:\n${lines.join('\n')}\n${ADVICE}`;
 }
 
-/** Reads a path from the working tree, or null when it is unreadable (deleted, binary, gone). */
-function readText(path) {
-  try {
-    return readFileSync(path, 'utf8');
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Runs the detector over a diff.
  *
@@ -264,7 +254,7 @@ function readText(path) {
  */
 export function check(range) {
   const changed = changedPaths(
-    git(['diff', '--name-only', '-z', '--no-color', '--no-ext-diff', range]),
+    git(['diff', '--name-only', '-z', '--no-color', '--no-ext-diff', '--no-relative', range]),
   );
 
   const docs = planDocsIn(changed)
@@ -279,7 +269,7 @@ function main(argv) {
     process.stderr.write('usage: check-plan-file-structure.mjs --diff [<base>]\n');
     return 2;
   }
-  const omissions = check(rangeFor(argv[1] ?? 'origin/main'));
+  const omissions = check(mergeBase(argv[1] ?? 'origin/main'));
   if (omissions.length === 0) return 0;
   process.stderr.write(`${report(omissions)}\n`);
   return 1;

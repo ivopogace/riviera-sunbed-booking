@@ -1,6 +1,11 @@
-# What `prettier --write .` must not touch. The diff-scoped CI guard never reaches these anyway —
-# they are gitignored, so no diff can contain them — but `npm run format` walks the working tree,
+# What a whole-tree `prettier --write .` must not touch. The diff-scoped CI guard reaches none of
+# these — a diff cannot contain build output — but the tree-wide invocation walks the working copy,
 # where a built `dist/` or an `.angular/` cache is present and would take minutes to rewrite.
+#
+# There is deliberately no `format` npm script to run it: the tree carries 200 prettier-dirty files,
+# so a whole-tree write is the ~1500-line unrelated reformat the plan's Non-goals and RV-STYLE-2 both
+# forbid. `npm run format:check -- --fix` is the supported tool. This file covers the ad-hoc
+# `npx prettier --write .` that someone will eventually type anyway.
 dist/
 coverage/
 .angular/

@@ -12,7 +12,6 @@
     "test:e2e": "playwright test",
     "test:e2e:a11y": "playwright test --config playwright.a11y.config.ts",
     "lint": "ng lint",
-    "format": "prettier --write .",
     "format:check": "node ../scripts/check-prettier-format.mjs --diff"
   },
   "private": true,

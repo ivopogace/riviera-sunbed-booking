@@ -1,7 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { applyHunks, findMisformatted, inScope, inspect, report } from './check-prettier-format.mjs';
+import {
+  applyHunks,
+  findMisformatted,
+  inScope,
+  inspect,
+  partitionFixable,
+  report,
+} from './check-prettier-format.mjs';
 
 const PATH = 'frontend/src/app/a.ts';
 
@@ -179,6 +186,26 @@ test('the report shows both sides of each hunk and names the fix', () => {
   assert.match(text, /- const a {3}= 1;/);
   assert.match(text, /\+ const a = 1;/);
   assert.match(text, /--fix/);
+});
+
+test('--fix refuses a coarse hunk instead of rewriting the region it spans', () => {
+  const { fixable, refused } = partitionFixable([
+    { path: 'frontend/src/a.ts', line: 1, endLine: 1, current: ['a'], expected: ['b'] },
+    { path: 'frontend/src/big.html', line: 1, endLine: 900, current: [], expected: [], coarse: true },
+  ]);
+
+  assert.deepEqual([...fixable.keys()], ['frontend/src/a.ts']);
+  assert.deepEqual(refused, ['frontend/src/big.html']);
+});
+
+test('a file with any coarse hunk is left alone entirely', () => {
+  const { fixable, refused } = partitionFixable([
+    { path: 'frontend/src/big.html', line: 1, endLine: 2, current: ['a'], expected: ['b'] },
+    { path: 'frontend/src/big.html', line: 9, endLine: 900, current: [], expected: [], coarse: true },
+  ]);
+
+  assert.equal(fixable.size, 0);
+  assert.deepEqual(refused, ['frontend/src/big.html']);
 });
 
 test('the report keeps a large hunk readable', () => {

@@ -51,6 +51,43 @@ test('skips a deleted file and keeps a renamed one', () => {
   assert.deepEqual([...added.get('scripts/new-name.mjs')], [4]);
 });
 
+test('an added line that looks like a +++ header does not re-target the file', () => {
+  const diff = [
+    'diff --git a/docs/plans/p.md b/docs/plans/p.md',
+    '--- a/docs/plans/p.md',
+    '+++ b/docs/plans/p.md',
+    '@@ -1,0 +2,2 @@ line one',
+    '+++ b/hijacked.ts',
+    '+real content',
+  ].join('\n');
+
+  const added = parseAddedLines(diff);
+
+  assert.deepEqual([...added.keys()], ['docs/plans/p.md']);
+  assert.deepEqual([...added.get('docs/plans/p.md')], [2, 3]);
+});
+
+test('each `diff --git` closes the file before it', () => {
+  const diff = [
+    'diff --git a/a.ts b/a.ts',
+    '--- a/a.ts',
+    '+++ b/a.ts',
+    '@@ -1,0 +1,1 @@',
+    '+const a = 1;',
+    'diff --git a/b.ts b/b.ts',
+    'new file mode 100644',
+    '--- /dev/null',
+    '+++ b/b.ts',
+    '@@ -0,0 +1,1 @@',
+    '+const b = 2;',
+  ].join('\n');
+
+  const added = parseAddedLines(diff);
+
+  assert.deepEqual([...added.get('a.ts')], [1]);
+  assert.deepEqual([...added.get('b.ts')], [1]);
+});
+
 test('changedPaths splits git -z output and drops the trailing empty field', () => {
   assert.deepEqual(changedPaths('a.ts\0docs/plans/p.md\0'), ['a.ts', 'docs/plans/p.md']);
   assert.deepEqual(changedPaths(''), []);

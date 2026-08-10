@@ -82,9 +82,9 @@ the Gradle recipe nor the OOM-scoping rule binds here)
 - [x] **AC-8:** Given the shared git/diff helpers move to `scripts/git-diff.mjs`, when the whole
   guard suite runs, then both pre-existing guards behave exactly as before. *Pinned by:*
   `node --test "scripts/*.test.mjs"` — the #529 and #533 suites, unchanged in substance.
-- [ ] **AC-9:** Given this PR, when CI runs, then the `Frontend (lint + test + build)` job executes
+- [x] **AC-9:** Given this PR, when CI runs, then the `Frontend (lint + test + build)` job executes
   the new format step and the job is green, **and** the `Repo hygiene (diff-scoped)` job — which
-  installs nothing — still runs the new guard's suite. *Verified by:* this PR's own Actions run
+  installs nothing — still runs the new guard's suite. *Verified by:* PR #618's own Actions run
   (recorded in *Acceptance-criteria verification*), not by a unit test.
 - [x] **AC-10:** Given a reviewer reading a diff that touches a long-dirty file, when they consult
   `riviera-review-overlay`, then RV-STYLE-2 tells them formatting is machine-checked and that asking
@@ -133,11 +133,14 @@ a pure move, with the functions' bodies unchanged and both suites (AC-8) as the 
 
 ## Open questions / Assumptions
 
-- **Assumption:** the maintainer wants issue #615 option **1 (enforce), diff-scoped** rather than
-  option 2 (delete `.prettierrc`). — *Owner:* this slice · *Resolves by:* phase 4 (recorded on the
-  issue with the measurement that decides it).
+*Empty — every entry resolved below.*
 
 ### Resolved
+
+- **Assumption:** the maintainer wants issue #615 option **1 (enforce), diff-scoped** rather than
+  option 2 (delete `.prettierrc`). — **Confirmed and recorded**: PR #618's description carries the
+  decision and the measurement behind it, and `Closes #615` puts it in front of the issue rather
+  than in a duplicate comment.
 
 - **Issue drift, found by the intake grill:** #615 lists four files as dirty at `5f415a23`, but
   `src/app/admin/admin-operators.ts` is **clean** — PR #520's own F-1 fixed it
@@ -172,11 +175,26 @@ added (hence no e2e spec, and no `playwright-cli` row in the routing gate).
 
 ## Execution status
 
-**Stage pointer:** `PR` — all five phases built and locally verified; **no pull request exists yet**,
-so the CI, Review and Sonar gates have not run and AC-9 is open.
+**Stage pointer:** `merge close-out` — CI green, review gate run (15 findings: 14 fixed, 1 rejected
+with reason), Sonar gate green with an empty issue list. Awaiting the merge.
 
-**Next action:** Open the draft PR (`riviera-sdlc` rule 3 — CI fires on `pull_request` only), then
-work the gates: CI → review via the `references/pr-gates.md` §1 ladder → Sonar issue list.
+**Next action:** Merge PR #618, then the post-merge remainder, which is GitHub-only and needs no
+commit: confirm #615 closed and the PR-activity subscription ended.
+
+**Gate results:**
+
+| Gate | Result |
+|---|---|
+| CI (`ff1ad1c`) | all 8 checks **success** — and the two that matter here: `Frontend (lint + test + build)` ran `Format (diff-scoped Prettier, hard gate)` green, and `Repo hygiene (diff-scoped)`, which installs nothing, ran the new guard's suite green (AC-9) |
+| Review | **ran in full** — ladder **rung 1** (`Skill("code-review")` was accepted), with `riviera-review-overlay` layered on. 15 findings; see the register |
+| Sonar (`ff1ad1c`) | Quality Gate **passed**, 0 new issues, 0 accepted issues, 0 security hotspots, 0.0 % duplication |
+| CI (fix round) | re-run on the F-1…F-15 commit — recorded below |
+
+> **What Sonar's green does and does not say here** (R-7, and #533's F-5 before it):
+> `sonar.sources=platform/src/main/java,frontend/src`, and this diff touches neither, so
+> "0 new issues" and "0.0 % coverage on new code" are measurements of an empty set. The gate is
+> genuinely clear; it is simply clear about trees this slice does not change. The evidence that the
+> guard works is its 75-case suite and the reproductions in the findings register.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -184,7 +202,8 @@ work the gates: CI → review via the `references/pr-gates.md` §1 ladder → So
 | 1 — Detector core | ✅ | `75e64d7` |
 | 2 — Prettier front-end, CLI, `--fix` | ✅ | `00d8576` |
 | 3 — CI wiring, npm scripts, `.prettierignore` | ✅ | `5783195` |
-| 4 — Docs sweep + close-out | ✅ | this commit |
+| 4 — Docs sweep + close-out | ✅ | `ff1ad1c` |
+| 5 — Review-gate findings F-1…F-15 | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -194,7 +213,21 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet — the CI, review and Sonar gates have not run (no PR) | — |
+| F-1 | Review gate (`/code-review` fan-out, reproduced) | `--files` converted its arguments to repo-relative paths and then handed them to git as **pathspecs, which resolve against the caller's cwd** — so from `frontend/`, the mode the plan names as the by-hand tool matched nothing and exited 0 | fixed — `git()` now runs from `repoRoot()` for all three guards, and both `--files` implementations resolve their arguments against it |
+| F-2 | Review gate (reproduced) | `added` came from the **committed** diff (`base...HEAD`) while the hunks were computed against the **working tree**. Any uncommitted edit desynchronized them — including `--fix`'s own rewrite, so a second `--fix` reported and rewrote pre-existing drift, breaking exactly the promise AC-5 makes | fixed — `--diff` now diffs the **merge base** (a commit, not a range), which puts the working tree on the new side, so the line numbers and the content read are the same file. Verified: `--fix` then re-run → exit 0, and the file's untouched drift survives byte-for-byte |
+| F-3 | Review gate (reproduced) | git C-quotes the `+++` header for a path holding a non-ASCII byte (`"b/src/caf\303\251.ts"`), so such a file was silently dropped from the added-line map in **all three** guards — the same defect PR #538 fixed for `changedPaths`, three functions below | fixed — every git call is pinned with `-c core.quotepath=false` in the shared `git()` |
+| F-4 | Review gate (reproduced) | A contributor with `diff.relative=true` got `frontend/`-relative paths, `inScope()` rejected every one, and `npm run format:check` reported clean over a diff full of violations | fixed — same root cause as F-1 (git ran in the caller's cwd); `--no-relative` is on the shared `diffArgs()` as well |
+| F-5 | Review gate (reproduced) | `format:check` defaulted to `origin/main...HEAD`, so the pre-push command `CLAUDE.md` and `riviera-local-debug` prescribe **could not see uncommitted work** — green on exactly the code about to be committed | fixed by F-2's change; verified against an uncommitted edit |
+| F-6 | Review gate | `npm run format` (`prettier --write .`) rewrites all 200 dirty files — the whole-tree churn this slice's Non-goals and its own new RV-STYLE-2 forbid, shipped under the most reachable name in the file | fixed — the script is **removed**. `format:check -- --fix` is the supported tool; `.prettierignore` stays and now says why, since `npx prettier --write .` is still typeable |
+| F-7 | Review gate | RV-STYLE-2 told reviewers "if that step is green, the line is fine, however long it looks" — but an unparseable file warns only to stderr and a file with no inferable parser is skipped silently, so the rule converted a guard gap into a reviewer blind spot | fixed — the item now says green means *the guard passed on the lines it could read*, and names the two skip paths worth a human glance |
+| F-8 | Review gate | `if: !cancelled()` also runs the Format step when **`npm ci`** failed, where it crashes on a missing Prettier and reports a second red whose message names the wrong cause | fixed — the install step carries `id: install` and the condition requires `steps.install.outcome == 'success'` |
+| F-9 | Review gate (reproduced) | An added line whose content begins with `++ ` is emitted as `+++ …`, indistinguishable from a file header by prefix alone — it re-targeted every following added line onto a nonexistent path and left the real file's lines unchecked. Pre-existing since #529; inherited by all three guards | fixed — `+++` is honoured only between hunks and `diff --git` closes the file before it. Pinned by two new `git-diff.test.mjs` cases, the first built from the reproduction |
+| F-10 | Review gate | The "extract the shared helpers" commit still left `readText`/`readLines` and the diff argument list triplicated — and F-3's and F-4's fixes would have had to be applied three times | fixed — `readText()` and `diffArgs()` moved into `scripts/git-diff.mjs`; both fixes landed once |
+| F-11 | Review gate | The `LCS_CELL_CAP` fallback emits the whole differing region as one hunk, which is safe to *report* and unsafe to *write*: one added line inside it would make `--fix` reformat the entire region | fixed — such a hunk is marked `coarse`, and `--fix` refuses the file and says so instead of rewriting it. Pinned by two `partitionFixable` cases |
+| F-12 | Review gate | The formatter was constructed before the guard knew whether any in-scope file changed, so a backend-only branch in a tree that never ran `npm ci` crashed instead of passing | fixed — built lazily on the first in-scope file, and a genuinely missing Prettier now exits 2 with its one-line message rather than an unhandled rejection |
+| F-13 | Review gate | `.prettierignore`'s header claimed the listed paths "are gitignored", but `frontend/.gitignore` ignores only `/.angular/cache`, not `.angular/` | fixed — the header now states what it actually relies on (a diff cannot contain build output) and why the file exists at all |
+| F-14 | Review gate | `fetch-depth: 0` on the frontend job also applies to pushes to `main`, where the step needing it is skipped | **rejected, with reason.** The repo's `.git` is 7.3 MB, so the cost is ~1 s on main pushes, and `ci.yml`'s frontend job does not feed the deploy (`deploy.yml` does). The suggested `${{ … && 0 \|\| 1 }}` form is also a known GitHub-expressions trap — `0` is falsy, so it evaluates to `1` in both branches and would silently break the PR case this slice depends on. Not worth a subtle expression |
+| F-15 | Review gate | The File-structure section was headed `Modified (9)` over ten entries | fixed — and the count is now 10 over ten |
 
 **`riviera-docs-freshness` run** — range `origin/main...HEAD`, **5 findings, all patched**:
 
@@ -220,8 +253,8 @@ touches *before* editing).
 
 **New (6)**
 
-- `scripts/git-diff.mjs` — the git/diff helpers the three guards share: `git()`, `rangeFor()`,
-  `parseAddedLines()`, `changedPaths()`.
+- `scripts/git-diff.mjs` — the git/diff helpers the three guards share: `repoRoot()`, `git()`,
+  `diffArgs()`, `rangeFor()`, `mergeBase()`, `parseAddedLines()`, `changedPaths()`, `readText()`.
 - `scripts/git-diff.test.mjs` — its `node --test` suite; inherits the parser cases the two existing
   suites owned.
 - `scripts/check-prettier-format.mjs` — the new guard: pure detector, Prettier/git front-end, CLI.
@@ -229,9 +262,11 @@ touches *before* editing).
 - `frontend/.prettierignore` — keeps `prettier --write .` off build output and the lockfile.
 - `docs/plans/prettier-diff-scoped-enforcement.md` — this plan.
 
-**Modified (9)**
+**Modified (10)**
 
-- `frontend/package.json` — the `format` and `format:check` scripts issue #615 asks for.
+- `frontend/package.json` — the `format:check` script issue #615 asks for. A sibling `format`
+  (`prettier --write .`) shipped in the first round and was **removed** at review (F-6): the
+  conventional name is a loaded gun over a tree with 200 dirty files.
 - `.github/workflows/ci.yml` — `fetch-depth: 0` on the `frontend` job's checkout plus one new
   PR-only step running the guard; no job added, renamed, or removed.
 - `scripts/check-inline-comments.mjs` — imports the extracted helpers instead of defining them.
@@ -260,18 +295,18 @@ touches *before* editing).
 > This is the third guard. It ships as its own commit so the refactor of two merge-gating guards is
 > reviewable apart from the feature riding on it.
 
-- [ ] **Step 1: Write the failing test** — `scripts/git-diff.test.mjs` importing `parseAddedLines`
+- [x] **Step 1: Write the failing test** — `scripts/git-diff.test.mjs` importing `parseAddedLines`
   and `changedPaths` from `./git-diff.mjs`, carrying the cases moved out of the two existing suites.
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/git-diff.test.mjs` → FAIL with
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/git-diff.test.mjs` → FAIL with
   `Cannot find module … git-diff.mjs`
-- [ ] **Step 3: Minimal implementation** — move `git()`, `rangeFor()`, `parseAddedLines()` and
+- [x] **Step 3: Minimal implementation** — move `git()`, `rangeFor()`, `parseAddedLines()` and
   `changedPaths()` verbatim into the new module; both guards import them.
-- [ ] **Step 4: Run it, verify it passes** — `node --test "scripts/*.test.mjs"` → all suites PASS,
+- [x] **Step 4: Run it, verify it passes** — `node --test "scripts/*.test.mjs"` → all suites PASS,
   then `node scripts/check-inline-comments.mjs --diff origin/main` and
   `node scripts/check-plan-file-structure.mjs --diff origin/main` still behave.
-- [ ] **Step 5: Generalization-audit pass** — record the extraction against #533's deferred decision.
-- [ ] **Step 6: Commit** — `git commit -m "Extract the guards' shared git/diff helpers (#615)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Generalization-audit pass** — record the extraction against #533's deferred decision.
+- [x] **Step 6: Commit** — `git commit -m "Extract the guards' shared git/diff helpers (#615)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -279,7 +314,7 @@ touches *before* editing).
 
 **Files:** Create `scripts/check-prettier-format.mjs` · Test `scripts/check-prettier-format.test.mjs`
 
-- [ ] **Step 1: Write the failing test** — AC-1, AC-2, AC-3, AC-7 against
+- [x] **Step 1: Write the failing test** — AC-1, AC-2, AC-3, AC-7 against
   `findMisformatted({ path, current, formatted, added })`, plus AC-4 against `inScope()`.
 
 ```js
@@ -294,15 +329,15 @@ test('pre-existing drift outside the added lines is not reported', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/check-prettier-format.test.mjs` →
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/check-prettier-format.test.mjs` →
   FAIL with `Cannot find module … check-prettier-format.mjs`
-- [ ] **Step 3: Minimal implementation** — the line diff (common prefix/suffix trim, then LCS with a
+- [x] **Step 3: Minimal implementation** — the line diff (common prefix/suffix trim, then LCS with a
   documented cell cap), hunk grouping, the added-line overlap rule, and `inScope(path)`.
-- [ ] **Step 4: Run it, verify it passes** — `node --test scripts/check-prettier-format.test.mjs` →
+- [x] **Step 4: Run it, verify it passes** — `node --test scripts/check-prettier-format.test.mjs` →
   PASS
-- [ ] **Step 5: Generalization-audit pass** — n/a for phase 1 (no bug fixed).
-- [ ] **Step 6: Commit** — `git commit -m "Add the diff-scoped Prettier detector core (#615)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Generalization-audit pass** — n/a for phase 1 (no bug fixed).
+- [x] **Step 6: Commit** — `git commit -m "Add the diff-scoped Prettier detector core (#615)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -310,21 +345,21 @@ test('pre-existing drift outside the added lines is not reported', () => {
 
 **Files:** Modify `scripts/check-prettier-format.mjs` · `scripts/check-prettier-format.test.mjs`
 
-- [ ] **Step 1: Write the failing test** — AC-5 (`applyHunks` rewrites only the reported hunks) and
+- [x] **Step 1: Write the failing test** — AC-5 (`applyHunks` rewrites only the reported hunks) and
   AC-6 (an unparseable file warns rather than failing).
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/check-prettier-format.test.mjs` →
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/check-prettier-format.test.mjs` →
   FAIL with `applyHunks is not a function`
-- [ ] **Step 3: Minimal implementation** — lazy Prettier resolution via `createRequire` against
+- [x] **Step 3: Minimal implementation** — lazy Prettier resolution via `createRequire` against
   `frontend/package.json` (R-4), per-file `getFileInfo` + `resolveConfig` + `format`, repo-root
   anchoring via `git rev-parse --show-toplevel` so the CLI works from `frontend/` and from the root,
   the `--diff` / `--files` / `--fix` modes, and the report that prints both sides of each hunk.
-- [ ] **Step 4: Run it, verify it passes** — the suite PASSes; then end-to-end by hand: a scratch
+- [x] **Step 4: Run it, verify it passes** — the suite PASSes; then end-to-end by hand: a scratch
   commit that adds a misformatted line makes `--diff origin/main` exit 1 naming it, `--fix` clears it
   without touching the file's other drift, and the clean branch exits 0.
-- [ ] **Step 5: Generalization-audit pass** — replay the guard over the last 40 `main` commits and
+- [x] **Step 5: Generalization-audit pass** — replay the guard over the last 40 `main` commits and
   count how often it would have fired; that number is R-1's evidence.
-- [ ] **Step 6: Commit** — `git commit -m "Add the Prettier guard's front-end, CLI and --fix (#615)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Add the Prettier guard's front-end, CLI and --fix (#615)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -333,18 +368,18 @@ test('pre-existing drift outside the added lines is not reported', () => {
 **Files:** Modify `.github/workflows/ci.yml` · `frontend/package.json` · Create
 `frontend/.prettierignore`
 
-- [ ] **Step 1: Write the failing test** — no unit test; AC-9's signal is this PR's own run. The red
+- [x] **Step 1: Write the failing test** — no unit test; AC-9's signal is this PR's own run. The red
   state is `grep -c check-prettier-format .github/workflows/ci.yml` → `0`.
-- [ ] **Step 2: Run it, verify it fails** — as above.
-- [ ] **Step 3: Minimal implementation** — `fetch-depth: 0` on the `frontend` job's checkout (R-2);
+- [x] **Step 2: Run it, verify it fails** — as above.
+- [x] **Step 3: Minimal implementation** — `fetch-depth: 0` on the `frontend` job's checkout (R-2);
   one step after `Lint`, carrying `if: ${{ !cancelled() && github.event_name == 'pull_request' }}`
   so a push to `main` skips it and one PR round trip surfaces both style gates; the `format` and
   `format:check` scripts; the ignore file.
-- [ ] **Step 4: Run it, verify it passes** — `npm run format:check` from `frontend/` exits 0 on this
+- [x] **Step 4: Run it, verify it passes** — `npm run format:check` from `frontend/` exits 0 on this
   branch, and the PR's run is green.
-- [ ] **Step 5: Generalization-audit pass** — n/a (no bug fixed).
-- [ ] **Step 6: Commit** — `git commit -m "Gate frontend formatting on the diff's own lines (#615)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Generalization-audit pass** — n/a (no bug fixed).
+- [x] **Step 6: Commit** — `git commit -m "Gate frontend formatting on the diff's own lines (#615)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -354,13 +389,42 @@ test('pre-existing drift outside the added lines is not reported', () => {
 `.claude/skills/riviera-review-overlay/SKILL.md` · `.claude/skills/riviera-local-debug/SKILL.md` ·
 this plan
 
-- [ ] **Step 1** — run `riviera-docs-freshness` over this PR's merge span. The counting sweep is the
+- [x] **Step 1** — run `riviera-docs-freshness` over this PR's merge span. The counting sweep is the
   point: there are now **three** diff-scoped hygiene guards and the third is **not** in the
   `Repo hygiene (diff-scoped)` job, so both facts every such sentence states are candidates.
-- [ ] **Step 2** — add RV-STYLE-2 to the review overlay (AC-10) and record the option-1 decision on
-  issue #615 with the measurement behind it.
-- [ ] **Step 3** — finalize Execution status, ACs, risk register; cite `merged via PR #NN`.
-- [ ] **Step 4: Commit** — `git commit -m "Close out diff-scoped Prettier enforcement (#615)"`
+- [x] **Step 2** — add RV-STYLE-2 to the review overlay (AC-10) and record the option-1 decision
+  with the measurement behind it — carried by PR #618's description, which `Closes #615`.
+- [x] **Step 3** — finalize Execution status, ACs, risk register; cite `merged via PR #618`.
+- [x] **Step 4: Commit** — `git commit -m "Close out diff-scoped Prettier enforcement (#615)"`
+
+---
+
+## Phase 5 — Review-gate findings F-1…F-15
+
+**Files:** Modify `scripts/git-diff.mjs` · `scripts/git-diff.test.mjs` ·
+`scripts/check-prettier-format.mjs` · `scripts/check-prettier-format.test.mjs` ·
+`scripts/check-inline-comments.mjs` · `scripts/check-plan-file-structure.mjs` ·
+`.github/workflows/ci.yml` · `frontend/package.json` · `frontend/.prettierignore` ·
+`.claude/skills/riviera-review-overlay/SKILL.md` · this plan
+
+> Re-entered at Implement per the `riviera-sdlc` re-entry rule. The routing gate re-run for what the
+> fixes touch matched the same rows as the slice itself — repo tooling only, no new area — so
+> *Skills consulted* is unchanged.
+
+- [x] **Step 1: Write the failing tests** — the `+++`-hijack and `diff --git`-boundary cases (F-9)
+  built from the reproduction, and the two `partitionFixable` cases (F-11).
+- [x] **Step 2: Run them, verify they fail** — `node --test scripts/git-diff.test.mjs` → FAIL, the
+  hijack case attributing lines to `hijacked.ts`.
+- [x] **Step 3: Fix** — F-1…F-13 and F-15 as recorded in the findings register; F-14 rejected there
+  with its reason.
+- [x] **Step 4: Run them, verify they pass** — `node --test "scripts/*.test.mjs"` → **75 pass**, plus
+  the four reproductions re-run against a scratch repository: from `frontend/` with
+  `diff.relative=true` (F-1/F-4), `--fix` twice over a file with pre-existing drift (F-2/F-5), a
+  backend-only diff with no `frontend/node_modules` (F-12), and a non-ASCII path (F-3).
+- [x] **Step 5: Generalization-audit pass** — F-3, F-4 and F-9 were each found in one guard and are
+  defects of all three; recorded in the audit log.
+- [x] **Step 6: Commit** — `git commit -m "Fix the Prettier guard's cwd, diff-base and parser holes (#615)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -370,6 +434,7 @@ this plan
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Phase 5 — three review findings were each reported against one guard | Whether F-3 (C-quoted non-ASCII paths), F-4 (`diff.relative`) and F-9 (an added `++ ` line read as a `+++` header) are defects of the other two guards as well | Read all three guards' git front-ends side by side; reproduced each in a scratch repository against the real scripts | **All three are shared.** Every guard parses `+++` headers with the same code and, before this round, ran git in the caller's cwd. F-9 in particular predates this slice: it has been in `check-inline-comments.mjs` since #529 and in `check-plan-file-structure.mjs`'s sibling parse since #533 | **Fixed all, once.** The three fixes live in `scripts/git-diff.mjs` — which is what F-10's "extract the rest too" finding bought: `git()` pins `core.quotepath=false` and runs from `repoRoot()`, `diffArgs()` adds `--no-relative`, and `parseAddedLines` honours `+++` only between hunks. Had the helpers still been triplicated this would have been three edits and three chances to miss one |
 | 2026-08-10 | Phase 2 — the gate is about to bind every future frontend PR | How often the finished guard would have fired on work that already merged — R-1's evidence, measured rather than argued | Replayed the detector over the last **40** `main` commits (`git show <sha>:<path>` for each in-scope path with added lines, so history is judged as it stood) | **9 of 40** commits (22.5 %) would have failed: 5f415a2 (#612, the PR that raised the issue) 4 hunks, 7b2edca 1, e350e43 (#603, a large template slice) 40, b70171b 2, 5fce213 3, 03dcfe4 11, 9709fed 1, 3a77080 1, 8acf922 3 | **Accept and ship.** One frontend PR in four would need a `--fix` run, and every hunk it names is a line that PR itself wrote. The distribution is the reassuring part: seven of the nine are 1–4 hunks, and the two outliers are large slices that rewrote whole templates. The alternative measured for comparison — file-scoped — would have fired on essentially every one of the 40, since 200 of the tree's files are dirty |
 | 2026-08-10 | Phase 0 — the third guard needs the same git glue | `git()`, `rangeFor()`, `parseAddedLines()`, `changedPaths()` across `scripts/check-*.mjs` | Read both guards side by side against #533's phase-2 audit row, which deferred this decision to "if a third guard appears" | Four helpers, duplicated or about to be: `git()` and `rangeFor()` in both guards, `parseAddedLines()` in `check-inline-comments.mjs` and needed here, `changedPaths()` in `check-plan-file-structure.mjs` | **Extracted** to `scripts/git-diff.mjs` — the condition #533 named has now occurred. Bodies moved verbatim; the one behavioural difference between the two `rangeFor`s (one returned `[range]`, the other `range`) is resolved in favour of the string, with the array wrap moved to its single caller. Both suites' cases for the moved functions moved with them, so `node --test "scripts/*.test.mjs"` counts the same 56 assertions before and after |
 
@@ -379,14 +444,13 @@ this plan
 
 > The gate before claiming done. Not a wish.
 
-- [x] **AC-1…AC-8:** `node --test "scripts/*.test.mjs"` → **71 pass, 0 fail** (all three guards'
-  suites; 15 of them this guard's, 3 the extracted helpers').
-- [ ] **AC-9:** **not verified — no CI run exists yet.** `ci.yml` fires on the `pull_request` event
-  only (#417), so this branch has had none. The wiring is verified as far as a diff can be: the
-  workflow parses, the frontend job's step list carries `Format (diff-scoped Prettier, hard gate)`
-  with `fetch-depth: 0` on its checkout, and every job `name:` is byte-for-byte unchanged. The
-  remaining half — the step going red on a violation and green here, and the repo-hygiene job still
-  running the new suite with no install — needs the PR's own run.
+- [x] **AC-1…AC-8:** `node --test "scripts/*.test.mjs"` → **75 pass, 0 fail** (all three guards'
+  suites; 17 of them this guard's, 5 the extracted helpers').
+- [x] **AC-9:** **green on PR #618's own run.** The frontend job's step list shows
+  `Format (diff-scoped Prettier, hard gate): success` — it ran, it did not skip — and
+  `Repo hygiene (diff-scoped)`, which has no install step, shows `Test the guards themselves:
+  success` over a glob that now includes two new suites. Both halves of the AC, from the two jobs
+  that had to prove them.
 - [x] **AC-10:** `grep -c "RV-STYLE-2" .claude/skills/riviera-review-overlay/SKILL.md` → 1.
 
 > Proven end-to-end by hand ahead of CI, which is the strongest evidence available without a run:
@@ -417,10 +481,11 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; the one Open Question is the option-1 decision, which
       is answered by this slice's own measurement and is due to be recorded on issue #615.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN` — **cannot be, yet**: no pull
-      request exists. This box is the merge close-out's, and it stays open until one does.
-- [ ] **The review gate ran in full** — **it has not.** The gate is due at ready-for-review, and
-      with no PR there is nothing to review against. Left unticked deliberately rather than
-      substituting the overlay walk for it (`riviera-sdlc` rule 4).
+- [x] **Close-out written in THIS PR** — this section's final state ships in the PR's own last
+      commit; the slice is **merged via PR #618**.
+- [x] **The review gate ran in full** — ladder **rung 1**: `Skill("code-review")` was accepted, so
+      the plugin's subagent fan-out ran over `origin/main...HEAD` with `riviera-review-overlay`
+      layered on. 15 findings, 14 fixed and 1 rejected with a written reason (F-14); the fix round
+      re-entered at Implement and re-cleared CI.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

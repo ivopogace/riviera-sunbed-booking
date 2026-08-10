@@ -89,6 +89,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
+        id: install
         run: npm ci
 
       - name: Lint (hard gate)
@@ -105,9 +106,11 @@ jobs:
         # added it to the ruleset (#534). This job is already a required context.
         #
         # Runs even when Lint failed, so one push surfaces both style gates rather than trickling
-        # them over two round trips. Pull requests only, like the other diff-scoped guards: the rule
-        # governs what a diff writes, and a push to `main` has no base that means anything here.
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        # them over two round trips — but NOT when `npm ci` failed, where the guard would crash on a
+        # missing Prettier and report a second, misleading red (`!cancelled()` excludes cancellation,
+        # not failure). Pull requests only, like the other diff-scoped guards: the rule governs what
+        # a diff writes, and a push to `main` has no base that means anything here.
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && github.event_name == 'pull_request' }}
         run: node ../scripts/check-prettier-format.mjs --diff ${{ github.event.pull_request.base.sha }}
 
       - name: Test (Vitest, once, with coverage)

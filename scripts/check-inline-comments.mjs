@@ -12,9 +12,10 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { git, parseAddedLines, rangeFor } from './git-diff.mjs';
+import { diffArgs, git, mergeBase, parseAddedLines, readText, repoRoot } from './git-diff.mjs';
 
 /**
  * Per-extension comment syntax. An extension absent from this map is not checked at all.
@@ -217,31 +218,22 @@ function skipString(line, start, quote) {
   return line.length;
 }
 
-/** Reads a path from the working tree, or null when it is unreadable (deleted, binary, gone). */
-function readLines(path) {
-  try {
-    return readFileSync(path, 'utf8').split('\n');
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Runs the detector over every in-scope file a diff touches.
  *
- * @param {string[]} diffArgs arguments describing the diff, e.g. `['origin/main...HEAD']`
+ * @param {string[]} range arguments describing the diff, e.g. `['<merge-base>']`
  * @param {string[]} [limitTo] when given, only these paths are considered
  */
-export function check(diffArgs, limitTo) {
-  const diff = git(['diff', '--unified=0', '--no-color', '--no-ext-diff', ...diffArgs]);
+export function check(range, limitTo) {
+  const diff = git(diffArgs(...range));
   const violations = [];
 
   for (const [path, added] of parseAddedLines(diff)) {
     if (limitTo && !limitTo.includes(path)) continue;
     if (!syntaxFor(path)) continue;
-    const lines = readLines(path);
-    if (!lines) continue;
-    violations.push(...findViolations({ path, lines, added }));
+    const text = readText(path);
+    if (text === null) continue;
+    violations.push(...findViolations({ path, lines: text.split('\n'), added }));
   }
   return violations;
 }
@@ -255,6 +247,11 @@ function report(violations) {
   return violations.map((v) => `  ${v.path}:${v.line}-${v.endLine}  ${v.text}`).join('\n');
 }
 
+/** git runs from the repository root, so a pathspec has to be expressed from there too. */
+function toRepoRelative(argument) {
+  return relative(repoRoot(), resolve(process.cwd(), argument)).split(sep).join('/');
+}
+
 function main(argv) {
   const mode = argv[0];
 
@@ -262,8 +259,8 @@ function main(argv) {
     const payload = JSON.parse(readFileSync(0, 'utf8'));
     const path = payload?.tool_response?.filePath ?? payload?.tool_input?.file_path;
     if (!path || !syntaxFor(path)) return 0;
-    const relative = path.replace(`${process.cwd()}/`, '');
-    const violations = check(['HEAD', '--', relative], [relative]);
+    const edited = toRepoRelative(path);
+    const violations = check(['HEAD', '--', edited], [edited]);
     if (violations.length === 0) return 0;
     process.stdout.write(
       JSON.stringify({
@@ -277,7 +274,7 @@ function main(argv) {
   }
 
   if (mode === '--files') {
-    const paths = argv.slice(1);
+    const paths = argv.slice(1).map(toRepoRelative);
     const violations = check(['HEAD', '--', ...paths], paths);
     if (violations.length === 0) return 0;
     process.stderr.write(`Multi-line inline comments:\n${report(violations)}\n${ADVICE}\n`);
@@ -285,7 +282,7 @@ function main(argv) {
   }
 
   if (mode === '--diff') {
-    const violations = check([rangeFor(argv[1] ?? 'origin/main')]);
+    const violations = check([mergeBase(argv[1] ?? 'origin/main')]);
     if (violations.length === 0) return 0;
     process.stderr.write(`Multi-line inline comments added by this diff:\n${report(violations)}\n${ADVICE}\n`);
     return 1;

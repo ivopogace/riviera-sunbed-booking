@@ -20,7 +20,14 @@ import { createRequire } from 'node:module';
 import { relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { git, parseAddedLines, rangeFor } from './git-diff.mjs';
+import {
+  diffArgs,
+  git,
+  mergeBase,
+  parseAddedLines,
+  readText,
+  repoRoot,
+} from './git-diff.mjs';
 
 /** The one tree `frontend/.prettierrc` governs. */
 const SCOPE = 'frontend/';
@@ -30,9 +37,12 @@ const SHOWN_LINES = 6;
 
 /**
  * Above this many LCS cells the line diff stops being worth its memory, and the whole differing
- * region is reported as one hunk instead. Conservative in the safe direction — it over-reports a
- * region rather than missing one — and unreachable in practice: the trim below leaves the common
- * case a handful of lines, and the widest file in the tree differs by 244.
+ * region is reported as one **coarse** hunk instead. Unreachable in practice — the trim below leaves
+ * the common case a handful of lines, and the widest file in the tree differs by 244.
+ *
+ * Coarse is safe to *report* and never safe to *write*: the region it spans is the whole differing
+ * middle, so rewriting it on account of one added line inside would produce exactly the unrelated
+ * churn this guard exists to prevent. `--fix` therefore refuses coarse hunks and says so (PR #618).
  */
 const LCS_CELL_CAP = 4_000_000;
 
@@ -64,6 +74,7 @@ export function findMisformatted({ path, current, formatted, added }) {
       endLine: hunk.start + hunk.deleted,
       current: before.slice(hunk.start, hunk.start + hunk.deleted),
       expected: hunk.replacement,
+      ...(hunk.coarse ? { coarse: true } : {}),
     }));
 }
 
@@ -114,8 +125,9 @@ function alignedHunks(before, after, offset) {
   const n = before.length;
   const m = after.length;
   if (n === 0 && m === 0) return [];
-  if (n === 0 || m === 0 || (n + 1) * (m + 1) > LCS_CELL_CAP) {
-    return [{ start: offset, deleted: n, replacement: after.slice() }];
+  if (n === 0 || m === 0) return [{ start: offset, deleted: n, replacement: after.slice() }];
+  if ((n + 1) * (m + 1) > LCS_CELL_CAP) {
+    return [{ start: offset, deleted: n, replacement: after.slice(), coarse: true }];
   }
 
   const width = m + 1;
@@ -258,49 +270,65 @@ function formatterFor(root) {
   };
 }
 
-/** Reads a path from the working tree, or null when it is unreadable (deleted, binary, gone). */
-function readText(absolute) {
-  try {
-    return readFileSync(absolute, 'utf8');
-  } catch {
-    return null;
-  }
-}
-
-/** Runs the detector over every in-scope file the diff wrote to. */
-async function check({ root, added, format, warn }) {
+/**
+ * Runs the detector over every in-scope file the diff wrote to.
+ *
+ * The formatter is built on the first in-scope file rather than up front, so a backend-only branch
+ * in a tree that never ran `npm ci` is a clean pass instead of a crash about a missing Prettier.
+ */
+async function check({ added, formatter, warn }) {
   const findings = [];
+  let format = null;
 
   for (const [path, lines] of added) {
     if (!inScope(path)) continue;
-    const current = readText(resolve(root, path));
+    const current = readText(path);
     if (current === null) continue;
+    format ??= formatter();
     findings.push(...(await inspect({ path, current, added: lines, format, warn })));
   }
   return findings;
 }
 
-/** Rewrites each file the findings name, and returns the paths touched. */
-function applyToDisk(root, findings) {
-  const byPath = new Map();
+/**
+ * Groups findings by file, and holds back the coarse ones.
+ *
+ * A coarse finding spans a whole differing region the line diff declined to resolve, so writing it
+ * back would reformat lines the diff never wrote — the churn this guard exists to prevent. `--fix`
+ * therefore reports those files instead of touching them (PR #618).
+ *
+ * @returns {{ fixable: Map<string, object[]>, refused: string[] }}
+ */
+export function partitionFixable(findings) {
+  const fixable = new Map();
+  const refused = new Set();
+
   for (const finding of findings) {
-    if (!byPath.has(finding.path)) byPath.set(finding.path, []);
-    byPath.get(finding.path).push(finding);
+    if (finding.coarse) {
+      refused.add(finding.path);
+      continue;
+    }
+    if (!fixable.has(finding.path)) fixable.set(finding.path, []);
+    fixable.get(finding.path).push(finding);
   }
-  for (const [path, hunks] of byPath) {
+  for (const path of refused) fixable.delete(path);
+  return { fixable, refused: [...refused] };
+}
+
+/** Rewrites each fixable file the findings name, and returns `{ rewritten, refused }`. */
+function applyToDisk(root, findings) {
+  const { fixable, refused } = partitionFixable(findings);
+
+  for (const [path, hunks] of fixable) {
     const absolute = resolve(root, path);
     writeFileSync(absolute, applyHunks(readFileSync(absolute, 'utf8'), hunks));
   }
-  return [...byPath.keys()];
+  return { rewritten: [...fixable.keys()], refused };
 }
 
 /** git speaks repo-relative POSIX paths; a CLI argument is whatever the caller's shell resolved. */
 function toRepoRelative(root, argument) {
   return relative(root, resolve(process.cwd(), argument)).split(sep).join('/');
-}
-
-function diffArgs(range) {
-  return ['diff', '--unified=0', '--no-color', '--no-ext-diff', ...range];
 }
 
 async function main(argv) {
@@ -314,20 +342,32 @@ async function main(argv) {
     return 2;
   }
 
-  const root = git(['rev-parse', '--show-toplevel']).trim();
+  const root = repoRoot();
   const range =
     mode === '--diff'
-      ? [rangeFor(paths[0] ?? 'origin/main')]
+      ? [mergeBase(paths[0] ?? 'origin/main')]
       : ['HEAD', '--', ...paths.map((path) => toRepoRelative(root, path))];
   const warn = (message) => process.stderr.write(`${message}\n`);
-  const added = parseAddedLines(git(diffArgs(range)));
-  const findings = await check({ root, added, format: formatterFor(root), warn });
+  const added = parseAddedLines(git(diffArgs(...range)));
+
+  let findings;
+  try {
+    findings = await check({ added, formatter: () => formatterFor(root), warn });
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    return 2;
+  }
 
   if (findings.length === 0) return 0;
   if (fixing) {
-    const rewritten = applyToDisk(root, findings);
-    process.stdout.write(`Reformatted the reported hunks in:\n${rewritten.map((path) => `  ${path}`).join('\n')}\n`);
-    return 0;
+    const { rewritten, refused } = applyToDisk(root, findings);
+    const lines = rewritten.map((path) => `  ${path}`);
+    process.stdout.write(`Reformatted the reported hunks in:\n${lines.join('\n')}\n`);
+    if (refused.length === 0) return 0;
+    process.stderr.write(
+      `Left alone (the differing region was too large to resolve line by line — reformat by hand):\n${refused.map((path) => `  ${path}`).join('\n')}\n`,
+    );
+    return 1;
   }
   process.stderr.write(`${report(findings)}\n`);
   return 1;
