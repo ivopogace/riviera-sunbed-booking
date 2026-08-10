@@ -51,9 +51,17 @@ public interface Payments {
 	 * Record a refund against the booking's collection (U6): set {@code refunded_minor} and the
 	 * gateway {@code refundId}, and move the status to {@code REFUNDED} (fully refunded) or
 	 * {@code PARTIALLY_REFUNDED} (a partial after-cutoff refund) — decided by comparing the refund to
-	 * the collected amount. A 0-row no-op when no payment row exists (the stub profile).
+	 * the collected amount.
+	 *
+	 * <p>Guarded twice, and returns whether a row actually moved. It moves only a
+	 * <strong>collected</strong> payment, so a refund can never assert money the gateway never took;
+	 * and never a refund already reported dead, so the losing side of a race against the refund's own
+	 * failure webhook does not record a corpse. {@code false} also covers "no payment row" (the stub
+	 * profile). A caller that reports success on {@code false} would strand a guest still owed money.
+	 *
+	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
-	void markRefunded(BookingRef booking, long refundedMinor, String refundId);
+	boolean markRefunded(BookingRef booking, long refundedMinor, String refundId);
 
 	/**
 	 * The refund-relevant state of the booking's payment row — status plus {@code refunded_minor} —
@@ -63,10 +71,11 @@ public interface Payments {
 
 	/**
 	 * Un-record the refund {@code refundId} because the gateway reports it returned no money: clear
-	 * {@code refunded_minor} and put the collection back to {@code SUCCEEDED}, which it still is.
-	 * Guarded like {@link #markStatus}: only a row still carrying that refund id as a recorded refund
-	 * moves, so a re-delivered failure — or one for a refund a later attempt has already replaced — is
-	 * a no-op. Returns whether a row actually moved.
+	 * {@code refunded_minor}, put the collection back to {@code SUCCEEDED}, which it still is, and
+	 * leave the failure trace ({@code refund_failed_at} + {@code failed_refund_id}) that makes the
+	 * booking enumerable as still owed. Guarded like {@link #markStatus}: only a row still carrying
+	 * that refund id as a recorded refund moves, so a re-delivered failure — or one for a refund a
+	 * later attempt has already replaced — is a no-op. Returns whether a row actually moved.
 	 *
 	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */

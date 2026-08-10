@@ -67,7 +67,8 @@ class PaymentServiceTest {
 			}
 
 			@Override
-			public void markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+			public boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+				return true;
 			}
 
 			@Override

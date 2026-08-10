@@ -35,6 +35,13 @@ class JdbcPayments implements Payments {
 	private static final List<String> REFUND_RECORDED_STATUSES =
 			List.of(PaymentStatus.REFUNDED.name(), PaymentStatus.PARTIALLY_REFUNDED.name());
 
+	/** The statuses in which the gateway holds collected money, so a refund of it can be recorded. */
+	private static final List<String> COLLECTED_STATUSES =
+			List.of(PaymentStatus.SUCCEEDED.name(), PaymentStatus.REFUNDED.name(),
+					PaymentStatus.PARTIALLY_REFUNDED.name());
+
+	private static final String PARAM_REFUND_ID = "refundId";
+
 	private final JdbcClient jdbc;
 
 	JdbcPayments(JdbcClient jdbc) {
@@ -117,19 +124,23 @@ class JdbcPayments implements Payments {
 	}
 
 	@Override
-	public void markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+	public boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
 		// Status is decided from the collected amount: a refund covering the whole amount is REFUNDED,
-		// otherwise PARTIALLY_REFUNDED. A 0-row no-op if no payment row exists (stub profile).
-		jdbc.sql("""
+		// otherwise PARTIALLY_REFUNDED. Clearing refund_failed_at is what "owed now" means.
+		return jdbc.sql("""
 				UPDATE payment
-				SET refunded_minor = :refunded, refund_id = :refundId, updated_at = NOW(),
+				SET refunded_minor = :refunded, refund_id = :refundId, refund_failed_at = NULL,
+				    updated_at = NOW(),
 				    status = CASE WHEN :refunded >= amount_minor THEN 'REFUNDED' ELSE 'PARTIALLY_REFUNDED' END
 				WHERE booking_ref = :ref
+				  AND status IN (:collected)
+				  AND (failed_refund_id IS NULL OR failed_refund_id <> :refundId)
 				""")
 				.param("refunded", refundedMinor)
-				.param("refundId", refundId)
+				.param(PARAM_REFUND_ID, refundId)
 				.param("ref", booking.value())
-				.update();
+				.param("collected", COLLECTED_STATUSES)
+				.update() == 1;
 	}
 
 	@Override
@@ -137,11 +148,12 @@ class JdbcPayments implements Payments {
 		// Guarded in the one statement, never read-then-write: two deliveries cannot both un-record.
 		return jdbc.sql("""
 				UPDATE payment
-				SET refunded_minor = 0, status = :succeeded, updated_at = NOW()
+				SET refunded_minor = 0, status = :succeeded, refund_id = NULL,
+				    failed_refund_id = :refundId, refund_failed_at = NOW(), updated_at = NOW()
 				WHERE refund_id = :refundId AND status IN (:recorded)
 				""")
 				.param("succeeded", PaymentStatus.SUCCEEDED.name())
-				.param("refundId", refundId)
+				.param(PARAM_REFUND_ID, refundId)
 				.param("recorded", REFUND_RECORDED_STATUSES)
 				.update() == 1;
 	}

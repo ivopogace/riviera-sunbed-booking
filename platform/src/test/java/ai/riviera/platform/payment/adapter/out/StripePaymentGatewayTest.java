@@ -77,6 +77,8 @@ class StripePaymentGatewayTest {
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.refunds()).thenReturn(refunds);
 		when(payments.findIntentByBookingRef(BOOKING)).thenReturn(Optional.of(INTENT));
+		// A bare mock answers false, which is the "died before its record" branch, not the norm.
+		when(payments.markRefunded(any(), anyLong(), any())).thenReturn(true);
 		SimpleMeterRegistry meters = new SimpleMeterRegistry();
 		return new RefundFixture(new StripePaymentGateway(stripe, payments, meters), refunds, payments, meters);
 	}
@@ -413,6 +415,40 @@ class StripePaymentGatewayTest {
 				"both attempts carry the same key, so Stripe returns the refund it already made"));
 		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_recovered");
 		assertEquals(0.0, fixture.adoptedCount(), "a same-key replay is a recovery, not an adoption");
+	}
+
+	/**
+	 * The race issue #594 item 1 reports: the refund's own failure webhook reached the row first, so
+	 * the record is refused. Reporting success here is what used to settle the row at {@code REFUNDED}
+	 * permanently and tell the guest their money was on its way.
+	 */
+	@Test
+	void refundThatDiedBeforeItsRecordIsReportedFailed() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds());
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenReturn(stripeRefund("re_raced", "pending", 2250L));
+		when(fixture.payments().markRefunded(BOOKING, 2250L, "re_raced")).thenReturn(false);
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
+				"a refund the record refuses is still owed — the publication must stay outstanding");
+		assertEquals("refund_died_before_record", failed.reason());
+	}
+
+	@Test
+	void adoptedRefundThatDiedBeforeItsRecordIsReportedFailed() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds(), stripeRefund("re_held", "pending", 2250L));
+		when(fixture.payments().markRefunded(BOOKING, 2250L, "re_held")).thenReturn(false);
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		assertInstanceOf(RefundResult.Failed.class, result,
+				"the adoption path carries the same refusal — it records through the same guard");
+		assertEquals(0.0, fixture.adoptedCount(),
+				"nothing was adopted, so the adoption counter must not claim otherwise");
 	}
 
 	@Test

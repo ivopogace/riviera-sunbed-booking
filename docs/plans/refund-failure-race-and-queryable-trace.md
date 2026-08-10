@@ -143,7 +143,7 @@ earns its place:
 |---|---|---|---|---|---|---|
 | R-1 | The by-intent fallback fires for a **manual dashboard refund** that failed, raising a money-path alert for money we do not owe | med | med | Fallback is guarded on `refund_attempted_at IS NOT NULL` — set only when *this platform* began a refund for that booking. A dashboard refund on a booking we never refunded leaves it NULL and no-ops (AC-7) | this slice | open |
 | R-2 | The by-intent fallback double-reports on a re-delivered failure (Stripe re-delivers; both `refund.failed` and `refund.updated` carry the same death) | high | med | Fallback guard includes `(failed_refund_id IS NULL OR failed_refund_id <> :refundId)`, so the second delivery moves 0 rows — the same idempotency shape as `markRefundFailed`'s existing guard (AC-1 sibling test) | this slice | open |
-| R-3 | Guarding `markRefunded` breaks #569's contract tests / `PaymentGatewayRefundContract`, whose fixtures record refunds on rows that were never `SUCCEEDED` | high | med | Fixtures and the two `JdbcPaymentsIT` cases that refund a `REQUIRES_PAYMENT` row are updated to mark `SUCCEEDED` first — which is what production always does. `Payments` **Mockito mocks default `false` for the new boolean**, so every `StripePaymentGatewayTest` refund case must stub it `true` or the gateway will answer `Failed` | this slice | open |
+| R-3 | Guarding `markRefunded` breaks #569's contract tests / `PaymentGatewayRefundContract`, whose fixtures record refunds on rows that were never `SUCCEEDED` | high | med | Fixtures and the two `JdbcPaymentsIT` cases that refund a `REQUIRES_PAYMENT` row are updated to mark `SUCCEEDED` first — which is what production always does. `Payments` **Mockito mocks default `false` for the new boolean**, so every `StripePaymentGatewayTest` refund case must stub it `true` or the gateway will answer `Failed` | this slice | **closed in phase 1** — the two `JdbcPaymentsIT` cases now mark `SUCCEEDED` first, and both Mockito fixtures (`StripePaymentGatewayTest`, `StripeRefundContractTest`) stub `markRefunded` `true` |
 | R-4 | `refund_attempted_at` is stamped inside a transaction that has not committed, so the concurrent webhook cannot see it — the fix silently does nothing | med | high | Stamped from `RefundService#refund`, which #404 left **transaction-free** (`BookingRefundListener` dropped `@Transactional`), so it auto-commits before the gateway call. Pinned by an assertion that the stamp is visible from a second connection (`RefundAttemptVisibilityIT`) | this slice | open |
 | R-5 | Flyway `V42` collides with a parallel slice | low | high | Verified free on `main` at `a6e425e` and unclaimed by every open PR (all 17 are Dependabot, no migrations). Default rule: whoever merges second renumbers | this slice | open |
 | R-6 | The new gauge runs a `COUNT(*)` per metrics scrape, adding DB load to the money path | low | low | Partial index `WHERE refund_failed_at IS NOT NULL` makes it an index-only scan over a set that is empty in the healthy case | this slice | open |
@@ -245,17 +245,17 @@ responses (`200`/`400`/`503`) are unchanged.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — guard `markRefunded` on the collected statuses and make
-`markRefundFailed` leave the trace; update the two `JdbcPaymentsIT` cases that refund a
-`REQUIRES_PAYMENT` row on purpose (R-3).
+**Next action:** Phase 2 — stamp `refund_attempted_at` from `RefundService`, add the
+by-intent fallback to the webhook's dead-refund branch, and pin the visibility of the stamp
+across connections (R-4).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `V42` migration: the refund-failure trace columns | ✅ | `4d0e0c7` |
-| 1 — Guard the refund record; make the un-record leave a trace (items 2 + 3a) | ⏳ | |
-| 2 — Close the race: attempt stamp, by-intent fallback, gateway refusal (item 1) | | |
+| 0 — `V42` migration: the refund-failure trace columns | ✅ | `0f30527` |
+| 1 — Guard the refund record; make the un-record leave a trace (items 2 + 3a) | ✅ | `8aedd41` |
+| 2 — Close the race: attempt stamp, by-intent fallback, gateway refusal (item 1) | ⏳ | |
 | 3 — Owed-refund gauge + docs sweep (item 3b) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

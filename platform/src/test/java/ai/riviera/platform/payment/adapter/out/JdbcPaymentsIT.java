@@ -124,12 +124,40 @@ class JdbcPaymentsIT {
 	@Test
 	void markRefundedFullMovesToRefunded() {
 		payments.register(new NewPayment(new BookingRef(9201L), "pi_refund_full", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_refund_full", PaymentStatus.SUCCEEDED);
 
-		payments.markRefunded(new BookingRef(9201L), 4500L, "re_full");
+		assertTrue(payments.markRefunded(new BookingRef(9201L), 4500L, "re_full"));
 
 		assertEquals("REFUNDED", statusOf("pi_refund_full"), "a full refund moves the payment to REFUNDED");
 		assertEquals(4500L, jdbc.sql("SELECT refunded_minor FROM payment WHERE payment_intent_id = :i")
 				.param("i", "pi_refund_full").query(Long.class).single());
+	}
+
+	@Test
+	void markRefundedRefusesAnUncollectedPayment() {
+		payments.register(new NewPayment(new BookingRef(9601L), "pi_never_paid", 4500L, "EUR", "cs_test_secret"));
+
+		assertFalse(payments.markRefunded(new BookingRef(9601L), 4500L, "re_phantom"),
+				"a refund cannot be recorded against money the gateway never collected");
+
+		assertEquals("REQUIRES_PAYMENT", statusOf("pi_never_paid"),
+				"and the un-collected payment keeps its status rather than being asserted as SUCCEEDED");
+	}
+
+	@Test
+	void markRefundedRefusesACanceledCollection() {
+		payments.register(new NewPayment(new BookingRef(9602L), "pi_canceled", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_canceled", PaymentStatus.CANCELED);
+
+		assertFalse(payments.markRefunded(new BookingRef(9602L), 4500L, "re_on_canceled"),
+				"a canceled collection holds no money to give back");
+		assertEquals("CANCELED", statusOf("pi_canceled"));
+	}
+
+	@Test
+	void markRefundedReportsNoMoveWithoutAPaymentRow() {
+		assertFalse(payments.markRefunded(new BookingRef(9603L), 4500L, "re_no_row"),
+				"no payment row (stub profile) moves nothing, and now says so");
 	}
 
 	@Test
@@ -159,6 +187,7 @@ class JdbcPaymentsIT {
 	@Test
 	void markRefundedPartialMovesToPartiallyRefunded() {
 		payments.register(new NewPayment(new BookingRef(9202L), "pi_refund_part", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_refund_part", PaymentStatus.SUCCEEDED);
 
 		payments.markRefunded(new BookingRef(9202L), 2250L, "re_part");
 
@@ -220,5 +249,40 @@ class JdbcPaymentsIT {
 	void markRefundFailedIgnoresAnUnknownRefundId() {
 		assertFalse(payments.markRefundFailed("re_never_recorded"),
 				"a failure for a refund this app never issued moves nothing");
+	}
+
+	@Test
+	void markRefundFailedLeavesAQueryableTrace() {
+		payments.register(new NewPayment(new BookingRef(9701L), "pi_traced", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_traced", PaymentStatus.SUCCEEDED);
+		payments.markRefunded(new BookingRef(9701L), 4500L, "re_traced");
+
+		assertTrue(payments.markRefundFailed("re_traced"));
+
+		assertEquals(1, jdbc.sql("""
+				SELECT COUNT(*) FROM payment
+				WHERE payment_intent_id = 'pi_traced' AND refund_failed_at IS NOT NULL
+				  AND failed_refund_id = 're_traced' AND refund_id IS NULL
+				""").query(Integer.class).single(),
+				"the un-record must be enumerable, not just a WARN line: the dead refund id moves to "
+						+ "failed_refund_id and refund_id stops claiming a live refund");
+	}
+
+	@Test
+	void aSucceedingRetryClearsTheOwedFlag() {
+		payments.register(new NewPayment(new BookingRef(9702L), "pi_retried", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_retried", PaymentStatus.SUCCEEDED);
+		payments.markRefunded(new BookingRef(9702L), 4500L, "re_died_once");
+		payments.markRefundFailed("re_died_once");
+
+		assertTrue(payments.markRefunded(new BookingRef(9702L), 4500L, "re_worked"),
+				"a fresh refund id is not the corpse, so the retry records normally");
+
+		assertEquals(1, jdbc.sql("""
+				SELECT COUNT(*) FROM payment
+				WHERE payment_intent_id = 'pi_retried' AND refund_failed_at IS NULL
+				  AND failed_refund_id = 're_died_once'
+				""").query(Integer.class).single(),
+				"owed-now is cleared by the retry that worked, while the id of what died is kept");
 	}
 }
