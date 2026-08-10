@@ -216,16 +216,16 @@ to `true` after a failure.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — write the `StripeWebhookIT` refund-failure cases red, then add the
-refund-lifecycle branch to `StripeWebhookController`.
+**Next action:** Phase 2 — write `PaymentGatewayRefundContract` + its Stripe binding red, then
+extract the fixture hooks so no Stripe type reaches the contract.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Un-record port + guarded SQL | ✅ | `fe67bdb` |
-| 1 — Webhook refund-failure branch | ⏳ | |
-| 2 — Shared at-most-once refund contract | | |
+| 0 — Un-record port + guarded SQL | ✅ | `12a3368` |
+| 1 — Webhook refund-failure branch | ✅ | `<phase-1>` |
+| 2 — Shared at-most-once refund contract | ⏳ | |
 | 3 — Contract-coverage architecture rule | | |
 | 4 — Docs sweep + close-out | | |
 
@@ -364,6 +364,8 @@ Test `payment/adapter/out/JdbcPaymentsIT.java`
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-10 | phase 0 | every writer of `refunded_minor`, to be sure the un-record is the only new one and no other path can strand the column | `grep -rn "refunded_minor" platform/src/main --include=*.java --include=*.sql` | 2 writers (`markRefunded`, the new `markRefundFailed`), both in `JdbcPayments`; the rest are the V11 DDL and Javadoc | no further sites — the column has exactly one writer pair, which is what makes the guard on `refund_id` sufficient |
+| 2026-08-10 | phase 1 | the "which refund statuses returned no money" predicate, which the new webhook branch needed and `StripePaymentGateway#isLive` already had | `grep -rn "DEAD_REFUND_STATUSES\|getStatus()" platform/src/main/java/ai/riviera/platform/payment` | 2 sites, one per adapter, needing the **same** direction (an unknown status must never license either creating a second refund or un-recording one) | extracted `payment.domain.RefundLifecycle#returnedNoMoney` and pointed both adapters at it, rather than copying the set into `adapter/in` |
+| 2026-08-10 | phase 1 | other handler branches that could consume a verified fact they cannot read | read of `StripeWebhookController`'s switch after the refactor | all 4 handled types now route through the one `required(event, type)` helper; the `default` arm stays a `200` by design (no fact to lose) | no further sites — the rule has one home instead of one per branch |
 
 ---
 

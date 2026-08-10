@@ -12,6 +12,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.session.FindByIndexNameSessionRepository;
@@ -138,6 +141,15 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
  */
 @TestConfiguration(proxyBeanMethods = false)
 class WebSliceStubs {
+
+	/**
+	 * The slice carries no metrics auto-configuration, so a controller that counts something — the
+	 * Stripe webhook's failed-refund counter — needs a registry to count into.
+	 */
+	@Bean
+	MeterRegistry meterRegistry() {
+		return new SimpleMeterRegistry();
+	}
 
 	/** Request-to-Book web-slice stubs: the controller/scheduler ports with inert defaults. */
 	@Bean

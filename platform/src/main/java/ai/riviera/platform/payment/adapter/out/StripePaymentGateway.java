@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Locale;
 
 import java.util.Optional;
-import java.util.Set;
 
 import com.stripe.StripeClient;
 import com.stripe.exception.ApiConnectionException;
@@ -34,6 +33,7 @@ import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.application.PaymentGateway;
 import ai.riviera.platform.payment.domain.PaymentStatus;
+import ai.riviera.platform.payment.domain.RefundLifecycle;
 
 /**
  * The real Stripe collection adapter ({@code stripe} profile) for the outbound
@@ -61,9 +61,6 @@ class StripePaymentGateway implements PaymentGateway {
 	// Stripe PaymentIntent statuses we branch on when cancelling (issue #51).
 	private static final String STATUS_SUCCEEDED = "succeeded";
 	private static final String STATUS_CANCELED = "canceled";
-
-	/** Stripe Refund statuses in which no money reached the tourist, so the refund is still owed. */
-	private static final Set<String> DEAD_REFUND_STATUSES = Set.of("failed", STATUS_CANCELED);
 
 	/** Far above any real count — a booking gets one refund, so page one is always decisive. */
 	private static final long REFUND_PAGE_LIMIT = 100L;
@@ -163,10 +160,9 @@ class StripePaymentGateway implements PaymentGateway {
 	 * everything else — including {@code pending}, which is where a refund normally starts — counts,
 	 * because creating a second one alongside it is the outcome this method exists to prevent.
 	 *
-	 * <p>The residual that leaves: a {@code pending} refund adopted here can still flip to
-	 * {@code failed} later, and with no refund webhook (v1) nothing re-drives it. That is the
-	 * pre-existing shape of the create path too, and is recorded in {@code RESPONSIBILITIES.md}
-	 * §{@code payment}; it is not something this read can close.
+	 * <p>A {@code pending} refund counted here can still flip to {@code failed} later. That is not
+	 * something this read can close, and it does not have to: the refund-lifecycle webhook un-records
+	 * such a refund, after which this read sees a dead one and a fresh attempt proceeds.
 	 *
 	 * <p>One page suffices: more than one live refund is refused rather than reconciled, so the read
 	 * only ever needs to answer "none", "exactly one", or "more than one".
@@ -182,9 +178,7 @@ class StripePaymentGateway implements PaymentGateway {
 	}
 
 	private static boolean isLive(Refund refund) {
-		String status = refund.getStatus();
-		// An unrecognised status counts as live — never create a second refund on a guess.
-		return status == null || !DEAD_REFUND_STATUSES.contains(status);
+		return !RefundLifecycle.returnedNoMoney(refund.getStatus());
 	}
 
 	/**
