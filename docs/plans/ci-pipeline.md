@@ -147,6 +147,12 @@ coverage corrections folded in here.
   merge; with the swap there is no window in which a required context has no job able to satisfy it
   on an up-to-date branch, and `strict` already forces every other PR onto post-rename `main` before
   merging.
+
+  **#615 adds a third diff-scoped hygiene guard and puts it somewhere else** — Prettier formatting,
+  as a step in `Frontend (lint + test + build)` rather than in the repo-hygiene job it belongs to by
+  kind. Two mechanical reasons: the repo-hygiene job installs nothing and this guard needs the
+  Prettier pinned in `frontend/package-lock.json`, and the same ruleset arithmetic as above rules out
+  a new job. The context list is again **untouched at 7** — the frontend job was already one of them.
   — *Owner:* maintainer · *Resolved by:* the ruleset read above, re-verified per #534; the #539
   swap verified by the post-swap ruleset read recorded on PR #540.
 - **Open question:** none blocking. No material scope change surfaced in the audit.

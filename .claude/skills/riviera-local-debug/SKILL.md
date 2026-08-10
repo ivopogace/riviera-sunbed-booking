@@ -101,6 +101,7 @@ out of courtesy to your battery; `./gradlew test` for the full suite is fine.
 ```bash
 cd frontend
 npm run lint
+npm run format:check   # Prettier, diff-scoped (#615); `-- --fix` rewrites just the reported hunks
 npm test          # Vitest via @angular/build:unit-test — runs once in jsdom; NOT Karma
 npm run build     # only when production-build risk is in play
 ```

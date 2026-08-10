@@ -171,7 +171,12 @@ jobs:
     # Broaden the `push` trigger and this job masks its own PR result exactly as #417 described.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    # Observed green: well under a minute (no install step — the guard has no dependencies).
+    # Observed green: well under a minute (no install step — the guards have no dependencies).
+    #
+    # That is a constraint, not just a fact: `scripts/*.test.mjs` runs HERE, so nothing a guard
+    # module imports may reach `node_modules`. The Prettier guard (#615) obeys it by resolving
+    # Prettier lazily, inside the function that formats — hence its own check running in the
+    # frontend job instead, which is where `npm ci` has already run.
     timeout-minutes: 10
     steps:
       - name: Checkout

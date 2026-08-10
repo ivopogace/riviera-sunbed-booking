@@ -33,10 +33,11 @@ lesson) · `riviera-plan-doc` (this template — forced the Non-goals that fix t
 `tdd` (every detector rule is a red `node --test` case first; the two real-history fixtures come from
 `main` rather than from imagination) · `riviera-review-overlay` (review gate — due at
 ready-for-review; this slice also **adds** RV-STYLE-2 to it, which is the half of #615 that stops the
-review-time cost) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, 4 findings, all
-patched — the counting sweep was the point: this is the **third** diff-scoped hygiene guard and the
+review-time cost) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, **5 findings, all
+patched** — the counting sweep was the point: this is the **third** diff-scoped hygiene guard and the
 **first** one that is not in the `Repo hygiene (diff-scoped)` job, so every doc phrased as "the two
-diff-scoped checks" or "the guards have no dependencies" was a candidate) · `riviera-local-debug`
+diff-scoped checks" or "the guard has no dependencies" was a candidate, and four of the five sat in
+files this diff would otherwise never have opened) · `riviera-local-debug`
 (the `npm ci` + scoped-run recipe; the guard's own suite is dependency-free `node --test`, so neither
 the Gradle recipe nor the OOM-scoping rule binds here)
 
@@ -56,36 +57,36 @@ the Gradle recipe nor the OOM-scoping rule binds here)
 > Written against the detector — the inner boundary — not against GitHub Actions. The CI wiring is
 > asserted once, at the adapter level, by this PR's own run.
 
-- [ ] **AC-1:** Given a file whose content differs from Prettier's output only at lines the diff did
+- [x] **AC-1:** Given a file whose content differs from Prettier's output only at lines the diff did
   **not** add, when the guard runs, then it reports nothing. *Pinned by:*
   `check-prettier-format.test.mjs` › `"pre-existing drift outside the added lines is not reported"`.
-- [ ] **AC-2:** Given a diff that adds a line Prettier would rewrite, when the guard runs, then it
+- [x] **AC-2:** Given a diff that adds a line Prettier would rewrite, when the guard runs, then it
   reports that line with both the text as written and the text Prettier expects. *Pinned by:*
   `check-prettier-format.test.mjs` › `"reports the added line and what Prettier expects"`.
-- [ ] **AC-3:** Given a file the diff creates, when the guard runs, then every misformatted hunk in
+- [x] **AC-3:** Given a file the diff creates, when the guard runs, then every misformatted hunk in
   it is reported — a new file has no pre-existing drift to protect. *Pinned by:*
   `check-prettier-format.test.mjs` › `"a file the diff creates is judged in full"`.
-- [ ] **AC-4:** Given a changed path outside `frontend/`, when the guard runs, then it is not
+- [x] **AC-4:** Given a changed path outside `frontend/`, when the guard runs, then it is not
   checked. *Pinned by:* `check-prettier-format.test.mjs` › `"only frontend/ is in scope"`.
-- [ ] **AC-5:** Given `--fix` over a file that has one reported hunk **and** pre-existing drift
+- [x] **AC-5:** Given `--fix` over a file that has one reported hunk **and** pre-existing drift
   elsewhere, when it runs, then the reported hunk is rewritten and every pre-existing-drift line is
   left byte-for-byte. *Pinned by:* `check-prettier-format.test.mjs` › `"--fix rewrites only the
   reported hunks"`. This is the property that makes the gate honest: the fix it asks for is never
   wider than the finding.
-- [ ] **AC-6:** Given a file Prettier cannot parse, when the guard runs, then it warns on stderr and
+- [x] **AC-6:** Given a file Prettier cannot parse, when the guard runs, then it warns on stderr and
   the run's exit status is unaffected. *Pinned by:* `check-prettier-format.test.mjs` › `"an
   unparseable file warns instead of failing the gate"`.
-- [ ] **AC-7:** Given a pure insertion (Prettier adds a line rather than rewriting one), when the
+- [x] **AC-7:** Given a pure insertion (Prettier adds a line rather than rewriting one), when the
   diff added the line on either side of it, then it is reported. *Pinned by:*
   `check-prettier-format.test.mjs` › `"an insertion is attributed to the lines it sits between"`.
-- [ ] **AC-8:** Given the shared git/diff helpers move to `scripts/git-diff.mjs`, when the whole
+- [x] **AC-8:** Given the shared git/diff helpers move to `scripts/git-diff.mjs`, when the whole
   guard suite runs, then both pre-existing guards behave exactly as before. *Pinned by:*
   `node --test "scripts/*.test.mjs"` — the #529 and #533 suites, unchanged in substance.
 - [ ] **AC-9:** Given this PR, when CI runs, then the `Frontend (lint + test + build)` job executes
   the new format step and the job is green, **and** the `Repo hygiene (diff-scoped)` job — which
   installs nothing — still runs the new guard's suite. *Verified by:* this PR's own Actions run
   (recorded in *Acceptance-criteria verification*), not by a unit test.
-- [ ] **AC-10:** Given a reviewer reading a diff that touches a long-dirty file, when they consult
+- [x] **AC-10:** Given a reviewer reading a diff that touches a long-dirty file, when they consult
   `riviera-review-overlay`, then RV-STYLE-2 tells them formatting is machine-checked and that asking
   for a whole-file reformat is the wrong call. *Verified by:*
   `grep -c "RV-STYLE-2" .claude/skills/riviera-review-overlay/SKILL.md` ≥ 1.
@@ -122,13 +123,13 @@ a pure move, with the functions' bodies unchanged and both suites (AC-8) as the 
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The gate fires on drift the author did not write — the failure mode that gets a gate switched off (#529's own lesson, restated as #533's R-2) | high if file-scoped | high | Line-scoping by construction: only hunks overlapping the diff's added lines are reported, and `--fix` rewrites only those. Measured over real history before shipping (Generalization-audit log) rather than argued | this slice | open |
-| R-2 | The `Frontend` job checks out at depth 1, so the PR's base commit is absent and `git diff <base>...HEAD` fails — the gate errors instead of judging | high | med | `fetch-depth: 0` on that job's checkout, as the `Repo hygiene` job already does for the same reason. Proven by this PR's own run | this slice | open |
-| R-3 | A **new** CI job would report without blocking: the `Riviera Rule Set` keys required status checks by job name, so a merge stays possible until a maintainer edits the ruleset (#534), and renaming a job makes every PR unmergeable (#413/#420) | certain if a new job | high | The check is a **step** inside `Frontend (lint + test + build)`, already a required context. No job is added or renamed; the ruleset is untouched | this slice | open |
-| R-4 | The `Repo hygiene (diff-scoped)` job runs `node --test "scripts/*.test.mjs"` with **no install step** — a top-level `import 'prettier'` in the new guard would break a required gate for every PR | med | high | Prettier is resolved lazily, inside the function that formats, via `createRequire` against `frontend/package.json`; the detector the suite imports is pure. That job's own green run on this PR is the proof | this slice | open |
-| R-5 | A Prettier minor bump (Dependabot) changes formatting and reddens PRs that did not cause it | low | low | Accepted. Line-scoping bounds the blast radius to lines a PR actually writes, and a bump PR touches no frontend source. If it ever bites, the fix is `npm run format:check --fix` on the affected lines | this slice | open |
-| R-6 | The line diff is an LCS; a large fully-reformatted file could cost O(n·m) time and memory | low | med | Common prefix/suffix trim first (which collapses the common case to a handful of lines), then a cell cap above which the whole differing middle is reported as one conservative hunk. The cap is documented where it lives | this slice | open |
-| R-7 | Sonar's green badge is read as evidence about this slice | med | low | Recorded here, per #533's F-5: `sonar.sources=platform/src/main/java,frontend/src`, and this diff touches neither — every "new code" figure Sonar reports measures nothing about it. The guard's evidence is its `node --test` suite | this slice | open |
+| R-1 | The gate fires on drift the author did not write — the failure mode that gets a gate switched off (#529's own lesson, restated as #533's R-2) | high if file-scoped | high | Line-scoping by construction: only hunks overlapping the diff's added lines are reported, and `--fix` rewrites only those. Measured over real history before shipping (Generalization-audit log) rather than argued | this slice | **closed — measured, not argued.** Replayed over the last 40 `main` commits: **9 would have failed** (22.5 %), seven of them 1–4 hunks. Every hunk names a line that commit itself wrote, and `--fix` costs one command. File-scoped, for comparison, would have failed nearly all 40. `5783195` |
+| R-2 | The `Frontend` job checks out at depth 1, so the PR's base commit is absent and `git diff <base>...HEAD` fails — the gate errors instead of judging | high | med | `fetch-depth: 0` on that job's checkout, as the `Repo hygiene` job already does for the same reason. Proven by this PR's own run | this slice | closed in the diff (`fetch-depth: 0` set, with the reason recorded above it); the run-time proof is AC-9 |
+| R-3 | A **new** CI job would report without blocking: the `Riviera Rule Set` keys required status checks by job name, so a merge stays possible until a maintainer edits the ruleset (#534), and renaming a job makes every PR unmergeable (#413/#420) | certain if a new job | high | The check is a **step** inside `Frontend (lint + test + build)`, already a required context. No job is added or renamed; the ruleset is untouched | this slice | **closed** — verified against the parsed workflow: the job set and every `name:` are byte-for-byte unchanged, `Repo hygiene (diff-scoped)` included. `5783195` |
+| R-4 | The `Repo hygiene (diff-scoped)` job runs `node --test "scripts/*.test.mjs"` with **no install step** — a top-level `import 'prettier'` in the new guard would break a required gate for every PR | med | high | Prettier is resolved lazily, inside the function that formats, via `createRequire` against `frontend/package.json`; the detector the suite imports is pure. That job's own green run on this PR is the proof | this slice | closed in the diff — the guard's import graph reaches `node:*` and `./git-diff.mjs` only, and the constraint is now written into the job's own comment so the next author does not undo it. Run-time proof is AC-9 |
+| R-5 | A Prettier minor bump (Dependabot) changes formatting and reddens PRs that did not cause it | low | low | Accepted. Line-scoping bounds the blast radius to lines a PR actually writes, and a bump PR touches no frontend source. If it ever bites, the fix is `npm run format:check -- --fix` on the affected lines | this slice | closed as accepted — no change to the posture. Sharpened once by evidence: an `npx prettier` invocation during this slice silently fetched **3.9.6** from the registry while the lockfile pins 3.9.5, which is exactly why the guard resolves Prettier through `frontend/package.json` rather than through `npx` |
+| R-6 | The line diff is an LCS; a large fully-reformatted file could cost O(n·m) time and memory | low | med | Common prefix/suffix trim first (which collapses the common case to a handful of lines), then a cell cap above which the whole differing middle is reported as one conservative hunk. The cap is documented where it lives | this slice | closed — `LCS_CELL_CAP` with the fallback, and the measured worst case in the tree is a 244-line differing region (`layout-editor.html`), four orders of magnitude under the cap |
+| R-7 | Sonar's green badge is read as evidence about this slice | med | low | Recorded here, per #533's F-5: `sonar.sources=platform/src/main/java,frontend/src`, and this diff touches neither — every "new code" figure Sonar reports measures nothing about it. The guard's evidence is its `node --test` suite | this slice | closed as recorded — no action available, and the point is that none is mistaken for one |
 
 ## Open questions / Assumptions
 
@@ -171,18 +172,19 @@ added (hence no e2e spec, and no `playwright-cli` row in the routing gate).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`.
+**Stage pointer:** `PR` — all five phases built and locally verified; **no pull request exists yet**,
+so the CI, Review and Sonar gates have not run and AC-9 is open.
 
-**Next action:** Phase 4 — the `riviera-docs-freshness` counting sweep, RV-STYLE-2, and the
-option-1 decision recorded on issue #615.
+**Next action:** Open the draft PR (`riviera-sdlc` rule 3 — CI fires on `pull_request` only), then
+work the gates: CI → review via the `references/pr-gates.md` §1 ladder → Sonar issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Shared git/diff helpers | ✅ | `133394a` |
 | 1 — Detector core | ✅ | `75e64d7` |
 | 2 — Prettier front-end, CLI, `--fix` | ✅ | `00d8576` |
-| 3 — CI wiring, npm scripts, `.prettierignore` | ✅ | this commit |
-| 4 — Docs sweep + close-out | ⏳ | |
+| 3 — CI wiring, npm scripts, `.prettierignore` | ✅ | `5783195` |
+| 4 — Docs sweep + close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -192,7 +194,22 @@ touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| — | — | none yet — the CI, review and Sonar gates have not run (no PR) | — |
+
+**`riviera-docs-freshness` run** — range `origin/main...HEAD`, **5 findings, all patched**:
+
+| Doc | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `CLAUDE.md`:106 | "**two** diff-scoped repo-hygiene checks", and a frontend job that runs "lint/test/build + e2e" | this slice makes three, and the third is a frontend-job step | patched — counts three, names where each runs, and records that both jobs are ruleset-required **by name** |
+| `CLAUDE.md`:92 | the frontend command block listed `lint` / `test` / `test:a11y` / e2e / `build` | `format:check` now exists and CI runs it | patched |
+| `.github/workflows/ci.yml`:174 | "no install step — **the guard** has no dependencies" | the job gates three suites now, and the newest guard *does* have a runtime dependency | patched — reworded as the constraint it actually is, so the next author does not add a top-level `import 'prettier'` |
+| `.claude/skills/riviera-local-debug/SKILL.md`:103 | the frontend run recipe | same as `CLAUDE.md`:92 | patched |
+| `docs/plans/ci-pipeline.md`:137 | "Since #533 that seventh context gates **two** diff-scoped hygiene guards" plus the reasoning about where a guard may live | a third guard now exists, deliberately in a different job | patched — a new paragraph stating the count, the placement, and that the context list is **still 7** |
+
+> Checked and left alone: `riviera-java-conventions` and `riviera-plan-doc` cite their own guard by
+> name and stay true; `riviera-frontend`, `riviera-tailwind` and `frontend/.claude/CLAUDE.md` state
+> nothing about formatting; `README.md`'s CI sentence summarizes rather than enumerates, so it is
+> incomplete, not false — and churning it is what Scope discipline forbids.
 
 ---
 
@@ -362,31 +379,48 @@ this plan
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1…AC-8:** `node --test "scripts/*.test.mjs"` → all pass.
-- [ ] **AC-9:** this PR's Actions run.
-- [ ] **AC-10:** `grep -c "RV-STYLE-2" .claude/skills/riviera-review-overlay/SKILL.md`.
+- [x] **AC-1…AC-8:** `node --test "scripts/*.test.mjs"` → **71 pass, 0 fail** (all three guards'
+  suites; 15 of them this guard's, 3 the extracted helpers').
+- [ ] **AC-9:** **not verified — no CI run exists yet.** `ci.yml` fires on the `pull_request` event
+  only (#417), so this branch has had none. The wiring is verified as far as a diff can be: the
+  workflow parses, the frontend job's step list carries `Format (diff-scoped Prettier, hard gate)`
+  with `fetch-depth: 0` on its checkout, and every job `name:` is byte-for-byte unchanged. The
+  remaining half — the step going red on a violation and green here, and the repo-hygiene job still
+  running the new suite with no install — needs the PR's own run.
+- [x] **AC-10:** `grep -c "RV-STYLE-2" .claude/skills/riviera-review-overlay/SKILL.md` → 1.
+
+> Proven end-to-end by hand ahead of CI, which is the strongest evidence available without a run:
+> against `frontend/src/app/admin/admin-venue-photos.ts` — prettier-dirty on `main` — a scratch
+> misformatted line was reported **alone**, `--fix` rewrote it (`git diff --stat`: 1 insertion, 0
+> deletions), the guard then exited 0, and `prettier --check` still exited 1 on the file. That last
+> pair is the whole design in two exit codes: the lines this diff wrote are clean, the file is not,
+> and only the first is the gate's business.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — trivially held: no backend code.
-- [ ] **Availability** section justified `N/A` (invariant #2) — no app code.
-- [ ] Pool + cutoff rules (invariants #3, #4) — not in scope.
-- [ ] **Modulith** section justified `N/A` (invariant #11) — no module code.
-- [ ] **Payment/payout** section justified `N/A` (invariants #5, #8, #9).
-- [ ] Refund policy (invariant #10) — not in scope.
-- [ ] Timezone (invariant #6) — not in scope.
-- [ ] Booking codes (invariant #7) — not in scope.
-- [ ] Flyway (invariant #12) — no schema change, no version number claimed.
-- [ ] **Frontend** standards — `N/A`, no Angular surface.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] Every AC has an implementing task and a verifying test — AC-9's verifier is a CI run, which
+      has not happened yet (see above); every other AC is pinned by a passing `node --test` case.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — trivially held: no backend code.
+- [x] **Availability** section justified `N/A` (invariant #2) — no app code.
+- [x] Pool + cutoff rules (invariants #3, #4) — not in scope.
+- [x] **Modulith** section justified `N/A` (invariant #11) — no module code.
+- [x] **Payment/payout** section justified `N/A` (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — not in scope.
+- [x] Timezone (invariant #6) — not in scope.
+- [x] Booking codes (invariant #7) — not in scope.
+- [x] Flyway (invariant #12) — no schema change, no version number claimed.
+- [x] **Frontend** standards — `N/A`, no Angular surface.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; the one Open Question is the option-1 decision, which
+      is answered by this slice's own measurement and is due to be recorded on issue #615.
+- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN` — **cannot be, yet**: no pull
+      request exists. This box is the merge close-out's, and it stays open until one does.
+- [ ] **The review gate ran in full** — **it has not.** The gate is due at ready-for-review, and
+      with no PR there is nothing to review against. Left unticked deliberately rather than
+      substituting the overlay walk for it (`riviera-sdlc` rule 4).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
