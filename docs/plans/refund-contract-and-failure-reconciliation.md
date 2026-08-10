@@ -21,9 +21,12 @@ the money path would repeat a call that is expected to fail again. Instead the v
 un-records the refund (`refunded_minor → 0`, status → `SUCCEEDED`), which makes every existing
 mechanism tell the truth for free: `RefundProgress` flips back to `OUTSTANDING` (the guest-facing
 half, #582), `riviera.refunds.failed` lights the money-path alert, and the gateway's own existence
-read already treats a `failed` refund as dead so the next re-drive creates a fresh one. This is the
-same posture §`payment` already states for `refund_mismatch`: *it will not clear itself; a human
-settles it at the gateway.*
+read sees a dead refund rather than adopting the corpse. It hands nobody a lever, though — the
+review gate corrected an earlier draft of this paragraph on both counts: the cancellation's
+publication was completed and archived when the refund was accepted, so the admin re-drive cannot
+reach it, and a fresh attempt inside the ~24h idempotency-key window only replays the dead refund
+(now refused as `refund_key_replay`). Same posture §`payment` already states for `refund_mismatch`:
+*it will not clear itself; a human settles it at the gateway.*
 
 **Persistence:** JDBC only (invariant #1). One new guarded `UPDATE` on the existing `payment`
 table (`JdbcPayments#markRefundFailed`). **No migration** — the un-record writes existing columns
@@ -39,8 +42,9 @@ guest-facing half needs **no** code: `ViewBookingService#refundOutstanding` alre
 the Module-ownership table that pinned the un-record in `payment`, not `booking`) · `tdd` (every
 phase is red→green; the contract test in phase 2 is written against the *port*, then a second
 adapter-shaped fixture is what proves it is not Stripe-specific) · `riviera-review-overlay` (review
-gate — ran at ready-for-review at **high** effort, the money-path tier; 14 findings, and the fix round re-entered at Implement through `riviera-stripe-payments` + `riviera-java-conventions` + `riviera-modulith` before any edit) · `riviera-docs-freshness` (**ran** over
-`origin/main..HEAD`, 6 findings, all patched — see the Docs-freshness run below)
+gate — ran at ready-for-review at **high** effort, the money-path tier, then again after each fix round: four runs, 41 registered findings, every round re-entering at Implement through `riviera-stripe-payments` + `riviera-java-conventions` + `riviera-modulith` before any edit) · `riviera-docs-freshness` (**ran** over
+`origin/main..HEAD`, 6 findings, all patched — see the Docs-freshness run below; the review gate then
+found more substrate drift the sweep had missed, registered as F-25/F-26/F-32…F-35)
 · `riviera-stripe-payments` (webhook-as-source-of-truth for the refund lifecycle too, and the
 reminder that refund *eligibility* is server-side in `booking` — so the webhook may un-record but
 must never re-decide) · `riviera-modulith` (kept the new port internal to `payment.application`
@@ -230,9 +234,9 @@ to `true` after a failure.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `PR #593 — review gate run four times at high effort; 41 registered findings (F-1…F-41): 37 fixed here, 4 carried to issue #594's three items, 1 accepted with its limit documented on the test; re-checking CI + Sonar`
+**Stage pointer:** `DONE — merged via PR #593`
 
-**Next action:** Merge PR #593, then close-out steps 1–3 and 6–7 (issue closed by `Closes #592`, #594 already filed, unsubscribe, notify).
+**Next action:** None — the slice is closed. Its deliberate residuals live in issue #594.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
