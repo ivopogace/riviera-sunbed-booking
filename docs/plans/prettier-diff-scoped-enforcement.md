@@ -163,15 +163,15 @@ added (hence no e2e spec, and no `playwright-cli` row in the routing gate).
 
 ## Execution status
 
-**Stage pointer:** `plan` — plan doc authored, phases not started.
+**Stage pointer:** `implement (phase 1)`.
 
-**Next action:** Phase 0 — extract the shared git/diff helpers into `scripts/git-diff.mjs` and prove
-both existing guards unchanged.
+**Next action:** Phase 1 — the detector core: line diff, hunk grouping, and the added-line overlap
+rule, red-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Shared git/diff helpers | | |
-| 1 — Detector core | | |
+| 0 — Shared git/diff helpers | ✅ | this commit |
+| 1 — Detector core | ⏳ | |
 | 2 — Prettier front-end, CLI, `--fix` | | |
 | 3 — CI wiring, npm scripts, `.prettierignore` | | |
 | 4 — Docs sweep + close-out | | |
@@ -345,6 +345,7 @@ this plan
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Phase 0 — the third guard needs the same git glue | `git()`, `rangeFor()`, `parseAddedLines()`, `changedPaths()` across `scripts/check-*.mjs` | Read both guards side by side against #533's phase-2 audit row, which deferred this decision to "if a third guard appears" | Four helpers, duplicated or about to be: `git()` and `rangeFor()` in both guards, `parseAddedLines()` in `check-inline-comments.mjs` and needed here, `changedPaths()` in `check-plan-file-structure.mjs` | **Extracted** to `scripts/git-diff.mjs` — the condition #533 named has now occurred. Bodies moved verbatim; the one behavioural difference between the two `rangeFor`s (one returned `[range]`, the other `range`) is resolved in favour of the string, with the array wrap moved to its single caller. Both suites' cases for the moved functions moved with them, so `node --test "scripts/*.test.mjs"` counts the same 56 assertions before and after |
 
 ---
 

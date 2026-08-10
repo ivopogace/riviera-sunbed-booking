@@ -11,9 +11,10 @@
  * doc entirely, and a guard must not invent a requirement the SDLC does not make.
  */
 
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+
+import { changedPaths, git, rangeFor } from './git-diff.mjs';
 
 /** The heading that opens the section, as the plan-doc template writes it. */
 const HEADING = /^##\s+File structure\s*$/i;
@@ -243,30 +244,6 @@ const ADVICE =
 export function report(omissions) {
   const lines = omissions.map((o) => `  ${o.path}  — ${o.reason}`);
   return `Paths changed by this diff but absent from the plan doc:\n${lines.join('\n')}\n${ADVICE}`;
-}
-
-function git(args) {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-}
-
-/**
- * Splits `git diff --name-only -z` output. The `-z` is not a detail: without it git C-quotes and
- * octal-escapes any path holding a non-ASCII byte (`"src/logo-\360\237\230\200.png"`), and that
- * literal can never match a token, so **every** diff touching such a file failed unconditionally
- * with no way to satisfy the check. Found by PR #538's review.
- */
-export function changedPaths(raw) {
-  return raw.split('\0').filter(Boolean);
-}
-
-/** Resolves the merge base with `base`, falling back to a plain two-dot diff when it has none. */
-function rangeFor(base) {
-  try {
-    git(['merge-base', base, 'HEAD']);
-    return `${base}...HEAD`;
-  } catch {
-    return base;
-  }
 }
 
 /** Reads a path from the working tree, or null when it is unreadable (deleted, binary, gone). */

@@ -11,9 +11,10 @@
  * (see the plan doc's Non-goals; #522/F-6 settled SQL).
  */
 
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+
+import { git, parseAddedLines, rangeFor } from './git-diff.mjs';
 
 /**
  * Per-extension comment syntax. An extension absent from this map is not checked at all.
@@ -216,42 +217,6 @@ function skipString(line, start, quote) {
   return line.length;
 }
 
-/**
- * Maps a unified diff to the 1-based line numbers each file gains. Files the diff deletes are
- * absent from the result: they have no new content to check.
- *
- * @param {string} diff output of `git diff --unified=0`
- * @returns {Map<string, Set<number>>} new-side path → added line numbers
- */
-export function parseAddedLines(diff) {
-  const added = new Map();
-  let path = null;
-  let next = 0;
-
-  for (const line of diff.split('\n')) {
-    if (line.startsWith('+++ ')) {
-      const target = line.slice(4).trim();
-      path = target === '/dev/null' ? null : target.replace(/^b\//, '');
-      continue;
-    }
-    if (line.startsWith('@@')) {
-      const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)/.exec(line);
-      next = hunk ? Number(hunk[1]) : 0;
-      continue;
-    }
-    if (path && next && line.startsWith('+')) {
-      if (!added.has(path)) added.set(path, new Set());
-      added.get(path).add(next);
-      next++;
-    }
-  }
-  return added;
-}
-
-function git(args) {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-}
-
 /** Reads a path from the working tree, or null when it is unreadable (deleted, binary, gone). */
 function readLines(path) {
   try {
@@ -290,16 +255,6 @@ function report(violations) {
   return violations.map((v) => `  ${v.path}:${v.line}-${v.endLine}  ${v.text}`).join('\n');
 }
 
-/** Resolves the merge base with `base`, falling back to a plain two-dot diff when it has none. */
-function rangeFor(base) {
-  try {
-    git(['merge-base', base, 'HEAD']);
-    return [`${base}...HEAD`];
-  } catch {
-    return [base];
-  }
-}
-
 function main(argv) {
   const mode = argv[0];
 
@@ -330,7 +285,7 @@ function main(argv) {
   }
 
   if (mode === '--diff') {
-    const violations = check(rangeFor(argv[1] ?? 'origin/main'));
+    const violations = check([rangeFor(argv[1] ?? 'origin/main')]);
     if (violations.length === 0) return 0;
     process.stderr.write(`Multi-line inline comments added by this diff:\n${report(violations)}\n${ADVICE}\n`);
     return 1;

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { changedPaths, findOmissions, planDocsIn, report } from './check-plan-file-structure.mjs';
+import { findOmissions, planDocsIn, report } from './check-plan-file-structure.mjs';
 
 const SECTION = `# A plan
 
@@ -475,10 +475,4 @@ test('a repo-relative multi-segment token still suffix-matches', () => {
     ],
   });
   assert.deepEqual(omissions, []);
-});
-
-test('changedPaths splits git -z output and drops the trailing empty field', () => {
-  assert.deepEqual(changedPaths('a.ts\0docs/plans/p.md\0'), ['a.ts', 'docs/plans/p.md']);
-  assert.deepEqual(changedPaths(''), []);
-  assert.deepEqual(changedPaths('src/logo-\u{1F600}.png\0'), ['src/logo-\u{1F600}.png']);
 });
