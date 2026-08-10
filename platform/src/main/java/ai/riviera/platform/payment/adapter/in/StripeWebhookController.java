@@ -173,13 +173,33 @@ class StripeWebhookController {
 		if (!RefundLifecycle.returnedNoMoney(refund.getStatus())) {
 			return;
 		}
+		Optional<BookingRef> booking = bookingOf(refund);
 		if (!payments.markRefundFailed(refund.getId())) {
-			log.warn("no recorded refund {} to un-record — ignoring", refund.getId());
+			unmatchedRefundFailure(refund, booking);
 			return;
 		}
 		failedRefunds.increment();
-		log.warn("refund {} returned no money ({}) — the platform still owes it",
-				refund.getId(), refund.getStatus());
+		log.warn("refund {} for booking {} returned no money ({}) — the platform still owes it",
+				refund.getId(), booking.map(BookingRef::value).orElse(null), refund.getStatus());
+	}
+
+	/**
+	 * A dead-refund event that moved no row. Two shapes share it and the log must not conflate them:
+	 * the lifecycle's later deliveries for a refund already un-recorded (the common one — Stripe
+	 * announces the same transition under more than one type, and each carries its own event id), and
+	 * a refund this app never issued, such as a manual dashboard one.
+	 */
+	private static void unmatchedRefundFailure(Refund refund, Optional<BookingRef> booking) {
+		booking.ifPresentOrElse(
+				known -> log.debug("refund {} on booking {} is already un-recorded, or was not issued "
+						+ "by this app — nothing to do", refund.getId(), known.value()),
+				() -> log.debug("refund {} is for a PaymentIntent this app never recorded — ignoring",
+						refund.getId()));
+	}
+
+	private Optional<BookingRef> bookingOf(Refund refund) {
+		return refund.getPaymentIntent() == null ? Optional.empty()
+				: payments.findBookingRefByIntent(refund.getPaymentIntent());
 	}
 
 	/**
@@ -219,11 +239,20 @@ class StripeWebhookController {
 		return id;
 	}
 
-	/** The refund of an event this handler acts on, identified, or {@link UnreadableWebhookEventException}. */
+	/**
+	 * The refund of an event this handler acts on, or {@link UnreadableWebhookEventException}.
+	 *
+	 * <p>Both the id and the <strong>status</strong> are required, because the status is what the
+	 * branch decides on: a payload that yields none would be read as "still live" and consumed as a
+	 * {@code 200} no-op, which is the unapplied-fact case this exception exists to prevent.
+	 */
 	private Refund requiredRefund(Event event) {
 		Refund refund = required(event, Refund.class);
 		if (refund.getId() == null) {
 			throw unreadable(event, "refund id");
+		}
+		if (refund.getStatus() == null) {
+			throw unreadable(event, "refund status");
 		}
 		return refund;
 	}

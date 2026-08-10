@@ -352,9 +352,17 @@ partial one: two 50% refunds fit inside the charge and both succeed.
   `SUCCEEDED`, which it still is: no money went back. That one write makes every existing mechanism
   truthful — `RefundStatusLookup` answers `OUTSTANDING` again so the guest is told the refund is
   still owed, `riviera.refunds.failed` lights the money-path signal, and the existence read above now
-  sees a dead refund, so the next re-drive creates a fresh one instead of adopting the corpse. It is
-  invariant #8 applied to the refund lifecycle: reconcile from the webhook, not from the request-time
-  answer. **Nothing re-drives it automatically, deliberately** — an issuer rejection is not a
+  sees a dead refund rather than adopting the corpse. It is invariant #8 applied to the refund
+  lifecycle: reconcile from the webhook, not from the request-time answer.
+
+  **What it does not do is hand anyone a lever.** The cancellation's publication completed when the
+  refund was accepted, and `completion-mode=archive` removed it, so `POST /api/admin/refund-outbox`
+  neither counts nor re-drives it — that lever only reaches refunds that never succeeded. And a fresh
+  attempt inside the ~24h idempotency-key window does not create anything: the key is stable per
+  booking, so Stripe replays the original response — the dead refund — which the adapter now detects
+  and refuses (`refund_key_replay`) rather than recording a corpse as a live refund. So recovery is a
+  human issuing the refund at the gateway, or re-attempting once the key has expired. The un-record's
+  job is to make the state honest and loud, not to self-heal. **Nothing re-drives it automatically, deliberately** — an issuer rejection is not a
   transient error, and the card that refused the money often cannot receive it, so an auto-retry would
   repeat a call expected to fail again. Same posture as `refund_mismatch`: the alert stands until a
   human settles it. The un-record is itself guarded on the recorded `refund_id`, so a re-delivery

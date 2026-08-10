@@ -381,6 +381,21 @@ class StripeWebhookIT {
 	}
 
 	@Test
+	void aRefundEventWithoutAStatusIsNotConsumed() throws Exception {
+		collectionRefundedWith(7307L, "pi_ref_statusless", "re_hook_statusless");
+		String statusless = """
+				{"id":"re_hook_statusless","object":"refund","amount":4500,"payment_intent":"pi_ref_statusless"}""";
+		String payload = eventJson("evt_ref_statusless_1", "refund.failed", Stripe.API_VERSION, statusless);
+
+		postSigned(payload, sign(payload), 503);
+
+		assertEquals("REFUNDED", statusOf("pi_ref_statusless"),
+				"the status is what the branch decides on — a payload without one decides nothing");
+		assertEquals(0L, webhookEventRows("evt_ref_statusless_1"),
+				"so it is re-delivered rather than read as still-live and consumed");
+	}
+
+	@Test
 	void aFailureForAnUnknownRefundIsIgnored() throws Exception {
 		collectionRefundedWith(7306L, "pi_ref_stranger", "re_hook_ours");
 		String payload = refundEventJson("evt_ref_stranger_1", "refund.failed", "re_hook_someone_elses",

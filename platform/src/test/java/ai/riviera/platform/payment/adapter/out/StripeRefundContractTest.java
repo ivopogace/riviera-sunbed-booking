@@ -58,7 +58,7 @@ class StripeRefundContractTest extends PaymentGatewayRefundContract {
 	@Override
 	protected void gatewayHoldsADeadRefund(BookingRef booking, Money amount, String refundId) {
 		arrangeStripe(booking, amount);
-		heldAtGateway.add(refund(refundId, amount.minor(), "failed"));
+		heldAtGateway.add(StripeRefunds.refund(refundId, "failed", amount.minor()));
 	}
 
 	@Override
@@ -90,23 +90,13 @@ class StripeRefundContractTest extends PaymentGatewayRefundContract {
 	}
 
 	private StripeCollection<Refund> heldRefundPage() {
-		StripeCollection<Refund> page = new StripeCollection<>();
-		page.setData(List.copyOf(heldAtGateway));
-		return page;
+		return StripeRefunds.page(heldAtGateway.toArray(new Refund[0]));
 	}
 
 	private Refund mintRefund(long amountMinor) {
 		createdThroughThePort++;
-		Refund minted = refund("re_contract_" + createdThroughThePort, amountMinor, "pending");
+		Refund minted = StripeRefunds.refund("re_contract_" + createdThroughThePort, "pending", amountMinor);
 		heldAtGateway.add(minted);
 		return minted;
-	}
-
-	private static Refund refund(String id, long amountMinor, String status) {
-		Refund refund = new Refund();
-		refund.setId(id);
-		refund.setAmount(amountMinor);
-		refund.setStatus(status);
-		return refund;
 	}
 }

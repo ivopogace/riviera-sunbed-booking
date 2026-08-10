@@ -68,6 +68,9 @@ class StripePaymentGateway implements PaymentGateway {
 	/** The gateway holds refunds for this booking that are not the one asked for; a human must settle it. */
 	private static final String REFUND_MISMATCH = "refund_mismatch";
 
+	/** The create replayed a dead refund under an unexpired key, so nothing new was issued. */
+	private static final String REFUND_KEY_REPLAY = "refund_key_replay";
+
 	private final StripeClient stripe;
 	private final Payments payments;
 	private final Counter adoptedRefunds;
@@ -131,7 +134,8 @@ class StripePaymentGateway implements PaymentGateway {
 			return new RefundResult.Failed("no_collection");
 		}
 		try {
-			List<Refund> live = liveRefundsOn(intentId.get());
+			List<Refund> held = refundsOn(intentId.get());
+			List<Refund> live = held.stream().filter(StripePaymentGateway::isLive).toList();
 			if (!live.isEmpty()) {
 				return adoptOrRefuse(booking, live, amount);
 			}
@@ -144,6 +148,9 @@ class StripePaymentGateway implements PaymentGateway {
 					.build();
 			Refund refund = withLostResponseReplay(booking, "refund",
 					() -> stripe.v1().refunds().create(params, options));
+			if (isAlreadyKnownDead(held, refund)) {
+				return new RefundResult.Failed(REFUND_KEY_REPLAY);
+			}
 			payments.markRefunded(booking, amount.minor(), refund.getId());
 			return new RefundResult.Refunded(refund.getId());
 		}
@@ -155,26 +162,45 @@ class StripePaymentGateway implements PaymentGateway {
 	}
 
 	/**
-	 * The refunds Stripe holds against the intent that have not definitively failed. A
-	 * {@code failed}/{@code canceled} refund returned no money, so it must not stop a fresh attempt;
-	 * everything else — including {@code pending}, which is where a refund normally starts — counts,
-	 * because creating a second one alongside it is the outcome this method exists to prevent.
+	 * Every refund Stripe holds against the intent. The caller splits them: a {@code failed} or
+	 * {@code canceled} one returned no money, so it must not stop a fresh attempt; everything else —
+	 * including {@code pending}, which is where a refund normally starts — is live, because creating a
+	 * second one alongside it is the outcome this read exists to prevent.
 	 *
-	 * <p>A {@code pending} refund counted here can still flip to {@code failed} later. That is not
+	 * <p>A {@code pending} refund counted live can still flip to {@code failed} later. That is not
 	 * something this read can close, and it does not have to: the refund-lifecycle webhook un-records
 	 * such a refund, after which this read sees a dead one and a fresh attempt proceeds.
 	 *
-	 * <p>One page suffices: more than one live refund is refused rather than reconciled, so the read
+	 * <p>One page suffices: more than one live refund is refused rather than reconciled, so the split
 	 * only ever needs to answer "none", "exactly one", or "more than one".
 	 */
-	private List<Refund> liveRefundsOn(String intentId) throws StripeException {
+	private List<Refund> refundsOn(String intentId) throws StripeException {
 		RefundListParams params = RefundListParams.builder()
 				.setPaymentIntent(intentId)
 				.setLimit(REFUND_PAGE_LIMIT)
 				.build();
-		return stripe.v1().refunds().list(params).getData().stream()
-				.filter(StripePaymentGateway::isLive)
-				.toList();
+		return stripe.v1().refunds().list(params).getData();
+	}
+
+	/**
+	 * Whether the "created" refund is one Stripe already held and this call already judged dead.
+	 *
+	 * <p>That happens when a fresh attempt follows an un-recorded failure <em>inside</em> the
+	 * idempotency key's lifetime: the key is stable per booking, so Stripe replays the original
+	 * response — the dead refund, carrying the status it had when it was made — instead of creating
+	 * anything. Recording it would report a guest as refunded by money that came back to us. The
+	 * refund is still owed, so the answer is {@link RefundResult.Failed}: the publication stays
+	 * outstanding and a retry past the key window creates the real one.
+	 */
+	private static boolean isAlreadyKnownDead(List<Refund> held, Refund created) {
+		boolean replayed = held.stream().anyMatch(refund -> refund.getId() != null
+				&& refund.getId().equals(created.getId()));
+		if (replayed) {
+			log.warn("refund create replayed the dead refund {} under an unexpired idempotency key — "
+					+ "not recording it; a retry past the key window will create a fresh one",
+					created.getId());
+		}
+		return replayed;
 	}
 
 	private static boolean isLive(Refund refund) {

@@ -39,7 +39,7 @@ guest-facing half needs **no** code: `ViewBookingService#refundOutstanding` alre
 the Module-ownership table that pinned the un-record in `payment`, not `booking`) · `tdd` (every
 phase is red→green; the contract test in phase 2 is written against the *port*, then a second
 adapter-shaped fixture is what proves it is not Stripe-specific) · `riviera-review-overlay` (review
-gate — ran at ready-for-review, alongside `/code-review`) · `riviera-docs-freshness` (**ran** over
+gate — ran at ready-for-review at **high** effort, the money-path tier; 14 findings, and the fix round re-entered at Implement through `riviera-stripe-payments` + `riviera-java-conventions` + `riviera-modulith` before any edit) · `riviera-docs-freshness` (**ran** over
 `origin/main..HEAD`, 6 findings, all patched — see the Docs-freshness run below)
 · `riviera-stripe-payments` (webhook-as-source-of-truth for the refund lifecycle too, and the
 reminder that refund *eligibility* is server-side in `booking` — so the webhook may un-record but
@@ -220,10 +220,9 @@ to `true` after a failure.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `PR #593 — ready for review; review + sonar gates next`
+**Stage pointer:** `PR #593 — review gate run (14 findings: 11 fixed, 2 deferred to #594, 1 accepted); re-checking CI + Sonar on the fix round`
 
-**Next action:** Run the review gate (`/code-review` per `pr-gates.md` §1) over PR #593, then pull
-the Sonar new-issue list and clear it.
+**Next action:** Confirm CI green on the fix-round push and pull the Sonar new-issue list, then merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -232,6 +231,7 @@ the Sonar new-issue list and clear it.
 | 2 — Shared at-most-once refund contract | ✅ | `701ce5c` |
 | 3 — Contract-coverage architecture rule | ✅ | `701ce5c` |
 | 4 — Docs sweep + close-out | ✅ | `4a856e9` |
+| 5 — Review-gate fix round | ✅ | `<fix-round>` |
 
 **Merged via PR #593.**
 
@@ -260,6 +260,19 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (`Repo hygiene (diff-scoped)`, run 31361935187) | The File-structure section omitted 5 paths the diff touched — `RefundLifecycle`, the `StripePaymentGateway` edit, and the three test doubles that had to gain the new port method. Exactly the shape the template warns about: never the interesting files | fixed-in-`701ce5c` — all five listed, and the phase 2/3 files listed ahead of writing them |
+| F-2 | review gate | A refund-failure event arriving before `markRefunded` commits is answered `200` and its dedup row committed, so the fact is lost permanently — unlike the PaymentIntent case whose rationale it borrowed, re-delivery genuinely could have helped here | **deferred → issue #594 item 1**, with both candidate fixes and why each is scope. The window is sub-second and a Stripe refund reaches `failed` from an issuer rejection hours later, so exposure is low; the WARN now names the booking (F-10) so the incident is reconstructable |
+| F-3 | review gate | `onRefundLifecycle` decides on `refund.getStatus()` but `requiredRefund` validated only the id — a payload with no status reads as "still live" and is consumed, the exact hole `UnreadableWebhookEventException` exists to close | fixed-in-`<fix-round>` — the status is required too; pinned by `StripeWebhookIT.aRefundEventWithoutAStatusIsNotConsumed` |
+| F-4 | review gate | The stable `booking-<id>-refund` key defeats the documented recovery: a retry inside the ~24h window replays Stripe's original response — the dead refund — which was then re-recorded as live, reporting a guest paid who was not | fixed-in-`<fix-round>` — the adapter keeps the dead ids it just listed and refuses a create that returns one (`refund_key_replay`); pinned by `StripePaymentGatewayTest.refusesTheDeadRefundAnUnexpiredKeyReplaysInsteadOfRecordingItAgain`. The contract test could not catch this — its fixture deliberately never dedupes on the key |
+| F-5 | review gate | `RESPONSIBILITIES.md` and the runbook both told the operator to re-drive a publication that `completion-mode=archive` already removed — something this plan's own Non-goals conceded | fixed-in-`<fix-round>` — both now say there is **no** in-app lever and why, and name the manual recovery |
+| F-6 | review gate | The runbook's webhook-5xx section still listed only the three `payment_intent` types as `503` sources, so an on-call engineer would rule out the actual cause | fixed-in-`<fix-round>` — a docs-freshness miss; the section now covers every handled type |
+| F-7 | review gate | Stripe announces one transition under up to three types, so every real failure logged the WARN reserved for "a refund we never issued" on its 2nd and 3rd delivery — a false stranger-refund signal on every incident | fixed-in-`<fix-round>` — the unmatched case is `DEBUG` and says what is actually true; the incident WARN fires once, on the delivery that moved the row |
+| F-8 | review gate | Nothing recorded the Stripe-side activation: unless the endpoint subscribes to the refund event types the whole branch is inert in prod, with no test or alert that would reveal it | fixed-in-`<fix-round>` — `docs/deploy/production-hardening.md` carries the subscription requirement, and the smoke test gained a forged-event check |
+| F-9 | review gate | `markRefunded` is unguarded, so an un-record could write `SUCCEEDED` onto a collection that never succeeded | **deferred → issue #594 item 2** — not reachable today (a refund implies a confirmed booking), and guarding it changes #569's contract and its tests |
+| F-10 | review gate | After the un-record the row is indistinguishable from a never-refunded one, but the runbook's remedy needs the list of bookings owed money | **partly fixed-in-`<fix-round>`** (the WARN names the booking, so the incident is reconstructable from logs) **/ deferred → issue #594 item 3** for a queryable column, which needs a migration |
+| F-11 | review gate | `StripeRefundContractTest` re-implemented the `Refund`/list-page builders `StripePaymentGatewayTest` already owned in the same package, so the two would drift on the SDK's shape | fixed-in-`<fix-round>` — a shared `StripeRefunds` helper; each test keeps its own mock wiring, which is where they genuinely differ |
+| F-12 | review gate | The coverage rule re-streamed every production class and reflectively re-instantiated a guarantee once per gateway | fixed-in-`<fix-round>` — the profile→answer map is built once |
+| F-13 | review gate | Coverage is proven by a bare dependency edge, so a subclass that merely names an adapter satisfies the rule | **accepted, limit documented on the test** — statically this cannot go further; what it buys is that a new adapter cannot arrive with no contract at all |
+| F-14 | review gate | `profileOf` read only the first `@Profile` value, so the gateway↔guarantee match depended on annotation array order and would fail with a misdirecting message | fixed-in-`<fix-round>` — compared as sets |
 
 ---
 
@@ -292,6 +305,12 @@ Skill-routing gate for what the fix touches *before* editing).
   — the port-level at-most-once contract (abstract)
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/out/StripeRefundContractTest.java` —
   the Stripe binding of the contract (AC-7)
+- `platform/src/test/java/ai/riviera/platform/payment/adapter/out/StripeRefunds.java` — the shared
+  `Refund`/list-page builders both refund tests use (review finding F-11)
+- `platform/src/test/java/ai/riviera/platform/payment/adapter/out/StripePaymentGatewayTest.java` — the
+  key-replay case (F-4); its builders now delegate to `StripeRefunds`
+- `docs/deploy/production-hardening.md` — the Stripe webhook event-subscription requirement (F-8)
+- `docs/runbooks/stripe-profile-smoke-test.md` — a forged refund-failure check (F-8)
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/out/PaymentGatewayContractCoverageArchitectureTest.java`
   — AC-8; in the adapter package (not the module root the plan first named) so the package-private
   gateways and `CollectionGuarantee`s are nameable, the same grounds

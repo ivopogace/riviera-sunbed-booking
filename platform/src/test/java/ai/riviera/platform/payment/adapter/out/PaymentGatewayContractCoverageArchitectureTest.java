@@ -2,9 +2,10 @@ package ai.riviera.platform.payment.adapter.out;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.Set;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -33,6 +34,11 @@ import static org.junit.jupiter.api.Assertions.fail;
  * guarantee — so a new adapter arrives unclassified and fails here, which is the whole point: the
  * at-most-once promise was one adapter's habit and a javadoc, and a javadoc does not fail a build.
  *
+ * <p>Its limit, so nobody reads more into a pass than is there: coverage is a <em>dependency</em>
+ * edge, so it proves a contract subclass names the adapter, not that the subclass wired
+ * {@code gateway()} to it. Statically, that is as far as this can go — what it buys is that a new
+ * adapter cannot arrive with no contract at all, which is the failure mode it exists for.
+ *
  * <p>In the adapter package so the package-private gateways and guarantees are nameable.
  */
 class PaymentGatewayContractCoverageArchitectureTest {
@@ -46,10 +52,11 @@ class PaymentGatewayContractCoverageArchitectureTest {
 		List<JavaClass> gateways = productionImplementationsOf(PaymentGateway.class);
 		assertTrue(gateways.size() >= 2,
 				"expected at least the stub and the collecting adapter — did the import shape change?");
+		Map<Set<String>, Boolean> collectionByProfile = collectionAnswersByProfile();
 
 		List<String> unclassified = new ArrayList<>();
 		for (JavaClass gateway : gateways) {
-			if (!collects(gateway) || coveredByTheContract(gateway)) {
+			if (!collects(gateway, collectionByProfile) || coveredByTheContract(gateway)) {
 				continue;
 			}
 			unclassified.add(gateway.getSimpleName());
@@ -82,15 +89,27 @@ class PaymentGatewayContractCoverageArchitectureTest {
 	 * Whether reaching a confirmed booking through this gateway means money really moved — asked of the
 	 * {@link CollectionGuarantee} sharing its {@code @Profile}, never inferred from the gateway's name.
 	 */
-	private static boolean collects(JavaClass gateway) {
-		String profile = profileOf(gateway).orElseGet(() -> fail(gateway.getSimpleName()
-				+ " carries no @Profile, so no CollectionGuarantee can be matched to it"));
-		JavaClass guarantee = productionImplementationsOf(CollectionGuarantee.class).stream()
-				.filter(candidate -> profileOf(candidate).filter(profile::equals).isPresent())
-				.findFirst()
-				.orElseGet(() -> fail("no CollectionGuarantee is bound to @Profile(\"" + profile
-						+ "\") — add this gateway's answer to ProfiledCollectionGuarantee"));
-		return provenBeforeConfirmation(guarantee);
+	private static boolean collects(JavaClass gateway, Map<Set<String>, Boolean> collectionByProfile) {
+		Set<String> profile = profileOf(gateway);
+		if (profile.isEmpty()) {
+			return fail(gateway.getSimpleName()
+					+ " carries no @Profile, so no CollectionGuarantee can be matched to it");
+		}
+		Boolean collects = collectionByProfile.get(profile);
+		if (collects == null) {
+			return fail("no CollectionGuarantee is bound to @Profile" + profile
+					+ " — add this gateway's answer to ProfiledCollectionGuarantee");
+		}
+		return collects;
+	}
+
+	/** Each guarantee's answer, keyed by its profile expression as a set so annotation order cannot matter. */
+	private static Map<Set<String>, Boolean> collectionAnswersByProfile() {
+		Map<Set<String>, Boolean> answers = new HashMap<>();
+		for (JavaClass guarantee : productionImplementationsOf(CollectionGuarantee.class)) {
+			answers.put(profileOf(guarantee), provenBeforeConfirmation(guarantee));
+		}
+		return answers;
 	}
 
 	private static boolean provenBeforeConfirmation(JavaClass guarantee) {
@@ -104,9 +123,11 @@ class PaymentGatewayContractCoverageArchitectureTest {
 		}
 	}
 
-	private static Optional<String> profileOf(JavaClass type) {
+	/** A type's profile expression as a set — {@code @Profile({"a","b"})} must match {@code {"b","a"}}. */
+	private static Set<String> profileOf(JavaClass type) {
 		return type.tryGetAnnotationOfType(Profile.class)
-				.flatMap(profile -> Arrays.stream(profile.value()).findFirst());
+				.map(profile -> Set.of(profile.value()))
+				.orElseGet(Set::of);
 	}
 
 	private static boolean isAbstract(JavaClass type) {
