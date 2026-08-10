@@ -274,11 +274,11 @@ test('the withdraw confirmation moves focus in and back out (WCAG 2.4.3)', async
 });
 
 test('a failed withdrawal parks focus on the outcome and re-reads the booking', async ({ page }) => {
-  // A 409 is what the backend answers once the venue has already responded — the retry is dead.
+  // REQUEST_NOT_PENDING is what BookingController.withdraw answers once the venue has responded.
   let answered = false;
   await page.route(new RegExp(`/api/bookings/${CODE}/withdraw$`), (route) => {
     answered = true;
-    return route.fulfill({ status: 409, json: { code: 'NOT_WITHDRAWABLE' } });
+    return route.fulfill({ status: 409, json: { code: 'REQUEST_NOT_PENDING' } });
   });
   await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
     route.fulfill({
@@ -292,12 +292,17 @@ test('a failed withdrawal parks focus on the outcome and re-reads the booking', 
   await page.getByTestId('withdraw-request').click();
   await page.getByTestId('confirm-withdraw').click();
 
-  await expect(page.getByTestId('withdraw-result')).toContainText('couldn’t withdraw');
+  // The copy must match the state the re-read just painted, never invite a retry that cannot work.
+  await expect(page.getByTestId('withdraw-result')).toContainText('no longer waiting for the venue');
+  await expect(page.getByTestId('withdraw-result')).not.toContainText('try again');
   await expect(page.getByTestId('withdraw-result')).toBeFocused();
 
   // The re-read is the point: focus must never be parked on a retry that can only 409 again.
   await expect(page.getByTestId('request-declined')).toBeVisible();
   await expect(page.getByTestId('confirm-withdraw')).toHaveCount(0);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'booking view (withdrawal refused, focus on the outcome)');
 });
 
 test('an expired request shows terminal no-charge copy', async ({ page }) => {

@@ -374,6 +374,8 @@ const CLS = {
         >
           @if (withdrawn()) {
             Request withdrawn. The spot is free for other guests again.
+          } @else if (withdrawNotPending()) {
+            This request is no longer waiting for the venue, so it can’t be withdrawn.
           } @else if (withdrawFailed()) {
             We couldn’t withdraw the request. Please try again.
           }
@@ -479,6 +481,8 @@ export class BookingView {
   protected readonly confirmingWithdraw = signal(false);
   protected readonly withdrawing = signal(false);
   protected readonly withdrawFailed = signal(false);
+  /** The server says the venue already answered — a retry can never succeed (the withdraw twin of {@link cancelWindowClosed}). */
+  protected readonly withdrawNotPending = signal(false);
   protected readonly withdrawn = signal(false);
 
   private readonly focusAfterRender = focusMover();
@@ -504,6 +508,7 @@ export class BookingView {
       this.confirmingWithdraw.set(false);
       this.withdrawing.set(false);
       this.withdrawFailed.set(false);
+      this.withdrawNotPending.set(false);
       this.withdrawn.set(false);
       if (this.code) {
         this.load();
@@ -586,12 +591,20 @@ export class BookingView {
 
   protected startWithdraw(): void {
     this.confirmingWithdraw.set(true);
+    this.clearWithdrawResult();
     this.focusAfterRender('confirm-withdraw');
   }
 
   protected keepRequest(): void {
     this.confirmingWithdraw.set(false);
+    this.clearWithdrawResult();
     this.focusAfterRender('withdraw-request');
+  }
+
+  /** A failure belongs to the attempt that produced it — arming or abandoning a new one retires it. */
+  private clearWithdrawResult(): void {
+    this.withdrawFailed.set(false);
+    this.withdrawNotPending.set(false);
   }
 
   /**
@@ -600,7 +613,7 @@ export class BookingView {
    */
   protected confirmWithdraw(): void {
     this.withdrawing.set(true);
-    this.withdrawFailed.set(false);
+    this.clearWithdrawResult();
     this.bookings.withdraw(this.code).subscribe({
       next: () => {
         this.withdrawn.set(true);
@@ -609,8 +622,11 @@ export class BookingView {
         this.focusAfterRender('withdraw-result');
         this.load(true);
       },
-      error: () => {
-        this.withdrawFailed.set(true);
+      error: (e: unknown) => {
+        const answered =
+          e instanceof HttpErrorResponse && problemCodeOf(e) === 'REQUEST_NOT_PENDING';
+        this.withdrawNotPending.set(answered);
+        this.withdrawFailed.set(!answered);
         this.withdrawing.set(false);
         this.confirmingWithdraw.set(false);
         this.focusAfterRender('withdraw-result');
