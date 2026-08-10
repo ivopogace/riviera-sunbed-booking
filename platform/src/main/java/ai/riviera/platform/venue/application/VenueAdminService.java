@@ -156,7 +156,7 @@ class VenueAdminService
 		if (venues.lockSet(venueId, setId).isEmpty()) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
 		}
-		if (isClaimedEver(setId)) {
+		if (isLivelyClaimedOrEverBooked(setId)) {
 			return new ChangeOutcome.Rejected(SetRejection.SET_IN_USE);
 		}
 		venues.deleteSet(venueId, setId);
@@ -164,24 +164,36 @@ class VenueAdminService
 	}
 
 	/**
-	 * Whether anything at all is recorded against this set — a hold on any date, a booking of any
-	 * status. The <em>delete</em> question, and deliberately as conservative as the bulk replace's
-	 * venue-wide probe: a delete CASCADEs the holds away and the RESTRICT FK refuses outright, so
-	 * history counts. Callers must already hold the row lock.
+	 * Whether a hold on this set is still ahead — dated today or later in {@code Europe/Tirane}
+	 * (invariant #6). The arm both per-set layout writes share: a hold whose day has passed can
+	 * neither be stranded by a move nor be lost by a delete that matters, and no write path can add
+	 * one behind this cutoff (invariant #4 closes the sale the evening before, and a staff mark
+	 * refuses a past date) — which is why the probe stays race-safe under the row lock.
 	 */
-	private boolean isClaimedEver(SetId setId) {
-		return availability.anyClaims(List.of(setId)) || bookings.hasBookings(setId);
+	private boolean hasLiveHold(SetId setId) {
+		return availability.anyClaimsFrom(List.of(setId), LocalDate.now(clock.withZone(TIRANE)));
 	}
 
 	/**
-	 * Whether anyone is still owed this exact spot — a hold from today onwards, or a booking that
-	 * has not reached a terminal state. The <em>edit</em> question, and narrower on purpose: an
-	 * `UPDATE` of pool or coordinates strands only a guest who is still coming, so last season's
-	 * cancelled booking must not freeze the map forever. Callers must already hold the row lock.
+	 * Whether anyone is still owed this exact spot — a live hold, or a booking that has not reached
+	 * a terminal state. The <em>edit</em> question: an {@code UPDATE} of pool or coordinates strands
+	 * only a guest who is still coming, so last season's cancelled booking must not freeze the map
+	 * forever. Callers must already hold the row lock.
 	 */
 	private boolean isLivelyClaimed(SetId setId) {
-		return availability.anyClaimsFrom(List.of(setId), LocalDate.now(clock.withZone(TIRANE)))
-				|| bookings.hasLiveBookings(setId);
+		return hasLiveHold(setId) || bookings.hasLiveBookings(setId);
+	}
+
+	/**
+	 * Whether a live hold or a booking of <em>any</em> status pins this set. The <em>delete</em>
+	 * question, stricter than {@link #isLivelyClaimed} on the booking arm alone: the RESTRICT
+	 * {@code booking.set_id} FK makes a set carrying any booking undeletable, so refusing here turns
+	 * what would surface as a server error into an honest conflict. History does not block on the
+	 * availability arm — a past hold CASCADEs away describing a day that is already gone.
+	 * Rationale: RESPONSIBILITIES.md §venue. Callers must already hold the row lock.
+	 */
+	private boolean isLivelyClaimedOrEverBooked(SetId setId) {
+		return hasLiveHold(setId) || bookings.hasBookings(setId);
 	}
 
 	@Override

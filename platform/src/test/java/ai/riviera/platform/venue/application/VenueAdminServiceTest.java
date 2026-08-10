@@ -253,16 +253,18 @@ class VenueAdminServiceTest {
 	}
 
 	@Test
-	void removeSetAsksTheAvailabilityQuestionAboutTheSetAloneAndAfterTakingTheLock() {
+	void removeSetAsksTheLiveHoldQuestionAboutTheSetAloneAndAfterTakingTheLock() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 
 		service.removeSet(OWNER, VENUE, SET);
 
-		assertEquals(List.of(SET), availability.anyClaimsAskedAbout,
+		assertEquals(List.of(SET), availability.anyClaimsFromAskedAbout,
 				"a venue-wide probe here would freeze every set whenever any one is held");
-		assertEquals(List.of("lockSet", "anyClaims"), callLog,
+		assertEquals(List.of("lockSet", "anyClaimsFrom"), callLog,
 				"probing before locking reopens the window a claim slips through (invariant #2)");
+		assertEquals(TODAY_IN_TIRANE, availability.anyClaimsFromDate,
+				"the cutoff is today in Europe/Tirane, not in UTC (invariant #6)");
 	}
 
 	@Test
@@ -282,13 +284,27 @@ class VenueAdminServiceTest {
 	void removeSetIsRefusedWhenTheSetIsHeld() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		availability.claimed = true;
+		availability.liveClaimed = true;
 
 		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
 
 		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
 		assertEquals(0, venues.deletedSets,
 				"the hold would be CASCADE-dropped by the delete, so nothing may be deleted");
+	}
+
+	@Test
+	void removeSetIsAllowedWhenTheOnlyHoldIsPast() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		// History only: a walk-in marked last season, nothing still owed, no booking ever.
+		availability.claimed = true;
+
+		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
+				"last season's walk-in mark must not freeze the map forever");
+		assertEquals(1, venues.deletedSets);
 	}
 
 	@Test

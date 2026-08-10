@@ -25,10 +25,11 @@ public enum SetRejection {
 	 */
 	STALE_WRITE,
 	/**
-	 * The set is spoken for, so the requested layout write is refused (invariants #2/#3). The two
-	 * writes ask different questions: a <em>remove</em> is refused by any hold on any date or any
-	 * booking of any status, because a delete cascades and the FK pins it; an <em>edit</em> only by
-	 * a live claim, and only when it would repool or reposition the set. The per-set counterpart of
+	 * The set is spoken for, so the requested layout write is refused (invariants #2/#3). Both writes
+	 * refuse a hold dated today or later; they differ on the booking arm alone — a <em>remove</em> is
+	 * refused by a booking of any status, because the RESTRICT FK pins the set, while an
+	 * <em>edit</em> is refused only by a non-terminal one, and only when it would repool or
+	 * reposition the set. The per-set counterpart of
 	 * {@code ReplaceRejection.LAYOUT_IN_USE}, scoped to one set. Maps to 409 {@code SET_IN_USE}.
 	 */
 	SET_IN_USE,

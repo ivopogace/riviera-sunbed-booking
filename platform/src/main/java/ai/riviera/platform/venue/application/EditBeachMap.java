@@ -39,11 +39,12 @@ public interface EditBeachMap {
 
 	/**
 	 * Remove a set from the venue's map — refused with {@link SetRejection#SET_IN_USE} (→ 409) if
-	 * the set carries any availability hold on any date, or any booking of any status including
-	 * terminal history. Stricter than {@link #editSet} because a delete is destructive either way:
-	 * {@code set_availability} would CASCADE the hold away silently, and the RESTRICT
-	 * {@code booking.set_id} FK refuses the delete outright (the guard turns what would surface as
-	 * a server error into the honest conflict).
+	 * the set carries an availability hold dated today or later, or a booking of any status
+	 * including terminal history. It asks {@link #editSet}'s availability question but a stricter
+	 * booking one, and asks it on every delete rather than only on a repool or reposition: the
+	 * RESTRICT {@code booking.set_id} FK refuses such a delete outright, so the guard turns what
+	 * would surface as a server error into the honest conflict. A hold whose day has passed does
+	 * not block — it CASCADEs away with the set, describing a day that is already gone.
 	 */
 	ChangeOutcome removeSet(OperatorId operator, VenueId venueId, SetId setId);
 
