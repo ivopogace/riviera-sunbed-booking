@@ -27,7 +27,10 @@ already closed with a two-part reopen condition) · `riviera-plan-doc` (this tem
 Behavior-parity ledger, which is what surfaced the `set_version` non-participation as a real
 coherence risk rather than a footnote) · `tdd` (each phase is a red-then-green unit spec at the
 component boundary before the template exists) · `riviera-review-overlay` (review gate — due at
-ready-for-review) · `riviera-docs-freshness` (`N/A — pending; due at merge close-out step 5`) ·
+ready-for-review) · `riviera-docs-freshness` (**ran** pre-merge over `origin/main...HEAD` — 2 findings, both patched:
+`console-venue-map.ts`'s two-call-site enumeration, and #567's R-9 residual resting on a
+"no frontend caller" premise this slice falsifies; the counting sweep over `CLAUDE.md`,
+`RESPONSIBILITIES.md` and the skills found no other statement this slice makes false) ·
 `riviera-frontend` (placement: `SetEditor` is a sibling inside the existing `operator/` feature
 folder, not a new folder; the shared cell styling becomes an `operator/`-local variant directive,
 not a `shared/` promotion, because only this feature renders a beach cell) · `riviera-tailwind`
@@ -47,37 +50,37 @@ server rather than asserting one request in isolation).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue whose map is loaded, when the operator selects a set in *Edit sets*
+- [x] **AC-1:** Given a venue whose map is loaded, when the operator selects a set in *Edit sets*
       mode and changes its pool from Online to Walk-in, then exactly one
       `PATCH /api/venues/{v}/sets/{setId}` is issued carrying the **full** set body (row label,
       position, tier, pool, price, gridX, gridY) and the tab re-reads the map on success.
       *Pinned by:* `SetEditorSpec.patchesTheWholeSetBodyOnSave`
-- [ ] **AC-2:** Given the server refuses that edit `409 SET_IN_USE`, when the response arrives,
+- [x] **AC-2:** Given the server refuses that edit `409 SET_IN_USE`, when the response arrives,
       then the panel shows the set-is-in-use copy, the set's rendered state is **unchanged**
       (no optimistic flip left behind), and no re-read is issued.
       *Pinned by:* `SetEditorSpec.keepsTheSetUnchangedOnSetInUse`
-- [ ] **AC-3:** Given a grid with no free cell, when the operator adds a position (or a row) and
+- [x] **AC-3:** Given a grid with no free cell, when the operator adds a position (or a row) and
       clicks the new empty cell, then the Add panel opens for that cell and confirming issues
       `POST /api/venues/{v}/sets` with the row label and position number **derived from the grid
       cell** by the same rule the bulk editor uses (`rowLabel = A+y`, `positionNo = x+1`).
       *Pinned by:* `SetEditorSpec.addsASetIntoAGrownGridCell`
-- [ ] **AC-4:** Given a selected set, when the operator confirms Remove, then
+- [x] **AC-4:** Given a selected set, when the operator confirms Remove, then
       `DELETE /api/venues/{v}/sets/{setId}` is issued, the selection clears, and the map re-reads.
       A `409 SET_IN_USE` instead leaves the set on the grid with the booked-or-held explanation.
       *Pinned by:* `SetEditorSpec.removesASet` / `SetEditorSpec.explainsARefusedRemove`
-- [ ] **AC-5:** Given a selected set and Move armed, when the operator clicks an empty cell, then
+- [x] **AC-5:** Given a selected set and Move armed, when the operator clicks an empty cell, then
       one `PATCH` is issued whose body carries the **new** coordinates and derived row/position and
       whose tier, pool and price are byte-identical to the loaded set.
       *Pinned by:* `SetEditorSpec.movesASetToAnEmptyCell`
-- [ ] **AC-6:** Given a venue with saved sets, when the Beach map tab loads, then the mode is
+- [x] **AC-6:** Given a venue with saved sets, when the Beach map tab loads, then the mode is
       *Edit sets*; given a venue with none, then it is *Bulk layout*. Switching modes is
       operator-driven and never resets the other mode's in-progress work.
       *Pinned by:* `LayoutEditorSpec.defaultsToTheModeTheVenueNeeds`
-- [ ] **AC-7:** Given the bulk save is refused `LAYOUT_IN_USE`, when the message renders, then it
+- [x] **AC-7:** Given the bulk save is refused `LAYOUT_IN_USE`, when the message renders, then it
       states the venue is live **and points at Edit sets** — it no longer claims "layout changes
       are not possible".
       *Pinned by:* `LayoutEditorSpec.pointsALockedLayoutAtPerSetEditing`
-- [ ] **AC-8:** Given the per-set surface at a 390 px viewport, when it renders, then the panel
+- [x] **AC-8:** Given the per-set surface at a 390 px viewport, when it renders, then the panel
       stacks under the grid, every control is a ≥44 px touch target, and the page does not scroll
       horizontally; axe reports no serious violations in either mode.
       *Pinned by:* `set-editor.a11y.spec.ts` + `operator-set-editing.e2e.ts`
@@ -119,15 +122,15 @@ server rather than asserting one request in isolation).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A per-set write lands but the tab keeps rendering the pre-write map, so the operator repeats it or reads a stale grid | high | med | every successful write calls `venueMap.reset()` **and** re-reads the map through the parent; the panel's draft is a `linkedSignal` over the selected set, so a re-read re-seeds it rather than leaving a phantom draft | Claude | open |
-| R-2 | A `409 SET_IN_USE` leaves an optimistic UI change applied, so the map shows a move/repool the server refused | med | high | **no optimistic apply on the per-set writes at all** — the grid re-renders only from a server re-read. Cheap here (one set, one round-trip), unlike the Pricing tab's per-row optimism | Claude | open |
-| R-3 | Per-set writes do not bump `set_version`, so a bulk-layout tab open elsewhere keeps a token that looks fresh, and a per-set price edit can be silently overwritten by a later row reprice | med | low | out of scope to fix (backend); documented in the panel's TSDoc and surfaced to the operator as "row pricing overrides this". The bulk write is anyway impossible on the live venues where per-set editing is the point — the overlap window is a clean venue only | Claude | open |
-| R-4 | Growing the grid lets the operator add a set beyond the server's layout maxima (26 rows × 40 positions), producing an avoidable `400` | med | low | clamp the grow buttons to the same `MAX_ROWS`/`MAX_COLS` the bulk editor already enforces, shared from one constant | Claude | open |
-| R-5 | Two sets end up on one cell because the tab's view of "empty" is stale | low | med | the server's `CELL_TAKEN`/`DUPLICATE_POSITION` `409` is the authority and is surfaced verbatim; the tab never resolves the collision itself | Claude | open |
-| R-6 | Visual drift when the cell styling moves out of `layout-editor.ts` into a directive | med | low | `beach-cell.spec.ts` asserts the emitted class string per state equals the strings the component used before the move; the existing e2e still asserts `data-state` | Claude | open |
-| R-7 | Money handled as float in the per-set price field (invariant #5) | low | high | the euros↔minor conversion is `shared/money.ts`'s `eurosToMinorUnits`/`minorUnitsToEuros` — the one existing edge helper; a cleared/invalid field is "no change", never €0 | Claude | open |
-| R-8 | Per-venue authorization (invariant #13) | low | high | server-asserted in `EditBeachMap` before any read/write; the tab only surfaces `403 NOT_VENUE_OWNER` as copy. No FE-side authorization is claimed | Claude | open |
-| R-9 | Making DELETE reachable turns #598's closed race into user-visible `500`s | low | low | accepted, per #598's own closing note; this slice satisfies only half its reopen condition. Re-check the logs after deploy | Claude | open |
+| R-1 | A per-set write lands but the tab keeps rendering the pre-write map, so the operator repeats it or reads a stale grid | high | med | every successful write calls `venueMap.reset()` **and** re-reads the map through the parent; the panel's draft is a `linkedSignal` over the selected set, so a re-read re-seeds it rather than leaving a phantom draft. **Widened at the review gate (F-2):** the re-read now also clears and re-seeds the BULK grid, which was staying frozen at first load | Claude | closed |
+| R-2 | A `409 SET_IN_USE` leaves an optimistic UI change applied, so the map shows a move/repool the server refused | med | high | **no optimistic apply on the per-set writes at all** — the grid re-renders only from a server re-read. Cheap here (one set, one round-trip), unlike the Pricing tab's per-row optimism. Stronger than a convention in the end: `sets` is an **input owned by the parent**, so the child structurally cannot apply anything | Claude | closed |
+| R-3 | Per-set writes do not bump `set_version`, so a bulk-layout tab open elsewhere keeps a token that looks fresh, and a per-set price edit can be silently overwritten by a later row reprice | med | low | out of scope to fix (backend); documented in the panel's TSDoc and surfaced to the operator as "row pricing overrides this". **This framing was wrong, and the review gate caught it (F-2):** the overlap window is a clean venue, and that is exactly the venue where the bulk Save still works — so a stale bulk grid could silently revert a per-set edit. Closed by re-seeding the bulk grid on every per-set write; the remaining `set_version` non-participation is a backend concern, unchanged | Claude | closed |
+| R-4 | Growing the grid lets the operator add a set beyond the server's layout maxima (26 rows × 40 positions), producing an avoidable `400` | med | low | clamp the grow buttons to the same `MAX_ROWS`/`MAX_COLS` the bulk editor already enforces, shared from one constant | Claude | closed |
+| R-5 | Two sets end up on one cell because the tab's view of "empty" is stale | low | med | the server's `CELL_TAKEN`/`DUPLICATE_POSITION` `409` is the authority and is surfaced verbatim; the tab never resolves the collision itself | Claude | closed |
+| R-6 | Visual drift when the cell styling moves out of `layout-editor.ts` into a directive | med | low | `beach-cell.spec.ts` asserts the emitted class string per state equals the strings the component used before the move; the existing e2e still asserts `data-state` | Claude | closed |
+| R-7 | Money handled as float in the per-set price field (invariant #5) | low | high | the euros↔minor conversion is `shared/money.ts`'s `eurosToMinorUnits`/`minorUnitsToEuros` — the one existing edge helper; a cleared/invalid field is "no change", never €0 | Claude | closed |
+| R-8 | Per-venue authorization (invariant #13) | low | high | server-asserted in `EditBeachMap` before any read/write; the tab only surfaces `403 NOT_VENUE_OWNER` as copy. No FE-side authorization is claimed | Claude | closed |
+| R-9 | Making DELETE reachable turns #598's closed race into user-visible `500`s | low | low | accepted, per #598's own closing note; this slice satisfies only half its reopen condition. Re-check the logs after deploy | Claude | closed |
 
 ## Open questions / Assumptions
 
@@ -233,18 +236,18 @@ anti-pattern; `linkedSignal` does it. `OnPush`/`standalone` are not set explicit
 
 ## Execution status
 
-**Stage pointer:** `PR — marking ready for review; the Review + Sonar gates are next`
+**Stage pointer:** `DONE — merged via PR #603`
 
-**Next action:** Mark PR #603 ready for review, then run the review gate per
-`riviera-sdlc` `references/pr-gates.md` §1, then the Sonar gate §2.
+**Next action:** none. Post-merge, GitHub-only: close #600 (the PR's `Closes` does it) and file the
+two deferred follow-ups (bulk regenerate-confirm focus, console-wide 44 px touch targets).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — HTTP surface (service, model, error mapper) | ✅ | `<phase-0>` |
-| 1 — `SetEditor`: select + edit tier/pool/price; mode toggle; `LAYOUT_IN_USE` copy | ✅ | `<phase-1>` |
-| 2 — Remove, with confirm and `SET_IN_USE` copy | ✅ | `<phase-2>` |
-| 3 — Add (grow the grid) and Move | ✅ | `<phase-3>` |
-| 4 — a11y + contrast specs, responsive pass, e2e | ✅ | `<phase-4>` |
+| 0 — HTTP surface (service, model, error mapper) | ✅ | `6b2d78f` |
+| 1 — `SetEditor`: select + edit tier/pool/price; mode toggle; `LAYOUT_IN_USE` copy | ✅ | `c5c0ca8` |
+| 2 — Remove, with confirm and `SET_IN_USE` copy | ✅ | `2e363a5` |
+| 3 — Add (grow the grid) and Move | ✅ | `6087fbf` |
+| 4 — a11y + contrast specs, responsive pass, e2e | ✅ | `46a31f6` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -282,6 +285,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/console-venue-map.ts` — TSDoc: its reset call sites gain a third (F-4)
 - `frontend/e2e/operator-set-editing.e2e.ts` — CI-safe mocked e2e for the per-set flow
 - `docs/plans/o3-layout-editor.md` — the O3 plan states the tab is bulk-only; corrected here
+- `docs/plans/per-set-layout-write-claim-guard.md` — its R-9 residual rests on "no frontend caller",
+  which this slice falsifies; amended by the docs-freshness sweep
 - `scripts/check-inline-comments.mjs` · `scripts/check-plan-file-structure.mjs` — CLI entry fix: the
   `file://` template never matches a Windows path, so both guards were silent no-ops locally (F-0)
 
@@ -293,19 +298,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `frontend/src/app/operator/operator-console.service.ts` ·
 Test `frontend/src/app/operator/operator-console.service.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — three request-shape specs (`POST` body + URL, `PATCH`
+- [x] **Step 1: Write the failing test** — three request-shape specs (`POST` body + URL, `PATCH`
       URL carries `setId`, `DELETE` URL) plus `setWriteErrorOf` mapping `SET_IN_USE`, `CELL_TAKEN`,
       `NOT_VENUE_OWNER`, a bare `401`, and an unknown code → `UNKNOWN`.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- operator-console.service` → FAIL,
+- [x] **Step 2: Run it, verify it fails** — `npm test -- operator-console.service` → FAIL,
       `addSet is not a function`
-- [ ] **Step 3: Minimal implementation** — the three methods over `HttpClient`, `SetWriteRequest`
+- [x] **Step 3: Minimal implementation** — the three methods over `HttpClient`, `SetWriteRequest`
       reusing `Tier`/`Pool`/`MoneyView`, `SetWriteErrorCode` union + `setWriteErrorOf` in the
       `layoutErrorOf` shape.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- operator-console.service` → PASS
-- [ ] **Step 5: Generalization-audit pass** — check whether any other console write still lacks a
+- [x] **Step 4: Run it, verify it passes** — `npm test -- operator-console.service` → PASS
+- [x] **Step 5: Generalization-audit pass** — check whether any other console write still lacks a
       typed error mapper; record the answer.
-- [ ] **Step 6: Commit** — `git commit -m "Add the per-set beach-map write surface (#600)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Add the per-set beach-map write surface (#600)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -314,20 +319,20 @@ Test `frontend/src/app/operator/operator-console.service.spec.ts`
 **Files:** Create `set-editor.ts` · `set-editor.html` · `set-editor.spec.ts` · `beach-cell.ts` ·
 `beach-cell.spec.ts` · Modify `layout-editor.ts` · `layout-editor.html` · Test `layout-editor.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-1, AC-2, AC-6, AC-7 as unit specs; `beach-cell.spec.ts`
+- [x] **Step 1: Write the failing test** — AC-1, AC-2, AC-6, AC-7 as unit specs; `beach-cell.spec.ts`
       asserting each state's class string equals the pre-move `CELL_CLASS` value.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- set-editor` → FAIL, component absent
-- [ ] **Step 3: Minimal implementation** — `SetEditor` with `venueId`/`sets` inputs and a `changed`
+- [x] **Step 2: Run it, verify it fails** — `npm test -- set-editor` → FAIL, component absent
+- [x] **Step 3: Minimal implementation** — `SetEditor` with `venueId`/`sets` inputs and a `changed`
       output; `selectedSetId` and the draft as `linkedSignal`s (selection survives a re-read when
       the set still exists, and the draft re-seeds when it doesn't); `PATCH` on Save with the full
       body; no optimistic apply. `LayoutEditor` gains the mode toggle, the default-mode
       `linkedSignal`, the `SetEditor` branch, the re-read on `changed`, and the corrected
       `LAYOUT_IN_USE` copy.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- set-editor layout-editor beach-cell` → PASS
-- [ ] **Step 5: Generalization-audit pass** — the epoch-guard pattern (#180): confirm `SetEditor`'s
+- [x] **Step 4: Run it, verify it passes** — `npm test -- set-editor layout-editor beach-cell` → PASS
+- [x] **Step 5: Generalization-audit pass** — the epoch-guard pattern (#180): confirm `SetEditor`'s
       writes carry it, and check whether any other console write path still lacks it.
-- [ ] **Step 6: Commit** — `git commit -m "Let an operator edit one beach-map set (#600)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Let an operator edit one beach-map set (#600)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -335,16 +340,16 @@ Test `frontend/src/app/operator/operator-console.service.spec.ts`
 
 **Files:** Modify `set-editor.ts` · `set-editor.html` · Test `set-editor.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-4: confirm-then-`DELETE`, selection clears, `changed`
+- [x] **Step 1: Write the failing test** — AC-4: confirm-then-`DELETE`, selection clears, `changed`
       emitted; and the `409 SET_IN_USE` path leaving the set on the grid with the booked-or-held copy.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- set-editor` → FAIL, no remove control
-- [ ] **Step 3: Minimal implementation** — a two-step destructive control mirroring the bulk
+- [x] **Step 2: Run it, verify it fails** — `npm test -- set-editor` → FAIL, no remove control
+- [x] **Step 3: Minimal implementation** — a two-step destructive control mirroring the bulk
       editor's regenerate confirm (`role="alertdialog"`), then `removeSet`.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- set-editor` → PASS
-- [ ] **Step 5: Generalization-audit pass** — destructive-confirm affordances across the console:
+- [x] **Step 4: Run it, verify it passes** — `npm test -- set-editor` → PASS
+- [x] **Step 5: Generalization-audit pass** — destructive-confirm affordances across the console:
       is this the same shape as regenerate and the admin photo takedown?
-- [ ] **Step 6: Commit** — `git commit -m "Let an operator remove a beach-map set (#600)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Let an operator remove a beach-map set (#600)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -352,18 +357,18 @@ Test `frontend/src/app/operator/operator-console.service.spec.ts`
 
 **Files:** Modify `set-editor.ts` · `set-editor.html` · Test `set-editor.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-3 (grow, click the new cell, `POST` with derived
+- [x] **Step 1: Write the failing test** — AC-3 (grow, click the new cell, `POST` with derived
       row/position) and AC-5 (arm Move, click an empty cell, `PATCH` with new coordinates and
       unchanged tier/pool/price), plus the grow clamp at 26×40 (R-4).
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- set-editor` → FAIL, no add/move controls
-- [ ] **Step 3: Minimal implementation** — `extraRows`/`extraCols` signals clamped against the
+- [x] **Step 2: Run it, verify it fails** — `npm test -- set-editor` → FAIL, no add/move controls
+- [x] **Step 3: Minimal implementation** — `extraRows`/`extraCols` signals clamped against the
       shared maxima; an empty cell opens the Add panel; Move arms a target mode whose next empty-cell
       click issues the `PATCH`. `CELL_TAKEN`/`DUPLICATE_POSITION` are surfaced, never resolved locally.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- set-editor` → PASS
-- [ ] **Step 5: Generalization-audit pass** — the `MAX_ROWS`/`MAX_COLS` constants: one home, or two
+- [x] **Step 4: Run it, verify it passes** — `npm test -- set-editor` → PASS
+- [x] **Step 5: Generalization-audit pass** — the `MAX_ROWS`/`MAX_COLS` constants: one home, or two
       copies drifting between the bulk and per-set surfaces?
-- [ ] **Step 6: Commit** — `git commit -m "Let an operator add and move a beach-map set (#600)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Let an operator add and move a beach-map set (#600)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -372,18 +377,18 @@ Test `frontend/src/app/operator/operator-console.service.spec.ts`
 **Files:** Create `set-editor.a11y.spec.ts` · `set-editor.contrast.spec.ts` ·
 `frontend/e2e/operator-set-editing.e2e.ts` · Modify `set-editor.html` · `docs/plans/o3-layout-editor.md`
 
-- [ ] **Step 1: Write the failing test** — AC-8: axe over both modes; the contrast proof for the
+- [x] **Step 1: Write the failing test** — AC-8: axe over both modes; the contrast proof for the
       panel inks; an e2e driving sign-in → Edit sets → edit → add → move → remove against a
       **stateful** `page.route` mock, at a 390 px viewport, asserting no horizontal page scroll.
-- [ ] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- operator-set-editing` → FAIL
-- [ ] **Step 3: Minimal implementation** — the responsive/touch-target pass described above; fix
+- [x] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- operator-set-editing` → FAIL
+- [x] **Step 3: Minimal implementation** — the responsive/touch-target pass described above; fix
       whatever axe reports.
-- [ ] **Step 4: Run it, verify it passes** — `npm run test:a11y` and
+- [x] **Step 4: Run it, verify it passes** — `npm run test:a11y` and
       `npm run test:e2e:a11y -- operator-set-editing` → PASS
-- [ ] **Step 5: Generalization-audit pass** — 44 px touch targets: do the sibling console tabs meet
+- [x] **Step 5: Generalization-audit pass** — 44 px touch targets: do the sibling console tabs meet
       it, or is this slice the first? Record, fix here only if trivial and in-file.
-- [ ] **Step 6: Commit** — `git commit -m "Cover per-set beach-map editing end to end (#600)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Cover per-set beach-map editing end to end (#600)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -403,36 +408,36 @@ Test `frontend/src/app/operator/operator-console.service.spec.ts`
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- set-editor` → `patchesTheWholeSetBodyOnSave` passes. Verified at `<sha>`.
-- [ ] **AC-2:** `npm test -- set-editor` → `keepsTheSetUnchangedOnSetInUse` passes. Verified at `<sha>`.
-- [ ] **AC-3:** `npm test -- set-editor` → `addsASetIntoAGrownGridCell` passes. Verified at `<sha>`.
-- [ ] **AC-4:** `npm test -- set-editor` → `removesASet` + `explainsARefusedRemove` pass. Verified at `<sha>`.
-- [ ] **AC-5:** `npm test -- set-editor` → `movesASetToAnEmptyCell` passes. Verified at `<sha>`.
-- [ ] **AC-6:** `npm test -- layout-editor` → `defaultsToTheModeTheVenueNeeds` passes. Verified at `<sha>`.
-- [ ] **AC-7:** `npm test -- layout-editor` → `pointsALockedLayoutAtPerSetEditing` passes. Verified at `<sha>`.
-- [ ] **AC-8:** `npm run test:a11y` + `npm run test:e2e:a11y -- operator-set-editing` → PASS. Verified at `<sha>`.
+- [x] **AC-1:** `npm test -- set-editor` → `patchesTheWholeSetBodyOnSave` passes. Verified on the PR's final green run.
+- [x] **AC-2:** `npm test -- set-editor` → `keepsTheSetUnchangedOnSetInUse` passes. Verified on the PR's final green run.
+- [x] **AC-3:** `npm test -- set-editor` → `addsASetIntoAGrownGridCell` passes. Verified on the PR's final green run.
+- [x] **AC-4:** `npm test -- set-editor` → `removesASet` + `explainsARefusedRemove` pass. Verified on the PR's final green run.
+- [x] **AC-5:** `npm test -- set-editor` → `movesASetToAnEmptyCell` passes. Verified on the PR's final green run.
+- [x] **AC-6:** `npm test -- layout-editor` → `defaultsToTheModeTheVenueNeeds` passes. Verified on the PR's final green run.
+- [x] **AC-7:** `npm test -- layout-editor` → `pointsALockedLayoutAtPerSetEditing` passes. Verified on the PR's final green run.
+- [x] **AC-8:** `npm run test:a11y` + `npm run test:e2e:a11y -- operator-set-editing` → PASS. Verified on the PR's final green run.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — trivially held, no backend file in scope.
-- [ ] **Availability** section filled; the client applies nothing optimistically and re-reads on
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — trivially held, no backend file in scope.
+- [x] **Availability** section filled; the client applies nothing optimistically and re-reads on
       every success (invariant #2).
-- [ ] Pool rule honored: the repool refusal is surfaced, never worked around (invariant #3).
+- [x] Pool rule honored: the repool refusal is surfaced, never worked around (invariant #3).
       Cutoff not engaged (invariant #4).
-- [ ] **Modulith** section filled (`N/A — frontend-only`, justified).
-- [ ] **Payment/payout** section filled (`N/A`, justified); the price field converts at the edge in
+- [x] **Modulith** section filled (`N/A — frontend-only`, justified).
+- [x] **Payment/payout** section filled (`N/A`, justified); the price field converts at the edge in
       integer minor units (invariant #5).
-- [ ] Invariant #13: no FE-side authorization claimed; `403 NOT_VENUE_OWNER` surfaced as copy.
-- [ ] Flyway: none needed — no schema change (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract; no `effect()` used to sync state.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` clean.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder *plus*
+- [x] Invariant #13: no FE-side authorization claimed; `403 NOT_VENUE_OWNER` surfaced as copy.
+- [x] Flyway: none needed — no schema change (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract; no `effect()` used to sync state.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` clean.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder *plus*
       `riviera-review-overlay`.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
