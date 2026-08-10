@@ -66,9 +66,11 @@ import ai.riviera.platform.payment.adapter.out.StripeProperties;
  *
  * <p>The whole handler is one transaction: if it fails after the dedup insert, the transaction
  * (including that insert) rolls back and Stripe re-delivers — at-least-once without a broker. That
- * is what an unreadable payload on a handled type leans on: it raises
- * {@link UnreadableWebhookEventException} rather than logging a warning and answering {@code 200},
- * which would consume a verified fact Stripe would then never re-deliver.
+ * is what an unreadable payload leans on, for the types where losing the fact is the greater harm:
+ * it raises {@link UnreadableWebhookEventException} rather than logging a warning and answering
+ * {@code 200}, which would consume a verified fact Stripe would then never re-deliver. The
+ * every-transition refund types are the deliberate exception, and fail open instead — see
+ * {@link #advisoryRefund}.
  * The {@code booking} module reacts to the published events; this controller never imports
  * {@code booking} (invariant #11). The raw body, signature, and secret are never logged.
  */
@@ -129,7 +131,7 @@ class StripeWebhookController {
 			case EVENT_PAYMENT_FAILED -> applied(requiredPaymentIntentId(event), PaymentStatus.FAILED);
 			case EVENT_REFUND_FAILED -> onRefundDied(requiredRefund(event));
 			case EVENT_REFUND_UPDATED, EVENT_CHARGE_REFUND_UPDATED ->
-					readableRefund(event).ifPresent(this::onRefundDied);
+					advisoryRefund(event).ifPresent(this::onRefundDied);
 			default -> log.debug("ignoring Stripe event type {}", event.getType());
 		}
 		return ResponseEntity.ok("ok");
@@ -230,46 +232,43 @@ class StripeWebhookController {
 	}
 
 	/**
-	 * The refund of {@code refund.failed}, or {@link UnreadableWebhookEventException}.
+	 * The refund of {@code refund.failed}, or {@link UnreadableWebhookEventException} — fail-closed,
+	 * because that type reports nothing but failures, so an unreadable one is a lost failure.
 	 *
-	 * <p>Both the id and the <strong>status</strong> are required, because the status is what the branch
-	 * decides on: a payload yielding none would be read as "still live" and consumed as a {@code 200}
-	 * no-op, which is the unapplied-fact case this exception exists to prevent. Fail-closed is right
-	 * here because this type reports nothing but failures — an unreadable one is a lost failure.
+	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
 	private Refund requiredRefund(Event event) {
-		Refund refund = required(event, Refund.class);
-		if (refund.getId() == null) {
-			throw unreadable(event, "refund id");
-		}
-		if (refund.getStatus() == null) {
-			throw unreadable(event, "refund status");
-		}
-		return refund;
+		return refundOf(event)
+				.filter(StripeWebhookController::isActionable)
+				.orElseThrow(() -> unreadable(event, "refund with an id and a status"));
 	}
 
 	/**
-	 * The refund of an <strong>every-transition</strong> type, if the payload yields one.
+	 * The refund of an every-transition type, if there is one — fail-<strong>open</strong>, unlike
+	 * {@link #requiredRefund}: these types fire for every refund on the account, so a permanent retry
+	 * loop would get this endpoint disabled and stop payment delivery with it.
 	 *
-	 * <p>These types carry the {@code canceled} transition, which has no failure-only event of its own,
-	 * so they must be handled. But they also announce {@code created}/{@code pending}/{@code succeeded},
-	 * for refunds this app never issued as much as its own — so an unreadable one is overwhelmingly not
-	 * a failure, and answering {@code 503} would put a permanent retry loop on the endpoint. Stripe
-	 * disables an endpoint that keeps failing, and this endpoint also carries the payment spine: the
-	 * booking confirmations would stop, leaving paid bookings holding their {@code (set, date)} claim
-	 * (invariants #2/#8). Losing an advisory duplicate is the smaller harm, so this one is fail-open.
+	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
-	private Optional<Refund> readableRefund(Event event) {
-		Optional<Refund> refund = dataObject(event)
-				.filter(Refund.class::isInstance)
-				.map(Refund.class::cast)
-				.filter(candidate -> candidate.getId() != null && candidate.getStatus() != null);
-		if (refund.isEmpty()) {
-			log.warn("could not read a refund from verified event {} ({}) — ignoring, since this type "
-					+ "announces every transition and the failure-only type carries the same fact",
-					event.getId(), event.getType());
+	private Optional<Refund> advisoryRefund(Event event) {
+		Refund refund = refundOf(event).orElse(null);
+		if (refund != null && isActionable(refund)) {
+			return Optional.of(refund);
 		}
-		return refund;
+		log.warn("no actionable refund in verified event {} ({}, refund {}) — consumed rather than "
+				+ "retried; if it carried a failure, only a re-announcement can recover it",
+				event.getId(), event.getType(), refund == null ? null : refund.getId());
+		return Optional.empty();
+	}
+
+	/** The verified event's refund, whatever state its fields are in. */
+	private Optional<Refund> refundOf(Event event) {
+		return dataObject(event).filter(Refund.class::isInstance).map(Refund.class::cast);
+	}
+
+	/** Both fields the refund branch reads: the row to move, and the status that decides whether to. */
+	private static boolean isActionable(Refund refund) {
+		return refund.getId() != null && refund.getStatus() != null;
 	}
 
 	/** The verified event's data object as {@code type}, or {@link UnreadableWebhookEventException}. */

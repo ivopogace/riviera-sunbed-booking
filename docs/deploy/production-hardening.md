@@ -52,9 +52,11 @@ Pinned by `platform/src/test/java/ai/riviera/platform/ActuatorHardeningIT.java`.
 
 > **The webhook endpoint's event list is configuration too, and nothing in the app can check it.**
 > The endpoint at Stripe must send `payment_intent.succeeded`, `payment_intent.canceled` and
-> `payment_intent.payment_failed` — and, since #592, `refund.failed`, plus `charge.refund.updated`
-> for accounts on an API version old enough not to emit it. (`refund.updated` is deliberately **not**
-> subscribed: it announces every transition, so it would duplicate each failure without adding one.)
+> `payment_intent.payment_failed` — and, since #592, all three refund-lifecycle types:
+> `refund.failed`, `refund.updated`, and `charge.refund.updated` for accounts on an API version old
+> enough not to emit the others. **All three, not just `refund.failed`:** Stripe has no
+> `refund.canceled`, so a refund the provider voids is announced *only* on the every-transition
+> types, and subscribing to the failure-only one would leave that guest permanently mis-told.
 > Miss the refund types and the failed-refund reconciliation is **inert**: a refund the issuer rejects
 > stays recorded as accepted, the guest is told their money is on its way, and
 > `riviera.refunds.failed` never fires. There is no boot check for this — an endpoint subscribed to

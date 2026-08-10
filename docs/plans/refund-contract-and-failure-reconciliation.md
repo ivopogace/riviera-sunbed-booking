@@ -70,17 +70,25 @@ in for it (`riviera-sdlc` § Remote/cloud session addendum).
   `StripeWebhookIT.aSecondFailureForTheSameRefundMovesNothing`
 - [x] **AC-3:** Given a refund event whose `Refund` is still live (`pending`, `succeeded`), when it
   arrives, then the payment row is untouched and the response is `200`. *Pinned by:*
-  `StripeWebhookIT.aLiveRefundUpdateChangesNothing`
-- [x] **AC-4:** Given a handled refund event whose payload cannot be read as a `Refund`, when it
-  arrives, then `UnreadableWebhookEventException` propagates (`503`) and the event-id dedup insert
-  rolls back, so Stripe re-delivers. *Pinned by:*
-  `StripeWebhookIT.anUnreadableRefundEventIsNotConsumed`
+  `StripeWebhookIT.aStillPendingRefundChangesNothing`
+- [x] **AC-4:** Given a `refund.failed` payload that yields no identified `Refund`, when it arrives,
+  then `UnreadableWebhookEventException` propagates (`503`) and the event-id dedup insert rolls back,
+  so Stripe re-delivers — while the same payload on an **every-transition** type is consumed with a
+  `200`, because a permanent retry loop there would get the shared endpoint disabled. *Pinned by:*
+  `StripeWebhookIT.anUnreadableRefundEventIsNotConsumed` +
+  `.aRefundEventWithoutAStatusIsNotConsumed`, against
+  `.anUnreadableEveryTransitionRefundEventIsConsumed` +
+  `.anUnreadableLegacyEveryTransitionRefundEventIsConsumedToo`
 - [x] **AC-5:** Given a refund-failure event naming a refund id this app never recorded, when it
   arrives, then no row moves, the counter does not increment, and the response is `200`.
   *Pinned by:* `StripeWebhookIT.aFailureForAnUnknownRefundIsIgnored`
 - [x] **AC-6:** Given a booking whose recorded refund was un-recorded by AC-1, when the refund
   progress is read, then it is `OUTSTANDING` (money collected, none returned) rather than
   `ACCEPTED`. *Pinned by:* `RefundServiceTest.progressIsOutstandingAfterARecordedRefundFailed`
+- [x] **AC-9:** Given a refund the gateway reports `canceled` — a transition Stripe announces only on
+  the every-transition types — when the event arrives, then it is un-recorded exactly as a `failed`
+  one is. *Pinned by:*
+  `StripeWebhookIT.aCancelledRefundIsUnrecordedThoughOnlyTheEveryTransitionTypeCarriesIt`
 - [x] **AC-7:** Given a collecting `PaymentGateway` that already holds a refund for exactly the
   requested amount, when `refund` is replayed with its idempotency key assumed pruned, then exactly
   one refund exists at the gateway and the replay reports the **first** refund's id. *Pinned by:*
@@ -222,7 +230,7 @@ to `true` after a failure.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `PR #593 — review gate run three times at high effort; 31 registered findings (F-1…F-31): 27 fixed here, 4 carried to issue #594's three items, 1 accepted with its limit documented on the test; re-checking CI + Sonar`
+**Stage pointer:** `PR #593 — review gate run four times at high effort; 41 registered findings (F-1…F-41): 37 fixed here, 4 carried to issue #594's three items, 1 accepted with its limit documented on the test; re-checking CI + Sonar`
 
 **Next action:** Confirm CI green on the third fix round and pull the Sonar new-issue list, then merge.
 
@@ -293,6 +301,16 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-29 | 2nd re-review | Rewriting the live-refund test to `succeeded` removed the only webhook-path coverage of `pending`, the status the whole adoption rule turns on; and the duplicate-delivery test modelled a pair no single account receives | fixed-in-`37f1b76` — `pending` restored, and the duplicate is the realistic `refund.failed` → `refund.updated` |
 | F-30 | 2nd re-review | The clash guard accepted *agreeing* duplicate profile bindings and its message named the wrong winner | fixed-in-`37f1b76` — any duplicate fails, message corrected |
 | F-31 | 2nd re-review | The stage pointer's tallies did not reconcile with the register it summarises | fixed-in-`37f1b76` — counted from the rows |
+| F-32 | 3rd re-review | The deploy doc still told operators `refund.updated` is deliberately **not** subscribed — the very type that carries `canceled` — so F-23's fix would have been inert in prod | fixed-in-`<fix-round-4>` — all three types, with the reason stated |
+| F-33 | 3rd re-review | The class javadoc still stated the absolute fail-closed rule, so a maintainer would read the fail-open branch as the bug and "fix" it back | fixed-in-`<fix-round-4>` |
+| F-34 | 3rd re-review | The fail-open WARN claimed "the failure-only type carries the same fact" — false for `canceled`, the one incident where that line matters | fixed-in-`<fix-round-4>` — it now says a re-announcement is the only recovery, and names the refund id when the payload yielded one |
+| F-35 | 3rd re-review | The runbook's "deliberate rollback, so Stripe re-delivers" clause was left dangling off the new fail-open sentence, and the failed-refunds cell still promised "three shapes" while listing five with a stale ordinal | fixed-in-`<fix-round-4>` |
+| F-36 | 3rd re-review | `readableRefund` re-implemented `required`/`requiredRefund`'s cast and null checks, so "a readable refund" had two definitions to keep in step | fixed-in-`<fix-round-4>` — one `refundOf` + one `isActionable`; the per-type *policy* lives only at the switch |
+| F-37 | 3rd re-review | The new javadoc was ten lines of rationale duplicated from `RESPONSIBILITIES.md` §`payment` — the archaeology `riviera-java-conventions` §6d bans | fixed-in-`<fix-round-4>` — trimmed to the contract plus the §`payment` pointer the sibling gateway already uses |
+| F-38 | 3rd re-review | F-24's pin only exercised `refund.updated`, so moving `charge.refund.updated` back to the fail-closed branch left every test green — the regression class F-27 was raised to prevent | fixed-in-`<fix-round-4>` — the legacy twin has its own pin |
+| F-39 | 3rd re-review | The `canceled` test asserted only the status, not `refunded_minor` (the guest-facing half) or the counter (the alert) | fixed-in-`<fix-round-4>` |
+| F-40 | 3rd re-review | AC-4 was ticked while asserting the rule the fail-open tier reverses, and AC-3 pinned a test method renamed two rounds earlier | fixed-in-`<fix-round-4>` — AC-4 states both tiers with all four pins; AC-9 added for the `canceled` path |
+| F-41 | 3rd re-review | The spliced `RESPONSIBILITIES.md` sentence left a 121-char line in a ~100-wrapped file | fixed-in-`<fix-round-4>` |
 
 ---
 

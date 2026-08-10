@@ -370,11 +370,15 @@ class StripeWebhookIT {
 		collectionRefundedWith(7308L, "pi_ref_cancelled", "re_hook_cancelled");
 		String payload = refundEventJson("evt_ref_cancelled_1", "refund.updated", "re_hook_cancelled",
 				"canceled", "pi_ref_cancelled");
+		double before = refundsFailedCount();
 
 		postSigned(payload, sign(payload), 200);
 
 		assertEquals("SUCCEEDED", statusOf("pi_ref_cancelled"),
 				"Stripe has no refund.canceled, so dropping refund.updated would strand this guest");
+		assertEquals(0L, payments.findRefundState(new BookingRef(7308L)).orElseThrow().refundedMinor(),
+				"and the guest-facing half turns on refundedMinor, not on the status");
+		assertEquals(before + 1, refundsFailedCount(), "a cancelled refund is owed money like a failed one");
 	}
 
 	@Test
@@ -419,6 +423,18 @@ class StripeWebhookIT {
 				"the status is what the branch decides on — a payload without one decides nothing");
 		assertEquals(0L, webhookEventRows("evt_ref_statusless_1"),
 				"so it is re-delivered rather than read as still-live and consumed");
+	}
+
+	@Test
+	void anUnreadableLegacyEveryTransitionRefundEventIsConsumedToo() throws Exception {
+		collectionRefundedWith(7310L, "pi_ref_legacy_advisory", "re_hook_legacy_advisory");
+		String payload = eventJson("evt_ref_legacy_advisory_1", "charge.refund.updated",
+				Stripe.API_VERSION, NOT_AN_INTENT_OBJECT);
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals(1L, webhookEventRows("evt_ref_legacy_advisory_1"),
+				"the legacy twin announces every transition too, so it is fail-open for the same reason");
 	}
 
 	@Test

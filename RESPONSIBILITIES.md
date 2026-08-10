@@ -355,7 +355,9 @@ partial one: two 50% refunds fit inside the charge and both succeed.
   answers `503` to force re-delivery; `refund.updated`/`charge.refund.updated` announce every
   transition for every refund on the account, so an unreadable one is fail-**open** — a permanent
   retry loop there would get Stripe to disable an endpoint that also carries the payment spine, and
-  losing an advisory duplicate is much the smaller harm (invariants #2/#8). That one write makes every existing mechanism
+  losing an advisory duplicate is much the smaller harm (invariants #2/#8).
+
+  That one write makes every existing mechanism
   truthful — `RefundStatusLookup` answers `OUTSTANDING` again so the guest is told the refund is
   still owed, `riviera.refunds.failed` lights the money-path signal, and the existence read above now
   sees a dead refund rather than adopting the corpse. It is invariant #8 applied to the refund
