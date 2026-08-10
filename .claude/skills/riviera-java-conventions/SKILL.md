@@ -94,7 +94,7 @@ before modeling one.
   enum `switch` (e.g. over `ClaimOutcome`) is already clearer.
 - **Text blocks** for SQL and multi-line strings.
 - `Optional<T>` for "absent" on query ports (e.g. `VenueCatalog#findVenueMap`,
-  `poolOf`) — **never return `null`** from a port. Don't use `Optional` for fields or
+  `poolForClaim`) — **never return `null`** from a port. Don't use `Optional` for fields or
   parameters.
 - `var` for obvious local types; spell the type out when it aids reading.
 - **Streams & lambdas — modern idioms, used judiciously.** Prefer **`.toList()`** (Java 16+)

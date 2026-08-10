@@ -128,7 +128,9 @@ template). `tdd` (red→green, concurrency IT is the teeth).
 - **Pool rule (invariant #3):** before the insert, `claim` calls
   `venue.api.VenueCatalog#poolOf(SetId)`; a non-`ONLINE` pool returns `NOT_ONLINE_POOL`, an
   absent set returns `NO_SUCH_SET`. Pool is immutable layout data, so the check-then-claim
-  has no meaningful TOCTOU window.
+  has no meaningful TOCTOU window. — **Amended by #567:** O3's per-set editor made pool
+  mutable, so this premise stopped holding. The read is now `SetBookingFacts#poolForClaim`
+  and takes `FOR KEY SHARE` (`docs/plans/per-set-layout-write-claim-guard.md`).
 - **Cutoff rule (invariant #4):** N/A in U2 — enforced above the claim in U3 (see Non-goals).
 - **Pinning test:** `ConcurrentClaimIT.exactlyOneOfTwoConcurrentClaimsWins` — two threads,
   one barrier, same `(set, date)`; asserts one `CLAIMED` + one `ALREADY_TAKEN` and a single

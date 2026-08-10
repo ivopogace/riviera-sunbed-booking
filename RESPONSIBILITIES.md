@@ -95,7 +95,23 @@ case moderation exists for. Both ports run the same single cascading delete, and
 one **slot**, not one image (byte-identical variants in another slot keep serving; each published
 slot is its own takedown). Also own the beach map / layout, set
 positions, the online-vs-walk-in pool assignment for each set, pricing, and the booking mode
-(Instant / Request). Since A7 (#348) I also own the commission rate **over time**, not just its current
+(Instant / Request) — **including refusing a layout write that a live claim depends on** (#567).
+Both scopes now guard, with the scope following what the write destroys: the bulk replace deletes
+every set, so it asks the venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet` touch one
+set, so they ask the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row. The
+asymmetry between the two per-set writes is deliberate and worth stating once: **`removeSet` refuses
+on any claim, `editSet` only on an edit that would move the set or change its pool.** A delete is
+destructive either way — the RESTRICT `booking.set_id` FK makes a booked set undeletable, and
+`set_availability`'s CASCADE would silently sweep a staff hold — whereas an edit only harms a claim
+when it repools (stranding an online booking on walk-in inventory, invariant #3) or repositions
+(re-seating a guest who was told a row and number). Price and tier stay editable on a claimed set,
+which is the same call `repriceRow` already makes: a booking's charge is snapshotted at reserve
+time, so a reprice can never alter it. The one cross-module consequence: because the pool is
+**mutable** layout data, `SetBookingFacts#poolForClaim` is a **locking** read — `FOR KEY SHARE`, the
+weakest lock that conflicts with the edit's `FOR UPDATE`, and the very lock the claim's own insert
+takes for its FK check a moment later. It is named for that contract because it must run in a
+transaction and must never be called from a read-only one; the unlocked `setBookingInfo` stays
+unlocked precisely because it serves list and mail reads. Since A7 (#348) I also own the commission rate **over time**, not just its current
 value: `venue_commission_rate` (V39) is the effective-dated schedule behind `VenueRates#commissionBpsOn`,
 which answers "what rate applied to bookings served on date D" for the reporting reads, while
 `commissionBps` stays the live rate every *decision* re-reads. That is still storing the rate, not

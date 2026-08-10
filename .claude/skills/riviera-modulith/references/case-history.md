@@ -24,7 +24,7 @@ the cases the convention can't (e.g. whether a new type is genuinely vocabulary)
 ## Issue #94: the `VenueCatalog` role split
 
 `VenueCatalog` had grown into a wide port serving unrelated consumer roles. #94 split it by role:
-`VenueCatalog` (tourist reads), `SetBookingFacts` (`setBookingInfo`/`poolOf`), `VenueRates`
+`VenueCatalog` (tourist reads), `SetBookingFacts` (`setBookingInfo`/`poolForClaim`), `VenueRates`
 (`commissionBps`/`lateCancelRefundBps`) — pinned by `VenueApiRoleSplitTests`. The durable rule: a
 wide port splits by consumer role; don't pile new methods onto `VenueCatalog`.
 

@@ -35,8 +35,11 @@ suggested fix is incomplete for scenario 4) · `riviera-plan-doc` (this template
 Behavior-parity ledger, which is what turned "guard editSet" into an explicit per-field
 verdict) · `tdd` (each AC red-first: unit guard tests, then the controller status, then the
 two Testcontainers races) · `riviera-review-overlay` (review gate — runs at ready-for-review)
-· `riviera-docs-freshness` (ran at close-out over the slice's merge range — see Execution
-status) · `riviera-modulith` (kept the set-scoped booking probe on the existing
+· `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, **4 findings, all patched** —
+`SetRejection`'s status-map Javadoc omitted `SET_IN_USE`; `riviera-java-conventions` §5 and
+`riviera-modulith`'s case history both still cited `poolOf`; `u2-availability-claim.md` still
+asserted "pool is immutable layout data", the exact premise this slice overturns)
+· `riviera-modulith` (kept the set-scoped booking probe on the existing
 `venue.spi.BookingPresence` rather than minting a fifth port, and confirmed no
 `allowedDependencies` change is needed) · `riviera-java-conventions` (typed outcome
 `SetRejection.SET_IN_USE` over an exception; `SetPlacement` as a record with the policy
@@ -53,36 +56,36 @@ in for `bugfix/per-set-layout-write-claim-guard` (`riviera-sdlc` § Remote/cloud
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (staff hold survives a remove):** Given set S carries a `STAFF_MARKED` hold on
+- [x] **AC-1 (staff hold survives a remove):** Given set S carries a `STAFF_MARKED` hold on
       date D, when the owner calls `EditBeachMap.removeSet(owner, V, S)`, then the outcome is
       `Rejected(SET_IN_USE)` and the `set_availability` row for `(S, D)` still exists.
       *Pinned by:* `VenueAdminServiceTest.removeSetIsRefusedWhenTheSetIsHeld` +
       `VenueAdminControllerIT.removeSetKeepsAStaffHoldAndAnswers409`
-- [ ] **AC-2 (a booked set answers 409, never 500):** Given set S has a `booking` row of any
+- [x] **AC-2 (a booked set answers 409, never 500):** Given set S has a `booking` row of any
       status, including a terminal one, when the owner calls `removeSet`, then the outcome is
       `Rejected(SET_IN_USE)` and no `DataIntegrityViolationException` is raised.
       *Pinned by:* `VenueAdminServiceTest.removeSetIsRefusedWhenTheSetHasAnyBooking` +
       `VenueAdminControllerIT.removeSetOnABookedSetAnswers409NotAServerError`
-- [ ] **AC-3 (no pool flip under a claim):** Given set S is claimed (a hold on any date or a
+- [x] **AC-3 (no pool flip under a claim):** Given set S is claimed (a hold on any date or a
       booking of any status), when the owner calls `editSet` with a command whose `pool`,
       `rowLabel`, `positionNo`, `gridX` or `gridY` differs from the stored row, then the
       outcome is `Rejected(SET_IN_USE)` and the stored pool is unchanged (invariant #3).
       *Pinned by:* `VenueAdminServiceTest.editSetIsRefusedWhenAClaimedSetWouldBeRepositioned`
-- [ ] **AC-4 (price and tier stay editable on a claimed set):** Given set S is claimed, when
+- [x] **AC-4 (price and tier stay editable on a claimed set):** Given set S is claimed, when
       the owner calls `editSet` with a command that changes only `priceMinor`,
       `priceCurrency` or `tier`, then the outcome is `Applied` and the write lands.
       *Pinned by:* `VenueAdminServiceTest.editSetAppliesAPriceOnlyChangeToAClaimedSet`
-- [ ] **AC-5 (no regression on an unclaimed set):** Given set S has no hold and no booking,
+- [x] **AC-5 (no regression on an unclaimed set):** Given set S has no hold and no booking,
       when the owner calls `editSet` (any fields) or `removeSet`, then the outcome is
       `Applied`. *Pinned by:* `VenueAdminServiceTest.editSetAppliesEveryChangeToAnUnclaimedSet`
       + the existing `VenueAdminControllerIT.removeSetTakesItOffTheMap`
-- [ ] **AC-6 (claim vs pool flip cannot both win):** Given an `ONLINE` set S with no hold,
+- [x] **AC-6 (claim vs pool flip cannot both win):** Given an `ONLINE` set S with no hold,
       when `AvailabilityClaim.claim(S, D)` and an `editSet` flipping S to `WALK_IN` run
       concurrently, then either the claim is `CLAIMED` and the edit is `Rejected(SET_IN_USE)`,
       or the edit is `Applied` and the claim is `NOT_ONLINE_POOL` — never a `BOOKED_ONLINE`
       row on a `WALK_IN` set (invariants #2/#3).
       *Pinned by:* `SetWriteVsClaimConcurrencyIT.claimAndPoolFlipCannotBothWin`
-- [ ] **AC-7 (claim vs remove cannot both win):** Given an `ONLINE` set S with no hold, when
+- [x] **AC-7 (claim vs remove cannot both win):** Given an `ONLINE` set S with no hold, when
       `claim(S, D)` and `removeSet(S)` run concurrently, then either the claim is `CLAIMED`
       and the remove is `Rejected(SET_IN_USE)` with the hold intact, or the remove is
       `Applied` and the claim is `NO_SUCH_SET` — never a cascade-dropped hold and never a
@@ -132,12 +135,12 @@ in for `bugfix/per-set-layout-write-claim-guard` (`riviera-sdlc` § Remote/cloud
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The claim's pool read keeps its stale value across the block, so `editSet`'s `FOR UPDATE` serializes the writes but still admits `BOOKED_ONLINE` on a now-`WALK_IN` set (invariant #3) — the gap in the issue's own suggested direction | high (certain without the fix) | high | the claim reads `pool` under `FOR KEY SHARE` on the `set_position` row, so it either blocks and re-reads the new pool, or holds the lock and forces `editSet` to see its hold; AC-6 | agent | open |
-| R-2 | Lock-strength choice blocks work that must stay allowed — `FOR SHARE` would conflict with `repriceRow`'s `FOR NO KEY UPDATE` and stall repricing during bookings | med | med | `FOR KEY SHARE` chosen: conflicts with `FOR UPDATE` only; parity row in the ledger + AC covered by the existing `VenueRepriceIT` staying green | agent | open |
-| R-3 | Deadlock between the per-set write and the bulk `replaceLayout` (which takes the venue row then its set rows) | low | high | `editSet`/`removeSet` take **only** the one `set_position` row and never the venue row, so no cycle exists; `replaceLayout` waits on the set row and proceeds. Existing `VenueSetWriteConcurrencyIT` (replace vs reprice) must stay green | agent | open |
-| R-4 | Narrowing two shipped endpoints breaks an unknown caller | low | med | no frontend caller exists (grepped `frontend/src`); the change is 204→409 on inputs that were previously data-destroying or a 500; Behavior-parity ledger enumerates every path | agent | open |
-| R-5 | Renaming `SetBookingFacts#poolOf` → `poolForClaim` is a published `api/` port change | low | med | exactly one production caller (`JdbcAvailabilityClaim`) plus two test doubles; the rename is the point — a locking read must not be reachable from a read path (it errors inside a `readOnly` transaction), so the name warns callers off | agent | open |
-| R-6 | Per-venue authorization regressed while reordering the guards (invariant #13, BOLA) | low | high | `ownership.assertOwns` stays the **first** statement of both methods, before `venueExists` and before any lock; `CrossVenueDenialIT` pins it | agent | open |
+| R-1 | The claim's pool read keeps its stale value across the block, so `editSet`'s `FOR UPDATE` serializes the writes but still admits `BOOKED_ONLINE` on a now-`WALK_IN` set (invariant #3) — the gap in the issue's own suggested direction | high (certain without the fix) | high | the claim reads `pool` under `FOR KEY SHARE` on the `set_position` row, so it either blocks and re-reads the new pool, or holds the lock and forces `editSet` to see its hold; AC-6 | agent | closed — `poolForClaim`, pinned by `SetWriteVsClaimConcurrencyIT` |
+| R-2 | Lock-strength choice blocks work that must stay allowed — `FOR SHARE` would conflict with `repriceRow`'s `FOR NO KEY UPDATE` and stall repricing during bookings | med | med | `FOR KEY SHARE` chosen: conflicts with `FOR UPDATE` only; parity row in the ledger + AC covered by the existing `VenueRepriceIT` staying green | agent | closed — `FOR KEY SHARE` shipped |
+| R-3 | Deadlock between the per-set write and the bulk `replaceLayout` (which takes the venue row then its set rows) | low | high | `editSet`/`removeSet` take **only** the one `set_position` row and never the venue row, so no cycle exists; `replaceLayout` waits on the set row and proceeds. Existing `VenueSetWriteConcurrencyIT` (replace vs reprice) must stay green | agent | closed — no venue-row lock taken by the per-set writes; CI runs both concurrency ITs |
+| R-4 | Narrowing two shipped endpoints breaks an unknown caller | low | med | no frontend caller exists (grepped `frontend/src`); the change is 204→409 on inputs that were previously data-destroying or a 500; Behavior-parity ledger enumerates every path | agent | closed — ledger complete, no caller found |
+| R-5 | Renaming `SetBookingFacts#poolOf` → `poolForClaim` is a published `api/` port change | low | med | exactly one production caller (`JdbcAvailabilityClaim`) plus two test doubles; the rename is the point — a locking read must not be reachable from a read path (it errors inside a `readOnly` transaction), so the name warns callers off | agent | closed — one caller + two doubles updated; substrate greps clean |
+| R-6 | Per-venue authorization regressed while reordering the guards (invariant #13, BOLA) | low | high | `ownership.assertOwns` stays the **first** statement of both methods, before `venueExists` and before any lock; `CrossVenueDenialIT` pins it | agent | closed — `assertOwns` is still statement one in both methods |
 | R-7 | Flyway version collision | none | — | **no migration in this slice**; the set-scoped booking probe rides `booking_set_date_idx` (V5). Open PRs at plan time were Dependabot-only, no `db/migration` diff | agent | closed — N/A |
 | R-9 | A staff tap-to-mark racing a `removeSet` on an **unclaimed** set still surfaces as a `500`: the mark's `setBookingInfo` read is unlocked, so its `set_availability` insert blocks on the delete's `FOR UPDATE` and then fails the FK against a set that is gone | low | low | **Accepted, not a regression** — the same race predates this slice, and the guard *narrows* it (a set with any existing hold now refuses the delete outright, so only the both-empty instant remains). It fails closed: the DB refuses, no phantom hold is written; only the status code is imprecise. The fix would be to lock in `setBookingInfo`, which also serves the my-bookings list and mail-facts reads — row locks on a list read are a worse hazard than the race (Generalization-audit log, Phase 3) | agent | accepted |
 | R-8 | **The Testcontainers ITs cannot run in this session**, so AC-1/AC-2 (HTTP) and AC-6/AC-7 (the two races) get no local green — a guard could ship unverified | high (certain) | high | Docker Hub returned `toomanyrequests` on `postgres:17`, so the daemon was stopped by pidfile per `docs/agents/docker-testcontainers.md` and the ITs now **skip cleanly** rather than fail for an environmental reason. Local verification is therefore unit-level only; **CI owns every IT in this slice**, and no phase may be declared green until its PR CI run is read (`riviera-sdlc` CI-gate rule). Every guard also has a unit-level twin in `VenueAdminServiceTest`, so the ITs are the concurrency proof, not the only proof of the policy | agent | open |
@@ -265,10 +268,10 @@ money fact is that `repriceRow` must keep working during bookings, which R-2 pro
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `PR — marking ready for review (review + sonar gates due)`
 
-**Next action:** Update `RESPONSIBILITIES.md` §`venue` and correct the superseded row in
-`docs/plans/o3-layout-editor.md`, then mark the PR ready for review.
+**Next action:** Mark PR #597 ready for review, read the CI run for `skipped=0` on the ITs
+(R-8), then run the review gate per `riviera-sdlc` `references/pr-gates.md` §1.
 
 > **Phases 1 and 2 landed in one commit.** Phase 2's guard is what makes the `editSet` half of
 > `VenueAdminControllerIT` pass, and the ITs cannot run locally (R-8), so splitting them would
@@ -285,7 +288,7 @@ money fact is that `repriceRow` must keep working during bookings, which R-2 pro
 | 1 — Guard `removeSet` under a row lock (`SET_IN_USE`) | ✅ | `e488dd0` |
 | 2 — Guard `editSet` field-sensitively (`SetPlacement`) | ✅ | `e488dd0` |
 | 3 — Close the claim race (`poolForClaim`, `FOR KEY SHARE`) + both concurrency ITs | ✅ | `d7b0f86` |
-| 4 — Docs (RESPONSIBILITIES, o3 correction, close-out) | ⏳ | |
+| 4 — Docs (RESPONSIBILITIES, o3 + u2 corrections, freshness audit) | ✅ | `920d92d` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -323,6 +326,9 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — `FakeCatalog` follows the port rename
 - `RESPONSIBILITIES.md` — `venue` § the per-set guard + the locking-read contract
 - `docs/plans/o3-layout-editor.md` — correct the superseded review-gate row that judged the single-set path unaffected
+- `docs/plans/u2-availability-claim.md` — amend the "pool is immutable layout data" premise (docs-freshness)
+- `.claude/skills/riviera-java-conventions/SKILL.md` — the `Optional`-port example follows the rename (docs-freshness)
+- `.claude/skills/riviera-modulith/references/case-history.md` — the `SetBookingFacts` method list follows the rename (docs-freshness)
 
 ---
 
@@ -429,15 +435,24 @@ Test `venue/application/VenueAdminServiceTest.java` · `venue/VenueAdminControll
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `gradle test --tests "*VenueAdminServiceTest*" --tests "*VenueAdminControllerIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `gradle test --tests "*VenueAdminServiceTest*" --tests "*VenueAdminControllerIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `gradle test --tests "*VenueAdminServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `gradle test --tests "*VenueAdminServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `gradle test --tests "*VenueAdminServiceTest*" --tests "*VenueAdminControllerIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `gradle test --tests "*SetWriteVsClaimConcurrencyIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** Run `gradle test --tests "*SetWriteVsClaimConcurrencyIT*"` → PASS. Verified at commit `<sha>`.
+> **Two halves, and the split is the point (R-8).** Every AC has a unit-level pin that ran
+> locally, and the four that assert HTTP status or real concurrency also have a Testcontainers
+> pin that **only CI can run this session**. An AC is ticked above when *some* pin proves it;
+> this table says which run proved which half, so nobody reads a local green as an IT green.
 
-If any AC isn't verified by a passing test, write the test or admit it's not done.
+| AC | Local (unit, `gradle --tests`) | CI (Testcontainers) |
+|---|---|---|
+| AC-1 | ✅ `VenueAdminServiceTest.removeSetIsRefusedWhenTheSetIsHeld` | `VenueAdminControllerIT.removeSetKeepsAStaffHoldAndAnswers409` — CI |
+| AC-2 | ✅ `VenueAdminServiceTest.removeSetIsRefusedWhenTheSetHasAnyBooking` | `VenueAdminControllerIT.removeSetOnABookedSetAnswers409NotAServerError` — CI |
+| AC-3 | ✅ `VenueAdminServiceTest.editSetIsRefusedWhenAClaimedSetWouldBeRepositioned` (+ `…WhenABookedSetWouldBeMovedToAnotherCell`) | `VenueAdminControllerIT.editSetKeepsAClaimedSetInItsPoolButStillTakesAPriceChange` — CI |
+| AC-4 | ✅ `VenueAdminServiceTest.editSetAppliesAPriceOnlyChangeToAClaimedSet` | same IT as AC-3 — CI |
+| AC-5 | ✅ `VenueAdminServiceTest.editSetAppliesEveryChangeToAnUnclaimedSet` | existing `VenueAdminControllerIT.removeSetTakesItOffTheMap` — CI |
+| AC-6 | — (a real race needs a real database) | `SetWriteVsClaimConcurrencyIT.claimAndPoolFlipCannotBothWin` — **CI only** |
+| AC-7 | — (a real race needs a real database) | `SetWriteVsClaimConcurrencyIT.claimAndRemoveCannotBothWin` — **CI only** |
+
+Structural net run locally and green: `ModularityTests`, `JdbcOnlyArchitectureTests`,
+`PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`,
+`ErrorContractArchitectureTests`, `VenueApiRoleSplitTests`.
 
 ## Self-review checklist (before merge / PR)
 

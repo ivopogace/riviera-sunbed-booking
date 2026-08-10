@@ -5,8 +5,8 @@ package ai.riviera.platform.venue.application;
  * failures shared by {@link AddSetOutcome} and {@link ChangeOutcome}. A lost layout (a taken
  * cell, a duplicate position) is normal flow, returned as a value, not thrown
  * (riviera-java-conventions: typed outcomes). The REST adapter maps each to one HTTP status:
- * {@code NO_SUCH_VENUE}/{@code NO_SUCH_SET}→404, {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}/
- * {@code STALE_WRITE}→409.
+ * {@code NO_SUCH_VENUE}/{@code NO_SUCH_SET}/{@code NO_SUCH_ROW}→404, {@code CELL_TAKEN}/
+ * {@code DUPLICATE_POSITION}/{@code STALE_WRITE}/{@code SET_IN_USE}→409.
  */
 public enum SetRejection {
 
