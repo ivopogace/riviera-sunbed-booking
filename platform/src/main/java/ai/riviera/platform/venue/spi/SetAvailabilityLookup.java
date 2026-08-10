@@ -40,12 +40,13 @@ public interface SetAvailabilityLookup {
 
 	/**
 	 * Whether any of {@code setIds} has an availability row dated {@code from} or later — the one
-	 * availability question <strong>every</strong> layout write asks, whether it edits, removes, or
-	 * regenerates. Because {@code set_availability.set_id} is {@code ON DELETE CASCADE}, a write
-	 * that removes a held set would silently drop the hold (invariant #2), so it is refused while
-	 * this returns {@code true}. A hold whose day has already passed can neither be stranded by
-	 * moving the set nor meaningfully lost by deleting it, so it does not block.
-	 * Rationale: RESPONSIBILITIES.md §venue.
+	 * availability question asked by every layout write that <em>disturbs</em> a set: repositioning
+	 * one, removing one, or regenerating the whole map. (Adding a set and repricing a row disturb
+	 * nothing, so they never probe.) Because {@code set_availability.set_id} is
+	 * {@code ON DELETE CASCADE}, a write that removes a held set would silently drop the hold
+	 * (invariant #2), so it is refused while this returns {@code true}. A hold whose day has already
+	 * passed can neither be stranded by moving the set nor meaningfully lost by deleting it, so it
+	 * does not block. Rationale: RESPONSIBILITIES.md §venue.
 	 *
 	 * @param setIds the set positions to probe (one set, or one venue's whole map)
 	 * @param from   the first day that still counts, a {@code LocalDate} in {@code Europe/Tirane}

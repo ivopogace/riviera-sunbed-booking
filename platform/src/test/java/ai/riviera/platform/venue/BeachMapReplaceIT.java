@@ -57,8 +57,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>The replace is optimistic-locked on the venue's {@code set_version}: every replace body
  * carries the required {@code expectedVersion} the tab loaded from the map read, and a stale token is
  * rejected 409 {@code STALE_WRITE} without clobbering the current layout
- * ({@link #staleReplaceIs409StaleWrite}). The bump is acquired before the invariant-#2 lock (R-1), so the
- * concurrent-hold scenarios above still hold.
+ * ({@link #staleReplaceIs409StaleWrite}). The version is read under the venue row lock before the
+ * invariant-#2 set locks (R-1) and bumped only on the success path, so the concurrent-hold scenarios
+ * above still hold and a rejected replace leaves the token untouched.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -255,7 +256,7 @@ class BeachMapReplaceIT {
 		putLayout(venue, layout(0,
 				cell("A", 1, "STANDARD", "WALK_IN", 2000, 1, 1),
 				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1)), 204);
-		long heldSet = setIds(venue).getFirst();
+		long heldSet = setIds(venue).getLast(); // deliberately NOT the first: the probe must cover every locked set
 		jdbc.sql("""
 				INSERT INTO set_availability (set_id, booking_date, state)
 				VALUES (:s, :d, 'STAFF_MARKED')
@@ -349,7 +350,7 @@ class BeachMapReplaceIT {
 		// The seed replace bumped set_version to 1; the racing replace loads it so it passes the token gate
 		// and exercises the invariant-#2 lock path (not STALE_WRITE — the mark never touches set_version).
 		long loadedSetVersion = setVersionOf(venue);
-		LocalDate date = LocalDate.now().plusYears(2).plusDays(info.getCurrentRepetition());
+		LocalDate date = LocalDate.now(TIRANE).plusYears(2).plusDays(info.getCurrentRepetition());
 
 		CountDownLatch gate = new CountDownLatch(1);
 		Callable<Boolean> mark = () -> {

@@ -61,9 +61,9 @@ public interface EditBeachMap {
 	 * {@code set_version}) the tab loaded with the map; the write is conditional on it. Another writer
 	 * having bumped it since the load yields {@link SetRejection#STALE_WRITE} (→ 409). It bumps the
 	 * <strong>same</strong> token {@link #replaceLayout} does — so a replace and a reprice racing off the
-	 * same value cannot both win (they write overlapping columns) — and the bump precedes the reprice
-	 * {@code UPDATE}, so a rejected {@code NO_SUCH_ROW} may still bump it (safe, only makes other tabs
-	 * reload; R-2).
+	 * same value cannot both win (they write overlapping columns) — and the bump follows a successful
+	 * reprice, so a rejected {@code NO_SUCH_ROW} leaves the token untouched and the acting tab's own
+	 * retry off the same value still works.
 	 */
 	ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, long expectedVersion,
 			RowPriceCommand command);

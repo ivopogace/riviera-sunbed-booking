@@ -112,11 +112,14 @@ so refusing early is what turns a 500 into an honest 409 — nothing equivalent 
 availability arm, because `set_availability`'s CASCADE means a *past* hold is simply removed along
 with the day it describes. It is also why the replace's booking arm stays venue-wide and was **not**
 narrowed with the availability one (#602's declined option 2): loosening it would need the write to
-stop deleting booked sets, which is a redesign, not a predicate swap. No write may retroactively
-harm anyone: an edit only strands a guest who is still coming, and a delete or replace only sweeps a
-hold that has not yet been honoured — which is why neither last season's cancelled booking (caught
-at #567's own review gate) nor last season's walk-in mark (#599 per-set, #602 venue-wide) may freeze
-the map forever. What keeps the narrowed probes race-safe is not their breadth but invariant #4 and
+stop deleting booked sets, which is a redesign, not a predicate swap. Two different reliefs follow,
+and they are not the same size. **On the availability arm the relief is total:** no write blocks on a
+hold that has been honoured, so last season's walk-in mark freezes nothing — per-set since #599,
+venue-wide since #602. **On the booking arm only the edit is relieved:** last season's *cancelled*
+booking stopped freezing a set's position and pool (#567's own review gate), but it still bars that
+set's deletion and its venue's whole-map regenerate permanently, because the RESTRICT FK leaves no
+choice. A venue with one ancient cancelled booking answering `LAYOUT_IN_USE` forever is therefore
+**by design**, not a regression. What keeps the narrowed probes race-safe is not their breadth but invariant #4 and
 the staff mark's `DATE_IN_PAST` refusal: **no write path can create a hold behind the cutoff**, so
 the range they stopped asking about is one nothing can still be written into.
 Which statuses are live is `booking`'s call via `BookingStatus#isTerminal`, reached
