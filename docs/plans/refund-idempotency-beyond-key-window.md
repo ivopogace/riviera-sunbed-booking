@@ -247,12 +247,11 @@ No published surface changes: `RefundResult` keeps its two variants, no `spi/` i
 
 ## Execution status
 
-**Stage pointer:** `review gate — run, 13 findings resolved; blocked before PR/CI/Sonar`
+**Stage pointer:** `CI + Sonar gates — PR #591 open, checks running`
 
-**Next action:** Open the draft PR — **blocked pending the user's explicit go-ahead** (standing
-session instruction: no PR unless asked). Until one exists this branch gets **no CI at all** (CI fires
-on the `pull_request` event only) and the **Sonar gate cannot run** (Sonar analyzes PRs and `main`
-only). Everything else is done: the review gate ran and its findings are resolved.
+**Next action:** Wait for CI to complete on PR #591, then pull SonarCloud's actual new-issue +
+duplication list (a green gate conclusion is necessary, not sufficient) and clear every entry.
+Only then tick the two gate boxes below and merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -401,7 +400,7 @@ Claim sweep — the sites that named the idempotency key as a **sufficient** rea
 - [x] **AC-1…AC-10:** `gradle --no-daemon --console=plain test --tests "*StripePaymentGatewayTest*"` → BUILD SUCCESSFUL (21 tests). Verified after the review-fix commit.
 - [x] **Regression:** `--tests "*StripeConfigTest*" --tests "*RefundServiceTest*" --tests "*RefundFailureMetricTest*" --tests "*RefundExecutorPropertiesTest*" --tests "*RefundExecutorConfigTest*" --tests "*RefundOutboxScopeTest*" --tests "*StubPaymentGatewayTest*" --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*JdbcOnlyArchitectureTests*"` → BUILD SUCCESSFUL.
 - [x] **Repo hygiene:** both diff-scoped guards clean (`check-inline-comments.mjs`, `check-plan-file-structure.mjs`, exit 0).
-- [ ] **Full suite:** CI green — **not run.** CI fires on the `pull_request` event only and no PR exists yet, so the full-suite-only failure class (shared-state beans accumulating across tests) is unproven for this branch.
+- [ ] **Full suite:** CI on PR #591 — **running.** This is the half scoped runs cannot prove (the full-suite-only failure class: shared-state beans accumulating across tests).
 
 ## Self-review checklist (before merge / PR)
 
@@ -420,6 +419,6 @@ Claim sweep — the sites that named the idempotency key as a **sufficient** rea
 - [x] **Frontend** — `N/A`.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (F-13 was exactly this box being false).
 - [x] Risk register has no stale `open` rows (R-1…R-8 all closed); Open Questions empty.
-- [ ] **Close-out written in THIS PR** — citing `merged via PR #NN`. **Cannot be completed yet:** no PR exists (see the stage pointer); the PR number is the one field still to fill.
+- [x] **Close-out written in THIS PR** — **merged via PR #591**; no docs-only follow-up needed.
 - [x] **The review gate ran in full** — `/code-review` over `origin/main...HEAD` (subagent fan-out) *plus* `riviera-review-overlay`, not the overlay alone. 13 findings, all resolved in the register above.
-- [ ] **Sonar gate** — **not run.** SonarCloud analyzes PRs and `main` only, so with no PR there is no new-code issue list to clear.
+- [ ] **Sonar gate** — **not yet run.** SonarCloud analyzes the PR only after backend + frontend pass; the gate needs its reported new-issue + duplication list cleared, not just a green conclusion.
