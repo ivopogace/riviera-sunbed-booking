@@ -107,6 +107,10 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
 - **Assumption (FE claimed-venue UX):** the editor lets the operator paint/generate freely and surfaces the
   server's `LAYOUT_IN_USE` as a clear "layout locked — this venue has bookings or walk-in holds" message after
   the PUT; no client-side pre-check (no endpoint exists for it). — *Owner:* agent · *Resolves by:* phase 5.
+  **Superseded by #600:** the message this slice shipped went on to say "layout changes are not possible
+  while sets are in use", which stopped being true when #567 gave the per-set endpoints their guards. The
+  tab is no longer bulk-only — it carries a mode toggle, and a live venue's map is edited one set at a
+  time (`docs/plans/per-set-beach-map-editing.md`). The no-client-side-pre-check half still holds.
 
 ### Resolved
 
