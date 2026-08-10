@@ -201,6 +201,12 @@ clean; `ng build` succeeds; `node scripts/check-plan-file-structure.mjs --diff o
 `set-editor.spec.ts`, `admin-venue-photos.spec.ts` and `admin-operators.spec.ts` are **unmodified**
 by this slice — that is the behavior-parity evidence for AC-5, not an assertion of it.
 
+**Integration with `main` (`55faf51`):** merged `7b2edca` — #602 (a venue whose holds are all
+history may regenerate its map) and #607/#608 (narrowed layout-lock copy). Both land on
+`layout-editor` and `set-editor`, the two files this slice also rewrites, so the merge was the risky
+one; it resolved cleanly and **the whole suite was re-run after it**, not just the conflicted files:
+unit `1329 passed`, mocked e2e `165 passed`, lint clean.
+
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix
