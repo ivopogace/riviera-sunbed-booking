@@ -46,8 +46,17 @@ public interface Venues {
 	 */
 	void incrementSetVersion(VenueId venueId);
 
-	/** Whether the set with this id belongs to the venue. */
-	boolean setExists(VenueId venueId, SetId setId);
+	/**
+	 * Lock one set row and read its current {@link SetPlacement} — {@code SELECT … WHERE id = :setId
+	 * AND venue_id = :venue FOR UPDATE} — or empty when no such set belongs to the venue. The
+	 * per-set counterpart of {@link #lockSetsOfVenue}: the {@code FOR UPDATE} is the invariant-#2
+	 * guard for {@code editSet}/{@code removeSet}, because a concurrent {@code set_availability} or
+	 * {@code booking} insert needs {@code FOR KEY SHARE} on this row for its FK check and therefore
+	 * blocks until the edit commits — closing the window in which a claim committed after the claim
+	 * probe would be CASCADE-swept by the delete or stranded by a pool flip. Empty doubles as the
+	 * existence check, so the caller needs no separate probe.
+	 */
+	Optional<SetPlacement> lockSet(VenueId venueId, SetId setId);
 
 	/**
 	 * The layout conflict the command would cause on the venue, if any. {@code exclude} is the

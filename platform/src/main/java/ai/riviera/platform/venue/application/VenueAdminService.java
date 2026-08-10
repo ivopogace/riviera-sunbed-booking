@@ -122,8 +122,13 @@ class VenueAdminService
 		if (!venues.venueExists(venueId)) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 		}
-		if (!venues.setExists(venueId, setId)) {
+		// Lock BEFORE the claim probe: a claim racing in behind the probe would otherwise be lost.
+		Optional<SetPlacement> placement = venues.lockSet(venueId, setId);
+		if (placement.isEmpty()) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
+		}
+		if (placement.get().disturbedBy(command) && isClaimed(setId)) {
+			return new ChangeOutcome.Rejected(SetRejection.SET_IN_USE);
 		}
 		Optional<Venues.Conflict> conflict = venues.findConflict(venueId, command, Optional.of(setId));
 		if (conflict.isPresent()) {
@@ -144,12 +149,26 @@ class VenueAdminService
 		if (!venues.venueExists(venueId)) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 		}
-		// The DELETE's rows-affected is the existence check: 0 ⇒ no such set (also covers a
-		// concurrent delete), 1 ⇒ removed. No separate pre-check needed.
-		int deleted = venues.deleteSet(venueId, setId);
-		return deleted == 0
-				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET)
-				: ChangeOutcome.Applied.APPLIED;
+		// Lock BEFORE the claim probe: a claim racing in behind the probe would otherwise be lost.
+		if (venues.lockSet(venueId, setId).isEmpty()) {
+			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
+		}
+		if (isClaimed(setId)) {
+			return new ChangeOutcome.Rejected(SetRejection.SET_IN_USE);
+		}
+		venues.deleteSet(venueId, setId);
+		return ChangeOutcome.Applied.APPLIED;
+	}
+
+	/**
+	 * Whether anything depends on this set staying where it is: an availability hold on any date
+	 * (which a delete would silently CASCADE away) or a booking of any status (which the RESTRICT
+	 * FK pins, and whose guest was told this exact spot). Deliberately as conservative as the bulk
+	 * replace's venue-wide probe, only narrowed to the one set — so the two layout paths answer
+	 * "is this claimed?" the same way. Callers must already hold the row lock.
+	 */
+	private boolean isClaimed(SetId setId) {
+		return availability.anyClaims(List.of(setId)) || bookings.hasBookings(setId);
 	}
 
 	@Override

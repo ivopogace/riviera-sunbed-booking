@@ -264,10 +264,15 @@ money fact is that `repriceRow` must keep working during bookings, which R-2 pro
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Push phase 0 and open the draft PR (CI fires on the `pull_request` event
-only), then guard `removeSet`.
+**Next action:** Close the check-then-claim race — rename `SetBookingFacts#poolOf` to
+`poolForClaim` and read the pool under `FOR KEY SHARE`.
+
+> **Phases 1 and 2 landed in one commit.** Phase 2's guard is what makes the `editSet` half of
+> `VenueAdminControllerIT` pass, and the ITs cannot run locally (R-8), so splitting them would
+> have pushed a knowingly-red test that no local run could have caught. Both guards share one
+> `isClaimed` helper and one `SET_IN_USE` reason, so the diff is one thought.
 
 > **Local verification is unit-level only this session (R-8).** Docker Hub rate-limited the
 > `postgres:17` pull, so the daemon was stopped and every `*IT` **skips**. Read each push's CI
@@ -276,9 +281,9 @@ only), then guard `removeSet`.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Set-scoped claim probe (`BookingPresence#hasBookings(SetId)`) | ✅ | `beb6892` |
-| 1 — Guard `removeSet` under a row lock (`SET_IN_USE`) | ⏳ | |
-| 2 — Guard `editSet` field-sensitively (`SetPlacement`) | | |
-| 3 — Close the claim race (`poolForClaim`, `FOR KEY SHARE`) | | |
+| 1 — Guard `removeSet` under a row lock (`SET_IN_USE`) | ✅ | `e488dd0` |
+| 2 — Guard `editSet` field-sensitively (`SetPlacement`) | ✅ | `e488dd0` |
+| 3 — Close the claim race (`poolForClaim`, `FOR KEY SHARE`) | ⏳ | |
 | 4 — Concurrency ITs + docs (RESPONSIBILITIES, close-out) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

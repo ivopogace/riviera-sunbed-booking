@@ -24,6 +24,13 @@ public enum SetRejection {
 	 * it). Maps to 409 {@code STALE_WRITE}.
 	 */
 	STALE_WRITE,
+	/**
+	 * The set has a claim — an availability hold (any date) or a booking (any status) — so it may
+	 * not be removed, nor repositioned or moved between pools (invariants #2/#3). The per-set
+	 * counterpart of {@code ReplaceRejection.LAYOUT_IN_USE}, scoped to the one set rather than the
+	 * whole venue. Price and tier edits are unaffected. Maps to 409 {@code SET_IN_USE}.
+	 */
+	SET_IN_USE,
 	/** Another set already occupies the target {@code (grid_x, grid_y)} cell (invariant #12). */
 	CELL_TAKEN,
 	/** Another set already occupies the target {@code (row_label, position_no)} slot. */

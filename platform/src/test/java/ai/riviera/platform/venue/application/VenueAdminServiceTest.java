@@ -138,11 +138,119 @@ class VenueAdminServiceTest {
 	void removeUnknownSetIsRejected() {
 		venues.venues.add(VENUE.value());
 
-		// removeSet relies on the DELETE's rows-affected (0 ⇒ no such set), so it attempts the
-		// delete and maps the 0-row result to NO_SUCH_SET — no separate existence pre-check.
+		// The locking read is the existence check now: no row to lock ⇒ NO_SUCH_SET, nothing deleted.
 		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
 
 		assertEquals(SetRejection.NO_SUCH_SET, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedSets);
+	}
+
+	@Test
+	void editSetIsRefusedWhenAClaimedSetWouldBeRepositioned() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		availability.claimed = true;
+
+		SetCommand repooled = new SetCommand("Row A", 1, "PREMIUM", "WALK_IN", 4500, "EUR", 2, 1);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, repooled);
+
+		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.updatedSets, "the claimed set must keep the pool its booking assumes");
+	}
+
+	@Test
+	void editSetIsRefusedWhenABookedSetWouldBeMovedToAnotherCell() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		bookings.setHasBookings = true;
+
+		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", "ONLINE", 4500, "EUR", 9, 3);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
+
+		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.updatedSets, "a guest was told this row and number");
+	}
+
+	@Test
+	void editSetAppliesAPriceOnlyChangeToAClaimedSet() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		availability.claimed = true;
+		bookings.setHasBookings = true;
+
+		// Same pool, same row, same position, same cell — only tier and price move.
+		SetCommand repriced = new SetCommand("Row A", 1, "STANDARD", "ONLINE", 9900, "EUR", 2, 1);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, repriced);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
+				"a booking's charge is snapshotted at reserve time, so repricing is harmless");
+		assertEquals(1, venues.updatedSets);
+	}
+
+	@Test
+	void editSetAppliesEveryChangeToAnUnclaimedSet() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+
+		SetCommand moved = new SetCommand("Row C", 7, "STANDARD", "WALK_IN", 100, "EUR", 5, 5);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
+		assertEquals(1, venues.updatedSets);
+	}
+
+	@Test
+	void removeSetIsRefusedWhenTheSetIsHeld() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		availability.claimed = true;
+
+		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+
+		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedSets,
+				"the hold would be CASCADE-dropped by the delete, so nothing may be deleted");
+	}
+
+	@Test
+	void removeSetIsRefusedWhenTheSetHasAnyBooking() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		bookings.setHasBookings = true;
+
+		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+
+		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedSets,
+				"the RESTRICT FK would raise instead, which the caller sees as a 500");
+	}
+
+	@Test
+	void removeSetAsksTheSetScopedBookingQuestionNotTheVenueScopedOne() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		bookings.hasBookings = true; // a booking elsewhere on the venue
+
+		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
+				"a booking on a neighbouring set must not freeze this one");
+		assertEquals(1, venues.deletedSets);
+	}
+
+	@Test
+	void removeSetLocksTheSetRowBeforeProbingForClaims() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+
+		service.removeSet(OWNER, VENUE, SET);
+
+		assertEquals(1, venues.lockedSets,
+				"without the row lock a claim committing after the probe is silently cascaded away");
 	}
 
 	@Test
@@ -557,11 +665,17 @@ class VenueAdminServiceTest {
 			incrementedSetVersions++;
 		}
 
+		int lockedSets;
+		// The placement the locked row reports; the per-set guard compares the command against it.
+		SetPlacement storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+
 		@Override
-		public boolean setExists(VenueId venueId, SetId setId) {
-			return forceSetExists != null
+		public Optional<SetPlacement> lockSet(VenueId venueId, SetId setId) {
+			lockedSets++;
+			boolean present = forceSetExists != null
 					? forceSetExists
 					: venueId.value() == sets.getOrDefault(setId.value(), -1L);
+			return present ? Optional.of(storedPlacement) : Optional.empty();
 		}
 
 		@Override
