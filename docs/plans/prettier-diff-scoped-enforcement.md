@@ -171,18 +171,18 @@ added (hence no e2e spec, and no `playwright-cli` row in the routing gate).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`.
+**Stage pointer:** `implement (phase 4)`.
 
-**Next action:** Phase 3 — the CI step inside `Frontend (lint + test + build)`, the two npm scripts,
-and `frontend/.prettierignore`.
+**Next action:** Phase 4 — the `riviera-docs-freshness` counting sweep, RV-STYLE-2, and the
+option-1 decision recorded on issue #615.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Shared git/diff helpers | ✅ | `133394a` |
 | 1 — Detector core | ✅ | `75e64d7` |
-| 2 — Prettier front-end, CLI, `--fix` | ✅ | this commit |
-| 3 — CI wiring, npm scripts, `.prettierignore` | ⏳ | |
-| 4 — Docs sweep + close-out | | |
+| 2 — Prettier front-end, CLI, `--fix` | ✅ | `00d8576` |
+| 3 — CI wiring, npm scripts, `.prettierignore` | ✅ | this commit |
+| 4 — Docs sweep + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

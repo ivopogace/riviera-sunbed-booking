@@ -73,6 +73,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # The formatting guard below diffs against the PR's base commit, which a depth-1 clone
+          # does not contain — the same reason the repo-hygiene job fetches the full history.
+          fetch-depth: 0
 
       - name: Set up Node (from .nvmrc)
         uses: actions/setup-node@v7
@@ -89,6 +93,22 @@ jobs:
 
       - name: Lint (hard gate)
         run: npm run lint
+
+      - name: Format (diff-scoped Prettier, hard gate)
+        # Judges the lines the diff WROTE, never the files it touched: 200 of this tree's files are
+        # prettier-dirty, so a file-scoped check would demand an unrelated whole-file reformat on
+        # most pull requests — the trade PR #612's review refused, and the reason #615 exists.
+        #
+        # It lives here rather than in `Repo hygiene (diff-scoped)`, where it belongs by kind, for
+        # two mechanical reasons: that job installs nothing and this guard needs the pinned Prettier
+        # from frontend/node_modules, and a NEW job would report without blocking until a maintainer
+        # added it to the ruleset (#534). This job is already a required context.
+        #
+        # Runs even when Lint failed, so one push surfaces both style gates rather than trickling
+        # them over two round trips. Pull requests only, like the other diff-scoped guards: the rule
+        # governs what a diff writes, and a push to `main` has no base that means anything here.
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        run: node ../scripts/check-prettier-format.mjs --diff ${{ github.event.pull_request.base.sha }}
 
       - name: Test (Vitest, once, with coverage)
         run: npm run test:coverage

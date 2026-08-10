@@ -1,0 +1,11 @@
+# What `prettier --write .` must not touch. The diff-scoped CI guard never reaches these anyway —
+# they are gitignored, so no diff can contain them — but `npm run format` walks the working tree,
+# where a built `dist/` or an `.angular/` cache is present and would take minutes to rewrite.
+dist/
+coverage/
+.angular/
+test-results/
+playwright-report/
+
+# npm owns this file's shape; reformatting it only makes the next `npm ci` rewrite it back.
+package-lock.json
