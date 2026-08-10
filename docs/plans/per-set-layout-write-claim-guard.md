@@ -146,7 +146,7 @@ in for `bugfix/per-set-layout-write-claim-guard` (`riviera-sdlc` § Remote/cloud
 | R-6 | Per-venue authorization regressed while reordering the guards (invariant #13, BOLA) | low | high | `ownership.assertOwns` stays the **first** statement of both methods, before `venueExists` and before any lock; `CrossVenueDenialIT` pins it | agent | closed — `assertOwns` is still statement one in both methods |
 | R-7 | Flyway version collision | none | — | **no migration in this slice**; the set-scoped booking probe rides `booking_set_date_idx` (V5). Open PRs at plan time were Dependabot-only, no `db/migration` diff | agent | closed — N/A |
 | R-9 | A staff tap-to-mark racing a `removeSet` on an **unclaimed** set surfaces as a `500`: the mark's `setBookingInfo` read is unlocked, so its `set_availability` insert blocks on the delete's `FOR UPDATE` and then fails the FK against a set that is gone | low | low | **Accepted — and the review corrected my first wording of this row, which claimed "not a regression".** It *is* a widening: the delete used to take the row lock only for the DELETE statement itself, whereas it is now held across the claim probes too, so that interleaving goes from unlikely to near-certain once it starts. What stays true is the severity: it fails closed (the DB refuses; no phantom hold is written), only the status code is imprecise, and the guard removes the far worse case — a set carrying a hold is now refused outright rather than cascading it away. The fix would be to lock in `setBookingInfo`, which also serves the my-bookings list and mail-facts reads, where row locks on a list read are a worse hazard than the race (Generalization-audit log, Phase 3) | agent | accepted, wording corrected at the review gate |
-| R-8 | **The Testcontainers ITs cannot run in this session**, so AC-1/AC-2 (HTTP) and AC-6/AC-7 (the two races) get no local green — a guard could ship unverified | high (certain) | high | Docker Hub returned `toomanyrequests` on `postgres:17`, so the daemon was stopped by pidfile per `docs/agents/docker-testcontainers.md` and the ITs now **skip cleanly** rather than fail for an environmental reason. Local verification is therefore unit-level only; **CI owns every IT in this slice**, and no phase may be declared green until its PR CI run is read (`riviera-sdlc` CI-gate rule). Every guard also has a unit-level twin in `VenueAdminServiceTest`, so the ITs are the concurrency proof, not the only proof of the policy | agent | open |
+| R-8 | **The Testcontainers ITs cannot run in this session**, so AC-1/AC-2 (HTTP) and AC-6/AC-7 (the two races) get no local green — a guard could ship unverified | high (certain) | high | Docker Hub returned `toomanyrequests` on `postgres:17`, so the daemon was stopped by pidfile per `docs/agents/docker-testcontainers.md` and the ITs now **skip cleanly** rather than fail for an environmental reason. Local verification is therefore unit-level only; **CI owns every IT in this slice**, and no phase may be declared green until its PR CI run is read (`riviera-sdlc` CI-gate rule). Every guard also has a unit-level twin in `VenueAdminServiceTest`, so the ITs are the concurrency proof, not the only proof of the policy | agent | **closed — CI ran them.** Evidence is per-file, not the build's green tick: Sonar reports 100% new-code coverage on `JdbcVenues`, `JdbcBookingPresence`, `JdbcAvailabilityClaim` and `JdbcVenueCatalog`, whose new methods are reachable **only** from Testcontainers ITs. A skipped-IT run would have left every one of them at 0% |
 
 ## Open questions / Assumptions
 
@@ -281,13 +281,13 @@ money fact is that `repriceRow` must keep working during bookings, which R-2 pro
 
 ## Execution status
 
-**Stage pointer:** `merge close-out written (PR #597) — blocked on the CI backend job`
+**Stage pointer:** `all gates green — awaiting merge authorization`
 
-**Next action:** Read PR #597's **Backend (build + test)** run and confirm the Testcontainers ITs
-reported `skipped=0` — that is the only outstanding verification (R-8), because nothing in this
-slice's IT coverage could run locally. Then re-pull the Sonar issue list against the final head and
-merge. After the merge only GitHub-only items remain: confirm #567 closed; #598/#599 already carry
-the deferred findings.
+**Next action:** Merge PR #597 once authorized. Every gate is green and evidenced: CI (all six
+checks), the review gate (two high-effort rounds, 26 findings, 24 fixed / 2 rejected with rationale
+/ 2 deferred), and Sonar (0 issues, 0 duplicated blocks, 0 hotspots, new-code coverage ≥ 80% —
+pulled from the API, not read off the badge). After the merge only GitHub-only items remain:
+confirm #567 closed; #598/#599 already carry the deferred findings.
 
 > **Phases 1 and 2 landed in one commit.** Phase 2's guard is what makes the `editSet` half of
 > `VenueAdminControllerIT` pass, and the ITs cannot run locally (R-8), so splitting them would
@@ -309,6 +309,7 @@ the deferred findings.
 | 5 — Review-gate fix round (F-2..F-12) | ✅ | `810e1cc` |
 
 | 6 — Re-review fix round (G-1..G-14) + follow-ups #598/#599 | ✅ | `f3afcbd` |
+| 7 — Sonar-gate coverage gap on `anyClaimsFrom` | ✅ | `07afaa7` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -353,6 +354,10 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — AC-1..AC-5 unit level
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java` — AC-1/AC-2 at HTTP
 - `platform/src/test/java/ai/riviera/platform/venue/SetWriteVsClaimConcurrencyIT.java` — new; AC-6/AC-7
+- `platform/src/test/java/ai/riviera/platform/availability/AvailabilityLookupIT.java` — the new date-scoped probe's boundary + empty-input contract
+- `platform/src/main/java/ai/riviera/platform/venue/spi/SetAvailabilityLookup.java` — `anyClaimsFrom`
+- `platform/src/main/java/ai/riviera/platform/availability/adapter/out/JdbcSetAvailabilityLookup.java` — its SQL
+- `platform/src/main/java/ai/riviera/platform/booking/domain/BookingStatus.java` — `canStillBeHonoured`
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — stub follows the port rename
 - `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — `FakeCatalog` follows the port rename
 - `RESPONSIBILITIES.md` — `venue` § the per-set guard + the locking-read contract
@@ -531,3 +536,22 @@ If any box is unchecked, the feature is not done. Record the gap in Open Questio
 | G-12 | review (round 2) | The amendment this PR writes into O3's plan doc stated the pre-narrowing policy — I wrote it before F-2 changed it | fixed-in-`91f2e0d` |
 | G-13 | review (round 2) | `ZoneId.of("Europe/Tirane")` is copy-pasted a fourth time instead of living in the Shared Kernel | **rejected, with rationale** — `CLAUDE.md`'s `shared` admission bar is explicit that entry rests on **ownership, never reuse**, and that it "is not a home for code used in more than one place". A zone constant is the reuse case the bar names, so admitting it would be the precedent that grows the kernel the note warns against. Worth revisiting only as a deliberate "the platform owns its civil timezone" decision, which is not this slice |
 | G-14 | CI guard (repo hygiene) | The inline-comment guard flagged a two-line comment at `VenueAdminServiceTest:728` that the branch diff does not add — a line-number drift artifact after 247 inserted lines | fixed-in-`91f2e0d` — collapsed to one line rather than shipping a red gate; the comment is better short anyway |
+
+### Sonar gate (pulled from the API, not the badge)
+
+Read against the final head, after confirming an analysis actually exists (`new_lines: 291`), so a
+zero cannot be the unanalyzed-PR false clean:
+
+| Metric | Value |
+|---|---|
+| Issues (`resolved=false`) | **0** |
+| Security hotspots | 0 |
+| `new_bugs` / `new_vulnerabilities` / `new_code_smells` | 0 / 0 / 0 |
+| `new_duplicated_blocks` / density | 0 / 0.0% |
+| `new_coverage` | 97.8% over 291 new lines |
+
+The one uncovered new line was `JdbcSetAvailabilityLookup#anyClaimsFrom`'s empty-input short
+circuit — under the gate's threshold, so it did not block, but it was a contract this slice
+*documented* ("an empty input yields false without touching the database") and did not test.
+Covered in phase 7 along with the cutoff's inclusive boundary, per the gate's "a coverage gap on
+new code → add the missing tests" rule.
