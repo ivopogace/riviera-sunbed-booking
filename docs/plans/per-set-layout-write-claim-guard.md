@@ -121,7 +121,7 @@ in for `bugfix/per-set-layout-write-claim-guard` (`riviera-sdlc` § Remote/cloud
 | Old-surface behavior | Verdict (preserved / changed / dropped) | How the new surface does it, or why it's gone |
 |---|---|---|
 | `removeSet` on an unclaimed set → `204` | preserved | guard is a no-op when `anyClaims` and `hasBookings` are both false |
-| `removeSet` on a set with a staff hold → `204`, hold silently CASCADE-dropped | **changed** → `409 SET_IN_USE`, hold kept | the bug (invariant #2); AC-1 |
+| `removeSet` on a set with a staff hold → `204`, hold silently CASCADE-dropped | **changed** → `409 SET_IN_USE`, hold kept | the bug (invariant #2); AC-1. **Superseded by #599** for a hold whose day has already passed: that case is `204` again, deliberately — the CASCADE then removes a row describing a day that is gone, and refusing it froze the delete permanently |
 | `removeSet` on a set with any booking → `500` (FK RESTRICT) | **changed** → `409 SET_IN_USE` | the guard pre-empts the FK violation; AC-2 |
 | `removeSet` on an unknown set → `404 NO_SUCH_SET` | preserved | `lockSet` returning empty replaces the DELETE's rows-affected as the existence check |
 | `editSet` on an unclaimed set, any fields → `204` | preserved | guard only fires when the set is claimed; AC-5 |
@@ -164,11 +164,17 @@ in for `bugfix/per-set-layout-write-claim-guard` (`riviera-sdlc` § Remote/cloud
   the *claim definition* was a second axis this answer did not settle, and the review showed the
   any-status/any-date reading froze a set's position permanently after its first-ever booking. The
   user's follow-up call: `editSet` asks the **live** question (hold dated today or later, booking in
-  a non-terminal status); `removeSet` keeps the any-claim question the FK forces. See F-2.
+  a non-terminal status); `removeSet` keeps the any-claim question the FK forces. See F-2. — **And
+  amended again by #599:** the FK forces only the *booking* arm, so `removeSet`'s availability arm
+  joined `editSet`'s live question; the delete's asymmetry is now the booking arm alone.
 - **Assumption:** "claimed" means any `set_availability` row on **any** date or any `booking`
   row of **any** status, matching `replaceLayout`'s existing stance. → **Held for `removeSet`,
-  overturned for `editSet` at the review gate (F-2).** The delete keeps the any-claim reading
-  because the RESTRICT FK and the CASCADE make history genuinely load-bearing. The edit does not:
+  overturned for `editSet` at the review gate (F-2)** — and then **half-overturned for `removeSet`
+  too, by #599**: the FK argument carried the *booking* arm, which stands, but nothing forced the
+  *availability* arm, and it left the same permanent freeze on any walk-in-only set. Both per-set
+  writes now ask `anyClaimsFrom(today)`; only the booking arm still differs.
+  The delete kept the any-claim reading here
+  because the RESTRICT FK and the CASCADE were read as making history load-bearing. The edit does not:
   nothing physical forces it, and the reading froze a set's position permanently after its
   first-ever booking. `editSet` now asks the live question. This assumption is exactly the kind the
   grill gate is supposed to catch and did not — it was recorded as confirmed because both ports
@@ -524,7 +530,7 @@ If any box is unchecked, the feature is not done. Record the gap in Open Questio
 |---|---|---|---|
 | G-1 | review (round 2) | AC-7 claims "never a raised `DataIntegrityViolationException`", but only the **online claim** path was fixed; the staff tap-to-mark writer still reads the set unlocked and still 500s when `removeSet` wins | **AC wording corrected + deferred to a follow-up issue.** The fix needs a locking variant of `setBookingInfo`, which also serves the my-bookings list and mail-facts reads — out of this slice's scope and a worse hazard done carelessly. R-9 already records the residual. **Follow-up: #598** |
 | G-2 | review (round 2) | `SetWriteVsClaimConcurrencyIT.DAY` was a hard-coded `2027-09-12`: once real time passed it, the edit guard's date-scoped probe would stop seeing the hold and the AC-6 test would let both sides win | fixed-in-`91f2e0d` — `LocalDate.now(Europe/Tirane).plusDays(30)`, the form the sibling HTTP test already used |
-| G-3 | review (round 2) | `removeSet`'s availability arm keeps the any-**date** question, so a single historical staff hold freezes a set's deletion permanently — the same freeze F-2 removed from `editSet`, and no FK forces it on the availability side | **deferred to a follow-up issue, deliberately not fixed here.** The user was asked precisely this scope question at the review gate and chose "only live claims block — for `editSet`", explicitly declining the option that also narrowed `removeSet`. Re-deciding it inside the fix round would overturn a decision made one turn earlier. **Follow-up: #599** |
+| G-3 | review (round 2) | `removeSet`'s availability arm keeps the any-**date** question, so a single historical staff hold freezes a set's deletion permanently — the same freeze F-2 removed from `editSet`, and no FK forces it on the availability side | **deferred to a follow-up issue, deliberately not fixed here.** The user was asked precisely this scope question at the review gate and chose "only live claims block — for `editSet`", explicitly declining the option that also narrowed `removeSet`. Re-deciding it inside the fix round would overturn a decision made one turn earlier. **Follow-up: #599 — since settled the other way and shipped: the availability arm now asks `anyClaimsFrom(today)`** |
 | G-4 | review (round 2) | `@AfterAll` asserted over static state accumulated by **both** `@RepeatedTest` methods, so a scoped single-method run — the discipline this repo prescribes — failed spuriously | fixed-in-`91f2e0d` — each method asserts its own tally at its own last repetition |
 | G-5 | review (round 2) | The fixed clock (09:00 UTC) made the invariant-#6 assertion untestable: the UTC and Tirane civil dates coincide, so dropping the zone conversion would still pass | fixed-in-`91f2e0d` — clock moved to 22:30Z, where Tirane is already the next day |
 | G-6 | review (round 2) | `editSet`'s lock-before-probe ordering was unpinned (only `removeSet`'s was), so moving the probe above the lock would reopen the invariant-#2 window with a green suite | fixed-in-`91f2e0d` — `anyClaimsFrom` joins the shared `callLog`; the edit test asserts `[lockSet, anyClaimsFrom]` |

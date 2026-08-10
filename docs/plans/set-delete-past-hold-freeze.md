@@ -35,8 +35,11 @@ method, so the `venue → availability` inversion is untouched) · `riviera-java
 shared live-hold arm extracted as one private predicate rather than duplicating the
 `LocalDate.now(clock.withZone(TIRANE))` expression; Javadoc §6d — contract not archaeology) ·
 `riviera-review-overlay` (review gate — see Execution status) · `riviera-local-debug` (scoped test
-runs; Testcontainers ITs skip cleanly without a docker daemon) · `riviera-docs-freshness` (see
-Execution status). `postgres` **not** loaded — no migration, no schema, no new query. `angular-*`
+runs; Docker was available, so the ITs ran for real rather than skipping) · `riviera-docs-freshness`
+(**ran** over `origin/main...HEAD`, **2 findings, both patched**: `RESPONSIBILITIES.md` §`venue`'s
+two-axis asymmetry paragraph, and — the sweep's own catch, in a file the diff never touched —
+`SetRejection.SET_IN_USE`'s Javadoc, which stated "a *remove* is refused by any hold on any date").
+`postgres` **not** loaded — no migration, no schema, no new query. `angular-*`
 / `playwright-cli` **not** loaded — no user-facing frontend surface changes (see FE↔BE contract).
 
 **Branch:** `claude/sdlc-599-y8iulw` — the cloud session's designated remote branch **stands in for**
@@ -46,29 +49,29 @@ Execution status). `postgres` **not** loaded — no migration, no schema, no new
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a set whose only `set_availability` rows are dated **before today** in
+- [x] **AC-1:** Given a set whose only `set_availability` rows are dated **before today** in
       `Europe/Tirane`, and which carries no booking, when the owner calls
       `EditBeachMap.removeSet`, then the outcome is `ChangeOutcome.Applied` and the set is deleted
       (its historical rows going with it via CASCADE).
       *Pinned by:* `VenueAdminServiceTest.removeSetIsAllowedWhenTheOnlyHoldIsPast` +
       `VenueAdminControllerIT.removeSetDropsAPastStaffHoldWithTheSet`
-- [ ] **AC-2:** Given a set carrying a hold dated **today or later**, when the owner calls
+- [x] **AC-2:** Given a set carrying a hold dated **today or later**, when the owner calls
       `removeSet`, then the outcome is `Rejected(SET_IN_USE)` and **neither** the set **nor** the
       hold is deleted (invariant #2 — no silent cascade of a live hold).
       *Pinned by:* `VenueAdminServiceTest.removeSetIsRefusedWhenTheSetIsHeld` +
       `VenueAdminControllerIT.removeSetKeepsAStaffHoldAndAnswers409` (a **today**-dated hold, the
       inclusive boundary)
-- [ ] **AC-3:** Given a set carrying a booking of any status including a terminal one, and **no**
+- [x] **AC-3:** Given a set carrying a booking of any status including a terminal one, and **no**
       live hold, when the owner calls `removeSet`, then the outcome is still
       `Rejected(SET_IN_USE)` — the booking arm is untouched, so the RESTRICT FK's 500 stays
       pre-empted.
       *Pinned by:* `VenueAdminServiceTest.removeSetIsRefusedWhenTheSetHasAnyBooking` +
       `VenueAdminControllerIT.removeSetOnABookedSetAnswers409NotAServerError`
-- [ ] **AC-4:** Given the delete guard runs, when it probes availability, then it asks
+- [x] **AC-4:** Given the delete guard runs, when it probes availability, then it asks
       `anyClaimsFrom` about **that set alone**, with **today in `Europe/Tirane`** (invariant #6),
       and only **after** taking the set row's lock (invariant #2).
       *Pinned by:* `VenueAdminServiceTest.removeSetAsksTheLiveHoldQuestionAboutTheSetAloneAndAfterTakingTheLock`
-- [ ] **AC-5:** Given an online claim for a future date racing a `removeSet` on the same set, when
+- [x] **AC-5:** Given an online claim for a future date racing a `removeSet` on the same set, when
       both run concurrently, then exactly one wins — unchanged by this slice.
       *Pinned by:* the existing `SetWriteVsClaimConcurrencyIT.claimAndRemoveCannotBothWin`
 
@@ -77,7 +80,7 @@ Execution status). `postgres` **not** loaded — no migration, no schema, no new
 - **Narrowing `replaceLayout`'s venue-wide `anyClaims` probe.** The same permanent-freeze shape
   exists there for a walk-in-only venue; it is dominated by that write's own `hasBookings(venueId)`
   arm for every venue that has ever sold online. Recorded in the Generalization-audit log and
-  deferred to a follow-up issue rather than widened into this slice — the maintainer's decision was
+  deferred to **#602** rather than widened into this slice — the maintainer's decision was
   taken on a set-scoped delete, and the bulk regenerate is a different write with its own stance.
 - **Preserving past occupancy history** anywhere (a snapshot table, a soft-delete/decommission flag).
   Settled: not load-bearing — see Resolved, below.
@@ -104,22 +107,25 @@ Execution status). `postgres` **not** loaded — no migration, no schema, no new
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A hold dated **today** stops blocking (off-by-one on the boundary), so a walk-in marked this morning is cascaded away mid-service-day — a live invariant-#2 breach | low | high | `anyClaimsFrom` is `booking_date >= :from` (inclusive), and the cutoff is `today`, not `today+1`; the boundary is pinned end-to-end by making `VenueAdminControllerIT.removeSetKeepsAStaffHoldAndAnswers409` use a **today**-dated hold, plus the existing `AvailabilityLookupIT.anyClaimsFromCountsOnlyHoldsOnOrAfterTheCutoff` | agent | open |
-| R-2 | Timezone: `today` computed in UTC instead of `Europe/Tirane` (invariant #6) puts the boundary up to 2h off | low | med | reuse the exact expression the edit guard already uses, extracted into one shared private predicate so the two cannot drift; asserted by AC-4's `anyClaimsFromDate` check | agent | open |
-| R-3 | Date time-bomb in the ITs: `removeSetKeepsAStaffHoldAndAnswers409` pins its hold at a hard-coded `DATE '2027-07-01'`. Harmless while the guard was date-agnostic; once it is date-sensitive that test silently changes meaning in July 2027 (it would then be asserting the *past*-hold case while claiming the live one) | high (by 2027) | med | replace every hard-coded date in the touched ITs with one relative to `LocalDate.now(Europe/Tirane)`, the convention the edit-guard IT already follows | agent | open |
+| R-1 | A hold dated **today** stops blocking (off-by-one on the boundary), so a walk-in marked this morning is cascaded away mid-service-day — a live invariant-#2 breach | low | high | `anyClaimsFrom` is `booking_date >= :from` (inclusive), and the cutoff is `today`, not `today+1`; the boundary is pinned end-to-end by making `VenueAdminControllerIT.removeSetKeepsAStaffHoldAndAnswers409` use a **today**-dated hold, plus the existing `AvailabilityLookupIT.anyClaimsFromCountsOnlyHoldsOnOrAfterTheCutoff` | agent | closed — `removeSetKeepsAStaffHoldAndAnswers409` now inserts a **today**-dated hold and still gets `409` with the row intact (`049d0c6`) |
+| R-2 | Timezone: `today` computed in UTC instead of `Europe/Tirane` (invariant #6) puts the boundary up to 2h off | low | med | reuse the exact expression the edit guard already uses, extracted into one shared private predicate so the two cannot drift; asserted by AC-4's `anyClaimsFromDate` check | agent | closed — one `hasLiveHold` predicate serves both writes; the unit clock is 22:30Z on the 15th, i.e. the 16th in Tirane, so a UTC read fails the assertion (`d170d5d`) |
+| R-3 | Date time-bomb in the ITs: `removeSetKeepsAStaffHoldAndAnswers409` pins its hold at a hard-coded `DATE '2027-07-01'`. Harmless while the guard was date-agnostic; once it is date-sensitive that test silently changes meaning in July 2027 (it would then be asserting the *past*-hold case while claiming the live one) | high (by 2027) | med | replace every hard-coded date in the touched ITs with one relative to `LocalDate.now(Europe/Tirane)`, the convention the edit-guard IT already follows | agent | closed — `VenueAdminControllerIT`'s hold dates are now relative; the generalization audit checked the other four `DATE '` literals and found none the narrowed guard reads (`049d0c6`) |
 | R-4 | Data loss: past `set_availability` rows now disappear with the set, irreversibly | certain (by design) | low | accepted — the maintainer settled it (see Resolved). No API can read them once the set is gone: `DailyAvailabilityService` overlays `statesOn(venues.setIdsOf(venueId), date)`, i.e. it is driven by the **current** layout, so a deleted set's past days are already unreachable whether or not its rows survive | maintainer | accepted |
-| R-5 | Loosening a guard reopens the race the guard closed — a claim committing between probe and delete | low | high | unchanged ordering: `lockSet` (`SELECT … FOR UPDATE`) **before** the probe, both inside one `@Transactional`; AC-4 pins the call order and AC-5 the real race (`SetWriteVsClaimConcurrencyIT`, whose `DAY` is `today+30`) | agent | open |
-| R-6 | Module-boundary leak (invariant #11) | low | med | no new port, no new grant: `anyClaimsFrom` is an existing `venue::spi` method already implemented by `availability`; `venue` still never imports `availability`. `ModularityTests` in the scoped run | agent | open |
-| R-7 | The now-misleading `isClaimedEver` name (and its Javadoc, plus `RESPONSIBILITIES.md`'s "refuses on any claim ever recorded") outlives the change and misleads the next reader | med | low | rename to `isLivelyClaimedOrEverBooked`, rewrite the two Javadocs and the `RESPONSIBILITIES.md` §`venue` asymmetry paragraph in the same slice; `riviera-docs-freshness` at close-out | agent | open |
+| R-5 | Loosening a guard reopens the race the guard closed — a claim committing between probe and delete | low | high | unchanged ordering: `lockSet` (`SELECT … FOR UPDATE`) **before** the probe, both inside one `@Transactional`; AC-4 pins the call order and AC-5 the real race (`SetWriteVsClaimConcurrencyIT`, whose `DAY` is `today+30`) | agent | closed — both ITs green, unchanged; and the stronger argument holds: no write path can create a row behind the cutoff |
+| R-6 | Module-boundary leak (invariant #11) | low | med | no new port, no new grant: `anyClaimsFrom` is an existing `venue::spi` method already implemented by `availability`; `venue` still never imports `availability`. `ModularityTests` in the scoped run | agent | closed — structural net green (`ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`) |
+| R-7 | The now-misleading `isClaimedEver` name (and its Javadoc, plus `RESPONSIBILITIES.md`'s "refuses on any claim ever recorded") outlives the change and misleads the next reader | med | low | rename to `isLivelyClaimedOrEverBooked`, rewrite the two Javadocs and the `RESPONSIBILITIES.md` §`venue` asymmetry paragraph in the same slice; `riviera-docs-freshness` at close-out | agent | closed — renamed to `isLivelyClaimedOrEverBooked`; the sweep additionally caught `SetRejection.SET_IN_USE`'s Javadoc, which no review of the diff could have (`fda3652`) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** No operator-facing report, export, or ops runbook reads `set_availability` for a
-  **deleted** set's past dates. Verified against the only consumer (`DailyAvailabilityService`,
-  layout-driven) and the `statesOn`/`takenOn` call sites; nothing else queries the table outside
-  `availability`. — *Owner:* agent · *Resolves by:* phase 0 (verified at plan time)
+*None open.*
 
 ### Resolved
+
+- **Assumption:** No operator-facing report, export, or ops runbook reads `set_availability` for a
+  **deleted** set's past dates. → **Confirmed** at plan time and unchanged since: the only consumer
+  is `DailyAvailabilityService`, which overlays `statesOn(venues.setIdsOf(venueId), date)` — driven
+  by the *current* layout, so a deleted set's past days were already unreachable. Nothing outside
+  `availability` queries the table.
 
 - **Open question (the issue's own "question to settle"):** is a past `set_availability` row worth
   retaining once its day has gone? → **No.** Settled by the maintainer via `AskUserQuestion` at the
@@ -207,15 +213,15 @@ code; only the server-side predicate behind the 409 narrows.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 done, entering phase 2 (docs sweep)`
+**Stage pointer:** `PR ready for review — review gate + Sonar gate due`
 
-**Next action:** Phase 2 step 1 — rewrite `RESPONSIBILITIES.md` §`venue`'s two-axis asymmetry paragraph as one axis.
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then pull the Sonar new-issue list for PR #601.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Narrow the delete's availability arm (unit TDD) | ✅ | `d170d5d` |
-| 1 — Pin it end-to-end + defuse the IT date bomb | ✅ | `5f0b83c` |
-| 2 — Docs sweep + close-out | ⏳ | |
+| 1 — Pin it end-to-end + defuse the IT date bomb | ✅ | `049d0c6` |
+| 2 — Docs sweep + close-out | ✅ | `fda3652` |
 
 **Local verification so far** (`riviera-local-debug` scoped runs, Docker available so the ITs ran
 for real): `VenueAdminServiceTest` green (observed red first on AC-1/2/4);
@@ -234,7 +240,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | docs-freshness sweep (phase 2) | `SetRejection.SET_IN_USE`'s Javadoc stated "a *remove* is refused by any hold on any date" — false after phase 0, and in a file the diff never touched, so no review of the diff could have found it | fixed-in-`fda3652` |
 
 ---
 
@@ -246,7 +252,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/venue/spi/SetAvailabilityLookup.java` — `anyClaims`/`anyClaimsFrom` Javadoc: `anyClaims` is now the bulk replace's question alone
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — AC-1/2/3/4 at the inner hexagon
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java` — AC-1/2 end-to-end; relative dates (R-3)
-- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingPresenceIT.java` — class Javadoc names the delete guard's question
+- `platform/src/main/java/ai/riviera/platform/venue/application/SetRejection.java` — `SET_IN_USE`'s Javadoc: both writes share the availability question (docs-freshness sweep)
 - `RESPONSIBILITIES.md` — §`venue`: the two-axis asymmetry becomes one axis
 - `docs/plans/per-set-layout-write-claim-guard.md` — #567's behavior table + its deferred-question note follow what shipped
 
@@ -256,7 +262,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java:159-185` · Test `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java`
 
-- [ ] **Step 1: Write the failing test** (AC-1), beside the existing `removeSet` tests
+- [x] **Step 1: Write the failing test** (AC-1), beside the existing `removeSet` tests
 
 ```java
 @Test
@@ -281,13 +287,13 @@ Then re-point the three existing tests at the live question:
 `anyClaimsFromAskedAbout == [SET]`, `callLog == [lockSet, anyClaimsFrom]`, and
 `anyClaimsFromDate == TODAY_IN_TIRANE`.
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*VenueAdminServiceTest*"` →
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*VenueAdminServiceTest*"` →
       FAIL: `removeSetIsAllowedWhenTheOnlyHoldIsPast` expected `Applied` but was
       `Rejected[SET_IN_USE]`, and the re-pointed tests fail on `anyClaims` vs `anyClaimsFrom`.
 
 > Scope: target ONE test class with `--tests "*ClassName*"`. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 	if (isLivelyClaimedOrEverBooked(setId)) {
@@ -328,16 +334,16 @@ Then re-point the three existing tests at the live question:
 	}
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*VenueAdminServiceTest*"` → PASS
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*VenueAdminServiceTest*"` → PASS
 
 > Scope (end-of-phase regression): broaden to `--tests "*venue*"` plus `*ModularityTests*`.
 
-- [ ] **Step 5: Generalization-audit pass** — search every other date-agnostic claim probe
+- [x] **Step 5: Generalization-audit pass** — search every other date-agnostic claim probe
       (`git grep -n "anyClaims("`), decide per site, append to the log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "Let a set whose holds are all history be deleted (#599)"`
+- [x] **Step 6: Commit** — `git commit -m "Let a set whose holds are all history be deleted (#599)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -345,7 +351,7 @@ Then re-point the three existing tests at the live question:
 
 **Files:** Test `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java:244-260`
 
-- [ ] **Step 1: Write the failing test** (AC-1 end-to-end) and re-date the live-hold IT (R-3)
+- [x] **Step 1: Write the failing test** (AC-1 end-to-end) and re-date the live-hold IT (R-3)
 
 ```java
 @Test
@@ -372,22 +378,22 @@ void removeSetDropsAPastStaffHoldWithTheSet() throws Exception {
 `removeSetKeepsAStaffHoldAndAnswers409` swaps its `DATE '2027-07-01'` literal for
 `LocalDate.now(ZoneId.of("Europe/Tirane"))` — today, the inclusive boundary (AC-2, R-1, R-3).
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*VenueAdminControllerIT*"` →
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*VenueAdminControllerIT*"` →
       FAIL: expected 204, got 409 (`SET_IN_USE`). *(Requires Docker; without a daemon the IT skips —
       then CI is the gate, per `riviera-local-debug`.)*
 
-- [ ] **Step 3: Minimal implementation** — none: phase 0's change is what makes it pass. If it does
+- [x] **Step 3: Minimal implementation** — none: phase 0's change is what makes it pass. If it does
       not, the phase-0 predicate is wrong and phase 0 re-opens.
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*VenueAdminControllerIT*"
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*VenueAdminControllerIT*"
       --tests "*SetWriteVsClaimConcurrencyIT*" --tests "*AvailabilityLookupIT*"` → PASS
 
-- [ ] **Step 5: Generalization-audit pass** — grep the touched ITs for other hard-coded `DATE '`
+- [x] **Step 5: Generalization-audit pass** — grep the touched ITs for other hard-coded `DATE '`
       literals that a date-sensitive guard would silently reinterpret; append to the log.
 
-- [ ] **Step 6: Commit** — `git commit -m "Pin the delete guard's live-hold boundary end-to-end (#599)"`
+- [x] **Step 6: Commit** — `git commit -m "Pin the delete guard's live-hold boundary end-to-end (#599)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -396,19 +402,19 @@ void removeSetDropsAPastStaffHoldWithTheSet() throws Exception {
 **Files:** Modify `RESPONSIBILITIES.md` · `EditBeachMap.java` · `SetAvailabilityLookup.java` ·
 `JdbcBookingPresenceIT.java` · `docs/plans/per-set-layout-write-claim-guard.md`
 
-- [ ] **Step 1:** `RESPONSIBILITIES.md` §`venue` — the asymmetry now runs along **one** axis (which
+- [x] **Step 1:** `RESPONSIBILITIES.md` §`venue` — the asymmetry now runs along **one** axis (which
       bookings count), not two; both per-set writes ask the same live availability question, and the
       reason the delete keeps `hasBookings` is the FK alone.
-- [ ] **Step 2:** `EditBeachMap#removeSet` + `SetAvailabilityLookup#anyClaims`/`#anyClaimsFrom`
+- [x] **Step 2:** `EditBeachMap#removeSet` + `SetAvailabilityLookup#anyClaims`/`#anyClaimsFrom`
       Javadoc follow the new question (`anyClaims` is the bulk replace's guard alone).
-- [ ] **Step 3:** `docs/plans/per-set-layout-write-claim-guard.md` — mark #567's "delete keeps the
+- [x] **Step 3:** `docs/plans/per-set-layout-write-claim-guard.md` — mark #567's "delete keeps the
       any-claim reading" rows as superseded by #599, in the repo's own house style (a merged plan
       doc is corrected against what shipped — precedent: `09bcf36`).
-- [ ] **Step 4:** Run `riviera-docs-freshness` over the slice's range; record the result in
+- [x] **Step 4:** Run `riviera-docs-freshness` over the slice's range; record the result in
       *Skills consulted*.
-- [ ] **Step 5:** `node scripts/check-plan-file-structure.mjs --diff origin/main` and
+- [x] **Step 5:** `node scripts/check-plan-file-structure.mjs --diff origin/main` and
       `node scripts/check-inline-comments.mjs --diff origin/main` → both clean.
-- [ ] **Step 6: Commit** — `git commit -m "Follow the narrowed delete guard through the docs (#599)"`
+- [x] **Step 6: Commit** — `git commit -m "Follow the narrowed delete guard through the docs (#599)"`
 
 ---
 
@@ -418,37 +424,37 @@ void removeSetDropsAPastStaffHoldWithTheSet() throws Exception {
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-08-10 | phase 0 | Other date-agnostic claim probes carrying the same permanent-freeze shape | `git grep -n "anyClaims(" -- platform/src/main` | 3: the `venue.spi` declaration, its `availability` implementation, and **one** caller — `VenueAdminService#replaceLayout:266` (venue-wide) | **Subset.** `removeSet` narrowed here; `replaceLayout` deferred to a follow-up issue (Non-goals). It carries the same shape only for a **walk-in-only** venue: its sibling arm `hasBookings(venueId)` already freezes the bulk regenerate permanently for any venue that has ever sold online, so narrowing the availability half alone changes nothing there. Widening a set-scoped decision to a venue-wide destructive write is the maintainer's call, not a fix-while-here |
+| 2026-08-10 | phase 0 | Other date-agnostic claim probes carrying the same permanent-freeze shape | `git grep -n "anyClaims(" -- platform/src/main` | 3: the `venue.spi` declaration, its `availability` implementation, and **one** caller — `VenueAdminService#replaceLayout:266` (venue-wide) | **Subset.** `removeSet` narrowed here; `replaceLayout` deferred to **#602** (Non-goals). It carries the same shape only for a **walk-in-only** venue: its sibling arm `hasBookings(venueId)` already freezes the bulk regenerate permanently for any venue that has ever sold online, so narrowing the availability half alone changes nothing there. Widening a set-scoped decision to a venue-wide destructive write is the maintainer's call, not a fix-while-here |
 | 2026-08-10 | phase 0 | Hard-coded `DATE '…'` literals a now date-sensitive guard would silently reinterpret | `git grep -n "DATE '" -- platform/src/test/java/ai/riviera/platform/venue` | 5 | **Subset.** `VenueAdminControllerIT:249` (the delete's staff hold) is re-dated relative to today in phase 1 — it is the only literal the narrowed guard reads. `:273` is a *booking* date behind the date-agnostic booking arm; `BeachMapReplaceIT:258` / `VenueRepriceIT:157` sit behind `anyClaims`/no probe and are dated 2035, so they stay valid even if the deferred `replaceLayout` narrowing lands. No change to those four |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `./gradlew test --tests "*VenueAdminServiceTest*" --tests "*VenueAdminControllerIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Same run → `removeSetIsRefusedWhenTheSetIsHeld` + `removeSetKeepsAStaffHoldAndAnswers409` PASS with a **today**-dated hold. Verified at commit `<sha>`.
-- [ ] **AC-3:** Same run → `removeSetIsRefusedWhenTheSetHasAnyBooking` + `removeSetOnABookedSetAnswers409NotAServerError` PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Same run → `removeSetAsksTheLiveHoldQuestionAboutTheSetAloneAndAfterTakingTheLock` PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `./gradlew test --tests "*SetWriteVsClaimConcurrencyIT*"` → PASS, unchanged. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `./gradlew test --tests "*VenueAdminServiceTest*" --tests "*VenueAdminControllerIT*"` → PASS. Verified at commit `d170d5d` / `049d0c6`.
+- [x] **AC-2:** Same run → `removeSetIsRefusedWhenTheSetIsHeld` + `removeSetKeepsAStaffHoldAndAnswers409` PASS with a **today**-dated hold. Verified at commit `d170d5d` / `049d0c6`.
+- [x] **AC-3:** Same run → `removeSetIsRefusedWhenTheSetHasAnyBooking` + `removeSetOnABookedSetAnswers409NotAServerError` PASS. Verified at commit `d170d5d` / `049d0c6`.
+- [x] **AC-4:** Same run → `removeSetAsksTheLiveHoldQuestionAboutTheSetAloneAndAfterTakingTheLock` PASS. Verified at commit `d170d5d` / `049d0c6`.
+- [x] **AC-5:** Run `./gradlew test --tests "*SetWriteVsClaimConcurrencyIT*"` → PASS, unchanged. Verified at commit `d170d5d` / `049d0c6`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; concurrency test present and unchanged (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new grant (invariant #11).
-- [ ] **Payment/payout** N/A justified; no money moves.
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone correct: the cutoff is `today` in `Europe/Tirane`, taken from the injected `Clock` (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change, so no Flyway migration (invariant #12).
-- [ ] **Frontend** N/A justified.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; concurrency test present and unchanged (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new grant (invariant #11).
+- [x] **Payment/payout** N/A justified; no money moves.
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone correct: the cutoff is `today` in `Europe/Tirane`, taken from the injected `Clock` (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change, so no Flyway migration (invariant #12).
+- [x] **Frontend** N/A justified.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, **merged via PR #601**.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.

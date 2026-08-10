@@ -40,11 +40,11 @@ public interface SetAvailabilityLookup {
 
 	/**
 	 * Whether <strong>any</strong> of {@code setIds} has an availability row on <em>any</em> date. The
-	 * bulk-layout write's destructive-regenerate guard: because {@code set_availability.set_id} is
-	 * {@code ON DELETE CASCADE}, deleting a claimed set would silently drop the hold (invariant #2), so a
-	 * layout replace is refused when this returns {@code true}. Unlike {@link #takenOn} it is
-	 * date-agnostic — a hold on any day blocks the replace, the conservative reject-unless-unclaimed
-	 * policy.
+	 * bulk-layout write's destructive-regenerate guard, and its only caller: because
+	 * {@code set_availability.set_id} is {@code ON DELETE CASCADE}, deleting a claimed set would
+	 * silently drop the hold (invariant #2), so a layout replace is refused when this returns
+	 * {@code true}. Unlike {@link #takenOn} it is date-agnostic — a hold on any day blocks the
+	 * replace, the conservative reject-unless-unclaimed policy the whole-map regenerate keeps.
 	 *
 	 * @param setIds the set positions to probe (typically one venue's whole map)
 	 * @return {@code true} if at least one has an availability row; an empty input yields {@code false}
@@ -54,10 +54,10 @@ public interface SetAvailabilityLookup {
 
 	/**
 	 * Whether any of {@code setIds} has an availability row dated {@code from} or later. The
-	 * per-set <em>edit</em> guard's narrower question: a hold whose day has already passed can no
-	 * longer be stranded by moving the set, so only a hold that is still ahead should block a
-	 * reposition. {@link #anyClaims} stays the right question for a <em>delete</em>, which would
-	 * CASCADE away history too.
+	 * question <strong>both</strong> per-set layout writes ask: a hold whose day has already passed
+	 * can neither be stranded by moving the set nor meaningfully lost by deleting it, so only a hold
+	 * that is still ahead blocks a reposition or a removal. {@link #anyClaims} stays the bulk
+	 * replace's question, where the regenerate is deliberately more conservative.
 	 *
 	 * @param setIds the set positions to probe
 	 * @param from   the first day that still counts, a {@code LocalDate} in {@code Europe/Tirane}
