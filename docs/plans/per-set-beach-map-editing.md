@@ -232,15 +232,15 @@ anti-pattern; `linkedSignal` does it. `OnPush`/`standalone` are not set explicit
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1`
+**Stage pointer:** `implement — phase 2`
 
-**Next action:** Phase 1 — write the red specs for `SetEditor` (select + edit → PATCH), the
-`beach-cell` class-string pins, and the `LayoutEditor` mode default + corrected copy.
+**Next action:** Phase 2 — red spec for Remove: confirm → `DELETE`, selection clears, `changed`
+emitted; and the `409 SET_IN_USE` path leaving the set on the grid.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — HTTP surface (service, model, error mapper) | ✅ | `<phase-0>` |
-| 1 — `SetEditor`: select + edit tier/pool/price; mode toggle; `LAYOUT_IN_USE` copy | | |
+| 1 — `SetEditor`: select + edit tier/pool/price; mode toggle; `LAYOUT_IN_USE` copy | ✅ | `<phase-1>` |
 | 2 — Remove, with confirm and `SET_IN_USE` copy | | |
 | 3 — Add (grow the grid) and Move | | |
 | 4 — a11y + contrast specs, responsive pass, e2e | | |
@@ -382,6 +382,7 @@ Test `frontend/src/app/operator/operator-console.service.spec.ts`
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Phase 1 — `SetEditor` guards an in-flight write by re-reading `venueId` instead of the siblings' epoch counter | Console surfaces whose async continuations survive an in-place venue switch (#180) | `rg 'private epoch = 0\|this\.epoch !== epoch' frontend/src/app` | 9 files, 34 sites — every venue-scoped console tab plus the tourist map | keep the deliberate difference, do not generalize the epoch here. The epoch exists to protect a **venue-scoped draft** that outlives the switch (a painted grid, an optimistic row price). `SetEditor` holds none: selection and draft are `linkedSignal`s over the `sets` input, which the parent replaces on switch, so the only thing a superseded continuation could damage is an outcome flag — which the `venueId` value check already drops. Recorded in the component's TSDoc so review reads it as a decision, not an omission |
 | 2026-08-10 | Phase 0 — added `setWriteErrorOf` | An operator write path with no typed RFC-7807 error mapper (an untyped `catch` reading `error.error.code` inline, or a raw `HttpErrorResponse` reaching a template) | `rg 'export function \w+ErrorOf' frontend/src/app/operator` vs `rg 'this\.http\.(post\|patch\|put\|delete)' frontend/src/app/operator` | 11 mappers over 14 write call sites; the 3 unmatched are the two accept/decline POSTs (`requestErrorOf`) and the reprice PUT (`repriceErrorOf`), both already covered — every write is mapped | skip — no gap to generalize; the pattern was already universal and this slice joins it rather than introducing it |
 
 ---

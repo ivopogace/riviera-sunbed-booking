@@ -7,6 +7,16 @@ import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
 import { formatMoney, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
+import {
+  BeachCell,
+  CELL_STATE_DESC,
+  CellState,
+  cellStateOf,
+  clampGrid,
+  gridRowLabel,
+  MAX_COLS,
+  MAX_ROWS,
+} from './beach-cell';
 import { BeachGridFrame } from './beach-grid-frame';
 import { todayBookingDate } from '../shared/booking-date';
 import { SetView } from '../shared/venue-views';
@@ -14,23 +24,14 @@ import { VenueService } from '../venue/venue.service';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutCellRequest, LayoutErrorCode } from './operator-console.model';
 import { OperatorConsoleService, layoutErrorOf } from './operator-console.service';
+import { SetEditor } from './set-editor';
 import { StaleWriteBanner } from './stale-write-banner';
 
-/** What a grid cell holds, and the paint tools (in design order). `gap` = no set / erase to an aisle. */
-type CellState = 'premium' | 'standard' | 'walkin' | 'gap';
+/** Which editing surface the tab is showing: the whole-map replace, or one set at a time. */
+type EditorMode = 'bulk' | 'sets';
 
 const PREMIUM_PRICE: MoneyView = { minorUnits: 3500, currency: 'EUR' };
 const STANDARD_PRICE: MoneyView = { minorUnits: 2000, currency: 'EUR' };
-const MAX_ROWS = 26;
-const MAX_COLS = 40;
-
-/** Human, AT-readable description of a cell's current state (paired with its row/position). */
-const STATE_DESC: Record<CellState, string> = {
-  premium: 'front row, premium, online',
-  standard: 'standard, online',
-  walkin: 'walk-in pool, not bookable online',
-  gap: 'gap or aisle',
-};
 
 const TOOL_LABEL: Record<CellState, string> = {
   premium: 'Front row · premium',
@@ -39,16 +40,7 @@ const TOOL_LABEL: Record<CellState, string> = {
   gap: 'Gap / aisle',
 };
 
-/** Per-state grid-cell background classes (border-radius stays on the cell element — no drift). */
-const CELL_CLASS: Record<CellState, string> = {
-  premium: 'border-[#b47814]/40 bg-[linear-gradient(180deg,#ffe3a3,#f4c05a)]',
-  standard: 'border-[#0c2a33]/15 bg-white/85',
-  walkin:
-    'border-[#0c2a33]/15 bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.3)_0_3px,rgba(12,42,51,0.12)_3px_6px)]',
-  gap: 'border-dashed border-[#0c2a33]/35 bg-transparent',
-};
-
-/** Per-tool swatch background classes (mirrors {@link CELL_CLASS}, sized by the swatch element). */
+/** Per-tool swatch background classes (mirrors the cell variants, sized by the swatch element). */
 const SWATCH_CLASS: Record<CellState, string> = {
   premium: 'bg-[linear-gradient(180deg,#ffe3a3,#f4c05a)]',
   standard: 'bg-white/85',
@@ -57,11 +49,20 @@ const SWATCH_CLASS: Record<CellState, string> = {
 };
 
 /**
- * The Layout-editor tab — the beach-map generate-grid + paint editor that replaces the
- * console's beach-map placeholder. The operator generates an R×C grid in one action (row A faces the
- * sea, auto-priced front-row premium), paints tier/pool/gap per cell by click or drag, and saves the
- * whole grid through one owner-asserted bulk write (`PUT …/beach-map`). Regenerate replaces after an
- * explicit confirm; a venue with bookings or walk-in holds is server-locked (`LAYOUT_IN_USE`).
+ * The Beach-map tab — two editing surfaces behind one toggle, because the venue's own lifecycle
+ * decides which one can work.
+ *
+ * <p><strong>Bulk layout</strong> is the original generate-grid + paint editor: an R×C grid in one
+ * action (row A faces the sea, auto-priced front-row premium), tier/pool/gap painted per cell by
+ * click or drag, saved through one owner-asserted `PUT …/beach-map`. That write is
+ * reject-unless-unclaimed, so it works only while the venue has never been booked or held —
+ * afterwards it answers `LAYOUT_IN_USE` permanently, and a trading venue never becomes unclaimed again.
+ *
+ * <p><strong>Edit sets</strong> ({@link SetEditor}) is what a live venue uses: the per-set U7
+ * endpoints, which carry their own narrower claim guards instead of a venue-wide lock. The tab opens
+ * in whichever mode the venue needs — per-set once it has saved sets, bulk while it is empty — and
+ * the operator can override that; a per-set write makes this tab re-read the map and drop the shared
+ * console snapshot, since the other tabs would otherwise render a set that no longer exists.
  *
  * <p>Reads `:venueId` from the parent route (child routes don't inherit it). Cells are
  * real, individually-labelled `<button>`s so the grid is fully keyboard + AT operable (Enter/Space
@@ -71,7 +72,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
  */
 @Component({
   selector: 'app-layout-editor',
-  imports: [CardGlass, BeachGridFrame, StaleWriteBanner],
+  imports: [CardGlass, BeachCell, BeachGridFrame, SetEditor, StaleWriteBanner],
   templateUrl: './layout-editor.html',
 })
 export class LayoutEditor {
@@ -91,6 +92,10 @@ export class LayoutEditor {
 
   /** The current grid, row-major with row 0 sea-facing. Empty until generated or loaded. */
   protected readonly grid = signal<CellState[][]>([]);
+  /** The venue's saved sets from the last map read — what {@link SetEditor} edits, by id. */
+  protected readonly loadedSets = signal<readonly SetView[]>([]);
+  /** The operator's explicit mode choice, or null while the venue's own state decides. */
+  private readonly chosenMode = signal<EditorMode | null>(null);
   /** The active paint tool. */
   protected readonly activeTool = signal<CellState>('premium');
 
@@ -114,12 +119,20 @@ export class LayoutEditor {
    *  token, so instead of a silent no-op the editor prompts a refresh (review finding). */
   protected readonly loadFailed = signal(false);
 
+  /**
+   * The mode actually shown: the operator's choice once made, otherwise the one the venue needs — a
+   * venue with saved sets can only be edited per-set, an empty one has nothing to edit yet.
+   */
+  protected readonly mode = computed<EditorMode>(
+    () => this.chosenMode() ?? (this.loadedSets().length > 0 ? 'sets' : 'bulk'),
+  );
+
   /** Whether a grid exists (drives the empty-state vs the grid + save button). */
   protected readonly hasLayout = computed(() => this.grid().length > 0);
   /** The column count of the current grid (0 when empty) — drives the CSS grid template. */
   protected readonly colCount = computed(() => this.grid()[0]?.length ?? 0);
   protected readonly genTotal = computed(
-    () => clamp(this.genRows(), 1, MAX_ROWS) * clamp(this.genCols(), 1, MAX_COLS),
+    () => clampGrid(this.genRows(), 1, MAX_ROWS) * clampGrid(this.genCols(), 1, MAX_COLS),
   );
 
   /** Drag state — a plain field (not reactive; only the pointer handlers read it). */
@@ -141,11 +154,11 @@ export class LayoutEditor {
   /** The display rows: label, per-row price string, and each cell's state + AT label. */
   protected readonly displayRows = computed(() =>
     this.grid().map((row, y) => ({
-      label: rowLabel(y),
+      label: gridRowLabel(y),
       priceStr: this.rowPriceStr(row, y),
       cells: row.map((state, x) => ({
         state,
-        label: `Row ${rowLabel(y)} position ${x + 1}, ${STATE_DESC[state]}`,
+        label: `Row ${gridRowLabel(y)} position ${x + 1}, ${CELL_STATE_DESC[state]}`,
       })),
     })),
   );
@@ -185,6 +198,8 @@ export class LayoutEditor {
   private resetForVenue(venueId: number): void {
     this.epoch++;
     this.grid.set([]);
+    this.loadedSets.set([]);
+    this.chosenMode.set(null);
     this.priceByCoord.clear();
     this.activeTool.set('premium');
     this.saving.set(false);
@@ -198,14 +213,35 @@ export class LayoutEditor {
     this.loadExisting(venueId);
   }
 
+  // ---- Mode ----
+
+  protected chooseMode(mode: EditorMode): void {
+    this.chosenMode.set(mode);
+  }
+
+  /**
+   * A per-set write landed: drop the console's shared snapshot (the other tabs would serve a set this
+   * one just changed or removed) and re-read the map, which re-seeds {@link SetEditor}'s selection
+   * and draft. The bulk grid is deliberately NOT re-seeded from it — {@link seedFrom} leaves an
+   * in-progress painted grid alone, so per-set work never discards bulk work.
+   */
+  protected onSetsChanged(): void {
+    const venueId = this.venueId();
+    if (venueId === undefined) {
+      return;
+    }
+    this.venueMap.reset();
+    this.loadExisting(venueId);
+  }
+
   // ---- Generate ----
 
   protected setRows(value: string): void {
-    this.genRows.set(clamp(Number.parseInt(value, 10) || 0, 1, MAX_ROWS));
+    this.genRows.set(clampGrid(Number.parseInt(value, 10) || 0, 1, MAX_ROWS));
   }
 
   protected setCols(value: string): void {
-    this.genCols.set(clamp(Number.parseInt(value, 10) || 0, 1, MAX_COLS));
+    this.genCols.set(clampGrid(Number.parseInt(value, 10) || 0, 1, MAX_COLS));
   }
 
   protected onGenerate(): void {
@@ -227,8 +263,8 @@ export class LayoutEditor {
 
   private generateNow(): void {
     this.priceByCoord.clear(); // a fresh grid → tier-default prices, no carried-over set prices
-    const rows = clamp(this.genRows(), 1, MAX_ROWS);
-    const cols = clamp(this.genCols(), 1, MAX_COLS);
+    const rows = clampGrid(this.genRows(), 1, MAX_ROWS);
+    const cols = clampGrid(this.genCols(), 1, MAX_COLS);
     const grid: CellState[][] = [];
     for (let y = 0; y < rows; y++) {
       const row: CellState[] = [];
@@ -246,11 +282,6 @@ export class LayoutEditor {
 
   protected selectTool(tool: CellState): void {
     this.activeTool.set(tool);
-  }
-
-  /** The Tailwind background classes for a grid cell of the given state (test-hook: also `data-state`). */
-  protected cellClass(state: CellState): string {
-    return CELL_CLASS[state];
   }
 
   /** The Tailwind background classes for a paint-tool swatch. */
@@ -335,7 +366,7 @@ export class LayoutEditor {
       case undefined:
         return undefined;
       case 'LAYOUT_IN_USE':
-        return 'This venue has bookings or walk-in holds, so its layout is locked. Layout changes are not possible while sets are in use.';
+        return 'This venue has bookings or walk-in holds, so replacing the whole layout is locked. Switch to Edit sets to add, change or remove sets one at a time.';
       case 'EMPTY_LAYOUT':
         return 'Add at least one set before saving.';
       case 'LAYOUT_TOO_LARGE':
@@ -383,6 +414,7 @@ export class LayoutEditor {
         this.grid.set([]); // hasLayout() → false, so seedFrom re-seeds (or leaves the empty state)
         this.loadedSetVersion.set(venue.setVersion ?? null);
         this.loadFailed.set(false);
+        this.loadedSets.set(venue.sets);
         this.seedFrom(venue.sets);
         this.errorCode.set(undefined);
         this.savedNotice.set(false);
@@ -411,7 +443,7 @@ export class LayoutEditor {
         }
         const premium = state === 'premium';
         sets.push({
-          rowLabel: rowLabel(y),
+          rowLabel: gridRowLabel(y),
           positionNo: x + 1,
           tier: premium ? 'PREMIUM' : 'STANDARD',
           pool: state === 'walkin' ? 'WALK_IN' : 'ONLINE',
@@ -440,6 +472,7 @@ export class LayoutEditor {
         }
         this.loadFailed.set(false);
         this.loadedSetVersion.set(venue.setVersion ?? null);
+        this.loadedSets.set(venue.sets);
         this.seedFrom(venue.sets);
       },
       error: (error: unknown) => {
@@ -470,8 +503,8 @@ export class LayoutEditor {
       this.priceByCoord.set(coordKey(s.gridX, s.gridY), s.price); // preserve prices for a lossless save
     }
     this.grid.set(grid);
-    this.genRows.set(clamp(maxY, 1, MAX_ROWS));
-    this.genCols.set(clamp(maxX, 1, MAX_COLS));
+    this.genRows.set(clampGrid(maxY, 1, MAX_ROWS));
+    this.genCols.set(clampGrid(maxX, 1, MAX_COLS));
   }
 
   /** The per-row price string: the price the row's first set would save with (preserved or tier default). */
@@ -487,21 +520,7 @@ export class LayoutEditor {
   }
 }
 
-function cellStateOf(set: SetView): CellState {
-  if (set.pool === 'WALK_IN') {
-    return 'walkin';
-  }
-  return set.tier === 'PREMIUM' ? 'premium' : 'standard';
-}
-
-function rowLabel(index: number): string {
-  return String.fromCodePoint(65 + index);
-}
-
 function coordKey(gridX: number, gridY: number): string {
   return `${gridX},${gridY}`;
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
