@@ -43,8 +43,8 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
  *       venue-day in one transaction (invariant #10's admin weather exception), so one admin action
  *       dispatches that many refunds at once.</li>
  *   <li>The transaction is <strong>dropped</strong>, not merely re-scoped. It bought nothing this method
- *       needs — the only write, {@code markRefunded}, is a single statement that runs after a successful
- *       refund, so there is nothing a rollback could undo — while pinning one of ten pooled connections
+ *       needs — every write beneath it is a single guarded statement, so there is nothing a rollback
+ *       could undo — while pinning one of ten pooled connections
  *       for the length of the round-trip, on a pool shared with every HTTP request thread. Isolating the
  *       threads without releasing the connection would have left the spine starving on the scarcer
  *       resource.</li>
@@ -54,6 +54,10 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
  * {@code listener_id} is byte-identical and no Flyway rewrite is owed (invariant #12).
  * {@code RefundBulkheadIT} pins all four properties — the money path unblocked, no transaction, no
  * bound connection, and the unchanged id — against a real registry.
+ *
+ * <p><strong>Staying transaction-free is load-bearing, not merely cheaper.</strong> The refund path
+ * records its attempt before asking the gateway, and a transaction here would hide that write for
+ * exactly the window it exists to cover. {@code RefundAttemptVisibilityIT} fails if one returns.
  */
 @Component
 class BookingRefundListener {

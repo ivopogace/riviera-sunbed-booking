@@ -418,6 +418,12 @@ gained a trace, and every refund write became a guarded statement that reports w
   refunds changed, but because a refund that was never recorded still has its publication, and a
   re-drive past the key window creates a fresh refund. A refund that was recorded and *then* died is
   unchanged: nothing re-drives it, an issuer rejection is not a transient error.
+
+  One consequence is worth stating because it looks like a bug: this is the shape that increments
+  `riviera.refunds.failed` **twice** for one incident — the webhook counts the refund it killed, and
+  the recording call it beat counts its own refusal. Both are true observations, and the gauge still
+  reads one booking. It is the sharpest illustration of why the counter measures observations and
+  `riviera.refunds.owed` measures debts.
 - **`markRefunded` moves only a collected payment**, so a refund can no longer assert a collection
   that never succeeded. It was unguarded, and `markRefundFailed` writes `status = SUCCEEDED`
   unconditionally, so the pair could fabricate a collected payment out of a `REQUIRES_PAYMENT`,

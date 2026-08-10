@@ -141,7 +141,7 @@ class JdbcPayments implements Payments {
 		return jdbc.sql("""
 				UPDATE payment
 				SET refunded_minor = :refunded, refund_id = :refundId, refund_failed_at = NULL,
-				    updated_at = NOW(),
+				    refund_attempted_at = NULL, updated_at = NOW(),
 				    status = CASE WHEN :refunded >= amount_minor THEN 'REFUNDED' ELSE 'PARTIALLY_REFUNDED' END
 				WHERE booking_ref = :ref
 				  AND status IN (:collected)
@@ -160,7 +160,8 @@ class JdbcPayments implements Payments {
 		return jdbc.sql("""
 				UPDATE payment
 				SET refunded_minor = 0, status = :succeeded, refund_id = NULL,
-				    failed_refund_id = :refundId, refund_failed_at = NOW(), updated_at = NOW()
+				    failed_refund_id = :refundId, refund_failed_at = NOW(),
+				    refund_attempted_at = NULL, updated_at = NOW()
 				WHERE refund_id = :refundId AND status IN (:recorded)
 				""")
 				.param("succeeded", PaymentStatus.SUCCEEDED.name())
@@ -174,7 +175,8 @@ class JdbcPayments implements Payments {
 		// refund_attempted_at is the discriminator: without it this is someone else's manual refund.
 		return jdbc.sql("""
 				UPDATE payment
-				SET failed_refund_id = :refundId, refund_failed_at = NOW(), updated_at = NOW()
+				SET failed_refund_id = :refundId, refund_failed_at = NOW(),
+				    refund_attempted_at = NULL, updated_at = NOW()
 				WHERE payment_intent_id = :intent
 				  AND status = :succeeded
 				  AND refund_id IS NULL

@@ -145,13 +145,13 @@ earns its place:
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The by-intent fallback fires for a **manual dashboard refund** that failed, raising a money-path alert for money we do not owe | med | med | Fallback is guarded on `refund_attempted_at IS NOT NULL` — set only when *this platform* began a refund for that booking. A dashboard refund on a booking we never refunded leaves it NULL and no-ops (AC-7) | this slice | open |
-| R-2 | The by-intent fallback double-reports on a re-delivered failure (Stripe re-delivers; both `refund.failed` and `refund.updated` carry the same death) | high | med | Fallback guard includes `(failed_refund_id IS NULL OR failed_refund_id <> :refundId)`, so the second delivery moves 0 rows — the same idempotency shape as `markRefundFailed`'s existing guard (AC-1 sibling test) | this slice | open |
+| R-1 | The by-intent fallback fires for a **manual dashboard refund** that failed, raising a money-path alert for money we do not owe | med | med | Fallback is guarded on `refund_attempted_at IS NOT NULL` — set only when *this platform* began a refund for that booking. A dashboard refund on a booking we never refunded leaves it NULL and no-ops (AC-7) | this slice | **closed via F-4** — the review showed the guard held only while the booking had *never* been refunded; the stamp is now cleared at every terminal outcome, so it means in-flight rather than ever-attempted |
+| R-2 | The by-intent fallback double-reports on a re-delivered failure (Stripe re-delivers; both `refund.failed` and `refund.updated` carry the same death) | high | med | Fallback guard includes `(failed_refund_id IS NULL OR failed_refund_id <> :refundId)`, so the second delivery moves 0 rows — the same idempotency shape as `markRefundFailed`'s existing guard (AC-1 sibling test) | this slice | **closed** — `aRedeliveredUnrecordedFailureMovesNothing`; F-4's clearing adds a second, independent block |
 | R-3 | Guarding `markRefunded` breaks #569's contract tests / `PaymentGatewayRefundContract`, whose fixtures record refunds on rows that were never `SUCCEEDED` | high | med | Fixtures and the two `JdbcPaymentsIT` cases that refund a `REQUIRES_PAYMENT` row are updated to mark `SUCCEEDED` first — which is what production always does. `Payments` **Mockito mocks default `false` for the new boolean**, so every `StripePaymentGatewayTest` refund case must stub it `true` or the gateway will answer `Failed` | this slice | **closed in phase 1** — the two `JdbcPaymentsIT` cases now mark `SUCCEEDED` first, and both Mockito fixtures (`StripePaymentGatewayTest`, `StripeRefundContractTest`) stub `markRefunded` `true` |
 | R-4 | `refund_attempted_at` is stamped inside a transaction that has not committed, so the concurrent webhook cannot see it — the fix silently does nothing | med | high | Stamped from `RefundService#refund`, which #404 left **transaction-free** (`BookingRefundListener` dropped `@Transactional`), so it auto-commits before the gateway call. Pinned by an assertion that the stamp is visible from a second connection (`RefundAttemptVisibilityIT`) | this slice | **closed in phase 2** — `RefundAttemptVisibilityIT` goes red if a transaction is ever wrapped round `RefundService#refund` |
-| R-5 | Flyway `V42` collides with a parallel slice | low | high | Verified free on `main` at `a6e425e` and unclaimed by every open PR (all 17 are Dependabot, no migrations). Default rule: whoever merges second renumbers | this slice | open |
-| R-6 | The new gauge runs a `COUNT(*)` per metrics scrape, adding DB load to the money path | low | low | Partial index `WHERE refund_failed_at IS NOT NULL` makes it an index-only scan over a set that is empty in the healthy case | this slice | open |
-| R-7 | Full-suite-only failure class (`riviera-local-debug`): the gauge is a new shared-state bean read by every context | low | med | The gauge reads the DB, holds no accumulating in-JVM state, and adds no filter/scheduler. CI's full suite is the check; do not claim green from scoped runs alone | this slice | open |
+| R-5 | Flyway `V42` collides with a parallel slice | low | high | Verified free on `main` at `a6e425e` and unclaimed by every open PR (all 17 are Dependabot, no migrations). Default rule: whoever merges second renumbers | this slice | **closed** — `main` merged in at `f74eda8` (#595, docs-only); `V42` still unclaimed |
+| R-6 | The new gauge runs a `COUNT(*)` per metrics scrape, adding DB load to the money path | low | low | Partial index `WHERE refund_failed_at IS NOT NULL` makes it an index-only scan over a set that is empty in the healthy case | this slice | **closed — measured** (F-3): `Index Only Scan`, `Heap Fetches: 0`, 2 buffers, 0.06ms over 200k rows |
+| R-7 | Full-suite-only failure class (`riviera-local-debug`): the gauge is a new shared-state bean read by every context | low | med | The gauge reads the DB, holds no accumulating in-JVM state, and adds no filter/scheduler. CI's full suite is the check; do not claim green from scoped runs alone | this slice | **closed** — CI's full suite green on `f74eda8` |
 
 ## Open questions / Assumptions
 
@@ -249,10 +249,10 @@ responses (`200`/`400`/`503`) are unchanged.
 
 ## Execution status
 
-**Stage pointer:** `PR #596 — draft, marking ready for review`
+**Stage pointer:** `review gate — fix round pushed, awaiting re-review`
 
-**Next action:** Mark PR #596 ready for review, then run the Review gate (pr-gates §1
-ladder + `riviera-review-overlay`) and the Sonar gate.
+**Next action:** Re-review the fix round's diff, re-check CI + Sonar on the new head, then
+complete the merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -269,8 +269,13 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI — `Repo hygiene (diff-scoped)` | The plan's File-structure section omitted `StripeRefundContractTest.java` and listed `RefundAttemptVisibilityIT.java` under the wrong package; a multi-line inline comment in `JdbcPayments` (RV-STYLE-1) was re-flagged because this diff rewrote its opening line | fixed-in-``30e8cd5`` |
-| F-2 | CI — `Backend (build + test)` | `RefundFailureMetricTest` used the strict `ThrowingPayments`, which now throws on the new `markRefundAttempted` — a full-suite-visible break my scoped runs missed because that class was not in the `--tests` selection | fixed-in-``30e8cd5`` (shared `AttemptRecordingPayments` double; scoped runs widened to `ai.riviera.platform.payment.*` + `*Refund*`) |
+| F-1 | CI — `Repo hygiene (diff-scoped)` | The plan's File-structure section omitted `StripeRefundContractTest.java` and listed `RefundAttemptVisibilityIT.java` under the wrong package; a multi-line inline comment in `JdbcPayments` (RV-STYLE-1) was re-flagged because this diff rewrote its opening line | fixed-in-`30e8cd5` |
+| F-2 | CI — `Backend (build + test)` | `RefundFailureMetricTest` used the strict `ThrowingPayments`, which now throws on the new `markRefundAttempted` — a full-suite-visible break my scoped runs missed because that class was not in the `--tests` selection | fixed-in-`30e8cd5` (shared `AttemptRecordingPayments` double; scoped runs widened to `ai.riviera.platform.payment.*` + `*Refund*`) |
+| F-3 | review (overlay, self) | `RefundOwedGauge` runs an unbounded `COUNT(*)` at scrape time, where `ObservabilityConfig`'s sibling gauge deliberately uses a query-bounded client (#395) | **declined, with evidence** — `EXPLAIN ANALYZE` over 200k rows / 40 owed: `Index Only Scan`, `Heap Fetches: 0`, 2 buffers, 0.06ms. Unlike the outbox gauge this reads a partial index that only human-unresolved debt grows, takes no row locks, and is read by scrapes rather than the alert scheduler. A second `JdbcClient` would buy nothing measurable |
+| F-4 | review (bug scan + overlay, self) | `refund_attempted_at` was never cleared, so it decayed from "an attempt is in flight" into "an attempt once happened" — letting a later manual gateway refund's failure overwrite `failed_refund_id` on an already-owed row, corrupting the trace the runbook looks up | fixed-in-`FIXSHA` — every terminal outcome (`markRefunded`, `markRefundFailed`, `markUnrecordedRefundFailed`) now clears the stamp. **The first fix I proposed was wrong**: guarding on `refund_failed_at IS NULL` would have left a *second* racing failure unrecorded, so `markRefunded` would then record that second corpse. Pinned by `aResolvedAttemptStopsDiscriminatingForALaterManualRefund` + `aFreshAttemptAfterAFailureDiscriminatesAgain` |
+| F-5 | review (comment/doc compliance) | `BookingRefundListener`'s Javadoc still claimed "the only write, `markRefunded`, is a single statement that runs after a successful refund" — this slice adds a write *before* the gateway call in that same chain | fixed-in-`FIXSHA` — amended, plus a note that staying transaction-free is now load-bearing rather than merely cheaper. The docs-freshness sweep missed it because that sweep greps renamed identifiers, not invalidated claims in untouched files |
+| F-6 | review (comment/doc compliance) | `markOwedAgain`'s Javadoc restated rationale already in `RESPONSIBILITIES.md` (§6d: relocate, leave a one-line pointer), inconsistent with its own neighbours | fixed-in-`FIXSHA` — trimmed to the contract plus the existing pointer |
+| F-7 | review (git history) | `refund_died_before_record` deterministically increments `riviera.refunds.failed` **twice** per incident (the webhook counts the refund it killed; the recording call it beat counts its own refusal), and the docs described it in the singular | **behaviour kept, docs fixed** in `FIXSHA` — both observations are true and the gauge still reads one booking; suppressing the second would couple `RefundService` to an adapter's reason vocabulary. Recorded in `RESPONSIBILITIES.md`, the observability runbook, and the smoke test |
 
 ---
 
@@ -297,7 +302,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/payment/application/ThrowingPayments.java` — `Payments` test double signature
 - `platform/src/test/java/ai/riviera/platform/payment/application/RefundServiceTest.java` — the attempt stamp is made before delegating
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — `Payments` stub signature
-- `RESPONSIBILITIES.md` — §`payment`: the three residuals, closed
+- `RESPONSIBILITIES.md` — §`payment`: the three residuals, closed, plus F-7's double-observation note
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingRefundListener.java` — F-5: its Javadoc's "only write" claim, amended
 - `docs/runbooks/observability.md` — the owed-refund enumeration query, the new gauge row, the new `refund_died_before_record` reason
 - `docs/runbooks/stripe-profile-smoke-test.md` — step 8's expected row gains the trace; new step 8b forges the racing failure (docs-freshness finding)
 - `CLAUDE.md` — checked by the counting sweep, **unchanged**: the `payment` module row and the `shared` type list both stay true

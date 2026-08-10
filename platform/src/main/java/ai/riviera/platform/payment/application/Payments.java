@@ -61,6 +61,10 @@ public interface Payments {
 	 * against the same collection. Only the first is money the platform owes. A 0-row no-op when no
 	 * collected payment row exists (the stub profile), which is why nothing is reported back.
 	 *
+	 * <p>It records an attempt <strong>in flight</strong>, not one ever made: every terminal outcome
+	 * clears it, so a concluded attempt stops vouching for refunds that follow it. A stamp that
+	 * survived its own attempt would eventually make every later gateway refund look like ours.
+	 *
 	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
 	void markRefundAttempted(BookingRef booking);

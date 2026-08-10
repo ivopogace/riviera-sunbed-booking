@@ -340,6 +340,39 @@ class JdbcPaymentsIT {
 	}
 
 	@Test
+	void aResolvedAttemptStopsDiscriminatingForALaterManualRefund() {
+		payments.register(new NewPayment(new BookingRef(9808L), "pi_stale_attempt", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_stale_attempt", PaymentStatus.SUCCEEDED);
+		payments.markRefundAttempted(new BookingRef(9808L));
+		payments.markRefunded(new BookingRef(9808L), 4500L, "re_ours");
+		payments.markRefundFailed("re_ours");
+
+		assertFalse(payments.markUnrecordedRefundFailed("pi_stale_attempt", "re_by_hand"),
+				"our attempt is over — a later refund on this collection is not ours to own");
+
+		assertEquals("re_ours", jdbc.sql("SELECT failed_refund_id FROM payment "
+						+ "WHERE payment_intent_id = 'pi_stale_attempt'").query(String.class).single(),
+				"and the trace still names the refund that actually died, which is what the runbook looks up");
+	}
+
+	@Test
+	void aFreshAttemptAfterAFailureDiscriminatesAgain() {
+		payments.register(new NewPayment(new BookingRef(9809L), "pi_reattempt", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_reattempt", PaymentStatus.SUCCEEDED);
+		payments.markRefundAttempted(new BookingRef(9809L));
+		payments.markUnrecordedRefundFailed("pi_reattempt", "re_first_race");
+
+		payments.markRefundAttempted(new BookingRef(9809L));
+
+		assertTrue(payments.markUnrecordedRefundFailed("pi_reattempt", "re_second_race"),
+				"the outbox re-drive is a new attempt, so its own racing failure must land too");
+		assertEquals("re_second_race", jdbc.sql("SELECT failed_refund_id FROM payment "
+						+ "WHERE payment_intent_id = 'pi_reattempt'").query(String.class).single());
+		assertFalse(payments.markRefunded(new BookingRef(9809L), 4500L, "re_second_race"),
+				"and the second corpse is blocked from being recorded, exactly like the first");
+	}
+
+	@Test
 	void aManualGatewayRefundFailureMovesNothing() {
 		payments.register(new NewPayment(new BookingRef(9804L), "pi_manual", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_manual", PaymentStatus.SUCCEEDED);

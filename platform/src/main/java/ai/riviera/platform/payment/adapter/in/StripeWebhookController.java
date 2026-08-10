@@ -191,13 +191,8 @@ class StripeWebhookController {
 
 	/**
 	 * Put the booking back to owed, whether or not its refund had been written down yet, and report
-	 * whether this delivery is the one that did it.
-	 *
-	 * <p>The second arm is the narrower case and the reason this is not a single call: a refund id is
-	 * recorded <em>after</em> the gateway already knows about the refund, so a failure can arrive
-	 * while the recording call is still in flight and find nothing to un-record. Matching by
-	 * PaymentIntent covers that window; the guards behind it are what keep a manual gateway refund —
-	 * money the platform never promised — from moving anything.
+	 * whether this delivery is the one that did it. The second arm covers the window before the
+	 * refund id is recorded, matching by PaymentIntent instead.
 	 *
 	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */

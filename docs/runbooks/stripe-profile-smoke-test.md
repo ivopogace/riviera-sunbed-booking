@@ -130,7 +130,9 @@ SELECT refund_attempted_at, refund_id, failed_refund_id FROM payment WHERE booki
 ```
 
 `riviera_refunds_failed_total` increments and `riviera_refunds_owed` reads 1 — where before #594 the
-event was consumed silently and the row went on to settle at `REFUNDED`. Posting the same payload
+event was consumed silently and the row went on to settle at `REFUNDED`. It increments **once** here
+because the forged event has no concurrent create racing it; the real race increments twice (the
+webhook, and the recording call it beat), while the gauge still reads 1. Posting the same payload
 against a booking that was never cancelled must move nothing and increment nothing: with no
 `refund_attempted_at`, a failed refund on our collection is someone's manual dashboard refund, and
 the platform owes nothing.
