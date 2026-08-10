@@ -224,8 +224,11 @@ sits in the outbox.
   and the create's same-key replay, so ≈75s per refund) and `WeatherRefundService` dispatches a whole venue-day of
   refunds in one transaction, so on Boot's shared `applicationTaskExecutor` a single admin action
   would starve the spine that pool also carries; the same swap **dropped** the `REQUIRES_NEW` the
-  composite annotation supplied — it bought nothing (the one write is a single statement, after a
-  successful refund) while pinning one of ten Hikari connections across the call. Saturation
+  composite annotation supplied — it bought nothing (every write beneath it is a single guarded
+  statement, so a rollback would have nothing to undo) while pinning one of ten Hikari connections
+  across the call. Since #594 dropping it is load-bearing rather than merely cheaper: the refund path
+  records its attempt *before* the gateway call, and a transaction would hide that write for exactly
+  the window it exists to cover (`RESPONSIBILITIES.md` §`payment`). Saturation
   **sheds** to `ObservabilityMetrics.REFUNDS_SHED` and the publication stays outstanding for the
   restart republish, but the queue is sized (`riviera.booking.refund.*`, validated at boot) so
   shedding is unreachable for any plausible burst — unlike a shed mail, a shed refund is money owed
@@ -375,7 +378,9 @@ partial one: two 50% refunds fit inside the charge and both succeed.
   repeat a call expected to fail again. Same posture as `refund_mismatch`: the alert stands until a
   human settles it. The un-record is itself guarded on the recorded `refund_id`, so a re-delivery
   moves nothing, a failure naming a refund we never issued (a manual dashboard one) moves nothing, and
-  a stale failure cannot un-record the retry that worked.
+  a stale failure cannot un-record the retry that worked. (#594 added a second, narrower arm beside
+  that guard, for the refund this app has begun but not yet written down — see below; what keeps a
+  manual dashboard refund out is then the refund *attempt* record, not the absence of a match.)
 - **At-most-once is now the port's contract, enforced, not the collecting adapter's habit.**
   `PaymentGatewayRefundContract` states it once against `PaymentGateway` — replay a refund past the
   key window and exactly one must move, with the replay reporting the first — on a fixture that
@@ -387,6 +392,78 @@ partial one: two 50% refunds fit inside the charge and both succeed.
   binds a gateway to its `CollectionGuarantee`. So ADR-0009's Paysera adapter arrives unclassified and
   fails the build, which is what a javadoc could not do. The stub needed no state to participate — it
   is exempt because it collects nothing, and the guarantee that says so already existed.
+
+**#592 in turn left three residuals, and #594 closed all three with one change: the refund record
+gained a trace, and every refund write became a guarded statement that reports whether it moved.**
+
+- **A refund failure can no longer be lost to the window before its own record.** The old guard
+  matched on the recorded `refund_id`, and a refund id is written down *after* the gateway already
+  knows about the refund — so a verified failure arriving inside that window matched nothing,
+  answered `200`, committed the dedup row, and left the collection at `REFUNDED` **permanently**
+  while the guest was told their money was on its way. The window is not instantaneous: the create's
+  timeout replay puts tens of seconds between Stripe minting the refund and the row being written.
+  The fix is to **record the attempt before asking the gateway** (`markRefundAttempted`), so a
+  failure arriving mid-call can be matched by **PaymentIntent** instead of by a refund id that does
+  not exist yet.
+
+  That attempt is also the **discriminator**, and it is why matching by PaymentIntent is safe. The
+  other thing a dead-refund event on our collection can be is a refund someone issued by hand at the
+  gateway — money the platform never promised, whose failure must raise no money-path alert. Without
+  an attempt on record, the by-intent arm moves nothing. This is the discrimination the rejected
+  alternative could not make: **deferring the event with a `503` would 5xx-loop for the ~3 days
+  Stripe retries on exactly that branch**, and the endpoint is shared, so Stripe disabling it would
+  stop `payment_intent.succeeded` delivery and strand paid bookings in `AWAITING_PAYMENT` holding
+  their `(set, date)` claim — the invariant-#2/#8 failure the `503` exists to prevent.
+
+  The recorded death then **blocks the record that lost the race**: `markRefunded` refuses a refund
+  id already reported dead, answers `Failed("refund_died_before_record")`, and the event publication
+  stays outstanding. So this one case *does* recover on its own — not because the posture on failed
+  refunds changed, but because a refund that was never recorded still has its publication, and a
+  re-drive past the key window creates a fresh refund. A refund that was recorded and *then* died is
+  unchanged: nothing re-drives it, an issuer rejection is not a transient error.
+
+  One consequence is worth stating because it looks like a bug: this is the shape that increments
+  `riviera.refunds.failed` **twice** for one incident — the webhook counts the refund it killed, and
+  the recording call it beat counts its own refusal. Both are true observations, and the gauge still
+  reads one booking. It is the sharpest illustration of why the counter measures observations and
+  `riviera.refunds.owed` measures debts.
+- **`markRefunded` moves only a collected payment**, so a refund can no longer assert a collection
+  that never succeeded. It was unguarded, and `markRefundFailed` writes `status = SUCCEEDED`
+  unconditionally, so the pair could fabricate a collected payment out of a `REQUIRES_PAYMENT`,
+  `FAILED` or `CANCELED` row — `findPendingCredentials` would stop offering the client secret and
+  `RefundProgress` would report `OUTSTANDING` for money never taken. Not reachable while the only
+  refund path is cancelling a `CONFIRMED` booking; reachable the moment a second one exists. The
+  guard is what makes the hard-coded `SUCCEEDED` restore **sound by construction rather than lucky**:
+  if the only statuses a refund record can replace are the collected ones, `SUCCEEDED` is the only
+  thing it can have replaced. That is why no "previous status" column was needed.
+- **An owed refund is enumerable, not just loggable.** The un-record used to leave a row
+  byte-identical to one whose refund was never attempted, save a stale `refund_id` with no flag
+  saying it died — the wrong shape for the remedy the runbook prescribes, which needs the *list* of
+  bookings owed money and cannot get it from log lines once retention is shorter than the incident.
+  The dead id now moves to `failed_refund_id`, `refund_id` stops claiming a live refund, and
+  `refund_failed_at` marks the debt, over a **partial index** that is empty in the healthy case.
+  `riviera.refunds.owed` gauges it: **distinct refunds owed**, where `riviera.refunds.failed` counts
+  observations and re-increments on every resubmission of the same stuck refund. The flag means
+  "owed **now**" — a retry that works clears it, while `failed_refund_id` keeps what died.
+
+  The attempt stamp carries two constraints worth stating, because the tidy-up that breaks each looks
+  like an improvement. **Placement:** it is written from `RefundService#refund`, which must stay
+  **outside a caller's transaction**, or the write stays invisible for the whole window it exists to
+  cover (`RefundAttemptVisibilityIT` reads it back on a second connection; `RefundBulkheadIT` is what
+  pins the listener's absence of a transaction). **Lifetime:** the stamp records an *unresolved refund
+  obligation at the gateway*, and every in-app resolution clears it — the recording write on success,
+  and both failure marks. It deliberately **survives a `Failed` return**, which is the counter-intuitive
+  half. Clearing there was tried and reverted: `RefundResult.Failed` carries an untyped reason, so the
+  service cannot tell a gateway-confirmed "nothing of ours is live" from the genuinely ambiguous
+  branches — a bare `StripeException` after a *double* timeout in the replay helper may well have left
+  a live refund at Stripe with no id on record, and that is precisely the case the discriminator exists
+  for. Clearing there would trade a bounded false positive for the silent loss this whole mechanism was
+  built to end. In every `Failed` branch the platform still owes the refund, so a stamp that outlives
+  the call is describing something true.
+
+  The residual is bounded and worth stating: a booking settled **by hand at the gateway** never runs an
+  in-app resolution, so its stamp stands, and a later failed refund on that collection would be recorded
+  as ours. Clear it when settling by hand — the observability runbook's owed-refund section says so.
 
 **Not My Job:**
 - Deciding *whether* to refund or *how much* → **`booking`** owns the refund policy;

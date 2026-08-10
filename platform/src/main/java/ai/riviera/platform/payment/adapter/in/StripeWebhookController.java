@@ -60,9 +60,10 @@ import ai.riviera.platform.payment.adapter.out.StripeProperties;
  * <p>Every outcome goes through a <strong>guarded</strong> transition, never a read-then-write, so a
  * late or out-of-order delivery is a no-op rather than an overwrite and Stripe's lack of ordering
  * guarantees costs nothing. The three payment outcomes use {@code Payments#markStatus}, which moves
- * only an <em>open</em> record and publishes its event only when one moved. The refund un-record uses
- * {@code Payments#markRefundFailed}, whose guard is the mirror image — it moves only a row that still
- * records that refund — and publishes nothing: no other module's state depends on it.
+ * only an <em>open</em> record and publishes its event only when one moved. The refund un-record's
+ * guard is the mirror image — it moves only a row that still records that refund, or one whose refund
+ * this app has begun but not yet written down — and publishes nothing: no other module's state
+ * depends on it.
  *
  * <p>The whole handler is one transaction: if it fails after the dedup insert, the transaction
  * (including that insert) rolls back and Stripe re-delivers — at-least-once without a broker. That
@@ -178,7 +179,7 @@ class StripeWebhookController {
 		if (!RefundLifecycle.returnedNoMoney(refund.getStatus())) {
 			return;
 		}
-		if (!payments.markRefundFailed(refund.getId())) {
+		if (!markOwedAgain(refund)) {
 			// Already un-recorded by the sibling type's delivery, or a refund this app never issued.
 			log.debug("refund {} moved no row — nothing to un-record", refund.getId());
 			return;
@@ -186,6 +187,21 @@ class StripeWebhookController {
 		failedRefunds.increment();
 		log.warn("refund {} for booking {} returned no money ({}) — the platform still owes it",
 				refund.getId(), bookingOf(refund).map(BookingRef::value).orElse(null), refund.getStatus());
+	}
+
+	/**
+	 * Put the booking back to owed, whether or not its refund had been written down yet, and report
+	 * whether this delivery is the one that did it. The second arm covers the window before the
+	 * refund id is recorded, matching by PaymentIntent instead.
+	 *
+	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
+	 */
+	private boolean markOwedAgain(Refund refund) {
+		if (payments.markRefundFailed(refund.getId())) {
+			return true;
+		}
+		String intentId = refund.getPaymentIntent();
+		return intentId != null && payments.markUnrecordedRefundFailed(intentId, refund.getId());
 	}
 
 	/** The booking behind a refund, for the incident log line only — never to decide anything. */

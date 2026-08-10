@@ -2,6 +2,8 @@ package ai.riviera.platform.payment.application;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -45,13 +47,47 @@ class RefundServiceTest {
 		RefundOnlyGateway fake = (booking, amount) ->
 				new RefundResult.Refunded("re-" + booking.value() + "-" + amount.minor());
 		RefundService service =
-				new RefundService(fake, new SimpleMeterRegistry(), new ThrowingPayments() {
-				});
+				new RefundService(fake, new SimpleMeterRegistry(), new AttemptRecordingPayments());
 
 		RefundResult result = service.refund(BOOKING, new Money(2250L, "EUR"));
 
 		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result);
 		assertEquals("re-42-2250", refunded.refundId(), "service passes booking + amount through unchanged");
+	}
+
+	@Test
+	void recordsTheAttemptBeforeAskingTheGateway() {
+		List<String> calls = new ArrayList<>();
+		RefundOnlyGateway fake = (booking, amount) -> {
+			calls.add("gateway");
+			return new RefundResult.Refunded("re_ordered");
+		};
+		RefundService service =
+				new RefundService(fake, new SimpleMeterRegistry(), new AttemptRecordingPayments(calls));
+
+		service.refund(BOOKING, new Money(2250L, "EUR"));
+
+		assertEquals(List.of("attempt:42", "gateway"), calls,
+				"an attempt recorded after the call would be invisible for the whole window it exists to cover");
+	}
+
+	/**
+	 * A refused refund leaves the obligation standing, so the stamp must survive it. Clearing here
+	 * would look tidy and would lose the discriminator in the one case it exists for: a create whose
+	 * response was lost to a double timeout can leave a live refund at the gateway with no id on
+	 * record, and only the stamp lets that refund's later failure be recognised as ours.
+	 */
+	@Test
+	void keepsTheAttemptWhenTheGatewayRefuses() {
+		List<String> calls = new ArrayList<>();
+		RefundOnlyGateway refusing = (booking, amount) -> new RefundResult.Failed("stripe_error");
+		RefundService service =
+				new RefundService(refusing, new SimpleMeterRegistry(), new AttemptRecordingPayments(calls));
+
+		service.refund(BOOKING, new Money(2250L, "EUR"));
+
+		assertEquals(List.of("attempt:42"), calls,
+				"the refund is still owed, so the obligation — and the stamp recording it — stands");
 	}
 
 	@Test

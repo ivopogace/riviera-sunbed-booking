@@ -107,13 +107,35 @@ PAYLOAD='{"id":"evt_local_refund_failed","object":"event","api_version":"2024-04
 ```
 
 ```sql
-SELECT status, refunded_minor FROM payment WHERE booking_ref = <id>;  -- SUCCEEDED, 0
+SELECT status, refunded_minor, refund_id, failed_refund_id, refund_failed_at
+FROM payment WHERE booking_ref = <id>;  -- SUCCEEDED, 0, NULL, <$RE>, <a timestamp>
 ```
 
 The booking view flips back to showing the refund as outstanding, and
 `riviera_refunds_failed_total` increments once — a second delivery under a different event id must
-move nothing. Recovery from here is manual (`RESPONSIBILITIES.md` §`payment`): inside the ~24h
+move nothing. Since #594 the row also carries the failure trace above, so the booking is enumerable
+as owed rather than reconstructable only from the WARN line, and `riviera_refunds_owed` reads 1.
+Recovery from here is manual (`RESPONSIBILITIES.md` §`payment`): inside the ~24h
 idempotency-key window a re-attempt replays the dead refund and is refused as `refund_key_replay`.
+
+**8b. The failure that races its own record (#594).** The step above kills a refund the app had
+already written down. Forge the other order too — the one the app cannot produce on demand, because
+it needs the event to land mid-call: cancel a fresh confirmed booking, and before the refund is
+recorded POST the same payload with a refund id the app has never seen (`re_forged_race`) and the
+booking's `$PI`.
+
+```sql
+SELECT refund_attempted_at, refund_id, failed_refund_id FROM payment WHERE booking_ref = <id>;
+-- NULL, NULL, 're_forged_race'   (the attempt is cleared once it concludes, however it concluded)
+```
+
+`riviera_refunds_failed_total` increments and `riviera_refunds_owed` reads 1 — where before #594 the
+event was consumed silently and the row went on to settle at `REFUNDED`. It increments **once** here
+because the forged event has no concurrent create racing it; the real race increments twice (the
+webhook, and the recording call it beat), while the gauge still reads 1. Posting the same payload
+against a booking that was never cancelled must move nothing and increment nothing: with no
+`refund_attempted_at`, a failed refund on our collection is someone's manual dashboard refund, and
+the platform owes nothing.
 
 ## Idempotency / retry checks (optional)
 

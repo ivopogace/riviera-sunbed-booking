@@ -74,6 +74,9 @@ class StripePaymentGateway implements PaymentGateway {
 	/** The gateway answered the create with a refund that had already returned nothing. */
 	private static final String REFUND_BORN_DEAD = "refund_returned_nothing";
 
+	/** The refund died — and its failure webhook landed — before this call could record it. */
+	private static final String REFUND_DIED_BEFORE_RECORD = "refund_died_before_record";
+
 	private final StripeClient stripe;
 	private final Payments payments;
 	private final Counter adoptedRefunds;
@@ -160,7 +163,9 @@ class StripePaymentGateway implements PaymentGateway {
 						refund.getStatus());
 				return new RefundResult.Failed(REFUND_BORN_DEAD);
 			}
-			payments.markRefunded(booking, amount.minor(), refund.getId());
+			if (!payments.markRefunded(booking, amount.minor(), refund.getId())) {
+				return unrecordable(booking, refund.getId());
+			}
 			return new RefundResult.Refunded(refund.getId());
 		}
 		catch (StripeException e) {
@@ -238,11 +243,28 @@ class StripePaymentGateway implements PaymentGateway {
 					requested.minor());
 			return new RefundResult.Failed(REFUND_MISMATCH);
 		}
-		payments.markRefunded(booking, heldMinor, held.getId());
+		if (!payments.markRefunded(booking, heldMinor, held.getId())) {
+			return unrecordable(booking, held.getId());
+		}
 		adoptedRefunds.increment();
 		log.info("adopted refund {} already held for booking {} — no second refund created",
 				held.getId(), booking.value());
 		return new RefundResult.Refunded(held.getId());
+	}
+
+	/**
+	 * The answer when the refund record was refused. The guard that refuses it fires when the
+	 * refund's own failure webhook won the race to the row, so reporting success would tell a guest
+	 * their money is on its way on the strength of a refund the gateway has already killed.
+	 * {@link RefundResult.Failed} instead keeps the event publication outstanding, so a re-drive past
+	 * the idempotency-key window issues a fresh refund.
+	 *
+	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
+	 */
+	private static RefundResult unrecordable(BookingRef booking, String refundId) {
+		log.warn("booking {}'s refund {} could not be recorded — the gateway reported it dead first, "
+				+ "so the refund is still owed", booking.value(), refundId);
+		return new RefundResult.Failed(REFUND_DIED_BEFORE_RECORD);
 	}
 
 	/** A Stripe call that may be replayed under the same idempotency key. */

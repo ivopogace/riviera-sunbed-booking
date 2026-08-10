@@ -29,8 +29,7 @@ class RefundFailureMetricTest {
 	}
 
 	private RefundService service(RefundOnlyGateway gateway) {
-		return new RefundService(gateway, meters, new ThrowingPayments() {
-		});
+		return new RefundService(gateway, meters, new AttemptRecordingPayments());
 	}
 
 	@Test

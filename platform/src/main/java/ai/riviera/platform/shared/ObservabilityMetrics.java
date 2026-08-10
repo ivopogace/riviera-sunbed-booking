@@ -22,6 +22,15 @@ public final class ObservabilityMetrics {
 	 */
 	public static final String REFUNDS_FAILED = "riviera.refunds.failed";
 
+	/**
+	 * Gauge: bookings whose refund the gateway would not issue and which are still owed the money.
+	 * Distinct refunds owed, where {@link #REFUNDS_FAILED} counts observations — one stuck refund
+	 * re-increments that counter on every resubmission but moves this gauge by one. Never sum the
+	 * two; read the counter for "something happened" and the gauge for "how many are outstanding".
+	 * It falls back as bookings are settled, so it is the one that should return to zero.
+	 */
+	public static final String REFUNDS_OWED = "riviera.refunds.owed";
+
 	/** Standard Boot Web timer; a webhook 5xx is a tag slice of it — money-path signal 3 of 3. */
 	public static final String HTTP_SERVER_REQUESTS = "http.server.requests";
 

@@ -35,6 +35,13 @@ class JdbcPayments implements Payments {
 	private static final List<String> REFUND_RECORDED_STATUSES =
 			List.of(PaymentStatus.REFUNDED.name(), PaymentStatus.PARTIALLY_REFUNDED.name());
 
+	/** The statuses in which the gateway holds collected money, so a refund of it can be recorded. */
+	private static final List<String> COLLECTED_STATUSES =
+			List.of(PaymentStatus.SUCCEEDED.name(), PaymentStatus.REFUNDED.name(),
+					PaymentStatus.PARTIALLY_REFUNDED.name());
+
+	private static final String PARAM_REFUND_ID = "refundId";
+
 	private final JdbcClient jdbc;
 
 	JdbcPayments(JdbcClient jdbc) {
@@ -117,19 +124,34 @@ class JdbcPayments implements Payments {
 	}
 
 	@Override
-	public void markRefunded(BookingRef booking, long refundedMinor, String refundId) {
-		// Status is decided from the collected amount: a refund covering the whole amount is REFUNDED,
-		// otherwise PARTIALLY_REFUNDED. A 0-row no-op if no payment row exists (stub profile).
+	public void markRefundAttempted(BookingRef booking) {
 		jdbc.sql("""
 				UPDATE payment
-				SET refunded_minor = :refunded, refund_id = :refundId, updated_at = NOW(),
+				SET refund_attempted_at = NOW(), updated_at = NOW()
+				WHERE booking_ref = :ref AND status IN (:collected)
+				""")
+				.param("ref", booking.value())
+				.param("collected", COLLECTED_STATUSES)
+				.update();
+	}
+
+	@Override
+	public boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+		// A refund covering the whole collected amount is REFUNDED, a smaller one PARTIALLY_REFUNDED.
+		return jdbc.sql("""
+				UPDATE payment
+				SET refunded_minor = :refunded, refund_id = :refundId, refund_failed_at = NULL,
+				    refund_attempted_at = NULL, updated_at = NOW(),
 				    status = CASE WHEN :refunded >= amount_minor THEN 'REFUNDED' ELSE 'PARTIALLY_REFUNDED' END
 				WHERE booking_ref = :ref
+				  AND status IN (:collected)
+				  AND (failed_refund_id IS NULL OR failed_refund_id <> :refundId)
 				""")
 				.param("refunded", refundedMinor)
-				.param("refundId", refundId)
+				.param(PARAM_REFUND_ID, refundId)
 				.param("ref", booking.value())
-				.update();
+				.param("collected", COLLECTED_STATUSES)
+				.update() == 1;
 	}
 
 	@Override
@@ -137,12 +159,41 @@ class JdbcPayments implements Payments {
 		// Guarded in the one statement, never read-then-write: two deliveries cannot both un-record.
 		return jdbc.sql("""
 				UPDATE payment
-				SET refunded_minor = 0, status = :succeeded, updated_at = NOW()
+				SET refunded_minor = 0, status = :succeeded, refund_id = NULL,
+				    failed_refund_id = :refundId, refund_failed_at = NOW(),
+				    refund_attempted_at = NULL, updated_at = NOW()
 				WHERE refund_id = :refundId AND status IN (:recorded)
 				""")
 				.param("succeeded", PaymentStatus.SUCCEEDED.name())
-				.param("refundId", refundId)
+				.param(PARAM_REFUND_ID, refundId)
 				.param("recorded", REFUND_RECORDED_STATUSES)
 				.update() == 1;
+	}
+
+	@Override
+	public boolean markUnrecordedRefundFailed(String paymentIntentId, String refundId) {
+		// refund_attempted_at is the discriminator: without it this is someone else's manual refund.
+		return jdbc.sql("""
+				UPDATE payment
+				SET failed_refund_id = :refundId, refund_failed_at = NOW(),
+				    refund_attempted_at = NULL, updated_at = NOW()
+				WHERE payment_intent_id = :intent
+				  AND status = :succeeded
+				  AND refund_id IS NULL
+				  AND refund_attempted_at IS NOT NULL
+				  AND (failed_refund_id IS NULL OR failed_refund_id <> :refundId)
+				""")
+				.param(PARAM_REFUND_ID, refundId)
+				.param(PARAM_INTENT, paymentIntentId)
+				.param("succeeded", PaymentStatus.SUCCEEDED.name())
+				.update() == 1;
+	}
+
+	@Override
+	public long owedRefundCount() {
+		// Served by payment_refund_owed_idx, the partial index over exactly these rows (V42).
+		return jdbc.sql("SELECT COUNT(*) FROM payment WHERE refund_failed_at IS NOT NULL")
+				.query(Long.class)
+				.single();
 	}
 }

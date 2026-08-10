@@ -736,7 +736,12 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public void markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+			public void markRefundAttempted(BookingRef booking) {
+			}
+
+			@Override
+			public boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+				return true;
 			}
 
 			@Override
@@ -747,6 +752,16 @@ class WebSliceStubs {
 			@Override
 			public boolean markRefundFailed(String refundId) {
 				return false;
+			}
+
+			@Override
+			public boolean markUnrecordedRefundFailed(String paymentIntentId, String refundId) {
+				return false;
+			}
+
+			@Override
+			public long owedRefundCount() {
+				return 0L;
 			}
 		};
 	}

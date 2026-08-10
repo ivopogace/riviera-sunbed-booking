@@ -23,6 +23,7 @@ import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -78,6 +79,8 @@ class StripeRefundContractTest extends PaymentGatewayRefundContract {
 		when(stripe.v1()).thenReturn(v1);
 		when(v1.refunds()).thenReturn(refunds);
 		when(payments.findIntentByBookingRef(booking)).thenReturn(Optional.of(intentId));
+		// The record accepts; refusing it is the racing-failure case, which is not this contract's.
+		when(payments.markRefunded(any(), anyLong(), any())).thenReturn(true);
 		try {
 			when(refunds.list(any(RefundListParams.class))).thenAnswer(_ -> heldRefundPage());
 			when(refunds.create(any(RefundCreateParams.class), any(RequestOptions.class)))
