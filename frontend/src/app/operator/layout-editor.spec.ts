@@ -133,6 +133,49 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()).toHaveLength(1);
   });
 
+  /** Open the regenerate confirm over an existing grid, and settle the focus move it starts. */
+  async function askRegenerate(): Promise<void> {
+    byId('layout-generate').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+  }
+
+  it('moves focus into the regenerate confirmation when it opens (WCAG 2.4.3)', async () => {
+    render();
+    generate('2', '2');
+
+    await askRegenerate();
+
+    expect(byId('layout-confirm-regen')).toBeTruthy();
+    expect(document.activeElement).toBe(byId('layout-confirm-yes'));
+  });
+
+  it('returns focus to Generate when the regenerate confirmation is cancelled', async () => {
+    render();
+    generate('2', '2');
+    await askRegenerate();
+
+    byId('layout-confirm-no').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byId('layout-confirm-regen')).toBeFalsy();
+    expect(document.activeElement).toBe(byId('layout-generate'));
+  });
+
+  it('returns focus to Generate when the regenerate is confirmed', async () => {
+    render();
+    generate('2', '2');
+    await askRegenerate();
+
+    byId('layout-confirm-yes').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byId('layout-confirm-regen')).toBeFalsy();
+    expect(document.activeElement).toBe(byId('layout-generate'));
+  });
+
   it('paints a cell with the active tool (click = keyboard path)', () => {
     render();
     generate('1', '3');

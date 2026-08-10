@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { hostFocusMover } from '../shared/focus-after-render';
 import { formatMoney, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import {
@@ -82,6 +83,7 @@ export class LayoutEditor {
   private readonly venueMap = inject(ConsoleVenueMap);
   private readonly console = inject(OperatorConsoleService);
   protected readonly operator = inject(OperatorAuth);
+  private readonly focusAfterRender = hostFocusMover();
 
   /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if
    *  invalid) — reactive to in-place venue switches, which reuse this instance. */
@@ -255,9 +257,16 @@ export class LayoutEditor {
     this.genCols.set(clampGrid(Number.parseInt(value, 10) || 0, 1, MAX_COLS));
   }
 
+  /**
+   * Open the regenerate confirmation, or settle it, moving focus with the surface. Confirming or
+   * cancelling destroys the button that was just activated, which strands keyboard/AT focus on
+   * `<body>` unless it is moved deliberately (WCAG 2.4.3) — and the Generate button outlives both,
+   * so it is where focus lands either way.
+   */
   protected onGenerate(): void {
     if (this.hasLayout()) {
       this.confirmRegen.set(true); // regenerate replaces — confirm first
+      this.focusAfterRender('layout-confirm-yes');
       return;
     }
     this.generateNow();
@@ -266,10 +275,12 @@ export class LayoutEditor {
   protected confirmGenerate(): void {
     this.confirmRegen.set(false);
     this.generateNow();
+    this.focusAfterRender('layout-generate');
   }
 
   protected cancelGenerate(): void {
     this.confirmRegen.set(false);
+    this.focusAfterRender('layout-generate');
   }
 
   private generateNow(): void {

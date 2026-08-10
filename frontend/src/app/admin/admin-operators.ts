@@ -1,17 +1,9 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  effect,
-  ElementRef,
-  inject,
-  Injector,
-  signal,
-} from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { hostFocusMover } from '../shared/focus-after-render';
 import { AdminConsoleStats } from './admin-console-stats';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminOperatorsService } from './admin-operators.service';
@@ -257,8 +249,7 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
 export class AdminOperators {
   protected readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminOperatorsService);
-  private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly injector = inject(Injector);
+  private readonly focusAfterRender = hostFocusMover();
 
   protected readonly pending = signal<PendingOperatorView[]>([]);
   protected readonly accounts = signal<OperatorAccountView[]>([]);
@@ -390,15 +381,4 @@ export class AdminOperators {
     }
   }
 
-  /** Move focus to a test-id'd element once the swap it belongs to has actually rendered. */
-  private focusAfterRender(testId: string): void {
-    afterNextRender(
-      {
-        earlyRead: () =>
-          this.hostRef.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`),
-        write: (target) => target?.focus(),
-      },
-      { injector: this.injector },
-    );
-  }
 }

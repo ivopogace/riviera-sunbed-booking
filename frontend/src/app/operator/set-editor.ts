@@ -1,20 +1,10 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  Injector,
-  input,
-  linkedSignal,
-  output,
-  signal,
-} from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { disabled, form, FormField } from '@angular/forms/signals';
 import { firstValueFrom, Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { hostFocusMover } from '../shared/focus-after-render';
 import { eurosToMinorUnits, minorUnitsToEuros } from '../shared/money';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import {
@@ -84,9 +74,8 @@ function draftForNewCell(gridY: number): SetDraft {
 })
 export class SetEditor {
   private readonly console = inject(OperatorConsoleService);
-  private readonly hostRef: ElementRef<HTMLElement> = inject(ElementRef);
-  private readonly injector = inject(Injector);
   protected readonly operator = inject(OperatorAuth);
+  private readonly focusAfterRender = hostFocusMover();
 
   /** The venue whose map is being edited — owner-asserted server-side on every write (invariant #13). */
   readonly venueId = input.required<number>();
@@ -481,16 +470,6 @@ export class SetEditor {
     }
   }
 
-  private focusAfterRender(testId: string): void {
-    afterNextRender(
-      {
-        earlyRead: () =>
-          this.hostRef.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`),
-        write: (target) => target?.focus(),
-      },
-      { injector: this.injector },
-    );
-  }
 }
 
 function slot(gridX: number, gridY: number): string {

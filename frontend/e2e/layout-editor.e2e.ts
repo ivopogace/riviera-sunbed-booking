@@ -6,9 +6,10 @@ import { settle } from './support/booking-dialog';
 /**
  * Real-render CI-safe e2e for the layout editor. Drives the actual generate → confirm →
  * paint → save flow on the default beach-map tab, asserting the single bulk PUT payload, the
- * server-locked (`LAYOUT_IN_USE`) path, and the stale-write conflict (409 STALE_WRITE keeps the
- * painted grid + offers Reload — co-located here as the venue tab does in operator-venue.e2e.ts). API
- * mocked via `page.route` (no backend), axe over the editor.
+ * server-locked (`LAYOUT_IN_USE`) path, the regenerate confirmation's focus choreography, and the
+ * stale-write conflict (409 STALE_WRITE keeps the painted grid + offers Reload — co-located here as
+ * the venue tab does in operator-venue.e2e.ts). API mocked via `page.route` (no backend), axe over
+ * the editor.
  */
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
@@ -154,6 +155,36 @@ test('shows the layout-locked message when the venue has bookings (409 LAYOUT_IN
   await page.getByTestId('layout-save').click();
   await expect(page.getByTestId('layout-error')).toContainText(/locked/i);
   await expect(page.getByTestId('layout-error')).toContainText(/bookings, or sets that are still held/i);
+});
+
+test('the regenerate confirmation takes focus and hands it back on either answer (#604)', async ({
+  page,
+}) => {
+  await mockEditor(page);
+  await page.goto('/operator/1');
+  await signIn(page);
+  await expect(page.getByTestId('layout-editor')).toBeVisible();
+
+  // A grid has to exist before regenerating is destructive enough to be confirmed.
+  await page.getByTestId('layout-gen-rows').fill('1');
+  await page.getByTestId('layout-gen-cols').fill('2');
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(2);
+
+  // Cancelling destroys the button that was just activated, so focus goes back to Generate.
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-confirm-yes')).toBeFocused();
+  await page.getByTestId('layout-confirm-no').click();
+  await expect(page.getByTestId('layout-confirm-regen')).toBeHidden();
+  await expect(page.getByTestId('layout-generate')).toBeFocused();
+
+  // Same for confirming — answered from the keyboard alone, which is the case that strands focus.
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-confirm-yes')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('layout-confirm-regen')).toBeHidden();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(2);
+  await expect(page.getByTestId('layout-generate')).toBeFocused();
 });
 
 test('a stale-tab save is rejected 409, keeps the painted grid, and Reload recovers (#226, + axe)', async ({

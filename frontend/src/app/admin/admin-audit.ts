@@ -1,16 +1,9 @@
-import {
-  afterNextRender,
-  Component,
-  effect,
-  ElementRef,
-  inject,
-  Injector,
-  signal,
-} from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { hostFocusMover } from '../shared/focus-after-render';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminAuditService } from './admin-audit.service';
 import { AdminAuditEntryView } from './admin.model';
@@ -135,8 +128,7 @@ import { AdminAuditEntryView } from './admin.model';
 export class AdminAudit {
   protected readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminAuditService);
-  private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly injector = inject(Injector);
+  private readonly focusAfterRender = hostFocusMover();
 
   protected readonly entries = signal<readonly AdminAuditEntryView[]>([]);
   protected readonly loading = signal(false);
@@ -175,14 +167,7 @@ export class AdminAudit {
   protected async retry(): Promise<void> {
     await this.load();
     if (!this.loadError()) {
-      afterNextRender(
-        {
-          earlyRead: () =>
-            this.hostRef.nativeElement.querySelector<HTMLElement>('[data-testid="admin-audit-card"]'),
-          write: (card) => card?.focus(),
-        },
-        { injector: this.injector },
-      );
+      this.focusAfterRender('admin-audit-card');
     }
   }
 
