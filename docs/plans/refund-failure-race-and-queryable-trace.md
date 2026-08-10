@@ -71,43 +71,51 @@ cloud session addendum). Exists in git before phase 0, based on `origin/main` at
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a booking whose refund attempt is on record (`refund_attempted_at`
+- [x] **AC-1:** Given a booking whose refund attempt is on record (`refund_attempted_at`
       set) and whose refund has **not yet** been recorded, when a verified refund-lifecycle
       event reports that refund `failed`/`canceled`, then the payment row is marked
       refund-failed (`refund_failed_at` set, `failed_refund_id` = that refund) and the
       money-path counter fires — instead of the event being consumed as "nothing to
       un-record". *Pinned by:* `JdbcPaymentsIT.markUnrecordedRefundFailedMarksTheRacingAttempt`
       and `StripeWebhookIT.aRefundFailureRacingItsOwnRecordIsNotLost`
-- [ ] **AC-2:** Given the payment row already carries a refund-failed tombstone for refund
+- [x] **AC-2:** Given the payment row already carries a refund-failed tombstone for refund
       `re_X`, when the losing `markRefunded(booking, amount, re_X)` runs, then it moves no
       row and reports `false`, so `refunded_minor` stays `0` and the collection stays
       `SUCCEEDED`. *Pinned by:* `JdbcPaymentsIT.markRefundedRefusesARefundAlreadyReportedDead`
-- [ ] **AC-3:** Given the gateway's `markRefunded` reports no move, when
+- [x] **AC-3:** Given the gateway's `markRefunded` reports no move, when
       `StripePaymentGateway#refund` returns, then it answers
       `RefundResult.Failed("refund_died_before_record")` — so `BookingRefundListener`
       throws, the publication stays outstanding, and a re-drive past the key window issues a
       fresh refund. *Pinned by:* `StripePaymentGatewayTest.refundThatDiedBeforeItsRecordIsReportedFailed`
-- [ ] **AC-4:** Given a payment row in a **non-collected** status (`REQUIRES_PAYMENT`,
+- [x] **AC-4:** Given a payment row in a **non-collected** status (`REQUIRES_PAYMENT`,
       `FAILED`, or `CANCELED`), when `markRefunded` is called for it, then it moves no row
       and reports `false` — a refund can never assert a collection that never succeeded.
       *Pinned by:* `JdbcPaymentsIT.markRefundedRefusesAnUncollectedPayment`
-- [ ] **AC-5:** Given a refund recorded on a collected payment, when `markRefundFailed`
+- [x] **AC-5:** Given a refund recorded on a collected payment, when `markRefundFailed`
       un-records it, then the row reads `status = SUCCEEDED`, `refunded_minor = 0`,
       `refund_id = NULL` and carries `refund_failed_at` + `failed_refund_id` — the trace the
       runbook's remedy needs, and a `refund_id` that no longer claims a live refund.
       *Pinned by:* `JdbcPaymentsIT.markRefundFailedLeavesAQueryableTrace`
-- [ ] **AC-6:** Given N bookings whose refunds died and one whose retry then succeeded,
+- [x] **AC-6:** Given N bookings whose refunds died and one whose retry then succeeded,
       when the owed-refund count is read, then it is N — distinct refunds owed, not
       observations. *Pinned by:* `JdbcPaymentsIT.owedRefundCountCountsDistinctOwedRefunds`
-- [ ] **AC-7:** Given a verified refund-failure event for a refund on a PaymentIntent this
+- [x] **AC-7:** Given a verified refund-failure event for a refund on a PaymentIntent this
       platform never attempted a refund on (a manual dashboard refund), when it is handled,
       then no row moves, no counter fires, and the response is `200` — the platform owes
       nothing and must not raise a money-path alert.
       *Pinned by:* `StripeWebhookIT.aManualDashboardRefundFailureRaisesNoMoneyPathAlert`
-- [ ] **AC-8:** Given the `V42` migration, when Flyway runs on real Postgres, then the three
+- [x] **AC-8:** Given the `V42` migration, when Flyway runs on real Postgres, then the three
       columns exist nullable with no default, and a row may carry `refund_failed_at` while
       `status = 'SUCCEEDED'` (the state a dead refund leaves). *Pinned by:*
       `PaymentMigrationIT.refundFailureTraceColumnsAdmitAnOwedRefund`
+- [x] **AC-9:** Given a refund call that ends leaving none of this platform's refunds in flight —
+      the gateway refused it, replayed a dead one, or errored — when a later unrelated refund on the
+      same collection fails, then it moves no row and raises no alert: the attempt stamp records a
+      refund **in flight**, not one ever made. *Pinned by:*
+      `JdbcPaymentsIT.aResolvedAttemptStopsDiscriminatingForALaterManualRefund`,
+      `.clearingTheAttemptStopsTheByIntentArm`,
+      `RefundServiceTest.clearsTheAttemptWhenTheGatewayRefuses` / `.keepsTheAttemptWhenTheGatewayRefunded`,
+      with `JdbcPaymentsIT.aFreshAttemptAfterAFailureDiscriminatesAgain` guarding the opposite error
 
 ## Non-goals
 
@@ -441,8 +449,9 @@ Closes the read half of issue item **3**.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-7:** Run `gradle --no-daemon --console=plain test --tests "*JdbcPaymentsIT*" --tests "*StripeWebhookIT*" --tests "*StripePaymentGatewayTest*" --tests "*RefundAttemptVisibilityIT*"` → all PASS.
-- [ ] **AC-8:** Run `gradle --no-daemon --console=plain test --tests "*PaymentMigrationIT*"` → PASS.
+- [x] **AC-1..AC-7:** Run `gradle --no-daemon --console=plain test --tests "*JdbcPaymentsIT*" --tests "*StripeWebhookIT*" --tests "*StripePaymentGatewayTest*" --tests "*RefundAttemptVisibilityIT*"` → all PASS.
+- [x] **AC-8:** Run `gradle --no-daemon --console=plain test --tests "*PaymentMigrationIT*"` → PASS.
+- [x] **AC-9:** Covered by the AC-1..AC-7 command above (`JdbcPaymentsIT`, `RefundServiceTest`) → PASS.
 - [ ] **Structural net:** `--tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS.
 - [ ] **Full suite:** green on the PR's CI run (the only place the shared-context failure class shows).
 
