@@ -281,10 +281,13 @@ money fact is that `repriceRow` must keep working during bookings, which R-2 pro
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, awaiting re-review + CI`
+**Stage pointer:** `merge close-out written (PR #597) — blocked on the CI backend job`
 
-**Next action:** Push the review-fix round, re-read CI (`skipped=0` on the ITs, R-8), re-run the
-review over the changed surface, then re-pull the Sonar list before merge.
+**Next action:** Read PR #597's **Backend (build + test)** run and confirm the Testcontainers ITs
+reported `skipped=0` — that is the only outstanding verification (R-8), because nothing in this
+slice's IT coverage could run locally. Then re-pull the Sonar issue list against the final head and
+merge. After the merge only GitHub-only items remain: confirm #567 closed; #598/#599 already carry
+the deferred findings.
 
 > **Phases 1 and 2 landed in one commit.** Phase 2's guard is what makes the `editSet` half of
 > `VenueAdminControllerIT` pass, and the ITs cannot run locally (R-8), so splitting them would
@@ -304,6 +307,8 @@ review over the changed surface, then re-pull the Sonar list before merge.
 | 4 — Docs (RESPONSIBILITIES, o3 + u2 corrections, freshness audit) | ✅ | `920d92d` |
 
 | 5 — Review-gate fix round (F-2..F-12) | ✅ | `810e1cc` |
+
+| 6 — Re-review fix round (G-1..G-14) + follow-ups #598/#599 | ✅ | `f3afcbd` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -482,28 +487,29 @@ Structural net run locally and green: `ModularityTests`, `JdbcOnlyArchitectureTe
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; two concurrency ITs present, both forcing each interleaving (invariant #2).
+- [x] Pool + cutoff rules honored — #3 is the slice's subject; #4 N/A (no booking-date arithmetic).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new module edge, so no `allowedDependencies` change (invariant #11).
+- [x] **Payment/payout** N/A — no money moves.
+- [x] Refund policy — N/A, untouched (invariant #10).
+- [x] Timezone correct: the edit guard's cutoff is `LocalDate.now(Europe/Tirane)`, pinned by a clock at 22:30Z where UTC and Tirane differ (invariant #6).
+- [x] Booking codes — N/A, none generated, read or logged (invariant #7).
+- [x] Flyway — N/A, **no schema change**; the probes ride existing V5/V4 indexes (invariant #12).
+- [x] **Frontend** — N/A, backend-only; no Angular caller of these endpoints exists.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND
       findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
-      `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] Risk register has no stale `open` rows; Open Questions empty (two findings deferred to #598/#599).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+      `merged via PR #597`, so no docs-only follow-up PR is needed after the merge.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
-      If tooling blocked the review, that is stated in the PR and its checkbox is left
-      unticked.
+      Rung 1 of the ladder succeeded (`Skill("code-review")`), and it ran **twice** at high
+      effort: once at ready-for-review (12 findings, F-2..F-12) and again over the fix round per
+      the re-entry rule (14 more, G-1..G-14).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
 
