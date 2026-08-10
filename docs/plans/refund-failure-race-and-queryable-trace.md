@@ -266,10 +266,9 @@ responses (`200`/`400`/`503`) are unchanged.
 
 ## Execution status
 
-**Stage pointer:** `review gate — fix round pushed, awaiting re-review`
+**Stage pointer:** `DONE — merged via PR #596`
 
-**Next action:** Re-review the fix round's diff, re-check CI + Sonar on the new head, then
-complete the merge close-out.
+**Next action:** None — the slice is complete. Merged via PR #596; issue #594 closed by it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -339,22 +338,22 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `platform/src/main/resources/db/migration/V42__payment_refund_failure_trace.sql` · Test `platform/src/test/java/ai/riviera/platform/payment/PaymentMigrationIT.java`
 
-- [ ] **Step 1: Write the failing test** — `PaymentMigrationIT.refundFailureTraceColumnsAdmitAnOwedRefund`:
+- [x] **Step 1: Write the failing test** — `PaymentMigrationIT.refundFailureTraceColumnsAdmitAnOwedRefund`:
       insert a `SUCCEEDED` payment, `UPDATE` it to set `refund_failed_at = NOW()` and
       `failed_refund_id = 're_dead'` with `refunded_minor = 0`, and assert the row reads back —
       i.e. the columns exist, are nullable, and the CHECK constraints admit "collected, nothing
       refunded, a refund died".
-- [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*PaymentMigrationIT*"` → FAIL, `column "refund_failed_at" of relation "payment" does not exist`
-- [ ] **Step 3: Minimal implementation** — `V42__payment_refund_failure_trace.sql`, additive only:
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*PaymentMigrationIT*"` → FAIL, `column "refund_failed_at" of relation "payment" does not exist`
+- [x] **Step 3: Minimal implementation** — `V42__payment_refund_failure_trace.sql`, additive only:
       `refund_attempted_at TIMESTAMPTZ`, `refund_failed_at TIMESTAMPTZ`, `failed_refund_id TEXT`,
       plus `CREATE INDEX payment_refund_owed_idx ON payment (booking_ref) WHERE refund_failed_at IS NOT NULL`.
       No `NOT NULL`, no default, no status-token change (all three are NULL for every existing row,
       which is the correct history: no attempt recorded, no failure observed).
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS
-- [ ] **Step 5: Generalization-audit pass** — search for other places that read `payment` columns
+- [x] **Step 4: Run it, verify it passes** — same command → PASS
+- [x] **Step 5: Generalization-audit pass** — search for other places that read `payment` columns
       positionally or `SELECT *` (a new column would break them).
-- [ ] **Step 6: Commit** — `git commit -m "Add the payment refund-failure trace columns (#594)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Add the payment refund-failure trace columns (#594)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -364,25 +363,25 @@ Skill-routing gate for what the fix touches *before* editing).
 
 Closes issue items **2** and the write half of **3**.
 
-- [ ] **Step 1: Write the failing tests** — `JdbcPaymentsIT.markRefundedRefusesAnUncollectedPayment`
+- [x] **Step 1: Write the failing tests** — `JdbcPaymentsIT.markRefundedRefusesAnUncollectedPayment`
       (AC-4: a `REQUIRES_PAYMENT` / `FAILED` / `CANCELED` row does not move and reports `false`)
       and `JdbcPaymentsIT.markRefundFailedLeavesAQueryableTrace` (AC-5: after the un-record,
       `refund_id IS NULL`, `failed_refund_id` = the dead refund, `refund_failed_at` set).
       **Update the two existing cases that refund a `REQUIRES_PAYMENT` row on purpose**
       (`markRefundedFullMovesToRefunded`, `markRefundedPartialMovesToPartiallyRefunded`) to mark
       `SUCCEEDED` first — production always has (R-3).
-- [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*JdbcPaymentsIT*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — `markRefunded` returns `boolean` and gains
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*JdbcPaymentsIT*"` → FAIL
+- [x] **Step 3: Minimal implementation** — `markRefunded` returns `boolean` and gains
       `AND status IN (:collected)` (the named `REFUND_COLLECTED_STATUSES` constant, in lockstep
       with the SQL); `markRefundFailed` additionally writes `refund_id = NULL`,
       `failed_refund_id = :refundId`, `refund_failed_at = NOW()`; `markRefunded` clears
       `refund_failed_at` (a booking whose retry succeeded is no longer owed) while **keeping**
       `failed_refund_id`. Both gateway call sites branch on the new `boolean`.
-- [ ] **Step 4: Run it, verify it passes** — `--tests "*JdbcPaymentsIT*" --tests "*StripePaymentGatewayTest*" --tests "*StripeRefundContractTest*"` → PASS
-- [ ] **Step 5: Generalization-audit pass** — every `Payments` implementor/double must gain the
+- [x] **Step 4: Run it, verify it passes** — `--tests "*JdbcPaymentsIT*" --tests "*StripePaymentGatewayTest*" --tests "*StripeRefundContractTest*"` → PASS
+- [x] **Step 5: Generalization-audit pass** — every `Payments` implementor/double must gain the
       new signature: `WebSliceStubs`, `ThrowingPayments`, `PaymentServiceTest`.
-- [ ] **Step 6: Commit** — `git commit -m "Guard the refund record and trace the un-record (#594)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Guard the refund record and trace the un-record (#594)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -392,15 +391,15 @@ Closes issue items **2** and the write half of **3**.
 
 Closes issue item **1**.
 
-- [ ] **Step 1: Write the failing tests** — `JdbcPaymentsIT.markUnrecordedRefundFailedMarksTheRacingAttempt`
+- [x] **Step 1: Write the failing tests** — `JdbcPaymentsIT.markUnrecordedRefundFailedMarksTheRacingAttempt`
       (AC-1), `.markRefundedRefusesARefundAlreadyReportedDead` (AC-2), the re-delivery sibling (R-2),
       `StripeWebhookIT.aRefundFailureRacingItsOwnRecordIsNotLost` (AC-1) and
       `.aManualDashboardRefundFailureRaisesNoMoneyPathAlert` (AC-7),
       `StripePaymentGatewayTest.refundThatDiedBeforeItsRecordIsReportedFailed` (AC-3),
       `RefundAttemptVisibilityIT` (R-4: the stamp is visible from a second connection before the
       gateway call returns).
-- [ ] **Step 2: Run it, verify it fails** — `--tests "*JdbcPaymentsIT*" --tests "*StripeWebhookIT*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — `markRefundAttempted(BookingRef)` stamped from
+- [x] **Step 2: Run it, verify it fails** — `--tests "*JdbcPaymentsIT*" --tests "*StripeWebhookIT*"` → FAIL
+- [x] **Step 3: Minimal implementation** — `markRefundAttempted(BookingRef)` stamped from
       `RefundService#refund` before delegating; `markUnrecordedRefundFailed(intentId, refundId)`
       guarded on `refund_attempted_at IS NOT NULL AND refund_id IS NULL AND status = 'SUCCEEDED'
       AND (failed_refund_id IS NULL OR failed_refund_id <> :refundId)`;
@@ -408,14 +407,14 @@ Closes issue item **1**.
       reporting (counter + WARN) on either; `markRefunded`'s existing `failed_refund_id <> :refundId`
       guard from phase 1 is what refuses the corpse, and the gateway maps the refusal to
       `RefundResult.Failed("refund_died_before_record")`.
-- [ ] **Step 4: Run it, verify it passes** — the four classes above, then the structural net
+- [x] **Step 4: Run it, verify it passes** — the four classes above, then the structural net
       (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`, `*PackageShapeArchitectureTests*`).
-- [ ] **Step 5: Generalization-audit pass** — does the same race exist on the **collection** path
+- [x] **Step 5: Generalization-audit pass** — does the same race exist on the **collection** path
       (`register` after `paymentIntents().create`)? Record the finding either way: a PaymentIntent
       id is recorded before any event about it can exist (the issue says so), so the answer is
       expected to be "no" — but write down the search.
-- [ ] **Step 6: Commit** — `git commit -m "Stop losing a refund failure that races its own record (#594)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Stop losing a refund failure that races its own record (#594)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -425,19 +424,19 @@ Closes issue item **1**.
 
 Closes the read half of issue item **3**.
 
-- [ ] **Step 1: Write the failing test** — `JdbcPaymentsIT.owedRefundCountCountsDistinctOwedRefunds` (AC-6).
-- [ ] **Step 2: Run it, verify it fails** — `--tests "*JdbcPaymentsIT*"` → FAIL
-- [ ] **Step 3: Minimal implementation** — `Payments#owedRefundCount()` over the partial index;
+- [x] **Step 1: Write the failing test** — `JdbcPaymentsIT.owedRefundCountCountsDistinctOwedRefunds` (AC-6).
+- [x] **Step 2: Run it, verify it fails** — `--tests "*JdbcPaymentsIT*"` → FAIL
+- [x] **Step 3: Minimal implementation** — `Payments#owedRefundCount()` over the partial index;
       `REFUNDS_OWED = "riviera.refunds.owed"` in `ObservabilityMetrics` with the "never sum it with
       `REFUNDS_FAILED`" note the class already applies to its siblings; `RefundOwedGauge` binds it.
-- [ ] **Step 4: Run it, verify it passes** — `--tests "*JdbcPaymentsIT*" --tests "*MoneyPathAlertCheckTest*"` → PASS
-- [ ] **Step 5: Docs sweep** — `RESPONSIBILITIES.md` §`payment` records all three residuals closed
+- [x] **Step 4: Run it, verify it passes** — `--tests "*JdbcPaymentsIT*" --tests "*MoneyPathAlertCheckTest*"` → PASS
+- [x] **Step 5: Docs sweep** — `RESPONSIBILITIES.md` §`payment` records all three residuals closed
       and **why the hard-coded `SUCCEEDED` restore is now sound** rather than lucky; the runbook
       gains the enumeration query, the gauge row, and the `refund_died_before_record` reason beside
       the existing five shapes (it will then read "six shapes" — the counting sweep
       `riviera-docs-freshness` exists for).
-- [ ] **Step 6: Commit** — `git commit -m "Count and enumerate the refunds the platform still owes (#594)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Count and enumerate the refunds the platform still owes (#594)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -457,26 +456,26 @@ Closes the read half of issue item **3**.
 - [x] **AC-1..AC-7:** Run `gradle --no-daemon --console=plain test --tests "*JdbcPaymentsIT*" --tests "*StripeWebhookIT*" --tests "*StripePaymentGatewayTest*" --tests "*RefundAttemptVisibilityIT*"` → all PASS.
 - [x] **AC-8:** Run `gradle --no-daemon --console=plain test --tests "*PaymentMigrationIT*"` → PASS.
 - [x] **AC-9:** Covered by the AC-1..AC-7 command above — `JdbcPaymentsIT.aResolvedAttemptStopsDiscriminatingForALaterManualRefund`, `.aFreshAttemptAfterAFailureDiscriminatesAgain`, `RefundServiceTest.keepsTheAttemptWhenTheGatewayRefuses` → PASS.
-- [ ] **Structural net:** `--tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS.
-- [ ] **Full suite:** green on the PR's CI run (the only place the shared-context failure class shows).
+- [x] **Structural net:** `--tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS.
+- [x] **Full suite:** green on the PR's CI run — all 8 checks, plus the Sonar gate verified against the API (`new_lines = 226`, so the zeros are a real analysis, not the unanalyzed false-clean read): 0 new issues, 0 hotspots, 0% duplication, 98.15% new-code coverage. That coverage also confirms the Testcontainers ITs ran rather than skipping — the new `JdbcPayments` SQL is reachable only from them.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified `N/A`; the payment-row race is documented instead).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event changed (invariant #11).
-- [ ] **Payment/payout** section filled; webhooks remain the source of truth; both new writes idempotent; money in minor units; the payout ledger is untouched (invariants #5, #8, #9).
-- [ ] Refund policy still enforced server-side by `booking` (invariant #10) — this slice adds no decision.
-- [ ] Timezone correct: `TIMESTAMPTZ` columns, `NOW()` server-side (invariant #6).
-- [ ] Booking codes unguessable (invariant #7) — untouched; no refund id or booking code added to a log line that did not already carry it.
-- [ ] Flyway migration present; the new columns' behavior tested (invariant #12).
-- [ ] **Frontend** — `N/A`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` reports nothing.
-- [ ] **Close-out written in THIS PR** — final plan state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified `N/A`; the payment-row race is documented instead).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event changed (invariant #11).
+- [x] **Payment/payout** section filled; webhooks remain the source of truth; both new writes idempotent; money in minor units; the payout ledger is untouched (invariants #5, #8, #9).
+- [x] Refund policy still enforced server-side by `booking` (invariant #10) — this slice adds no decision.
+- [x] Timezone correct: `TIMESTAMPTZ` columns, `NOW()` server-side (invariant #6).
+- [x] Booking codes unguessable (invariant #7) — untouched; no refund id or booking code added to a log line that did not already carry it.
+- [x] Flyway migration present; the new columns' behavior tested (invariant #12).
+- [x] **Frontend** — `N/A`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` reports nothing.
+- [x] **Close-out written in THIS PR** — final plan state committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
