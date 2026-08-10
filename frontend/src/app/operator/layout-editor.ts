@@ -377,7 +377,7 @@ export class LayoutEditor {
       case undefined:
         return undefined;
       case 'LAYOUT_IN_USE':
-        return 'This venue has bookings or walk-in holds, so replacing the whole layout is locked. Switch to Edit sets to add, change or remove sets one at a time.';
+        return 'This venue has bookings, or sets that are still held, so replacing the whole layout is locked. Switch to Edit sets to add, change or remove sets one at a time.';
       case 'EMPTY_LAYOUT':
         return 'Add at least one set before saving.';
       case 'LAYOUT_TOO_LARGE':
