@@ -139,10 +139,10 @@
             class="mt-3 rounded-[12px] border border-[#0e8aa8]/50 bg-[#2bb8d4]/12 px-3 py-2.5"
             data-testid="set-move-armed"
           >
-            <p class="text-[12.5px] font-semibold leading-[1.45] text-(--riv-card-ink)" role="status">
+            <output class="block text-[12.5px] font-semibold leading-[1.45] text-(--riv-card-ink)">
               Pick an empty spot on the map for {{ selectedLabel() }}. Its row and position follow the
               new spot.
-            </p>
+            </output>
             <button
               type="button"
               (click)="cancelMove()"

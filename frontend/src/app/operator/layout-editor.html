@@ -1,11 +1,8 @@
 <section class="mx-auto w-full max-w-[1100px] px-5 py-4" data-testid="layout-editor">
   <!-- Which surface can work is decided by the venue's lifecycle, so the choice is explicit, not hidden. -->
-  <div
-    class="mb-4 flex flex-wrap gap-2"
-    role="group"
-    aria-label="Beach map editing mode"
-    data-testid="layout-mode"
-  >
+  <fieldset class="mb-4 border-0 p-0" data-testid="layout-mode">
+    <legend class="sr-only">Beach map editing mode</legend>
+    <div class="flex flex-wrap gap-2">
     <button
       type="button"
       [attr.aria-pressed]="mode() === 'bulk'"
@@ -34,7 +31,8 @@
     >
       Edit sets
     </button>
-  </div>
+    </div>
+  </fieldset>
 
   @if (mode() === 'sets') {
     @if (venueId(); as id) {
