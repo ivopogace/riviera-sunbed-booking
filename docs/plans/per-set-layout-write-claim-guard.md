@@ -308,6 +308,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/venue/spi/BookingPresence.java` — `hasBookings(SetId)`
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcBookingPresence.java` — the set-scoped probe
 - `platform/src/main/java/ai/riviera/platform/availability/adapter/out/JdbcAvailabilityClaim.java` — call the renamed port
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/out/JdbcBookingPresenceIT.java` — new; pins that the set-scoped probe isolates to its own set
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — AC-1..AC-5 unit level
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java` — AC-1/AC-2 at HTTP
 - `platform/src/test/java/ai/riviera/platform/venue/SetWriteVsClaimConcurrencyIT.java` — new; AC-6/AC-7
