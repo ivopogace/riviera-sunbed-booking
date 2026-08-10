@@ -29,7 +29,9 @@ behavior-parity ledger, which is where the deliberate `min-h-11` and `role="aler
 got recorded instead of shipping silently) · `tdd` (each phase writes the focus/ARIA spec red
 before the component exists) · `riviera-review-overlay` (review gate — RV-FE-E2E consulted at
 plan time for spec placement; full run due at ready-for-review) · `riviera-docs-freshness`
-(N/A — no substrate doc states anything about confirm-panel internals; re-checked at close-out) ·
+(**ran** over `origin/main...HEAD`, **0 findings** — the rename grep found no substrate reference to
+the deleted `focusAfterRender` copies, and the counting sweep's hits were all "two" of some other
+subject; RV-FE-8's frozen `operator/→venue/` edge count is still exactly 3) ·
 `riviera-frontend` (placement: both components are pure presentational primitives with no HTTP and
 no app state, so `shared/` is their address; confirmed no new cross-feature edge) ·
 `riviera-tailwind` (share at the component layer, never `@apply`; retain every `data-testid` as an
@@ -182,10 +184,16 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `review gate — findings fixed, re-review + sonar gate next`
+**Stage pointer:** `DONE — merged via PR #612`
 
-**Next action:** Re-run the review over the fix diff, clear the Sonar gate's reported list, then
-merge close-out. Nothing is left to build.
+**Next action:** None. All gates cleared; the only remaining items are GitHub-side (close #604,
+which the PR's `Closes` line does).
+
+**Gates:** CI green · review gate run (`/code-review` 5-agent fan-out at high effort, 3 findings
+fixed, fix diff re-reviewed clean) · Sonar green **with its reported list actually pulled**: 0
+issues, 0 new bugs / vulnerabilities / code smells, 0 duplicated blocks, new-code coverage
+**98.2%** over 320 new lines (`measures` non-empty and the check-run `pass`, so not a false-clean
+read) · docs-freshness ran, 0 findings.
 
 PR: **#612** (`merged via PR #612`).
 
@@ -195,7 +203,7 @@ PR: **#612** (`merged via PR #612`).
 | 1 — `shared/confirm-panel` + operator pair (**the #604 fix**) | ✅ | `707b9ba` |
 | 2 — `shared/confirm-with-reason` + admin pair | ✅ | `9689f45` |
 | 3 — e2e coverage, computed-style no-drift check, full verification | ✅ | `d65c0f9` |
-| 4 — review-gate fixes (F-2, F-3, F-4) | ✅ | Phase-4 commit below |
+| 4 — review-gate fixes (F-2, F-3, F-4) | ✅ | `a5f4e83` |
 
 **Verification at Phase 3:** unit `1329 passed (155 files)`; mocked e2e `165 passed`; `ng lint`
 clean; `ng build` succeeds; `node scripts/check-plan-file-structure.mjs --diff origin/main` clean.
@@ -216,9 +224,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (repo hygiene, RV-STYLE-1) | A two-line inline comment in `admin-venue-photos.e2e.ts`. The `PostToolUse` guard did not stop it; the CI half did | fixed-in-`d6063f6` |
-| F-2 | review (4 of 5 reviewers, independently) | Deleting the five private `focusAfterRender` methods left their **TSDoc orphaned** in four files. In `admin-venue-photos.ts` the orphan landed on `loadVenues()`, actively misdescribing it. Cause: the deletion edits matched from `private focusAfterRender(` and never included the doc block above | fixed-in-`<phase-4>` |
-| F-3 | review (3 of 5 reviewers, independently) | The admin pair kept its **parent-side focus-in** (`askToSuspend`, `askToRemove`) after adopting `ConfirmWithReason`, which focuses that same button itself — a duplicate `focus()` and a contradiction of the ownership split this slice documents. `set-editor` was migrated correctly; the admin pair was missed, and R-4's resolution named only the operator pair, which is what gave it away | fixed-in-`<phase-4>` |
-| F-4 | review | Both new components' class TSDoc ran ~10–11 lines against the "roughly 6 on a type" bound, duplicating rationale the plan doc already holds | fixed-in-`<phase-4>` — trimmed to a pointer at this doc |
+| F-2 | review (4 of 5 reviewers, independently) | Deleting the five private `focusAfterRender` methods left their **TSDoc orphaned** in four files. In `admin-venue-photos.ts` the orphan landed on `loadVenues()`, actively misdescribing it. Cause: the deletion edits matched from `private focusAfterRender(` and never included the doc block above | fixed-in-`a5f4e83` |
+| F-3 | review (3 of 5 reviewers, independently) | The admin pair kept its **parent-side focus-in** (`askToSuspend`, `askToRemove`) after adopting `ConfirmWithReason`, which focuses that same button itself — a duplicate `focus()` and a contradiction of the ownership split this slice documents. `set-editor` was migrated correctly; the admin pair was missed, and R-4's resolution named only the operator pair, which is what gave it away | fixed-in-`a5f4e83` |
+| F-4 | review | Both new components' class TSDoc ran ~10–11 lines against the "roughly 6 on a type" bound, duplicating rationale the plan doc already holds | fixed-in-`a5f4e83` — trimmed to a pointer at this doc |
 | F-5 | review | Two new e2e lines exceed Prettier's `printWidth: 100` | **rejected — pre-existing condition.** All four touched e2e/admin files are *already* prettier-dirty on `origin/main` and no `prettier --check` runs in lint or CI, so reformatting them is unrelated churn. The one file with no such excuse — the new `confirm-panel.ts` — **was** formatted |
 
 ---
@@ -373,7 +381,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
+- [x] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
       `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
