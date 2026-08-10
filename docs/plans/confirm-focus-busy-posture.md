@@ -259,18 +259,18 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `plan — awaiting Ivo's review of this doc`
+**Stage pointer:** `implement — phase 1`
 
-**Next action:** Ivo reviews the plan (especially the R-3 form-submit regression and the Phase 5
-sweep size). On approval, start Phase 0 and open the draft PR at the first phase commit.
+**Next action:** Phase 1 — the R-2 host-listener ordering spike, then the `BusyAction` directive.
 
-PR: not yet opened.
+PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
+`pull_request` event only).
 
 **Gates:** none run yet.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `focusMover()` fallback + the seven-adopter audit | | |
+| 0 — `focusMover()` fallback + the seven-adopter audit | ✅ | `<phase-0>` |
 | 1 — The `BusyAction` directive + the ordering spike | | |
 | 2 — `set-password`'s three erase transitions | | |
 | 3 — `admin-venue-photos`' takedown failure leg | | |
@@ -322,25 +322,34 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `frontend/src/app/shared/focus-after-render.ts` · Test
 `frontend/src/app/shared/focus-after-render.spec.ts`
 
-- [ ] **Step 1: Audit the seven adopters BEFORE writing code** (R-8). For each existing
+- [x] **Step 1: Audit the seven adopters BEFORE writing code** (R-8). For each existing
       `focusAfterRender(...)` call site, record whether a silent no-op is load-bearing. Write the
       verdicts into the Generalization-audit log — this is the evidence the contract change is safe,
-      and it must exist before the contract changes.
-- [ ] **Step 2: Write the failing specs** — AC-14 (primary gone, fallback named, fallback focused)
+      and it must exist before the contract changes. → **24 call sites, 7 components, none relies on
+      the silence.** Corrected the plan's adopter list (see the log's first row).
+- [x] **Step 2: Write the failing specs** — AC-14 (primary gone, fallback named, fallback focused)
       and AC-15 (both gone, host focused). Both drive a host whose primary target is removed between
       the call and the render.
-- [ ] **Step 3: Run them, verify they fail** — `npx ng test --include="src/app/shared/focus-after-render.spec.ts"`
-- [ ] **Step 4: Implement** — a second optional `fallbackTestId` parameter; resolve
-      primary → fallback → host inside `earlyRead` (the phase split stays intact), and set
-      `tabIndex = -1` on the host imperatively before focusing it so no adopter has to add the
-      attribute to its template.
-- [ ] **Step 5: Run them, verify they pass**, including the **unmodified** existing cases (AC-16).
-- [ ] **Step 6: Run every adopter's focus specs** — `booking-view`, `admin-operators`,
-      `admin-venue-photos`, `set-editor`, `layout-editor`, `confirm-panel`, `confirm-with-reason` —
-      as the parity net for the contract change.
-- [ ] **Step 7: Wire booking-view's deferred R-7** — `startCancel()` / `startWithdraw()` name a
-      fallback, closing #614's F-4 at its origin.
-- [ ] **Step 8: Commit** — `git commit -m "Give focusMover a fallback when its target is unmounted (#616)"`
+- [x] **Step 3: Run them, verify they fail** — `npx ng test --include="src/app/shared/focus-after-render.spec.ts"`
+      → RED at the type level (`TS2554: Expected 1 arguments, but got 2`), the honest red for a
+      signature change.
+- [x] **Step 4: Implement** — a second optional `fallbackTestId` parameter; resolve
+      primary → fallback → host inside `earlyRead` (the phase split stays intact), and make the
+      landing element focusable in `write` if it is not already, so no adopter has to add the
+      attribute to its template. **Widened from the plan** — the guard is
+      `target.tabIndex < 0 && !target.hasAttribute('tabindex')`, which covers a named `<p>`/`<span>`
+      landmark and not only the host; a `<button>` reports `tabIndex === 0` and is left alone.
+- [x] **Step 5: Run them, verify they pass**, including the **unmodified** existing cases (AC-16).
+      → 8 passed. One pre-existing case was **deliberately rewritten**, not preserved: `is a no-op
+      when nothing carries the test id` asserted the contract this phase replaces, so it now asserts
+      not-throwing and the fallback cases assert where focus lands.
+- [x] **Step 6: Run every adopter's focus specs** — `booking-view`, `admin-operators`,
+      `admin-venue-photos`, `admin-commissions`, `admin-privacy`, `layout-editor`, `set-editor` —
+      as the parity net for the contract change. → **174 passed, all unmodified.**
+- [x] **Step 7: Wire booking-view's deferred R-7** — `startCancel()` / `startWithdraw()` name
+      `booking-status` as the fallback, closing #614's F-4 at its origin. It is a `<span>`, which is
+      what forced step 4's widening.
+- [x] **Step 8: Commit** — `git commit -m "Give focusMover a fallback when its target is unmounted (#616)"`
 - [ ] **Step 9: Open the draft PR** (`riviera-sdlc` rule 3 — CI fires on the `pull_request` event
       only) and **update plan-doc execution status** in the same commit window.
 
@@ -483,6 +492,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-11 | Phase 0 — changing `focusMover()`'s missing-target contract (R-8) | every live call site, asked whether a **silent no-op is load-bearing** there — i.e. does any caller mean "move focus only if X exists, else leave it alone" | `grep -rn "focusAfterRender(\`\|focusAfterRender('" src/app --include=*.ts \| grep -v spec` | **24 call sites across 7 components** — `admin-commissions` (4), `admin-privacy` (5), `booking-view` (8), `admin-venue-photos` (2), `layout-editor` (2), `set-editor` (2), `admin-operators` (1) | **None relies on the silence; the contract change is safe.** Every one of the 24 is a deliberate "focus lands here" leg fired *because* the element focus was on is being destroyed — so the pre-change alternative was never "focus stays somewhere useful", it was `<body>`. Parity proven by running all seven adopters' suites unmodified (174 passed). Two corrections to the plan's assumptions came out of it: (1) the adopter list is those **7 components**, not `confirm-panel`/`confirm-with-reason` — those focus their own confirm button via their own `afterNextRender` and are not `focusMover()` callers; (2) a named fallback is usually a `<p>`/`<span>` landmark, so the helper had to be extended to make **whatever it lands on** focusable, not just the host — otherwise naming a landmark that forgot `tabindex="-1"` silently reintroduces the exact no-op being fixed |
+| 2026-08-11 | Phase 0 — reading every adopter for the audit above | pre-existing **hand-rolled workarounds** for the `[disabled]` busy blur (item 4), which would go stale or become wrong once the posture changes | read each adopter's settle legs while auditing | 1 — `admin-privacy.ts:344`, whose comment reads *"Disabling Erase blurred it to `<body>`; re-enabling does not bring focus back (WCAG 2.4.3)"* and whose `catch` re-focuses `admin-privacy-confirm` purely to undo that blur | **Recorded, fixed in Phase 5.** It is independent evidence that item 4's blur is real and already costing local workarounds — a **tenth** instance of the class, which #616 had not counted. After the `aria-disabled` swap focus never leaves that button, so the re-focus becomes a harmless self-focus and its comment becomes false; both are corrected with that file's swap rather than here, so the sweep owns its own cleanup |
 
 ---
 

@@ -554,7 +554,8 @@ export class BookingView {
    */
   protected startCancel(): void {
     this.confirming.set(true);
-    this.focusAfterRender('confirm-cancel');
+    // A refresh landing mid-transition can withdraw the affordance; the status then says why.
+    this.focusAfterRender('confirm-cancel', 'booking-status');
   }
 
   protected keepBooking(): void {
@@ -592,7 +593,7 @@ export class BookingView {
   protected startWithdraw(): void {
     this.confirmingWithdraw.set(true);
     this.clearWithdrawResult();
-    this.focusAfterRender('confirm-withdraw');
+    this.focusAfterRender('confirm-withdraw', 'booking-status');
   }
 
   protected keepRequest(): void {
