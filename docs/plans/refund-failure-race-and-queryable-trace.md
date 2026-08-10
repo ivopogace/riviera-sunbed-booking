@@ -255,7 +255,7 @@ ladder + `riviera-review-overlay`) and the Sonar gate.
 | 0 — `V42` migration: the refund-failure trace columns | ✅ | `0f30527` |
 | 1 — Guard the refund record; make the un-record leave a trace (items 2 + 3a) | ✅ | `3826949` |
 | 2 — Close the race: attempt stamp, by-intent fallback, gateway refusal (item 1) | ✅ | `55f18b4` |
-| 3 — Owed-refund gauge + docs sweep (item 3b) | ✅ | PHASE3SHA |
+| 3 — Owed-refund gauge + docs sweep (item 3b) | ✅ | `30e8cd5` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -265,8 +265,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI — `Repo hygiene (diff-scoped)` | The plan's File-structure section omitted `StripeRefundContractTest.java` and listed `RefundAttemptVisibilityIT.java` under the wrong package; a multi-line inline comment in `JdbcPayments` (RV-STYLE-1) was re-flagged because this diff rewrote its opening line | fixed-in-`PHASE3SHA` |
-| F-2 | CI — `Backend (build + test)` | `RefundFailureMetricTest` used the strict `ThrowingPayments`, which now throws on the new `markRefundAttempted` — a full-suite-visible break my scoped runs missed because that class was not in the `--tests` selection | fixed-in-`PHASE3SHA` (shared `AttemptRecordingPayments` double; scoped runs widened to `ai.riviera.platform.payment.*` + `*Refund*`) |
+| F-1 | CI — `Repo hygiene (diff-scoped)` | The plan's File-structure section omitted `StripeRefundContractTest.java` and listed `RefundAttemptVisibilityIT.java` under the wrong package; a multi-line inline comment in `JdbcPayments` (RV-STYLE-1) was re-flagged because this diff rewrote its opening line | fixed-in-``30e8cd5`` |
+| F-2 | CI — `Backend (build + test)` | `RefundFailureMetricTest` used the strict `ThrowingPayments`, which now throws on the new `markRefundAttempted` — a full-suite-visible break my scoped runs missed because that class was not in the `--tests` selection | fixed-in-``30e8cd5`` (shared `AttemptRecordingPayments` double; scoped runs widened to `ai.riviera.platform.payment.*` + `*Refund*`) |
 
 ---
 
