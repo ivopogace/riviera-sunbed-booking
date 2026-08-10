@@ -141,6 +141,15 @@ async function render(
   return fixture;
 }
 
+/** The two back-out buttons carry no test id, so they are addressed the way a guest reads them. */
+function keepButton(host: HTMLElement, label: string): HTMLButtonElement {
+  const found = [...host.querySelectorAll('button')].find((b) => b.textContent?.includes(label));
+  if (!found) {
+    throw new Error(`No "${label}" button on screen`);
+  }
+  return found;
+}
+
 describe('BookingView', () => {
   it('shows details and the full-refund terms, and has no axe violations', async () => {
     const fixture = await render(stubService({ detail: DETAIL }));
@@ -179,6 +188,22 @@ describe('BookingView', () => {
     fixture.detectChanges();
 
     expect(document.activeElement).toBe(host.querySelector('[data-testid="confirm-cancel"]'));
+  });
+
+  it('returns focus to the cancel trigger when the guest keeps the booking', async () => {
+    const fixture = await render(stubService({ detail: DETAIL }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    keepButton(host, 'Keep booking').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // Backing out destroys the confirm button focus was on; Cancel booking is what it replaced.
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="start-cancel"]'));
   });
 
   it('shows a not-found message for an unknown code', async () => {
@@ -267,6 +292,21 @@ describe('BookingView', () => {
     fixture.detectChanges();
 
     expect(document.activeElement).toBe(host.querySelector('[data-testid="confirm-withdraw"]'));
+  });
+
+  it('returns focus to the withdraw trigger when the guest keeps the request', async () => {
+    const fixture = await render(stubService({ detail: PENDING }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    keepButton(host, 'Keep request').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="withdraw-request"]'));
   });
 
   it('asks before withdrawing, and "Keep request" backs out without calling the API', async () => {

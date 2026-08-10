@@ -185,13 +185,14 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 step 1 — write the two "keep" return-leg specs and prove them RED.
+**Next action:** Phase 1 step 1 — write the four completed-action focus specs (AC-3…AC-6) one at a
+time and prove each RED, applying the R-1 gate to any that passes before its leg exists.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Adopt the shared helper + the two keep return legs | | |
+| 0 — Adopt the shared helper + the two keep return legs | ✅ | |
 | 1 — The completed-action legs + the `tabindex="-1"` landmarks | | |
 | 2 — Real-browser e2e coverage + full verification | | |
 
@@ -222,21 +223,21 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `frontend/src/app/booking/booking-view.ts` · Test
 `frontend/src/app/booking/booking-view.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — AC-1 and AC-2: open each prompt, activate its Keep
+- [x] **Step 1: Write the failing specs** — AC-1 and AC-2: open each prompt, activate its Keep
       button (found by text, as the existing back-out specs do — neither Keep button has a testid),
       assert `document.activeElement` is the trigger.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- booking-view` → FAIL with
-      `expected <body> to be <button data-testid="start-cancel">`.
-- [ ] **Step 3: Implement** — add `private readonly focusAfterRender = focusMover();` as a field
+- [x] **Step 2: Run them, verify they fail** — `ng test --include="src/app/booking/booking-view.spec.ts"`
+      → `2 failed | 49 passed`, both on `expected <body> to be <button>`.
+- [x] **Step 3: Implement** — add `private readonly focusAfterRender = focusMover();` as a field
       initializer, delete both `viewChild` fields, both `afterRenderEffect` blocks and both
       template refs, and call the helper from `startCancel`/`startWithdraw` (focus-in, parity) and
       `keepBooking`/`keepRequest` (the new return legs).
-- [ ] **Step 4: Run them, verify they pass** — `npm test -- booking-view` → PASS, including the two
-      **unmodified** focus-in specs (AC-7).
-- [ ] **Step 5: Generalization-audit pass** — re-grep for any confirm surface still holding a
-      private focus idiom now that booking-view is migrated.
-- [ ] **Step 6: Commit** — `git commit -m "Return focus to the tourist confirm triggers (#614)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass** — `51 passed`, including the two **unmodified**
+      focus-in specs (AC-7).
+- [x] **Step 5: Generalization-audit pass** — 3 sibling gaps found in three other feature areas;
+      filed as **#616** rather than widened. See the audit log.
+- [x] **Step 6: Commit** — `git commit -m "Return focus to the tourist confirm triggers (#614)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -287,6 +288,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Phase 0 — adopting the shared helper in the last confirm surface | every remaining confirm-before-destroy surface, re-checked transition by transition rather than trusting #604's audit row | `grep -rn "afterRenderEffect\|afterNextRender" src/app --include=*.ts` + `grep -rn "confirming\|confirmRemove\|confirmRegen\|confirmingId" src/app --include=*.ts` then reading each hit's handlers | 3 open gaps: `auth/set-password.ts`'s erase confirm (**all three** transitions, and no focus specs at all), `admin-venue-photos`' takedown **failure** path, `admin-operators`' completed-action leg | **Filed as #616, not widened here** — three other feature areas, matching #604's own reason for spawning #614. The material find is that **#604's audit cleared `set-password` in error**: what it read as "focuses in and out" is the page-mount leg focusing the first `<input>`, not the confirm surface, which moves focus nowhere in any direction |
 
 ---
 

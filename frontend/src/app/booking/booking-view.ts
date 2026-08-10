@@ -1,11 +1,4 @@
-import {
-  afterRenderEffect,
-  Component,
-  ElementRef,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -16,6 +9,7 @@ import { formatBookingDate } from '../shared/booking-date-label';
 import { amountLabelFor, metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
+import { focusMover } from '../shared/focus-after-render';
 import { formatMoney, MoneyView } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
 import { BookingQr } from './booking-qr';
@@ -212,7 +206,6 @@ const CLS = {
                     </p>
                     <div [class]="cls.actions">
                       <button
-                        #withdrawConfirmBtn
                         type="button"
                         [class]="cls.btnDanger"
                         [disabled]="withdrawing()"
@@ -411,7 +404,6 @@ const CLS = {
               <p [class]="cls.confirmQ">Cancel this booking? This can’t be undone.</p>
               <div [class]="cls.actions">
                 <button
-                  #confirmBtn
                   type="button"
                   [class]="cls.btnDanger"
                   [disabled]="cancelling()"
@@ -474,9 +466,7 @@ export class BookingView {
   protected readonly withdrawFailed = signal(false);
   protected readonly withdrawn = signal(false);
 
-  private readonly confirmButton = viewChild<ElementRef<HTMLButtonElement>>('confirmBtn');
-  private readonly withdrawConfirmButton =
-    viewChild<ElementRef<HTMLButtonElement>>('withdrawConfirmBtn');
+  private readonly focusAfterRender = focusMover();
 
   private code = '';
 
@@ -505,21 +495,6 @@ export class BookingView {
       } else {
         this.notFound.set(true);
       }
-    });
-    // Move focus to the destructive confirm button when its prompt appears (a11y) — a DOM write.
-    afterRenderEffect({
-      write: () => {
-        if (this.confirming()) {
-          this.confirmButton()?.nativeElement.focus();
-        }
-      },
-    });
-    afterRenderEffect({
-      write: () => {
-        if (this.confirmingWithdraw()) {
-          this.withdrawConfirmButton()?.nativeElement.focus();
-        }
-      },
     });
   }
 
@@ -553,12 +528,21 @@ export class BookingView {
     });
   }
 
+  /**
+   * Open the cancel confirmation. Both confirm surfaces move focus deliberately in **and** back
+   * out: each transition destroys the control focus is sitting on, which would otherwise strand
+   * keyboard and AT users on `<body>` (WCAG 2.4.3). Where the trigger survives it gets focus back;
+   * where the action destroys it, focus parks on the live result region.
+   * Why that landing spot rather than the status banner: `docs/plans/booking-view-confirm-focus.md`.
+   */
   protected startCancel(): void {
     this.confirming.set(true);
+    this.focusAfterRender('confirm-cancel');
   }
 
   protected keepBooking(): void {
     this.confirming.set(false);
+    this.focusAfterRender('start-cancel');
   }
 
   protected confirmCancel(): void {
@@ -586,10 +570,12 @@ export class BookingView {
 
   protected startWithdraw(): void {
     this.confirmingWithdraw.set(true);
+    this.focusAfterRender('confirm-withdraw');
   }
 
   protected keepRequest(): void {
     this.confirmingWithdraw.set(false);
+    this.focusAfterRender('withdraw-request');
   }
 
   /**
