@@ -60,4 +60,15 @@ public interface Payments {
 	 * or empty when no row exists (the stub profile records no payment).
 	 */
 	Optional<RefundState> findRefundState(BookingRef booking);
+
+	/**
+	 * Un-record the refund {@code refundId} because the gateway reports it returned no money: clear
+	 * {@code refunded_minor} and put the collection back to {@code SUCCEEDED}, which it still is.
+	 * Guarded like {@link #markStatus}: only a row still carrying that refund id as a recorded refund
+	 * moves, so a re-delivered failure — or one for a refund a later attempt has already replaced — is
+	 * a no-op. Returns whether a row actually moved.
+	 *
+	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
+	 */
+	boolean markRefundFailed(String refundId);
 }

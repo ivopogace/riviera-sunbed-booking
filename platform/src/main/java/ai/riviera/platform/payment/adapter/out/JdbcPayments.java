@@ -31,6 +31,10 @@ class JdbcPayments implements Payments {
 	private static final List<String> OPEN_STATUSES =
 			List.of(PaymentStatus.REQUIRES_PAYMENT.name(), PaymentStatus.FAILED.name());
 
+	/** The statuses that mean a refund is on record, and so is there to be un-recorded. */
+	private static final List<String> REFUND_RECORDED_STATUSES =
+			List.of(PaymentStatus.REFUNDED.name(), PaymentStatus.PARTIALLY_REFUNDED.name());
+
 	private final JdbcClient jdbc;
 
 	JdbcPayments(JdbcClient jdbc) {
@@ -126,5 +130,19 @@ class JdbcPayments implements Payments {
 				.param("refundId", refundId)
 				.param("ref", booking.value())
 				.update();
+	}
+
+	@Override
+	public boolean markRefundFailed(String refundId) {
+		// Guarded in the one statement, never read-then-write: two deliveries cannot both un-record.
+		return jdbc.sql("""
+				UPDATE payment
+				SET refunded_minor = 0, status = :succeeded, updated_at = NOW()
+				WHERE refund_id = :refundId AND status IN (:recorded)
+				""")
+				.param("succeeded", PaymentStatus.SUCCEEDED.name())
+				.param("refundId", refundId)
+				.param("recorded", REFUND_RECORDED_STATUSES)
+				.update() == 1;
 	}
 }

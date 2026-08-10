@@ -80,6 +80,11 @@ class PaymentServiceTest {
 			public Optional<RefundState> findRefundState(BookingRef booking) {
 				return Optional.empty();
 			}
+
+			@Override
+			public boolean markRefundFailed(String refundId) {
+				return false;
+			}
 		};
 	}
 

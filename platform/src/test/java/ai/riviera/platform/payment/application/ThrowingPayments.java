@@ -47,4 +47,9 @@ interface ThrowingPayments extends Payments {
 	default Optional<RefundState> findRefundState(BookingRef booking) {
 		throw new UnsupportedOperationException("not stubbed by this test");
 	}
+
+	@Override
+	default boolean markRefundFailed(String refundId) {
+		throw new UnsupportedOperationException("not stubbed by this test");
+	}
 }

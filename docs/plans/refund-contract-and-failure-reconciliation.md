@@ -216,15 +216,15 @@ to `true` after a failure.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write `JdbcPaymentsIT.markRefundFailedUnrecordsARecordedRefund` red,
-then add `Payments#markRefundFailed` + the guarded `UPDATE`.
+**Next action:** Phase 1 — write the `StripeWebhookIT` refund-failure cases red, then add the
+refund-lifecycle branch to `StripeWebhookController`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Un-record port + guarded SQL | | |
-| 1 — Webhook refund-failure branch | | |
+| 0 — Un-record port + guarded SQL | ✅ | `fe67bdb` |
+| 1 — Webhook refund-failure branch | ⏳ | |
 | 2 — Shared at-most-once refund contract | | |
 | 3 — Contract-coverage architecture rule | | |
 | 4 — Docs sweep + close-out | | |
@@ -363,6 +363,7 @@ Test `payment/adapter/out/JdbcPaymentsIT.java`
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | phase 0 | every writer of `refunded_minor`, to be sure the un-record is the only new one and no other path can strand the column | `grep -rn "refunded_minor" platform/src/main --include=*.java --include=*.sql` | 2 writers (`markRefunded`, the new `markRefundFailed`), both in `JdbcPayments`; the rest are the V11 DDL and Javadoc | no further sites — the column has exactly one writer pair, which is what makes the guard on `refund_id` sufficient |
 
 ---
 
