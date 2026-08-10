@@ -246,15 +246,26 @@ so `playwright-cli` is not routed.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phase 1 done, entering phase 2 (docs sweep)`
 
-**Next action:** Phase 1 step 1 — write the failing `BeachMapReplaceIT` case (AC-1 end-to-end).
+**Next action:** Phase 2 step 1 — `RESPONSIBILITIES.md` §`venue`, then the four merged plan docs,
+then the `riviera-docs-freshness` sweep.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Narrow the replace's availability arm + retire `anyClaims` (unit TDD) | ✅ | `<phase-0>` |
-| 1 — Pin it end-to-end (Testcontainers) | ⏳ | |
-| 2 — Docs sweep + close-out | | |
+| 0 — Narrow the replace’s availability arm + retire `anyClaims` (unit TDD) | ✅ | `9023c09` |
+| 1 — Pin it end-to-end (Testcontainers) | ✅ | `<phase-1>` |
+| 2 — Docs sweep + close-out | ⏳ | |
+
+**Local verification so far** (`riviera-local-debug` scoped runs; Docker available, so the ITs ran
+for real): `VenueAdminServiceTest` green, observed **red first** on AC-1/2/4. `BeachMapReplaceIT`
+**13 tests, `skipped=0`**, `AvailabilityLookupIT` **9 tests, `skipped=0`**. AC-1's end-to-end case
+was also observed **genuinely red** — the replace guard was temporarily reverted to the any-date
+question (`anyClaimsFrom(existing, LocalDate.EPOCH)`) and the new IT failed
+`Status expected:<204> but was:<409>`, so the pin is proven to discriminate rather than merely
+pass. The structural net (`ModularityTests`, `JdbcOnlyArchitectureTests`,
+`PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`) green after the
+published surface shrank. CI owns the full suite.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -482,6 +493,7 @@ stay valid under the narrowed predicate — as #599's audit log predicted.
 |---|---|---|---|---|---|
 | 2026-08-10 | phase 0 | Surviving callers of the retired date-agnostic probe | `git grep -n "anyClaims\b" -- platform/src` (excluding `anyClaimsFrom`) | 0 | **None to fix.** Confirms AC-5: the port method, its JDBC implementation, its one caller and the test fake's override are all gone, so no consumer can still ask the any-date question |
 | 2026-08-10 | phase 0 | A second `LocalDate.now(clock…)` expression that could drift from the shared arm | `git grep -n "anyClaimsFrom\|hasBookings\|takenOn\|statesOn" -- …/venue/application` | 4 call sites, **1** date expression (`VenueAdminService:176`) | **Skip — already correct.** All three layout writes reach the cutoff through the single `hasLiveHold` predicate; `DailyAvailabilityService` takes its date from the caller (a read, not a guard). Nothing to converge |
+| 2026-08-10 | phase 1 | Hard-coded `DATE '…'` literals the now date-sensitive replace guard reads | `git grep -n "DATE '" -- …/venue …/availability` | 4 | **Subset — one changed.** `BeachMapReplaceIT:260` (the hold behind `rejectsWhenVenueHasWalkInHoldAndHoldSurvives`) is the only literal the replace guard now reads; it is future-dated so the test is correct today, but it would flip meaning in 2035, so it moves to `LocalDate.now(TIRANE).plusDays(30)` — the relative-date convention #599's R-3 established. The other three are **not** read by the availability arm: `BeachMapReplaceIT:399` and `VenueAdminControllerIT:302` are *booking* dates behind the deliberately date-agnostic booking arm, and `VenueRepriceIT:157` sits behind a write that runs no claim probe at all. Unchanged |
 | 2026-08-10 | phase 0 | `(any date)` prose describing the guard, in files review of the code diff would not open | `git grep -rn "any date" -- platform/src/main` | 2: `EditBeachMap:75`, `ReplaceRejection:22` | **Fix all — pulled forward from phase 2** rather than deferred, so no commit ships a Javadoc contradicting its own code (#599's F-1 lesson). Rewriting `EditBeachMap#replaceLayout` also surfaced an **unrelated** stale claim in the same block — "the token is bumped *before* the probe, so a rejected replace may still bump it — safe (only makes other tabs reload)" — which the `set-version-concurrency` F-4 fix reversed (the bump is success-path only, asserted by `rejectsReplaceWhenVenueHasBooking`). Corrected in the same edit |
 
 ---

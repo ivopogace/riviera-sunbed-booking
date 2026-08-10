@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -66,6 +67,7 @@ class BeachMapReplaceIT {
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
+	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane"); // the zone the guard's cutoff reads
 
 	@Autowired
 	MockMvc mvc;
@@ -255,8 +257,8 @@ class BeachMapReplaceIT {
 		long heldSet = setIds(venue).getFirst();
 		jdbc.sql("""
 				INSERT INTO set_availability (set_id, booking_date, state)
-				VALUES (:s, DATE '2035-07-01', 'STAFF_MARKED')
-				""").param("s", heldSet).update();
+				VALUES (:s, :d, 'STAFF_MARKED')
+				""").param("s", heldSet).param("d", LocalDate.now(TIRANE).plusDays(30)).update();
 
 		// AC-6/AC-8 / R-1: the guard consults availability BEFORE any delete, so the CASCADE never fires.
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
@@ -270,6 +272,34 @@ class BeachMapReplaceIT {
 				.param("s", heldSet).query(Long.class).single();
 		org.junit.jupiter.api.Assertions.assertEquals(1L, holds);
 		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(2));
+	}
+
+	@Test
+	void replacesTheLayoutOfAWalkInOnlyVenueWhoseHoldsAreAllPast() throws Exception {
+		long venue = createVenue("Last Season Club");
+		putLayout(venue, layout(0,
+				cell("A", 1, "STANDARD", "WALK_IN", 2000, 1, 1),
+				cell("A", 2, "STANDARD", "WALK_IN", 2000, 2, 1)), 204);
+		long heldSet = setIds(venue).getFirst();
+		// Inserted directly: the staff-mark endpoint refuses a past date, which is how history accrues.
+		jdbc.sql("""
+				INSERT INTO set_availability (set_id, booking_date, state)
+				VALUES (:s, :d, 'STAFF_MARKED')
+				""")
+				.param("s", heldSet)
+				.param("d", LocalDate.now(TIRANE).minusDays(400))
+				.update();
+
+		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(layout(currentSetVersion(venue),
+								cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1))))
+				.andExpect(status().isNoContent());
+
+		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")
+						.param("s", heldSet).query(Long.class).single(),
+				"a hold describing a day that is gone goes with its set (CASCADE)");
+		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(1));
 	}
 
 	@Test
