@@ -133,6 +133,33 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()).toHaveLength(1);
   });
 
+  it('moves focus with the regenerate confirmation (WCAG 2.4.3, #604)', async () => {
+    render();
+    generate('2', '2');
+
+    byId('layout-generate').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(byId('layout-confirm-yes'));
+
+    byId('layout-confirm-no').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    // Cancelling destroys the confirm button focus was on; Generate is what it replaced.
+    expect(document.activeElement).toBe(byId('layout-generate'));
+
+    byId('layout-generate').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    byId('layout-confirm-yes').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // A completed regenerate leaves Generate in place, so focus returns there rather than to <body>.
+    expect(byId('layout-confirm-regen')).toBeFalsy();
+    expect(document.activeElement).toBe(byId('layout-generate'));
+  });
+
   it('paints a cell with the active tool (click = keyboard path)', () => {
     render();
     generate('1', '3');

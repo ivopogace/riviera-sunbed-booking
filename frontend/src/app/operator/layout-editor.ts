@@ -5,6 +5,8 @@ import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { ConfirmPanel } from '../shared/confirm-panel';
+import { focusMover } from '../shared/focus-after-render';
 import { formatMoney, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import {
@@ -73,7 +75,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
  */
 @Component({
   selector: 'app-layout-editor',
-  imports: [CardGlass, BeachCell, BeachGridFrame, SetEditor, StaleWriteBanner],
+  imports: [CardGlass, BeachCell, BeachGridFrame, ConfirmPanel, SetEditor, StaleWriteBanner],
   templateUrl: './layout-editor.html',
 })
 export class LayoutEditor {
@@ -81,6 +83,7 @@ export class LayoutEditor {
   private readonly venues = inject(VenueService);
   private readonly venueMap = inject(ConsoleVenueMap);
   private readonly console = inject(OperatorConsoleService);
+  private readonly focusAfterRender = focusMover();
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if
@@ -263,13 +266,21 @@ export class LayoutEditor {
     this.generateNow();
   }
 
+  /**
+   * Close the regenerate confirmation, replacing the grid or leaving it alone, and take focus back to
+   * Generate. Both transitions destroy the button that was just activated, which strands keyboard/AT
+   * focus on `<body>` unless it is moved deliberately (WCAG 2.4.3); Generate survives a regenerate,
+   * so it is where focus belongs either way. Focus INTO the confirmation is {@link ConfirmPanel}'s.
+   */
   protected confirmGenerate(): void {
     this.confirmRegen.set(false);
     this.generateNow();
+    this.focusAfterRender('layout-generate');
   }
 
   protected cancelGenerate(): void {
     this.confirmRegen.set(false);
+    this.focusAfterRender('layout-generate');
   }
 
   private generateNow(): void {

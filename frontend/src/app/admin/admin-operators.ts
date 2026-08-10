@@ -1,17 +1,10 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  effect,
-  ElementRef,
-  inject,
-  Injector,
-  signal,
-} from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { ConfirmWithReason } from '../shared/confirm-with-reason';
+import { focusMover } from '../shared/focus-after-render';
 import { AdminConsoleStats } from './admin-console-stats';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminOperatorsService } from './admin-operators.service';
@@ -38,7 +31,7 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
  */
 @Component({
   selector: 'app-admin-operators',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs, AdminConsoleStats],
+  imports: [RouterLink, CardGlass, AdminConsoleTabs, AdminConsoleStats, ConfirmWithReason],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-ops-title">
@@ -197,43 +190,22 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
                       Reinstate
                     </button>
                   } @else if (confirmingId() === op.id) {
-                    <div class="w-full">
-                      <p class="text-[14px] text-(--riv-card-ink)">Suspend {{ op.username }}?</p>
-                      <label
-                        [attr.for]="'admin-suspend-reason-' + op.id"
-                        class="mt-2 block text-[13.5px] font-semibold text-(--riv-card-ink)"
-                        >Reason (optional)</label
-                      >
-                      <input
-                        type="text"
-                        maxlength="500"
-                        [attr.id]="'admin-suspend-reason-' + op.id"
-                        [attr.data-testid]="'admin-suspend-reason-' + op.id"
-                        [value]="suspendReason()"
-                        (input)="onSuspendReasonTyped($event)"
-                        placeholder="e.g. repeated guest reports — sets not honored"
-                        class="mt-1 w-full rounded-[10px] border border-(--riv-field-border) bg-white/70 px-3 py-2 text-[14px] text-(--riv-card-ink)"
-                      />
-                      <div class="mt-2 flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          [attr.data-testid]="'admin-suspend-confirm-' + op.id"
-                          [disabled]="actingId() !== undefined"
-                          (click)="suspend(op.id)"
-                          class="rounded-[10px] border border-[#b3261e] px-4 py-2 text-[14px] font-semibold text-[#b3261e] disabled:opacity-60"
-                        >
-                          Suspend
-                        </button>
-                        <button
-                          type="button"
-                          [attr.data-testid]="'admin-suspend-cancel-' + op.id"
-                          (click)="cancelSuspend(op.id)"
-                          class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink-soft)"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
+                    <app-confirm-with-reason
+                      label="Confirm suspension"
+                      [prompt]="'Suspend ' + op.username + '?'"
+                      [promptTestId]="'admin-suspend-prompt-' + op.id"
+                      [reasonId]="'admin-suspend-reason-' + op.id"
+                      reasonPlaceholder="e.g. repeated guest reports — sets not honored"
+                      confirmLabel="Suspend"
+                      cancelLabel="Cancel"
+                      [panelTestId]="'admin-suspend-panel-' + op.id"
+                      [confirmTestId]="'admin-suspend-confirm-' + op.id"
+                      [cancelTestId]="'admin-suspend-cancel-' + op.id"
+                      [busy]="actingId() !== undefined"
+                      [(reason)]="suspendReason"
+                      (confirmed)="suspend(op.id)"
+                      (cancelled)="cancelSuspend(op.id)"
+                    />
                   } @else {
                     <button
                       type="button"
@@ -257,8 +229,7 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
 export class AdminOperators {
   protected readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminOperatorsService);
-  private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly injector = inject(Injector);
+  private readonly focusAfterRender = focusMover();
 
   protected readonly pending = signal<PendingOperatorView[]>([]);
   protected readonly accounts = signal<OperatorAccountView[]>([]);
@@ -337,26 +308,21 @@ export class AdminOperators {
   }
 
   /**
-   * Arm the confirmation and put focus on it. Arming and dismissing each destroy the element that
-   * was just activated, which strands keyboard/AT focus on `<body>` unless it is moved deliberately
-   * (WCAG 2.4.3 — the recurring stranded-focus class). Only these two transitions are covered
-   * here: the third — parking focus once the action settles — spans all four row actions on
-   * this page and is deliberately deferred.
+   * Arm the confirmation, or dismiss it, moving focus with the surface. Each destroys the element
+   * that was just activated, which strands keyboard/AT focus on `<body>` unless it is moved
+   * deliberately (WCAG 2.4.3 — the recurring stranded-focus class). Focus INTO the confirmation is
+   * {@link ConfirmWithReason}'s own doing; dismissing returns it to Suspend. The third transition —
+   * parking focus once the action settles — spans all four row actions and is deliberately deferred.
    */
   protected askToSuspend(id: number): void {
     this.confirmingId.set(id);
     this.suspendReason.set('');
-    this.focusAfterRender(`admin-suspend-confirm-${id}`);
   }
 
   protected cancelSuspend(id: number): void {
     this.confirmingId.set(undefined);
     this.suspendReason.set('');
     this.focusAfterRender(`admin-suspend-${id}`);
-  }
-
-  protected onSuspendReasonTyped(event: Event): void {
-    this.suspendReason.set((event.target as HTMLInputElement).value);
   }
 
   protected async suspend(id: number): Promise<void> {
@@ -388,17 +354,5 @@ export class AdminOperators {
       this.actingId.set(undefined);
       await this.load();
     }
-  }
-
-  /** Move focus to a test-id'd element once the swap it belongs to has actually rendered. */
-  private focusAfterRender(testId: string): void {
-    afterNextRender(
-      {
-        earlyRead: () =>
-          this.hostRef.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`),
-        write: (target) => target?.focus(),
-      },
-      { injector: this.injector },
-    );
   }
 }

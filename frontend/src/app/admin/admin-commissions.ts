@@ -1,13 +1,4 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  effect,
-  ElementRef,
-  inject,
-  Injector,
-  signal,
-} from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -17,6 +8,7 @@ import {
   commissionPercentToBps,
   formatCommissionPercent,
 } from '../shared/commission-rate';
+import { focusMover } from '../shared/focus-after-render';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminCommissionsService, commissionWriteErrorOf } from './admin-commissions.service';
 import { VenueCommissionView } from './admin.model';
@@ -359,8 +351,7 @@ import { VenueCommissionView } from './admin.model';
 export class AdminCommissions {
   protected readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminCommissionsService);
-  private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly injector = inject(Injector);
+  private readonly focusAfterRender = focusMover();
 
   protected readonly venues = signal<readonly VenueCommissionView[]>([]);
   /** The venue whose editor is open — at most one, so the draft signals below need no keying. */
@@ -502,24 +493,6 @@ export class AdminCommissions {
     this.draftPercent.set('');
     this.reason.set('');
     this.editorError.set('');
-  }
-
-  /**
-   * Move focus to a test-id'd element once the swap it belongs to has actually rendered.
-   *
-   * <p>The phases are split rather than passing a bare callback, which Angular runs in
-   * `mixedReadWrite` — a phase its own docs say never to use when the work divides, and warn costs
-   * DOM reflows. Here it divides exactly: finding the element is a read, focusing it is a write.
-   */
-  private focusAfterRender(testId: string): void {
-    afterNextRender(
-      {
-        earlyRead: () =>
-          this.hostRef.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`),
-        write: (target) => target?.focus(),
-      },
-      { injector: this.injector },
-    );
   }
 }
 

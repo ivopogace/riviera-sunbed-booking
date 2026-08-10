@@ -115,6 +115,18 @@ test('an admin picks a venue, sees its slots, and takes one down behind a confir
   await expect(page.getByTestId('admin-photo-preview-cover')).toBeVisible();
   await expectNoSeriousAxeViolations(page, 'admin photos tab with the confirmation open');
 
+  // The confirmation is a named alertdialog and holds focus — neither was true before #604.
+  const panel = page.getByTestId('admin-photo-confirm-panel-cover');
+  await expect(panel).toHaveAttribute('role', 'alertdialog');
+  await expect(panel).toHaveAttribute('aria-label', 'Confirm photo removal');
+  await expect(page.getByTestId('admin-photo-confirm-cover')).toBeFocused();
+
+  // Computed styles, not classes: the host must sit where the markup it replaced did (its mt-3).
+  await expect(panel).toHaveCSS('display', 'block');
+  await expect(panel).toHaveCSS('margin-top', '12px');
+  await expect(page.getByTestId('admin-photo-confirm-cover')).toHaveCSS('color', 'rgb(179, 38, 30)');
+  await expect(page.getByTestId('admin-photo-reason-cover')).toHaveCSS('font-size', '14px');
+
   await page.getByTestId('admin-photo-confirm-cover').click();
 
   await expect(page.getByTestId('admin-photos-notice')).toContainText(

@@ -1,9 +1,10 @@
-import { afterNextRender, Component, ElementRef, inject, Injector, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { email, FormField, form, required } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { focusMover } from '../shared/focus-after-render';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminPrivacyService, erasureErrorOf } from './admin-privacy.service';
 
@@ -270,8 +271,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
 export class AdminPrivacy {
   protected readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminPrivacyService);
-  private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly injector = inject(Injector);
+  private readonly focusAfterRender = focusMover();
 
   protected readonly stage = signal<ErasureStage>('form');
   /** The address the confirmation and outcome are about — never the live field, which may be retyped. */
@@ -355,24 +355,6 @@ export class AdminPrivacy {
     this.erasureError.set('');
     this.stage.set('form');
     this.focusAfterRender('admin-privacy-email');
-  }
-
-  /**
-   * Move focus to a test-id'd element once the swap it belongs to has actually rendered.
-   *
-   * <p>The phases are split rather than passing a bare callback, which Angular runs in
-   * `mixedReadWrite` — a phase its own docs say never to use when the work divides, and warn costs
-   * DOM reflows. Here it divides exactly: finding the element is a read, focusing it is a write.
-   */
-  private focusAfterRender(testId: string): void {
-    afterNextRender(
-      {
-        earlyRead: () =>
-          this.hostRef.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`),
-        write: (target) => target?.focus(),
-      },
-      { injector: this.injector },
-    );
   }
 }
 

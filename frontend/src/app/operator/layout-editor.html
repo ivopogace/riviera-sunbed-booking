@@ -92,34 +92,17 @@
         </p>
 
         @if (confirmRegen()) {
-          <div
-            class="mt-3 rounded-[12px] border border-[#e0a03a]/60 bg-[#fff4e0] px-3 py-2.5"
-            role="alertdialog"
-            aria-label="Confirm regenerate"
-            data-testid="layout-confirm-regen"
-          >
-            <p class="text-[12.5px] font-semibold text-[#7a4a08]">
-              Regenerate replaces your current layout. This can’t be undone.
-            </p>
-            <div class="mt-2 flex gap-2">
-              <button
-                type="button"
-                (click)="confirmGenerate()"
-                data-testid="layout-confirm-yes"
-                class="rounded-[10px] bg-[#0a5f74] px-3 py-1.5 text-[12.5px] font-bold text-white"
-              >
-                Replace layout
-              </button>
-              <button
-                type="button"
-                (click)="cancelGenerate()"
-                data-testid="layout-confirm-no"
-                class="rounded-[10px] border border-(--riv-card-border) px-3 py-1.5 text-[12.5px] font-semibold text-(--riv-card-ink)"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          <app-confirm-panel
+            label="Confirm regenerate"
+            message="Regenerate replaces your current layout. This can’t be undone."
+            confirmLabel="Replace layout"
+            tone="primary"
+            panelTestId="layout-confirm-regen"
+            confirmTestId="layout-confirm-yes"
+            cancelTestId="layout-confirm-no"
+            (confirmed)="confirmGenerate()"
+            (cancelled)="cancelGenerate()"
+          />
         }
       </section>
 
