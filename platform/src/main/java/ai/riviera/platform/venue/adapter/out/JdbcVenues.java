@@ -28,6 +28,7 @@ import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetCommand;
+import ai.riviera.platform.venue.application.SetPlacement;
 import ai.riviera.platform.venue.application.VenueCommissionView;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 import ai.riviera.platform.venue.application.VenueProfileView;
@@ -200,14 +201,19 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	@Override
-	public boolean setExists(VenueId venueId, SetId setId) {
+	public Optional<SetPlacement> lockSet(VenueId venueId, SetId setId) {
+		// FOR UPDATE blocks a concurrent claim's FK check until this edit ends (see Venues#lockSet).
 		return jdbc.sql("""
-				SELECT EXISTS(SELECT 1 FROM set_position WHERE id = :setId AND venue_id = :venue)
+				SELECT pool, row_label, position_no, grid_x, grid_y
+				  FROM set_position
+				 WHERE id = :setId AND venue_id = :venue
+				   FOR UPDATE
 				""")
 				.param(P_SET_ID, setId.value())
 				.param(P_VENUE, venueId.value())
-				.query(Boolean.class)
-				.single();
+				.query((rs, rowNum) -> new SetPlacement(rs.getString("pool"), rs.getString("row_label"),
+						rs.getInt("position_no"), rs.getInt("grid_x"), rs.getInt("grid_y")))
+				.optional();
 	}
 
 	@Override
@@ -251,11 +257,11 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	@Override
-	public int updateSet(VenueId venueId, SetId setId, SetCommand c) {
+	public void updateSet(VenueId venueId, SetId setId, SetCommand c) {
 		Map<String, Object> params = new HashMap<>(setParams(c));
 		params.put(P_VENUE, venueId.value());
 		params.put(P_SET_ID, setId.value());
-		return jdbc.sql("""
+		jdbc.sql("""
 				UPDATE set_position
 				SET row_label = :rowLabel, position_no = :positionNo, tier = :tier, pool = :pool,
 				    price_minor = :priceMinor, price_currency = :priceCurrency,
@@ -267,8 +273,8 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	@Override
-	public int deleteSet(VenueId venueId, SetId setId) {
-		return jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue")
+	public void deleteSet(VenueId venueId, SetId setId) {
+		jdbc.sql("DELETE FROM set_position WHERE id = :setId AND venue_id = :venue")
 				.param(P_SET_ID, setId.value())
 				.param(P_VENUE, venueId.value())
 				.update();

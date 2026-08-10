@@ -116,6 +116,27 @@ class AvailabilityLookupIT {
 	}
 
 	@Test
+	void anyClaimsFromCountsOnlyHoldsOnOrAfterTheCutoff() {
+		List<SetId> sets = firstThreeOnlineSets();
+		SetId held = sets.get(0);
+		LocalDate cutoff = LocalDate.of(2026, 11, 20);
+		mark(held, cutoff.minusDays(1), "STAFF_MARKED");
+
+		assertFalse(lookup.anyClaimsFrom(List.of(held), cutoff),
+				"a hold whose day has passed strands nobody, so it must not block a reposition");
+
+		mark(held, cutoff, "BOOKED_ONLINE");
+
+		assertTrue(lookup.anyClaimsFrom(List.of(held), cutoff),
+				"the cutoff day itself still counts — inclusive, not strictly after");
+	}
+
+	@Test
+	void anyClaimsFromEmptyInputYieldsFalseWithoutAQuery() {
+		assertFalse(lookup.anyClaimsFrom(List.of(), LocalDate.of(2026, 11, 20)));
+	}
+
+	@Test
 	void statesOnEmptyInputYieldsEmptyResultWithoutAQuery() {
 		assertEquals(Map.of(), lookup.statesOn(List.of(), LocalDate.of(2026, 11, 9)));
 	}

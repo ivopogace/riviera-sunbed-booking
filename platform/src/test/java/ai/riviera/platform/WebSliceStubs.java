@@ -655,7 +655,7 @@ class WebSliceStubs {
 	SetBookingFacts setBookingFacts() {
 		return new SetBookingFacts() {
 			@Override
-			public Optional<String> poolOf(SetId setId) {
+			public Optional<String> poolForClaim(SetId setId) {
 				return Optional.empty();
 			}
 

@@ -611,7 +611,7 @@ class CreateBookingServiceTest {
 	/** SetBookingFacts fake returning a configured set (or empty for "no such set"). */
 	private record FakeCatalog(SetBookingInfo info) implements SetBookingFacts {
 		@Override
-		public Optional<String> poolOf(SetId setId) {
+		public Optional<String> poolForClaim(SetId setId) {
 			return Optional.ofNullable(info).map(SetBookingInfo::pool);
 		}
 

@@ -46,8 +46,26 @@ public interface Venues {
 	 */
 	void incrementSetVersion(VenueId venueId);
 
-	/** Whether the set with this id belongs to the venue. */
-	boolean setExists(VenueId venueId, SetId setId);
+	/**
+	 * Lock one set row and read its current {@link SetPlacement} — {@code SELECT … WHERE id = :setId
+	 * AND venue_id = :venue FOR UPDATE} — or empty when no such set belongs to the venue. The
+	 * per-set counterpart of {@link #lockSetsOfVenue}: the {@code FOR UPDATE} is the invariant-#2
+	 * guard for {@code editSet}/{@code removeSet}, because a concurrent {@code set_availability} or
+	 * {@code booking} insert needs {@code FOR KEY SHARE} on this row for its FK check and therefore
+	 * blocks until the edit commits — closing the window in which a claim committed after the claim
+	 * probe would be CASCADE-swept by the delete or stranded by a pool flip. Empty doubles as the
+	 * existence check, so the caller needs no separate probe.
+	 *
+	 * <p><strong>Lock ordering.</strong> The per-set writes take this lock and <em>no other</em> —
+	 * in particular they never take the venue row, so they cannot form a cycle with the
+	 * venue→sets order {@link #lockAndReadSetVersion} establishes for the bulk replace and the row
+	 * reprice. That is a property of the current callers, not a guarantee of this method: if
+	 * {@code editSet}/{@code removeSet} ever grow a venue-row touch (an {@code incrementSetVersion}
+	 * so a per-set edit invalidates a stale console token, say), they must take
+	 * {@link #lockAndReadSetVersion} <em>first</em> or they will deadlock against a concurrent
+	 * replace holding the venue row and waiting on this one.
+	 */
+	Optional<SetPlacement> lockSet(VenueId venueId, SetId setId);
 
 	/**
 	 * The layout conflict the command would cause on the venue, if any. {@code exclude} is the
@@ -59,14 +77,17 @@ public interface Venues {
 	long insertSet(VenueId venueId, SetCommand command);
 
 	/**
-	 * Overwrite a set position's layout fields. Returns the number of rows changed — {@code 0}
-	 * means no such set belongs to the venue (e.g. it was deleted concurrently after the caller's
-	 * existence check), so the caller must not report success.
+	 * Overwrite a set position's layout fields. The caller has already pinned the row with
+	 * {@link #lockSet} in the same transaction, so the set cannot vanish underneath this write and
+	 * there is no rows-affected signal to interpret.
 	 */
-	int updateSet(VenueId venueId, SetId setId, SetCommand command);
+	void updateSet(VenueId venueId, SetId setId, SetCommand command);
 
-	/** Remove a set position. Returns the number of rows deleted — {@code 0} means no such set. */
-	int deleteSet(VenueId venueId, SetId setId);
+	/**
+	 * Remove a set position. As with {@link #updateSet}, the caller holds the row lock from
+	 * {@link #lockSet}, so a 0-row delete is not reachable and is not reported.
+	 */
+	void deleteSet(VenueId venueId, SetId setId);
 
 	/**
 	 * Reprice every set in a row of the venue in one non-destructive {@code UPDATE}:

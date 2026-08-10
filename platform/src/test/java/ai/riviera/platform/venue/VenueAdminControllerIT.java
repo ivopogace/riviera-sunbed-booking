@@ -3,6 +3,9 @@ package ai.riviera.platform.venue;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import java.time.LocalDate;
+import java.time.ZoneId;
+
 import jakarta.servlet.http.Cookie;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -235,6 +239,72 @@ class VenueAdminControllerIT {
 				.andExpect(status().isNoContent());
 
 		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(0));
+	}
+
+	@Test
+	void removeSetKeepsAStaffHoldAndAnswers409() throws Exception {
+		long venue = createVenue("Held Club");
+		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "WALK_IN", 3000, "EUR", 1, 1));
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
+						+ "VALUES (:set, DATE '2027-07-01', 'STAFF_MARKED')")
+				.param("set", setId).update();
+
+		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
+				.andExpect(status().isConflict())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("SET_IN_USE"));
+
+		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :set")
+						.param("set", setId).query(Integer.class).single(),
+				"the walk-in hold must survive the refused delete (invariant #2)");
+	}
+
+	@Test
+	void removeSetOnABookedSetAnswers409NotAServerError() throws Exception {
+		long venue = createVenue("Booked Club");
+		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
+		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+						+ "VALUES ('booked-club@example.com', 'Guest', '+355600') RETURNING id")
+				.query(Long.class).single();
+		// CANCELLED: long-terminal, yet the RESTRICT FK still pins the set — the 500 the guard pre-empts.
+		jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				                     amount_minor, amount_currency, status)
+				VALUES ('BOOKCLB1', :venue, :set, :cust, DATE '2027-07-01', 3000, 'EUR', 'CANCELLED')
+				""")
+				.param("venue", venue).param("set", setId).param("cust", customer).update();
+
+		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("SET_IN_USE"));
+	}
+
+	@Test
+	void editSetKeepsAClaimedSetInItsPoolButStillTakesAPriceChange() throws Exception {
+		long venue = createVenue("Repool Club");
+		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
+		// Relative to today: the edit guard only counts holds from today onwards.
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
+						+ "VALUES (:set, :day, 'BOOKED_ONLINE')")
+				.param("set", setId)
+				.param("day", LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(30))
+				.update();
+
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(setBody("Row A", 1, "STANDARD", "WALK_IN", 3000, "EUR", 1, 1)))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("SET_IN_USE"));
+
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(setBody("Row A", 1, "PREMIUM", "ONLINE", 4200, "EUR", 1, 1)))
+				.andExpect(status().isNoContent());
+
+		assertEquals("ONLINE", jdbc.sql("SELECT pool FROM set_position WHERE id = :set")
+				.param("set", setId).query(String.class).single());
+		assertEquals(4200L, jdbc.sql("SELECT price_minor FROM set_position WHERE id = :set")
+				.param("set", setId).query(Long.class).single());
 	}
 
 	@Test

@@ -5,8 +5,8 @@ package ai.riviera.platform.venue.application;
  * failures shared by {@link AddSetOutcome} and {@link ChangeOutcome}. A lost layout (a taken
  * cell, a duplicate position) is normal flow, returned as a value, not thrown
  * (riviera-java-conventions: typed outcomes). The REST adapter maps each to one HTTP status:
- * {@code NO_SUCH_VENUE}/{@code NO_SUCH_SET}→404, {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}/
- * {@code STALE_WRITE}→409.
+ * {@code NO_SUCH_VENUE}/{@code NO_SUCH_SET}/{@code NO_SUCH_ROW}→404, {@code CELL_TAKEN}/
+ * {@code DUPLICATE_POSITION}/{@code STALE_WRITE}/{@code SET_IN_USE}→409.
  */
 public enum SetRejection {
 
@@ -24,6 +24,14 @@ public enum SetRejection {
 	 * it). Maps to 409 {@code STALE_WRITE}.
 	 */
 	STALE_WRITE,
+	/**
+	 * The set is spoken for, so the requested layout write is refused (invariants #2/#3). The two
+	 * writes ask different questions: a <em>remove</em> is refused by any hold on any date or any
+	 * booking of any status, because a delete cascades and the FK pins it; an <em>edit</em> only by
+	 * a live claim, and only when it would repool or reposition the set. The per-set counterpart of
+	 * {@code ReplaceRejection.LAYOUT_IN_USE}, scoped to one set. Maps to 409 {@code SET_IN_USE}.
+	 */
+	SET_IN_USE,
 	/** Another set already occupies the target {@code (grid_x, grid_y)} cell (invariant #12). */
 	CELL_TAKEN,
 	/** Another set already occupies the target {@code (row_label, position_no)} slot. */

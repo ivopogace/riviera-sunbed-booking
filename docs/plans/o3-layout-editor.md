@@ -112,7 +112,13 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
 
 - **Guard policy for destructive regenerate** → **reject unless unclaimed** (`AskUserQuestion`, this session):
   bulk replace succeeds only when no set has a booking or availability hold; else `409 LAYOUT_IN_USE`. Incremental
-  single-set edits remain for unclaimed sets.
+  single-set edits remain for unclaimed sets. — **Amended by #567:** this last sentence described a policy
+  this slice never enforced (the per-set endpoints had no claim probe at all). It is enforced now, and
+  narrower than stated, along two axes: a set with any claim ever recorded refuses **removal** outright,
+  while an **edit** is refused only when it would repool or reposition the set *and* a claim is still
+  live (a hold dated today or later, a booking that can still be honoured). Price and tier edits are
+  never refused. So "unclaimed" was never the right word for the edit half — dead history does not
+  freeze the map.
 - **Bulk write shape** → **one full-replace `PUT` endpoint, single transaction** (engineering call): atomic,
   idempotent, matches "generate 72 sets in one action" + bulk repaint. Rejected N single-set calls (non-atomic).
 - **Flyway version** → **none needed** (no schema change); V22 verified free on `main` + no open PR claims it.
@@ -415,7 +421,7 @@ Test `VenueAdminControllerLayoutTest` (`@WebMvcTest`).
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-07-07 | Review gate — F1 (invariant #2 TOCTOU) | other check-then-delete on `set_position` without a row lock | reviewed `venue` write paths | only the bulk `replaceLayout` has a claim window; single-set `removeSet` deletes one keyed row | fixed the one site (`FOR UPDATE`); single-set path unaffected |
+| 2026-07-07 | Review gate — F1 (invariant #2 TOCTOU) | other check-then-delete on `set_position` without a row lock | reviewed `venue` write paths | only the bulk `replaceLayout` has a claim window; single-set `removeSet` deletes one keyed row | fixed the one site (`FOR UPDATE`); single-set path unaffected — **superseded: this verdict was wrong.** Deleting one keyed row still CASCADE-drops that set's holds and still trips the booking FK; `editSet` also made `pool` mutable, breaking the claim's check-then-claim premise. Both per-set writes were guarded and the claim's pool read made locking in #567 (`docs/plans/per-set-layout-write-claim-guard.md`) |
 | 2026-07-07 | Review gate — F4 (lossy price round-trip) | other lossy load→save collapses in the editor | reviewed `seedFrom`/`toRequest` | prices were the only lost field; walk-in-tier collapse is intentional (pool, not tier, is user-facing) | preserved prices via `priceByCoord` |
 
 ---

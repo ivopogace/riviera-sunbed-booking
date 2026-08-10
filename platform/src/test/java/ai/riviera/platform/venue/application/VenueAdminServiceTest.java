@@ -1,6 +1,10 @@
 package ai.riviera.platform.venue.application;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -32,6 +36,7 @@ import ai.riviera.platform.venue.application.SetRejection;
 import ai.riviera.platform.venue.application.Venues;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -53,11 +58,22 @@ class VenueAdminServiceTest {
 	private static final SetCommand SET_CMD =
 			new SetCommand("Row A", 1, "PREMIUM", "ONLINE", 4500, "EUR", 2, 1);
 
-	private final FakeVenues venues = new FakeVenues();
-	private final FakeAvailability availability = new FakeAvailability();
+	/** Ordered across BOTH fakes, so a test can pin that the row lock precedes the claim probe. */
+	private final List<String> callLog = new ArrayList<>();
+
+	private final FakeVenues venues = new FakeVenues(callLog);
+	private final FakeAvailability availability = new FakeAvailability(callLog);
 	private final FakeBookings bookings = new FakeBookings();
-	private final VenueAdminService service =
-			new VenueAdminService(venues, new FakeOwnership(OWNER, VENUE), availability, bookings);
+	/**
+	 * Fixed late enough in the UTC day that Europe/Tirane has already rolled over: 22:30Z on the
+	 * 15th is the 16th in Tirane. So a regression that reads the UTC date instead of the Tirane one
+	 * (invariant #6) fails here, which a midday instant would have let pass.
+	 */
+	private static final Clock CLOCK = Clock.fixed(Instant.parse("2027-06-15T22:30:00Z"), ZoneOffset.UTC);
+	private static final LocalDate TODAY_IN_TIRANE = LocalDate.of(2027, 6, 16);
+
+	private final VenueAdminService service = new VenueAdminService(
+			venues, new FakeOwnership(OWNER, VENUE), availability, bookings, CLOCK);
 
 	private static LayoutCommand grid(int rows, int cols) {
 		List<SetCommand> cells = new ArrayList<>();
@@ -138,25 +154,180 @@ class VenueAdminServiceTest {
 	void removeUnknownSetIsRejected() {
 		venues.venues.add(VENUE.value());
 
-		// removeSet relies on the DELETE's rows-affected (0 ⇒ no such set), so it attempts the
-		// delete and maps the 0-row result to NO_SUCH_SET — no separate existence pre-check.
+		// The locking read is the existence check now: no row to lock ⇒ NO_SUCH_SET, nothing deleted.
 		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
 
 		assertEquals(SetRejection.NO_SUCH_SET, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedSets);
 	}
 
 	@Test
-	void editRejectsWhenTheSetVanishesBeforeTheUpdate() {
-		// B2 race backstop: the set passes the existence check but is deleted concurrently before
-		// the UPDATE, so updateSet touches 0 rows — the service must report NO_SUCH_SET, not success.
+	void editSetIsRefusedWhenAClaimedSetWouldBeRepositioned() {
 		venues.venues.add(VENUE.value());
-		venues.forceSetExists = true; // pre-check passes
-		venues.forceUpdateRows = 0; // ...but the UPDATE finds nothing
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		availability.liveClaimed = true;
 
-		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, SET_CMD);
+		SetCommand repooled = new SetCommand("Row A", 1, "PREMIUM", "WALK_IN", 4500, "EUR", 2, 1);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, repooled);
 
-		assertEquals(SetRejection.NO_SUCH_SET, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.updatedSets, "the claimed set must keep the pool its booking assumes");
 	}
+
+	@Test
+	void editSetIsRefusedWhenABookedSetWouldBeMovedToAnotherCell() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		bookings.setHasLiveBookings = true;
+
+		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", "ONLINE", 4500, "EUR", 9, 3);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
+
+		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.updatedSets, "a guest was told this row and number");
+	}
+
+	@Test
+	void editSetAppliesAPriceOnlyChangeToAClaimedSet() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		availability.liveClaimed = true;
+		bookings.setHasLiveBookings = true;
+
+		// Same pool, same row, same position, same cell — only tier and price move.
+		SetCommand repriced = new SetCommand("Row A", 1, "STANDARD", "ONLINE", 9900, "EUR", 2, 1);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, repriced);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
+				"a booking's charge is snapshotted at reserve time, so repricing is harmless");
+		assertEquals(1, venues.updatedSets);
+	}
+
+	@Test
+	void editSetAppliesEveryChangeToAnUnclaimedSet() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+
+		SetCommand moved = new SetCommand("Row C", 7, "STANDARD", "WALK_IN", 100, "EUR", 5, 5);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
+		assertEquals(1, venues.updatedSets);
+	}
+
+	@Test
+	void editSetIsAllowedWhenTheOnlyBookingIsTerminalAndTheOnlyHoldIsPast() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		// History only: the set is un-deletable (setHasBookings/claimed) but strands nobody.
+		availability.claimed = true;
+		bookings.setHasBookings = true;
+
+		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", "WALK_IN", 4500, "EUR", 9, 3);
+		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
+				"last season's cancelled booking must not freeze the map forever");
+		assertEquals(1, venues.updatedSets);
+	}
+
+	@Test
+	void editSetAsksAboutFutureHoldsOnlyForTheSetBeingEdited() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+
+		service.editSet(OWNER, VENUE, SET, new SetCommand("Row Z", 9, "PREMIUM", "ONLINE", 4500, "EUR", 9, 9));
+
+		assertEquals(List.of(SET), availability.anyClaimsFromAskedAbout,
+				"the edit guard must ask about this set alone, never the whole venue");
+		assertEquals(List.of("lockSet", "anyClaimsFrom"), callLog,
+				"probing before locking reopens the window a claim slips through (invariant #2)");
+		assertEquals(TODAY_IN_TIRANE, availability.anyClaimsFromDate,
+				"the cutoff is today in Europe/Tirane, not in UTC (invariant #6)");
+	}
+
+	@Test
+	void removeSetAsksTheAvailabilityQuestionAboutTheSetAloneAndAfterTakingTheLock() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+
+		service.removeSet(OWNER, VENUE, SET);
+
+		assertEquals(List.of(SET), availability.anyClaimsAskedAbout,
+				"a venue-wide probe here would freeze every set whenever any one is held");
+		assertEquals(List.of("lockSet", "anyClaims"), callLog,
+				"probing before locking reopens the window a claim slips through (invariant #2)");
+	}
+
+	@Test
+	void everyPlacementFieldOnItsOwnDisturbsAClaimedSet() {
+		SetPlacement stored = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+
+		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", "WALK_IN", 1, "EUR", 2, 1)), "pool");
+		assertTrue(stored.disturbedBy(new SetCommand("Row B", 1, "PREMIUM", "ONLINE", 1, "EUR", 2, 1)), "rowLabel");
+		assertTrue(stored.disturbedBy(new SetCommand("Row A", 7, "PREMIUM", "ONLINE", 1, "EUR", 2, 1)), "positionNo");
+		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", "ONLINE", 1, "EUR", 8, 1)), "gridX");
+		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", "ONLINE", 1, "EUR", 2, 8)), "gridY");
+		assertFalse(stored.disturbedBy(new SetCommand("Row A", 1, "STANDARD", "ONLINE", 9999, "EUR", 2, 1)),
+				"tier and price never disturb a claim — the charge was snapshotted at reserve time");
+	}
+
+	@Test
+	void removeSetIsRefusedWhenTheSetIsHeld() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		availability.claimed = true;
+
+		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+
+		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedSets,
+				"the hold would be CASCADE-dropped by the delete, so nothing may be deleted");
+	}
+
+	@Test
+	void removeSetIsRefusedWhenTheSetHasAnyBooking() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		bookings.setHasBookings = true;
+
+		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+
+		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedSets,
+				"the RESTRICT FK would raise instead, which the caller sees as a 500");
+	}
+
+	@Test
+	void removeSetAsksTheSetScopedBookingQuestionNotTheVenueScopedOne() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+		bookings.hasBookings = true; // a booking elsewhere on the venue
+
+		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
+				"a booking on a neighbouring set must not freeze this one");
+		assertEquals(1, venues.deletedSets);
+	}
+
+	@Test
+	void removeSetLocksTheSetRowBeforeProbingForClaims() {
+		venues.venues.add(VENUE.value());
+		venues.sets.put(SET.value(), VENUE.value());
+
+		service.removeSet(OWNER, VENUE, SET);
+
+		assertEquals(1, venues.lockedSets,
+				"without the row lock a claim committing after the probe is silently cascaded away");
+	}
+
 
 	@Test
 	void removeExistingSetDeletesIt() {
@@ -436,13 +607,13 @@ class VenueAdminServiceTest {
 	@Test
 	void ownedByReturnsOnlyTheOperatorsOwnVenues() {
 		// AC-1: "Aurora" (P's) sorts BEFORE both of O's, so a leak would land first and fail the assert.
-		FakeVenues store = new FakeVenues();
+		FakeVenues store = new FakeVenues(new ArrayList<>());
 		store.summaries.put(12L, new OwnedVenueView(12, "Miramar Beach Club", "Dhërmi"));
 		store.summaries.put(15L, new OwnedVenueView(15, "Sereno", "Jal"));
 		store.summaries.put(20L, new OwnedVenueView(20, "Aurora", "Borsh"));
 		VenueAdminService owned = new VenueAdminService(store, new MultiOwnership(Map.of(
 				MULTI_OWNER, Set.of(new VenueRef(12), new VenueRef(15)),
-				OTHER_OWNER, Set.of(new VenueRef(20)))), availability, bookings);
+				OTHER_OWNER, Set.of(new VenueRef(20)))), availability, bookings, CLOCK);
 
 		List<OwnedVenueView> result = owned.ownedBy(MULTI_OWNER);
 
@@ -457,9 +628,9 @@ class VenueAdminServiceTest {
 	@Test
 	void ownedByReturnsEmptyWithoutHittingTheRepositoryWhenNothingIsOwned() {
 		// A freshly-approved operator owns nothing: an empty list, and no `IN ()` predicate at all.
-		FakeVenues store = new FakeVenues();
+		FakeVenues store = new FakeVenues(new ArrayList<>());
 		VenueAdminService owned =
-				new VenueAdminService(store, new MultiOwnership(Map.of()), availability, bookings);
+				new VenueAdminService(store, new MultiOwnership(Map.of()), availability, bookings, CLOCK);
 
 		assertEquals(List.of(), owned.ownedBy(MULTI_OWNER));
 		assertEquals(List.of(), store.summaryQueries);
@@ -510,6 +681,12 @@ class VenueAdminServiceTest {
 
 	/** Programmable in-memory {@link Venues}: seed {@code venues}/{@code sets}/{@code conflict}. */
 	private static final class FakeVenues implements Venues {
+		private final List<String> callLog;
+
+		FakeVenues(List<String> callLog) {
+			this.callLog = callLog;
+		}
+
 		final Set<Long> venues = new HashSet<>();
 		final Map<Long, Long> sets = new HashMap<>(); // setId -> venueId
 		Optional<Venues.Conflict> conflict = Optional.empty();
@@ -520,10 +697,6 @@ class VenueAdminServiceTest {
 		int updatedSets;
 		int deletedSets;
 		int updatedProfiles;
-		// Overrides to decouple the existence check from the write's rows-affected (race tests);
-		// null ⇒ derive from the seeded `sets` map.
-		Boolean forceSetExists;
-		Integer forceUpdateRows;
 		// null ⇒ the profile UPDATE matches the loaded version (1 row, APPLIED); set 0 to model a
 		// stale version (another writer bumped it since the load ⇒ STALE_WRITE).
 		Integer forceProfileUpdateRows;
@@ -552,16 +725,20 @@ class VenueAdminServiceTest {
 
 		@Override
 		public void incrementSetVersion(VenueId venueId) {
-			// Counted so a test can assert the token is advanced ONLY on the success path — never on a
-			// STALE_WRITE / LAYOUT_IN_USE / NO_SUCH_ROW reject (no spurious bump).
+			// Counted so a test can assert the token advances ONLY on the success path.
 			incrementedSetVersions++;
 		}
 
+		int lockedSets;
+		// The placement the locked row reports; the per-set guard compares the command against it.
+		SetPlacement storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+
 		@Override
-		public boolean setExists(VenueId venueId, SetId setId) {
-			return forceSetExists != null
-					? forceSetExists
-					: venueId.value() == sets.getOrDefault(setId.value(), -1L);
+		public Optional<SetPlacement> lockSet(VenueId venueId, SetId setId) {
+			lockedSets++;
+			callLog.add("lockSet");
+			boolean present = venueId.value() == sets.getOrDefault(setId.value(), -1L);
+			return present ? Optional.of(storedPlacement) : Optional.empty();
 		}
 
 		@Override
@@ -576,15 +753,13 @@ class VenueAdminServiceTest {
 		}
 
 		@Override
-		public int updateSet(VenueId venueId, SetId setId, SetCommand command) {
+		public void updateSet(VenueId venueId, SetId setId, SetCommand command) {
 			updatedSets++;
-			return forceUpdateRows != null ? forceUpdateRows : (sets.containsKey(setId.value()) ? 1 : 0);
 		}
 
 		@Override
-		public int deleteSet(VenueId venueId, SetId setId) {
+		public void deleteSet(VenueId venueId, SetId setId) {
 			deletedSets++;
-			return sets.containsKey(setId.value()) ? 1 : 0;
 		}
 
 		@Override
@@ -657,10 +832,25 @@ class VenueAdminServiceTest {
 		}
 	}
 
-	/** Programmable {@link SetAvailabilityLookup}: {@code claimed} drives {@code anyClaims}. */
+	/**
+	 * Programmable {@link SetAvailabilityLookup}. Records the ids each probe was asked about so a
+	 * test can pin that the per-set writes ask a SET-scoped question, not a venue-wide one, and
+	 * {@code liveClaimed} is separate from {@code claimed} so the edit/delete guards' different
+	 * questions cannot be satisfied by one flag.
+	 */
 	private static final class FakeAvailability implements SetAvailabilityLookup {
+		private final List<String> callLog;
+
+		FakeAvailability(List<String> callLog) {
+			this.callLog = callLog;
+		}
+
 		boolean claimed;
+		boolean liveClaimed;
 		int anyClaimsCalls;
+		final List<SetId> anyClaimsAskedAbout = new ArrayList<>();
+		final List<SetId> anyClaimsFromAskedAbout = new ArrayList<>();
+		java.time.LocalDate anyClaimsFromDate;
 
 		@Override
 		public Set<SetId> takenOn(Collection<SetId> setIds, java.time.LocalDate date) {
@@ -670,7 +860,17 @@ class VenueAdminServiceTest {
 		@Override
 		public boolean anyClaims(Collection<SetId> setIds) {
 			anyClaimsCalls++;
+			anyClaimsAskedAbout.addAll(setIds);
+			callLog.add("anyClaims");
 			return claimed;
+		}
+
+		@Override
+		public boolean anyClaimsFrom(Collection<SetId> setIds, java.time.LocalDate from) {
+			anyClaimsFromAskedAbout.addAll(setIds);
+			callLog.add("anyClaimsFrom");
+			anyClaimsFromDate = from;
+			return liveClaimed;
 		}
 
 		@Override
@@ -679,13 +879,28 @@ class VenueAdminServiceTest {
 		}
 	}
 
-	/** Programmable {@link BookingPresence}: {@code hasBookings} drives the guard. */
+	/**
+	 * Programmable {@link BookingPresence}. The two flags are separate so a test can pin that the
+	 * bulk replace asks the venue-scoped question and the per-set writes ask the set-scoped one.
+	 */
 	private static final class FakeBookings implements BookingPresence {
 		boolean hasBookings;
+		boolean setHasBookings;
+		boolean setHasLiveBookings;
 
 		@Override
 		public boolean hasBookings(VenueId venueId) {
 			return hasBookings;
+		}
+
+		@Override
+		public boolean hasBookings(SetId setId) {
+			return setHasBookings;
+		}
+
+		@Override
+		public boolean hasLiveBookings(SetId setId) {
+			return setHasLiveBookings;
 		}
 	}
 }

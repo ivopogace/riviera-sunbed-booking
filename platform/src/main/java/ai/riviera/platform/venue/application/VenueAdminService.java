@@ -1,5 +1,8 @@
 package ai.riviera.platform.venue.application;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -39,17 +42,21 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 class VenueAdminService
 		implements OnboardVenue, EditBeachMap, EditVenueProfile, ViewVenueProfile, ListOwnedVenues {
 
+	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
+
 	private final Venues venues;
 	private final VenueOwnership ownership;
 	private final SetAvailabilityLookup availability;
 	private final BookingPresence bookings;
+	private final Clock clock;
 
 	VenueAdminService(Venues venues, VenueOwnership ownership, SetAvailabilityLookup availability,
-			BookingPresence bookings) {
+			BookingPresence bookings, Clock clock) {
 		this.venues = venues;
 		this.ownership = ownership;
 		this.availability = availability;
 		this.bookings = bookings;
+		this.clock = clock;
 	}
 
 	@Override
@@ -122,19 +129,20 @@ class VenueAdminService
 		if (!venues.venueExists(venueId)) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 		}
-		if (!venues.setExists(venueId, setId)) {
+		// Lock BEFORE the claim probe: a claim racing in behind the probe would otherwise be lost.
+		Optional<SetPlacement> placement = venues.lockSet(venueId, setId);
+		if (placement.isEmpty()) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
+		}
+		if (placement.get().disturbedBy(command) && isLivelyClaimed(setId)) {
+			return new ChangeOutcome.Rejected(SetRejection.SET_IN_USE);
 		}
 		Optional<Venues.Conflict> conflict = venues.findConflict(venueId, command, Optional.of(setId));
 		if (conflict.isPresent()) {
 			return new ChangeOutcome.Rejected(toRejection(conflict.get()));
 		}
-		// Rows-affected is the race backstop: if the set was deleted concurrently after the
-		// existence check above, the UPDATE touches 0 rows and we must not report success.
-		int updated = venues.updateSet(venueId, setId, command);
-		return updated == 0
-				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET)
-				: ChangeOutcome.Applied.APPLIED;
+		venues.updateSet(venueId, setId, command);
+		return ChangeOutcome.Applied.APPLIED;
 	}
 
 	@Override
@@ -144,12 +152,36 @@ class VenueAdminService
 		if (!venues.venueExists(venueId)) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 		}
-		// The DELETE's rows-affected is the existence check: 0 ⇒ no such set (also covers a
-		// concurrent delete), 1 ⇒ removed. No separate pre-check needed.
-		int deleted = venues.deleteSet(venueId, setId);
-		return deleted == 0
-				? new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET)
-				: ChangeOutcome.Applied.APPLIED;
+		// Lock BEFORE the claim probe: a claim racing in behind the probe would otherwise be lost.
+		if (venues.lockSet(venueId, setId).isEmpty()) {
+			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_SET);
+		}
+		if (isClaimedEver(setId)) {
+			return new ChangeOutcome.Rejected(SetRejection.SET_IN_USE);
+		}
+		venues.deleteSet(venueId, setId);
+		return ChangeOutcome.Applied.APPLIED;
+	}
+
+	/**
+	 * Whether anything at all is recorded against this set — a hold on any date, a booking of any
+	 * status. The <em>delete</em> question, and deliberately as conservative as the bulk replace's
+	 * venue-wide probe: a delete CASCADEs the holds away and the RESTRICT FK refuses outright, so
+	 * history counts. Callers must already hold the row lock.
+	 */
+	private boolean isClaimedEver(SetId setId) {
+		return availability.anyClaims(List.of(setId)) || bookings.hasBookings(setId);
+	}
+
+	/**
+	 * Whether anyone is still owed this exact spot — a hold from today onwards, or a booking that
+	 * has not reached a terminal state. The <em>edit</em> question, and narrower on purpose: an
+	 * `UPDATE` of pool or coordinates strands only a guest who is still coming, so last season's
+	 * cancelled booking must not freeze the map forever. Callers must already hold the row lock.
+	 */
+	private boolean isLivelyClaimed(SetId setId) {
+		return availability.anyClaimsFrom(List.of(setId), LocalDate.now(clock.withZone(TIRANE)))
+				|| bookings.hasLiveBookings(setId);
 	}
 
 	@Override
