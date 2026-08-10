@@ -166,7 +166,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
-		availability.liveClaimed = true;
+		availability.holdOn = TODAY_IN_TIRANE; // the inclusive edge: a hold dated today still blocks
 
 		SetCommand repooled = new SetCommand("Row A", 1, "PREMIUM", "WALK_IN", 4500, "EUR", 2, 1);
 		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, repooled);
@@ -194,7 +194,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
-		availability.liveClaimed = true;
+		availability.holdOn = TODAY_IN_TIRANE; // the inclusive edge: a hold dated today still blocks
 		bookings.setHasLiveBookings = true;
 
 		// Same pool, same row, same position, same cell — only tier and price move.
@@ -225,7 +225,7 @@ class VenueAdminServiceTest {
 		venues.sets.put(SET.value(), VENUE.value());
 		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
 		// History only: the set is un-deletable (setHasBookings/claimed) but strands nobody.
-		availability.claimed = true;
+		availability.holdOn = TODAY_IN_TIRANE.minusDays(400); // last season, nothing still owed
 		bookings.setHasBookings = true;
 
 		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", "WALK_IN", 4500, "EUR", 9, 3);
@@ -284,7 +284,7 @@ class VenueAdminServiceTest {
 	void removeSetIsRefusedWhenTheSetIsHeld() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		availability.liveClaimed = true;
+		availability.holdOn = TODAY_IN_TIRANE; // the inclusive edge: a hold dated today still blocks
 
 		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
 
@@ -298,7 +298,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
 		// History only: a walk-in marked last season, nothing still owed, no booking ever.
-		availability.claimed = true;
+		availability.holdOn = TODAY_IN_TIRANE.minusDays(400); // last season, nothing still owed
 
 		ChangeOutcome outcome = service.removeSet(OWNER, VENUE, SET);
 
@@ -486,7 +486,7 @@ class VenueAdminServiceTest {
 	void rejectsReplaceWhenVenueHasLiveAvailabilityHold() {
 		venues.venues.add(VENUE.value());
 		venues.existingSetIds.add(SET.value());
-		availability.liveClaimed = true;
+		availability.holdOn = TODAY_IN_TIRANE; // the inclusive edge: a hold dated today still blocks
 
 		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
@@ -500,7 +500,7 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		venues.existingSetIds.add(SET.value());
 		// History only: a walk-in-only venue's marks from last season, no booking ever.
-		availability.claimed = true;
+		availability.holdOn = TODAY_IN_TIRANE.minusDays(400); // last season, nothing still owed
 
 		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
@@ -881,10 +881,11 @@ class VenueAdminServiceTest {
 	}
 
 	/**
-	 * Programmable {@link SetAvailabilityLookup}. Records the ids each probe was asked about so a
-	 * test can pin that the per-set writes ask a SET-scoped question, not a venue-wide one, and
-	 * {@code liveClaimed} is separate from {@code claimed} so the edit/delete guards' different
-	 * questions cannot be satisfied by one flag.
+	 * Programmable {@link SetAvailabilityLookup}. Records the ids each probe was asked about, so a
+	 * test can pin which sets each write asks about — one set for {@code editSet}/{@code removeSet},
+	 * the whole locked map for {@code replaceLayout}. The hold is stored as a <em>date</em> rather
+	 * than a flag because the one surviving probe discriminates by date: a boolean would let a
+	 * "history only" test pass against a fake holding nothing at all.
 	 */
 	private static final class FakeAvailability implements SetAvailabilityLookup {
 		private final List<String> callLog;
@@ -893,9 +894,8 @@ class VenueAdminServiceTest {
 			this.callLog = callLog;
 		}
 
-		/** History-only holds: rows whose day has gone. No layout write may block on these. */
-		boolean claimed;
-		boolean liveClaimed;
+		/** The day this set's hold sits on, or {@code null} for no hold at all. */
+		java.time.LocalDate holdOn;
 		final List<SetId> anyClaimsFromAskedAbout = new ArrayList<>();
 		java.time.LocalDate anyClaimsFromDate;
 
@@ -909,7 +909,7 @@ class VenueAdminServiceTest {
 			anyClaimsFromAskedAbout.addAll(setIds);
 			callLog.add("anyClaimsFrom");
 			anyClaimsFromDate = from;
-			return liveClaimed;
+			return holdOn != null && !holdOn.isBefore(from); // inclusive on `from`, as the SQL is
 		}
 
 		@Override
@@ -919,8 +919,9 @@ class VenueAdminServiceTest {
 	}
 
 	/**
-	 * Programmable {@link BookingPresence}. The two flags are separate so a test can pin that the
-	 * bulk replace asks the venue-scoped question and the per-set writes ask the set-scoped one.
+	 * Programmable {@link BookingPresence}. The three flags are separate so a test can pin both axes:
+	 * the bulk replace asks the venue-scoped question while the per-set writes ask the set-scoped one,
+	 * and the delete asks about any booking ever while the edit asks only about a live one.
 	 */
 	private static final class FakeBookings implements BookingPresence {
 		boolean hasBookings;

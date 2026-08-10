@@ -148,6 +148,16 @@ for** `bugfix/bulk-replace-past-hold-freeze` (`riviera-sdlc` § Remote/cloud ses
 
 *None open.*
 
+### Deliberate non-change (flagged, not patched)
+
+- **The operator-facing copy stays generic.** `VenueAdminController:239` ("This venue has bookings or
+  walk-in holds, so its layout is locked.") and its frontend twin `layout-editor.ts` are imprecise
+  after this slice — a venue whose holds are all history is no longer locked. They are **left alone
+  on purpose**: they mirror the `SET_IN_USE` copy at `VenueAdminController:223` ("This set is booked
+  or held…"), which #599 deliberately left generic for the identical reason, and changing one
+  without the other breaks that parity. Sharpening both is a **product-copy decision for the
+  maintainer**, not a freshness defect — raised here rather than taken unilaterally.
+
 ### Resolved
 
 - **Open question (the issue's own "question to settle"):** narrow the availability arm only, or
@@ -233,11 +243,22 @@ the untouched booking arm — so this slice cannot reach a set that money depend
 
 ## Angular — frontend surfaces touched
 
-`N/A — backend-only.` The operator console's layout editor already renders `LAYOUT_IN_USE`, and its
-copy — *"This venue has bookings or walk-in holds, so replacing the whole layout is locked. Switch
-to Edit sets…"* — stays accurate: after this slice the sentence is simply true of fewer venues
-(a past-holds-only venue no longer trips it). No component, route, service, or e2e spec changes,
-so `playwright-cli` is not routed.
+**Comment-only — no behavior, no structure.** The docs-freshness sweep found two TSDoc blocks
+stating the reversed fact, so the slice touches `frontend/` after all:
+
+| # | Surface | Existing/new | Type | State/reactivity | Forms |
+|---|---|---|---|---|---|
+| FE-1 | `operator/layout-editor.ts` (class TSDoc) | existing | doc only | unchanged | unchanged |
+| FE-2 | `operator/operator-console.service.ts` (`replaceLayout` TSDoc) | existing | doc only | unchanged | unchanged |
+
+`riviera-frontend` is the **placement** authority and has nothing to decide here — no file is
+created, moved, or re-foldered, and no import direction changes; the applicable rule is
+`frontend/.claude/CLAUDE.md`'s TSDoc twin of `riviera-java-conventions` §6d (state the contract,
+not the history). `angular-developer` / the angular-cli MCP are not routed: no Angular API, signal,
+form, or template is touched. `playwright-cli` is not routed: **no observable behaviour changes**,
+so there is no flow to drive and no e2e spec to add or amend.
+
+The operator-facing **copy** is deliberately unchanged — see the deliberate non-change below.
 
 ## FE↔BE contract
 
@@ -275,7 +296,13 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| *(none yet)* | | | |
+| F-1 | docs-freshness sweep (phase 2) | **A real test defect, not prose.** Deleting the fake's `anyClaims` override left `FakeAvailability.claimed` write-only, yet three tests still set it to model "history-only holds" — `editSetIsAllowedWhenTheOnlyBookingIsTerminalAndTheOnlyHoldIsPast`, `removeSetIsAllowedWhenTheOnlyHoldIsPast`, and this slice's own `replacesLayoutWhenTheOnlyHoldsArePast`. They were asserting "a past hold does not block" against a fake holding **nothing at all**, so all three would have stayed green if the narrowing regressed | fixed-in-`b19e630` — the fake now stores a **date** (`holdOn`) and `anyClaimsFrom` returns `holdOn != null && !holdOn.isBefore(from)`, so it discriminates exactly as the SQL does. Live-hold tests moved to `TODAY_IN_TIRANE` (pinning R-1's inclusive edge in the one place the clock is controlled), past-hold tests to `minusDays(400)`. **Verified load-bearing by mutation:** reverting the cutoff to `LocalDate.EPOCH` turns all three red (they passed before this fix) |
+| F-2 | docs-freshness sweep (phase 2) | `frontend/src/app/operator/layout-editor.ts` class TSDoc: the bulk write "works only while the venue has never been booked or held — afterwards it answers `LAYOUT_IN_USE` permanently, and a trading venue never becomes unclaimed again". The strongest possible statement of the fact this slice reverses; a reader hitting a successful replace would file it as an invariant-#2 regression | fixed-in-`b19e630` — split into the booking half (still permanent) and the availability half (a walk-in-only venue whose marks are history becomes replaceable). Its sibling "narrower claim guards" also softened to "set-scoped", since the availability question is now identical across all three writes |
+| F-3 | docs-freshness sweep (phase 2) | `BeachMapReplaceIT`'s class Javadoc (a file this slice **did** touch, in a block it did not) said the guard refuses "a booking or an availability hold" — contradicting the new test 220 lines below it | fixed-in-`b19e630` — qualified to "dated today or later", with the past-hold outcome stated |
+| F-4 | docs-freshness sweep (phase 2) | `operator-console.service.ts#replaceLayout` TSDoc: "`LAYOUT_IN_USE` … means the venue has bookings or holds" — over-broad as an unqualified claim | fixed-in-`b19e630` — "or a hold dated today or later" |
+| F-5 | docs-freshness sweep (phase 2) | **My own phase-2 edit introduced a counting error the sweep exists to remove:** `RESPONSIBILITIES.md` §`venue` read "All three **scopes** now guard", but there are three *writes* and only **two** scopes — and the rest of the sentence enumerates exactly two | fixed-in-`b19e630` — "All three **writes** now guard, with the **scope** following what the write destroys" |
+| F-6 | docs-freshness sweep (phase 2) | `FakeBookings`'s Javadoc says "The **two** flags" but the class carries three (`hasBookings(VenueId)`, `hasBookings(SetId)`, `hasLiveBookings(SetId)`). **Pre-existing since #567**, not caused here; fixed opportunistically as it sits six lines from F-1 | fixed-in-`b19e630` — "three flags … both axes", naming the second axis explicitly |
+| F-7 | docs-freshness sweep (phase 2) | `docs/plans/o3-layout-editor.md`'s **M-3 and NI-2 table rows** still described `anyClaims` as a live port method — the phase-2 patch had added a superseded note to that doc's guard narrative but missed its interface tables, which is the section a future session greps when asking "what ports exist" (exactly risk R-7's reversion path) | fixed-in-`b19e630` — superseded notes appended to both rows, mirroring the sibling doc's NI-3 wording |
 
 ---
 
@@ -294,6 +321,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `docs/plans/per-set-layout-write-claim-guard.md` — #567's `anyClaims` rows follow too
 - `docs/plans/o3-layout-editor.md` — its guard description follows
 - `docs/plans/set-version-concurrency.md` — its two `anyClaims` references follow
+- `frontend/src/app/operator/layout-editor.ts` — class TSDoc: the bulk write's lock is no longer permanent for a walk-in-only venue (F-2)
+- `frontend/src/app/operator/operator-console.service.ts` — `replaceLayout` TSDoc: `LAYOUT_IN_USE` qualified to a live hold (F-4)
 
 ---
 

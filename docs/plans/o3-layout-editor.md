@@ -164,7 +164,7 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
 |---|---|---|---|---|
 | M-1 | `venue` | existing | `Venue`, `BeachMap` | Owns the beach map / set positions / pool assignment (CLAUDE.md table). The bulk layout write + its guard live here. |
 | M-2 | `booking` | existing | `Booking` | Implements the new `venue/spi/BookingPresence` driven port (only `booking` may read the `booking` table). |
-| M-3 | `availability` | existing | `SetAvailability` | Implements the extended `SetAvailabilityLookup.anyClaims` (sole reader of `set_availability`). |
+| M-3 | `availability` | existing | `SetAvailability` | Implements the extended `SetAvailabilityLookup.anyClaims` (sole reader of `set_availability`). *(Superseded: #602 removed `anyClaims` once `replaceLayout`, its last caller, moved to `anyClaimsFrom`)* |
 | M-4 | `operator` | existing | `Operator` | `VenueOwnership.assertOwns` consulted by the new write (invariant #13). |
 
 **Cross-module named interfaces (ports)**
@@ -172,7 +172,7 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
 | # | Surface | Port | Public types | Direction / consumers |
 |---|---|---|---|---|
 | NI-1 | `venue.spi` | `BookingPresence#hasBookings(VenueId)` → `boolean` | `venue.vocabulary.VenueId` | **New driven port** (spi) — implemented by `booking` (`booking → venue::spi`, existing acyclic direction; grant `venue::spi` to `booking`). "Implement-me", so `spi/` not `api/`. |
-| NI-2 | `venue.spi` | `SetAvailabilityLookup#anyClaims(Collection<SetId>)` → `boolean` | `venue.vocabulary.SetId` | **Extend existing** spi (already implemented by `availability`; grant unchanged). |
+| NI-2 | `venue.spi` | `SetAvailabilityLookup#anyClaims(Collection<SetId>)` → `boolean` | `venue.vocabulary.SetId` | **Extend existing** spi (already implemented by `availability`; grant unchanged). *(Superseded: #602 removed `anyClaims` from the port once `replaceLayout`, its last caller, moved to `anyClaimsFrom`)* |
 | NI-3 | `operator.api` | `VenueOwnership#assertOwns(OperatorId, VenueRef)` | existing | Consumed by `venue` (grant already present). |
 | NI-4 | `venue.api` | `VenueCatalog#findVenueMap(...)` (unchanged) | `VenueMapView`/`SetView` | Read-back the replaced layout (AC-7). |
 

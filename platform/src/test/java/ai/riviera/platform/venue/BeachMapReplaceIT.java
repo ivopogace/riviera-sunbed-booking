@@ -49,9 +49,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * and {@code JdbcSetAvailabilityLookup} adapters. Pins: the whole grid round-trips through the U1 read
  * API with row A priced front-row premium and the {@code WALK_IN} pool preserved (AC-1/AC-4/AC-7);
  * regenerate replaces the previous layout (AC-1); and — the highest-stakes case — the
- * reject-unless-unclaimed guard refuses a replace when the venue has a booking or an availability hold,
- * leaving the existing layout <em>and</em> the hold untouched (AC-6, invariant #2 / R-1: the
- * {@code set_availability} CASCADE must never silently fire).
+ * reject-unless-unclaimed guard refuses a replace when the venue has a booking or an availability hold
+ * dated today or later, leaving the existing layout <em>and</em> the hold untouched (AC-6, invariant #2
+ * / R-1: the {@code set_availability} CASCADE must never silently fire). A hold whose day has gone does
+ * not freeze the map — it goes with its set.
  *
  * <p>The replace is optimistic-locked on the venue's {@code set_version}: every replace body
  * carries the required {@code expectedVersion} the tab loaded from the map read, and a stale token is

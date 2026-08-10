@@ -96,7 +96,7 @@ one **slot**, not one image (byte-identical variants in another slot keep servin
 slot is its own takedown). Also own the beach map / layout, set
 positions, the online-vs-walk-in pool assignment for each set, pricing, and the booking mode
 (Instant / Request) — **including refusing a layout write that a live claim depends on** (#567).
-All three scopes now guard, with the scope following what the write destroys: the bulk replace
+All three writes now guard, with the scope following what the write destroys: the bulk replace
 deletes every set, so it asks the venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet` touch
 one set, so they ask the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row.
 **On the availability arm there is no asymmetry left to state** (#602): every layout write asks the
