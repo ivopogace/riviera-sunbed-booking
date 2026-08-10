@@ -90,15 +90,15 @@ literal `bugfix/<slug>` name applies; no cloud-branch substitution.)
 
 ### `admin/admin-operators.ts` — the completed-action leg on all four row actions (issue item 3)
 
-- [ ] **AC-7:** Given a pending operator, when the admin **approves** it and the queue reconciles,
+- [x] **AC-7:** Given a pending operator, when the admin **approves** it and the queue reconciles,
   then a status notice states the outcome and focus lands on it — the approved row having been
   reconciled away. *Pinned by:* `admin-operators.spec.ts` › `parks focus on the notice when an approval settles`
-- [ ] **AC-8:** Given a pending operator, when the admin **rejects** it, then the same holds.
+- [x] **AC-8:** Given a pending operator, when the admin **rejects** it, then the same holds.
   *Pinned by:* `admin-operators.spec.ts` › `parks focus on the notice when a rejection settles`
-- [ ] **AC-9:** Given the suspend confirmation open on an account, when the suspension settles, then
+- [x] **AC-9:** Given the suspend confirmation open on an account, when the suspension settles, then
   the confirmation is gone, the notice states the outcome, and focus lands on it. *Pinned by:*
   `admin-operators.spec.ts` › `parks focus on the notice when a suspension settles`
-- [ ] **AC-10:** Given a suspended account, when the admin **reinstates** it, then the same holds.
+- [x] **AC-10:** Given a suspended account, when the admin **reinstates** it, then the same holds.
   *Pinned by:* `admin-operators.spec.ts` › `parks focus on the notice when a reinstatement settles`
 
 ### The busy posture (issue item 4)
@@ -259,9 +259,9 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phase 4`
+**Stage pointer:** `implement — phase 5`
 
-**Next action:** Phase 4 — `admin-operators`' notice region + the four settled legs.
+**Next action:** Phase 5 — the busy sweep. Step 1 is the form-submit guard audit (R-3), money path first.
 characterization spec for the existing page-mount focus leg.
 
 PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
@@ -274,8 +274,8 @@ PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on t
 | 0 — `focusMover()` fallback + the seven-adopter audit | ✅ | `7e11e7b` |
 | 1 — The `BusyAction` directive + the ordering spike | ✅ | `bb73467` |
 | 2 — `set-password`'s three erase transitions | ✅ | `455c24c` |
-| 3 — `admin-venue-photos`' takedown failure leg | ✅ | `<phase-3>` |
-| 4 — `admin-operators`' notice region + four settled legs | | |
+| 3 — `admin-venue-photos`' takedown failure leg | ✅ | `409dd1c` |
+| 4 — `admin-operators`' notice region + four settled legs | ✅ | `<phase-4>` |
 | 5 — The busy sweep (money path first, then the rest) | | |
 | 6 — Real-browser e2e + full verification | | |
 
