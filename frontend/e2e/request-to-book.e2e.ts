@@ -243,6 +243,36 @@ test('the withdraw confirmation can be backed out of without calling the API', a
   expect(withdrawCalled).toBe(false);
 });
 
+test('the withdraw confirmation moves focus in and back out (WCAG 2.4.3)', async ({ page }) => {
+  let withdrawn = false;
+  await page.route(new RegExp(`/api/bookings/${CODE}/withdraw$`), (route) => {
+    withdrawn = true;
+    return route.fulfill({ json: { code: CODE, status: 'WITHDRAWN' } });
+  });
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: withdrawn
+        ? { ...DETAIL_BASE, status: 'WITHDRAWN', withdrawable: false, requestExpiresAt: null }
+        : DETAIL_BASE,
+    }),
+  );
+
+  await page.goto(`/booking/${CODE}`);
+  await page.getByTestId('withdraw-request').click();
+  await expect(page.getByTestId('confirm-withdraw')).toBeFocused();
+
+  await page.getByRole('button', { name: 'Keep request' }).click();
+  await expect(page.getByTestId('withdraw-request')).toBeFocused();
+
+  await page.getByTestId('withdraw-request').click();
+  await page.getByTestId('confirm-withdraw').click();
+
+  // The affordance goes with the withdrawal, so the outcome is where focus has to land.
+  await expect(page.getByTestId('booking-status')).toContainText('Withdrawn');
+  await expect(page.getByTestId('withdraw-request')).toHaveCount(0);
+  await expect(page.getByTestId('withdraw-result')).toBeFocused();
+});
+
 test('an expired request shows terminal no-charge copy', async ({ page }) => {
   await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
     route.fulfill({ json: { ...DETAIL_BASE, status: 'EXPIRED', requestExpiresAt: null } }),

@@ -185,16 +185,19 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR #617 — merging main in, then ready for review`
 
-**Next action:** Phase 2 step 1 — add the real-browser focus assertions to `my-bookings.e2e.ts` and
-`request-to-book.e2e.ts`, which is the half that can actually observe the busy-`[disabled]` blur.
+**Next action:** Merge the latest `origin/main` into the branch with full phase discipline, then
+mark PR #617 ready for review, which is what makes the Review and Sonar gates due.
+
+PR: **#617** (opened as a draft at the first phase commit, per `riviera-sdlc` rule 3 — CI fires on
+the `pull_request` event only).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Adopt the shared helper + the two keep return legs | ✅ | `1df3bb2` |
-| 1 — The completed-action legs + the `tabindex="-1"` landmarks | ✅ | |
-| 2 — Real-browser e2e coverage + full verification | | |
+| 1 — The completed-action legs + the `tabindex="-1"` landmarks | ✅ | `3ba7784` |
+| 2 — Real-browser e2e coverage + full verification | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -268,19 +271,22 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `frontend/e2e/my-bookings.e2e.ts`, `frontend/e2e/request-to-book.e2e.ts`
 
-- [ ] **Step 1: Write the failing e2e** — AC-8 and AC-9, driving open → keep → open → confirm and
+- [x] **Step 1: Write the failing e2e** — AC-8 and AC-9, driving open → keep → open → confirm and
       asserting `toBeFocused()` at each step. This is the half that can actually observe the
       busy-`[disabled]` blur (R-1).
-- [ ] **Step 2: Run it, verify it fails/passes appropriately** —
-      `npm run test:e2e:a11y -- my-bookings request-to-book`.
-- [ ] **Step 3: Axe** — re-audit the booking view after the completed cancel via
-      `expectNoSeriousAxeViolations`, awaiting animations first per the suite's rule.
-- [ ] **Step 4: Full verification** — `npm run lint`, `npm test`, `npm run build`,
-      `npm run test:e2e:a11y`.
-- [ ] **Step 5: Reconcile the File-structure section** —
-      `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 6: Commit** — `git commit -m "Cover the tourist confirm focus transitions end to end (#614)"`
-- [ ] **Step 7: Update plan-doc execution status**; mark ready for review.
+- [x] **Step 2: Run it, verify it fails/passes appropriately** — `13 passed` on the two files. Then
+      **verified RED against pre-fix code**, which is what R-1 actually rests on: with
+      `booking-view.ts` checked out from `origin/main`, both fail on
+      `expect(locator).toBeFocused() … Received: inactive`. Written after the fix, they would
+      otherwise have been unproven regression pins.
+- [x] **Step 3: Axe** — `expectNoSeriousAxeViolations` after the completed cancel, behind `settle(page)`.
+- [x] **Step 4: Full verification** — `ng lint` clean · `npm test` **1335 passed (155 files)** ·
+      `npm run build` succeeds · `npm run test:e2e:a11y` **167 passed (5.4m)**.
+- [x] **Step 5: Reconcile the File-structure section** —
+      `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean (exit 0);
+      `check-inline-comments.mjs` clean on all four touched files.
+- [x] **Step 6: Commit** — `git commit -m "Cover the tourist confirm focus transitions end to end (#614)"`
+- [x] **Step 7: Update plan-doc execution status**; mark ready for review.
 
 ---
 
@@ -297,8 +303,13 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-7:** `npm test -- booking-view` → all green, each new spec verified RED first.
-- [ ] **AC-8/AC-9:** `npm run test:e2e:a11y -- my-bookings request-to-book` → green.
+- [x] **AC-1..AC-7:** `ng test --include="src/app/booking/booking-view*.spec.ts"` → **71 passed**,
+      every new spec verified RED first (`2 failed`, `2 failed`, `1 failed`, `1 failed` in turn).
+      AC-7's two focus-in specs are **unmodified** by this slice — that is the parity evidence, not
+      an assertion of it.
+- [x] **AC-8/AC-9:** `npx playwright test --config playwright.a11y.config.ts my-bookings request-to-book`
+      → **13 passed**; both new tests verified RED against `origin/main`'s `booking-view.ts`
+      (`Received: inactive`). Whole mocked suite **167 passed**.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
