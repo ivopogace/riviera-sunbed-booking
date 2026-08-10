@@ -1,18 +1,10 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  effect,
-  ElementRef,
-  inject,
-  Injector,
-  signal,
-} from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { focusMover } from '../shared/focus-after-render';
 import { PhotoSlotKey } from '../shared/venue-views';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminVenuePhotosService, ModerationVenue } from './admin-venue-photos.service';
@@ -224,8 +216,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
 export class AdminVenuePhotos {
   protected readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminVenuePhotosService);
-  private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly injector = inject(Injector);
+  private readonly focusAfterRender = focusMover();
 
   protected readonly venues = signal<readonly ModerationVenue[]>([]);
   protected readonly selectedVenueId = signal<number | undefined>(undefined);
@@ -373,17 +364,6 @@ export class AdminVenuePhotos {
   }
 
   /** Move focus to a test-id'd element once the swap it belongs to has actually rendered. */
-  private focusAfterRender(testId: string): void {
-    afterNextRender(
-      {
-        earlyRead: () =>
-          this.hostRef.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`),
-        write: (target) => target?.focus(),
-      },
-      { injector: this.injector },
-    );
-  }
-
   private async loadVenues(): Promise<void> {
     try {
       this.venues.set(await this.service.venues());

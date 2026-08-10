@@ -176,15 +176,17 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `plan — committing the plan doc`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Commit this plan doc, open the draft PR so CI fires, then start Phase 0
-(`shared/focus-after-render.ts` red spec).
+**Next action:** Write `confirm-panel.spec.ts` and the `layout-editor.spec.ts` focus spec red, then
+build `shared/confirm-panel` and adopt it in `set-editor` (parity) and `layout-editor` (the #604 fix).
+
+Draft PR: **#612**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Shared focus helper + adopt in the 5 existing call sites | | |
-| 1 — `shared/confirm-panel` + operator pair (**the #604 fix**) | | |
+| 0 — Shared focus helper + adopt in the 5 existing call sites | ✅ | `1442b1a` (plan), Phase-0 commit below |
+| 1 — `shared/confirm-panel` + operator pair (**the #604 fix**) | ⏳ | |
 | 2 — `shared/confirm-with-reason` + admin pair | | |
 | 3 — e2e coverage, computed-style no-drift check, full verification | | |
 
@@ -308,6 +310,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Phase 0 — extracting the focus helper | any other private `afterNextRender` → `[data-testid]` focus helper | `grep -rn "private focusAfterRender\|refocusAfterRender" src/app/ --include=*.ts` then `grep -rln "afterNextRender" src/app/ --include=*.ts` | 5 byte-identical copies (all adopted); `auth-page.ts#refocusAfterRender` + 11 other `afterNextRender` users | Fixed all 5. **Skipped `auth-page.ts`** — it focuses a `viewChild` (`firstField()`), not a `[data-testid]` lookup, so it is a different helper wearing a similar name; forcing it through the shared one would mean giving its input a test id purely to be found by string |
 
 ---
 
