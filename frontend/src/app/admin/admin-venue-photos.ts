@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { ConfirmWithReason } from '../shared/confirm-with-reason';
 import { focusMover } from '../shared/focus-after-render';
 import { PhotoSlotKey } from '../shared/venue-views';
 import { AdminConsoleTabs } from './admin-console-tabs';
@@ -41,7 +42,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
  */
 @Component({
   selector: 'app-admin-venue-photos',
-  imports: [RouterLink, NgOptimizedImage, CardGlass, AdminConsoleTabs],
+  imports: [RouterLink, NgOptimizedImage, CardGlass, AdminConsoleTabs, ConfirmWithReason],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[860px] px-4 py-10" aria-labelledby="admin-photos-title">
@@ -136,47 +137,23 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
                   </div>
 
                   @if (confirming() === slot.slot) {
-                    <p
-                      class="mt-3 text-[14px] text-(--riv-card-ink)"
-                      [attr.data-testid]="'admin-photo-confirm-prompt-' + slot.slot"
-                    >
-                      Remove the {{ label(slot.slot) }} photo from {{ venue.name }}? This cannot be
-                      undone.
-                    </p>
-                    <label
-                      [attr.for]="'admin-photo-reason-' + slot.slot"
-                      class="mt-2 block text-[13.5px] font-semibold text-(--riv-card-ink)"
-                      >Reason (optional)</label
-                    >
-                    <input
-                      type="text"
-                      maxlength="500"
-                      [attr.id]="'admin-photo-reason-' + slot.slot"
-                      [attr.data-testid]="'admin-photo-reason-' + slot.slot"
-                      [value]="reason()"
-                      (input)="onReasonTyped($event)"
-                      placeholder="e.g. reported by email — off-topic image"
-                      class="mt-1 w-full rounded-[10px] border border-(--riv-field-border) bg-white/70 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+                    <app-confirm-with-reason
+                      class="mt-3"
+                      label="Confirm photo removal"
+                      [prompt]="removalPrompt(slot.slot, venue.name)"
+                      [promptTestId]="'admin-photo-confirm-prompt-' + slot.slot"
+                      [reasonId]="'admin-photo-reason-' + slot.slot"
+                      reasonPlaceholder="e.g. reported by email — off-topic image"
+                      confirmLabel="Remove"
+                      cancelLabel="Keep it"
+                      [panelTestId]="'admin-photo-confirm-panel-' + slot.slot"
+                      [confirmTestId]="'admin-photo-confirm-' + slot.slot"
+                      [cancelTestId]="'admin-photo-cancel-' + slot.slot"
+                      [busy]="busy()"
+                      [(reason)]="reason"
+                      (confirmed)="remove(venue, slot.slot)"
+                      (cancelled)="keepIt(slot.slot)"
                     />
-                    <div class="mt-2 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        [attr.data-testid]="'admin-photo-confirm-' + slot.slot"
-                        [disabled]="busy()"
-                        (click)="remove(venue, slot.slot)"
-                        class="rounded-[10px] border border-[#b3261e] px-4 py-2 text-[14px] font-semibold text-[#b3261e] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Remove
-                      </button>
-                      <button
-                        type="button"
-                        [attr.data-testid]="'admin-photo-cancel-' + slot.slot"
-                        (click)="keepIt(slot.slot)"
-                        class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink-soft)"
-                      >
-                        Keep it
-                      </button>
-                    </div>
                   } @else {
                     <button
                       type="button"
@@ -249,6 +226,10 @@ export class AdminVenuePhotos {
     return SLOT_LABELS[slot];
   }
 
+  protected removalPrompt(slot: PhotoSlotKey, venueName: string): string {
+    return `Remove the ${this.label(slot)} photo from ${venueName}? This cannot be undone.`;
+  }
+
   /**
    * Open the confirmation and put focus on it. Each of the three transitions below destroys the
    * element that was just activated, which strands keyboard/AT focus on `<body>` unless focus is
@@ -266,10 +247,6 @@ export class AdminVenuePhotos {
     this.confirming.set(undefined);
     this.reason.set('');
     this.focusAfterRender(`admin-photo-remove-${slot}`);
-  }
-
-  protected onReasonTyped(event: Event): void {
-    this.reason.set((event.target as HTMLInputElement).value);
   }
 
   protected onVenuePicked(event: Event): void {

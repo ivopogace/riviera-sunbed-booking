@@ -91,6 +91,9 @@ inert test hook; the no-drift rule is what turned the host-element question into
 
 | Old-surface behavior | Verdict | How the new surface does it, or why it changed |
 |---|---|---|
+| `layout-editor`: confirm text has no explicit line-height; `set-editor`'s pins `leading-[1.45]` | **changed (deliberate)** | unified on `leading-[1.45]`; same ink and size, so the contrast specs are untouched |
+| `layout-editor`: action row is `flex gap-2`; `set-editor`'s is `flex flex-wrap gap-2` | **changed (deliberate)** | unified on `flex-wrap`, which is the kinder one on a narrow console column |
+| `admin-operators`: confirm button lacks `disabled:cursor-not-allowed` that `admin-venue-photos` has | **changed (deliberate)** | unified on including it — cursor only, no paint change |
 | `layout-editor`: Generate over an existing grid opens a confirm instead of replacing | preserved | `onGenerate()` unchanged; `@if (confirmRegen())` now renders `<app-confirm-panel>` |
 | `layout-editor`: confirm replaces the grid, clears `savedNotice`/`errorCode` | preserved | `confirmGenerate()` body unchanged |
 | `layout-editor`: cancel closes the confirm, touches nothing | preserved | `cancelGenerate()` body unchanged |
@@ -176,19 +179,23 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Write `confirm-with-reason.spec.ts` red, build the component, then adopt it in
-`admin-venue-photos` and `admin-operators` leaving both their existing specs untouched (AC-5).
+**Next action:** Add the regenerate-confirm focus + axe e2e to `e2e/layout-editor.e2e.ts`, plus the
+computed-style no-drift assertions that class-list review cannot make (R-2, R-3).
 
 Draft PR: **#612**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Shared focus helper + adopt in the 5 existing call sites | ✅ | `99d8241` |
-| 1 — `shared/confirm-panel` + operator pair (**the #604 fix**) | ✅ | Phase-1 commit below |
-| 2 — `shared/confirm-with-reason` + admin pair | | |
-| 3 — e2e coverage, computed-style no-drift check, full verification | | |
+| 1 — `shared/confirm-panel` + operator pair (**the #604 fix**) | ✅ | `707b9ba` |
+| 2 — `shared/confirm-with-reason` + admin pair | ✅ | Phase-2 commit below |
+| 3 — e2e coverage, computed-style no-drift check, full verification | ⏳ | |
+
+**Verification at Phase 2:** full unit suite `1329 passed (155 files)`, `ng lint` clean, `ng build`
+succeeds. Both admin specs and `set-editor.spec.ts` are **unmodified** by this slice — that is the
+behavior-parity evidence for AC-5, not an assertion of it.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -311,6 +318,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-10 | Phase 0 — extracting the focus helper | any other private `afterNextRender` → `[data-testid]` focus helper | `grep -rn "private focusAfterRender\|refocusAfterRender" src/app/ --include=*.ts` then `grep -rln "afterNextRender" src/app/ --include=*.ts` | 5 byte-identical copies (all adopted); `auth-page.ts#refocusAfterRender` + 11 other `afterNextRender` users | Fixed all 5. **Skipped `auth-page.ts`** — it focuses a `viewChild` (`firstField()`), not a `[data-testid]` lookup, so it is a different helper wearing a similar name; forcing it through the shared one would mean giving its input a test id purely to be found by string |
+| 2026-08-10 | Phase 2 — the admin confirm extraction | whether `admin-privacy`'s confirm belongs in `ConfirmWithReason` after all | re-read `admin-privacy.ts` lines 140–180 + its stage machine against the new component | 1 candidate | **Stays out, as planned.** It brings its own red-tinted card and pop animation, names itself with `aria-labelledby` + an `<h3>` rather than `aria-label`, focuses the **panel** rather than a button, and is one stage of a `form → confirm → done` machine with a second panel after it. Four differences, none cosmetic — it would need every one as a flag |
 | 2026-08-10 | Phase 1 — the #604 stranded-focus fix | every other confirm-before-destroy surface, checked for the same missing focus transition | `grep -rn "confirmRemove\|confirmRegen\|confirming\|confirmingId" src/app/ --include=*.ts` + `grep -rn "alertdialog" src/app/` | `auth/set-password.ts` (focuses in and out — sound); `booking/booking-view.ts` **cancel and withdraw** — both focus IN via `afterRenderEffect` but **never out**: `keepBooking()` / `keepRequest()` only flip the flag, destroying the button focus sits on | **Filed as its own issue, not widened here.** Different feature area and a different implementation family (`viewChild` refs + the `cls.*` class map, not the amber card), so folding it in would bury the operator fix — which is precisely the reasoning that created #604 out of #600's audit |
 
 ---
