@@ -178,8 +178,8 @@ literal `bugfix/<slug>` name applies; no cloud-branch substitution.)
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | **jsdom does not implement unfocus-on-disable.** Every item-4 claim can pass on a unit spec *without* the fix — a false green. Inherited from #614 R-1, where it fired exactly as predicted | high | high | Item-4 ACs (AC-4, AC-11, AC-13) are pinned in **Chromium only**. No unit spec is allowed to stand as the sole evidence for a busy-window claim, and none models the blur with a hand-written `blur()` | Ivo | open |
-| R-2 | **Host-listener ordering is unspecified.** If the directive is to block activation structurally it must `stopImmediatePropagation()` *before* the element's own template `(click)`, and the relative registration order of a directive host listener and a template listener on the same element is an Ivy implementation detail, not a documented contract | med | med | **Do not build on it.** The plan of record is the issue's own prescription — directive carries the attribute, guard lives in the handler. Phase 1 runs a spike test that pins the actual order; the directive gains structural blocking **only if** the spike proves it, and the spike ships as a regression test if so | Ivo | open |
-| R-3 | **`aria-disabled` does not prevent form submission.** A submit button that was `[disabled]="submitting()"` also blocked Enter-in-a-text-field; after the swap only the handler guard does. A missed guard is a **double-submit** — a worse bug than the stranded focus being fixed, and one that can charge a card twice on `booking-pay` | med | high | Every swept form's submit handler is read and its guard asserted by a spec before the binding changes (Phase 5 step 1 is the audit, not the edit). `booking-pay.ts` and `booking-dialog.ts` are done first and separately because they are the money path | Ivo | open |
+| R-2 | **Host-listener ordering is unspecified.** If the directive is to block activation structurally it must `stopImmediatePropagation()` *before* the element's own template `(click)`, and the relative registration order of a directive host listener and a template listener on the same element is an Ivy implementation detail, not a documented contract | med | med | **Do not build on it.** The plan of record is the issue's own prescription — directive carries the attribute, guard lives in the handler. Phase 1 runs a spike test that pins the actual order; the directive gains structural blocking **only if** the spike proves it | Ivo | **closed — and the spike overturned its own first answer.** The probe showed the directive host listener *does* run first (`['directive','template']`), but the blocking test then failed anyway: Ivy **coalesces same-element same-event listeners into one native listener** and walks its own internal chain, which `stopImmediatePropagation()` cannot break. Host-binding blocking is therefore impossible, not merely fragile. The directive instead registers a **native capture-phase listener in its constructor**, which does block (pinned by `blocks the control own handler while busy`). The probe was deleted rather than shipped: it pinned an ordering the code no longer depends on, and a green test for a false lead is worse than none |
+| R-3 | **`aria-disabled` does not prevent form submission.** A submit button that was `[disabled]="submitting()"` also blocked Enter-in-a-text-field; after the swap only the handler guard does. A missed guard is a **double-submit** — a worse bug than the stranded focus being fixed, and one that can charge a card twice on `booking-pay` | med | high | **Narrowed by R-2's outcome, not eliminated.** The directive now consumes the activating click, which covers pointer clicks *and* Enter/Space on the control itself (a button reports both as a click). What it cannot see is a form submitted by Enter from a **text field**, which never reaches the button — so the guard duty survives exactly for `<form>` submit handlers, a much smaller set than "every swept control". Phase 5 step 1 audits those forms specifically; `booking-pay.ts` and `booking-dialog.ts` are done first and separately because they are the money path | Ivo | open |
 | R-4 | **Visual drift across the variant swap.** Three different dim values are in use (`opacity-50`, `-60`, `-65`) plus inconsistent `cursor-not-allowed`; a directive-carried style, or a careless find-and-replace, silently restyles ~10 controls | med | med | The directive carries **no** styling (the architecture decision above). The swap is prefix-only, per site. Proven by AC-13's **computed-style** assertion in Chromium — `riviera-tailwind`'s hard rule says a class-list diff cannot see this | Ivo | open |
 | R-5 | Busy controls stay in the tab order, so a keyboard user meets an inert-but-focusable control during the in-flight window | high | low | **Accepted deliberately** — it is the mechanism, not a side effect. `aria-disabled="true"` is what tells AT the control is unavailable, and WAI-ARIA prefers exactly this trade where removing focus would strand it. The window is one request long | Ivo | open |
 | R-6 | 24 existing unit assertions across 9 spec files assert `.disabled`; they will pass-then-fail misleadingly (a swept control's `.disabled` is simply `false`, so an inverted assertion could stay green while asserting nothing) | high | med | Each is converted to assert `aria-disabled` **in the same commit as its surface's swap**, never in a batch, and each converted spec is proven RED against the pre-swap component. 0 e2e assertions to convert (verified) | Ivo | open |
@@ -259,9 +259,10 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phase 1`
+**Stage pointer:** `implement — phase 2`
 
-**Next action:** Phase 1 — the R-2 host-listener ordering spike, then the `BusyAction` directive.
+**Next action:** Phase 2 — `set-password`'s three erase transitions, starting with R-9's
+characterization spec for the existing page-mount focus leg.
 
 PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
 `pull_request` event only).
@@ -270,8 +271,8 @@ PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on t
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `focusMover()` fallback + the seven-adopter audit | ✅ | `<phase-0>` |
-| 1 — The `BusyAction` directive + the ordering spike | | |
+| 0 — `focusMover()` fallback + the seven-adopter audit | ✅ | `7e11e7b` |
+| 1 — The `BusyAction` directive + the ordering spike | ✅ | `<phase-1>` |
 | 2 — `set-password`'s three erase transitions | | |
 | 3 — `admin-venue-photos`' takedown failure leg | | |
 | 4 — `admin-operators`' notice region + four settled legs | | |
@@ -359,20 +360,22 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Create `frontend/src/app/shared/busy-action.ts`, `frontend/src/app/shared/busy-action.spec.ts`
 
-- [ ] **Step 1: Write the R-2 spike test first** — a host with both a template `(click)` and a
+- [x] **Step 1: Write the R-2 spike test first** — a host with both a template `(click)` and a
       directive host `(click)` that calls `stopImmediatePropagation()`, asserting which runs first.
       The result decides the directive's shape; record it in the plan before implementing.
-- [ ] **Step 2: Write the failing specs** — AC-11's unit half: `aria-disabled="true"` while busy,
+      → **The spike answered twice, and the second answer overturned the first.** See R-2.
+- [x] **Step 2: Write the failing specs** — AC-11's unit half: `aria-disabled="true"` while busy,
       attribute absent (not `"false"`) while idle, and the element still `document.activeElement`
       after the flag flips (the part jsdom *can* show — that the attribute alone does not blur).
-- [ ] **Step 3: Run them, verify they fail.**
-- [ ] **Step 4: Implement** the directive: `selector: '[appBusy]'`, `input()` named `appBusy`, host
-      `'[attr.aria-disabled]': 'appBusy() || null'`. No styling (R-4). Structural click-blocking
-      **only if** step 1 proved the ordering; otherwise the TSDoc states that inertness is the
-      caller's guard, and why.
-- [ ] **Step 5: Run them, verify they pass.**
-- [ ] **Step 6: Generalization-audit pass** — record the spike verdict and the decision.
-- [ ] **Step 7: Commit** — `git commit -m "Add the busy-action posture directive (#616)"`
+- [x] **Step 3: Run them, verify they fail.** → RED on the missing module, then RED again on
+      `blocks the control own handler while busy` (`runs()` was 1) once the host-binding version
+      existed — which is what exposed Ivy's listener coalescing.
+- [x] **Step 4: Implement** the directive: `selector: '[appBusy]'`, `input()` named `appBusy`, host
+      `'[attr.aria-disabled]': 'appBusy() || null'`. No styling (R-4). Structural click-blocking via
+      a **native capture-phase listener**, since step 1 proved a host binding cannot do it.
+- [x] **Step 5: Run them, verify they pass.** → 7 passed.
+- [x] **Step 6: Generalization-audit pass** — record the spike verdict and the decision.
+- [x] **Step 7: Commit** — `git commit -m "Add the busy-action posture directive (#616)"`
 - [ ] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
