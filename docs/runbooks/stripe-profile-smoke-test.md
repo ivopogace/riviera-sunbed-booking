@@ -126,7 +126,7 @@ booking's `$PI`.
 
 ```sql
 SELECT refund_attempted_at, refund_id, failed_refund_id FROM payment WHERE booking_ref = <id>;
--- a timestamp, NULL, 're_forged_race'
+-- NULL, NULL, 're_forged_race'   (the attempt is cleared once it concludes, however it concluded)
 ```
 
 `riviera_refunds_failed_total` increments and `riviera_refunds_owed` reads 1 — where before #594 the

@@ -106,10 +106,11 @@ WHERE refund_failed_at IS NOT NULL
 ORDER BY refund_failed_at;
 ```
 
-`failed_refund_id` is the refund to look up in the Stripe dashboard; `refund_attempted_at` beside it says
-when the platform began the refund, which is what separates our failure from a refund someone issued by
-hand (the latter never sets it, and never lands on this list at all). A row leaves the list when a retry
-records successfully, or when someone clears it after settling by hand.
+`failed_refund_id` is the refund to look up in the Stripe dashboard. **Expect `refund_attempted_at` to
+be NULL on every row of this list** — it records an attempt *in flight*, and every row here has one that
+concluded, so it is cleared. That is the point rather than a gap: a stamp that outlived its attempt would
+make the next refund on that collection look like ours, including one someone issued by hand. A row
+leaves the list when a retry records successfully, or when someone clears it after settling by hand.
 
 **The lever is `POST /api/admin/refund-outbox/resubmit` (#454; the admin console's Refunds tab at
 `/admin/refunds` drives it since #460).** It re-drives what the registry

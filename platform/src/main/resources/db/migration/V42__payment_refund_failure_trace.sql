@@ -14,12 +14,15 @@
 --
 -- WHAT EACH COLUMN IS FOR:
 --
---   refund_attempted_at  This platform began a refund for this booking. Stamped BEFORE the
---                        gateway call, so it is committed and visible while that call is still in
---                        flight. It is the discriminator that lets a refund-failure webhook tell
---                        OUR racing refund from a refund someone issued by hand in the Stripe
---                        dashboard against the same collection — for which the platform owes
---                        nothing and must raise no money-path alert.
+--   refund_attempted_at  This platform has a refund for this booking IN FLIGHT. Stamped BEFORE the
+--                        gateway call, so it is committed and visible while that call is still
+--                        running, and cleared again by every terminal outcome. It is the
+--                        discriminator that lets a refund-failure webhook tell OUR racing refund
+--                        from one someone issued by hand in the Stripe dashboard against the same
+--                        collection — for which the platform owes nothing and must raise no
+--                        money-path alert. In flight rather than ever-attempted is the whole
+--                        point: a stamp that outlived its attempt would vouch for every later
+--                        refund on the collection.
 --
 --   refund_failed_at     The gateway reported the refund dead and the platform still owes the
 --                        money. This is the queryable half: `WHERE refund_failed_at IS NOT NULL`
