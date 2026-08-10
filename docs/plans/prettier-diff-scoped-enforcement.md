@@ -71,8 +71,10 @@ the Gradle recipe nor the OOM-scoping rule binds here)
 - [x] **AC-5:** Given `--fix` over a file that has one reported hunk **and** pre-existing drift
   elsewhere, when it runs, then the reported hunk is rewritten and every pre-existing-drift line is
   left byte-for-byte. *Pinned by:* `check-prettier-format.test.mjs` › `"--fix rewrites only the
-  reported hunks"`. This is the property that makes the gate honest: the fix it asks for is never
-  wider than the finding.
+  reported hunks"`, and — after G-1 — `"re-indenting a block reports the written line, not the
+  block"` plus `"a re-indented line the diff did not write is left alone"`. This is the property
+  that makes the gate honest: the fix it asks for is never wider than the finding. Round 2 found it
+  *was* wider inside a re-indented Angular template, which is why those two cases exist.
 - [x] **AC-6:** Given a file Prettier cannot parse, when the guard runs, then it warns on stderr and
   the run's exit status is unaffected. *Pinned by:* `check-prettier-format.test.mjs` › `"an
   unparseable file warns instead of failing the gate"`.
@@ -175,8 +177,9 @@ added (hence no e2e spec, and no `playwright-cli` row in the routing gate).
 
 ## Execution status
 
-**Stage pointer:** `merge close-out` — CI green, review gate run (15 findings: 14 fixed, 1 rejected
-with reason), Sonar gate green with an empty issue list. Awaiting the merge.
+**Stage pointer:** `merge close-out` — CI green, the review gate run **twice** (round 1: 15 findings,
+14 fixed, 1 rejected with reason; round 2 over the fix diff: 12 findings, 11 fixed, 1 deferred to
+issue #619), Sonar gate green with an empty issue list. Awaiting the merge.
 
 **Next action:** Merge PR #618, then the post-merge remainder, which is GitHub-only and needs no
 commit: confirm #615 closed and the PR-activity subscription ended.
@@ -186,9 +189,9 @@ commit: confirm #615 closed and the PR-activity subscription ended.
 | Gate | Result |
 |---|---|
 | CI (`ff1ad1c`) | all 8 checks **success** — and the two that matter here: `Frontend (lint + test + build)` ran `Format (diff-scoped Prettier, hard gate)` green, and `Repo hygiene (diff-scoped)`, which installs nothing, ran the new guard's suite green (AC-9) |
-| Review | **ran in full** — ladder **rung 1** (`Skill("code-review")` was accepted), with `riviera-review-overlay` layered on. 15 findings; see the register |
+| Review | **ran in full, twice** — ladder **rung 1** (`Skill("code-review")` was accepted), with `riviera-review-overlay` layered on; re-run over the fix diff per the re-entry rule. 15 + 12 findings; see the register. The second round is the one that earned its keep: it found that the central claim did not hold for Angular templates (G-1) |
 | Sonar (`ff1ad1c`) | Quality Gate **passed**, 0 new issues, 0 accepted issues, 0 security hotspots, 0.0 % duplication |
-| CI (fix round) | re-run on the F-1…F-15 commit — recorded below |
+| CI (fix round) | `c4edfed` — all 8 checks **success**, Sonar Quality Gate passed again |
 
 > **What Sonar's green does and does not say here** (R-7, and #533's F-5 before it):
 > `sonar.sources=platform/src/main/java,frontend/src`, and this diff touches neither, so
@@ -203,7 +206,8 @@ commit: confirm #615 closed and the PR-activity subscription ended.
 | 2 — Prettier front-end, CLI, `--fix` | ✅ | `00d8576` |
 | 3 — CI wiring, npm scripts, `.prettierignore` | ✅ | `5783195` |
 | 4 — Docs sweep + close-out | ✅ | `ff1ad1c` |
-| 5 — Review-gate findings F-1…F-15 | ✅ | this commit |
+| 5 — Review-gate findings F-1…F-15 | ✅ | `c4edfed` |
+| 6 — Second-round findings G-1…G-12 | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -228,6 +232,23 @@ touches *before* editing).
 | F-13 | Review gate | `.prettierignore`'s header claimed the listed paths "are gitignored", but `frontend/.gitignore` ignores only `/.angular/cache`, not `.angular/` | fixed — the header now states what it actually relies on (a diff cannot contain build output) and why the file exists at all |
 | F-14 | Review gate | `fetch-depth: 0` on the frontend job also applies to pushes to `main`, where the step needing it is skipped | **rejected, with reason.** The repo's `.git` is 7.3 MB, so the cost is ~1 s on main pushes, and `ci.yml`'s frontend job does not feed the deploy (`deploy.yml` does). The suggested `${{ … && 0 \|\| 1 }}` form is also a known GitHub-expressions trap — `0` is falsy, so it evaluates to `1` in both branches and would silently break the PR case this slice depends on. Not worth a subtle expression |
 | F-15 | Review gate | The File-structure section was headed `Modified (9)` over ten entries | fixed — and the count is now 10 over ten |
+
+**Second review round** (re-review of the fix diff, per the re-entry rule — 12 findings, 11 fixed):
+
+| # | Source | Finding | Status |
+|---|---|---|---|
+| G-1 | Review gate (round 2, reproduced) | **The slice's central claim did not hold for templates.** A hunk was a maximal run of lines Prettier disagrees with, and when Prettier *re-indents a block* every raw line differs, so the LCS found no anchor and emitted the block whole: `layout-editor.html` yielded a single **107-line** hunk, so a one-line edit anywhere inside it demanded the block — the churn trade PR #612 refused, reappearing in the template case. 15 such regions ≥10 lines in the tree | fixed — the LCS now aligns on **trimmed** content, and an aligned pair whose raw lines differ is emitted as a **one-line** hunk, so indentation stays enforced but stops dragging its neighbours. Measured over the whole tree: regions ≥10 lines **15 → 0**; the 40-commit replay's worst slice goes from a 107-line block rewrite to per-line fixes, and PR #612's own ask is **29 lines**. Pinned by two new cases (a written line inside a re-indented block is reported alone; an unwritten one is not reported at all) |
+| G-2 | Review gate (round 2) | RV-STYLE-2's new carve-out named `.html` as a type the guard cannot read — but `.prettierrc` gives `*.html` the `angular` parser, and templates are where it is *loudest* | fixed — the carve-out now names only the genuine case (a file Prettier cannot **parse**) and says templates are covered |
+| G-3 | Review gate (round 2, reproduced) | `PIN` covered `core.quotepath` but not `diff.mnemonicPrefix` / `diff.noprefix`, both common dotfile settings that re-spell `b/` as `w/` or drop it — a permanently green `format:check` **and** RV-STYLE-1 hook for anyone who sets them | fixed — both pinned in `PIN`, and `diffArgs`/`nameOnlyArgs` assert their own flag set in the suite so a dropped pin fails a test rather than a future PR |
+| G-4 | Review gate (round 2) | `inspect` caught **everything** from the formatter, so a malformed `.prettierrc` failed every file identically, warned to a stderr nobody reads inside a green step, and exited 0 — a config typo silently switching the gate off | fixed — only `SyntaxError` (Prettier's parse failure, verified) is survivable; anything else propagates to a non-zero exit with its message |
+| G-5 | Review gate (round 2) | The frontend job's `name:` is a ruleset-required context and carried no DO-NOT-RENAME warning — and this slice makes the name understate the job, inviting exactly the rename that makes every PR unmergeable (#413/#420) | fixed — the same warning the repo-hygiene job carries, stating why the misnomer is deliberate |
+| G-6 | Review gate (round 2) | An unresolvable base ref died with a raw `execFileSync` stack trace instead of the exit-2 path | fixed — the diff call moved inside the guarded block, and the message is the error's first line |
+| G-7 | Review gate (round 2) | `rangeFor` became dead on the extraction — exported, listed in this plan, untested, and semantically the form `mergeBase` replaced | fixed — deleted, and this section's helper list corrected |
+| G-8 | Review gate (round 2) | Neither new suite reaches the git/Prettier front-end: `main`, `check`, `formatterFor`, `applyToDisk`, `toRepoRelative`, `repoRoot`, `readText`, `mergeBase` have no coverage — and those are the functions round 1 rewrote | **partly fixed.** The flag sets are now asserted (which is what would have caught F-4/G-3), and every front-end fix in both rounds was reproduced by hand against a scratch repository before and after. A real harness — a temp repo the suite drives end to end — needs Prettier, which the install-free `Repo hygiene` job cannot have, so it would have to run in the frontend job as a second suite. Deferred to **issue #619** rather than bolted on here |
+| G-9 | Review gate (round 2) | Scoping to all of `frontend/` pulled `angular.json`, `README.md` and `frontend/.claude/CLAUDE.md` into a hard gate nobody agreed to, each with drift of its own | fixed — `SCOPE` is now `frontend/src/` + `frontend/e2e/`, the two trees `riviera-frontend` governs. Tool-owned config and prose are out |
+| G-10 | Review gate (round 2, reproduced) | A CRLF working copy — git's Windows default, and **this repo's primary dev machine is Windows** — makes every line differ from Prettier's `lf` output, so the guard would have reported every touched file in full | fixed — the guard formats with `endOfLine: 'auto'`, which adopts the file's existing terminator. `.prettierrc` is untouched; line endings are a checkout concern, not a review one |
+| G-11 | Review gate (round 2) | `--fix` printed "Reformatted the reported hunks in:" even when every finding was refused and nothing was written | fixed — the stdout line is guarded on something actually being rewritten |
+| G-12 | Review gate (round 2) | The plan-doc guard hand-spelled its diff flags, so the next pin added to `diffArgs` would silently miss it — the drift the extraction existed to end | fixed — `nameOnlyArgs()` in `scripts/git-diff.mjs`, used by that guard |
 
 **`riviera-docs-freshness` run** — range `origin/main...HEAD`, **5 findings, all patched**:
 
@@ -254,7 +275,7 @@ touches *before* editing).
 **New (6)**
 
 - `scripts/git-diff.mjs` — the git/diff helpers the three guards share: `repoRoot()`, `git()`,
-  `diffArgs()`, `rangeFor()`, `mergeBase()`, `parseAddedLines()`, `changedPaths()`, `readText()`.
+  `diffArgs()`, `nameOnlyArgs()`, `mergeBase()`, `parseAddedLines()`, `changedPaths()`, `readText()`.
 - `scripts/git-diff.test.mjs` — its `node --test` suite; inherits the parser cases the two existing
   suites owned.
 - `scripts/check-prettier-format.mjs` — the new guard: pure detector, Prettier/git front-end, CLI.
@@ -428,12 +449,40 @@ this plan
 
 ---
 
+## Phase 6 — Second-round findings G-1…G-12
+
+**Files:** Modify `scripts/git-diff.mjs` · `scripts/git-diff.test.mjs` ·
+`scripts/check-prettier-format.mjs` · `scripts/check-prettier-format.test.mjs` ·
+`scripts/check-plan-file-structure.mjs` · `.github/workflows/ci.yml` ·
+`.claude/skills/riviera-review-overlay/SKILL.md` · this plan
+
+> The round that mattered. G-1 says the slice's headline promise — the fix is never wider than the
+> finding — was false inside an Angular template, and it was: a raw-equality line diff has no anchor
+> in a re-indented block, so the block came back as one 107-line hunk. That is the #612 trade this
+> whole slice exists to refuse, so it was fixed rather than documented away.
+
+- [x] **Step 1: Write the failing tests** — a written line inside a re-indented block reports alone;
+  an unwritten one is not reported at all; `diffArgs`/`nameOnlyArgs` carry their pins.
+- [x] **Step 2: Run them, verify they fail** — the two block cases return one 5-line hunk covering
+  the whole block instead of the single line.
+- [x] **Step 3: Fix** — align the LCS on **trimmed** content and emit an aligned-but-differing pair
+  as a one-line hunk; the rest of G-2…G-12 as recorded in the findings register.
+- [x] **Step 4: Run them, verify they pass** — `node --test "scripts/*.test.mjs"` → **78 pass**, and
+  the tree-wide measurement that made the case: regions ≥10 lines **15 → 0**.
+- [x] **Step 5: Generalization-audit pass** — re-ran the 40-commit replay to check that finer hunks
+  changed the *ask* and not the *reach*; recorded in the audit log.
+- [x] **Step 6: Commit** — `git commit -m "Report the line, not the block, inside a re-indented template (#615)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
+
+---
+
 ## Generalization-audit log
 
 > Append-only. One row per bug-fix / pattern-introducing phase.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Phase 6 — G-1's fix changed how every hunk is computed | Whether finer hunks change **which** commits the gate stops, or only **how much** each is asked to fix | Re-ran the 40-commit replay against the new detector and measured the lines `--fix` would rewrite, not just the hunk count | **The same 9 of 40 commits fire** — the gate's reach is unchanged, which is the point: a finding was never wrong, only wider than it needed to be. What changed is the ask: hunk counts rise (they are line-sized now) while the lines rewritten fall — `e350e43` 163 hunks / **306 lines** for a slice that added seven files of new template, `5f415a2` (PR #612 itself) 23 hunks / **29 lines** | **Kept.** Recorded here because the hunk count in the phase-2 audit row below now means something different, and a later reader comparing "40 hunks" with "163 hunks" would otherwise read a regression |
 | 2026-08-10 | Phase 5 — three review findings were each reported against one guard | Whether F-3 (C-quoted non-ASCII paths), F-4 (`diff.relative`) and F-9 (an added `++ ` line read as a `+++` header) are defects of the other two guards as well | Read all three guards' git front-ends side by side; reproduced each in a scratch repository against the real scripts | **All three are shared.** Every guard parses `+++` headers with the same code and, before this round, ran git in the caller's cwd. F-9 in particular predates this slice: it has been in `check-inline-comments.mjs` since #529 and in `check-plan-file-structure.mjs`'s sibling parse since #533 | **Fixed all, once.** The three fixes live in `scripts/git-diff.mjs` — which is what F-10's "extract the rest too" finding bought: `git()` pins `core.quotepath=false` and runs from `repoRoot()`, `diffArgs()` adds `--no-relative`, and `parseAddedLines` honours `+++` only between hunks. Had the helpers still been triplicated this would have been three edits and three chances to miss one |
 | 2026-08-10 | Phase 2 — the gate is about to bind every future frontend PR | How often the finished guard would have fired on work that already merged — R-1's evidence, measured rather than argued | Replayed the detector over the last **40** `main` commits (`git show <sha>:<path>` for each in-scope path with added lines, so history is judged as it stood) | **9 of 40** commits (22.5 %) would have failed: 5f415a2 (#612, the PR that raised the issue) 4 hunks, 7b2edca 1, e350e43 (#603, a large template slice) 40, b70171b 2, 5fce213 3, 03dcfe4 11, 9709fed 1, 3a77080 1, 8acf922 3 | **Accept and ship.** One frontend PR in four would need a `--fix` run, and every hunk it names is a line that PR itself wrote. The distribution is the reassuring part: seven of the nine are 1–4 hunks, and the two outliers are large slices that rewrote whole templates. The alternative measured for comparison — file-scoped — would have fired on essentially every one of the 40, since 200 of the tree's files are dirty |
 | 2026-08-10 | Phase 0 — the third guard needs the same git glue | `git()`, `rangeFor()`, `parseAddedLines()`, `changedPaths()` across `scripts/check-*.mjs` | Read both guards side by side against #533's phase-2 audit row, which deferred this decision to "if a third guard appears" | Four helpers, duplicated or about to be: `git()` and `rangeFor()` in both guards, `parseAddedLines()` in `check-inline-comments.mjs` and needed here, `changedPaths()` in `check-plan-file-structure.mjs` | **Extracted** to `scripts/git-diff.mjs` — the condition #533 named has now occurred. Bodies moved verbatim; the one behavioural difference between the two `rangeFor`s (one returned `[range]`, the other `range`) is resolved in favour of the string, with the array wrap moved to its single caller. Both suites' cases for the moved functions moved with them, so `node --test "scripts/*.test.mjs"` counts the same 56 assertions before and after |

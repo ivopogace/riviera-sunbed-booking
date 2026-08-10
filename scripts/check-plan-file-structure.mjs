@@ -13,7 +13,7 @@
 
 import { pathToFileURL } from 'node:url';
 
-import { changedPaths, git, mergeBase, readText } from './git-diff.mjs';
+import { changedPaths, git, mergeBase, nameOnlyArgs, readText } from './git-diff.mjs';
 
 /** The heading that opens the section, as the plan-doc template writes it. */
 const HEADING = /^##\s+File structure\s*$/i;
@@ -254,7 +254,7 @@ export function report(omissions) {
  */
 export function check(range) {
   const changed = changedPaths(
-    git(['diff', '--name-only', '-z', '--no-color', '--no-ext-diff', '--no-relative', range]),
+    git(nameOnlyArgs(range)),
   );
 
   const docs = planDocsIn(changed)

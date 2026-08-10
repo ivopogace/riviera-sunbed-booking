@@ -1,7 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { changedPaths, parseAddedLines } from './git-diff.mjs';
+import { changedPaths, diffArgs, nameOnlyArgs, parseAddedLines } from './git-diff.mjs';
+
+test('the diff invocations carry the flags that keep paths recognisable', () => {
+  for (const args of [diffArgs('BASE'), nameOnlyArgs('BASE')]) {
+    assert.ok(args.includes('--no-relative'), `${args[1]} must pin --no-relative`);
+    assert.ok(args.includes('--no-color'));
+    assert.ok(args.includes('--no-ext-diff'));
+    assert.equal(args.at(-1), 'BASE');
+  }
+  assert.ok(nameOnlyArgs('BASE').includes('-z'));
+  assert.ok(diffArgs('BASE').includes('--unified=0'));
+});
 
 test('maps each hunk to the line numbers it adds', () => {
   const diff = [

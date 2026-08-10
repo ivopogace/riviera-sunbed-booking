@@ -98,10 +98,10 @@ frontend diff is either redundant with a gate that already ran or wrong. Two rul
   misformatted, the `Format (diff-scoped Prettier, hard gate)` step in the frontend job has already
   failed the PR and named it — the raised-and-fixed round trip on PR #520 and the raised-and-rejected
   one on PR #612 are the two the guard exists to retire. Green means *the guard passed on the lines
-  it could read*, which is not quite "every line is fine": a file Prettier cannot parse is skipped
-  with a stderr warning nobody sees inside a green step, and a file whose parser it cannot infer is
-  skipped silently. So a long line in a **`.html` template or an exotic file type** is still worth a
-  glance; a long line in a `.ts` the guard demonstrably read is not.
+  it could read*, which is not quite "every line is fine": a file Prettier cannot **parse** is
+  skipped with a stderr warning nobody sees inside a green step. Angular templates are **not** that
+  case — `.prettierrc` gives `*.html` the `angular` parser, and templates are where the guard is
+  loudest — so a long line in a `.ts` or `.html` the guard read needs no comment from you.
 - **Never ask for a whole-file reformat.** 200 of the tree's files carry pre-existing drift, and
   reformatting one to land an unrelated change buries the change — the call PR #612's review got
   right. The guard judges only the lines the diff wrote, and `npm run format:check -- --fix`

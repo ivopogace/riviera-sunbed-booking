@@ -22,8 +22,20 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-/** Pinned on every invocation: paths verbatim, never C-quoted, never cwd-relative. */
-const PIN = ['-c', 'core.quotepath=false'];
+/**
+ * Pinned on every invocation, because each of these is a contributor-config setting that silently
+ * re-spells the paths a guard keys on — and a guard that cannot recognise a path reports **clean**.
+ * `core.quotepath` C-quotes any non-ASCII byte; `diff.mnemonicPrefix` swaps `a/`/`b/` for `w/`,
+ * `i/`, `c/`; `diff.noprefix` drops the prefix entirely. All three found by PR #618's review.
+ */
+const PIN = [
+  '-c',
+  'core.quotepath=false',
+  '-c',
+  'diff.mnemonicPrefix=false',
+  '-c',
+  'diff.noprefix=false',
+];
 
 let root = null;
 
@@ -49,6 +61,11 @@ export function git(args) {
 /** The diff invocation the guards share: no context, no colour, no cwd-relative paths. */
 export function diffArgs(...rest) {
   return ['diff', '--unified=0', '--no-color', '--no-ext-diff', '--no-relative', ...rest];
+}
+
+/** The name-only form of the same invocation; `-z` so a non-ASCII path survives (PR #538). */
+export function nameOnlyArgs(...rest) {
+  return ['diff', '--name-only', '-z', '--no-color', '--no-ext-diff', '--no-relative', ...rest];
 }
 
 /**
@@ -101,16 +118,6 @@ export function parseAddedLines(diff) {
  */
 export function changedPaths(raw) {
   return raw.split('\0').filter(Boolean);
-}
-
-/** Resolves the merge base with `base`, falling back to a plain two-dot diff when it has none. */
-export function rangeFor(base) {
-  try {
-    git(['merge-base', base, 'HEAD']);
-    return `${base}...HEAD`;
-  } catch {
-    return base;
-  }
 }
 
 /**

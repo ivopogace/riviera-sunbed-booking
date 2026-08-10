@@ -61,13 +61,54 @@ test('a file the diff creates is judged in full', () => {
   );
 });
 
-test('only frontend/ is in scope', () => {
+test('only the Angular app and its e2e suites are in scope', () => {
   assert.equal(inScope('frontend/src/app/a.ts'), true);
-  assert.equal(inScope('frontend/package.json'), true);
+  assert.equal(inScope('frontend/e2e/booking.e2e.ts'), true);
+  assert.equal(inScope('frontend/package.json'), false);
+  assert.equal(inScope('frontend/angular.json'), false);
+  assert.equal(inScope('frontend/.claude/CLAUDE.md'), false);
   assert.equal(inScope('scripts/check-inline-comments.mjs'), false);
   assert.equal(inScope('docs/plans/p.md'), false);
   assert.equal(inScope('platform/src/main/java/ai/riviera/platform/Application.java'), false);
-  assert.equal(inScope('frontend-notes/a.ts'), false);
+  assert.equal(inScope('frontend-notes/src/a.ts'), false);
+});
+
+test('re-indenting a block reports the written line, not the block', () => {
+  const current = ['<div>', '  <a>one</a>', '  <a>two</a>', '  <a>three</a>', '</div>'].join('\n');
+  const formatted = [
+    '<div>',
+    '    <a>one</a>',
+    '    <a>two</a>',
+    '    <a>three</a>',
+    '</div>',
+  ].join('\n');
+
+  const found = findMisformatted({
+    path: PATH,
+    current,
+    formatted,
+    added: new Set([3]),
+  });
+
+  assert.deepEqual(found, [
+    {
+      path: PATH,
+      line: 3,
+      endLine: 3,
+      current: ['  <a>two</a>'],
+      expected: ['    <a>two</a>'],
+    },
+  ]);
+});
+
+test('a re-indented line the diff did not write is left alone', () => {
+  const current = ['<div>', '  <a>one</a>', '</div>'].join('\n');
+  const formatted = ['<div>', '    <a>one</a>', '</div>'].join('\n');
+
+  assert.deepEqual(
+    findMisformatted({ path: PATH, current, formatted, added: new Set([1, 3]) }),
+    [],
+  );
 });
 
 test('an insertion is attributed to the lines it sits between', () => {

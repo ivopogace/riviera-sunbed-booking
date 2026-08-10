@@ -63,6 +63,13 @@ jobs:
           retention-days: 1
 
   frontend:
+    # DO NOT RENAME. Like `Repo hygiene (diff-scoped)` below, this string is a required status-check
+    # CONTEXT in the `Riviera Rule Set` ruleset (`docs/plans/ci-pipeline.md` records the list), so a
+    # rename here removes a check the ruleset still expects and every pull request becomes
+    # unmergeable — the #413/#420 failure. Since #615 the job also runs a hard formatting gate, so
+    # the name now undersells it; that is deliberate. Correcting it means editing the ruleset in the
+    # same change, which is a repository setting and not expressible in a diff (#539 records the
+    # sequencing that lands the pair without an unmergeable window).
     name: Frontend (lint + test + build)
     runs-on: ubuntu-latest
     # Observed green: ~4 min (npm ci + lint + Vitest + Playwright install + a11y e2e + prod build).

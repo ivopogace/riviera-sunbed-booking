@@ -10,9 +10,13 @@
  * exactly the trade PR #612's review refused, and a gate that asks for churn is a gate that gets
  * switched off (#529's lesson, restated by #533's R-2).
  *
- * Scope is `frontend/` alone, because that is where `.prettierrc` lives: `resolveConfig` returns
- * `null` for `scripts/`, `docs/` and `platform/`, so checking them would impose Prettier's
- * *defaults* on three trees that never agreed to them. Rule values are out of scope (#615).
+ * Scope is `frontend/src/` and `frontend/e2e/` — the Angular app and its e2e suites, the two trees
+ * `riviera-frontend` governs. Not the wider repo, because `.prettierrc` lives in `frontend/` and
+ * `resolveConfig` returns `null` for `scripts/`, `docs/` and `platform/`, so checking those would
+ * impose Prettier's *defaults* on three trees that never agreed to them; and not `frontend/`'s own
+ * root either, where `angular.json`, `README.md` and `frontend/.claude/CLAUDE.md` carry drift of
+ * their own and are tool- or prose-owned rather than source (PR #618). Rule values stay out of
+ * scope (#615).
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -29,8 +33,8 @@ import {
   repoRoot,
 } from './git-diff.mjs';
 
-/** The one tree `frontend/.prettierrc` governs. */
-const SCOPE = 'frontend/';
+/** The trees this guard judges. */
+const SCOPE = ['frontend/src/', 'frontend/e2e/'];
 
 /** Lines of a hunk the report prints before it starts counting instead. */
 const SHOWN_LINES = 6;
@@ -46,9 +50,9 @@ const SHOWN_LINES = 6;
  */
 const LCS_CELL_CAP = 4_000_000;
 
-/** True when `.prettierrc` governs this path. */
+/** True when this guard judges the path. */
 export function inScope(path) {
-  return path.startsWith(SCOPE);
+  return SCOPE.some((tree) => path.startsWith(tree));
 }
 
 /**
@@ -117,13 +121,24 @@ export function hunksBetween(before, after) {
 
 /**
  * The edit script between two line arrays, grouped into contiguous hunks and shifted by `offset`.
- * Runs a longest-common-subsequence walk, so an unchanged line inside the differing region splits
- * the region into two hunks rather than swallowing it — which is what lets a pre-existing drift and
- * a freshly-written one in the same file be told apart.
+ *
+ * The longest-common-subsequence walk is what lets pre-existing drift and freshly-written drift in
+ * the same file be told apart: an unchanged line splits the region rather than being swallowed by
+ * it. It aligns on **trimmed** content, and that is the whole game for templates. When Prettier
+ * re-indents a block, *every* raw line differs, so a raw-equality LCS finds no anchor at all and
+ * emits the block as one hunk — `frontend/src/app/operator/layout-editor.html` yielded a single
+ * 107-line hunk, so a one-line edit anywhere inside it demanded the block. Trimmed, 257 of that
+ * file's 269 lines align, and each disagreement becomes the one line it actually is.
+ *
+ * An aligned pair whose raw lines differ (indentation only) is still emitted — as a one-line hunk,
+ * so `wasWritten` can keep it or drop it per line like any other. Indentation stays enforced; it
+ * simply stops dragging its neighbours along. Found by PR #618's review.
  */
 function alignedHunks(before, after, offset) {
   const n = before.length;
   const m = after.length;
+  const beforeKey = before.map((line) => line.trim());
+  const afterKey = after.map((line) => line.trim());
   if (n === 0 && m === 0) return [];
   if (n === 0 || m === 0) return [{ start: offset, deleted: n, replacement: after.slice() }];
   if ((n + 1) * (m + 1) > LCS_CELL_CAP) {
@@ -135,7 +150,7 @@ function alignedHunks(before, after, offset) {
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
       lengths[i * width + j] =
-        before[i] === after[j]
+        beforeKey[i] === afterKey[j]
           ? lengths[(i + 1) * width + j + 1] + 1
           : Math.max(lengths[(i + 1) * width + j], lengths[i * width + j + 1]);
     }
@@ -155,8 +170,11 @@ function alignedHunks(before, after, offset) {
   };
 
   while (i < n && j < m) {
-    if (before[i] === after[j]) {
+    if (beforeKey[i] === afterKey[j]) {
       open = null;
+      if (before[i] !== after[j]) {
+        hunks.push({ start: i + offset, deleted: 1, replacement: [after[j]] });
+      }
       i++;
       j++;
     } else if (lengths[(i + 1) * width + j] >= lengths[i * width + j + 1]) {
@@ -185,16 +203,23 @@ function alignedHunks(before, after, offset) {
  * run in the `Repo hygiene (diff-scoped)` job, which installs nothing — nothing in this module's
  * import graph may reach `node_modules`.
  *
+ * Only a **parse** failure is survivable: Prettier raises `SyntaxError` for a file it cannot read,
+ * which is one file's problem and warns. Anything else — a malformed `.prettierrc`, a plugin that
+ * will not load — would otherwise fail every file identically, and the guard would exit 0 with a
+ * stderr warning nobody sees inside a green step: a config typo silently switching the gate off.
+ * Those propagate (PR #618).
+ *
  * @param {{ path: string, current: string, added: Set<number>,
  *   format: (path: string, text: string) => Promise<string|null>,
  *   warn: (message: string) => void }} input `format` returns null for a file Prettier does not
- *   handle, and may throw for one it cannot parse
+ *   handle, and throws `SyntaxError` for one it cannot parse
  */
 export async function inspect({ path, current, added, format, warn }) {
   let formatted;
   try {
     formatted = await format(path, current);
   } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
     warn(`${path}: skipped, Prettier could not parse it (${firstLine(error)})`);
     return [];
   }
@@ -266,7 +291,7 @@ function formatterFor(root) {
     const info = await prettier.getFileInfo(absolute, { ...ignore, resolveConfig: true });
     if (info.ignored || !info.inferredParser) return null;
     const config = await prettier.resolveConfig(absolute);
-    return prettier.format(text, { ...config, filepath: absolute });
+    return prettier.format(text, { ...config, filepath: absolute, endOfLine: 'auto' });
   };
 }
 
@@ -348,21 +373,23 @@ async function main(argv) {
       ? [mergeBase(paths[0] ?? 'origin/main')]
       : ['HEAD', '--', ...paths.map((path) => toRepoRelative(root, path))];
   const warn = (message) => process.stderr.write(`${message}\n`);
-  const added = parseAddedLines(git(diffArgs(...range)));
 
   let findings;
   try {
+    const added = parseAddedLines(git(diffArgs(...range)));
     findings = await check({ added, formatter: () => formatterFor(root), warn });
   } catch (error) {
-    process.stderr.write(`${error.message}\n`);
+    process.stderr.write(`${firstLine(error)}\n`);
     return 2;
   }
 
   if (findings.length === 0) return 0;
   if (fixing) {
     const { rewritten, refused } = applyToDisk(root, findings);
-    const lines = rewritten.map((path) => `  ${path}`);
-    process.stdout.write(`Reformatted the reported hunks in:\n${lines.join('\n')}\n`);
+    if (rewritten.length > 0) {
+      const lines = rewritten.map((path) => `  ${path}`);
+      process.stdout.write(`Reformatted the reported hunks in:\n${lines.join('\n')}\n`);
+    }
     if (refused.length === 0) return 0;
     process.stderr.write(
       `Left alone (the differing region was too large to resolve line by line — reformat by hand):\n${refused.map((path) => `  ${path}`).join('\n')}\n`,
