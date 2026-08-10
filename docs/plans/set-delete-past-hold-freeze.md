@@ -113,7 +113,7 @@ two-axis asymmetry paragraph, and — the sweep's own catch, in a file the diff 
 | R-4 | Data loss: past `set_availability` rows now disappear with the set, irreversibly | certain (by design) | low | accepted — the maintainer settled it (see Resolved). No API can read them once the set is gone: `DailyAvailabilityService` overlays `statesOn(venues.setIdsOf(venueId), date)`, i.e. it is driven by the **current** layout, so a deleted set's past days are already unreachable whether or not its rows survive | maintainer | accepted |
 | R-5 | Loosening a guard reopens the race the guard closed — a claim committing between probe and delete | low | high | unchanged ordering: `lockSet` (`SELECT … FOR UPDATE`) **before** the probe, both inside one `@Transactional`; AC-4 pins the call order and AC-5 the real race (`SetWriteVsClaimConcurrencyIT`, whose `DAY` is `today+30`) | agent | closed — both ITs green, unchanged; and the stronger argument holds: no write path can create a row behind the cutoff |
 | R-6 | Module-boundary leak (invariant #11) | low | med | no new port, no new grant: `anyClaimsFrom` is an existing `venue::spi` method already implemented by `availability`; `venue` still never imports `availability`. `ModularityTests` in the scoped run | agent | closed — structural net green (`ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`) |
-| R-7 | The now-misleading `isClaimedEver` name (and its Javadoc, plus `RESPONSIBILITIES.md`'s "refuses on any claim ever recorded") outlives the change and misleads the next reader | med | low | rename to `isLivelyClaimedOrEverBooked`, rewrite the two Javadocs and the `RESPONSIBILITIES.md` §`venue` asymmetry paragraph in the same slice; `riviera-docs-freshness` at close-out | agent | closed — renamed to `isLivelyClaimedOrEverBooked`; the sweep additionally caught `SetRejection.SET_IN_USE`'s Javadoc, which no review of the diff could have (`fda3652`) |
+| R-7 | The now-misleading `isClaimedEver` name (and its Javadoc, plus `RESPONSIBILITIES.md`'s "refuses on any claim ever recorded") outlives the change and misleads the next reader | med | low | rename to `isLivelyClaimedOrEverBooked`, rewrite the two Javadocs and the `RESPONSIBILITIES.md` §`venue` asymmetry paragraph in the same slice; `riviera-docs-freshness` at close-out | agent | closed — renamed to `isLivelyClaimedOrEverBooked`; the sweep additionally caught `SetRejection.SET_IN_USE`'s Javadoc, which no review of the diff could have (`ec2bfd0`) |
 
 ## Open questions / Assumptions
 
@@ -221,7 +221,7 @@ code; only the server-side predicate behind the 409 narrows.
 |-------|--------|---------|
 | 0 — Narrow the delete's availability arm (unit TDD) | ✅ | `d170d5d` |
 | 1 — Pin it end-to-end + defuse the IT date bomb | ✅ | `049d0c6` |
-| 2 — Docs sweep + close-out | ✅ | `fda3652` |
+| 2 — Docs sweep + close-out | ✅ | `ec2bfd0` |
 
 **Local verification so far** (`riviera-local-debug` scoped runs, Docker available so the ITs ran
 for real): `VenueAdminServiceTest` green (observed red first on AC-1/2/4);
@@ -240,7 +240,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | docs-freshness sweep (phase 2) | `SetRejection.SET_IN_USE`'s Javadoc stated "a *remove* is refused by any hold on any date" — false after phase 0, and in a file the diff never touched, so no review of the diff could have found it | fixed-in-`fda3652` |
+| F-1 | docs-freshness sweep (phase 2) | `SetRejection.SET_IN_USE`'s Javadoc stated "a *remove* is refused by any hold on any date" — false after phase 0, and in a file the diff never touched, so no review of the diff could have found it | fixed-in-`ec2bfd0` |
 
 ---
 
