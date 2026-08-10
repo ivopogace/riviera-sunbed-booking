@@ -228,10 +228,12 @@ the Sonar new-issue list and clear it.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Un-record port + guarded SQL | ✅ | `12a3368` |
-| 1 — Webhook refund-failure branch | ✅ | `<phase-1>` |
-| 2 — Shared at-most-once refund contract | ✅ | `<phase-2>` |
-| 3 — Contract-coverage architecture rule | ✅ | `<phase-2>` |
-| 4 — Docs sweep + close-out | ✅ | `<phase-4>` |
+| 1 — Webhook refund-failure branch | ✅ | `a16a771` |
+| 2 — Shared at-most-once refund contract | ✅ | `701ce5c` |
+| 3 — Contract-coverage architecture rule | ✅ | `701ce5c` |
+| 4 — Docs sweep + close-out | ✅ | `4a856e9` |
+
+**Merged via PR #593.**
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -257,7 +259,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI (`Repo hygiene (diff-scoped)`, run 31361935187) | The File-structure section omitted 5 paths the diff touched — `RefundLifecycle`, the `StripePaymentGateway` edit, and the three test doubles that had to gain the new port method. Exactly the shape the template warns about: never the interesting files | fixed-in-`<phase-2>` — all five listed, and the phase 2/3 files listed ahead of writing them |
+| F-1 | CI (`Repo hygiene (diff-scoped)`, run 31361935187) | The File-structure section omitted 5 paths the diff touched — `RefundLifecycle`, the `StripePaymentGateway` edit, and the three test doubles that had to gain the new port method. Exactly the shape the template warns about: never the interesting files | fixed-in-`701ce5c` — all five listed, and the phase 2/3 files listed ahead of writing them |
 
 ---
 
@@ -312,20 +314,20 @@ the residuals were only ever stated in `RESPONSIBILITIES.md`.
 **Files:** Modify `payment/application/Payments.java` · `payment/adapter/out/JdbcPayments.java` ·
 Test `payment/adapter/out/JdbcPaymentsIT.java`
 
-- [ ] **Step 1: Write the failing test** — `markRefundFailedUnrecordsARecordedRefund` (row with
+- [x] **Step 1: Write the failing test** — `markRefundFailedUnrecordsARecordedRefund` (row with
   `refunded_minor > 0` + `REFUNDED` → `true`, row reads `0` / `SUCCEEDED`),
   `markRefundFailedIsGuarded` (already-`SUCCEEDED` row → `false`, nothing moves), and
   `markRefundFailedIgnoresAnUnknownRefundId` (→ `false`).
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*JdbcPaymentsIT*"` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*JdbcPaymentsIT*"` → FAIL
   (method does not exist).
-- [ ] **Step 3: Minimal implementation** — `boolean markRefundFailed(String refundId)` on
+- [x] **Step 3: Minimal implementation** — `boolean markRefundFailed(String refundId)` on
   `Payments`; in `JdbcPayments`, one statement:
   `UPDATE payment SET refunded_minor = 0, status = :succeeded, updated_at = NOW() WHERE refund_id = :refundId AND status IN (:recorded)`
   with `:recorded` built from `PaymentStatus.REFUNDED`/`PARTIALLY_REFUNDED` (no SQL literals, §6a).
-- [ ] **Step 4: Run it, verify it passes** → PASS.
-- [ ] **Step 5: Generalization-audit pass** — search for other places that write `refunded_minor`.
-- [ ] **Step 6: Commit** — `git commit -m "Un-record a refund the gateway reports as failed (#592)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** → PASS.
+- [x] **Step 5: Generalization-audit pass** — search for other places that write `refunded_minor`.
+- [x] **Step 6: Commit** — `git commit -m "Un-record a refund the gateway reports as failed (#592)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -334,18 +336,18 @@ Test `payment/adapter/out/JdbcPaymentsIT.java`
 **Files:** Modify `payment/adapter/in/StripeWebhookController.java` · Test
 `payment/adapter/in/StripeWebhookIT.java` · `payment/application/RefundServiceTest.java`
 
-- [ ] **Step 1: Write the failing tests** — AC-1…AC-6.
-- [ ] **Step 2: Run it, verify it fails** — `gradle test --tests "*StripeWebhookIT*"` → FAIL.
-- [ ] **Step 3: Minimal implementation** — extract the existing `deserializeUnsafe` fallback into
+- [x] **Step 1: Write the failing tests** — AC-1…AC-6.
+- [x] **Step 2: Run it, verify it fails** — `gradle test --tests "*StripeWebhookIT*"` → FAIL.
+- [x] **Step 3: Minimal implementation** — extract the existing `deserializeUnsafe` fallback into
   one `dataObject(Event)` helper feeding both the `PaymentIntent` and the new `Refund` accessor
   (no copy of the #569 F-12 shape); add the refund-event branch: dead status → `markRefundFailed`
   + `REFUNDS_FAILED` when it applied; live status → no-op `200`; unreadable payload →
   `UnreadableWebhookEventException`.
-- [ ] **Step 4: Run it, verify it passes** → PASS; then broaden to `--tests "*payment*"`.
-- [ ] **Step 5: Generalization-audit pass** — does any other handler branch consume a verified fact
+- [x] **Step 4: Run it, verify it passes** → PASS; then broaden to `--tests "*payment*"`.
+- [x] **Step 5: Generalization-audit pass** — does any other handler branch consume a verified fact
   it cannot read?
-- [ ] **Step 6: Commit** — `git commit -m "Reconcile a failed refund from its verified webhook (#592)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Reconcile a failed refund from its verified webhook (#592)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -354,17 +356,17 @@ Test `payment/adapter/out/JdbcPaymentsIT.java`
 **Files:** Create `payment/application/PaymentGatewayRefundContract.java` ·
 `payment/adapter/out/StripeRefundContractTest.java`
 
-- [ ] **Step 1: Write the failing test** — the abstract contract (AC-7) plus the Stripe binding,
+- [x] **Step 1: Write the failing test** — the abstract contract (AC-7) plus the Stripe binding,
   whose fixture makes `refunds().create` mint a *fresh* id if called a second time, so a regression
   to key-only idempotency fails loudly.
-- [ ] **Step 2: Run it, verify it fails** — deliberately, by stubbing the fixture before the
+- [x] **Step 2: Run it, verify it fails** — deliberately, by stubbing the fixture before the
   subclass exists → FAIL.
-- [ ] **Step 3: Minimal implementation** — the fixture hooks (`gateway()`, `arrangeCollection()`,
+- [x] **Step 3: Minimal implementation** — the fixture hooks (`gateway()`, `arrangeCollection()`,
   `arrangeKeyWindowExpired()`, `refundsCreatedAtGateway()`), Stripe-typed only in the subclass.
-- [ ] **Step 4: Run it, verify it passes** → PASS.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Pin at-most-once refunds as a port contract, not one adapter's habit (#592)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 4: Run it, verify it passes** → PASS.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Pin at-most-once refunds as a port contract, not one adapter's habit (#592)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -372,15 +374,15 @@ Test `payment/adapter/out/JdbcPaymentsIT.java`
 
 **Files:** Create `payment/PaymentGatewayContractCoverageArchitectureTest.java`
 
-- [ ] **Step 1: Write the failing test** — AC-8: every production `PaymentGateway` implementation is
+- [x] **Step 1: Write the failing test** — AC-8: every production `PaymentGateway` implementation is
   either contract-covered or declared non-collecting, and every non-collecting declaration is
   justified by a `CollectionGuarantee` answering `false`.
-- [ ] **Step 2: Run it, verify it fails** — assert against a deliberately-unclassified name first.
-- [ ] **Step 3: Minimal implementation** — the rule over `ArchitectureTestSupport.productionClasses()`.
-- [ ] **Step 4: Run it, verify it passes** → PASS; broaden to the arch-test set.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Fail the build on a gateway that honours no refund contract (#592)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 2: Run it, verify it fails** — assert against a deliberately-unclassified name first.
+- [x] **Step 3: Minimal implementation** — the rule over `ArchitectureTestSupport.productionClasses()`.
+- [x] **Step 4: Run it, verify it passes** → PASS; broaden to the arch-test set.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Fail the build on a gateway that honours no refund contract (#592)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -389,11 +391,11 @@ Test `payment/adapter/out/JdbcPaymentsIT.java`
 **Files:** Modify `RESPONSIBILITIES.md` · `CLAUDE.md` · `docs/runbooks/` ·
 `docs/plans/refund-idempotency-beyond-key-window.md` (R-7/R-8 pointers) · this plan
 
-- [ ] **Step 1:** Run `riviera-docs-freshness` over the branch range.
-- [ ] **Step 2:** Rewrite §`payment`'s "Two residuals" paragraph as the two rules that closed them.
-- [ ] **Step 3:** Run `node scripts/check-plan-file-structure.mjs --diff origin/main` and
+- [x] **Step 1:** Run `riviera-docs-freshness` over the branch range.
+- [x] **Step 2:** Rewrite §`payment`'s "Two residuals" paragraph as the two rules that closed them.
+- [x] **Step 3:** Run `node scripts/check-plan-file-structure.mjs --diff origin/main` and
   `node scripts/check-inline-comments.mjs --diff origin/main`.
-- [ ] **Step 4: Commit** — `git commit -m "Record the closed refund residuals in the substrate docs (#592)"`
+- [x] **Step 4: Commit** — `git commit -m "Record the closed refund residuals in the substrate docs (#592)"`
 
 ---
 
@@ -411,30 +413,30 @@ Test `payment/adapter/out/JdbcPaymentsIT.java`
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1…AC-5:** `gradle test --tests "*StripeWebhookIT*"` → PASS. Verified at `<sha>`.
-- [x] **AC-6:** `gradle test --tests "*RefundServiceTest*"` → PASS. Verified at `<sha>`.
-- [x] **AC-7:** `gradle test --tests "*StripeRefundContractTest*"` → PASS. Verified at `<sha>`.
-- [x] **AC-8:** `gradle test --tests "*PaymentGatewayContractCoverage*"` → PASS. Verified at `<sha>`.
+- [x] **AC-1…AC-5:** `gradle test --tests "*StripeWebhookIT*"` → PASS. Verified at `4a856e9`.
+- [x] **AC-6:** `gradle test --tests "*RefundServiceTest*"` → PASS. Verified at `4a856e9`.
+- [x] **AC-7:** `gradle test --tests "*StripeRefundContractTest*"` → PASS. Verified at `4a856e9`.
+- [x] **AC-8:** `gradle test --tests "*PaymentGatewayContractCoverage*"` → PASS. Verified at `4a856e9`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified N/A — no availability write path).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no published
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified N/A — no availability write path).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no published
       surface widened (invariant #11).
-- [ ] **Payment/payout** section filled; webhooks are source of truth; idempotent; money in minor
+- [x] **Payment/payout** section filled; webhooks are source of truth; idempotent; money in minor
       units; payout untouched (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — not re-decided here.
-- [ ] Timezone correct: UTC stored (invariant #6).
-- [ ] Booking codes unguessable (invariant #7) — no code logged on the new paths.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented — N/A, backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — citing `merged via PR #NN`.
+- [x] Refund policy enforced server-side (invariant #10) — not re-decided here.
+- [x] Timezone correct: UTC stored (invariant #6).
+- [x] Booking codes unguessable (invariant #7) — no code logged on the new paths.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented — N/A, backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
