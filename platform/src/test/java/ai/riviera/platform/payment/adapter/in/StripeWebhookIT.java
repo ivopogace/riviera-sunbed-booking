@@ -342,27 +342,39 @@ class StripeWebhookIT {
 		postSigned(first, sign(first), 200);
 		double afterFirst = refundsFailedCount();
 
-		String second = refundEventJson("evt_ref_twice_2", "refund.failed", "re_hook_twice", "failed",
+		String second = refundEventJson("evt_ref_twice_2", "charge.refund.updated", "re_hook_twice", "failed",
 				"pi_ref_twice");
 		postSigned(second, sign(second), 200);
 
 		assertEquals("SUCCEEDED", statusOf("pi_ref_twice"), "the second delivery changes nothing");
 		assertEquals(afterFirst, refundsFailedCount(),
-				"one failed refund is one alert, however many times Stripe announces it");
+				"one failed refund is one alert, however many of the two types announce it");
 	}
 
 	@Test
-	void aLiveRefundUpdateChangesNothing() throws Exception {
+	void aLiveRefundOnAHandledTypeChangesNothing() throws Exception {
 		collectionRefundedWith(7304L, "pi_ref_live", "re_hook_live");
-		String payload = refundEventJson("evt_ref_live_1", "refund.updated", "re_hook_live", "pending",
-				"pi_ref_live");
+		String payload = refundEventJson("evt_ref_live_1", "charge.refund.updated", "re_hook_live",
+				"succeeded", "pi_ref_live");
 		double before = refundsFailedCount();
 
 		postSigned(payload, sign(payload), 200);
 
 		assertEquals("REFUNDED", statusOf("pi_ref_live"),
-				"a refund still on its way is not a refund that failed");
+				"a refund that reached the guest is not a refund that failed");
 		assertEquals(before, refundsFailedCount(), "and nothing is owed, so nothing is counted");
+	}
+
+	@Test
+	void refundUpdatedIsNotSubscribedSoItIsIgnored() throws Exception {
+		collectionRefundedWith(7308L, "pi_ref_unsubscribed", "re_hook_unsubscribed");
+		String payload = refundEventJson("evt_ref_unsub_1", "refund.updated", "re_hook_unsubscribed",
+				"failed", "pi_ref_unsubscribed");
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals("REFUNDED", statusOf("pi_ref_unsubscribed"),
+				"refund.updated announces every transition, so refund.failed is the one we act on");
 	}
 
 	@Test

@@ -2,10 +2,12 @@ package ai.riviera.platform.payment.adapter.out;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -98,7 +100,7 @@ class PaymentGatewayContractCoverageArchitectureTest {
 		Boolean collects = collectionByProfile.get(profile);
 		if (collects == null) {
 			return fail("no CollectionGuarantee is bound to @Profile" + profile
-					+ " — add this gateway's answer to ProfiledCollectionGuarantee");
+					+ " — add this gateway's answer to ProfiledCollectionGuarantee under the same profile expression");
 		}
 		return collects;
 	}
@@ -107,7 +109,13 @@ class PaymentGatewayContractCoverageArchitectureTest {
 	private static Map<Set<String>, Boolean> collectionAnswersByProfile() {
 		Map<Set<String>, Boolean> answers = new HashMap<>();
 		for (JavaClass guarantee : productionImplementationsOf(CollectionGuarantee.class)) {
-			answers.put(profileOf(guarantee), provenBeforeConfirmation(guarantee));
+			Set<String> profile = profileOf(guarantee);
+			Boolean collects = provenBeforeConfirmation(guarantee);
+			Boolean clash = answers.putIfAbsent(profile, collects);
+			if (clash != null && !clash.equals(collects)) {
+				fail("two CollectionGuarantees bound to @Profile" + profile + " disagree — whichever the "
+						+ "classpath yields second would silently decide whether the gateway is exempt");
+			}
 		}
 		return answers;
 	}
@@ -123,10 +131,15 @@ class PaymentGatewayContractCoverageArchitectureTest {
 		}
 	}
 
-	/** A type's profile expression as a set — {@code @Profile({"a","b"})} must match {@code {"b","a"}}. */
+	/**
+	 * A type's profile expression as a set, so {@code @Profile({"a","b"})} matches {@code {"b","a"}} —
+	 * order carries no meaning in Spring and must carry none here. A gateway and its guarantee are
+	 * expected to name the <em>same</em> expression, which is the convention {@code
+	 * ProfiledCollectionGuarantee} documents; the failure message says so when they don't.
+	 */
 	private static Set<String> profileOf(JavaClass type) {
 		return type.tryGetAnnotationOfType(Profile.class)
-				.map(profile -> Set.of(profile.value()))
+				.map(profile -> Arrays.stream(profile.value()).collect(Collectors.toUnmodifiableSet()))
 				.orElseGet(Set::of);
 	}
 

@@ -71,6 +71,9 @@ class StripePaymentGateway implements PaymentGateway {
 	/** The create replayed a dead refund under an unexpired key, so nothing new was issued. */
 	private static final String REFUND_KEY_REPLAY = "refund_key_replay";
 
+	/** The gateway answered the create with a refund that had already returned nothing. */
+	private static final String REFUND_BORN_DEAD = "refund_returned_nothing";
+
 	private final StripeClient stripe;
 	private final Payments payments;
 	private final Counter adoptedRefunds;
@@ -150,6 +153,11 @@ class StripePaymentGateway implements PaymentGateway {
 					() -> stripe.v1().refunds().create(params, options));
 			if (isAlreadyKnownDead(held, refund)) {
 				return new RefundResult.Failed(REFUND_KEY_REPLAY);
+			}
+			if (RefundLifecycle.returnedNoMoney(refund.getStatus())) {
+				log.warn("Stripe answered the refund for booking {} as {} — no money left the account, "
+						+ "so it is not recorded", booking.value(), refund.getStatus());
+				return new RefundResult.Failed(REFUND_BORN_DEAD);
 			}
 			payments.markRefunded(booking, amount.minor(), refund.getId());
 			return new RefundResult.Refunded(refund.getId());

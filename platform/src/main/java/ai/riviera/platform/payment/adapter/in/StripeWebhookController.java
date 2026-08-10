@@ -54,13 +54,15 @@ import ai.riviera.platform.payment.adapter.out.StripeProperties;
  *       publish {@link PaymentConfirmed}; {@code .canceled} → mark {@code CANCELED} + publish
  *       {@link PaymentCanceled}; {@code .payment_failed} → mark {@code FAILED} only (non-terminal
  *       in Stripe — the intent may be retried, so the claim is <em>not</em> released); a refund
- *       lifecycle event reporting that the refund returned nothing → un-record it, so the guest is
- *       owed again rather than recorded as paid.</li>
+ *       reported dead → un-record it, so the guest is owed again rather than recorded as paid.</li>
  * </ol>
  *
- * <p>Every outcome goes through the <strong>guarded</strong> transition ({@code Payments#markStatus}):
- * only an open record moves, and the event is published only when one did — so a late or out-of-order
- * delivery is a no-op rather than an overwrite, and Stripe's lack of ordering guarantees costs nothing.
+ * <p>Every outcome goes through a <strong>guarded</strong> transition, never a read-then-write, so a
+ * late or out-of-order delivery is a no-op rather than an overwrite and Stripe's lack of ordering
+ * guarantees costs nothing. The three payment outcomes use {@code Payments#markStatus}, which moves
+ * only an <em>open</em> record and publishes its event only when one moved. The refund un-record uses
+ * {@code Payments#markRefundFailed}, whose guard is the mirror image — it moves only a row that still
+ * records that refund — and publishes nothing: no other module's state depends on it.
  *
  * <p>The whole handler is one transaction: if it fails after the dedup insert, the transaction
  * (including that insert) rolls back and Stripe re-delivers — at-least-once without a broker. That
@@ -81,9 +83,8 @@ class StripeWebhookController {
 	private static final String EVENT_PAYMENT_FAILED = "payment_intent.payment_failed";
 	private static final String CODE_INVALID_SIGNATURE = "INVALID_SIGNATURE";
 
-	// The refund lifecycle under both the charge-scoped legacy type and the current refund-scoped ones.
+	// The two authoritative refund-failure types: the current one, and the charge-scoped legacy one.
 	private static final String EVENT_REFUND_FAILED = "refund.failed";
-	private static final String EVENT_REFUND_UPDATED = "refund.updated";
 	private static final String EVENT_CHARGE_REFUND_UPDATED = "charge.refund.updated";
 
 	private final StripeProperties properties;
@@ -125,8 +126,7 @@ class StripeWebhookController {
 			case EVENT_SUCCEEDED -> onSucceeded(requiredPaymentIntentId(event));
 			case EVENT_CANCELED -> onCanceled(requiredPaymentIntentId(event));
 			case EVENT_PAYMENT_FAILED -> applied(requiredPaymentIntentId(event), PaymentStatus.FAILED);
-			case EVENT_REFUND_FAILED, EVENT_REFUND_UPDATED, EVENT_CHARGE_REFUND_UPDATED ->
-					onRefundLifecycle(requiredRefund(event));
+			case EVENT_REFUND_FAILED, EVENT_CHARGE_REFUND_UPDATED -> onRefundDied(requiredRefund(event));
 			default -> log.debug("ignoring Stripe event type {}", event.getType());
 		}
 		return ResponseEntity.ok("ok");
@@ -169,34 +169,21 @@ class StripeWebhookController {
 	 * automatically: an issuer rejection is not a transient error
 	 * ({@code RESPONSIBILITIES.md} §{@code payment}).
 	 */
-	private void onRefundLifecycle(Refund refund) {
+	private void onRefundDied(Refund refund) {
 		if (!RefundLifecycle.returnedNoMoney(refund.getStatus())) {
 			return;
 		}
-		Optional<BookingRef> booking = bookingOf(refund);
 		if (!payments.markRefundFailed(refund.getId())) {
-			unmatchedRefundFailure(refund, booking);
+			// Already un-recorded by the sibling type's delivery, or a refund this app never issued.
+			log.debug("refund {} moved no row — nothing to un-record", refund.getId());
 			return;
 		}
 		failedRefunds.increment();
 		log.warn("refund {} for booking {} returned no money ({}) — the platform still owes it",
-				refund.getId(), booking.map(BookingRef::value).orElse(null), refund.getStatus());
+				refund.getId(), bookingOf(refund).map(BookingRef::value).orElse(null), refund.getStatus());
 	}
 
-	/**
-	 * A dead-refund event that moved no row. Two shapes share it and the log must not conflate them:
-	 * the lifecycle's later deliveries for a refund already un-recorded (the common one — Stripe
-	 * announces the same transition under more than one type, and each carries its own event id), and
-	 * a refund this app never issued, such as a manual dashboard one.
-	 */
-	private static void unmatchedRefundFailure(Refund refund, Optional<BookingRef> booking) {
-		booking.ifPresentOrElse(
-				known -> log.debug("refund {} on booking {} is already un-recorded, or was not issued "
-						+ "by this app — nothing to do", refund.getId(), known.value()),
-				() -> log.debug("refund {} is for a PaymentIntent this app never recorded — ignoring",
-						refund.getId()));
-	}
-
+	/** The booking behind a refund, for the incident log line only — never to decide anything. */
 	private Optional<BookingRef> bookingOf(Refund refund) {
 		return refund.getPaymentIntent() == null ? Optional.empty()
 				: payments.findBookingRefByIntent(refund.getPaymentIntent());

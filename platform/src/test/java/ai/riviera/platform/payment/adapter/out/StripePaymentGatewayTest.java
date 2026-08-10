@@ -241,6 +241,21 @@ class StripePaymentGatewayTest {
 	}
 
 	@Test
+	void doesNotRecordARefundStripeAnswersAsAlreadyDead() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds());
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenReturn(stripeRefund("re_born_dead", "failed", 2250L));
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
+				"a refund that returned nothing is not a refund, however new its id is");
+		assertEquals("refund_returned_nothing", failed.reason());
+		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+	}
+
+	@Test
 	void refusesTheDeadRefundAnUnexpiredKeyReplaysInsteadOfRecordingItAgain() throws StripeException {
 		RefundFixture fixture = refundFixture();
 		Refund dead = stripeRefund("re_dead", "failed", 2250L);
