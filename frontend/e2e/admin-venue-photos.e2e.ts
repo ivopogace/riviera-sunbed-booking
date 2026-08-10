@@ -121,8 +121,7 @@ test('an admin picks a venue, sees its slots, and takes one down behind a confir
   await expect(panel).toHaveAttribute('aria-label', 'Confirm photo removal');
   await expect(page.getByTestId('admin-photo-confirm-cover')).toBeFocused();
 
-  // Computed styles: the shared panel must not have restyled a shipped moderation surface, and its
-  // host has to occupy the flow position the markup it replaced did (the mt-3 it now carries).
+  // Computed styles, not classes: the host must sit where the markup it replaced did (its mt-3).
   await expect(panel).toHaveCSS('display', 'block');
   await expect(panel).toHaveCSS('margin-top', '12px');
   await expect(page.getByTestId('admin-photo-confirm-cover')).toHaveCSS('color', 'rgb(179, 38, 30)');
