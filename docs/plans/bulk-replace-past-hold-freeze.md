@@ -278,7 +278,7 @@ The operator-facing **copy** is deliberately unchanged — see the deliberate no
 
 ## Execution status
 
-**Stage pointer:** `review gate run (high) — 9 findings all fixed; re-review + Sonar re-check on the fix round`
+**Stage pointer:** `all gates passed — awaiting the maintainer's merge of PR #606`
 
 **Next action:** Re-walk the overlay bank + RV-PROC-1 over the fix-round diff, re-pull the Sonar
 issue list for the new head, then merge close-out.
@@ -291,7 +291,20 @@ issue list for the new head, then merge close-out.
 | 3 — Docs-freshness fix round (F-1…F-7) | ✅ | `012518c` |
 | 4 — Review-gate fix round (F-8…F-16) | ✅ | `eb82c2e` |
 
-**Local verification so far** (`riviera-local-debug` scoped runs; Docker available, so the ITs ran
+**Gate results** (all on `c36e0b0`, the review-fix round):
+- **CI:** 8/8 checks green — Backend, Frontend, Repo hygiene (diff-scoped), CodeQL ×2, SonarCloud ×2.
+- **Review gate:** `/code-review` at **high** effort (invocation-ladder rung 1 succeeded) +
+  `riviera-review-overlay`. **9 findings, all fixed** (F-8…F-16); the overlay was re-walked over the
+  fix round (RV-BE-1 strengthened, RV-BE-6 one violation fixed, RV-BE-9 clean, RV-STYLE-1 guard clean,
+  RV-PROC-1 drove the *Skills consulted* update).
+- **Sonar gate:** green **and** its reported list pulled from the API and empty — `total: 0` issues,
+  `new_duplicated_blocks: 0`, `new_code_smells: 0`, `new_coverage: 100.0%`. Confirmed **not** a
+  false-clean read on all three legs: `measures` is non-empty (`new_lines: 41`) and the
+  `SonarCloud Code Analysis` check-run itself concluded `success`.
+- **Testcontainers not skipped:** verified locally — `BeachMapReplaceIT` 13 tests `skipped=0`,
+  `AvailabilityLookupIT` 9 tests `skipped=0`.
+
+**Local verification** (`riviera-local-debug` scoped runs; Docker available, so the ITs ran
 for real): `VenueAdminServiceTest` green, observed **red first** on AC-1/2/4. `BeachMapReplaceIT`
 **13 tests, `skipped=0`**, `AvailabilityLookupIT` **9 tests, `skipped=0`**. AC-1's end-to-end case
 was also observed **genuinely red** — the replace guard was temporarily reverted to the any-date
@@ -584,5 +597,5 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] **Frontend** N/A justified.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, **merged via PR #606**.
 - [x] **The review gate ran in full** — `/code-review` at **high** effort (the no-exceptions tier for an availability-touching slice) via the invocation ladder's rung 1, which succeeded, *plus* `riviera-review-overlay`. 9 findings, all fixed (F-8…F-16).
