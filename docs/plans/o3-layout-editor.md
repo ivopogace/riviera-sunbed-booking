@@ -138,6 +138,9 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
   CASCADE`, silently erase holds. The guard **`SetAvailabilityLookup.anyClaims(venueSetIds)`** (extends the
   existing venue→availability SPI; availability remains the sole reader/writer of `set_availability`) is consulted
   **before** any delete; any hold → `LAYOUT_IN_USE`, nothing deleted. This is the highest-stakes line of the slice.
+  **Superseded by #602:** the guard now asks `anyClaimsFrom(today)` — only a hold that is still ahead blocks,
+  because a past one describes a day already gone; `anyClaims` was removed from the port. The lock-before-probe
+  ordering and the "nothing deleted" outcome are unchanged.
 - **Uniqueness guarantee (unchanged):** `set_availability` `UNIQUE(set_id, booking_date)` still guards double-sell;
   `set_position` `UNIQUE(venue_id,row_label,position_no)` + `UNIQUE(venue_id,grid_x,grid_y)` guard the grid.
 - **Concurrency strategy:** the replace is a single serialisable-enough transaction: read the venue's set ids →

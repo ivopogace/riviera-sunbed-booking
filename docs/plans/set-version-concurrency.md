@@ -137,7 +137,7 @@ re-asserted by AC-8 and the existing `BeachMapReplaceIT`/`VenueRepriceIT` suites
 > **#226 adds an orthogonal optimistic lock; it does not change invariant #2.**
 
 - **Write paths to `availability(set_id, booking_date)`:** **none added or changed.** `replaceLayout`
-  only *reads* availability via the `availability::spi` claim probe (`anyClaims`) + `booking::spi`
+  only *reads* availability via the `availability::spi` claim probe (`anyClaims`; `anyClaimsFrom` since #602) + `booking::spi`
   (`hasBookings`) to enforce reject-unless-unclaimed; it never writes the availability row. `repriceRow`
   touches only `set_position` price columns.
 - **Uniqueness guarantee (unchanged):** `availability(set_id, booking_date)` UNIQUE (invariant #2) and
@@ -174,6 +174,8 @@ re-asserted by AC-8 and the existing `BeachMapReplaceIT`/`VenueRepriceIT` suites
 
 **Cross-module named interfaces (`api/` ports):** none added or changed. `replaceLayout` continues to
 consult `availability::spi` (`SetAvailabilityLookup#anyClaims`) and `booking::spi` (`BookingPresence#hasBookings`) — unchanged.
+*(Superseded by #602: the availability half is now `anyClaimsFrom(today)` and `anyClaims` is retired; the booking
+half is unchanged.)*
 
 **Domain events:** none. This slice publishes no event and subscribes to none.
 

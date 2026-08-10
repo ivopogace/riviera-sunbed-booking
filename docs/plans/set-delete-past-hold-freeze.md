@@ -77,7 +77,9 @@ two-axis asymmetry paragraph, and — the sweep's own catch, in a file the diff 
 
 ## Non-goals
 
-- **Narrowing `replaceLayout`'s venue-wide `anyClaims` probe.** The same permanent-freeze shape
+- **Narrowing `replaceLayout`'s venue-wide `anyClaims` probe.** *(Since done — #602 took option 1:
+  the availability arm now asks `anyClaimsFrom(today)` there too, and `anyClaims` is retired.
+  `hasBookings(venueId)` was deliberately left alone.)* The same permanent-freeze shape
   exists there for a walk-in-only venue; it is dominated by that write's own `hasBookings(venueId)`
   arm for every venue that has ever sold online. Recorded in the Generalization-audit log and
   deferred to **#602** rather than widened into this slice — the maintainer's decision was
@@ -181,6 +183,10 @@ two-axis asymmetry paragraph, and — the sweep's own catch, in a file the diff 
 
 > `SetAvailabilityLookup#anyClaims` survives — `replaceLayout` remains its caller. No port is added,
 > removed, or re-scoped; no `allowedDependencies` grant changes.
+>
+> **Superseded by #602:** `replaceLayout`'s availability arm was narrowed to `anyClaimsFrom(today)`
+> too, which left `anyClaims` with no caller, so the method was **removed** from the port, its JDBC
+> implementation and the test fake. The grant statement still holds.
 
 **Domain events (id-based payloads, invariant #11)**
 

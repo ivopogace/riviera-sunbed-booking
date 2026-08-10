@@ -96,26 +96,29 @@ one **slot**, not one image (byte-identical variants in another slot keep servin
 slot is its own takedown). Also own the beach map / layout, set
 positions, the online-vs-walk-in pool assignment for each set, pricing, and the booking mode
 (Instant / Request) — **including refusing a layout write that a live claim depends on** (#567).
-Both scopes now guard, with the scope following what the write destroys: the bulk replace deletes
-every set, so it asks the venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet` touch one
-set, so they ask the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row. The
-asymmetry between the two per-set writes is deliberate and worth stating once, and it runs along
-**two** axes — but no longer the two #567 named, because the availability arm dropped out of the
-first. **What each write asks:** `removeSet` refuses on a booking of any status ever recorded,
-`editSet` only on a non-terminal one; on the **availability** arm they now ask the *same* question,
-a hold dated today or later. **When it asks at all:** the delete always probes, while the edit
-probes only when the command would repool or reposition the set — a price-or-tier-only edit is
-never refused, however live the claim. The surviving claim-breadth difference is forced by the one
-asymmetry in the database: the RESTRICT `booking.set_id` FK makes a set
-carrying any booking physically undeletable, so refusing early is what turns a 500 into an honest
-409 — nothing equivalent forces the availability arm, because `set_availability`'s CASCADE means a
-*past* hold is simply removed along with the day it describes. Neither write may retroactively harm
-anyone: an edit only strands a guest who is still coming, and a delete only sweeps a hold that has
-not yet been honoured — which is why neither last season's cancelled booking (caught at #567's own
-review gate) nor last season's walk-in mark (#599) may freeze the map forever. What keeps the
-narrowed delete race-safe is not the probe's breadth but invariants #4 and the staff mark's
-`DATE_IN_PAST` refusal: **no write path can create a hold behind the cutoff**, so the range the
-probe stopped asking about is one nothing can still be written into.
+All three scopes now guard, with the scope following what the write destroys: the bulk replace
+deletes every set, so it asks the venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet` touch
+one set, so they ask the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row.
+**On the availability arm there is no asymmetry left to state** (#602): every layout write asks the
+one question — is a hold on these sets dated today or later — through a single `hasLiveHold`
+predicate, and `SetAvailabilityLookup` no longer publishes a date-agnostic probe at all. What
+differs is the **booking** arm, along two axes. *What each write asks:* `removeSet` and the bulk
+replace refuse on a booking of any status ever recorded, `editSet` only on a non-terminal one.
+*When it asks at all:* the delete and the replace always probe, while the edit probes only when the
+command would repool or reposition the set — a price-or-tier-only edit is never refused, however
+live the claim. That surviving claim-breadth difference is forced by the one asymmetry in the
+database: the RESTRICT `booking.set_id` FK makes a set carrying any booking physically undeletable,
+so refusing early is what turns a 500 into an honest 409 — nothing equivalent forces the
+availability arm, because `set_availability`'s CASCADE means a *past* hold is simply removed along
+with the day it describes. It is also why the replace's booking arm stays venue-wide and was **not**
+narrowed with the availability one (#602's declined option 2): loosening it would need the write to
+stop deleting booked sets, which is a redesign, not a predicate swap. No write may retroactively
+harm anyone: an edit only strands a guest who is still coming, and a delete or replace only sweeps a
+hold that has not yet been honoured — which is why neither last season's cancelled booking (caught
+at #567's own review gate) nor last season's walk-in mark (#599 per-set, #602 venue-wide) may freeze
+the map forever. What keeps the narrowed probes race-safe is not their breadth but invariant #4 and
+the staff mark's `DATE_IN_PAST` refusal: **no write path can create a hold behind the cutoff**, so
+the range they stopped asking about is one nothing can still be written into.
 Which statuses are live is `booking`'s call via `BookingStatus#isTerminal`, reached
 through `BookingPresence#hasLiveBookings`; `venue` never enumerates booking statuses. Price and tier stay editable on a claimed set,
 which is the same call `repriceRow` already makes: a booking's charge is snapshotted at reserve
