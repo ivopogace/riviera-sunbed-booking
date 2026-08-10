@@ -163,16 +163,16 @@ added (hence no e2e spec, and no `playwright-cli` row in the routing gate).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`.
+**Stage pointer:** `implement (phase 2)`.
 
-**Next action:** Phase 1 — the detector core: line diff, hunk grouping, and the added-line overlap
-rule, red-first.
+**Next action:** Phase 2 — the Prettier/git front-end, the three CLI modes, and `--fix`; then replay
+the guard over the last 40 `main` commits for R-1's evidence.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Shared git/diff helpers | ✅ | this commit |
-| 1 — Detector core | ⏳ | |
-| 2 — Prettier front-end, CLI, `--fix` | | |
+| 0 — Shared git/diff helpers | ✅ | `133394a` |
+| 1 — Detector core | ✅ | this commit |
+| 2 — Prettier front-end, CLI, `--fix` | ⏳ | |
 | 3 — CI wiring, npm scripts, `.prettierignore` | | |
 | 4 — Docs sweep + close-out | | |
 
