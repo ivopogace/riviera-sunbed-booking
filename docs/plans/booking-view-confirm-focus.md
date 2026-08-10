@@ -30,8 +30,11 @@ template — the behavior-parity ledger is what forced enumerating the `afterRen
 being replaced rather than calling the swap "equivalent") · `tdd` (each transition's spec is
 written and proven RED before its return leg exists) · `riviera-review-overlay` (review gate —
 RV-FE-E2E consulted at plan time for spec placement; full run due at ready-for-review) ·
-`riviera-docs-freshness` (**not yet run** — due at merge close-out step 5 over
-`origin/main...HEAD`; this line is updated with the range and finding count then) · `riviera-frontend` (placement: no new file and no new cross-feature
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD`, **0 findings** — the rename grep for the
+deleted `#confirmBtn`/`afterRenderEffect` idiom hit only the vendored `angular-developer` reference,
+which documents a live Angular API rather than a riviera fact; the counting sweep found no substrate
+statement counting the focus helper's adopters at all, and its "the two…"/"of the two" hits were every
+one about another subject — booking lifecycle, mail counters, published surfaces) · `riviera-frontend` (placement: no new file and no new cross-feature
 import — the helper already lives in `shared/`, which `booking/` may import; RV-FE-8's frozen
 five-edge table is untouched) · `angular-developer` + angular-cli MCP (`search_documentation` on
 `afterNextRender` confirmed the helper's `earlyRead`→`write` phase split is the documented shape
