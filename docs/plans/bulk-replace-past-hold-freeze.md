@@ -246,15 +246,14 @@ so `playwright-cli` is not routed.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 step 1 — write the failing `VenueAdminServiceTest` cases (AC-1/2/4) against
-the narrowed predicate.
+**Next action:** Phase 1 step 1 — write the failing `BeachMapReplaceIT` case (AC-1 end-to-end).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Narrow the replace's availability arm + retire `anyClaims` (unit TDD) | | |
-| 1 — Pin it end-to-end (Testcontainers) | | |
+| 0 — Narrow the replace's availability arm + retire `anyClaims` (unit TDD) | ✅ | `<phase-0>` |
+| 1 — Pin it end-to-end (Testcontainers) | ⏳ | |
 | 2 — Docs sweep + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -481,6 +480,9 @@ stay valid under the narrowed predicate — as #599's audit log predicted.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | phase 0 | Surviving callers of the retired date-agnostic probe | `git grep -n "anyClaims\b" -- platform/src` (excluding `anyClaimsFrom`) | 0 | **None to fix.** Confirms AC-5: the port method, its JDBC implementation, its one caller and the test fake's override are all gone, so no consumer can still ask the any-date question |
+| 2026-08-10 | phase 0 | A second `LocalDate.now(clock…)` expression that could drift from the shared arm | `git grep -n "anyClaimsFrom\|hasBookings\|takenOn\|statesOn" -- …/venue/application` | 4 call sites, **1** date expression (`VenueAdminService:176`) | **Skip — already correct.** All three layout writes reach the cutoff through the single `hasLiveHold` predicate; `DailyAvailabilityService` takes its date from the caller (a read, not a guard). Nothing to converge |
+| 2026-08-10 | phase 0 | `(any date)` prose describing the guard, in files review of the code diff would not open | `git grep -rn "any date" -- platform/src/main` | 2: `EditBeachMap:75`, `ReplaceRejection:22` | **Fix all — pulled forward from phase 2** rather than deferred, so no commit ships a Javadoc contradicting its own code (#599's F-1 lesson). Rewriting `EditBeachMap#replaceLayout` also surfaced an **unrelated** stale claim in the same block — "the token is bumped *before* the probe, so a rejected replace may still bump it — safe (only makes other tabs reload)" — which the `set-version-concurrency` F-4 fix reversed (the bump is success-path only, asserted by `rejectsReplaceWhenVenueHasBooking`). Corrected in the same edit |
 
 ---
 
