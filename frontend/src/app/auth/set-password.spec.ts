@@ -72,6 +72,21 @@ function submit(fixture: ComponentFixture<SetPassword>): void {
   fixture.detectChanges();
 }
 
+async function clickAndSettle(
+  fixture: ComponentFixture<SetPassword>,
+  testid: string,
+): Promise<void> {
+  click(fixture, testid);
+  await fixture.whenStable();
+  fixture.detectChanges();
+}
+
+function byId(fixture: ComponentFixture<SetPassword>, testid: string): HTMLElement | null {
+  return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+    `[data-testid="${testid}"]`,
+  );
+}
+
 function text(fixture: ComponentFixture<SetPassword>, testid: string): string {
   return (
     (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)?.textContent ??
@@ -237,5 +252,51 @@ describe('SetPassword', () => {
 
     expect(text(fixture, 'erase-error')).toContain('Something went wrong');
     expect(fixture.nativeElement.querySelector('[data-testid="erase-done"]')).toBeNull();
+  });
+
+  it('focuses the first field when the page mounts', async () => {
+    const fixture = await render(authStub());
+
+    expect(document.activeElement).toBe(byId(fixture, 'setpw-current'));
+  });
+
+  it('moves focus to the erase confirm button when the prompt appears', async () => {
+    const fixture = await render(authStub());
+
+    await clickAndSettle(fixture, 'erase-account');
+
+    expect(document.activeElement).toBe(byId(fixture, 'erase-confirm'));
+  });
+
+  it('returns focus to the erase trigger when the customer backs out', async () => {
+    const fixture = await render(authStub());
+
+    await clickAndSettle(fixture, 'erase-account');
+    await clickAndSettle(fixture, 'erase-cancel');
+
+    expect(document.activeElement).toBe(byId(fixture, 'erase-account'));
+  });
+
+  it('parks focus on the erased notice when the erasure completes', async () => {
+    const fixture = await render(authStub({ eraseAccount: 'erased' }));
+
+    await clickAndSettle(fixture, 'erase-account');
+    await clickAndSettle(fixture, 'erase-confirm');
+
+    expect(byId(fixture, 'erase-account')).toBeNull();
+    expect(document.activeElement).toBe(byId(fixture, 'erase-done'));
+  });
+
+  it('issues no second erase while one is in flight', async () => {
+    const auth = authStub({ eraseAccount: 'erased' });
+    const fixture = await render(auth);
+
+    await clickAndSettle(fixture, 'erase-account');
+    click(fixture, 'erase-confirm');
+    click(fixture, 'erase-confirm');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(auth.eraseAccount).toHaveBeenCalledOnce();
   });
 });

@@ -64,13 +64,13 @@ literal `bugfix/<slug>` name applies; no cloud-branch substitution.)
 
 ### `auth/set-password.ts` — the erase-account confirm (issue item 1)
 
-- [ ] **AC-1:** Given the erase confirmation closed, when the customer activates **Erase my account
+- [x] **AC-1:** Given the erase confirmation closed, when the customer activates **Erase my account
   & data**, then the confirmation opens and focus moves onto its destructive **Yes, erase
   everything** button. *Pinned by:* `set-password.spec.ts` › `moves focus to the erase confirm button when the prompt appears`
-- [ ] **AC-2:** Given the erase confirmation open, when the customer activates **Cancel**, then the
+- [x] **AC-2:** Given the erase confirmation open, when the customer activates **Cancel**, then the
   prompt closes and focus returns to the **Erase my account & data** trigger it replaced.
   *Pinned by:* `set-password.spec.ts` › `returns focus to the erase trigger when the customer backs out`
-- [ ] **AC-3:** Given the erase confirmation open, when the erasure succeeds, then the whole account
+- [x] **AC-3:** Given the erase confirmation open, when the erasure succeeds, then the whole account
   panel is replaced by the terminal erased state and focus lands on it. *Pinned by:*
   `set-password.spec.ts` › `parks focus on the erased notice when the erasure completes`
 - [ ] **AC-4:** Given the erase confirmation open, when the erasure **fails**, then focus is still
@@ -120,12 +120,12 @@ literal `bugfix/<slug>` name applies; no cloud-branch substitution.)
 
 ### `shared/focus-after-render.ts` — the unmount fallback (issue item 5)
 
-- [ ] **AC-14:** Given a focus move whose primary target is unmounted before the render commits,
+- [x] **AC-14:** Given a focus move whose primary target is unmounted before the render commits,
   when a fallback test id was named, then focus lands on the fallback. *Pinned by:*
   `focus-after-render.spec.ts` › `falls back to the named landmark when the primary target is gone`
-- [ ] **AC-15:** Given the same, when **both** targets are gone, then focus lands on the component
+- [x] **AC-15:** Given the same, when **both** targets are gone, then focus lands on the component
   host rather than `<body>`. *Pinned by:* `focus-after-render.spec.ts` › `falls back to the host when nothing named survives`
-- [ ] **AC-16:** Given a live primary target, when the move runs, then it focuses that target and
+- [x] **AC-16:** Given a live primary target, when the move runs, then it focuses that target and
   nothing else — the seven existing adopters' behaviour is unchanged. *Pinned by:* the
   **existing, unmodified** `focus-after-render.spec.ts` cases plus every adopter's existing focus spec.
 
@@ -259,9 +259,9 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phase 2`
+**Stage pointer:** `implement — phase 3`
 
-**Next action:** Phase 2 — `set-password`'s three erase transitions, starting with R-9's
+**Next action:** Phase 3 — `admin-venue-photos`' takedown failure leg.
 characterization spec for the existing page-mount focus leg.
 
 PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
@@ -272,8 +272,8 @@ PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on t
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `focusMover()` fallback + the seven-adopter audit | ✅ | `7e11e7b` |
-| 1 — The `BusyAction` directive + the ordering spike | ✅ | `<phase-1>` |
-| 2 — `set-password`'s three erase transitions | | |
+| 1 — The `BusyAction` directive + the ordering spike | ✅ | `bb73467` |
+| 2 — `set-password`'s three erase transitions | ✅ | `<phase-2>` |
 | 3 — `admin-venue-photos`' takedown failure leg | | |
 | 4 — `admin-operators`' notice region + four settled legs | | |
 | 5 — The busy sweep (money path first, then the rest) | | |
@@ -376,7 +376,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - [x] **Step 5: Run them, verify they pass.** → 7 passed.
 - [x] **Step 6: Generalization-audit pass** — record the spike verdict and the decision.
 - [x] **Step 7: Commit** — `git commit -m "Add the busy-action posture directive (#616)"`
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -396,7 +396,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - [ ] **Step 5: Run them, verify they pass**, page-mount spec included.
 - [ ] **Step 6: Generalization-audit pass.**
 - [ ] **Step 7: Commit** — `git commit -m "Move focus with the erase-account confirmation (#616)"`
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 

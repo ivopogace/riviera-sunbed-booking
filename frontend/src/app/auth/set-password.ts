@@ -8,7 +8,9 @@ import {
   MIN_PASSWORD_LENGTH,
   PASSWORD_LENGTH_MESSAGE,
 } from '../core/customer-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { focusMover } from '../shared/focus-after-render';
 
 const RESEND_NOTICES = {
   sent: 'Verification email sent. Check your inbox.',
@@ -39,14 +41,14 @@ const RESEND_NOTICES = {
  */
 @Component({
   selector: 'app-set-password',
-  imports: [FormField, RouterLink, CardGlass],
+  imports: [FormField, RouterLink, CardGlass, BusyAction],
   template: `
     <section class="auth-wrap" aria-labelledby="setpw-title">
       <div class="auth-card" appCardGlass>
         <h1 id="setpw-title" class="auth-title">Your account</h1>
 
         @if (erased()) {
-          <p class="auth-intro" role="status" data-testid="erase-done">
+          <p class="auth-intro" role="status" tabindex="-1" data-testid="erase-done">
             Your account and personal data have been erased, and you have been signed out. Any booking
             records are kept only as long as the law requires, with your personal details removed.
           </p>
@@ -65,10 +67,10 @@ const RESEND_NOTICES = {
               Your email isn't verified yet.
               <button
                 type="button"
-                class="border-0 bg-transparent p-0 underline [cursor:pointer] [font:inherit] text-[inherit] disabled:opacity-60"
+                class="border-0 bg-transparent p-0 underline [cursor:pointer] [font:inherit] text-[inherit] aria-disabled:opacity-60"
                 data-testid="setpw-resend"
                 (click)="resend()"
-                [disabled]="resending()"
+                [appBusy]="resending()"
               >
                 Resend verification email
               </button>
@@ -116,7 +118,7 @@ const RESEND_NOTICES = {
               type="submit"
               class="auth-submit"
               data-testid="setpw-submit"
-              [disabled]="submitting()"
+              [appBusy]="submitting()"
             >
               {{ submitting() ? 'Saving…' : 'Save password' }}
             </button>
@@ -142,17 +144,17 @@ const RESEND_NOTICES = {
                 type="button"
                 class="auth-submit"
                 data-testid="erase-confirm"
-                [disabled]="erasing()"
+                [appBusy]="erasing()"
                 (click)="erase()"
               >
                 {{ erasing() ? 'Erasing…' : 'Yes, erase everything' }}
               </button>
               <button
                 type="button"
-                class="mt-3 w-full border-0 bg-transparent p-0 underline [cursor:pointer] [font:inherit] text-[color:var(--riv-card-ink-soft)] disabled:opacity-60"
+                class="mt-3 w-full border-0 bg-transparent p-0 underline [cursor:pointer] [font:inherit] text-[color:var(--riv-card-ink-soft)] aria-disabled:opacity-60"
                 data-testid="erase-cancel"
-                [disabled]="erasing()"
-                (click)="confirming.set(false)"
+                [appBusy]="erasing()"
+                (click)="keepAccount()"
               >
                 Cancel
               </button>
@@ -161,7 +163,7 @@ const RESEND_NOTICES = {
                 type="button"
                 class="mt-2 w-full rounded-[16px] border border-[color:var(--riv-field-border)] bg-transparent px-[13px] py-[13px] text-[15px] font-bold text-[color:var(--riv-card-ink)] [cursor:pointer] [transition:background_0.15s_ease] hover:bg-[color:var(--riv-field-fill)]"
                 data-testid="erase-account"
-                (click)="confirming.set(true)"
+                (click)="askToErase()"
               >
                 Erase my account &amp; data
               </button>
@@ -180,6 +182,7 @@ const RESEND_NOTICES = {
 export class SetPassword {
   protected readonly auth = inject(CustomerAuth);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly focusAfterRender = focusMover();
 
   protected readonly submitting = signal(false);
   protected readonly resending = signal(false);
@@ -242,6 +245,22 @@ export class SetPassword {
     }
   }
 
+  /**
+   * Arm the erase confirmation, or back out of it, moving focus with the surface. Each transition
+   * destroys the element that was just activated, which strands keyboard/AT focus on `<body>` unless
+   * it is moved deliberately (WCAG 2.4.3). A completed erasure has no trigger left to return to, so
+   * focus parks on the terminal notice that replaces the whole panel.
+   */
+  protected askToErase(): void {
+    this.confirming.set(true);
+    this.focusAfterRender('erase-confirm');
+  }
+
+  protected keepAccount(): void {
+    this.confirming.set(false);
+    this.focusAfterRender('erase-account');
+  }
+
   protected async erase(): Promise<void> {
     if (this.erasing()) {
       return;
@@ -253,7 +272,9 @@ export class SetPassword {
     if (result === 'erased') {
       this.confirming.set(false);
       this.erased.set(true);
+      this.focusAfterRender('erase-done');
     } else {
+      // The failure leaves the prompt armed and focus already on it, so nothing is moved here.
       this.eraseError.set('Something went wrong. Please try again.');
     }
   }
