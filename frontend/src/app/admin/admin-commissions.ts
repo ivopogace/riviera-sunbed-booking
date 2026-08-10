@@ -494,14 +494,7 @@ export class AdminCommissions {
     this.reason.set('');
     this.editorError.set('');
   }
-
-  /**
-   * Move focus to a test-id'd element once the swap it belongs to has actually rendered.
-   *
-   * <p>The phases are split rather than passing a bare callback, which Angular runs in
-   * `mixedReadWrite` — a phase its own docs say never to use when the work divides, and warn costs
-   * DOM reflows. Here it divides exactly: finding the element is a read, focusing it is a write.
-   */}
+}
 
 /** What the admin is told when a rate write is refused. */
 function messageFor(error: ReturnType<typeof commissionWriteErrorOf>): string {

@@ -308,16 +308,15 @@ export class AdminOperators {
   }
 
   /**
-   * Arm the confirmation and put focus on it. Arming and dismissing each destroy the element that
-   * was just activated, which strands keyboard/AT focus on `<body>` unless it is moved deliberately
-   * (WCAG 2.4.3 — the recurring stranded-focus class). Only these two transitions are covered
-   * here: the third — parking focus once the action settles — spans all four row actions on
-   * this page and is deliberately deferred.
+   * Arm the confirmation, or dismiss it, moving focus with the surface. Each destroys the element
+   * that was just activated, which strands keyboard/AT focus on `<body>` unless it is moved
+   * deliberately (WCAG 2.4.3 — the recurring stranded-focus class). Focus INTO the confirmation is
+   * {@link ConfirmWithReason}'s own doing; dismissing returns it to Suspend. The third transition —
+   * parking focus once the action settles — spans all four row actions and is deliberately deferred.
    */
   protected askToSuspend(id: number): void {
     this.confirmingId.set(id);
     this.suspendReason.set('');
-    this.focusAfterRender(`admin-suspend-confirm-${id}`);
   }
 
   protected cancelSuspend(id: number): void {
@@ -356,5 +355,4 @@ export class AdminOperators {
       await this.load();
     }
   }
-
-  /** Move focus to a test-id'd element once the swap it belongs to has actually rendered. */}
+}

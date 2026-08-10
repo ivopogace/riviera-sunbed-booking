@@ -11,19 +11,15 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
 
 /**
  * The operator console's confirm-before-destroy panel: an amber `alertdialog` card carrying a
- * warning, a toned confirm button and a Cancel.
+ * warning, a toned confirm button and a Cancel. The admin console's confirmations are a different
+ * surface — bare, reason-collecting, keyed per row — and use `ConfirmWithReason` instead.
  *
- * <p><strong>The caller keeps the `@if` outside this component</strong>, so the panel is created
- * and destroyed with the confirmation. That is what lets it focus its own confirm button on the way
- * in — otherwise keyboard and AT focus strands on `<body>` when the trigger is destroyed
- * (WCAG 2.4.3).
+ * <p><strong>Keep the `@if` outside this component</strong>: it is created and destroyed with the
+ * confirmation, which is what lets it focus its own confirm button on the way in (WCAG 2.4.3).
+ * Focus back **out** is the caller's, via `focusMover()` — this component is gone by then.
  *
- * <p>Focus **out** is deliberately the caller's job: by the time the confirmation closes this
- * component is already gone, and the element focus should return to is one of theirs. Callers use
- * `focusMover()` for it.
- *
- * <p>The admin console's confirmations are a different surface — bare, reason-collecting, keyed per
- * row — and use `ConfirmWithReason` instead.
+ * <p>Why two components rather than one with a variant, and why no projected content:
+ * `docs/plans/shared-confirm-panel.md`.
  */
 @Component({
   selector: 'app-confirm-panel',
@@ -70,7 +66,8 @@ export class ConfirmPanel {
   readonly confirmed = output<void>();
   readonly cancelled = output<void>();
 
-  private readonly confirmButton = viewChild.required<ElementRef<HTMLButtonElement>>('confirmButton');
+  private readonly confirmButton =
+    viewChild.required<ElementRef<HTMLButtonElement>>('confirmButton');
 
   protected confirmClass(): string {
     return CONFIRM_BUTTON[this.tone()];

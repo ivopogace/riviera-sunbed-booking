@@ -10,18 +10,15 @@ import {
 
 /**
  * The admin console's confirm-before-destroy panel: a prompt, the optional grounds the audit trail
- * records (ADR-0013), and an outlined destructive action beside a way out.
+ * records (ADR-0013), and an outlined destructive action beside a way out. The operator console's
+ * confirmations are a different surface — an amber card, no reason field — and use `ConfirmPanel`.
  *
- * <p>It is deliberately **bare** — no card of its own. Both callers already sit inside a row or slot
- * card, so bringing a surface would double the framing; the host is `block w-full` so it occupies
- * exactly the flow position the markup it replaced did.
+ * <p>Deliberately **bare**: both callers already sit inside a row or slot card, so the host is only
+ * `block w-full` and occupies exactly the flow position the markup it replaced did.
  *
- * <p><strong>The caller keeps the `@if` outside</strong>, so this is created and destroyed with the
- * confirmation and can focus its own confirm button on the way in (WCAG 2.4.3). Focus **out** is the
- * caller's, via `focusMover()` — by then this component is gone.
- *
- * <p>The operator console's confirmations are a different surface — an amber card, no reason field —
- * and use `ConfirmPanel` instead.
+ * <p><strong>Keep the `@if` outside</strong>: it is created and destroyed with the confirmation,
+ * which is what lets it focus its own confirm button on the way in (WCAG 2.4.3). Focus back **out**
+ * is the caller's, via `focusMover()`. Fuller rationale: `docs/plans/shared-confirm-panel.md`.
  */
 @Component({
   selector: 'app-confirm-with-reason',

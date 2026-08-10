@@ -231,16 +231,15 @@ export class AdminVenuePhotos {
   }
 
   /**
-   * Open the confirmation and put focus on it. Each of the three transitions below destroys the
+   * Open the confirmation, or close it, moving focus with the surface. Each transition destroys the
    * element that was just activated, which strands keyboard/AT focus on `<body>` unless focus is
-   * moved deliberately (WCAG 2.4.3 — the recurring stranded-focus class). Asking moves focus to
-   * the confirm button; keeping it returns focus to Remove; a completed
-   * removal has no Remove button left to return to, so focus parks on the slot card itself.
+   * moved deliberately (WCAG 2.4.3 — the recurring stranded-focus class). Focus INTO the
+   * confirmation is {@link ConfirmWithReason}'s own doing; keeping it returns focus to Remove, and a
+   * completed removal has no Remove button left to return to, so focus parks on the slot card.
    */
   protected askToRemove(slot: PhotoSlotKey): void {
     this.confirming.set(slot);
     this.reason.set('');
-    this.focusAfterRender(`admin-photo-confirm-${slot}`);
   }
 
   protected keepIt(slot: PhotoSlotKey): void {
@@ -340,7 +339,6 @@ export class AdminVenuePhotos {
     }
   }
 
-  /** Move focus to a test-id'd element once the swap it belongs to has actually rendered. */
   private async loadVenues(): Promise<void> {
     try {
       this.venues.set(await this.service.venues());

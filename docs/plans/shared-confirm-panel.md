@@ -182,10 +182,10 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `PR — ready for review (review gate next)`
+**Stage pointer:** `review gate — findings fixed, re-review + sonar gate next`
 
-**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then the Sonar
-gate, then merge close-out. Nothing is left to build.
+**Next action:** Re-run the review over the fix diff, clear the Sonar gate's reported list, then
+merge close-out. Nothing is left to build.
 
 PR: **#612** (`merged via PR #612`).
 
@@ -194,7 +194,8 @@ PR: **#612** (`merged via PR #612`).
 | 0 — Shared focus helper + adopt in the 5 existing call sites | ✅ | `99d8241` |
 | 1 — `shared/confirm-panel` + operator pair (**the #604 fix**) | ✅ | `707b9ba` |
 | 2 — `shared/confirm-with-reason` + admin pair | ✅ | `9689f45` |
-| 3 — e2e coverage, computed-style no-drift check, full verification | ✅ | Phase-3 commit below |
+| 3 — e2e coverage, computed-style no-drift check, full verification | ✅ | `d65c0f9` |
+| 4 — review-gate fixes (F-2, F-3, F-4) | ✅ | Phase-4 commit below |
 
 **Verification at Phase 3:** unit `1329 passed (155 files)`; mocked e2e `165 passed`; `ng lint`
 clean; `ng build` succeeds; `node scripts/check-plan-file-structure.mjs --diff origin/main` clean.
@@ -214,7 +215,11 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (repo hygiene, RV-STYLE-1) | A two-line inline comment in `admin-venue-photos.e2e.ts`. The `PostToolUse` guard did not stop it; the CI half did | fixed-in-`d6063f6` |
+| F-2 | review (4 of 5 reviewers, independently) | Deleting the five private `focusAfterRender` methods left their **TSDoc orphaned** in four files. In `admin-venue-photos.ts` the orphan landed on `loadVenues()`, actively misdescribing it. Cause: the deletion edits matched from `private focusAfterRender(` and never included the doc block above | fixed-in-`<phase-4>` |
+| F-3 | review (3 of 5 reviewers, independently) | The admin pair kept its **parent-side focus-in** (`askToSuspend`, `askToRemove`) after adopting `ConfirmWithReason`, which focuses that same button itself — a duplicate `focus()` and a contradiction of the ownership split this slice documents. `set-editor` was migrated correctly; the admin pair was missed, and R-4's resolution named only the operator pair, which is what gave it away | fixed-in-`<phase-4>` |
+| F-4 | review | Both new components' class TSDoc ran ~10–11 lines against the "roughly 6 on a type" bound, duplicating rationale the plan doc already holds | fixed-in-`<phase-4>` — trimmed to a pointer at this doc |
+| F-5 | review | Two new e2e lines exceed Prettier's `printWidth: 100` | **rejected — pre-existing condition.** All four touched e2e/admin files are *already* prettier-dirty on `origin/main` and no `prettier --check` runs in lint or CI, so reformatting them is unrelated churn. The one file with no such excuse — the new `confirm-panel.ts` — **was** formatted |
 
 ---
 

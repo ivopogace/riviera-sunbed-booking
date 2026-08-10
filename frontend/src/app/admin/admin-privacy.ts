@@ -356,14 +356,7 @@ export class AdminPrivacy {
     this.stage.set('form');
     this.focusAfterRender('admin-privacy-email');
   }
-
-  /**
-   * Move focus to a test-id'd element once the swap it belongs to has actually rendered.
-   *
-   * <p>The phases are split rather than passing a bare callback, which Angular runs in
-   * `mixedReadWrite` — a phase its own docs say never to use when the work divides, and warn costs
-   * DOM reflows. Here it divides exactly: finding the element is a read, focusing it is a write.
-   */}
+}
 
 /** What the admin is told when an erasure request is refused. Never whether the subject existed. */
 function messageFor(failure: ReturnType<typeof erasureErrorOf>): string {
