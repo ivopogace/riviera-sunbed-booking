@@ -17,13 +17,25 @@ import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
 import { eurosToMinorUnits, minorUnitsToEuros } from '../shared/money';
 import { Pool, SetView, Tier } from '../shared/venue-views';
-import { BeachCell, CELL_STATE_DESC, CellState, cellStateOf, gridRowLabel } from './beach-cell';
+import {
+  BeachCell,
+  CELL_STATE_DESC,
+  CellState,
+  cellStateOf,
+  clampGrid,
+  gridRowLabel,
+  MAX_COLS,
+  MAX_ROWS,
+} from './beach-cell';
 import { BeachGridFrame } from './beach-grid-frame';
 import { SetWriteErrorCode, SetWriteRequest } from './operator-console.model';
 import { OperatorConsoleService, setWriteErrorOf } from './operator-console.service';
 
-/** What the panel is editing: one saved set, or nothing. */
-type Selection = { readonly kind: 'set'; readonly setId: number } | null;
+/** What the panel is editing: one saved set, one empty cell to add into, or nothing. */
+type Selection =
+  | { readonly kind: 'set'; readonly setId: number }
+  | { readonly kind: 'cell'; readonly gridX: number; readonly gridY: number }
+  | null;
 
 /** The editable copy of a set, seeded from the server and overwritten by the operator. */
 interface SetDraft {
@@ -34,6 +46,17 @@ interface SetDraft {
 }
 
 const EMPTY_DRAFT: SetDraft = { tier: 'STANDARD', pool: 'ONLINE', priceEur: '', currency: 'EUR' };
+
+/** A new set's defaults, following the bulk generator's rule: row A faces the sea and is front-row. */
+function draftForNewCell(gridY: number): SetDraft {
+  const premium = gridY === 1;
+  return {
+    tier: premium ? 'PREMIUM' : 'STANDARD',
+    pool: 'ONLINE',
+    priceEur: minorUnitsToEuros(premium ? 3500 : 2000),
+    currency: 'EUR',
+  };
+}
 
 /**
  * The per-set beach-map editor — the console's answer to a venue that has started trading. The bulk
@@ -83,6 +106,22 @@ export class SetEditor {
   protected readonly errorCode = signal<SetWriteErrorCode | undefined>(undefined);
   /** True while awaiting confirmation of a remove — a destructive action is never one tap away. */
   protected readonly confirmRemove = signal(false);
+  /** True while a Move is armed: the next empty cell clicked becomes the set's new spot. */
+  protected readonly moving = signal(false);
+
+  /**
+   * Rows and positions added on top of the sets' own bounding box, so a set can be placed where none
+   * has ever been. Reset by every re-read: once the added cell holds a set, the real extent covers it,
+   * and keeping the offset would grow the grid twice.
+   */
+  private readonly extraRows = linkedSignal<readonly SetView[], number>({
+    source: this.sets,
+    computation: () => 0,
+  });
+  private readonly extraCols = linkedSignal<readonly SetView[], number>({
+    source: this.sets,
+    computation: () => 0,
+  });
 
   /**
    * The selected set, kept across a re-read while it still exists and dropped when it does not — the
@@ -96,18 +135,32 @@ export class SetEditor {
       if (chosen === null || chosen === undefined) {
         return null;
       }
-      return sets.some((s) => s.id === chosen.setId) ? chosen : null;
+      if (chosen.kind === 'set') {
+        return sets.some((s) => s.id === chosen.setId) ? chosen : null;
+      }
+      const occupied = sets.some((s) => s.gridX === chosen.gridX && s.gridY === chosen.gridY);
+      return occupied ? null : chosen;
     },
   });
 
-  /** The selected set's server state, or undefined when nothing is selected. */
+  /** The selected set's server state, or undefined when nothing or an empty cell is selected. */
   protected readonly selectedSet = computed(() => {
     const chosen = this.selection();
-    return chosen === null ? undefined : this.sets().find((s) => s.id === chosen.setId);
+    return chosen?.kind === 'set' ? this.sets().find((s) => s.id === chosen.setId) : undefined;
+  });
+
+  /** The empty cell being added into, or undefined. */
+  protected readonly selectedCell = computed(() => {
+    const chosen = this.selection();
+    return chosen?.kind === 'cell' ? chosen : undefined;
   });
 
   /** The editable draft, re-seeded whenever the selection moves OR the server's copy is re-read. */
   protected readonly draft = linkedSignal<SetDraft>(() => {
+    const cell = this.selectedCell();
+    if (cell !== undefined) {
+      return draftForNewCell(cell.gridY);
+    }
     const selected = this.selectedSet();
     return selected === undefined
       ? EMPTY_DRAFT
@@ -120,6 +173,24 @@ export class SetEditor {
   });
 
   /**
+   * Whether the draft has diverged from the set as saved. A move deliberately sends the SAVED values
+   * (it is a reposition, not a bundled edit), so offering it over a dirty draft would silently drop
+   * the operator's change — Move is disabled instead, and says why.
+   */
+  protected readonly dirty = computed(() => {
+    const selected = this.selectedSet();
+    if (selected === undefined) {
+      return false;
+    }
+    const draft = this.draft();
+    return (
+      draft.tier !== selected.tier ||
+      draft.pool !== selected.pool ||
+      eurosToMinorUnits(draft.priceEur) !== selected.price.minorUnits
+    );
+  });
+
+  /**
    * Signal Forms over the draft — the price field binds through it; tier and pool are toggle buttons.
    * The euros string is validated by parsing it on save, the way the sibling operator forms treat their
    * numeric fields, so an empty field reads as "no change" rather than as €0.
@@ -128,35 +199,65 @@ export class SetEditor {
     disabled(path.priceEur, { when: () => this.busy() });
   });
 
-  /** The grid extent: the sets' own bounding box, at least one cell so an empty venue still renders. */
-  protected readonly rowCount = computed(() => Math.max(1, ...this.sets().map((s) => s.gridY)));
-  protected readonly colCount = computed(() => Math.max(1, ...this.sets().map((s) => s.gridX)));
+  /**
+   * The grid extent: the sets' own bounding box plus whatever the operator has grown it by, at least
+   * one cell so an empty venue still renders, and never past the maxima the server enforces (R-4).
+   */
+  protected readonly rowCount = computed(() =>
+    clampGrid(Math.max(1, ...this.sets().map((s) => s.gridY)) + this.extraRows(), 1, MAX_ROWS),
+  );
+  protected readonly colCount = computed(() =>
+    clampGrid(Math.max(1, ...this.sets().map((s) => s.gridX)) + this.extraCols(), 1, MAX_COLS),
+  );
+
+  protected readonly canAddRow = computed(() => this.rowCount() < MAX_ROWS);
+  protected readonly canAddCol = computed(() => this.colCount() < MAX_COLS);
 
   /** The rendered grid: one entry per position, carrying its set (if any), state and AT label. */
   protected readonly rows = computed(() => {
     const bySlot = new Map(this.sets().map((s) => [slot(s.gridX, s.gridY), s]));
     const selectedId = this.selectedSet()?.id;
+    const cell = this.selectedCell();
+    const moving = this.moving();
     return Array.from({ length: this.rowCount() }, (_, y) => ({
       label: gridRowLabel(y),
       cells: Array.from({ length: this.colCount() }, (_, x) => {
-        const set = bySlot.get(slot(x + 1, y + 1));
+        const gridX = x + 1;
+        const gridY = y + 1;
+        const set = bySlot.get(slot(gridX, gridY));
         const state: CellState = set === undefined ? 'gap' : cellStateOf(set);
+        const empty = set === undefined;
         return {
-          gridX: x + 1,
-          gridY: y + 1,
+          gridX,
+          gridY,
           setId: set?.id ?? null,
           state,
-          selected: set !== undefined && set.id === selectedId,
-          label: `Row ${gridRowLabel(y)} position ${x + 1}, ${CELL_STATE_DESC[state]}`,
+          selected: empty
+            ? cell?.gridX === gridX && cell?.gridY === gridY
+            : set.id === selectedId,
+          // While a move is armed only empty cells are targets, so an occupied one offers nothing.
+          disabled: moving && !empty,
+          label: `Row ${gridRowLabel(y)} position ${gridX}, ${
+            empty && moving ? 'empty — move here' : CELL_STATE_DESC[state]
+          }`,
         };
       }),
     }));
   });
 
-  /** The selected set's identity line — what the guest was told, so it is never silently rewritten. */
+  /** Whether the panel has something to edit — a saved set, or an empty cell to add into. */
+  protected readonly hasSelection = computed(
+    () => this.selectedSet() !== undefined || this.selectedCell() !== undefined,
+  );
+
+  /** The selection's identity line — what the guest is told, so it is never silently rewritten. */
   protected readonly selectedLabel = computed(() => {
     const selected = this.selectedSet();
-    return selected === undefined ? '' : `Row ${selected.rowLabel} · position ${selected.positionNo}`;
+    if (selected !== undefined) {
+      return `Row ${selected.rowLabel} · position ${selected.positionNo}`;
+    }
+    const cell = this.selectedCell();
+    return cell === undefined ? '' : `Row ${gridRowLabel(cell.gridY - 1)} · position ${cell.gridX}`;
   });
 
   protected readonly tiers: readonly { key: Tier; label: string }[] = [
@@ -169,15 +270,80 @@ export class SetEditor {
     { key: 'WALK_IN', label: 'Walk-in' },
   ];
 
-  /** Select the set in a cell; an empty cell is not selectable yet (add lands in a later phase). */
-  protected onCell(setId: number | null): void {
-    if (setId === null) {
+  /**
+   * A grid cell was activated. While a move is armed an empty cell is the destination; otherwise a
+   * cell selects its set, or offers to add one where there is none.
+   */
+  protected onCell(gridX: number, gridY: number, setId: number | null): void {
+    if (this.moving()) {
+      if (setId === null) {
+        void this.onMoveTo(gridX, gridY);
+      }
       return;
     }
-    this.selection.set({ kind: 'set', setId });
+    this.selection.set(setId === null ? { kind: 'cell', gridX, gridY } : { kind: 'set', setId });
     this.saved.set(false);
     this.errorCode.set(undefined);
     this.confirmRemove.set(false);
+  }
+
+  protected addRow(): void {
+    this.extraRows.update((extra) => extra + 1);
+  }
+
+  protected addCol(): void {
+    this.extraCols.update((extra) => extra + 1);
+  }
+
+  protected armMove(): void {
+    this.moving.set(true);
+    this.saved.set(false);
+    this.errorCode.set(undefined);
+  }
+
+  protected cancelMove(): void {
+    this.moving.set(false);
+  }
+
+  /** Place the selected set on `(gridX, gridY)`, carrying its SAVED tier, pool and price. */
+  private async onMoveTo(gridX: number, gridY: number): Promise<void> {
+    const selected = this.selectedSet();
+    if (selected === undefined || this.busy()) {
+      return;
+    }
+    this.moving.set(false);
+    await this.write(() =>
+      this.console.editSet(this.venueId(), selected.id, {
+        ...placementAt(gridX, gridY),
+        tier: selected.tier,
+        pool: selected.pool,
+        price: selected.price,
+      }),
+    );
+  }
+
+  /** Place a brand-new set on the selected empty cell. */
+  protected async onAdd(): Promise<void> {
+    const cell = this.selectedCell();
+    if (cell === undefined || this.busy()) {
+      return;
+    }
+    const draft = this.draft();
+    const minorUnits = eurosToMinorUnits(draft.priceEur);
+    if (minorUnits === null) {
+      this.errorCode.set('INVALID_REQUEST');
+      return;
+    }
+    await this.write(
+      () =>
+        this.console.addSet(this.venueId(), {
+          ...placementAt(cell.gridX, cell.gridY),
+          tier: draft.tier,
+          pool: draft.pool,
+          price: { minorUnits, currency: draft.currency },
+        }),
+      (created) => this.selection.set({ kind: 'set', setId: created.id }),
+    );
   }
 
   protected chooseTier(tier: Tier): void {
@@ -321,4 +487,12 @@ export class SetEditor {
 
 function slot(gridX: number, gridY: number): string {
   return `${gridX},${gridY}`;
+}
+
+/**
+ * The row label and position number a grid cell implies — the same derivation the bulk editor uses,
+ * so a set placed here reads to the guest exactly as one generated there would.
+ */
+function placementAt(gridX: number, gridY: number): Pick<SetWriteRequest, 'rowLabel' | 'positionNo' | 'gridX' | 'gridY'> {
+  return { rowLabel: gridRowLabel(gridY - 1), positionNo: gridX, gridX, gridY };
 }

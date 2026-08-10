@@ -269,6 +269,117 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-error').textContent).toMatch(/booked or held/i);
   });
 
+  function emptyCell(gridX: number, gridY: number): HTMLButtonElement {
+    return cells().find(
+      (c) => c.dataset['gridX'] === String(gridX) && c.dataset['gridY'] === String(gridY),
+    )!;
+  }
+
+  it('addsASetIntoAGrownGridCell: grow, pick the new cell, POST with derived row/position (AC-3)', async () => {
+    render();
+    // The 2×2 grid is full, so without growing there is nowhere to add — the ordinary case for a
+    // venue that laid out its map once and has now put out one more lounger.
+    expect(cells()).toHaveLength(4);
+
+    click(byId('set-add-col'));
+    expect(cells()).toHaveLength(6);
+
+    click(emptyCell(3, 1));
+    expect(byId('set-add')).toBeTruthy();
+    click(byId('set-add'));
+
+    const request = http.expectOne((r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/sets'));
+    expect(request.request.body).toEqual({
+      rowLabel: 'A',
+      positionNo: 3,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 3500, currency: 'EUR' },
+      gridX: 3,
+      gridY: 1,
+    });
+
+    request.flush({ id: 99 }, { status: 201, statusText: 'Created' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(changed).toBe(1);
+  });
+
+  it('adds a row as well, defaulting a back row to standard rather than front-row premium', () => {
+    render();
+    click(byId('set-add-row'));
+
+    click(emptyCell(1, 3));
+    click(byId('set-add'));
+
+    const body = http.expectOne((r) => r.method === 'POST').request.body;
+    expect(body).toMatchObject({ rowLabel: 'C', positionNo: 1, tier: 'STANDARD', gridY: 3 });
+    expect(body.price).toEqual({ minorUnits: 2000, currency: 'EUR' });
+  });
+
+  it('clamps growing at the server’s layout maxima, so the grid can’t ask for a 400 (R-4)', () => {
+    render();
+
+    for (let i = 0; i < 45; i++) {
+      byId('set-add-col').click();
+    }
+    fixture.detectChanges();
+
+    expect(cells()).toHaveLength(40 * 2);
+    expect((byId('set-add-col') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('movesASetToAnEmptyCell: one PATCH with the new cell and the set’s saved values (AC-5)', async () => {
+    render();
+    selectSet(12);
+    click(byId('set-add-col'));
+
+    click(byId('set-move'));
+    click(emptyCell(3, 1));
+
+    const request = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1/sets/12'));
+    expect(request.request.body).toEqual({
+      rowLabel: 'A',
+      positionNo: 3,
+      tier: 'STANDARD',
+      pool: 'ONLINE',
+      price: { minorUnits: 2000, currency: 'EUR' },
+      gridX: 3,
+      gridY: 1,
+    });
+
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(changed).toBe(1);
+  });
+
+  it('refuses to move a set with unsaved changes, so a move never smuggles an edit', () => {
+    render();
+    selectSet(12);
+    click(byId('set-pool-WALK_IN'));
+
+    expect((byId('set-move') as HTMLButtonElement).disabled).toBe(true);
+    expect(byId('set-move-blocked')).toBeTruthy();
+  });
+
+  it('surfaces a refused move without moving anything on the map', async () => {
+    render();
+    selectSet(12);
+    click(byId('set-add-col'));
+    click(byId('set-move'));
+    click(emptyCell(3, 1));
+    http
+      .expectOne((r) => r.method === 'PATCH')
+      .flush({ code: 'SET_IN_USE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(cellForSet(12).dataset['gridX']).toBe('1');
+    expect(changed).toBe(0);
+    expect(byId('set-error').textContent).toMatch(/booked or held/i);
+  });
+
   it('drops the selection when the selected set is gone from a re-read', () => {
     render();
     selectSet(12);
