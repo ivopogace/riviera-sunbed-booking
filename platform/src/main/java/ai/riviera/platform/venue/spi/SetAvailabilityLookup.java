@@ -39,27 +39,16 @@ public interface SetAvailabilityLookup {
 	Set<SetId> takenOn(Collection<SetId> setIds, LocalDate date);
 
 	/**
-	 * Whether <strong>any</strong> of {@code setIds} has an availability row on <em>any</em> date. The
-	 * bulk-layout write's destructive-regenerate guard, and its only caller: because
-	 * {@code set_availability.set_id} is {@code ON DELETE CASCADE}, deleting a claimed set would
-	 * silently drop the hold (invariant #2), so a layout replace is refused when this returns
-	 * {@code true}. Unlike {@link #takenOn} it is date-agnostic — a hold on any day blocks the
-	 * replace, the conservative reject-unless-unclaimed policy the whole-map regenerate keeps.
+	 * Whether any of {@code setIds} has an availability row dated {@code from} or later — the one
+	 * availability question asked by every layout write that <em>disturbs</em> a set: repositioning
+	 * one, removing one, or regenerating the whole map. (Adding a set and repricing a row disturb
+	 * nothing, so they never probe.) Because {@code set_availability.set_id} is
+	 * {@code ON DELETE CASCADE}, a write that removes a held set would silently drop the hold
+	 * (invariant #2), so it is refused while this returns {@code true}. A hold whose day has already
+	 * passed can neither be stranded by moving the set nor meaningfully lost by deleting it, so it
+	 * does not block. Rationale: RESPONSIBILITIES.md §venue.
 	 *
-	 * @param setIds the set positions to probe (typically one venue's whole map)
-	 * @return {@code true} if at least one has an availability row; an empty input yields {@code false}
-	 *         without touching the database
-	 */
-	boolean anyClaims(Collection<SetId> setIds);
-
-	/**
-	 * Whether any of {@code setIds} has an availability row dated {@code from} or later. The
-	 * question <strong>both</strong> per-set layout writes ask: a hold whose day has already passed
-	 * can neither be stranded by moving the set nor meaningfully lost by deleting it, so only a hold
-	 * that is still ahead blocks a reposition or a removal. {@link #anyClaims} stays the bulk
-	 * replace's question, where the regenerate is deliberately more conservative.
-	 *
-	 * @param setIds the set positions to probe
+	 * @param setIds the set positions to probe (one set, or one venue's whole map)
 	 * @param from   the first day that still counts, a {@code LocalDate} in {@code Europe/Tirane}
 	 *               (invariant #6)
 	 * @return {@code true} if at least one has a row on or after {@code from}; an empty input

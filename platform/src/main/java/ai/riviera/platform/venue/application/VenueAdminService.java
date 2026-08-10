@@ -3,6 +3,7 @@ package ai.riviera.platform.venue.application;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -164,14 +165,15 @@ class VenueAdminService
 	}
 
 	/**
-	 * Whether a hold on this set is still ahead — dated today or later in {@code Europe/Tirane}
-	 * (invariant #6). The arm both per-set layout writes share: a hold whose day has passed can
-	 * neither be stranded by a move nor be lost by a delete that matters, and no write path can add
-	 * one behind this cutoff (invariant #4 closes the sale the evening before, and a staff mark
-	 * refuses a past date) — which is why the probe stays race-safe under the row lock.
+	 * Whether a hold on any of these sets is still ahead — dated today or later in
+	 * {@code Europe/Tirane} (invariant #6). The availability arm <em>all three</em> layout writes
+	 * share: a hold whose day has passed can neither be stranded by a move nor be lost by a delete
+	 * that matters, and no write path can add one behind this cutoff (invariant #4 closes the sale
+	 * the evening before, and a staff mark refuses a past date) — which is why the probe stays
+	 * race-safe under the row locks. Callers must already hold those locks.
 	 */
-	private boolean hasLiveHold(SetId setId) {
-		return availability.anyClaimsFrom(List.of(setId), LocalDate.now(clock.withZone(TIRANE)));
+	private boolean hasLiveHold(Collection<SetId> setIds) {
+		return availability.anyClaimsFrom(setIds, LocalDate.now(clock.withZone(TIRANE)));
 	}
 
 	/**
@@ -181,7 +183,7 @@ class VenueAdminService
 	 * forever. Callers must already hold the row lock.
 	 */
 	private boolean isLivelyClaimed(SetId setId) {
-		return hasLiveHold(setId) || bookings.hasLiveBookings(setId);
+		return hasLiveHold(List.of(setId)) || bookings.hasLiveBookings(setId);
 	}
 
 	/**
@@ -193,7 +195,7 @@ class VenueAdminService
 	 * Rationale: RESPONSIBILITIES.md §venue. Callers must already hold the row lock.
 	 */
 	private boolean isLivelyClaimedOrEverBooked(SetId setId) {
-		return hasLiveHold(setId) || bookings.hasBookings(setId);
+		return hasLiveHold(List.of(setId)) || bookings.hasBookings(setId);
 	}
 
 	@Override
@@ -253,17 +255,14 @@ class VenueAdminService
 		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
 			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.STALE_WRITE);
 		}
-		// Reject-unless-unclaimed: a booking (any status) pins its set via the RESTRICT FK,
-		// and an availability hold (any date) would be silently CASCADE-dropped by the delete — either
-		// destroys invariant-#2 state, so refuse the destructive replace and delete nothing.
-		//
+		// Refuse rather than CASCADE away a live hold or trip the RESTRICT booking FK (invariant #2).
 		// Lock the venue's set rows FOR UPDATE *before* the claim probe (invariant #2): a walk-in mark
 		// or booking racing in after the probe but before deleteAllSets would otherwise be lost — the
 		// lock makes that concurrent insert block on its FK's FOR KEY SHARE until this tx ends, so it is
 		// either seen by the probe (→ reject) or fails cleanly against the replaced layout. Never a
 		// silent cascade of a committed hold.
 		List<SetId> existing = venues.lockSetsOfVenue(venueId);
-		if (availability.anyClaims(existing) || bookings.hasBookings(venueId)) {
+		if (hasLiveHold(existing) || bookings.hasBookings(venueId)) {
 			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.LAYOUT_IN_USE);
 		}
 		// Unclaimed: replace the whole map atomically (both writes in this @Transactional unit), then

@@ -172,7 +172,9 @@ in for `bugfix/per-set-layout-write-claim-guard` (`riviera-sdlc` § Remote/cloud
   overturned for `editSet` at the review gate (F-2)** — and then **half-overturned for `removeSet`
   too, by #599**: the FK argument carried the *booking* arm, which stands, but nothing forced the
   *availability* arm, and it left the same permanent freeze on any walk-in-only set. Both per-set
-  writes now ask `anyClaimsFrom(today)`; only the booking arm still differs.
+  writes now ask `anyClaimsFrom(today)`; only the booking arm still differs. **#602 then did the
+  same for the bulk replace**, so all three layout writes share the one availability question and
+  `anyClaims` is gone from the port.
   The delete kept the any-claim reading here
   because the RESTRICT FK and the CASCADE were read as making history load-bearing. The edit does not:
   nothing physical forces it, and the reading froze a set's position permanently after its
@@ -233,7 +235,7 @@ in for `bugfix/per-set-layout-write-claim-guard` (`riviera-sdlc` § Remote/cloud
 |---|---|---|---|---|
 | NI-1 | `venue.api` | `SetBookingFacts#poolForClaim(SetId)` — **renamed** from `poolOf`, now a locking read (`FOR KEY SHARE`) | `SetId`, `Optional<String>` | `availability` |
 | NI-2 | `venue.spi` | `BookingPresence#hasBookings(SetId)` — **added** beside the existing `hasBookings(VenueId)` | `SetId` | implemented by `booking`, called by `venue` |
-| NI-3 | `venue.spi` | `SetAvailabilityLookup#anyClaims(Collection<SetId>)` — **reused unchanged**, called with a single-element list | `SetId` | implemented by `availability`, called by `venue` |
+| NI-3 | `venue.spi` | `SetAvailabilityLookup#anyClaims(Collection<SetId>)` — **reused unchanged**, called with a single-element list *(superseded: #599 re-pointed this caller at `anyClaimsFrom`, and #602 removed `anyClaims` from the port once its last caller went)* | `SetId` | implemented by `availability`, called by `venue` |
 
 No `allowedDependencies` change: `venue → booking`/`availability` inversions and
 `availability → venue::api` already exist. Adding a method to a granted named interface, and
@@ -254,8 +256,8 @@ static layout that the tourist map reads live. Same reasoning `replaceLayout` re
 |---|---|---|
 | Decide whether a per-set layout write is allowed against a claim | `venue` | `venue` Job: "own the beach map / layout, set positions, the online-vs-walk-in pool assignment" — this is the guard on its own write, exactly where `replaceLayout`'s twin already lives. Not `availability` (its Job is the per-`(set, date)` state, and "knowing whether a specific set is free" is on `venue`'s **Not-My-Job** list only as a *lookup*, which is why it asks through `spi`) |
 | Answer "does this **set** have any booking?" | `booking` | `booking` Job: sole owner of the `booking` table. On `venue`'s **Not-My-Job**: "Creating or tracking bookings → `booking`". Dependency-inverted through `venue.spi.BookingPresence`, the same edge the venue-scoped probe already uses |
-| Answer "does this set have any hold, any date?" (delete guard) | `availability` | unchanged — `SetAvailabilityLookup#anyClaims` already exists and is already implemented there; `venue`'s Not-My-Job line ("Knowing whether a specific set is free on a date → `availability`") is honored by asking rather than reading the table |
-| Answer "does this set have a hold from today onwards?" (edit guard) | `availability` | same Not-My-Job line, same port — `anyClaimsFrom` added beside `anyClaims`. `venue` supplies the cutoff date (it owns the write's policy) but never reads `set_availability` |
+| Answer "does this set have any hold, any date?" (delete guard) | `availability` | unchanged — `SetAvailabilityLookup#anyClaims` already exists and is already implemented there; `venue`'s Not-My-Job line ("Knowing whether a specific set is free on a date → `availability`") is honored by asking rather than reading the table. *(Superseded: #599 re-pointed the delete guard at `anyClaimsFrom`; #602 did the same for the bulk replace and retired `anyClaims` entirely — no write asks this question now)* |
+| Answer "does this set have a hold from today onwards?" (edit guard) | `availability` | same Not-My-Job line, same port — `anyClaimsFrom` added beside `anyClaims`. `venue` supplies the cutoff date (it owns the write's policy) but never reads `set_availability`. *(Since #602 this is the availability question **every** layout write asks)* |
 | Decide which booking statuses are still live | `booking` | `BookingStatus#isTerminal` + `BookingPresence#hasLiveBookings`. On `venue`'s **Not-My-Job**: "Creating or tracking bookings → `booking`" — a status list in `venue` would be exactly that leak, and would rot silently the next time the lifecycle grows a state |
 | Hold the claim's pool read under a lock | `venue` | the lock is on `set_position`, `venue`'s table; `availability` must not lock a table it does not own, so the locking read is a `venue.api` port method it calls (invariant #11) |
 | Know *which* set fields a claim depends on | `venue` | `SetPlacement#disturbedBy` — pool + physical position are layout facts, `venue`'s Job. Kept in one record so the policy has a single home rather than an inline field-by-field comparison in the service |

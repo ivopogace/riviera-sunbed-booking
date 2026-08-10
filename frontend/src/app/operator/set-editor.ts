@@ -425,7 +425,7 @@ export class SetEditor {
       case undefined:
         return undefined;
       case 'SET_IN_USE':
-        return 'This set is booked or held, so it can’t be moved, repooled or removed. Its price and tier can still change.';
+        return 'This set is booked, or still held, so it can’t be moved, repooled or removed. Its price and tier can still change.';
       case 'CELL_TAKEN':
       case 'DUPLICATE_POSITION':
         return 'Another set already occupies that spot. Reload the tab and pick a free one.';

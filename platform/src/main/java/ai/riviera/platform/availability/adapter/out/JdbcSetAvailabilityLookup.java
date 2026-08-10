@@ -61,20 +61,6 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 	}
 
 	@Override
-	public boolean anyClaims(Collection<SetId> setIds) {
-		if (setIds.isEmpty()) {
-			return false; // no IN-list — avoid an empty "IN ()" and a needless round-trip
-		}
-		List<Long> ids = setIds.stream().map(SetId::value).toList();
-		return jdbc.sql("""
-				SELECT EXISTS(SELECT 1 FROM set_availability WHERE set_id IN (:ids))
-				""")
-				.param("ids", ids)
-				.query(Boolean.class)
-				.single();
-	}
-
-	@Override
 	public boolean anyClaimsFrom(Collection<SetId> setIds, LocalDate from) {
 		if (setIds.isEmpty()) {
 			return false; // no IN-list — avoid an empty "IN ()" and a needless round-trip

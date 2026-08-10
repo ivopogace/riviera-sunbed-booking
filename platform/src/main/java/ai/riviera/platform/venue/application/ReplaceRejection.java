@@ -19,8 +19,9 @@ public enum ReplaceRejection {
 	 */
 	STALE_WRITE,
 	/**
-	 * The venue has an existing claim — a booking (any status) or an availability hold (any date) — so a
-	 * destructive replace is refused (reject-unless-unclaimed; invariants #2/#3).
+	 * The venue has a live claim — a booking (any status) or an availability hold dated today or later — so
+	 * a destructive replace is refused (reject-unless-unclaimed; invariants #2/#3). The venue-wide twin of
+	 * {@code SetRejection.SET_IN_USE}, which asks the same availability question of one set.
 	 */
 	LAYOUT_IN_USE,
 	/** Two submitted cells share the same {@code (row_label, position_no)} slot. */

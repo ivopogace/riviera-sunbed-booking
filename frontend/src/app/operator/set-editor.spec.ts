@@ -155,7 +155,7 @@ describe('SetEditor (#600)', () => {
     // Still the SERVER's pool (nothing optimistic), and no re-read asked for — nothing changed.
     expect(cellForSet(12).getAttribute('data-state')).toBe('standard');
     expect(changed).toBe(0);
-    expect(byId('set-error').textContent).toMatch(/booked or held/i);
+    expect(byId('set-error').textContent).toMatch(/booked, or still held/i);
   });
 
   it('explains a cross-venue refusal in the operator’s terms (invariant #13)', async () => {
@@ -264,7 +264,7 @@ describe('SetEditor (#600)', () => {
 
     expect(cellForSet(12)).toBeTruthy();
     expect(changed).toBe(0);
-    expect(byId('set-error').textContent).toMatch(/booked or held/i);
+    expect(byId('set-error').textContent).toMatch(/booked, or still held/i);
   });
 
   function emptyCell(gridX: number, gridY: number): HTMLButtonElement {
@@ -395,7 +395,7 @@ describe('SetEditor (#600)', () => {
 
     expect(cellForSet(12).dataset['gridX']).toBe('1');
     expect(changed).toBe(0);
-    expect(byId('set-error').textContent).toMatch(/booked or held/i);
+    expect(byId('set-error').textContent).toMatch(/booked, or still held/i);
   });
 
   it('drops the selection when the selected set is gone from a re-read', () => {

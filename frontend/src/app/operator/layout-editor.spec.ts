@@ -359,6 +359,7 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
 
     expect(byId('layout-error').textContent?.toLowerCase()).toContain('locked');
+    expect(byId('layout-error').textContent).toMatch(/bookings, or sets that are still held/i);
   });
 
   it('pointsALockedLayoutAtPerSetEditing: the locked message no longer claims editing is impossible (AC-7)', async () => {

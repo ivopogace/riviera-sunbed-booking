@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -48,15 +49,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * and {@code JdbcSetAvailabilityLookup} adapters. Pins: the whole grid round-trips through the U1 read
  * API with row A priced front-row premium and the {@code WALK_IN} pool preserved (AC-1/AC-4/AC-7);
  * regenerate replaces the previous layout (AC-1); and — the highest-stakes case — the
- * reject-unless-unclaimed guard refuses a replace when the venue has a booking or an availability hold,
- * leaving the existing layout <em>and</em> the hold untouched (AC-6, invariant #2 / R-1: the
- * {@code set_availability} CASCADE must never silently fire).
+ * reject-unless-unclaimed guard refuses a replace when the venue has a booking or an availability hold
+ * dated today or later, leaving the existing layout <em>and</em> the hold untouched (AC-6, invariant #2
+ * / R-1: the {@code set_availability} CASCADE must never silently fire). A hold whose day has gone does
+ * not freeze the map — it goes with its set.
  *
  * <p>The replace is optimistic-locked on the venue's {@code set_version}: every replace body
  * carries the required {@code expectedVersion} the tab loaded from the map read, and a stale token is
  * rejected 409 {@code STALE_WRITE} without clobbering the current layout
- * ({@link #staleReplaceIs409StaleWrite}). The bump is acquired before the invariant-#2 lock (R-1), so the
- * concurrent-hold scenarios above still hold.
+ * ({@link #staleReplaceIs409StaleWrite}). The version is read under the venue row lock before the
+ * invariant-#2 set locks (R-1) and bumped only on the success path, so the concurrent-hold scenarios
+ * above still hold and a rejected replace leaves the token untouched.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -66,6 +69,7 @@ class BeachMapReplaceIT {
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
+	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane"); // the zone the guard's cutoff reads
 
 	@Autowired
 	MockMvc mvc;
@@ -252,11 +256,11 @@ class BeachMapReplaceIT {
 		putLayout(venue, layout(0,
 				cell("A", 1, "STANDARD", "WALK_IN", 2000, 1, 1),
 				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1)), 204);
-		long heldSet = setIds(venue).getFirst();
+		long heldSet = setIds(venue).getLast(); // deliberately NOT the first: the probe must cover every locked set
 		jdbc.sql("""
 				INSERT INTO set_availability (set_id, booking_date, state)
-				VALUES (:s, DATE '2035-07-01', 'STAFF_MARKED')
-				""").param("s", heldSet).update();
+				VALUES (:s, :d, 'STAFF_MARKED')
+				""").param("s", heldSet).param("d", LocalDate.now(TIRANE).plusDays(30)).update();
 
 		// AC-6/AC-8 / R-1: the guard consults availability BEFORE any delete, so the CASCADE never fires.
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
@@ -270,6 +274,34 @@ class BeachMapReplaceIT {
 				.param("s", heldSet).query(Long.class).single();
 		org.junit.jupiter.api.Assertions.assertEquals(1L, holds);
 		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(2));
+	}
+
+	@Test
+	void replacesTheLayoutOfAWalkInOnlyVenueWhoseHoldsAreAllPast() throws Exception {
+		long venue = createVenue("Last Season Club");
+		putLayout(venue, layout(0,
+				cell("A", 1, "STANDARD", "WALK_IN", 2000, 1, 1),
+				cell("A", 2, "STANDARD", "WALK_IN", 2000, 2, 1)), 204);
+		long heldSet = setIds(venue).getFirst();
+		// Inserted directly: the staff-mark endpoint refuses a past date, which is how history accrues.
+		jdbc.sql("""
+				INSERT INTO set_availability (set_id, booking_date, state)
+				VALUES (:s, :d, 'STAFF_MARKED')
+				""")
+				.param("s", heldSet)
+				.param("d", LocalDate.now(TIRANE).minusDays(400))
+				.update();
+
+		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(layout(currentSetVersion(venue),
+								cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1))))
+				.andExpect(status().isNoContent());
+
+		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")
+						.param("s", heldSet).query(Long.class).single(),
+				"a hold describing a day that is gone goes with its set (CASCADE)");
+		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(1));
 	}
 
 	@Test
@@ -318,7 +350,7 @@ class BeachMapReplaceIT {
 		// The seed replace bumped set_version to 1; the racing replace loads it so it passes the token gate
 		// and exercises the invariant-#2 lock path (not STALE_WRITE — the mark never touches set_version).
 		long loadedSetVersion = setVersionOf(venue);
-		LocalDate date = LocalDate.now().plusYears(2).plusDays(info.getCurrentRepetition());
+		LocalDate date = LocalDate.now(TIRANE).plusYears(2).plusDays(info.getCurrentRepetition());
 
 		CountDownLatch gate = new CountDownLatch(1);
 		Callable<Boolean> mark = () -> {

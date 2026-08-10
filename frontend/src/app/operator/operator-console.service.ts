@@ -114,7 +114,7 @@ export class OperatorConsoleService {
   /**
    * Replace the venue's whole beach-map layout in one write. Server-side it is owner-asserted
    * (invariant #13) and reject-unless-unclaimed (invariants #2/#3) — a `LAYOUT_IN_USE` failure means the
-   * venue has bookings or holds and its layout is locked. `204` on success.
+   * venue has bookings or a hold dated today or later, and its layout is locked. `204` on success.
    */
   replaceLayout(venueId: number, request: BeachMapLayoutRequest): Observable<void> {
     return this.http.put<void>(`${this.base}/api/venues/${venueId}/beach-map`, request);
@@ -369,8 +369,8 @@ export function requestErrorOf(error: unknown): RequestErrorCode {
 /**
  * Map an HTTP failure of a per-set write — add, edit or remove — to a known
  * {@link SetWriteErrorCode} (RFC-7807 `code`; or 401). One mapper for all three: their meaningful
- * surface is the same set of conflicts, and the panel's copy differs by the action it was doing,
- * not by which endpoint answered.
+ * surface is the same set of conflicts, so which endpoint answered never changes the mapping. The
+ * panel renders one message per code — it does not know which action was attempted.
  */
 export function setWriteErrorOf(error: unknown): SetWriteErrorCode {
   if (error instanceof HttpErrorResponse) {

@@ -57,11 +57,12 @@ const SWATCH_CLASS: Record<CellState, string> = {
  * <p><strong>Bulk layout</strong> is the original generate-grid + paint editor: an R×C grid in one
  * action (row A faces the sea, auto-priced front-row premium), tier/pool/gap painted per cell by
  * click or drag, saved through one owner-asserted `PUT …/beach-map`. That write is
- * reject-unless-unclaimed, so it works only while the venue has never been booked or held —
- * afterwards it answers `LAYOUT_IN_USE` permanently, and a trading venue never becomes unclaimed again.
+ * reject-unless-unclaimed, so it works only while the venue has never been booked and carries no hold
+ * dated today or later. A venue that has ever sold online answers `LAYOUT_IN_USE` permanently; a
+ * walk-in-only venue whose marks are all history becomes replaceable again.
  *
  * <p><strong>Edit sets</strong> ({@link SetEditor}) is what a live venue uses: the per-set U7
- * endpoints, which carry their own narrower claim guards instead of a venue-wide lock. The tab opens
+ * endpoints, which carry set-scoped claim guards instead of a venue-wide lock. The tab opens
  * in whichever mode the venue needs — per-set once it has saved sets, bulk while it is empty — and
  * the operator can override that; a per-set write makes this tab re-read the map and drop the shared
  * console snapshot, since the other tabs would otherwise render a set that no longer exists.
@@ -387,7 +388,7 @@ export class LayoutEditor {
       case undefined:
         return undefined;
       case 'LAYOUT_IN_USE':
-        return 'This venue has bookings or walk-in holds, so replacing the whole layout is locked. Switch to Edit sets to add, change or remove sets one at a time.';
+        return 'This venue has bookings, or sets that are still held, so replacing the whole layout is locked. Switch to Edit sets to add, change or remove sets one at a time.';
       case 'EMPTY_LAYOUT':
         return 'Add at least one set before saving.';
       case 'LAYOUT_TOO_LARGE':
