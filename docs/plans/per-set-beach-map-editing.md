@@ -232,14 +232,14 @@ anti-pattern; `linkedSignal` does it. `OnPush`/`standalone` are not set explicit
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 1`
 
-**Next action:** Phase 0 — add `addSet`/`editSet`/`removeSet` + `setWriteErrorOf` to
-`OperatorConsoleService`, red spec first in `operator-console.service.spec.ts`.
+**Next action:** Phase 1 — write the red specs for `SetEditor` (select + edit → PATCH), the
+`beach-cell` class-string pins, and the `LayoutEditor` mode default + corrected copy.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — HTTP surface (service, model, error mapper) | | |
+| 0 — HTTP surface (service, model, error mapper) | ✅ | `<phase-0>` |
 | 1 — `SetEditor`: select + edit tier/pool/price; mode toggle; `LAYOUT_IN_USE` copy | | |
 | 2 — Remove, with confirm and `SET_IN_USE` copy | | |
 | 3 — Add (grow the grid) and Move | | |
@@ -382,6 +382,7 @@ Test `frontend/src/app/operator/operator-console.service.spec.ts`
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Phase 0 — added `setWriteErrorOf` | An operator write path with no typed RFC-7807 error mapper (an untyped `catch` reading `error.error.code` inline, or a raw `HttpErrorResponse` reaching a template) | `rg 'export function \w+ErrorOf' frontend/src/app/operator` vs `rg 'this\.http\.(post\|patch\|put\|delete)' frontend/src/app/operator` | 11 mappers over 14 write call sites; the 3 unmatched are the two accept/decline POSTs (`requestErrorOf`) and the reprice PUT (`repriceErrorOf`), both already covered — every write is mapped | skip — no gap to generalize; the pattern was already universal and this slice joins it rather than introducing it |
 
 ---
 

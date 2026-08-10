@@ -43,6 +43,47 @@ export interface BeachMapLayoutRequest {
 }
 
 /**
+ * The body of a per-set beach-map write (`POST /api/venues/{id}/sets`,
+ * `PATCH /api/venues/{id}/sets/{setId}`). The **whole** set position — the server rejects a partial
+ * PATCH body `400`, which keeps a set's fields mutually consistent for the layout-uniqueness checks.
+ * Structurally the bulk write's per-cell shape ({@link LayoutCellRequest}) and deliberately its own
+ * name: these three carry **no** `expectedVersion`, because they do not participate in the
+ * `set_version` optimistic-concurrency token the bulk replace and the row reprice share.
+ */
+export interface SetWriteRequest {
+  readonly rowLabel: string;
+  readonly positionNo: number;
+  readonly tier: Tier;
+  readonly pool: Pool;
+  readonly price: MoneyView;
+  readonly gridX: number;
+  readonly gridY: number;
+}
+
+/** What `POST /api/venues/{id}/sets` answers: the new set's id, for an immediate re-select. */
+export interface CreatedSet {
+  readonly id: number;
+}
+
+/**
+ * A known per-set write failure, mapped from the RFC-7807 `code` for operator-facing copy.
+ * `SET_IN_USE` is the #567/#599 claim guard — a repool or reposition of a set carrying a live hold
+ * or a non-terminal booking, or a delete of a set carrying any booking at all. It is the **ordinary**
+ * answer on a trading venue rather than a fault, and it is discovered only by attempting the write:
+ * the console has no read that predicts it (a pre-warn probe was rejected as a non-goal in O3 #172).
+ */
+export type SetWriteErrorCode =
+  | 'SET_IN_USE'
+  | 'CELL_TAKEN'
+  | 'DUPLICATE_POSITION'
+  | 'NO_SUCH_SET'
+  | 'NO_SUCH_VENUE'
+  | 'NOT_VENUE_OWNER'
+  | 'INVALID_REQUEST'
+  | 'UNAUTHORIZED'
+  | 'UNKNOWN';
+
+/**
  * A known per-row reprice failure, mapped from the RFC-7807 `code` for operator-facing copy.
  * `NOT_VENUE_OWNER` is the cross-venue 403 (invariant #13); `STALE_WRITE` the 409 — the layout and
  * prices moved on since the tab loaded, so the tab reverts the row and offers a Reload.
