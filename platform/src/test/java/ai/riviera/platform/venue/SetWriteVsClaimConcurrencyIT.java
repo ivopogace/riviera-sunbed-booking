@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -10,7 +11,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +47,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class SetWriteVsClaimConcurrencyIT {
 
-	private static final LocalDate DAY = LocalDate.of(2027, 9, 12);
+	/**
+	 * Relative to today, never absolute: the edit guard only counts holds from today onwards, so a
+	 * fixed date would stop the hold registering the moment real time passed it — and the test would
+	 * then let both sides win rather than failing loudly.
+	 */
+	private static final LocalDate DAY = LocalDate.now(ZoneId.of("Europe/Tirane")).plusDays(30);
 	/**
 	 * A head start long enough for one side to take its row lock before the other starts. Half the
 	 * repetitions give it to the claim and half to the layout write, so BOTH branches are exercised
@@ -59,12 +64,17 @@ class SetWriteVsClaimConcurrencyIT {
 	private static final Set<String> POOL_FLIP_BRANCHES = ConcurrentHashMap.newKeySet();
 	private static final Set<String> REMOVE_BRANCHES = ConcurrentHashMap.newKeySet();
 
-	@AfterAll
-	static void bothInterleavingsWereExercised() {
-		assertEquals(Set.of("claim", "write"), POOL_FLIP_BRANCHES,
-				"claim-vs-pool-flip never took both orders, so one guard went unproven");
-		assertEquals(Set.of("claim", "write"), REMOVE_BRANCHES,
-				"claim-vs-remove never took both orders, so one guard went unproven");
+	/**
+	 * Asserted at each method's own last repetition rather than in an {@code @AfterAll} over both:
+	 * a scoped single-method run (the discipline this repo prescribes) would otherwise fail on the
+	 * method it never ran, reporting a regression that does not exist.
+	 */
+	private static void assertBothOrdersExercised(RepetitionInfo info, Set<String> branches,
+			String what) {
+		if (info.getCurrentRepetition() == info.getTotalRepetitions()) {
+			assertEquals(Set.of("claim", "write"), branches,
+					what + " never took both orders, so one guard went unproven");
+		}
 	}
 
 	/**

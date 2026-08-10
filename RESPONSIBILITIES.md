@@ -99,12 +99,16 @@ positions, the online-vs-walk-in pool assignment for each set, pricing, and the 
 Both scopes now guard, with the scope following what the write destroys: the bulk replace deletes
 every set, so it asks the venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet` touch one
 set, so they ask the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row. The
-asymmetry between the two per-set writes is deliberate and worth stating once: **`removeSet` refuses
-on any claim, `editSet` only on an edit that would move the set or change its pool.** A delete is
-destructive either way — the RESTRICT `booking.set_id` FK makes a booked set undeletable, and
-`set_availability`'s CASCADE would silently sweep a staff hold — whereas an edit only harms a claim
-when it repools (stranding an online booking on walk-in inventory, invariant #3) or repositions
-(re-seating a guest who was told a row and number). Price and tier stay editable on a claimed set,
+asymmetry between the two per-set writes is deliberate and worth stating once, and it runs along
+**two** axes: **`removeSet` refuses on any claim ever recorded; `editSet` refuses only a
+pool-or-position change, and only against a claim that is still live** (a hold dated today or later,
+a booking in a non-terminal status). A delete is destructive either way — the RESTRICT
+`booking.set_id` FK makes a booked set undeletable, and `set_availability`'s CASCADE would silently
+sweep a staff hold — so history counts there. An edit harms nobody retroactively: it only strands a
+guest who is still coming, which is why last season's cancelled booking must not freeze the map
+forever (it would, and permanently, if the edit asked the delete's question — caught at #567's own
+review gate). Which statuses are live is `booking`'s call via `BookingStatus#isTerminal`, reached
+through `BookingPresence#hasLiveBookings`; `venue` never enumerates booking statuses. Price and tier stay editable on a claimed set,
 which is the same call `repriceRow` already makes: a booking's charge is snapshotted at reserve
 time, so a reprice can never alter it. The one cross-module consequence: because the pool is
 **mutable** layout data, `SetBookingFacts#poolForClaim` is a **locking** read — `FOR KEY SHARE`, the

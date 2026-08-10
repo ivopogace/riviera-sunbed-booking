@@ -64,8 +64,13 @@ class VenueAdminServiceTest {
 	private final FakeVenues venues = new FakeVenues(callLog);
 	private final FakeAvailability availability = new FakeAvailability(callLog);
 	private final FakeBookings bookings = new FakeBookings();
-	/** Fixed so "today in Europe/Tirane" is deterministic for the edit guard's date-scoped probe. */
-	private static final Clock CLOCK = Clock.fixed(Instant.parse("2027-06-15T09:00:00Z"), ZoneOffset.UTC);
+	/**
+	 * Fixed late enough in the UTC day that Europe/Tirane has already rolled over: 22:30Z on the
+	 * 15th is the 16th in Tirane. So a regression that reads the UTC date instead of the Tirane one
+	 * (invariant #6) fails here, which a midday instant would have let pass.
+	 */
+	private static final Clock CLOCK = Clock.fixed(Instant.parse("2027-06-15T22:30:00Z"), ZoneOffset.UTC);
+	private static final LocalDate TODAY_IN_TIRANE = LocalDate.of(2027, 6, 16);
 
 	private final VenueAdminService service = new VenueAdminService(
 			venues, new FakeOwnership(OWNER, VENUE), availability, bookings, CLOCK);
@@ -241,8 +246,10 @@ class VenueAdminServiceTest {
 
 		assertEquals(List.of(SET), availability.anyClaimsFromAskedAbout,
 				"the edit guard must ask about this set alone, never the whole venue");
-		assertEquals(LocalDate.of(2027, 6, 15), availability.anyClaimsFromDate,
-				"the cutoff is today in Europe/Tirane (invariant #6)");
+		assertEquals(List.of("lockSet", "anyClaimsFrom"), callLog,
+				"probing before locking reopens the window a claim slips through (invariant #2)");
+		assertEquals(TODAY_IN_TIRANE, availability.anyClaimsFromDate,
+				"the cutoff is today in Europe/Tirane, not in UTC (invariant #6)");
 	}
 
 	@Test
@@ -690,8 +697,6 @@ class VenueAdminServiceTest {
 		int updatedSets;
 		int deletedSets;
 		int updatedProfiles;
-		// Overrides the locking read's existence answer independently of the seeded `sets` map.
-		Boolean forceSetExists;
 		// null ⇒ the profile UPDATE matches the loaded version (1 row, APPLIED); set 0 to model a
 		// stale version (another writer bumped it since the load ⇒ STALE_WRITE).
 		Integer forceProfileUpdateRows;
@@ -720,8 +725,7 @@ class VenueAdminServiceTest {
 
 		@Override
 		public void incrementSetVersion(VenueId venueId) {
-			// Counted so a test can assert the token is advanced ONLY on the success path — never on a
-			// STALE_WRITE / LAYOUT_IN_USE / NO_SUCH_ROW reject (no spurious bump).
+			// Counted so a test can assert the token advances ONLY on the success path.
 			incrementedSetVersions++;
 		}
 
@@ -733,9 +737,7 @@ class VenueAdminServiceTest {
 		public Optional<SetPlacement> lockSet(VenueId venueId, SetId setId) {
 			lockedSets++;
 			callLog.add("lockSet");
-			boolean present = forceSetExists != null
-					? forceSetExists
-					: venueId.value() == sets.getOrDefault(setId.value(), -1L);
+			boolean present = venueId.value() == sets.getOrDefault(setId.value(), -1L);
 			return present ? Optional.of(storedPlacement) : Optional.empty();
 		}
 
@@ -866,6 +868,7 @@ class VenueAdminServiceTest {
 		@Override
 		public boolean anyClaimsFrom(Collection<SetId> setIds, java.time.LocalDate from) {
 			anyClaimsFromAskedAbout.addAll(setIds);
+			callLog.add("anyClaimsFrom");
 			anyClaimsFromDate = from;
 			return liveClaimed;
 		}

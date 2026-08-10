@@ -55,6 +55,15 @@ public interface Venues {
 	 * blocks until the edit commits — closing the window in which a claim committed after the claim
 	 * probe would be CASCADE-swept by the delete or stranded by a pool flip. Empty doubles as the
 	 * existence check, so the caller needs no separate probe.
+	 *
+	 * <p><strong>Lock ordering.</strong> The per-set writes take this lock and <em>no other</em> —
+	 * in particular they never take the venue row, so they cannot form a cycle with the
+	 * venue→sets order {@link #lockAndReadSetVersion} establishes for the bulk replace and the row
+	 * reprice. That is a property of the current callers, not a guarantee of this method: if
+	 * {@code editSet}/{@code removeSet} ever grow a venue-row touch (an {@code incrementSetVersion}
+	 * so a per-set edit invalidates a stale console token, say), they must take
+	 * {@link #lockAndReadSetVersion} <em>first</em> or they will deadlock against a concurrent
+	 * replace holding the venue row and waiting on this one.
 	 */
 	Optional<SetPlacement> lockSet(VenueId venueId, SetId setId);
 

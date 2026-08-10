@@ -114,8 +114,11 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
   bulk replace succeeds only when no set has a booking or availability hold; else `409 LAYOUT_IN_USE`. Incremental
   single-set edits remain for unclaimed sets. — **Amended by #567:** this last sentence described a policy
   this slice never enforced (the per-set endpoints had no claim probe at all). It is enforced now, and
-  narrower than stated: a claimed set refuses removal outright, but still accepts a price or tier edit —
-  only a repool or reposition is refused (`409 SET_IN_USE`).
+  narrower than stated, along two axes: a set with any claim ever recorded refuses **removal** outright,
+  while an **edit** is refused only when it would repool or reposition the set *and* a claim is still
+  live (a hold dated today or later, a booking that can still be honoured). Price and tier edits are
+  never refused. So "unclaimed" was never the right word for the edit half — dead history does not
+  freeze the map.
 - **Bulk write shape** → **one full-replace `PUT` endpoint, single transaction** (engineering call): atomic,
   idempotent, matches "generate 72 sets in one action" + bulk repaint. Rejected N single-set calls (non-atomic).
 - **Flyway version** → **none needed** (no schema change); V22 verified free on `main` + no open PR claims it.

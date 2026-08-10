@@ -25,10 +25,11 @@ public enum SetRejection {
 	 */
 	STALE_WRITE,
 	/**
-	 * The set has a claim — an availability hold (any date) or a booking (any status) — so it may
-	 * not be removed, nor repositioned or moved between pools (invariants #2/#3). The per-set
-	 * counterpart of {@code ReplaceRejection.LAYOUT_IN_USE}, scoped to the one set rather than the
-	 * whole venue. Price and tier edits are unaffected. Maps to 409 {@code SET_IN_USE}.
+	 * The set is spoken for, so the requested layout write is refused (invariants #2/#3). The two
+	 * writes ask different questions: a <em>remove</em> is refused by any hold on any date or any
+	 * booking of any status, because a delete cascades and the FK pins it; an <em>edit</em> only by
+	 * a live claim, and only when it would repool or reposition the set. The per-set counterpart of
+	 * {@code ReplaceRejection.LAYOUT_IN_USE}, scoped to one set. Maps to 409 {@code SET_IN_USE}.
 	 */
 	SET_IN_USE,
 	/** Another set already occupies the target {@code (grid_x, grid_y)} cell (invariant #12). */

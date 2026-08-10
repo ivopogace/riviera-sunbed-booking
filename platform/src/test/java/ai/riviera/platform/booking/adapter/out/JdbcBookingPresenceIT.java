@@ -71,7 +71,7 @@ class JdbcBookingPresenceIT {
 		long venueId = insertVenue("Terminal Venue");
 		int position = 0;
 		for (BookingStatus status : BookingStatus.values()) {
-			if (!status.isTerminal()) {
+			if (status.canStillBeHonoured()) {
 				continue;
 			}
 			long setId = insertSet(venueId, ++position);
@@ -89,7 +89,7 @@ class JdbcBookingPresenceIT {
 		long venueId = insertVenue("Live Venue");
 		int position = 0;
 		for (BookingStatus status : BookingStatus.values()) {
-			if (status.isTerminal()) {
+			if (!status.canStillBeHonoured()) {
 				continue;
 			}
 			long setId = insertSet(venueId, ++position);

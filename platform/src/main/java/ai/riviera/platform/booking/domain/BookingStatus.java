@@ -33,14 +33,17 @@ public enum BookingStatus {
 	WITHDRAWN;
 
 	/**
-	 * Whether the lifecycle has ended here — nothing further will be honoured. The complement is
-	 * "live": a booking that a guest may still turn up for, which is what the layout-edit guard
-	 * asks about (a cancelled booking still pins its set row, but moving that set strands nobody).
+	 * Whether a guest may still turn up on this booking. Deliberately narrow and narrowly named:
+	 * it answers the layout-edit guard's question — would moving this set strand someone? — and
+	 * <strong>not</strong> "is this settled?" or "is this refundable?". {@code NO_SHOW} and
+	 * {@code COMPLETED} answer {@code false} here while remaining reachable by the admin weather
+	 * refund and counted in arrivals/takings, so a general-sounding predicate would be a trap.
+	 * Exhaustive, so a new state must be classified rather than defaulting.
 	 */
-	public boolean isTerminal() {
+	public boolean canStillBeHonoured() {
 		return switch (this) {
-			case CANCELLED, COMPLETED, NO_SHOW, DECLINED, EXPIRED, WITHDRAWN -> true;
-			case PENDING_REQUEST, AWAITING_PAYMENT, CONFIRMED -> false;
+			case PENDING_REQUEST, AWAITING_PAYMENT, CONFIRMED -> true;
+			case CANCELLED, COMPLETED, NO_SHOW, DECLINED, EXPIRED, WITHDRAWN -> false;
 		};
 	}
 }
