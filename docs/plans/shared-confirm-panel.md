@@ -176,17 +176,17 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Write `confirm-panel.spec.ts` and the `layout-editor.spec.ts` focus spec red, then
-build `shared/confirm-panel` and adopt it in `set-editor` (parity) and `layout-editor` (the #604 fix).
+**Next action:** Write `confirm-with-reason.spec.ts` red, build the component, then adopt it in
+`admin-venue-photos` and `admin-operators` leaving both their existing specs untouched (AC-5).
 
 Draft PR: **#612**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Shared focus helper + adopt in the 5 existing call sites | ✅ | `1442b1a` (plan), Phase-0 commit below |
-| 1 — `shared/confirm-panel` + operator pair (**the #604 fix**) | ⏳ | |
+| 0 — Shared focus helper + adopt in the 5 existing call sites | ✅ | `99d8241` |
+| 1 — `shared/confirm-panel` + operator pair (**the #604 fix**) | ✅ | Phase-1 commit below |
 | 2 — `shared/confirm-with-reason` + admin pair | | |
 | 3 — e2e coverage, computed-style no-drift check, full verification | | |
 
@@ -311,6 +311,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-10 | Phase 0 — extracting the focus helper | any other private `afterNextRender` → `[data-testid]` focus helper | `grep -rn "private focusAfterRender\|refocusAfterRender" src/app/ --include=*.ts` then `grep -rln "afterNextRender" src/app/ --include=*.ts` | 5 byte-identical copies (all adopted); `auth-page.ts#refocusAfterRender` + 11 other `afterNextRender` users | Fixed all 5. **Skipped `auth-page.ts`** — it focuses a `viewChild` (`firstField()`), not a `[data-testid]` lookup, so it is a different helper wearing a similar name; forcing it through the shared one would mean giving its input a test id purely to be found by string |
+| 2026-08-10 | Phase 1 — the #604 stranded-focus fix | every other confirm-before-destroy surface, checked for the same missing focus transition | `grep -rn "confirmRemove\|confirmRegen\|confirming\|confirmingId" src/app/ --include=*.ts` + `grep -rn "alertdialog" src/app/` | `auth/set-password.ts` (focuses in and out — sound); `booking/booking-view.ts` **cancel and withdraw** — both focus IN via `afterRenderEffect` but **never out**: `keepBooking()` / `keepRequest()` only flip the flag, destroying the button focus sits on | **Filed as its own issue, not widened here.** Different feature area and a different implementation family (`viewChild` refs + the `cls.*` class map, not the amber card), so folding it in would bury the operator fix — which is precisely the reasoning that created #604 out of #600's audit |
 
 ---
 

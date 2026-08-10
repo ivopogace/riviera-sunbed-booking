@@ -4,6 +4,7 @@ import { firstValueFrom, Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
+import { ConfirmPanel } from '../shared/confirm-panel';
 import { focusMover } from '../shared/focus-after-render';
 import { eurosToMinorUnits, minorUnitsToEuros } from '../shared/money';
 import { Pool, SetView, Tier } from '../shared/venue-views';
@@ -69,7 +70,7 @@ function draftForNewCell(gridY: number): SetDraft {
  */
 @Component({
   selector: 'app-set-editor',
-  imports: [CardGlass, BeachGridFrame, BeachCell, FormField],
+  imports: [CardGlass, BeachGridFrame, BeachCell, ConfirmPanel, FormField],
   templateUrl: './set-editor.html',
 })
 export class SetEditor {
@@ -245,6 +246,12 @@ export class SetEditor {
     () => this.selectedSet() !== undefined || this.selectedCell() !== undefined,
   );
 
+  /** The remove confirmation's warning, naming the set the operator picked. */
+  protected readonly removeMessage = computed(
+    () =>
+      `Remove ${this.selectedLabel()} from the map? A set that is booked, or held from today on, can’t be removed.`,
+  );
+
   /** The selection's identity line — what the guest is told, so it is never silently rewritten. */
   protected readonly selectedLabel = computed(() => {
     const selected = this.selectedSet();
@@ -378,11 +385,11 @@ export class SetEditor {
   /**
    * Open the remove confirmation, or close it, moving focus with the surface. Each transition
    * destroys the element that was just activated, which strands keyboard/AT focus on `<body>` unless
-   * it is moved deliberately (WCAG 2.4.3) — the same treatment the admin photo takedown carries.
+   * it is moved deliberately (WCAG 2.4.3). Focus INTO the confirmation is {@link ConfirmPanel}'s
+   * own doing; only the way back out is this component's, since the panel is gone by then.
    */
   protected askRemove(): void {
     this.confirmRemove.set(true);
-    this.focusAfterRender('set-remove-yes');
   }
 
   protected cancelRemove(): void {
