@@ -20,8 +20,9 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
  * <p>The claim is two steps in one transaction:
  * <ol>
  *   <li>look up the set's pool through {@link SetBookingFacts} (venue's {@code api/} port, not
- *       its tables — invariant #11). Pool is immutable layout data, so check-then-claim has
- *       no meaningful race.</li>
+ *       its tables — invariant #11). The pool is mutable layout data — a per-set edit can move a
+ *       set between pools — so the read takes a row lock and the port is named for that
+ *       contract; an unlocked read would let a flip land between the check and the claim.</li>
  *   <li>an atomic {@code INSERT ... ON CONFLICT (set_id, booking_date) DO NOTHING} against
  *       the {@code UNIQUE} constraint. Rows-affected decides the winner: {@code 1} =
  *       {@code CLAIMED}, {@code 0} = a concurrent/earlier claim already holds it
@@ -46,7 +47,7 @@ class JdbcAvailabilityClaim implements AvailabilityClaim {
 	@Override
 	@Transactional
 	public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
-		Optional<String> pool = setFacts.poolOf(setId);
+		Optional<String> pool = setFacts.poolForClaim(setId);
 		if (pool.isEmpty()) {
 			return ClaimOutcome.NO_SUCH_SET;
 		}

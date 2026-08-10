@@ -308,8 +308,9 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	}
 
 	@Override
-	public Optional<String> poolOf(SetId setId) {
-		return jdbc.sql("SELECT pool FROM set_position WHERE id = :id")
+	public Optional<String> poolForClaim(SetId setId) {
+		// FOR KEY SHARE: the lock the claim's own INSERT needs anyway, taken early (invariant #3).
+		return jdbc.sql("SELECT pool FROM set_position WHERE id = :id FOR KEY SHARE")
 				.param("id", setId.value())
 				.query(String.class)
 				.optional();

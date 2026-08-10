@@ -17,13 +17,20 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 public interface SetBookingFacts {
 
 	/**
-	 * The pool token ({@code "ONLINE"} or {@code "WALK_IN"}) of the given set, or empty if no
-	 * set has that id. Used by the {@code availability} module to enforce invariant #3 (an
-	 * online booking can only target an {@code ONLINE}-pool set) before claiming, without
-	 * reaching into venue's tables. The token is the same string the database CHECK constraint
-	 * stores and the read views carry.
+	 * The pool token ({@code "ONLINE"} or {@code "WALK_IN"}) of the given set, or empty if no set
+	 * has that id, read <strong>under a row lock held for the caller's transaction</strong>. Used
+	 * by the {@code availability} module to enforce invariant #3 (an online booking can only
+	 * target an {@code ONLINE}-pool set) before claiming, without reaching into venue's tables.
+	 *
+	 * <p>The lock is the weakest one that conflicts with the {@code FOR UPDATE} a per-set layout
+	 * edit takes — the same lock this caller's own {@code INSERT} needs for its FK check, only
+	 * acquired before the read rather than after it. Without it the pool can change between the
+	 * read and the insert, admitting a hold onto a set that just left the online pool. Two
+	 * consequences for callers: it must run inside a transaction to mean anything, and it must
+	 * <strong>not</strong> be called from a read-only one — hence the name, which is a claim-path
+	 * contract, not a general pool lookup.
 	 */
-	Optional<String> poolOf(SetId setId);
+	Optional<String> poolForClaim(SetId setId);
 
 	/**
 	 * The booking-relevant facts about a set (pool, price, owning venue, evening-before

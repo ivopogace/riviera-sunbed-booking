@@ -139,6 +139,7 @@ in for `bugfix/per-set-layout-write-claim-guard` (`riviera-sdlc` § Remote/cloud
 | R-5 | Renaming `SetBookingFacts#poolOf` → `poolForClaim` is a published `api/` port change | low | med | exactly one production caller (`JdbcAvailabilityClaim`) plus two test doubles; the rename is the point — a locking read must not be reachable from a read path (it errors inside a `readOnly` transaction), so the name warns callers off | agent | open |
 | R-6 | Per-venue authorization regressed while reordering the guards (invariant #13, BOLA) | low | high | `ownership.assertOwns` stays the **first** statement of both methods, before `venueExists` and before any lock; `CrossVenueDenialIT` pins it | agent | open |
 | R-7 | Flyway version collision | none | — | **no migration in this slice**; the set-scoped booking probe rides `booking_set_date_idx` (V5). Open PRs at plan time were Dependabot-only, no `db/migration` diff | agent | closed — N/A |
+| R-9 | A staff tap-to-mark racing a `removeSet` on an **unclaimed** set still surfaces as a `500`: the mark's `setBookingInfo` read is unlocked, so its `set_availability` insert blocks on the delete's `FOR UPDATE` and then fails the FK against a set that is gone | low | low | **Accepted, not a regression** — the same race predates this slice, and the guard *narrows* it (a set with any existing hold now refuses the delete outright, so only the both-empty instant remains). It fails closed: the DB refuses, no phantom hold is written; only the status code is imprecise. The fix would be to lock in `setBookingInfo`, which also serves the my-bookings list and mail-facts reads — row locks on a list read are a worse hazard than the race (Generalization-audit log, Phase 3) | agent | accepted |
 | R-8 | **The Testcontainers ITs cannot run in this session**, so AC-1/AC-2 (HTTP) and AC-6/AC-7 (the two races) get no local green — a guard could ship unverified | high (certain) | high | Docker Hub returned `toomanyrequests` on `postgres:17`, so the daemon was stopped by pidfile per `docs/agents/docker-testcontainers.md` and the ITs now **skip cleanly** rather than fail for an environmental reason. Local verification is therefore unit-level only; **CI owns every IT in this slice**, and no phase may be declared green until its PR CI run is read (`riviera-sdlc` CI-gate rule). Every guard also has a unit-level twin in `VenueAdminServiceTest`, so the ITs are the concurrency proof, not the only proof of the policy | agent | open |
 
 ## Open questions / Assumptions
@@ -264,10 +265,10 @@ money fact is that `repriceRow` must keep working during bookings, which R-2 pro
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** Close the check-then-claim race — rename `SetBookingFacts#poolOf` to
-`poolForClaim` and read the pool under `FOR KEY SHARE`.
+**Next action:** Update `RESPONSIBILITIES.md` §`venue` and correct the superseded row in
+`docs/plans/o3-layout-editor.md`, then mark the PR ready for review.
 
 > **Phases 1 and 2 landed in one commit.** Phase 2's guard is what makes the `editSet` half of
 > `VenueAdminControllerIT` pass, and the ITs cannot run locally (R-8), so splitting them would
@@ -283,8 +284,8 @@ money fact is that `repriceRow` must keep working during bookings, which R-2 pro
 | 0 — Set-scoped claim probe (`BookingPresence#hasBookings(SetId)`) | ✅ | `beb6892` |
 | 1 — Guard `removeSet` under a row lock (`SET_IN_USE`) | ✅ | `e488dd0` |
 | 2 — Guard `editSet` field-sensitively (`SetPlacement`) | ✅ | `e488dd0` |
-| 3 — Close the claim race (`poolForClaim`, `FOR KEY SHARE`) | ⏳ | |
-| 4 — Concurrency ITs + docs (RESPONSIBILITIES, close-out) | | |
+| 3 — Close the claim race (`poolForClaim`, `FOR KEY SHARE`) + both concurrency ITs | ✅ | `d7b0f86` |
+| 4 — Docs (RESPONSIBILITIES, o3 correction, close-out) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -309,6 +310,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — `lockSet` SQL (`FOR UPDATE`)
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueAdminController.java` — `SET_IN_USE` → 409
 - `platform/src/main/java/ai/riviera/platform/venue/api/SetBookingFacts.java` — `poolOf` → `poolForClaim`, locking contract
+- `platform/src/main/java/ai/riviera/platform/venue/api/package-info.java` — the surface doc's example follows the rename
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — `FOR KEY SHARE` on the pool read
 - `platform/src/main/java/ai/riviera/platform/venue/spi/BookingPresence.java` — `hasBookings(SetId)`
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcBookingPresence.java` — the set-scoped probe
@@ -419,6 +421,9 @@ Test `venue/application/VenueAdminServiceTest.java` · `venue/VenueAdminControll
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Phase 1+2 — the row-lock guard | check-then-act on `set_position` in a `venue` write | `grep -rn "setExists\|deleteSet\|updateSet\|repriceRow" platform/src/main` | `editSet`, `removeSet`, `repriceRow`, `addSet` | **Fixed 2 of 4.** `editSet`/`removeSet` now lock. `repriceRow` **skipped**: non-destructive, touches no set identity or pool, and is deliberately allowed on a claimed venue (a booking's charge is snapshotted at reserve time) — locking it would break that. `addSet` **skipped**: a set that does not exist yet cannot be claimed. |
+| 2026-08-10 | Phase 3 — the locking pool read | unlocked read of `set_position` feeding a write decision | `grep -rn "poolOf\|setBookingInfo" platform/src/main` | `poolForClaim` (claim), `setBookingInfo` (staff mark, reserve), `setBookingInfos` (my-bookings, mail facts) | **Fixed 1 of 3.** Only the claim's pool read decides an invariant-#3 write, so only it locks. `setBookingInfo`/`setBookingInfos` **skipped deliberately**: they serve list and mail reads, where taking row locks on every set a page touches is a contention hazard far worse than the race it would close. Residual recorded as R-9. |
+| 2026-08-10 | Phase 3 — lock ordering review | `SELECT … FOR UPDATE` without a deterministic order (`postgres` skill §5) | `grep -rn "FOR UPDATE" platform/src/main` | `lockSetsOfVenue` (no `ORDER BY`), `lockAndReadSetVersion`, `lockSet` (both single-row) | **Skipped, no reachable cycle.** Two `replaceLayout`s on one venue serialize on the venue row before reaching `lockSetsOfVenue`, and the per-set writes take exactly one row and never the venue row. Adding `ORDER BY id` would be a defensible tidy-up but changes a path this slice does not touch. |
 
 ---
 
