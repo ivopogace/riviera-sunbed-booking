@@ -1,4 +1,44 @@
 <section class="mx-auto w-full max-w-[1100px] px-5 py-4" data-testid="layout-editor">
+  <!-- Which surface can work is decided by the venue's lifecycle, so the choice is explicit, not hidden. -->
+  <fieldset class="mb-4 border-0 p-0" data-testid="layout-mode">
+    <legend class="sr-only">Beach map editing mode</legend>
+    <div class="flex flex-wrap gap-2">
+    <button
+      type="button"
+      [attr.aria-pressed]="mode() === 'bulk'"
+      (click)="chooseMode('bulk')"
+      data-testid="layout-mode-bulk"
+      class="min-h-11 flex-1 rounded-[13px] px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) sm:flex-none"
+      [class]="
+        mode() === 'bulk'
+          ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+          : 'border border-(--riv-card-border) bg-white/45'
+      "
+    >
+      Bulk layout
+    </button>
+    <button
+      type="button"
+      [attr.aria-pressed]="mode() === 'sets'"
+      (click)="chooseMode('sets')"
+      data-testid="layout-mode-sets"
+      class="min-h-11 flex-1 rounded-[13px] px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) sm:flex-none"
+      [class]="
+        mode() === 'sets'
+          ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+          : 'border border-(--riv-card-border) bg-white/45'
+      "
+    >
+      Edit sets
+    </button>
+    </div>
+  </fieldset>
+
+  @if (mode() === 'sets') {
+    @if (venueId(); as id) {
+      <app-set-editor [venueId]="id" [sets]="loadedSets()" (changed)="onSetsChanged()" />
+    }
+  } @else {
   <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[280px_1fr]">
     <!-- Controls: Generate + Paint -->
     <div class="flex flex-col gap-3.5">
@@ -134,15 +174,15 @@
                 @for (cell of row.cells; track $index; let ci = $index) {
                   <button
                     type="button"
+                    appBeachCell
+                    [state]="cell.state"
                     (mousedown)="onCellDown(ri, ci)"
                     (mouseenter)="onCellEnter(ri, ci)"
                     (click)="paintCell(ri, ci)"
                     [title]="cell.label"
                     [attr.aria-label]="cell.label"
-                    [attr.data-state]="cell.state"
                     data-testid="layout-cell"
                     class="h-7 rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
-                    [class]="cellClass(cell.state)"
                   ></button>
                 }
               </div>
@@ -240,5 +280,6 @@
         }
       </ng-container>
     </app-stale-write-banner>
+  }
   }
 </section>

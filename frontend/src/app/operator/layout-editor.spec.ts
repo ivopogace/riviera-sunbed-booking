@@ -77,6 +77,16 @@ describe('LayoutEditor (#172)', () => {
     return Array.from(host.querySelectorAll<HTMLButtonElement>('[data-testid="layout-cell"]'));
   }
 
+  /**
+   * Show the bulk generate/paint surface. Needed wherever a test seeds a venue that already has sets:
+   * since #600 such a venue opens in per-set mode, because that is the only mode that keeps working
+   * once it is trading (AC-6). The bulk behaviours below are unchanged — only their default is.
+   */
+  function useBulkMode(): void {
+    byId('layout-mode-bulk').click();
+    fixture.detectChanges();
+  }
+
   function setInput(id: string, value: string): void {
     const input = byId(id) as HTMLInputElement;
     input.value = value;
@@ -218,6 +228,7 @@ describe('LayoutEditor (#172)', () => {
   it('keeps edits and offers Reload on a 409 STALE_WRITE, then Reload re-seeds from the server', async () => {
     // A stale-write conflict must not discard edits — it shows a banner and offers Reload.
     render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3); // loaded at set_version 3
+    useBulkMode();
     expect(cells()).toHaveLength(1);
     // Paint the loaded cell to walk-in — an in-progress edit that must survive the 409.
     byId('layout-tool-walkin').click();
@@ -251,6 +262,7 @@ describe('LayoutEditor (#172)', () => {
   it('keeps the grid + banner and shows a retry hint when the Reload GET fails (no data loss)', async () => {
     // reloadAfterStale must not clear the grid until the reload succeeds — a failed reload keeps the work.
     render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 3);
+    useBulkMode();
     byId('layout-tool-walkin').click();
     fixture.detectChanges();
     cells()[0].click(); // paint an edit
@@ -322,8 +334,24 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-error').textContent?.toLowerCase()).toContain('locked');
   });
 
+  it('pointsALockedLayoutAtPerSetEditing: the locked message no longer claims editing is impossible (AC-7)', async () => {
+    render();
+    generate('1', '1');
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ code: 'LAYOUT_IN_USE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const message = byId('layout-error').textContent ?? '';
+    expect(message).toMatch(/edit sets/i);
+    expect(message).not.toMatch(/not possible/i);
+  });
+
   it('seeds the grid from the venue’s existing layout, preserving the walk-in pool', () => {
     render([seat(1, 'PREMIUM', 'ONLINE', 1, 1), seat(2, 'STANDARD', 'WALK_IN', 2, 1)]);
+    useBulkMode();
     expect(cells()).toHaveLength(2);
     expect(cells()[0].getAttribute('data-state')).toBe('premium');
     expect(cells()[1].getAttribute('data-state')).toBe('walkin');
@@ -332,6 +360,7 @@ describe('LayoutEditor (#172)', () => {
   it('re-loads for the new venue when the parent param changes in place (#180)', () => {
     // The router reuses this tab instance on /operator/1/beach-map -> /operator/2/beach-map.
     render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)], 7);
+    useBulkMode();
     expect(cells()).toHaveLength(1);
 
     params$.next(convertToParamMap({ venueId: '2' }));
@@ -343,6 +372,7 @@ describe('LayoutEditor (#172)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
       .flush({ id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1)], setVersion: 3 });
     fixture.detectChanges();
+    useBulkMode(); // the switch resets the mode default, and venue 2 also has sets
 
     expect(cells()).toHaveLength(1);
     expect(cells()[0].getAttribute('data-state')).toBe('standard');
@@ -409,6 +439,7 @@ describe('LayoutEditor (#172)', () => {
 
     expect(host.querySelector('[data-testid="layout-saved"]')).toBeNull();
     // The proof the token wasn't stamped: venue 2's next save echoes ITS version (3), not 7+1.
+    useBulkMode(); // venue 2 loaded with sets, so it opened in per-set mode
     byId('layout-save').click();
     const venue2Put = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/2/beach-map'),
@@ -416,6 +447,83 @@ describe('LayoutEditor (#172)', () => {
     expect(venue2Put.request.body.expectedVersion).toBe(3);
     venue2Put.flush(null);
     await fixture.whenStable();
+  });
+  it('defaultsToTheModeTheVenueNeeds: per-set editing for a live map, bulk for an empty one (AC-6)', () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
+
+    // A venue that already has sets opens in Edit sets — the only mode that works once it is trading.
+    expect(byId('set-editor')).toBeTruthy();
+    expect(byId('layout-generate')).toBeFalsy();
+    expect(byId('layout-mode-sets').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('opens an empty venue in bulk mode, where Generate is the operator’s next step (AC-6)', () => {
+    render([]);
+
+    expect(byId('layout-generate')).toBeTruthy();
+    expect(byId('set-editor')).toBeFalsy();
+    expect(byId('layout-mode-bulk').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('lets the operator override the default, and keeps their choice across a re-read', () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
+
+    byId('layout-mode-bulk').click();
+    fixture.detectChanges();
+    expect(byId('layout-generate')).toBeTruthy();
+    expect(byId('set-editor')).toBeFalsy();
+  });
+
+  it('re-seeds the bulk grid after a per-set write, so a later bulk save cannot revert it', async () => {
+    // Frozen at first load, the bulk grid's Save is accepted (no set_version bump) and reverts the edit.
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1), seat(2, 'STANDARD', 'ONLINE', 2, 1)]);
+
+    byId('set-cell').click();
+    fixture.detectChanges();
+    byId('set-pool-WALK_IN').click();
+    fixture.detectChanges();
+    byId('set-save').click();
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.includes('/api/venues/1/sets/1'))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The re-read carries the server's new truth: set 1 repooled, set 2 removed elsewhere meanwhile.
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 });
+    fixture.detectChanges();
+
+    useBulkMode();
+    expect(cells()).toHaveLength(1);
+    expect(cells()[0].getAttribute('data-state')).toBe('walkin');
+  });
+
+  it('drops the shared snapshot and re-reads the map after a per-set write (#486 rule, AC-1)', async () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
+    const reset = vi.spyOn(TestBed.inject(ConsoleVenueMap), 'reset');
+
+    // Drive the real child: select the set, repool it, save. Its `changed` output is the wiring under test.
+    byId('set-cell').click();
+    fixture.detectChanges();
+    byId('set-pool-WALK_IN').click();
+    fixture.detectChanges();
+    byId('set-save').click();
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.includes('/api/venues/1/sets/1'))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The tab re-reads rather than trusting its own copy, and drops the snapshot the other tabs share.
+    expect(reset).toHaveBeenCalled();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)], setVersion: 0 });
+    fixture.detectChanges();
+
+    expect(byId('set-cell').getAttribute('data-state')).toBe('walkin');
   });
 });
 

@@ -1,0 +1,275 @@
+<section class="mx-auto w-full max-w-[1100px]" data-testid="set-editor">
+  <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[300px_1fr]">
+    <!-- The panel leads on every viewport: it is the stable place the selection is confirmed and edited. -->
+    <section
+      appCardGlass
+      class="rounded-[20px] px-[18px] py-4"
+      tabindex="-1"
+      data-testid="set-panel"
+    >
+      <h2 class="text-[15px] font-bold text-(--riv-card-ink)">
+        {{ selectedCell() ? 'Add a set' : 'Edit one set' }}
+      </h2>
+
+      @if (hasSelection()) {
+        <p class="mt-1 text-[12.5px] font-semibold text-(--riv-card-ink)" data-testid="set-selected">
+          {{ selectedLabel() }}
+        </p>
+        <p class="mt-0.5 mb-3 text-[11.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+          Row and position are what the guest is told, so they follow the spot on the map.
+        </p>
+
+        <fieldset class="mt-3 border-0 p-0">
+          <legend class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)">
+            Tier
+          </legend>
+          <div class="mt-1.5 flex flex-wrap gap-2">
+            @for (tier of tiers; track tier.key) {
+              <button
+                type="button"
+                [attr.aria-pressed]="draft().tier === tier.key"
+                [disabled]="busy()"
+                (click)="chooseTier(tier.key)"
+                [attr.data-testid]="'set-tier-' + tier.key"
+                class="min-h-11 flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50"
+                [class]="
+                  draft().tier === tier.key
+                    ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+                    : 'border border-(--riv-card-border) bg-white/45'
+                "
+              >
+                {{ tier.label }}
+              </button>
+            }
+          </div>
+        </fieldset>
+
+        <fieldset class="mt-3 border-0 p-0">
+          <legend class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)">
+            Pool
+          </legend>
+          <div class="mt-1.5 flex flex-wrap gap-2">
+            @for (pool of pools; track pool.key) {
+              <button
+                type="button"
+                [attr.aria-pressed]="draft().pool === pool.key"
+                [disabled]="busy()"
+                (click)="choosePool(pool.key)"
+                [attr.data-testid]="'set-pool-' + pool.key"
+                class="min-h-11 flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50"
+                [class]="
+                  draft().pool === pool.key
+                    ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+                    : 'border border-(--riv-card-border) bg-white/45'
+                "
+              >
+                {{ pool.label }}
+              </button>
+            }
+          </div>
+        </fieldset>
+
+        <label class="mt-3 flex flex-col gap-1.5">
+          <span class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)">
+            Full-day price ({{ draft().currency }})
+          </span>
+          <input
+            type="number"
+            step="0.5"
+            [formField]="draftForm.priceEur"
+            data-testid="set-price"
+            class="min-h-11 w-full rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
+          />
+        </label>
+        <p class="mt-1 text-[11px] leading-[1.4] text-(--riv-card-ink-soft)">
+          Repricing this row in the Pricing tab overrides this set’s own price.
+        </p>
+
+        @if (selectedCell()) {
+          <div class="mt-3.5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              (click)="onAdd()"
+              [disabled]="busy()"
+              data-testid="set-add"
+              class="min-h-11 flex-1 rounded-[14px] bg-(image:--riv-cta-grad) px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50"
+            >
+              {{ busy() ? 'Adding…' : 'Add set here' }}
+            </button>
+          </div>
+        } @else {
+        <div class="mt-3.5 flex flex-wrap gap-2">
+          <button
+            type="button"
+            (click)="onSave()"
+            [disabled]="busy()"
+            data-testid="set-save"
+            class="min-h-11 flex-1 rounded-[14px] bg-(image:--riv-cta-grad) px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50"
+          >
+            {{ busy() ? 'Saving…' : 'Save set' }}
+          </button>
+          <button
+            type="button"
+            (click)="armMove()"
+            [disabled]="busy() || dirty()"
+            data-testid="set-move"
+            class="min-h-11 rounded-[14px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) disabled:opacity-50"
+          >
+            Move
+          </button>
+          <button
+            type="button"
+            (click)="askRemove()"
+            [disabled]="busy()"
+            data-testid="set-remove"
+            class="min-h-11 rounded-[14px] border border-[#a3160e]/40 px-4 py-2.5 text-[13.5px] font-bold text-[#a3160e] disabled:opacity-50"
+          >
+            Remove
+          </button>
+        </div>
+
+        @if (dirty()) {
+          <p class="mt-2 text-[11.5px] leading-[1.4] text-(--riv-card-ink-soft)" data-testid="set-move-blocked">
+            Save your changes before moving this set — a move sends the set as saved, so it would drop them.
+          </p>
+        }
+
+        @if (armed()) {
+          <div
+            class="mt-3 rounded-[12px] border border-[#0e8aa8]/50 bg-[#2bb8d4]/12 px-3 py-2.5"
+            data-testid="set-move-armed"
+          >
+            <output class="block text-[12.5px] font-semibold leading-[1.45] text-(--riv-card-ink)">
+              Pick an empty spot on the map for {{ selectedLabel() }}. Its row and position follow the
+              new spot.
+            </output>
+            <button
+              type="button"
+              (click)="cancelMove()"
+              data-testid="set-move-cancel"
+              class="mt-2 min-h-11 rounded-[10px] border border-(--riv-card-border) px-4 py-1.5 text-[12.5px] font-semibold text-(--riv-card-ink)"
+            >
+              Cancel move
+            </button>
+          </div>
+        }
+
+        @if (confirmRemove()) {
+          <div
+            class="mt-3 rounded-[12px] border border-[#e0a03a]/60 bg-[#fff4e0] px-3 py-2.5"
+            role="alertdialog"
+            aria-label="Confirm remove set"
+            data-testid="set-remove-confirm"
+          >
+            <p class="text-[12.5px] font-semibold leading-[1.45] text-[#7a4a08]">
+              Remove {{ selectedLabel() }} from the map? A set that is booked, or held from today on,
+              can’t be removed.
+            </p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                (click)="onRemove()"
+                data-testid="set-remove-yes"
+                class="min-h-11 rounded-[10px] bg-[#a3160e] px-4 py-1.5 text-[12.5px] font-bold text-white"
+              >
+                Remove set
+              </button>
+              <button
+                type="button"
+                (click)="cancelRemove()"
+                data-testid="set-remove-no"
+                class="min-h-11 rounded-[10px] border border-(--riv-card-border) px-4 py-1.5 text-[12.5px] font-semibold text-(--riv-card-ink)"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        }
+        }
+
+        @if (saved()) {
+          <output class="mt-2.5 block text-[12.5px] font-semibold text-[#0a6e85]" data-testid="set-saved">
+            Saved. The public beach map reflects your change.
+          </output>
+        }
+        @if (errorMessage(); as message) {
+          <p
+            class="mt-2.5 text-[12.5px] font-semibold leading-[1.45] text-[#a3160e]"
+            role="alert"
+            data-testid="set-error"
+          >
+            {{ message }}
+          </p>
+        }
+      } @else {
+        <p
+          class="mt-1 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)"
+          data-testid="set-panel-empty"
+        >
+          Pick a set on the map to change its tier, pool or price. Editing one set at a time works even
+          when the venue has bookings.
+        </p>
+      }
+    </section>
+
+    <!-- The map. Scrolls inside its own frame so a wide venue never scrolls the page sideways. -->
+    <div class="flex flex-col gap-2">
+      <app-beach-grid-frame testid="set-grid-frame">
+        <div class="overflow-x-auto" data-testid="set-grid">
+        @for (row of rows(); track row.label) {
+          <div class="mb-1.5 flex w-max items-center gap-2">
+            <span class="w-5 flex-shrink-0 text-center text-[11px] font-bold text-(--riv-card-ink)">{{
+              row.label
+            }}</span>
+            <div class="flex gap-1">
+              @for (cell of row.cells; track cell.gridX) {
+                <button
+                  type="button"
+                  appBeachCell
+                  [state]="cell.state"
+                  [disabled]="cell.disabled"
+                  [attr.data-set-id]="cell.setId"
+                  [attr.data-grid-x]="cell.gridX"
+                  [attr.data-grid-y]="cell.gridY"
+                  [attr.aria-pressed]="cell.selected"
+                  [attr.aria-label]="cell.label"
+                  [title]="cell.label"
+                  (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
+                  data-testid="set-cell"
+                  class="h-11 w-11 rounded-[8px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
+                  [class.outline]="cell.selected"
+                  [class.outline-2]="cell.selected"
+                  [class.outline-offset-2]="cell.selected"
+                  [class.outline-[#0e8aa8]]="cell.selected"
+                ></button>
+              }
+            </div>
+          </div>
+        }
+        </div>
+      </app-beach-grid-frame>
+
+      <!-- A full grid has nowhere to add a set, so the map itself has to be growable. -->
+      <div class="flex flex-wrap gap-2">
+        <button
+          type="button"
+          (click)="addRow()"
+          [disabled]="!canAddRow()"
+          data-testid="set-add-row"
+          class="min-h-11 flex-1 rounded-[13px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50 sm:flex-none"
+        >
+          + Add a row
+        </button>
+        <button
+          type="button"
+          (click)="addCol()"
+          [disabled]="!canAddCol()"
+          data-testid="set-add-col"
+          class="min-h-11 flex-1 rounded-[13px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50 sm:flex-none"
+        >
+          + Add a position
+        </button>
+      </div>
+    </div>
+  </div>
+</section>

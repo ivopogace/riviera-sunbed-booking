@@ -7,6 +7,7 @@ import {
   PayoutLedgerView,
   PendingRequestItem,
   RequestDecision,
+  SetWriteRequest,
   WeatherRefundResult,
 } from './operator-console.model';
 import {
@@ -17,6 +18,7 @@ import {
   requestErrorOf,
   checkInErrorOf,
   checkInWrongDateOf,
+  setWriteErrorOf,
 } from './operator-console.service';
 
 const BASE = environment.apiBaseUrl;
@@ -288,5 +290,98 @@ describe('check-in error mapping (#583)', () => {
     expect(checkInWrongDateOf(http(409, { code: 'WRONG_SERVICE_DATE' }))).toBeUndefined();
     expect(checkInWrongDateOf(http(409, { code: 'WRONG_SERVICE_DATE', bookingDate: 7 }))).toBeUndefined();
     expect(checkInWrongDateOf(new Error('offline'))).toBeUndefined();
+  });
+});
+
+/**
+ * The per-set beach-map write client (#600) — the three U7 endpoints the console had never
+ * called. `PATCH` sends the FULL set body (the server rejects a partial one `400`), and none of
+ * the three carries an `expectedVersion`: they do not participate in the `set_version` token.
+ */
+describe('OperatorConsoleService — per-set beach-map writes (#600)', () => {
+  let service: OperatorConsoleService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [OperatorConsoleService, provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(OperatorConsoleService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  const SET: SetWriteRequest = {
+    rowLabel: 'B',
+    positionNo: 3,
+    tier: 'STANDARD',
+    pool: 'ONLINE',
+    price: { minorUnits: 2000, currency: 'EUR' },
+    gridX: 3,
+    gridY: 2,
+  };
+
+  it('POSTs a new set and returns the created id', () => {
+    let actual: { id: number } | undefined;
+    service.addSet(1, SET).subscribe((created) => (actual = created));
+
+    const req = httpMock.expectOne(`${BASE}/api/venues/1/sets`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(SET);
+    req.flush({ id: 42 });
+    expect(actual).toEqual({ id: 42 });
+  });
+
+  it('PATCHes one set by id with the whole body, never a partial one', () => {
+    service.editSet(1, 42, SET).subscribe();
+
+    const req = httpMock.expectOne(`${BASE}/api/venues/1/sets/42`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual(SET);
+    expect(req.request.body).not.toHaveProperty('expectedVersion');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('DELETEs one set by id', () => {
+    service.removeSet(1, 42).subscribe();
+
+    const req = httpMock.expectOne(`${BASE}/api/venues/1/sets/42`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+});
+
+/**
+ * The per-set write error mapper (#600). `SET_IN_USE` is the #567/#599 claim guard — the one code
+ * the panel explains in its own words, because it is the ordinary outcome on a live venue, not a fault.
+ */
+describe('setWriteErrorOf (#600)', () => {
+  function problem(status: number, code?: string): HttpErrorResponse {
+    return new HttpErrorResponse({ status, error: code ? { code } : null });
+  }
+
+  it('maps 401 to UNAUTHORIZED before reading the body', () => {
+    expect(setWriteErrorOf(problem(401, 'SET_IN_USE'))).toBe('UNAUTHORIZED');
+  });
+
+  it('passes through every code the panel explains', () => {
+    for (const code of [
+      'SET_IN_USE',
+      'CELL_TAKEN',
+      'DUPLICATE_POSITION',
+      'NO_SUCH_SET',
+      'NO_SUCH_VENUE',
+      'NOT_VENUE_OWNER',
+      'INVALID_REQUEST',
+    ]) {
+      expect(setWriteErrorOf(problem(409, code))).toBe(code);
+    }
+  });
+
+  it('maps an unknown code and a non-HTTP failure to UNKNOWN', () => {
+    expect(setWriteErrorOf(problem(500, 'SOMETHING_ELSE'))).toBe('UNKNOWN');
+    expect(setWriteErrorOf(problem(500))).toBe('UNKNOWN');
+    expect(setWriteErrorOf(new Error('offline'))).toBe('UNKNOWN');
   });
 });

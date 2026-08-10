@@ -11,6 +11,7 @@ import {
   CheckInErrorCode,
   CheckInResultView,
   ConsoleDailyBooking,
+  CreatedSet,
   LayoutErrorCode,
   MarkErrorCode,
   PayoutErrorCode,
@@ -21,6 +22,8 @@ import {
   RequestDecision,
   RequestErrorCode,
   SetDayState,
+  SetWriteErrorCode,
+  SetWriteRequest,
   SlotPhotoView,
   TakingsView,
   VenueProfileErrorCode,
@@ -115,6 +118,31 @@ export class OperatorConsoleService {
    */
   replaceLayout(venueId: number, request: BeachMapLayoutRequest): Observable<void> {
     return this.http.put<void>(`${this.base}/api/venues/${venueId}/beach-map`, request);
+  }
+
+  /**
+   * Place one new set on the venue's map. Owner-asserted server-side (invariant #13) and allowed on
+   * a live venue — a set that does not exist yet cannot already be claimed. `201` carries its id.
+   */
+  addSet(venueId: number, request: SetWriteRequest): Observable<CreatedSet> {
+    return this.http.post<CreatedSet>(`${this.base}/api/venues/${venueId}/sets`, request);
+  }
+
+  /**
+   * Re-place one existing set — the whole body, since a partial one is rejected `400`. Owner-asserted
+   * server-side (invariant #13); price and tier always apply, while a repool or reposition of a set
+   * carrying a live claim is refused `409 SET_IN_USE` (invariants #2/#3). `204` on success.
+   */
+  editSet(venueId: number, setId: number, request: SetWriteRequest): Observable<void> {
+    return this.http.patch<void>(`${this.base}/api/venues/${venueId}/sets/${setId}`, request);
+  }
+
+  /**
+   * Remove one set from the venue's map. Owner-asserted server-side (invariant #13); refused
+   * `409 SET_IN_USE` when the set carries a hold dated today or later, or a booking of any status.
+   */
+  removeSet(venueId: number, setId: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/venues/${venueId}/sets/${setId}`);
   }
 
   /**
@@ -330,6 +358,34 @@ export function requestErrorOf(error: unknown): RequestErrorCode {
       case 'REQUEST_EXPIRED':
       case 'PAYMENT_INIT_FAILED':
       case 'NOT_VENUE_OWNER':
+        return code;
+      default:
+        return 'UNKNOWN';
+    }
+  }
+  return 'UNKNOWN';
+}
+
+/**
+ * Map an HTTP failure of a per-set write — add, edit or remove — to a known
+ * {@link SetWriteErrorCode} (RFC-7807 `code`; or 401). One mapper for all three: their meaningful
+ * surface is the same set of conflicts, and the panel's copy differs by the action it was doing,
+ * not by which endpoint answered.
+ */
+export function setWriteErrorOf(error: unknown): SetWriteErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'SET_IN_USE':
+      case 'CELL_TAKEN':
+      case 'DUPLICATE_POSITION':
+      case 'NO_SUCH_SET':
+      case 'NO_SUCH_VENUE':
+      case 'NOT_VENUE_OWNER':
+      case 'INVALID_REQUEST':
         return code;
       default:
         return 'UNKNOWN';
