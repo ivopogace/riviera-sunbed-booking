@@ -679,13 +679,22 @@ class VenueAdminServiceTest {
 		}
 	}
 
-	/** Programmable {@link BookingPresence}: {@code hasBookings} drives the guard. */
+	/**
+	 * Programmable {@link BookingPresence}. The two flags are separate so a test can pin that the
+	 * bulk replace asks the venue-scoped question and the per-set writes ask the set-scoped one.
+	 */
 	private static final class FakeBookings implements BookingPresence {
 		boolean hasBookings;
+		boolean setHasBookings;
 
 		@Override
 		public boolean hasBookings(VenueId venueId) {
 			return hasBookings;
+		}
+
+		@Override
+		public boolean hasBookings(SetId setId) {
+			return setHasBookings;
 		}
 	}
 }

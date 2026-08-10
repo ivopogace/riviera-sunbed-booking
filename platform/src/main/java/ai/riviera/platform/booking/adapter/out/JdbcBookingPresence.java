@@ -3,6 +3,7 @@ package ai.riviera.platform.booking.adapter.out;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.spi.BookingPresence;
 
@@ -35,6 +36,15 @@ class JdbcBookingPresence implements BookingPresence {
 	public boolean hasBookings(VenueId venueId) {
 		return jdbc.sql("SELECT EXISTS(SELECT 1 FROM booking WHERE venue_id = :venue)")
 				.param("venue", venueId.value())
+				.query(Boolean.class)
+				.single();
+	}
+
+	@Override
+	public boolean hasBookings(SetId setId) {
+		// Served by booking_set_date_idx (set_id, booking_date) on its leftmost prefix (V5).
+		return jdbc.sql("SELECT EXISTS(SELECT 1 FROM booking WHERE set_id = :set)")
+				.param("set", setId.value())
 				.query(Boolean.class)
 				.single();
 	}

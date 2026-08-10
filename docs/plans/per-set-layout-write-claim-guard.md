@@ -139,6 +139,7 @@ in for `bugfix/per-set-layout-write-claim-guard` (`riviera-sdlc` § Remote/cloud
 | R-5 | Renaming `SetBookingFacts#poolOf` → `poolForClaim` is a published `api/` port change | low | med | exactly one production caller (`JdbcAvailabilityClaim`) plus two test doubles; the rename is the point — a locking read must not be reachable from a read path (it errors inside a `readOnly` transaction), so the name warns callers off | agent | open |
 | R-6 | Per-venue authorization regressed while reordering the guards (invariant #13, BOLA) | low | high | `ownership.assertOwns` stays the **first** statement of both methods, before `venueExists` and before any lock; `CrossVenueDenialIT` pins it | agent | open |
 | R-7 | Flyway version collision | none | — | **no migration in this slice**; the set-scoped booking probe rides `booking_set_date_idx` (V5). Open PRs at plan time were Dependabot-only, no `db/migration` diff | agent | closed — N/A |
+| R-8 | **The Testcontainers ITs cannot run in this session**, so AC-1/AC-2 (HTTP) and AC-6/AC-7 (the two races) get no local green — a guard could ship unverified | high (certain) | high | Docker Hub returned `toomanyrequests` on `postgres:17`, so the daemon was stopped by pidfile per `docs/agents/docker-testcontainers.md` and the ITs now **skip cleanly** rather than fail for an environmental reason. Local verification is therefore unit-level only; **CI owns every IT in this slice**, and no phase may be declared green until its PR CI run is read (`riviera-sdlc` CI-gate rule). Every guard also has a unit-level twin in `VenueAdminServiceTest`, so the ITs are the concurrency proof, not the only proof of the policy | agent | open |
 
 ## Open questions / Assumptions
 
@@ -263,15 +264,19 @@ money fact is that `repriceRow` must keep working during bookings, which R-2 pro
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Open the draft PR as soon as the phase-0 commit exists (CI fires on the
-`pull_request` event only), then run Phase 0.
+**Next action:** Push phase 0 and open the draft PR (CI fires on the `pull_request` event
+only), then guard `removeSet`.
+
+> **Local verification is unit-level only this session (R-8).** Docker Hub rate-limited the
+> `postgres:17` pull, so the daemon was stopped and every `*IT` **skips**. Read each push's CI
+> run before building the next phase on it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Set-scoped claim probe (`BookingPresence#hasBookings(SetId)`) | | |
-| 1 — Guard `removeSet` under a row lock (`SET_IN_USE`) | | |
+| 0 — Set-scoped claim probe (`BookingPresence#hasBookings(SetId)`) | ✅ | `beb6892` |
+| 1 — Guard `removeSet` under a row lock (`SET_IN_USE`) | ⏳ | |
 | 2 — Guard `editSet` field-sensitively (`SetPlacement`) | | |
 | 3 — Close the claim race (`poolForClaim`, `FOR KEY SHARE`) | | |
 | 4 — Concurrency ITs + docs (RESPONSIBILITIES, close-out) | | |
