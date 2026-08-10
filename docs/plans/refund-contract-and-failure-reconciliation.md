@@ -216,18 +216,18 @@ to `true` after a failure.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** Phase 2 — write `PaymentGatewayRefundContract` + its Stripe binding red, then
-extract the fixture hooks so no Stripe type reaches the contract.
+**Next action:** Phase 4 — run `riviera-docs-freshness` over the branch range, then rewrite
+§`payment`'s "Two residuals" paragraph as the two rules that closed them.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Un-record port + guarded SQL | ✅ | `12a3368` |
 | 1 — Webhook refund-failure branch | ✅ | `<phase-1>` |
-| 2 — Shared at-most-once refund contract | ⏳ | |
-| 3 — Contract-coverage architecture rule | | |
-| 4 — Docs sweep + close-out | | |
+| 2 — Shared at-most-once refund contract | ✅ | `<phase-2>` |
+| 3 — Contract-coverage architecture rule | ✅ | `<phase-2>` |
+| 4 — Docs sweep + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -237,7 +237,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (`Repo hygiene (diff-scoped)`, run 31361935187) | The File-structure section omitted 5 paths the diff touched — `RefundLifecycle`, the `StripePaymentGateway` edit, and the three test doubles that had to gain the new port method. Exactly the shape the template warns about: never the interesting files | fixed-in-`<phase-2>` — all five listed, and the phase 2/3 files listed ahead of writing them |
 
 ---
 
@@ -250,17 +250,30 @@ Skill-routing gate for what the fix touches *before* editing).
   `UPDATE`
 - `platform/src/main/java/ai/riviera/platform/payment/adapter/in/StripeWebhookController.java` —
   the refund-lifecycle branch, the shared event-payload reader, the failure counter
+- `platform/src/main/java/ai/riviera/platform/payment/domain/RefundLifecycle.java` — the
+  dead-refund-status predicate, so the create path and the webhook path cannot drift apart
+- `platform/src/main/java/ai/riviera/platform/payment/adapter/out/StripePaymentGateway.java` —
+  reads the predicate from `RefundLifecycle` instead of its own copy; the residual its Javadoc named
+  is now closed
 - `platform/src/main/java/ai/riviera/platform/shared/ObservabilityMetrics.java` — the third shape
   on `REFUNDS_FAILED`'s doc
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/out/JdbcPaymentsIT.java` — phase 0
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/in/StripeWebhookIT.java` — AC-1…AC-5
 - `platform/src/test/java/ai/riviera/platform/payment/application/RefundServiceTest.java` — AC-6
+- `platform/src/test/java/ai/riviera/platform/payment/application/ThrowingPayments.java` — the new
+  port method on the throwing double
+- `platform/src/test/java/ai/riviera/platform/payment/application/PaymentServiceTest.java` — the
+  same, on its inline `Payments` stub
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — the same, plus the
+  `MeterRegistry` the web slice carries no auto-configuration for
 - `platform/src/test/java/ai/riviera/platform/payment/application/PaymentGatewayRefundContract.java`
   — the port-level at-most-once contract (abstract)
 - `platform/src/test/java/ai/riviera/platform/payment/adapter/out/StripeRefundContractTest.java` —
   the Stripe binding of the contract (AC-7)
-- `platform/src/test/java/ai/riviera/platform/payment/PaymentGatewayContractCoverageArchitectureTest.java`
-  — AC-8
+- `platform/src/test/java/ai/riviera/platform/payment/adapter/out/PaymentGatewayContractCoverageArchitectureTest.java`
+  — AC-8; in the adapter package (not the module root the plan first named) so the package-private
+  gateways and `CollectionGuarantee`s are nameable, the same grounds
+  `MailListenerExecutorArchitectureTest` sits in `notification.adapter.in`
 - `RESPONSIBILITIES.md` — §`payment`: the two residuals become the two rules that closed them
 - `docs/runbooks/` — the `riviera_refunds_failed_total` row gains the third shape
 - `CLAUDE.md` — the `payment` module row's refund sentence
