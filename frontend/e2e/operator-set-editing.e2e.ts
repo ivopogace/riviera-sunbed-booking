@@ -64,7 +64,8 @@ async function mockConsole(page: Page): Promise<{ sets: () => MockSet[] }> {
     route.fulfill({
       status: 409,
       contentType: 'application/problem+json',
-      json: { code: 'SET_IN_USE', detail: "This set is booked, or still held, so it can't be moved or removed." },
+      // A sentinel, not the server's prose: the assertions must prove the CLIENT mapped the code.
+      json: { code: 'SET_IN_USE', detail: 'in use' },
     });
 
   // Keep the per-set route ABOVE the venue GET so it wins the match.

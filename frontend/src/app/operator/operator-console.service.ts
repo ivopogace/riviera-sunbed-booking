@@ -369,8 +369,8 @@ export function requestErrorOf(error: unknown): RequestErrorCode {
 /**
  * Map an HTTP failure of a per-set write — add, edit or remove — to a known
  * {@link SetWriteErrorCode} (RFC-7807 `code`; or 401). One mapper for all three: their meaningful
- * surface is the same set of conflicts, and the panel's copy differs by the action it was doing,
- * not by which endpoint answered.
+ * surface is the same set of conflicts, so which endpoint answered never changes the mapping. The
+ * panel renders one message per code — it does not know which action was attempted.
  */
 export function setWriteErrorOf(error: unknown): SetWriteErrorCode {
   if (error instanceof HttpErrorResponse) {

@@ -221,7 +221,7 @@ class VenueAdminController {
 			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"These prices were changed by someone else. Reload the latest and try again.");
 			case SET_IN_USE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
-					"This set is booked, or still held, so it can't be moved or removed.");
+					"This set is booked, or still held, so it can't be moved, repooled or removed.");
 			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Another set already occupies this grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),

@@ -168,6 +168,9 @@ for** `bugfix/bulk-replace-past-hold-freeze` (`riviera-sdlc` § Remote/cloud ses
   or held…"), which #599 deliberately left generic for the identical reason, and changing one
   without the other breaks that parity. Sharpening both is a **product-copy decision for the
   maintainer**, not a freshness defect — raised here rather than taken unilaterally.
+  **Superseded by #607:** the maintainer settled the wording (lifetime-neutral — the hold clause
+  now says the hold has not passed, without restating the guard's date arithmetic), and both codes
+  moved together so the parity argued for here is preserved. See `merged via PR #608`.
 
 ### Resolved
 
