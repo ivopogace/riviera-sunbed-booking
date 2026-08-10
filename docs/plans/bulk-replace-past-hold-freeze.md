@@ -254,7 +254,7 @@ then the `riviera-docs-freshness` sweep.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Narrow the replace’s availability arm + retire `anyClaims` (unit TDD) | ✅ | `9023c09` |
-| 1 — Pin it end-to-end (Testcontainers) | ✅ | `<phase-1>` |
+| 1 — Pin it end-to-end (Testcontainers) | ✅ | `cf83b39` |
 | 2 — Docs sweep + close-out | ⏳ | |
 
 **Local verification so far** (`riviera-local-debug` scoped runs; Docker available, so the ITs ran
