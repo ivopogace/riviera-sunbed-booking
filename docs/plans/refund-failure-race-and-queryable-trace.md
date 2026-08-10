@@ -255,7 +255,7 @@ sixth failure shape and enumeration query).
 |-------|--------|---------|
 | 0 — `V42` migration: the refund-failure trace columns | ✅ | `0f30527` |
 | 1 — Guard the refund record; make the un-record leave a trace (items 2 + 3a) | ✅ | `3826949` |
-| 2 — Close the race: attempt stamp, by-intent fallback, gateway refusal (item 1) | ✅ | PHASE2SHA |
+| 2 — Close the race: attempt stamp, by-intent fallback, gateway refusal (item 1) | ✅ | `55f18b4` |
 | 3 — Owed-refund gauge + docs sweep (item 3b) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
