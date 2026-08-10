@@ -8,9 +8,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * The bounds of the refund bulkhead ({@link RefundExecutorConfig}), externalised because every number
- * here is sized against a <em>gateway</em> budget — one refund is one blocking round-trip, bounded
- * today at 25s by Stripe's configured connect + read timeouts with no SDK retries (pinned by
- * {@code StripeConfigTest}). The full sizing argument: {@code RESPONSIBILITIES.md} §{@code booking}.
+ * here is sized against a <em>gateway</em> budget. One Stripe call is one blocking round-trip, bounded
+ * at 25s by the configured connect + read timeouts with no SDK retries (pinned by
+ * {@code StripeConfigTest}); one <em>refund</em> is up to <strong>three</strong> such calls — the
+ * existence read, the create, and the create's same-key replay — so the worst-case occupancy a worker
+ * can reach is 75s, and only in the mixed degradation where reads answer but writes time out (a read
+ * that times out ends the refund at 25s). The full sizing argument:
+ * {@code RESPONSIBILITIES.md} §{@code booking}.
  *
  * <p>The shipped values live in {@code application.properties}; the defaults below are a backstop for a
  * context bound without it. The {@code ${RIVIERA_REFUND_*:…}} placeholders are also the only reason the
@@ -46,9 +50,9 @@ record RefundExecutorProperties(Integer poolSize, Integer queueCapacity, Duratio
 
 	/**
 	 * Deliberately far short of one round-trip. Abandoning a refund is cheap — the publication stays
-	 * outstanding, the next start republishes, and the {@code booking-<id>-refund} idempotency key makes
-	 * the replay return the original rather than move money twice — so the drain need only catch the
-	 * sub-second common case.
+	 * outstanding, the next start republishes, and that replay cannot move money twice however long
+	 * the restart takes, because the gateway checks what it already holds before creating a refund —
+	 * so the drain need only catch the sub-second common case.
 	 */
 	static final Duration DEFAULT_SHUTDOWN_DRAIN = Duration.ofSeconds(5);
 

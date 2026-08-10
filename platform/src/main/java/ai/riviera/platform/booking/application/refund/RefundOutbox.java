@@ -13,9 +13,11 @@ package ai.riviera.platform.booking.application.refund;
  * one, which is why the scope is an exact-id allowlist of one (the issue's revised decision).
  *
  * <p><strong>Re-driving is safe where re-deciding would not be.</strong> A re-driven publication
- * re-delivers the same {@code BookingCancelled} payload, so the listener re-issues the same
- * idempotency-keyed gateway call ({@code booking-<id>-refund}) and a refund that already succeeded is
- * returned, not repeated (invariants #8/#10). Nothing here is a delivery guarantee: a refund that
+ * re-delivers the same {@code BookingCancelled} payload, so the listener re-issues the same gateway
+ * call and a refund that already succeeded is returned, not repeated (invariants #8/#10) — because
+ * the gateway checks what it holds before creating, which is what makes this lever safe to press
+ * long after the {@code booking-<id>-refund} idempotency key has been pruned
+ * ({@code RESPONSIBILITIES.md} §{@code payment}). Nothing here is a delivery guarantee: a refund that
  * fails again simply stays outstanding, which is the registry's whole contract and why
  * {@code riviera.outbox.pending} and {@code riviera.refunds.failed} remain the signals to watch.
  */

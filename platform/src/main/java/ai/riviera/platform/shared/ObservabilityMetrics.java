@@ -30,6 +30,15 @@ public final class ObservabilityMetrics {
 	public static final String REFUNDS_SHED = "riviera.refunds.shed";
 
 	/**
+	 * Counter: refunds already present at the gateway and adopted instead of created again. An
+	 * increment means an earlier attempt moved the money but lost the response, so nothing was
+	 * recorded locally — the money is right and the record has just caught up. Distinct from
+	 * {@link #REFUNDS_FAILED}: nothing failed here. Chase a rising rate as a gateway-connectivity
+	 * signal, not a money one.
+	 */
+	public static final String REFUNDS_ADOPTED = "riviera.refunds.adopted";
+
+	/**
 	 * Counter: registry-borne mails shed because the bulkhead pool was saturated. The only member of
 	 * the mail-loss family expected to be re-delivered — its event publication stays outstanding.
 	 */

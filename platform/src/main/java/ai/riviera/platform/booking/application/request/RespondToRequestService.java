@@ -149,7 +149,7 @@ class RespondToRequestService implements RespondToRequest {
 			case PaymentOutcome.Failed failed -> {
 				// PI creation failed after the transition committed — revert to PENDING_REQUEST so
 				// the hold survives and the operator can retry (idempotency key makes it safe).
-				// Residual: after a double timeout (createWithRecovery) an UNREGISTERED intent may
+				// Residual: after a double timeout (withLostResponseReplay) an UNREGISTERED intent may
 				// exist at Stripe — inert here, because webhooks correlate via the payment table
 				// and an accept retry replays the same idempotency key, registering that intent.
 				boolean reverted = bookings.revertAcceptToPending(accepted.bookingId());

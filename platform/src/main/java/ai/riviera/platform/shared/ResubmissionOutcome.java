@@ -68,7 +68,8 @@ public sealed interface ResubmissionOutcome {
 	 * did nothing.
 	 *
 	 * <p>The work itself is safe either way — the registry's per-publication claim skips one whose
-	 * previous resubmission is still draining, and the money-path lever is idempotency-keyed besides —
+	 * previous resubmission is still draining, and the money-path lever's gateway refuses to create a
+	 * refund it already holds besides —
 	 * so this refusal is about the <em>sweep</em>: during a relay or gateway outage every re-driven
 	 * attempt fails fast and is immediately eligible again, and without the window a held-down button
 	 * becomes a retry storm against the dependency that is already struggling, each press reporting a

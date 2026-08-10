@@ -12,10 +12,12 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
  * by {@code payment} — which would cycle — is not needed; invariant #11).
  *
  * <p>Collect-only — <strong>no Stripe Connect</strong> (ADR-0002 / invariant #8). The refund is
- * server-initiated through the outbound {@code PaymentGateway} with an idempotency key derived from
- * the booking id, so a retried cancel never double-refunds. The {@code amount} is computed
- * server-side by {@code booking} from the cancellation policy (invariant #10) — never supplied by
- * the client.
+ * server-initiated through the outbound {@code PaymentGateway}, and a retried cancel never
+ * double-refunds however late the retry lands: the gateway is asked what refunds it already holds
+ * before it is asked to make one. The booking-derived idempotency key remains the in-window half of
+ * that guarantee, not the whole of it — rationale: {@code RESPONSIBILITIES.md} §{@code payment}. The
+ * {@code amount} is computed server-side by {@code booking} from the cancellation policy (invariant
+ * #10) — never supplied by the client.
  */
 public interface RefundPort {
 

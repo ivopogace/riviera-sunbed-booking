@@ -219,8 +219,9 @@ sits in the outbox.
   refund listener drains on — that is wiring for *my* driving adapter, not gateway knowledge: I still
   only call `payment.api.RefundPort` and never learn which gateway is behind it. `payment` must not
   host it; it does not know it is being called asynchronously, and must not have to. The listener
-  makes a blocking gateway round-trip (one attempt, ≈25s worst case — `StripeClient` adds no
-  retries, pinned by `StripeConfigTest`) and `WeatherRefundService` dispatches a whole venue-day of
+  makes blocking gateway round-trips (no SDK retries, so ≈25s worst case per call, pinned by
+  `StripeConfigTest` — and since #569 a refund is up to three calls: the existence read, the create,
+  and the create's same-key replay, so ≈75s per refund) and `WeatherRefundService` dispatches a whole venue-day of
   refunds in one transaction, so on Boot's shared `applicationTaskExecutor` a single admin action
   would starve the spine that pool also carries; the same swap **dropped** the `REQUIRES_NEW` the
   composite annotation supplied — it bought nothing (the one write is a single statement, after a
@@ -234,13 +235,19 @@ sits in the outbox.
   one — a 60-booking venue-day against a degraded gateway drains in ~12.5 min at 2 threads (the mail
   pools' choice, sized for a handful of sends a day) and ~6 min at 4, while larger buys little, since
   the normal case is sub-second and each extra worker is one more concurrent request during exactly
-  the incident where the gateway is already unhappy. **Queue 500** is ≈52 min of worst-case backlog
-  (500 × 25s ÷ 4), past which the Event Publication Registry is the better queue — the same reasoning
-  #383 applied at ≈50 min. **Drain 5s** is deliberately far short of one round-trip, for two reasons:
+  the incident where the gateway is already unhappy. **Queue 500** was ≈52 min of worst-case backlog
+  (500 × 25s ÷ 4) when a refund was one gateway call; since #569 it is up to three (existence read,
+  create, same-key replay), so the same 500 is **≈156 min** at the 75s ceiling — and the bound was
+  re-derived and deliberately **left at 500**, because that ceiling needs the mixed degradation where
+  reads answer but writes time out (a read that times out ends the refund at 25s, the old number), and
+  because the alternative — shedding sooner — trades a lossless queue for more publications to
+  re-drive at exactly the moment the gateway is unhealthy. Past that backlog the Event Publication
+  Registry is the better queue anyway — the same reasoning #383 applied at ≈50 min.
+  **Drain 5s** is deliberately far short of even one round-trip, for two reasons:
   the shutdown budget *stacks* rather than overlaps (§`shared`'s `ShutdownBudget` owns that sum), and
   abandoning a refund is cheap in a way abandoning a mail is not — the publication stays outstanding
-  and the `booking-<id>-refund` idempotency key makes the replay return the original refund rather
-  than move money twice, so the drain need only catch the sub-second common case and the pathological
+  and the replay cannot move money twice however late it lands (§`payment`: the gateway is asked what
+  it already holds), so the drain need only catch the sub-second common case and the pathological
   25s one is precisely what it is safe to give up on. Re-deriving these against a different gateway
   (ADR-0009) is then a config change, not a code change. The
   executor rule is structural: `RefundListenerExecutorArchitectureTest`, scoped to `booking`
@@ -303,9 +310,47 @@ Stripe promises neither ordering nor a single delivery, and the handler widens t
   was the rejected alternative — a table plus an admin re-drive surface, and the id staying
   un-blacklisted already leaves a dashboard replay open.
 
+**One more rule governs refund *execution*, and it is not the idempotency key** (#569). The key
+(`booking-<id>-refund`) is a **time-bounded** defence: Stripe prunes keys after roughly a day, so a
+replay beyond that window is a brand-new request with the same parameters — and the vehicles that
+replay this call are precisely the slow ones (the restart republish, which on Render can be days
+away, and the admin re-drive, pressed exactly when someone notices `riviera.outbox.pending` late).
+Stripe's refundable-amount ceiling catches the *full*-refund case, so what got through was the
+partial one: two 50% refunds fit inside the charge and both succeed.
+
+- **A refund is never created without first asking the gateway what it already holds.** The adapter
+  lists the refunds on the booking's PaymentIntent and **adopts** one — records it and reports
+  success — instead of creating a second. A `failed`/`canceled` refund returned no money, so it is
+  not adoptable and a fresh attempt proceeds. This is invariant #8 applied to refunds, and it is why
+  the check is not the cheaper read of our own `refunded_minor`: that column is written *after* a
+  call returns, so it is silent about exactly the lost-response case being guarded — a partial refund
+  that posted but whose response was lost leaves it at 0. The read **fails closed**: an unreadable
+  list is `Failed`, never "no refund exists", so the publication stays outstanding and retries.
+- **Adoption is narrow on purpose: exactly one live refund, for exactly the amount requested.** That
+  is the shape a lost response leaves; nothing else is. Anything else — several live refunds, or one
+  for a different amount (a manual dashboard refund, say) — is `Failed("refund_mismatch")`, because
+  both alternatives are worse. Topping up a shortfall would be a refund **decision**, which is
+  `booking`'s; reporting success would complete the event publication and strand a guest still owed
+  money with only a log line behind it. `Failed` keeps the publication outstanding and lights
+  `riviera.refunds.failed`, whose meaning — "a refund the platform owes could not be issued" — is
+  exactly right. It will not clear itself: a human settles it at the gateway.
+- **Adoption is visible, not silent** — `riviera.refunds.adopted`. An increment means an earlier
+  attempt moved the money and lost the response; the money was always right, the record just caught up.
+- The refund create also **replays once on a connection timeout** with the same key, the twin of the
+  PaymentIntent path (one shared helper, so the rule has one home), so the common lost-response case
+  resolves while the key still holds.
+- **Two residuals, stated rather than implied.** A `pending` refund is adoptable — it is where a
+  refund normally starts, and refusing to count it would create the second refund this rule exists to
+  prevent — so a refund that Stripe later flips to `failed` is recorded as done, and with no refund
+  webhook in v1 nothing re-drives it. And at-most-once is the *collecting adapter's* guarantee, held
+  by `StripePaymentGateway` alone: `PaymentGateway` publishes no conformance test that would force a
+  future adapter (ADR-0009's Paysera) to honour it.
+
 **Not My Job:**
 - Deciding *whether* to refund or *how much* → **`booking`** owns the refund policy;
-  I execute the refund it decided
+  I execute the refund it decided. Note the line this puts under adoption: when the gateway already
+  holds a refund for a *different* amount than the one requested, I record what Stripe holds and warn
+  — paying the difference would be a refund decision, which is not mine to make
 - The booking lifecycle → **`booking`**
 - The payout ledger or commission → **`payout`**
 - Paying venues out / Stripe Connect → nobody uses Connect; **`payout`** records what's

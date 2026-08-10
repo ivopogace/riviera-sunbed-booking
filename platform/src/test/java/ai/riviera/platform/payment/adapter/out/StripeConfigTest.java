@@ -75,13 +75,16 @@ class StripeConfigTest {
 	}
 
 	/**
-	 * The worst case one refund may occupy a worker, pinned rather than asserted in prose (AC-1).
+	 * The worst case a single Stripe <em>call</em> may occupy a worker, pinned rather than asserted in
+	 * prose (AC-1). Multiply by the calls one refund makes — three, see below — for the executor's
+	 * actual occupancy budget.
 	 *
-	 * <p>The bounds of {@code booking}'s refund executor are sized against a budget, and that budget is
-	 * a derivation over three facts this method fixes:
+	 * <p>The bounds of {@code booking}'s refund executor are sized against that budget, and the
+	 * per-call half is a derivation over three facts this method fixes:
 	 * {@code (connectTimeout + readTimeout) × (1 + maxNetworkRetries)}. Today that is
-	 * {@code (5s + 20s) × 1 = 25s}, and {@link StripeProperties}' ceilings put the absolute worst case
-	 * at {@code (30s + 80s) × 1 = 110s}. A number written only in a Javadoc rots the first time someone
+	 * {@code (5s + 20s) × 1 = 25s} per call, so {@code 75s} per refund, and {@link StripeProperties}'
+	 * ceilings put the absolute worst case at {@code (30s + 80s) × 1 = 110s} per call. A number written
+	 * only in a Javadoc rots the first time someone
 	 * tunes a timeout; a failing test is what makes the executor's sizing argument re-examined instead.
 	 *
 	 * <p><strong>The retry factor is the one that surprises</strong>, which is why it is asserted rather
@@ -90,10 +93,16 @@ class StripeConfigTest {
 	 * static</em> API and never reaches a {@link StripeClient}. The builder's own field is a bare
 	 * {@code int} defaulting to {@code 0}, {@link StripeConfig} never sets it, and
 	 * {@code RequestOptions.merge} falls back to the client value because
-	 * {@code StripePaymentGateway#refund} sets only an idempotency key. So a refund is exactly one
-	 * round-trip. Raising this would multiply the occupancy budget <em>and</em> add the SDK's
+	 * {@code StripePaymentGateway#refund} sets only an idempotency key. So each Stripe <em>call</em> is
+	 * exactly one round-trip. Raising this would multiply the occupancy budget <em>and</em> add the SDK's
 	 * exponential backoff sleeps (500ms doubling, capped at 5s) on top — invisible to the pool, which
 	 * only sees a worker that will not come back.
+	 *
+	 * <p><strong>A refund is up to three of those calls</strong> — the existence read that makes a
+	 * replay safe past the idempotency key's lifetime, the create, and the create's same-key replay —
+	 * so the worst-case worker occupancy is 3 x 25s, not 25s. That multiplier lives in the adapter, not
+	 * in this client config, which is why this test still pins 25s: it is the per-call budget every
+	 * other number is derived from.
 	 *
 	 * <p><strong>This test is deliberately gateway-specific and deliberately fragile to ADR-0009.</strong>
 	 * The migration epic removes {@link StripeConfig} outright, so this method stops compiling on the P1 slice.
@@ -106,12 +115,14 @@ class StripeConfigTest {
 				"sk_test_123", "whsec_abc", null, null));
 
 		assertEquals(0, builder.getMaxNetworkRetries(),
-				"a refund must be ONE round-trip: the client's retry count multiplies the worst-case "
-						+ "occupancy the booking refund executor's bounds are sized against, and adds the "
-						+ "SDK's backoff sleeps on top. Stripe.maxNetworkRetries=2 is the legacy static "
-						+ "API's default and does not reach a StripeClient");
+				"each Stripe call must be ONE round-trip: the client's retry count multiplies the "
+						+ "worst-case occupancy the booking refund executor's bounds are sized against, on "
+						+ "top of the adapter's own 3-calls-per-refund, and adds the SDK's backoff sleeps "
+						+ "besides. Stripe.maxNetworkRetries=2 is the legacy static API's default and does "
+						+ "not reach a StripeClient");
 		assertEquals(25_000, builder.getConnectTimeout() + builder.getReadTimeout(),
-				"the shipped refund budget is (5s connect + 20s read) x 1 attempt = 25s; if this moves, "
-						+ "re-derive riviera.booking.refund.queue-capacity against the new number");
+				"the shipped per-call budget is 5s connect + 20s read = 25s, and a refund is up to three "
+						+ "calls (existence read, create, same-key replay) = 75s worst case; if either "
+						+ "moves, re-derive riviera.booking.refund.queue-capacity against the new number");
 	}
 }

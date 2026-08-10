@@ -1,8 +1,10 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.util.List;
 import java.util.Locale;
 
 import java.util.Optional;
+import java.util.Set;
 
 import com.stripe.StripeClient;
 import com.stripe.exception.ApiConnectionException;
@@ -12,12 +14,17 @@ import com.stripe.model.Refund;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.RefundCreateParams;
+import com.stripe.param.RefundListParams;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.shared.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
@@ -55,12 +62,23 @@ class StripePaymentGateway implements PaymentGateway {
 	private static final String STATUS_SUCCEEDED = "succeeded";
 	private static final String STATUS_CANCELED = "canceled";
 
+	/** Stripe Refund statuses in which no money reached the tourist, so the refund is still owed. */
+	private static final Set<String> DEAD_REFUND_STATUSES = Set.of("failed", STATUS_CANCELED);
+
+	/** Far above any real count — a booking gets one refund, so page one is always decisive. */
+	private static final long REFUND_PAGE_LIMIT = 100L;
+
+	/** The gateway holds refunds for this booking that are not the one asked for; a human must settle it. */
+	private static final String REFUND_MISMATCH = "refund_mismatch";
+
 	private final StripeClient stripe;
 	private final Payments payments;
+	private final Counter adoptedRefunds;
 
-	StripePaymentGateway(StripeClient stripe, Payments payments) {
+	StripePaymentGateway(StripeClient stripe, Payments payments, MeterRegistry meters) {
 		this.stripe = stripe;
 		this.payments = payments;
+		this.adoptedRefunds = meters.counter(ObservabilityMetrics.REFUNDS_ADOPTED);
 	}
 
 	@Override
@@ -77,7 +95,8 @@ class StripePaymentGateway implements PaymentGateway {
 				.setIdempotencyKey(idempotencyKey(booking))                  // derived from booking id (#8)
 				.build();
 		try {
-			PaymentIntent intent = createWithRecovery(params, options, booking);
+			PaymentIntent intent = withLostResponseReplay(booking, "PaymentIntent",
+					() -> stripe.v1().paymentIntents().create(params, options));
 			payments.register(new NewPayment(booking, intent.getId(), amount.minor(), amount.currency(),
 					intent.getClientSecret()));
 			return new PaymentOutcome.Pending(intent.getClientSecret(), intent.getId());
@@ -91,32 +110,22 @@ class StripePaymentGateway implements PaymentGateway {
 	}
 
 	/**
-	 * Create the PaymentIntent, recovering from a create whose response was lost to a timeout
-	 * (issue #66). A read/connect timeout throws {@link ApiConnectionException} <em>after</em> Stripe
-	 * may already have created the intent — leaving it orphaned-and-untracked, because
-	 * {@code register} (which runs only on a successful return) never executed. Since the idempotency
-	 * key is deterministic ({@code booking-<id>-pi}), replaying the create <strong>once</strong> with
-	 * the same key returns the <strong>same</strong> intent Stripe created (or creates it fresh if the
-	 * first request never landed) — so the id is recovered and recorded by the caller, never lost. A
-	 * non-connection {@link StripeException} (a decline, an invalid request) is a definitive Stripe
-	 * response, carries no orphan risk, and is <strong>not</strong> replayed — it propagates to the
-	 * caller's {@code Failed} mapping. A second consecutive timeout also propagates: Stripe
-	 * auto-expires the unconfirmed intent (no charge), the documented low-impact residual.
+	 * Refund a booking's collection <strong>at most once</strong>, whatever the caller's replay
+	 * distance in time.
+	 *
+	 * <p>The idempotency key alone cannot carry that promise: Stripe prunes keys after roughly a
+	 * day, and the replay vehicles behind this call — the restart republish and the admin re-drive —
+	 * routinely fire later than that. So the gateway is asked what it already holds against the
+	 * PaymentIntent, and a refund that already returned money is <em>adopted</em>: recorded locally
+	 * and reported as success, never created a second time. Reading the gateway rather than
+	 * {@code payment.refunded_minor} is invariant #8 applied to refunds — the local row is written
+	 * only after a call returns, so it is silent about exactly the lost-response case this guards.
+	 *
+	 * <p>Fail-closed: if the read itself fails, the answer is {@link RefundResult.Failed} and no
+	 * refund is created, leaving the event publication outstanding to retry.
+	 *
+	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
-	private PaymentIntent createWithRecovery(PaymentIntentCreateParams params, RequestOptions options,
-			BookingRef booking) throws StripeException {
-		try {
-			return stripe.v1().paymentIntents().create(params, options);
-		}
-		catch (ApiConnectionException e) {
-			// The response was lost to a timeout; the intent may exist at Stripe. Replay once with the
-			// same idempotency key to recover it (never double-create). Code-only log (invariant #8).
-			log.warn("Stripe PaymentIntent create timed out for booking {} — replaying with the same "
-					+ "idempotency key to recover any created intent (code={})", booking.value(), e.getCode());
-			return stripe.v1().paymentIntents().create(params, options);
-		}
-	}
-
 	@Override
 	public RefundResult refund(BookingRef booking, Money amount) {
 		Optional<String> intentId = payments.findIntentByBookingRef(booking);
@@ -124,15 +133,20 @@ class StripePaymentGateway implements PaymentGateway {
 			log.warn("no PaymentIntent on record for booking {} — cannot refund", booking.value());
 			return new RefundResult.Failed("no_collection");
 		}
-		RefundCreateParams params = RefundCreateParams.builder()
-				.setPaymentIntent(intentId.get())
-				.setAmount(amount.minor())                                   // integer minor units (#5)
-				.build();
-		RequestOptions options = RequestOptions.builder()
-				.setIdempotencyKey(refundIdempotencyKey(booking))            // derived from booking id (#8)
-				.build();
 		try {
-			Refund refund = stripe.v1().refunds().create(params, options);
+			List<Refund> live = liveRefundsOn(intentId.get());
+			if (!live.isEmpty()) {
+				return adoptOrRefuse(booking, live, amount);
+			}
+			RefundCreateParams params = RefundCreateParams.builder()
+					.setPaymentIntent(intentId.get())
+					.setAmount(amount.minor())                               // integer minor units (#5)
+					.build();
+			RequestOptions options = RequestOptions.builder()
+					.setIdempotencyKey(refundIdempotencyKey(booking))        // derived from booking id (#8)
+					.build();
+			Refund refund = withLostResponseReplay(booking, "refund",
+					() -> stripe.v1().refunds().create(params, options));
 			payments.markRefunded(booking, amount.minor(), refund.getId());
 			return new RefundResult.Refunded(refund.getId());
 		}
@@ -140,6 +154,91 @@ class StripePaymentGateway implements PaymentGateway {
 			// Code only — never the message, the key, or any PII (invariant #8 / log discipline).
 			log.warn("Stripe refund failed for booking {}: code={}", booking.value(), e.getCode());
 			return new RefundResult.Failed(e.getCode() == null ? STRIPE_ERROR : e.getCode());
+		}
+	}
+
+	/**
+	 * The refunds Stripe holds against the intent that have not definitively failed. A
+	 * {@code failed}/{@code canceled} refund returned no money, so it must not stop a fresh attempt;
+	 * everything else — including {@code pending}, which is where a refund normally starts — counts,
+	 * because creating a second one alongside it is the outcome this method exists to prevent.
+	 *
+	 * <p>The residual that leaves: a {@code pending} refund adopted here can still flip to
+	 * {@code failed} later, and with no refund webhook (v1) nothing re-drives it. That is the
+	 * pre-existing shape of the create path too, and is recorded in {@code RESPONSIBILITIES.md}
+	 * §{@code payment}; it is not something this read can close.
+	 *
+	 * <p>One page suffices: more than one live refund is refused rather than reconciled, so the read
+	 * only ever needs to answer "none", "exactly one", or "more than one".
+	 */
+	private List<Refund> liveRefundsOn(String intentId) throws StripeException {
+		RefundListParams params = RefundListParams.builder()
+				.setPaymentIntent(intentId)
+				.setLimit(REFUND_PAGE_LIMIT)
+				.build();
+		return stripe.v1().refunds().list(params).getData().stream()
+				.filter(StripePaymentGateway::isLive)
+				.toList();
+	}
+
+	private static boolean isLive(Refund refund) {
+		String status = refund.getStatus();
+		// An unrecognised status counts as live — never create a second refund on a guess.
+		return status == null || !DEAD_REFUND_STATUSES.contains(status);
+	}
+
+	/**
+	 * Adopt the refund the gateway already holds, or refuse when what it holds is not the refund that
+	 * was asked for.
+	 *
+	 * <p>Adoption is deliberately narrow — <strong>exactly one</strong> live refund, for
+	 * <strong>exactly</strong> the requested amount. That is the shape a lost response leaves behind,
+	 * and nothing else is. Both ways of "handling" anything else are worse than refusing: topping up a
+	 * shortfall would be a refund <em>decision</em>, which belongs to {@code booking}, while reporting
+	 * success would complete the event publication and strand a tourist still owed money, leaving a log
+	 * line as the only trace. {@link RefundResult.Failed} instead keeps the publication outstanding and
+	 * lights {@code riviera.refunds.failed} — the money-path signal that already means "a refund the
+	 * platform owes could not be issued", which is exactly true here.
+	 */
+	private RefundResult adoptOrRefuse(BookingRef booking, List<Refund> live, Money requested) {
+		Refund held = live.getFirst();
+		Long heldMinor = held.getAmount();
+		if (live.size() > 1 || heldMinor == null || heldMinor != requested.minor()) {
+			log.warn("booking {} carries {} live refund(s) at the gateway totalling an amount that is "
+					+ "not the {} minor units requested — refusing to act", booking.value(), live.size(),
+					requested.minor());
+			return new RefundResult.Failed(REFUND_MISMATCH);
+		}
+		payments.markRefunded(booking, heldMinor, held.getId());
+		adoptedRefunds.increment();
+		log.info("adopted refund {} already held for booking {} — no second refund created",
+				held.getId(), booking.value());
+		return new RefundResult.Refunded(held.getId());
+	}
+
+	/** A Stripe call that may be replayed under the same idempotency key. */
+	@FunctionalInterface
+	private interface StripeCall<T> {
+		T execute() throws StripeException;
+	}
+
+	/**
+	 * Run a keyed create, recovering from one whose response was lost to a timeout. A read/connect
+	 * timeout throws {@link ApiConnectionException} <em>after</em> Stripe may already have done the
+	 * work, leaving it untracked because the recording call never ran. The key is deterministic and
+	 * still valid this instant, so replaying <strong>once</strong> returns whatever Stripe made rather
+	 * than making a second. A non-connection {@link StripeException} is a definitive answer and is not
+	 * replayed. A second consecutive timeout propagates to the caller's {@code Failed} mapping.
+	 */
+	private <T> T withLostResponseReplay(BookingRef booking, String what, StripeCall<T> call)
+			throws StripeException {
+		try {
+			return call.execute();
+		}
+		catch (ApiConnectionException e) {
+			log.warn("Stripe {} create timed out for booking {} — replaying with the same idempotency "
+					+ "key to recover anything created (code={})", what, booking.value(), e.getCode());
+			return call.execute();
 		}
 	}
 
@@ -184,7 +283,11 @@ class StripePaymentGateway implements PaymentGateway {
 		return "booking-" + booking.value() + "-pi";
 	}
 
-	/** One refund per booking: a stable key so a retried cancel never double-refunds (#8/#10). */
+	/**
+	 * One refund per booking: a stable key so a replay <em>inside</em> Stripe's key window returns
+	 * the original refund. Beyond that window the key is pruned and {@link #refund}'s existence read
+	 * is what prevents a second one (invariant #8/#10).
+	 */
 	private static String refundIdempotencyKey(BookingRef booking) {
 		return "booking-" + booking.value() + "-refund";
 	}
