@@ -207,14 +207,14 @@ code; only the server-side predicate behind the 409 narrows.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 step 1 — write the failing `VenueAdminServiceTest.removeSetIsAllowedWhenTheOnlyHoldIsPast`.
+**Next action:** Phase 1 step 1 — add `VenueAdminControllerIT.removeSetDropsAPastStaffHoldWithTheSet` and re-date `removeSetKeepsAStaffHoldAndAnswers409` to today.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Narrow the delete's availability arm (unit TDD) | | |
-| 1 — Pin it end-to-end + defuse the IT date bomb | | |
+| 0 — Narrow the delete's availability arm (unit TDD) | ✅ | `<phase-0>` |
+| 1 — Pin it end-to-end + defuse the IT date bomb | ⏳ | |
 | 2 — Docs sweep + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -409,6 +409,8 @@ void removeSetDropsAPastStaffHoldWithTheSet() throws Exception {
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | phase 0 | Other date-agnostic claim probes carrying the same permanent-freeze shape | `git grep -n "anyClaims(" -- platform/src/main` | 3: the `venue.spi` declaration, its `availability` implementation, and **one** caller — `VenueAdminService#replaceLayout:266` (venue-wide) | **Subset.** `removeSet` narrowed here; `replaceLayout` deferred to a follow-up issue (Non-goals). It carries the same shape only for a **walk-in-only** venue: its sibling arm `hasBookings(venueId)` already freezes the bulk regenerate permanently for any venue that has ever sold online, so narrowing the availability half alone changes nothing there. Widening a set-scoped decision to a venue-wide destructive write is the maintainer's call, not a fix-while-here |
+| 2026-08-10 | phase 0 | Hard-coded `DATE '…'` literals a now date-sensitive guard would silently reinterpret | `git grep -n "DATE '" -- platform/src/test/java/ai/riviera/platform/venue` | 5 | **Subset.** `VenueAdminControllerIT:249` (the delete's staff hold) is re-dated relative to today in phase 1 — it is the only literal the narrowed guard reads. `:273` is a *booking* date behind the date-agnostic booking arm; `BeachMapReplaceIT:258` / `VenueRepriceIT:157` sit behind `anyClaims`/no probe and are dated 2035, so they stay valid even if the deferred `replaceLayout` narrowing lands. No change to those four |
 
 ---
 
