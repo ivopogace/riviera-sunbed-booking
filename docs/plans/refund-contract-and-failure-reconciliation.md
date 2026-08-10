@@ -39,7 +39,8 @@ guest-facing half needs **no** code: `ViewBookingService#refundOutstanding` alre
 the Module-ownership table that pinned the un-record in `payment`, not `booking`) · `tdd` (every
 phase is red→green; the contract test in phase 2 is written against the *port*, then a second
 adapter-shaped fixture is what proves it is not Stripe-specific) · `riviera-review-overlay` (review
-gate — <when it ran>) · `riviera-docs-freshness` (<ran over `<range>`, N findings>)
+gate — ran at ready-for-review, alongside `/code-review`) · `riviera-docs-freshness` (**ran** over
+`origin/main..HEAD`, 6 findings, all patched — see the Docs-freshness run below)
 · `riviera-stripe-payments` (webhook-as-source-of-truth for the refund lifecycle too, and the
 reminder that refund *eligibility* is server-side in `booking` — so the webhook may un-record but
 must never re-decide) · `riviera-modulith` (kept the new port internal to `payment.application`
@@ -59,33 +60,33 @@ in for it (`riviera-sdlc` § Remote/cloud session addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a payment row that records a refund (`refunded_minor > 0`, status
+- [x] **AC-1:** Given a payment row that records a refund (`refunded_minor > 0`, status
   `REFUNDED`), when a signature-verified refund event reports that refund id as `failed`, then the
   row is un-recorded (`refunded_minor = 0`, status `SUCCEEDED`) and `riviera.refunds.failed`
   increments by one. *Pinned by:* `StripeWebhookIT.failedRefundUnrecordsTheRefund`
-- [ ] **AC-2:** Given that row already un-recorded, when a second refund-failure event for the same
+- [x] **AC-2:** Given that row already un-recorded, when a second refund-failure event for the same
   refund id arrives (a distinct event id, so the dedup table does not absorb it), then no row moves
   and the counter does not increment again. *Pinned by:*
   `StripeWebhookIT.aSecondFailureForTheSameRefundMovesNothing`
-- [ ] **AC-3:** Given a refund event whose `Refund` is still live (`pending`, `succeeded`), when it
+- [x] **AC-3:** Given a refund event whose `Refund` is still live (`pending`, `succeeded`), when it
   arrives, then the payment row is untouched and the response is `200`. *Pinned by:*
   `StripeWebhookIT.aLiveRefundUpdateChangesNothing`
-- [ ] **AC-4:** Given a handled refund event whose payload cannot be read as a `Refund`, when it
+- [x] **AC-4:** Given a handled refund event whose payload cannot be read as a `Refund`, when it
   arrives, then `UnreadableWebhookEventException` propagates (`503`) and the event-id dedup insert
   rolls back, so Stripe re-delivers. *Pinned by:*
   `StripeWebhookIT.anUnreadableRefundEventIsNotConsumed`
-- [ ] **AC-5:** Given a refund-failure event naming a refund id this app never recorded, when it
+- [x] **AC-5:** Given a refund-failure event naming a refund id this app never recorded, when it
   arrives, then no row moves, the counter does not increment, and the response is `200`.
   *Pinned by:* `StripeWebhookIT.aFailureForAnUnknownRefundIsIgnored`
-- [ ] **AC-6:** Given a booking whose recorded refund was un-recorded by AC-1, when the refund
+- [x] **AC-6:** Given a booking whose recorded refund was un-recorded by AC-1, when the refund
   progress is read, then it is `OUTSTANDING` (money collected, none returned) rather than
   `ACCEPTED`. *Pinned by:* `RefundServiceTest.progressIsOutstandingAfterARecordedRefundFailed`
-- [ ] **AC-7:** Given a collecting `PaymentGateway` that already holds a refund for exactly the
+- [x] **AC-7:** Given a collecting `PaymentGateway` that already holds a refund for exactly the
   requested amount, when `refund` is replayed with its idempotency key assumed pruned, then exactly
   one refund exists at the gateway and the replay reports the **first** refund's id. *Pinned by:*
   `PaymentGatewayRefundContract.replayingBeyondTheKeyWindowMovesMoneyOnlyOnce` via
   `StripeRefundContractTest`
-- [ ] **AC-8:** Given a `PaymentGateway` implementation in production code, when it is neither
+- [x] **AC-8:** Given a `PaymentGateway` implementation in production code, when it is neither
   paired with a `PaymentGatewayRefundContract` subclass nor declared non-collecting, then the
   architecture rule fails the build naming the unclassified adapter. *Pinned by:*
   `PaymentGatewayContractCoverageArchitectureTest.everyGatewayIsContractCoveredOrNonCollecting`
@@ -114,26 +115,29 @@ surface is retired.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The un-record fires for a refund we did **not** record (a manual dashboard refund failing), zeroing a legitimately-recorded one | med | high | The guard keys on `refund_id = :refundId` — the exact id we stored — never on the PaymentIntent. A failure for any other refund matches 0 rows (AC-5) | this slice | open |
-| R-2 | A duplicate / out-of-order refund event re-applies the un-record, double-counting the alert or reverting a *fresh* successful refund | med | high | Same single guarded statement as `markStatus`: `WHERE refund_id = … AND status IN (REFUNDED, PARTIALLY_REFUNDED)` — never read-then-write. A fresh refund's `markRefunded` overwrites `refund_id`, so a stale failure for the old id matches nothing (AC-2) | this slice | open |
-| R-3 | Nothing re-drives the refund after the un-record, so the guest stays unpaid until a human acts | high | med | **Accepted by design, not by omission** — see *Architecture* and Non-goals. The un-record is what makes the state honest: `riviera.refunds.failed` fires the money-path alert (runbook), the guest sees "refund outstanding" (AC-6), and the gateway's dead-refund read means the next re-drive creates a fresh one rather than adopting the corpse | this slice | open |
-| R-4 | The `refund_id` lookup has no index, so the webhook path seq-scans `payment` | low | low | `payment` holds one row per booking (`UNIQUE(booking_ref)`) at 5–15 venues, and refund-failure events are rare; an index would cost a migration and a `V42` claim for a scan of a few thousand rows. Deliberate — revisit if the table grows an order of magnitude | this slice | open |
-| R-5 | The guest-facing half is assumed to close for free and does not | low | med | Verified at the grill, not assumed: `ViewBookingService#refundOutstanding` = booking `CANCELLED` **and** `booking.refund_minor > 0` **and** `RefundProgress.OUTSTANDING`; the un-record flips only the third term, and `booking`'s own decided amount is untouched. AC-6 pins the `payment` half | this slice | open |
-| R-6 | The contract test bakes in Stripe-shaped assumptions, so it would not actually constrain the ADR-0009 Paysera adapter | med | med | The contract is written against `PaymentGateway` + `RefundResult` only; every Stripe type stays behind the subclass's `arrange…` fixture hooks. AC-8's coverage rule is what forces the next adapter to write its own subclass | this slice | open |
-| R-7 | Widening the meaning of `riviera.refunds.failed` breaks the existing alert's runbook interpretation | low | med | The counter already carries two shapes (create-failed and `refund_mismatch`), and §`payment` states its meaning as "a refund the platform owes could not be issued" — exactly true here. Runbook + metric Javadoc gain the third shape in phase 4 rather than a new unwatched counter | this slice | open |
+| R-1 | The un-record fires for a refund we did **not** record (a manual dashboard refund failing), zeroing a legitimately-recorded one | med | high | The guard keys on `refund_id = :refundId` — the exact id we stored — never on the PaymentIntent. A failure for any other refund matches 0 rows (AC-5) | this slice | closed — guarded on `refund_id`; `aFailureForAnUnknownRefundIsIgnored` + `markRefundFailedIgnoresAnUnknownRefundId` |
+| R-2 | A duplicate / out-of-order refund event re-applies the un-record, double-counting the alert or reverting a *fresh* successful refund | med | high | Same single guarded statement as `markStatus`: `WHERE refund_id = … AND status IN (REFUNDED, PARTIALLY_REFUNDED)` — never read-then-write. A fresh refund's `markRefunded` overwrites `refund_id`, so a stale failure for the old id matches nothing (AC-2) | this slice | closed — one guarded statement; `aSecondFailureForTheSameRefundMovesNothing` + `aStaleFailureCannotUnrecordAFreshRefund` |
+| R-3 | Nothing re-drives the refund after the un-record, so the guest stays unpaid until a human acts | high | med | **Accepted by design, not by omission** — see *Architecture* and Non-goals. The un-record is what makes the state honest: `riviera.refunds.failed` fires the money-path alert (runbook), the guest sees "refund outstanding" (AC-6), and the gateway's dead-refund read means the next re-drive creates a fresh one rather than adopting the corpse | this slice | closed — accepted by design; stated in §`payment` and in the runbook's third shape |
+| R-4 | The `refund_id` lookup has no index, so the webhook path seq-scans `payment` | low | low | `payment` holds one row per booking (`UNIQUE(booking_ref)`) at 5–15 venues, and refund-failure events are rare; an index would cost a migration and a `V42` claim for a scan of a few thousand rows. Deliberate — revisit if the table grows an order of magnitude | this slice | closed — accepted; one row per booking, rare events |
+| R-5 | The guest-facing half is assumed to close for free and does not | low | med | Verified at the grill, not assumed: `ViewBookingService#refundOutstanding` = booking `CANCELLED` **and** `booking.refund_minor > 0` **and** `RefundProgress.OUTSTANDING`; the un-record flips only the third term, and `booking`'s own decided amount is untouched. AC-6 pins the `payment` half | this slice | closed — verified — no `booking`/frontend change was needed; AC-6 |
+| R-6 | The contract test bakes in Stripe-shaped assumptions, so it would not actually constrain the ADR-0009 Paysera adapter | med | med | The contract is written against `PaymentGateway` + `RefundResult` only; every Stripe type stays behind the subclass's `arrange…` fixture hooks. AC-8's coverage rule is what forces the next adapter to write its own subclass | this slice | closed — contract holds no Stripe type; the coverage rule was proven to fail when the subclass is detached |
+| R-7 | Widening the meaning of `riviera.refunds.failed` breaks the existing alert's runbook interpretation | low | med | The counter already carries two shapes (create-failed and `refund_mismatch`), and §`payment` states its meaning as "a refund the platform owes could not be issued" — exactly true here. Runbook + metric Javadoc gain the third shape in phase 4 rather than a new unwatched counter | this slice | closed — runbook + metric doc now carry the third shape |
 | R-8 | Flyway version collision with a parallel slice | none | — | No migration in this slice; `V42` is left free. Next free number on `main` is V42 and no open non-dependabot PR exists | this slice | closed — no migration |
 
 ## Open questions / Assumptions
 
-- **Assumption:** Stripe's refund-lifecycle event types this deployment may receive are
-  `charge.refund.updated` (legacy API versions), `refund.updated`, and `refund.failed`. All three
-  carry a `Refund` object, so the handler branches on the **Refund's status**, not on the event
-  type — which makes the set safe to over-specify. — *Owner:* this slice · *Resolves by:* phase 1
-  (the branch is status-driven, so a type we never receive is dead-but-harmless config)
-- **Assumption:** reverting a failed refund's row to `SUCCEEDED` is correct rather than inventing a
-  `REFUND_FAILED` status — no money went back, so the collection stands in full, and `SUCCEEDED` is
-  terminal for `markStatus` so a late `payment_intent.*` event still cannot move it.
-  — *Owner:* this slice · *Resolves by:* phase 0
+None outstanding.
+
+### Resolved
+
+- **Assumption (phase 1, `a16a771`):** the refund-lifecycle event types are `charge.refund.updated`,
+  `refund.updated` and `refund.failed`. **Held, and made moot by construction** — the handler
+  branches on the *Refund's status*, not the event type, so a type this deployment never receives is
+  dead-but-harmless config and a type carrying a live refund is a `200` no-op (AC-3).
+- **Assumption (phase 0, `12a3368`):** reverting to `SUCCEEDED` beats inventing a `REFUND_FAILED`
+  status. **Held** — no money went back so the collection stands in full; `SUCCEEDED` is terminal for
+  `markStatus`, so a late `payment_intent.*` event still cannot move the row; and it needs no
+  migration, which is what leaves `V42` free.
 
 ## Availability & concurrency (invariant #2)
 
@@ -216,10 +220,10 @@ to `true` after a failure.
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` reference file) before acting.
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `PR #593 — ready for review; review + sonar gates next`
 
-**Next action:** Phase 4 — run `riviera-docs-freshness` over the branch range, then rewrite
-§`payment`'s "Two residuals" paragraph as the two rules that closed them.
+**Next action:** Run the review gate (`/code-review` per `pr-gates.md` §1) over PR #593, then pull
+the Sonar new-issue list and clear it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -227,9 +231,25 @@ to `true` after a failure.
 | 1 — Webhook refund-failure branch | ✅ | `<phase-1>` |
 | 2 — Shared at-most-once refund contract | ✅ | `<phase-2>` |
 | 3 — Contract-coverage architecture rule | ✅ | `<phase-2>` |
-| 4 — Docs sweep + close-out | ⏳ | |
+| 4 — Docs sweep + close-out | ✅ | `<phase-4>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Docs-freshness run** — `riviera-docs-freshness` over `origin/main..HEAD`, 6 findings, all patched:
+
+| Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `RESPONSIBILITIES.md`:302 | "For the three handled types" | a fourth handled category (the refund lifecycle) | patched — "every handled type", enumerated |
+| `RESPONSIBILITIES.md`:342 | "Two residuals, stated rather than implied" | both are closed by this slice | patched — rewritten as the two rules that closed them |
+| `PaymentGateway.java` javadoc | at-most-once is "the collecting adapter's guarantee"; "no shared conformance test … a known gap" | `PaymentGatewayRefundContract` + the coverage rule | patched |
+| `ObservabilityMetrics.REFUNDS_FAILED` | "refunds the gateway failed to issue" | a webhook-reported failure is neither a gateway refusal nor an issue-time event | patched — widened to "did not reach the guest", shapes deferred to the runbook |
+| `docs/runbooks/observability.md`:40 | "**Two shapes**, and they need different responses" | the webhook-reported failure is a third | patched — third shape + its own action |
+| `ProfiledCollectionGuarantee` javadoc | a third gateway's answer is "a compile-visible" obligation "that no structural test can see" | the coverage rule now sees exactly that | patched |
+
+Not patched, deliberately: `V11__payment_refund.sql`'s header says the model works "without a refund
+webhook in v1", which this slice falsifies — but Flyway checksums an applied migration's **file
+content**, so editing even its comments would break every existing deployment. A shipped migration is
+a historical artifact; the live statement lives in §`payment`, which is patched above.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
 Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule (run the
@@ -274,9 +294,16 @@ Skill-routing gate for what the fix touches *before* editing).
   — AC-8; in the adapter package (not the module root the plan first named) so the package-private
   gateways and `CollectionGuarantee`s are nameable, the same grounds
   `MailListenerExecutorArchitectureTest` sits in `notification.adapter.in`
+- `platform/src/main/java/ai/riviera/platform/payment/application/PaymentGateway.java` — the
+  at-most-once javadoc, which named the missing conformance test this slice writes
+- `platform/src/main/java/ai/riviera/platform/payment/adapter/out/ProfiledCollectionGuarantee.java` —
+  its "no structural test can see" contrast, now that one does
 - `RESPONSIBILITIES.md` — §`payment`: the two residuals become the two rules that closed them
-- `docs/runbooks/` — the `riviera_refunds_failed_total` row gains the third shape
-- `CLAUDE.md` — the `payment` module row's refund sentence
+- `docs/runbooks/observability.md` — the `riviera_refunds_failed_total` row gains the third shape
+
+`CLAUDE.md` is deliberately **not** in this list: its `payment` row states the module's job
+("Stripe collection, PaymentIntents, refunds, webhook handling"), which this slice does not change —
+the residuals were only ever stated in `RESPONSIBILITIES.md`.
 
 ---
 
@@ -384,10 +411,10 @@ Test `payment/adapter/out/JdbcPaymentsIT.java`
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1…AC-5:** `gradle test --tests "*StripeWebhookIT*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-6:** `gradle test --tests "*RefundServiceTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-7:** `gradle test --tests "*StripeRefundContractTest*"` → PASS. Verified at `<sha>`.
-- [ ] **AC-8:** `gradle test --tests "*PaymentGatewayContractCoverage*"` → PASS. Verified at `<sha>`.
+- [x] **AC-1…AC-5:** `gradle test --tests "*StripeWebhookIT*"` → PASS. Verified at `<sha>`.
+- [x] **AC-6:** `gradle test --tests "*RefundServiceTest*"` → PASS. Verified at `<sha>`.
+- [x] **AC-7:** `gradle test --tests "*StripeRefundContractTest*"` → PASS. Verified at `<sha>`.
+- [x] **AC-8:** `gradle test --tests "*PaymentGatewayContractCoverage*"` → PASS. Verified at `<sha>`.
 
 ## Self-review checklist (before merge / PR)
 

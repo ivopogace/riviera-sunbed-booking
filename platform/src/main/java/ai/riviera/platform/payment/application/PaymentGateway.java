@@ -33,12 +33,12 @@ public interface PaymentGateway {
 	 * PaymentIntent, or creates one and records it. Returns a typed outcome (never throws on an
 	 * expected gateway failure / a missing collection).
 	 *
-	 * <p><strong>At-most-once is the collecting adapter's guarantee, not this interface's.</strong>
-	 * The caller may replay this call at any distance in time and the Stripe adapter will not move
-	 * money twice; the stub collects nothing and records nothing, so it has nothing to be idempotent
-	 * about. A future collecting adapter owes the same guarantee — there is no shared conformance test
-	 * that would force it, which is a known gap rather than an oversight
-	 * ({@code RESPONSIBILITIES.md} §{@code payment}).
+	 * <p><strong>At-most-once, for any collecting adapter.</strong> The caller may replay this call at
+	 * any distance in time — past the gateway's own idempotency-key window — and no adapter will move
+	 * money twice. An adapter that collects nothing is exempt, having nothing to be idempotent about;
+	 * which adapters those are is not a judgement call, and neither is conformance:
+	 * {@code PaymentGatewayRefundContract} plus its coverage rule fail the build on a collecting
+	 * implementation that honours neither ({@code RESPONSIBILITIES.md} §{@code payment}).
 	 */
 	RefundResult refund(BookingRef booking, Money amount);
 

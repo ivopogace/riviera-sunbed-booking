@@ -16,9 +16,11 @@ import ai.riviera.platform.payment.api.CollectionGuarantee;
  * that no caller of {@code initiate}/{@code refund} needs is the wide-port smell #94 split apart.
  * A separate role-scoped port keeps the gateway seam about moving money.
  *
- * <p>Adding a third gateway means adding its answer here — a compile-visible, one-line obligation in
- * the package that already owns the profile split, instead of a duplicated {@code @Profile("stripe")}
- * in a consuming module that no structural test can see.
+ * <p>Adding a third gateway means adding its answer here — a one-line obligation in the package that
+ * already owns the profile split, instead of a duplicated {@code @Profile("stripe")} in a consuming
+ * module that no structural test can see. The obligation is enforced, not merely conventional:
+ * {@code PaymentGatewayContractCoverageArchitectureTest} matches each gateway to the guarantee
+ * sharing its profile, and a gateway with no answer here fails the build.
  */
 final class ProfiledCollectionGuarantee {
 
