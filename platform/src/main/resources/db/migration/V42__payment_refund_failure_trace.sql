@@ -14,15 +14,20 @@
 --
 -- WHAT EACH COLUMN IS FOR:
 --
---   refund_attempted_at  This platform has a refund for this booking IN FLIGHT. Stamped BEFORE the
---                        gateway call, so it is committed and visible while that call is still
---                        running, and cleared again by every terminal outcome. It is the
---                        discriminator that lets a refund-failure webhook tell OUR racing refund
---                        from one someone issued by hand in the Stripe dashboard against the same
---                        collection — for which the platform owes nothing and must raise no
---                        money-path alert. In flight rather than ever-attempted is the whole
---                        point: a stamp that outlived its attempt would vouch for every later
---                        refund on the collection.
+--   refund_attempted_at  This platform has an UNRESOLVED refund obligation at the gateway. Stamped
+--                        BEFORE the gateway call, so it is committed and visible while that call is
+--                        still running, and cleared by every in-app resolution — the recording write
+--                        on success, and both failure marks. It is the discriminator that lets a
+--                        refund-failure webhook tell OUR refund from one someone issued by hand in
+--                        the Stripe dashboard against the same collection, for which the platform
+--                        owes nothing and must raise no money-path alert.
+--
+--                        It deliberately SURVIVES a failed refund call: in every one of those
+--                        branches the platform still owes the refund, and one of them (a create
+--                        whose response was lost to a double timeout) can leave a live refund at
+--                        the gateway with no id on record — exactly what the discriminator is for.
+--                        Settling by hand is the one resolution the app never sees, so that is the
+--                        one case where the stamp is retired manually (observability runbook).
 --
 --   refund_failed_at     The gateway reported the refund dead and the platform still owes the
 --                        money. This is the queryable half: `WHERE refund_failed_at IS NOT NULL`

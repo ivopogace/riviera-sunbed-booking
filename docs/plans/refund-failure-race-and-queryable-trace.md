@@ -108,14 +108,14 @@ cloud session addendum). Exists in git before phase 0, based on `origin/main` at
       columns exist nullable with no default, and a row may carry `refund_failed_at` while
       `status = 'SUCCEEDED'` (the state a dead refund leaves). *Pinned by:*
       `PaymentMigrationIT.refundFailureTraceColumnsAdmitAnOwedRefund`
-- [x] **AC-9:** Given a refund call that ends leaving none of this platform's refunds in flight —
-      the gateway refused it, replayed a dead one, or errored — when a later unrelated refund on the
-      same collection fails, then it moves no row and raises no alert: the attempt stamp records a
-      refund **in flight**, not one ever made. *Pinned by:*
-      `JdbcPaymentsIT.aResolvedAttemptStopsDiscriminatingForALaterManualRefund`,
-      `.clearingTheAttemptStopsTheByIntentArm`,
-      `RefundServiceTest.clearsTheAttemptWhenTheGatewayRefuses` / `.keepsTheAttemptWhenTheGatewayRefunded`,
-      with `JdbcPaymentsIT.aFreshAttemptAfterAFailureDiscriminatesAgain` guarding the opposite error
+- [x] **AC-9:** Given a refund this platform issued that then **resolves in-app** — recorded, or
+      marked failed by either failure path — when a later unrelated refund on the same collection
+      fails, then it moves no row and raises no alert: the attempt stamp records an **unresolved
+      obligation**, not an attempt ever made. And given a refund call that merely returned `Failed`,
+      the stamp **survives**, because the obligation does. *Pinned by:*
+      `JdbcPaymentsIT.aResolvedAttemptStopsDiscriminatingForALaterManualRefund` and
+      `RefundServiceTest.keepsTheAttemptWhenTheGatewayRefuses` (the two halves), with
+      `JdbcPaymentsIT.aFreshAttemptAfterAFailureDiscriminatesAgain` guarding the opposite error
 
 ## Non-goals
 
@@ -294,6 +294,9 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-6 | review (comment/doc compliance) | `markOwedAgain`'s Javadoc restated rationale already in `RESPONSIBILITIES.md` (§6d: relocate, leave a one-line pointer), inconsistent with its own neighbours | fixed-in-`0102d07` — trimmed to the contract plus the existing pointer |
 | F-9 | re-review of the fix round | F-4's fix was **incomplete**: it cleared the stamp in the three `JdbcPayments` writes, but four of `StripePaymentGateway`'s five `Failed` returns (`refund_key_replay`, `refund_returned_nothing`, `refund_mismatch`, a bare `StripeException`) reach none of them — so the stamp leaked and reopened F-4's misattribution through a different door. My `Payments` javadoc and this plan both asserted "every terminal outcome clears it", which was false as shipped | fixed-in-`d53e06c` — `Payments#clearRefundAttempt`, called from `RefundService` on any `Failed`, pairing the stamp with the call that sets it. Pinned by `clearingTheAttemptStopsTheByIntentArm` + `RefundServiceTest.clearsTheAttemptWhenTheGatewayRefuses`/`.keepsTheAttemptWhenTheGatewayRefunded` |
 | F-10 | re-review of the fix round | My F-5 fix cited the wrong test: `BookingRefundListener`'s Javadoc claimed `RefundAttemptVisibilityIT` "fails if a transaction returns", but that IT builds `RefundService` directly, so there is no Spring proxy and a reintroduced `@Transactional` would leave it green. `RefundBulkheadIT` is the actual guard | fixed-in-`d53e06c` — corrected in the listener's Javadoc and on the IT itself, which now states what it does and does not prove |
+| F-13 | final verification pass | AC-9 still asserted the **reverted** behaviour and cited three tests deleted by the revert, while ticked `[x]` — the prior refund slice's F-40 recurring verbatim ("an AC ticked while asserting the rule the fix reverses, pinned to a method renamed rounds earlier") | fixed-in-`VERSHA` — AC-9 restated as the two halves that actually shipped, with only surviving test names |
+| F-14 | final verification pass | `V42`'s column comment still read "cleared again by every terminal outcome", false once the revert let the stamp survive a `Failed` | fixed-in-`VERSHA` |
+| F-15 | final verification pass | **The hand-settlement remedy I added was wrong operational advice.** Unguarded, and it cleared only the two flags — leaving `SUCCEEDED, refunded_minor = 0`, which `RefundStatusLookup` reports as `OUTSTANDING` and the booking view shows the guest as *refund still outstanding*, permanently, for a refund an operator had already paid | fixed-in-`VERSHA` — the statement now records the refund actually issued (`refunded_minor`, `refund_id`, `status`) and is guarded on `refund_failed_at IS NOT NULL`, which also makes it a no-op if an automatic retry got there first and lets a later failure of the hand-issued refund be matched by the ordinary un-record path |
 | F-11 | re-review (2nd) of the fix round | The pairing fix over-corrected: clearing on **every** `Failed` also cleared the two ambiguous branches — a bare `StripeException` after a *double* timeout (where Stripe may hold a live refund with no id on record) and `refund_mismatch`. That is the exact window the discriminator exists for, so the fix traded a bounded false positive for the silent loss #594 was filed to end | **reverted, with the reasoning recorded** in `942d2f7`. `RefundResult.Failed` carries an untyped reason, so the service cannot tell gateway-confirmed-dead from ambiguous. In every `Failed` branch the platform still owes the refund, so a surviving stamp describes something true; the residual (a booking settled **by hand** never runs an in-app resolution) is bounded and now has a runbook remedy |
 | F-12 | review (prior-PR comments) | F-5's twin: `RESPONSIBILITIES.md` §`booking` carried the same "the one write is a single statement, after a successful refund" claim verbatim. My docs-freshness sweep was `payment`-scoped, so it caught the `payment` sites and missed the `booking` one — the recurring "claim outside the diff's own module" miss that #591 named as its R-6 | fixed-in-`942d2f7` |
 | F-8 | docs-freshness (re-run after the fix round) | F-4's clearing falsified three statements about `refund_attempted_at` — the `V42` column comment ("began a refund", reading as permanent), the observability runbook's owed-list guidance (which told an on-call reader to consult a column now NULL on **every** row of that list), and the smoke test's expected output (`a timestamp` where it is now NULL) | fixed-in-`8b3ffe4` — this is exactly the case the skill warns about: a fix round makes its own docs stale within the hour, so the sweep is re-run after it, not only before |
@@ -453,7 +456,7 @@ Closes the read half of issue item **3**.
 
 - [x] **AC-1..AC-7:** Run `gradle --no-daemon --console=plain test --tests "*JdbcPaymentsIT*" --tests "*StripeWebhookIT*" --tests "*StripePaymentGatewayTest*" --tests "*RefundAttemptVisibilityIT*"` → all PASS.
 - [x] **AC-8:** Run `gradle --no-daemon --console=plain test --tests "*PaymentMigrationIT*"` → PASS.
-- [x] **AC-9:** Covered by the AC-1..AC-7 command above (`JdbcPaymentsIT`, `RefundServiceTest`) → PASS.
+- [x] **AC-9:** Covered by the AC-1..AC-7 command above — `JdbcPaymentsIT.aResolvedAttemptStopsDiscriminatingForALaterManualRefund`, `.aFreshAttemptAfterAFailureDiscriminatesAgain`, `RefundServiceTest.keepsTheAttemptWhenTheGatewayRefuses` → PASS.
 - [ ] **Structural net:** `--tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS.
 - [ ] **Full suite:** green on the PR's CI run (the only place the shared-context failure class shows).
 

@@ -112,14 +112,28 @@ concluded, so it is cleared. That is the point rather than a gap: a stamp that o
 make the next refund on that collection look like ours, including one someone issued by hand. A row
 leaves the list when a retry records successfully, or when someone clears it after settling by hand:
 
+settling by hand means **recording
+the refund you issued**, not merely clearing the flag — clearing alone leaves the row reading
+`SUCCEEDED, refunded_minor = 0`, which `RefundStatusLookup` reports as `OUTSTANDING` and the booking
+view shows the guest as *refund still outstanding*, permanently:
+
 ```sql
-UPDATE payment SET refund_failed_at = NULL, refund_attempted_at = NULL WHERE booking_ref = <id>;
+UPDATE payment
+SET refunded_minor      = <minor units actually refunded at the gateway>,
+    refund_id           = '<the re_… you issued by hand>',
+    status              = CASE WHEN <minor units> >= amount_minor
+                               THEN 'REFUNDED' ELSE 'PARTIALLY_REFUNDED' END,
+    refund_failed_at    = NULL,
+    refund_attempted_at = NULL,
+    updated_at          = NOW()
+WHERE booking_ref = <id> AND refund_failed_at IS NOT NULL;
 ```
 
-Clear `refund_attempted_at` in the same statement, as above. It records an unresolved refund obligation
-at the gateway and survives a failed refund call on purpose; settling by hand is the one resolution the
-app never sees, so it is the one case where the stamp has to be retired manually. Left set, the next
-failed refund on that collection — including one someone else issues — is recorded as ours.
+The `refund_failed_at IS NOT NULL` guard is load-bearing twice over: it makes the statement a no-op if
+an automatic retry already recorded the refund while you were working, and writing `refund_id` means a
+later failure of the refund *you* issued is matched by the ordinary un-record path rather than being
+mistaken for a stranger's. Clearing `refund_attempted_at` is safe in the same statement precisely
+because `refund_id` is now set — the by-intent arm requires it to be NULL.
 
 **The lever is `POST /api/admin/refund-outbox/resubmit` (#454; the admin console's Refunds tab at
 `/admin/refunds` drives it since #460).** It re-drives what the registry
