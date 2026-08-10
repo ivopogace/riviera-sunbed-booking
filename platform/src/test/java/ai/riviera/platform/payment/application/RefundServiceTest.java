@@ -2,6 +2,8 @@ package ai.riviera.platform.payment.application;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -40,18 +42,48 @@ class RefundServiceTest {
 		return new RefundService(gateway, new SimpleMeterRegistry(), (StateOnlyPayments) booking -> state);
 	}
 
+	/** A {@link ThrowingPayments} that only records the attempt, in the order it was made. */
+	private static final class AttemptRecordingPayments implements ThrowingPayments {
+
+		private final List<String> calls;
+
+		private AttemptRecordingPayments(List<String> calls) {
+			this.calls = calls;
+		}
+
+		@Override
+		public void markRefundAttempted(BookingRef booking) {
+			calls.add("attempt:" + booking.value());
+		}
+	}
+
 	@Test
 	void delegatesRefundToGateway() {
 		RefundOnlyGateway fake = (booking, amount) ->
 				new RefundResult.Refunded("re-" + booking.value() + "-" + amount.minor());
-		RefundService service =
-				new RefundService(fake, new SimpleMeterRegistry(), new ThrowingPayments() {
-				});
+		RefundService service = new RefundService(fake, new SimpleMeterRegistry(),
+				new AttemptRecordingPayments(new ArrayList<>()));
 
 		RefundResult result = service.refund(BOOKING, new Money(2250L, "EUR"));
 
 		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result);
 		assertEquals("re-42-2250", refunded.refundId(), "service passes booking + amount through unchanged");
+	}
+
+	@Test
+	void recordsTheAttemptBeforeAskingTheGateway() {
+		List<String> calls = new ArrayList<>();
+		RefundOnlyGateway fake = (booking, amount) -> {
+			calls.add("gateway");
+			return new RefundResult.Refunded("re_ordered");
+		};
+		RefundService service =
+				new RefundService(fake, new SimpleMeterRegistry(), new AttemptRecordingPayments(calls));
+
+		service.refund(BOOKING, new Money(2250L, "EUR"));
+
+		assertEquals(List.of("attempt:42", "gateway"), calls,
+				"an attempt recorded after the call would be invisible for the whole window it exists to cover");
 	}
 
 	@Test

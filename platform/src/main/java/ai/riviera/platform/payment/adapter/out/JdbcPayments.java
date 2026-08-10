@@ -124,6 +124,18 @@ class JdbcPayments implements Payments {
 	}
 
 	@Override
+	public void markRefundAttempted(BookingRef booking) {
+		jdbc.sql("""
+				UPDATE payment
+				SET refund_attempted_at = NOW(), updated_at = NOW()
+				WHERE booking_ref = :ref AND status IN (:collected)
+				""")
+				.param("ref", booking.value())
+				.param("collected", COLLECTED_STATUSES)
+				.update();
+	}
+
+	@Override
 	public boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
 		// Status is decided from the collected amount: a refund covering the whole amount is REFUNDED,
 		// otherwise PARTIALLY_REFUNDED. Clearing refund_failed_at is what "owed now" means.
@@ -155,6 +167,24 @@ class JdbcPayments implements Payments {
 				.param("succeeded", PaymentStatus.SUCCEEDED.name())
 				.param(PARAM_REFUND_ID, refundId)
 				.param("recorded", REFUND_RECORDED_STATUSES)
+				.update() == 1;
+	}
+
+	@Override
+	public boolean markUnrecordedRefundFailed(String paymentIntentId, String refundId) {
+		// refund_attempted_at is the discriminator: without it this is someone else's manual refund.
+		return jdbc.sql("""
+				UPDATE payment
+				SET failed_refund_id = :refundId, refund_failed_at = NOW(), updated_at = NOW()
+				WHERE payment_intent_id = :intent
+				  AND status = :succeeded
+				  AND refund_id IS NULL
+				  AND refund_attempted_at IS NOT NULL
+				  AND (failed_refund_id IS NULL OR failed_refund_id <> :refundId)
+				""")
+				.param(PARAM_REFUND_ID, refundId)
+				.param(PARAM_INTENT, paymentIntentId)
+				.param("succeeded", PaymentStatus.SUCCEEDED.name())
 				.update() == 1;
 	}
 }

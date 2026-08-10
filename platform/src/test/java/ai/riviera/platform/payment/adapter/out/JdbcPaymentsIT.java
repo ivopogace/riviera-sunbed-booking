@@ -269,6 +269,77 @@ class JdbcPaymentsIT {
 	}
 
 	@Test
+	void markUnrecordedRefundFailedMarksTheRacingAttempt() {
+		payments.register(new NewPayment(new BookingRef(9801L), "pi_racing", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_racing", PaymentStatus.SUCCEEDED);
+		payments.markRefundAttempted(new BookingRef(9801L));
+
+		assertFalse(payments.markRefundFailed("re_racing"),
+				"the refund is not written down yet, so the id-matched un-record finds nothing");
+		assertTrue(payments.markUnrecordedRefundFailed("pi_racing", "re_racing"),
+				"but the attempt is on record, so the failure is this platform's and must not be lost");
+
+		assertEquals(1, jdbc.sql("""
+				SELECT COUNT(*) FROM payment
+				WHERE payment_intent_id = 'pi_racing' AND refund_failed_at IS NOT NULL
+				  AND failed_refund_id = 're_racing' AND status = 'SUCCEEDED' AND refunded_minor = 0
+				""").query(Integer.class).single(),
+				"the guest is owed again, and the booking is enumerable as owed");
+	}
+
+	@Test
+	void markRefundedRefusesARefundAlreadyReportedDead() {
+		payments.register(new NewPayment(new BookingRef(9802L), "pi_lost_race", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_lost_race", PaymentStatus.SUCCEEDED);
+		payments.markRefundAttempted(new BookingRef(9802L));
+		payments.markUnrecordedRefundFailed("pi_lost_race", "re_lost_race");
+
+		assertFalse(payments.markRefunded(new BookingRef(9802L), 4500L, "re_lost_race"),
+				"the refund the gateway already killed must never be recorded as a live one");
+
+		var state = payments.findRefundState(new BookingRef(9802L)).orElseThrow();
+		assertEquals(PaymentStatus.SUCCEEDED, state.status(),
+				"the row must not settle at REFUNDED on the strength of a dead refund");
+		assertEquals(0L, state.refundedMinor(), "no money went back, so the guest is still owed it");
+	}
+
+	@Test
+	void aRedeliveredUnrecordedFailureMovesNothing() {
+		payments.register(new NewPayment(new BookingRef(9803L), "pi_twice_raced", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_twice_raced", PaymentStatus.SUCCEEDED);
+		payments.markRefundAttempted(new BookingRef(9803L));
+		payments.markUnrecordedRefundFailed("pi_twice_raced", "re_twice_raced");
+
+		assertFalse(payments.markUnrecordedRefundFailed("pi_twice_raced", "re_twice_raced"),
+				"Stripe re-delivers, and both refund types carry the same death — it must count once");
+	}
+
+	@Test
+	void aManualGatewayRefundFailureMovesNothing() {
+		payments.register(new NewPayment(new BookingRef(9804L), "pi_manual", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_manual", PaymentStatus.SUCCEEDED);
+
+		assertFalse(payments.markUnrecordedRefundFailed("pi_manual", "re_by_hand"),
+				"no attempt on record means this refund is not ours — the platform owes nothing");
+
+		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM payment WHERE payment_intent_id = 'pi_manual' "
+						+ "AND refund_failed_at IS NOT NULL").query(Integer.class).single(),
+				"and it must not appear on the list of bookings owed a refund");
+	}
+
+	@Test
+	void aLateFailureCannotUnrecordARefundAlreadyWrittenDown() {
+		payments.register(new NewPayment(new BookingRef(9805L), "pi_written", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_written", PaymentStatus.SUCCEEDED);
+		payments.markRefundAttempted(new BookingRef(9805L));
+		payments.markRefunded(new BookingRef(9805L), 4500L, "re_written");
+
+		assertFalse(payments.markUnrecordedRefundFailed("pi_written", "re_other"),
+				"the by-intent arm covers the un-written window only; a recorded refund is matched by id");
+		assertEquals(4500L, payments.findRefundState(new BookingRef(9805L)).orElseThrow().refundedMinor());
+	}
+
+	@Test
 	void aSucceedingRetryClearsTheOwedFlag() {
 		payments.register(new NewPayment(new BookingRef(9702L), "pi_retried", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_retried", PaymentStatus.SUCCEEDED);

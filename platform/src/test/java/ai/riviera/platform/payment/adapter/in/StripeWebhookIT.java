@@ -29,6 +29,7 @@ import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -435,6 +436,65 @@ class StripeWebhookIT {
 
 		assertEquals(1L, webhookEventRows("evt_ref_legacy_advisory_1"),
 				"the legacy twin announces every transition too, so it is fail-open for the same reason");
+	}
+
+	/** A collected payment with no refund on record; {@code attempted} is whether we began one. */
+	private void collectionWithoutARecordedRefund(long bookingRef, String intentId, boolean attempted) {
+		payments.register(new NewPayment(new BookingRef(bookingRef), intentId, 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus(intentId, PaymentStatus.SUCCEEDED);
+		if (attempted) {
+			payments.markRefundAttempted(new BookingRef(bookingRef));
+		}
+	}
+
+	/**
+	 * The race issue #594 item 1 reports: the gateway minted the refund, the failure arrived before
+	 * the recording call ran, and the un-record used to match nothing — leaving the row to settle at
+	 * REFUNDED, telling the guest their money was on its way and never lighting the counter.
+	 */
+	@Test
+	void aRefundFailureRacingItsOwnRecordIsNotLost() throws Exception {
+		collectionWithoutARecordedRefund(7312L, "pi_ref_raced", true);
+		String payload = refundEventJson("evt_ref_raced_1", "refund.failed", "re_hook_raced", "failed",
+				"pi_ref_raced");
+		double before = refundsFailedCount();
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals(before + 1, refundsFailedCount(),
+				"a refund the platform issued and the gateway killed is owed money, recorded or not");
+		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM payment WHERE payment_intent_id = 'pi_ref_raced' "
+						+ "AND refund_failed_at IS NOT NULL").query(Integer.class).single(),
+				"and it is enumerable as owed, not reconstructable only from a WARN line");
+	}
+
+	@Test
+	void aRacingFailureThenBlocksTheRecordItRacedAgainst() throws Exception {
+		collectionWithoutARecordedRefund(7313L, "pi_ref_blocked", true);
+		String payload = refundEventJson("evt_ref_blocked_1", "refund.failed", "re_hook_blocked",
+				"failed", "pi_ref_blocked");
+		postSigned(payload, sign(payload), 200);
+
+		assertFalse(payments.markRefunded(new BookingRef(7313L), 4500L, "re_hook_blocked"),
+				"the recording call that lost the race must not resurrect the refund the gateway killed");
+		assertEquals("SUCCEEDED", statusOf("pi_ref_blocked"),
+				"so the row never settles at REFUNDED on a dead refund");
+	}
+
+	@Test
+	void aManualDashboardRefundFailureRaisesNoMoneyPathAlert() throws Exception {
+		collectionWithoutARecordedRefund(7314L, "pi_ref_by_hand", false);
+		String payload = refundEventJson("evt_ref_by_hand_1", "refund.failed", "re_hook_by_hand",
+				"failed", "pi_ref_by_hand");
+		double before = refundsFailedCount();
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals(before, refundsFailedCount(),
+				"the platform never promised this refund, so its failure is not money we owe");
+		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM payment WHERE payment_intent_id = 'pi_ref_by_hand' "
+						+ "AND refund_failed_at IS NOT NULL").query(Integer.class).single(),
+				"and it must stay off the list of bookings owed a refund");
 	}
 
 	@Test

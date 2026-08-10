@@ -28,6 +28,12 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
  * counter. Self-observation of this module's own refund execution ({@link MeterRegistry} is a
  * framework bean, not a cross-module dependency); the alert self-check reads the counter. The metric
  * is measured here, not decided here — {@code booking} still owns whether/how much to refund.
+ *
+ * <p><strong>The attempt is recorded before the gateway is asked</strong>
+ * ({@link Payments#markRefundAttempted}), and this method must stay outside a caller's transaction
+ * for that write to be visible while the gateway call is still running — which is what lets a refund
+ * failure arriving mid-call be told apart from a manual gateway refund. Pinned by
+ * {@code RefundAttemptVisibilityIT}; rationale in {@code RESPONSIBILITIES.md} §{@code payment}.
  */
 @Service
 class RefundService implements RefundPort, RefundStatusLookup {
@@ -44,6 +50,7 @@ class RefundService implements RefundPort, RefundStatusLookup {
 
 	@Override
 	public RefundResult refund(BookingRef booking, Money amount) {
+		payments.markRefundAttempted(booking);
 		RefundResult result = gateway.refund(booking, amount);
 		if (result instanceof RefundResult.Failed) {
 			failedRefunds.increment();

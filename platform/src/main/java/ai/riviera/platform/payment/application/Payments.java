@@ -48,6 +48,20 @@ public interface Payments {
 	Optional<String> findIntentByBookingRef(BookingRef booking);
 
 	/**
+	 * Record that this platform is <strong>about to ask</strong> the gateway for a refund of the
+	 * booking's collection. Written before the gateway call, so it is committed and visible while that
+	 * call is still in flight.
+	 *
+	 * <p>It exists to tell two refunds apart that otherwise look identical to a failure webhook: one
+	 * this platform issued and has not recorded yet, and one someone issued by hand at the gateway
+	 * against the same collection. Only the first is money the platform owes. A 0-row no-op when no
+	 * collected payment row exists (the stub profile), which is why nothing is reported back.
+	 *
+	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
+	 */
+	void markRefundAttempted(BookingRef booking);
+
+	/**
 	 * Record a refund against the booking's collection (U6): set {@code refunded_minor} and the
 	 * gateway {@code refundId}, and move the status to {@code REFUNDED} (fully refunded) or
 	 * {@code PARTIALLY_REFUNDED} (a partial after-cutoff refund) — decided by comparing the refund to
@@ -80,4 +94,19 @@ public interface Payments {
 	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
 	boolean markRefundFailed(String refundId);
+
+	/**
+	 * Mark the collection behind {@code paymentIntentId} as owing a refund that died
+	 * <strong>before</strong> it was ever recorded — the sibling of {@link #markRefundFailed} for the
+	 * window between the gateway minting a refund and this app writing it down, which the create's
+	 * timeout replay can stretch to tens of seconds.
+	 *
+	 * <p>Moves a row only when this platform has an attempt on record ({@link #markRefundAttempted})
+	 * and no refund recorded yet, so a failed manual gateway refund — money the platform never
+	 * promised — moves nothing and raises no alert. Guarded against re-delivery on the refund id like
+	 * its sibling. Returns whether a row actually moved.
+	 *
+	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
+	 */
+	boolean markUnrecordedRefundFailed(String paymentIntentId, String refundId);
 }
