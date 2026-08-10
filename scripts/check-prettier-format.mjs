@@ -15,8 +15,18 @@
  * *defaults* on three trees that never agreed to them. Rule values are out of scope (#615).
  */
 
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { relative, resolve, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+import { git, parseAddedLines, rangeFor } from './git-diff.mjs';
+
 /** The one tree `frontend/.prettierrc` governs. */
 const SCOPE = 'frontend/';
+
+/** Lines of a hunk the report prints before it starts counting instead. */
+const SHOWN_LINES = 6;
 
 /**
  * Above this many LCS cells the line diff stops being worth its memory, and the whole differing
@@ -154,4 +164,176 @@ function alignedHunks(before, after, offset) {
     j++;
   }
   return hunks;
+}
+
+/**
+ * One file's findings, given a formatter.
+ *
+ * The formatter is a parameter rather than a direct Prettier call so that the detector's suite can
+ * run in the `Repo hygiene (diff-scoped)` job, which installs nothing — nothing in this module's
+ * import graph may reach `node_modules`.
+ *
+ * @param {{ path: string, current: string, added: Set<number>,
+ *   format: (path: string, text: string) => Promise<string|null>,
+ *   warn: (message: string) => void }} input `format` returns null for a file Prettier does not
+ *   handle, and may throw for one it cannot parse
+ */
+export async function inspect({ path, current, added, format, warn }) {
+  let formatted;
+  try {
+    formatted = await format(path, current);
+  } catch (error) {
+    warn(`${path}: skipped, Prettier could not parse it (${firstLine(error)})`);
+    return [];
+  }
+  if (formatted === null || formatted === undefined) return [];
+  return findMisformatted({ path, current, formatted, added });
+}
+
+/** The first line of an error's message — Prettier's parse errors carry a code frame after it. */
+function firstLine(error) {
+  return String(error?.message ?? error).split('\n')[0];
+}
+
+/**
+ * Applies exactly the given findings to `current` and returns the result.
+ *
+ * Bottom-up, so an earlier hunk's replacement cannot shift a later hunk's line numbers. Applying a
+ * *subset* of a file's hunks is the point: what the guard reports is what `--fix` rewrites, and a
+ * file's pre-existing drift survives untouched.
+ */
+export function applyHunks(current, findings) {
+  const lines = current.split('\n');
+  for (const finding of [...findings].sort((a, b) => b.line - a.line)) {
+    lines.splice(finding.line - 1, finding.current.length, ...finding.expected);
+  }
+  return lines.join('\n');
+}
+
+const ADVICE =
+  'Fix only these lines with `--fix` (`npm run format:check -- --fix` from frontend/). It rewrites\n' +
+  "the hunks above and nothing else, so a file's pre-existing drift stays out of your diff (#615).";
+
+/** Renders the findings for a terminal: each hunk as it stands, then as Prettier would write it. */
+export function report(findings) {
+  const blocks = findings.map((finding) => {
+    const at = finding.endLine > finding.line ? `${finding.line}-${finding.endLine}` : finding.line;
+    return [
+      `  ${finding.path}:${at}`,
+      ...side('-', finding.current),
+      ...side('+', finding.expected),
+    ].join('\n');
+  });
+  return `Prettier disagrees with lines this diff wrote:\n\n${blocks.join('\n\n')}\n\n${ADVICE}`;
+}
+
+function side(marker, lines) {
+  const shown = lines.slice(0, SHOWN_LINES).map((line) => `    ${marker} ${line}`);
+  const hidden = lines.length - shown.length;
+  return hidden > 0 ? [...shown, `    ${marker} … (${hidden} more)`] : shown;
+}
+
+/**
+ * A formatter backed by the Prettier in `frontend/node_modules`, resolved here rather than imported
+ * at the top of the file so that importing this module never needs an install (see `inspect`).
+ */
+function formatterFor(root) {
+  const require = createRequire(pathToFileURL(resolve(root, 'frontend/package.json')));
+  let prettier;
+  try {
+    prettier = require('prettier');
+  } catch {
+    throw new Error('Prettier is not installed — run `npm ci` in frontend/ first.');
+  }
+
+  const ignorePath = resolve(root, 'frontend/.prettierignore');
+  const ignore = existsSync(ignorePath) ? { ignorePath } : {};
+
+  return async (path, text) => {
+    const absolute = resolve(root, path);
+    const info = await prettier.getFileInfo(absolute, { ...ignore, resolveConfig: true });
+    if (info.ignored || !info.inferredParser) return null;
+    const config = await prettier.resolveConfig(absolute);
+    return prettier.format(text, { ...config, filepath: absolute });
+  };
+}
+
+/** Reads a path from the working tree, or null when it is unreadable (deleted, binary, gone). */
+function readText(absolute) {
+  try {
+    return readFileSync(absolute, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+/** Runs the detector over every in-scope file the diff wrote to. */
+async function check({ root, added, format, warn }) {
+  const findings = [];
+
+  for (const [path, lines] of added) {
+    if (!inScope(path)) continue;
+    const current = readText(resolve(root, path));
+    if (current === null) continue;
+    findings.push(...(await inspect({ path, current, added: lines, format, warn })));
+  }
+  return findings;
+}
+
+/** Rewrites each file the findings name, and returns the paths touched. */
+function applyToDisk(root, findings) {
+  const byPath = new Map();
+  for (const finding of findings) {
+    if (!byPath.has(finding.path)) byPath.set(finding.path, []);
+    byPath.get(finding.path).push(finding);
+  }
+  for (const [path, hunks] of byPath) {
+    const absolute = resolve(root, path);
+    writeFileSync(absolute, applyHunks(readFileSync(absolute, 'utf8'), hunks));
+  }
+  return [...byPath.keys()];
+}
+
+/** git speaks repo-relative POSIX paths; a CLI argument is whatever the caller's shell resolved. */
+function toRepoRelative(root, argument) {
+  return relative(root, resolve(process.cwd(), argument)).split(sep).join('/');
+}
+
+function diffArgs(range) {
+  return ['diff', '--unified=0', '--no-color', '--no-ext-diff', ...range];
+}
+
+async function main(argv) {
+  const fixing = argv.includes('--fix');
+  const rest = argv.filter((argument) => argument !== '--fix');
+  const mode = rest[0];
+  const paths = rest.slice(1);
+
+  if (mode !== '--diff' && !(mode === '--files' && paths.length > 0)) {
+    process.stderr.write('usage: check-prettier-format.mjs (--diff [<base>] | --files <path…>) [--fix]\n');
+    return 2;
+  }
+
+  const root = git(['rev-parse', '--show-toplevel']).trim();
+  const range =
+    mode === '--diff'
+      ? [rangeFor(paths[0] ?? 'origin/main')]
+      : ['HEAD', '--', ...paths.map((path) => toRepoRelative(root, path))];
+  const warn = (message) => process.stderr.write(`${message}\n`);
+  const added = parseAddedLines(git(diffArgs(range)));
+  const findings = await check({ root, added, format: formatterFor(root), warn });
+
+  if (findings.length === 0) return 0;
+  if (fixing) {
+    const rewritten = applyToDisk(root, findings);
+    process.stdout.write(`Reformatted the reported hunks in:\n${rewritten.map((path) => `  ${path}`).join('\n')}\n`);
+    return 0;
+  }
+  process.stderr.write(`${report(findings)}\n`);
+  return 1;
+}
+
+// Only run the CLI when invoked directly; pathToFileURL keeps that true on Windows too.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exitCode = await main(process.argv.slice(2));
 }

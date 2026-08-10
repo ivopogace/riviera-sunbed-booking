@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { findMisformatted, inScope } from './check-prettier-format.mjs';
+import { applyHunks, findMisformatted, inScope, inspect, report } from './check-prettier-format.mjs';
 
 const PATH = 'frontend/src/app/a.ts';
 
@@ -107,4 +107,84 @@ test('separate drifted regions are separate findings', () => {
     found.map((f) => f.line),
     [1, 4],
   );
+});
+
+test('--fix rewrites only the reported hunks', () => {
+  const current = 'const a   = 1;\nconst b = 2;\nconst c   = 3;\n';
+  const formatted = 'const a = 1;\nconst b = 2;\nconst c = 3;\n';
+
+  const found = findings({ current, formatted, added: [3] });
+
+  assert.equal(applyHunks(current, found), 'const a   = 1;\nconst b = 2;\nconst c = 3;\n');
+});
+
+test('--fix closes an insertion the same way', () => {
+  const found = findings({ current: 'const a = 1;', formatted: 'const a = 1;\n', added: [1] });
+
+  assert.equal(applyHunks('const a = 1;', found), 'const a = 1;\n');
+});
+
+test('an unparseable file warns instead of failing the gate', async () => {
+  const warnings = [];
+  const found = await inspect({
+    path: PATH,
+    current: 'const a = ;',
+    added: new Set([1]),
+    format: () => {
+      throw new SyntaxError('Unexpected token (1:11)');
+    },
+    warn: (message) => warnings.push(message),
+  });
+
+  assert.deepEqual(found, []);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /a\.ts/);
+  assert.match(warnings[0], /Unexpected token \(1:11\)/);
+});
+
+test('a file Prettier does not handle is skipped silently', async () => {
+  const warnings = [];
+  const found = await inspect({
+    path: 'frontend/public/favicon.ico',
+    current: ' ',
+    added: new Set([1]),
+    format: () => null,
+    warn: (message) => warnings.push(message),
+  });
+
+  assert.deepEqual(found, []);
+  assert.deepEqual(warnings, []);
+});
+
+test('inspect reports what the formatter would write', async () => {
+  const found = await inspect({
+    path: PATH,
+    current: 'const a   = 1;\n',
+    added: new Set([1]),
+    format: () => 'const a = 1;\n',
+    warn: () => assert.fail('should not warn'),
+  });
+
+  assert.deepEqual(found, [
+    { path: PATH, line: 1, endLine: 1, current: ['const a   = 1;'], expected: ['const a = 1;'] },
+  ]);
+});
+
+test('the report shows both sides of each hunk and names the fix', () => {
+  const text = report([
+    { path: PATH, line: 4, endLine: 4, current: ['const a   = 1;'], expected: ['const a = 1;'] },
+  ]);
+
+  assert.match(text, /frontend\/src\/app\/a\.ts:4/);
+  assert.match(text, /- const a {3}= 1;/);
+  assert.match(text, /\+ const a = 1;/);
+  assert.match(text, /--fix/);
+});
+
+test('the report keeps a large hunk readable', () => {
+  const expected = Array.from({ length: 40 }, (_, index) => `  line${index},`);
+  const text = report([{ path: PATH, line: 1, endLine: 1, current: ['call(a);'], expected }]);
+
+  assert.match(text, /34 more/);
+  assert.ok(text.split('\n').length < 20);
 });

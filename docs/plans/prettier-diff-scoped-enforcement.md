@@ -136,6 +136,14 @@ a pure move, with the functions' bodies unchanged and both suites (AC-8) as the 
   option 2 (delete `.prettierrc`). — *Owner:* this slice · *Resolves by:* phase 4 (recorded on the
   issue with the measurement that decides it).
 
+### Resolved
+
+- **Issue drift, found by the intake grill:** #615 lists four files as dirty at `5f415a23`, but
+  `src/app/admin/admin-operators.ts` is **clean** — PR #520's own F-1 fixed it
+  (`docs/plans/admin-suspend-audit-reason.md`), and the issue quotes a pre-#520 run. The other three
+  are still dirty and the argument is unaffected; the tree-wide figure this plan uses (200 files) was
+  measured fresh rather than taken from the issue.
+
 ## Availability & concurrency (invariant #2)
 
 `N/A — does not affect availability.` No `booking`, `availability`, or beach-map code is in scope;
@@ -163,17 +171,17 @@ added (hence no e2e spec, and no `playwright-cli` row in the routing gate).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`.
+**Stage pointer:** `implement (phase 3)`.
 
-**Next action:** Phase 2 — the Prettier/git front-end, the three CLI modes, and `--fix`; then replay
-the guard over the last 40 `main` commits for R-1's evidence.
+**Next action:** Phase 3 — the CI step inside `Frontend (lint + test + build)`, the two npm scripts,
+and `frontend/.prettierignore`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Shared git/diff helpers | ✅ | `133394a` |
-| 1 — Detector core | ✅ | this commit |
-| 2 — Prettier front-end, CLI, `--fix` | ⏳ | |
-| 3 — CI wiring, npm scripts, `.prettierignore` | | |
+| 1 — Detector core | ✅ | `75e64d7` |
+| 2 — Prettier front-end, CLI, `--fix` | ✅ | this commit |
+| 3 — CI wiring, npm scripts, `.prettierignore` | ⏳ | |
 | 4 — Docs sweep + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -345,6 +353,7 @@ this plan
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-10 | Phase 2 — the gate is about to bind every future frontend PR | How often the finished guard would have fired on work that already merged — R-1's evidence, measured rather than argued | Replayed the detector over the last **40** `main` commits (`git show <sha>:<path>` for each in-scope path with added lines, so history is judged as it stood) | **9 of 40** commits (22.5 %) would have failed: 5f415a2 (#612, the PR that raised the issue) 4 hunks, 7b2edca 1, e350e43 (#603, a large template slice) 40, b70171b 2, 5fce213 3, 03dcfe4 11, 9709fed 1, 3a77080 1, 8acf922 3 | **Accept and ship.** One frontend PR in four would need a `--fix` run, and every hunk it names is a line that PR itself wrote. The distribution is the reassuring part: seven of the nine are 1–4 hunks, and the two outliers are large slices that rewrote whole templates. The alternative measured for comparison — file-scoped — would have fired on essentially every one of the 40, since 200 of the tree's files are dirty |
 | 2026-08-10 | Phase 0 — the third guard needs the same git glue | `git()`, `rangeFor()`, `parseAddedLines()`, `changedPaths()` across `scripts/check-*.mjs` | Read both guards side by side against #533's phase-2 audit row, which deferred this decision to "if a third guard appears" | Four helpers, duplicated or about to be: `git()` and `rangeFor()` in both guards, `parseAddedLines()` in `check-inline-comments.mjs` and needed here, `changedPaths()` in `check-plan-file-structure.mjs` | **Extracted** to `scripts/git-diff.mjs` — the condition #533 named has now occurred. Bodies moved verbatim; the one behavioural difference between the two `rangeFor`s (one returned `[range]`, the other `range`) is resolved in favour of the string, with the array wrap moved to its single caller. Both suites' cases for the moved functions moved with them, so `node --test "scripts/*.test.mjs"` counts the same 56 assertions before and after |
 
 ---
