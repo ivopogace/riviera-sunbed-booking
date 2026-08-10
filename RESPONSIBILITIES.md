@@ -375,7 +375,9 @@ partial one: two 50% refunds fit inside the charge and both succeed.
   repeat a call expected to fail again. Same posture as `refund_mismatch`: the alert stands until a
   human settles it. The un-record is itself guarded on the recorded `refund_id`, so a re-delivery
   moves nothing, a failure naming a refund we never issued (a manual dashboard one) moves nothing, and
-  a stale failure cannot un-record the retry that worked.
+  a stale failure cannot un-record the retry that worked. (#594 added a second, narrower arm beside
+  that guard, for the refund this app has begun but not yet written down — see below; what keeps a
+  manual dashboard refund out is then the refund *attempt* record, not the absence of a match.)
 - **At-most-once is now the port's contract, enforced, not the collecting adapter's habit.**
   `PaymentGatewayRefundContract` states it once against `PaymentGateway` — replay a refund past the
   key window and exactly one must move, with the replay reporting the first — on a fixture that

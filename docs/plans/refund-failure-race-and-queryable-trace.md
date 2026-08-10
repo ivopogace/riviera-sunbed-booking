@@ -44,8 +44,12 @@ forced the manual-dashboard-refund false-positive out into the open, which is wh
 `refund_attempted_at` in the design instead of a bare by-intent fallback) · `tdd` (each
 phase red-first at the `Payments` port seam, then the webhook and gateway above it) ·
 `riviera-review-overlay` (review gate — RV-BE-3b/RV-BE-8 on the diff at ready-for-review)
-· `riviera-docs-freshness` (**ran** at merge close-out over this PR's range — see
-Execution status) · `postgres` (nullable `TIMESTAMPTZ` columns + a **partial** index on
+· `riviera-docs-freshness` (**ran** over `origin/main..HEAD` before the review gate rather than at
+close-out, so its patches go through review too — 3 findings, all patched: a `RESPONSIBILITIES.md`
+§`payment` sentence claiming the un-record is guarded on the recorded `refund_id` alone, the Stripe
+smoke test's expected post-failure row, and the `Payments` header javadoc's "three narrow
+operations". The counting sweep cleared "the three money-path signals" — the new gauge is
+deliberately not a fourth, and `MoneyPathAlertCheck` still reads three) · `postgres` (nullable `TIMESTAMPTZ` columns + a **partial** index on
 `refund_failed_at IS NOT NULL` so the owed-refund enumeration is an index-only scan over a
 near-empty set, rather than a full index on a column that is NULL for every healthy row) ·
 `riviera-modulith` (confirmed all three fixes stay **inside** `payment` — no published
@@ -295,7 +299,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — `Payments` stub signature
 - `RESPONSIBILITIES.md` — §`payment`: the three residuals, closed
 - `docs/runbooks/observability.md` — the owed-refund enumeration query, the new gauge row, the new `refund_died_before_record` reason
-- `CLAUDE.md` — the `payment` module row, if the counting sweep says it went stale
+- `docs/runbooks/stripe-profile-smoke-test.md` — step 8's expected row gains the trace; new step 8b forges the racing failure (docs-freshness finding)
+- `CLAUDE.md` — checked by the counting sweep, **unchanged**: the `payment` module row and the `shared` type list both stay true
 
 ---
 

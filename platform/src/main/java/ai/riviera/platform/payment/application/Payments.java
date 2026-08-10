@@ -7,11 +7,15 @@ import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 
 /**
- * The {@code payment} module's outbound persistence port (driven seam) for the collection
- * record. Three narrow operations model the Stripe flow: {@code register} a PaymentIntent at
- * creation ({@code REQUIRES_PAYMENT}), {@code findBookingRefByIntent} to correlate a verified
- * webhook back to its booking, and {@code markStatus} to apply the webhook's outcome.
- * Implemented by {@code JdbcPayments} (explicit SQL, invariant #1); internal to the module.
+ * The {@code payment} module's outbound persistence port (driven seam) for the collection record:
+ * the reads that correlate a verified webhook back to its booking, and the writes that record what
+ * the gateway did about collecting and refunding.
+ *
+ * <p>Every write here is a <strong>guarded single statement that reports whether it moved</strong>,
+ * never a read-then-write — Stripe promises neither ordering nor a single delivery, and the refund
+ * path races its own failure webhook. A caller that ignores a {@code false} will report money moved
+ * that did not. Implemented by {@code JdbcPayments} (explicit SQL, invariant #1); internal to the
+ * module.
  */
 public interface Payments {
 
