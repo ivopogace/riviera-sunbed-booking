@@ -152,8 +152,7 @@ describe('SetEditor (#600)', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    // The rendered cell still shows the SERVER's pool — nothing was applied optimistically — and no
-    // re-read was asked for, because there is nothing new to read.
+    // Still the SERVER's pool (nothing optimistic), and no re-read asked for — nothing changed.
     expect(cellForSet(12).getAttribute('data-state')).toBe('standard');
     expect(changed).toBe(0);
     expect(byId('set-error').textContent).toMatch(/booked or held/i);
@@ -188,8 +187,7 @@ describe('SetEditor (#600)', () => {
     click(byId('set-pool-WALK_IN'));
     expect((byId('set-pool-WALK_IN') as HTMLElement).getAttribute('aria-pressed')).toBe('true');
 
-    // A re-read lands (another device moved set 12 back to the online pool) — the draft must follow the
-    // server, never keep an edit the operator can no longer see the basis for.
+    // A re-read lands from another device: the draft must follow the server, not outlive its basis.
     fixture.componentRef.setInput('sets', [...SETS.filter((s) => s.id !== 12), set({ id: 12, rowLabel: 'B', positionNo: 1, gridX: 1, gridY: 2 })]);
     fixture.detectChanges();
 
@@ -277,8 +275,7 @@ describe('SetEditor (#600)', () => {
 
   it('addsASetIntoAGrownGridCell: grow, pick the new cell, POST with derived row/position (AC-3)', async () => {
     render();
-    // The 2×2 grid is full, so without growing there is nowhere to add — the ordinary case for a
-    // venue that laid out its map once and has now put out one more lounger.
+    // The 2×2 grid is full, so growing is the only way to add — the ordinary case, not an edge one.
     expect(cells()).toHaveLength(4);
 
     click(byId('set-add-col'));

@@ -13,6 +13,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 /** The heading that opens the section, as the plan-doc template writes it. */
 const HEADING = /^##\s+File structure\s*$/i;
@@ -308,6 +309,8 @@ function main(argv) {
 }
 
 // Only run the CLI when invoked directly, so the test suite can import the detector.
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL, not a `file://` template: a Windows path never produces a matching URL, which
+// silently turned the CLI (and so the PostToolUse hook) into a no-op there.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.exitCode = main(process.argv.slice(2));
 }

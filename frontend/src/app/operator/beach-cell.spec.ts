@@ -60,8 +60,7 @@ describe('BeachCell (#600)', () => {
     const { host } = render();
     const button = host.querySelector('button')!;
 
-    // Angular 22 merges a static `class` with a host `[class]` binding rather than replacing it, so a
-    // consumer keeps ownership of size and radius (riviera-tailwind rule 3).
+    // Angular 22 merges a static `class` with the host binding, so geometry stays the consumer's.
     expect(button.classList.contains('h-7')).toBe(true);
     expect(button.classList.contains('rounded-[6px]')).toBe(true);
   });

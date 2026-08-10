@@ -251,7 +251,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-0 | CI (Repo hygiene, RV-STYLE-1) | Four two-line inline comments in the new specs. **The interesting half is why local runs missed them:** `check-inline-comments.mjs` and `check-plan-file-structure.mjs` gate their CLI on ``import.meta.url === `file://${process.argv[1]}` ``, which can never match a Windows path — so on the primary dev machine both guards, *and the `PostToolUse` hook built on them*, exited 0 without running. `check-comment-only.mjs` already used the correct `pathToFileURL` idiom; the other two had drifted from it | fixed — comments shortened, both guards switched to `pathToFileURL`, verified by reproducing the CI failure locally first |
 
 ---
 
@@ -273,6 +273,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/layout-editor.spec.ts` — mode-default + copy specs
 - `frontend/e2e/operator-set-editing.e2e.ts` — CI-safe mocked e2e for the per-set flow
 - `docs/plans/o3-layout-editor.md` — the O3 plan states the tab is bulk-only; corrected here
+- `scripts/check-inline-comments.mjs` · `scripts/check-plan-file-structure.mjs` — CLI entry fix: the
+  `file://` template never matches a Windows path, so both guards were silent no-ops locally (F-0)
 
 ---
 
