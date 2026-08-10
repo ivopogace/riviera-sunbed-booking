@@ -96,6 +96,25 @@ SELECT entry_type, net_minor          FROM payout_ledger_entry WHERE booking_id 
 SELECT status, cancelled_at, refund_minor FROM booking      WHERE code = '<CODE>';      -- CANCELLED
 ```
 
+## 8. Failed-refund reconciliation (#592)
+
+Stripe test mode will not fail a refund on demand, so forge the verified event the issuer's rejection
+would produce — the same technique as the headless variant below. `$RE` is the refund id from step 7.
+
+```bash
+PAYLOAD='{"id":"evt_local_refund_failed","object":"event","api_version":"2024-04-10","type":"refund.failed","data":{"object":{"id":"'"$RE"'","object":"refund","status":"failed","amount":4500,"payment_intent":"'"$PI"'"}}}'
+# sign it with $STRIPE_WEBHOOK_SECRET exactly as the headless variant's step 4b does, then POST it
+```
+
+```sql
+SELECT status, refunded_minor FROM payment WHERE booking_ref = <id>;  -- SUCCEEDED, 0
+```
+
+The booking view flips back to showing the refund as outstanding, and
+`riviera_refunds_failed_total` increments once — a second delivery under a different event id must
+move nothing. Recovery from here is manual (`RESPONSIBILITIES.md` §`payment`): inside the ~24h
+idempotency-key window a re-attempt replays the dead refund and is refused as `refund_key_replay`.
+
 ## Idempotency / retry checks (optional)
 
 - **Webhook dedup:** `stripe events resend <evt_id>` → second delivery is a `200 duplicate`, no second

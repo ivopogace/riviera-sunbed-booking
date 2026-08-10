@@ -50,6 +50,20 @@ Pinned by `platform/src/test/java/ai/riviera/platform/ActuatorHardeningIT.java`.
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | env | Spring datasource auto-config | supplied entirely by the deploy target (Neon over `sslmode=require`) |
 | `RIVIERA_OPERATOR_PASSWORD` | env (`riviera.operator.password`) | the seeded `operator` account's credential — **the platform admin** since #115 (was the owns-all bootstrap; unchanged variable, no new secret) | empty → admin login disabled, cannot approve registrations (logged at WARN, never the value) |
 
+> **The webhook endpoint's event list is configuration too, and nothing in the app can check it.**
+> The endpoint at Stripe must send `payment_intent.succeeded`, `payment_intent.canceled` and
+> `payment_intent.payment_failed` — and, since #592, all three refund-lifecycle types:
+> `refund.failed`, `refund.updated`, and `charge.refund.updated` for accounts on an API version old
+> enough not to emit the others. **All three, not just `refund.failed`:** Stripe has no
+> `refund.canceled`, so a refund the provider voids is announced *only* on the every-transition
+> types, and subscribing to the failure-only one would leave that guest permanently mis-told.
+> Miss the refund types and the failed-refund reconciliation is **inert**: a refund the issuer rejects
+> stays recorded as accepted, the guest is told their money is on its way, and
+> `riviera.refunds.failed` never fires. There is no boot check for this — an endpoint subscribed to
+> nothing looks exactly like an endpoint with no traffic — so verify it in the Stripe dashboard
+> whenever the endpoint is created or re-pointed.
+
+
 Notes:
 
 - The **only** password literal in the repo is `platform/compose.yaml`

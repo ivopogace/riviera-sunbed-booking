@@ -15,7 +15,11 @@ public final class ObservabilityMetrics {
 	/** Gauge: incomplete Spring Modulith event publications (outbox backlog) — money-path signal 1 of 3. */
 	public static final String OUTBOX_PENDING = "riviera.outbox.pending";
 
-	/** Counter: refunds the gateway failed to issue — money-path signal 2 of 3. */
+	/**
+	 * Counter: refunds the platform owes that did not reach the guest — money-path signal 2 of 3.
+	 * Counts a refund the gateway refused to issue and one it accepted then reported dead alike; the
+	 * runbook splits the shapes, because they need different responses.
+	 */
 	public static final String REFUNDS_FAILED = "riviera.refunds.failed";
 
 	/** Standard Boot Web timer; a webhook 5xx is a tag slice of it — money-path signal 3 of 3. */

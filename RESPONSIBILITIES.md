@@ -299,9 +299,11 @@ Stripe promises neither ordering nor a single delivery, and the handler widens t
   **only when a row actually moved** — a late `canceled` on a collected payment must not ask
   `booking` to release the claim of a paid booking (invariant #2). `booking`'s own guarded
   `AWAITING_PAYMENT` transitions stay as the second layer; they were the only one.
-- **A verified event is never consumed unapplied.** For the three handled types, a payload that
-  yields no PaymentIntent id raises `UnreadableWebhookEventException` (`503`) instead of logging a
-  warning and answering `200`. The rollback un-does the event-id dedup insert, so Stripe
+- **A verified event is never consumed unapplied.** For every handled type — the three
+  `payment_intent` ones and the refund-lifecycle ones (#592) — a payload that yields no identified
+  PaymentIntent or Refund raises `UnreadableWebhookEventException` (`503`) instead of logging a
+  warning and answering `200`. One helper reads the data object for all of them, so the rule has one
+  home rather than one per branch. The rollback un-does the event-id dedup insert, so Stripe
   re-delivers and the id is not locally blacklisted — otherwise a paid booking could sit in
   `AWAITING_PAYMENT` forever, holding its `(set, date)` claim, with the abandoned sweep skipping it
   by design ("the confirm webhook wins" — a webhook that had already been consumed). Types the
@@ -339,12 +341,52 @@ partial one: two 50% refunds fit inside the charge and both succeed.
 - The refund create also **replays once on a connection timeout** with the same key, the twin of the
   PaymentIntent path (one shared helper, so the rule has one home), so the common lost-response case
   resolves while the key still holds.
-- **Two residuals, stated rather than implied.** A `pending` refund is adoptable — it is where a
-  refund normally starts, and refusing to count it would create the second refund this rule exists to
-  prevent — so a refund that Stripe later flips to `failed` is recorded as done, and with no refund
-  webhook in v1 nothing re-drives it. And at-most-once is the *collecting adapter's* guarantee, held
-  by `StripePaymentGateway` alone: `PaymentGateway` publishes no conformance test that would force a
-  future adapter (ADR-0009's Paysera) to honour it.
+**Those rules left two residuals, and #592 closed both.**
+
+- **A refund the gateway later reports as dead is un-recorded, not left claiming the guest was
+  paid.** A `pending` refund stays adoptable — it is where a refund normally starts, and refusing to
+  count it would create the second refund the rule above exists to prevent — so the fix is not to
+  read `pending` differently but to act on the gateway's later word. A signature-verified
+  refund-lifecycle event, branched on the **refund's status**, clears `refunded_minor` and puts the
+  collection back to `SUCCEEDED`, which it still is: no money went back. All three types are handled,
+  because `canceled` has no failure-only event of its own — Stripe announces it solely on the
+  every-transition types. The event **type** decides one thing only, and it is the unreadable-payload
+  policy: `refund.failed` reports nothing but failures, so an unreadable one is a lost failure and
+  answers `503` to force re-delivery; `refund.updated`/`charge.refund.updated` announce every
+  transition for every refund on the account, so an unreadable one is fail-**open** — a permanent
+  retry loop there would get Stripe to disable an endpoint that also carries the payment spine, and
+  losing an advisory duplicate is much the smaller harm (invariants #2/#8).
+
+  That one write makes every existing mechanism
+  truthful — `RefundStatusLookup` answers `OUTSTANDING` again so the guest is told the refund is
+  still owed, `riviera.refunds.failed` lights the money-path signal, and the existence read above now
+  sees a dead refund rather than adopting the corpse. It is invariant #8 applied to the refund
+  lifecycle: reconcile from the webhook, not from the request-time answer.
+
+  **What it does not do is hand anyone a lever.** The cancellation's publication completed when the
+  refund was accepted, and `completion-mode=archive` removed it, so `POST /api/admin/refund-outbox`
+  neither counts nor re-drives it — that lever only reaches refunds that never succeeded. And a fresh
+  attempt inside the ~24h idempotency-key window does not create anything: the key is stable per
+  booking, so Stripe replays the original response — the dead refund — which the adapter now detects
+  and refuses (`refund_key_replay`) rather than recording a corpse as a live refund. So recovery is a
+  human issuing the refund at the gateway, or re-attempting once the key has expired. The un-record's
+  job is to make the state honest and loud, not to self-heal. **Nothing re-drives it automatically, deliberately** — an issuer rejection is not a
+  transient error, and the card that refused the money often cannot receive it, so an auto-retry would
+  repeat a call expected to fail again. Same posture as `refund_mismatch`: the alert stands until a
+  human settles it. The un-record is itself guarded on the recorded `refund_id`, so a re-delivery
+  moves nothing, a failure naming a refund we never issued (a manual dashboard one) moves nothing, and
+  a stale failure cannot un-record the retry that worked.
+- **At-most-once is now the port's contract, enforced, not the collecting adapter's habit.**
+  `PaymentGatewayRefundContract` states it once against `PaymentGateway` — replay a refund past the
+  key window and exactly one must move, with the replay reporting the first — on a fixture that
+  deliberately never dedupes on the key, since that is the condition being simulated. A second case
+  guards the opposite error: a refund that returned nothing must **not** be adopted, or at-most-once
+  becomes at-most-zero. A coverage rule makes it unskippable — every production `PaymentGateway` is
+  either covered by a contract subclass or non-collecting, and neither half is a maintained list:
+  coverage is read from the subclasses' dependencies, the exemption from the `@Profile` that already
+  binds a gateway to its `CollectionGuarantee`. So ADR-0009's Paysera adapter arrives unclassified and
+  fails the build, which is what a javadoc could not do. The stub needed no state to participate — it
+  is exempt because it collects nothing, and the guarantee that says so already existed.
 
 **Not My Job:**
 - Deciding *whether* to refund or *how much* → **`booking`** owns the refund policy;

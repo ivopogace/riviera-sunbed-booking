@@ -91,4 +91,12 @@ class RefundServiceTest {
 		assertEquals(RefundProgress.ACCEPTED, partial.progressOf(BOOKING),
 				"a partial after-cutoff refund is accepted the same as a full one");
 	}
+
+	@Test
+	void progressIsOutstandingAfterARecordedRefundFailed() {
+		RefundService service = serviceWithState(Optional.of(new RefundState(PaymentStatus.SUCCEEDED, 0L)));
+
+		assertEquals(RefundProgress.OUTSTANDING, service.progressOf(BOOKING),
+				"un-recording a failed refund puts the guest back to owed, never to already-paid");
+	}
 }

@@ -165,4 +165,60 @@ class JdbcPaymentsIT {
 		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_refund_part"),
 				"a partial refund moves the payment to PARTIALLY_REFUNDED");
 	}
+
+	@Test
+	void markRefundFailedUnrecordsARecordedRefund() {
+		payments.register(new NewPayment(new BookingRef(9501L), "pi_refund_died", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_refund_died", PaymentStatus.SUCCEEDED);
+		payments.markRefunded(new BookingRef(9501L), 4500L, "re_died");
+
+		assertTrue(payments.markRefundFailed("re_died"), "the failure moves the row it was recorded on");
+
+		var state = payments.findRefundState(new BookingRef(9501L)).orElseThrow();
+		assertEquals(PaymentStatus.SUCCEEDED, state.status(),
+				"no money went back, so the collection stands in full again");
+		assertEquals(0L, state.refundedMinor(), "a failed refund returned nothing — the record must say so");
+	}
+
+	@Test
+	void markRefundFailedUnrecordsAPartialRefundToo() {
+		payments.register(new NewPayment(new BookingRef(9502L), "pi_part_died", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_part_died", PaymentStatus.SUCCEEDED);
+		payments.markRefunded(new BookingRef(9502L), 2250L, "re_part_died");
+
+		assertTrue(payments.markRefundFailed("re_part_died"), "PARTIALLY_REFUNDED is a recorded refund too");
+		assertEquals("SUCCEEDED", statusOf("pi_part_died"));
+	}
+
+	@Test
+	void aSecondFailureForTheSameRefundMovesNothing() {
+		payments.register(new NewPayment(new BookingRef(9503L), "pi_twice_died", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_twice_died", PaymentStatus.SUCCEEDED);
+		payments.markRefunded(new BookingRef(9503L), 4500L, "re_twice_died");
+		payments.markRefundFailed("re_twice_died");
+
+		assertFalse(payments.markRefundFailed("re_twice_died"),
+				"a re-delivered failure finds no recorded refund left to un-record");
+		assertEquals("SUCCEEDED", statusOf("pi_twice_died"), "and it changes nothing on the way past");
+	}
+
+	@Test
+	void aStaleFailureCannotUnrecordAFreshRefund() {
+		payments.register(new NewPayment(new BookingRef(9504L), "pi_stale_fail", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_stale_fail", PaymentStatus.SUCCEEDED);
+		payments.markRefunded(new BookingRef(9504L), 4500L, "re_first_attempt");
+		payments.markRefundFailed("re_first_attempt");
+		payments.markRefunded(new BookingRef(9504L), 4500L, "re_second_attempt");
+
+		assertFalse(payments.markRefundFailed("re_first_attempt"),
+				"the row now carries the retry's refund id, so the dead one matches nothing");
+		assertEquals(4500L, payments.findRefundState(new BookingRef(9504L)).orElseThrow().refundedMinor(),
+				"the refund that did work survives its predecessor's late failure");
+	}
+
+	@Test
+	void markRefundFailedIgnoresAnUnknownRefundId() {
+		assertFalse(payments.markRefundFailed("re_never_recorded"),
+				"a failure for a refund this app never issued moves nothing");
+	}
 }

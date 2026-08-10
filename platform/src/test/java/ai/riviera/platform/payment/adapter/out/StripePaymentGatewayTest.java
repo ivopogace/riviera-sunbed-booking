@@ -1,6 +1,5 @@
 package ai.riviera.platform.payment.adapter.out;
 
-import java.util.List;
 import java.util.Optional;
 
 import com.stripe.StripeClient;
@@ -8,7 +7,6 @@ import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Refund;
-import com.stripe.model.StripeCollection;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.RefundCreateParams;
@@ -85,17 +83,11 @@ class StripePaymentGatewayTest {
 
 	/** Stub what Stripe already holds against the intent — no arguments means "no refund yet". */
 	private static void stripeHolds(RefundService refunds, Refund... existing) throws StripeException {
-		StripeCollection<Refund> page = new StripeCollection<>();
-		page.setData(List.of(existing));
-		when(refunds.list(any(RefundListParams.class))).thenReturn(page);
+		when(refunds.list(any(RefundListParams.class))).thenReturn(StripeRefunds.page(existing));
 	}
 
 	private static Refund stripeRefund(String id, String status, Long amount) {
-		Refund refund = mock(Refund.class);
-		when(refund.getId()).thenReturn(id);
-		when(refund.getStatus()).thenReturn(status);
-		when(refund.getAmount()).thenReturn(amount);
-		return refund;
+		return StripeRefunds.refund(id, status, amount);
 	}
 
 	@Test
@@ -246,6 +238,38 @@ class StripePaymentGatewayTest {
 				"refund idempotency key is derived from the booking id (invariant #8/#10)");
 		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_xyz");
 		assertEquals(0.0, fixture.adoptedCount(), "a freshly created refund is not an adoption");
+	}
+
+	@Test
+	void doesNotRecordARefundStripeAnswersAsAlreadyDead() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds());
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenReturn(stripeRefund("re_born_dead", "failed", 2250L));
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
+				"a refund that returned nothing is not a refund, however new its id is");
+		assertEquals("refund_returned_nothing", failed.reason());
+		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+	}
+
+	@Test
+	void refusesTheDeadRefundAnUnexpiredKeyReplaysInsteadOfRecordingItAgain() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		Refund dead = stripeRefund("re_dead", "failed", 2250L);
+		stripeHolds(fixture.refunds(), dead);
+		// Inside the key window the create is not a create: Stripe replays the original response.
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenReturn(dead);
+
+		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
+				"a replayed corpse is not a refund — reporting success would strand the guest");
+		assertEquals("refund_key_replay", failed.reason());
+		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
 	}
 
 	@Test
