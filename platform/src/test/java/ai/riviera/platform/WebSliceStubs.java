@@ -740,10 +740,6 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public void clearRefundAttempt(BookingRef booking) {
-			}
-
-			@Override
 			public boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
 				return true;
 			}

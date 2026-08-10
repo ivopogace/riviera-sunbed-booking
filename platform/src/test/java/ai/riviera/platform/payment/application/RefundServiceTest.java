@@ -71,32 +71,23 @@ class RefundServiceTest {
 				"an attempt recorded after the call would be invisible for the whole window it exists to cover");
 	}
 
+	/**
+	 * A refused refund leaves the obligation standing, so the stamp must survive it. Clearing here
+	 * would look tidy and would lose the discriminator in the one case it exists for: a create whose
+	 * response was lost to a double timeout can leave a live refund at the gateway with no id on
+	 * record, and only the stamp lets that refund's later failure be recognised as ours.
+	 */
 	@Test
-	void clearsTheAttemptWhenTheGatewayRefuses() {
+	void keepsTheAttemptWhenTheGatewayRefuses() {
 		List<String> calls = new ArrayList<>();
-		RefundOnlyGateway refusing = (booking, amount) -> new RefundResult.Failed("refund_mismatch");
+		RefundOnlyGateway refusing = (booking, amount) -> new RefundResult.Failed("stripe_error");
 		RefundService service =
 				new RefundService(refusing, new SimpleMeterRegistry(), new AttemptRecordingPayments(calls));
 
 		service.refund(BOOKING, new Money(2250L, "EUR"));
 
-		assertEquals(List.of("attempt:42", "cleared:42"), calls,
-				"a refund the gateway refused leaves none of ours in flight, so the stamp must not "
-						+ "outlive the call and vouch for the next refund on this collection");
-	}
-
-	@Test
-	void keepsTheAttemptWhenTheGatewayRefunded() {
-		List<String> calls = new ArrayList<>();
-		RefundOnlyGateway ok = (booking, amount) -> new RefundResult.Refunded("re_ok");
-		RefundService service =
-				new RefundService(ok, new SimpleMeterRegistry(), new AttemptRecordingPayments(calls));
-
-		service.refund(BOOKING, new Money(2250L, "EUR"));
-
 		assertEquals(List.of("attempt:42"), calls,
-				"the recording write already cleared it — clearing again here would be a second statement "
-						+ "for no gain");
+				"the refund is still owed, so the obligation — and the stamp recording it — stands");
 	}
 
 	@Test

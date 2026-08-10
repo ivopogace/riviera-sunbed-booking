@@ -53,7 +53,6 @@ class RefundService implements RefundPort, RefundStatusLookup {
 		payments.markRefundAttempted(booking);
 		RefundResult result = gateway.refund(booking, amount);
 		if (result instanceof RefundResult.Failed) {
-			payments.clearRefundAttempt(booking);
 			failedRefunds.increment();
 		}
 		return result;

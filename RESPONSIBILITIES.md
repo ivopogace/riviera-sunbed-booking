@@ -224,8 +224,11 @@ sits in the outbox.
   and the create's same-key replay, so ≈75s per refund) and `WeatherRefundService` dispatches a whole venue-day of
   refunds in one transaction, so on Boot's shared `applicationTaskExecutor` a single admin action
   would starve the spine that pool also carries; the same swap **dropped** the `REQUIRES_NEW` the
-  composite annotation supplied — it bought nothing (the one write is a single statement, after a
-  successful refund) while pinning one of ten Hikari connections across the call. Saturation
+  composite annotation supplied — it bought nothing (every write beneath it is a single guarded
+  statement, so a rollback would have nothing to undo) while pinning one of ten Hikari connections
+  across the call. Since #594 dropping it is load-bearing rather than merely cheaper: the refund path
+  records its attempt *before* the gateway call, and a transaction would hide that write for exactly
+  the window it exists to cover (`RESPONSIBILITIES.md` §`payment`). Saturation
   **sheds** to `ObservabilityMetrics.REFUNDS_SHED` and the publication stays outstanding for the
   restart republish, but the queue is sized (`riviera.booking.refund.*`, validated at boot) so
   shedding is unreachable for any plausible burst — unlike a shed mail, a shed refund is money owed
@@ -447,13 +450,20 @@ gained a trace, and every refund write became a guarded statement that reports w
   like an improvement. **Placement:** it is written from `RefundService#refund`, which must stay
   **outside a caller's transaction**, or the write stays invisible for the whole window it exists to
   cover (`RefundAttemptVisibilityIT` reads it back on a second connection; `RefundBulkheadIT` is what
-  pins the listener's absence of a transaction). **Pairing:** the stamp means a refund is *in flight*,
-  so every outcome the refund call returns clears it — the recording write on success, and
-  `RefundService` explicitly on any `Failed`, since a gateway that refused, replayed a dead refund, or
-  errored leaves none of ours outstanding. Unpaired it decays into "this booking was refunded once",
-  and the next failed refund on the collection — including one a human issued at the gateway — is
-  recorded as money the platform owes. Only an unchecked exception escaping the call can strand a
-  stamp, and the publication then stays outstanding, so the retry re-stamps.
+  pins the listener's absence of a transaction). **Lifetime:** the stamp records an *unresolved refund
+  obligation at the gateway*, and every in-app resolution clears it — the recording write on success,
+  and both failure marks. It deliberately **survives a `Failed` return**, which is the counter-intuitive
+  half. Clearing there was tried and reverted: `RefundResult.Failed` carries an untyped reason, so the
+  service cannot tell a gateway-confirmed "nothing of ours is live" from the genuinely ambiguous
+  branches — a bare `StripeException` after a *double* timeout in the replay helper may well have left
+  a live refund at Stripe with no id on record, and that is precisely the case the discriminator exists
+  for. Clearing there would trade a bounded false positive for the silent loss this whole mechanism was
+  built to end. In every `Failed` branch the platform still owes the refund, so a stamp that outlives
+  the call is describing something true.
+
+  The residual is bounded and worth stating: a booking settled **by hand at the gateway** never runs an
+  in-app resolution, so its stamp stands, and a later failed refund on that collection would be recorded
+  as ours. Clear it when settling by hand — the observability runbook's owed-refund section says so.
 
 **Not My Job:**
 - Deciding *whether* to refund or *how much* → **`booking`** owns the refund policy;

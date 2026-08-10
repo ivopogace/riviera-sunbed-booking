@@ -61,23 +61,16 @@ public interface Payments {
 	 * against the same collection. Only the first is money the platform owes. A 0-row no-op when no
 	 * collected payment row exists (the stub profile), which is why nothing is reported back.
 	 *
-	 * <p>It records an attempt <strong>in flight</strong>, not one ever made — paired with
-	 * {@link #clearRefundAttempt}, and cleared by the recording write too. A stamp that outlived its
-	 * own attempt would eventually make every later gateway refund on that collection look like ours.
+	 * <p>It records an <strong>unresolved refund obligation at the gateway</strong>, not an attempt
+	 * ever made. Every in-app resolution clears it — the recording write on success, and both failure
+	 * marks — so a booking whose refund landed stops vouching for refunds that follow it. It
+	 * deliberately survives a {@code Failed} return: in every one of those branches the platform still
+	 * owes the refund, and one of them (a create whose response was lost to a double timeout) is
+	 * exactly the case where a refund of ours may exist at the gateway with no id on record.
 	 *
 	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
 	void markRefundAttempted(BookingRef booking);
-
-	/**
-	 * Undo {@link #markRefundAttempted} because the refund call ended leaving none of this platform's
-	 * refunds in flight — the gateway refused it, replayed a dead one, or errored.
-	 *
-	 * <p>The pairing is what keeps the stamp honest: unpaired, the discriminator decays into "this
-	 * booking was refunded once", and the next failed refund on the collection — including one a human
-	 * issued at the gateway — is recorded as money this platform owes.
-	 */
-	void clearRefundAttempt(BookingRef booking);
 
 	/**
 	 * Record a refund against the booking's collection (U6): set {@code refunded_minor} and the

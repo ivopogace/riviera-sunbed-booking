@@ -110,7 +110,16 @@ ORDER BY refund_failed_at;
 be NULL on every row of this list** — it records an attempt *in flight*, and every row here has one that
 concluded, so it is cleared. That is the point rather than a gap: a stamp that outlived its attempt would
 make the next refund on that collection look like ours, including one someone issued by hand. A row
-leaves the list when a retry records successfully, or when someone clears it after settling by hand.
+leaves the list when a retry records successfully, or when someone clears it after settling by hand:
+
+```sql
+UPDATE payment SET refund_failed_at = NULL, refund_attempted_at = NULL WHERE booking_ref = <id>;
+```
+
+Clear `refund_attempted_at` in the same statement, as above. It records an unresolved refund obligation
+at the gateway and survives a failed refund call on purpose; settling by hand is the one resolution the
+app never sees, so it is the one case where the stamp has to be retired manually. Left set, the next
+failed refund on that collection — including one someone else issues — is recorded as ours.
 
 **The lever is `POST /api/admin/refund-outbox/resubmit` (#454; the admin console's Refunds tab at
 `/admin/refunds` drives it since #460).** It re-drives what the registry
