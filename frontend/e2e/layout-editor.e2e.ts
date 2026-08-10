@@ -14,7 +14,7 @@ import { settle } from './support/booking-dialog';
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
 // An empty venue so the editor starts from the empty state — the operator generates the grid (no
-// seed→fill race). The generate-over-existing confirm flow is pinned by the unit spec.
+// seed→fill race), then regenerates over it to reach the confirm.
 const VENUE_MAP = {
   id: 1,
   name: 'Miramar Beach Club',
@@ -135,6 +135,55 @@ test('generates a grid, paints a walk-in set, and saves the whole layout in one 
   expect(body.sets).toHaveLength(6);
   expect(body.sets.filter((s) => s.pool === 'WALK_IN')).toHaveLength(1);
   expect(body.expectedVersion).toBe(0); // the setVersion loaded from the map read
+});
+
+test('regenerating over a grid confirms first and moves focus with the confirmation (#604, + axe)', async ({
+  page,
+}) => {
+  await mockEditor(page);
+  await page.goto('/operator/1');
+  await signIn(page);
+  await expect(page.getByTestId('layout-editor')).toBeVisible();
+
+  // Draw a grid first, so the NEXT Generate is a destructive replace rather than a first draw.
+  await page.getByTestId('layout-gen-rows').fill('2');
+  await page.getByTestId('layout-gen-cols').fill('2');
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(4);
+
+  await page.getByTestId('layout-gen-rows').fill('1');
+  await page.getByTestId('layout-gen-cols').fill('1');
+  await page.getByTestId('layout-generate').click();
+
+  const confirm = page.getByTestId('layout-confirm-regen');
+  await expect(confirm).toBeVisible();
+  await expect(confirm).toHaveAttribute('role', 'alertdialog');
+  await expect(confirm).toHaveAttribute('aria-label', 'Confirm regenerate');
+  await expect(page.getByTestId('layout-cell')).toHaveCount(4); // nothing replaced until confirmed
+  await expect(page.getByTestId('layout-confirm-yes')).toBeFocused();
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'regenerate confirmation');
+
+  // Computed styles, not the class list — the only way to see drift from the extraction.
+  await expect(confirm).toHaveCSS('background-color', 'rgb(255, 244, 224)');
+  await expect(page.getByTestId('layout-confirm-yes')).toHaveCSS('background-color', 'rgb(10, 95, 116)');
+  await expect(page.getByTestId('layout-confirm-yes')).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(page.getByTestId('layout-confirm-yes')).toHaveCSS('min-height', '44px');
+  await expect(page.getByTestId('layout-confirm-no')).toHaveCSS('min-height', '44px');
+
+  // Backing out leaves the grid alone and hands focus back to the button the confirm replaced.
+  await page.getByTestId('layout-confirm-no').click();
+  await expect(confirm).toBeHidden();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(4);
+  await expect(page.getByTestId('layout-generate')).toBeFocused();
+
+  // Confirming replaces the grid; Generate survives it, so focus lands there and not on <body>.
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-confirm-yes')).toBeFocused();
+  await page.getByTestId('layout-confirm-yes').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(1);
+  await expect(page.getByTestId('layout-generate')).toBeFocused();
 });
 
 test('shows the layout-locked message when the venue has bookings (409 LAYOUT_IN_USE)', async ({

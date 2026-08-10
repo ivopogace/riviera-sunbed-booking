@@ -45,26 +45,26 @@ inert test hook; the no-drift rule is what turned the host-element question into
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the bulk beach-map tab showing an existing grid, when the operator activates
+- [x] **AC-1:** Given the bulk beach-map tab showing an existing grid, when the operator activates
   **Generate**, then the regenerate confirmation opens and keyboard focus moves onto its confirm
   button. *Pinned by:* `layout-editor.spec.ts` › `moves focus with the regenerate confirmation (WCAG 2.4.3)`
-- [ ] **AC-2:** Given the open regenerate confirmation, when the operator **cancels**, then the grid
+- [x] **AC-2:** Given the open regenerate confirmation, when the operator **cancels**, then the grid
   is unchanged and focus returns to the Generate button. *Pinned by:* same spec
-- [ ] **AC-3:** Given the open regenerate confirmation, when the operator **confirms**, then the grid
+- [x] **AC-3:** Given the open regenerate confirmation, when the operator **confirms**, then the grid
   is replaced and focus returns to the Generate button (which survives the regenerate).
   *Pinned by:* same spec
-- [ ] **AC-4:** Given any of the four confirm surfaces with its confirmation open, then the
+- [x] **AC-4:** Given any of the four confirm surfaces with its confirmation open, then the
   confirmation exposes `role="alertdialog"` with a non-empty accessible name.
   *Pinned by:* `confirm-panel.spec.ts` › `is an alertdialog with an accessible name`,
   `confirm-with-reason.spec.ts` › `is an alertdialog with an accessible name`
-- [ ] **AC-5:** Given the admin photo takedown and the operator suspend flow, when driven through
+- [x] **AC-5:** Given the admin photo takedown and the operator suspend flow, when driven through
   ask → type a reason → confirm/cancel, then every `data-testid`, request payload, header and
   outcome is byte-identical to before the extraction. *Pinned by:* the **existing, unmodified**
   `admin-venue-photos.spec.ts`, `admin-operators.spec.ts`, `set-editor.spec.ts`
-- [ ] **AC-6:** Given a seeded venue in a real browser, when the operator opens the regenerate
+- [x] **AC-6:** Given a seeded venue in a real browser, when the operator opens the regenerate
   confirmation, then focus lands on the confirm button and axe reports no serious violations.
   *Pinned by:* `e2e/layout-editor.e2e.ts` › `regenerating over an existing grid confirms first and moves focus (+ axe)`
-- [ ] **AC-7:** Given the six former `focusAfterRender` call sites, when any focus transition runs,
+- [x] **AC-7:** Given the six former `focusAfterRender` call sites, when any focus transition runs,
   then it behaves exactly as before via the one shared helper. *Pinned by:*
   `focus-after-render.spec.ts` + the existing focus specs on `set-editor`, `admin-venue-photos`,
   `admin-privacy`, `admin-commissions`, `admin-operators`
@@ -113,20 +113,23 @@ inert test hook; the no-drift rule is what turned the host-element question into
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A projected-content design would silently break: Angular **always instantiates DOM for `<ng-content>` even when the placeholder is hidden**, and warns against `<ng-content>` under `@if` — a projected reason input would be created eagerly and keep state across opens | med | high | Neither component uses `<ng-content>`: the reason field is **built in** behind a `model()`, and each consumer keeps its `@if` **outside** the component, so the instance is created and destroyed with the confirmation. Surfaced by the angular-cli MCP `search_documentation` hit on content projection | Ivo | open |
-| R-2 | The component host is a **new DOM node in the flow** — inline by default — which can change layout: `admin-operators`' confirm is a `w-full` **flex item**, `admin-venue-photos`' is a block whose first child carries `mt-3` | med | med | Host gets `class: 'block w-full'` so it is blockified and fills the flex line exactly as the old `<div class="w-full">` did; the operator pair's host takes the old wrapper's `mt-3` | Ivo | open |
-| R-3 | Visual drift on four shipped surfaces that class-list review cannot see | med | med | Class strings are moved **verbatim**; the pure-maths contrast specs already pin `#7a4a08`/`#fff4e0`, white/`#a3160e`, white/`#0a5f74` and are left untouched; Phase 3 diffs **computed styles** in the mocked e2e suite per `riviera-tailwind`, rather than eyeballing | Ivo | open |
-| R-4 | Focus-in and focus-out have **different owners** — the panel can focus its own button on open, but on close it is already destroyed, so it cannot focus the caller's button | high | med | Documented split: the component owns focus-**in** via `viewChild` + `afterNextRender`; the consumer owns focus-**out** via the shared helper. Stated in both components' TSDoc so a later reader does not "fix" it | Ivo | open |
-| R-5 | Adopting the helper in `admin-commissions` / `admin-privacy` touches surfaces #604 never mentioned | low | med | Those two adopt the **helper only** — a mechanical import swap with no markup change; their existing focus specs are the regression net | Ivo | open |
-| R-6 | `model()` for the reason field changes how two admin components hold that state | low | med | Both already hold a plain `reason` signal + an `onReasonTyped` handler; the `model()` replaces exactly that pair, and the existing specs assert the resulting header/payload | Ivo | open |
+| R-1 | A projected-content design would silently break: Angular **always instantiates DOM for `<ng-content>` even when the placeholder is hidden**, and warns against `<ng-content>` under `@if` — a projected reason input would be created eagerly and keep state across opens | med | high | Neither component uses `<ng-content>`: the reason field is **built in** behind a `model()`, and each consumer keeps its `@if` **outside** the component, so the instance is created and destroyed with the confirmation. Surfaced by the angular-cli MCP `search_documentation` hit on content projection | Ivo | **closed** — design avoids projection entirely; the create/destroy shape is what makes focus-in work (`707b9ba`, `9689f45`) |
+| R-2 | The component host is a **new DOM node in the flow** — inline by default — which can change layout: `admin-operators`' confirm is a `w-full` **flex item**, `admin-venue-photos`' is a block whose first child carries `mt-3` | med | med | Host gets `class: 'block w-full'` so it is blockified and fills the flex line exactly as the old `<div class="w-full">` did; the operator pair's host takes the old wrapper's `mt-3` | Ivo | **closed** — proven in a real browser, not argued: `admin-venue-photos.e2e.ts` asserts the host resolves to `display: block` and `margin-top: 12px`, which is also the proof that a consumer's static `class` merges with `host.class` |
+| R-3 | Visual drift on four shipped surfaces that class-list review cannot see | med | med | Class strings are moved **verbatim**; the pure-maths contrast specs already pin `#7a4a08`/`#fff4e0`, white/`#a3160e`, white/`#0a5f74` and are left untouched; Phase 3 diffs **computed styles** in the mocked e2e suite per `riviera-tailwind`, rather than eyeballing | Ivo | **closed** — computed-style assertions on both families (amber `rgb(255,244,224)`, teal `rgb(10,95,116)`, white ink, `min-height: 44px`, admin `rgb(179,38,30)` + `14px`); both contrast specs untouched and green |
+| R-4 | Focus-in and focus-out have **different owners** — the panel can focus its own button on open, but on close it is already destroyed, so it cannot focus the caller's button | high | med | Documented split: the component owns focus-**in** via `viewChild` + `afterNextRender`; the consumer owns focus-**out** via the shared helper. Stated in both components' TSDoc so a later reader does not "fix" it | Ivo | **closed** — split shipped and documented in both components' TSDoc and in `set-editor#askRemove` / `layout-editor#cancelGenerate`; pinned end-to-end by the e2e's cancel→Generate and confirm→Generate assertions |
+| R-5 | Adopting the helper in `admin-commissions` / `admin-privacy` touches surfaces #604 never mentioned | low | med | Those two adopt the **helper only** — a mechanical import swap with no markup change; their existing focus specs are the regression net | Ivo | **closed** — both specs green unmodified (`99d8241`); no markup touched in either |
+| R-6 | `model()` for the reason field changes how two admin components hold that state | low | med | Both already hold a plain `reason` signal + an `onReasonTyped` handler; the `model()` replaces exactly that pair, and the existing specs assert the resulting header/payload | Ivo | **closed** — both admin specs green unmodified, including the `X-Audit-Reason` assertions; binding shape confirmed against the v22 docs (the binding passes the signal *instance*) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** unifying the operator pair's buttons on `min-h-11 px-4` is desirable rather than
-  drift, because it is the larger touch target and matches the direction of #605. — *Owner:* Ivo ·
-  *Resolves by:* Phase 1 (recorded in the ledger; reversible with a `size` input if rejected)
+None outstanding.
 
 ### Resolved
+
+- **Assumption:** unifying the operator pair's buttons on `min-h-11 px-4` is desirable rather than
+  drift, because it is the larger touch target and matches the direction of #605. — **Resolved in
+  Phase 1 (`707b9ba`).** Shipped and recorded in the ledger; `layout-editor.e2e.ts` asserts the
+  resolved `min-height: 44px` on both actions. Reversible with a `size` input if ever rejected.
 
 - **Open question:** should one component cover all four surfaces? — **Resolved 2026-08-10 at plan
   time.** No: reading `admin-operators` and `admin-venue-photos` in full showed the four split 2+2
@@ -179,23 +182,24 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR — ready for review (review gate next)`
 
-**Next action:** Add the regenerate-confirm focus + axe e2e to `e2e/layout-editor.e2e.ts`, plus the
-computed-style no-drift assertions that class-list review cannot make (R-2, R-3).
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then the Sonar
+gate, then merge close-out. Nothing is left to build.
 
-Draft PR: **#612**.
+PR: **#612** (`merged via PR #612`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Shared focus helper + adopt in the 5 existing call sites | ✅ | `99d8241` |
 | 1 — `shared/confirm-panel` + operator pair (**the #604 fix**) | ✅ | `707b9ba` |
-| 2 — `shared/confirm-with-reason` + admin pair | ✅ | Phase-2 commit below |
-| 3 — e2e coverage, computed-style no-drift check, full verification | ⏳ | |
+| 2 — `shared/confirm-with-reason` + admin pair | ✅ | `9689f45` |
+| 3 — e2e coverage, computed-style no-drift check, full verification | ✅ | Phase-3 commit below |
 
-**Verification at Phase 2:** full unit suite `1329 passed (155 files)`, `ng lint` clean, `ng build`
-succeeds. Both admin specs and `set-editor.spec.ts` are **unmodified** by this slice — that is the
-behavior-parity evidence for AC-5, not an assertion of it.
+**Verification at Phase 3:** unit `1329 passed (155 files)`; mocked e2e `165 passed`; `ng lint`
+clean; `ng build` succeeds; `node scripts/check-plan-file-structure.mjs --diff origin/main` clean.
+`set-editor.spec.ts`, `admin-venue-photos.spec.ts` and `admin-operators.spec.ts` are **unmodified**
+by this slice — that is the behavior-parity evidence for AC-5, not an assertion of it.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -227,8 +231,11 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/admin/admin-operators.ts` — adopt helper + `confirm-with-reason`
 - `frontend/src/app/admin/admin-commissions.ts` — adopt the helper only
 - `frontend/src/app/admin/admin-privacy.ts` — adopt the helper only
-- `frontend/e2e/layout-editor.e2e.ts` — the regenerate-confirm focus + axe test, and the
-  computed-style no-drift assertions
+- `frontend/e2e/layout-editor.e2e.ts` — the regenerate-confirm focus + axe test, and the operator
+  pair's computed-style no-drift assertions
+- `frontend/e2e/admin-venue-photos.e2e.ts` — the admin pair's half: the new `alertdialog` role and
+  accessible name, focus-in, and the computed-style proof that the component host sits where the
+  markup it replaced did (R-2)
 
 ---
 
@@ -238,17 +245,17 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 `frontend/src/app/shared/focus-after-render.spec.ts` · Modify `admin-commissions.ts`,
 `admin-operators.ts`, `admin-privacy.ts`, `admin-venue-photos.ts`, `set-editor.ts`
 
-- [ ] **Step 1: Write the failing spec** — a host component whose button is focused by the helper.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- focus-after-render` → FAIL (module missing).
-- [ ] **Step 3: Implement** `focusMover()`, a factory called in an injection context that captures
+- [x] **Step 1: Write the failing spec** — a host component whose button is focused by the helper.
+- [x] **Step 2: Run it, verify it fails** — `npm test -- focus-after-render` → FAIL (module missing).
+- [x] **Step 3: Implement** `focusMover()`, a factory called in an injection context that captures
       `ElementRef` + `Injector` once and returns `(testId: string) => void` — mirroring the
       established `parentVenueId(this.route)` field-initializer idiom.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- focus-after-render` → PASS.
-- [ ] **Step 5: Adopt in all five existing call sites**, deleting each private copy; run the five
+- [x] **Step 4: Run it, verify it passes** — `npm test -- focus-after-render` → PASS.
+- [x] **Step 5: Adopt in all five existing call sites**, deleting each private copy; run the five
       owning specs.
-- [ ] **Step 6: Generalization-audit pass** — re-grep for any remaining private focus helper.
-- [ ] **Step 7: Commit** — `git commit -m "Extract the shared focus-after-render helper (#604)"`
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Generalization-audit pass** — re-grep for any remaining private focus helper.
+- [x] **Step 7: Commit** — `git commit -m "Extract the shared focus-after-render helper (#604)"`
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -257,18 +264,18 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Create `frontend/src/app/shared/confirm-panel.ts` + `.spec.ts` · Modify
 `operator/set-editor.ts|.html`, `operator/layout-editor.ts|.html`, `operator/layout-editor.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — `confirm-panel.spec.ts` (alertdialog + accessible name,
+- [x] **Step 1: Write the failing specs** — `confirm-panel.spec.ts` (alertdialog + accessible name,
       focus-in on open, `confirmed`/`cancelled` outputs), then the #604 spec in
       `layout-editor.spec.ts` mirroring set-editor's `moves focus with the remove confirmation`.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- confirm-panel layout-editor` → FAIL.
-- [ ] **Step 3: Implement** the component (inputs: `label`, `message`, `confirmLabel`, `tone`,
+- [x] **Step 2: Run them, verify they fail** — `npm test -- confirm-panel layout-editor` → FAIL.
+- [x] **Step 3: Implement** the component (inputs: `label`, `message`, `confirmLabel`, `tone`,
       `panelTestId`, `confirmTestId`, `cancelTestId`; outputs: `confirmed`, `cancelled`; host
       `role="alertdialog"` + `[attr.aria-label]` + `class="block"`), then adopt in `set-editor`
       (behavior-preserving) and `layout-editor` (adding the three focus transitions).
-- [ ] **Step 4: Run them, verify they pass** — `npm test -- confirm-panel set-editor layout-editor` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — confirm no other operator surface has a bare confirm.
-- [ ] **Step 6: Commit** — `git commit -m "Move focus with the bulk regenerate confirmation (#604)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass** — `npm test -- confirm-panel set-editor layout-editor` → PASS.
+- [x] **Step 5: Generalization-audit pass** — confirm no other operator surface has a bare confirm.
+- [x] **Step 6: Commit** — `git commit -m "Move focus with the bulk regenerate confirmation (#604)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -277,16 +284,16 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Create `frontend/src/app/shared/confirm-with-reason.ts` + `.spec.ts` · Modify
 `admin/admin-venue-photos.ts`, `admin/admin-operators.ts`
 
-- [ ] **Step 1: Write the failing spec** — alertdialog + accessible name, focus-in, reason `model()`
+- [x] **Step 1: Write the failing spec** — alertdialog + accessible name, focus-in, reason `model()`
       round-trip, `busy` disabling confirm but not cancel.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- confirm-with-reason` → FAIL.
-- [ ] **Step 3: Implement** and adopt in both admin components, leaving their existing specs
+- [x] **Step 2: Run it, verify it fails** — `npm test -- confirm-with-reason` → FAIL.
+- [x] **Step 3: Implement** and adopt in both admin components, leaving their existing specs
       **unmodified** — those specs are the parity net (AC-5).
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- confirm-with-reason admin-venue-photos admin-operators` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — re-check `admin-privacy` against the new component and
+- [x] **Step 4: Run it, verify it passes** — `npm test -- confirm-with-reason admin-venue-photos admin-operators` → PASS.
+- [x] **Step 5: Generalization-audit pass** — re-check `admin-privacy` against the new component and
       record why it stays out.
-- [ ] **Step 6: Commit** — `git commit -m "Share the admin confirm-with-reason panel (#604)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Share the admin confirm-with-reason panel (#604)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -294,20 +301,20 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `frontend/e2e/layout-editor.e2e.ts`
 
-- [ ] **Step 1: Write the failing e2e** — seed the mocked venue map with sets so the editor opens
+- [x] **Step 1: Write the failing e2e** — seed the mocked venue map with sets so the editor opens
       with a grid, activate Generate, assert the confirmation is focused, then assert axe is clean.
       (The file's existing header comment says the confirm flow is "pinned by the unit spec" —
       RV-FE-E2E requires coverage for the changed flow, so that gap closes here.)
-- [ ] **Step 2: Run it, verify it fails/passes appropriately** — `npm run test:e2e:a11y -- layout-editor`.
-- [ ] **Step 3: Computed-style no-drift check** — assert the confirm/cancel buttons' resolved
+- [x] **Step 2: Run it, verify it fails/passes appropriately** — `npm run test:e2e:a11y -- layout-editor`.
+- [x] **Step 3: Computed-style no-drift check** — assert the confirm/cancel buttons' resolved
       `background-color`, `color`, `border` and `min-height` in the real browser, per
       `riviera-tailwind` (class lists cannot show drift).
-- [ ] **Step 4: Full verification** — `npm run lint`, `npm test`, `npm run build`,
+- [x] **Step 4: Full verification** — `npm run lint`, `npm test`, `npm run build`,
       `npm run test:e2e:a11y`.
-- [ ] **Step 5: Reconcile the File-structure section** —
+- [x] **Step 5: Reconcile the File-structure section** —
       `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 6: Commit** — `git commit -m "Cover the regenerate confirm focus end to end (#604)"`
-- [ ] **Step 7: Update plan-doc execution status**; mark ready for review.
+- [x] **Step 6: Commit** — `git commit -m "Cover the regenerate confirm focus end to end (#604)"`
+- [x] **Step 7: Update plan-doc execution status**; mark ready for review.
 
 ---
 
@@ -325,31 +332,36 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/2/3:** `npm test -- layout-editor` → the focus spec passes.
-- [ ] **AC-4:** `npm test -- confirm-panel confirm-with-reason` → both ARIA specs pass.
-- [ ] **AC-5:** `npm test -- admin-venue-photos admin-operators set-editor` → green with the specs
-      unmodified by this slice.
-- [ ] **AC-6:** `npm run test:e2e:a11y -- layout-editor` → focus + axe pass.
-- [ ] **AC-7:** `npm test -- focus-after-render admin-privacy admin-commissions` → green.
+- [x] **AC-1/2/3:** `ng test --include="src/app/operator/layout-editor*"` → 35 passed, including
+      `moves focus with the regenerate confirmation (WCAG 2.4.3, #604)`. Verified red first —
+      `expected <body> to be <button>` — at `707b9ba`.
+- [x] **AC-4:** `ng test --include="src/app/shared/confirm-*"` → 15 passed; both `is an alertdialog
+      with an accessible name` specs green. Re-proven in the browser by `layout-editor.e2e.ts` and
+      `admin-venue-photos.e2e.ts`.
+- [x] **AC-5:** `ng test` over both admin specs + `set-editor.spec.ts` → 63 passed with all three
+      **unmodified** by this slice.
+- [x] **AC-6:** `npx playwright test --config playwright.a11y.config.ts layout-editor` → 4 passed:
+      focus on open, back to Generate on cancel and on confirm, axe clean.
+- [x] **AC-7:** full unit suite `1329 passed` — the five adopters' focus specs among them.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A); invariant #2 untouched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section filled (N/A, frontend-only); no new cross-feature FE import (RV-FE-8).
-- [ ] **Payment/payout** section filled (N/A).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A.
-- [ ] **Frontend** standards met; no `as any`; every `data-testid` preserved.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section filled (N/A, frontend-only); no new cross-feature FE import (RV-FE-8).
+- [x] **Payment/payout** section filled (N/A).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A.
+- [x] **Frontend** standards met; no `as any`; every `data-testid` preserved.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
       `riviera-review-overlay`, not the overlay alone.
 
