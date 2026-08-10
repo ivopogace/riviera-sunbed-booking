@@ -11,6 +11,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -119,5 +120,40 @@ class PaymentMigrationIT {
 				() -> jdbc.sql("UPDATE payment SET refunded_minor = 9999 "
 						+ "WHERE payment_intent_id = 'pi_over_refund'").update(),
 				"payment_refunded_check must reject a refund greater than the collected amount (V11).");
+	}
+
+	/**
+	 * V42's shape: a collected payment whose refund died is {@code SUCCEEDED} with nothing refunded
+	 * and no live refund id, carrying only the failure trace. That combination is what makes the
+	 * owed-refund list enumerable, so the migration must admit it rather than constrain it away.
+	 */
+	@Test
+	void refundFailureTraceColumnsAdmitAnOwedRefund() {
+		insertPayment(8001L, "pi_owed", "SUCCEEDED");
+
+		assertDoesNotThrow(() -> jdbc.sql("""
+				UPDATE payment
+				SET refund_attempted_at = NOW(), refund_failed_at = NOW(), failed_refund_id = 're_dead',
+				    refunded_minor = 0, refund_id = NULL
+				WHERE payment_intent_id = 'pi_owed'
+				""").update(), "V42 must admit a collected payment whose refund returned no money.");
+
+		assertEquals(1, jdbc.sql("""
+				SELECT COUNT(*) FROM payment
+				WHERE booking_ref = 8001 AND refund_failed_at IS NOT NULL AND status = 'SUCCEEDED'
+				""").query(Integer.class).single(),
+				"the trace must be readable as the queryable list of bookings still owed a refund.");
+	}
+
+	@Test
+	void refundFailureTraceIsNullForEveryPreexistingRow() {
+		insertPayment(8002L, "pi_untouched", "SUCCEEDED");
+
+		assertEquals(1, jdbc.sql("""
+				SELECT COUNT(*) FROM payment
+				WHERE booking_ref = 8002 AND refund_attempted_at IS NULL AND refund_failed_at IS NULL
+				  AND failed_refund_id IS NULL
+				""").query(Integer.class).single(),
+				"V42 backfills nothing — no attempt recorded and no failure observed is the truth.");
 	}
 }

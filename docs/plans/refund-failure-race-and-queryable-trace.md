@@ -245,15 +245,16 @@ responses (`200`/`400`/`503`) are unchanged.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write `PaymentMigrationIT.refundFailureTraceColumnsAdmitAnOwedRefund`
-red, then add `V42__payment_refund_failure_trace.sql`.
+**Next action:** Phase 1 — guard `markRefunded` on the collected statuses and make
+`markRefundFailed` leave the trace; update the two `JdbcPaymentsIT` cases that refund a
+`REQUIRES_PAYMENT` row on purpose (R-3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `V42` migration: the refund-failure trace columns | | |
-| 1 — Guard the refund record; make the un-record leave a trace (items 2 + 3a) | | |
+| 0 — `V42` migration: the refund-failure trace columns | ✅ | `4d0e0c7` |
+| 1 — Guard the refund record; make the un-record leave a trace (items 2 + 3a) | ⏳ | |
 | 2 — Close the race: attempt stamp, by-intent fallback, gateway refusal (item 1) | | |
 | 3 — Owed-refund gauge + docs sweep (item 3b) | | |
 
