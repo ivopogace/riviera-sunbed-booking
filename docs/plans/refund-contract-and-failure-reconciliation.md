@@ -232,7 +232,7 @@ to `true` after a failure.
 
 **Stage pointer:** `PR #593 — review gate run four times at high effort; 41 registered findings (F-1…F-41): 37 fixed here, 4 carried to issue #594's three items, 1 accepted with its limit documented on the test; re-checking CI + Sonar`
 
-**Next action:** Confirm CI green on the third fix round and pull the Sonar new-issue list, then merge.
+**Next action:** Merge PR #593, then close-out steps 1–3 and 6–7 (issue closed by `Closes #592`, #594 already filed, unsubscribe, notify).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -263,6 +263,13 @@ Not patched, deliberately: `V11__payment_refund.sql`'s header says the model wor
 webhook in v1", which this slice falsifies — but Flyway checksums an applied migration's **file
 content**, so editing even its comments would break every existing deployment. A shipped migration is
 a historical artifact; the live statement lives in §`payment`, which is patched above.
+
+**Sonar gate** — green on head `771ae82`, and the *reported list* pulled from the API rather than
+read off the badge (`pr-gates.md` §2): `new_lines=248` (so an analysis genuinely exists — not the
+false-clean read), `new_coverage=92.4%`, `new_duplicated_lines_density=0.0`, `new_code_smells=0`,
+0 open issues, 0 security hotspots. Nothing to clear.
+
+**CI** — all eight checks green on `771ae82`, including `Repo hygiene (diff-scoped)`.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
 Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule (run the
@@ -495,5 +502,5 @@ Test `payment/adapter/out/JdbcPaymentsIT.java`
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR** — citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
