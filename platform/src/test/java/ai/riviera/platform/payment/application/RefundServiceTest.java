@@ -72,6 +72,34 @@ class RefundServiceTest {
 	}
 
 	@Test
+	void clearsTheAttemptWhenTheGatewayRefuses() {
+		List<String> calls = new ArrayList<>();
+		RefundOnlyGateway refusing = (booking, amount) -> new RefundResult.Failed("refund_mismatch");
+		RefundService service =
+				new RefundService(refusing, new SimpleMeterRegistry(), new AttemptRecordingPayments(calls));
+
+		service.refund(BOOKING, new Money(2250L, "EUR"));
+
+		assertEquals(List.of("attempt:42", "cleared:42"), calls,
+				"a refund the gateway refused leaves none of ours in flight, so the stamp must not "
+						+ "outlive the call and vouch for the next refund on this collection");
+	}
+
+	@Test
+	void keepsTheAttemptWhenTheGatewayRefunded() {
+		List<String> calls = new ArrayList<>();
+		RefundOnlyGateway ok = (booking, amount) -> new RefundResult.Refunded("re_ok");
+		RefundService service =
+				new RefundService(ok, new SimpleMeterRegistry(), new AttemptRecordingPayments(calls));
+
+		service.refund(BOOKING, new Money(2250L, "EUR"));
+
+		assertEquals(List.of("attempt:42"), calls,
+				"the recording write already cleared it — clearing again here would be a second statement "
+						+ "for no gain");
+	}
+
+	@Test
 	void progressReportsNoCollectionWithoutAPaymentRow() {
 		RefundService service = serviceWithState(Optional.empty());
 

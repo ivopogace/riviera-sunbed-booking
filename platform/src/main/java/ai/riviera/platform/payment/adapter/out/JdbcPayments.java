@@ -136,6 +136,17 @@ class JdbcPayments implements Payments {
 	}
 
 	@Override
+	public void clearRefundAttempt(BookingRef booking) {
+		jdbc.sql("""
+				UPDATE payment
+				SET refund_attempted_at = NULL, updated_at = NOW()
+				WHERE booking_ref = :ref AND refund_attempted_at IS NOT NULL
+				""")
+				.param("ref", booking.value())
+				.update();
+	}
+
+	@Override
 	public boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
 		// A refund covering the whole collected amount is REFUNDED, a smaller one PARTIALLY_REFUNDED.
 		return jdbc.sql("""

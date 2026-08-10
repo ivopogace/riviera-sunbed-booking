@@ -443,11 +443,17 @@ gained a trace, and every refund write became a guarded statement that reports w
   observations and re-increments on every resubmission of the same stuck refund. The flag means
   "owed **now**" — a retry that works clears it, while `failed_refund_id` keeps what died.
 
-  The attempt stamp carries one **placement** constraint worth stating, because the tidy-up that
-  breaks it looks like an improvement: it is written from `RefundService#refund`, which must stay
+  The attempt stamp carries two constraints worth stating, because the tidy-up that breaks each looks
+  like an improvement. **Placement:** it is written from `RefundService#refund`, which must stay
   **outside a caller's transaction**, or the write stays invisible for the whole window it exists to
-  cover. `RefundAttemptVisibilityIT` reads it back on a second connection and goes red if a
-  transaction is ever wrapped round that method.
+  cover (`RefundAttemptVisibilityIT` reads it back on a second connection; `RefundBulkheadIT` is what
+  pins the listener's absence of a transaction). **Pairing:** the stamp means a refund is *in flight*,
+  so every outcome the refund call returns clears it — the recording write on success, and
+  `RefundService` explicitly on any `Failed`, since a gateway that refused, replayed a dead refund, or
+  errored leaves none of ours outstanding. Unpaired it decays into "this booking was refunded once",
+  and the next failed refund on the collection — including one a human issued at the gateway — is
+  recorded as money the platform owes. Only an unchecked exception escaping the call can strand a
+  stamp, and the publication then stays outstanding, so the retry re-stamps.
 
 **Not My Job:**
 - Deciding *whether* to refund or *how much* → **`booking`** owns the refund policy;

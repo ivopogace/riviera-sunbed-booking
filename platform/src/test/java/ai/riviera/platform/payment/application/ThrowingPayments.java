@@ -44,6 +44,11 @@ interface ThrowingPayments extends Payments {
 	}
 
 	@Override
+	default void clearRefundAttempt(BookingRef booking) {
+		throw new UnsupportedOperationException("not stubbed by this test");
+	}
+
+	@Override
 	default boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
 		throw new UnsupportedOperationException("not stubbed by this test");
 	}

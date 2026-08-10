@@ -30,7 +30,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>The fake gateway reads the row back on its own connection, which is what a concurrent webhook
  * request would do. Wrapping {@code RefundService#refund} in a transaction — the obvious-looking
  * tidy-up — would hide the write until the gateway call had already returned and turn the failure
- * webhook back into the silent loss it used to be; this test goes red if that happens.
+ * webhook back into the silent loss it used to be.
+ *
+ * <p>It builds the service directly, so it proves the <em>write ordering</em>, not the absence of a
+ * Spring-managed transaction: a {@code @Transactional} reintroduced on the service or the listener
+ * would be invisible here, because there is no proxy. {@code RefundBulkheadIT} is what pins that.
  *
  * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
  */

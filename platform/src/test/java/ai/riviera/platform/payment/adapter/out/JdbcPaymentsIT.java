@@ -373,6 +373,18 @@ class JdbcPaymentsIT {
 	}
 
 	@Test
+	void clearingTheAttemptStopsTheByIntentArm() {
+		payments.register(new NewPayment(new BookingRef(9810L), "pi_refused", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_refused", PaymentStatus.SUCCEEDED);
+		payments.markRefundAttempted(new BookingRef(9810L));
+
+		payments.clearRefundAttempt(new BookingRef(9810L));
+
+		assertFalse(payments.markUnrecordedRefundFailed("pi_refused", "re_someone_elses"),
+				"a refund call that ended without leaving one of ours in flight stops vouching for later refunds");
+	}
+
+	@Test
 	void aManualGatewayRefundFailureMovesNothing() {
 		payments.register(new NewPayment(new BookingRef(9804L), "pi_manual", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_manual", PaymentStatus.SUCCEEDED);

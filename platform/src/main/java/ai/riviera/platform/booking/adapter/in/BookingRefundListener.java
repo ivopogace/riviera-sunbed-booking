@@ -57,7 +57,8 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
  *
  * <p><strong>Staying transaction-free is load-bearing, not merely cheaper.</strong> The refund path
  * records its attempt before asking the gateway, and a transaction here would hide that write for
- * exactly the window it exists to cover. {@code RefundAttemptVisibilityIT} fails if one returns.
+ * exactly the window it exists to cover. The no-transaction property is pinned by
+ * {@code RefundBulkheadIT} above; {@code RefundAttemptVisibilityIT} pins what depends on it.
  */
 @Component
 class BookingRefundListener {

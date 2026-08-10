@@ -26,4 +26,9 @@ final class AttemptRecordingPayments implements ThrowingPayments {
 	public void markRefundAttempted(BookingRef booking) {
 		calls.add("attempt:" + booking.value());
 	}
+
+	@Override
+	public void clearRefundAttempt(BookingRef booking) {
+		calls.add("cleared:" + booking.value());
+	}
 }
