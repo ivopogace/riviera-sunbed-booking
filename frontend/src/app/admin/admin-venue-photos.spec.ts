@@ -58,13 +58,19 @@ function serviceStub(): {
   };
 }
 
-/** A promise plus the handle that settles it — for driving out-of-order responses. */
-function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+/** A promise plus the handles that settle it — for driving out-of-order responses. */
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+  reject: (reason: unknown) => void;
+} {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((r) => {
-    resolve = r;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 async function settle(fixture: ComponentFixture<AdminVenuePhotos>): Promise<void> {
@@ -260,6 +266,44 @@ describe('AdminVenuePhotos', () => {
     // Venue 9's cover is untouched, and its outcome is not narrated under venue 9's name.
     expect(byTestId(fixture, 'admin-photo-preview-cover')).not.toBeNull();
     expect(byTestId(fixture, 'admin-photos-notice')?.textContent).not.toContain('Bora Bora Beach');
+  });
+
+  it('parks focus on the notice when a takedown fails', async () => {
+    const service = serviceStub();
+    service.takedown.mockRejectedValue(new Error('nope'));
+    const fixture = await render(authStub(), service);
+    await pickVenue(fixture, 7);
+
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-remove-cover')!.click();
+    fixture.detectChanges();
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-confirm-cover')!.click();
+    await settle(fixture);
+
+    // The confirmation is gone, so the button focus was on no longer exists.
+    expect(byTestId(fixture, 'admin-photo-confirm-cover')).toBeNull();
+    expect(byTestId(fixture, 'admin-photos-notice')?.textContent).toContain('Could not remove');
+    expect(document.activeElement).toBe(byTestId(fixture, 'admin-photos-notice'));
+  });
+
+  it('moves no focus when a failed takedown settles under another venue', async () => {
+    const service = serviceStub();
+    const slow = deferred<void>();
+    service.takedown.mockImplementation(() => slow.promise);
+    const fixture = await render(authStub(), service);
+    await pickVenue(fixture, 7);
+
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-remove-cover')!.click();
+    fixture.detectChanges();
+    byTestId<HTMLButtonElement>(fixture, 'admin-photo-confirm-cover')!.click();
+    fixture.detectChanges();
+
+    await pickVenue(fixture, 9);
+    const venuePicker = byTestId(fixture, 'admin-photos-venue');
+    venuePicker!.focus();
+    slow.reject(new Error('nope'));
+    await settle(fixture);
+
+    expect(document.activeElement).toBe(venuePicker);
   });
 
   it('stops loading when the admin deselects back to no venue mid-flight', async () => {

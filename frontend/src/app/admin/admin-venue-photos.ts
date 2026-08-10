@@ -3,6 +3,7 @@ import { NgOptimizedImage } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmWithReason } from '../shared/confirm-with-reason';
 import { focusMover } from '../shared/focus-after-render';
@@ -42,7 +43,14 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
  */
 @Component({
   selector: 'app-admin-venue-photos',
-  imports: [RouterLink, NgOptimizedImage, CardGlass, AdminConsoleTabs, ConfirmWithReason],
+  imports: [
+    RouterLink,
+    NgOptimizedImage,
+    CardGlass,
+    AdminConsoleTabs,
+    ConfirmWithReason,
+    BusyAction,
+  ],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[860px] px-4 py-10" aria-labelledby="admin-photos-title">
@@ -158,9 +166,9 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
                     <button
                       type="button"
                       [attr.data-testid]="'admin-photo-remove-' + slot.slot"
-                      [disabled]="busy()"
+                      [appBusy]="busy()"
                       (click)="askToRemove(slot.slot)"
-                      class="mt-3 rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) disabled:cursor-not-allowed disabled:opacity-60"
+                      class="mt-3 rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                     >
                       Remove {{ label(slot.slot) }} photo
                     </button>
@@ -182,6 +190,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
           class="mt-4 min-h-[1.5rem] text-[15px] text-(--riv-ink-soft)"
           role="status"
           aria-live="polite"
+          tabindex="-1"
           data-testid="admin-photos-notice"
         >
           {{ notice() }}
@@ -235,7 +244,8 @@ export class AdminVenuePhotos {
    * element that was just activated, which strands keyboard/AT focus on `<body>` unless focus is
    * moved deliberately (WCAG 2.4.3 — the recurring stranded-focus class). Focus INTO the
    * confirmation is {@link ConfirmWithReason}'s own doing; keeping it returns focus to Remove, and a
-   * completed removal has no Remove button left to return to, so focus parks on the slot card.
+   * settled removal has no confirmation left to return to — success parks on the slot card, failure
+   * on the notice carrying the reason, both only while this venue is still the one on screen.
    */
   protected askToRemove(slot: PhotoSlotKey): void {
     this.confirming.set(slot);
@@ -318,9 +328,11 @@ export class AdminVenuePhotos {
         this.focusAfterRender(`admin-photo-slot-${slot}`);
       });
     } catch {
-      this.reportOnlyIfStillViewing(venue, () =>
-        this.notice.set(`Could not remove the ${this.label(slot)} photo. Nothing was changed.`),
-      );
+      this.reportOnlyIfStillViewing(venue, () => {
+        this.notice.set(`Could not remove the ${this.label(slot)} photo. Nothing was changed.`);
+        // The `finally` destroys the confirmation whether or not the takedown worked.
+        this.focusAfterRender('admin-photos-notice');
+      });
     } finally {
       this.confirming.set(undefined);
       this.reason.set('');

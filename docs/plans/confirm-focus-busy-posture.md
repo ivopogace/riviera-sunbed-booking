@@ -80,10 +80,10 @@ literal `bugfix/<slug>` name applies; no cloud-branch substitution.)
 
 ### `admin/admin-venue-photos.ts` — the takedown failure leg (issue item 2)
 
-- [ ] **AC-5:** Given a takedown confirmation open, when the takedown **fails**, then the
+- [x] **AC-5:** Given a takedown confirmation open, when the takedown **fails**, then the
   confirmation closes, the notice carries the failure, and focus lands on that notice rather than
   `<body>`. *Pinned by:* `admin-venue-photos.spec.ts` › `parks focus on the notice when a takedown fails`
-- [ ] **AC-6:** Given a takedown in flight, when it fails **after** the moderator has switched to
+- [x] **AC-6:** Given a takedown in flight, when it fails **after** the moderator has switched to
   another venue, then focus is moved nowhere and no notice is written — the existing
   still-viewing guard governs the focus leg too. *Pinned by:*
   `admin-venue-photos.spec.ts` › `moves no focus when a failed takedown settles under another venue`
@@ -259,9 +259,9 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phase 3`
+**Stage pointer:** `implement — phase 4`
 
-**Next action:** Phase 3 — `admin-venue-photos`' takedown failure leg.
+**Next action:** Phase 4 — `admin-operators`' notice region + the four settled legs.
 characterization spec for the existing page-mount focus leg.
 
 PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
@@ -273,8 +273,8 @@ PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on t
 |-------|--------|---------|
 | 0 — `focusMover()` fallback + the seven-adopter audit | ✅ | `7e11e7b` |
 | 1 — The `BusyAction` directive + the ordering spike | ✅ | `bb73467` |
-| 2 — `set-password`'s three erase transitions | ✅ | `<phase-2>` |
-| 3 — `admin-venue-photos`' takedown failure leg | | |
+| 2 — `set-password`'s three erase transitions | ✅ | `455c24c` |
+| 3 — `admin-venue-photos`' takedown failure leg | ✅ | `<phase-3>` |
 | 4 — `admin-operators`' notice region + four settled legs | | |
 | 5 — The busy sweep (money path first, then the rest) | | |
 | 6 — Real-browser e2e + full verification | | |
