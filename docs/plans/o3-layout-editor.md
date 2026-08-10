@@ -111,6 +111,11 @@ prior PRs are merged — the session-designated `…xvhapq` branch is already th
   while sets are in use", which stopped being true when #567 gave the per-set endpoints their guards. The
   tab is no longer bulk-only — it carries a mode toggle, and a live venue's map is edited one set at a
   time (`docs/plans/per-set-beach-map-editing.md`). The no-client-side-pre-check half still holds.
+  **Superseded again by #607:** the quoted wording — "this venue has bookings or walk-in holds" —
+  no longer exists anywhere in the tree. #599/#602 narrowed the availability arm to holds dated
+  today or later, and #607 rewrote both codes' copy to match ("bookings, or sets that are still
+  held"), dropping "walk-in" because the guard matches `BOOKED_ONLINE` rows too. The
+  no-client-side-pre-check half still holds.
 
 ### Resolved
 

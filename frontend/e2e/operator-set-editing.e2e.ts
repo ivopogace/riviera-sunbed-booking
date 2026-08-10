@@ -64,7 +64,8 @@ async function mockConsole(page: Page): Promise<{ sets: () => MockSet[] }> {
     route.fulfill({
       status: 409,
       contentType: 'application/problem+json',
-      json: { code: 'SET_IN_USE', detail: "This set is booked or held, so it can't be moved or removed." },
+      // A sentinel, not the server's prose: the assertions must prove the CLIENT mapped the code.
+      json: { code: 'SET_IN_USE', detail: 'in use' },
     });
 
   // Keep the per-set route ABOVE the venue GET so it wins the match.
@@ -163,14 +164,14 @@ test('a booked set cannot be repooled or removed, and says so instead of failing
   await page.getByTestId('set-pool-WALK_IN').click();
   await page.getByTestId('set-save').click();
 
-  await expect(page.getByTestId('set-error')).toContainText(/booked or held/i);
+  await expect(page.getByTestId('set-error')).toContainText(/booked, or still held/i);
   // Nothing moved: the server still has it online, and the map agrees.
   expect(mock.sets().find((s) => s.id === 13)!.pool).toBe('ONLINE');
   await expect(cell(page, 2, 2)).toHaveAttribute('data-state', 'standard');
 
   await page.getByTestId('set-remove').click();
   await page.getByTestId('set-remove-yes').click();
-  await expect(page.getByTestId('set-error')).toContainText(/booked or held/i);
+  await expect(page.getByTestId('set-error')).toContainText(/booked, or still held/i);
   expect(mock.sets()).toHaveLength(4);
 });
 

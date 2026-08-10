@@ -63,7 +63,8 @@ async function mockEditor(page: Page, lock = false): Promise<{ puts: Request[]; 
       return route.fulfill({
         status: 409,
         contentType: 'application/problem+json',
-        json: { code: 'LAYOUT_IN_USE', detail: 'locked' },
+        // A sentinel absent from the client copy, so the assertions prove the CLIENT mapped the code.
+        json: { code: 'LAYOUT_IN_USE', detail: 'in use' },
       });
     }
     const body = route.request().postDataJSON() as { expectedVersion?: number };
@@ -152,6 +153,7 @@ test('shows the layout-locked message when the venue has bookings (409 LAYOUT_IN
   await expect(page.getByTestId('layout-cell')).toHaveCount(1);
   await page.getByTestId('layout-save').click();
   await expect(page.getByTestId('layout-error')).toContainText(/locked/i);
+  await expect(page.getByTestId('layout-error')).toContainText(/bookings, or sets that are still held/i);
 });
 
 test('a stale-tab save is rejected 409, keeps the painted grid, and Reload recovers (#226, + axe)', async ({
