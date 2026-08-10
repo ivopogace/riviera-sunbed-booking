@@ -79,6 +79,14 @@ token rule is why the ring reuses `--riv-accent-ink` rather than a literal, matc
   never on a retry button the server has already refused.
   *Pinned by:* `booking-view.spec.ts` › `parks focus on the result when a withdrawal fails, and re-reads`
   **and** `e2e/request-to-book.e2e.ts` › `a failed withdrawal parks focus on the outcome and re-reads the booking`
+- [x] **AC-10:** *(added at the re-review)* Given a withdrawal the server refuses with
+  `REQUEST_NOT_PENDING`, when the view settles, then the result says the venue has already answered
+  and does **not** invite a retry — so the message agrees with the terminal banner beside it.
+  *Pinned by:* `booking-view.spec.ts` › `says the venue already answered instead of inviting a retry that cannot succeed`
+  **and** the Chromium `a failed withdrawal parks focus on the outcome and re-reads the booking`
+- [x] **AC-11:** *(added at the re-review)* Given a failed withdrawal on screen, when the guest arms
+  another attempt or backs out of one, then the previous attempt's message is gone.
+  *Pinned by:* `booking-view.spec.ts` › `retires a failed withdrawal once the guest arms or abandons another`
 - [x] **AC-7:** Given either surface, when the guest opens its confirmation, then focus still moves
   onto the destructive confirm button exactly as before the helper swap.
   *Pinned by:* the **existing, unmodified** `booking-view.spec.ts` ›
@@ -98,7 +106,10 @@ token rule is why the ring reuses `--riv-accent-ink` rather than a literal, matc
   to carry `cls.btnDanger`/`cls.btnOutline`/`cls.confirmQ`/`cls.confirmQOnBanner` **and** two prompt
   inks (on-card vs on-banner) as flags — the same "variant axis imposes drift" argument that made
   #604 ship two components rather than one.
-- **No re-styling and no copy change.** Every class string, ink, and sentence stays as shipped.
+- **No re-styling.** Every class string and ink stays as shipped, apart from F-6's `focus-visible`
+  ring. ~~And no copy change~~ — **this non-goal did not survive the re-review**: F-10 showed the
+  withdraw failure genuinely needs *two* sentences, because re-reading into a terminal state made
+  the single "Please try again" contradict the banner above it. One sentence added; nothing reworded.
 - **Not switching the busy state from `[disabled]` to `aria-disabled`, and therefore not closing
   the in-flight focus window.** While a cancel or withdrawal is in flight, the browser blurs the
   disabled confirm button and focus sits on `<body>` until the response lands — where this slice
@@ -383,8 +394,11 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
       pre-fix error leg (`1 failed | 54 passed`), and the new Chromium test
       `a failed withdrawal parks focus on the outcome and re-reads the booking` covers the leg
       R-1 said jsdom cannot show.
-- [x] **Post-fix full verification:** `ng lint` clean · `npm test` **1335 passed (155 files)** ·
-      `npm run test:e2e:a11y` **168 passed (5.9m)** · both repo-hygiene guards clean.
+- [x] **AC-10/AC-11:** both specs proven RED on the pre-discrimination component
+      (`2 failed | 55 passed`) before their fixes landed.
+- [x] **Post-fix full verification (after the re-review round):** `ng lint` clean · `npm test`
+      **1337 passed (155 files)** · `npm run test:e2e:a11y` **168 passed (5.6m)** · both
+      repo-hygiene guards clean over the whole diff.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
