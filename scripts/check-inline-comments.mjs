@@ -341,8 +341,7 @@ function main(argv) {
 }
 
 // Only run the CLI when invoked directly, so the test suite can import the detector.
-// pathToFileURL, not a `file://` template: a Windows path never produces a matching URL, which
-// silently turned the CLI (and so the PostToolUse hook) into a no-op there.
+// pathToFileURL, not a `file://` template: no Windows path matches one, silencing the CLI there.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.exitCode = main(process.argv.slice(2));
 }
