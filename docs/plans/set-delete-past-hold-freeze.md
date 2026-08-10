@@ -213,9 +213,15 @@ code; only the server-side predicate behind the 409 narrows.
 
 ## Execution status
 
-**Stage pointer:** `review gate run (high) — 3 findings fixed; Sonar gate due`
+**Stage pointer:** `all gates passed — awaiting the maintainer's merge of PR #601`
 
-**Next action:** Pull the SonarCloud issue + duplication list for PR #601 from the API (green gate is necessary, not sufficient), then merge once CI is green on the fix round.
+**Next action:** Merge PR #601, then close-out steps 1/3/6/7 (verify #599 closed, #602 already filed, subscription, notify). Steps 2 and 4 are done: no parent epic, and this plan's final state is committed here.
+
+**Gate results** (all on `46a35e1`, the fix round):
+- **CI:** 8/8 checks green — Backend, Frontend, Repo hygiene (diff-scoped), CodeQL ×2, SonarCloud ×2.
+- **Review gate:** `/code-review` at **high** effort (the no-exceptions tier for an availability-touching slice) + `riviera-review-overlay`. 3 findings, all fixed (F-2/F-3/F-4); the overlay walk added none. Re-review of the fix round was the overlay bank + RV-PROC-1 re-walk, proportionate to a docs-and-one-test-method diff with no logic change.
+- **Sonar gate:** green **and** its reported list pulled from the API and empty — `total: 0` issues, `new_duplicated_blocks: 0`, `new_coverage: 100.0%`. Confirmed not a false-clean read: `measures` is non-empty (`new_lines: 45`) and the `SonarCloud Code Analysis` check-run itself concluded `success`.
+- **Testcontainers not skipped:** verified **locally** — `VenueAdminControllerIT` 40 tests, `skipped=0`. The CI job's own log could not be read from this session (the runner's blob-storage URL is refused by the repo-scoped proxy), so the CI-side count is inferred from the job's success and duration, not read.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
