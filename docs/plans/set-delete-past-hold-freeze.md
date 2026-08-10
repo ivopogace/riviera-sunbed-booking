@@ -207,15 +207,24 @@ code; only the server-side predicate behind the 409 narrows.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phase 1 done, entering phase 2 (docs sweep)`
 
-**Next action:** Phase 1 step 1 — add `VenueAdminControllerIT.removeSetDropsAPastStaffHoldWithTheSet` and re-date `removeSetKeepsAStaffHoldAndAnswers409` to today.
+**Next action:** Phase 2 step 1 — rewrite `RESPONSIBILITIES.md` §`venue`'s two-axis asymmetry paragraph as one axis.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Narrow the delete's availability arm (unit TDD) | ✅ | `<phase-0>` |
-| 1 — Pin it end-to-end + defuse the IT date bomb | ⏳ | |
-| 2 — Docs sweep + close-out | | |
+| 0 — Narrow the delete's availability arm (unit TDD) | ✅ | `d170d5d` |
+| 1 — Pin it end-to-end + defuse the IT date bomb | ✅ | `5f0b83c` |
+| 2 — Docs sweep + close-out | ⏳ | |
+
+**Local verification so far** (`riviera-local-debug` scoped runs, Docker available so the ITs ran
+for real): `VenueAdminServiceTest` green (observed red first on AC-1/2/4);
+`VenueAdminControllerIT` **40 tests, `skipped=0`**, all four `removeSet*` cases executed;
+`SetWriteVsClaimConcurrencyIT` + `AvailabilityLookupIT` green unchanged; the structural net
+(`ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`) green. The
+end-to-end AC-1 test was written after phase 0's fix rather than before it, so it was never
+observed red — its red-before-fix evidence is the unit test at the same predicate, which was.
+CI owns the full suite.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

@@ -245,9 +245,12 @@ class VenueAdminControllerIT {
 	void removeSetKeepsAStaffHoldAndAnswers409() throws Exception {
 		long venue = createVenue("Held Club");
 		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "WALK_IN", 3000, "EUR", 1, 1));
+		// Today: the inclusive edge of the guard's window, and a walk-in still on the sand.
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
-						+ "VALUES (:set, DATE '2027-07-01', 'STAFF_MARKED')")
-				.param("set", setId).update();
+						+ "VALUES (:set, :day, 'STAFF_MARKED')")
+				.param("set", setId)
+				.param("day", LocalDate.now(ZoneId.of("Europe/Tirane")))
+				.update();
 
 		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
@@ -257,6 +260,26 @@ class VenueAdminControllerIT {
 		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :set")
 						.param("set", setId).query(Integer.class).single(),
 				"the walk-in hold must survive the refused delete (invariant #2)");
+	}
+
+	@Test
+	void removeSetDropsAPastStaffHoldWithTheSet() throws Exception {
+		long venue = createVenue("Last Season Club");
+		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "WALK_IN", 3000, "EUR", 1, 1));
+		// Inserted directly: the staff-mark endpoint refuses a past date, which is how history accrues.
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
+						+ "VALUES (:set, :day, 'STAFF_MARKED')")
+				.param("set", setId)
+				.param("day", LocalDate.now(ZoneId.of("Europe/Tirane")).minusDays(400))
+				.update();
+
+		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
+				.andExpect(status().isNoContent());
+
+		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :set")
+						.param("set", setId).query(Integer.class).single(),
+				"a hold describing a day that is gone goes with the set (CASCADE)");
+		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets.length()").value(0));
 	}
 
 	@Test
