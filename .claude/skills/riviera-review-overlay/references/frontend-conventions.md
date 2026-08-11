@@ -305,18 +305,20 @@ postures**, and conflating them is the way to get this item wrong in both direct
 1. **Where focus should land.** The guard asks only whether a focus call site exists in the
    component. Landing on the page host is not the same answer as landing on the notice that says
    what happened, and only a human reads the surface.
-2. **Whether the component's *second* surface has a leg.** FOCUS-1's exemption is
-   **component-scoped**: a component that moves focus anywhere is trusted for every surface it owns,
-   forever (**#624**). That is not hypothetical — it is how instance 14 hid. `payouts-tab` gained
-   `focusMover()` for its weather confirm and its focus-**trapped** statement modal then went on
-   being torn down by `resetForVenue()` with no leg at all; the guard called the component clean
-   throughout, and #621's review pass found it. `set-editor`, `layout-editor`, `admin-venue-photos`
-   and `admin-operators` are each exempt on one helper today.
-3. **Teardowns that are not confirm surfaces at all.** FOCUS-1 only looks at `@if` branches whose
-   condition calls something matching `/confirm/i`. Instance 13 was a modal **dismiss**
-   (`statementOpen.set(false)`), instance 14 a **venue switch** — neither is a confirm branch, and
-   both stranded focus. Any `@if` gating a focus-trapped child, and any bulk state reset, is the same
-   class.
+2. **The *second* stranding flip on an already-compliant signal.** #626 narrowed FOCUS-1 from
+   component scope to the **signal that gates each surface**, which is what let instance 14 hide
+   (`payouts-tab` moved focus for its weather confirm, and its focus-**trapped** statement modal was
+   then torn down by `resetForVenue()` with no leg). What remains is one step down: a signal is
+   excused by **one** compliant flip site — deliberately, since a bulk state reset beside a compliant
+   dismiss is not a bug — so a *second* stranding flip added beside a good one is unreported. So is a
+   teardown written some other way: `update(…)`, a `linkedSignal`, anything that is not a `set(false)`
+   the scanner recognises.
+3. **Teardowns that are neither a confirm branch nor a focus trap.** FOCUS-1's trigger is an `@if`
+   whose condition calls something matching `/confirm/i`, or one rendering a focus trap
+   (`trapFocusWithin`, `aria-modal`, `role="dialog"`) — #626 added the second after instance 13, a
+   modal **dismiss** that named no confirm flag anywhere. A surface that is neither still destroys
+   focus and is still yours to check: a row removed from a list, an error panel replacing the form
+   that had focus, a wizard step swapped out.
 4. **The input carve-out's premise.** Inputs keep `[disabled]` and BUSY-1 allow-lists `button`/`a`
    only, on the stated grounds that *focus is on the button, never the field*. That holds wherever a
    button starts the write — and fails where the **field's own** `(change)`/`(blur)` starts it, which

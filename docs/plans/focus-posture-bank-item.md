@@ -13,8 +13,8 @@ turned up: `pricing-tab`'s price field is disabled by a write it starts itself.
 **Architecture:** The single most significant decision is that the item is written **around** the
 guard, not over it: `scripts/check-focus-posture.mjs` already covers what it can match, so
 RV-FE-9 states the rule once and then spends its length on the three things the guard structurally
-cannot judge — **where** focus should land, whether a component's *second* surface has a leg
-(FOCUS-1's exemption is component-scoped, #624), and teardowns that are not confirm surfaces at all.
+cannot judge — **where** focus should land, whether a second stranding flip hides behind a compliant
+one, and teardowns its trigger does not reach.
 That is RV-STYLE-1's shape, with one inversion worth naming: RV-STYLE-1's guard discharges most of
 its rule, so its item is a short remainder; here the guard discharges the *smaller* half — one of two
 rules gates, the other only advises — so the remainder is the item's centre of gravity.
@@ -85,8 +85,9 @@ written against.
   surfaces either bug. *Pinned by:* the recorded mutation run in Phase 0 / Acceptance-criteria
   verification.
 - [x] **AC-4:** Given the item, when a reviewer asks "what am I for, that the guard is not", then it
-  names all three blind spots — the landing spot, the component-scoped exemption (#624), and
-  teardowns that are not confirm surfaces — **plus** the input carve-out the issue does not name.
+  names all four blind spots — the landing spot, the second stranding flip on an
+  already-compliant signal (the residual after #626), teardowns its trigger does not reach, and the
+  input carve-out the issue does not name.
   *Pinned by:* the item's "What the guard cannot judge" list.
 - [x] **AC-5:** Given a green `Repo hygiene (diff-scoped)` job, when the reviewer treats that as
   proof, then the item corrects them: FOCUS-1 prints and returns 0, so a green **exit code** can sit
@@ -129,9 +130,11 @@ written against.
   change there is one enumeration the docs-freshness sweep found false, plus a pointer to RV-FE-9 —
   reconciliation, not a second statement of the rule.
 - **No behavioral change to `scripts/check-focus-posture.mjs`.** Narrowing FOCUS-1's component-scoped
-  exemption is #624's job, and #621 records two spikes at that predicate that each traded one error
-  direction for the other. The item cites #624 rather than pre-empting it. The only edit to that file
-  is its module-header comment, for the same stale count.
+  exemption was #624's job, and #621 records two spikes at that predicate that each traded one error
+  direction for the other. The item cited #624 rather than pre-empting it — **and #624 shipped as
+  #626 while this branch was open**, so the merge from `main` brings the narrowed guard in and
+  RV-FE-9's second and third blind spots are rewritten to describe the guard that now exists. The
+  only edit this branch makes to that file is its module-header comment, for the stale count.
 - **Not folded into RV-FE-5.** That item is the beach-map seat picker's accessibility (keyboard
   activation, non-colour status) — one surface. This class spans every confirm, modal and teardown in
   the app, so it earns its own number rather than a bullet under a map-specific item.
@@ -179,7 +182,7 @@ due — each row verdicted against what the old attribute actually did, not what
 | R-1 | **The item restates what the guard discharges**, so a reviewer hand-flags a BUSY-1 shape CI already failed — the redundant-comment round trip RV-STYLE-2 exists to retire (PR #520, PR #612) | med | med | The item splits explicitly: one line hands BUSY-1 to the hard gate with "don't hand-flag it", and the rest is the guard-blind remainder | Ivo | **closed** — the item names the command, states which rule gates, and says in as many words that a BUSY-1 shape is the build's finding, not the reviewer's (AC-2) |
 | R-2 | **The item over-trusts a green run.** FOCUS-1 prints and returns 0, so a green `Repo hygiene` step can carry unread FOCUS-1 lines — the opposite failure to R-1, and the easier one to write by accident | med | high | The guard paragraph states the exit-code/output split as its own sentence, in the same place it names the command | Ivo | **closed** — AC-5; the item says read the output, not the exit code, and says why FOCUS-1 advises (a runtime property approximated over source) |
 | R-3 | **Bank fatigue.** A tenth frontend item on a bank already walked per review makes the whole file skimmable rather than checkable | med | med | The item's checklist is capped at the six questions the guard cannot answer; everything mechanical is one line pointing at the command | Ivo | **closed** — six checklist bullets, one of which is a pointer; the item is comparable in length to RV-FE-8 and shorter than RV-FE-E2E |
-| R-4 | **The item goes stale if #624 lands** and narrows FOCUS-1's component-scoped exemption — the blind spot it describes would no longer be blind | med | low | The exemption is cited **by issue number** rather than described as permanent, so #624's own close-out has a pointer back here; `riviera-docs-freshness` is due at that close-out and greps the skills tree | Ivo | **closed** — RV-FE-9 names #624 at the exemption and again in its follow-up list |
+| R-4 | **The item goes stale if #624 lands** and narrows FOCUS-1's component-scoped exemption — the blind spot it describes would no longer be blind | med | low | The exemption is cited **by issue number** rather than described as permanent, so #624's own close-out has a pointer back here; `riviera-docs-freshness` is due at that close-out and greps the skills tree | Ivo | **closed — the risk fired, inside this branch's own lifetime.** #624 shipped as **#626** between this PR opening and its merge-from-`main`, so blind spot 2 was stale before it ever reached `main`. Caught by the integration merge, not by a later sweep: both statements are rewritten to the post-#626 residual (a signal is excused by one compliant flip, so a *second* stranding flip goes unreported) and blind spot 3 is narrowed to what the widened trigger still cannot reach. The mitigation worked — the issue number is what made the staleness findable |
 | R-5 | **A claim about the guard's blindness that is asserted rather than shown** would be the worst outcome in a doc whose whole job is to be trusted at review time | low | high | AC-3 is a recorded mutation run, not a citation of #621's findings register | Ivo | **closed** — both legs deleted, `--all` and `--files` both reported 0, file restored with `git checkout --` and the tree verified clean (Phase 0) |
 | R-6 | **`readonly` might not lock as completely as `disabled`** — if typing, pasting or the number spinners still reach the field mid-save, the fix trades a focus bug for a concurrency bug on a **money** surface (invariant #5, the shared `set_version` token) | med | high | Measured in Chromium before the code changed, not reasoned about: a probe held focus in a readonly field and typed | Ivo | **closed** — the value did not move while readonly (`20` before and after the typing), and the serialization spec still passes unmodified: a second edit mid-flight sends no PUT and the shown value is restored. The handler's `saving()` backstop is untouched either way |
 | R-7 | **`pricing-tab` is money-adjacent.** The reprice writes prices for every set in a row against an optimistic-concurrency token; a careless edit could change what is sent or when | med | high | The diff is one attribute, one variant prefix and one TSDoc paragraph. No request, body, token, condition or handler line changes; the four pre-existing e2e journeys are the parity net | Ivo | **closed** — `git diff` on `pricing-tab.ts` is comment-only; `pricing-tab.html` changes two tokens on one element. The PUT body assertions (`minorUnits`, `expectedVersion`) pass untouched in both the unit spec and the e2e |
@@ -469,7 +472,7 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
 - [x] **AC-3:** the Phase 0 mutation run — both legs deleted, `--all` → `BUSY-1: 0  FOCUS-1: 0`,
       `--files frontend/src/app/operator/payouts-tab.ts` → no output. Restored; tree clean.
 - [x] **AC-4:** the item's "What the guard cannot judge" list has four entries — landing spot,
-      component-scoped exemption (#624), non-confirm teardowns, and the input carve-out (#625).
+      the post-#626 signal-scope residual, teardowns outside its trigger, and the input carve-out (#625).
 - [x] **AC-5:** the item states that FOCUS-1 prints and returns 0, so the step is green either way.
 - [x] **AC-6:** `SKILL.md`'s frontend bullet names RV-FE-9 alongside RV-FE-8.
 - [x] **AC-7, AC-8:** `PW_CHROMIUM_EXECUTABLE=$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome
