@@ -14,6 +14,11 @@
 # Shell scripts stay LF wherever they run — the cloud-session hooks, and any Linux shell.
 *.sh text eol=lf
 
+# Git hooks are shell scripts with no extension, so the rule above cannot reach them and they
+# would rely on the `text=auto` content heuristic alone. husky runs them through `sh`, which
+# fails on a CRLF file with an opaque error, so state it rather than infer it.
+.husky/** text eol=lf
+
 # Binaries: never line-ending-converted, never diffed as text.
 *.png binary
 *.jpg binary

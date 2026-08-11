@@ -26,11 +26,23 @@ typed services, with the backend DTO as the single source of shape?
 
 **Default severity:** Major for `as any` on a contract response; Major for a stale
 hand-stubbed type.
+**What the linter already covers (since #632) — so review effort goes where it doesn't.**
+An explicit `as any` was never this item's hard part: `no-explicit-any` ships in
+`tseslint.configs.recommended` and has always failed the build. What #632's type-aware flip
+added is the **unsafe-`any` family** (`no-unsafe-assignment`/`-member-access`/`-argument`/
+`-call`/`-return`), which catches `any` that *leaks in* from an untyped library return and is
+then read — the shape no grep finds, because nobody wrote the word `any`.
+
+What stays a **review** item is the half a type system cannot see: whether the FE type is
+*truthful* about the backend DTO. A hand-written interface that is internally consistent,
+fully typed, and simply **wrong** about the wire passes every rule above. That drift — not
+`as any` — is what this item is now for.
+
 **Skill framing:**
 - Pre-impl: "How will the FE be typed against this endpoint — generated or
   hand-typed? Capture the regenerate step as a phase if generated."
-- Peer-review: "Grep the diff for `as any` near HTTP calls. Does the FE type match
-  the BE DTO?"
+- Peer-review: "Compare the FE type against the BE DTO field by field — the linter
+  already rejects `as any` and leaked `any`, so drift is what is left to catch."
 
 ---
 
