@@ -245,6 +245,99 @@ describe('AdminOperators', () => {
     expect(service.accounts).toHaveBeenCalledTimes(2);
   });
 
+  /**
+   * The fourth transition on all four row actions. `act()` clears the confirmation and reconciles
+   * both lists from the server, so whatever focus was on — a confirm button, or a row the reconcile
+   * removes — is gone by the time the action settles. Each lands on the notice stating the outcome,
+   * which is also the page's only announcement of it.
+   */
+  async function settleAction(
+    fixture: ComponentFixture<AdminOperators>,
+    testid: string,
+  ): Promise<void> {
+    (
+      (fixture.nativeElement as HTMLElement).querySelector(
+        `[data-testid="${testid}"]`,
+      ) as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  function notice(fixture: ComponentFixture<AdminOperators>): HTMLElement | null {
+    return (fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-ops-notice"]');
+  }
+
+  it('parks focus on the notice when an approval settles', async () => {
+    const service = serviceStub(rows, accounts);
+    const fixture = await render(authStub({ isAdmin: true }), service);
+
+    await settleAction(fixture, 'admin-approve-7');
+
+    expect(notice(fixture)?.textContent).toContain('alice');
+    expect(document.activeElement).toBe(notice(fixture));
+  });
+
+  it('parks focus on the notice when a rejection settles', async () => {
+    const service = serviceStub(rows, accounts);
+    const fixture = await render(authStub({ isAdmin: true }), service);
+
+    await settleAction(fixture, 'admin-reject-7');
+
+    expect(notice(fixture)?.textContent).toContain('alice');
+    expect(document.activeElement).toBe(notice(fixture));
+  });
+
+  it('parks focus on the notice when a suspension settles', async () => {
+    const service = serviceStub(rows, accounts);
+    const fixture = await render(authStub({ isAdmin: true }), service);
+    (
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '[data-testid="admin-suspend-7"]',
+      ) as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+
+    await settleAction(fixture, 'admin-suspend-confirm-7');
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-suspend-panel-7"]'),
+    ).toBeNull();
+    expect(notice(fixture)?.textContent).toContain('alice');
+    expect(document.activeElement).toBe(notice(fixture));
+  });
+
+  it('does not claim success when the decision failed', async () => {
+    const service = serviceStub(rows, accounts);
+    service.suspend.mockRejectedValue(new Error('nope'));
+    const fixture = await render(authStub({ isAdmin: true }), service);
+    (
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '[data-testid="admin-suspend-7"]',
+      ) as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+
+    await settleAction(fixture, 'admin-suspend-confirm-7');
+
+    expect(notice(fixture)?.textContent).not.toContain('Suspended');
+    expect(notice(fixture)?.textContent).toContain("didn't go through");
+    expect(document.activeElement).toBe(notice(fixture));
+  });
+
+  it('parks focus on the notice when a reinstatement settles', async () => {
+    const service = serviceStub(rows, accounts);
+    const fixture = await render(authStub({ isAdmin: true }), service);
+
+    await settleAction(fixture, 'admin-reinstate-8');
+
+    expect(notice(fixture)?.textContent).toContain('bob');
+    expect(document.activeElement).toBe(notice(fixture));
+  });
+
   it('offers no suspend control on the signed-in admin’s own row', async () => {
     const service = serviceStub(rows, accounts);
     const fixture = await render(authStub({ isAdmin: true, principalName: 'admin-self' }), service);

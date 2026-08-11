@@ -115,8 +115,8 @@
                 <div class="flex flex-wrap gap-2.5">
                   <button
                     type="button"
-                    class="rounded-[13px] bg-[#a3160e] px-5 py-[11px] text-[14px] font-bold text-white disabled:opacity-60"
-                    [disabled]="isDeciding(row.bookingId)"
+                    class="rounded-[13px] bg-[#a3160e] px-5 py-[11px] text-[14px] font-bold text-white aria-disabled:opacity-60"
+                    [appBusy]="isDeciding(row.bookingId)"
                     [attr.aria-label]="confirmDeclineLabel(row)"
                     (click)="onConfirmDecline(row)"
                   >
@@ -135,8 +135,8 @@
               <div class="mt-3.5 flex flex-wrap gap-2.5 border-t border-(--riv-card-border) pt-3.5">
                 <button
                   type="button"
-                  class="min-w-[130px] flex-1 rounded-[13px] bg-[#0a6e85] px-4 py-[11px] text-[14px] font-bold text-white disabled:opacity-60"
-                  [disabled]="isDeciding(row.bookingId)"
+                  class="min-w-[130px] flex-1 rounded-[13px] bg-[#0a6e85] px-4 py-[11px] text-[14px] font-bold text-white aria-disabled:opacity-60"
+                  [appBusy]="isDeciding(row.bookingId)"
                   [attr.aria-label]="acceptLabel(row)"
                   (click)="onAccept(row)"
                 >
@@ -144,8 +144,8 @@
                 </button>
                 <button
                   type="button"
-                  class="rounded-[13px] border border-[#a3160e]/50 bg-white/50 px-5 py-[11px] text-[14px] font-semibold text-[#a3160e] disabled:opacity-60"
-                  [disabled]="isDeciding(row.bookingId)"
+                  class="rounded-[13px] border border-[#a3160e]/50 bg-white/50 px-5 py-[11px] text-[14px] font-semibold text-[#a3160e] aria-disabled:opacity-60"
+                  [appBusy]="isDeciding(row.bookingId)"
                   [attr.aria-label]="declineLabel(row)"
                   (click)="onDecline(row)"
                 >

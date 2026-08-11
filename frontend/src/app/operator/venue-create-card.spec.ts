@@ -155,7 +155,9 @@ describe('VenueCreateCard (#278)', () => {
     fixture.detectChanges();
 
     expect(submitButton().textContent?.trim()).toBe('Creating…');
-    expect(submitButton().disabled).toBe(true);
+    // Announced as unavailable, but still focusable — disabling it would strand focus on <body>.
+    expect(submitButton().getAttribute('aria-disabled')).toBe('true');
+    expect(submitButton().disabled).toBe(false);
 
     httpMock
       .expectOne((r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues`)

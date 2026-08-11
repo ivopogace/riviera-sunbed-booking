@@ -1,5 +1,7 @@
 import { Component, input, output } from '@angular/core';
 
+import { BusyAction } from '../shared/busy-action';
+
 /**
  * The recover-and-reload banner for a `409 STALE_WRITE` optimistic-concurrency loss, shared
  * across the venue, layout and pricing tabs. The <em>banner</em> is shared; the per-surface
@@ -14,6 +16,7 @@ import { Component, input, output } from '@angular/core';
  */
 @Component({
   selector: 'app-stale-write-banner',
+  imports: [BusyAction],
   host: {
     role: 'alert',
     class:
@@ -25,9 +28,9 @@ import { Component, input, output } from '@angular/core';
     </span>
     <button
       type="button"
-      class="self-start rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2 text-[13px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/90 disabled:opacity-50"
+      class="self-start rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2 text-[13px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/90 aria-disabled:opacity-50"
       [attr.data-testid]="reloadTestId()"
-      [disabled]="reloading()"
+      [appBusy]="reloading()"
       (click)="reload.emit()"
     >
       {{ reloading() ? 'Reloading…' : 'Reload latest' }}

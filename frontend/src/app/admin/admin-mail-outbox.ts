@@ -2,6 +2,7 @@ import { Component, effect, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminMailDelivery } from './admin-mail-delivery';
@@ -38,7 +39,7 @@ import { OutboxLever } from './admin-outbox-lever';
  */
 @Component({
   selector: 'app-admin-mail-outbox',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs, AdminMailDelivery],
+  imports: [RouterLink, CardGlass, AdminConsoleTabs, AdminMailDelivery, BusyAction],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-outbox-title">
@@ -109,8 +110,8 @@ import { OutboxLever } from './admin-outbox-lever';
 
             <button
               type="button"
-              class="mt-4 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-              [disabled]="lever.busy()"
+              class="mt-4 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+              [appBusy]="lever.busy()"
               (click)="lever.resubmit()"
               data-testid="admin-outbox-resubmit"
             >

@@ -8,6 +8,8 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { BusyAction } from './busy-action';
+
 /**
  * The admin console's confirm-before-destroy panel: a prompt, the optional grounds the audit trail
  * records (ADR-0013), and an outlined destructive action beside a way out. The operator console's
@@ -22,6 +24,7 @@ import {
  */
 @Component({
   selector: 'app-confirm-with-reason',
+  imports: [BusyAction],
   host: {
     role: 'alertdialog',
     '[attr.aria-label]': 'label()',
@@ -52,9 +55,9 @@ import {
         #confirmButton
         type="button"
         [attr.data-testid]="confirmTestId()"
-        [disabled]="busy()"
+        [appBusy]="busy()"
         (click)="confirmed.emit()"
-        class="rounded-[10px] border border-[#b3261e] px-4 py-2 text-[14px] font-semibold text-[#b3261e] disabled:cursor-not-allowed disabled:opacity-60"
+        class="rounded-[10px] border border-[#b3261e] px-4 py-2 text-[14px] font-semibold text-[#b3261e] aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
       >
         {{ confirmLabel() }}
       </button>

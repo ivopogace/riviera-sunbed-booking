@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmWithReason } from '../shared/confirm-with-reason';
 import { focusMover } from '../shared/focus-after-render';
@@ -31,7 +32,14 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
  */
 @Component({
   selector: 'app-admin-operators',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs, AdminConsoleStats, ConfirmWithReason],
+  imports: [
+    RouterLink,
+    CardGlass,
+    AdminConsoleTabs,
+    AdminConsoleStats,
+    ConfirmWithReason,
+    BusyAction,
+  ],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-ops-title">
@@ -57,6 +65,15 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
         </p>
       } @else {
         <app-admin-console-tabs label="Admin console sections" />
+        <p
+          class="mt-4 text-[15px] text-(--riv-ink-soft) empty:hidden"
+          role="status"
+          aria-live="polite"
+          tabindex="-1"
+          data-testid="admin-ops-notice"
+        >
+          {{ notice() }}
+        </p>
         <app-admin-console-stats
           [pendingCount]="pendingCount()"
           [activeCount]="activeCount()"
@@ -105,18 +122,18 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
                     <button
                       type="button"
                       [attr.data-testid]="'admin-approve-' + op.id"
-                      [disabled]="actingId() !== undefined"
+                      [appBusy]="actingId() !== undefined"
                       (click)="approve(op.id)"
-                      class="rounded-[10px] bg-(image:--riv-cta-grad) px-4 py-2 text-[14px] font-semibold text-white disabled:opacity-60"
+                      class="rounded-[10px] bg-(image:--riv-cta-grad) px-4 py-2 text-[14px] font-semibold text-white aria-disabled:opacity-60"
                     >
                       Approve
                     </button>
                     <button
                       type="button"
                       [attr.data-testid]="'admin-reject-' + op.id"
-                      [disabled]="actingId() !== undefined"
+                      [appBusy]="actingId() !== undefined"
                       (click)="reject(op.id)"
-                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) disabled:opacity-60"
+                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-60"
                     >
                       Reject
                     </button>
@@ -183,9 +200,9 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
                     <button
                       type="button"
                       [attr.data-testid]="'admin-reinstate-' + op.id"
-                      [disabled]="actingId() !== undefined"
+                      [appBusy]="actingId() !== undefined"
                       (click)="reinstate(op.id)"
-                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) disabled:opacity-60"
+                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-60"
                     >
                       Reinstate
                     </button>
@@ -210,9 +227,9 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
                     <button
                       type="button"
                       [attr.data-testid]="'admin-suspend-' + op.id"
-                      [disabled]="actingId() !== undefined"
+                      [appBusy]="actingId() !== undefined"
                       (click)="askToSuspend(op.id)"
-                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) disabled:opacity-60"
+                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-60"
                     >
                       Suspend
                     </button>
@@ -241,6 +258,8 @@ export class AdminOperators {
   protected readonly confirmingId = signal<number | undefined>(undefined);
   /** The armed confirmation's optional grounds; cleared on arm, dismiss, and confirm. */
   protected readonly suspendReason = signal('');
+  /** What the last settled decision did — announced, and the spot focus lands on. */
+  protected readonly notice = signal('');
   /**
    * Whether the lists above came from a read that actually succeeded. They start empty and are left
    * untouched on failure, so without this the stat strip would render a confident `0` for a queue it
@@ -300,11 +319,11 @@ export class AdminOperators {
   }
 
   protected async approve(id: number): Promise<void> {
-    await this.act(id, () => this.service.approve(id));
+    await this.act(id, () => this.service.approve(id), 'Approved');
   }
 
   protected async reject(id: number): Promise<void> {
-    await this.act(id, () => this.service.reject(id));
+    await this.act(id, () => this.service.reject(id), 'Rejected');
   }
 
   /**
@@ -312,7 +331,7 @@ export class AdminOperators {
    * that was just activated, which strands keyboard/AT focus on `<body>` unless it is moved
    * deliberately (WCAG 2.4.3 — the recurring stranded-focus class). Focus INTO the confirmation is
    * {@link ConfirmWithReason}'s own doing; dismissing returns it to Suspend. The third transition —
-   * parking focus once the action settles — spans all four row actions and is deliberately deferred.
+   * parking focus once the action settles — is {@link act}'s, since it spans all four row actions.
    */
   protected askToSuspend(id: number): void {
     this.confirmingId.set(id);
@@ -329,30 +348,52 @@ export class AdminOperators {
     // Typed grounds ride the suspension into the audit trail; no grounds → the 1-arg call.
     const grounds = this.suspendReason().trim();
     this.suspendReason.set('');
-    await this.act(id, () =>
-      grounds === '' ? this.service.suspend(id) : this.service.suspend(id, grounds),
+    await this.act(
+      id,
+      () => (grounds === '' ? this.service.suspend(id) : this.service.suspend(id, grounds)),
+      'Suspended',
     );
   }
 
   protected async reinstate(id: number): Promise<void> {
-    await this.act(id, () => this.service.reinstate(id));
+    await this.act(id, () => this.service.reinstate(id), 'Reinstated');
   }
 
-  /** Run a decision, then RECONCILE the queue from the server (never a local-only card removal). */
-  private async act(id: number, action: () => Promise<void>): Promise<void> {
+  /**
+   * Run a decision, then RECONCILE the queue from the server (never a local-only card removal), and
+   * land the admin on the notice — which the reconcile makes necessary, since it destroys whatever
+   * focus was on. The name is read **before** the action, because the reconcile removes the row
+   * holding it. Why the notice rather than the row: `docs/plans/confirm-focus-busy-posture.md`.
+   */
+  private async act(id: number, action: () => Promise<void>, outcome: string): Promise<void> {
     if (this.actingId() !== undefined) {
       return;
     }
+    const who = this.nameOf(id);
     this.actingId.set(id);
     this.confirmingId.set(undefined);
+    this.notice.set('');
+    let settled = false;
     try {
       await action();
+      settled = true;
     } catch {
       // A 409 (already decided) / 404 (gone) resolves itself on the reload below; a transport error
       // surfaces as the load error. Either way, re-fetch the authoritative queue.
     } finally {
       this.actingId.set(undefined);
       await this.load();
+      // Never "nothing changed": a 409 means it was already decided, so the reconciled list may move.
+      this.notice.set(
+        settled ? `${outcome} ${who}.` : `That didn't go through. The list below is up to date.`,
+      );
+      this.focusAfterRender('admin-ops-notice');
     }
+  }
+
+  private nameOf(id: number): string {
+    const row =
+      this.pending().find((op) => op.id === id) ?? this.accounts().find((op) => op.id === id);
+    return row?.username ?? 'the operator';
   }
 }

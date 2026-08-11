@@ -3,6 +3,7 @@ import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
 import { CustomerAuth } from '../core/customer-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 
 /**
@@ -13,7 +14,7 @@ import { CardGlass } from '../shared/card-glass';
  */
 @Component({
   selector: 'app-forgot-password',
-  imports: [FormField, RouterLink, CardGlass],
+  imports: [FormField, RouterLink, CardGlass, BusyAction],
   template: `
     <section class="auth-wrap" aria-labelledby="forgot-title">
       <div class="auth-card" appCardGlass>
@@ -53,7 +54,7 @@ import { CardGlass } from '../shared/card-glass';
               type="submit"
               class="auth-submit"
               data-testid="forgot-submit"
-              [disabled]="submitting()"
+              [appBusy]="submitting()"
             >
               {{ submitting() ? 'Sending…' : 'Send reset link' }}
             </button>

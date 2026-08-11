@@ -22,6 +22,16 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 - It MUST pass all AXE checks.
 - It MUST follow all WCAG AA minimums, including focus management, color contrast, and ARIA attributes.
+- **A busy `<button>` uses `[appBusy]`, never `[disabled]`.** A browser unfocuses a disabled element,
+  so disabling the control the user just pressed strands focus on `<body>` for the whole request
+  (WCAG 2.4.3). `shared/busy-action.ts` announces the same state via `aria-disabled` and blocks the
+  activating click instead; style it with the `aria-disabled:` variant. Two carve-outs: **inputs keep
+  `[disabled]`** (`aria-disabled` does not stop typing, and focus is on the button anyway), and so does
+  anything disabled by **validity or state** rather than an in-flight write — a genuinely unavailable
+  control should leave the tab order. Split a binding that mixes the two.
+- **A transition that destroys the focused element must move focus deliberately**, via
+  `shared/focus-after-render.ts`'s `focusMover()`. This is the repo's most-repeated bug class (#604,
+  #614, #616); confirm-before-destroy surfaces need all three legs — open, back-out, and settled.
 
 ### Components
 

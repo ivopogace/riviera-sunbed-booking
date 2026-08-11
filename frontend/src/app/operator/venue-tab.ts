@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { Amenity, AMENITY_CATALOGUE, amenityLabel } from '../shared/amenities';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { formatCommissionPercent } from '../shared/commission-rate';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -84,7 +85,7 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
  */
 @Component({
   selector: 'app-venue-tab',
-  imports: [FormField, CardGlass, NgOptimizedImage, StaleWriteBanner],
+  imports: [FormField, CardGlass, NgOptimizedImage, StaleWriteBanner, BusyAction],
   templateUrl: './venue-tab.html',
 })
 export class VenueTab {

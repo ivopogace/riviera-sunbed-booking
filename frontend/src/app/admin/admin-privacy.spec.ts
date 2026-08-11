@@ -280,8 +280,8 @@ describe('AdminPrivacy', () => {
     byTestId<HTMLButtonElement>(fixture, 'admin-privacy-confirm')!.click();
     fixture.detectChanges();
 
-    expect(byTestId<HTMLButtonElement>(fixture, 'admin-privacy-confirm')!.disabled).toBe(true);
-    expect(byTestId<HTMLButtonElement>(fixture, 'admin-privacy-cancel')!.disabled).toBe(true);
+    expect(byTestId(fixture, 'admin-privacy-confirm')!.getAttribute('aria-disabled')).toBe('true');
+    expect(byTestId(fixture, 'admin-privacy-cancel')!.getAttribute('aria-disabled')).toBe('true');
     // The field too, not just the buttons — grounds typed mid-flight would never be sent.
     expect(byTestId<HTMLInputElement>(fixture, 'admin-privacy-reason')!.disabled).toBe(true);
 
@@ -357,9 +357,9 @@ describe('AdminPrivacy', () => {
   });
 
   /**
-   * The transition the other four hide: disabling the confirm button while the request is in flight
-   * blurs it to `<body>`, and re-enabling it afterwards does not bring focus back. A failure would
-   * otherwise strand a keyboard user on the one path where they most need to act next.
+   * The transition the other four hide. A failure would otherwise strand a keyboard user on the one
+   * path where they most need to act next; the busy posture now keeps focus on the confirm button
+   * throughout, so this asserts the leg still lands rather than that a blur is undone.
    */
   it('returns focus to the confirm button when the erasure fails, rather than stranding it', async () => {
     const service = serviceStub();

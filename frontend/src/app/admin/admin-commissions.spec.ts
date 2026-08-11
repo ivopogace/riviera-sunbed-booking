@@ -260,10 +260,10 @@ describe('AdminCommissions', () => {
   });
 
   /**
-   * The fourth focus transition, and the one the other three hide: disabling Save while the write is
-   * in flight blurs it to `<body>`, and re-enabling it afterwards does not bring focus back. Success
-   * and dismissal both move focus deliberately; a failure left it stranded on the one path where the
-   * admin most needs to act next (WCAG 2.4.3 — the recurring stranded-focus class).
+   * The fourth focus transition. Success and dismissal both move focus deliberately; a failure left
+   * it stranded on the one path where the admin most needs to act next (WCAG 2.4.3 — the recurring
+   * stranded-focus class). The busy posture now keeps focus on Save throughout, so this asserts the
+   * leg still lands rather than that a blur is undone.
    */
   it('returns focus to Save when the write fails, rather than stranding it', async () => {
     const service = serviceStub();
@@ -298,9 +298,15 @@ describe('AdminCommissions', () => {
     byTestId<HTMLButtonElement>(fixture, 'admin-commission-save-7')!.click();
     fixture.detectChanges();
 
-    expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-cancel-7')!.disabled).toBe(true);
-    expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-save-7')!.disabled).toBe(true);
-    expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-edit-9')!.disabled).toBe(true);
+    expect(byTestId(fixture, 'admin-commission-cancel-7')!.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    expect(byTestId(fixture, 'admin-commission-save-7')!.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    expect(byTestId(fixture, 'admin-commission-edit-9')!.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
     // The fields too, not just the buttons — a draft typed mid-flight is wiped when the write lands.
     expect(byTestId<HTMLInputElement>(fixture, 'admin-commission-percent-7')!.disabled).toBe(true);
     expect(byTestId<HTMLInputElement>(fixture, 'admin-commission-reason-7')!.disabled).toBe(true);
@@ -309,7 +315,7 @@ describe('AdminCommissions', () => {
     await settle(fixture);
 
     expect(text(fixture, 'admin-commission-rate-7')).toBe('12.5%');
-    expect(byTestId<HTMLButtonElement>(fixture, 'admin-commission-edit-9')!.disabled).toBe(false);
+    expect(byTestId(fixture, 'admin-commission-edit-9')!.hasAttribute('aria-disabled')).toBe(false);
   });
 
   it('reports a vanished venue distinctly from a generic failure', async () => {

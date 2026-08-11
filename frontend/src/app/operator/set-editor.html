@@ -28,10 +28,10 @@
               <button
                 type="button"
                 [attr.aria-pressed]="draft().tier === tier.key"
-                [disabled]="busy()"
+                [appBusy]="busy()"
                 (click)="chooseTier(tier.key)"
                 [attr.data-testid]="'set-tier-' + tier.key"
-                class="min-h-11 flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50"
+                class="min-h-11 flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-50"
                 [class]="
                   draft().tier === tier.key
                     ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
@@ -53,10 +53,10 @@
               <button
                 type="button"
                 [attr.aria-pressed]="draft().pool === pool.key"
-                [disabled]="busy()"
+                [appBusy]="busy()"
                 (click)="choosePool(pool.key)"
                 [attr.data-testid]="'set-pool-' + pool.key"
-                class="min-h-11 flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50"
+                class="min-h-11 flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-50"
                 [class]="
                   draft().pool === pool.key
                     ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
@@ -90,9 +90,9 @@
             <button
               type="button"
               (click)="onAdd()"
-              [disabled]="busy()"
+              [appBusy]="busy()"
               data-testid="set-add"
-              class="min-h-11 flex-1 rounded-[14px] bg-(image:--riv-cta-grad) px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50"
+              class="min-h-11 flex-1 rounded-[14px] bg-(image:--riv-cta-grad) px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] aria-disabled:opacity-50"
             >
               {{ busy() ? 'Adding…' : 'Add set here' }}
             </button>
@@ -102,27 +102,28 @@
           <button
             type="button"
             (click)="onSave()"
-            [disabled]="busy()"
+              [appBusy]="busy()"
             data-testid="set-save"
-            class="min-h-11 flex-1 rounded-[14px] bg-(image:--riv-cta-grad) px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50"
+              class="min-h-11 flex-1 rounded-[14px] bg-(image:--riv-cta-grad) px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] aria-disabled:opacity-50"
           >
             {{ busy() ? 'Saving…' : 'Save set' }}
           </button>
           <button
             type="button"
             (click)="armMove()"
-            [disabled]="busy() || dirty()"
+              [disabled]="dirty()"
+              [appBusy]="busy()"
             data-testid="set-move"
-            class="min-h-11 rounded-[14px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) disabled:opacity-50"
+              class="min-h-11 rounded-[14px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) disabled:opacity-50 aria-disabled:opacity-50"
           >
             Move
           </button>
           <button
             type="button"
             (click)="askRemove()"
-            [disabled]="busy()"
+              [appBusy]="busy()"
             data-testid="set-remove"
-            class="min-h-11 rounded-[14px] border border-[#a3160e]/40 px-4 py-2.5 text-[13.5px] font-bold text-[#a3160e] disabled:opacity-50"
+              class="min-h-11 rounded-[14px] border border-[#a3160e]/40 px-4 py-2.5 text-[13.5px] font-bold text-[#a3160e] aria-disabled:opacity-50"
           >
             Remove
           </button>

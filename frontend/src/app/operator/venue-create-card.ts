@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues } from '../core/owned-venues';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { parseWholeNumber } from '../shared/whole-number';
 import { BookingMode } from '../shared/venue-views';
@@ -23,7 +24,7 @@ import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
  */
 @Component({
   selector: 'app-venue-create-card',
-  imports: [CardGlass, FormField],
+  imports: [CardGlass, FormField, BusyAction],
   templateUrl: './venue-create-card.html',
 })
 export class VenueCreateCard {

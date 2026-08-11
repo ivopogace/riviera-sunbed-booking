@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import {
   commissionBpsToPercentInput,
@@ -56,7 +57,7 @@ import { VenueCommissionView } from './admin.model';
  */
 @Component({
   selector: 'app-admin-commissions',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs],
+  imports: [RouterLink, CardGlass, AdminConsoleTabs, BusyAction],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[860px] px-4 py-10" aria-labelledby="admin-commissions-title">
@@ -215,9 +216,9 @@ import { VenueCommissionView } from './admin.model';
                         type="button"
                         [attr.data-testid]="'admin-commission-save-' + venue.venueId"
                         [attr.aria-label]="'Save rate for ' + venue.name"
-                        [disabled]="busy()"
+                        [appBusy]="busy()"
                         (click)="saveRate(venue)"
-                        class="rounded-[10px] border border-(--riv-field-border) bg-white/70 px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) disabled:cursor-not-allowed disabled:opacity-60"
+                        class="rounded-[10px] border border-(--riv-field-border) bg-white/70 px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                       >
                         Save rate
                       </button>
@@ -225,9 +226,9 @@ import { VenueCommissionView } from './admin.model';
                         type="button"
                         [attr.data-testid]="'admin-commission-cancel-' + venue.venueId"
                         [attr.aria-label]="'Cancel the rate change for ' + venue.name"
-                        [disabled]="busy()"
+                        [appBusy]="busy()"
                         (click)="cancelEdit(venue)"
-                        class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink-soft) disabled:cursor-not-allowed disabled:opacity-60"
+                        class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink-soft) aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                       >
                         Cancel
                       </button>
@@ -246,9 +247,9 @@ import { VenueCommissionView } from './admin.model';
                     type="button"
                     [attr.data-testid]="'admin-commission-edit-' + venue.venueId"
                     [attr.aria-label]="'Edit rate for ' + venue.name"
-                    [disabled]="busy()"
+                    [appBusy]="busy()"
                     (click)="startEdit(venue)"
-                    class="mt-3 rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) disabled:cursor-not-allowed disabled:opacity-60"
+                    class="mt-3 rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                   >
                     Edit rate
                   </button>
@@ -450,7 +451,7 @@ export class AdminCommissions {
       this.focusAfterRender(`admin-commission-edit-${venue.venueId}`);
     } catch (error) {
       this.editorError.set(messageFor(commissionWriteErrorOf(error)));
-      // Disabling Save blurred it to `<body>`; re-enabling does not bring focus back (WCAG 2.4.3).
+      // Redundant since the busy posture stopped blurring, but kept: the leg must still land.
       this.focusAfterRender(`admin-commission-save-${venue.venueId}`);
     } finally {
       this.busy.set(false);

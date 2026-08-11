@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { ActivatedRoute } from '@angular/router';
 
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -35,7 +36,7 @@ import { PayoutStatement } from './payout-statement';
  */
 @Component({
   selector: 'app-payouts-tab',
-  imports: [CardGlass, PayoutStatement],
+  imports: [CardGlass, PayoutStatement, BusyAction],
   templateUrl: './payouts-tab.html',
 })
 export class PayoutsTab {
