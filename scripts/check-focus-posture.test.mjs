@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { findViolations } from './check-focus-posture.mjs';
+import { checkPaths, findViolations } from './check-focus-posture.mjs';
 
 const HTML = 'frontend/src/app/operator/payouts-tab.html';
 const TS = 'frontend/src/app/admin/admin-privacy.ts';
@@ -198,24 +198,45 @@ test('accepts a component that focuses through afterNextRender directly', () => 
 });
 
 /**
- * Delegation is a property of the block that renders the prompt, not of the file. File-scoped, one
- * `<app-confirm-panel>` anywhere excused every other surface in the same component — including a
- * hand-rolled one a later diff adds beside it.
+ * `afterNextRender` is a general lifecycle API — `auth/verify-email.ts` uses it for a data call —
+ * so accepting it alone handed a permanent exemption to any component that adopts the idiom for
+ * measurement, a chart, or a scroll.
  */
-test('does not let one delegating surface excuse a hand-rolled sibling', () => {
+test('does not accept afterNextRender used for something other than focus', () => {
   const lines = [
-    '@if (confirmRegen()) {',
-    '  <app-confirm-panel (confirmed)="regen()" />',
-    '}',
-    '@if (confirmRemove()) {',
-    '  <button data-testid="rm">Remove</button>',
+    '@Component({',
+    '  template: `',
+    '    @if (confirmRemove()) { <button data-testid="rm">Remove</button> }',
+    '  `,',
+    '})',
+    'export class VerifyEmail {',
+    '  constructor() { afterNextRender(() => void this.verify()); }',
     '}',
   ];
 
-  const violations = scan(HTML, lines, { componentSource: '' });
+  assert.equal(scan(TS, lines).length, 1);
+});
 
-  assert.equal(violations.length, 1);
-  assert.equal(violations[0].line, 4);
+/**
+ * The `string` state has to be handled above the backtick opener, or the *closing* backtick reopens
+ * it and every later line is lost — including the focus call sites the rule reads, which turns a
+ * hard gate red on a component that demonstrably moves focus. Live shape: `booking-pay.ts` orders a
+ * `` `Pay ${…}` `` string before its `afterNextRender(`.
+ */
+test('returns to code after a plain backtick string closes', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (confirmRemove()) { <button data-testid="rm">Remove</button> }',
+    '  `,',
+    '})',
+    'export class BookingPay {',
+    '  private readonly label = `Pay ${this.priceText}`;',
+    '  private readonly move = focusMover();',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines), []);
 });
 
 /**
@@ -339,20 +360,64 @@ test('pairs an external template with its component', () => {
   assert.deepEqual(moved, []);
 });
 
-test('accepts delegation to the shared confirm components', () => {
+/**
+ * The shared confirm components own the **open** leg only — their own TSDoc says focus back out is
+ * the caller's — so rendering one is not compliance. Treating it as an exemption accepted a
+ * component that still strands focus on cancel and on settle, two thirds of the rule.
+ */
+test('does not accept delegation as a substitute for the caller own legs', () => {
   const panel = [
     '@if (confirmRegen()) {',
     '  <app-confirm-panel [prompt]="\'Regenerate?\'" (confirmed)="regen()" />',
     '}',
   ];
-  const withReason = [
-    '@if (confirming() === slot.slot) {',
-    '  <app-confirm-with-reason (confirmed)="remove(slot)" />',
+
+  assert.equal(scan(HTML, panel, { componentSource: '' }).length, 1);
+  assert.deepEqual(scan(HTML, panel, { componentSource: 'const m = focusMover();' }), []);
+});
+
+/**
+ * A trigger/prompt pair writes the trigger as a negated branch, which `isConfirmPrompt` accepts — so
+ * judging delegation per block reported the trigger half of the shape the repo already writes
+ * (`payouts-tab.html` is exactly `@if (!weatherConfirm())` + `@if (weatherConfirm())`).
+ */
+test('does not report the trigger half of a trigger and prompt pair', () => {
+  const lines = [
+    '@if (!confirmRemove()) {',
+    '  <button data-testid="rm-trigger">Remove</button>',
+    '}',
+    '@if (confirmRemove()) {',
+    '  <app-confirm-panel label="x" />',
     '}',
   ];
 
-  assert.deepEqual(scan(HTML, panel, { componentSource: '' }), []);
-  assert.deepEqual(scan(HTML, withReason, { componentSource: '' }), []);
+  assert.deepEqual(scan(HTML, lines, { componentSource: 'const m = focusMover();' }), []);
+});
+
+/**
+ * The authoring-time half is only worth having if it sees a **new** file: that is how a confirm
+ * surface enters the tree, and the hook fires on `Write`. Diffing against `HEAD` reported such a
+ * file clean, and the fix first shipped pinned by nothing — a revert would have passed CI green.
+ */
+test('judges an untracked file whole, and reports nothing for a clean tracked one', () => {
+  const path = 'frontend/src/app/operator/new-tab.ts';
+  const read = () =>
+    [
+      '@Component({',
+      '  template: `',
+      '    @if (confirmRemove()) { <button data-testid="rm">Remove</button> }',
+      '  `,',
+      '})',
+      'export class NewTab {}',
+    ].join('\n');
+
+  const asNew = checkPaths([path], { tracked: () => new Set(), read });
+  const asTracked = checkPaths([path], { tracked: (paths) => new Set(paths), read });
+
+  assert.equal(asNew.length, 1);
+  assert.equal(asNew[0].rule, 'FOCUS-1');
+  assert.equal(asNew[0].path, path);
+  assert.deepEqual(asTracked, []);
 });
 
 test('does not mistake confirmed state or a confirmation value for a prompt', () => {

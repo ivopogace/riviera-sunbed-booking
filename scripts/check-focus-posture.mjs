@@ -77,11 +77,19 @@ export const BUSY_STEMS = [
  */
 const ACTIONABLE = new Set(['button', 'a']);
 
-/** A call site, in code with comments and strings removed — a TSDoc mention is not compliance. */
-const MOVES_FOCUS = /\b(focusMover|focusAfterRender|afterNextRender)\s*\(/;
+/** The repo's focus helper, as a call site — a TSDoc mention is not compliance. */
+const FOCUS_HELPER = /\b(focusMover|focusAfterRender)\s*\(/;
 
-/** Both shared confirm components focus their own confirm button, so their users need no leg. */
-const DELEGATES = /<app-confirm-panel|<app-confirm-with-reason/;
+/**
+ * The hand-rolled equivalent: `afterNextRender` is a general lifecycle API (a data call in
+ * `auth/verify-email.ts`), so it counts only alongside an actual `focus()` — which is what
+ * `shared/confirm-panel.ts` and `shared/confirm-with-reason.ts` do.
+ */
+const HAND_ROLLED = [/\bafterNextRender\s*\(/, /\.focus\s*\(/];
+
+function movesFocus(code) {
+  return FOCUS_HELPER.test(code) || HAND_ROLLED.every((pattern) => pattern.test(code));
+}
 
 /**
  * Finds every posture violation the diff wrote in one file.
@@ -170,6 +178,12 @@ function typescriptRegions(lines) {
         }
         continue;
       }
+      // Above the backtick handler below, or the closing backtick re-opens the string instead.
+      if (state === 'string') {
+        if (ch === '\\') c++;
+        else if (ch === '`') state = 'code';
+        continue;
+      }
       if (state === 'template') {
         if (ch === '\\') {
           c++;
@@ -211,11 +225,6 @@ function typescriptRegions(lines) {
           state = 'string';
         }
         pending = '';
-        continue;
-      }
-      if (state === 'string') {
-        if (ch === '\\') c++;
-        else if (ch === '`') state = 'code';
         continue;
       }
       code[i][c] = ch;
@@ -264,16 +273,17 @@ function busyViolations(path, lines, added, template) {
  * closing under the user from the same signal being reset inside a bulk state-reset block (a venue
  * switch, a route change), where no focus move is wanted. Spike: `docs/plans/focus-posture-guard.md`.
  *
- * <p>One finding per component, not per `@if` — a surface routinely spans two blocks (the trigger's
- * and the prompt's), and the fix is one set of legs however many it spans. Delegation is judged
- * per block, though: file-scoped, one `<app-confirm-panel>` excused every hand-rolled sibling.
+ * <p>One finding per component, not per `@if` — a surface routinely spans two branches (the
+ * trigger's and the prompt's), and the fix is one set of legs however many it spans.
+ *
+ * <p>**Rendering `<app-confirm-panel>` is not an exemption.** Those components own the *open* leg
+ * only — their own TSDoc says focus back out is the caller's — so a component that delegates and
+ * holds no focus helper still strands focus on cancel and on settle, two thirds of the rule.
  */
 function focusViolations(path, lines, added, template, componentCode) {
-  if (MOVES_FOCUS.test(componentCode)) return [];
+  if (movesFocus(componentCode)) return [];
 
-  const surface = confirmSurfaces(template).find(
-    (found) => added.has(found.line + 1) && !DELEGATES.test(found.block),
-  );
+  const surface = confirmSurfaces(template).find((found) => added.has(found.line + 1));
   if (surface === undefined) return [];
   return [{ path, line: surface.line + 1, rule: 'FOCUS-1', text: lines[surface.line].trim() }];
 }
@@ -287,34 +297,15 @@ function confirmSurfaces(lines) {
 
   for (let i = 0; i < lines.length; i++) {
     for (const match of lines[i].matchAll(BRANCH)) {
-      const read = readCondition(lines, i, match.index + match[0].length);
-      if (read === null || !isConfirmPrompt(read.condition)) continue;
-      surfaces.push({ line: i, block: blockAfter(lines, read.line, read.column) });
+      const condition = readCondition(lines, i, match.index + match[0].length);
+      if (condition !== null && isConfirmPrompt(condition)) surfaces.push({ line: i });
     }
   }
   return surfaces;
 }
 
-/** The `{ … }` body a branch controls, so delegation can be judged where the prompt is rendered. */
-function blockAfter(lines, line, column) {
-  let depth = 0;
-  let body = '';
-
-  for (let i = line; i < lines.length; i++) {
-    for (let c = i === line ? column : 0; c < lines[i].length; c++) {
-      const ch = lines[i][c];
-      if (ch === '{') depth++;
-      else if (ch === '}' && --depth === 0) return body;
-      else if (depth === 0 && !/\s/.test(ch)) return body;
-      if (depth > 0) body += ch;
-    }
-    body += '\n';
-  }
-  return body;
-}
-
 /**
- * The text between a branch's `(` and its matching `)`, with the position just past it.
+ * The text between a branch's `(` and its matching `)`.
  *
  * The separator is appended only inside the parentheses: at depth 0 a line break would prepend
  * whitespace to a condition whose `(` opens on the next line, and `isConfirmPrompt`'s anchor
@@ -330,7 +321,7 @@ function readCondition(lines, line, column) {
       if (depth === 0 && /\s/.test(ch)) continue;
       if (depth === 0 && ch !== '(') return null;
       if (ch === '(') depth++;
-      else if (ch === ')' && --depth === 0) return { condition, line: i, column: c + 1 };
+      else if (ch === ')' && --depth === 0) return condition;
       if (depth > 0) condition += ch;
     }
     if (depth > 0) condition += ' ';
@@ -455,17 +446,11 @@ function blank(chars, at, length) {
  * Runs the detector over every in-scope file a diff touches.
  *
  * @param {string[]} range arguments describing the diff, e.g. `['<merge-base>']`
- * @param {string[]} [limitTo] when given, only these paths are considered
  */
-export function check(range, limitTo) {
-  const diff = git(diffArgs(...range));
-  const violations = [];
-
-  for (const [path, added] of parseAddedLines(diff)) {
-    if (limitTo && !limitTo.includes(path)) continue;
-    violations.push(...checkOne(path, added));
-  }
-  return violations;
+export function check(range) {
+  return [...parseAddedLines(git(diffArgs(...range)))].flatMap(([path, added]) =>
+    checkOne(path, added),
+  );
 }
 
 /**
@@ -473,22 +458,32 @@ export function check(range, limitTo) {
  *
  * A new file has no diff against `HEAD`, so the plain diff path reported it clean — and a new
  * component is exactly how a FOCUS-1 surface enters the tree, on the `Write` the hook fires for.
+ *
+ * @param {string[]} paths repo-relative paths
+ * @param {{ tracked?: (paths: string[]) => Set<string>, read?: (path: string) => string | null }}
+ *   [seams] injection points for the test suite; both hit git/disk by default
  */
-export function checkPaths(paths) {
-  const added = parseAddedLines(git(diffArgs('HEAD', '--', ...paths)));
+export function checkPaths(paths, seams = {}) {
+  const { tracked = trackedAmong, read = readText } = seams;
+  const added = tracked === trackedAmong ? diffedLines(paths) : new Map();
+  const known = tracked(paths);
   return paths.flatMap((path) => {
-    if (added.has(path)) return checkOne(path, added.get(path));
-    return isTracked(path) ? [] : checkOne(path, null);
+    if (added.has(path)) return checkOne(path, added.get(path), read);
+    return known.has(path) ? [] : checkOne(path, null, read);
   });
 }
 
-function isTracked(path) {
-  try {
-    git(['ls-files', '--error-unmatch', '--', path]);
-    return true;
-  } catch {
-    return false;
-  }
+function diffedLines(paths) {
+  return parseAddedLines(git(diffArgs('HEAD', '--', ...paths)));
+}
+
+/**
+ * One `git ls-files` for the whole set. `--error-unmatch` per path would fork N processes and print
+ * git's "did you forget to 'git add'?" to stderr for every new file — telling the author the guard
+ * failed when it worked.
+ */
+function trackedAmong(paths) {
+  return new Set(changedPaths(git(['ls-files', '-z', '--', ...paths])));
 }
 
 /**
@@ -504,16 +499,16 @@ export function sweep() {
 }
 
 /** Checks one path; `added` of null lifts the diff scoping, which is what `sweep()` wants. */
-function checkOne(path, added) {
+function checkOne(path, added, read = readText) {
   if (!IN_SCOPE.test(path)) return [];
-  const text = readText(path);
+  const text = read(path);
   if (text === null) return [];
   const lines = text.split('\n');
   return findViolations({
     path,
     lines,
     added: added ?? new Set(lines.map((_, i) => i + 1)),
-    componentSource: ownerSource(path),
+    componentSource: ownerSource(path, read),
   });
 }
 
@@ -524,8 +519,8 @@ function checkOne(path, added) {
  * FOCUS-1 from reporting every compliant `.html` in the app — `set-editor` and `layout-editor` both
  * have their confirm surface in one file and their focus helper in the other.
  */
-function ownerSource(path) {
-  return path.endsWith('.html') ? (readText(path.replace(/\.html$/, '.ts')) ?? '') : '';
+function ownerSource(path, read) {
+  return path.endsWith('.html') ? (read(path.replace(/\.html$/, '.ts')) ?? '') : '';
 }
 
 const ADVICE = {

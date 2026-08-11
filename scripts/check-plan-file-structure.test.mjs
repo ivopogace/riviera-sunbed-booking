@@ -485,13 +485,27 @@ test('an exact match settles its own path only, not its suffix matches', () => {
  * the `<= 1` ambiguity floor rejected it for doing its job — and stripping the trailing slash before
  * the `/` test left a top-level `scripts/` with no slash at all, so no spelling of it could work.
  */
-test('a top-level directory token covers the files beneath it', () => {
+test('a top-level directory token covers the files directly beneath it', () => {
   const omissions = findOmissions({
     docs: [doc(withHeading('- `scripts/` — the guard and its suite'))],
     changed: ['scripts/check-focus-posture.mjs', 'scripts/check-focus-posture.test.mjs'],
   });
 
   assert.deepEqual(omissions, []);
+});
+
+/**
+ * The rooted-directory rescue must not become a whole-tree blanket: `frontend/` satisfying the guard
+ * for the entire app defeats #533's point, since a resuming session learns nothing from a
+ * four-character token.
+ */
+test('a rooted token does not blanket a whole tree', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `frontend/` — everything'))],
+    changed: ['frontend/src/app/a.ts', 'frontend/src/app/b.ts'],
+  });
+
+  assert.deepEqual(paths(omissions), ['frontend/src/app/a.ts', 'frontend/src/app/b.ts']);
 });
 
 test('a bare name matching exactly one path is still the common idiom', () => {

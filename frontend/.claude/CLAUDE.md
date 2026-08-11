@@ -35,13 +35,17 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - **A guard enforces both of the above while you type** (#621): `scripts/check-focus-posture.mjs`
   runs from a `PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff, covering
   `frontend/src/app/**` templates — inline `template:` literals and external `.html` alike. **BUSY-1**
-  flags a `[disabled]` bound to an in-flight flag; **FOCUS-1** flags a component rendering a confirm
-  surface that moves focus nowhere. It is **diff-scoped**, so the standing carve-outs never fail the
-  repo, and it knows the carve-outs anyway — inputs, validity/state bindings, split bindings, and
-  delegation to `<app-confirm-panel>`/`<app-confirm-with-reason>`. Run it by hand with
+  flags a `[disabled]` bound to an in-flight flag on a `<button>`/`<a>` — the only controls `[appBusy]`
+  can replace, so every other element is out of its reach, inputs included. **FOCUS-1** flags a
+  component that renders a confirm branch and holds no focus call site; **rendering
+  `<app-confirm-panel>`/`<app-confirm-with-reason>` does not excuse it**, since those own the open leg
+  only and the back-out and settled legs are still yours. Both rules are **diff-scoped**, so the
+  standing tree never fails the repo. Run either by hand with
   `node scripts/check-focus-posture.mjs --files <path…>`, or sweep the whole tree with `--all`.
   BUSY-1 matches a curated vocabulary of busy-flag stems, so a novel flag name is a deliberate
-  false negative — extend `BUSY_STEMS` rather than working around it.
+  false negative — extend `BUSY_STEMS` rather than working around it. Note it does **not** exempt a
+  `[disabled]` just because `[appBusy]` sits beside it: the native attribute still blurs the pressed
+  control, so a genuine split has to put a validity expression on the `[disabled]` half.
 
 ### Components
 

@@ -166,7 +166,7 @@ function globBody(token) {
  * be satisfied by `admin-venue-map.ts`.
  *
  * Shortening all the way to a bare filename is idiomatic here too, and stays allowed — see
- * `unambiguous` for the one case it is not.
+ * `usable` for the one case it is not.
  */
 function covers(token, path) {
   if (token.endsWith('/')) return path.startsWith(token) || path.includes(`/${token}`);
@@ -190,15 +190,20 @@ function covers(token, path) {
  * nothing qualifies it, so counting suffix matches made root `CLAUDE.md` unlistable whenever a diff
  * also touched `frontend/.claude/CLAUDE.md`.
  *
- * <p>A **rooted** directory token is exempt from the count for the same reason a glob is: covering
- * several files is its job, and stripping its only slash before the `/` test left a top-level
- * `scripts/` with no spelling that could work. An *unrooted* one (`components/` matching two trees)
- * is still ambiguous — it has not said which tree.
+ * <p>A **rooted** directory token is exempt from the count — covering several files is its job, and
+ * stripping its only slash before the `/` test left a top-level `scripts/` with no spelling that
+ * could work — but only over its **direct children**. Without that floor `frontend/` satisfies the
+ * guard for the whole app, which defeats the point: a resuming session learns nothing from a
+ * four-character token. An *unrooted* one (`components/` matching two trees) is still ambiguous.
  */
 function usable(token, changed) {
   if (token.includes('*')) return true;
   if (token.replace(/\/$/, '').includes('/')) return true;
-  if (token.endsWith('/') && changed.some((path) => path.startsWith(token))) return true;
+  if (token.endsWith('/') && changed.some((path) => path.startsWith(token))) {
+    return changed
+      .filter((path) => covers(token, path))
+      .every((path) => !path.slice(token.length).includes('/'));
+  }
   return changed.filter((path) => covers(token, path)).length <= 1;
 }
 

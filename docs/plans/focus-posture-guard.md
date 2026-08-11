@@ -68,9 +68,14 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
   `[disabled]="isPending(set)"` or `[disabled]="venueForm().invalid()"`, then no violation — a
   genuinely unavailable control should leave the tab order. *Pinned by:*
   `check-focus-posture.test.mjs` › `leaves validity and state bindings alone`
-- [x] **AC-4:** Given `[disabled]` and `[appBusy]` on the same element (the deliberate split
-  #616 established), then no violation. *Pinned by:*
-  `check-focus-posture.test.mjs` › `accepts a split binding`
+- [x] **AC-4:** Given the deliberate split #616 established — a **validity** expression on
+  `[disabled]` beside `[appBusy]` — then no violation; but given the **same busy flag** on both, one
+  violation, because the native attribute blurs the pressed control whatever `aria-disabled` says.
+  *Pinned by:* `check-focus-posture.test.mjs` › `accepts a split binding` and
+  › `still flags the busy flag when appBusy sits beside it on the same element`.
+  **Rewritten at the review gate (F-4):** as first written this AC exempted the element whenever
+  `[appBusy]` was present, which accepted the one shape the rule exists to catch — and the suite
+  asserted that miss as correct.
 - [x] **AC-5:** Given `[disabled]="saving()"` written inside a TSDoc block or anywhere in a `.ts`
   file outside a `template:` literal, then no violation — the live case is `shared/busy-action.ts`,
   whose own documentation quotes the form it replaces. *Pinned by:*
@@ -86,8 +91,12 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
   `check-focus-posture.test.mjs` › `accepts a confirm surface whose component moves focus` and
   › `pairs an external template with its component`
 - [x] **AC-8:** Given a confirm surface rendered by `<app-confirm-panel>` or
-  `<app-confirm-with-reason>`, then no violation — both focus their own confirm button. *Pinned by:*
-  `check-focus-posture.test.mjs` › `accepts delegation to the shared confirm components`
+  `<app-confirm-with-reason>`, then the component is **still** required to hold a focus call site —
+  those components own the *open* leg only, and their own TSDoc says focus back out is the caller's.
+  *Pinned by:* `check-focus-posture.test.mjs` › `does not accept delegation as a substitute for the
+  caller own legs` and › `does not report the trigger half of a trigger and prompt pair`.
+  **Inverted at the re-review gate (G-11):** as first written this AC made delegation an exemption,
+  which silently accepted two thirds of the rule.
 - [x] **AC-9:** Given `@if (state() === 'confirmed')` or `@if (confirmation(); as c)`, then no
   violation — a payment state and a domain noun, neither a confirm-before-destroy prompt. *Pinned
   by:* `check-focus-posture.test.mjs` › `does not mistake confirmed state or a confirmation value for a prompt`
@@ -143,12 +152,13 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
   carve-outs the rule exists to respect (AC-2, AC-3), re-confirming #616's Non-goal.
 - **No `--fix` mode.** Both fixes are judgement calls — which of the two carve-outs applies, and
   where focus should land — so the guard reports and points, as `check-inline-comments.mjs` does.
-- **Two known limits, kept deliberately rather than silently** (both from the review round):
-  **(a)** FOCUS-1's `focusMover()` exemption stays **component-scoped** — a component that moves
-  focus at all is trusted to move it for each of its surfaces. Per-surface would mean deciding which
-  legs belong to which prompt, which is the runtime question the flip-level rule already failed on.
-  Delegation *is* judged per block, since that one is decidable from the markup (F-9).
-  **(b)** The template scanner is **not** extracted into `git-diff.mjs`. That module's own header
+- **Two known limits, kept deliberately rather than silently** (both from the review rounds):
+  **(a)** FOCUS-1's exemption is **component-scoped** — a component that moves focus at all is
+  trusted to move it for each of its surfaces. Per-surface would mean deciding which legs belong to
+  which prompt, which is the runtime question the flip-level rule already failed on. The re-review
+  (G-2) showed why per-block is not the answer either: a trigger/prompt pair writes the trigger as a
+  negated branch, so block-scoping reported the trigger half of the shape `payouts-tab.html` itself
+  uses. **(b)** The template scanner is **not** extracted into `git-diff.mjs`. That module's own header
   scopes it to "what did this diff touch, and where" and forbids knowing what a guard checks; a
   TypeScript/HTML region scanner is the opposite. The two scanners also answer different questions —
   `check-inline-comments.mjs` wants *comment* regions, this one wants *template* and *code* regions —
@@ -263,9 +273,9 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `review gate — 12 findings fixed, re-review of the fix diff due`
+**Stage pointer:** `review gate — 12 + 13 findings fixed across two passes; third pass due on this round`
 
-**Next action:** Re-run `/code-review` over the fix diff (`pr-gates.md` §1 step 3 — the round that
+**Next action:** Re-review this second fix round (it changed rule semantics, not just bugs), then pull Sonar’s reported issue list from the API — the badge is not the check.
 justifies the rule: #616's second pass found a fix shipped with no coverage), then pull Sonar's
 reported issue list from the API — the badge is not the check.
 
@@ -295,6 +305,19 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| G-1 | **re-review** (CONFIRMED) | **F-11's fix was inert and made things worse.** The new `string` state sat *below* the backtick handler, so the closing backtick re-entered `string` and the `state = 'code'` line was dead — the code mask lost everything after the first plain backtick string. Live shape: `booking-pay.ts` orders a `` `Pay ${…}` `` string before its `afterNextRender(`, so the moment its template grew an `@if (confirmX())` the hard gate would fail a component that demonstrably moves focus | fixed — the `string` branch moved above the opener. Pinned by `returns to code after a plain backtick string closes`, written from the live `booking-pay.ts` shape |
+| G-2 | **re-review** (CONFIRMED) | **F-9's per-block delegation flagged the trigger half of a trigger/prompt pair.** `isConfirmPrompt` accepts a negated condition, so `@if (!confirmRemove()) { trigger }` is itself a surface — and only the *prompt* block carries the panel. That is exactly how `payouts-tab.html` is written | fixed by G-11's change, which removes block scoping altogether. Pinned by `does not report the trigger half of a trigger and prompt pair` |
+| G-11 | **re-review** (CONFIRMED) | **Delegation excused two thirds of the rule.** `<app-confirm-panel>` owns the *open* leg only — its own TSDoc says "focus back **out** is the caller's" — so a component that delegates and holds no focus helper still strands focus on cancel and on settle, and FOCUS-1 called it clean | fixed — **delegation is no longer an exemption at all**. The rule is now simply "a component rendering a confirm branch holds a focus call site", which also deleted `blockAfter` and with it G-5. AC-8 is inverted to match; all four standing delegators pass on their own helpers |
+| G-3 | **re-review** (CONFIRMED) | **F-12's fix legalized whole-tree blanket tokens.** Nothing distinguished `scripts/` from `frontend/`, so one four-character entry satisfied #533 for the entire app — a resuming session learns nothing from it | fixed — a rooted directory token covers its **direct children** only. Pinned by `a rooted token does not blanket a whole tree` alongside the `scripts/` case |
+| G-4 | **re-review** (CONFIRMED) | F-7 accepted bare `afterNextRender(` as compliance, but it is a general lifecycle API — `auth/verify-email.ts` uses it for a data call — so any component adopting the idiom for measurement or scrolling was permanently exempt | fixed — it counts only alongside an actual `.focus(`, which is what the two shared confirm components do. Pinned by `does not accept afterNextRender used for something other than focus` |
+| G-5 | **re-review** (CONFIRMED) | `blockAfter` decremented depth on a `}` seen at depth 0 and truncated the block on any unbalanced brace (`title="are you sure}"`, `{{ '}' }}`), a false positive on a hard gate | fixed by deletion — G-11 removed the only caller |
+| G-6 | **re-review** (CONFIRMED) | **F-6 shipped pinned by nothing.** `checkPaths`/`isTracked` appeared in no suite, so a revert to the old `HEAD`-diff form would have passed CI green — and the untracked case is the guard's whole authoring-time value | fixed — `checkPaths` takes `tracked`/`read` seams and is pinned by `judges an untracked file whole, and reports nothing for a clean tracked one`, which asserts **both** branches |
+| G-7 | **re-review** (CONFIRMED, doc) | `frontend/.claude/CLAUDE.md` and AC-4 still advertised the "split bindings" carve-out F-4 deleted, and described the element carve-out as "inputs" when the code allow-lists `button`/`a`. An author following either would write the banned shape and be failed by CI | fixed — both rewritten; AC-4 now states the inverted claim and records why |
+| G-8 | **re-review** (CONFIRMED, doc) | `covers`'s TSDoc pointed at `unambiguous`, renamed to `usable` in the same diff | fixed |
+| G-9 | **re-review** (CONFIRMED) | `check()`'s `limitTo` parameter went dead when `--hook`/`--files` moved to `checkPaths`, leaving an uncovered filter and a TSDoc contract with no user | fixed — parameter and filter removed |
+| G-10 | **re-review** (CONFIRMED) | `isTracked` forked one `git ls-files --error-unmatch` per path and let git's "did you forget to 'git add'?" reach stderr, so the by-hand invocation on a new file printed an error above a report that had in fact worked | fixed — one `git ls-files -z --` for the whole set, no error output |
+| G-12 | **re-review** (CONFIRMED, doc) | The File-structure entry cited F-13 where it meant F-12, sending a resuming session to the wrong file from the declared recovery anchor | fixed |
+| G-13 | **re-review** (CONFIRMED, doc) | F-3's replacement TSDoc sentence was grammatically incomplete, so the ownership claim it existed to make was not actually made | fixed — "On dismiss the parent must return focus to the trigger — re-rendering it does not focus it." |
 | F-2 | **review** (CONFIRMED) | **F-1's fix reintroduced the ambiguity #533 exists to catch.** `changed.includes(token)` admitted the token *wholesale*, so a plan doc listing only root `CLAUDE.md` silently covered every other `CLAUDE.md` in the diff. F-1's test pinned only the both-listed case, so it could not see the hole | fixed — the exact match now settles **its own path** and nothing else; the general cover is judged separately. Pinned by `an exact match settles its own path only, not its suffix matches`, verified RED |
 | F-3 | **review** (CONFIRMED) | **A thirteenth instance of the bug class, in the file this slice edits.** `closeStatement()` dismisses the payout-statement modal, which focused its own Close button on open — destroying it and moving focus nowhere. Compounding it: now that `payouts-tab.ts` obtains `focusMover()`, **FOCUS-1 exempts the whole component permanently**, so the new guard would never have surfaced it. The component's TSDoc actively claimed the opposite ("focus returns to the trigger (the parent re-renders it)") — re-rendering a button does not focus it | fixed — `closeStatement()` returns focus to `statement-open`; the false TSDoc claim corrected to name the parent as the leg's owner. Pinned by `returns focus to the statement trigger when the modal closes`, verified RED (`expected <body> to be <button …>`) |
 | F-4 | **review** (CONFIRMED) | **BUSY-1 accepted the exact shape it exists to catch.** Skipping any tag carrying `[appBusy]` meant `[appBusy]="saving()"` + `[disabled]="saving()"` passed — the native attribute still blurs the pressed control however much `aria-disabled` says otherwise — and the suite *asserted the miss as correct*. The skip was never load-bearing: the genuine split is already accepted because `isBusyFlag` declines a validity expression | fixed — the `[appBusy]` skip is deleted. Proven by the positive control: `venue-tab.html` and a fourth `set-editor.html` binding now flag when their expression is forced to `saving()`, where before they were exempt. The four real splits still pass |
@@ -325,8 +348,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/e2e/operator-payouts.e2e.ts` — AC-17
 - `CLAUDE.md` — the docs-freshness counting-sweep patch: three → **four** diff-scoped hygiene
   checks, and the job split re-stated as "the first three"
-- `scripts/check-plan-file-structure.mjs`, `scripts/check-plan-file-structure.test.mjs` — F-1/F-2/F-13:
-  an exact path match settles its own path, and a rooted directory token survives the ambiguity floor
+- `scripts/check-plan-file-structure.mjs`, `scripts/check-plan-file-structure.test.mjs` — F-1/F-2/F-12:
+  an exact path match settles its own path, and a rooted directory token covers its direct children
 - `frontend/src/app/operator/payout-statement.ts` — F-3: the TSDoc claim that focus returns to the
   trigger on its own, corrected to name the parent as the owner of that leg
 

@@ -13,7 +13,8 @@ import { LedgerRow } from './operator-console.model';
  *
  * <p>Accessible modal, mirroring {@code BookingDialog}: the host is the backdrop (click / ESC dismiss),
  * the panel is `role="dialog"` + `aria-modal`, focus moves in on open and is trapped (WCAG 2.4.3 /
- * 2.1.2, shared {@link trapFocusWithin}); returning focus to the trigger is the parent's, on dismiss.
+ * 2.1.2, shared {@link trapFocusWithin}). On dismiss the parent must return focus to the trigger —
+ * re-rendering it does not focus it.
  */
 @Component({
   selector: 'app-payout-statement',
