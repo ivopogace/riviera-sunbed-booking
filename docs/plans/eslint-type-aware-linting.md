@@ -118,7 +118,10 @@ before trusting it if `main` has moved.**
   bar), and the only rule-level carve-out in the config is `disableTypeChecked` scoped to
   `playwright*.config.ts`. *Pinned by:* `grep -rn "eslint-disable" frontend/src frontend/e2e` → empty.
 - [x] **AC-6:** Given the ~400 mechanical source edits, when `npm test` runs, then the Vitest suite
-  passes with **no change in test count**. *Pinned by:* CI frontend job, test step.
+  passes with **no test lost** — pinned exactly by `git diff origin/main` showing zero `it`/`test`/`describe`
+  lines removed. Count went 1372 → **1375**: the 3 additions are the deliberate new
+  `FakeStripePaymentGateway` specs from the Sonar-gate fix (F-2), not a side effect of the sweep.
+  *Pinned by:* CI frontend job, test step.
 - [x] **AC-7:** Given the e2e edits, when `npm run test:e2e:a11y` runs, then the mocked Playwright
   suite passes. *Pinned by:* CI frontend job, e2e step.
 - [x] **AC-8:** Given `npm run format:check`, when it runs after every phase, then it reports the
@@ -395,7 +398,8 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | No review-gate, Sonar or red-CI finding has been raised yet; the Review and Sonar gates fall due at ready-for-review. | — |
+| F-1 | review (`/code-review`, 5-reviewer fan-out) | `FakeQrScanner.start` dropping `async` lets a synchronous throw from `onCode` escape the call site's `.catch`. | **scored 50 — below the 80 bar, not actioned.** Verified: no path in `onScanPayload` throws synchronously, and the class is dev/e2e-only (`__RIVIERA_FAKE_QR__`). Latent, recorded rather than fixed. |
+| F-2 | sonar | New-code coverage **75.0%**, under the repo's **≥80%** merge bar. The gate itself reported OK only because `ignoredConditions: true`. | fixed — the 2 uncovered lines were `FakeStripePaymentGateway.mountPaymentElement`, exercised only by Playwright (whose coverage Sonar does not ingest). Covered with 3 Vitest specs pinning the fake's contract, incl. the *read-at-confirm-time* flag its own TSDoc calls load-bearing. |
 
 ---
 
