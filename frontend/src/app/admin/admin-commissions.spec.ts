@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { vi } from 'vitest';
+import { Mock, vi } from 'vitest';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { AdminCommissions } from './admin-commissions';
@@ -43,8 +43,8 @@ const VENUES: readonly VenueCommissionView[] = [
 ];
 
 function serviceStub(): {
-  venues: ReturnType<typeof vi.fn>;
-  setCommission: ReturnType<typeof vi.fn>;
+  venues: Mock<AdminCommissionsService['venues']>;
+  setCommission: Mock<AdminCommissionsService['setCommission']>;
 } {
   return {
     venues: vi.fn(() => Promise.resolve(VENUES)),

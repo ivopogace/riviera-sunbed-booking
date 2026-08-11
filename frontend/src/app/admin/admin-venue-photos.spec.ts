@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { vi } from 'vitest';
+import { Mock, vi } from 'vitest';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { AdminVenuePhotos } from './admin-venue-photos';
@@ -45,9 +45,9 @@ function photosOf(coverUrl: string | null, venueId = 7): AdminVenuePhotosView {
 }
 
 function serviceStub(): {
-  venues: ReturnType<typeof vi.fn>;
-  slots: ReturnType<typeof vi.fn>;
-  takedown: ReturnType<typeof vi.fn>;
+  venues: Mock<AdminVenuePhotosService['venues']>;
+  slots: Mock<AdminVenuePhotosService['slots']>;
+  takedown: Mock<AdminVenuePhotosService['takedown']>;
 } {
   return {
     venues: vi.fn(() => Promise.resolve(VENUES)),

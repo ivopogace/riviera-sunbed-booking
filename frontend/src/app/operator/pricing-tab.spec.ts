@@ -10,6 +10,16 @@ import { Pool, SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { PricingTab } from './pricing-tab';
 
+interface SentBody {
+  price: { minorUnits: number; currency: string };
+  expectedVersion: number;
+}
+
+/** The captured request body, typed — Angular types `HttpRequest.body` as `any`. */
+function body(req: { request: { body: unknown } }): SentBody {
+  return req.request.body as SentBody;
+}
+
 /**
  * The Pricing tab. Reads `:venueId` from the PARENT route (child routes don't inherit it) and loads
  * the venue map to build the per-row list. Drives: one row per label with its
@@ -149,7 +159,7 @@ describe('PricingTab (#174)', () => {
     const req = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/B/price'),
     );
-    expect(req.request.body.price.minorUnits).toBe(2500);
+    expect(body(req).price.minorUnits).toBe(2500);
     req.flush(null);
   });
 
@@ -180,7 +190,7 @@ describe('PricingTab (#174)', () => {
     // Then edit B → €30; it succeeds. B carries the SAME token (A's failure did not advance it).
     editRow('B', '30');
     const reqB = http.expectOne((r) => r.url.includes('/api/venues/1/rows/B/price'));
-    expect(reqB.request.body.expectedVersion).toBe(0);
+    expect(body(reqB).expectedVersion).toBe(0);
     reqB.flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -201,7 +211,7 @@ describe('PricingTab (#174)', () => {
     // Start editing A — its PUT is in flight (not yet flushed).
     editRow('A', '40');
     const reqA = http.expectOne((r) => r.url.includes('/api/venues/1/rows/A/price'));
-    expect(reqA.request.body.expectedVersion).toBe(5);
+    expect(body(reqA).expectedVersion).toBe(5);
 
     // Genuinely locked, not merely announced — aria-disabled would leave the field typable.
     expect(input('B').readOnly).toBe(true);
@@ -220,7 +230,7 @@ describe('PricingTab (#174)', () => {
     fixture.detectChanges();
     editRow('B', '30');
     const reqB = http.expectOne((r) => r.url.includes('/api/venues/1/rows/B/price'));
-    expect(reqB.request.body.expectedVersion).toBe(6);
+    expect(body(reqB).expectedVersion).toBe(6);
     reqB.flush(null);
     await fixture.whenStable();
   });
@@ -278,7 +288,7 @@ describe('PricingTab (#174)', () => {
     const first = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
     );
-    expect(first.request.body.expectedVersion).toBe(5);
+    expect(body(first).expectedVersion).toBe(5);
     first.flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -287,7 +297,7 @@ describe('PricingTab (#174)', () => {
     const second = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/B/price'),
     );
-    expect(second.request.body.expectedVersion).toBe(6); // advanced, not the stale 5
+    expect(body(second).expectedVersion).toBe(6); // advanced, not the stale 5
     second.flush(null);
     await fixture.whenStable();
   });
@@ -306,7 +316,7 @@ describe('PricingTab (#174)', () => {
     const req = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
     );
-    expect(req.request.body.price.minorUnits).toBe(4500);
+    expect(body(req).price.minorUnits).toBe(4500);
     req.flush(null);
   });
 
@@ -342,7 +352,7 @@ describe('PricingTab (#174)', () => {
     const put = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
     );
-    expect(put.request.body.expectedVersion).toBe(3);
+    expect(body(put).expectedVersion).toBe(3);
     put.flush(null);
   });
 

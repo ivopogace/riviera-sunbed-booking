@@ -7,7 +7,7 @@ import { vi } from 'vitest';
 
 import { todayBookingDate } from '../shared/booking-date';
 import { MoneyView } from '../shared/money';
-import { Pool, SetView, Tier } from '../shared/venue-views';
+import { SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { PendingRequestsStore } from './pending-requests-store';
 import { RequestsTab } from './requests-tab';

@@ -112,9 +112,7 @@ describe('AdminOperators accessibility (axe)', () => {
   });
 
   it('has no critical/serious violations with every stat tile dashed', async () => {
-    const fixture = await render(async () => {
-      throw new Error('offline');
-    });
+    const fixture = await render(() => Promise.reject(new Error('offline')));
     const host = fixture.nativeElement as HTMLElement;
 
     expect(host.querySelector('[data-testid="admin-stat-venues"]')?.textContent?.trim()).toBe('—');

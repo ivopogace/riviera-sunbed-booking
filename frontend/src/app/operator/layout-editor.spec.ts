@@ -9,6 +9,24 @@ import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
 
+interface SentBody {
+  sets: {
+    rowLabel: string;
+    positionNo: number;
+    tier: string;
+    pool: string;
+    gridX: number;
+    gridY: number;
+    price: { minorUnits: number; currency: string };
+  }[];
+  expectedVersion: number;
+}
+
+/** The captured request body, typed — Angular types `HttpRequest.body` as `any`. */
+function body(req: { request: { body: unknown } }): SentBody {
+  return req.request.body as SentBody;
+}
+
 /**
  * The layout editor. Reads `:venueId` from the PARENT route (child routes don't inherit it)
  * and loads the venue map to seed its grid; the mock mirrors that. Drives generate, drag-paint, save
@@ -212,8 +230,8 @@ describe('LayoutEditor (#172)', () => {
     const req = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
     );
-    expect(req.request.body.sets).toHaveLength(1);
-    expect(req.request.body.sets[0]).toMatchObject({
+    expect(body(req).sets).toHaveLength(1);
+    expect(body(req).sets[0]).toMatchObject({
       rowLabel: 'A',
       positionNo: 1,
       tier: 'PREMIUM',
@@ -221,9 +239,9 @@ describe('LayoutEditor (#172)', () => {
       gridX: 1,
       gridY: 1,
     });
-    expect(req.request.body.sets[0].price.minorUnits).toBe(3500);
+    expect(body(req).sets[0].price.minorUnits).toBe(3500);
     // The loaded optimistic-concurrency token rides the write body (0 for the fresh render mock).
-    expect(req.request.body.expectedVersion).toBe(0);
+    expect(body(req).expectedVersion).toBe(0);
     req.flush(null);
     await fixture.whenStable(); // onSave awaits the PUT — settle the notice
     fixture.detectChanges();
@@ -342,7 +360,7 @@ describe('LayoutEditor (#172)', () => {
     const first = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
     );
-    expect(first.request.body.expectedVersion).toBe(5);
+    expect(body(first).expectedVersion).toBe(5);
     first.flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -351,7 +369,7 @@ describe('LayoutEditor (#172)', () => {
     const second = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
     );
-    expect(second.request.body.expectedVersion).toBe(6); // advanced, not the stale 5
+    expect(body(second).expectedVersion).toBe(6); // advanced, not the stale 5
     second.flush(null);
     await fixture.whenStable();
   });
@@ -485,7 +503,7 @@ describe('LayoutEditor (#172)', () => {
     const venue2Put = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/2/beach-map'),
     );
-    expect(venue2Put.request.body.expectedVersion).toBe(3);
+    expect(body(venue2Put).expectedVersion).toBe(3);
     venue2Put.flush(null);
     await fixture.whenStable();
   });

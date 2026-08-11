@@ -334,7 +334,9 @@ describe('SetEditor (#600)', () => {
     click(emptyCell(1, 3));
     click(byId('set-add'));
 
-    const body = http.expectOne((r) => r.method === 'POST').request.body;
+    const body = http.expectOne((r) => r.method === 'POST').request.body as {
+      price: { minorUnits: number; currency: string };
+    };
     expect(body).toMatchObject({ rowLabel: 'C', positionNo: 1, tier: 'STANDARD', gridY: 3 });
     expect(body.price).toEqual({ minorUnits: 2000, currency: 'EUR' });
   });

@@ -75,9 +75,7 @@ describe('AdminConsoleStats', () => {
   });
 
   it('a failed venue read dashes only its own tile', async () => {
-    const fixture = await render(async () => {
-      throw new Error('boom');
-    });
+    const fixture = await render(() => Promise.reject(new Error('boom')));
 
     expect(text(fixture, 'admin-stat-venues')).toBe('—');
     expect(text(fixture, 'admin-stat-mean-rate')).toBeUndefined();

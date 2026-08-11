@@ -62,13 +62,13 @@ class FakeGateway extends StripePaymentGateway {
   failMount?: string;
   mounted = false;
 
-  override async mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+  override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
     if (this.failMount) {
-      throw new Error(this.failMount);
+      return Promise.reject(new Error(this.failMount));
     }
     this.mounted = true;
     host.appendChild(document.createElement('div')); // stand-in for the Stripe iframe
-    return { confirm: () => Promise.resolve(this.confirmResult) };
+    return Promise.resolve({ confirm: () => Promise.resolve(this.confirmResult) });
   }
 }
 
@@ -76,9 +76,11 @@ class FakeGateway extends StripePaymentGateway {
 class DeferredConfirmGateway extends StripePaymentGateway {
   private readonly resolvers: ((r: { error?: string }) => void)[] = [];
 
-  override async mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+  override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
     host.appendChild(document.createElement('div'));
-    return { confirm: () => new Promise((resolve) => this.resolvers.push(resolve)) };
+    return Promise.resolve({
+      confirm: () => new Promise<{ error?: string }>((resolve) => this.resolvers.push(resolve)),
+    });
   }
 
   resolveNextConfirm(result: { error?: string }): void {

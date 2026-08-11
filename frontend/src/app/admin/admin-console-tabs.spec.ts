@@ -123,7 +123,7 @@ describe('AdminConsoleTabs', () => {
   });
 
   /** The guard above is only worth having if it fails on the mistake it exists to catch. */
-  it('rejects a tab appended out of its canonical slot', async () => {
+  it('rejects a tab appended out of its canonical slot', () => {
     const appendedByShipDate = ['Operators', 'Email', 'Audit', 'Commissions'];
 
     expect(appendedByShipDate).not.toEqual(canonicalOrderOf(appendedByShipDate));

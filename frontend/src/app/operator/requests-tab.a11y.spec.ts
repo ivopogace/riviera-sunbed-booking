@@ -6,7 +6,7 @@ import { of } from 'rxjs';
 
 import { expectNoAxeViolations } from '../../testing/axe';
 import { MoneyView } from '../shared/money';
-import { Pool, SetView, Tier } from '../shared/venue-views';
+import { SetView, Tier } from '../shared/venue-views';
 import { RequestsTab } from './requests-tab';
 
 /**

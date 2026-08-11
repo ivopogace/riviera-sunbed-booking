@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CameraQrScanner } from './camera-qr-scanner';
@@ -5,11 +6,6 @@ import { CameraQrScanner } from './camera-qr-scanner';
 vi.mock('jsqr', () => ({
   default: vi.fn(() => ({ data: 'DECODED-PAYLOAD' })),
 }));
-
-function fakeStream(): MediaStream {
-  const track = { stop: vi.fn() };
-  return { getTracks: () => [track] } as unknown as MediaStream;
-}
 
 function fakeVideo(width: number): HTMLVideoElement {
   const listeners = new Map<string, () => void>();
@@ -29,13 +25,17 @@ function fakeVideo(width: number): HTMLVideoElement {
 
 describe('CameraQrScanner', () => {
   let stream: MediaStream;
+  let stopTrack: Mock<() => void>;
+  let getUserMedia: Mock<() => Promise<MediaStream>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    stream = fakeStream();
+    stopTrack = vi.fn();
+    stream = { getTracks: () => [{ stop: stopTrack }] } as unknown as MediaStream;
+    getUserMedia = vi.fn(() => Promise.resolve(stream));
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
-      value: { getUserMedia: vi.fn(() => Promise.resolve(stream)) },
+      value: { getUserMedia },
     });
   });
 
@@ -61,7 +61,7 @@ describe('CameraQrScanner', () => {
     );
 
     await scanner.start(fakeVideo(640), onCode);
-    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({
+    expect(getUserMedia).toHaveBeenCalledWith({
       video: { facingMode: 'environment' },
     });
 
@@ -69,7 +69,7 @@ describe('CameraQrScanner', () => {
     expect(onCode).toHaveBeenCalledWith('DECODED-PAYLOAD');
 
     scanner.stop();
-    expect(stream.getTracks()[0].stop).toHaveBeenCalled();
+    expect(stopTrack).toHaveBeenCalled();
   });
 
   it('sets the WebKit-gating properties before playing — attributes alone do not (Safari)', async () => {
@@ -88,8 +88,11 @@ describe('CameraQrScanner', () => {
   it('retries a rejected first play() once the metadata loads (Safari)', async () => {
     const scanner = new CameraQrScanner();
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
-    const video = fakeVideo(640) as unknown as HTMLVideoElement & { fire: (t: string) => void };
-    (video.play as ReturnType<typeof vi.fn>)
+    const video = fakeVideo(640) as unknown as HTMLVideoElement & {
+      fire: (t: string) => void;
+      play: Mock<() => Promise<undefined>>;
+    };
+    video.play
       .mockRejectedValueOnce(new DOMException('gesture', 'NotAllowedError'))
       .mockResolvedValue(undefined);
 
@@ -143,7 +146,7 @@ describe('CameraQrScanner', () => {
     grant!(stream);
     await pending;
 
-    expect(stream.getTracks()[0].stop).toHaveBeenCalled();
+    expect(stopTrack).toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(600);
   });
 
@@ -158,6 +161,6 @@ describe('CameraQrScanner', () => {
 
     scanner.stop();
     scanner.stop();
-    expect(stream.getTracks()[0].stop).toHaveBeenCalledTimes(1);
+    expect(stopTrack).toHaveBeenCalledTimes(1);
   });
 });

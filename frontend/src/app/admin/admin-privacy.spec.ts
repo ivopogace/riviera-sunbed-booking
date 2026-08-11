@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { vi } from 'vitest';
+import { Mock, vi } from 'vitest';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { AdminPrivacy } from './admin-privacy';
@@ -35,7 +35,7 @@ function authStub(state: AuthState = {}): OperatorAuth {
 
 const EMAIL = 'ana@example.com';
 
-function serviceStub(): { erase: ReturnType<typeof vi.fn> } {
+function serviceStub(): { erase: Mock<AdminPrivacyService['erase']> } {
   return { erase: vi.fn(() => Promise.resolve(undefined)) };
 }
 

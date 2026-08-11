@@ -215,9 +215,7 @@ describe('AdminMailDelivery', () => {
 
   it('shows an error when the lookup itself fails', async () => {
     const service = serviceStub();
-    service.lookup = vi.fn(async () => {
-      throw new Error('boom');
-    });
+    service.lookup = vi.fn(() => Promise.reject(new Error('boom')));
     const fixture = await render(service);
 
     await lookUp(fixture);
