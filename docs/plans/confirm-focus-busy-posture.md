@@ -277,7 +277,7 @@ PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on t
 | 3 — `admin-venue-photos`' takedown failure leg | ✅ | `409dd1c` |
 | 4 — `admin-operators`' notice region + four settled legs | ✅ | `1baa6e6` |
 | 5 — The busy sweep (money path first, then the rest) | ✅ | `f30a683` (5a) · `2b58f90` (5b) · `fd9890f` (5c) |
-| 6 — Real-browser e2e + full verification | ✅ | `<phase-6>` |
+| 6 — Real-browser e2e + full verification | ✅ | `c185990d` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
