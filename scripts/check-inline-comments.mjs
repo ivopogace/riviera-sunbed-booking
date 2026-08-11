@@ -11,9 +11,11 @@
  * (see the plan doc's Non-goals; #522/F-6 settled SQL).
  */
 
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
+
+import { diffArgs, git, mergeBase, parseAddedLines, readText, repoRoot } from './git-diff.mjs';
 
 /**
  * Per-extension comment syntax. An extension absent from this map is not checked at all.
@@ -217,66 +219,21 @@ function skipString(line, start, quote) {
 }
 
 /**
- * Maps a unified diff to the 1-based line numbers each file gains. Files the diff deletes are
- * absent from the result: they have no new content to check.
- *
- * @param {string} diff output of `git diff --unified=0`
- * @returns {Map<string, Set<number>>} new-side path → added line numbers
- */
-export function parseAddedLines(diff) {
-  const added = new Map();
-  let path = null;
-  let next = 0;
-
-  for (const line of diff.split('\n')) {
-    if (line.startsWith('+++ ')) {
-      const target = line.slice(4).trim();
-      path = target === '/dev/null' ? null : target.replace(/^b\//, '');
-      continue;
-    }
-    if (line.startsWith('@@')) {
-      const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)/.exec(line);
-      next = hunk ? Number(hunk[1]) : 0;
-      continue;
-    }
-    if (path && next && line.startsWith('+')) {
-      if (!added.has(path)) added.set(path, new Set());
-      added.get(path).add(next);
-      next++;
-    }
-  }
-  return added;
-}
-
-function git(args) {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-}
-
-/** Reads a path from the working tree, or null when it is unreadable (deleted, binary, gone). */
-function readLines(path) {
-  try {
-    return readFileSync(path, 'utf8').split('\n');
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Runs the detector over every in-scope file a diff touches.
  *
- * @param {string[]} diffArgs arguments describing the diff, e.g. `['origin/main...HEAD']`
+ * @param {string[]} range arguments describing the diff, e.g. `['<merge-base>']`
  * @param {string[]} [limitTo] when given, only these paths are considered
  */
-export function check(diffArgs, limitTo) {
-  const diff = git(['diff', '--unified=0', '--no-color', '--no-ext-diff', ...diffArgs]);
+export function check(range, limitTo) {
+  const diff = git(diffArgs(...range));
   const violations = [];
 
   for (const [path, added] of parseAddedLines(diff)) {
     if (limitTo && !limitTo.includes(path)) continue;
     if (!syntaxFor(path)) continue;
-    const lines = readLines(path);
-    if (!lines) continue;
-    violations.push(...findViolations({ path, lines, added }));
+    const text = readText(path);
+    if (text === null) continue;
+    violations.push(...findViolations({ path, lines: text.split('\n'), added }));
   }
   return violations;
 }
@@ -290,14 +247,9 @@ function report(violations) {
   return violations.map((v) => `  ${v.path}:${v.line}-${v.endLine}  ${v.text}`).join('\n');
 }
 
-/** Resolves the merge base with `base`, falling back to a plain two-dot diff when it has none. */
-function rangeFor(base) {
-  try {
-    git(['merge-base', base, 'HEAD']);
-    return [`${base}...HEAD`];
-  } catch {
-    return [base];
-  }
+/** git runs from the repository root, so a pathspec has to be expressed from there too. */
+function toRepoRelative(argument) {
+  return relative(repoRoot(), resolve(process.cwd(), argument)).split(sep).join('/');
 }
 
 function main(argv) {
@@ -307,8 +259,8 @@ function main(argv) {
     const payload = JSON.parse(readFileSync(0, 'utf8'));
     const path = payload?.tool_response?.filePath ?? payload?.tool_input?.file_path;
     if (!path || !syntaxFor(path)) return 0;
-    const relative = path.replace(`${process.cwd()}/`, '');
-    const violations = check(['HEAD', '--', relative], [relative]);
+    const edited = toRepoRelative(path);
+    const violations = check(['HEAD', '--', edited], [edited]);
     if (violations.length === 0) return 0;
     process.stdout.write(
       JSON.stringify({
@@ -322,7 +274,7 @@ function main(argv) {
   }
 
   if (mode === '--files') {
-    const paths = argv.slice(1);
+    const paths = argv.slice(1).map(toRepoRelative);
     const violations = check(['HEAD', '--', ...paths], paths);
     if (violations.length === 0) return 0;
     process.stderr.write(`Multi-line inline comments:\n${report(violations)}\n${ADVICE}\n`);
@@ -330,7 +282,7 @@ function main(argv) {
   }
 
   if (mode === '--diff') {
-    const violations = check(rangeFor(argv[1] ?? 'origin/main'));
+    const violations = check([mergeBase(argv[1] ?? 'origin/main')]);
     if (violations.length === 0) return 0;
     process.stderr.write(`Multi-line inline comments added by this diff:\n${report(violations)}\n${ADVICE}\n`);
     return 1;
