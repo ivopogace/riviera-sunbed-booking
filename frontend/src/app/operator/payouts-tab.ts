@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { focusMover } from '../shared/focus-after-render';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
@@ -43,6 +44,9 @@ export class PayoutsTab {
   private readonly route = inject(ActivatedRoute);
   private readonly console = inject(OperatorConsoleService);
   protected readonly operator = inject(OperatorAuth);
+
+  /** Every weather-refund transition destroys the control that was just activated (WCAG 2.4.3). */
+  private readonly focusAfterRender = focusMover();
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
    *  invalid) — reactive to in-place venue switches, which reuse this instance. */
@@ -171,10 +175,12 @@ export class PayoutsTab {
   protected onWeatherRefund(): void {
     this.notice.set(undefined);
     this.weatherConfirm.set(true);
+    this.focusAfterRender('weather-confirm-btn');
   }
 
   protected onCancelWeather(): void {
     this.weatherConfirm.set(false);
+    this.focusAfterRender('weather-trigger');
   }
 
   /**
@@ -202,6 +208,7 @@ export class PayoutsTab {
         this.refunding.set(false);
         this.weatherConfirm.set(false);
         this.notice.set(weatherSuccessNotice(result, dateLabel));
+        this.focusAfterRender('payouts-notice');
         this.reloadLedger();
       },
       error: (e: unknown) => {
@@ -215,6 +222,7 @@ export class PayoutsTab {
           this.operator.sessionLost();
         }
         this.notice.set(weatherFailureNotice(reason));
+        this.focusAfterRender('payouts-notice');
       },
     });
   }

@@ -366,4 +366,101 @@ describe('PayoutsTab (#173) — ledger', () => {
     expect(rows()[0].textContent).toContain('#77');
   });
 
+  // ---- The confirm surface's focus legs: each transition destroys the focused control (WCAG 2.4.3) ----
+
+  async function settle(): Promise<void> {
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  async function openWeatherConfirm(): Promise<void> {
+    byId('weather-trigger')!.click();
+    await settle();
+  }
+
+  it('moves focus to the weather confirm button when the prompt opens', async () => {
+    render(ledger());
+
+    await openWeatherConfirm();
+
+    expect(document.activeElement).toBe(byId('weather-confirm-btn'));
+  });
+
+  it('returns focus to the weather trigger when the operator backs out', async () => {
+    render(ledger());
+
+    await openWeatherConfirm();
+    byId('weather-cancel-btn')!.click();
+    await settle();
+
+    expect(document.activeElement).toBe(byId('weather-trigger'));
+  });
+
+  it('parks focus on the notice when a weather refund settles', async () => {
+    render(ledger());
+
+    await openWeatherConfirm();
+    byId('weather-confirm-btn')!.click();
+    await settle();
+    expectWeatherPost().flush({ refundedCount: 1, totalRefundedMinor: 4500, currency: 'EUR' });
+    await settle();
+
+    expect(byId('weather-confirm')).toBeNull();
+    expect(document.activeElement).toBe(byId('payouts-notice'));
+    flushLedger(ledger({ netOwedMinor: 0 }));
+  });
+
+  it('parks focus on the notice when a weather refund fails', async () => {
+    render(ledger());
+
+    await openWeatherConfirm();
+    byId('weather-confirm-btn')!.click();
+    await settle();
+    expectWeatherPost().flush(
+      { code: 'NOT_VENUE_OWNER' },
+      { status: 403, statusText: 'Forbidden' },
+    );
+    await settle();
+
+    expect(byId('weather-confirm')).toBeNull();
+    expect(document.activeElement).toBe(byId('payouts-notice'));
+  });
+
+  it('moves no focus when a refund settles under another venue', async () => {
+    render(ledger());
+    await openWeatherConfirm();
+    byId('weather-confirm-btn')!.click();
+    await settle();
+    const inFlight = expectWeatherPost();
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/payout-ledger'))
+      .flush(ledger({ venueId: 2 }));
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+    const elsewhere = byId('statement-open')!;
+    elsewhere.focus();
+
+    inFlight.flush({ refundedCount: 1, totalRefundedMinor: 4500, currency: 'EUR' });
+    await settle();
+
+    expect(byId('payouts-notice')).toBeNull();
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
+  it('moves no focus when changing the date closes the prompt', async () => {
+    render(ledger());
+    await openWeatherConfirm();
+    const dateInput = host.querySelector<HTMLInputElement>('[data-testid="weather-date"]')!;
+    dateInput.focus();
+
+    dateInput.value = '2026-07-02';
+    dateInput.dispatchEvent(new Event('change'));
+    await settle();
+
+    expect(byId('weather-confirm')).toBeNull();
+    expect(document.activeElement).toBe(dateInput);
+  });
 });

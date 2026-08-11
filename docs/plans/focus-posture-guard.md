@@ -243,10 +243,10 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phases 0–1 done, entering phase 2`
+**Stage pointer:** `implement — phases 0–2 done, entering phase 3`
 
-**Next action:** Phase 2 step 1 — write `payouts-tab.spec.ts`'s AC-12..AC-16 focus cases and prove
-them RED against the current component.
+**Next action:** Phase 3 step 1 — add the `--hook` mode, then wire the `PostToolUse` command and the
+CI step.
 
 PR: **#622** — opened as a draft at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
 `pull_request` event only).
@@ -259,7 +259,7 @@ docs-freshness — due at close-out (the counting sweep matters: this is the **f
 |-------|--------|---------|
 | 0 — Rule 1: `[disabled]` on a busy flag | ✅ | |
 | 1 — Rule 2: a confirm surface with no focus leg | ✅ | |
-| 2 — The twelfth instance: `payouts-tab`'s three legs | | |
+| 2 — The twelfth instance: `payouts-tab`'s three legs | ✅ | |
 | 3 — Wire it: `PostToolUse` hook + the CI step | | |
 | 4 — Full verification + the conventions doc | | |
 
@@ -350,20 +350,24 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `frontend/src/app/operator/payouts-tab.ts`, `.html` · Test
 `frontend/src/app/operator/payouts-tab.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — AC-12..AC-16, one per transition, mirroring
+- [x] **Step 1: Write the failing specs** — AC-12..AC-16, one per transition, mirroring
       `set-password.spec.ts` › `returns focus to the erase trigger when the customer backs out`.
-- [ ] **Step 2: Run them, verify they fail** —
-      `npx ng test --include="src/app/operator/payouts-tab.spec.ts"`.
-- [ ] **Step 3: Implement** — `focusMover()`; `onWeatherRefund` focuses `weather-confirm-btn`,
+- [x] **Step 2: Run them, verify they fail** —
+      `npx ng test --include="src/app/operator/payouts-tab.spec.ts"` → **6 failed | 16 passed**, the
+      first three with the honest red for this bug class: `expected <body> to be <button …>`.
+- [x] **Step 3: Implement** — `focusMover()`; `onWeatherRefund` focuses `weather-confirm-btn`,
       `onCancelWeather` focuses `weather-trigger`, both settle legs focus `payouts-notice` **inside**
       the existing `epoch` guard; `tabindex="-1"` on the notice. `onDateChange` gains nothing (AC-16).
-- [ ] **Step 4: Run them, verify they pass**, the existing payouts specs included as the parity net.
-- [ ] **Step 5: Re-run `--all`** → rule 2 must now report **0**. This is AC-11's second half and the
-      proof the detector and the fix agree.
-- [ ] **Step 6: Generalization-audit pass** — re-ask the twelfth-instance question the `--all` sweep
-      answered, and record why the four non-destroying flips need no leg.
-- [ ] **Step 7: Commit** — `git commit -m "Move focus with the weather-refund confirmation (#621)"`
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass**, the existing payouts specs included as the parity net.
+      → **35 passed** across the three payouts spec files (unit + a11y + contrast), 16 of them the
+      untouched parity net. AC-15 and AC-16 assert the *absence* of a move, so they could pass
+      vacuously; both were **mutation-checked** — focusing outside the `epoch` guard, and adding a
+      leg to `onDateChange`, each turns its own case RED.
+- [x] **Step 5: Re-run `--all`** → `BUSY-1: 0  FOCUS-1: 0`. AC-11's second half; the detector and the
+      fix agree.
+- [x] **Step 6: Generalization-audit pass** — see the log's fourth row.
+- [x] **Step 7: Commit** — `git commit -m "Move focus with the weather-refund confirmation (#621)"`
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -412,6 +416,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-11 | Plan time — the issue-intake grill, asking whether #616's sweep was complete | every component rendering a **confirm-before-destroy surface**, asked whether it moves focus at all | `grep -rn "@if (.*[Cc]onfirm" src/app` cross-referenced with `grep -rln "focusAfterRender\|focusMover" src/app` | 8 components with a confirm surface; 7 compliant, **1 not** — `operator/payouts-tab`, with zero focus handling and zero focus specs | **The twelfth instance, and the finding that justifies item 2.** #604, #614 and #616 each audited the *adopters of `focusMover()`* — a population `payouts-tab` is not in, so three consecutive audits could not see it. Searching the adopters of the **confirm surface** instead is what found it. Fixed in Phase 2; it is also rule 2's single true positive in AC-11 |
+| 2026-08-11 | Phase 2 — fixing the twelfth instance | every `weatherConfirm` flip in `payouts-tab`, asked whether it destroys the element focus is on — the question the rejected flip-level rule would have had to answer | read all six flip sites | 6 flips: **4 need a leg** (open, back-out, settled ×2), **2 must not have one** | **The 2:1 split is the evidence for the plan's rule-shape decision, now from inside the component rather than from a survey.** `resetForVenue`'s flip (a venue switch) and `onDateChange`'s both close the prompt without the user having activated anything in it — focus is on the venue picker or the date input, both of which survive, so a leg there would *move focus away* from where the user is. A flip-level guard sees all six identically. Both no-leg cases are pinned rather than assumed: AC-16 covers the date change, AC-15 the venue switch, and each was mutation-checked because a test asserting nothing moved passes against a component that moves nothing |
 | 2026-08-11 | Phase 1 — choosing rule 2's confirm-surface predicate | every `@if` condition in the app whose text mentions `confirm`, asked whether it is a confirm **prompt flag** or something else | `grep -rn "@if (.*[Cc]onfirm" src/app --include=*.ts --include=*.html` | 10 conditions: 8 real prompts across 7 files, **2 not** — `booking-pay.ts:70` `@if (state() === 'confirmed')` and `booking-confirmation.ts:30` `@if (confirmation(); as c)` | **Both would have been false positives**, and neither component moves focus, so both would have failed a PR on correct code — one of them on the money path. The predicate was tightened twice as a result: match the **called identifier** rather than the condition text (which drops the payment state, where `confirmed` is a string literal), and reject the `; as` aliasing form (which drops the domain noun, since binding a value is never a prompt). AC-9 pins both. The inverse case is a deliberate false negative worth recording: `admin-operators` renders its prompt through `<app-confirm-panel>` with no `@if (confirm…)` at all, so the predicate never sees it — harmless, because delegation is itself a carve-out |
 | 2026-08-11 | Phase 0 — choosing rule 1's discriminator | every expression the app binds to `[appBusy]`, asked which identifier stems denote an in-flight write, and every expression it still binds to `[disabled]`, asked which must never match | `grep -rhno '\[appBusy\]="[^"]*"' src/app` (51 bindings, 17 distinct) and `grep -rn '\[disabled\]=' src/app` (13 hits, 12 real + 1 in `busy-action.ts`'s own TSDoc) | 22 stems adopted; **5 rejected** — `loading`, `pending`, `processing`, `updating`, `creating` | **The rejections are the finding, and one of them was nearly a live false positive.** `pending` would have matched the standing `[disabled]="isPending(set)"` in `daily-view-tab.html` — a *state* binding #616 deliberately kept — turning the first PR that touched that line red on correct code. The other four read as state at least as often as busyness. Two controls on the outcome: the whole tree sweeps to **0** violations across 297 files, and a **positive control** (rewriting every real `[disabled]` expression to `saving()` in memory) flags 3 in `set-editor.html` and 1 in `daily-view-tab.html` while leaving the four inputs and the `[appBusy]` splits clean — so the zero is a real zero, not a scanner that reaches nothing. The 13th grep hit is why AC-5 exists |
 
