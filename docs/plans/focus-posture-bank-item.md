@@ -35,10 +35,16 @@ for AC-3 — the gap is proven RED, by re-introducing both instances and watchin
 silent, *before* the item claims it) · `riviera-review-overlay` (the artifact under edit — read end
 to end first, so RV-FE-9 matches the house item format and takes the next free number; RV-STYLE-2 is
 what set the "don't hand-flag what a gate already names" posture the new item copies) ·
-`riviera-docs-freshness` (**due at close-out**, over `origin/main...HEAD`) · **not triggered, and why:** `riviera-frontend` /
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD` + the working tree — **3 stale statements,
+all patched**, and two of them came only from the counting sweep, in files this slice would otherwise
+never have opened: the guard's own module header and `frontend/.claude/CLAUDE.md` both still said
+"#604, #614, #616 — thirteen instances" after #621 fixed three more, so the item's "fourteen" would
+have shipped contradicting the two docs a reader reaches first) · **not triggered, and why:** `riviera-frontend` /
 `angular-developer` / `playwright-cli` / `riviera-tailwind` — the diff creates or modifies **no** file
-under `frontend/`; the `payouts-tab.ts` edit AC-3 needed was a scratch mutation, reverted with
-`git checkout --` and never committed (`git status` clean, recorded in Phase 0).
+under `frontend/src` or `frontend/e2e`, which is what those skills are the authority for. The one
+`frontend/` path in the diff is `frontend/.claude/CLAUDE.md`, an agent-instruction doc reconciled by
+the docs-freshness sweep, and the `payouts-tab.ts` edit AC-3 needed was a scratch mutation, reverted
+with `git checkout --` and never committed (`git status` clean, recorded in Phase 0).
 
 **Branch:** `claude/issue-623-r8r8ro` — the cloud session's designated branch, standing in for
 `bugfix/focus-posture-bank-item` per `riviera-sdlc`'s remote-session addendum. Started from `main` at
@@ -53,11 +59,11 @@ written against.
 > catch that the machine does not**. An item is not "done" because it reads well — it is done when
 > the gap it covers is demonstrated and the item names it.
 
-- [ ] **AC-1:** Given the overlay loaded for a frontend diff, when a reviewer walks the frontend
+- [x] **AC-1:** Given the overlay loaded for a frontend diff, when a reviewer walks the frontend
   bank, then an item states the destroy-the-focused-element rule and its three legs. *Pinned by:*
   `grep -rn "2.4.3" .claude/skills/riviera-review-overlay/` returning RV-FE-9 where it returned
   nothing before (recorded in Acceptance-criteria verification).
-- [ ] **AC-2:** Given a diff containing `<button [disabled]="saving()">`, when the reviewer reaches
+- [x] **AC-2:** Given a diff containing `<button [disabled]="saving()">`, when the reviewer reaches
   RV-FE-9, then the item tells them **not** to hand-flag it — BUSY-1 is a hard gate that has already
   failed the build and named the line. *Pinned by:* the item's "discharged mechanically" paragraph,
   cross-checked against `GATING = new Set(['BUSY-1'])` in `scripts/check-focus-posture.mjs`.
@@ -66,27 +72,30 @@ written against.
   (`--all` and an explicit `--files`), then it reports **0** violations, so nothing mechanical
   surfaces either bug. *Pinned by:* the recorded mutation run in Phase 0 / Acceptance-criteria
   verification.
-- [ ] **AC-4:** Given the item, when a reviewer asks "what am I for, that the guard is not", then it
+- [x] **AC-4:** Given the item, when a reviewer asks "what am I for, that the guard is not", then it
   names all three blind spots — the landing spot, the component-scoped exemption (#624), and
   teardowns that are not confirm surfaces — **plus** the input carve-out the issue does not name.
   *Pinned by:* the item's "What the guard cannot judge" list.
-- [ ] **AC-5:** Given a green `Repo hygiene (diff-scoped)` job, when the reviewer treats that as
+- [x] **AC-5:** Given a green `Repo hygiene (diff-scoped)` job, when the reviewer treats that as
   proof, then the item corrects them: FOCUS-1 prints and returns 0, so a green **exit code** can sit
   over unread FOCUS-1 findings. *Pinned by:* the item's guard paragraph, cross-checked against the
   `GATING` set and `frontend/.claude/CLAUDE.md`'s statement of the same posture.
-- [ ] **AC-6:** Given a frontend-scoped review, when the overlay decides which reference file to load
+- [x] **AC-6:** Given a frontend-scoped review, when the overlay decides which reference file to load
   and what it contains, then `SKILL.md`'s frontend bullet names the new item — it enumerates the
   bank's contents, so leaving it alone would ship a stale map on the same commit. *Pinned by:* the
   `SKILL.md` diff.
 
 ## Non-goals
 
-- **No change to the convention itself.** `frontend/.claude/CLAUDE.md` already states both postures
+- **No change to the *rule* stated in `frontend/.claude/CLAUDE.md`.** It already states both postures
   (#616, #621) and is the authoring-time home; #623 is explicit that this is about the review bank.
-  Restating the rule there would create the second statement that goes stale.
-- **No change to `scripts/check-focus-posture.mjs`.** Narrowing FOCUS-1's component-scoped exemption
-  is #624's job, and #621 records two spikes at that predicate that each traded one error direction
-  for the other. The item cites #624 rather than pre-empting it.
+  Restating the rule there would create the second statement that goes stale. What the slice *does*
+  change there is one enumeration the docs-freshness sweep found false, plus a pointer to RV-FE-9 —
+  reconciliation, not a second statement of the rule.
+- **No behavioral change to `scripts/check-focus-posture.mjs`.** Narrowing FOCUS-1's component-scoped
+  exemption is #624's job, and #621 records two spikes at that predicate that each traded one error
+  direction for the other. The item cites #624 rather than pre-empting it. The only edit to that file
+  is its module-header comment, for the same stale count.
 - **Not folded into RV-FE-5.** That item is the beach-map seat picker's accessibility (keyboard
   activation, non-colour status) — one surface. This class spans every confirm, modal and teardown in
   the app, so it earns its own number rather than a bullet under a map-specific item.
@@ -153,10 +162,11 @@ worked example is drawn from (`payouts-tab`'s weather refund) is money-adjacent,
 
 ## Angular — frontend surfaces touched
 
-N/A — no frontend surface changes. The diff creates and modifies no file under `frontend/`; the
-item's subject is frontend code, but its home is the review bank. `frontend/src/app/operator/payouts-tab.ts`
-was mutated in the working tree for AC-3 and reverted (`git checkout --`), with `git status` verified
-clean before the Phase 0 commit.
+N/A — no frontend surface changes. No component, service, route, token, template, style or spec is
+added or modified: the diff's only `frontend/` path is `frontend/.claude/CLAUDE.md`, an
+agent-instruction doc. The item's subject is frontend code, but its home is the review bank.
+`frontend/src/app/operator/payouts-tab.ts` was mutated in the working tree for AC-3 and reverted
+(`git checkout --`), with `git status` verified clean before the Phase 0 commit.
 
 ## FE↔BE contract
 
@@ -167,28 +177,31 @@ N/A — no contract change. No endpoint, DTO, header or error body is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 1) — the gap is proven and the plan committed; RV-FE-9 not yet written`
+**Stage pointer:** `merge — implementation complete, close-out written, pushed to the designated branch`
 
-**Next action:** Write RV-FE-9 into
-`.claude/skills/riviera-review-overlay/references/frontend-conventions.md` and name it in
-`SKILL.md`'s frontend-scope bullet (AC-6), then run the close-out checks in Phase 1 step 4.
+**Next action:** Open the PR for `claude/issue-623-r8r8ro` (`Closes #623`) and let the CI, review and
+Sonar gates run against it — **none of the three has run on this slice**, see Gates. This session was
+instructed not to open a PR, so the branch carries the finished work and the three gates are
+outstanding by declaration rather than by omission.
 
 PR: **not opened** — the session's operating instructions forbid creating one without an explicit
 request. `riviera-sdlc` rule 3 wants a draft PR at the first phase commit precisely because CI fires
 on the `pull_request` event only, so this branch has had **no CI run at all**; the substitution is
 recorded here rather than left to be inferred.
 
-**Gates:** CI — **not run** (no PR; `push` triggers are scoped to `main`). The checks this slice can
-be judged by are run by hand instead, in Phase 1 step 4. Review gate — **not run**: `/code-review`
-fans out subagents, which this session is instructed not to spawn, and `riviera-sdlc` rule 4 is
-explicit that the overlay alone is not the review. Sonar gate — **not run** (Sonar analyzes PRs and
-`main` only; a markdown-only diff has no analyzable new code either way). docs-freshness — due at
-close-out.
+**Gates:** CI — **not run** (no PR; `push` triggers are scoped to `main`). The four checks this diff
+can actually fail were run by hand instead and are recorded under Acceptance-criteria verification:
+the three diff-scoped hygiene guards and `node --test "scripts/*.test.mjs"` (112 tests, 0 failures).
+Review gate — **not run**: `/code-review` fans out subagents, which this session is instructed not to
+spawn, and `riviera-sdlc` rule 4 is explicit that the overlay alone is not the review. A self-walk
+against the overlay's own bank produced S-1 and S-2 and is recorded below **in its place, not as
+it**. Sonar gate — **not run** (Sonar analyzes PRs and `main` only; this diff adds no analyzable
+code). docs-freshness — **ran**, 3 stale statements, all patched.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Prove the gap, then plan | ✅ | `docs: plan the stranded-focus review-bank item (#623)` |
-| 1 — RV-FE-9 + the scope pointer | | |
+| 0 — Prove the gap, then plan | ✅ | `517ad93` |
+| 1 — RV-FE-9 + the scope pointer | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -197,7 +210,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| S-1 | self-walk (RV-PROC-1, own bank) | The first draft of *Skills consulted* listed only the skills that were loaded, which reads identically to a routing gate that was never run for the frontend row — the diff's subject **is** frontend conventions | fixed — the line now states which frontend skills were **not** triggered and the evidence (no file under `frontend/` in the diff) |
+| S-1 | self-walk (RV-PROC-1, own bank) | The first draft of *Skills consulted* listed only the skills that were loaded, which reads identically to a routing gate that was never run for the frontend row — the diff's subject **is** frontend conventions | fixed — the line now states which frontend skills were **not** triggered and the evidence, and was corrected again when the docs-freshness patch put `frontend/.claude/CLAUDE.md` in the diff: the claim is now "no file under `frontend/src` or `frontend/e2e`", which is what those skills are the authority for |
+| S-2 | self-walk (RV-FE-9, against its own subject) | The draft item said a green guard run "discharges the mechanical half", copying RV-STYLE-1's wording — but RV-STYLE-1's guard **gates**, and half of this one does not, so the sentence would have taught the exact over-trust R-2 names | fixed — the two rules' opposite postures are stated as their own bullets, and only BUSY-1 is described as discharged |
 
 ---
 
@@ -207,6 +221,11 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `.claude/skills/riviera-review-overlay/references/frontend-conventions.md` — RV-FE-9, the bank item
 - `.claude/skills/riviera-review-overlay/SKILL.md` — the frontend-scope bullet, which enumerates the
   bank's contents and would otherwise ship stale
+- `scripts/check-focus-posture.mjs` — docs-freshness patch (comment only): the module header still
+  said "#604, #614, #616 — **thirteen** instances", falsified by #621's own three fixes, and now
+  points at RV-FE-9 for the shapes neither rule can see
+- `frontend/.claude/CLAUDE.md` — docs-freshness patch: the same enumeration, plus the pointer from
+  the authoring-time convention to the review-time item
 
 > Reconcile this section with `node scripts/check-plan-file-structure.mjs --diff origin/main`
 > before pushing.
@@ -244,17 +263,17 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
 **Files:** Modify `.claude/skills/riviera-review-overlay/references/frontend-conventions.md`,
 `.claude/skills/riviera-review-overlay/SKILL.md`
 
-- [ ] **Step 1: Write RV-FE-9** in the house item format (gate → checklist → follow-up → default
+- [x] **Step 1: Write RV-FE-9** in the house item format (gate → checklist → follow-up → default
       severity → skill framing), structured as: the rule, the mechanical half handed to the guard,
       then the guard-blind remainder that is the item's reason to exist.
-- [ ] **Step 2: Update `SKILL.md`'s frontend-scope bullet** so the enumeration of the bank's
+- [x] **Step 2: Update `SKILL.md`'s frontend-scope bullet** so the enumeration of the bank's
       contents names the new item (AC-6).
-- [ ] **Step 3: Generalization-audit pass** — see the log below (the `[disabled]` census that found
+- [x] **Step 3: Generalization-audit pass** — see the log below (the `[disabled]` census that found
       the `pricing-tab` candidate).
-- [ ] **Step 4: Verify** — the three diff-scoped guards over the diff, `node --test "scripts/*.test.mjs"`,
+- [x] **Step 4: Verify** — the three diff-scoped guards over the diff, `node --test "scripts/*.test.mjs"`,
       and the AC greps. Recorded under Acceptance-criteria verification.
-- [ ] **Step 5: Commit** — `git commit -m "Add the review-bank item for the stranded-focus class (#623)"`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Commit** — `git commit -m "Add the review-bank item for the stranded-focus class (#623)"`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -265,6 +284,7 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-11 | Phase 0 — writing the item's carve-out bullet | the standing `[disabled]` bindings the guard deliberately does not judge, to check the carve-out is as safe as it is documented to be | `grep -rn "\[disabled\]" --include=*.html --include=*.ts frontend/src/app \| grep -v "\.spec\."` | 11 live bindings: 7 validity/state (`!canAddRow()`, `cell.disabled`, `isPending(set)`, `venueForm().invalid()`, `detailsForm().invalid()`, `dirty()`, `!hasLayout()`) and **4 busy-flag bindings on `<input>`** — `admin-commissions` ×2, `admin-privacy`, `pricing-tab` | Recorded. The 7 are the documented state carve-out, correct as-is. The 4 inputs are the documented **input** carve-out, whose premise is "focus is on the button, never the field" — true wherever a *button* starts the write, which holds for three of the four. `pricing-tab` is the exception: the write is started by the **input's own** `(change)`, and `saving.set(true)` runs synchronously in that handler, disabling the field the event came from. Whether focus is still in it depends on the Enter-commit path, which only Chromium settles (#616 R-1) — so it is filed as a candidate, **#625**, not asserted here. It is also the third guard-blind shape, and it is now named in RV-FE-9 |
+| 2026-08-11 | Phase 1 — the docs-freshness counting sweep | every present-tense statement of the class's instance count, since the new item asserts "fourteen" | `grep -rniE '\b(thirteen\|fourteen)\b' CLAUDE.md RESPONSIBILITIES.md CONTEXT.md docs/adr docs/agents .claude/skills frontend/.claude scripts` + a `#604` enumeration grep over the same set | 2 stale: `scripts/check-focus-posture.mjs:3` ("#604, #614, #616 — thirteen instances") and `frontend/.claude/CLAUDE.md:33` (the same three-issue list), both falsified by #621's own three fixes | Both patched, and both given the pointer to RV-FE-9 that closes the authoring-time ↔ review-time loop. Neither file is one this slice would have opened otherwise — the sweep is the only thing that could have found them, exactly as the skill's step 2b argues. Sweep re-run after the fix: all four statements now read "fourteen" |
 
 ---
 
@@ -272,43 +292,45 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1:** `grep -rn -i "2\.4\.3" .claude/skills/riviera-review-overlay/` → the RV-FE-9 heading
-      and its rule line, where the same grep returned **nothing** at `origin/main`.
-- [ ] **AC-2:** the item's guard paragraph reads "a BUSY-1 shape in the diff is the build's finding,
+- [x] **AC-1:** `grep -rn -i "2\.4\.3" .claude/skills/riviera-review-overlay/` → one hit, the RV-FE-9
+      heading, where the same grep returned **nothing** at `origin/main` (the overlay's only `focus`
+      hit was RV-FE-5's beach-map bullet, which is about tile activation, not focus management).
+- [x] **AC-2:** the item's guard paragraph reads "a BUSY-1 shape in the diff is the build's finding,
       not yours"; `grep -n "GATING" scripts/check-focus-posture.mjs` → `new Set(['BUSY-1'])`, so the
       claim that it is a hard gate is the code's, not the doc's.
 - [x] **AC-3:** the Phase 0 mutation run — both legs deleted, `--all` → `BUSY-1: 0  FOCUS-1: 0`,
       `--files frontend/src/app/operator/payouts-tab.ts` → no output. Restored; tree clean.
-- [ ] **AC-4:** the item's "What the guard cannot judge" list has four entries — landing spot,
+- [x] **AC-4:** the item's "What the guard cannot judge" list has four entries — landing spot,
       component-scoped exemption (#624), non-confirm teardowns, and the input carve-out (#625).
-- [ ] **AC-5:** the item states that FOCUS-1 prints and returns 0, so the step is green either way.
-- [ ] **AC-6:** `SKILL.md`'s frontend bullet names RV-FE-9 alongside RV-FE-8.
-- [ ] **Repo guards over the diff:** `node scripts/check-plan-file-structure.mjs --diff origin/main`
+- [x] **AC-5:** the item states that FOCUS-1 prints and returns 0, so the step is green either way.
+- [x] **AC-6:** `SKILL.md`'s frontend bullet names RV-FE-9 alongside RV-FE-8.
+- [x] **Repo guards over the diff:** `node scripts/check-plan-file-structure.mjs --diff origin/main`
       → clean; `node scripts/check-inline-comments.mjs --diff origin/main` → clean;
       `node scripts/check-focus-posture.mjs --diff origin/main` → clean (no in-scope file changed);
-      `node --test "scripts/*.test.mjs"` → 93 tests, 0 failures.
+      `node --test "scripts/*.test.mjs"` → **112 tests, 0 failures** — the guard's own suites still
+      pass with its header rewritten, which is the only thing this diff could have broken in `scripts/`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test — verification is by recorded command
+- [x] Every AC has an implementing task and a verifying test — verification is by recorded command
       for a docs slice; each AC names the exact one.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases — N/A, no code.
-- [ ] **No JPA** introduced (invariant #1) — no backend code in the diff.
-- [ ] **Availability** section justified N/A; no write path touched (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking logic.
-- [ ] **Modulith** section justified N/A (invariant #11) — no backend code. FE mirror RV-FE-8: no
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases — N/A, no code.
+- [x] **No JPA** introduced (invariant #1) — no backend code in the diff.
+- [x] **Availability** section justified N/A; no write path touched (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking logic.
+- [x] **Modulith** section justified N/A (invariant #11) — no backend code. FE mirror RV-FE-8: no
       import of any kind is added, no file under `frontend/` is in the diff.
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9) — no money logic.
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented — N/A, no frontend file in the diff.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, and findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (the two resolved ones name their
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9) — no money logic.
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented — N/A, no frontend file in the diff.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, and findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (the two resolved ones name their
       outcome, and the deferred candidate cites #625).
-- [ ] **Close-out written in THIS branch** — the plan doc's final state is committed here, so no
+- [x] **Close-out written in THIS branch** — the plan doc's final state is committed here, so no
       docs-only follow-up is needed.
 - [ ] **The review gate ran in full** — **left unticked deliberately.** `/code-review` fans out
       subagents, which this session is instructed not to spawn, and `riviera-sdlc` rule 4 is explicit

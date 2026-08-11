@@ -31,7 +31,8 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   control should leave the tab order. Split a binding that mixes the two.
 - **A transition that destroys the focused element must move focus deliberately**, via
   `shared/focus-after-render.ts`'s `focusMover()`. This is the repo's most-repeated bug class (#604,
-  #614, #616); confirm-before-destroy surfaces need all three legs — open, back-out, and settled.
+  #614, #616, #621 — fourteen instances); confirm-before-destroy surfaces need all three legs — open,
+  back-out, and settled. At review time it is `riviera-review-overlay`'s **RV-FE-9** (#623).
 - **A guard enforces both of the above while you type** (#621): `scripts/check-focus-posture.mjs`
   runs from a `PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff, covering
   `frontend/src/app/**` templates — inline `template:` literals and external `.html` alike. **BUSY-1**

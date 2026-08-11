@@ -258,3 +258,84 @@ Not a finding for a pre-existing edge the diff merely moves or consolidates.
 - Peer-review: "Run the grep. Is every cross-feature import in the diff already in
   `riviera-frontend`'s debt table? If the diff adds one, what is the argument — and is it
   really just 'the neighbours already do it'?"
+
+---
+
+### RV-FE-9. A transition that destroys the focused element moves focus (WCAG 2.4.3)
+**Gate:** Does every transition the diff writes that **unmounts or disables the element focus is
+sitting on** move focus somewhere deliberate, via `shared/focus-after-render.ts`'s `focusMover()`?
+- [ ] a **confirm-before-destroy** surface has all three legs: **open** (onto the confirm's
+      destructive button), **back-out** (onto the trigger it replaced), **settled** (onto the notice
+      carrying the outcome) — success *and* failure
+- [ ] a **modal/panel dismiss** returns focus to the trigger that opened it — re-rendering a trigger
+      does not focus it
+- [ ] a teardown that is **not** a confirm surface — a venue switch, a route change, a row removal,
+      an error panel replacing a form — also moves focus, when what it tore down held it
+- [ ] the move sits **inside** whatever staleness guard the write already has (`epoch`), so a
+      superseded response moves nothing
+- [ ] focus lands somewhere that says something, and the landing spot can take it (`tabindex="-1"`
+      on a landmark; `focusMover()` adds one rather than letting the move be swallowed)
+- [ ] a busy `<button>`/`<a>` uses `[appBusy]`, not `[disabled]` — **discharged mechanically**, below
+
+**Don't walk the mechanical half by hand — but don't read a green step as an all-clear either.**
+`node scripts/check-focus-posture.mjs --diff origin/main` (#621) runs from a `PostToolUse` hook while
+the author types and as a step in `Repo hygiene (diff-scoped)`. It carries two rules with **opposite
+postures**, and conflating them is the way to get this item wrong in both directions:
+
+- **BUSY-1 fails the build.** A `[disabled]` bound to an in-flight flag on a `<button>`/`<a>` is the
+  build's finding, not yours — by the time you read the diff CI has already named the line. Don't
+  hand-flag it (RV-STYLE-2's posture). It is syntactic and swept 297 files with no false positive.
+- **FOCUS-1 prints and returns 0.** It advises; it does not gate. So a **green** hygiene job can sit
+  on top of unread FOCUS-1 findings — read the step's *output*, not its exit code. It went advisory
+  deliberately: "does this component move focus?" is a runtime property approximated by a regex over
+  source, and three review passes each found a fresh false positive in the predicate.
+
+**What the guard cannot judge — this is what the item is for:**
+
+1. **Where focus should land.** The guard asks only whether a focus call site exists in the
+   component. Landing on the page host is not the same answer as landing on the notice that says
+   what happened, and only a human reads the surface.
+2. **Whether the component's *second* surface has a leg.** FOCUS-1's exemption is
+   **component-scoped**: a component that moves focus anywhere is trusted for every surface it owns,
+   forever (**#624**). That is not hypothetical — it is how instance 14 hid. `payouts-tab` gained
+   `focusMover()` for its weather confirm and its focus-**trapped** statement modal then went on
+   being torn down by `resetForVenue()` with no leg at all; the guard called the component clean
+   throughout, and #621's review pass found it. `set-editor`, `layout-editor`, `admin-venue-photos`
+   and `admin-operators` are each exempt on one helper today.
+3. **Teardowns that are not confirm surfaces at all.** FOCUS-1 only looks at `@if` branches whose
+   condition calls something matching `/confirm/i`. Instance 13 was a modal **dismiss**
+   (`statementOpen.set(false)`), instance 14 a **venue switch** — neither is a confirm branch, and
+   both stranded focus. Any `@if` gating a focus-trapped child, and any bulk state reset, is the same
+   class.
+4. **The input carve-out's premise.** Inputs keep `[disabled]` and BUSY-1 allow-lists `button`/`a`
+   only, on the stated grounds that *focus is on the button, never the field*. That holds wherever a
+   button starts the write — but not where the **field's own** `(change)`/`(blur)` does, and the
+   handler then disables it (live shape: `operator/pricing-tab.html`, **#625**). Ask where focus
+   actually is when the flag flips, not which element carries the binding.
+
+**Follow-up:**
+- The convention itself, both postures and the guard's flags: `frontend/.claude/CLAUDE.md`. The
+  fourteen instances and why each recurred: #604, #614, #616, #621 and their `docs/plans/` entries.
+- **A jsdom spec is not evidence for a busy-window claim.** jsdom does not implement
+  unfocus-on-disable (#614 R-1, re-confirmed by #616), so a unit spec can pass without the fix. A
+  claim about a *disabled* control needs a Chromium leg; a claim about a *destroyed* one may be
+  pinned in jsdom, which does model unmounting.
+- The e2e shape to ask for is `await expect(page.getByTestId('…')).toBeFocused()` at each leg
+  (`e2e/operator-payouts.e2e.ts` › `keeps focus off body across the weather-refund confirm`), in the
+  CI-run mocked suite per RV-FE-E2E.
+- A spec asserting the **absence** of a move (a superseded response, a change that destroys nothing)
+  passes vacuously — ask whether it was mutation-checked.
+
+**Default severity:** **Major** — a stranded focus is a WCAG AA failure on a shipped surface, and
+`frontend/.claude/CLAUDE.md` states the rule as a MUST. Lean Major even where the user can recover by
+tabbing from the top: on the console's long pages that is the whole page again, and a screen-reader
+user gets no announcement that anything happened. **Blocker** only for a strand there is no keyboard
+recovery from — a focus trap still mounted with nothing focusable left inside it. **Minor** for a
+missing leg on a path the diff itself makes rare (a settle-on-failure leg where the failure needs a
+server error). Not a finding at all for a BUSY-1 shape — CI already failed it and named the line.
+**Skill framing:**
+- Peer-review: "For each transition in this diff: does it destroy or disable the element focus is on?
+  If so, where does focus go — all three legs for a confirm, and the trigger for a dismiss? Then the
+  three the guard is blind to: does this component already move focus somewhere *else* (so FOCUS-1
+  exempts it), is anything torn down here that isn't a confirm branch at all, and does any disabled
+  field start its own write?"

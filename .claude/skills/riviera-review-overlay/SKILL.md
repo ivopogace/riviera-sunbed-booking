@@ -41,9 +41,12 @@ frontend-only review never pays for the backend bank:
   error body) — even with no frontend file touched — also load `references/fe-be-contract.md`.
 - **Frontend diff** → `references/frontend-conventions.md` — Angular standards,
   beach-map stale-availability handling, money/date rendering, no client secrets,
-  and **RV-FE-8** (no *new* cross-feature folder import — the FE mirror of RV-BE-3;
+  **RV-FE-8** (no *new* cross-feature folder import — the FE mirror of RV-BE-3;
   the frozen set is `riviera-frontend`'s residual table: five behavioral edges
-  left after #489 moved the vocabulary to `shared/`).
+  left after #489 moved the vocabulary to `shared/`), and **RV-FE-9** (a
+  transition that destroys the focused element moves focus — the repo's
+  most-repeated bug class, fourteen instances across #604/#614/#616/#621; the
+  syntactic half is a CI gate, the item covers what it cannot see).
 - **Fullstack diff** → both of the above, plus `references/fe-be-contract.md` —
   API typing, money/date on the wire, webhook-vs-redirect, idempotency.
 
