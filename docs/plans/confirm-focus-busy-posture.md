@@ -286,7 +286,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (frontend, e2e) | **A layout regression from this slice.** The new `admin-ops-notice` reserved `min-h-[1.5rem]` even while empty, pushing the console home's first content heading below the 360px fold — `admin-console-stats.e2e.ts` › `the console home's first content heading survives the strip at 360px` measured 758 against a 740 budget. Local runs missed it because the full mocked suite last ran before the notice landed | fixed-in-`<f-1>` — `min-h-[1.5rem]` → `empty:hidden`, the idiom booking-view's result regions already use. The region stays in the DOM (a live region that enters the tree *with* its text is often not announced — `auth/operator-password.ts:38`), it simply occupies no space until it says something, and the parked focus is what guarantees delivery |
+| F-2 | CI (repo hygiene) | RV-STYLE-1: the two-line inline comment on the directive's native listener | fixed-in-`3416b430` — moved into the TSDoc, which is exempt and is where load-bearing rationale belongs |
+| F-3 | CI (frontend, format) | #618's diff-scoped Prettier gate merged to `main` mid-slice, so this branch's own hunks had to satisfy it | fixed-in-`f1e93570` — merged `main`, then `npm run format:check -- --fix`, which rewrites only the reported hunks so each file's pre-existing drift stays out of the diff |
 
 ---
 

@@ -66,7 +66,7 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
       } @else {
         <app-admin-console-tabs label="Admin console sections" />
         <p
-          class="mt-4 min-h-[1.5rem] text-[15px] text-(--riv-ink-soft)"
+          class="mt-4 text-[15px] text-(--riv-ink-soft) empty:hidden"
           role="status"
           aria-live="polite"
           tabindex="-1"
