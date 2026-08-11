@@ -132,8 +132,7 @@
 
           @if (themeOpen()) {
             <div class="riv-backdrop" data-testid="theme-backdrop" (click)="closeMenus()" (keydown.escape)="closeMenus()" aria-hidden="true"></div>
-            <!-- Theme options are pressed-state toggle buttons: the ARIA radio pattern would
-                 demand roving tabindex and arrow-key selection (review finding, WCAG 4.1.2). -->
+              <!-- Pressed-state toggle buttons, not ARIA radios: the radio pattern would demand roving tabindex + arrow keys (WCAG 4.1.2). -->
             <div class="riv-pop riv-pop-in riv-theme-pop">
               @for (option of themes.options; track option.id) {
                 <button

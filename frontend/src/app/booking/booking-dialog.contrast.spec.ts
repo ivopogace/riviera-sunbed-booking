@@ -85,8 +85,7 @@ describe.each(THEMES)('Booking dialog panel contrast — $name theme (WCAG AA, i
   });
 
   it('field-error red meets AA on the panel glass', () => {
-    // .field-error sits directly on the panel (no fill of its own); .form-error moved to a solid
-    // fill, asserted theme-independently above.
+      // .field-error sits directly on the panel (no fill of its own); .form-error is asserted theme-independently above.
     expectAaOverStops(hexToRgb(ERROR_RED), 1, DIALOG_GLASS, theme.stops);
   });
 
