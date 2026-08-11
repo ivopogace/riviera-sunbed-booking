@@ -39,9 +39,13 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   can replace, so every other element is out of its reach, inputs included. **FOCUS-1** flags a
   component that renders a confirm branch and holds no focus call site; **rendering
   `<app-confirm-panel>`/`<app-confirm-with-reason>` does not excuse it**, since those own the open leg
-  only and the back-out and settled legs are still yours. Both rules are **diff-scoped**, so the
-  standing tree never fails the repo. Run either by hand with
-  `node scripts/check-focus-posture.mjs --files <path…>`, or sweep the whole tree with `--all`.
+  only and the back-out and settled legs are still yours. Both are **diff-scoped**, so the standing
+  tree never fails the repo — and only **BUSY-1 fails a build**: FOCUS-1 prints and returns 0,
+  because "does this component move focus" is a runtime property a regex can only approximate, and a
+  gate that fails correct code is the error direction this layer cannot afford. Treat a FOCUS-1 line
+  as a prompt to check the three legs yourself. Run either by hand with
+  `node scripts/check-focus-posture.mjs --files <path…>` (which judges those files whole, committed
+  or not), or sweep the app with `--all`.
   BUSY-1 matches a curated vocabulary of busy-flag stems, so a novel flag name is a deliberate
   false negative — extend `BUSY_STEMS` rather than working around it. Note it does **not** exempt a
   `[disabled]` just because `[appBusy]` sits beside it: the native attribute still blurs the pressed

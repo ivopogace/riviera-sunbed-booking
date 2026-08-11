@@ -211,14 +211,18 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
   derived mechanically from the 17 distinct expressions already bound to `[appBusy]` in the tree, not
   invented. — *Owner:* Ivo · *Resolves by:* Phase 0 (flagged for review at the PR).
 
-- **Open question:** should **FOCUS-1** stay a hard CI gate, or become an authoring-time advisory
-  (hook only)? Three review passes have each produced a fresh false-positive finding against its
-  "does this component move focus?" predicate (H-5, H-9, and G-2/G-4 before them), because that
-  question is a runtime property being approximated by a regex over source. BUSY-1 has been stable
-  across all three passes — a crisp syntactic rule, an element allow-list, a curated vocabulary, 0
-  false positives over 297 files — and is not in question. — *Owner:* Ivo · *Resolves by:* the PR.
-
 ### Resolved
+
+- **Open question:** should **FOCUS-1** stay a hard CI gate? — **Resolved 2026-08-11 at the third
+  review pass by Ivo: no — it advises, it does not gate.** Three passes each produced a fresh
+  false-positive finding against its "does this component move focus?" predicate (H-5, H-9, and
+  G-2/G-4 before them), because that question is a runtime property approximated by a regex over
+  source; five live components move focus with a plain `.focus()`. BUSY-1 was unchallenged across all
+  three passes — syntactic, element-allow-listed, 0 false positives over 297 files — and keeps
+  failing the build. FOCUS-1 still runs everywhere it did, still prints, and still found the two live
+  bugs this slice fixed; it just returns 0. Rejected: widening the predicate again (a fourth pass
+  would find the next hole), and dropping FOCUS-1 (nothing mechanical would have caught
+  `payouts-tab`).
 
 - **Open question:** build item 2 at all, and in which shape? — **Resolved 2026-08-11 at plan time by
   Ivo, after a spike.** The issue's proposed shape — a `confirming`-style flip with no adjacent
@@ -282,12 +286,10 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `review gate — three passes run, 12 + 13 + 14 findings; FOCUS-1's precision
-escalated to the human`
+**Stage pointer:** `review gate — three passes run (12 + 13 + 14 findings, all closed); Sonar gate next`
 
-**Next action:** Settle whether FOCUS-1 stays a hard CI gate (see the Open question below), then
-re-review whatever that decides and pull Sonar's reported issue list from the API — the badge is not
-the check.
+**Next action:** Pull Sonar's reported issue list from the API for PR #622 — the badge is not the
+check — then finish the merge close-out.
 
 PR: **#622** — opened as a draft at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
 `pull_request` event only); marked ready for review at the Phase 4 commit.
@@ -325,7 +327,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | H-10 | **3rd review** (CONFIRMED) | The BUSY-1 advice string still said "Inputs … keep `[disabled]`" (the guard allow-lists `button`/`a`, so *everything* else is out of scope) and still told the author to "split a binding", which F-4 made a violation when both halves carry the same flag | fixed — rewritten to name the allow-list and to say the **validity** half is what stays on `[disabled]` |
 | H-13 | **3rd review** (CONFIRMED) | `checkPaths` forked `git diff` before knowing anything was tracked — pure waste on the new-file case the path exists for — and `trackedAmong([])` would have enumerated the whole repository | fixed — tracked first, diff only the tracked subset, empty short-circuits |
 | H-14 | **3rd review** (CONFIRMED) | **A fourteenth instance, and one the guard structurally cannot see.** `resetForVenue()` tears down the focus-**trapped** statement modal with no focus leg, so a venue switch or route change while it is open strands focus on `<body>`. `payouts-tab.ts` holds `focusMover()`, so the component-scoped exemption (known limit (a)) excuses it forever | fixed — the leg fires only when the statement was actually open, so an ordinary venue switch still grabs nothing. Pinned by `parks focus on the tab when a venue switch tears down the open statement` and its guard twin, both verified RED |
-| H-5, H-9, H-11, H-12 | **3rd review** (CONFIRMED) | **Four findings with one root cause: FOCUS-1's "does this component move focus?" predicate is a regex over source, and it cannot be made both safe and precise.** H-5: five live components (`venue-map`, `app`, `operator-chrome`, `focus-trap`, `segmented-control`) move focus with a plain `.focus()` and would fail the hard gate on correct code the moment they grow a confirm branch. H-9: the `afterNextRender` + `.focus(` pair need not be related. H-11: `--files` on a committed file prints nothing whether or not it is clean. H-12: the violation is reported at the negated *trigger* branch, not the prompt | **open — escalated to the human**, see the Open question. Three rounds have each traded one error direction for the other on this predicate; the choice between "hard gate" and "authoring-time advisory" is the human's, not a fourth patch |
+| H-5, H-9 | **3rd review** (CONFIRMED) | **Two findings, one root cause: FOCUS-1's "does this component move focus?" predicate is a regex over source and cannot be made both safe and precise.** Five live components (`venue-map`, `app`, `operator-chrome`, `focus-trap`, `segmented-control`) move focus with a plain `.focus()` and would have failed the hard gate the moment they grew a confirm branch; and the `afterNextRender` + `.focus(` pair need not even be related | **resolved by decision, not by a fourth patch** — escalated to the human, who chose *advisory*: FOCUS-1 prints and returns 0, BUSY-1 keeps failing the build. Both findings stop being defects the moment a wrong guess costs a log line instead of a red build. See the Resolved open question |
+| H-11 | **3rd review** (CONFIRMED) | `--files` on a committed file printed nothing whether or not it was clean, because it was diff-scoped — a by-hand check indistinguishable from a pass, and the wording `frontend/.claude/CLAUDE.md` had just gained pointed straight at it | fixed — an explicit request judges the named files **whole**. The doc now says so |
+| H-12 | **3rd review** (CONFIRMED) | The violation was reported at the negated *trigger* branch, which renders no prompt and destroys nothing, sending the author to the wrong block | fixed — a non-negated branch is preferred. Pinned by the renamed `reports one finding per component, against the prompt rather than the trigger` |
 | G-1 | **re-review** (CONFIRMED) | **F-11's fix was inert and made things worse.** The new `string` state sat *below* the backtick handler, so the closing backtick re-entered `string` and the `state = 'code'` line was dead — the code mask lost everything after the first plain backtick string. Live shape: `booking-pay.ts` orders a `` `Pay ${…}` `` string before its `afterNextRender(`, so the moment its template grew an `@if (confirmX())` the hard gate would fail a component that demonstrably moves focus | fixed — the `string` branch moved above the opener. Pinned by `returns to code after a plain backtick string closes`, written from the live `booking-pay.ts` shape |
 | G-2 | **re-review** (CONFIRMED) | **F-9's per-block delegation flagged the trigger half of a trigger/prompt pair.** `isConfirmPrompt` accepts a negated condition, so `@if (!confirmRemove()) { trigger }` is itself a surface — and only the *prompt* block carries the panel. That is exactly how `payouts-tab.html` is written | fixed by G-11's change, which removes block scoping altogether. Pinned by `does not report the trigger half of a trigger and prompt pair` |
 | G-11 | **re-review** (CONFIRMED) | **Delegation excused two thirds of the rule.** `<app-confirm-panel>` owns the *open* leg only — its own TSDoc says "focus back **out** is the caller's" — so a component that delegates and holds no focus helper still strands focus on cancel and on settle, and FOCUS-1 called it clean | fixed — **delegation is no longer an exemption at all**. The rule is now simply "a component rendering a confirm branch holds a focus call site", which also deleted `blockAfter` and with it G-5. AC-8 is inverted to match; all four standing delegators pass on their own helpers |

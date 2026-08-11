@@ -111,7 +111,9 @@ lint/format/test/build + e2e, **four** diff-scoped hygiene checks — inline com
 `.claude/settings.json`), the plan doc's File-structure section (#533,
 `node scripts/check-plan-file-structure.mjs --diff origin/main` by hand), the two
 stranded-focus postures (#621, `node scripts/check-focus-posture.mjs --diff origin/main`;
-`--all` sweeps the standing tree, and it is the CI half of a second `PostToolUse` guard),
+`--all` sweeps the standing tree, and it is the CI half of a second `PostToolUse` guard — of its two
+rules only **BUSY-1 fails a build**, FOCUS-1 prints and returns 0, since its predicate approximates a
+runtime property),
 and Prettier formatting (#615, `npm run format:check` from `frontend/`; `-- --fix` rewrites
 exactly the hunks it reports). The first three share the `Repo hygiene (diff-scoped)` job;
 Prettier is a step in the frontend job, which is where the pinned Prettier is installed —

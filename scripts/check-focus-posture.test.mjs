@@ -456,7 +456,12 @@ test('does not mistake confirmed state or a confirmation value for a prompt', ()
   assert.deepEqual(scan(HTML, domainNoun, { componentSource: '' }), []);
 });
 
-test('reports one finding per component however many blocks the surface spans', () => {
+/**
+ * One finding per component — the fix is one set of legs however many branches the surface spans —
+ * reported against the branch that renders the **prompt**. The negated half renders the trigger and
+ * destroys nothing, so pointing there sends the author to the wrong block.
+ */
+test('reports one finding per component, against the prompt rather than the trigger', () => {
   const lines = [
     '@if (!weatherConfirm()) {',
     '  <button data-testid="weather-trigger">Weather refund</button>',
@@ -469,7 +474,7 @@ test('reports one finding per component however many blocks the surface spans', 
   const violations = scan(HTML, lines, { componentSource: '' });
 
   assert.equal(violations.length, 1);
-  assert.equal(violations[0].line, 1);
+  assert.equal(violations[0].line, 4);
 });
 
 test('judges only the confirm surfaces a diff added', () => {

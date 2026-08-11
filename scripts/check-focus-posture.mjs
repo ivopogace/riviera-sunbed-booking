@@ -36,6 +36,18 @@ import {
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
 
 /**
+ * The rules that **fail** a build. BUSY-1 only, deliberately.
+ *
+ * BUSY-1 is syntactic — an element name, an attribute, a vocabulary — and swept 297 files with no
+ * false positive. FOCUS-1 asks whether a component *moves focus*, which is a runtime property being
+ * approximated over source: five components in this app move focus with a plain `.focus()`, and each
+ * widening of the predicate trades a false positive for a false negative. It still runs, still
+ * reports, and still found the two live bugs this slice fixed — it just advises rather than blocks.
+ * Decision and the three review rounds behind it: `docs/plans/focus-posture-guard.md`.
+ */
+const GATING = new Set(['BUSY-1']);
+
+/**
  * Identifier stems that denote an in-flight write the user's own activation started. Derived from
  * the 17 distinct expressions already bound to `[appBusy]`, plus their obvious siblings.
  *
@@ -284,7 +296,9 @@ function busyViolations(path, lines, added, template) {
 function focusViolations(path, lines, added, template, componentCode) {
   if (movesFocus(componentCode)) return [];
 
-  const surface = confirmSurfaces(template).find((found) => added.has(found.line + 1));
+  const surfaces = confirmSurfaces(template).filter((found) => added.has(found.line + 1));
+  // The negated half of a trigger/prompt pair renders no prompt, so point at the prompt if there is one.
+  const surface = surfaces.find((found) => !found.negated) ?? surfaces[0];
   if (surface === undefined) return [];
   return [{ path, line: surface.line + 1, rule: 'FOCUS-1', text: lines[surface.line].trim() }];
 }
@@ -299,7 +313,8 @@ function confirmSurfaces(lines) {
   for (let i = 0; i < lines.length; i++) {
     for (const match of lines[i].matchAll(BRANCH)) {
       const condition = readCondition(lines, i, match.index + match[0].length);
-      if (condition !== null && isConfirmPrompt(condition)) surfaces.push({ line: i });
+      if (condition === null || !isConfirmPrompt(condition)) continue;
+      surfaces.push({ line: i, negated: /^\(\s*!/.test(condition) });
     }
   }
   return surfaces;
@@ -553,6 +568,24 @@ function advise(violations) {
   return [...new Set(violations.map((v) => v.rule))].map((rule) => ADVICE[rule]).join('\n');
 }
 
+/**
+ * Prints both kinds and fails only on the gating one.
+ *
+ * An advisory still reaches the log — a rule nobody sees is a rule nobody follows — but a build is
+ * never red because a heuristic guessed wrong about how a component moves focus.
+ */
+function settle(violations, headline) {
+  const gating = violations.filter((v) => GATING.has(v.rule));
+  const advisory = violations.filter((v) => !GATING.has(v.rule));
+
+  if (advisory.length > 0) {
+    process.stdout.write(`${headline} — advisory, not gating:\n${report(advisory)}\n${advise(advisory)}\n`);
+  }
+  if (gating.length === 0) return 0;
+  process.stderr.write(`${headline}:\n${report(gating)}\n${advise(gating)}\n`);
+  return 1;
+}
+
 /** git runs from the repository root, so a pathspec has to be expressed from there too. */
 function toRepoRelative(argument) {
   return relative(repoRoot(), resolve(process.cwd(), argument)).split(sep).join('/');
@@ -580,20 +613,15 @@ function main(argv) {
     return 0;
   }
 
+  // An explicit request judges the named files whole; skipping committed ones would read as clean.
   if (mode === '--files') {
-    const violations = checkPaths(argv.slice(1).map(toRepoRelative));
-    if (violations.length === 0) return 0;
-    process.stderr.write(`Focus-posture violations:\n${report(violations)}\n${advise(violations)}\n`);
-    return 1;
+    const paths = argv.slice(1).map(toRepoRelative);
+    return settle(paths.flatMap((path) => checkOne(path, null)), 'Focus posture');
   }
 
   if (mode === '--diff') {
     const violations = check([mergeBase(argv[1] ?? 'origin/main')]);
-    if (violations.length === 0) return 0;
-    process.stderr.write(
-      `Focus-posture violations added by this diff:\n${report(violations)}\n${advise(violations)}\n`,
-    );
-    return 1;
+    return settle(violations, 'Focus posture written by this diff');
   }
 
   if (mode === '--all') {

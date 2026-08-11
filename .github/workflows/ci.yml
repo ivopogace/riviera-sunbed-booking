@@ -233,11 +233,16 @@ jobs:
         if: ${{ !cancelled() }}
         run: node scripts/check-plan-file-structure.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
-      - name: Check the diff for stranded-focus postures (#621, hard gate)
-        # The CI half of the authoring-time hook, same as the RV-STYLE-1 guard above: BUSY-1 (a
-        # control disabled by its own in-flight flag) and FOCUS-1 (a confirm surface with no focus
-        # leg). Both are diff-scoped — ~12 legitimate `[disabled]` bindings stand in the tree by
-        # design, so a repo-wide gate would go red on day one. `--all` sweeps them for an audit.
+      - name: Check the diff for stranded-focus postures (#621, BUSY-1 gates)
+        # The CI half of the authoring-time hook, same as the RV-STYLE-1 guard above. Diff-scoped:
+        # ~12 legitimate `[disabled]` bindings stand in the tree by design, so a repo-wide gate would
+        # go red on day one. `--all` sweeps them for an audit.
+        #
+        # Only BUSY-1 fails the build. FOCUS-1 prints to the log and returns 0 — it asks whether a
+        # component MOVES FOCUS, a runtime property approximated over source, and three review passes
+        # each found a fresh false positive in that predicate. A gate that fails correct code is the
+        # one error direction this job cannot afford (#529's lesson, restated by #533's R-2), so the
+        # rule advises instead. Rationale: `docs/plans/focus-posture-guard.md`.
         if: ${{ !cancelled() }}
         run: node scripts/check-focus-posture.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
