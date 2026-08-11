@@ -106,14 +106,17 @@ registration, scoped tests only; CI owns the full suite) and the known
 full-suite-only failure class (shared-state beans accumulating across tests).
 
 **CI/CD** (`.github/workflows/`): `ci.yml` runs backend build/test, frontend
-lint/format/test/build + e2e, **three** diff-scoped hygiene checks — inline comments
+lint/format/test/build + e2e, **four** diff-scoped hygiene checks — inline comments
 (RV-STYLE-1, #529 — the CI half of the `PostToolUse` guard in
 `.claude/settings.json`), the plan doc's File-structure section (#533,
-`node scripts/check-plan-file-structure.mjs --diff origin/main` by hand), and Prettier
-formatting (#615, `npm run format:check` from `frontend/`; `-- --fix` rewrites exactly the
-hunks it reports). The first two share the `Repo hygiene (diff-scoped)` job; the third is a
-step in the frontend job, which is where the pinned Prettier is installed — and both jobs
-are ruleset-required contexts **by name**, so a new job would report without blocking.
+`node scripts/check-plan-file-structure.mjs --diff origin/main` by hand), the two
+stranded-focus postures (#621, `node scripts/check-focus-posture.mjs --diff origin/main`;
+`--all` sweeps the standing tree, and it is the CI half of a second `PostToolUse` guard),
+and Prettier formatting (#615, `npm run format:check` from `frontend/`; `-- --fix` rewrites
+exactly the hunks it reports). The first three share the `Repo hygiene (diff-scoped)` job;
+Prettier is a step in the frontend job, which is where the pinned Prettier is installed —
+and both jobs are ruleset-required contexts **by name**, so a new job would report without
+blocking.
 `ci.yml` also runs a SonarCloud scan on every PR; `codeql.yml` scans;
 `deploy.yml` deploys the single backend image (which serves the SPA) to Render from `main`. The Sonar merge
 bar is stricter than the default quality gate: **0 new issues, 0 duplicated

@@ -32,9 +32,11 @@ written rather than at review) · `tdd` (both rules are `node --test` suites wri
 against fixtures before the detector exists; the payouts-tab legs are proven RED in
 `payouts-tab.spec.ts` before the fix) · `riviera-review-overlay` (review gate — RV-FE-E2E consulted
 at plan time for spec placement; full run due at ready-for-review) · `riviera-docs-freshness`
-(close-out — due: the slice adds the **fourth** `scripts/check-*.mjs` guard and the **third** CI
-hygiene step, so every substrate sentence saying "two diff-scoped guards" or "three hygiene checks"
-goes stale outside the diff) · `riviera-frontend` (placement: no new file under `src/app` — the
+(**ran** over `origin/main...HEAD` pre-merge, **2 stale statements, both patched, + 1 gap flagged** —
+and the counting sweep is what found them, exactly as designed: `CLAUDE.md:109` said "**three**
+diff-scoped hygiene checks" and `:114` split them "first two … the third", both falsified by the
+fourth guard, in a file this slice would otherwise never have opened. The flagged gap is the
+overlay's missing bank item for this bug class, recorded as a Non-goal) · `riviera-frontend` (placement: no new file under `src/app` — the
 payouts-tab fix modifies an existing feature component in place, so the taxonomy and RV-FE-8's
 frozen five-edge table are both untouched) · `angular-developer` + angular-cli MCP
 (`get_best_practices` → the fix uses the existing `focusMover()` helper and signal `set()`, no new
@@ -141,6 +143,13 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
   carve-outs the rule exists to respect (AC-2, AC-3), re-confirming #616's Non-goal.
 - **No `--fix` mode.** Both fixes are judgement calls — which of the two carve-outs applies, and
   where focus should land — so the guard reports and points, as `check-inline-comments.mjs` does.
+- **No new `riviera-review-overlay` bank item.** The docs-freshness sweep turned up that the overlay
+  has **no** RV-FE item for this bug class at all — which is part of why twelve instances shipped.
+  Adding one is deliberately not done here: with a hard CI gate now in place, an overlay item would
+  mostly restate what the guard discharges mechanically, and RV-STYLE-1's own history runs the other
+  way (bank item first, after eight PRs raised it by hand; guard second). **Flagged for the human at
+  the PR** rather than decided silently — the docs-freshness skill only reconciles existing
+  statements, it does not author new ones.
 - **No new shared confirm component for `payouts-tab`.** Its amber weather panel is a fourth markup
   family; #604, #616 and now this slice have all made the same call, that a variant axis imposes
   drift.
@@ -290,6 +299,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/payouts-tab.html` — `tabindex="-1"` on the notice landmark
 - `frontend/src/app/operator/payouts-tab.spec.ts` — AC-12..AC-16
 - `frontend/e2e/operator-payouts.e2e.ts` — AC-17
+- `CLAUDE.md` — the docs-freshness counting-sweep patch: three → **four** diff-scoped hygiene
+  checks, and the job split re-stated as "the first three"
 
 > Reconcile this section with `node scripts/check-plan-file-structure.mjs --diff origin/main`
 > before pushing.
