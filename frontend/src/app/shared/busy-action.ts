@@ -8,9 +8,11 @@ import { Directive, ElementRef, inject, input } from '@angular/core';
  * request (WCAG 2.4.3); `aria-disabled` announces the same state without touching focus.
  *
  * <p>**For buttons only** — inertness comes from consuming the activating click, which a text field's
- * typing and a form's Enter-submit never reach. Inputs keep the native `[disabled]`, and every submit
- * handler keeps its re-entrancy guard. Carries no styling; each consumer keeps its own
- * `aria-disabled:` utility. Why a capture-phase listener: `docs/plans/confirm-focus-busy-posture.md`.
+ * typing and a form's Enter-submit never reach. An input keeps the native `[disabled]` **when a button
+ * starts the write**; a control that starts its own write needs a different lock, which varies by
+ * control kind — see the carve-out in `frontend/.claude/CLAUDE.md`. Every submit handler keeps its
+ * re-entrancy guard. Carries no styling; each consumer keeps its own `aria-disabled:` utility.
+ * Why a capture-phase listener: `docs/plans/confirm-focus-busy-posture.md`.
  */
 @Directive({
   selector: '[appBusy]',

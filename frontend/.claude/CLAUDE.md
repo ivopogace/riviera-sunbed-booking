@@ -29,12 +29,28 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   `[disabled]`** (`aria-disabled` does not stop typing, and focus is on the button anyway), and so does
   anything disabled by **validity or state** rather than an in-flight write — a genuinely unavailable
   control should leave the tab order. Split a binding that mixes the two.
+  **The input carve-out has a condition, and it is the button clause, not the input one** (#625): it
+  holds where a *button* starts the write. Where the **field itself** starts it — its own
+  `(change)`/`(blur)` — `[disabled]="saving()"` blurs whichever field focus is in, on both commit
+  paths: Enter fires `change` without leaving the field, and a click-away lands focus on the *next*
+  field just in time for the same flag to disable that one. Where `readonly` **applies** — the
+  text-entry input types, which includes `number` and the date/time ones, plus `<textarea>` — use
+  **`[readonly]`** (`read-only:` variant to style it): it blocks typing just as completely — verified
+  in Chromium, not assumed — while keeping the field focused and in the tab order. Live example:
+  `pricing-tab.html`'s `type="number"`. Where it **does not** — `<select>`, checkbox, radio, `file`,
+  `range`, `color` — there is no attribute that locks without blurring, so **don't lock the control
+  itself**: serialize in the handler (the re-entrancy guard every such handler needs anyway) and
+  signal the write elsewhere. `[disabled]` plus a focus move on settle is *not* the answer there —
+  focus is stranded on `<body>` for the whole request, and moving it afterwards fixes only where it
+  lands. Four self-committing controls in the app are of the inert kinds today
+  (`admin-venue-photos`'s venue `<select>`, `venue-tab`'s photo `file` input, `pages/home`'s two
+  filter `<select>`s); none locks itself, so none is affected.
 - **A transition that destroys the focused element must move focus deliberately**, via
   `shared/focus-after-render.ts`'s `focusMover()`. This is the repo's most-repeated bug class (#604,
-  #614, #616); confirm-before-destroy surfaces need all three legs — open, back-out, and settled.
-  **A focus-trapped modal is the same class**: dismissing one, or tearing it down from a state reset
-  a venue switch or route change runs, destroys the element focus sits on just as a confirm prompt
-  does.
+  #614, #616, #621, #625 — fifteen instances); confirm-before-destroy surfaces need all three legs —
+  open, back-out, and settled. **A focus-trapped modal is the same class**: dismissing one, or tearing
+  it down from a state reset a venue switch or route change runs, destroys the element focus sits on
+  just as a confirm prompt does. At review time it is `riviera-review-overlay`'s **RV-FE-9** (#623).
 - **A guard enforces both of the above while you type** (#621): `scripts/check-focus-posture.mjs`
   runs from a `PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff, covering
   `frontend/src/app/**` templates — inline `template:` literals and external `.html` alike. **BUSY-1**
