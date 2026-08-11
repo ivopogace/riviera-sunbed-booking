@@ -12,6 +12,7 @@ import {
   operatorPasswordByteLength,
   operatorPasswordChangeMessage,
 } from '../core/operator-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 
 /**
@@ -28,7 +29,7 @@ import { CardGlass } from '../shared/card-glass';
  */
 @Component({
   selector: 'app-operator-password',
-  imports: [FormField, RouterLink, CardGlass],
+  imports: [FormField, RouterLink, CardGlass, BusyAction],
   template: `
     <section class="auth-wrap" aria-labelledby="oppw-title">
       <div class="auth-card" appCardGlass>
@@ -83,7 +84,7 @@ import { CardGlass } from '../shared/card-glass';
             type="submit"
             class="auth-submit"
             data-testid="oppw-submit"
-            [disabled]="submitting()"
+            [appBusy]="submitting()"
           >
             {{ submitting() ? 'Saving…' : 'Change password' }}
           </button>

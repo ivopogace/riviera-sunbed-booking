@@ -11,6 +11,7 @@ import { FormField, form, required } from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
+import { BusyAction } from '../shared/busy-action';
 import { trapFocusWithin } from '../shared/focus-trap';
 import { normalizeCode } from '../shared/booking-code';
 import { BookingService } from './booking.service';
@@ -32,7 +33,7 @@ import { BookingService } from './booking.service';
  */
 @Component({
   selector: 'app-find-booking',
-  imports: [FormField],
+  imports: [FormField, BusyAction],
   host: {
     class: 'find-backdrop',
     '(click)': 'requestClose()',
@@ -89,7 +90,7 @@ import { BookingService } from './booking.service';
           type="submit"
           class="find-submit"
           data-testid="find-submit"
-          [disabled]="submitting()"
+          [appBusy]="submitting()"
         >
           {{ submitting() ? 'Opening…' : 'Open booking' }}
         </button>

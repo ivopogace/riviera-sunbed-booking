@@ -24,6 +24,7 @@ import {
 import { OperatorAuth, operatorRegisterMessage, signInFailureMessage } from '../core/operator-auth';
 import { OwnedVenues } from '../core/owned-venues';
 import { landingRouteFor, safeReturnUrl, touristLandingRoute } from '../shared/auth-landing';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { FieldGlass } from '../shared/field-glass';
 import { OutcomeCard } from '../shared/outcome-card';
@@ -83,6 +84,7 @@ const LABEL_CLASS =
     SegmentedControl,
     OutcomeCard,
     SsoButtons,
+    BusyAction,
   ],
   template: `
     <section class="mx-auto w-full max-w-[430px] px-6 pt-3.5 pb-14" aria-labelledby="auth-title">
@@ -229,8 +231,8 @@ const LABEL_CLASS =
               <button
                 type="submit"
                 data-testid="auth-submit"
-                [disabled]="submitting()"
-                class="mt-0.5 cursor-pointer rounded-[16px] border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-4 py-3.5 text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] transition disabled:opacity-60 motion-reduce:transition-none"
+                [appBusy]="submitting()"
+                class="mt-0.5 cursor-pointer rounded-[16px] border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-4 py-3.5 text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] transition aria-disabled:opacity-60 motion-reduce:transition-none"
               >
                 {{ submitLabel() }}
               </button>

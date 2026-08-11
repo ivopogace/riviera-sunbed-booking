@@ -214,7 +214,9 @@ describe('FindBooking', () => {
     const button = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="find-submit"]',
     ) as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
+    // Announced as unavailable, but still focusable — disabling it would strand focus on <body>.
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.disabled).toBe(false);
   });
 
   it('emits close on the close button, the backdrop, and Escape', async () => {

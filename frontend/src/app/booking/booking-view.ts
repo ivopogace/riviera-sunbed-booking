@@ -12,6 +12,7 @@ import { formatDeadline } from '../shared/deadline';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney, MoneyView } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
+import { BusyAction } from '../shared/busy-action';
 import { BookingQr } from './booking-qr';
 import { BookingDetail, Cancellation } from './booking.model';
 import { BookingService } from './booking.service';
@@ -23,7 +24,7 @@ const CARD_SURFACE =
 const BANNER =
   'mx-0 mt-[18px] mb-1 rounded-[20px] border px-[18px] py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]';
 const BTN =
-  'cursor-pointer rounded-[14px] px-[18px] py-[11px] text-[14px] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) disabled:cursor-not-allowed disabled:opacity-65';
+  'cursor-pointer rounded-[14px] px-[18px] py-[11px] text-[14px] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-65';
 const BTN_OUTLINE = `${BTN} border-[1.5px] bg-[#f4f6f7] font-semibold [transition:background_0.15s_ease] hover:bg-[#e7ebec]`;
 const LINK =
   'text-[14.5px] font-semibold text-(--riv-accent-ink) underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)';
@@ -72,7 +73,7 @@ const CLS = {
   btnOutline: `${BTN_OUTLINE} border-[rgba(255,255,255,0.7)] text-[#0a4f5e]`,
   btnOutlineDanger: `${BTN_OUTLINE} border-[rgba(200,90,60,0.5)] text-[#a3372a]`,
   btnCta:
-    'mt-3.5 block w-full cursor-pointer rounded-[16px] border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15.5px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:brightness-[1.06] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-65',
+    'mt-3.5 block w-full cursor-pointer rounded-[16px] border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15.5px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:brightness-[1.06] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white aria-disabled:cursor-not-allowed aria-disabled:opacity-65',
 } as const;
 
 /**
@@ -108,7 +109,7 @@ const CLS = {
  */
 @Component({
   selector: 'app-booking-view',
-  imports: [RouterLink, CardGlass, StatusChip, BookingQr],
+  imports: [RouterLink, CardGlass, StatusChip, BookingQr, BusyAction],
   template: `
     @if (notFound()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
@@ -209,7 +210,7 @@ const CLS = {
                       <button
                         type="button"
                         [class]="cls.btnDanger"
-                        [disabled]="withdrawing()"
+                        [appBusy]="withdrawing()"
                         (click)="confirmWithdraw()"
                         data-testid="confirm-withdraw"
                       >
@@ -218,7 +219,7 @@ const CLS = {
                       <button
                         type="button"
                         [class]="cls.btnOutline"
-                        [disabled]="withdrawing()"
+                        [appBusy]="withdrawing()"
                         (click)="keepRequest()"
                         data-testid="keep-request"
                       >
@@ -422,7 +423,7 @@ const CLS = {
                 <button
                   type="button"
                   [class]="cls.btnDanger"
-                  [disabled]="cancelling()"
+                  [appBusy]="cancelling()"
                   (click)="confirmCancel()"
                   data-testid="confirm-cancel"
                 >
@@ -431,7 +432,7 @@ const CLS = {
                 <button
                   type="button"
                   [class]="cls.btnOutline"
-                  [disabled]="cancelling()"
+                  [appBusy]="cancelling()"
                   (click)="keepBooking()"
                   data-testid="keep-booking"
                 >
