@@ -157,6 +157,7 @@ test('leaves the controls readonly cannot lock and every non-self-committing fie
     '<input type="range" (input)="slide()" [disabled]="saving()" />',
     '<input type="color" (change)="tint()" [disabled]="saving()" />',
     '<input [type]="kind()" (change)="commit()" [disabled]="saving()" />',
+    '<input [attr.type]="kind()" (change)="commit()" [disabled]="saving()" />',
     '<input type="number" [value]="row.priceEur" [disabled]="saving()" />',
     '<input type="number" (change)="commit()" [disabled]="detailsForm().invalid()" />',
   ];
@@ -1016,6 +1017,75 @@ test('reports a surface once when the floor lands on the negated trigger', () =>
   const violations = scan(TS, lines, { added });
 
   assert.equal(violations.length, 1);
+});
+
+/**
+ * PR #630 review F-2: a heritage clause carrying a multi-line call argument
+ * (`extends mixin({ … }) {`) put a statement-terminator-looking line between the class-body brace
+ * and the `class` keyword, so the line-walk classified the class body as a member — and a focus
+ * call anywhere in the class then exempted every stranding flip. The walk is brace-aware now.
+ */
+test('does not classify a heritage call argument closing line as a member', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="close()" /> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab extends mixin({',
+    '  a: 1,',
+    '}) {',
+    '  private readonly m = focusMover();',
+    '  other() { this.m("statement-open"); }',
+    '  close() { this.statementOpen.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 11);
+});
+
+/**
+ * PR #630 review F-3: two prose apostrophes on one line straddled a branch's `}` and read as a
+ * string, re-opening the #629.3 misattribution. A quote is a string opener only in expression
+ * context — an interpolation or a condition's parentheses — never in element text.
+ */
+test('does not pair prose apostrophes across a branch closing brace', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    "    @if (ready()) { <p>It's on</p> } <p>Don't miss it</p>",
+    '    <app-payout-statement (dismissed)="close()" />',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '  reload() { this.ready.set(false); }',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
+});
+
+/** The expression-context half of the same rule: a quoted brace in a condition is still skipped. */
+test('reads past a brace quoted inside a branch condition', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen() && label() !== \'}\') { <app-payout-statement (dismissed)="close()" /> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 7);
 });
 
 /**

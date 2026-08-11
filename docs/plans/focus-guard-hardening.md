@@ -152,10 +152,10 @@ N/A — no contract change.
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session before acting.
 
-**Stage pointer:** review gate (PR #630 ready for review)
+**Stage pointer:** review gate — findings fixed, awaiting final CI + merge
 
-**Next action:** review + Sonar gates on PR #630, then merge (`merged via PR #630`) and the
-GitHub-only close-out (issues #628/#629 auto-close via the PR).
+**Next action:** confirm CI + Sonar green on the review-fix push, then merge PR #630
+(`merged via PR #630`); issues #628/#629 auto-close via the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -170,6 +170,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate (`/code-review`, PR #630) | BUSY-2 skipped only `[type]`, so a dynamic `[attr.type]` field gate-failed even when the runtime kind is readonly-inert | fixed — `[attr.type]` joins the escape hatch, pinned in the spares matrix (review-fix commit) |
+| F-2 | review gate (`/code-review`, PR #630) | the reordered `declaresClass` misread `extends mixin({ … }) {` — the class body became a member, and any focus call in the class exempted every stranding flip (false-negative regression vs `origin/main`) | fixed — `declaresClass` is a brace-aware backward walk to the `class` keyword, pinned by `does not classify a heritage call argument closing line as a member` (review-fix commit) |
+| F-3 | review gate (`/code-review`, PR #630) | two prose apostrophes straddling a branch's `}` still read as a string, re-opening the #629.3 misattribution (advisory impact) | fixed — a single quote opens a string only in expression context (interpolation / unclosed parens), pinned by the straddling-pair and condition-quoted-brace tests (review-fix commit) |
+| F-4 | review gate (`/code-review`, PR #630) | the plan's Phase 3 step still said `(change)/(blur)/(input)`, contradicting AC-6 and `COMMIT_HANDLERS` | fixed — step reworded to match the shipped scope (review-fix commit) |
 
 ---
 
@@ -244,7 +248,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - [x] **Failing tests first** (AC-6 flags/spares matrix), then the rule: in `busyViolations`,
   a non-actionable start tag is judged BUSY-2 when it is text-like (literal readonly-applicable
-  `type`, or none; or `<textarea>`), carries `(change)`/`(blur)`/`(input)`, and binds a busy
+  `type`, or none; or `<textarea>`), carries `(change)`/`(blur)` — `(input)` excluded after the
+  gating sweep, see the audit log — and binds a busy
   `[disabled]` — advice: `[readonly]` (`read-only:` variant), pointing at `pricing-tab.html`.
 - [x] Add `BUSY-2` to `GATING` and to the `--all` counts line.
 - [x] AC-7: `node scripts/check-focus-posture.mjs --all` → `BUSY-2: 0`.
@@ -265,8 +270,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1..AC-4, AC-6:** `node --test scripts/check-focus-posture.test.mjs` → 53/53 pass.
-- [x] **AC-5:** `cd /tmp && node --test <abs path>/check-focus-posture.test.mjs` → 53/53 pass.
+- [x] **AC-1..AC-4, AC-6:** `node --test scripts/check-focus-posture.test.mjs` → 56/56 pass (53 at 1bb93b4; 56 after the review-fix pins).
+- [x] **AC-5:** `cd /tmp && node --test <abs path>/check-focus-posture.test.mjs` → 56/56 pass.
 - [x] **AC-7:** `node scripts/check-focus-posture.mjs --all` → `BUSY-1: 0  BUSY-2: 0  FOCUS-1: 0`.
 
 ## Self-review checklist (before merge / PR)
@@ -287,5 +292,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR** — merged via PR #630.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 plus `riviera-review-overlay`.
+- [x] **The review gate ran in full** — invocation-ladder rung 1 (`Skill("code-review")`
+      succeeded; single-pass inline, declared as such in the PR) + `riviera-review-overlay`;
+      4 findings, all fixed through the re-entry loop (register above), changed surface
+      re-reviewed.

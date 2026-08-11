@@ -374,14 +374,15 @@ function busyViolations(path, lines, added, template) {
 
 /**
  * #625's shape, mechanically (#628): the field's own start tag both starts the write and is
- * disabled by it. Only for the kinds `readonly` applies to — a dynamic `[type]` is skipped because
- * the kind cannot be read off the tag, and a missing `type` defaults to `text`, which can. The
- * safe error direction, as `BUSY_STEMS` is for BUSY-1.
+ * disabled by it. Only for the kinds `readonly` applies to — a dynamic `[type]`/`[attr.type]` is
+ * skipped because the kind cannot be read off the tag, and a missing `type` defaults to `text`,
+ * which can. The safe error direction, as `BUSY_STEMS` is for BUSY-1.
  */
 function selfCommits(tag) {
   if (!COMMIT_HANDLERS.some((handler) => tag.attributes.has(handler))) return false;
   if (tag.name === 'textarea') return true;
-  if (tag.name !== 'input' || tag.attributes.has('[type]')) return false;
+  if (tag.name !== 'input') return false;
+  if (tag.attributes.has('[type]') || tag.attributes.has('[attr.type]')) return false;
   const type = tag.attributes.get('type');
   return type === undefined || READONLY_KINDS.has(type.value.toLowerCase());
 }
@@ -614,7 +615,7 @@ function memberOf(code, site) {
       if (code[i][c] === '}') depth++;
       else if (code[i][c] !== '{') continue;
       else if (depth > 0) depth--;
-      else if (declaresClass(code, i)) return member === undefined ? '' : blockText(code, member);
+      else if (declaresClass(code, i, c)) return member === undefined ? '' : blockText(code, member);
       else member = { line: i, column: c };
     }
   }
@@ -622,19 +623,37 @@ function memberOf(code, site) {
 }
 
 /**
- * Whether the block opening here is the class body rather than one of its members.
+ * Whether the block opening at this brace is the class body rather than one of its members.
  *
- * Prettier moves the brace onto its own line whenever the heritage clause overflows, so the
- * declaration can end lines above it. The statement-terminator test runs FIRST on the lines
- * above: a first (or decorator-preceded) member's walk reaches the class declaration's own line,
- * and reading `class` there classified the member's brace as the class body — reporting a handler
- * that demonstrably moves focus (#629). The declaration line itself ends in `{` or precedes a
- * heritage line, so terminating there is what tells the two apart.
+ * Walks BACKWARD from the brace over the code mask, matching braces and parens, and answers true
+ * only when the `class` keyword is reached at depth 0 — through a heritage clause however many
+ * lines it spans, Prettier's standalone brace and `extends mixin({ … }) {` alike (#629, PR #630
+ * review F-2; the earlier line-granular walk got one of those wrong in each direction). Reaching a
+ * statement boundary (`;`) or exiting an enclosing group (`{`, or an unbalanced `(`) first means
+ * an ordinary member or block.
  */
-function declaresClass(code, line) {
+function declaresClass(code, line, column) {
+  let parens = 0;
+  let braces = 0;
+  let word = '';
+
   for (let i = line; i >= 0; i--) {
-    if (i < line && /[;{}]\s*$|^\s*$/.test(code[i])) return false;
-    if (/\bclass\b/.test(code[i])) return true;
+    for (let c = (i === line ? column : code[i].length) - 1; c >= 0; c--) {
+      const ch = code[i][c];
+      if (/[\w$]/.test(ch)) {
+        word = ch + word;
+        continue;
+      }
+      if (parens === 0 && braces === 0 && word === 'class') return true;
+      word = '';
+      if (ch === ')') parens++;
+      else if (ch === '(' && --parens < 0) return false;
+      else if (ch === '}') braces++;
+      else if (ch === '{' && --braces < 0) return false;
+      else if (ch === ';' && parens === 0 && braces === 0) return false;
+    }
+    if (parens === 0 && braces === 0 && word === 'class') return true;
+    word = '';
   }
   return false;
 }
@@ -653,23 +672,38 @@ function blockText(lines, open) {
 /**
  * The position of the `}` closing the first `{` at or after `from`.
  *
- * Quote-aware, because a template legitimately writes a brace inside an attribute or an
- * interpolation (`{{ label() ?? '}' }}`) and counting it closes a block lines early — which moves a
- * trap out of the branch that renders it, or into a later sibling that does not. But only a quote
- * whose mate closes on the same line is a string: the apostrophe in ordinary prose
- * (`<p>It's ready</p> }`) has none, and skipping from it missed the real `}` beside it —
- * extending the branch to the end of the file and attributing every later trap to it (#629).
+ * Quote-aware, because a template legitimately writes a brace inside an attribute, a condition or
+ * an interpolation (`{{ label() ?? '}' }}`) and counting it closes a block lines early — which
+ * moves a trap out of the branch that renders it, or into a later sibling that does not. A single
+ * quote is a string opener only in **expression context** — inside an interpolation or unclosed
+ * parentheses — and only when its mate closes on the same line: in element text it is prose, where
+ * one apostrophe (`It's ready</p> }`) or a straddling pair (`It's on</p> } <p>Don't`) otherwise
+ * swallows the real `}` and extends the branch to the end of the file (#629, PR #630 review F-3).
+ * Double quotes keep the mated-on-line rule alone: attribute values are where they open, and
+ * quoted prose is not idiom in these templates.
  */
 function closingBrace(lines, from) {
   let depth = 0;
+  let parens = 0;
+  let interpolated = false;
 
   for (let i = from.line; i < lines.length; i++) {
     for (let c = i === from.line ? from.column : 0; c < lines[i].length; c++) {
       const ch = lines[i][c];
-      if (ch === '"' || ch === "'") {
+      if (ch === '"' || (ch === "'" && (interpolated || parens > 0))) {
         const end = stringEnd(lines[i], c);
         if (end !== -1) c = end;
-      } else if (ch === '{') depth++;
+      } else if (lines[i].startsWith('{{', c)) {
+        interpolated = true;
+        depth += 2;
+        c++;
+      } else if (interpolated && lines[i].startsWith('}}', c)) {
+        interpolated = false;
+        depth -= 2;
+        c++;
+      } else if (ch === '(') parens++;
+      else if (ch === ')') parens = Math.max(0, parens - 1);
+      else if (ch === '{') depth++;
       else if (ch !== '}') continue;
       else if (depth === 0) return null;
       else if (--depth === 0) return { line: i, column: c };
