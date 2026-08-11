@@ -121,7 +121,11 @@ as a surface),
 — plus **whole-scope** Prettier formatting (bare `prettier --check` over `frontend/src` +
 `frontend/e2e`; the tree has been clean since #631's one-time reformat, recorded in
 `.git-blame-ignore-revs`, which retired #615's diff-scoped wrapper — `npm run format`
-fixes what it reports). The three diff-scoped checks share the `Repo hygiene
+fixes what it reports). That check reads line endings, so the root `.gitattributes`
+pins `* text=auto eol=lf` (#636): without it Git for Windows' stock `core.autocrlf=true`
+checks the tree out CRLF and every file fails against Prettier's `endOfLine: "lf"` default
+— green CI, unusable local gate. `platform/.gitattributes` sits deeper and still wins for
+`gradlew`/`*.bat`/`*.jar`. The three diff-scoped checks share the `Repo hygiene
 (diff-scoped)` job; Prettier is a step in the frontend job, which is where the pinned
 Prettier is installed — and both jobs are ruleset-required contexts **by name**, so a
 new job would report without blocking.

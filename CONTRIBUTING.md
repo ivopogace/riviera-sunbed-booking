@@ -44,6 +44,14 @@ so the tree-wide Prettier reformat (#631) stays invisible to line-history tools
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
+**Line endings need no setup.** [`.gitattributes`](.gitattributes) pins every text file to
+LF in the repository *and* in your working tree, so don't set `core.autocrlf` — on Windows
+its stock `true` is exactly what used to make `npm run format:check` report all 361 files as
+unformatted (#636). One catch for a clone made **before** that file landed: adding an
+attribute doesn't rewrite files already on disk, so an old working tree can still hold CRLF.
+Normalize it once with `npm run format` from `frontend/`, or just re-clone. Check with
+`git ls-files --eol frontend/src` — every row should read `w/lf`.
+
 ## 3. How we work (spec-driven, vertical slices)
 
 We build in thin **vertical slices** — one path through every layer
