@@ -223,7 +223,9 @@ item for this bug class, which #621 filed and this slice does not touch.
 |-------|--------|---------|
 | 0 — The rule: widened trigger + signal-scoped exemption | ✅ | `0fe1ebd` |
 | 1 — Anchoring: external templates, diff scoping, advisory posture | ✅ | `e0ad18a` |
-| 2 — Measure the four trees, then the conventions doc | ✅ | this commit |
+| 2 — Measure the four trees, then the conventions doc | ✅ | `ef15912` |
+| Review-gate fix round (14 findings) | ✅ | `81f1bd7` |
+| Close-out (docs-freshness sweep, the known miss) | ✅ | `bf48126`, `c5c1467`, this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -233,7 +235,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 > The review gate ran `/code-review` at **high** effort over `origin/main...HEAD` and returned **14
 > findings, every one in this slice's own new code**. Grouped below where they share a root cause.
-> All fixed in `37a9d1e`; the four-tree measurement and the mutation sweep were re-run after.
+> All fixed in `81f1bd7`; the four-tree measurement and the mutation sweep were re-run after.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
