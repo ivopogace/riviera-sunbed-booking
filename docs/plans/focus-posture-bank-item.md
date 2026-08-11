@@ -30,11 +30,12 @@ still returns **exactly one** `focus` hit, `GATING = new Set(['BUSY-1'])` still 
 advisory, and no in-flight PR touches the overlay — every open PR is Dependabot. It also turned up
 what the issue does **not** name: the input carve-out is a third guard-blind shape, live in
 `operator/pricing-tab.html`) · `riviera-plan-doc` (this template — its "prose is not an AC" rule is
-what turned the slice's central claim into evidence: AC-3 is a **recorded mutation run** proving the
-guard cannot see instances 13 and 14, where the first draft was going to assert it from #621's
-findings register) · `tdd` (no code ships, so nothing to drive test-first; the discipline is borrowed
-for AC-3 — the gap is proven RED, by re-introducing both instances and watching the guard stay
-silent, *before* the item claims it) · `riviera-review-overlay` (the artifact under edit — read end
+what turned the slice's central claim into evidence: AC-3 is a **recorded mutation run** rather than
+a citation of #621's findings register — which is also why the merge from `main` could falsify it
+precisely instead of vaguely, see AC-3/AC-3b) · `tdd` (no code ships, so nothing to drive test-first; the discipline is borrowed
+for AC-3 — the gap was proven RED, by re-introducing both instances and watching the guard stay
+silent, *before* the item claimed it; the same mutation is what measured #626's effect after the
+merge) · `riviera-review-overlay` (the artifact under edit — read end
 to end first, so RV-FE-9 matches the house item format and takes the next free number; RV-STYLE-2 is
 what set the "don't hand-flag what a gate already names" posture the new item copies) ·
 `riviera-docs-freshness` (**ran** over `origin/main...HEAD` + the working tree — **3 stale statements,
@@ -82,8 +83,17 @@ written against.
 - [x] **AC-3:** Given `payouts-tab.ts` with the two statement-modal focus legs deleted — instances 13
   and 14 re-introduced verbatim — when the guard judges that file both ways it can be asked
   (`--all` and an explicit `--files`), then it reports **0** violations, so nothing mechanical
-  surfaces either bug. *Pinned by:* the recorded mutation run in Phase 0 / Acceptance-criteria
-  verification.
+  surfaces either bug. *Pinned by:* the recorded mutation run in Phase 0.
+  **Superseded mid-branch, and deliberately kept as the record of why the item exists.** #626
+  (issue #624) merged into `main` while this PR was open and taught FOCUS-1 exactly this shape:
+  re-running the identical mutation on the merged tree reports **`FOCUS-1: 2`**
+  (`payouts-tab.html:217` and `payouts-tab.ts:100`), not 0. So the AC's *claim about today's guard* is
+  false and its *argument for the item* is unchanged — the guard was blind to instances 13 and 14
+  when they shipped, which is what #624/#626 existed to fix. What RV-FE-9 now covers is the
+  post-#626 residual, restated in blind spots 2 and 3 and pinned by AC-3b.
+- [x] **AC-3b:** Given the merged guard, when the same mutation is run, then it reports **2**
+  violations — so the item must no longer claim this shape is invisible. *Pinned by:* the re-run
+  recorded in Acceptance-criteria verification, with the file restored and `git status` clean.
 - [x] **AC-4:** Given the item, when a reviewer asks "what am I for, that the guard is not", then it
   names all four blind spots — the landing spot, the second stranding flip on an
   already-compliant signal (the residual after #626), teardowns its trigger does not reach, and the
@@ -141,7 +151,8 @@ written against.
 - **Not added to `SKILL.md`'s "Highest-stakes items".** Those three are default-**Blocker** and guard
   money, double-selling and BOLA. A stranded focus is a real WCAG AA failure and defaults to Major —
   promoting it would flatten a list whose whole value is that it is short.
-- **No retro-sweep of the standing tree.** The `--all` run is `BUSY-1: 0  FOCUS-1: 0` today. The one
+- **No retro-sweep of the standing tree.** The `--all` run is `BUSY-1: 0  FOCUS-1: 0` today, on the
+  merged tree with #626's widened trigger and its 11 judged surfaces. The one
   candidate this slice turned up (`pricing-tab`) was filed as #625 and then **fixed here at the
   user's explicit request** (Phase 2) rather than deferred — it is the only site of its shape, which
   the Phase 2 generalization audit establishes rather than assumes.
@@ -183,7 +194,7 @@ due — each row verdicted against what the old attribute actually did, not what
 | R-2 | **The item over-trusts a green run.** FOCUS-1 prints and returns 0, so a green `Repo hygiene` step can carry unread FOCUS-1 lines — the opposite failure to R-1, and the easier one to write by accident | med | high | The guard paragraph states the exit-code/output split as its own sentence, in the same place it names the command | Ivo | **closed** — AC-5; the item says read the output, not the exit code, and says why FOCUS-1 advises (a runtime property approximated over source) |
 | R-3 | **Bank fatigue.** A tenth frontend item on a bank already walked per review makes the whole file skimmable rather than checkable | med | med | The item's checklist is capped at the six questions the guard cannot answer; everything mechanical is one line pointing at the command | Ivo | **closed** — six checklist bullets, one of which is a pointer; the item is comparable in length to RV-FE-8 and shorter than RV-FE-E2E |
 | R-4 | **The item goes stale if #624 lands** and narrows FOCUS-1's component-scoped exemption — the blind spot it describes would no longer be blind | med | low | The exemption is cited **by issue number** rather than described as permanent, so #624's own close-out has a pointer back here; `riviera-docs-freshness` is due at that close-out and greps the skills tree | Ivo | **closed — the risk fired, inside this branch's own lifetime.** #624 shipped as **#626** between this PR opening and its merge-from-`main`, so blind spot 2 was stale before it ever reached `main`. Caught by the integration merge, not by a later sweep: both statements are rewritten to the post-#626 residual (a signal is excused by one compliant flip, so a *second* stranding flip goes unreported) and blind spot 3 is narrowed to what the widened trigger still cannot reach. The mitigation worked — the issue number is what made the staleness findable |
-| R-5 | **A claim about the guard's blindness that is asserted rather than shown** would be the worst outcome in a doc whose whole job is to be trusted at review time | low | high | AC-3 is a recorded mutation run, not a citation of #621's findings register | Ivo | **closed** — both legs deleted, `--all` and `--files` both reported 0, file restored with `git checkout --` and the tree verified clean (Phase 0) |
+| R-5 | **A claim about the guard's blindness that is asserted rather than shown** would be the worst outcome in a doc whose whole job is to be trusted at review time | low | high | AC-3 is a recorded mutation run, not a citation of #621's findings register | Ivo | **closed, and the choice paid off twice.** Phase 0: both legs deleted, `--all` and `--files` both reported 0, file restored and the tree verified clean. Phase 4: the *same* mutation re-run on the merged tree reported **2**, which is how #626's arrival was measured rather than guessed — an asserted claim would have gone stale silently |
 | R-6 | **`readonly` might not lock as completely as `disabled`** — if typing, pasting or the number spinners still reach the field mid-save, the fix trades a focus bug for a concurrency bug on a **money** surface (invariant #5, the shared `set_version` token) | med | high | Measured in Chromium before the code changed, not reasoned about: a probe held focus in a readonly field and typed | Ivo | **closed** — the value did not move while readonly (`20` before and after the typing), and the serialization spec still passes unmodified: a second edit mid-flight sends no PUT and the shown value is restored. The handler's `saving()` backstop is untouched either way |
 | R-7 | **`pricing-tab` is money-adjacent.** The reprice writes prices for every set in a row against an optimistic-concurrency token; a careless edit could change what is sent or when | med | high | The diff is one attribute, one variant prefix and one TSDoc paragraph. No request, body, token, condition or handler line changes; the four pre-existing e2e journeys are the parity net | Ivo | **closed** — `git diff` on `pricing-tab.ts` is comment-only; `pricing-tab.html` changes two tokens on one element. The PUT body assertions (`minorUnits`, `expectedVersion`) pass untouched in both the unit spec and the e2e |
 | R-8 | **A jsdom spec cannot see this bug**, so a unit-only proof would be a false green — the #614/#616 R-1 lesson | high | med | Every focus claim (AC-7, AC-8) is pinned in Chromium and was **verified RED first**; jsdom carries only the attribute claim (AC-9), which is non-vacuous there | Ivo | **closed** — both e2e specs failed against the old code with the honest message (`unexpected value "inactive"`), and pass after. No unit spec stands as sole evidence for any focus claim |
@@ -251,10 +262,11 @@ N/A — no contract change. No endpoint, DTO, header or error body is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `review — gate run (8 findings), 7 fixed + 1 deferred; re-review then merge`
+**Stage pointer:** `merge — three review passes cleared, `main` merged in, close-out written`
 
-**Next action:** Re-review the fix diff per `pr-gates.md` §1 step 3, confirm CI green and the Sonar
-issue list pulled from the API (not the badge), then merge PR #627.
+**Next action:** Confirm the merge commit's CI run is green, then merge PR #627. Follow-ups already
+filed: #628 (a guard rule for the #625 shape) and #629 (#626's own defects, found by this PR's third
+review pass).
 
 PR: opened at the Phase 2 push, marked ready for review immediately (the branch already carries the
 finished slice). `riviera-sdlc` rule 3's draft-at-first-commit is recorded as **not followed**: the
@@ -262,7 +274,7 @@ earlier session was instructed not to open a PR at all, so phases 0–2 have had
 run covers all three at once.
 
 **Gates:** CI — see the PR's checks; locally the three diff-scoped hygiene guards,
-`node --test "scripts/*.test.mjs"` (112 tests), the Pricing e2e (6), the `pricing-tab*` unit specs
+`node --test "scripts/*.test.mjs"` (**129** tests post-merge, up from 112 — #626 adds 17), the Pricing e2e (6), the `pricing-tab*` unit specs
 (25), `npm run lint` and `npm run format:check` are green (Acceptance-criteria verification).
 Review gate — **ran in full** via `pr-gates.md` §1 rung 1 (`Skill("code-review")` was accepted, so no
 fallback), high effort over `origin/main...HEAD`: **8 findings, all CONFIRMED on verification** — 7
@@ -283,7 +295,9 @@ docs-freshness — ran twice: Phase 1 (3 statements) and again in Phase 3 over t
 | 0 — Prove the gap, then plan | ✅ | `517ad93` |
 | 1 — RV-FE-9 + the scope pointer | ✅ | `c8f155b` |
 | 2 — #625: the fifteenth instance | ✅ | `f9c001d` |
-| 3 — Review-gate fixes (F-1…F-7) | ✅ | this commit |
+| 3 — Review-gate fixes (F-1…F-7) | ✅ | `e305fa3` |
+| 4 — Re-review fixes (G-1…G-12) | ✅ | `035ca1d` |
+| 5 — Merge `main` (#626) + reconcile (H-1, H-2) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -292,6 +306,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| H-1 | **3rd review** (post-merge, CONFIRMED by re-running the mutation) | **AC-3 was falsified by the merge itself.** #626 taught FOCUS-1 exactly the shape AC-3 says it cannot see: the identical Phase 0 mutation now reports `FOCUS-1: 2`, not 0. Left unfixed, the plan would have told a future session the guard is blind to what #626 shipped to catch | fixed — AC-3 keeps its Phase 0 transcript as the historical record and states plainly that its claim about *today's* guard is false; **AC-3b** pins the re-run (2 violations, file restored, tree clean); R-5, the `tdd` and `riviera-plan-doc` lines and the Non-goals sweep note all re-stated |
+| H-2 | **3rd review** (CONFIRMED) | The recorded `node --test "scripts/*.test.mjs"` count (112) is contradicted by the merged suite, which runs **129** — #626 adds 17. Presented as a verification run at HEAD, so a session re-running it cannot tell whether tests were lost or the number is stale | fixed in both places, with the delta attributed |
+| H-3…H-12 | **3rd review** (10 findings, one A/B-reproduced here) | **All against `scripts/check-focus-posture.mjs` as merged from `main` — #626's code, not this branch's.** A first-class-member handler is reported despite calling `.focus()` (reproduced: identical handler one member lower is clean); same-line sibling blocks attribute a trap to the wrong signal; an apostrophe in template prose can extend a branch to EOF; a negated-trigger floor reports one surface twice; `findViolations` lost its purity so 3 of 45 tests fail outside a git repo; the module header still says 8 standing surfaces where the widened trigger judges 11; plus the advice string's anchoring wording, a duplicated `git ls-files`, hand-rolled `RegExp.escape`, and per-flip-site rescans | **deferred → #629**, with the A/B transcript. Absorbing a re-do of a merged slice into this PR would hide it in a diff about something else; FOCUS-1 is advisory, so the cost is a log line, not a red build |
 | G-1 | **re-review** (CONFIRMED) | **F-2's remedy for readonly-inert controls did not prevent the harm.** "Keep `[disabled]` and move focus on settle" leaves focus on `<body>` for the **whole** in-flight window; a settle-time leg only fixes where it lands afterwards | fixed in both statements — for those kinds the answer is **don't lock the control at all**, serialize in the handler, and `[disabled]`-plus-a-leg is now explicitly named as *not* the answer |
 | G-2 | **re-review** (CONFIRMED) | F-3 added a **third** statement of the rule (`busy-action.ts`) and gave it the unqualified form F-2 had just fixed elsewhere — the point-of-use doc, which is the whole argument for F-3 | fixed — the directive no longer prescribes a remedy at all; it says the lock varies by control kind and points at the one statement that enumerates them, so a fourth restatement cannot drift |
 | G-3 | **re-review** (CONFIRMED) | F-1 rewrote the prose but left the **checklist box** — the thing a reviewer actually executes — reading "discharged mechanically" | fixed — the box now says CI gates only the shapes it matches and sends the reviewer to the section before ticking |
@@ -471,6 +488,8 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
       claim that it is a hard gate is the code's, not the doc's.
 - [x] **AC-3:** the Phase 0 mutation run — both legs deleted, `--all` → `BUSY-1: 0  FOCUS-1: 0`,
       `--files frontend/src/app/operator/payouts-tab.ts` → no output. Restored; tree clean.
+- [x] **AC-3b:** the same mutation re-run after the merge → `BUSY-1: 0  FOCUS-1: 2`, naming
+      `payouts-tab.html:217` and `payouts-tab.ts:100`. Restored; `git status` clean.
 - [x] **AC-4:** the item's "What the guard cannot judge" list has four entries — landing spot,
       the post-#626 signal-scope residual, teardowns outside its trigger, and the input carve-out (#625).
 - [x] **AC-5:** the item states that FOCUS-1 prints and returns 0, so the step is green either way.
@@ -491,8 +510,9 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
       judging real files: `pricing-tab.ts`/`.html` and `shared/busy-action.ts` all match its
       `frontend/src/app/**` scope — and `busy-action.ts`'s TSDoc quotes `[disabled]="saving()"`
       verbatim, the case AC-5 of #621 exists for — so this is "no violation", not "nothing looked at";
-      `node --test "scripts/*.test.mjs"` → **112 tests, 0 failures** — the guard's own suites still
-      pass with its header rewritten, which is the only thing this diff could have broken in `scripts/`.
+      `node --test "scripts/*.test.mjs"` → **129 tests, 0 failures** at the merge commit (112 before
+      it; #626 brings 17 more), so the guard's own suites pass with this branch's header edit applied
+      on top of the narrowed rule.
 
 ## Self-review checklist (before merge / PR)
 
