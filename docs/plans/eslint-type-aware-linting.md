@@ -347,9 +347,18 @@ machine-checked one, which is #632's third stated motivation.)
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `DONE — merged via PR #638`
+**Stage pointer:** `merge — all gates green, awaiting the merge itself (PR #638)`
 
-**Next action:** None. The gate is green at zero; the PR carries its own close-out.
+**Next action:** Merge PR #638, then run the `riviera-sdlc` merge close-out (tick the issue, delete
+the branch). Everything else is done.
+
+**Gates, all green:**
+
+| Gate | Result |
+|---|---|
+| CI (8 checks) | all pass — Frontend, Backend, Repo hygiene, CodeQL ×2, Sonar ×2 |
+| Review (`/code-review`, 5-reviewer fan-out + scoring) | ran; 1 candidate scored 50, under the 80 bar → F-1, recorded not actioned |
+| **Sonar merge bar** (stricter than the gate: 0 new issues · 0 duplicated blocks · ≥80% new-code coverage) | **0 new issues · 0.0% duplication · 91.7% coverage** (75.0% before F-2's fix; uncovered new lines 2 → **0**) |
 
 **Final verification (at `169cb616` + this commit):**
 
