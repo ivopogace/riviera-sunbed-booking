@@ -36,11 +36,11 @@ the *only* thing stranding focus there is item 4's blur, which is why the two ca
 came from rather than from review) · `tdd` (every transition's spec is written and proven RED
 before its return leg exists; the busy-window legs are proven RED in Chromium, never on jsdom —
 R-1) · `riviera-review-overlay` (review gate — RV-FE-E2E consulted at plan time for spec placement;
-full run due at ready-for-review) · `riviera-docs-freshness` (**due at close-out** over
-`origin/main...HEAD` — the counting sweep matters unusually much here: this slice makes
+full run due at ready-for-review) · `riviera-docs-freshness` (**ran** over
+`origin/main...HEAD`, **0 findings** — the counting sweep matters unusually much here: this slice makes
 `focus-after-render`'s contract change for **all seven** adopters and adds the app's **first**
 `aria-disabled` usage, so any substrate sentence describing the helper as a no-op-on-missing-target,
-or the busy posture as `[disabled]`, goes stale outside the diff) · `riviera-frontend` (placement:
+or the busy posture as `[disabled]`, goes stale outside the diff — the sweep found none, and the two `[disabled]` hits were in the vendored `angular-developer` reference, which documents a live Angular API rather than a riviera fact) · `riviera-frontend` (placement:
 the new directive is a pure, stateless presentational primitive → `shared/`, beside the six
 existing `shared/*` directives; no new cross-feature import, so RV-FE-8's frozen five-edge table is
 untouched) · `angular-developer` + angular-cli MCP (`get_best_practices` → host bindings live in
@@ -139,8 +139,10 @@ literal `bugfix/<slug>` name applies; no cloud-branch substitution.)
   mechanically afterwards — this is the seventh, eighth and ninth instance") is right, and an
   ESLint rule banning `[disabled]="<busy flag>"` in favour of `[appBusy]` is the natural follow-up.
   It is deliberately **not** in this slice: the rule can only be written once the sweep has
-  established what the compliant form looks like, and #618 is concurrently reshaping the
-  repo-hygiene script layer this would land in. **Follow-up issue to be filed at close-out.**
+  established what the compliant form looks like, and #618 was concurrently reshaping the
+  repo-hygiene script layer this would land in. **Filed as #621 at close-out**, carrying the two
+  carve-outs that make it hard (inputs, and validity-vs-busy bindings) — one of which the review
+  gate showed has already cost a bug.
 - **Not converting the four non-busy `[disabled]` bindings.** `set-editor.html`'s `cell.disabled` /
   `!canAddRow()` / `!canAddCol()` and `daily-view-tab.html`'s `isPending(set)` express *validity or
   state*, not an in-flight write the user's own activation started. Focus is never on them when
@@ -259,20 +261,24 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `review gate — fixes applied, re-review due`
+**Stage pointer:** `merge — all gates cleared, close-out written`
 
-**Next action:** Confirm CI green on the fix pushes, then pull the Sonar issue list (not just the gate) per `pr-gates.md` §2.
+**Next action:** Merge PR #620. The only post-merge items are GitHub-only: confirm #616 closed by
+the `Closes` line. #621 already carries the deferred mechanical pin.
 characterization spec for the existing page-mount focus leg.
 
-PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
-`pull_request` event only).
+PR: **#620** — opened as a draft at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
+`pull_request` event only). **Merged via PR #620.**
 
-**Gates:** CI green on the pre-review push (backend, frontend, repo hygiene ×2, CodeQL) · review gate
-**run in full** — `/code-review` at high effort via ladder rung 1 (5 reviewers), `riviera-review-overlay`
-layered on: **5 findings, all fixed**, two of them functional bugs this slice introduced · the fix diff
-then **re-reviewed** per `pr-gates.md` §1 step 3: **4 more findings, all fixed**, including that F-4's
-fix shipped with no regression coverage. **Still outstanding: CI on the fix pushes, and the Sonar gate
-with its reported issue list actually pulled.**
+**Gates:** CI green (backend, frontend, repo hygiene ×2, CodeQL) · review gate **run in full** —
+`/code-review` at high effort via ladder rung 1 (5 reviewers), `riviera-review-overlay` layered on:
+**5 findings, all fixed**, two of them functional bugs this slice introduced · the fix diff then
+**re-reviewed** per `pr-gates.md` §1 step 3: **4 more findings, all fixed** — and that second pass is
+what justifies the rule, since it found F-4's fix shipped with **no regression coverage at all** ·
+Sonar green **with its reported list actually pulled**: 0 issues (`total: 0`), 0 new bugs /
+vulnerabilities / code smells, 0 duplicated blocks, new-code coverage **99.0%** — not a false-clean
+read, since `measures` is non-empty at `new_lines: 302` and the check-run concluded `success` ·
+docs-freshness **ran** over `origin/main...HEAD`, **0 stale statements**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -309,6 +315,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 ## File structure
 
 - `docs/plans/confirm-focus-busy-posture.md` — this plan
+- `frontend/.claude/CLAUDE.md` — the two conventions this slice establishes, stated where frontend
+  work loads them automatically: a busy button uses `[appBusy]` (with the input and validity
+  carve-outs), and a transition that destroys the focused element moves focus via `focusMover()`
 - `frontend/src/app/shared/focus-after-render.ts` — the optional fallback id + host last resort
 - `frontend/src/app/shared/focus-after-render.spec.ts` — AC-14..AC-16
 - `frontend/src/app/shared/busy-action.ts` — the new `[appBusy]` directive
@@ -393,7 +402,7 @@ variant rename, and the directive wiring. Grouped as the phase committed them:
       `booking-status` as the fallback, closing #614's F-4 at its origin. It is a `<span>`, which is
       what forced step 4's widening.
 - [x] **Step 8: Commit** — `git commit -m "Give focusMover a fallback when its target is unmounted (#616)"`
-- [ ] **Step 9: Open the draft PR** (`riviera-sdlc` rule 3 — CI fires on the `pull_request` event
+- [x] **Step 9: Open the draft PR** (`riviera-sdlc` rule 3 — CI fires on the `pull_request` event
       only) and **update plan-doc execution status** in the same commit window.
 
 ---
@@ -426,18 +435,18 @@ variant rename, and the directive wiring. Grouped as the phase committed them:
 
 **Files:** Modify `frontend/src/app/auth/set-password.ts` · Test `frontend/src/app/auth/set-password.spec.ts`
 
-- [ ] **Step 1: Write R-9's characterization spec first** — the existing page-mount leg focuses the
+- [x] **Step 1: Write R-9's characterization spec first** — the existing page-mount leg focuses the
       first `<input>`. It must be green **before** any change and stay unmodified thereafter.
-- [ ] **Step 2: Write the failing specs** — AC-1, AC-2, AC-3, AC-12.
-- [ ] **Step 3: Run them, verify they fail.**
-- [ ] **Step 4: Implement** — `focusMover()`; move the two inline `confirming.set(...)` template
+- [x] **Step 2: Write the failing specs** — AC-1, AC-2, AC-3, AC-12.
+- [x] **Step 3: Run them, verify they fail.**
+- [x] **Step 4: Implement** — `focusMover()`; move the two inline `confirming.set(...)` template
       handlers into named methods carrying their focus legs (`askToErase` / `keepAccount`, mirroring
       `admin-venue-photos`' `askToRemove` / `keepIt`); `tabindex="-1"` on `erase-done`; the `erasing`
       re-entrancy guard asserted; `[disabled]="erasing()"` → `[appBusy]="erasing()"` with the
       `disabled:opacity-60` prefix swapped.
-- [ ] **Step 5: Run them, verify they pass**, page-mount spec included.
-- [ ] **Step 6: Generalization-audit pass.**
-- [ ] **Step 7: Commit** — `git commit -m "Move focus with the erase-account confirmation (#616)"`
+- [x] **Step 5: Run them, verify they pass**, page-mount spec included.
+- [x] **Step 6: Generalization-audit pass.**
+- [x] **Step 7: Commit** — `git commit -m "Move focus with the erase-account confirmation (#616)"`
 - [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
@@ -447,15 +456,15 @@ variant rename, and the directive wiring. Grouped as the phase committed them:
 **Files:** Modify `frontend/src/app/admin/admin-venue-photos.ts` · Test
 `frontend/src/app/admin/admin-venue-photos.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — AC-5 and AC-6 (the still-viewing guard governs the focus
+- [x] **Step 1: Write the failing specs** — AC-5 and AC-6 (the still-viewing guard governs the focus
       move, not just the notice).
-- [ ] **Step 2: Run them, verify they fail.**
-- [ ] **Step 3: Implement** — `tabindex="-1"` on `admin-photos-notice`; the `catch` leg's focus move
+- [x] **Step 2: Run them, verify they fail.**
+- [x] **Step 3: Implement** — `tabindex="-1"` on `admin-photos-notice`; the `catch` leg's focus move
       **inside** `reportOnlyIfStillViewing`; `[appBusy]` swap on the Remove trigger.
-- [ ] **Step 4: Run them, verify they pass**, the success-leg specs included as the parity net.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Park focus on the notice when a takedown fails (#616)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass**, the success-leg specs included as the parity net.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Park focus on the notice when a takedown fails (#616)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -464,16 +473,16 @@ variant rename, and the directive wiring. Grouped as the phase committed them:
 **Files:** Modify `frontend/src/app/admin/admin-operators.ts` · Test
 `frontend/src/app/admin/admin-operators.spec.ts`, `frontend/src/app/admin/admin-operators.a11y.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — AC-7..AC-10, one per row action.
-- [ ] **Step 2: Run them, verify they fail.**
-- [ ] **Step 3: Implement** — a `notice` signal and a `role="status" aria-live="polite"
+- [x] **Step 1: Write the failing specs** — AC-7..AC-10, one per row action.
+- [x] **Step 2: Run them, verify they fail.**
+- [x] **Step 3: Implement** — a `notice` signal and a `role="status" aria-live="polite"
       tabindex="-1"` region mirroring `admin-photos-notice`; `act()` takes the outcome sentence and
       parks focus on the notice after the reconcile; the four `[appBusy]` swaps; delete the deferred
       TSDoc sentence in `askToSuspend` now that the third transition exists.
-- [ ] **Step 4: Run them, verify they pass**, plus axe over the new region.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Announce and land focus when an operator decision settles (#616)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass**, plus axe over the new region.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Announce and land focus when an operator decision settles (#616)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -493,18 +502,18 @@ variant rename, and the directive wiring. Grouped as the phase committed them:
 `operator/payouts-tab.html`, `operator/pricing-tab.html`, `operator/requests-tab.html`,
 `operator/set-editor.html`, `operator/set-editor.ts`, `operator/stale-write-banner.ts` + specs.
 
-- [ ] **Step 1: Audit every handler's re-entrancy guard BEFORE any binding changes** (R-3). Read
+- [x] **Step 1: Audit every handler's re-entrancy guard BEFORE any binding changes** (R-3). Read
       each swept control's handler; list which already guard and which do not. A missing guard is
       written test-first as a double-activation spec, proven RED, then fixed — that is the real work
       of this phase, not the prefix swap.
-- [ ] **Step 2: Swap 5a**, convert its `.disabled` assertions, prove each RED first, commit
+- [x] **Step 2: Swap 5a**, convert its `.disabled` assertions, prove each RED first, commit
       separately — `git commit -m "Keep focus on the busy payment controls (#616)"`
-- [ ] **Step 3: Swap 5b and 5c** the same way, one commit per group.
-- [ ] **Step 4: Confirm the four non-busy bindings are untouched** (`cell.disabled`, `!canAddRow()`,
+- [x] **Step 3: Swap 5b and 5c** the same way, one commit per group.
+- [x] **Step 4: Confirm the four non-busy bindings are untouched** (`cell.disabled`, `!canAddRow()`,
       `!canAddCol()`, `isPending(set)`) — a Non-goal, so it gets a check, not a change.
-- [ ] **Step 5: Generalization-audit pass** — the guard audit's findings are exactly the
+- [x] **Step 5: Generalization-audit pass** — the guard audit's findings are exactly the
       generalization question this phase exists to answer; record the table.
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -513,21 +522,21 @@ variant rename, and the directive wiring. Grouped as the phase committed them:
 **Files:** Modify `frontend/e2e/erasure.e2e.ts`, `frontend/e2e/admin-venue-photos.e2e.ts`,
 `frontend/e2e/admin-operator-suspension.e2e.ts`, `frontend/e2e/operator-set-editing.e2e.ts`
 
-- [ ] **Step 1: Write the failing e2e** — AC-4/AC-11 (focus survives the in-flight window) and
+- [x] **Step 1: Write the failing e2e** — AC-4/AC-11 (focus survives the in-flight window) and
       AC-13 (computed-style parity). This is the half that can actually observe the blur (R-1).
-- [ ] **Step 2: Verify each RED against pre-fix code** — check the touched components out from
+- [x] **Step 2: Verify each RED against pre-fix code** — check the touched components out from
       `origin/main` and confirm the failure, exactly as #614's Phase 2 step 2 did. Written after the
       fix, they would be unproven regression pins.
-- [ ] **Step 3: Axe** — `expectNoSeriousAxeViolations` after each new state, per the sibling tests
+- [x] **Step 3: Axe** — `expectNoSeriousAxeViolations` after each new state, per the sibling tests
       in each file.
-- [ ] **Step 4: Full verification** — `npm run lint` · `npm test` · `npm run build` ·
+- [x] **Step 4: Full verification** — `npm run lint` · `npm test` · `npm run build` ·
       `npm run test:e2e:a11y`.
-- [ ] **Step 5: Reconcile the File-structure section** —
+- [x] **Step 5: Reconcile the File-structure section** —
       `node scripts/check-plan-file-structure.mjs --diff origin/main` → must exit 0;
       `node scripts/check-inline-comments.mjs --files <touched>` clean. If #618 has merged by now,
       also run its prettier diff-gate.
-- [ ] **Step 6: Commit** — `git commit -m "Cover the busy-window focus behaviour end to end (#616)"`
-- [ ] **Step 7: Update plan-doc execution status**; mark the PR ready for review.
+- [x] **Step 6: Commit** — `git commit -m "Cover the busy-window focus behaviour end to end (#616)"`
+- [x] **Step 7: Update plan-doc execution status**; mark the PR ready for review.
 
 ---
 
@@ -577,25 +586,25 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A); invariant #2 untouched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section filled (N/A, frontend-only); no new cross-feature FE import (RV-FE-8).
-- [ ] **Payment/payout** section filled — the two money-path controls in the sweep are named, and
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section filled (N/A, frontend-only); no new cross-feature FE import (RV-FE-8).
+- [x] **Payment/payout** section filled — the two money-path controls in the sweep are named, and
       each ships a double-activation spec (R-3).
-- [ ] Refund policy enforced server-side (invariant #10) — unchanged; no client-side computation added.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A.
-- [ ] **Frontend** standards met; no `as any`; every `data-testid` preserved.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
+- [x] Refund policy enforced server-side (invariant #10) — unchanged; no client-side computation added.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A.
+- [x] **Frontend** standards met; no `as any`; every `data-testid` preserved.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
       `riviera-review-overlay`, not the overlay alone.
-- [ ] The mechanical-pin follow-up issue is filed (Non-goals).
+- [x] The mechanical-pin follow-up issue is filed (Non-goals).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
