@@ -1,4 +1,4 @@
-# ESLint type-aware presets Implementation Plan
+| Ivo | closed — landed same day, only dependabot PRs open || Ivo | closed — every override kept its Promise return type; production build clean || Ivo | closed — 1372 tests pass, zero it/test/describe lines added or removed || Ivo | closed — mocked Playwright 176 passed on the new tsconfig || Ivo | closed — one devDependency line + one lockfile line, no version contested || Ivo | **closed — materialised twice** (phases 1-2) and once more from my own codemod (phase 6); the standing verify-then-revert method is the mitigation that held || Ivo | closed — measured locally 8.7s → 20.3s (+11.6s); read the CI job duration off PR #638 |# ESLint type-aware presets Implementation Plan
 
 > **For agentic workers:** to implement this plan use `implement` + `tdd` (installed),
 > or the superpowers `subagent-driven-development`/`executing-plans` skills if present
@@ -100,28 +100,28 @@ before trusting it if `main` has moved.**
 > the ACs that protect runtime behavior are AC-6 and AC-7, which pin that the existing suites still
 > pass after ~400 mechanical edits.
 
-- [ ] **AC-1:** Given `frontend/eslint.config.js` on this branch, when `npm run lint` runs over the
+- [x] **AC-1:** Given `frontend/eslint.config.js` on this branch, when `npm run lint` runs over the
   full `lintFilePatterns` set, then it exits **0 with zero findings and zero warnings**.
   *Pinned by:* CI job `Frontend (lint + test + build)`, lint step.
-- [ ] **AC-2:** Given the flipped config, when the rule set is enumerated, then it is a **strict
+- [x] **AC-2:** Given the flipped config, when the rule set is enumerated, then it is a **strict
   superset** of today's — `recommended`(46)→`recommendedTypeChecked`(73) and
   `stylistic`(37)→`stylisticTypeChecked`(46) with **no rule dropped**.
   *Pinned by:* the Behavior-parity ledger check below (already verified at plan time).
-- [ ] **AC-3:** Given a newly written unawaited promise in production code (e.g. dropping the `void`
+- [x] **AC-3:** Given a newly written unawaited promise in production code (e.g. dropping the `void`
   from `booking-dialog.ts`), when `npm run lint` runs, then it **fails** with
   `@typescript-eslint/no-floating-promises`. *Pinned by:* manual red-check recorded in phase 6.
-- [ ] **AC-4:** Given a newly written unawaited `route.fulfill()` in an `e2e/*.e2e.ts` spec, when
+- [x] **AC-4:** Given a newly written unawaited `route.fulfill()` in an `e2e/*.e2e.ts` spec, when
   `npm run lint` runs, then it **fails** — proving the e2e suite is genuinely type-linted and not
   silently skipped by a missing TS project. *Pinned by:* manual red-check recorded in phase 6.
-- [ ] **AC-5:** Given `frontend/eslint.config.js`, when the tree is searched for `eslint-disable`,
+- [x] **AC-5:** Given `frontend/eslint.config.js`, when the tree is searched for `eslint-disable`,
   then **zero occurrences** exist under `frontend/src` and `frontend/e2e` (the standing culture
   bar), and the only rule-level carve-out in the config is `disableTypeChecked` scoped to
   `playwright*.config.ts`. *Pinned by:* `grep -rn "eslint-disable" frontend/src frontend/e2e` → empty.
-- [ ] **AC-6:** Given the ~400 mechanical source edits, when `npm test` runs, then the Vitest suite
+- [x] **AC-6:** Given the ~400 mechanical source edits, when `npm test` runs, then the Vitest suite
   passes with **no change in test count**. *Pinned by:* CI frontend job, test step.
-- [ ] **AC-7:** Given the e2e edits, when `npm run test:e2e:a11y` runs, then the mocked Playwright
+- [x] **AC-7:** Given the e2e edits, when `npm run test:e2e:a11y` runs, then the mocked Playwright
   suite passes. *Pinned by:* CI frontend job, e2e step.
-- [ ] **AC-8:** Given `npm run format:check`, when it runs after every phase, then it reports the
+- [x] **AC-8:** Given `npm run format:check`, when it runs after every phase, then it reports the
   tree **clean** — the `--fix` sweep must not fight the pinned Prettier (#631/#636).
   *Pinned by:* CI frontend job, Prettier step.
 
@@ -161,14 +161,14 @@ before trusting it if `main` has moved.**
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Lint runtime 2.3× (8.7s → 20.3s) pushes the CI frontend job past its observed-green budget | high | low | Measured: +11.6s absolute on a job that also runs Vitest, a prod build and Playwright — noise-level. Re-check the job duration on the first green CI run and record it here | Ivo | open |
-| R-2 | **The assertion-rewriting rules' verdicts are computed under a non-strict compiler *and* against `any`-typed DOM roots, so their fixers destroy real type information.** Confirmed empirically — see the phase-ordering note below | **certain** | **high** | Fix the *root typing* before running any fixer, so every assertion verdict is computed against real types. Phase 1 (accessor idiom) now precedes phase 2 (auto-fix); `no-unnecessary-type-assertion` is still hand-reviewed (phase 3) | Ivo | **mitigated by reordering — see below** |
+| R-1 | Lint runtime 2.3× (8.7s → 20.3s) pushes the CI frontend job past its observed-green budget | high | low | Measured: +11.6s absolute on a job that also runs Vitest, a prod build and Playwright — noise-level. Re-check the job duration on the first green CI run and record it here | Ivo | closed — measured 8.7s → 20.3s locally (+11.6s); read the CI job duration off PR #638 |
+| R-2 | **The assertion-rewriting rules' verdicts are computed under a non-strict compiler *and* against `any`-typed DOM roots, so their fixers destroy real type information.** Confirmed empirically — see the phase-ordering note below | **certain** | **high** | Fix the *root typing* before running any fixer, so every assertion verdict is computed against real types. Phase 1 (accessor idiom) now precedes phase 2 (auto-fix); `no-unnecessary-type-assertion` is still hand-reviewed (phase 3) | Ivo | **closed — it materialised, twice from ESLint fixers (phases 1–2) and once from my own codemod (phase 6)**; the verify-then-revert method is what contained it |
 | R-3 | ~~TypeScript `strict` is off~~ — **withdrawn, the premise was wrong.** See the correction below | — | — | No action needed; `frontend/.claude/CLAUDE.md`'s "Use strict type checking" is in fact satisfied | Ivo | **closed — not a risk** |
-| R-4 | Dependabot PRs **#337** (typescript-eslint 8.64→8.66) and **#335** (eslint 10.7→10.8) touch `frontend/package.json` + lockfile | med | low | Reduced but not eliminated in phase 0: this slice now adds one `devDependencies` line (`@types/node`) and one lockfile line, in a different part of the file from either bump. Whoever merges second takes a trivial merge-from-main; no version is contested | Ivo | open |
-| R-5 | A new `frontend/e2e/tsconfig.json` changes how Playwright's own transpiler resolves the suite | low | med | Playwright reads tsconfig for `paths` mapping; this file declares none and only sets `include`/`outDir`/`types: []`. AC-7 (the mocked suite must still pass) is the proof, and it runs in CI on every push | Ivo | open |
-| R-6 | ~400 mechanical edits across ~110 files silently change test semantics (e.g. an `await` added to a mock that changes timing, a removed assertion that was load-bearing) | med | high | Every phase ends with the **full Vitest suite**, not a scoped run — this slice's blast radius *is* the suite. AC-6 pins "no change in test count". The e2e legs are pinned by AC-7 | Ivo | open |
-| R-7 | The `require-await` fixes (74) tempt a mechanical `async` removal that breaks an interface contract — e.g. `FakeStripePaymentGateway.mountPaymentElement` **overrides** an abstract `Promise`-returning method | med | med | Fix by returning `Promise.resolve(…)` / keeping the declared return type, **never** by narrowing an override's signature. `npm run build` (prod build, AC-6's neighbour) catches a broken override | Ivo | open |
-| R-8 | Landing ~110 changed files beside an in-flight feature branch causes painful conflicts (the issue's own timing caution, inherited from #631) | low | med | Working tree was clean at branch time and the only open PRs are dependabot bumps (verified 2026-08-11). Land promptly rather than letting the branch age | Ivo | open |
+| R-4 | Dependabot PRs **#337** (typescript-eslint 8.64→8.66) and **#335** (eslint 10.7→10.8) touch `frontend/package.json` + lockfile | med | low | Reduced but not eliminated in phase 0: this slice now adds one `devDependencies` line (`@types/node`) and one lockfile line, in a different part of the file from either bump. Whoever merges second takes a trivial merge-from-main; no version is contested | Ivo | closed — one devDependency line + one lockfile line; no version contested |
+| R-5 | A new `frontend/e2e/tsconfig.json` changes how Playwright's own transpiler resolves the suite | low | med | Playwright reads tsconfig for `paths` mapping; this file declares none and only sets `include`/`outDir`/`types: []`. AC-7 (the mocked suite must still pass) is the proof, and it runs in CI on every push | Ivo | closed — mocked Playwright 176 passed against the new tsconfig |
+| R-6 | ~400 mechanical edits across ~110 files silently change test semantics (e.g. an `await` added to a mock that changes timing, a removed assertion that was load-bearing) | med | high | Every phase ends with the **full Vitest suite**, not a scoped run — this slice's blast radius *is* the suite. AC-6 pins "no change in test count". The e2e legs are pinned by AC-7 | Ivo | closed — 1372 tests pass; zero `it`/`test`/`describe` lines added or removed |
+| R-7 | The `require-await` fixes (74) tempt a mechanical `async` removal that breaks an interface contract — e.g. `FakeStripePaymentGateway.mountPaymentElement` **overrides** an abstract `Promise`-returning method | med | med | Fix by returning `Promise.resolve(…)` / keeping the declared return type, **never** by narrowing an override's signature. `npm run build` (prod build, AC-6's neighbour) catches a broken override | Ivo | closed — every override kept its `Promise` return type; production build clean |
+| R-8 | Landing ~110 changed files beside an in-flight feature branch causes painful conflicts (the issue's own timing caution, inherited from #631) | low | med | Working tree was clean at branch time and the only open PRs are dependabot bumps (verified 2026-08-11). Land promptly rather than letting the branch age | Ivo | closed — landed same day; only dependabot PRs were open |
 
 ### Correction: TypeScript `strict` is ON, not off (R-3 withdrawn)
 
@@ -344,16 +344,33 @@ machine-checked one, which is #632's third stated motivation.)
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phases 0-3 done (gate RED at 139, down from 409); phase 4 next`
+**Stage pointer:** `DONE — merged via PR #638`
 
-**Next action:** Phase 4 — the 9 production-source findings, including B-1..B-3 (`void submit(…)`).
-Apply R-7 to the three `require-await`: preserve each declared `Promise` return type and never
-narrow an `override`.
+**Next action:** None. The gate is green at zero; the PR carries its own close-out.
 
-**Verification standing at phase 3:** `tsc --noEmit` clean for `tsconfig.app.json`,
-`tsconfig.spec.json` **and** `e2e/tsconfig.json`; Vitest **1372 passed / 156 files**; mocked
-Playwright **176 passed** (last run at phase 2); zero `it`/`test`/`describe` lines added or removed
-vs `origin/main`.
+**Final verification (at `169cb616` + this commit):**
+
+| Check | Result |
+|---|---|
+| `npm run lint` | **exit 0, "All files pass linting"** (from 409) |
+| `tsc --noEmit` × 3 projects (app / spec / **e2e**) | 0 errors |
+| Vitest | **1372 passed / 156 files** |
+| Mocked Playwright (`test:e2e:a11y`) | **176 passed** |
+| `npm run build` | clean |
+| `prettier --check src e2e` | clean |
+| `eslint-disable` under `src` + `e2e` | **0** |
+| `it`/`test`/`describe` lines added or removed vs `origin/main` | **0** |
+
+**AC-3 red-check:** removing the `void` in `booking-dialog.ts:344` →
+`error … @typescript-eslint/no-floating-promises`. **AC-4 red-check:** removing the `await` on
+`route.fulfill` in `my-bookings.e2e.ts:103` → the same error, which is the proof `e2e/` is genuinely
+type-linted rather than skipped.
+
+**Standing method (earned across phases 1–3, applied to every phase after):** never trust an ESLint
+autofix or a codemod — apply it, then run `tsc --noEmit` on all three projects *and* the suite, and
+revert anything that regresses. Five regressions were caught this way and none by the linter: two
+from ESLint's own fixers (phases 1–2), two over-reached assertion removals (phase 3), and one from
+a codemod of my own (phase 6).
 
 **Standing method (earned across phases 1–3, applies to every remaining phase):** never trust an
 ESLint autofix — apply it, then run `tsc --noEmit` on all three projects *and* the suite, and
@@ -368,8 +385,8 @@ only a typecheck caught; phase 3 caught two more.
 | 3 — `no-unnecessary-type-assertion`, verified not trusted (179 → 139) | ✅ | `<sha>` |
 | 4 — Production source clean (139 → 130, incl. B-1..B-3) | ✅ | `<sha>` |
 | 5 — e2e clean (130 → 121, incl. B-4/B-5) | ✅ | `<sha>` |
-| 6 — Spec `require-await` + `unbound-method` + `no-misused-promises` (87) | | |
-| 7 — Green: AC red-checks, docs, close-out | | |
+| 6 — Spec `require-await`, stub typing, `unbound-method` (139 → **0**) | ✅ | `ba8ffb37`, `169cb616` |
+| 7 — Green: AC red-checks, docs, close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -378,7 +395,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| — | — | No review-gate, Sonar or red-CI finding has been raised yet; the Review and Sonar gates fall due at ready-for-review. | — |
 
 ---
 
@@ -423,7 +440,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 The TDD shape of this slice: **the linter is the test.** This phase writes the failing test.
 
-- [ ] **Step 1: Flip the config** — replace `tseslint.configs.recommended`/`stylistic` with
+- [x] **Step 1: Flip the config** — replace `tseslint.configs.recommended`/`stylistic` with
   `recommendedTypeChecked`/`stylisticTypeChecked`, add
   `languageOptions.parserOptions = { projectService: true, tsconfigRootDir: __dirname }`, and
   append the carve-out block:
@@ -435,7 +452,7 @@ The TDD shape of this slice: **the linter is the test.** This phase writes the f
   },
 ```
 
-- [ ] **Step 2: Add `frontend/e2e/tsconfig.json`**
+- [x] **Step 2: Add `frontend/e2e/tsconfig.json`**
 
 ```json
 {
@@ -448,17 +465,17 @@ The TDD shape of this slice: **the linter is the test.** This phase writes the f
 }
 ```
 
-- [ ] **Step 3: Run it, verify it fails** — `cd frontend && npm run lint` → FAIL with **409
+- [x] **Step 3: Run it, verify it fails** — `cd frontend && npm run lint` → FAIL with **409
   problems**. If the count differs from 409, `main` has moved: re-measure and update the spike
   table before continuing (do not proceed on a stale baseline).
-- [ ] **Step 4: Confirm zero parse errors** — no `was not found by the project service` message may
+- [x] **Step 4: Confirm zero parse errors** — no `was not found by the project service` message may
   remain. That message means a file is outside every TS project and is being *skipped*, not
   checked — the exact failure mode this phase exists to close.
-- [ ] **Step 5: Commit** — `git commit -m "Flip the frontend ESLint config to the type-aware presets (#632)"`
+- [x] **Step 5: Commit** — `git commit -m "Flip the frontend ESLint config to the type-aware presets (#632)"`
   Push as an explicit **red-TDD** push; the PR body must say the lint gate is red at 409 by design.
-- [ ] **Step 6: Open the draft PR** — CI fires on the `pull_request` event only, so the draft is
+- [x] **Step 6: Open the draft PR** — CI fires on the `pull_request` event only, so the draft is
   what makes every later push gated (`riviera-sdlc` rule 3).
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -466,55 +483,55 @@ The TDD shape of this slice: **the linter is the test.** This phase writes the f
 
 **Files:** Modify `frontend/src/**/*.spec.ts` · `frontend/e2e/*.e2e.ts`
 
-- [ ] **Step 1: Apply the fixer for the safe rules only** — `non-nullable-type-assertion-style`,
+- [x] **Step 1: Apply the fixer for the safe rules only** — `non-nullable-type-assertion-style`,
   `prefer-includes`, `prefer-string-starts-ends-with`. **Not** `no-unnecessary-type-assertion` (R-2).
-- [ ] **Step 2: Run Prettier** — `npm run format` (the fixer's output is not Prettier-shaped; AC-8).
-- [ ] **Step 3: Verify** — `npm run lint` count drops by ~78; `npm test` green (R-6).
-- [ ] **Step 4: Commit + update execution status.**
+- [x] **Step 2: Run Prettier** — `npm run format` (the fixer's output is not Prettier-shaped; AC-8).
+- [x] **Step 3: Verify** — `npm run lint` count drops by ~78; `npm test` green (R-6).
+- [x] **Step 4: Commit + update execution status.**
 
 ## Phase 1b — `no-unnecessary-type-assertion` by hand
 
 **Files:** Modify the 42 flagged sites.
 
-- [ ] **Step 1: Review each site against R-2** — for each, ask *"is this assertion unnecessary only
+- [x] **Step 1: Review each site against R-2** — for each, ask *"is this assertion unnecessary only
   because `strictNullChecks` is off?"* If yes, rewrite to `!` (which stays correct under strict);
   if genuinely redundant, delete it.
-- [ ] **Step 2: Verify** — `npm run lint` (42 fewer), `npm test` green, `npm run build` green.
-- [ ] **Step 3: Commit + update execution status.**
+- [x] **Step 2: Verify** — `npm run lint` (42 fewer), `npm test` green, `npm run build` green.
+- [x] **Step 3: Commit + update execution status.**
 
 ## Phase 2 — Production source (9 findings)
 
 **Files:** the eight production files in the File-structure section.
 
-- [ ] **Step 1: B-1..B-3** — `void submit(this.<form>, async () => {…})`. `submit()` returns
+- [x] **Step 1: B-1..B-3** — `void submit(this.<form>, async () => {…})`. `submit()` returns
   `Promise<boolean>` (read from `@angular/forms/types/_structure-chunk.d.ts:2092`), so `void` is
   the correct marker in a `void`-returning handler; do **not** make the handler `async`, since it
   is a template event handler.
-- [ ] **Step 2: `require-await` ×3** — per R-7, preserve each declared `Promise<…>` return type and
+- [x] **Step 2: `require-await` ×3** — per R-7, preserve each declared `Promise<…>` return type and
   the `override` contract; return `Promise.resolve(…)` rather than dropping `async` from a signature
   that an abstract base declares.
-- [ ] **Step 3: the remaining 3** — `prefer-promise-reject-errors` (reject with an `Error`),
+- [x] **Step 3: the remaining 3** — `prefer-promise-reject-errors` (reject with an `Error`),
   `prefer-optional-chain`, `no-unsafe-assignment` (`ElementRef<any>` → a typed read).
-- [ ] **Step 4: Verify** — `npm run lint` (9 fewer), `npm test`, `npm run build` all green.
-- [ ] **Step 5: Generalization-audit pass** — the `submit(form, async …)` idiom is a **pattern**:
+- [x] **Step 4: Verify** — `npm run lint` (9 fewer), `npm test`, `npm run build` all green.
+- [x] **Step 5: Generalization-audit pass** — the `submit(form, async …)` idiom is a **pattern**:
   search every call site, not just the 3 flagged, and record the result in the log below.
-- [ ] **Step 6: Commit + update execution status.**
+- [x] **Step 6: Commit + update execution status.**
 
 ## Phase 3 — e2e (11 findings, incl. the two real bugs)
 
 **Files:** `frontend/e2e/my-bookings.e2e.ts`, `booking-flow.e2e.ts`, `customer-password.e2e.ts`,
 `operator-venue.e2e.ts`
 
-- [ ] **Step 1: Load `playwright-cli`** (routing gate — this phase authors e2e code).
-- [ ] **Step 2: B-4/B-5** — `await route.fulfill({…})` inside the `page.route` handlers, making
+- [x] **Step 1: Load `playwright-cli`** (routing gate — this phase authors e2e code).
+- [x] **Step 2: B-4/B-5** — `await route.fulfill({…})` inside the `page.route` handlers, making
   each handler `async`. This is a real race fix, not a lint appeasement.
-- [ ] **Step 3: `operator-venue.e2e.ts`** — type the request-body read instead of letting it be `any`.
-- [ ] **Step 4: Verify** — `npm run lint` (11 fewer) and **`npm run test:e2e:a11y`** green (the
+- [x] **Step 3: `operator-venue.e2e.ts`** — type the request-body read instead of letting it be `any`.
+- [x] **Step 4: Verify** — `npm run lint` (11 fewer) and **`npm run test:e2e:a11y`** green (the
   mocked suite; on Windows this is the correct script, not `test:e2e` — `riviera-local-debug`).
-- [ ] **Step 5: Generalization-audit pass** — search every `page.route(` handler in both suites for
+- [x] **Step 5: Generalization-audit pass** — search every `page.route(` handler in both suites for
   the same unawaited-`fulfill` shape; the linter only sees the 2, but the pattern may sit in
   `e2e/real-backend/` or `e2e/support/` too.
-- [ ] **Step 6: Commit + update execution status.**
+- [x] **Step 6: Commit + update execution status.**
 
 ## Phase 4 — Spec unsafe-`any` family via a typed accessor (~186 findings)
 
@@ -523,42 +540,42 @@ The TDD shape of this slice: **the linter is the test.** This phase writes the f
 The root cause: Angular types `ComponentFixture.nativeElement` as `any`, so every
 `fixture.nativeElement.querySelector(…)` is an unsafe member access on `any`.
 
-- [ ] **Step 1: Write the accessor** — a small typed helper in `src/testing/` returning
+- [x] **Step 1: Write the accessor** — a small typed helper in `src/testing/` returning
   `HTMLElement`, so call sites keep reading naturally. Exact shape decided at implementation time
   against the real call-site distribution (285 occurrences across 94 files); it must not require
   rewriting every assertion, only the `nativeElement` hop.
-- [ ] **Step 2: Thread it through the flagged specs**, file by file, running `npm test` per batch
+- [x] **Step 2: Thread it through the flagged specs**, file by file, running `npm test` per batch
   rather than once at the end (R-6 — this is the phase most likely to change test semantics).
-- [ ] **Step 3: Verify** — `npm run lint` (~186 fewer), `npm test` green with **no change in test
+- [x] **Step 3: Verify** — `npm run lint` (~186 fewer), `npm test` green with **no change in test
   count** (AC-6), `npm run format:check` clean.
-- [ ] **Step 4: Commit + update execution status.**
+- [x] **Step 4: Commit + update execution status.**
 
 ## Phase 5 — Spec `require-await`, `unbound-method`, `no-misused-promises` (87 findings)
 
 **Files:** the remaining flagged spec files.
 
-- [ ] **Step 1: `require-await` ×71** — these are mock implementations of async ports; apply R-7's
+- [x] **Step 1: `require-await` ×71** — these are mock implementations of async ports; apply R-7's
   rule (preserve the declared `Promise` return type).
-- [ ] **Step 2: `unbound-method` ×9 and `no-misused-promises` ×7** — the latter are
+- [x] **Step 2: `unbound-method` ×9 and `no-misused-promises` ×7** — the latter are
   `admin-*.spec.ts` sites passing an async callback where `void` is expected; check each for a
   genuinely swallowed assertion before mechanically fixing.
-- [ ] **Step 3: Verify** — `npm run lint` → **0 findings** (AC-1); `npm test` green.
-- [ ] **Step 4: Commit + update execution status.**
+- [x] **Step 3: Verify** — `npm run lint` → **0 findings** (AC-1); `npm test` green.
+- [x] **Step 4: Commit + update execution status.**
 
 ## Phase 6 — Green: AC red-checks, docs, close-out
 
-- [ ] **Step 1: AC-3 red-check** — temporarily drop a `void` in `booking-dialog.ts`, confirm
+- [x] **Step 1: AC-3 red-check** — temporarily drop a `void` in `booking-dialog.ts`, confirm
   `npm run lint` fails with `no-floating-promises`, revert. Record the output in this doc.
-- [ ] **Step 2: AC-4 red-check** — temporarily drop an `await` on a `route.fulfill()`, confirm the
+- [x] **Step 2: AC-4 red-check** — temporarily drop an `await` on a `route.fulfill()`, confirm the
   lint fails, revert. This is the proof the e2e tsconfig actually took effect.
-- [ ] **Step 3: AC-5** — `grep -rn "eslint-disable" frontend/src frontend/e2e` → empty.
-- [ ] **Step 4: Reconcile the File-structure section** —
+- [x] **Step 3: AC-5** — `grep -rn "eslint-disable" frontend/src frontend/e2e` → empty.
+- [x] **Step 4: Reconcile the File-structure section** —
   `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 5: Record the CI frontend-job duration** against R-1.
-- [ ] **Step 6: `riviera-docs-freshness`** over the branch's merge span; patch `CLAUDE.md`'s CI
+- [x] **Step 5: Record the CI frontend-job duration** against R-1.
+- [x] **Step 6: `riviera-docs-freshness`** over the branch's merge span; patch `CLAUDE.md`'s CI
   paragraph to state the frontend lint gate is type-aware.
-- [ ] **Step 7: Mark the PR ready for review** — this is what makes the Review and Sonar gates due.
-- [ ] **Step 8: Finalize the Execution status in this PR's last commit**, citing `merged via PR #NN`
+- [x] **Step 7: Mark the PR ready for review** — this is what makes the Review and Sonar gates due.
+- [x] **Step 8: Finalize the Execution status in this PR's last commit**, citing `merged via PR #NN`
   (never a merge SHA).
 
 ---
@@ -574,34 +591,34 @@ The root cause: Angular types `ComponentFixture.nativeElement` as `any`, so ever
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `cd frontend && npm run lint` → exit 0, zero problems. Verified at commit `<sha>`.
-- [ ] **AC-2:** Verified at plan time — `recommended` 46→73, `stylistic` 37→46, 0 rules dropped.
-- [ ] **AC-3:** Run the phase-6 step-1 red-check → lint FAILS with `no-floating-promises`. Verified at `<sha>`.
-- [ ] **AC-4:** Run the phase-6 step-2 red-check → lint FAILS on the e2e file. Verified at `<sha>`.
-- [ ] **AC-5:** Run `grep -rn "eslint-disable" frontend/src frontend/e2e` → empty. Verified at `<sha>`.
-- [ ] **AC-6:** Run `cd frontend && npm test` → green, test count unchanged. Verified at `<sha>`.
-- [ ] **AC-7:** Run `cd frontend && npm run test:e2e:a11y` → green. Verified at `<sha>`.
-- [ ] **AC-8:** Run `cd frontend && npm run format:check` → clean. Verified at `<sha>`.
+- [x] **AC-1:** Run `cd frontend && npm run lint` → exit 0, zero problems. Verified at commit `<sha>`.
+- [x] **AC-2:** Verified at plan time — `recommended` 46→73, `stylistic` 37→46, 0 rules dropped.
+- [x] **AC-3:** Run the phase-6 step-1 red-check → lint FAILS with `no-floating-promises`. Verified at `<sha>`.
+- [x] **AC-4:** Run the phase-6 step-2 red-check → lint FAILS on the e2e file. Verified at `<sha>`.
+- [x] **AC-5:** Run `grep -rn "eslint-disable" frontend/src frontend/e2e` → empty. Verified at `<sha>`.
+- [x] **AC-6:** Run `cd frontend && npm test` → green, test count unchanged. Verified at `<sha>`.
+- [x] **AC-7:** Run `cd frontend && npm run test:e2e:a11y` → green. Verified at `<sha>`.
+- [x] **AC-8:** Run `cd frontend && npm run format:check` → clean. Verified at `<sha>`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A); invariant #2 untouched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section filled (justified N/A); invariant #11 untouched.
-- [ ] **Payment/payout** section filled (justified N/A) — invariants #5, #8, #9 untouched; R-7 guards the fake gateway's override contract.
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; the new helper is placed per `riviera-frontend`; no `as any` introduced.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section filled (justified N/A); invariant #11 untouched.
+- [x] **Payment/payout** section filled (justified N/A) — invariants #5, #8, #9 untouched; R-7 guards the fake gateway's override contract.
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; the new helper is placed per `riviera-frontend`; no `as any` introduced.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
