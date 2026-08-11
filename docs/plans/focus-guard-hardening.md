@@ -28,9 +28,10 @@ issues describe HEAD `0a2fa44`, no drift; only Dependabot PRs in flight, nothing
 `scripts/`) · `riviera-plan-doc` (this template — forced the BUSY-2 scope decision to be made
 at plan time, not mid-diff) · `tdd` (each parser fix lands red-first as a named test) ·
 `riviera-review-overlay` (review gate — runs at ready-for-review) · `riviera-docs-freshness`
-(due at close-out over this slice's own diff: the "two rules / only BUSY-1 fails a build"
-statements in root `CLAUDE.md` and `frontend/.claude/CLAUDE.md` go stale the moment BUSY-2
-gates — both are updated in this PR, and the close-out pass re-checks the wider substrate) ·
+(ran pre-merge over `origin/main...HEAD` + the counting sweep: the "two rules / only BUSY-1
+fails a build" statements in root `CLAUDE.md`, `frontend/.claude/CLAUDE.md` and the RV-FE-9
+preamble in the review overlay were stale and are fixed in this PR; the per-slice history
+docs keep their past-tense records, with the bank-item's F-8 row annotated to its resolution) ·
 No other routed row fires: no backend Java (`riviera-modulith`/`riviera-java-conventions` N/A),
 no Flyway (`postgres` N/A), no file under `frontend/src` or `frontend/e2e`
 (`riviera-frontend`/`angular-developer`/`playwright-cli` N/A — `frontend/.claude/CLAUDE.md` is
@@ -45,26 +46,26 @@ branch, standing in for `bugfix/focus-guard-hardening` per the riviera-sdlc remo
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (#629.1):** Given a component whose signal-flipping handler is the **first** class
+- [x] **AC-1 (#629.1):** Given a component whose signal-flipping handler is the **first** class
   member (or is preceded only by a decorator line), when that handler also moves focus, then
   FOCUS-1 reports nothing — member order does not change the verdict. *Pinned by:*
   `check-focus-posture.test.mjs` › `judges a first-member handler by its own body, not the class's`
-- [ ] **AC-2 (#629.2):** Given two `@if` blocks that open and close on one line where the
+- [x] **AC-2 (#629.2):** Given two `@if` blocks that open and close on one line where the
   **first** renders a focus trap, then the trap is attributed to the first block's gating
   signal and the sibling's signal is not reported. *Pinned by:*
   `attributes a trap to the block that renders it when two share a line`
-- [ ] **AC-3 (#629.3):** Given branch-body prose containing an apostrophe (`<p>It's ready</p>`),
+- [x] **AC-3 (#629.3):** Given branch-body prose containing an apostrophe (`<p>It's ready</p>`),
   then the branch closes at its real `}` and a trap rendered after the branch is not attributed
   to it. *Pinned by:* `does not let a prose apostrophe extend a branch to the end of file`
-- [ ] **AC-4 (#629.4):** Given a diff whose added lines make the component floor land on the
+- [x] **AC-4 (#629.4):** Given a diff whose added lines make the component floor land on the
   **negated** trigger half while the same signal's flip is also added, then exactly one FOCUS-1
   is reported for that signal (the one-finding-per-signal-per-file contract). *Pinned by:*
   `reports a surface once when the floor lands on the negated trigger`
-- [ ] **AC-5 (#629.5):** Given the test suite is run from outside the repository
+- [x] **AC-5 (#629.5):** Given the test suite is run from outside the repository
   (`cd /tmp && node --test …/check-focus-posture.test.mjs`), then every test passes —
   `findViolations` calls no git and reads no live tree unless explicitly told to. *Pinned by:*
   the whole suite run from `/tmp` (the three previously-impure tests now inject `isFocusTrap`).
-- [ ] **AC-6 (#628):** Given a diff adds a text-like `<input>` (literal `type` in the readonly
+- [x] **AC-6 (#628):** Given a diff adds a text-like `<input>` (literal `type` in the readonly
   set, or no `type`) or `<textarea>` whose **own start tag** carries a commit handler
   (`(change)`/`(blur)` — **not** `(input)`, see the audit log) and a `[disabled]` bound to a
   `BUSY_STEMS` flag, then
@@ -72,7 +73,7 @@ branch, standing in for `bugfix/focus-guard-hardening` per the riviera-sdlc remo
   `color`, a dynamic `[type]`, a handler-less field, a draft-sync `(input)`-only field, or a
   validity-bound `[disabled]` reports
   nothing. *Pinned by:* the `BUSY-2` test group (flags/spares/draft-sync cases).
-- [ ] **AC-7 (#628):** Given the standing tree, when `node scripts/check-focus-posture.mjs --all`
+- [x] **AC-7 (#628):** Given the standing tree, when `node scripts/check-focus-posture.mjs --all`
   sweeps it, then BUSY-2 reports **0** — the rule gates with no standing violation (the #625
   site already carries `[readonly]`; the four standing self-committing controls are inert kinds).
   *Verified by:* running `--all` and reading the counts line.
@@ -98,11 +99,11 @@ N/A — no surface is retired or replaced; the guard's contract is corrected and
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | BUSY-2 false positive fails a build on correct code (the one error direction this layer cannot afford) | low | high | allow-list of the readonly-applicable types only; skip on dynamic `[type]`; AC-7's zero-violation `--all` sweep before the rule gates | session | open |
-| R-2 | Reordering `declaresClass` misreads a real class-body brace as a member (false negative direction) | low | med | the existing heritage-overflow test stays green; A/B member-order tests added both ways | session | open |
-| R-3 | `closingBrace` quote fix breaks the quoted-brace-in-interpolation case it exists for | low | med | existing test `reads past a brace quoted inside the branch body` stays green; new prose-apostrophe test beside it | session | open |
-| R-4 | Doc twins drift: root `CLAUDE.md` and `frontend/.claude/CLAUDE.md` state "only BUSY-1 fails a build" | certain (without action) | med | both updated in this PR; `riviera-docs-freshness` pass at close-out | session | open |
-| R-5 | The three impure tests keep passing in-repo, hiding the purity regression from CI | med | low | AC-5 is verified from `/tmp`, not from the repo root | session | open |
+| R-1 | BUSY-2 false positive fails a build on correct code (the one error direction this layer cannot afford) | low | high | allow-list of the readonly-applicable types only; skip on dynamic `[type]`; AC-7's zero-violation `--all` sweep before the rule gates | session | closed — the sweep did its job: 3 draft-sync false positives with `(input)` in scope → `(input)` removed, re-swept 0 (see audit log + Resolved assumption) |
+| R-2 | Reordering `declaresClass` misreads a real class-body brace as a member (false negative direction) | low | med | the existing heritage-overflow test stays green; A/B member-order tests added both ways | session | closed — heritage-overflow test green beside the three new member-order pins (4a2b337) |
+| R-3 | `closingBrace` quote fix breaks the quoted-brace-in-interpolation case it exists for | low | med | existing test `reads past a brace quoted inside the branch body` stays green; new prose-apostrophe test beside it | session | closed — `reads past a brace quoted inside the branch body` green beside the prose-apostrophe pin (4a2b337) |
+| R-4 | Doc twins drift: root `CLAUDE.md` and `frontend/.claude/CLAUDE.md` state "only BUSY-1 fails a build" | certain (without action) | med | both updated in this PR; `riviera-docs-freshness` pass at close-out | session | closed — both CLAUDE.md twins updated (1bb93b4); the freshness counting sweep also caught the overlay preamble's "two rules", fixed in the close-out commit |
+| R-5 | The three impure tests keep passing in-repo, hiding the purity regression from CI | med | low | AC-5 is verified from `/tmp`, not from the repo root | session | closed — 53/53 from `/tmp` at 1bb93b4 |
 
 ## Open questions / Assumptions
 
@@ -151,17 +152,17 @@ N/A — no contract change.
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session before acting.
 
-**Stage pointer:** CI gate (draft PR #630) → ready-for-review
+**Stage pointer:** review gate (PR #630 ready for review)
 
-**Next action:** confirm CI green on the phase-3 push, then mark PR #630 ready and run the
-review gate per `riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** review + Sonar gates on PR #630, then merge (`merged via PR #630`) and the
+GitHub-only close-out (issues #628/#629 auto-close via the PR).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 4857d27 |
 | 1 — #629 parser fixes 1–4 (declaresClass, one-line siblings, apostrophe, negated-floor dedup) | ✅ | 4a2b337 |
 | 2 — #629 hygiene (test purity AC-5, header count, advice wording + twin, ls-files dedupe, RegExp.escape, memberOf early-exit, lazy sibling reads) | ✅ | 2674c48 |
-| 3 — #628 BUSY-2 rule + doc twins + AC-7 sweep | ✅ | (this commit) |
+| 3 — #628 BUSY-2 rule + doc twins + AC-7 sweep | ✅ | 1bb93b4 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -195,10 +196,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `scripts/check-focus-posture.mjs` · Test `scripts/check-focus-posture.test.mjs`
 
-- [ ] **Step 1: four failing tests** — first-member handler (AC-1 A/B), one-line sibling blocks
+- [x] **Step 1: four failing tests** — first-member handler (AC-1 A/B), one-line sibling blocks
   (AC-2), prose apostrophe (AC-3), negated-floor dedup (AC-4).
-- [ ] **Step 2: run, verify each fails** — `node --test scripts/check-focus-posture.test.mjs` → 4 FAIL.
-- [ ] **Step 3: minimal implementations** —
+- [x] **Step 2: run, verify each fails** — `node --test scripts/check-focus-posture.test.mjs` → 4 FAIL.
+- [x] **Step 3: minimal implementations** —
   - `declaresClass`: test the statement-terminator on the lines **above** before the `\bclass\b`
     test, so a first member's own brace is never attributed to the class declaration above it.
   - `trapSurfaces`/`bodyEnd`: carry the trap's **column** and compare against column-precise
@@ -207,32 +208,32 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
     string opener (the interpolation case it exists for closes on the same line).
   - `gatingSignal`: accept an optional `!`, so a negated floor still records its signal in
     `reported`.
-- [ ] **Step 4: run, verify all pass** — full guard suite green.
-- [ ] **Step 5: generalization audit** — check the sibling guards (`check-inline-comments`,
+- [x] **Step 4: run, verify all pass** — full guard suite green.
+- [x] **Step 5: generalization audit** — check the sibling guards (`check-inline-comments`,
   `check-plan-file-structure`, `check-prettier-format`) for the same quote/brace idioms; log below.
-- [ ] **Step 6: commit** — `Fix the four FOCUS-1 scoping defects (#629)`
-- [ ] **Step 7: execution status updated** in the same commit window.
+- [x] **Step 6: commit** — `Fix the four FOCUS-1 scoping defects (#629)`
+- [x] **Step 7: execution status updated** in the same commit window.
 
 ## Phase 2 — #629 hygiene
 
 **Files:** Modify `scripts/check-focus-posture.mjs`, `scripts/check-focus-posture.test.mjs`,
 `frontend/.claude/CLAUDE.md`
 
-- [ ] Inject `isFocusTrap` into the three tests that reach the module singleton (the
+- [x] Inject `isFocusTrap` into the three tests that reach the module singleton (the
   `app-money-input` busy test and the two `<app-confirm-panel>` delegation tests); AC-5 verified
   from `/tmp`.
-- [ ] Module header: "8 standing confirm surfaces" → the 11 surfaces the widened trigger judges
+- [x] Module header: "8 standing confirm surfaces" → the 11 surfaces the widened trigger judges
   (8 confirm + 3 focus-trapped modals), matching `docs/plans/focus-surface-scoping.md` AC-4.
-- [ ] `ADVICE['FOCUS-1']` + the `frontend/.claude/CLAUDE.md` twin: state the anchoring rule as
+- [x] `ADVICE['FOCUS-1']` + the `frontend/.claude/CLAUDE.md` twin: state the anchoring rule as
   implemented (first added in-file flip, else the branch when the file holds the template;
   a flip whose own handler moves focus clears the surface).
-- [ ] Share one `git ls-files` lister between `sweep()` and `focusTraps`' default index
+- [x] Share one `git ls-files` lister between `sweep()` and `focusTraps`' default index
   (module-level memo — one subprocess per process).
-- [ ] `escaped()` → `RegExp.escape` (Node 26, pinned by `.nvmrc`).
-- [ ] `memberOf`: stop the upward walk at the class-declaring brace instead of line 0.
-- [ ] `checkOne`: sibling reads become lazy — the `.html` sibling is read only when the `.ts`
+- [x] `escaped()` → `RegExp.escape` (Node 26, pinned by `.nvmrc`).
+- [x] `memberOf`: stop the upward walk at the class-declaring brace instead of line 0.
+- [x] `checkOne`: sibling reads become lazy — the `.html` sibling is read only when the `.ts`
   has no inline template, ending the ~300 swallowed ENOENTs per `--all`.
-- [ ] Commit — `Restore guard-test purity and settle the #629 hygiene list (#629)`
+- [x] Commit — `Restore guard-test purity and settle the #629 hygiene list (#629)`
 
 ## Phase 3 — #628: BUSY-2
 
@@ -241,14 +242,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `.claude/skills/riviera-review-overlay/references/frontend-conventions.md`,
 `docs/plans/focus-posture-bank-item.md`
 
-- [ ] **Failing tests first** (AC-6 flags/spares matrix), then the rule: in `busyViolations`,
+- [x] **Failing tests first** (AC-6 flags/spares matrix), then the rule: in `busyViolations`,
   a non-actionable start tag is judged BUSY-2 when it is text-like (literal readonly-applicable
   `type`, or none; or `<textarea>`), carries `(change)`/`(blur)`/`(input)`, and binds a busy
   `[disabled]` — advice: `[readonly]` (`read-only:` variant), pointing at `pricing-tab.html`.
-- [ ] Add `BUSY-2` to `GATING` and to the `--all` counts line.
-- [ ] AC-7: `node scripts/check-focus-posture.mjs --all` → `BUSY-2: 0`.
-- [ ] Doc twins updated (File structure list above).
-- [ ] Commit — `Add BUSY-2 for the self-committing-field shape (#628)`
+- [x] Add `BUSY-2` to `GATING` and to the `--all` counts line.
+- [x] AC-7: `node scripts/check-focus-posture.mjs --all` → `BUSY-2: 0`.
+- [x] Doc twins updated (File structure list above).
+- [x] Commit — `Add BUSY-2 for the self-committing-field shape (#628)`
 
 ---
 
@@ -270,21 +271,21 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — no backend code in scope.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules not in scope (invariants #3, #4).
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** N/A (invariants #5, #8, #9).
-- [ ] Refund policy not in scope (invariant #10).
-- [ ] Timezone not in scope (invariant #6).
-- [ ] Booking codes not in scope (invariant #7).
-- [ ] No schema change (invariant #12).
-- [ ] **Frontend** standards N/A — no app-code change.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — cite `merged via PR #NN` once the PR exists.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — no backend code in scope.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules not in scope (invariants #3, #4).
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** N/A (invariants #5, #8, #9).
+- [x] Refund policy not in scope (invariant #10).
+- [x] Timezone not in scope (invariant #6).
+- [x] Booking codes not in scope (invariant #7).
+- [x] No schema change (invariant #12).
+- [x] **Frontend** standards N/A — no app-code change.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — merged via PR #630.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 plus `riviera-review-overlay`.

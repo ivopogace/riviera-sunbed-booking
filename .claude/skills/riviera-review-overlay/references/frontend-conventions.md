@@ -281,8 +281,10 @@ sitting on** move focus somewhere deliberate, via `shared/focus-after-render.ts`
 
 **Don't walk the mechanical half by hand — but don't read a green step as an all-clear either.**
 `node scripts/check-focus-posture.mjs --diff origin/main` (#621) runs from a `PostToolUse` hook while
-the author types and as a step in `Repo hygiene (diff-scoped)`. It carries two rules with **opposite
-postures**, and conflating them is the way to get this item wrong in both directions:
+the author types and as a step in `Repo hygiene (diff-scoped)`. It carries three rules in two
+**opposite postures** — the BUSY pair gates (BUSY-2, #628, covers the #625 shape's text-entry half;
+see blind spot 4), FOCUS-1 advises — and conflating them is the way to get this item wrong in both
+directions:
 
 - **BUSY-1 fails the build — for the shapes it can see.** A `[disabled]` bound to an in-flight flag
   on a `<button>`/`<a>` is the build's finding, not yours; by the time you read the diff CI has named
