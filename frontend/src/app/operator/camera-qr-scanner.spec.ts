@@ -20,7 +20,7 @@ function fakeVideo(width: number): HTMLVideoElement {
     muted: false,
     playsInline: false,
     autoplay: false,
-    play: vi.fn(async () => undefined),
+    play: vi.fn(() => Promise.resolve(undefined)),
     addEventListener: vi.fn((type: string, handler: () => void) => listeners.set(type, handler)),
     fire: (type: string) => listeners.get(type)?.(),
   };
@@ -35,7 +35,7 @@ describe('CameraQrScanner', () => {
     stream = fakeStream();
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
-      value: { getUserMedia: vi.fn(async () => stream) },
+      value: { getUserMedia: vi.fn(() => Promise.resolve(stream)) },
     });
   });
 

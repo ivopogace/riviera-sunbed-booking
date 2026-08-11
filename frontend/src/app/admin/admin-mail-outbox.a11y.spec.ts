@@ -24,19 +24,20 @@ const authStub = {
 
 function serviceStub(status: OutboxStatusView): Partial<AdminMailOutboxService> {
   return {
-    status: async () => status,
-    resubmit: async () => ({
-      outcome: 'RESUBMITTED',
-      resubmitted: 0,
-      cooldownRemainingSeconds: 60,
-    }),
+    status: () => Promise.resolve(status),
+    resubmit: () =>
+      Promise.resolve({
+        outcome: 'RESUBMITTED',
+        resubmitted: 0,
+        cooldownRemainingSeconds: 60,
+      }),
   };
 }
 
 /** The nested delivery card's port — never exercised from these specs. */
 const inertDeliveryService = {
-  lookup: async () => ({ bookings: [] }),
-  resend: async () => ({ outcome: 'SENT' as const }),
+  lookup: () => Promise.resolve({ bookings: [] }),
+  resend: () => Promise.resolve({ outcome: 'SENT' as const }),
 };
 
 async function render(status: OutboxStatusView): Promise<ComponentFixture<AdminMailOutbox>> {

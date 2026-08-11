@@ -8,7 +8,7 @@ import { ForgotPassword } from './forgot-password';
 function authStub(result: ForgotPasswordResult): Partial<CustomerAuth> & {
   forgotPassword: ReturnType<typeof vi.fn>;
 } {
-  return { forgotPassword: vi.fn(async () => result) };
+  return { forgotPassword: vi.fn(() => Promise.resolve(result)) };
 }
 
 async function render(auth: Partial<CustomerAuth>): Promise<ComponentFixture<ForgotPassword>> {

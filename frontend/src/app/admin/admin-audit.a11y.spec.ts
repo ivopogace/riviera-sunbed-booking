@@ -40,7 +40,7 @@ async function render(
     providers: [
       provideRouter([]),
       { provide: OperatorAuth, useValue: authStub },
-      { provide: AdminAuditService, useValue: { latest: async () => entries } },
+      { provide: AdminAuditService, useValue: { latest: () => Promise.resolve(entries) } },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminAudit);

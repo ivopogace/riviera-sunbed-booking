@@ -38,11 +38,12 @@ const VENUES: readonly VenueCommissionView[] = [
 
 function serviceStub(): Partial<AdminCommissionsService> {
   return {
-    venues: async () => VENUES,
-    setCommission: async (venueId: number, commissionBps: number) => ({
-      ...VENUES.find((venue) => venue.venueId === venueId)!,
-      commissionBps,
-    }),
+    venues: () => Promise.resolve(VENUES),
+    setCommission: (venueId: number, commissionBps: number) =>
+      Promise.resolve({
+        ...VENUES.find((venue) => venue.venueId === venueId)!,
+        commissionBps,
+      }),
   };
 }
 

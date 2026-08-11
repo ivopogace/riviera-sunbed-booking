@@ -9,8 +9,8 @@ function authStub(result: VerifyEmailResult): Partial<CustomerAuth> & {
   verifyEmail: ReturnType<typeof vi.fn>;
 } {
   return {
-    whenReady: vi.fn(async () => undefined),
-    verifyEmail: vi.fn(async () => result),
+    whenReady: vi.fn(() => Promise.resolve(undefined)),
+    verifyEmail: vi.fn(() => Promise.resolve(result)),
   };
 }
 

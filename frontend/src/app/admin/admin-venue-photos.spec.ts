@@ -50,11 +50,11 @@ function serviceStub(): {
   takedown: ReturnType<typeof vi.fn>;
 } {
   return {
-    venues: vi.fn(async () => VENUES),
-    slots: vi.fn(async (venueId: number) =>
-      photosOf(`/api/venues/${venueId}/photos/beef01`, venueId),
+    venues: vi.fn(() => Promise.resolve(VENUES)),
+    slots: vi.fn((venueId: number) =>
+      Promise.resolve(photosOf(`/api/venues/${venueId}/photos/beef01`, venueId)),
     ),
-    takedown: vi.fn(async () => undefined),
+    takedown: vi.fn(() => Promise.resolve(undefined)),
   };
 }
 

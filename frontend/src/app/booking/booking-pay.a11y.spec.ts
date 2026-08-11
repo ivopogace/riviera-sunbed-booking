@@ -27,7 +27,7 @@ class FakeGateway extends StripePaymentGateway {
     const input = document.createElement('input');
     input.setAttribute('aria-label', 'Card number (test)');
     host.appendChild(input);
-    return { confirm: async () => ({}) };
+    return { confirm: () => Promise.resolve({}) };
   }
 }
 

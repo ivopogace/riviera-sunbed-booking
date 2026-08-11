@@ -52,7 +52,7 @@ const ENTRIES: readonly AdminAuditEntryView[] = [
 function serviceStub(entries: readonly AdminAuditEntryView[] = ENTRIES): {
   latest: ReturnType<typeof vi.fn>;
 } {
-  return { latest: vi.fn(async () => entries) };
+  return { latest: vi.fn(() => Promise.resolve(entries)) };
 }
 
 async function render(

@@ -47,11 +47,13 @@ function serviceStub(): {
   setCommission: ReturnType<typeof vi.fn>;
 } {
   return {
-    venues: vi.fn(async () => VENUES),
-    setCommission: vi.fn(async (venueId: number, commissionBps: number) => ({
-      ...VENUES.find((venue) => venue.venueId === venueId)!,
-      commissionBps,
-    })),
+    venues: vi.fn(() => Promise.resolve(VENUES)),
+    setCommission: vi.fn((venueId: number, commissionBps: number) =>
+      Promise.resolve({
+        ...VENUES.find((venue) => venue.venueId === venueId)!,
+        commissionBps,
+      }),
+    ),
   };
 }
 

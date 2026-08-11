@@ -68,7 +68,7 @@ class FakeGateway extends StripePaymentGateway {
     }
     this.mounted = true;
     host.appendChild(document.createElement('div')); // stand-in for the Stripe iframe
-    return { confirm: async () => this.confirmResult };
+    return { confirm: () => Promise.resolve(this.confirmResult) };
   }
 }
 

@@ -25,9 +25,9 @@ function authStub(o: Overrides = {}): Partial<CustomerAuth> & {
     signedIn: signal(o.signedIn ?? true),
     email: signal('ana@example.com'),
     emailVerified: signal<boolean | undefined>(o.emailVerified),
-    setPassword: vi.fn(async () => o.setPassword ?? 'set'),
-    requestVerification: vi.fn(async () => o.requestVerification ?? 'sent'),
-    eraseAccount: vi.fn(async () => o.eraseAccount ?? 'erased'),
+    setPassword: vi.fn(() => Promise.resolve(o.setPassword ?? 'set')),
+    requestVerification: vi.fn(() => Promise.resolve(o.requestVerification ?? 'sent')),
+    eraseAccount: vi.fn(() => Promise.resolve(o.eraseAccount ?? 'erased')),
   };
 }
 

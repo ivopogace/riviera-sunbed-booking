@@ -29,19 +29,21 @@ function serviceStub(status: OutboxStatusView = { outstanding: 0, cooldownRemain
   resubmit: ReturnType<typeof vi.fn>;
 } {
   return {
-    status: vi.fn(async () => status),
-    resubmit: vi.fn(async (): Promise<ResubmissionResultView> => ({
-      outcome: 'RESUBMITTED',
-      resubmitted: 0,
-      cooldownRemainingSeconds: 60,
-    })),
+    status: vi.fn(() => Promise.resolve(status)),
+    resubmit: vi.fn((): Promise<ResubmissionResultView> =>
+      Promise.resolve({
+        outcome: 'RESUBMITTED',
+        resubmitted: 0,
+        cooldownRemainingSeconds: 60,
+      }),
+    ),
   };
 }
 
 /** The nested delivery card's port — never exercised from these specs. */
 const inertDeliveryService = {
-  lookup: async () => ({ bookings: [] }),
-  resend: async () => ({ outcome: 'SENT' as const }),
+  lookup: () => Promise.resolve({ bookings: [] }),
+  resend: () => Promise.resolve({ outcome: 'SENT' as const }),
 };
 
 async function render(

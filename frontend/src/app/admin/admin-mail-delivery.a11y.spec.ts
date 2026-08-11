@@ -39,8 +39,8 @@ const RESULTS: MailDeliveryLookupView = {
 
 function serviceStub(lookup: MailDeliveryLookupView): Partial<AdminMailDeliveryService> {
   return {
-    lookup: async () => lookup,
-    resend: async () => ({ outcome: 'SENT' }),
+    lookup: () => Promise.resolve(lookup),
+    resend: () => Promise.resolve({ outcome: 'SENT' }),
   };
 }
 

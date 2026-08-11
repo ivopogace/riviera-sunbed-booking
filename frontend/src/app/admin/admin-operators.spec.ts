@@ -37,18 +37,18 @@ function serviceStub(
   reinstate: ReturnType<typeof vi.fn>;
 } {
   return {
-    pending: vi.fn(async () => pending),
-    accounts: vi.fn(async () => accounts),
-    approve: vi.fn(async () => undefined),
-    reject: vi.fn(async () => undefined),
-    suspend: vi.fn(async () => undefined),
-    reinstate: vi.fn(async () => undefined),
+    pending: vi.fn(() => Promise.resolve(pending)),
+    accounts: vi.fn(() => Promise.resolve(accounts)),
+    approve: vi.fn(() => Promise.resolve(undefined)),
+    reject: vi.fn(() => Promise.resolve(undefined)),
+    suspend: vi.fn(() => Promise.resolve(undefined)),
+    reinstate: vi.fn(() => Promise.resolve(undefined)),
   };
 }
 
 /** The stat strip's own read — stubbed so the page's specs never reach a real HttpClient. */
 function commissionsStub(): Partial<AdminCommissionsService> {
-  return { venues: async () => [] };
+  return { venues: () => Promise.resolve([]) };
 }
 
 async function render(

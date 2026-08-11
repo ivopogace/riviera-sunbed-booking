@@ -31,8 +31,8 @@ function serviceStub(lookup: MailDeliveryLookupView = { bookings: [] }): {
   resend: ReturnType<typeof vi.fn>;
 } {
   return {
-    lookup: vi.fn(async () => lookup),
-    resend: vi.fn(async (): Promise<MailResendResultView> => ({ outcome: 'SENT' })),
+    lookup: vi.fn(() => Promise.resolve(lookup)),
+    resend: vi.fn((): Promise<MailResendResultView> => Promise.resolve({ outcome: 'SENT' })),
   };
 }
 
@@ -158,9 +158,11 @@ describe('AdminMailDelivery', () => {
    */
   it('reports a withheld resend as an outcome rather than an error', async () => {
     const service = serviceStub(WITHHELD_THEN_RESENT);
-    service.resend = vi.fn(async (): Promise<MailResendResultView> => ({
-      outcome: 'WITHHELD_SUPPRESSED',
-    }));
+    service.resend = vi.fn((): Promise<MailResendResultView> =>
+      Promise.resolve({
+        outcome: 'WITHHELD_SUPPRESSED',
+      }),
+    );
     const fixture = await render(service);
     await lookUp(fixture);
 
@@ -174,9 +176,11 @@ describe('AdminMailDelivery', () => {
 
   it('reports a refused resend of a never-confirmed booking', async () => {
     const service = serviceStub(WITHHELD_THEN_RESENT);
-    service.resend = vi.fn(async (): Promise<MailResendResultView> => ({
-      outcome: 'NOT_CONFIRMED',
-    }));
+    service.resend = vi.fn((): Promise<MailResendResultView> =>
+      Promise.resolve({
+        outcome: 'NOT_CONFIRMED',
+      }),
+    );
     const fixture = await render(service);
     await lookUp(fixture);
 

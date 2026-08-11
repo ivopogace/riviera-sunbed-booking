@@ -36,7 +36,7 @@ function authStub(state: AuthState = {}): OperatorAuth {
 const EMAIL = 'ana@example.com';
 
 function serviceStub(): { erase: ReturnType<typeof vi.fn> } {
-  return { erase: vi.fn(async () => undefined) };
+  return { erase: vi.fn(() => Promise.resolve(undefined)) };
 }
 
 /** An RFC-7807 failure as the interceptor-free service surfaces it. */

@@ -25,7 +25,7 @@ const authStub = {
 } as unknown as OperatorAuth;
 
 function serviceStub(): Partial<AdminPrivacyService> {
-  return { erase: async () => undefined };
+  return { erase: () => Promise.resolve(undefined) };
 }
 
 async function settle(fixture: ComponentFixture<AdminPrivacy>): Promise<void> {

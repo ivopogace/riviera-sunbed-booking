@@ -36,8 +36,8 @@ const authStub = {
 } as unknown as OperatorAuth;
 
 const serviceStub: Partial<AdminOperatorsService> = {
-  pending: async () => rows,
-  accounts: async () => accountRows,
+  pending: () => Promise.resolve(rows),
+  accounts: () => Promise.resolve(accountRows),
 };
 
 const VENUES = [
@@ -51,7 +51,7 @@ const VENUES = [
 ];
 
 async function render(
-  venues: () => Promise<readonly VenueCommissionView[]> = async () => VENUES,
+  venues: () => Promise<readonly VenueCommissionView[]> = () => Promise.resolve(VENUES),
 ): Promise<ComponentFixture<AdminOperators>> {
   await TestBed.configureTestingModule({
     imports: [AdminOperators],
