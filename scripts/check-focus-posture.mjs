@@ -4,9 +4,10 @@
  *
  * - **BUSY-1** — a control disabled by a flag *its own activation set* blurs to `<body>` for the
  *   whole request. It belongs on `[appBusy]`, which announces the same state via `aria-disabled`.
- * - **FOCUS-1** — a confirm-before-destroy surface destroys the element focus is sitting on, so its
- *   component must move focus deliberately — rendering a shared confirm component is not enough,
- *   since those own the open leg only.
+ * - **FOCUS-1** — a confirm-before-destroy surface, or a focus-trapped modal, destroys the element
+ *   focus is sitting on, so its component must move focus deliberately — rendering a shared confirm
+ *   component is not enough, since those own the open leg only. Judged per **gating signal** (#624):
+ *   moving focus for one surface used to excuse every other surface the component owned.
  *
  * Only ever reasons about lines a diff **added**: ~12 legitimate `[disabled]` bindings and 8 standing
  * confirm surfaces must never fail the repo, and a guard that goes red on day one gets switched off
@@ -94,6 +95,16 @@ const ACTIONABLE = new Set(['button', 'a']);
 const FOCUS_HELPER = /\b(focusMover|focusAfterRender)\s*\(/;
 
 /**
+ * What makes a child component a focus trap. Tearing one down is the same
+ * destroy-the-element-focus-sits-on transition a confirm prompt makes, which is why the trigger
+ * reaches it — instance 14 was a modal dismiss and named no confirm flag anywhere.
+ */
+const FOCUS_TRAP = /trapFocusWithin|aria-modal|role="dialog"/;
+
+/** The app's own components; nothing else can resolve to a file, so nothing else is asked about. */
+const COMPONENT_TAG = /<(app-[\w-]+)/g;
+
+/**
  * The hand-rolled equivalent: `afterNextRender` is a general lifecycle API (a data call in
  * `auth/verify-email.ts`), so it counts only alongside an actual `focus()` — which is what
  * `shared/confirm-panel.ts` and `shared/confirm-with-reason.ts` do.
@@ -107,21 +118,44 @@ function movesFocus(code) {
 /**
  * Finds every posture violation the diff wrote in one file.
  *
- * @param {{ path: string, lines: string[], added: Set<number>, componentSource?: string }} input
- *   the file's new content, the 1-based line numbers the diff added, and — for an external template —
- *   the owning component's source, which is where its focus handling lives
+ * <p>A component and its template are judged as one thing however they are split, but a violation is
+ * only ever reported against the file it is *in*: the floor anchors on the branch, the signal check
+ * on the flip that strands focus. So an external template's `.ts` reads its sibling for surfaces and
+ * reports its own flips, and the `.html` reports the branch — neither reports the other's lines, and
+ * nothing is reported twice.
+ *
+ * @param {{ path: string, lines: string[], added: Set<number>, componentSource?: string,
+ *   templateSource?: string, isFocusTrap?: (tag: string) => boolean }} input the file's new content,
+ *   the 1-based line numbers the diff added, the sibling's source for whichever half is missing, and
+ *   the seam that answers whether a child component traps focus
  * @returns {{ path: string, line: number, rule: string, text: string }[]} one entry per violation
  */
-export function findViolations({ path, lines, added, componentSource }) {
+export function findViolations({
+  path,
+  lines,
+  added,
+  componentSource,
+  templateSource,
+  isFocusTrap = resolveFocusTrap,
+}) {
   if (!IN_SCOPE.test(path)) return [];
 
-  const scanned = path.endsWith('.html') ? htmlRegions(lines) : typescriptRegions(lines);
-  const owner = path.endsWith('.html')
-    ? codeOf(componentSource ?? '')
-    : scanned.code.join('\n');
+  const html = path.endsWith('.html');
+  const scanned = html ? htmlRegions(lines) : typescriptRegions(lines);
+  const code = html ? codeOf(componentSource ?? '') : scanned.code;
+  const inline = html || scanned.template.some((line) => line.trim() !== '');
+  const template = inline ? scanned.template : maskHtmlComments((templateSource ?? '').split('\n'));
   const violations = [
     ...busyViolations(path, lines, added, scanned.template),
-    ...focusViolations(path, lines, added, scanned.template, owner),
+    ...focusViolations({
+      path,
+      lines,
+      added,
+      surfaces: surfaces(template, isFocusTrap),
+      code,
+      ownsTemplate: inline,
+      ownsCode: !html,
+    }),
   ];
   return violations.sort((a, b) => a.line - b.line);
 }
@@ -133,7 +167,7 @@ function htmlRegions(lines) {
 
 /** Strips a sibling component's comments and strings so `movesFocus` sees call sites only. */
 function codeOf(source) {
-  return typescriptRegions(source.split('\n')).code.join('\n');
+  return typescriptRegions(source.split('\n')).code;
 }
 
 function maskHtmlComments(lines) {
@@ -280,44 +314,219 @@ function busyViolations(path, lines, added, template) {
 }
 
 /**
- * Reports a confirm-before-destroy surface whose component moves focus nowhere.
+ * Reports a surface whose teardown moves focus nowhere, in two scopes.
  *
- * Judged per component rather than per signal flip: the flip-level shape cannot tell a prompt
- * closing under the user from the same signal being reset inside a bulk state-reset block (a venue
- * switch, a route change), where no focus move is wanted. Spike: `docs/plans/focus-posture-guard.md`.
+ * <p>**The component floor** — a component rendering a confirm branch and holding no focus call site
+ * at all. One finding per component, not per `@if`: a surface routinely spans two branches (the
+ * trigger's and the prompt's), and the fix is one set of legs however many it spans. It stays
+ * confirm-only, because `movesFocus` deliberately rejects a bare `.focus()` and the app's two shell
+ * modals restore focus exactly that way — applying the floor to them reports correct code.
  *
- * <p>One finding per component, not per `@if` — a surface routinely spans two branches (the
- * trigger's and the prompt's), and the fix is one set of legs however many it spans.
+ * <p>**The signal check** — the surface's own gating signal, whose flip-to-closed sites all move
+ * focus nowhere. This is what a component-wide exemption hides: one compliant surface excused every
+ * other surface the component owned (#624). It is narrower than that exemption and wider than the
+ * flip-level rule #621 rejected, which demanded a leg at *every* flip site and so reported the bulk
+ * state resets — a venue switch, a route change — where no move is wanted. **One compliant flip site
+ * exempts the signal**; a signal nothing flips closed is not a teardown this component performs.
  *
  * <p>**Rendering `<app-confirm-panel>` is not an exemption.** Those components own the *open* leg
  * only — their own TSDoc says focus back out is the caller's — so a component that delegates and
  * holds no focus helper still strands focus on cancel and on settle, two thirds of the rule.
  */
-function focusViolations(path, lines, added, template, componentCode) {
-  if (movesFocus(componentCode)) return [];
+function focusViolations({ path, lines, added, surfaces, code, ownsTemplate, ownsCode }) {
+  const violations = [];
+  const floor = ownsTemplate ? floorViolation(path, lines, added, surfaces, code) : undefined;
 
-  const surfaces = confirmSurfaces(template).filter((found) => added.has(found.line + 1));
+  if (floor !== undefined) violations.push(floor);
+  if (!ownsCode) return violations;
+
+  const movers = moverNames(code.join('\n'));
+  for (const surface of surfaces) {
+    if (surface.negated || surface.line + 1 === floor?.line) continue;
+    const signal = gatingSignal(surface.condition);
+    if (signal === null) continue;
+    const flips = flipSites(code, signal);
+    if (flips.length === 0 || flips.some((site) => movesFocusIn(memberOf(code, site), movers))) {
+      continue;
+    }
+    const stranding = flips.find((site) => added.has(site.line + 1));
+    if (stranding === undefined) continue;
+    violations.push({
+      path,
+      line: stranding.line + 1,
+      rule: 'FOCUS-1',
+      text: lines[stranding.line].trim(),
+    });
+  }
+  return violations;
+}
+
+function floorViolation(path, lines, added, surfaces, code) {
+  if (movesFocus(code.join('\n'))) return undefined;
+
+  const confirm = surfaces.filter(
+    (found) => found.kind === 'confirm' && added.has(found.line + 1),
+  );
   // The negated half of a trigger/prompt pair renders no prompt, so point at the prompt if there is one.
-  const surface = surfaces.find((found) => !found.negated) ?? surfaces[0];
-  if (surface === undefined) return [];
-  return [{ path, line: surface.line + 1, rule: 'FOCUS-1', text: lines[surface.line].trim() }];
+  const surface = confirm.find((found) => !found.negated) ?? confirm[0];
+  if (surface === undefined) return undefined;
+  return { path, line: surface.line + 1, rule: 'FOCUS-1', text: lines[surface.line].trim() };
 }
 
 /** `@if` and `@else if` alike — the latter is the idiomatic way to write a trigger/prompt pair. */
 const BRANCH = /@(?:else\s+)?if\b/g;
 
-/** Every branch whose condition is a confirm-prompt flag rather than a domain value. */
-function confirmSurfaces(lines) {
-  const surfaces = [];
+/** Every branch a teardown can destroy the focused element from: a confirm prompt, or a focus trap. */
+function surfaces(lines, isFocusTrap) {
+  const found = branches(lines);
+  const modal = modalSurfaces(lines, found, isFocusTrap);
+  return found
+    .filter((branch) => isConfirmPrompt(branch.condition) || modal.has(branch))
+    .map((branch) => ({
+      ...branch,
+      kind: isConfirmPrompt(branch.condition) ? 'confirm' : 'modal',
+    }));
+}
+
+function branches(lines) {
+  const found = [];
 
   for (let i = 0; i < lines.length; i++) {
     for (const match of lines[i].matchAll(BRANCH)) {
       const condition = readCondition(lines, i, match.index + match[0].length);
-      if (condition === null || !isConfirmPrompt(condition)) continue;
-      surfaces.push({ line: i, negated: /^\(\s*!/.test(condition) });
+      if (condition === null) continue;
+      found.push({
+        line: i,
+        condition,
+        negated: /^\(\s*!/.test(condition),
+        end: bodyEnd(lines, i),
+      });
     }
   }
+  return found;
+}
+
+/**
+ * The branches that render a focus trap, each attributed to the **innermost** one holding it.
+ *
+ * `venue-map.html` wraps its whole page in an `@if`, three hundred lines above the branch that
+ * renders the booking dialog; attributing the trap to every enclosing branch would report a
+ * loaded-state flag nothing dismisses.
+ */
+function modalSurfaces(lines, found, isFocusTrap) {
+  const surfaces = new Set();
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!rendersFocusTrap(lines[i], isFocusTrap)) continue;
+    const innermost = found.filter((branch) => branch.line <= i && i <= branch.end).at(-1);
+    if (innermost !== undefined) surfaces.add(innermost);
+  }
   return surfaces;
+}
+
+function rendersFocusTrap(line, isFocusTrap) {
+  if (FOCUS_TRAP.test(line)) return true;
+  return [...line.matchAll(COMPONENT_TAG)].some((match) => isFocusTrap(match[1]));
+}
+
+/** The line a branch's `{ … }` body closes on; a body legitimately spans hundreds of lines. */
+function bodyEnd(lines, start) {
+  let depth = 0;
+  let opened = false;
+
+  for (let i = start; i < lines.length; i++) {
+    for (const ch of lines[i]) {
+      if (ch === '{') {
+        depth++;
+        opened = true;
+      } else if (ch === '}' && opened && --depth === 0) {
+        return i;
+      }
+    }
+  }
+  return lines.length - 1;
+}
+
+/** The signal a branch is gated on: `(statementOpen()` and `(selectedSet(); as set` both name one. */
+function gatingSignal(condition) {
+  return /^\(\s*([A-Za-z_$][\w$]*)\s*\(/.exec(condition)?.[1] ?? null;
+}
+
+/**
+ * The lines flipping a surface's signal off.
+ *
+ * Only the literal `set(false | undefined | null)` forms; a teardown written some other way
+ * (`update(…)`, a `linkedSignal`, a `resource` reset) is a deliberate miss — the safe direction,
+ * as `BUSY_STEMS` is for BUSY-1. Widen this rather than route around it.
+ */
+function flipSites(code, signal) {
+  const flip = new RegExp(`(?<![\\w$])${escaped(signal)}\\s*\\.set\\(\\s*(?:false|undefined|null)\\s*\\)`);
+  const sites = [];
+
+  for (let i = 0; i < code.length; i++) {
+    const found = flip.exec(code[i]);
+    if (found !== null) sites.push({ line: i, column: found.index });
+  }
+  return sites;
+}
+
+/** The field names bound to `focusMover()`, since the mover's name is the component's to choose. */
+function moverNames(code) {
+  return [...code.matchAll(/([A-Za-z_$][\w$]*)\s*=\s*focusMover\s*\(/g)].map((match) => match[1]);
+}
+
+/**
+ * Whether the class member holding a flip moves focus.
+ *
+ * A bare `.focus()` counts here though `movesFocus` rejects it at component scope: narrowed to the
+ * handler that closes this one surface, a focus call cannot plausibly be about something else.
+ */
+function movesFocusIn(member, movers) {
+  const text = member.join('\n');
+  return (
+    /\.focus\s*\(/.test(text) ||
+    movers.some((name) => new RegExp(`(?<![\\w$])${escaped(name)}\\s*\\(`).test(text))
+  );
+}
+
+/**
+ * The class member holding a flip site — the unit a focus leg is judged in.
+ *
+ * Not the innermost block: a flip inside a `subscribe(…)` callback and the leg beside it belong to
+ * the same handler, and `venue-map` writes its focus restore inside a `queueMicrotask`. The walk
+ * starts at the flip's own column, or a member written on one line closes before it opens.
+ */
+function memberOf(code, site) {
+  const enclosing = [];
+  let depth = 0;
+
+  for (let i = site.line; i >= 0; i--) {
+    for (let c = (i === site.line ? site.column : code[i].length) - 1; c >= 0; c--) {
+      if (code[i][c] === '}') depth++;
+      else if (code[i][c] !== '{') continue;
+      else if (depth === 0) enclosing.push(i);
+      else depth--;
+    }
+  }
+  const start = enclosing.filter((i) => !/\bclass\b/.test(code[i])).at(-1);
+  return start === undefined ? [] : code.slice(start, blockEnd(code, start) + 1);
+}
+
+function blockEnd(code, start) {
+  let depth = 0;
+
+  for (let i = start; i < code.length; i++) {
+    for (const ch of code[i]) {
+      if (ch === '{') depth++;
+      else if (ch === '}' && --depth === 0) return i;
+    }
+  }
+  return code.length - 1;
+}
+
+/** `$` is legal in an identifier and special in a pattern. */
+function escaped(name) {
+  return name.replaceAll('$', '\\$');
 }
 
 /**
@@ -530,20 +739,46 @@ function checkOne(path, added, read = readText) {
     path,
     lines,
     added: added ?? new Set(lines.map((_, i) => i + 1)),
-    componentSource: ownerSource(path, read),
+    componentSource: siblingSource(path, '.html', read),
+    templateSource: siblingSource(path, '.ts', read),
   });
 }
 
 /**
- * The source of the component that owns a template.
+ * The other half of a component split across two files.
  *
- * An external template's focus handling lives in its sibling `.ts`, so reading it is what keeps
- * FOCUS-1 from reporting every compliant `.html` in the app — `set-editor` and `layout-editor` both
- * have their confirm surface in one file and their focus helper in the other.
+ * An external template's focus handling lives in its sibling `.ts`, and that `.ts`'s surfaces live
+ * in its sibling `.html`; reading across is what keeps FOCUS-1 from reporting every compliant
+ * `.html` in the app, and what lets the `.ts` report the flip that strands focus. `set-editor` and
+ * `layout-editor` are both written this way.
  */
-function ownerSource(path, read) {
-  return path.endsWith('.html') ? (read(path.replace(/\.html$/, '.ts')) ?? '') : '';
+function siblingSource(path, extension, read) {
+  if (!path.endsWith(extension)) return '';
+  return read(path.replace(new RegExp(`\\${extension}$`), extension === '.html' ? '.ts' : '.html')) ?? '';
 }
+
+/**
+ * Answers whether a component tag renders a focus trap, by reading the file its selector's basename
+ * names. An unresolvable tag is not a trap — the safe direction, as `BUSY_STEMS` is for BUSY-1.
+ *
+ * <p>The index is one `git ls-files`, built only when a template actually renders an `<app-…>` child
+ * and then cached for the process: the `PostToolUse` hook runs this guard on every edit (#621's R-6).
+ */
+function focusTraps(read = readText) {
+  const answers = new Map();
+  let index;
+
+  return (tag) => {
+    if (!answers.has(tag)) {
+      index ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app']));
+      const source = index.find((path) => path.endsWith(`/${tag.replace(/^app-/, '')}.ts`));
+      answers.set(tag, source !== undefined && FOCUS_TRAP.test(read(source) ?? ''));
+    }
+    return answers.get(tag);
+  };
+}
+
+const resolveFocusTrap = focusTraps();
 
 const ADVICE = {
   'BUSY-1':
@@ -553,11 +788,14 @@ const ADVICE = {
     '— the same flag on both is still this violation. Every other element is out of scope. ' +
     'See frontend/.claude/CLAUDE.md.',
   'FOCUS-1':
-    'FOCUS-1: this component renders a confirm-before-destroy surface but moves focus nowhere, so ' +
-    'each transition strands focus on <body> (WCAG 2.4.3). Give it all three legs — open, back-out ' +
-    "and settled — via shared/focus-after-render.ts's focusMover(). Rendering " +
-    '<app-confirm-panel>/<app-confirm-with-reason> does NOT clear this: they own the open leg only, ' +
-    'and the back-out and settled legs are still yours. See frontend/.claude/CLAUDE.md.',
+    'FOCUS-1: a transition that destroys the element focus sits on — a confirm prompt settling, a ' +
+    'focus-trapped modal dismissed or torn down by a state reset — strands focus on <body> unless ' +
+    'it is moved deliberately (WCAG 2.4.3). Give the surface all three legs — open, back-out and ' +
+    "settled — via shared/focus-after-render.ts's focusMover(). The line reported is either the " +
+    'branch, when the component moves focus nowhere at all, or the flip that closes the surface, ' +
+    'when that flip’s own handler does: judged per gating signal, so moving focus for one surface ' +
+    'no longer excuses another. Rendering <app-confirm-panel>/<app-confirm-with-reason> does NOT ' +
+    'clear this: they own the open leg only. See frontend/.claude/CLAUDE.md.',
 };
 
 function report(violations) {

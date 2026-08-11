@@ -199,17 +199,16 @@ N/A — no contract change.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change it
 > records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, phase 1 next`
 
-**Next action:** Phase 0 step 1 — write the RED tests for AC-1 and AC-6 in
-`scripts/check-focus-posture.test.mjs`.
+**Next action:** Phase 1 step 1 — RED tests for AC-8 (external template anchoring), AC-9 (diff
+scoping over flip lines) and AC-10 (advisory posture).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Surfaces: the widened trigger | | |
-| 1 — Judgement: the signal-scoped exemption | | |
-| 2 — Anchoring: external templates and diff scoping | | |
-| 3 — Measure the four trees, then the conventions doc | | |
+| 0 — The rule: widened trigger + signal-scoped exemption | ✅ | this commit |
+| 1 — Anchoring: external templates, diff scoping, advisory posture | | |
+| 2 — Measure the four trees, then the conventions doc | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -237,38 +236,26 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ---
 
-## Phase 0 — Surfaces: the widened trigger
+## Phase 0 — The rule: widened trigger + signal-scoped exemption
+
+> Trigger and exemption ship together on purpose: neither reports instance 14 alone (Resolved open
+> questions), so a phase boundary between them would land a half-rule whose RED test cannot go green.
 
 **Files:** Modify `scripts/check-focus-posture.mjs` · Test `scripts/check-focus-posture.test.mjs`
 
-- [ ] **Step 1: Write the failing tests** — AC-1 (a modal branch is a surface), AC-6 (innermost
-  attribution).
+- [ ] **Step 1: Write the failing tests** — AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-11.
 - [ ] **Step 2: Run them, verify they fail** — `node --test scripts/check-focus-posture.test.mjs`
-- [ ] **Step 3: Minimal implementation** — `modalSurfaces(template, isModalTag)`: for each
-  `<tag` whose resolved source carries a modal marker, the innermost enclosing branch is the surface.
+- [ ] **Step 3: Minimal implementation** — surfaces gain the modal branch (innermost attribution);
+  judgement gains the per-signal flip check, judged in the class member that holds each flip; the
+  component floor stays confirm-only.
 - [ ] **Step 4: Run it, verify it passes**
 - [ ] **Step 5: Generalization-audit pass**
-- [ ] **Step 6: Commit** — `git commit -m "Widen FOCUS-1's trigger to a branch that renders a focus trap (#624)"`
+- [ ] **Step 6: Commit** — `git commit -m "Scope FOCUS-1 to the signal that gates each surface (#624)"`
 - [ ] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
-## Phase 1 — Judgement: the signal-scoped exemption
-
-**Files:** Modify `scripts/check-focus-posture.mjs` · Test `scripts/check-focus-posture.test.mjs`
-
-- [ ] **Step 1: Write the failing tests** — AC-2, AC-3, AC-5, AC-7, AC-11.
-- [ ] **Step 2: Run them, verify they fail**
-- [ ] **Step 3: Minimal implementation** — flip sites per gating signal, judged in the class member
-  that holds each; the component floor stays confirm-only.
-- [ ] **Step 4: Run it, verify it passes**
-- [ ] **Step 5: Generalization-audit pass**
-- [ ] **Step 6: Commit** — `git commit -m "Scope FOCUS-1's exemption to the signal that gates the surface (#624)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
-
----
-
-## Phase 2 — Anchoring: external templates and diff scoping
+## Phase 1 — Anchoring: external templates, diff scoping, advisory posture
 
 **Files:** Modify `scripts/check-focus-posture.mjs` · Test `scripts/check-focus-posture.test.mjs`
 
@@ -283,7 +270,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ---
 
-## Phase 3 — Measure the four trees, then the conventions doc
+## Phase 2 — Measure the four trees, then the conventions doc
 
 **Files:** Modify `frontend/.claude/CLAUDE.md` · `CLAUDE.md` · `docs/plans/focus-posture-guard.md`
 
@@ -304,6 +291,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-11 | plan-time spike | every component that is a focus trap, so the widened trigger sees all of them | `grep -rln "trapFocusWithin\|aria-modal\|role=\"dialog\"" frontend/src/app --include=*.ts` | 3 (`booking-dialog`, `find-booking`, `payout-statement`) + `shared/focus-trap.ts` itself | all three are reached through the `app-<basename>` selector convention; the helper owns no template, so it is not a surface |
+| 2026-08-11 | Phase 0 | a member written on one line closes before the flip it holds, which `memberOf` walked past | the RED tests for AC-3/AC-7, then `--files` over the counterfactual | 1 shape (any flip sharing a line with its member's `{`) | fixed by walking back from the flip's own column, not the line end — the same defect would hit `if (x) { open.set(false); }` in real code |
 
 ---
 
