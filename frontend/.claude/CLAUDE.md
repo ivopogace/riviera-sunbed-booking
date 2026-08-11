@@ -50,7 +50,7 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   teardown written some other way (`update(…)`, a `linkedSignal`) is a deliberate miss. Both are
   **diff-scoped**, so the standing
   tree never fails the repo — and only **BUSY-1 fails a build**: FOCUS-1 prints and returns 0,
-  because "does this component move focus" is a runtime property a regex can only approximate, and a
+  because "does this teardown move focus" is a runtime property a regex can only approximate, and a
   gate that fails correct code is the error direction this layer cannot afford. Treat a FOCUS-1 line
   as a prompt to check the three legs yourself. Run either by hand with
   `node scripts/check-focus-posture.mjs --files <path…>` (which judges those files whole, committed

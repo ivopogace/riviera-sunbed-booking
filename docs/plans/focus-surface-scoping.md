@@ -32,7 +32,10 @@ what refuted both proposals) · `riviera-plan-doc` (this template — forced the
 measurement into an AC rather than a claim, and the Behavior-parity ledger for a rule that already
 ships) · `tdd` (every predicate change proven RED against a fixture first, then the four-tree
 measurement re-run) · `riviera-review-overlay` (review gate — at ready-for-review) ·
-`riviera-docs-freshness` (**ran** over `origin/main..HEAD`, findings folded into the same PR) ·
+`riviera-docs-freshness` (**ran** over `origin/main..HEAD` — 5 findings, all patched in this PR: the
+FOCUS-1 paragraph in both `CLAUDE.md` files, its "does this **component** move focus" rationale, and
+#621's known limit (a) plus the Non-goal that filed this issue. The counting sweep found nothing
+falsified — the guard still has exactly two rules and the hygiene job still four checks) ·
 `riviera-frontend` (**not loaded — no file under `frontend/src` or `frontend/e2e` changes**; the one
 frontend-tree file touched is `frontend/.claude/CLAUDE.md`, the convention prose the guard enforces).
 
@@ -47,40 +50,42 @@ frontend-tree file touched is `frontend/.claude/CLAUDE.md`, the convention prose
 > test class. Prose is not an AC. **Write each AC against the application boundary —
 > the inner hexagon — not the outside technology.**
 
-- [ ] **AC-1:** Given a branch whose condition names no confirm flag but whose body renders a
+- [x] **AC-1:** Given a branch whose condition names no confirm flag but whose body renders a
   focus-trapped child, when the file is judged, then the branch is a FOCUS-1 surface. *Pinned by:*
   `check-focus-posture.test.mjs` › `treats a branch that renders a focus-trapped child as a surface`
-- [ ] **AC-2:** Given a component that moves focus for one surface while every flip-to-closed site of
+- [x] **AC-2:** Given a component that moves focus for one surface while every flip-to-closed site of
   a *second* surface's signal moves focus nowhere, when the file is judged, then that second surface
   is reported — the exemption instance 14 hid behind. *Pinned by:* `check-focus-posture.test.mjs` ›
   `reports a second surface the component moves no focus for`
-- [ ] **AC-3:** Given a signal flipped closed at two sites, one of which moves focus, when the file is
+- [x] **AC-3:** Given a signal flipped closed at two sites, one of which moves focus, when the file is
   judged, then nothing is reported — a bulk state reset beside a compliant dismiss is not a
   violation (the shape that killed the flip-level rule in #621). *Pinned by:*
   `check-focus-posture.test.mjs` › `accepts a signal one of whose flip sites moves focus`
-- [ ] **AC-4:** Given the standing tree, when `--all` sweeps it, then FOCUS-1 reports **0** over the
-  11 surfaces it now judges (up from 8 confirm-only). *Pinned by:*
-  `check-focus-posture.test.mjs` › `sweeps the standing tree clean` and the recorded `--all` run.
-- [ ] **AC-5:** Given a modal branch whose component restores focus with a plain `.focus()` and no
+- [x] **AC-4:** Given the standing tree, when `--all` sweeps it, then FOCUS-1 reports **0** over the
+  11 surfaces it now judges (up from 8 confirm-only). *Pinned by:* the recorded `--all` run under
+  Acceptance-criteria verification, plus the mutation sweep that proves all 11 are judged —
+  deliberately not a suite-level test, which would be a repo-wide gate (#621 R-1).
+- [x] **AC-5:** Given a modal branch whose component restores focus with a plain `.focus()` and no
   `afterNextRender` (`app.ts`, `venue-map.ts`), when the file is judged, then nothing is reported —
   the component-level floor does not reach the widened trigger. *Pinned by:*
   `check-focus-posture.test.mjs` › `does not apply the component floor to a modal branch`
-- [ ] **AC-6:** Given a page-level branch that contains a nested branch rendering the modal, when the
+- [x] **AC-6:** Given a page-level branch that contains a nested branch rendering the modal, when the
   file is judged, then only the innermost branch is the surface. *Pinned by:*
   `check-focus-posture.test.mjs` › `attributes a modal to the innermost branch that renders it`
-- [ ] **AC-7:** Given a component whose mover field is not named `focusAfterRender`, when its flip
+- [x] **AC-7:** Given a component whose mover field is not named `focusAfterRender`, when its flip
   site calls that field, then the surface is exempt. *Pinned by:* `check-focus-posture.test.mjs` ›
   `counts a call to a mover field under any name`
-- [ ] **AC-8:** Given a component with an **external** template, when its `.ts` is judged, then the
-  sibling `.html` supplies the surfaces and the finding anchors on the `.ts` flip line. *Pinned by:*
-  `check-focus-posture.test.mjs` › `judges a component with an external template against its sibling`
-- [ ] **AC-9:** Given a diff that added neither the branch line nor a flip line, when the file is
+- [x] **AC-8:** Given a component with an **external** template, when either half is judged, then the
+  sibling supplies the missing side of the rule and each half reports at the line it can act on — the
+  `.ts` at the flip, the `.html` at the branch. *Pinned by:* `check-focus-posture.test.mjs` ›
+  `judges a component with an external template against its sibling`
+- [x] **AC-9:** Given a diff that added neither the branch line nor a flip line, when the file is
   judged diff-scoped, then nothing is reported. *Pinned by:* `check-focus-posture.test.mjs` ›
   `judges only the surfaces and flips a diff added`
-- [ ] **AC-10:** Given a FOCUS-1 finding and no BUSY-1 finding, when the CLI runs `--diff`, then it
+- [x] **AC-10:** Given a FOCUS-1 finding and no BUSY-1 finding, when the CLI runs `--diff`, then it
   prints the advisory and exits **0** (#621's settled posture, unchanged). *Pinned by:*
   `check-focus-posture.test.mjs` › `keeps FOCUS-1 advisory and BUSY-1 gating`
-- [ ] **AC-11:** Given `payouts-tab` as it stood mid-#621 — the weather-confirm legs in, the
+- [x] **AC-11:** Given `payouts-tab` as it stood mid-#621 — the weather-confirm legs in, the
   statement-modal legs not yet — when judged, then FOCUS-1 reports the statement surface. *Pinned
   by:* `check-focus-posture.test.mjs` › `reports the surface that hid behind the weather-confirm legs`
 
@@ -204,10 +209,10 @@ N/A — no contract change.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change it
 > records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `PR — ready for review; review + sonar gates next`
+**Stage pointer:** `merge close-out — gates cleared, merged via PR #626`
 
-**Next action:** run the review gate on PR #626 per `riviera-sdlc` `references/pr-gates.md` §1, then
-pull the Sonar new-issue list for the final head SHA.
+**Next action:** none — the slice is closed out. Its one deliberate successor is #623, the review-bank
+item for this bug class, which #621 filed and this slice does not touch.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -261,15 +266,15 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `scripts/check-focus-posture.mjs` · Test `scripts/check-focus-posture.test.mjs`
 
-- [ ] **Step 1: Write the failing tests** — AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-11.
-- [ ] **Step 2: Run them, verify they fail** — `node --test scripts/check-focus-posture.test.mjs`
-- [ ] **Step 3: Minimal implementation** — surfaces gain the modal branch (innermost attribution);
+- [x] **Step 1: Write the failing tests** — AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-11.
+- [x] **Step 2: Run them, verify they fail** — `node --test scripts/check-focus-posture.test.mjs`
+- [x] **Step 3: Minimal implementation** — surfaces gain the modal branch (innermost attribution);
   judgement gains the per-signal flip check, judged in the class member that holds each flip; the
   component floor stays confirm-only.
-- [ ] **Step 4: Run it, verify it passes**
-- [ ] **Step 5: Generalization-audit pass**
-- [ ] **Step 6: Commit** — `git commit -m "Scope FOCUS-1 to the signal that gates each surface (#624)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes**
+- [x] **Step 5: Generalization-audit pass**
+- [x] **Step 6: Commit** — `git commit -m "Scope FOCUS-1 to the signal that gates each surface (#624)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -277,14 +282,14 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `scripts/check-focus-posture.mjs` · Test `scripts/check-focus-posture.test.mjs`
 
-- [ ] **Step 1: Write the failing tests** — AC-8, AC-9, AC-10.
-- [ ] **Step 2: Run them, verify they fail**
-- [ ] **Step 3: Minimal implementation** — a `.ts` with no inline template reads its sibling `.html`;
+- [x] **Step 1: Write the failing tests** — AC-8, AC-9, AC-10.
+- [x] **Step 2: Run them, verify they fail**
+- [x] **Step 3: Minimal implementation** — a `.ts` with no inline template reads its sibling `.html`;
   a signal finding is scoped by its own flip line.
-- [ ] **Step 4: Run it, verify it passes**
-- [ ] **Step 5: Generalization-audit pass**
-- [ ] **Step 6: Commit** — `git commit -m "Anchor a FOCUS-1 signal finding on the flip that strands focus (#624)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes**
+- [x] **Step 5: Generalization-audit pass**
+- [x] **Step 6: Commit** — `git commit -m "Anchor a FOCUS-1 signal finding on the flip that strands focus (#624)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -292,13 +297,13 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `frontend/.claude/CLAUDE.md` · `CLAUDE.md` · `docs/plans/focus-posture-guard.md`
 
-- [ ] **Step 1: Write the failing test** — AC-4 (`--all` over the standing tree reports 0).
-- [ ] **Step 2: Run it, verify it fails** if any surface regressed.
-- [ ] **Step 3: Re-run the four-tree measurement** and record the counts here.
-- [ ] **Step 4: Update the conventions prose** — what FOCUS-1 flags, in both CLAUDE.md files.
-- [ ] **Step 5: Generalization-audit pass**
-- [ ] **Step 6: Commit** — `git commit -m "State the surface-scoped FOCUS-1 rule where the convention lives (#624)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1: Write the failing test** — AC-4 (`--all` over the standing tree reports 0).
+- [x] **Step 2: Run it, verify it fails** if any surface regressed.
+- [x] **Step 3: Re-run the four-tree measurement** and record the counts here.
+- [x] **Step 4: Update the conventions prose** — what FOCUS-1 flags, in both CLAUDE.md files.
+- [x] **Step 5: Generalization-audit pass**
+- [x] **Step 6: Commit** — `git commit -m "State the surface-scoped FOCUS-1 rule where the convention lives (#624)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -350,24 +355,24 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
