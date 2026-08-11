@@ -200,6 +200,36 @@ test('opens the Pricing tab on ONE venue-map read, not two (#486)', async ({ pag
   await expect(page.getByTestId('pricing-stale-banner')).toHaveCount(0);
 });
 
+test('keeps focus in the price field across an Enter commit (WCAG 2.4.3, #625)', async ({
+  page,
+}) => {
+  await mockPricing(page);
+  await page.goto('/operator/1');
+  await signInAndOpenPricing(page);
+
+  // Enter commits without leaving the field, so `saving()` disables the input focus is sitting in.
+  await page.getByTestId('pricing-input-A').fill('42.5');
+  await page.getByTestId('pricing-input-A').press('Enter');
+
+  await expect(page.getByTestId('pricing-saved-A')).toBeVisible();
+  await expect(page.getByTestId('pricing-input-A')).toBeFocused();
+});
+
+test('leaves focus where the operator clicked when the commit came from blur (#625)', async ({
+  page,
+}) => {
+  await mockPricing(page);
+  await page.goto('/operator/1');
+  await signInAndOpenPricing(page);
+
+  // The other commit path: focus is already leaving for row B, so the settle must not pull it back.
+  await page.getByTestId('pricing-input-A').fill('42.5');
+  await page.getByTestId('pricing-input-B').click();
+
+  await expect(page.getByTestId('pricing-saved-A')).toBeVisible();
+  await expect(page.getByTestId('pricing-input-B')).toBeFocused();
+});
+
 test('shows the not-owner message and reverts the projection when the reprice is 403', async ({
   page,
 }) => {

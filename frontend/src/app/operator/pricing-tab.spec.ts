@@ -189,7 +189,7 @@ describe('PricingTab (#174)', () => {
   });
 
   it('serializes reprices: a second edit while one is in flight is ignored, not a concurrent PUT', async () => {
-    // The shared set_version token admits only one reprice at a time, so a save disables the inputs.
+    // The shared set_version token admits only one reprice at a time, so a save locks the inputs.
     render(SEED, 5);
 
     // Start editing A — its PUT is in flight (not yet flushed).
@@ -197,9 +197,11 @@ describe('PricingTab (#174)', () => {
     const reqA = http.expectOne((r) => r.url.includes('/api/venues/1/rows/A/price'));
     expect(reqA.request.body.expectedVersion).toBe(5);
 
-    // Genuinely disabled, not merely announced — aria-disabled would leave the field typable.
-    expect(input('B').disabled).toBe(true);
+    // Genuinely locked, not merely announced — aria-disabled would leave the field typable.
+    expect(input('B').readOnly).toBe(true);
     expect(input('B').hasAttribute('aria-disabled')).toBe(false);
+    // But NOT `disabled`: that drops the field from the tab order, which blurs it to `<body>` (#625).
+    expect(input('B').disabled).toBe(false);
 
     // A second edit (row B) while A is in flight is ignored — no concurrent PUT, B's input is restored.
     editRow('B', '30');

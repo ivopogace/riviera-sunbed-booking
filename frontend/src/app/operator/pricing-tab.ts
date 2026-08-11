@@ -65,7 +65,14 @@ export class PricingTab {
 
   /** True while a reprice PUT is in flight. The single shared `set_version` token cannot admit two
    *  concurrent reprices (the second would false-conflict), so a save serializes edits: the row inputs
-   *  are disabled while it runs, and a `change` that still slips through is ignored (review finding). */
+   *  go `readonly` while it runs, and a `change` that still slips through is ignored (review finding).
+   *
+   *  <p><strong>`readonly`, not `disabled`</strong> (#625): a browser blurs a disabled element, and
+   *  this is the one busy flag in the app a *field* raises about itself — an Enter commit disables the
+   *  input focus is still in, and a click-away commit disables the input focus just landed on. Either
+   *  way focus is stranded on `<body>` for the request and re-enabling does not bring it back (WCAG
+   *  2.4.3). `readonly` blocks typing just as completely while keeping the field focused and in the
+   *  tab order, so it serializes without the blur. */
   protected readonly saving = signal(false);
   /** The last row saved and the last per-row error — sequential edits, per-row so a fail is scoped. */
   protected readonly savedRow = signal<string | null>(null);

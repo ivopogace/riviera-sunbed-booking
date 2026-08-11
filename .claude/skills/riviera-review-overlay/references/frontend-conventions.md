@@ -309,9 +309,13 @@ postures**, and conflating them is the way to get this item wrong in both direct
    class.
 4. **The input carve-out's premise.** Inputs keep `[disabled]` and BUSY-1 allow-lists `button`/`a`
    only, on the stated grounds that *focus is on the button, never the field*. That holds wherever a
-   button starts the write — but not where the **field's own** `(change)`/`(blur)` does, and the
-   handler then disables it (live shape: `operator/pricing-tab.html`, **#625**). Ask where focus
-   actually is when the flag flips, not which element carries the binding.
+   button starts the write — and fails where the **field's own** `(change)`/`(blur)` starts it, which
+   the guard cannot tell apart. `pricing-tab` was the live case (**#625**, fixed): Enter fired
+   `change` without leaving the field, so the flag disabled the input focus was in; clicking to the
+   next row disabled *that* one just as focus landed. **The fix for a self-committing field is
+   `[readonly]`**, not `[appBusy]` and not a focus leg — it blocks typing just as completely while
+   keeping the field focused. Ask where focus actually is when the flag flips, not which element
+   carries the binding.
 
 **Follow-up:**
 - The convention itself, both postures and the guard's flags: `frontend/.claude/CLAUDE.md`. The

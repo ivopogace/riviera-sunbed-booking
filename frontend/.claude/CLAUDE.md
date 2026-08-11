@@ -29,6 +29,13 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   `[disabled]`** (`aria-disabled` does not stop typing, and focus is on the button anyway), and so does
   anything disabled by **validity or state** rather than an in-flight write — a genuinely unavailable
   control should leave the tab order. Split a binding that mixes the two.
+  **The input carve-out has a condition, and it is the button clause, not the input one** (#625): it
+  holds where a *button* starts the write. Where the **field itself** starts it — its own
+  `(change)`/`(blur)` — `[disabled]="saving()"` blurs whichever field focus is in, on both commit
+  paths: Enter fires `change` without leaving the field, and a click-away lands focus on the *next*
+  field just in time for the same flag to disable that one. Use **`[readonly]`** there
+  (`read-only:` variant to style it): it blocks typing just as completely — verified in Chromium, not
+  assumed — while keeping the field focused and in the tab order. Live example: `pricing-tab.html`.
 - **A transition that destroys the focused element must move focus deliberately**, via
   `shared/focus-after-render.ts`'s `focusMover()`. This is the repo's most-repeated bug class (#604,
   #614, #616, #621 — fourteen instances); confirm-before-destroy surfaces need all three legs — open,
