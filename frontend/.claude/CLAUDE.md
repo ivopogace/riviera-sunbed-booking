@@ -32,6 +32,16 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - **A transition that destroys the focused element must move focus deliberately**, via
   `shared/focus-after-render.ts`'s `focusMover()`. This is the repo's most-repeated bug class (#604,
   #614, #616); confirm-before-destroy surfaces need all three legs — open, back-out, and settled.
+- **A guard enforces both of the above while you type** (#621): `scripts/check-focus-posture.mjs`
+  runs from a `PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff, covering
+  `frontend/src/app/**` templates — inline `template:` literals and external `.html` alike. **BUSY-1**
+  flags a `[disabled]` bound to an in-flight flag; **FOCUS-1** flags a component rendering a confirm
+  surface that moves focus nowhere. It is **diff-scoped**, so the standing carve-outs never fail the
+  repo, and it knows the carve-outs anyway — inputs, validity/state bindings, split bindings, and
+  delegation to `<app-confirm-panel>`/`<app-confirm-with-reason>`. Run it by hand with
+  `node scripts/check-focus-posture.mjs --files <path…>`, or sweep the whole tree with `--all`.
+  BUSY-1 matches a curated vocabulary of busy-flag stems, so a novel flag name is a deliberate
+  false negative — extend `BUSY_STEMS` rather than working around it.
 
 ### Components
 

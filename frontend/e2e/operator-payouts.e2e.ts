@@ -220,3 +220,24 @@ test('a cross-venue weather refund shows the owner-assert copy and posts no reve
   await expect(page.getByTestId('weather-confirm')).toHaveCount(0);
   await expect(page.getByTestId('ledger-reason')).toHaveCount(1);
 });
+
+test('keeps focus off body across the weather-refund confirm (WCAG 2.4.3)', async ({ page }) => {
+  await mockPayouts(page);
+  await signInAndOpenPayouts(page);
+
+  // Open: the trigger is removed from the DOM, so focus has to land on the destructive button.
+  await page.getByTestId('weather-trigger').click();
+  await expect(page.getByTestId('weather-confirm-btn')).toBeFocused();
+
+  // Back out: the confirm is removed, so focus returns to the trigger it replaced.
+  await page.getByTestId('weather-cancel-btn').click();
+  await expect(page.getByTestId('weather-trigger')).toBeFocused();
+
+  // Settled: neither control survives, so focus parks on the notice carrying the outcome.
+  await page.getByTestId('weather-trigger').click();
+  await page.getByTestId('weather-confirm-btn').click();
+  await expect(page.getByTestId('payouts-notice')).toContainText('refund issued');
+  await expect(page.getByTestId('payouts-notice')).toBeFocused();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'weather refund focus legs');
+});

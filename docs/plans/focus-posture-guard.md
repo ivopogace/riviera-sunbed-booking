@@ -56,46 +56,46 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
 
 ### Rule 1 — `[disabled]` on a busy flag (issue item 1)
 
-- [ ] **AC-1:** Given a diff adds `<button [disabled]="saving()">`, when the guard runs, then it
+- [x] **AC-1:** Given a diff adds `<button [disabled]="saving()">`, when the guard runs, then it
   reports one violation at that line naming `[appBusy]` as the fix. *Pinned by:*
   `check-focus-posture.test.mjs` › `flags a button disabled by an in-flight flag`
-- [ ] **AC-2:** Given the same expression on an `<input>`, `<textarea>` or `<select>`, then no
+- [x] **AC-2:** Given the same expression on an `<input>`, `<textarea>` or `<select>`, then no
   violation — `aria-disabled` does not stop typing, and focus is on the clicked button, never the
   field. *Pinned by:* `check-focus-posture.test.mjs` › `leaves inputs alone`
-- [ ] **AC-3:** Given `<button [disabled]="!canAddRow()">`, `[disabled]="cell.disabled"`,
+- [x] **AC-3:** Given `<button [disabled]="!canAddRow()">`, `[disabled]="cell.disabled"`,
   `[disabled]="isPending(set)"` or `[disabled]="venueForm().invalid()"`, then no violation — a
   genuinely unavailable control should leave the tab order. *Pinned by:*
   `check-focus-posture.test.mjs` › `leaves validity and state bindings alone`
-- [ ] **AC-4:** Given `[disabled]` and `[appBusy]` on the same element (the deliberate split
+- [x] **AC-4:** Given `[disabled]` and `[appBusy]` on the same element (the deliberate split
   #616 established), then no violation. *Pinned by:*
   `check-focus-posture.test.mjs` › `accepts a split binding`
-- [ ] **AC-5:** Given `[disabled]="saving()"` written inside a TSDoc block or anywhere in a `.ts`
+- [x] **AC-5:** Given `[disabled]="saving()"` written inside a TSDoc block or anywhere in a `.ts`
   file outside a `template:` literal, then no violation — the live case is `shared/busy-action.ts`,
   whose own documentation quotes the form it replaces. *Pinned by:*
   `check-focus-posture.test.mjs` › `ignores bindings outside an inline template`
 
 ### Rule 2 — a confirm surface with no focus leg (issue item 2)
 
-- [ ] **AC-6:** Given a diff adds `@if (confirmRemove()) { … }` to a component that calls neither
+- [x] **AC-6:** Given a diff adds `@if (confirmRemove()) { … }` to a component that calls neither
   `focusMover()` nor a shared confirm component, then one violation is reported against that
   component. *Pinned by:* `check-focus-posture.test.mjs` › `flags a confirm surface with no focus leg`
-- [ ] **AC-7:** Given the same, but the component's `.ts` obtains `focusMover()`, then no violation —
+- [x] **AC-7:** Given the same, but the component's `.ts` obtains `focusMover()`, then no violation —
   including when the surface lives in a sibling `.html` and the helper in the `.ts`. *Pinned by:*
   `check-focus-posture.test.mjs` › `accepts a confirm surface whose component moves focus` and
   › `pairs an external template with its component`
-- [ ] **AC-8:** Given a confirm surface rendered by `<app-confirm-panel>` or
+- [x] **AC-8:** Given a confirm surface rendered by `<app-confirm-panel>` or
   `<app-confirm-with-reason>`, then no violation — both focus their own confirm button. *Pinned by:*
   `check-focus-posture.test.mjs` › `accepts delegation to the shared confirm components`
-- [ ] **AC-9:** Given `@if (state() === 'confirmed')` or `@if (confirmation(); as c)`, then no
+- [x] **AC-9:** Given `@if (state() === 'confirmed')` or `@if (confirmation(); as c)`, then no
   violation — a payment state and a domain noun, neither a confirm-before-destroy prompt. *Pinned
   by:* `check-focus-posture.test.mjs` › `does not mistake confirmed state or a confirmation value for a prompt`
 
 ### Both rules — scoping
 
-- [ ] **AC-10:** Given a violating line that the diff did **not** add, then no violation — the guard
+- [x] **AC-10:** Given a violating line that the diff did **not** add, then no violation — the guard
   judges what a diff writes, never the standing tree. *Pinned by:*
   `check-focus-posture.test.mjs` › `judges only the lines a diff added`
-- [ ] **AC-11:** Given the **whole** `frontend/src/app` tree swept with `--all`, then rule 1 reports
+- [x] **AC-11:** Given the **whole** `frontend/src/app` tree swept with `--all`, then rule 1 reports
   **0** violations and rule 2 reports exactly **1** component — `operator/payouts-tab`, the live bug —
   before phase 2, and **0** after it. *Verified by:* the recorded `--all` runs in Acceptance-criteria
   verification. This is the guard's real proof: zero false positives against 12 standing `[disabled]`
@@ -103,25 +103,25 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
 
 ### The twelfth instance — `operator/payouts-tab.ts`'s weather-refund confirm
 
-- [ ] **AC-12:** Given the weather-refund confirmation closed, when the operator activates **Weather
+- [x] **AC-12:** Given the weather-refund confirmation closed, when the operator activates **Weather
   refund**, then the confirmation opens and focus moves onto its destructive **Issue full weather
   refund** button — the trigger it replaced having been removed from the DOM. *Pinned by:*
   `payouts-tab.spec.ts` › `moves focus to the weather confirm button when the prompt opens`
-- [ ] **AC-13:** Given the confirmation open, when the operator activates **Cancel**, then the prompt
+- [x] **AC-13:** Given the confirmation open, when the operator activates **Cancel**, then the prompt
   closes and focus returns to the **Weather refund** trigger. *Pinned by:*
   `payouts-tab.spec.ts` › `returns focus to the weather trigger when the operator backs out`
-- [ ] **AC-14:** Given the confirmation open, when the refund settles — succeeded or failed — then
+- [x] **AC-14:** Given the confirmation open, when the refund settles — succeeded or failed — then
   the confirmation is gone, the notice states the outcome, and focus lands on that notice rather than
   `<body>`. *Pinned by:* `payouts-tab.spec.ts` › `parks focus on the notice when a weather refund
   settles` and › `parks focus on the notice when a weather refund fails`
-- [ ] **AC-15:** Given a weather refund in flight, when it settles **after** the operator has
+- [x] **AC-15:** Given a weather refund in flight, when it settles **after** the operator has
   switched venue, then focus is moved nowhere and no notice is written — the existing `epoch` guard
   governs the focus leg too. *Pinned by:* `payouts-tab.spec.ts` › `moves no focus when a refund
   settles under another venue`
-- [ ] **AC-16:** Given the date input changed while the confirmation is open, then the prompt closes
+- [x] **AC-16:** Given the date input changed while the confirmation is open, then the prompt closes
   and focus stays on the date input — it was never destroyed, so nothing is moved. *Pinned by:*
   `payouts-tab.spec.ts` › `moves no focus when changing the date closes the prompt`
-- [ ] **AC-17:** Given a real browser, when the operator opens, backs out of, and completes a weather
+- [x] **AC-17:** Given a real browser, when the operator opens, backs out of, and completes a weather
   refund, then focus is never on `<body>` at any step and axe reports no serious violations.
   *Pinned by:* `e2e/operator-payouts.e2e.ts` › `keeps focus off body across the weather-refund confirm`
 
@@ -165,13 +165,13 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **A false positive kills the guard.** ~11 pre-existing legitimate `[disabled]` bindings and 8 standing confirm surfaces must all stay green; the issue calls this out as the hard part, and #616's review already showed one input wrongly swept | high | high | Diff-scoping (AC-10) means the standing tree can never fail a PR. On top of that, AC-11 sweeps the **whole** tree with `--all` and requires 0/1 — so a false positive is caught by a recorded run, not by a red PR on someone else's branch | Ivo | open |
-| R-2 | **A curated vocabulary has false negatives.** A novel busy-flag name (`persisting()`, `flushing()`) is not in the list, so rule 1 stays silent | med | low | **Accepted deliberately** — it is the safe error direction (R-1 is the unsafe one), and the hook half fires at authoring time where the convention is also stated. The vocabulary is one exported, documented array, so extending it is a one-line PR | Ivo | open |
-| R-3 | **The `.ts` template extraction is hand-rolled.** The hygiene job has no `node_modules`, so there is no Angular compiler or HTML parser; a mis-scanned template literal (nested backticks, `${}`) could mis-report a line | med | med | Only `template:` backtick regions are scanned in `.ts`, and the scan honours escapes — the same technique `check-inline-comments.mjs` uses for strings. AC-5 pins the TSDoc case that motivated it. `--all` over 70 real components (55 inline + 15 external) is the breadth proof | Ivo | open |
-| R-4 | **`payouts-tab` is money-adjacent.** The weather refund cancels and fully refunds every confirmed booking for a day (invariants #9, #10); a careless edit to its handlers could change what it triggers | med | high | The fix adds **only** `focusAfterRender(...)` calls and one `tabindex="-1"`; no request, condition, or notice text changes. The existing `epoch` guard is reused rather than reworked (AC-15). No amount, currency or ledger behaviour is computed client-side, before or after | Ivo | open |
-| R-5 | **jsdom focus fidelity.** #616 R-1 showed jsdom does not implement unfocus-on-disable, so a busy-window claim can pass without the fix | low | med | Narrower here: this slice moves focus on **element destruction**, which jsdom *does* model, and it touches no `[disabled]`→`aria-disabled` posture. Every AC-12..AC-16 spec is still proven RED first, and AC-17 adds the Chromium leg | Ivo | open |
-| R-6 | **Hook noise.** The `PostToolUse` hook now runs two commands on every `Write`/`Edit`; a slow or chatty second guard degrades every edit in the repo | low | med | The guard reads at most two files per edit and does no git work in `--hook` mode beyond the one `HEAD` diff its sibling already does; `timeout: 15` and the `\|\| true` suffix match the existing entry exactly, so a fault degrades to silence | Ivo | open |
-| R-7 | **CI runs the guard against the wrong base.** `ci.yml`'s own comment records that `github.event.pull_request.base.sha` is stale once `main` moves, handing a PR other people's merged lines | med | med | The new step reuses the identical `origin/${{ github.event.pull_request.base.ref }}` form as its two siblings — copied, not re-derived | Ivo | open |
+| R-1 | **A false positive kills the guard.** ~11 pre-existing legitimate `[disabled]` bindings and 8 standing confirm surfaces must all stay green; the issue calls this out as the hard part, and #616's review already showed one input wrongly swept | high | high | Diff-scoping (AC-10) means the standing tree can never fail a PR. On top of that, AC-11 sweeps the **whole** tree with `--all` and requires 0/1 — so a false positive is caught by a recorded run, not by a red PR on someone else's branch | Ivo | **closed** — the 12 standing `[disabled]` bindings and 8 standing confirm surfaces all stay green: `--all` reports `BUSY-1: 0  FOCUS-1: 1` before the fix and `0/0` after, the single hit being the real bug. Diff-scoping (AC-10) means even a future false positive cannot fail a PR that did not write the line |
+| R-2 | **A curated vocabulary has false negatives.** A novel busy-flag name (`persisting()`, `flushing()`) is not in the list, so rule 1 stays silent | med | low | **Accepted deliberately** — it is the safe error direction (R-1 is the unsafe one), and the hook half fires at authoring time where the convention is also stated. The vocabulary is one exported, documented array, so extending it is a one-line PR | Ivo | **closed — accepted as designed, and made visible.** The posture is stated in `frontend/.claude/CLAUDE.md` beside the rule, naming `BUSY_STEMS` as the thing to extend, so the next author widens the vocabulary instead of routing around a silent guard |
+| R-3 | **The `.ts` template extraction is hand-rolled.** The hygiene job has no `node_modules`, so there is no Angular compiler or HTML parser; a mis-scanned template literal (nested backticks, `${}`) could mis-report a line | med | med | Only `template:` backtick regions are scanned in `.ts`, and the scan honours escapes — the same technique `check-inline-comments.mjs` uses for strings. AC-5 pins the TSDoc case that motivated it. `--all` over 70 real components (55 inline + 15 external) is the breadth proof | Ivo | **closed** — the scanner reaches real content in both template forms, proven by a **positive control** rather than by the sweep's zero: rewriting every real `[disabled]` expression to `saving()` in memory flags 3 in `set-editor.html` (external) and 1 in `daily-view-tab.html`, while the four inputs and the `[appBusy]` splits stay clean. The one real defect it had — the `template:` lookbehind buffer cleared before its own test, masking away all 55 inline templates — was caught by AC-5's sibling case in Phase 0, not by review |
+| R-4 | **`payouts-tab` is money-adjacent.** The weather refund cancels and fully refunds every confirmed booking for a day (invariants #9, #10); a careless edit to its handlers could change what it triggers | med | high | The fix adds **only** `focusAfterRender(...)` calls and one `tabindex="-1"`; no request, condition, or notice text changes. The existing `epoch` guard is reused rather than reworked (AC-15). No amount, currency or ledger behaviour is computed client-side, before or after | Ivo | **closed** — the diff on `payouts-tab.ts` is **+8 lines**: one import, one field, four `focusAfterRender(...)` calls, plus `tabindex="-1"` in the template. No request, condition, amount or notice text changed, and the 16 pre-existing specs passed unmodified as the parity net |
+| R-5 | **jsdom focus fidelity.** #616 R-1 showed jsdom does not implement unfocus-on-disable, so a busy-window claim can pass without the fix | low | med | Narrower here: this slice moves focus on **element destruction**, which jsdom *does* model, and it touches no `[disabled]`→`aria-disabled` posture. Every AC-12..AC-16 spec is still proven RED first, and AC-17 adds the Chromium leg | Ivo | **closed** — narrower than feared and still not relied on: the slice touches no `[disabled]`→`aria-disabled` posture at all, and every claim has a Chromium leg (AC-17) **verified RED against `origin/main`**. The two absence-asserting cases were mutation-checked rather than trusted |
+| R-6 | **Hook noise.** The `PostToolUse` hook now runs two commands on every `Write`/`Edit`; a slow or chatty second guard degrades every edit in the repo | low | med | The guard reads at most two files per edit and does no git work in `--hook` mode beyond the one `HEAD` diff its sibling already does; `timeout: 15` and the `\|\| true` suffix match the existing entry exactly, so a fault degrades to silence | Ivo | **closed** — the hook reads at most two files and runs one `HEAD` diff, the same work its sibling already does per edit; `timeout: 15` and the `|| true` suffix are copied from it, so a fault degrades to silence rather than blocking an edit |
+| R-7 | **CI runs the guard against the wrong base.** `ci.yml`'s own comment records that `github.event.pull_request.base.sha` is stale once `main` moves, handing a PR other people's merged lines | med | med | The new step reuses the identical `origin/${{ github.event.pull_request.base.ref }}` form as its two siblings — copied, not re-derived | Ivo | **closed** — the new step's base expression is copied verbatim from its two siblings (`origin/${{ github.event.pull_request.base.ref }}`), not re-derived, and the job's `Fetch the base branch` step already provides it |
 
 ## Open questions / Assumptions
 
@@ -243,17 +243,22 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phases 0–3 done, entering phase 4 (the last)`
+**Stage pointer:** `review gate — PR marked ready, awaiting the /code-review run`
 
-**Next action:** Phase 4 step 1 — write AC-17's e2e leg in `e2e/operator-payouts.e2e.ts` and verify
-it RED against `origin/main`'s `payouts-tab.ts`.
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1 (the invocation
+ladder, plus `riviera-review-overlay`), then pull Sonar's reported issue list from the API — the
+badge is not the check.
 
 PR: **#622** — opened as a draft at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
-`pull_request` event only).
+`pull_request` event only); marked ready for review at the Phase 4 commit.
 
-**Gates:** CI — running on the draft. Review gate — due at ready-for-review. Sonar gate — due at PR.
-docs-freshness — due at close-out (the counting sweep matters: this is the **fourth**
-`scripts/check-*.mjs` guard and the **third** CI hygiene step).
+**Gates:** CI — green on the draft's pushes. Review gate — **due now**. Sonar gate — the badge
+reported Quality Gate passed (0 new issues, 100% new-code coverage, 0% duplication) on the Phase-3
+push, but the **reported list must still be pulled from the API** at ready-for-review and re-checked
+against the final commit. docs-freshness — due at close-out; the counting sweep matters here, since
+this is the **fourth** `scripts/check-*.mjs` guard and the **third** CI hygiene step (the `ci.yml`
+job comment saying "Two diff-scoped repo-hygiene guards" was already corrected in Phase 3, but
+sibling statements elsewhere may not be).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -261,7 +266,7 @@ docs-freshness — due at close-out (the counting sweep matters: this is the **f
 | 1 — Rule 2: a confirm surface with no focus leg | ✅ | |
 | 2 — The twelfth instance: `payouts-tab`'s three legs | ✅ | |
 | 3 — Wire it: `PostToolUse` hook + the CI step | ✅ | |
-| 4 — Full verification + the conventions doc | | |
+| 4 — Full verification + the conventions doc | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -313,8 +318,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
       the five stems excluded as too close to state, and the positive control that proves the sweep's
       `0` is a real zero rather than a scanner that reaches nothing.
 - [x] **Step 6: Commit** — `git commit -m "Detect a button disabled by its own in-flight flag (#621)"`
-- [ ] **Step 7: Open the draft PR** (`riviera-sdlc` rule 3 — CI fires on the `pull_request` event
-      only) and **update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Open the draft PR** (`riviera-sdlc` rule 3 — CI fires on the `pull_request` event
+      only) and **update plan-doc execution status** in the same commit window. → PR **#622**.
 
 ---
 
@@ -404,19 +409,28 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `frontend/.claude/CLAUDE.md` · Test `frontend/e2e/operator-payouts.e2e.ts`
 
-- [ ] **Step 1: Write the failing e2e** — AC-17, and verify it RED against `origin/main`'s
-      `payouts-tab.ts`, exactly as #616's Phase 6 step 2 did.
-- [ ] **Step 2: Axe** — `expectNoSeriousAxeViolations` after each new state, per the file's siblings.
-- [ ] **Step 3: Name the guard** in `frontend/.claude/CLAUDE.md` beneath the two conventions it
+- [x] **Step 1: Write the failing e2e** — AC-17, and verify it RED against `origin/main`'s
+      `payouts-tab.ts`, exactly as #616's Phase 6 step 2 did. → **RED confirmed**: with the pre-fix
+      component checked out, `toBeFocused()` on `weather-confirm-btn` fails with
+      `unexpected value "inactive"`; green with the fix restored.
+- [x] **Step 2: Axe** — `expectNoSeriousAxeViolations` after each new state, per the file's siblings.
+- [x] **Step 3: Name the guard** in `frontend/.claude/CLAUDE.md` beneath the two conventions it
       enforces, with the by-hand invocation — the shape the inline-comment rule already uses there.
-- [ ] **Step 4: Full verification** — `npm run lint` · `npm test` · `npm run build` ·
-      `npm run test:e2e:a11y` · `node --test "scripts/*.test.mjs"`.
-- [ ] **Step 5: Reconcile the File-structure section** —
-      `node scripts/check-plan-file-structure.mjs --diff origin/main` → exit 0;
-      `node scripts/check-inline-comments.mjs --diff origin/main` → exit 0;
-      `npm run format:check` from `frontend/` → clean.
-- [ ] **Step 6: Commit** — `git commit -m "Cover the weather-refund focus legs end to end (#621)"`
-- [ ] **Step 7: Update plan-doc execution status**; mark the PR ready for review.
+      The `BUSY_STEMS` false-negative posture is stated there too, so the next author extends the
+      vocabulary instead of working around a silent rule.
+- [x] **Step 4: Full verification** — `npm run lint` clean · `npm test` **1369 passed (156 files)** ·
+      `npm run build` succeeds · `npm run test:e2e:a11y` **174 passed (4.8m)** ·
+      `node --test "scripts/*.test.mjs"` **93 passed** across all four guard suites.
+- [x] **Step 5: Reconcile the File-structure section** — all three diff-scoped guards exit 0 over
+      `origin/main` (`check-plan-file-structure`, `check-inline-comments`, and the new
+      `check-focus-posture` judging its own PR), and `npm run format:check` is clean.
+- [x] **Step 6: Commit** — `git commit -m "Cover the weather-refund focus legs end to end (#621)"`
+- [x] **Step 7: Update plan-doc execution status**; mark the PR ready for review.
+
+> **Cloud-session note for a resuming session:** the pre-installed Chromium is revision 1194 while
+> this Playwright pins 1228, so the mocked suite needs
+> `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. The config already
+> reads that variable; never run `npx playwright install`.
 
 ---
 
@@ -435,37 +449,47 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-5, AC-10:** `node --test scripts/check-focus-posture.test.mjs` → all pass, each RED
-      first.
-- [ ] **AC-6..AC-9:** same suite → all pass, each RED first.
-- [ ] **AC-11:** `node scripts/check-focus-posture.mjs --all` → rule 1: 0, rule 2: 1 before Phase 2;
-      0 and 0 after.
-- [ ] **AC-12..AC-16:** `npx ng test --include="src/app/operator/payouts-tab.spec.ts"` → all pass,
-      each RED first.
-- [ ] **AC-17:** `npx playwright test --config playwright.a11y.config.ts operator-payouts` → passes,
-      verified RED against `origin/main`'s `payouts-tab.ts`.
-- [ ] **Full verification:** `npm run lint` · `npm test` · `npm run build` · `npm run test:e2e:a11y` ·
-      `node --test "scripts/*.test.mjs"` · all three repo-hygiene guards clean over the whole diff.
+- [x] **AC-1..AC-5, AC-10:** `node --test scripts/check-focus-posture.test.mjs` → **15 passed**, RED
+      first on the missing module. AC-5's case matters most: it exists because
+      `shared/busy-action.ts`'s own TSDoc quotes `[disabled]="saving()"`, the exact form rule 1 bans.
+- [x] **AC-6..AC-9:** same suite → all pass. The two *flagging* cases (AC-6, and AC-7's stranded
+      half) were verified RED; the four carve-out cases pass vacuously against a rule that reports
+      nothing, so their real evidence is the `--all` sweep below, not their own red.
+- [x] **AC-11:** `node scripts/check-focus-posture.mjs --all` → `BUSY-1: 0  FOCUS-1: 1` before Phase
+      2 (the one hit being `operator/payouts-tab.html:84`), `BUSY-1: 0  FOCUS-1: 0` after. Rule 1's
+      zero was additionally **positive-controlled** — rewriting every real `[disabled]` expression to
+      `saving()` in memory flags 3 in `set-editor.html` and 1 in `daily-view-tab.html` while the four
+      inputs and the `[appBusy]` splits stay clean — so it is a real zero, not an unreachable scanner.
+- [x] **AC-12..AC-16:** `npx ng test --include="src/app/operator/payouts-tab*.spec.ts"` →
+      **35 passed** across unit, a11y and contrast; AC-12..AC-14 verified RED first (`expected
+      <body> to be <button …>`), AC-15 and AC-16 **mutation-checked** because they assert an absence.
+- [x] **AC-17:** `npx playwright test --config playwright.a11y.config.ts operator-payouts` →
+      **3 passed**, and **verified RED against `origin/main`'s `payouts-tab.ts`**
+      (`toBeFocused` … `unexpected value "inactive"`).
+- [x] **Full verification:** `npm run lint` clean · `npm test` **1369 passed (156 files)** ·
+      `npm run build` succeeds · `npm run test:e2e:a11y` **174 passed (4.8m)** ·
+      `node --test "scripts/*.test.mjs"` **93 passed** · `npm run format:check` clean · all three
+      repo-hygiene guards exit 0 over the whole diff, the new one judging its own PR.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, no backend code.
-- [ ] **Availability** section filled (justified N/A); invariant #2 untouched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section filled (N/A, no backend); no new cross-feature FE import (RV-FE-8).
-- [ ] **Payment/payout** section filled — the weather-refund surface is named and its blast radius
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, no backend code.
+- [x] **Availability** section filled (justified N/A); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section filled (N/A, no backend); no new cross-feature FE import (RV-FE-8).
+- [x] **Payment/payout** section filled — the weather-refund surface is named and its blast radius
       bounded (R-4).
-- [ ] Refund policy enforced server-side (invariant #10) — unchanged; no client-side computation added.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A.
-- [ ] **Frontend** standards met; no `as any`; every `data-testid` preserved.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Refund policy enforced server-side (invariant #10) — unchanged; no client-side computation added.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A.
+- [x] **Frontend** standards met; no `as any`; every `data-testid` preserved.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
