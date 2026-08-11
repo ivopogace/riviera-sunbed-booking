@@ -264,6 +264,9 @@ N/A — no contract change. No endpoint, DTO, header or error body is added, rem
 
 **Stage pointer:** `merge — three review passes cleared, `main` merged in, close-out written`
 
+**Merged via PR #627** (the PR number, never the squash SHA — it cannot exist before the merge, and
+citing it is what forces a second docs-only PR; `git log --grep "(#627)"` resolves it).
+
 **Next action:** Confirm the merge commit's CI run is green, then merge PR #627. Follow-ups already
 filed: #628 (a guard rule for the #625 shape) and #629 (#626's own defects, found by this PR's third
 review pass).
