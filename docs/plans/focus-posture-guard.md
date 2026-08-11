@@ -161,7 +161,9 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
   which prompt, which is the runtime question the flip-level rule already failed on. The re-review
   (G-2) showed why per-block is not the answer either: a trigger/prompt pair writes the trigger as a
   negated branch, so block-scoping reported the trigger half of the shape `payouts-tab.html` itself
-  uses. **(b)** The template scanner is **not** extracted into `git-diff.mjs`. That module's own header
+  uses. *(Closed by #624: the exemption is now scoped to the **gating signal**, which is neither
+  per-component nor per-block — see `docs/plans/focus-surface-scoping.md`.)* **(b)** The template
+  scanner is **not** extracted into `git-diff.mjs`. That module's own header
   scopes it to "what did this diff touch, and where" and forbids knowing what a guard checks; a
   TypeScript/HTML region scanner is the opposite. The two scanners also answer different questions —
   `check-inline-comments.mjs` wants *comment* regions, this one wants *template* and *code* regions —
@@ -175,7 +177,8 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
   the check is exactly the part still missing.
 - **No narrowing of FOCUS-1's component-scoped exemption.** Two narrower scopings were tried and both
   were worse (known limit (a)); it is the gap that hid instance 14. **Filed as #624** with the two
-  shapes worth spiking.
+  shapes worth spiking — **since closed**, by neither of them: the spike it asked for refuted both,
+  and the exemption moved to the gating signal instead (`docs/plans/focus-surface-scoping.md`).
 - **No new shared confirm component for `payouts-tab`.** Its amber weather panel is a fourth markup
   family; #604, #616 and now this slice have all made the same call, that a variant axis imposes
   drift.

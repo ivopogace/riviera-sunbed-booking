@@ -126,21 +126,26 @@ frontend-tree file touched is `frontend/.claude/CLAUDE.md`, the convention prose
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **A false positive kills the rule.** #621's own history is three review passes, each finding a fresh false positive in this predicate; the standing tree's 11 surfaces must all stay green | high | high | The predicate is measured over **four trees**, not argued: HEAD (expect 0), the mid-#621 counterfactual (expect exactly instance 14), and the pre-#621 / pre-#616 / pre-#614 trees (expect the instances those slices fixed, and nothing else). FOCUS-1 is advisory, so even a miss cannot redden a build | Ivo | open |
-| R-2 | **The widened trigger reaches components the confirm-only trigger never did** — `app.ts` and `venue-map.ts` restore focus with a plain `.focus()`, which `movesFocus` deliberately does not accept | high | high | Measured before designing: applying the component floor to modal branches reports both, on correct code. The floor is therefore confirm-only, and modal branches are judged by the signal check alone — AC-5 | Ivo | open |
-| R-3 | **The mover field's name is a convention, not an API.** A component naming it `moveFocus` would read as moving no focus at its flip site | med | med | The names bound to `focusMover()` are read out of the component and counted as focus calls alongside `.focus(` — AC-7 | Ivo | open |
-| R-4 | **Hook cost.** #621's R-6 bounded the hook at two file reads; modal resolution needs to know which components are focus traps | med | low | The index is one `git ls-files frontend/src/app`, built **lazily** (only when a branch body holds an unresolved `<app-…>` tag) and cached for the process; at most one extra read per candidate tag. The `\|\| true` suffix still degrades a fault to silence | Ivo | open |
-| R-5 | **A flip written some other way** (`update(…)`, a `linkedSignal`, a `resource` reset) is not seen, so the surface is silently exempt | med | low | **Accepted deliberately** — the safe error direction, and the floor still covers a component that moves focus nowhere at all. Stated in the guard's TSDoc beside the pattern so the next author widens it rather than routes around it | Ivo | open |
-| R-6 | **Scanner regression.** The `.ts` scan now also reads a sibling `.html`, and the branch walk gains nesting spans — either could mis-report a line on a real component | med | med | The existing 24-case suite is the parity net (it passes unmodified), `--all` over the whole app is the breadth proof, and the four-tree measurement is re-run after the change lands | Ivo | open |
+| R-1 | **A false positive kills the rule.** #621's own history is three review passes, each finding a fresh false positive in this predicate; the standing tree's 11 surfaces must all stay green | high | high | The predicate is measured over **four trees**, not argued: HEAD (expect 0), the mid-#621 counterfactual (expect exactly instance 14), and the pre-#621 / pre-#616 / pre-#614 trees (expect the instances those slices fixed, and nothing else). FOCUS-1 is advisory, so even a miss cannot redden a build | Ivo | **closed** — every tree measured with the real guard, not a model of it, in a `git worktree` per historical SHA: `0 / 1 / 3 / 4 / 5`, and each historical report is a bug that slice went on to fix. The table is under Acceptance-criteria verification |
+| R-2 | **The widened trigger reaches components the confirm-only trigger never did** — `app.ts` and `venue-map.ts` restore focus with a plain `.focus()`, which `movesFocus` deliberately does not accept | high | high | Measured before designing: applying the component floor to modal branches reports both, on correct code. The floor is therefore confirm-only, and modal branches are judged by the signal check alone — AC-5 | Ivo | **closed** — both stay green on HEAD, and both report the moment their focus calls are stripped, so they are genuinely judged rather than skipped. The floor's confirm-only restriction is the reason, pinned by AC-5 |
+| R-3 | **The mover field's name is a convention, not an API.** A component naming it `moveFocus` would read as moving no focus at its flip site | med | med | The names bound to `focusMover()` are read out of the component and counted as focus calls alongside `.focus(` — AC-7 | Ivo | **closed** — `moverNames()` reads the bindings; AC-7 pins a component whose field is named `moveFocus`, and it was RED before the binding scan existed |
+| R-4 | **Hook cost.** #621's R-6 bounded the hook at two file reads; modal resolution needs to know which components are focus traps | med | low | The index is one `git ls-files frontend/src/app`, built **lazily** (only when a branch body holds an unresolved `<app-…>` tag) and cached for the process; at most one extra read per candidate tag. The `\|\| true` suffix still degrades a fault to silence | Ivo | **closed** — measured rather than reasoned: `--all` over the whole app, which is the worst case for the index, runs in **0.3s**; a single-file hook invocation touches the index only if the edited template renders an `<app-…>` child |
+| R-5 | **A flip written some other way** (`update(…)`, a `linkedSignal`, a `resource` reset) is not seen, so the surface is silently exempt | med | low | **Accepted deliberately** — the safe error direction, and the floor still covers a component that moves focus nowhere at all. Stated in the guard's TSDoc beside the pattern so the next author widens it rather than routes around it | Ivo | **closed — accepted as designed, and made visible.** `flipSites`' TSDoc names the miss and says to widen it rather than route around it, mirroring what R-2 of #621 did for `BUSY_STEMS`; the convention doc repeats it where an author reads it |
+| R-6 | **Scanner regression.** The `.ts` scan now also reads a sibling `.html`, and the branch walk gains nesting spans — either could mis-report a line on a real component | med | med | The existing 24-case suite is the parity net (it passes unmodified), `--all` over the whole app is the breadth proof, and the four-tree measurement is re-run after the change lands | Ivo | **closed** — all 24 pre-existing cases pass **unmodified**, and the one real defect the new code had (a member written on one line, whose `{` the backward walk consumed) was caught by an AC's RED run, not by review. Recorded in the Generalization-audit log because it would hit `if (x) { open.set(false); }` in real source too |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the modal markers (`trapFocusWithin`, `aria-modal`, `role="dialog"`) identify the
-  app's focus traps exactly — three components today, all reached through the `app-<basename>`
-  selector convention. — *Owner:* Ivo · *Resolves by:* Phase 0 (verified by the `--all` sweep, which
-  would report a fourth as a surface).
+*(empty — the one assumption resolved in Phase 0; see below.)*
 
 ### Resolved
+
+- **Assumption:** the modal markers (`trapFocusWithin`, `aria-modal`, `role="dialog"`) identify the
+  app's focus traps exactly. — **Resolved 2026-08-11 in Phase 0:** three components carry them
+  (`booking-dialog`, `find-booking`, `payout-statement`), all three reached through the
+  `app-<basename>` selector convention, and the `--all` sweep judges each of their render sites as a
+  surface. A fourth trap added under a selector whose basename does not name its file is a **false
+  negative**, not a false positive — the direction this guard can afford, and the same posture
+  `BUSY_STEMS` takes.
 
 - **Open question:** which of the issue's two shapes to build? — **Resolved 2026-08-11 at plan time
   by Ivo, after the spike the issue asked for: neither.** Measured on the mid-#621 counterfactual
@@ -199,16 +204,16 @@ N/A — no contract change.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change it
 > records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement — phase 1 done, phase 2 next`
+**Stage pointer:** `PR — ready for review; review + sonar gates next`
 
-**Next action:** Phase 2 — record the four-tree measurement, then update the FOCUS-1 prose in both
-`CLAUDE.md` files and #621's known limit (a).
+**Next action:** run the review gate on PR #626 per `riviera-sdlc` `references/pr-gates.md` §1, then
+pull the Sonar new-issue list for the final head SHA.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The rule: widened trigger + signal-scoped exemption | ✅ | `0fe1ebd` |
-| 1 — Anchoring: external templates, diff scoping, advisory posture | ✅ | this commit |
-| 2 — Measure the four trees, then the conventions doc | | |
+| 1 — Anchoring: external templates, diff scoping, advisory posture | ✅ | `e0ad18a` |
+| 2 — Measure the four trees, then the conventions doc | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -292,6 +297,9 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|---|---|
 | 2026-08-11 | plan-time spike | every component that is a focus trap, so the widened trigger sees all of them | `grep -rln "trapFocusWithin\|aria-modal\|role=\"dialog\"" frontend/src/app --include=*.ts` | 3 (`booking-dialog`, `find-booking`, `payout-statement`) + `shared/focus-trap.ts` itself | all three are reached through the `app-<basename>` selector convention; the helper owns no template, so it is not a surface |
 | 2026-08-11 | Phase 0 | a member written on one line closes before the flip it holds, which `memberOf` walked past | the RED tests for AC-3/AC-7, then `--files` over the counterfactual | 1 shape (any flip sharing a line with its member's `{`) | fixed by walking back from the flip's own column, not the line end — the same defect would hit `if (x) { open.set(false); }` in real code |
+| 2026-08-11 | Phase 1 | components split across two files, where each half sees one side of the rule | `git ls-files 'frontend/src/app/**/*.html'` | 15 external templates, 4 holding a surface (`set-editor`, `layout-editor`, `payouts-tab`, `venue-map`) | both directions read the sibling, and the `.html` is barred from reporting a flip it cannot anchor — pinned by AC-8, which fails if either half reports the other's lines |
+| 2026-08-11 | Phase 2 | whether the standing tree's green is load-bearing or vacuous | strip every focus call from each component with a surface, then `--files` on it | 9 components, all 9 report (13 findings total) | no change needed — the sweep's 0 is a verdict, not an absence of surfaces |
+| 2026-08-11 | Phase 2 | every doc that states what FOCUS-1 flags | `grep -rn "FOCUS-1" --include=*.md .` | 4 files (`CLAUDE.md`, `frontend/.claude/CLAUDE.md`, both plan docs) | all four updated; #621's known limit (a) marked closed rather than deleted |
 
 ---
 
@@ -299,8 +307,24 @@ Skill-routing gate for what the fix touches *before* editing).
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1..AC-3, AC-5..AC-11:** Run `node --test scripts/check-focus-posture.test.mjs` → all pass.
-- [ ] **AC-4:** Run `node scripts/check-focus-posture.mjs --all` → `BUSY-1: 0  FOCUS-1: 0`.
+- [x] **AC-1..AC-3, AC-5..AC-11:** `node --test "scripts/*.test.mjs"` → **122 pass, 0 fail** (38 in
+      this suite, up from 24). Every new case was verified RED first; the four asserting *absence*
+      (AC-3, AC-5, AC-7, AC-8's second half) were mutation-checked rather than trusted.
+- [x] **AC-4:** `node scripts/check-focus-posture.mjs --all` → `BUSY-1: 0  FOCUS-1: 0`, over **11**
+      surfaces (8 confirm + 3 modal), in 0.3s for the whole app.
+
+**The four-tree measurement** (the evidence R-1 and R-2 are closed on — the new guard run against
+each tree, not a model of it):
+
+| Tree | FOCUS-1 | What it reports |
+|---|---|---|
+| HEAD (standing) | **0** | nothing — and stripping any one component's focus calls makes all 9 report, so the green is load-bearing |
+| mid-#621 counterfactual (instance 14 unfixed) | **1** | `payouts-tab.ts:100 this.statementOpen.set(false)` — the exact flip #621's review pass found by hand, at the line its fix went in |
+| pre-#621 (`c58317b`) | 3 | the weather confirm (branch + flip) and the statement modal — the two instances #621 fixed |
+| pre-#616 (`7c1234a`) | 4 | the above plus `set-password.ts:254`, the instance #616 fixed |
+| pre-#614 (`5f415a2`) | 5 | the above plus `booking-view.ts:209`, the instance #614 fixed |
+
+No tree reports anything that was not a real bug those slices went on to fix.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
