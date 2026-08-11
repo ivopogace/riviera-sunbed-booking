@@ -1,8 +1,8 @@
 /**
  * Diff-scoped guard for the two focus postures `frontend/.claude/CLAUDE.md` states, both of them
- * causes of the same WCAG 2.4.3 stranded-focus class (#604, #614, #616, #621 — fourteen instances,
- * the last three found while this guard was being built). The human half of the check, for the
- * shapes neither rule can see, is `riviera-review-overlay`'s RV-FE-9 (#623).
+ * causes of the same WCAG 2.4.3 stranded-focus class (#604, #614, #616, #621, #625 — fifteen
+ * instances; #625 is one neither rule can see, a field disabled by a write it starts itself). The
+ * human half of the check, for those shapes, is `riviera-review-overlay`'s RV-FE-9 (#623).
  *
  * - **BUSY-1** — a control disabled by a flag *its own activation set* blurs to `<body>` for the
  *   whole request. It belongs on `[appBusy]`, which announces the same state via `aria-disabled`.

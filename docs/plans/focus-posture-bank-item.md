@@ -205,8 +205,8 @@ None open.
 
 ## Availability & concurrency (invariant #2)
 
-N/A — does not affect availability. The slice changes two markdown files under `.claude/skills/`;
-no code ships to the app or the backend, no request is added or changed, and no line in the diff is
+N/A — does not affect availability. The slice changes the review bank, three agent-instruction docs
+and (Phase 2) one Angular attribute; no request is added or changed, and no line in the diff is
 reachable from any write path to `availability(set_id, booking_date)`.
 
 ## Spring Modulith — modules, interfaces, events
@@ -246,28 +246,33 @@ N/A — no contract change. No endpoint, DTO, header or error body is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `PR — three phases built and pushed; opening the PR, then the review and Sonar gates`
+**Stage pointer:** `review — gate run (8 findings), 7 fixed + 1 deferred; re-review then merge`
 
-**Next action:** Open the PR (`Closes #623`, `Closes #625`), run the review gate via the `pr-gates.md`
-§1 ladder, clear the Sonar issue list, and merge once CI is green — the user authorized all four.
+**Next action:** Re-review the fix diff per `pr-gates.md` §1 step 3, confirm CI green and the Sonar
+issue list pulled from the API (not the badge), then merge PR #627.
 
 PR: opened at the Phase 2 push, marked ready for review immediately (the branch already carries the
 finished slice). `riviera-sdlc` rule 3's draft-at-first-commit is recorded as **not followed**: the
 earlier session was instructed not to open a PR at all, so phases 0–2 have had no CI; the PR's first
 run covers all three at once.
 
-**Gates:** CI — pending the PR's first run. Locally: the three diff-scoped hygiene guards,
+**Gates:** CI — see the PR's checks; locally the three diff-scoped hygiene guards,
 `node --test "scripts/*.test.mjs"` (112 tests), the Pricing e2e (6), the `pricing-tab*` unit specs
-(25), `npm run lint` and `npm run format:check` are all green (Acceptance-criteria verification).
-Review gate — due now that a PR exists. Sonar gate — due at the same point; unlike phases 0–1 this
-diff **does** carry analyzable code. docs-freshness — **ran**, 3 stale statements patched, plus the
-two Phase 2 reconciliations the fix itself made necessary.
+(25), `npm run lint` and `npm run format:check` are green (Acceptance-criteria verification).
+Review gate — **ran in full** via `pr-gates.md` §1 rung 1 (`Skill("code-review")` was accepted, so no
+fallback), high effort over `origin/main...HEAD`: **8 findings, all CONFIRMED on verification** — 7
+fixed here (F-1…F-7), 1 deferred with its argument intact (F-8 → **#628**). Two of them (F-1, F-2)
+were defects **in the new bank item itself**, which is the outcome that most justifies having run the
+gate on a docs slice. Sonar gate — quality gate **passed** on the PR; the reported list is pulled
+from the API below rather than read off the badge. docs-freshness — ran twice: Phase 1 (3 statements)
+and again in Phase 3 over the whole range with `frontend/src` added to the sweep set (5 more).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Prove the gap, then plan | ✅ | `517ad93` |
 | 1 — RV-FE-9 + the scope pointer | ✅ | `c8f155b` |
-| 2 — #625: the fifteenth instance | ✅ | this commit |
+| 2 — #625: the fifteenth instance | ✅ | `f9c001d` |
+| 3 — Review-gate fixes (F-1…F-7) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -276,6 +281,14 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | **review gate** (`/code-review`, high) | **RV-FE-9 told reviewers to stand down on exactly the shapes BUSY-1 cannot see.** "Not a finding at all for a BUSY-1 shape — CI already failed it" reads as *all* busy `[disabled]`, but the guard matches a curated deny-list that deliberately excludes `loading`, `pending`, `processing`, `updating`, `creating` — so `[disabled]="loading()"` is green **and** unreviewed. Same for a binding the diff only moved | fixed — the bullet now says silence from BUSY-1 means "not one of the shapes I match", never "checked and fine", and names the excluded stems and the added-lines scoping |
+| F-2 | **review gate** (CONFIRMED) | **The new rule was wrong for half the controls it addresses.** `[readonly]` is inert on `<select>`, checkbox, radio, `file`, `range` and `color` — and two of the app's nine self-committing fields are exactly those kinds (`admin-venue-photos`'s `<select>`, `venue-tab`'s `file` input). An author following the rule would ship a lock that does nothing | fixed in both statements — the rule is scoped to text-like inputs and `<textarea>`, with the inert-control list named and the alternative given (`[disabled]` **plus** a deliberate focus leg, or no lock) |
+| F-3 | **review gate** (CONFIRMED) | **The code-side statement of the carve-out was never in the sweep set.** `shared/busy-action.ts`'s TSDoc — what an author reads at the point of use — still said "Inputs keep the native `[disabled]`" unconditionally. The Phase 1 sweep grepped the doc tree and `scripts`, never `frontend/src`, so the one statement living in code was structurally unreachable by the audit meant to catch it | fixed — the directive now carries the condition and points at `frontend/.claude/CLAUDE.md`. The sweep-set gap itself is the Phase 3 audit row |
+| F-4 | **review gate** (CONFIRMED) | Two inline comments inside `onPriceChange` still said the inputs are *disabled* during a save — the TSDoc above them was updated and the body was not, leaving two contradictory accounts of the lock in one function | fixed — both now say readonly/locked |
+| F-5 | **review gate** (CONFIRMED) | **The count this slice carefully corrected to "fourteen" was falsified by its own Phase 2.** Four freshly-written enumerations shipped without #625, and the audit log claimed a re-run that had only ever covered Phase 1 — the exact counting-sweep failure mode, baked into the docs a reviewer is told to trust | fixed — all four now read **fifteen** across #604/#614/#616/#621/#625, and the Phase 1 audit row is marked superseded by the Phase 3 re-run rather than left claiming more than it did |
+| F-6 | **review gate** (CONFIRMED) | The new `saving` TSDoc broke three of `frontend/.claude/CLAUDE.md`'s four member-TSDoc limits at once: 10 lines where the rule says ~3, an issue number where it says none, and pure rejected-alternative history — the rationale already stated in two other places | fixed — trimmed to four lines stating the contract, with the rationale relocated to a one-line plan-doc pointer, which is what the rule prescribes |
+| F-7 | **review gate** (CONFIRMED, doc) | The plan's **declared session-recovery anchor** still asserted in four places that no frontend code was in the diff, after Phase 2 added four frontend files the same document lists. A resuming session would have skipped the frontend review scope entirely | fixed — the Availability section, the RV-FE-8 self-review line, the Frontend self-review line and the focus-guard verification line all now describe Phase 2's real scope |
+| F-8 | **review gate** (CONFIRMED, judgement) | **The #625 shape is syntactic and got only prose.** A `[disabled]` bound to a busy stem on an element whose own start tag carries `(change)`/`(blur)`/`(input)` is decidable from what `startTags()` already returns, has one site in 297 files, and the thesis of #621 is that this class recurs because it is invisible at authoring time | **deferred → #628**, with the reviewer's argument carried over intact. Not done here because F-2 is the reason to spike before coding: the correct advice differs by control kind (`readonly` for text-like, a focus leg for a `<select>`), so a rule that prints one fix would be wrong half the time — and #621 records two predicate-widening rounds that each traded one error direction for the other |
 | S-1 | self-walk (RV-PROC-1, own bank) | The first draft of *Skills consulted* listed only the skills that were loaded, which reads identically to a routing gate that was never run for the frontend row — the diff's subject **is** frontend conventions | fixed — the line now states which frontend skills were **not** triggered and the evidence, and was corrected again when the docs-freshness patch put `frontend/.claude/CLAUDE.md` in the diff: the claim is now "no file under `frontend/src` or `frontend/e2e`", which is what those skills are the authority for |
 | S-2 | self-walk (RV-FE-9, against its own subject) | The draft item said a green guard run "discharges the mechanical half", copying RV-STYLE-1's wording — but RV-STYLE-1's guard **gates**, and half of this one does not, so the sentence would have taught the exact over-trust R-2 names | fixed — the two rules' opposite postures are stated as their own bullets, and only BUSY-1 is described as discharged |
 
@@ -297,6 +310,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/pricing-tab.ts` — #625: the `saving` TSDoc records why
 - `frontend/src/app/operator/pricing-tab.spec.ts` — AC-9
 - `frontend/e2e/operator-pricing.e2e.ts` — AC-7, AC-8, the Chromium legs
+- `frontend/src/app/shared/busy-action.ts` — review finding F-3: the carve-out's code-side statement,
+  the one no earlier docs-freshness sweep could reach because `frontend/src` was outside the set
 
 > Reconcile this section with `node scripts/check-plan-file-structure.mjs --diff origin/main`
 > before pushing.
@@ -388,8 +403,9 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-11 | Phase 0 — writing the item's carve-out bullet | the standing `[disabled]` bindings the guard deliberately does not judge, to check the carve-out is as safe as it is documented to be | `grep -rn "\[disabled\]" --include=*.html --include=*.ts frontend/src/app \| grep -v "\.spec\."` | 11 live bindings: 7 validity/state (`!canAddRow()`, `cell.disabled`, `isPending(set)`, `venueForm().invalid()`, `detailsForm().invalid()`, `dirty()`, `!hasLayout()`) and **4 busy-flag bindings on `<input>`** — `admin-commissions` ×2, `admin-privacy`, `pricing-tab` | Recorded. The 7 are the documented state carve-out, correct as-is. The 4 inputs are the documented **input** carve-out, whose premise is "focus is on the button, never the field" — true wherever a *button* starts the write, which holds for three of the four. `pricing-tab` is the exception: the write is started by the **input's own** `(change)`, and `saving.set(true)` runs synchronously in that handler, disabling the field the event came from. Whether focus is still in it depends on the Enter-commit path, which only Chromium settles (#616 R-1) — so it is filed as a candidate, **#625**, not asserted here. It is also the third guard-blind shape, and it is now named in RV-FE-9 |
+| 2026-08-11 | Phase 3 — the review round (F-3, F-5) | the same two sweeps, re-run over the **whole** range and with the sweep set widened to include `frontend/src` — the gap that let F-3 through | `grep -rniE '\b(thirteen\|fourteen\|fifteen)\b' … frontend/.claude scripts frontend/src` and a carve-out-wording grep over `--include=*.ts --include=*.md` | 4 count statements stale at "fourteen" (the slice's own Phase 2 made it fifteen) and 1 carve-out statement living in **code** (`shared/busy-action.ts`) that no earlier sweep could reach | All five patched. **The lesson is the sweep set, not the five hits:** `riviera-docs-freshness`'s map lists `platform/src/**` Javadoc as in-scope for exactly this reason, but its worked grep — and this slice's Phase 1 copy of it — never included `frontend/src`, so the Angular tree's own doc comments were a blind spot on a frontend slice. Widened here; worth pushing back into the skill's own recipe |
 | 2026-08-11 | Phase 2 — after the #625 fix | every other **self-committing field** in the app: a control whose own `(change)`/`(blur)` starts a write, which is the shape that breaks the input carve-out's premise | `grep -rn "(change)=\|(blur)=" --include=*.html --include=*.ts src/app \| grep -v "\.spec\."` → 9 sites, cross-referenced against the 11-binding `[disabled]` census above | 9 self-committing fields, of which **only `pricing-tab`'s price input is also disabled by the write it starts**. The other 8 (`admin-venue-photos` venue picker, `venue-tab` photo picker, three date pickers, two `home` filter selects, `payouts-tab`'s date) raise no busy flag on themselves | **No siblings to fix — established, not assumed.** The other three busy-flag `[disabled]` inputs (`admin-commissions` ×2, `admin-privacy`) are the mirror case: they *are* disabled by a write, but a **button** starts it, so focus is on the button and the carve-out holds. Both halves of the cross-reference had to be empty for this to be a one-site fix, and they are. The rule that generalizes is written into `frontend/.claude/CLAUDE.md` and RV-FE-9 rather than into more code |
-| 2026-08-11 | Phase 1 — the docs-freshness counting sweep | every present-tense statement of the class's instance count, since the new item asserts "fourteen" | `grep -rniE '\b(thirteen\|fourteen)\b' CLAUDE.md RESPONSIBILITIES.md CONTEXT.md docs/adr docs/agents .claude/skills frontend/.claude scripts` + a `#604` enumeration grep over the same set | 2 stale: `scripts/check-focus-posture.mjs:3` ("#604, #614, #616 — thirteen instances") and `frontend/.claude/CLAUDE.md:33` (the same three-issue list), both falsified by #621's own three fixes | Both patched, and both given the pointer to RV-FE-9 that closes the authoring-time ↔ review-time loop. Neither file is one this slice would have opened otherwise — the sweep is the only thing that could have found them, exactly as the skill's step 2b argues. Sweep re-run after the fix: all four statements now read "fourteen" |
+| 2026-08-11 | Phase 1 — the docs-freshness counting sweep | every present-tense statement of the class's instance count, since the new item asserts "fourteen" | `grep -rniE '\b(thirteen\|fourteen)\b' CLAUDE.md RESPONSIBILITIES.md CONTEXT.md docs/adr docs/agents .claude/skills frontend/.claude scripts` + a `#604` enumeration grep over the same set | 2 stale: `scripts/check-focus-posture.mjs:3` ("#604, #614, #616 — thirteen instances") and `frontend/.claude/CLAUDE.md:33` (the same three-issue list), both falsified by #621's own three fixes | Both patched, and both given the pointer to RV-FE-9 that closes the authoring-time ↔ review-time loop. Neither file is one this slice would have opened otherwise — the sweep is the only thing that could have found them, exactly as the skill's step 2b argues. **Superseded by the Phase 3 row: Phase 2 made the answer fifteen, and the re-run recorded here covered only Phase 1** |
 
 ---
 
@@ -421,7 +437,9 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
       hunk in the new e2e block, fixed with `-- --fix`, then clean.
 - [x] **Repo guards over the diff:** `node scripts/check-plan-file-structure.mjs --diff origin/main`
       → clean; `node scripts/check-inline-comments.mjs --diff origin/main` → clean;
-      `node scripts/check-focus-posture.mjs --diff origin/main` → clean (no in-scope file changed);
+      `node scripts/check-focus-posture.mjs --diff origin/main` → clean, and from Phase 2 it is
+      judging real files: `pricing-tab.ts`/`.html` both match its `frontend/src/app/**` scope, so
+      this is "no violation", not "nothing looked at";
       `node --test "scripts/*.test.mjs"` → **112 tests, 0 failures** — the guard's own suites still
       pass with its header rewritten, which is the only thing this diff could have broken in `scripts/`.
 
@@ -435,13 +453,16 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
 - [x] **Availability** section justified N/A; no write path touched (invariant #2).
 - [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking logic.
 - [x] **Modulith** section justified N/A (invariant #11) — no backend code. FE mirror RV-FE-8: no
-      import of any kind is added, no file under `frontend/` is in the diff.
+      import of any kind is added — the Phase 2 files are three existing `operator/pricing-tab.*`
+      edited in place plus an existing e2e spec, so no folder, edge or dependency direction moves.
 - [x] **Payment/payout** section justified N/A (invariants #5, #8, #9) — no money logic.
 - [x] Refund policy enforced server-side (invariant #10) — untouched.
 - [x] Timezone correct (invariant #6) — N/A.
 - [x] Booking codes unguessable (invariant #7) — N/A.
 - [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [x] **Frontend** standards met or deviation documented — N/A, no frontend file in the diff.
+- [x] **Frontend** standards met (Phase 2): no new Angular API — `[readonly]` is a native property
+      binding — no new component/service/route/token, no `as any`, and the angular-cli MCP
+      `get_best_practices` walk found nothing to change. Deviations: none.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, and findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (the two resolved ones name their
       outcome, and the deferred candidate cites #625).

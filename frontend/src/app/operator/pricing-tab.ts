@@ -65,14 +65,8 @@ export class PricingTab {
 
   /** True while a reprice PUT is in flight. The single shared `set_version` token cannot admit two
    *  concurrent reprices (the second would false-conflict), so a save serializes edits: the row inputs
-   *  go `readonly` while it runs, and a `change` that still slips through is ignored (review finding).
-   *
-   *  <p><strong>`readonly`, not `disabled`</strong> (#625): a browser blurs a disabled element, and
-   *  this is the one busy flag in the app a *field* raises about itself — an Enter commit disables the
-   *  input focus is still in, and a click-away commit disables the input focus just landed on. Either
-   *  way focus is stranded on `<body>` for the request and re-enabling does not bring it back (WCAG
-   *  2.4.3). `readonly` blocks typing just as completely while keeping the field focused and in the
-   *  tab order, so it serializes without the blur. */
+   *  go **`readonly`** — not `disabled`, which would blur the field the commit came from — and a
+   *  `change` that slips through anyway is ignored. Why: `docs/plans/focus-posture-bank-item.md`. */
   protected readonly saving = signal(false);
   /** The last row saved and the last per-row error — sequential edits, per-row so a fail is scoped. */
   protected readonly savedRow = signal<string | null>(null);
@@ -146,7 +140,7 @@ export class PricingTab {
     if (this.saving()) {
       // A reprice is already in flight; the shared set_version token would false-conflict a second
       // concurrent write, so serialize — ignore this edit and restore the shown value. The row inputs are
-      // disabled during a save, so this guard is the defensive backstop for a change that slips through.
+      // readonly during a save, so this guard is the defensive backstop for a change that slips through.
       input.value = row.priceEur;
       return;
     }
@@ -168,7 +162,7 @@ export class PricingTab {
     this.savedRow.set(null);
     this.errorRow.set(null);
     this.staleConflict.set(false);
-    this.saving.set(true); // synchronous, before the await — disables the inputs so no overlap starts
+    this.saving.set(true); // synchronous, before the await — locks the inputs so no overlap starts
     try {
       await firstValueFrom(this.console.repriceRow(venueId, row.label, price, expectedVersion));
       if (this.epoch !== epoch) {

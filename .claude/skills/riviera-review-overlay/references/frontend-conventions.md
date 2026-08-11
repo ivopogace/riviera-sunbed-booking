@@ -282,9 +282,14 @@ sitting on** move focus somewhere deliberate, via `shared/focus-after-render.ts`
 the author types and as a step in `Repo hygiene (diff-scoped)`. It carries two rules with **opposite
 postures**, and conflating them is the way to get this item wrong in both directions:
 
-- **BUSY-1 fails the build.** A `[disabled]` bound to an in-flight flag on a `<button>`/`<a>` is the
-  build's finding, not yours — by the time you read the diff CI has already named the line. Don't
-  hand-flag it (RV-STYLE-2's posture). It is syntactic and swept 297 files with no false positive.
+- **BUSY-1 fails the build — for the shapes it can see.** A `[disabled]` bound to an in-flight flag
+  on a `<button>`/`<a>` is the build's finding, not yours; by the time you read the diff CI has named
+  the line, so don't re-flag it (RV-STYLE-2's posture). But it discriminates on a **curated
+  vocabulary**, a deny-list with deliberate false negatives — `loading`, `pending`, `processing`,
+  `updating` and `creating` are excluded by name because each reads as often as *state* as it does as
+  busyness. So `[disabled]="loading()"` on a button is green **and** yours. Same for a binding the
+  diff only moved or re-indented: the guard judges added lines. Silence from BUSY-1 means "not one of
+  the shapes I match", never "checked and fine".
 - **FOCUS-1 prints and returns 0.** It advises; it does not gate. So a **green** hygiene job can sit
   on top of unread FOCUS-1 findings — read the step's *output*, not its exit code. It went advisory
   deliberately: "does this component move focus?" is a runtime property approximated by a regex over
@@ -312,14 +317,16 @@ postures**, and conflating them is the way to get this item wrong in both direct
    button starts the write — and fails where the **field's own** `(change)`/`(blur)` starts it, which
    the guard cannot tell apart. `pricing-tab` was the live case (**#625**, fixed): Enter fired
    `change` without leaving the field, so the flag disabled the input focus was in; clicking to the
-   next row disabled *that* one just as focus landed. **The fix for a self-committing field is
-   `[readonly]`**, not `[appBusy]` and not a focus leg — it blocks typing just as completely while
-   keeping the field focused. Ask where focus actually is when the flag flips, not which element
-   carries the binding.
+   next row disabled *that* one just as focus landed. **On a text-like input or `<textarea>` the fix
+   is `[readonly]`**, not `[appBusy]` and not a focus leg — it blocks typing just as completely while
+   keeping the field focused. **Don't take that as universal**: `readonly` is inert on `<select>`,
+   checkbox, radio, `file`, `range` and `color`, so a self-committing control of those kinds needs
+   either `[disabled]` plus a deliberate focus leg on settle, or no lock at all. Ask where focus
+   actually is when the flag flips, and whether `readonly` even applies to that control.
 
 **Follow-up:**
 - The convention itself, both postures and the guard's flags: `frontend/.claude/CLAUDE.md`. The
-  fourteen instances and why each recurred: #604, #614, #616, #621 and their `docs/plans/` entries.
+  fifteen instances and why each recurred: #604, #614, #616, #621, #625 and their `docs/plans/` entries.
 - **A jsdom spec is not evidence for a busy-window claim.** jsdom does not implement
   unfocus-on-disable (#614 R-1, re-confirmed by #616), so a unit spec can pass without the fix. A
   claim about a *disabled* control needs a Chromium leg; a claim about a *destroyed* one may be
