@@ -289,10 +289,11 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `review gate — three passes run (12 + 13 + 14 findings, all closed); Sonar gate next`
+**Stage pointer:** `merge — every gate cleared, close-out written; awaiting the merge itself`
 
-**Next action:** Pull Sonar's reported issue list from the API for PR #622 — the badge is not the
-check — then finish the merge close-out.
+**Next action:** Merge PR #622. The only remaining items are GitHub-only: confirm the `Closes #621`
+line closed the issue, and that #623/#624 carry what was deferred. No parent epic to tick (#621 has
+none).
 
 PR: **#622** — opened as a draft at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
 `pull_request` event only); marked ready for review at the Phase 4 commit.
@@ -303,9 +304,12 @@ merge. Review gate — **run in full, three times**: `/code-review` via ladder r
 false-positive regressions the first round introduced), and a third time because that round changed
 rule *semantics* (**14 more**, including a fourteenth instance of the bug class and the evidence that
 settled FOCUS-1's gating posture). **39 findings, all closed** — by fix, or by the human's decision on
-FOCUS-1. Sonar gate — reported list pulled from the API, not the badge: `issues/search` **total 0**,
-`measures` non-empty (`new_lines 16`, `new_coverage 100.0`, `new_duplicated_lines_density 0.0`), so
-not a false-clean read; re-confirm against the final head SHA before merging. docs-freshness — **ran**
+FOCUS-1. Sonar gate — **green on the final head SHA (`1549b02`), with the reported list actually pulled from
+the API rather than read off the badge**: `issues/search` total **0**, `hotspots/search` **0**, and
+`measures` **non-empty** (7 metrics — `new_lines 16`, `new_coverage 100.0`,
+`new_duplicated_lines_density 0.0`, `new_duplicated_blocks 0`, 0 new bugs / vulnerabilities / code
+smells), which is what distinguishes a clean PR from an unanalyzed one; the `SonarCloud Code
+Analysis` check-run concluded `success`. All eight checks green. docs-freshness — **ran**
 over `origin/main...HEAD`, 2 stale statements patched + 1 gap filed as #623.
 
 | Phase | Status | Commits |
