@@ -197,6 +197,10 @@ describe('PricingTab (#174)', () => {
     const reqA = http.expectOne((r) => r.url.includes('/api/venues/1/rows/A/price'));
     expect(reqA.request.body.expectedVersion).toBe(5);
 
+    // Genuinely disabled, not merely announced — aria-disabled would leave the field typable.
+    expect(input('B').disabled).toBe(true);
+    expect(input('B').hasAttribute('aria-disabled')).toBe(false);
+
     // A second edit (row B) while A is in flight is ignored — no concurrent PUT, B's input is restored.
     editRow('B', '30');
     http.expectNone((r) => r.url.includes('/api/venues/1/rows/B/price'));

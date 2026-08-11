@@ -383,8 +383,9 @@ export class AdminOperators {
     } finally {
       this.actingId.set(undefined);
       await this.load();
+      // Never "nothing changed": a 409 means it was already decided, so the reconciled list may move.
       this.notice.set(
-        settled ? `${outcome} ${who}.` : `That didn't go through. ${who} is unchanged.`,
+        settled ? `${outcome} ${who}.` : `That didn't go through. The list below is up to date.`,
       );
       this.focusAfterRender('admin-ops-notice');
     }

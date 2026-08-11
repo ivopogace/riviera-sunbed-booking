@@ -261,16 +261,18 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 
 **Stage pointer:** `review gate — fixes applied, re-review due`
 
-**Next action:** Re-review the fix diff (`pr-gates.md` §1 step 3), then the Sonar gate.
+**Next action:** Confirm CI green on the fix pushes, then pull the Sonar issue list (not just the gate) per `pr-gates.md` §2.
 characterization spec for the existing page-mount focus leg.
 
 PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
 `pull_request` event only).
 
-**Gates:** CI green (backend, frontend, repo hygiene ×2, CodeQL, Sonar) · review gate **run in full** —
-`/code-review` at high effort via ladder rung 1 (5 reviewers + verification), `riviera-review-overlay`
-layered on: **5 findings, all fixed**, two of them functional bugs this slice introduced. Sonar and the
-re-review are outstanding.
+**Gates:** CI green on the pre-review push (backend, frontend, repo hygiene ×2, CodeQL) · review gate
+**run in full** — `/code-review` at high effort via ladder rung 1 (5 reviewers), `riviera-review-overlay`
+layered on: **5 findings, all fixed**, two of them functional bugs this slice introduced · the fix diff
+then **re-reviewed** per `pr-gates.md` §1 step 3: **4 more findings, all fixed**, including that F-4's
+fix shipped with no regression coverage. **Still outstanding: CI on the fix pushes, and the Sonar gate
+with its reported issue list actually pulled.**
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -295,6 +297,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-6 | review (CONFIRMED, 2 reviewers) | **The Phase-0 stale-comment audit undercounted 1 as 4.** `admin-commissions.ts:454` carried the same "Disabling Save blurred it to `<body>`" claim as the `admin-privacy.ts` one that audit did find, and both files' **spec docblocks** repeated it | fixed-in-`58816b9f` — all three remaining instances corrected. The re-run sweep (`grep` for disable/blur claims in comments) is recorded as a new audit-log row; the `pricing-tab` comments it also surfaced are true again after F-4's revert |
 | F-7 | review (CONFIRMED) | TSDoc over the nested `CLAUDE.md` budget (~6 lines a type, ~3 a member) on `BusyAction`, `focusMover()` and `act()`, with load-bearing rationale inline instead of pointed at the plan — the same finding PR #612's review made | fixed-in-`58816b9f` — all three trimmed to a pointer. `BusyAction`'s now leads with **"For buttons only"**, which is the constraint F-4 was the cost of not stating |
 | F-8 | review (CONFIRMED) | An issue number in TSDoc (`focus-after-render.spec.ts`), which the nested `CLAUDE.md` forbids — `git blame` holds provenance | fixed-in-`58816b9f` |
+| F-9 | **re-review** (CONFIRMED) | **F-4's fix shipped with no regression coverage.** The reviewer reinstated the exact bug in the working tree and the whole suite stayed green — no unit or e2e spec asserted the price input's posture at all, so nothing would catch it being swept again | fixed-in-`<f-9>` — the existing serialization spec now asserts `input('B').disabled` **and** the absence of `aria-disabled`. Proven by reinstating the bug: the spec goes RED, then green on revert |
+| F-10 | re-review (CONFIRMED) | The new failure copy said "`<name>` is unchanged", which is wrong in the exact race its neighbouring comment names: on a 409 the row *was* already decided, so the reconciled list rendered right below would contradict the notice | fixed-in-`<f-9>` — "That didn't go through. The list below is up to date.", true whatever the cause |
+| F-11 | re-review (CONFIRMED) | F-7's TSDoc trim was a partial pass against its own target — `BusyAction` was still ~13 lines and `focusMover()` ~12 against the ~6-line budget | fixed-in-`<f-9>` — both now inside it, with the "for buttons only" constraint kept because F-4 is what its absence cost |
+| F-12 | re-review (CONFIRMED, doc) | This Gates line called Sonar both green and outstanding in one paragraph — ambiguous in the section that is explicitly the session-recovery anchor | fixed-in-`<f-9>` |
 | F-2 | CI (repo hygiene) | RV-STYLE-1: the two-line inline comment on the directive's native listener | fixed-in-`3416b430` — moved into the TSDoc, which is exempt and is where load-bearing rationale belongs |
 | F-3 | CI (frontend, format) | #618's diff-scoped Prettier gate merged to `main` mid-slice, so this branch's own hunks had to satisfy it | fixed-in-`f1e93570` — merged `main`, then `npm run format:check -- --fix`, which rewrites only the reported hunks so each file's pre-existing drift stays out of the diff |
 
@@ -341,6 +347,8 @@ variant rename, and the directive wiring. Grouped as the phase committed them:
   `frontend/src/app/operator/stale-write-banner.spec.ts`,
   `frontend/src/app/shared/confirm-with-reason.spec.ts` — the six specs that asserted the old
   posture (R-6), each converted with its own surface's swap
+- `frontend/src/app/operator/pricing-tab.spec.ts` — the regression pin the review gate's F-9 added:
+  the price input is genuinely `disabled` during a save, not merely announced as such
 - `frontend/e2e/erasure.e2e.ts` — AC-4 / AC-11's Chromium half
 - `frontend/e2e/admin-venue-photos.e2e.ts` — the takedown failure leg in a real browser
 - `frontend/e2e/admin-operator-suspension.e2e.ts` — the settled-action leg in a real browser
