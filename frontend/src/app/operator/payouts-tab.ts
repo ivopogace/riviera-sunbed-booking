@@ -233,6 +233,7 @@ export class PayoutsTab {
 
   protected closeStatement(): void {
     this.statementOpen.set(false);
+    this.focusAfterRender('statement-open');
   }
 
   /** Re-read the ledger after a weather refund so the reversal(s) appear; a re-read failure keeps the

@@ -82,7 +82,6 @@ test('leaves validity and state bindings alone', () => {
 });
 
 test('accepts a split binding', () => {
-  const sameFlag = ['<button [appBusy]="saving()" [disabled]="saving()">Save</button>'];
   const realShape = [
     '<button',
     '  type="submit"',
@@ -93,8 +92,153 @@ test('accepts a split binding', () => {
     '</button>',
   ];
 
-  assert.deepEqual(scan(HTML, sameFlag), []);
   assert.deepEqual(scan(HTML, realShape), []);
+});
+
+/**
+ * A split is legal because its `[disabled]` half expresses validity, which `isBusyFlag` already
+ * declines — not because `[appBusy]` sits beside it. Exempting the element wholesale accepted the
+ * one shape the rule exists to catch: the native attribute still blurs the pressed control however
+ * much `aria-disabled` says otherwise.
+ */
+test('still flags the busy flag when appBusy sits beside it on the same element', () => {
+  const violations = scan(HTML, ['<button [appBusy]="saving()" [disabled]="saving()">Save</button>']);
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].rule, 'BUSY-1');
+});
+
+/**
+ * `BusyAction` is for buttons only — inertness comes from consuming the activating click — so
+ * advising `[appBusy]` on anything else asks for a rewrite that cannot be written. A fieldset's
+ * group-disable and a child component's `disabled` input are both correct code.
+ */
+test('judges only the controls appBusy can actually replace', () => {
+  const lines = [
+    '<fieldset [disabled]="saving()"><input name="a" /></fieldset>',
+    '<app-money-input [disabled]="saving()" />',
+    '<div [disabled]="busy()"></div>',
+  ];
+
+  assert.deepEqual(scan(HTML, lines), []);
+});
+
+test('survives a less-than inside an interpolation', () => {
+  const lines = [
+    '<div>{{ a<b ? \'x\' : \'y\' }}</div>',
+    '<button [disabled]="saving()">S</button>',
+  ];
+
+  const violations = scan(HTML, lines);
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 2);
+});
+
+test('finds a confirm surface in an @else if branch', () => {
+  const lines = [
+    '@if (loaded()) {',
+    '  <p>x</p>',
+    '} @else if (confirmRemove()) {',
+    '  <button data-testid="rm">Remove</button>',
+    '}',
+  ];
+
+  const violations = scan(HTML, lines, { componentSource: '' });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].rule, 'FOCUS-1');
+  assert.equal(violations[0].line, 3);
+});
+
+test('reads a condition whose parenthesis opens on the next line', () => {
+  const lines = ['@if', '(confirmRemove()) {', '  <button>Remove</button>', '}'];
+
+  const violations = scan(HTML, lines, { componentSource: '' });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].rule, 'FOCUS-1');
+});
+
+/**
+ * The exemption has to be a call site in code. Matching the raw source let a component be excused by
+ * a TSDoc sentence mentioning the helper — `shared/confirm-panel.ts` and `shared/confirm-with-reason.ts`
+ * were both exempt on their prose alone, and any component copying that comment inherited it.
+ */
+test('does not accept a focus helper named only in a comment', () => {
+  const mentioned = [
+    "/** Focus back out is the caller's, via focusMover(). */",
+    '@Component({',
+    '  template: `',
+    '    @if (confirmRemove()) { <button data-testid="rm">Remove</button> }',
+    '  `,',
+    '})',
+    'export class Impostor {}',
+  ];
+  const called = [...mentioned];
+  called[6] = 'export class Real { private readonly move = focusMover(); }';
+
+  assert.equal(scan(TS, mentioned).length, 1);
+  assert.deepEqual(scan(TS, called), []);
+});
+
+test('accepts a component that focuses through afterNextRender directly', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (confirmRemove()) { <button data-testid="rm">Remove</button> }',
+    '  `,',
+    '})',
+    'export class ConfirmPanel {',
+    '  constructor() { afterNextRender({ write: () => this.button().focus() }); }',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines), []);
+});
+
+/**
+ * Delegation is a property of the block that renders the prompt, not of the file. File-scoped, one
+ * `<app-confirm-panel>` anywhere excused every other surface in the same component — including a
+ * hand-rolled one a later diff adds beside it.
+ */
+test('does not let one delegating surface excuse a hand-rolled sibling', () => {
+  const lines = [
+    '@if (confirmRegen()) {',
+    '  <app-confirm-panel (confirmed)="regen()" />',
+    '}',
+    '@if (confirmRemove()) {',
+    '  <button data-testid="rm">Remove</button>',
+    '}',
+  ];
+
+  const violations = scan(HTML, lines, { componentSource: '' });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 4);
+});
+
+/**
+ * A backtick that is not a `template:` value is a string like any other. Leaving the scanner in
+ * `code` state let the literal's contents be read as source, so an apostrophe or a `//` inside one
+ * silently consumed real markup further down the file.
+ */
+test('skips a backtick string that is not a template', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    <button [disabled]="saving()">Save</button>',
+    '  `,',
+    '})',
+    'export class Thing {',
+    '  private readonly label = `it\'s busy // really`;',
+    '}',
+  ];
+
+  const violations = scan(TS, lines);
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 3);
 });
 
 test('ignores bindings outside an inline template', () => {

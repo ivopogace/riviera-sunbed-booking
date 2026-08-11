@@ -1,12 +1,11 @@
 /**
  * Diff-scoped guard for the two focus postures `frontend/.claude/CLAUDE.md` states, both of them
- * causes of the same WCAG 2.4.3 stranded-focus class (#604, #614, #616 — twelve instances).
+ * causes of the same WCAG 2.4.3 stranded-focus class (#604, #614, #616 — thirteen instances).
  *
  * - **BUSY-1** — a control disabled by a flag *its own activation set* blurs to `<body>` for the
  *   whole request. It belongs on `[appBusy]`, which announces the same state via `aria-disabled`.
  * - **FOCUS-1** — a confirm-before-destroy surface destroys the element focus is sitting on, so its
- *   component must move focus deliberately via `focusMover()`, or delegate to a shared confirm
- *   component that does.
+ *   component must move focus deliberately, or delegate to a shared confirm component that does.
  *
  * Only ever reasons about lines a diff **added**: ~12 legitimate `[disabled]` bindings and 8 standing
  * confirm surfaces must never fail the repo, and a guard that goes red on day one gets switched off
@@ -14,8 +13,8 @@
  *
  * BUSY-1 discriminates on a curated busy-flag vocabulary rather than on a state/validity allow-list,
  * because the two error directions are not symmetric — a false negative leaves the status quo, a
- * false positive fails a build on correct code. Rationale and the derivation:
- * `docs/plans/focus-posture-guard.md`.
+ * false positive fails a build on correct code. Rationale, the known limits, and the review round
+ * that set most of them: `docs/plans/focus-posture-guard.md`.
  */
 
 import { readFileSync } from 'node:fs';
@@ -68,8 +67,21 @@ export const BUSY_STEMS = [
   'reinstating',
 ];
 
-/** `aria-disabled` does not stop typing, and focus is on the clicked button, never the field. */
-const TYPEABLE = new Set(['input', 'textarea', 'select']);
+/**
+ * The elements `[appBusy]` can actually replace `[disabled]` on.
+ *
+ * An allow-list, not a deny-list: `BusyAction` is for buttons only — inertness comes from consuming
+ * the activating click — so advising it on a `<fieldset>` or a child component's `disabled` input
+ * asks for a rewrite that cannot be written, and every one of the 51 `[appBusy]` bindings in the
+ * app is on a `<button>`.
+ */
+const ACTIONABLE = new Set(['button', 'a']);
+
+/** A call site, in code with comments and strings removed — a TSDoc mention is not compliance. */
+const MOVES_FOCUS = /\b(focusMover|focusAfterRender|afterNextRender)\s*\(/;
+
+/** Both shared confirm components focus their own confirm button, so their users need no leg. */
+const DELEGATES = /<app-confirm-panel|<app-confirm-with-reason/;
 
 /**
  * Finds every posture violation the diff wrote in one file.
@@ -82,26 +94,25 @@ const TYPEABLE = new Set(['input', 'textarea', 'select']);
 export function findViolations({ path, lines, added, componentSource }) {
   if (!IN_SCOPE.test(path)) return [];
 
-  const template = templateRegions(path, lines);
-  const owner = path.endsWith('.html') ? (componentSource ?? '') : lines.join('\n');
+  const scanned = path.endsWith('.html') ? htmlRegions(lines) : typescriptRegions(lines);
+  const owner = path.endsWith('.html')
+    ? codeOf(componentSource ?? '')
+    : scanned.code.join('\n');
   const violations = [
-    ...busyViolations(path, lines, added, template),
-    ...focusViolations(path, lines, added, template, owner),
+    ...busyViolations(path, lines, added, scanned.template),
+    ...focusViolations(path, lines, added, scanned.template, owner),
   ];
   return violations.sort((a, b) => a.line - b.line);
 }
 
-/**
- * Blanks every character that is not Angular template markup, keeping line and column geometry so a
- * violation still reports its real position.
- *
- * An `.html` file is all template but for its comments. A `.ts` file is the opposite: only the
- * contents of a `template:` literal count, which is what keeps the `[disabled]` that
- * `shared/busy-action.ts` quotes in its own TSDoc — documenting the very form this rule bans — from
- * reading as code.
- */
-function templateRegions(path, lines) {
-  return path.endsWith('.html') ? maskHtmlComments(lines) : maskToInlineTemplates(lines);
+/** An `.html` file is all template but for its comments, and carries no TypeScript at all. */
+function htmlRegions(lines) {
+  return { template: maskHtmlComments(lines), code: [] };
+}
+
+/** Strips a sibling component's comments and strings so `MOVES_FOCUS` sees call sites only. */
+function codeOf(source) {
+  return typescriptRegions(source.split('\n')).code.join('\n');
 }
 
 function maskHtmlComments(lines) {
@@ -130,8 +141,19 @@ function maskHtmlComments(lines) {
 
 const TEMPLATE_KEY = /template\s*:\s*$/;
 
-function maskToInlineTemplates(lines) {
-  const out = lines.map((line) => ' '.repeat(line.length).split(''));
+/**
+ * Splits a `.ts` file into its two masks in one pass, keeping line and column geometry so a
+ * violation still reports its real position.
+ *
+ * - `template` — the contents of `template:` literals, and nothing else. This is what keeps the
+ *   `[disabled]` that `shared/busy-action.ts` quotes in its own TSDoc — documenting the very form
+ *   BUSY-1 bans — from reading as markup.
+ * - `code` — executable source with comments, strings and template literals removed, so a helper
+ *   named in a comment cannot pass for a call site.
+ */
+function typescriptRegions(lines) {
+  const template = lines.map((line) => ' '.repeat(line.length).split(''));
+  const code = lines.map((line) => ' '.repeat(line.length).split(''));
   const source = lines.map((line) => line.split(''));
   let state = 'code';
   let depth = 0;
@@ -161,7 +183,7 @@ function maskToInlineTemplates(lines) {
           state = 'code';
           pending = '';
         } else {
-          out[i][c] = ch;
+          template[i][c] = ch;
         }
         continue;
       }
@@ -185,15 +207,26 @@ function maskToInlineTemplates(lines) {
         if (TEMPLATE_KEY.test(pending)) {
           state = 'template';
           depth = 0;
+        } else {
+          state = 'string';
         }
         pending = '';
         continue;
       }
+      if (state === 'string') {
+        if (ch === '\\') c++;
+        else if (ch === '`') state = 'code';
+        continue;
+      }
+      code[i][c] = ch;
       pending = /[\s\w:]/.test(ch) ? `${pending}${ch}`.slice(-40) : '';
     }
     if (state === 'code') pending = `${pending}\n`.slice(-40);
   }
-  return out.map((chars) => chars.join(''));
+  return {
+    template: template.map((chars) => chars.join('')),
+    code: code.map((chars) => chars.join('')),
+  };
 }
 
 /** Scans from the opening quote at `c` to just past its match, honouring backslash escapes. */
@@ -210,8 +243,7 @@ function busyViolations(path, lines, added, template) {
   const violations = [];
 
   for (const tag of startTags(template)) {
-    if (TYPEABLE.has(tag.name)) continue;
-    if (tag.attributes.has('[appBusy]')) continue;
+    if (!ACTIONABLE.has(tag.name)) continue;
     const disabled = tag.attributes.get('[disabled]');
     if (!disabled || !isBusyFlag(disabled.value)) continue;
     if (!added.has(disabled.line + 1)) continue;
@@ -225,12 +257,6 @@ function busyViolations(path, lines, added, template) {
   return violations;
 }
 
-/** The helper every compliant confirm surface reaches for, however the component names its field. */
-const MOVES_FOCUS = /focusMover\(|focusAfterRender/;
-
-/** Both shared confirm components focus their own confirm button, so their users need no leg. */
-const DELEGATES = /<app-confirm-panel|<app-confirm-with-reason/;
-
 /**
  * Reports a confirm-before-destroy surface whose component moves focus nowhere.
  *
@@ -239,31 +265,61 @@ const DELEGATES = /<app-confirm-panel|<app-confirm-with-reason/;
  * switch, a route change), where no focus move is wanted. Spike: `docs/plans/focus-posture-guard.md`.
  *
  * <p>One finding per component, not per `@if` — a surface routinely spans two blocks (the trigger's
- * and the prompt's), and the fix is one set of legs however many it spans.
+ * and the prompt's), and the fix is one set of legs however many it spans. Delegation is judged
+ * per block, though: file-scoped, one `<app-confirm-panel>` excused every hand-rolled sibling.
  */
-function focusViolations(path, lines, added, template, componentSource) {
-  const markup = template.join('\n');
-  if (DELEGATES.test(markup) || MOVES_FOCUS.test(componentSource)) return [];
+function focusViolations(path, lines, added, template, componentCode) {
+  if (MOVES_FOCUS.test(componentCode)) return [];
 
-  const surface = confirmSurfaces(template).find((found) => added.has(found.line + 1));
+  const surface = confirmSurfaces(template).find(
+    (found) => added.has(found.line + 1) && !DELEGATES.test(found.block),
+  );
   if (surface === undefined) return [];
   return [{ path, line: surface.line + 1, rule: 'FOCUS-1', text: lines[surface.line].trim() }];
 }
 
-/** Every `@if` whose condition is a confirm-prompt flag rather than a domain value. */
+/** `@if` and `@else if` alike — the latter is the idiomatic way to write a trigger/prompt pair. */
+const BRANCH = /@(?:else\s+)?if\b/g;
+
+/** Every branch whose condition is a confirm-prompt flag rather than a domain value. */
 function confirmSurfaces(lines) {
   const surfaces = [];
 
   for (let i = 0; i < lines.length; i++) {
-    for (let c = lines[i].indexOf('@if'); c !== -1; c = lines[i].indexOf('@if', c + 1)) {
-      const condition = readCondition(lines, i, c + 3);
-      if (condition !== null && isConfirmPrompt(condition)) surfaces.push({ line: i });
+    for (const match of lines[i].matchAll(BRANCH)) {
+      const read = readCondition(lines, i, match.index + match[0].length);
+      if (read === null || !isConfirmPrompt(read.condition)) continue;
+      surfaces.push({ line: i, block: blockAfter(lines, read.line, read.column) });
     }
   }
   return surfaces;
 }
 
-/** The text between `@if (` and its matching `)`, or null when no parenthesis opens. */
+/** The `{ … }` body a branch controls, so delegation can be judged where the prompt is rendered. */
+function blockAfter(lines, line, column) {
+  let depth = 0;
+  let body = '';
+
+  for (let i = line; i < lines.length; i++) {
+    for (let c = i === line ? column : 0; c < lines[i].length; c++) {
+      const ch = lines[i][c];
+      if (ch === '{') depth++;
+      else if (ch === '}' && --depth === 0) return body;
+      else if (depth === 0 && !/\s/.test(ch)) return body;
+      if (depth > 0) body += ch;
+    }
+    body += '\n';
+  }
+  return body;
+}
+
+/**
+ * The text between a branch's `(` and its matching `)`, with the position just past it.
+ *
+ * The separator is appended only inside the parentheses: at depth 0 a line break would prepend
+ * whitespace to a condition whose `(` opens on the next line, and `isConfirmPrompt`'s anchor
+ * would then never match.
+ */
 function readCondition(lines, line, column) {
   let depth = 0;
   let condition = '';
@@ -274,10 +330,10 @@ function readCondition(lines, line, column) {
       if (depth === 0 && /\s/.test(ch)) continue;
       if (depth === 0 && ch !== '(') return null;
       if (ch === '(') depth++;
-      else if (ch === ')' && --depth === 0) return condition;
+      else if (ch === ')' && --depth === 0) return { condition, line: i, column: c + 1 };
       if (depth > 0) condition += ch;
     }
-    condition += ' ';
+    if (depth > 0) condition += ' ';
   }
   return null;
 }
@@ -342,14 +398,16 @@ function readAttributes(lines, line, column) {
       c++;
       continue;
     }
-    const name = /^[^\s=>/'"]+/.exec(lines[i].slice(c))[0];
-    c += name.length;
+    // `{{ a<b ? 'x' : 'y' }}` reads as a start tag, and its quote is where a name should be.
+    const name = /^[^\s=>/'"]+/.exec(lines[i].slice(c));
+    if (name === null) return { attributes, line: i, column: c };
+    c += name[0].length;
     if (lines[i][c] !== '=') {
-      attributes.set(name, { value: '', line: i });
+      attributes.set(name[0], { value: '', line: i });
       continue;
     }
     const read = readValue(lines, i, c + 1);
-    attributes.set(name, { value: read.value, line: i });
+    attributes.set(name[0], { value: read.value, line: i });
     i = read.line;
     c = read.column;
   }
@@ -411,6 +469,29 @@ export function check(range, limitTo) {
 }
 
 /**
+ * Checks explicit paths against `HEAD`, judging an **untracked** file whole.
+ *
+ * A new file has no diff against `HEAD`, so the plain diff path reported it clean — and a new
+ * component is exactly how a FOCUS-1 surface enters the tree, on the `Write` the hook fires for.
+ */
+export function checkPaths(paths) {
+  const added = parseAddedLines(git(diffArgs('HEAD', '--', ...paths)));
+  return paths.flatMap((path) => {
+    if (added.has(path)) return checkOne(path, added.get(path));
+    return isTracked(path) ? [] : checkOne(path, null);
+  });
+}
+
+function isTracked(path) {
+  try {
+    git(['ls-files', '--error-unmatch', '--', path]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Sweeps every in-scope file in the working tree with the diff scoping lifted.
  *
  * The audit mode behind the plan's AC-11, deliberately **not** wired into CI: the standing tree
@@ -441,7 +522,7 @@ function checkOne(path, added) {
  *
  * An external template's focus handling lives in its sibling `.ts`, so reading it is what keeps
  * FOCUS-1 from reporting every compliant `.html` in the app — `set-editor` and `layout-editor` both
- * have their confirm surface in one file and their `focusMover()` in the other.
+ * have their confirm surface in one file and their focus helper in the other.
  */
 function ownerSource(path) {
   return path.endsWith('.html') ? (readText(path.replace(/\.html$/, '.ts')) ?? '') : '';
@@ -456,7 +537,7 @@ const ADVICE = {
   'FOCUS-1':
     'FOCUS-1: this component renders a confirm-before-destroy surface but moves focus nowhere, so ' +
     'each transition strands focus on <body> (WCAG 2.4.3). Give it all three legs — open, back-out ' +
-    'and settled — via shared/focus-after-render.ts\'s focusMover(), or render the prompt with ' +
+    "and settled — via shared/focus-after-render.ts's focusMover(), or render the prompt with " +
     '<app-confirm-panel>/<app-confirm-with-reason>, which focus themselves. ' +
     'See frontend/.claude/CLAUDE.md.',
 };
@@ -483,7 +564,7 @@ function main(argv) {
     if (!path) return 0;
     const edited = toRepoRelative(path);
     if (!IN_SCOPE.test(edited)) return 0;
-    const violations = check(['HEAD', '--', edited], [edited]);
+    const violations = checkPaths([edited]);
     if (violations.length === 0) return 0;
     process.stdout.write(
       JSON.stringify({
@@ -497,8 +578,7 @@ function main(argv) {
   }
 
   if (mode === '--files') {
-    const paths = argv.slice(1).map(toRepoRelative);
-    const violations = check(['HEAD', '--', ...paths], paths);
+    const violations = checkPaths(argv.slice(1).map(toRepoRelative));
     if (violations.length === 0) return 0;
     process.stderr.write(`Focus-posture violations:\n${report(violations)}\n${advise(violations)}\n`);
     return 1;

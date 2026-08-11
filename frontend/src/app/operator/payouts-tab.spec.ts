@@ -450,6 +450,18 @@ describe('PayoutsTab (#173) — ledger', () => {
     expect(document.activeElement).toBe(elsewhere);
   });
 
+  it('returns focus to the statement trigger when the modal closes', async () => {
+    render(ledger({ netOwedMinor: 3825, entries: [entry({ bookingId: 11 })] }));
+
+    byId('statement-open')!.click();
+    await settle();
+    byId('statement-close')!.click();
+    await settle();
+
+    expect(byId('payout-statement')).toBeNull();
+    expect(document.activeElement).toBe(byId('statement-open'));
+  });
+
   it('moves no focus when changing the date closes the prompt', async () => {
     render(ledger());
     await openWeatherConfirm();

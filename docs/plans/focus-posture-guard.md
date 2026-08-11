@@ -143,6 +143,17 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
   carve-outs the rule exists to respect (AC-2, AC-3), re-confirming #616's Non-goal.
 - **No `--fix` mode.** Both fixes are judgement calls — which of the two carve-outs applies, and
   where focus should land — so the guard reports and points, as `check-inline-comments.mjs` does.
+- **Two known limits, kept deliberately rather than silently** (both from the review round):
+  **(a)** FOCUS-1's `focusMover()` exemption stays **component-scoped** — a component that moves
+  focus at all is trusted to move it for each of its surfaces. Per-surface would mean deciding which
+  legs belong to which prompt, which is the runtime question the flip-level rule already failed on.
+  Delegation *is* judged per block, since that one is decidable from the markup (F-9).
+  **(b)** The template scanner is **not** extracted into `git-diff.mjs`. That module's own header
+  scopes it to "what did this diff touch, and where" and forbids knowing what a guard checks; a
+  TypeScript/HTML region scanner is the opposite. The two scanners also answer different questions —
+  `check-inline-comments.mjs` wants *comment* regions, this one wants *template* and *code* regions —
+  so a shared abstraction would be a union of both, not a reuse of either. What the duplication
+  genuinely cost, a diverged backtick case, is fixed and pinned (F-11).
 - **No new `riviera-review-overlay` bank item.** The docs-freshness sweep turned up that the overlay
   has **no** RV-FE item for this bug class at all — which is part of why twelve instances shipped.
   Adding one is deliberately not done here: with a hard CI gate now in place, an overlay item would
@@ -252,11 +263,11 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `review gate — PR marked ready, awaiting the /code-review run`
+**Stage pointer:** `review gate — 12 findings fixed, re-review of the fix diff due`
 
-**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1 (the invocation
-ladder, plus `riviera-review-overlay`), then pull Sonar's reported issue list from the API — the
-badge is not the check.
+**Next action:** Re-run `/code-review` over the fix diff (`pr-gates.md` §1 step 3 — the round that
+justifies the rule: #616's second pass found a fix shipped with no coverage), then pull Sonar's
+reported issue list from the API — the badge is not the check.
 
 PR: **#622** — opened as a draft at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
 `pull_request` event only); marked ready for review at the Phase 4 commit.
@@ -284,6 +295,18 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | **review** (CONFIRMED) | **F-1's fix reintroduced the ambiguity #533 exists to catch.** `changed.includes(token)` admitted the token *wholesale*, so a plan doc listing only root `CLAUDE.md` silently covered every other `CLAUDE.md` in the diff. F-1's test pinned only the both-listed case, so it could not see the hole | fixed — the exact match now settles **its own path** and nothing else; the general cover is judged separately. Pinned by `an exact match settles its own path only, not its suffix matches`, verified RED |
+| F-3 | **review** (CONFIRMED) | **A thirteenth instance of the bug class, in the file this slice edits.** `closeStatement()` dismisses the payout-statement modal, which focused its own Close button on open — destroying it and moving focus nowhere. Compounding it: now that `payouts-tab.ts` obtains `focusMover()`, **FOCUS-1 exempts the whole component permanently**, so the new guard would never have surfaced it. The component's TSDoc actively claimed the opposite ("focus returns to the trigger (the parent re-renders it)") — re-rendering a button does not focus it | fixed — `closeStatement()` returns focus to `statement-open`; the false TSDoc claim corrected to name the parent as the leg's owner. Pinned by `returns focus to the statement trigger when the modal closes`, verified RED (`expected <body> to be <button …>`) |
+| F-4 | **review** (CONFIRMED) | **BUSY-1 accepted the exact shape it exists to catch.** Skipping any tag carrying `[appBusy]` meant `[appBusy]="saving()"` + `[disabled]="saving()"` passed — the native attribute still blurs the pressed control however much `aria-disabled` says otherwise — and the suite *asserted the miss as correct*. The skip was never load-bearing: the genuine split is already accepted because `isBusyFlag` declines a validity expression | fixed — the `[appBusy]` skip is deleted. Proven by the positive control: `venue-tab.html` and a fourth `set-editor.html` binding now flag when their expression is forced to `saving()`, where before they were exempt. The four real splits still pass |
+| F-5 | **review** (CONFIRMED) | **A null dereference crashed the hard CI gate.** `{{ a<b ? 'x' : 'y' }}` reads as a start tag, the attribute-name regex matches nothing at the quote, and `[0]` throws. In `--diff` the step dies with a stack trace; in `--hook` the `2>/dev/null \|\| true` wrapper turns it into a **silent pass**, so the author is told nothing *and* a real violation below it goes unreported | fixed — the tag is abandoned when no name is there. Pinned by `survives a less-than inside an interpolation` |
+| F-6 | **review** (CONFIRMED) | **The authoring-time guard was blind to new files.** `--hook`/`--files` diffed against `HEAD`, so an untracked file produced an empty diff and reported clean — and a new component is precisely how a FOCUS-1 surface enters the tree, on the `Write` the hook fires for | fixed — `checkPaths()` judges an untracked file whole. Verified end to end with a probe component: violations now reported on `Write`, where before both modes exited 0 |
+| F-7 | **review** (CONFIRMED) | **A comment could exempt a component.** `MOVES_FOCUS` was a substring test over raw source, so a TSDoc sentence *mentioning* `focusMover()` excused the file — live on `shared/confirm-panel.ts` and `shared/confirm-with-reason.ts`, and `auth-page.ts` was exempt via a private `refocusAfterRender()` | fixed — the scanner now emits a **code** mask (comments, strings and template literals removed) beside the template mask, and the marker is a call site. The three live components pass legitimately, on `afterNextRender(`. Pinned by `does not accept a focus helper named only in a comment` and its `afterNextRender` twin |
+| F-8 | **review** (CONFIRMED) | **BUSY-1 failed correct code.** Exempting only `input`/`textarea`/`select` left `<fieldset [disabled]>` and a child component's `disabled` input flagged with advice they cannot satisfy — `BusyAction` is for buttons only. The guard's own design premise makes this the error direction it cannot afford | fixed — a deny-list of three became an allow-list of `button`/`a`, which is exactly where all **51** standing `[appBusy]` bindings live. Pinned by `judges only the controls appBusy can actually replace` |
+| F-9 | **review** (CONFIRMED, partial) | **One compliant surface exempted every sibling.** Both exemptions were file-scoped, so `<app-confirm-panel>` anywhere excused a hand-rolled prompt added beside it later | fixed for delegation — judged **per block** now, where the prompt is rendered. The `focusMover()` half stays component-level **by design** (a component that moves focus at all is trusted to move it for each leg) and is recorded as a known limit below, not silently |
+| F-10 | **review** (CONFIRMED) | `@else if (confirmRemove())` was invisible — `indexOf('@if')` never matches it, and it is the idiomatic way to write a trigger/prompt pair | fixed — a `@(?:else\s+)?if\b` scan. Pinned by `finds a confirm surface in an @else if branch` |
+| F-11 | **review** (CONFIRMED, partial) | The template scanner duplicates `check-inline-comments.mjs`'s string/comment state machine, and the copy had **diverged**: a backtick that was not a `template:` value left the scanner in `code` state, so the literal's contents were read as source | the divergence is **fixed** (a non-template backtick now enters a string state); pinned by `skips a backtick string that is not a template`. The **extraction** is deliberately not done — see the known limits below |
+| F-12 | **review** (CONFIRMED) | Adjacent pre-existing defect: `token.replace(/\/$/, '').includes('/')` strips a top-level directory token's only slash, so a bare `scripts/` was dropped as ambiguous and covered nothing — the same dead end F-1 fixed one step away | fixed — a rooted directory token is exempt from the ambiguity count, an unrooted one (`components/` across two trees) still is not. Pinned by `a top-level directory token covers the files beneath it` |
+| F-13 | **review** (CONFIRMED) | `readCondition` appended a separator at depth 0, so a condition whose `(` opened on the next line arrived with a leading space and `isConfirmPrompt`'s `^\(` anchor never matched | fixed — the separator is appended only inside the parentheses. Pinned by `reads a condition whose parenthesis opens on the next line` |
 | F-1 | CI (repo hygiene) | **A latent defect in the sibling plan-doc guard, surfaced by this slice's own docs-freshness patch.** `check-plan-file-structure.mjs` counts a bare token's *suffix* matches to decide whether it is ambiguous, and this diff touches both `CLAUDE.md` and `frontend/.claude/CLAUDE.md`. A repo-root file is written bare because nothing qualifies it, so the root token matched two paths, was dropped as ambiguous, and `CLAUDE.md` became **unlistable — no spelling of it could satisfy the guard.** The pairing is not exotic: it is what a docs-freshness sweep produces whenever it patches the root doc on a frontend slice | fixed-in-`22bd944` — an **exact** match now settles the token rather than being counted among its suffix matches (`changed.includes(token)`). Written test-first and verified RED; the bare-name ambiguity rule for genuinely ambiguous tokens (`index.ts` across two folders) is untouched, pinned by its existing case |
 
 ---
@@ -302,8 +325,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/e2e/operator-payouts.e2e.ts` — AC-17
 - `CLAUDE.md` — the docs-freshness counting-sweep patch: three → **four** diff-scoped hygiene
   checks, and the job split re-stated as "the first three"
-- `scripts/check-plan-file-structure.mjs`, `scripts/check-plan-file-structure.test.mjs` — F-1: an
-  exact path match settles a bare token instead of being counted among its suffix matches
+- `scripts/check-plan-file-structure.mjs`, `scripts/check-plan-file-structure.test.mjs` — F-1/F-2/F-13:
+  an exact path match settles its own path, and a rooted directory token survives the ambiguity floor
+- `frontend/src/app/operator/payout-statement.ts` — F-3: the TSDoc claim that focus returns to the
+  trigger on its own, corrected to name the parent as the owner of that leg
 
 > Reconcile this section with `node scripts/check-plan-file-structure.mjs --diff origin/main`
 > before pushing.

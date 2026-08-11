@@ -466,6 +466,34 @@ test('an exact path match is never ambiguous, however many paths share its basen
   assert.deepEqual(omissions, []);
 });
 
+/**
+ * The exact match settles **that** path, not every path it happens to suffix-match. Admitting the
+ * token wholesale would have made root `CLAUDE.md` a blanket cover for every deeper `CLAUDE.md` the
+ * diff touched — the ambiguity #533 exists to catch, reintroduced by its own fix.
+ */
+test('an exact match settles its own path only, not its suffix matches', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `CLAUDE.md` — the hygiene-check count'))],
+    changed: ['CLAUDE.md', 'frontend/.claude/CLAUDE.md', 'docs/CLAUDE.md'],
+  });
+
+  assert.deepEqual(paths(omissions), ['frontend/.claude/CLAUDE.md', 'docs/CLAUDE.md']);
+});
+
+/**
+ * A directory token exists precisely to cover more than one file, so counting its matches against
+ * the `<= 1` ambiguity floor rejected it for doing its job — and stripping the trailing slash before
+ * the `/` test left a top-level `scripts/` with no slash at all, so no spelling of it could work.
+ */
+test('a top-level directory token covers the files beneath it', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `scripts/` — the guard and its suite'))],
+    changed: ['scripts/check-focus-posture.mjs', 'scripts/check-focus-posture.test.mjs'],
+  });
+
+  assert.deepEqual(omissions, []);
+});
+
 test('a bare name matching exactly one path is still the common idiom', () => {
   const omissions = findOmissions({
     docs: [doc(withHeading('- `SecurityConfig.java` — two matcher constants'))],

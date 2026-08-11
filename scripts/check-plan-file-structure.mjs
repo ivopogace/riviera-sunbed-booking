@@ -185,16 +185,21 @@ function covers(token, path) {
  * a `/`", because that stricter rule false-flags eleven legitimately-named files on PR #516 alone,
  * and a noisy gate is one that gets switched off (R-2).
  *
- * <p>An **exact** match is settled rather than counted: a repo-root file is written bare because it
- * has nothing to qualify it, so counting suffix matches made root `CLAUDE.md` unlistable whenever a
- * diff also touched `frontend/.claude/CLAUDE.md` — no spelling could satisfy the guard.
+ * <p>Judged for the **general** cover only. A token that exactly equals a changed path settles that
+ * path directly (see `findOmissions`) and never needs this: a repo-root file is written bare because
+ * nothing qualifies it, so counting suffix matches made root `CLAUDE.md` unlistable whenever a diff
+ * also touched `frontend/.claude/CLAUDE.md`.
+ *
+ * <p>A **rooted** directory token is exempt from the count for the same reason a glob is: covering
+ * several files is its job, and stripping its only slash before the `/` test left a top-level
+ * `scripts/` with no spelling that could work. An *unrooted* one (`components/` matching two trees)
+ * is still ambiguous — it has not said which tree.
  */
-function unambiguous(listed, changed) {
-  return listed.filter((token) => {
-    if (token.replace(/\/$/, '').includes('/') || token.includes('*')) return true;
-    if (changed.includes(token)) return true;
-    return changed.filter((path) => covers(token, path)).length <= 1;
-  });
+function usable(token, changed) {
+  if (token.includes('*')) return true;
+  if (token.replace(/\/$/, '').includes('/')) return true;
+  if (token.endsWith('/') && changed.some((path) => path.startsWith(token))) return true;
+  return changed.filter((path) => covers(token, path)).length <= 1;
 }
 
 /**
@@ -216,17 +221,16 @@ export function findOmissions({ docs, changed }) {
   if (docs.length === 0) return [];
 
   const sections = docs.map((d) => sectionOf(d.text));
-  const listed = unambiguous(
-    sections.filter((section) => section !== null).flatMap(listedPaths),
-    changed,
-  );
+  const listed = sections.filter((section) => section !== null).flatMap(listedPaths);
+  const general = listed.filter((token) => usable(token, changed));
   const reason = sections.every((section) => section === null)
     ? 'no "## File structure" section'
     : 'not listed in the File structure section';
 
   return changed
     .filter((path) => !isExempt(path, docs))
-    .filter((path) => !listed.some((token) => covers(token, path)))
+    .filter((path) => !listed.includes(path))
+    .filter((path) => !general.some((token) => covers(token, path)))
     .map((path) => ({ path, reason }));
 }
 
