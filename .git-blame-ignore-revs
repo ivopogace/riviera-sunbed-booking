@@ -1,0 +1,9 @@
+# Commits `git blame` should skip (GitHub's blame view honors this file at the
+# repo root; locally, opt in once with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# — see CONTRIBUTING.md §2).
+
+# The one-time tree-wide Prettier reformat of frontend/src/ + frontend/e2e/
+# (issue #631, PR #634): pure `npx prettier --write src e2e` output, no hand
+# edits, so line provenance belongs to the commits underneath it.
+1a6933d9a7778d7bec71b94d03a15357f2cf20b7

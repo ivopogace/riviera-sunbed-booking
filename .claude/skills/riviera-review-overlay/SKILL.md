@@ -93,27 +93,23 @@ What it does **not** cover, which is what this item is still for:
 The guard is diff-scoped by construction, so it will never flag the pre-existing multi-line blocks
 in `SecurityConfig` or `styles.scss` — and neither should you.
 
-## RV-STYLE-2 — formatting is machine-checked; don't review it by hand
+## RV-STYLE-2 — formatting is `prettier --check`'s job, not the reviewer's
 
-`frontend/.prettierrc` is enforced by a **diff-scoped** guard (#615), so a formatting comment on a
-frontend diff is either redundant with a gate that already ran or wrong. Two rules follow:
+`frontend/.prettierrc` is enforced whole-scope: the frontend job's Format step runs bare
+`prettier --check src e2e`, and the tree has been clean since #631's one-time reformat (recorded
+in `.git-blame-ignore-revs`; it retired #615's diff-scoped wrapper, whose line-scoping existed
+only for the then-drifted tree). So a formatting comment on a frontend diff is either redundant
+with a gate that already ran or wrong:
 
-- **Don't hand-flag `printWidth`, quote style, or wrapping** in `frontend/`. If the line is really
-  misformatted, the `Format (diff-scoped Prettier, hard gate)` step in the frontend job has already
-  failed the PR and named it — the raised-and-fixed round trip on PR #520 and the raised-and-rejected
-  one on PR #612 are the two the guard exists to retire. Green means *the guard passed on the lines
-  it could read*, which is not quite "every line is fine": a file Prettier cannot **parse** is
-  skipped with a stderr warning nobody sees inside a green step. Angular templates are **not** that
-  case — `.prettierrc` gives `*.html` the `angular` parser, and templates are where the guard is
-  loudest — so a long line in a `.ts` or `.html` the guard read needs no comment from you.
-- **Never ask for a whole-file reformat.** 200 of the tree's files carry pre-existing drift, and
-  reformatting one to land an unrelated change buries the change — the call PR #612's review got
-  right. The guard judges only the lines the diff wrote, and `npm run format:check -- --fix`
-  rewrites only those, so "run Prettier on it" is never the correct ask.
+- **Don't hand-flag `printWidth`, quote style, or wrapping** in `frontend/src` or `frontend/e2e`.
+  If a line were really misformatted, the Format step would have failed the PR and named the
+  file — the raised-and-fixed round trip on PR #520 and the raised-and-rejected one on PR #612
+  are the two this gate exists to retire. A dirty file is fixed with `npm run format` (or a
+  scoped `npx prettier --write <file>`), never by a review comment.
 
-Outside `frontend/` there is no Prettier config at all (`resolveConfig` returns null for `scripts/`,
-`docs/` and `platform/`), so formatting there is a matter of matching the surrounding file — judge it
-by eye, and lean toward leaving it alone.
+Outside that scope there is no Prettier config at all (`resolveConfig` returns null for
+`scripts/`, `docs/`, `platform/`, and `frontend/`'s own root files), so formatting there is a
+matter of matching the surrounding file — judge it by eye, and lean toward leaving it alone.
 
 ## RV-PROC-1 — skill-routing gate honored (when a plan doc is in scope)
 

@@ -80,10 +80,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          # The formatting guard below diffs against the base branch, which a depth-1 clone does
-          # not contain — the same reason the repo-hygiene job fetches the full history.
-          fetch-depth: 0
 
       - name: Set up Node (from .nvmrc)
         uses: actions/setup-node@v7
@@ -102,33 +98,23 @@ jobs:
       - name: Lint (hard gate)
         run: npm run lint
 
-      - name: Fetch the base branch (the diff-scoped guards' base)
-        # NOT `github.event.pull_request.base.sha`, which is the base branch's tip when the PR was
-        # opened. CI checks out the PR's MERGE ref, so once `main` moves the merge commit contains
-        # commits the stale sha predates, `git merge-base` resolves to that stale sha, and the diff
-        # hands this PR everything main gained meanwhile — other people's merged lines, reported as
-        # yours. Caught on PR #618 the moment #617 landed mid-flight. The base branch's CURRENT tip
-        # is the first parent of the merge ref, so diffing it yields exactly what this PR adds.
-        run: git fetch --no-tags origin ${{ github.event.pull_request.base.ref }}
-        if: ${{ !cancelled() && steps.install.outcome == 'success' && github.event_name == 'pull_request' }}
-
-      - name: Format (diff-scoped Prettier, hard gate)
-        # Judges the lines the diff WROTE, never the files it touched: 200 of this tree's files are
-        # prettier-dirty, so a file-scoped check would demand an unrelated whole-file reformat on
-        # most pull requests — the trade PR #612's review refused, and the reason #615 exists.
+      - name: Format (Prettier, hard gate)
+        # Bare `prettier --check` over the whole scope — the tree has been clean since the one-time
+        # reformat (#631, PR #634, recorded in .git-blame-ignore-revs), which retired the
+        # diff-scoped wrapper (#615) whose line-scoping existed only for the drifted tree.
         #
-        # It lives here rather than in `Repo hygiene (diff-scoped)`, where it belongs by kind, for
-        # two mechanical reasons: that job installs nothing and this guard needs the pinned Prettier
-        # from frontend/node_modules, and a NEW job would report without blocking until a maintainer
-        # added it to the ruleset (#534). This job is already a required context.
+        # It lives here rather than in `Repo hygiene (diff-scoped)` because it needs the pinned
+        # Prettier from frontend/node_modules, which only this job installs — and this job is
+        # already a required context (a NEW job would report without blocking until a maintainer
+        # added it to the ruleset, #534).
         #
         # Runs even when Lint failed, so one push surfaces both style gates rather than trickling
-        # them over two round trips — but NOT when `npm ci` failed, where the guard would crash on a
-        # missing Prettier and report a second, misleading red (`!cancelled()` excludes cancellation,
-        # not failure). Pull requests only, like the other diff-scoped guards: the rule governs what
-        # a diff writes, and a push to `main` has no base that means anything here.
-        if: ${{ !cancelled() && steps.install.outcome == 'success' && github.event_name == 'pull_request' }}
-        run: node ../scripts/check-prettier-format.mjs --diff origin/${{ github.event.pull_request.base.ref }}
+        # them over two round trips — but NOT when `npm ci` failed, where the check would crash on
+        # a missing Prettier and report a second, misleading red (`!cancelled()` excludes
+        # cancellation, not failure). No diff base needed, so it also runs on `main` pushes as a
+        # cheap post-merge invariant.
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npx prettier --check src e2e
 
       - name: Test (Vitest, once, with coverage)
         run: npm run test:coverage
@@ -195,9 +181,8 @@ jobs:
     # Observed green: well under a minute (no install step — the guards have no dependencies).
     #
     # That is a constraint, not just a fact: `scripts/*.test.mjs` runs HERE, so nothing a guard
-    # module imports may reach `node_modules`. The Prettier guard (#615) obeys it by resolving
-    # Prettier lazily, inside the function that formats — hence its own check running in the
-    # frontend job instead, which is where `npm ci` has already run.
+    # module imports may reach `node_modules`. (It is also why the Prettier check — which needs
+    # the pinned Prettier from frontend/node_modules — runs in the frontend job instead.)
     timeout-minutes: 10
     steps:
       - name: Checkout

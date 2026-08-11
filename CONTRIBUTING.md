@@ -36,6 +36,14 @@ Postgres), and a **Stripe test account** for payment-module work. The full set o
 run recipes — including single-test and cloud-session variants — lives in the
 `riviera-local-debug` skill (`.claude/skills/riviera-local-debug/`).
 
+One-time git setup: point blame at [`.git-blame-ignore-revs`](.git-blame-ignore-revs)
+so the tree-wide Prettier reformat (#631) stays invisible to line-history tools
+(GitHub's blame view honors the file automatically):
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 ## 3. How we work (spec-driven, vertical slices)
 
 We build in thin **vertical slices** — one path through every layer
