@@ -841,6 +841,105 @@ test('keeps FOCUS-1 advisory and BUSY-1 gating', () => {
 });
 
 /**
+ * `declaresClass` used to test `\bclass\b` before the statement-terminator, so walking up from a
+ * FIRST member's own brace read `export class A {` and classified the member as the class body —
+ * `memberOf` returned nothing, and a handler that demonstrably moves focus was reported (#629.1).
+ * Member order must not change the verdict; a decorator-preceded member is the same walk.
+ */
+test('judges a first-member handler by its own body, not the class\'s', () => {
+  const firstMember = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="close()" /> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); this.trigger.focus(); }',
+    '  statementOpen = signal(false);',
+    '}',
+  ];
+  const fieldFirst = [...firstMember];
+  [fieldFirst[6], fieldFirst[7]] = [fieldFirst[7], fieldFirst[6]];
+  const decorated = [...firstMember];
+  decorated.splice(6, 0, "  @HostListener('document:keydown.escape')");
+
+  assert.deepEqual(scan(TS, firstMember, { isFocusTrap: TRAPS }), []);
+  assert.deepEqual(scan(TS, fieldFirst, { isFocusTrap: TRAPS }), []);
+  assert.deepEqual(scan(TS, decorated, { isFocusTrap: TRAPS }), []);
+});
+
+/**
+ * Two blocks opening and closing on one line both span it, and the line-granular innermost pick
+ * took the LATER sibling — a false positive against its signal plus a silent miss on the signal
+ * that actually gates the trap (#629.2). Attribution has to be column-precise.
+ */
+test('attributes a trap to the block that renders it when two share a line', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="close()" /> } @if (banner()) { <p>x</p> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '  dismissBanner() { this.banner.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 7);
+});
+
+/**
+ * `closingBrace` read the apostrophe in ordinary template prose as a string opener, skipped the
+ * real `}` beside it, and extended the branch to the end of the file — so a trap rendered AFTER
+ * the branch was attributed to it (#629.3). A quote with no mate on its own line is prose.
+ */
+test('does not let a prose apostrophe extend a branch to the end of file', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    "    @if (ready()) { <p>It's ready</p> }",
+    '    <app-payout-statement (dismissed)="close()" />',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '  reload() { this.ready.set(false); }',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
+});
+
+/**
+ * When the diff adds the trigger half and a flip but not the prompt line, the floor lands on the
+ * negated trigger — whose signal `gatingSignal` failed to read, so `reported` recorded null and
+ * the prompt surface was reported a second time at its flip (#629.4). One finding per signal.
+ */
+test('reports a surface once when the floor lands on the negated trigger', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (!confirmRemove()) { <button data-testid="rm-trigger">Remove</button> }',
+    '    @if (confirmRemove()) { <button data-testid="rm-confirm">Really remove</button> }',
+    '  `,',
+    '})',
+    'export class Thing {',
+    '  cancel() { this.confirmRemove.set(false); }',
+    '}',
+  ];
+  const added = all(lines);
+  added.delete(4);
+
+  const violations = scan(TS, lines, { added });
+
+  assert.equal(violations.length, 1);
+});
+
+/**
  * `payouts-tab` as it stood mid-#621 — the weather-confirm legs landed, the statement modal's had
  * not — which is the tree FOCUS-1 reported clean and #621's own review pass caught by hand.
  */

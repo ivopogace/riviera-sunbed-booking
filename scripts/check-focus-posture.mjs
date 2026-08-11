@@ -290,12 +290,18 @@ function typescriptRegions(lines) {
 
 /** Scans from the opening quote at `c` to just past its match, honouring backslash escapes. */
 function skipString(chars, c) {
+  const end = stringEnd(chars, c);
+  return end === -1 ? chars.length : end + 1;
+}
+
+/** The closing quote's index on the same line, or -1 when the quote at `c` has no mate there. */
+function stringEnd(chars, c) {
   const quote = chars[c];
   for (let i = c + 1; i < chars.length; i++) {
     if (chars[i] === '\\') i++;
-    else if (chars[i] === quote) return i + 1;
+    else if (chars[i] === quote) return i;
   }
-  return chars.length;
+  return -1;
 }
 
 function busyViolations(path, lines, added, template) {
@@ -436,32 +442,58 @@ function trapSurfaces(lines, spans, isFocusTrap) {
   const traps = new Set();
 
   for (let i = 0; i < lines.length; i++) {
-    if (!rendersFocusTrap(lines[i], isFocusTrap)) continue;
-    const innermost = spans.filter((span) => span.line <= i && i <= bodyEnd(lines, span)).at(-1);
-    if (innermost !== undefined) traps.add(innermost);
+    for (const column of trapColumns(lines[i], isFocusTrap)) {
+      const innermost = spans.filter((span) => contains(span, bodyEnd(lines, span), i, column)).at(-1);
+      if (innermost !== undefined) traps.add(innermost);
+    }
   }
   return traps;
 }
 
-function rendersFocusTrap(line, isFocusTrap) {
-  if (FOCUS_TRAP.test(line)) return true;
-  return [...line.matchAll(COMPONENT_TAG)].some((match) => isFocusTrap(match[1]));
+/** Where on the line a trap is rendered — the column is what tells same-line siblings apart. */
+function trapColumns(line, isFocusTrap) {
+  const columns = [];
+  const direct = FOCUS_TRAP.exec(line);
+  if (direct !== null) columns.push(direct.index);
+  for (const match of line.matchAll(COMPONENT_TAG)) {
+    if (isFocusTrap(match[1])) columns.push(match.index);
+  }
+  return columns;
 }
 
 /**
- * The line a block's `{ … }` body closes on, computed on demand.
+ * Whether the position sits inside the block's span, column-precise at both ends. Two blocks
+ * opening and closing on one line both cover it line-wise, and the line-granular test attributed
+ * a trap in the first to the second — a false positive against a signal that gates nothing plus a
+ * silent miss on the one that does (#629).
+ */
+function contains(span, end, line, column) {
+  if (span.line > line || (span.line === line && span.head.column > column)) return false;
+  return end.line > line || (end.line === line && end.column >= column);
+}
+
+/**
+ * The position a block's `{ … }` body closes at, computed on demand.
  *
  * Only a template holding a trap ever asks, so a file with no `<app-…>` child pays no brace walk at
  * all — this runs from a `PostToolUse` hook on every edit.
  */
 function bodyEnd(lines, span) {
-  span.end ??= closingBrace(lines, span.head)?.line ?? lines.length - 1;
+  span.end ??= closingBrace(lines, span.head) ?? {
+    line: lines.length - 1,
+    column: (lines.at(-1) ?? '').length,
+  };
   return span.end;
 }
 
-/** The signal a branch is gated on: `(statementOpen()` and `(selectedSet(); as set` both name one. */
+/**
+ * The signal a branch is gated on: `(statementOpen()` and `(selectedSet(); as set` both name one,
+ * and so does the negated trigger half `(!confirmRemove()` — the floor can land there when the
+ * diff adds the trigger but not the prompt, and failing to read its signal recorded null in
+ * `reported`, so the same surface was reported a second time at its flip (#629).
+ */
 function gatingSignal(condition) {
-  return /^\(\s*([A-Za-z_$][\w$]*)\s*\(/.exec(condition)?.[1] ?? null;
+  return /^\(\s*!?\s*([A-Za-z_$][\w$]*)\s*\(/.exec(condition)?.[1] ?? null;
 }
 
 /**
@@ -528,12 +560,16 @@ function memberOf(code, site) {
  * Whether the block opening here is the class body rather than one of its members.
  *
  * Prettier moves the brace onto its own line whenever the heritage clause overflows, so the
- * declaration can end lines above it; the walk stops at the first line that closes a statement.
+ * declaration can end lines above it. The statement-terminator test runs FIRST on the lines
+ * above: a first (or decorator-preceded) member's walk reaches the class declaration's own line,
+ * and reading `class` there classified the member's brace as the class body — reporting a handler
+ * that demonstrably moves focus (#629). The declaration line itself ends in `{` or precedes a
+ * heritage line, so terminating there is what tells the two apart.
  */
 function declaresClass(code, line) {
   for (let i = line; i >= 0; i--) {
-    if (/\bclass\b/.test(code[i])) return true;
     if (i < line && /[;{}]\s*$|^\s*$/.test(code[i])) return false;
+    if (/\bclass\b/.test(code[i])) return true;
   }
   return false;
 }
@@ -554,7 +590,10 @@ function blockText(lines, open) {
  *
  * Quote-aware, because a template legitimately writes a brace inside an attribute or an
  * interpolation (`{{ label() ?? '}' }}`) and counting it closes a block lines early — which moves a
- * trap out of the branch that renders it, or into a later sibling that does not.
+ * trap out of the branch that renders it, or into a later sibling that does not. But only a quote
+ * whose mate closes on the same line is a string: the apostrophe in ordinary prose
+ * (`<p>It's ready</p> }`) has none, and skipping from it missed the real `}` beside it —
+ * extending the branch to the end of the file and attributing every later trap to it (#629).
  */
 function closingBrace(lines, from) {
   let depth = 0;
@@ -562,8 +601,10 @@ function closingBrace(lines, from) {
   for (let i = from.line; i < lines.length; i++) {
     for (let c = i === from.line ? from.column : 0; c < lines[i].length; c++) {
       const ch = lines[i][c];
-      if (ch === '"' || ch === "'") c = skipString(lines[i], c) - 1;
-      else if (ch === '{') depth++;
+      if (ch === '"' || ch === "'") {
+        const end = stringEnd(lines[i], c);
+        if (end !== -1) c = end;
+      } else if (ch === '{') depth++;
       else if (ch !== '}') continue;
       else if (depth === 0) return null;
       else if (--depth === 0) return { line: i, column: c };

@@ -145,14 +145,14 @@ N/A — no contract change.
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session before acting.
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** write the four failing tests for AC-1..AC-4, verify they fail, then fix.
+**Next action:** phase 2 — inject `isFocusTrap` into the three impure tests, then the hygiene list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ⏳ | |
-| 1 — #629 parser fixes 1–4 (declaresClass, one-line siblings, apostrophe, negated-floor dedup) | | |
+| 0 — plan doc | ✅ | 4857d27 |
+| 1 — #629 parser fixes 1–4 (declaresClass, one-line siblings, apostrophe, negated-floor dedup) | ✅ | (this commit) |
 | 2 — #629 hygiene (test purity AC-5, header count, advice wording + twin, ls-files dedupe, RegExp.escape, memberOf early-exit, lazy sibling reads) | | |
 | 3 — #628 BUSY-2 rule + doc twins + AC-7 sweep | | |
 
@@ -249,6 +249,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-11 | Phase 1 (prose-apostrophe fix) | naive same-line quote-skipping over prose-bearing text | `grep -n "skipString" scripts/*.mjs` | `check-inline-comments.mjs` `scan()` — an HTML prose apostrophe can hide a same-line `<!--` | no fix: that guard's error direction is a **miss** (a comment goes unchecked), never a false positive, and it scans comment syntax, not block structure; out of #629's scope |
+| 2026-08-11 | Phase 1 (`declaresClass` order) | walk-up classification testing a keyword before a boundary terminator | `grep -n "class\\\\b" scripts/*.mjs` | none — no other guard walks source upward | no action |
 
 ---
 
