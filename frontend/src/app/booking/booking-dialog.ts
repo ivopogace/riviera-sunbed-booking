@@ -104,56 +104,93 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 <span class="field-label">Full name</span>
                 <input type="text" autocomplete="name" [formField]="bookingForm.fullName" />
                 @if (submitAttempted() && bookingForm.fullName().errors().length) {
-                  <span class="field-error" role="alert">{{ bookingForm.fullName().errors()[0].message }}</span>
+                  <span class="field-error" role="alert">{{
+                    bookingForm.fullName().errors()[0].message
+                  }}</span>
                 }
               </label>
               <label class="field">
                 <span class="field-label">Email</span>
                 <input type="email" autocomplete="email" [formField]="bookingForm.email" />
                 @if (submitAttempted() && bookingForm.email().errors().length) {
-                  <span class="field-error" role="alert">{{ bookingForm.email().errors()[0].message }}</span>
+                  <span class="field-error" role="alert">{{
+                    bookingForm.email().errors()[0].message
+                  }}</span>
                 }
               </label>
               <label class="field">
                 <span class="field-label">Phone</span>
                 <input type="tel" autocomplete="tel" [formField]="bookingForm.phone" />
                 @if (submitAttempted() && bookingForm.phone().errors().length) {
-                  <span class="field-error" role="alert">{{ bookingForm.phone().errors()[0].message }}</span>
+                  <span class="field-error" role="alert">{{
+                    bookingForm.phone().errors()[0].message
+                  }}</span>
                 }
               </label>
             </div>
-            <p class="fine">We only use these to send your booking code and reach you about this booking.</p>
+            <p class="fine">
+              We only use these to send your booking code and reach you about this booking.
+            </p>
           }
 
           @if (step() === 2) {
             <dl class="review">
-              <div class="sum-row"><dt>Venue</dt><dd>{{ venueName() }}</dd></div>
-              <div class="sum-row"><dt>Set</dt><dd>{{ set().rowLabel }} · spot {{ set().positionNo }}</dd></div>
-              <div class="sum-row"><dt>Date</dt><dd>{{ dateLabel() }}</dd></div>
-              <div class="sum-row"><dt>Guest</dt><dd>{{ model().fullName }}</dd></div>
-              <div class="sum-row total"><dt>Total</dt><dd data-testid="review-total">{{ price() }}</dd></div>
+              <div class="sum-row">
+                <dt>Venue</dt>
+                <dd>{{ venueName() }}</dd>
+              </div>
+              <div class="sum-row">
+                <dt>Set</dt>
+                <dd>{{ set().rowLabel }} · spot {{ set().positionNo }}</dd>
+              </div>
+              <div class="sum-row">
+                <dt>Date</dt>
+                <dd>{{ dateLabel() }}</dd>
+              </div>
+              <div class="sum-row">
+                <dt>Guest</dt>
+                <dd>{{ model().fullName }}</dd>
+              </div>
+              <div class="sum-row total">
+                <dt>Total</dt>
+                <dd data-testid="review-total">{{ price() }}</dd>
+              </div>
             </dl>
 
             @if (isRequest()) {
               <p class="mode-note request">
-                <strong>Request to Book.</strong> This venue reviews each request before payment. We’ll
-                send your request now — <strong>you won’t be charged yet</strong>. If the venue accepts,
-                you’ll get a link to pay {{ price() }} and lock in the set.
+                <strong>Request to Book.</strong> This venue reviews each request before payment.
+                We’ll send your request now — <strong>you won’t be charged yet</strong>. If the
+                venue accepts, you’ll get a link to pay {{ price() }} and lock in the set.
               </p>
             } @else {
               <p class="mode-note instant">
-                <strong>Instant Book.</strong> Next you’ll pay securely to confirm this set right away.
-                Free cancellation until the evening before — your booking code arrives on-screen and by
-                email.
+                <strong>Instant Book.</strong> Next you’ll pay securely to confirm this set right
+                away. Free cancellation until the evening before — your booking code arrives
+                on-screen and by email.
               </p>
             }
 
             <!-- New tab (not routerLink) so the modal's checkout state survives reading the document. -->
             <p class="fine" data-testid="legal-agreement">
               By continuing you agree to our
-              <a class="underline" data-testid="legal-terms-link" href="/legal/terms" target="_blank" rel="noopener">Terms of Service</a>
+              <a
+                class="underline"
+                data-testid="legal-terms-link"
+                href="/legal/terms"
+                target="_blank"
+                rel="noopener"
+                >Terms of Service</a
+              >
               and acknowledge our
-              <a class="underline" data-testid="legal-privacy-link" href="/legal/privacy" target="_blank" rel="noopener">Privacy Policy</a>.
+              <a
+                class="underline"
+                data-testid="legal-privacy-link"
+                href="/legal/privacy"
+                target="_blank"
+                rel="noopener"
+                >Privacy Policy</a
+              >.
             </p>
           }
         </div>
@@ -164,7 +201,9 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
 
         <div class="dialog-actions">
           @if (step() === 2) {
-            <button type="button" class="btn-back" data-testid="dialog-back" (click)="back()">Back</button>
+            <button type="button" class="btn-back" data-testid="dialog-back" (click)="back()">
+              Back
+            </button>
           }
           <button
             type="submit"
@@ -224,7 +263,9 @@ export class BookingDialog implements OnInit {
     }
     return this.isRequest() ? 'Send request' : 'Continue to payment';
   });
-  protected readonly busyLabel = computed(() => (this.isRequest() ? 'Sending request…' : 'Processing…'));
+  protected readonly busyLabel = computed(() =>
+    this.isRequest() ? 'Sending request…' : 'Processing…',
+  );
   protected readonly steps = computed(() => [
     { n: 1, label: 'Details', active: this.step() === 1 },
     { n: 2, label: 'Review', active: this.step() === 2 },

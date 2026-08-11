@@ -28,12 +28,12 @@
 
   <!-- Three chrome modes: tourist (default), shared operator (data.operatorChrome), none (console). -->
   @if (shellChrome() !== 'none') {
-  <div class="riv-bg" aria-hidden="true">
-    @if (shellChrome() === 'tourist') {
-      <span class="riv-blob riv-blob-1"></span>
-      <span class="riv-blob riv-blob-2"></span>
-    }
-  </div>
+    <div class="riv-bg" aria-hidden="true">
+      @if (shellChrome() === 'tourist') {
+        <span class="riv-blob riv-blob-1"></span>
+        <span class="riv-blob riv-blob-2"></span>
+      }
+    </div>
   }
 
   @if (shellChrome() === 'operator') {
@@ -41,208 +41,242 @@
   }
 
   @if (shellChrome() === 'tourist') {
-  <header class="riv-header">
-    <div class="riv-header-inner">
-      <a class="riv-brand" routerLink="/" data-testid="brand-home">
-        <span class="riv-sun" aria-hidden="true"></span>
-        <span class="riv-brand-text">
-          <span class="riv-brand-name">Riviera</span>
-          <span class="riv-brand-sub">Albanian Coast</span>
-        </span>
-      </a>
+    <header class="riv-header">
+      <div class="riv-header-inner">
+        <a class="riv-brand" routerLink="/" data-testid="brand-home">
+          <span class="riv-sun" aria-hidden="true"></span>
+          <span class="riv-brand-text">
+            <span class="riv-brand-name">Riviera</span>
+            <span class="riv-brand-sub">Albanian Coast</span>
+          </span>
+        </a>
 
-      <nav class="riv-nav-desktop" aria-label="Primary">
-        <a routerLink="/" class="riv-nav-link">Beaches</a>
-        <a routerLink="/my-bookings" class="riv-nav-link">My bookings</a>
-        <button
-          #findButton
-          type="button"
-          class="riv-nav-link riv-nav-btn"
-          data-testid="find-open"
-          (click)="openFind(false)"
-        >
-          Find a booking
-        </button>
-
-        <!-- Customer auth: sign-in/register ↔ signed-in; held until the /me restore settles (no "Sign in" flash). -->
-        @if (!customerAuth.restoring()) {
-          @if (customerAuth.signedIn()) {
-            <!-- Account menu — a disclosure, not role=menu; see App.accountOpen for why. -->
-            <div class="riv-account-menu">
-              <button
-                #accountButton
-                type="button"
-                class="riv-nav-user riv-nav-btn"
-                data-testid="nav-user"
-                [attr.aria-expanded]="accountOpen()"
-                (click)="toggleAccountMenu()"
-              >
-                <span>Signed in as {{ customerAuth.email() }}</span>
-                <span class="riv-caret" aria-hidden="true">&#9662;</span>
-              </button>
-
-              @if (accountOpen()) {
-                <div class="riv-backdrop" data-testid="account-backdrop" (click)="closeMenus()" (keydown.escape)="closeMenus()" aria-hidden="true"></div>
-                <div class="riv-pop riv-pop-in riv-account-pop" data-testid="nav-account-menu">
-                  <!-- Closes itself: a same-URL activation emits NavigationSkipped, not NavigationEnd. -->
-                  <a
-                    routerLink="/account/password"
-                    class="riv-account-item"
-                    data-testid="nav-account-link"
-                    (click)="closeMenus()"
-                    >Your account</a
-                  >
-                  <button
-                    type="button"
-                    class="riv-account-item riv-account-btn"
-                    data-testid="nav-signout"
-                    (click)="signOut()"
-                  >
-                    Sign out
-                  </button>
-                </div>
-              }
-            </div>
-          } @else {
-            <a routerLink="/account/sign-in" class="riv-nav-link" data-testid="nav-signin">Sign in</a>
-            <a
-              routerLink="/account/sign-in"
-              [queryParams]="{ mode: 'register' }"
-              class="riv-nav-link"
-              data-testid="nav-register"
-              >Register</a
-            >
-          }
-        }
-
-        <div class="riv-theme-picker">
+        <nav class="riv-nav-desktop" aria-label="Primary">
+          <a routerLink="/" class="riv-nav-link">Beaches</a>
+          <a routerLink="/my-bookings" class="riv-nav-link">My bookings</a>
           <button
-            #themeButton
+            #findButton
             type="button"
-            class="riv-chip-btn"
-            data-testid="theme-toggle"
-            [attr.aria-label]="'Color theme: ' + activeTheme().name"
-            [attr.aria-expanded]="themeOpen()"
-            (click)="toggleThemePicker()"
-          >
-            <span class="riv-swatch" [style.background]="activeTheme().swatch" aria-hidden="true"></span>
-            <span>{{ activeTheme().name }}</span>
-            <span class="riv-caret" aria-hidden="true">&#9662;</span>
-          </button>
-
-          @if (themeOpen()) {
-            <div class="riv-backdrop" data-testid="theme-backdrop" (click)="closeMenus()" (keydown.escape)="closeMenus()" aria-hidden="true"></div>
-              <!-- Pressed-state toggle buttons, not ARIA radios: the radio pattern would demand roving tabindex + arrow keys (WCAG 4.1.2). -->
-            <div class="riv-pop riv-pop-in riv-theme-pop">
-              @for (option of themes.options; track option.id) {
-                <button
-                  type="button"
-                  class="riv-theme-option"
-                  [attr.aria-pressed]="option.id === themes.theme()"
-                  [attr.data-testid]="'theme-option-' + option.id"
-                  (click)="selectTheme(option.id)"
-                >
-                  <span class="riv-swatch riv-swatch-lg" [style.background]="option.swatch" aria-hidden="true"></span>
-                  <span class="riv-theme-name">{{ option.name }}</span>
-                  @if (option.id === themes.theme()) {
-                    <span class="riv-check" aria-hidden="true">&#10003;</span>
-                  }
-                </button>
-              }
-            </div>
-          }
-        </div>
-      </nav>
-
-      <button
-        #menuButton
-        type="button"
-        class="riv-menu-btn"
-        data-testid="menu-toggle"
-        aria-label="Menu"
-        [attr.aria-expanded]="menuOpen()"
-        (click)="toggleMenu()"
-      >
-        <span class="riv-menu-bar" aria-hidden="true"></span>
-        <span class="riv-menu-bar" aria-hidden="true"></span>
-        <span class="riv-menu-bar" aria-hidden="true"></span>
-      </button>
-
-      @if (menuOpen()) {
-        <div class="riv-backdrop" data-testid="menu-backdrop" (click)="closeMenus()" (keydown.escape)="closeMenus()" aria-hidden="true"></div>
-        <nav class="riv-pop riv-pop-in riv-mobile-menu" aria-label="Menu" data-testid="mobile-menu">
-          <a routerLink="/" class="riv-mobile-link" (click)="closeMenus()">Beaches</a>
-          <a routerLink="/my-bookings" class="riv-mobile-link" (click)="closeMenus()">My bookings</a>
-          <button
-            type="button"
-            class="riv-mobile-link riv-mobile-btn"
-            data-testid="find-open-mobile"
-            (click)="openFind(true)"
+            class="riv-nav-link riv-nav-btn"
+            data-testid="find-open"
+            (click)="openFind(false)"
           >
             Find a booking
           </button>
 
-          <!-- Customer auth, mobile menu twin of the desktop controls. -->
+          <!-- Customer auth: sign-in/register ↔ signed-in; held until the /me restore settles (no "Sign in" flash). -->
           @if (!customerAuth.restoring()) {
             @if (customerAuth.signedIn()) {
-              <!-- Account group: flattened into the sheet, per the riv-mobile-theme precedent. -->
-              <span class="riv-mobile-user" data-testid="nav-user-mobile"
-                >Signed in as {{ customerAuth.email() }}</span
-              >
-              <a
-                routerLink="/account/password"
-                class="riv-mobile-link"
-                data-testid="nav-account-link-mobile"
-                (click)="closeMenus()"
-                >Your account</a
-              >
-              <button
-                type="button"
-                class="riv-mobile-link riv-mobile-btn"
-                data-testid="nav-signout-mobile"
-                (click)="signOut()"
-              >
-                Sign out
-              </button>
+              <!-- Account menu — a disclosure, not role=menu; see App.accountOpen for why. -->
+              <div class="riv-account-menu">
+                <button
+                  #accountButton
+                  type="button"
+                  class="riv-nav-user riv-nav-btn"
+                  data-testid="nav-user"
+                  [attr.aria-expanded]="accountOpen()"
+                  (click)="toggleAccountMenu()"
+                >
+                  <span>Signed in as {{ customerAuth.email() }}</span>
+                  <span class="riv-caret" aria-hidden="true">&#9662;</span>
+                </button>
+
+                @if (accountOpen()) {
+                  <div
+                    class="riv-backdrop"
+                    data-testid="account-backdrop"
+                    (click)="closeMenus()"
+                    (keydown.escape)="closeMenus()"
+                    aria-hidden="true"
+                  ></div>
+                  <div class="riv-pop riv-pop-in riv-account-pop" data-testid="nav-account-menu">
+                    <!-- Closes itself: a same-URL activation emits NavigationSkipped, not NavigationEnd. -->
+                    <a
+                      routerLink="/account/password"
+                      class="riv-account-item"
+                      data-testid="nav-account-link"
+                      (click)="closeMenus()"
+                      >Your account</a
+                    >
+                    <button
+                      type="button"
+                      class="riv-account-item riv-account-btn"
+                      data-testid="nav-signout"
+                      (click)="signOut()"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                }
+              </div>
             } @else {
-              <a
-                routerLink="/account/sign-in"
-                class="riv-mobile-link"
-                data-testid="nav-signin-mobile"
-                (click)="closeMenus()"
+              <a routerLink="/account/sign-in" class="riv-nav-link" data-testid="nav-signin"
                 >Sign in</a
               >
               <a
                 routerLink="/account/sign-in"
                 [queryParams]="{ mode: 'register' }"
-                class="riv-mobile-link"
-                data-testid="nav-register-mobile"
-                (click)="closeMenus()"
+                class="riv-nav-link"
+                data-testid="nav-register"
                 >Register</a
               >
             }
           }
-          <div class="riv-mobile-theme">
-            <span class="riv-mobile-theme-label" id="riv-mobile-theme-label">Color theme</span>
-            <div class="riv-mobile-swatches">
-              @for (option of themes.options; track option.id) {
-                <button
-                  type="button"
-                  class="riv-mobile-swatch"
-                  [class.riv-mobile-swatch-active]="option.id === themes.theme()"
-                  [style.background]="option.swatch"
-                  [attr.aria-pressed]="option.id === themes.theme()"
-                  [attr.aria-label]="option.name"
-                  [title]="option.name"
-                  (click)="selectTheme(option.id)"
-                ></button>
-              }
-            </div>
+
+          <div class="riv-theme-picker">
+            <button
+              #themeButton
+              type="button"
+              class="riv-chip-btn"
+              data-testid="theme-toggle"
+              [attr.aria-label]="'Color theme: ' + activeTheme().name"
+              [attr.aria-expanded]="themeOpen()"
+              (click)="toggleThemePicker()"
+            >
+              <span
+                class="riv-swatch"
+                [style.background]="activeTheme().swatch"
+                aria-hidden="true"
+              ></span>
+              <span>{{ activeTheme().name }}</span>
+              <span class="riv-caret" aria-hidden="true">&#9662;</span>
+            </button>
+
+            @if (themeOpen()) {
+              <div
+                class="riv-backdrop"
+                data-testid="theme-backdrop"
+                (click)="closeMenus()"
+                (keydown.escape)="closeMenus()"
+                aria-hidden="true"
+              ></div>
+              <!-- Pressed-state toggle buttons, not ARIA radios: the radio pattern would demand roving tabindex + arrow keys (WCAG 4.1.2). -->
+              <div class="riv-pop riv-pop-in riv-theme-pop">
+                @for (option of themes.options; track option.id) {
+                  <button
+                    type="button"
+                    class="riv-theme-option"
+                    [attr.aria-pressed]="option.id === themes.theme()"
+                    [attr.data-testid]="'theme-option-' + option.id"
+                    (click)="selectTheme(option.id)"
+                  >
+                    <span
+                      class="riv-swatch riv-swatch-lg"
+                      [style.background]="option.swatch"
+                      aria-hidden="true"
+                    ></span>
+                    <span class="riv-theme-name">{{ option.name }}</span>
+                    @if (option.id === themes.theme()) {
+                      <span class="riv-check" aria-hidden="true">&#10003;</span>
+                    }
+                  </button>
+                }
+              </div>
+            }
           </div>
         </nav>
-      }
-    </div>
-  </header>
+
+        <button
+          #menuButton
+          type="button"
+          class="riv-menu-btn"
+          data-testid="menu-toggle"
+          aria-label="Menu"
+          [attr.aria-expanded]="menuOpen()"
+          (click)="toggleMenu()"
+        >
+          <span class="riv-menu-bar" aria-hidden="true"></span>
+          <span class="riv-menu-bar" aria-hidden="true"></span>
+          <span class="riv-menu-bar" aria-hidden="true"></span>
+        </button>
+
+        @if (menuOpen()) {
+          <div
+            class="riv-backdrop"
+            data-testid="menu-backdrop"
+            (click)="closeMenus()"
+            (keydown.escape)="closeMenus()"
+            aria-hidden="true"
+          ></div>
+          <nav
+            class="riv-pop riv-pop-in riv-mobile-menu"
+            aria-label="Menu"
+            data-testid="mobile-menu"
+          >
+            <a routerLink="/" class="riv-mobile-link" (click)="closeMenus()">Beaches</a>
+            <a routerLink="/my-bookings" class="riv-mobile-link" (click)="closeMenus()"
+              >My bookings</a
+            >
+            <button
+              type="button"
+              class="riv-mobile-link riv-mobile-btn"
+              data-testid="find-open-mobile"
+              (click)="openFind(true)"
+            >
+              Find a booking
+            </button>
+
+            <!-- Customer auth, mobile menu twin of the desktop controls. -->
+            @if (!customerAuth.restoring()) {
+              @if (customerAuth.signedIn()) {
+                <!-- Account group: flattened into the sheet, per the riv-mobile-theme precedent. -->
+                <span class="riv-mobile-user" data-testid="nav-user-mobile"
+                  >Signed in as {{ customerAuth.email() }}</span
+                >
+                <a
+                  routerLink="/account/password"
+                  class="riv-mobile-link"
+                  data-testid="nav-account-link-mobile"
+                  (click)="closeMenus()"
+                  >Your account</a
+                >
+                <button
+                  type="button"
+                  class="riv-mobile-link riv-mobile-btn"
+                  data-testid="nav-signout-mobile"
+                  (click)="signOut()"
+                >
+                  Sign out
+                </button>
+              } @else {
+                <a
+                  routerLink="/account/sign-in"
+                  class="riv-mobile-link"
+                  data-testid="nav-signin-mobile"
+                  (click)="closeMenus()"
+                  >Sign in</a
+                >
+                <a
+                  routerLink="/account/sign-in"
+                  [queryParams]="{ mode: 'register' }"
+                  class="riv-mobile-link"
+                  data-testid="nav-register-mobile"
+                  (click)="closeMenus()"
+                  >Register</a
+                >
+              }
+            }
+            <div class="riv-mobile-theme">
+              <span class="riv-mobile-theme-label" id="riv-mobile-theme-label">Color theme</span>
+              <div class="riv-mobile-swatches">
+                @for (option of themes.options; track option.id) {
+                  <button
+                    type="button"
+                    class="riv-mobile-swatch"
+                    [class.riv-mobile-swatch-active]="option.id === themes.theme()"
+                    [style.background]="option.swatch"
+                    [attr.aria-pressed]="option.id === themes.theme()"
+                    [attr.aria-label]="option.name"
+                    [title]="option.name"
+                    (click)="selectTheme(option.id)"
+                  ></button>
+                }
+              </div>
+            </div>
+          </nav>
+        }
+      </div>
+    </header>
   }
 
   <!-- tabindex=-1: closing the find modal on navigation lands keyboard/AT focus here, not document.body. -->
@@ -252,14 +286,14 @@
 
   <!-- Shared by the tourist and operator chromes (tokens re-scope under the porcelain pin). -->
   @if (shellChrome() !== 'none') {
-  <footer class="riv-footer">
-    <!-- New tab: in-app nav would unmount /booking/pay's Payment Element or swap an admin into tourist chrome. -->
-    <div class="riv-footer-inner">
-      © Riviera Sunbed Booking ·
-      <a class="underline" href="/legal/privacy" target="_blank" rel="noopener">Privacy</a> ·
-      <a class="underline" href="/legal/terms" target="_blank" rel="noopener">Terms</a>
-    </div>
-  </footer>
+    <footer class="riv-footer">
+      <!-- New tab: in-app nav would unmount /booking/pay's Payment Element or swap an admin into tourist chrome. -->
+      <div class="riv-footer-inner">
+        © Riviera Sunbed Booking ·
+        <a class="underline" href="/legal/privacy" target="_blank" rel="noopener">Privacy</a> ·
+        <a class="underline" href="/legal/terms" target="_blank" rel="noopener">Terms</a>
+      </div>
+    </footer>
   }
 
   <!-- Find-a-booking glass modal: a shell-level, nav-triggered overlay. -->

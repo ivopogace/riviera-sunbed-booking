@@ -13,7 +13,9 @@
   max-width: 400px;
   border-radius: 26px;
   padding: 30px 26px 24px;
-  box-shadow: 0 30px 70px rgba(6, 30, 40, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 30px 70px rgba(6, 30, 40, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .auth-title {
@@ -90,7 +92,9 @@
   font-weight: 700;
   font-size: 15px;
   cursor: pointer;
-  box-shadow: 0 10px 26px rgba(11, 120, 150, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 10px 26px rgba(11, 120, 150, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   transition: filter 0.15s ease;
 }
 

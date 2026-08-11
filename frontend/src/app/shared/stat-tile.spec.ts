@@ -10,12 +10,7 @@ import { StatTile } from './stat-tile';
       <app-stat-tile label="Free today" valueTestId="t-value">
         2<span class="frac">/ 5</span>
       </app-stat-tile>
-      <app-stat-tile
-        label="Online takings"
-        valueTestId="t-takings"
-        [sub]="sub"
-        subTestId="t-net"
-      >
+      <app-stat-tile label="Online takings" valueTestId="t-takings" [sub]="sub" subTestId="t-net">
         €110
       </app-stat-tile>
     </div>

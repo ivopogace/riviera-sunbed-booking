@@ -90,9 +90,13 @@ async function mockConsole(
   );
   // The stats strip's three reads: confirmed bookings, takings, availability states.
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
-    route.fulfill({ json: Array.from({ length: booked }, (_, i) => ({ setId: i + 1, code: 'X' })) }),
+    route.fulfill({
+      json: Array.from({ length: booked }, (_, i) => ({ setId: i + 1, code: 'X' })),
+    }),
   );
-  await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) => route.fulfill({ json: TAKINGS }));
+  await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
+    route.fulfill({ json: TAKINGS }),
+  );
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({ json: heldStates }),
   );
@@ -178,7 +182,9 @@ test('shows the stats strip with live free/total, walk-ins and takings, across a
   await expectNoSeriousAxeViolations(page, 'operator console with stats strip');
 });
 
-test('keeps the operator signed in across a reload (session restored from /me)', async ({ page }) => {
+test('keeps the operator signed in across a reload (session restored from /me)', async ({
+  page,
+}) => {
   await mockConsole(page);
   await page.goto('/operator/1');
   await signIn(page);

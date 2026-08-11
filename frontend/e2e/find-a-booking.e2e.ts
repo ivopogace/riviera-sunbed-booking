@@ -93,7 +93,9 @@ test('audits the open find modal in the porcelain theme', async ({ page }) => {
   await expectNoSeriousAxeViolations(page, 'find modal (porcelain)');
 });
 
-test('shows an inline error for an unknown code and does not navigate (+ axe)', async ({ page }) => {
+test('shows an inline error for an unknown code and does not navigate (+ axe)', async ({
+  page,
+}) => {
   await page.route(/\/api\/bookings\/[A-Z0-9]+(\?.*)?$/, (route) =>
     route.fulfill({
       status: 404,

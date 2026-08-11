@@ -59,9 +59,10 @@ describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
   it('inactive tab label (ink 0.7) meets AA over every porcelain background stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       const ink = composite(INK_DARK, 0.7, stop);
-      expect(contrastRatio(rgbToHex(ink), rgbToHex(stop)), `stop ${rgbToHex(stop)}`).toBeGreaterThanOrEqual(
-        AA_NORMAL,
-      );
+      expect(
+        contrastRatio(rgbToHex(ink), rgbToHex(stop)),
+        `stop ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
 });

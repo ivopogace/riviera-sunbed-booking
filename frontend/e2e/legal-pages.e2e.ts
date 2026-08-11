@@ -22,7 +22,17 @@ const VENUE = {
   bookingMode: 'INSTANT',
   fromPrice: { minorUnits: 2500, currency: 'EUR' },
   sets: [
-    { id: 2, rowLabel: 'Front row · Sea view', positionNo: 2, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 4500, currency: 'EUR' }, gridX: 2, gridY: 1, availability: 'FREE' },
+    {
+      id: 2,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 2,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 4500, currency: 'EUR' },
+      gridX: 2,
+      gridY: 1,
+      availability: 'FREE',
+    },
   ],
 };
 
@@ -77,7 +87,10 @@ test('checkout Review step links open the terms in a new tab, keeping the dialog
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
 
   await page.goto('/venues/1');
-  await page.getByRole('button', { name: /Select to book/ }).first().click();
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Full name').fill('Holiday Guest');
   await dialog.getByLabel('Email').fill('guest@example.com');

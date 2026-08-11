@@ -5,7 +5,13 @@ import {
   TestRequest,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter, Router } from '@angular/router';
+import {
+  ActivatedRoute,
+  convertToParamMap,
+  ParamMap,
+  provideRouter,
+  Router,
+} from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -25,10 +31,38 @@ function miramar(): VenueMapView {
     gridY: number;
     taken: readonly boolean[];
   }[] = [
-    { label: 'Front row · Sea view', tier: 'PREMIUM', pool: 'ONLINE', price: 4500, gridY: 1, taken: [true, false, false, true, false, false] },
-    { label: 'Row 2', tier: 'STANDARD', pool: 'ONLINE', price: 3500, gridY: 2, taken: [false, false, true, false, false, false] },
-    { label: 'Row 3', tier: 'STANDARD', pool: 'ONLINE', price: 3000, gridY: 3, taken: [false, true, false, false, false, true] },
-    { label: 'Row 4 · Back', tier: 'STANDARD', pool: 'WALK_IN', price: 2500, gridY: 4, taken: [false, false, false, true, false, false] },
+    {
+      label: 'Front row · Sea view',
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: 4500,
+      gridY: 1,
+      taken: [true, false, false, true, false, false],
+    },
+    {
+      label: 'Row 2',
+      tier: 'STANDARD',
+      pool: 'ONLINE',
+      price: 3500,
+      gridY: 2,
+      taken: [false, false, true, false, false, false],
+    },
+    {
+      label: 'Row 3',
+      tier: 'STANDARD',
+      pool: 'ONLINE',
+      price: 3000,
+      gridY: 3,
+      taken: [false, true, false, false, false, true],
+    },
+    {
+      label: 'Row 4 · Back',
+      tier: 'STANDARD',
+      pool: 'WALK_IN',
+      price: 2500,
+      gridY: 4,
+      taken: [false, false, false, true, false, false],
+    },
   ];
   let id = 0;
   const sets: SetView[] = rows.flatMap((row) =>
@@ -188,9 +222,13 @@ describe('VenueMap', () => {
   it('renders rows with derived A/B/… codes in insertion order and per-row price from minor units', async () => {
     flushVenue();
     await fixture.whenStable();
-    const codes = [...el().querySelectorAll('[data-testid="row-code"]')].map((n) => n.textContent?.trim());
+    const codes = [...el().querySelectorAll('[data-testid="row-code"]')].map((n) =>
+      n.textContent?.trim(),
+    );
     expect(codes).toEqual(['A', 'B', 'C', 'D']); // insertion order, not sorted by the descriptive label
-    const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) => n.textContent?.trim());
+    const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
+      n.textContent?.trim(),
+    );
     expect(prices[0]).toBe('€45'); // row A, 4500 minor units
     expect(prices[3]).toBe('€25'); // row D, 2500 minor units
   });

@@ -26,8 +26,4 @@ export interface CreatedId {
 }
 
 /** The server error codes onboarding maps to operator-facing messages (RFC-7807 `code`). */
-export type VenueAdminErrorCode =
-  | 'NO_SUCH_VENUE'
-  | 'INVALID_REQUEST'
-  | 'UNAUTHORIZED'
-  | 'UNKNOWN';
+export type VenueAdminErrorCode = 'NO_SUCH_VENUE' | 'INVALID_REQUEST' | 'UNAUTHORIZED' | 'UNKNOWN';

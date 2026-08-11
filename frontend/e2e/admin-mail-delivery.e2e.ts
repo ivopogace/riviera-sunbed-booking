@@ -117,7 +117,9 @@ test('an admin sees why a confirmation never arrived and sends it again', async 
 
   await expect(page.getByTestId('admin-delivery-notice')).toContainText('sent again');
   // The card re-reads rather than assuming — the new attempt is the server's, not the client's.
-  await expect(page.getByTestId('admin-delivery-attempts').first()).toContainText('Resent by admin');
+  await expect(page.getByTestId('admin-delivery-attempts').first()).toContainText(
+    'Resent by admin',
+  );
   await expectNoSeriousAxeViolations(page, 'admin mail delivery after a resend');
 });
 
@@ -145,7 +147,9 @@ test('a booking that was never confirmed says no confirmation was due', async ({
 
   await lookUp(page);
 
-  await expect(page.getByTestId('admin-delivery-not-due')).toContainText('no confirmation email was due');
+  await expect(page.getByTestId('admin-delivery-not-due')).toContainText(
+    'no confirmation email was due',
+  );
 });
 
 test('an address with no bookings is an empty result, not an error', async ({ page }) => {

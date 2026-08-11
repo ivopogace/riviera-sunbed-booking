@@ -462,7 +462,11 @@ export function checkInErrorOf(error: unknown): CheckInErrorCode {
 
 /** The `bookingDate` extension a WRONG_SERVICE_DATE problem carries, for the operator's message. */
 export function checkInWrongDateOf(error: unknown): string | undefined {
-  if (error instanceof HttpErrorResponse && typeof error.error === 'object' && error.error !== null) {
+  if (
+    error instanceof HttpErrorResponse &&
+    typeof error.error === 'object' &&
+    error.error !== null
+  ) {
     const date = (error.error as { bookingDate?: unknown }).bookingDate;
     return typeof date === 'string' ? date : undefined;
   }

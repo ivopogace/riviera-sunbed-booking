@@ -142,7 +142,9 @@ async function mockVenuePhotos(
       },
     }),
   );
-  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
 
   return { uploads, deletes };
 }

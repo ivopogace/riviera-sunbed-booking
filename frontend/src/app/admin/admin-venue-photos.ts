@@ -79,8 +79,8 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
 
         <p class="mt-5 max-w-[62ch] text-[15px] text-(--riv-ink-soft)">
           Removing a photo is immediate and permanent — that slot's image and every stored size are
-          deleted. It removes one <strong>slot</strong>, not one picture: the same image published in
-          another slot keeps serving from there, so each published slot is its own removal.
+          deleted. It removes one <strong>slot</strong>, not one picture: the same image published
+          in another slot keeps serving from there, so each published slot is its own removal.
         </p>
 
         <div class="mt-5">

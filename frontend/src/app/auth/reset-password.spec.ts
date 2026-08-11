@@ -55,8 +55,8 @@ function submit(fixture: ComponentFixture<ResetPassword>): void {
 
 function text(fixture: ComponentFixture<ResetPassword>, testid: string): string {
   return (
-    (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)?.textContent ??
-    ''
+    (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)
+      ?.textContent ?? ''
   ).trim();
 }
 

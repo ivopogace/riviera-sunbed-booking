@@ -485,5 +485,4 @@ describe('VenueTab (#177)', () => {
 
     expect((byId('venue-name') as HTMLInputElement).value).toBe('Second Venue');
   });
-
 });

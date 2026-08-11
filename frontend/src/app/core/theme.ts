@@ -20,8 +20,18 @@ export interface ThemeOption {
 }
 
 export const THEME_OPTIONS: readonly ThemeOption[] = [
-  { id: 'riviera', name: 'Riviera', swatch: 'linear-gradient(135deg, #38b6d2, #0a4f6e)', light: false },
-  { id: 'porcelain', name: 'Porcelain', swatch: 'linear-gradient(135deg, #ffffff, #2bb8d4)', light: true },
+  {
+    id: 'riviera',
+    name: 'Riviera',
+    swatch: 'linear-gradient(135deg, #38b6d2, #0a4f6e)',
+    light: false,
+  },
+  {
+    id: 'porcelain',
+    name: 'Porcelain',
+    swatch: 'linear-gradient(135deg, #ffffff, #2bb8d4)',
+    light: true,
+  },
 ];
 
 const STORAGE_KEY = 'riviera-theme';

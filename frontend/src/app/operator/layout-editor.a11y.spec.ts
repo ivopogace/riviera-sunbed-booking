@@ -28,7 +28,10 @@ describe('LayoutEditor a11y (#172)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap({ venueId: '1' }) }, paramMap: of(convertToParamMap({ venueId: '1' })) },
+            parent: {
+              snapshot: { paramMap: convertToParamMap({ venueId: '1' }) },
+              paramMap: of(convertToParamMap({ venueId: '1' })),
+            },
           },
         },
       ],

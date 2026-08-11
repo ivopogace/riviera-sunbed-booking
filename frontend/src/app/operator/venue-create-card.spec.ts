@@ -187,10 +187,7 @@ describe('VenueCreateCard (#278)', () => {
 
     httpMock
       .expectOne((r) => r.method === 'POST' && r.url === `${environment.apiBaseUrl}/api/venues`)
-      .flush(
-        { code: 'INVALID_REQUEST' },
-        { status: 400, statusText: 'Bad Request' },
-      );
+      .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
     await fixture.whenStable();
     fixture.detectChanges();
 

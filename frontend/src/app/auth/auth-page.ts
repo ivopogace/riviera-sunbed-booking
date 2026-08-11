@@ -56,8 +56,7 @@ const ROLE_OPTIONS: readonly SegmentedOption<Audience>[] = [
 ];
 
 const FIELD_CLASS = 'w-full rounded-[14px] px-[13px] py-[11px] text-[15px] font-[inherit]';
-const LABEL_CLASS =
-  'text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-faint)';
+const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-faint)';
 
 /**
  * The one audience-aware auth card — four flows on a single surface: tourist sign-in,
@@ -132,7 +131,10 @@ const LABEL_CLASS =
             >
               {{ title() }}
             </h1>
-            <p id="auth-intro" class="m-0 mb-4.5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+            <p
+              id="auth-intro"
+              class="m-0 mb-4.5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft)"
+            >
               {{ subtitle() }}
             </p>
 

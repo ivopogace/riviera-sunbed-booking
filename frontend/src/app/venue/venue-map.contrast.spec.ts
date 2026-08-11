@@ -1,4 +1,12 @@
-import { AA_LARGE, AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
+import {
+  AA_LARGE,
+  AA_NORMAL,
+  Rgb,
+  composite,
+  contrastRatio,
+  hexToRgb,
+  rgbToHex,
+} from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
@@ -50,11 +58,12 @@ const DATE_FIELD_FILL_ALPHA = 0.9;
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 
 // Solid seat-tile colours (kept solid for backdrop-independent AA — see file header).
-const TILE_PAIRS: readonly { readonly fg: string; readonly bg: string; readonly usage: string }[] = [
-  { fg: '#0f7d8c', bg: '#ffffff', usage: 'available tile' },
-  { fg: '#875911', bg: '#fbf1d9', usage: 'premium (front-row) tile' },
-  { fg: '#696459', bg: '#ece8e0', usage: 'taken tile' },
-];
+const TILE_PAIRS: readonly { readonly fg: string; readonly bg: string; readonly usage: string }[] =
+  [
+    { fg: '#0f7d8c', bg: '#ffffff', usage: 'available tile' },
+    { fg: '#875911', bg: '#fbf1d9', usage: 'premium (front-row) tile' },
+    { fg: '#696459', bg: '#ece8e0', usage: 'taken tile' },
+  ];
 
 interface Theme {
   readonly name: string;

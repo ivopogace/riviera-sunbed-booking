@@ -3,7 +3,13 @@ import { inject, Service } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { AUTH_API, AuthPrincipal, SessionAuth, SignInResult, signInResultFor } from './session-auth';
+import {
+  AUTH_API,
+  AuthPrincipal,
+  SessionAuth,
+  SignInResult,
+  signInResultFor,
+} from './session-auth';
 import { SsoProviderId, SsoRedirect } from './sso-redirect';
 
 /** The `/api/me` surface for the signed-in customer's own account writes. */
@@ -28,11 +34,7 @@ export const CURRENT_PASSWORD_REQUIRED_MESSAGE = 'Enter your current password.';
 export type ForgotPasswordResult = 'sent' | 'rate-limited' | 'error';
 /** How a reset-token redemption ended. */
 export type ResetPasswordResult =
-  | 'reset'
-  | 'invalid-token'
-  | 'invalid-password'
-  | 'rate-limited'
-  | 'error';
+  'reset' | 'invalid-token' | 'invalid-password' | 'rate-limited' | 'error';
 /** How an email-verification token redemption ended. */
 export type VerifyEmailResult = 'verified' | 'invalid-token' | 'rate-limited' | 'error';
 /**
@@ -40,12 +42,7 @@ export type VerifyEmailResult = 'verified' | 'invalid-token' | 'rate-limited' | 
  * by the problem `code` alone — collapsing them shows "incorrect" for a field the account left blank.
  */
 export type SetPasswordResult =
-  | 'set'
-  | 'missing-current'
-  | 'invalid-current'
-  | 'invalid-password'
-  | 'rate-limited'
-  | 'error';
+  'set' | 'missing-current' | 'invalid-current' | 'invalid-password' | 'rate-limited' | 'error';
 /** How a self-service right-to-erasure ended. */
 export type EraseAccountResult = 'erased' | 'error';
 /** The verification-resend response body: whether the do-not-email list withheld the message. */
@@ -69,11 +66,7 @@ export type CustomerSignInResult = SignInResult;
  * learn the truth from `/me`); the rest are input/transport failures.
  */
 export type CustomerRegisterResult =
-  | 'registered'
-  | 'exists'
-  | 'invalid-password'
-  | 'rate-limited'
-  | 'error';
+  'registered' | 'exists' | 'invalid-password' | 'rate-limited' | 'error';
 
 /**
  * Session-aware customer auth state on the shared {@link SessionAuth} base — the
@@ -171,7 +164,9 @@ export class CustomerAuth extends SessionAuth {
         return 'rate-limited';
       }
       if (error instanceof HttpErrorResponse && error.status === 400) {
-        return problemCode(error) === 'INVALID_OR_EXPIRED_TOKEN' ? 'invalid-token' : 'invalid-password';
+        return problemCode(error) === 'INVALID_OR_EXPIRED_TOKEN'
+          ? 'invalid-token'
+          : 'invalid-password';
       }
       return 'error';
     }
@@ -201,7 +196,10 @@ export class CustomerAuth extends SessionAuth {
   async setPassword(newPassword: string, currentPassword?: string): Promise<SetPasswordResult> {
     try {
       await firstValueFrom(
-        this.http.post<void>(`${ME_API}/password`, { newPassword, currentPassword: currentPassword ?? null }),
+        this.http.post<void>(`${ME_API}/password`, {
+          newPassword,
+          currentPassword: currentPassword ?? null,
+        }),
       );
       return 'set';
     } catch (error) {

@@ -49,20 +49,26 @@ describe('StatusChip', () => {
     ['chip--completed', 'text-[#0a5e6e]', 'bg-[#e1f5f9]', 'border-[#c4e9ef]'],
     ['chip--no-show', 'text-[#7a4a3a]', 'bg-[#ece6e3]', 'border-[#dcd2cd]'],
     ['chip--withdrawn', 'text-[#5c5470]', 'bg-[#eeecf4]', 'border-[#dcd8e6]'],
-  ])('renders the %s solid fill carried over from the retired mixin', (modifier, ink, fill, edge) => {
-    // booking-status.contrast.spec.ts proves these pairs are AA; this only pins that they're emitted.
-    const el = chip(modifier);
-    expect(el.classList.contains(ink)).toBe(true);
-    expect(el.classList.contains(fill)).toBe(true);
-    expect(el.classList.contains(edge)).toBe(true);
-  });
+  ])(
+    'renders the %s solid fill carried over from the retired mixin',
+    (modifier, ink, fill, edge) => {
+      // booking-status.contrast.spec.ts proves these pairs are AA; this only pins that they're emitted.
+      const el = chip(modifier);
+      expect(el.classList.contains(ink)).toBe(true);
+      expect(el.classList.contains(fill)).toBe(true);
+      expect(el.classList.contains(edge)).toBe(true);
+    },
+  );
 
   it('covers every status in the union — a new status cannot ship unstyled', () => {
     const styled = Object.keys(STATUS_META) as BookingStatus[];
     for (const status of styled) {
       const el = chip(STATUS_META[status].chip);
       // Exactly one fill utility, i.e. no status silently falling through to a neighbour's colours.
-      expect([...el.classList].filter((c) => c.startsWith('bg-[')), status).toHaveLength(1);
+      expect(
+        [...el.classList].filter((c) => c.startsWith('bg-[')),
+        status,
+      ).toHaveLength(1);
     }
   });
 
@@ -70,7 +76,9 @@ describe('StatusChip', () => {
     // A host `[class]` binding does NOT clobber a static `class`, as was once claimed.
     @Component({
       imports: [StatusChip],
-      template: `<span class="legacy-marker" [appStatusChip]="'chip--confirmed'" data-testid="c">S</span>`,
+      template: `<span class="legacy-marker" [appStatusChip]="'chip--confirmed'" data-testid="c"
+        >S</span
+      >`,
     })
     class StaticClassHost {}
 

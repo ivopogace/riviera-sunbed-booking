@@ -121,7 +121,9 @@ describe('SetEditor a11y (#600)', () => {
     render();
     const cells = Array.from(host().querySelectorAll<HTMLElement>('[data-testid="set-cell"]'));
 
-    expect(cells[0].getAttribute('aria-label')).toBe('Row A position 1, front row, premium, online');
+    expect(cells[0].getAttribute('aria-label')).toBe(
+      'Row A position 1, front row, premium, online',
+    );
     expect(cells[1].getAttribute('aria-label')).toBe(
       'Row B position 1, walk-in pool, not bookable online',
     );

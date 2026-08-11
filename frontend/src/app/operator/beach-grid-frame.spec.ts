@@ -37,12 +37,16 @@ describe('BeachGridFrame (#175)', () => {
     const body = host.querySelector('[data-testid="projected-body"]');
     expect(body).toBeTruthy();
     // The projected body sits inside the frame's testid'd section.
-    expect(host.querySelector('[data-testid="my-grid"] [data-testid="projected-body"]')).toBeTruthy();
+    expect(
+      host.querySelector('[data-testid="my-grid"] [data-testid="projected-body"]'),
+    ).toBeTruthy();
   });
 
   it('hides the directional glyphs from assistive tech (text carries the meaning)', () => {
     const host = render();
-    const hidden = Array.from(host.querySelectorAll('[aria-hidden="true"]')).map((e) => e.textContent);
+    const hidden = Array.from(host.querySelectorAll('[aria-hidden="true"]')).map(
+      (e) => e.textContent,
+    );
     expect(hidden).toContain('▲');
     expect(hidden).toContain('▼');
   });

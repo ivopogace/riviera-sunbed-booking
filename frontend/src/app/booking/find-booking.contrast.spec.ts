@@ -1,4 +1,12 @@
-import { AA_LARGE, AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
+import {
+  AA_LARGE,
+  AA_NORMAL,
+  Rgb,
+  composite,
+  contrastRatio,
+  hexToRgb,
+  rgbToHex,
+} from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
@@ -48,38 +56,45 @@ const THEMES: readonly Theme[] = [
 describe('Find-booking modal — theme-independent CTA (WCAG AA, issue #148)', () => {
   it('solid white "Open booking" text meets AA on both teal-gradient stops', () => {
     for (const stop of TEAL_STOPS) {
-      expect(contrastRatio('#ffffff', stop), `white over ${stop}`).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(contrastRatio('#ffffff', stop), `white over ${stop}`).toBeGreaterThanOrEqual(
+        AA_NORMAL,
+      );
     }
   });
 });
 
-describe.each(THEMES)('Find-booking modal panel contrast — $name theme (WCAG AA, issue #148)', (theme) => {
-  it('card ink (the "Find your booking" title, intro strong) meets AA on the panel glass', () => {
-    expectAaOverStops(INK_DARK, 1, PANEL_GLASS, theme.stops);
-  });
+describe.each(THEMES)(
+  'Find-booking modal panel contrast — $name theme (WCAG AA, issue #148)',
+  (theme) => {
+    it('card ink (the "Find your booking" title, intro strong) meets AA on the panel glass', () => {
+      expectAaOverStops(INK_DARK, 1, PANEL_GLASS, theme.stops);
+    });
 
-  it('card ink-soft (intro, field label, placeholder) meets AA on the panel glass', () => {
-    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PANEL_GLASS, theme.stops);
-  });
+    it('card ink-soft (intro, field label, placeholder) meets AA on the panel glass', () => {
+      expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PANEL_GLASS, theme.stops);
+    });
 
-  it('the not-found error red meets AA on the panel glass', () => {
-    expectAaOverStops(hexToRgb(ERROR_RED), 1, PANEL_GLASS, theme.stops);
-  });
+    it('the not-found error red meets AA on the panel glass', () => {
+      expectAaOverStops(hexToRgb(ERROR_RED), 1, PANEL_GLASS, theme.stops);
+    });
 
-  it('code-input text (dark ink) meets AA on the field fill over the panel', () => {
-    for (const stop of theme.stops) {
-      const panel = surfaceOver(PANEL_GLASS, stop);
-      const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
-      expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(field))).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
-  });
+    it('code-input text (dark ink) meets AA on the field fill over the panel', () => {
+      for (const stop of theme.stops) {
+        const panel = surfaceOver(PANEL_GLASS, stop);
+        const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
+        expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(field))).toBeGreaterThanOrEqual(
+          AA_NORMAL,
+        );
+      }
+    });
 
-  it('the input border marks the field boundary at 3:1 against its fill (WCAG 1.4.11)', () => {
-    for (const stop of theme.stops) {
-      const panel = surfaceOver(PANEL_GLASS, stop);
-      const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
-      const border = composite(CARD_INK, FIELD_BORDER_ALPHA, field);
-      expect(contrastRatio(rgbToHex(border), rgbToHex(field))).toBeGreaterThanOrEqual(AA_LARGE);
-    }
-  });
-});
+    it('the input border marks the field boundary at 3:1 against its fill (WCAG 1.4.11)', () => {
+      for (const stop of theme.stops) {
+        const panel = surfaceOver(PANEL_GLASS, stop);
+        const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
+        const border = composite(CARD_INK, FIELD_BORDER_ALPHA, field);
+        expect(contrastRatio(rgbToHex(border), rgbToHex(field))).toBeGreaterThanOrEqual(AA_LARGE);
+      }
+    });
+  },
+);

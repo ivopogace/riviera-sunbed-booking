@@ -37,7 +37,10 @@ describe('DailyViewTab a11y (#175)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap({ venueId: '1' }) }, paramMap: of(convertToParamMap({ venueId: '1' })) },
+            parent: {
+              snapshot: { paramMap: convertToParamMap({ venueId: '1' }) },
+              paramMap: of(convertToParamMap({ venueId: '1' })),
+            },
           },
         },
       ],
@@ -48,7 +51,9 @@ describe('DailyViewTab a11y (#175)', () => {
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
-    http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings')).flush(bookings);
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings'))
+      .flush(bookings);
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
       .flush(states);

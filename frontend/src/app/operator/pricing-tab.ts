@@ -82,7 +82,6 @@ export class PricingTab {
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
-
   /** One row per label (in read order), with its tier description and current price as a EUR string. */
   protected readonly rows = computed<PriceRow[]>(() =>
     groupSetsByRow(this.sets()).map(({ label, sets }) => {

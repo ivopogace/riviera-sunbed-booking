@@ -22,7 +22,9 @@ type VerifyState = 'verifying' | 'verified' | 'invalid' | 'error';
 
         @switch (state()) {
           @case ('verifying') {
-            <p class="auth-intro" role="status" data-testid="verify-pending">Verifying your email…</p>
+            <p class="auth-intro" role="status" data-testid="verify-pending">
+              Verifying your email…
+            </p>
           }
           @case ('verified') {
             <p class="auth-intro" role="status" data-testid="verify-success">

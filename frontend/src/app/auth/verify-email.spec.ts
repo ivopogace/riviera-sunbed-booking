@@ -42,8 +42,8 @@ async function render(
 
 function text(fixture: ComponentFixture<VerifyEmail>, testid: string): string {
   return (
-    (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)?.textContent ??
-    ''
+    (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)
+      ?.textContent ?? ''
   ).trim();
 }
 

@@ -28,7 +28,6 @@ export const QR_OPTIONS = { type: 'svg', errorCorrectionLevel: 'M', margin: 1 } 
   `,
 })
 export class BookingQr {
-
   readonly code = input.required<string>();
   readonly size = input(176);
 

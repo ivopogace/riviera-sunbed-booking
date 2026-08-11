@@ -22,7 +22,8 @@ import { CardGlass } from '../shared/card-glass';
 
         @if (sent()) {
           <p class="auth-intro" role="status" data-testid="forgot-sent">
-            If an account exists for that email, we've sent a link to set a new password. Check your inbox.
+            If an account exists for that email, we've sent a link to set a new password. Check your
+            inbox.
           </p>
           <p class="auth-alt">
             <a routerLink="/account/sign-in" data-testid="forgot-to-signin">Back to sign in</a>

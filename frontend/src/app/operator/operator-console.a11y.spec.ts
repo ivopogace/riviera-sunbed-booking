@@ -72,9 +72,13 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
   async function createSignedIn(pending: number): Promise<void> {
     fixture = TestBed.createComponent(OperatorConsole);
     await fixture.whenStable();
-    httpMock.expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET').flush(venueMap());
     httpMock
-      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET')
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET')
+      .flush(venueMap());
+    httpMock
+      .expectOne(
+        (r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET',
+      )
       .flush(Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })));
     // The stats strip mounts in the shell and fires its three reads — audit WITH it.
     httpMock

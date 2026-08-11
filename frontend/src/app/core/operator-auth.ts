@@ -94,8 +94,7 @@ export function signInFailureMessage(result: SignInResult): string | undefined {
  * The operator-facing notice when the session has expired mid-action (a `401` on a console call).
  * One source so every operator surface says the same thing.
  */
-export const SESSION_EXPIRED_MESSAGE =
-  'Your operator session has expired. Please sign in again.';
+export const SESSION_EXPIRED_MESSAGE = 'Your operator session has expired. Please sign in again.';
 
 /**
  * Session-aware operator auth state (design D-1) on the shared {@link SessionAuth} base.
@@ -262,4 +261,3 @@ export function operatorRegisterMessage(result: OperatorRegisterResult): string 
       return 'Something went wrong submitting your registration. Please try again.';
   }
 }
-

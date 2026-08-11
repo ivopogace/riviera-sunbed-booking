@@ -25,7 +25,8 @@ import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
 const POLL_MS = 1500;
 const POLL_WINDOW_MS = 30_000;
 
-type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' | 'error' | 'missing';
+type PayState =
+  'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' | 'error' | 'missing';
 
 /**
  * Liquid Glass payment page for the `stripe` profile, reached on a
@@ -55,11 +56,15 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
     <!-- One persistent live region announces every state change. A live region only announces
          content that MUTATES after it is in the DOM — a region re-created together with the
          confirmed/awaiting section would never announce its initial text (a11y). -->
-    <p class="sr-status" role="status" aria-live="polite" data-testid="pay-status">{{ liveStatus() }}</p>
+    <p class="sr-status" role="status" aria-live="polite" data-testid="pay-status">
+      {{ liveStatus() }}
+    </p>
     @if (state() === 'missing') {
       <section class="pay-standalone" appCardGlass aria-labelledby="pay-title">
         <h1 id="pay-title">No payment in progress</h1>
-        <p class="lead">Your payment session isn’t available here anymore. Please start a new booking.</p>
+        <p class="lead">
+          Your payment session isn’t available here anymore. Please start a new booking.
+        </p>
         <a routerLink="/" class="link">Back to home</a>
       </section>
     } @else if (state() === 'confirmed' || state() === 'awaiting') {
@@ -79,10 +84,22 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
         }
 
         <dl class="summary">
-          <div class="sum-row"><dt>Venue</dt><dd>{{ booking!.venueName }}</dd></div>
-          <div class="sum-row"><dt>Set</dt><dd>{{ booking!.rowLabel }} · spot {{ booking!.positionNo }}</dd></div>
-          <div class="sum-row"><dt>Date</dt><dd>{{ dateLabel }}</dd></div>
-          <div class="sum-row total"><dt>{{ state() === 'confirmed' ? 'Paid' : 'Total' }}</dt><dd>{{ formatMoney(booking!.amount) }}</dd></div>
+          <div class="sum-row">
+            <dt>Venue</dt>
+            <dd>{{ booking!.venueName }}</dd>
+          </div>
+          <div class="sum-row">
+            <dt>Set</dt>
+            <dd>{{ booking!.rowLabel }} · spot {{ booking!.positionNo }}</dd>
+          </div>
+          <div class="sum-row">
+            <dt>Date</dt>
+            <dd>{{ dateLabel }}</dd>
+          </div>
+          <div class="sum-row total">
+            <dt>{{ state() === 'confirmed' ? 'Paid' : 'Total' }}</dt>
+            <dd>{{ formatMoney(booking!.amount) }}</dd>
+          </div>
         </dl>
 
         <p class="code" data-testid="booking-code">
@@ -123,14 +140,16 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
                   <h1 id="pay-title">Payment couldn’t be completed</h1>
                 } @else {
                   <h1 id="pay-title">Complete your payment</h1>
-                  <p class="lead">Your card wasn’t charged. Check the details and try again below.</p>
+                  <p class="lead">
+                    Your card wasn’t charged. Check the details and try again below.
+                  </p>
                 }
               }
               @default {
                 <h1 id="pay-title">Complete your payment</h1>
                 <p class="lead">
-                  Enter your card to confirm the booking. Payments are processed securely by Stripe —
-                  Riviera never sees your card number.
+                  Enter your card to confirm the booking. Payments are processed securely by Stripe
+                  — Riviera never sees your card number.
                 </p>
               }
             }
@@ -140,7 +159,9 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
             <div #peHost class="pe-host" [hidden]="!showElement()" data-testid="pe-host"></div>
 
             @if (showElement()) {
-              <p class="trust"><span aria-hidden="true">🔒</span> Encrypted &amp; PCI-compliant · powered by Stripe</p>
+              <p class="trust">
+                <span aria-hidden="true">🔒</span> Encrypted &amp; PCI-compliant · powered by Stripe
+              </p>
             }
 
             @if (state() === 'mounting') {
@@ -162,20 +183,52 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
           <aside class="pay-summary" appCardGlass>
             <span class="summary-label">Order summary</span>
             <dl>
-              <div class="sum-row"><dt>Venue</dt><dd>{{ booking!.venueName }}</dd></div>
-              <div class="sum-row"><dt>Set</dt><dd>{{ booking!.rowLabel }} · spot {{ booking!.positionNo }}</dd></div>
-              <div class="sum-row"><dt>Date</dt><dd>{{ dateLabel }}</dd></div>
-              <div class="sum-row"><dt>Includes</dt><dd>2 loungers + umbrella</dd></div>
-              <div class="sum-row total"><dt>Total</dt><dd>{{ formatMoney(booking!.amount) }}</dd></div>
+              <div class="sum-row">
+                <dt>Venue</dt>
+                <dd>{{ booking!.venueName }}</dd>
+              </div>
+              <div class="sum-row">
+                <dt>Set</dt>
+                <dd>{{ booking!.rowLabel }} · spot {{ booking!.positionNo }}</dd>
+              </div>
+              <div class="sum-row">
+                <dt>Date</dt>
+                <dd>{{ dateLabel }}</dd>
+              </div>
+              <div class="sum-row">
+                <dt>Includes</dt>
+                <dd>2 loungers + umbrella</dd>
+              </div>
+              <div class="sum-row total">
+                <dt>Total</dt>
+                <dd>{{ formatMoney(booking!.amount) }}</dd>
+              </div>
             </dl>
 
             @if (showPayButton()) {
               <!-- New tab (not routerLink) so the mounted Payment Element survives reading the document. -->
-              <p class="mt-[10px] text-[12px] leading-[1.5] text-(--riv-card-ink-soft)" data-testid="legal-agreement">
+              <p
+                class="mt-[10px] text-[12px] leading-[1.5] text-(--riv-card-ink-soft)"
+                data-testid="legal-agreement"
+              >
                 By paying you agree to our
-                <a class="underline" data-testid="legal-terms-link" href="/legal/terms" target="_blank" rel="noopener">Terms of Service</a>
+                <a
+                  class="underline"
+                  data-testid="legal-terms-link"
+                  href="/legal/terms"
+                  target="_blank"
+                  rel="noopener"
+                  >Terms of Service</a
+                >
                 and acknowledge our
-                <a class="underline" data-testid="legal-privacy-link" href="/legal/privacy" target="_blank" rel="noopener">Privacy Policy</a>.
+                <a
+                  class="underline"
+                  data-testid="legal-privacy-link"
+                  href="/legal/privacy"
+                  target="_blank"
+                  rel="noopener"
+                  >Privacy Policy</a
+                >.
               </p>
               <button
                 type="button"

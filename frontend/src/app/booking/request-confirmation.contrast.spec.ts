@@ -39,16 +39,19 @@ describe('Request-sent card — theme-independent CTA (WCAG AA, issue #137)', ()
   });
 });
 
-describe.each(THEMES)('Request-sent card glass contrast — $name theme (WCAG AA, issue #137)', (theme) => {
-  it('card ink (heading, emphasis) meets AA on the card glass', () => {
-    expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
-  });
+describe.each(THEMES)(
+  'Request-sent card glass contrast — $name theme (WCAG AA, issue #137)',
+  (theme) => {
+    it('card ink (heading, emphasis) meets AA on the card glass', () => {
+      expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
+    });
 
-  it('card ink-soft (lead, info box, code label, status) meets AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
-  });
+    it('card ink-soft (lead, info box, code label, status) meets AA on the card glass', () => {
+      expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
+    });
 
-  it('accent ink (big reference code) meets AA on the card glass', () => {
-    expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
-  });
-});
+    it('accent ink (big reference code) meets AA on the card glass', () => {
+      expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
+    });
+  },
+);

@@ -62,7 +62,8 @@ import { OperatorAuth } from '../core/operator-auth';
                 >Change password</a
               >
               <span class="text-[13px] text-(--riv-ink-soft)" data-testid="opc-signed-in-as"
-                >Signed in as <strong class="text-(--riv-ink)">{{ operator.username() }}</strong></span
+                >Signed in as
+                <strong class="text-(--riv-ink)">{{ operator.username() }}</strong></span
               >
               <button
                 type="button"

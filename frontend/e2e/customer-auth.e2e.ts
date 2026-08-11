@@ -42,7 +42,9 @@ test('a tourist registers, stays signed in across a reload, and signs out', asyn
   await auth.expectSignedOut();
 });
 
-test('a returning tourist signs in; a wrong password is a generic failure (D-8)', async ({ page }) => {
+test('a returning tourist signs in; a wrong password is a generic failure (D-8)', async ({
+  page,
+}) => {
   await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
   const auth = new CustomerAuthPage(page);
 

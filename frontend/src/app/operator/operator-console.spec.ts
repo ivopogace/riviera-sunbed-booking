@@ -1,7 +1,13 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter, Router } from '@angular/router';
+import {
+  ActivatedRoute,
+  convertToParamMap,
+  ParamMap,
+  provideRouter,
+  Router,
+} from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -60,7 +66,9 @@ function flushVenue(httpMock: HttpTestingController, name: string, venue = VENUE
  *  invariant #13). The exact URL is pinned here (no new unscoped call). */
 function flushRequests(httpMock: HttpTestingController, pending: number, venue = VENUE): void {
   httpMock
-    .expectOne((r) => r.url === `${BASE}/api/venues/${venue}/booking-requests` && r.method === 'GET')
+    .expectOne(
+      (r) => r.url === `${BASE}/api/venues/${venue}/booking-requests` && r.method === 'GET',
+    )
     .flush(Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })));
 }
 
@@ -231,7 +239,9 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     await fixture.whenStable();
     flushVenue(httpMock, 'Miramar Beach Club');
     httpMock
-      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET')
+      .expectOne(
+        (r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET',
+      )
       .flush({}, { status: 500, statusText: 'Server Error' });
     flushStrip(httpMock); // the strip still mounts and fires its reads even when the badge read fails
     await fixture.whenStable();

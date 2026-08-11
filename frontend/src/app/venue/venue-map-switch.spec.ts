@@ -34,18 +34,20 @@ describe('Tourist beach map — in-place venue switch over the real routes (#499
   afterEach(() => http.verify());
 
   function flushVenue(id: number, name: string): void {
-    http.expectOne((r) => r.method === 'GET' && r.url === `${BASE}/api/venues/${id}`).flush({
-      id,
-      name,
-      beach: 'Ksamil',
-      region: 'Riviera',
-      description: '',
-      ratingTenths: 40,
-      reviewsCount: 1,
-      bookingMode: 'INSTANT',
-      fromPrice: null,
-      sets: [],
-    });
+    http
+      .expectOne((r) => r.method === 'GET' && r.url === `${BASE}/api/venues/${id}`)
+      .flush({
+        id,
+        name,
+        beach: 'Ksamil',
+        region: 'Riviera',
+        description: '',
+        ratingTenths: 40,
+        reviewsCount: 1,
+        bookingMode: 'INSTANT',
+        fromPrice: null,
+        sets: [],
+      });
   }
 
   function map(): VenueMap {

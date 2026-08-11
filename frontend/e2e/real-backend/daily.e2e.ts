@@ -65,11 +65,17 @@ test.describe('O5 daily view — real backend, real Postgres', () => {
     const tile = page.locator('[data-set-id]').first();
     await expect(tile).toHaveAttribute('data-state', 'FREE');
     await tile.click();
-    await expect(page.locator('[data-set-id]').first()).toHaveAttribute('data-state', 'STAFF_MARKED');
+    await expect(page.locator('[data-set-id]').first()).toHaveAttribute(
+      'data-state',
+      'STAFF_MARKED',
+    );
 
     // Survives reload — the state is re-read from Postgres, not local optimistic state.
     await page.reload();
-    await expect(page.locator('[data-set-id]').first()).toHaveAttribute('data-state', 'STAFF_MARKED');
+    await expect(page.locator('[data-set-id]').first()).toHaveAttribute(
+      'data-state',
+      'STAFF_MARKED',
+    );
 
     // Release it again → back to FREE, also persisted.
     await page.locator('[data-set-id]').first().click();

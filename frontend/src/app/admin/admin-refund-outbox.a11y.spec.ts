@@ -24,7 +24,11 @@ const authStub = {
 function serviceStub(status: OutboxStatusView): Partial<AdminRefundOutboxService> {
   return {
     status: async () => status,
-    resubmit: async () => ({ outcome: 'RESUBMITTED', resubmitted: 0, cooldownRemainingSeconds: 60 }),
+    resubmit: async () => ({
+      outcome: 'RESUBMITTED',
+      resubmitted: 0,
+      cooldownRemainingSeconds: 60,
+    }),
   };
 }
 

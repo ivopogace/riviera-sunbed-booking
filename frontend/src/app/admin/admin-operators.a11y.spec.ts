@@ -41,7 +41,13 @@ const serviceStub: Partial<AdminOperatorsService> = {
 };
 
 const VENUES = [
-  { venueId: 7, name: 'Bora Bora Beach', beach: 'Dhërmi', commissionBps: 1500, payoutCurrency: 'EUR' },
+  {
+    venueId: 7,
+    name: 'Bora Bora Beach',
+    beach: 'Dhërmi',
+    commissionBps: 1500,
+    payoutCurrency: 'EUR',
+  },
 ];
 
 async function render(

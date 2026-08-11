@@ -96,7 +96,11 @@ interface PayProbe {
 async function setup(
   gateway: StripePaymentGateway,
   { prime = true }: { prime?: boolean } = {},
-): Promise<{ fixture: ComponentFixture<BookingPay>; httpMock: HttpTestingController; comp: PayProbe }> {
+): Promise<{
+  fixture: ComponentFixture<BookingPay>;
+  httpMock: HttpTestingController;
+  comp: PayProbe;
+}> {
   TestBed.configureTestingModule({
     providers: [
       provideHttpClient(),
@@ -172,7 +176,9 @@ describe('BookingPay', () => {
     fixture.detectChanges();
     const host = fixture.nativeElement as HTMLElement;
     expect(
-      host.querySelector<HTMLAnchorElement>('[data-testid="booking-status-link"]')?.getAttribute('href'),
+      host
+        .querySelector<HTMLAnchorElement>('[data-testid="booking-status-link"]')
+        ?.getAttribute('href'),
     ).toBe('/booking/WXYZ345678');
     httpMock.verify();
   });
@@ -208,9 +214,7 @@ describe('BookingPay', () => {
     try {
       await comp.pay();
       await vi.advanceTimersByTimeAsync(0);
-      httpMock
-        .expectOne(STATUS_URL)
-        .flush({ ...DETAIL, status: 'CONFIRMED', emailWithheld: true });
+      httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED', emailWithheld: true });
       expect(comp.state()).toBe('confirmed');
       fixture.detectChanges();
 
@@ -360,7 +364,9 @@ describe('BookingPay', () => {
       await comp.pay();
       for (let t = 0; t <= 30_000; t += 1500) {
         await vi.advanceTimersByTimeAsync(t === 0 ? 0 : 1500);
-        httpMock.match(STATUS_URL).forEach((r) => r.flush({ ...DETAIL, status: 'AWAITING_PAYMENT' }));
+        httpMock
+          .match(STATUS_URL)
+          .forEach((r) => r.flush({ ...DETAIL, status: 'AWAITING_PAYMENT' }));
         if (comp.state() === 'awaiting') {
           break;
         }

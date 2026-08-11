@@ -14,7 +14,9 @@
         class="map-head text-(--riv-ink) px-[22px] py-5 rounded-[26px] shadow-[0_14px_44px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.25)]"
         appPanelGlass
       >
-        <p class="inline-block rounded-full bg-(--riv-chip-bg) border border-(--riv-chip-border) text-(--riv-ink) font-bold text-[0.78rem] px-3 py-[5px] mb-[13px]">
+        <p
+          class="inline-block rounded-full bg-(--riv-chip-bg) border border-(--riv-chip-border) text-(--riv-ink) font-bold text-[0.78rem] px-3 py-[5px] mb-[13px]"
+        >
           {{ v.modeLabel }}
         </p>
         <h1
@@ -28,8 +30,11 @@
         <p class="flex items-center flex-wrap gap-[7px] text-[14px] text-(--riv-ink-soft)">
           @if (v.isRated) {
             <span class="text-[#ffd16b]" aria-hidden="true">★</span>
-            <span class="font-bold text-(--riv-ink)" aria-label="Rated {{ v.rating }} out of 5">{{ v.rating }}</span>
-            <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> {{ v.reviewsCount }} reviews
+            <span class="font-bold text-(--riv-ink)" aria-label="Rated {{ v.rating }} out of 5">{{
+              v.rating
+            }}</span>
+            <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span>
+            {{ v.reviewsCount }} reviews
           } @else {
             <span
               class="inline-block rounded-full bg-(--riv-chip-bg) border border-(--riv-chip-border) text-(--riv-ink) font-bold text-[0.78rem] px-3 py-[3px]"
@@ -39,12 +44,15 @@
             >
           }
           @if (v.priceLabel; as price) {
-            <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> from <strong class="font-bold text-(--riv-ink)">{{ price }}</strong> / set
+            <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> from
+            <strong class="font-bold text-(--riv-ink)">{{ price }}</strong> / set
           }
         </p>
 
         @if (v.description) {
-          <p class="description mt-[9px] max-w-[540px] text-(--riv-ink-soft) text-[14.5px] leading-[1.5] text-pretty">
+          <p
+            class="description mt-[9px] max-w-[540px] text-(--riv-ink-soft) text-[14.5px] leading-[1.5] text-pretty"
+          >
             {{ v.description }}
           </p>
         }
@@ -60,7 +68,11 @@
         </div>
 
         <p class="flex flex-col gap-[7px] mt-4 max-w-[210px]">
-          <label class="text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-ink-faint)" for="map-date">Date</label>
+          <label
+            class="text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-ink-faint)"
+            for="map-date"
+            >Date</label
+          >
           <input
             id="map-date"
             type="date"
@@ -73,7 +85,10 @@
         </p>
         <!-- Cutoff explainer (invariant #4 — display only; the server enforces the real cutoff).
              The ngsp entity keeps a real space between the clock glyph and the copy. -->
-        <p class="inline-flex items-center gap-1 mt-2 text-[11.5px] leading-[1.35] text-(--riv-ink-faint)" data-testid="cutoff-note">
+        <p
+          class="inline-flex items-center gap-1 mt-2 text-[11.5px] leading-[1.35] text-(--riv-ink-faint)"
+          data-testid="cutoff-note"
+        >
           <span class="text-[14px] leading-none" aria-hidden="true">⏰</span>&ngsp;
           <span>Book by 6&nbsp;PM the day before — today isn’t bookable.</span>
         </p>
@@ -88,21 +103,40 @@
       >
         <div class="pt-1 px-0.5 pb-[14px]">
           <!-- aria-live: changing the date silently swaps the grid, so announce the new count. -->
-          <p class="mb-2 text-[16px] text-(--riv-card-ink)" data-testid="availability" aria-live="polite">
-            <strong class="text-[19px] font-bold text-(--riv-accent-ink)">{{ freeCount() }}</strong> of {{ totalCount() }} sets free on {{ dateLabel() }}
+          <p
+            class="mb-2 text-[16px] text-(--riv-card-ink)"
+            data-testid="availability"
+            aria-live="polite"
+          >
+            <strong class="text-[19px] font-bold text-(--riv-accent-ink)">{{ freeCount() }}</strong>
+            of {{ totalCount() }} sets free on {{ dateLabel() }}
           </p>
           <!-- Decorative: the count above already conveys this to AT. -->
           <div class="h-2 rounded-full bg-(--riv-card-track) overflow-hidden" aria-hidden="true">
-            <span class="block h-full bg-(image:--riv-bar-grad)" [style.width.%]="totalCount() ? (freeCount() / totalCount()) * 100 : 0"></span>
+            <span
+              class="block h-full bg-(image:--riv-bar-grad)"
+              [style.width.%]="totalCount() ? (freeCount() / totalCount()) * 100 : 0"
+            ></span>
           </div>
         </div>
 
         <!-- The venue's cover photo when uploaded; the gradient + sun as the empty state (the "coming soon" pill is gone — photos have shipped). The photo (the sea view) sits above the grid card's "Facing the sea" banner — the v3 design's spatial order: sea ↑ / promenade ↓. Decorative (aria-hidden): the header already names the venue. -->
-        <div class="photo-band relative h-[150px] rounded-[20px] overflow-hidden bg-(image:--riv-photo-grad)" aria-hidden="true">
+        <div
+          class="photo-band relative h-[150px] rounded-[20px] overflow-hidden bg-(image:--riv-photo-grad)"
+          aria-hidden="true"
+        >
           @if (v.coverPhoto; as cover) {
-            <img [ngSrc]="cover.banner" fill class="object-cover" alt="" data-testid="map-banner-img" />
+            <img
+              [ngSrc]="cover.banner"
+              fill
+              class="object-cover"
+              alt=""
+              data-testid="map-banner-img"
+            />
           } @else {
-            <span class="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-[radial-gradient(circle_at_34%_30%,rgba(255,236,180,0.95),rgba(240,170,46,0.5)_72%)] blur-[0.5px] opacity-[0.85]"></span>
+            <span
+              class="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-[radial-gradient(circle_at_34%_30%,rgba(255,236,180,0.95),rgba(240,170,46,0.5)_72%)] blur-[0.5px] opacity-[0.85]"
+            ></span>
           }
           <span class="absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
         </div>
@@ -115,14 +149,27 @@
       >
         <!-- The sea banner IS the grid card's top edge (rounded via the card's overflow clip), so it
              caps the front, sea-facing row while the promenade caps the back at the bottom. -->
-        <p class="sea-banner text-center font-bold tracking-[0.16em] uppercase text-[12px] text-white bg-[linear-gradient(180deg,#0e7a89,#0c6675)] -mx-4 mb-[18px] p-[13px]"><span aria-hidden="true">▲</span> Facing the sea</p>
+        <p
+          class="sea-banner text-center font-bold tracking-[0.16em] uppercase text-[12px] text-white bg-[linear-gradient(180deg,#0e7a89,#0c6675)] -mx-4 mb-[18px] p-[13px]"
+        >
+          <span aria-hidden="true">▲</span> Facing the sea
+        </p>
 
-        <div class="overflow-y-auto overflow-x-hidden max-h-[532px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-riv-scroller>
+        <div
+          class="overflow-y-auto overflow-x-hidden max-h-[532px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          data-riv-scroller
+        >
           <div class="flex items-start gap-2.5" [style.--riv-map-cols]="mapCols()">
             <!-- Left: derived row codes (aria-hidden; each tile's name already carries its seat). -->
             <div class="flex flex-col gap-1.5 shrink-0" aria-hidden="true">
               @for (row of rows(); track row.code) {
-                <span class="h-[var(--riv-tile)] flex items-center justify-start"><span class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-[#e7ecee] text-[10.5px] font-bold text-[#0a4f5e]" data-testid="row-code">{{ row.code }}</span></span>
+                <span class="h-[var(--riv-tile)] flex items-center justify-start"
+                  ><span
+                    class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-[#e7ecee] text-[10.5px] font-bold text-[#0a4f5e]"
+                    data-testid="row-code"
+                    >{{ row.code }}</span
+                  ></span
+                >
               }
             </div>
 
@@ -139,7 +186,9 @@
             >
               <div class="flex flex-col gap-1.5 w-max">
                 @for (row of rows(); track row.code) {
-                  <ul class="set-row list-none grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5">
+                  <ul
+                    class="set-row list-none grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
+                  >
                     @for (tile of row.tiles; track tile.set.id) {
                       <li
                         class="set-tile aspect-square min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] border-[#bfe3df] bg-white text-[#0f7d8c] font-bold text-[12.5px] [&.premium]:bg-[#fbf1d9] [&.premium]:border-[#e6c483] [&.premium]:text-[#875911] [&.taken]:bg-[#ece8e0] [&.taken]:border-dashed [&.taken]:border-[#d2ccbf] [&.taken]:text-[#696459] [&.bookable]:p-0"
@@ -172,21 +221,36 @@
             <!-- Right: per-row price (aria-hidden; carried in each tile's name too). -->
             <div class="flex flex-col gap-1.5 shrink-0" aria-hidden="true">
               @for (row of rows(); track row.code) {
-                <span class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px]"><span class="text-[12px] font-semibold text-(--riv-card-ink-soft)" data-testid="row-price">{{ money(row.price) }}</span></span>
+                <span class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px]"
+                  ><span
+                    class="text-[12px] font-semibold text-(--riv-card-ink-soft)"
+                    data-testid="row-price"
+                    >{{ money(row.price) }}</span
+                  ></span
+                >
               }
             </div>
           </div>
         </div>
 
         @if (scrollHint()) {
-          <p class="text-center text-[12px] font-semibold text-(--riv-accent-ink) mt-3" data-testid="scroll-hint">
+          <p
+            class="text-center text-[12px] font-semibold text-(--riv-accent-ink) mt-3"
+            data-testid="scroll-hint"
+          >
             <span aria-hidden="true">✦</span>&ngsp;
             <span>Drag or swipe to pan the map — this beach is bigger than your screen.</span>
           </p>
         }
-        <p class="text-center text-[12px] text-(--riv-card-ink-faint) mt-2.5 tracking-[0.02em]">Tap any free set to book it · prices are per set, full day.</p>
+        <p class="text-center text-[12px] text-(--riv-card-ink-faint) mt-2.5 tracking-[0.02em]">
+          Tap any free set to book it · prices are per set, full day.
+        </p>
 
-        <p class="text-center font-bold tracking-[0.16em] uppercase text-[12px] text-(--riv-card-ink-soft) -mx-4 mt-[6px] p-[13px] border-t border-dashed border-(--riv-card-track)"><span aria-hidden="true">▼</span> Promenade · Entrance</p>
+        <p
+          class="text-center font-bold tracking-[0.16em] uppercase text-[12px] text-(--riv-card-ink-soft) -mx-4 mt-[6px] p-[13px] border-t border-dashed border-(--riv-card-track)"
+        >
+          <span aria-hidden="true">▼</span> Promenade · Entrance
+        </p>
       </section>
 
       <ul
@@ -194,9 +258,27 @@
         appCardGlass
         aria-label="Legend"
       >
-        <li class="flex items-center gap-2"><span class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#bfe3df] bg-white" aria-hidden="true"></span> Available</li>
-        <li class="flex items-center gap-2"><span class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#e6c483] bg-[#fbf1d9]" aria-hidden="true"></span> Front row</li>
-        <li class="flex items-center gap-2"><span class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-dashed border-[#d2ccbf] bg-[#ece8e0]" aria-hidden="true"></span> Taken</li>
+        <li class="flex items-center gap-2">
+          <span
+            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#bfe3df] bg-white"
+            aria-hidden="true"
+          ></span>
+          Available
+        </li>
+        <li class="flex items-center gap-2">
+          <span
+            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#e6c483] bg-[#fbf1d9]"
+            aria-hidden="true"
+          ></span>
+          Front row
+        </li>
+        <li class="flex items-center gap-2">
+          <span
+            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-dashed border-[#d2ccbf] bg-[#ece8e0]"
+            aria-hidden="true"
+          ></span>
+          Taken
+        </li>
       </ul>
     </article>
 
@@ -223,6 +305,12 @@
       <app-retry-button testId="map-retry" (retry)="retry()" />
     </div>
   } @else {
-    <p class="mt-6 px-5 py-12 rounded-[26px] text-center text-[15px] text-(--riv-ink-soft)" appPanelGlass aria-live="polite">Loading the beach map…</p>
+    <p
+      class="mt-6 px-5 py-12 rounded-[26px] text-center text-[15px] text-(--riv-ink-soft)"
+      appPanelGlass
+      aria-live="polite"
+    >
+      Loading the beach map…
+    </p>
   }
 </div>

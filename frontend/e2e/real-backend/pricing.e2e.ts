@@ -65,8 +65,24 @@ test.describe('O4 pricing — real backend, real Postgres', () => {
     await page.goto('/operator');
     await signIn(page);
     const id = await createVenue(page, venueName('pricing'));
-    await addSet(page, { rowLabel: 'A', positionNo: 1, priceMinor: 3500, gridX: 1, gridY: 1, pool: 'ONLINE', tier: 'PREMIUM' });
-    await addSet(page, { rowLabel: 'A', positionNo: 2, priceMinor: 3500, gridX: 2, gridY: 1, pool: 'ONLINE', tier: 'PREMIUM' });
+    await addSet(page, {
+      rowLabel: 'A',
+      positionNo: 1,
+      priceMinor: 3500,
+      gridX: 1,
+      gridY: 1,
+      pool: 'ONLINE',
+      tier: 'PREMIUM',
+    });
+    await addSet(page, {
+      rowLabel: 'A',
+      positionNo: 2,
+      priceMinor: 3500,
+      gridX: 2,
+      gridY: 1,
+      pool: 'ONLINE',
+      tier: 'PREMIUM',
+    });
 
     // Open the console Pricing tab (the editor sign-in cookie carries the real session).
     await page.goto(`/operator/${id}/pricing`);

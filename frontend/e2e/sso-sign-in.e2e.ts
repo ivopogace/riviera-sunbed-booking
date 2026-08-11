@@ -16,7 +16,10 @@ import { CustomerAuthPage } from './support/pages/customer-auth.page';
 const GOOGLE_EMAIL = 'google.tourist@example.com';
 const APPLE_EMAIL = 'apple.tourist@example.com';
 
-test('Continue with Google signs the tourist in from the sign-in card', async ({ page, baseURL }) => {
+test('Continue with Google signs the tourist in from the sign-in card', async ({
+  page,
+  baseURL,
+}) => {
   await mockCustomerSsoApi(page, { baseURL: baseURL!, google: GOOGLE_EMAIL, apple: APPLE_EMAIL });
   const auth = new CustomerAuthPage(page);
 
@@ -31,7 +34,10 @@ test('Continue with Google signs the tourist in from the sign-in card', async ({
   await auth.expectSignedInAs(GOOGLE_EMAIL);
 });
 
-test('Continue with Apple signs the tourist in from the register card', async ({ page, baseURL }) => {
+test('Continue with Apple signs the tourist in from the register card', async ({
+  page,
+  baseURL,
+}) => {
   await mockCustomerSsoApi(page, { baseURL: baseURL!, google: GOOGLE_EMAIL, apple: APPLE_EMAIL });
   const auth = new CustomerAuthPage(page);
 

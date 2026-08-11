@@ -16,7 +16,6 @@ import { trapFocusWithin } from '../shared/focus-trap';
 import { normalizeCode } from '../shared/booking-code';
 import { BookingService } from './booking.service';
 
-
 /**
  * "Find a booking" glass modal (design
  * `riviera-sunbeds-liquid-glass-v3.dc.html` → *Find booking*). A guest on a device that doesn't
@@ -128,7 +127,9 @@ export class FindBooking {
     if (this.lookupError()) {
       return this.lookupError();
     }
-    return this.submitAttempted() && !this.normalizedCode() ? 'Enter your booking code.' : undefined;
+    return this.submitAttempted() && !this.normalizedCode()
+      ? 'Enter your booking code.'
+      : undefined;
   });
 
   constructor() {

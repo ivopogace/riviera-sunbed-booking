@@ -54,7 +54,9 @@ test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: wideVenue() }));
 });
 
-test('a plain click on a free tile opens the booking dialog (and the map is accessible)', async ({ page }) => {
+test('a plain click on a free tile opens the booking dialog (and the map is accessible)', async ({
+  page,
+}) => {
   await page.goto('/venues/1');
   await expect(page.getByRole('heading', { name: 'Panorama Bay' })).toBeVisible();
   // A venue wider than the viewport shows the drag-to-pan hint.
@@ -63,16 +65,21 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
   // The glass header actually renders its surface — guards the shared-partial extraction: a
   // stripped background drops white header ink onto the bare gradient below AA, which neither the
   // token-based contrast spec nor axe-over-a-gradient can detect.
-  const headBg = await page.locator('.map-head').evaluate((el) => getComputedStyle(el).backgroundColor);
+  const headBg = await page
+    .locator('.map-head')
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(headBg).not.toBe('rgba(0, 0, 0, 0)');
   expect(headBg).not.toBe('transparent');
 
   // The row-code side labels (A–D) render as the v3 design's subtle chips — a filled, rounded pill,
   // not bare text (design-comparison follow-up). Guards that the chip fill/radius isn't dropped.
-  const chip = await page.getByTestId('row-code').first().evaluate((el) => {
-    const cs = getComputedStyle(el);
-    return { bg: cs.backgroundColor, radius: parseFloat(cs.borderTopLeftRadius) };
-  });
+  const chip = await page
+    .getByTestId('row-code')
+    .first()
+    .evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { bg: cs.backgroundColor, radius: parseFloat(cs.borderTopLeftRadius) };
+    });
   expect(chip.bg).not.toBe('rgba(0, 0, 0, 0)');
   expect(chip.bg).not.toBe('transparent');
   expect(chip.radius).toBeGreaterThan(0);
@@ -85,11 +92,16 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
 
   await expectNoSeriousAxeViolations(page, 'beach map (wide, pannable)');
 
-  await page.getByRole('button', { name: /Select to book/ }).first().click();
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });
 
-test('a drag-pan release over a tile pans the map but does NOT open the dialog; side columns stay put', async ({ page }) => {
+test('a drag-pan release over a tile pans the map but does NOT open the dialog; side columns stay put', async ({
+  page,
+}) => {
   await page.goto('/venues/1');
   await expect(page.getByRole('heading', { name: 'Panorama Bay' })).toBeVisible();
 
@@ -122,6 +134,9 @@ test('a drag-pan release over a tile pans the map but does NOT open the dialog; 
   expect(Math.abs(codeXAfter - codeXBefore)).toBeLessThan(2);
 
   // A genuine click afterwards still opens the dialog (the pan suppression is one-shot).
-  await page.getByRole('button', { name: /Select to book/ }).first().click();
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });

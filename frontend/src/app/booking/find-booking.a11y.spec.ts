@@ -17,7 +17,9 @@ import { FindBooking } from './find-booking';
 function stub(getError?: unknown): Partial<BookingService> {
   return {
     getByCode: () =>
-      (getError ? throwError(() => getError) : of({} as BookingDetail)) as Observable<BookingDetail>,
+      (getError
+        ? throwError(() => getError)
+        : of({} as BookingDetail)) as Observable<BookingDetail>,
   };
 }
 
@@ -42,7 +44,9 @@ describe('FindBooking accessibility (axe)', () => {
     expect(dialog?.getAttribute('aria-modal')).toBe('true');
     expect(dialog?.getAttribute('aria-labelledby')).toContain('find-title');
     expect(host.querySelector('#find-title')?.textContent).toContain('Find your booking');
-    expect(host.querySelector('[data-testid="find-close"]')?.getAttribute('aria-label')).toBe('Close');
+    expect(host.querySelector('[data-testid="find-close"]')?.getAttribute('aria-label')).toBe(
+      'Close',
+    );
     // The code input is named by its wrapping label ("Booking code").
     expect(host.querySelector('label')?.textContent).toContain('Booking code');
     expect(host.querySelector('[data-testid="find-code"]')).not.toBeNull();
@@ -57,9 +61,9 @@ describe('FindBooking accessibility (axe)', () => {
     const fixture = await render(stub({ status: 404 }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (fixture.componentInstance as unknown as { model: { set(v: { code: string }): void } }).model.set(
-      { code: 'ZZZZ999999' },
-    );
+    (
+      fixture.componentInstance as unknown as { model: { set(v: { code: string }): void } }
+    ).model.set({ code: 'ZZZZ999999' });
     fixture.detectChanges();
     host.querySelector('form')!.dispatchEvent(new Event('submit'));
     fixture.detectChanges();

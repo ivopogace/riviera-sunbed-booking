@@ -107,7 +107,9 @@ async function mockDaily(page: Page): Promise<void> {
       },
     }),
   );
-  await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
       json: {
@@ -195,7 +197,9 @@ test('checks a guest in by QR scan — single-use, announced, and the row stays 
   await expect(page.getByTestId('checkin-result')).toContainText('Already checked in');
 });
 
-test('a swept no-show still lists, badged, so a past day is not an empty page', async ({ page }) => {
+test('a swept no-show still lists, badged, so a past day is not an empty page', async ({
+  page,
+}) => {
   await mockDaily(page);
   // The sweep has already run on this day: the booking is terminal, not awaited.
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>

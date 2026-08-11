@@ -26,7 +26,9 @@ async function render(auth: Partial<CustomerAuth>): Promise<ComponentFixture<For
 }
 
 function setEmail(fixture: ComponentFixture<ForgotPassword>, email: string): void {
-  (fixture.componentInstance as unknown as { model: { set(v: { email: string }): void } }).model.set({
+  (
+    fixture.componentInstance as unknown as { model: { set(v: { email: string }): void } }
+  ).model.set({
     email,
   });
   fixture.detectChanges();
@@ -39,8 +41,8 @@ function submit(fixture: ComponentFixture<ForgotPassword>): void {
 
 function text(fixture: ComponentFixture<ForgotPassword>, testid: string): string {
   return (
-    (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)?.textContent ??
-    ''
+    (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)
+      ?.textContent ?? ''
   ).trim();
 }
 

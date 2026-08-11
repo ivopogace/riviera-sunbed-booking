@@ -101,7 +101,9 @@ describe('BookingPay accessibility (axe)', () => {
   });
 
   it('has no violations in the error (retry) state', async () => {
-    const host = await renderInState('error', { error: 'Your card was declined. Please try again.' });
+    const host = await renderInState('error', {
+      error: 'Your card was declined. Please try again.',
+    });
     expect(host.querySelector('[data-testid="pay-error"]')?.textContent).toContain('declined');
     await expectNoAxeViolations(host);
   });

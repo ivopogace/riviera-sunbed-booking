@@ -6,7 +6,9 @@ import { SsoButtons } from './sso-buttons';
 
 /** A CustomerAuth stub exposing only startSso — the rest of the service is inert. */
 function authStub(): Partial<CustomerAuth> & { startSso: ReturnType<typeof vi.fn> } {
-  return { startSso: vi.fn() } as unknown as Partial<CustomerAuth> & { startSso: ReturnType<typeof vi.fn> };
+  return { startSso: vi.fn() } as unknown as Partial<CustomerAuth> & {
+    startSso: ReturnType<typeof vi.fn>;
+  };
 }
 
 async function render(auth: Partial<CustomerAuth>): Promise<ComponentFixture<SsoButtons>> {

@@ -42,8 +42,8 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
         Booking confirmation delivery
       </h2>
       <p id="admin-delivery-intro" class="mt-2 text-[15px] text-(--riv-card-ink)">
-        Look up a tourist's bookings by the email address they booked with, and resend a confirmation
-        that never arrived.
+        Look up a tourist's bookings by the email address they booked with, and resend a
+        confirmation that never arrived.
       </p>
 
       <form
@@ -75,11 +75,7 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
       </form>
 
       @if (lookupError()) {
-        <p
-          class="mt-3 text-[15px] text-[#b3261e]"
-          role="alert"
-          data-testid="admin-delivery-error"
-        >
+        <p class="mt-3 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-delivery-error">
           Something went wrong looking that up.
         </p>
       }
@@ -111,11 +107,17 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
                   }
                 </ul>
               } @else if (booking.everConfirmed) {
-                <p class="mt-2 text-[14px] text-(--riv-card-ink)" data-testid="admin-delivery-no-record">
+                <p
+                  class="mt-2 text-[14px] text-(--riv-card-ink)"
+                  data-testid="admin-delivery-no-record"
+                >
                   No delivery recorded for this booking.
                 </p>
               } @else {
-                <p class="mt-2 text-[14px] text-(--riv-card-ink)" data-testid="admin-delivery-not-due">
+                <p
+                  class="mt-2 text-[14px] text-(--riv-card-ink)"
+                  data-testid="admin-delivery-not-due"
+                >
                   Never confirmed, so no confirmation email was due.
                 </p>
               }

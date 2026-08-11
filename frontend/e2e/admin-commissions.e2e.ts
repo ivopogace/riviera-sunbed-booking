@@ -31,8 +31,20 @@ test.use({ viewport: { width: 360, height: 740 } });
  */
 async function mockCommissions(page: Page): Promise<void> {
   const venues = [
-    { venueId: 7, name: 'Bora Bora Beach', beach: 'Dhërmi', commissionBps: 1500, payoutCurrency: 'EUR' },
-    { venueId: 9, name: 'Folie Marine', beach: 'Gjipe', commissionBps: 1000, payoutCurrency: 'EUR' },
+    {
+      venueId: 7,
+      name: 'Bora Bora Beach',
+      beach: 'Dhërmi',
+      commissionBps: 1500,
+      payoutCurrency: 'EUR',
+    },
+    {
+      venueId: 9,
+      name: 'Folie Marine',
+      beach: 'Gjipe',
+      commissionBps: 1000,
+      payoutCurrency: 'EUR',
+    },
   ];
   /** The bps + grounds of each accepted write, so the spec can assert what actually went on the wire. */
   const writes: { venueId: number; commissionBps: unknown; reason: string | null }[] = [];

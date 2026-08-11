@@ -37,12 +37,7 @@ import { CardGlass } from '../shared/card-glass';
         <p class="auth-intro" data-testid="oppw-username">Signed in as {{ auth.username() }}.</p>
 
         <!-- Present but empty: a live region inserted together with its text is often not announced. -->
-        <p
-          class="auth-intro auth-live"
-          role="status"
-          tabindex="-1"
-          data-testid="oppw-notice"
-        >
+        <p class="auth-intro auth-live" role="status" tabindex="-1" data-testid="oppw-notice">
           {{ notice() }}
         </p>
 
@@ -71,12 +66,7 @@ import { CardGlass } from '../shared/card-glass';
             8–72 characters. Changing it signs you out on every other device.
           </p>
 
-          <p
-            class="auth-error auth-live"
-            role="alert"
-            tabindex="-1"
-            data-testid="oppw-error"
-          >
+          <p class="auth-error auth-live" role="alert" tabindex="-1" data-testid="oppw-error">
             {{ error() }}
           </p>
 

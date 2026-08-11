@@ -414,7 +414,9 @@ describe('AdminOperators stat strip (A9, #348)', () => {
   it('renders the strip above the queue but below the tab strip', async () => {
     const fixture = await render(authStub({ isAdmin: true }), serviceStub([], accounts));
     const host = fixture.nativeElement as HTMLElement;
-    const order = [...host.querySelectorAll('nav, [data-testid="admin-stats"], #admin-pending-title')];
+    const order = [
+      ...host.querySelectorAll('nav, [data-testid="admin-stats"], #admin-pending-title'),
+    ];
 
     expect(order.map((el) => el.getAttribute('data-testid') ?? el.tagName)).toEqual([
       'NAV',

@@ -41,7 +41,11 @@ describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
 
   it('the active amenity chip ink (#0a4f5e) meets AA over the teal tint on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
-      const chipSurface = composite(CHIP_TEAL, CHIP_TEAL_ALPHA, surfaceOver(PORCELAIN_CARD_GLASS, stop));
+      const chipSurface = composite(
+        CHIP_TEAL,
+        CHIP_TEAL_ALPHA,
+        surfaceOver(PORCELAIN_CARD_GLASS, stop),
+      );
       expect(
         contrastRatio(ACTIVE_CHIP_INK, rgbToHex(chipSurface)),
         `active chip over ${rgbToHex(stop)}`,
@@ -69,7 +73,11 @@ describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
 
   it('the stale-write banner ink (--riv-card-ink) meets AA over the amber tint on the card glass (#224)', () => {
     for (const stop of PORCELAIN_STOPS) {
-      const bannerSurface = composite(BANNER_TINT, BANNER_TINT_ALPHA, surfaceOver(PORCELAIN_CARD_GLASS, stop));
+      const bannerSurface = composite(
+        BANNER_TINT,
+        BANNER_TINT_ALPHA,
+        surfaceOver(PORCELAIN_CARD_GLASS, stop),
+      );
       expect(
         contrastRatio(rgbToHex(INK_DARK), rgbToHex(bannerSurface)),
         `stale banner ink over ${rgbToHex(stop)}`,

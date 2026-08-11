@@ -26,8 +26,22 @@ function fixture(): VenueMapView {
     gridY: number;
     taken: readonly boolean[];
   }[] = [
-    { label: 'Front row · Sea view', tier: 'PREMIUM', pool: 'ONLINE', price: 4500, gridY: 1, taken: [true, false, false] },
-    { label: 'Row 2', tier: 'STANDARD', pool: 'WALK_IN', price: 2500, gridY: 2, taken: [false, false, false] },
+    {
+      label: 'Front row · Sea view',
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: 4500,
+      gridY: 1,
+      taken: [true, false, false],
+    },
+    {
+      label: 'Row 2',
+      tier: 'STANDARD',
+      pool: 'WALK_IN',
+      price: 2500,
+      gridY: 2,
+      taken: [false, false, false],
+    },
   ];
   let id = 0;
   const sets: SetView[] = rows.flatMap((row) =>
@@ -70,7 +84,10 @@ describe('VenueMap accessibility (axe)', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { paramMap: convertToParamMap({ id: '1' }), queryParamMap: convertToParamMap({}) },
+            snapshot: {
+              paramMap: convertToParamMap({ id: '1' }),
+              queryParamMap: convertToParamMap({}),
+            },
             paramMap: new BehaviorSubject(convertToParamMap({ id: '1' })),
             queryParamMap: new BehaviorSubject(convertToParamMap({})),
           },

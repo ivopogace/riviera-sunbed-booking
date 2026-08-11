@@ -92,7 +92,9 @@ test('the admin is offered no way to suspend its own account', async ({ page }) 
   await expect(ownRow.getByRole('button', { name: 'Suspend' })).toHaveCount(0);
 });
 
-test('a sign-out that never reaches the server warns, and the retry clears it', async ({ page }) => {
+test('a sign-out that never reaches the server warns, and the retry clears it', async ({
+  page,
+}) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
   await page.goto('/operator');
   const signIn = new OperatorSignInPage(page);

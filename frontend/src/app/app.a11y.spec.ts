@@ -31,13 +31,16 @@ describe('App shell accessibility (axe, issue #134)', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  it.each(['riviera', 'porcelain'] as const)('shell with menus closed has no violations (%s)', async (theme) => {
-    const { fixture, el } = shell();
-    TestBed.inject(ThemeService).select(theme);
-    fixture.detectChanges();
+  it.each(['riviera', 'porcelain'] as const)(
+    'shell with menus closed has no violations (%s)',
+    async (theme) => {
+      const { fixture, el } = shell();
+      TestBed.inject(ThemeService).select(theme);
+      fixture.detectChanges();
 
-    await expectNoAxeViolations(el);
-  });
+      await expectNoAxeViolations(el);
+    },
+  );
 
   it('shell with the theme picker open has no violations', async () => {
     const { fixture, el } = shell();

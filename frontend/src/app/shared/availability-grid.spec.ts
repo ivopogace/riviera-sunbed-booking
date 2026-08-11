@@ -75,7 +75,12 @@ describe('availability-grid', () => {
   });
 });
 
-function seat(id: number, rowLabel: string, positionNo: number, availability: 'FREE' | 'TAKEN'): SetView {
+function seat(
+  id: number,
+  rowLabel: string,
+  positionNo: number,
+  availability: 'FREE' | 'TAKEN',
+): SetView {
   const tier: Tier = 'STANDARD';
   const pool: Pool = 'ONLINE';
   return {

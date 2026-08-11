@@ -32,7 +32,8 @@ export class FailureIcon {}
 @Directive({
   selector: '[appFailureTitle]',
   host: {
-    class: 'failure-title m-0 mb-[7px] font-bold text-[21px] tracking-[-0.01em] text-(--riv-card-ink)',
+    class:
+      'failure-title m-0 mb-[7px] font-bold text-[21px] tracking-[-0.01em] text-(--riv-card-ink)',
   },
 })
 export class FailureTitle {}
@@ -40,7 +41,8 @@ export class FailureTitle {}
 @Directive({
   selector: '[appFailureText]',
   host: {
-    class: 'failure-text mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-(--riv-card-ink-soft)',
+    class:
+      'failure-text mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-(--riv-card-ink-soft)',
   },
 })
 export class FailureText {}

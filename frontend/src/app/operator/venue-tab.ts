@@ -327,7 +327,9 @@ export class VenueTab {
       bookingCutoff: profile.bookingCutoff,
     });
     this.amenityDraft.set(new Set(profile.amenities));
-    this.distanceDraft.set(profile.distanceToWaterM == null ? '' : String(profile.distanceToWaterM));
+    this.distanceDraft.set(
+      profile.distanceToWaterM == null ? '' : String(profile.distanceToWaterM),
+    );
     this.commissionBps.set(profile.commissionBps);
     this.payoutCurrency.set(profile.payoutCurrency);
     this.loadedVersion.set(profile.version);

@@ -70,7 +70,10 @@ import { VenueCommissionView } from './admin.model';
           Loading…
         </p>
       } @else if (!auth.signedIn()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-commissions-signed-out">
+        <p
+          class="mt-4 text-[15px] text-(--riv-ink-soft)"
+          data-testid="admin-commissions-signed-out"
+        >
           Sign in as an admin to review and change venue commission rates.
           <a
             routerLink="/account/sign-in"
@@ -87,8 +90,8 @@ import { VenueCommissionView } from './admin.model';
         <app-admin-console-tabs label="Admin console sections" />
 
         <p class="mt-5 max-w-[62ch] text-[15px] text-(--riv-ink-soft)">
-          The platform sets each venue's rate — the operator sees it, and cannot change it. A rate is
-          stored as whole basis points, so 1500 bps is 15%.
+          The platform sets each venue's rate — the operator sees it, and cannot change it. A rate
+          is stored as whole basis points, so 1500 bps is 15%.
         </p>
 
         @if (loading()) {
@@ -134,7 +137,9 @@ import { VenueCommissionView } from './admin.model';
               >
                 <div class="flex flex-wrap items-start justify-between gap-3">
                   <div class="min-w-0">
-                    <h2 class="text-[16px] font-semibold text-(--riv-card-ink)">{{ venue.name }}</h2>
+                    <h2 class="text-[16px] font-semibold text-(--riv-card-ink)">
+                      {{ venue.name }}
+                    </h2>
                     <p class="mt-0.5 text-[13.5px] text-(--riv-card-ink-soft)">
                       {{ venue.beach }} · paid out in {{ venue.payoutCurrency }}
                     </p>
@@ -207,8 +212,8 @@ import { VenueCommissionView } from './admin.model';
 
                     <p class="mt-3 text-[13px] text-(--riv-card-ink-soft)">
                       Saving moves the live rate straight away, so this list shows the new number at
-                      once. Reporting follows from tomorrow: today's bookings closed last evening and
-                      have already accrued at {{ percent(venue.commissionBps) }}.
+                      once. Reporting follows from tomorrow: today's bookings closed last evening
+                      and have already accrued at {{ percent(venue.commissionBps) }}.
                     </p>
 
                     <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -282,11 +287,13 @@ import { VenueCommissionView } from './admin.model';
           </h2>
 
           <section>
-            <h3 class="text-[14px] font-semibold text-(--riv-card-ink)">A change is forward-only</h3>
+            <h3 class="text-[14px] font-semibold text-(--riv-card-ink)">
+              A change is forward-only
+            </h3>
             <p class="mt-1 text-[13px] leading-relaxed text-(--riv-card-ink-soft)">
               A past service date never re-prices. Every payout-ledger entry keeps the commission it
-              was accrued at, so statements already sent stay exactly as they were sent — there is no
-              way to reprice history, by design.
+              was accrued at, so statements already sent stay exactly as they were sent — there is
+              no way to reprice history, by design.
             </p>
           </section>
 
@@ -295,9 +302,9 @@ import { VenueCommissionView } from './admin.model';
               Reporting moves from tomorrow
             </h3>
             <p class="mt-1 text-[13px] leading-relaxed text-(--riv-card-ink-soft)">
-              Bookings for a day close the evening before, so today's have already accrued at the old
-              rate. Tomorrow (Europe/Tirane) is the first service date the operator's takings report
-              at the new one.
+              Bookings for a day close the evening before, so today's have already accrued at the
+              old rate. Tomorrow (Europe/Tirane) is the first service date the operator's takings
+              report at the new one.
             </p>
           </section>
 
@@ -306,9 +313,9 @@ import { VenueCommissionView } from './admin.model';
               The list still updates immediately
             </h3>
             <p class="mt-1 text-[13px] leading-relaxed text-(--riv-card-ink-soft)">
-              That is not a contradiction with the line above. The number here is the live rate — what
-              the next accrual will use. The reporting date is about days whose bookings have already
-              closed.
+              That is not a contradiction with the line above. The number here is the live rate —
+              what the next accrual will use. The reporting date is about days whose bookings have
+              already closed.
             </p>
           </section>
 
@@ -320,17 +327,17 @@ import { VenueCommissionView } from './admin.model';
               An operator's takings figures are not a copy of the ledger. The ledger prices each
               booking when it accrues; the takings apply one rate to a whole service date. So a
               booking confirmed before a change but served after it sits in the ledger at the old
-              rate while the takings show the new one. The firm guarantee is the narrower one: a past
-              service date never re-prices.
+              rate while the takings show the new one. The firm guarantee is the narrower one: a
+              past service date never re-prices.
             </p>
           </section>
 
           <section>
             <h3 class="text-[14px] font-semibold text-(--riv-card-ink)">Percent in, bps out</h3>
             <p class="mt-1 text-[13px] leading-relaxed text-(--riv-card-ink-soft)">
-              The rate is stored as whole basis points so every split stays exact-integer arithmetic.
-              The field takes a percent because that is how the deal is described; the exact integer
-              that will be stored is shown beside it as you type.
+              The rate is stored as whole basis points so every split stays exact-integer
+              arithmetic. The field takes a percent because that is how the deal is described; the
+              exact integer that will be stored is shown beside it as you type.
             </p>
           </section>
 
@@ -340,8 +347,8 @@ import { VenueCommissionView } from './admin.model';
             </h3>
             <p class="mt-1 text-[13px] leading-relaxed text-(--riv-card-ink-soft)">
               Commission is the commercial agreement between the platform and the venue, not a venue
-              setting. The operator console shows the rate so there is no mystery about the split — it
-              just doesn't offer a way to move it.
+              setting. The operator console shows the rate so there is no mystery about the split —
+              it just doesn't offer a way to move it.
             </p>
           </section>
         </section>

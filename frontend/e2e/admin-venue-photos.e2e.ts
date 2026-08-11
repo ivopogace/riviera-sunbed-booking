@@ -124,7 +124,10 @@ test('an admin picks a venue, sees its slots, and takes one down behind a confir
   // Computed styles, not classes: the host must sit where the markup it replaced did (its mt-3).
   await expect(panel).toHaveCSS('display', 'block');
   await expect(panel).toHaveCSS('margin-top', '12px');
-  await expect(page.getByTestId('admin-photo-confirm-cover')).toHaveCSS('color', 'rgb(179, 38, 30)');
+  await expect(page.getByTestId('admin-photo-confirm-cover')).toHaveCSS(
+    'color',
+    'rgb(179, 38, 30)',
+  );
   await expect(page.getByTestId('admin-photo-reason-cover')).toHaveCSS('font-size', '14px');
 
   await page.getByTestId('admin-photo-confirm-cover').click();

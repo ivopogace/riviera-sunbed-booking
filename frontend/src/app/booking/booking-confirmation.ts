@@ -32,13 +32,18 @@ import { BookingService } from './booking.service';
         <div class="badge" aria-hidden="true">✓</div>
         <h1 id="confirmation-title">You’re booked.</h1>
         <p class="lead">
-          {{ c.rowLabel }} · spot {{ c.positionNo }} at {{ c.venueName }}<br />on
-          {{ dateLabel() }}.
+          {{ c.rowLabel }} · spot {{ c.positionNo }} at {{ c.venueName }}<br />on {{ dateLabel() }}.
         </p>
 
         <dl class="summary">
-          <div class="sum-row"><dt>Includes</dt><dd>2 loungers + umbrella · full day</dd></div>
-          <div class="sum-row total"><dt>Paid</dt><dd>{{ formatMoney(c.amount) }}</dd></div>
+          <div class="sum-row">
+            <dt>Includes</dt>
+            <dd>2 loungers + umbrella · full day</dd>
+          </div>
+          <div class="sum-row total">
+            <dt>Paid</dt>
+            <dd>{{ formatMoney(c.amount) }}</dd>
+          </div>
         </dl>
 
         <div class="code-card" data-testid="booking-code">

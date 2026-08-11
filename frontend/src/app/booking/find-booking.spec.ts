@@ -39,7 +39,12 @@ function foundService(detail: BookingDetail = DETAIL): {
   const getByCode = vi.fn(() => of(detail) as Observable<BookingDetail>);
   const primeDetail = vi.fn();
   const takePrefetched = vi.fn(() => undefined);
-  return { service: { getByCode, primeDetail, takePrefetched }, getByCode, primeDetail, takePrefetched };
+  return {
+    service: { getByCode, primeDetail, takePrefetched },
+    getByCode,
+    primeDetail,
+    takePrefetched,
+  };
 }
 
 /** A stub whose lookup fails with the given HTTP-ish error (e.g. `{ status: 404 }`). */
@@ -67,9 +72,11 @@ async function render(service: Partial<BookingService>): Promise<ComponentFixtur
 
 /** Set the code field via the Signal-Forms model (the booking-dialog.a11y test pattern). */
 function setCode(fixture: ComponentFixture<FindBooking>, code: string): void {
-  (fixture.componentInstance as unknown as { model: { set(v: { code: string }): void } }).model.set({
-    code,
-  });
+  (fixture.componentInstance as unknown as { model: { set(v: { code: string }): void } }).model.set(
+    {
+      code,
+    },
+  );
   fixture.detectChanges();
 }
 
@@ -80,8 +87,8 @@ function submit(fixture: ComponentFixture<FindBooking>): void {
 
 function errorText(fixture: ComponentFixture<FindBooking>): string {
   return (
-    (fixture.nativeElement as HTMLElement).querySelector('[data-testid="find-error"]')?.textContent ??
-    ''
+    (fixture.nativeElement as HTMLElement).querySelector('[data-testid="find-error"]')
+      ?.textContent ?? ''
   ).trim();
 }
 
@@ -149,7 +156,9 @@ describe('FindBooking', () => {
     await fixture.whenStable();
     fixture.detectChanges(); // render the error the async catch set after submit's CD
 
-    expect(errorText(fixture)).toBe('No booking found for ZZZZ999999. Check the code and try again.');
+    expect(errorText(fixture)).toBe(
+      'No booking found for ZZZZ999999. Check the code and try again.',
+    );
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -201,7 +210,10 @@ describe('FindBooking', () => {
   it('does not issue a second lookup while one is in flight (rate-limit oracle guard)', async () => {
     // A lookup that never resolves keeps `submitting` true, so a repeat submit must be a no-op.
     const getByCode = vi.fn(
-      () => new Observable<BookingDetail>(() => {/* never emits — keeps the lookup in flight */}),
+      () =>
+        new Observable<BookingDetail>(() => {
+          /* never emits — keeps the lookup in flight */
+        }),
     );
     const fixture = await render({ getByCode });
 

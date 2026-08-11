@@ -2,7 +2,7 @@ import {
   ApplicationConfig,
   inject,
   provideAppInitializer,
-  provideBrowserGlobalErrorListeners
+  provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
@@ -17,7 +17,7 @@ import { ThemeService } from './core/theme';
 import {
   FakeStripePaymentGateway,
   StripeJsPaymentGateway,
-  StripePaymentGateway
+  StripePaymentGateway,
 } from './booking/stripe-payment.gateway';
 import { routes } from './app.routes';
 
@@ -29,7 +29,8 @@ import { routes } from './app.routes';
 function stripeGatewayFactory(): StripePaymentGateway {
   // `globalThis` is `window` in a browser and always defined, so the Playwright flag reads uniformly.
   const useFake =
-    (globalThis as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ === true;
+    (globalThis as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ ===
+    true;
   return useFake ? new FakeStripePaymentGateway() : new StripeJsPaymentGateway();
 }
 
@@ -42,7 +43,6 @@ function qrScannerFactory(): QrScanner {
     (globalThis as unknown as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__ !== undefined;
   return armed ? new FakeQrScanner() : new CameraQrScanner();
 }
-
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -61,6 +61,6 @@ export const appConfig: ApplicationConfig = {
     // SSO start is a full-page navigation out of the SPA; the seam lets unit specs record the
     // URL without a real navigation (mirrors the Stripe adapter swap). The e2e uses the real redirect and
     // intercepts the navigation with page.route.
-    { provide: SsoRedirect, useClass: WindowSsoRedirect }
-  ]
+    { provide: SsoRedirect, useClass: WindowSsoRedirect },
+  ],
 };

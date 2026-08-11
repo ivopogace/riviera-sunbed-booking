@@ -35,7 +35,9 @@ describe('VenuePhotoService (#142)', () => {
 
     service.upload(1, 'cover', file).subscribe((r) => (response = r));
 
-    const req = http.expectOne((r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/photos/cover'));
+    const req = http.expectOne(
+      (r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/photos/cover'),
+    );
     expect(req.request.body).toBeInstanceOf(FormData);
     expect((req.request.body as FormData).get('file')).toBe(file);
     req.flush({

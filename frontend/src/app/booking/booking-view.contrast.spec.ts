@@ -65,11 +65,14 @@ const BANNER_BODY = '#334a52';
 const BANNER_STRONG = '#0a2a33';
 
 describe('Booking view — status banners (solid fills, WCAG AA, issue #138)', () => {
-  it.each(BANNERS)('the %s banner eyebrow, body and strong meet AA on its fill', (_name, fill, eyebrow) => {
-    expect(contrastRatio(eyebrow, fill), 'eyebrow').toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrastRatio(BANNER_BODY, fill), 'body').toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrastRatio(BANNER_STRONG, fill), 'strong').toBeGreaterThanOrEqual(AA_NORMAL);
-  });
+  it.each(BANNERS)(
+    'the %s banner eyebrow, body and strong meet AA on its fill',
+    (_name, fill, eyebrow) => {
+      expect(contrastRatio(eyebrow, fill), 'eyebrow').toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(contrastRatio(BANNER_BODY, fill), 'body').toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(contrastRatio(BANNER_STRONG, fill), 'strong').toBeGreaterThanOrEqual(AA_NORMAL);
+    },
+  );
 });
 
 describe('Booking view — withdraw prose inside the pending banner (#123)', () => {

@@ -24,18 +24,18 @@ import { BookingService } from './booking.service';
         <div class="badge warn" aria-hidden="true">✉</div>
         <h1 id="request-title">Request sent</h1>
         <p class="lead">
-          {{ r.rowLabel }} · spot {{ r.positionNo }} at {{ r.venueName }} on
-          {{ dateLabel() }} is a <strong>Request to Book</strong> venue. The host
-          needs to accept before you pay — <strong>you haven’t been charged</strong>.
+          {{ r.rowLabel }} · spot {{ r.positionNo }} at {{ r.venueName }} on {{ dateLabel() }} is a
+          <strong>Request to Book</strong> venue. The host needs to accept before you pay —
+          <strong>you haven’t been charged</strong>.
         </p>
 
         <div class="info-box">
           <span class="info-icon" aria-hidden="true">⏳</span>
           <p>
             We’ll notify you by email as soon as the venue responds — expected by
-            <strong data-testid="request-deadline">{{ deadline(r.requestExpiresAt) }}</strong>. If
-            accepted, you’ll get a link to pay <strong>{{ formatMoney(r.amount) }}</strong> and lock in
-            the set.
+            <strong data-testid="request-deadline">{{ deadline(r.requestExpiresAt) }}</strong
+            >. If accepted, you’ll get a link to pay
+            <strong>{{ formatMoney(r.amount) }}</strong> and lock in the set.
           </p>
         </div>
 
@@ -44,7 +44,9 @@ import { BookingService } from './booking.service';
           <div class="code">{{ r.code }}</div>
         </div>
 
-        <p class="status" data-testid="request-status">Pending — waiting for the venue to respond</p>
+        <p class="status" data-testid="request-status">
+          Pending — waiting for the venue to respond
+        </p>
 
         <a [routerLink]="['/booking', r.code]" class="btn-primary" data-testid="status-link">
           Track this request

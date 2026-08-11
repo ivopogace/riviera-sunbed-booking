@@ -15,8 +15,6 @@ export function apiPhotoUrl(path: string): string {
 }
 
 /** {@link apiPhotoUrl} over a summary/map view's cover pair; `null`/absent passes through. */
-export function resolveCoverPhoto(
-  cover: CoverPhotoView | null | undefined,
-): CoverPhotoView | null {
+export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): CoverPhotoView | null {
   return cover ? { card: apiPhotoUrl(cover.card), banner: apiPhotoUrl(cover.banner) } : null;
 }

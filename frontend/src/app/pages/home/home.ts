@@ -2,7 +2,12 @@ import { NgOptimizedImage } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../../shared/amenities';
+import {
+  Amenity,
+  amenityLabel,
+  distanceToWaterLabel,
+  orderedAmenities,
+} from '../../shared/amenities';
 import { AmenityChip } from '../../shared/amenity-chip';
 import { CardGlass } from '../../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
@@ -152,7 +157,10 @@ export class Home {
     this.lastLoad = () => this.reload();
     const token = this.beginRequest();
     this.venueService
-      .listVenues({ beach: this.beach() || undefined, region: this.region() || undefined }, this.selectedDate())
+      .listVenues(
+        { beach: this.beach() || undefined, region: this.region() || undefined },
+        this.selectedDate(),
+      )
       .subscribe({
         next: (list) => {
           if (this.lastRequest === token) {
@@ -234,10 +242,10 @@ export class Home {
       : '';
     const ratingText = rated ? `rated ${rating} out of 5` : 'no reviews yet';
     const ariaLabel =
-      `${venue.name}, ${venue.beach} · ${venue.region}, ${ratingText}${price}, `
-      + `${free} of ${total} sets free on ${dateLabel}. `
-      + `${waterText}${amenitiesText}`
-      + `View beach map.`;
+      `${venue.name}, ${venue.beach} · ${venue.region}, ${ratingText}${price}, ` +
+      `${free} of ${total} sets free on ${dateLabel}. ` +
+      `${waterText}${amenitiesText}` +
+      `View beach map.`;
 
     return {
       id: venue.id,

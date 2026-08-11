@@ -1,4 +1,12 @@
-import { AA_LARGE, AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../../../testing/contrast';
+import {
+  AA_LARGE,
+  AA_NORMAL,
+  Rgb,
+  composite,
+  contrastRatio,
+  hexToRgb,
+  rgbToHex,
+} from '../../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,

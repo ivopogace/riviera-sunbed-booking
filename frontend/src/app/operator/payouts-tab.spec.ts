@@ -137,7 +137,9 @@ describe('PayoutsTab (#173) — ledger', () => {
     const [accrual, reversal] = rows();
     expect(accrual.querySelector('[data-testid="ledger-reason"]')).toBeNull();
     // The reversal shows a negative net and a Weather reason chip.
-    expect(reversal.querySelector('[data-testid="ledger-reason"]')?.textContent).toMatch(/weather/i);
+    expect(reversal.querySelector('[data-testid="ledger-reason"]')?.textContent).toMatch(
+      /weather/i,
+    );
     expect(reversal.textContent).toContain(formatMoney({ minorUnits: -2125, currency: 'EUR' }));
   });
 
@@ -172,7 +174,9 @@ describe('PayoutsTab (#173) — ledger', () => {
     render(ledger({ netOwedMinor: 0, entries: [] }));
     expect(byId('payouts-empty')).toBeTruthy();
     expect(rows()).toHaveLength(0);
-    expect(byId('payout-owed')?.textContent).toContain(formatMoney({ minorUnits: 0, currency: 'EUR' }));
+    expect(byId('payout-owed')?.textContent).toContain(
+      formatMoney({ minorUnits: 0, currency: 'EUR' }),
+    );
   });
 
   it('shows a load-error card (not a false empty state) when the ledger read fails', () => {
@@ -293,7 +297,10 @@ describe('PayoutsTab (#173) — ledger', () => {
     fixture.detectChanges();
     byId('weather-confirm-btn')!.click();
     fixture.detectChanges();
-    expectWeatherPost().flush({ code: 'NOT_VENUE_OWNER' }, { status: 403, statusText: 'Forbidden' });
+    expectWeatherPost().flush(
+      { code: 'NOT_VENUE_OWNER' },
+      { status: 403, statusText: 'Forbidden' },
+    );
     fixture.detectChanges();
     expect(byId('payouts-notice')?.textContent?.toLowerCase()).toContain('manage');
     expect(byId('weather-confirm')).toBeNull(); // no re-read on failure; the confirm closed
@@ -305,7 +312,10 @@ describe('PayoutsTab (#173) — ledger', () => {
     fixture.detectChanges();
     byId('weather-confirm-btn')!.click();
     fixture.detectChanges();
-    expectWeatherPost().flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+    expectWeatherPost().flush(
+      { code: 'UNAUTHENTICATED' },
+      { status: 401, statusText: 'Unauthorized' },
+    );
     fixture.detectChanges();
     expect(byId('payouts-notice')?.textContent?.toLowerCase()).toContain('session');
   });

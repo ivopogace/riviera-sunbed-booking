@@ -48,9 +48,15 @@ describe('BookingDialog accessibility (axe)', () => {
     const dialog = host().querySelector('[role="dialog"]');
     expect(dialog?.getAttribute('aria-modal')).toBe('true');
     expect(dialog?.getAttribute('aria-labelledby')).toContain('booking-dialog-title');
-    expect(host().querySelector('#booking-dialog-venue')?.textContent).toContain('Miramar Beach Club');
-    expect(host().querySelector('#booking-dialog-title')?.textContent).toContain('Front row · Sea view');
-    expect(host().querySelector('[data-testid="dialog-close"]')?.getAttribute('aria-label')).toBe('Close');
+    expect(host().querySelector('#booking-dialog-venue')?.textContent).toContain(
+      'Miramar Beach Club',
+    );
+    expect(host().querySelector('#booking-dialog-title')?.textContent).toContain(
+      'Front row · Sea view',
+    );
+    expect(host().querySelector('[data-testid="dialog-close"]')?.getAttribute('aria-label')).toBe(
+      'Close',
+    );
   });
 
   it('has no critical/serious violations on the Details step', async () => {
@@ -68,7 +74,9 @@ describe('BookingDialog accessibility (axe)', () => {
     host().querySelector('form')!.dispatchEvent(new Event('submit')); // Continue → Review
     await fixture.whenStable();
 
-    expect(host().querySelector('[data-testid="step-2"]')?.getAttribute('aria-current')).toBe('step');
+    expect(host().querySelector('[data-testid="step-2"]')?.getAttribute('aria-current')).toBe(
+      'step',
+    );
     await expectNoAxeViolations(host());
   });
 });

@@ -49,10 +49,7 @@ describe('RequestsTab (#176)', () => {
     };
   }
 
-  const SEED_SETS: SetView[] = [
-    seat(1, 'A', 1, 'PREMIUM'),
-    seat(2, 'B', 2, 'STANDARD'),
-  ];
+  const SEED_SETS: SetView[] = [seat(1, 'A', 1, 'PREMIUM'), seat(2, 'B', 2, 'STANDARD')];
 
   /** `beforeCreate` runs after the injector exists but before the tab mounts — the shell's window. */
   function configure(beforeCreate?: () => void): void {
@@ -211,7 +208,9 @@ describe('RequestsTab (#176)', () => {
     button(/Confirm decline/).click();
     fixture.detectChanges();
     http
-      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/booking-requests/11/decline'))
+      .expectOne(
+        (r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/booking-requests/11/decline'),
+      )
       .flush({ bookingId: 11, status: 'DECLINED' });
     fixture.detectChanges();
     flushReconcile([]); // the post-decline reconcile re-reads the now-empty queue
@@ -302,7 +301,12 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
       .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1') && !r.url.includes('/booking-requests'))
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/booking-requests'),
+      )
       .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: SEED_SETS });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
@@ -407,7 +411,6 @@ describe('RequestsTab (#176)', () => {
     expect(cards()).toHaveLength(1);
     expect(store.count()).toBe(1);
   });
-
 });
 
 /** A pending Request-to-Book entry as the operator queue endpoint returns it (no booking code, #7). */

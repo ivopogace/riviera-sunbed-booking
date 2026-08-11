@@ -25,10 +25,15 @@ function stubService(confirmation: Confirmation | undefined): Partial<BookingSer
 }
 
 describe('BookingConfirmation accessibility (axe)', () => {
-  async function render(confirmation: Confirmation | undefined): Promise<ComponentFixture<BookingConfirmation>> {
+  async function render(
+    confirmation: Confirmation | undefined,
+  ): Promise<ComponentFixture<BookingConfirmation>> {
     await TestBed.configureTestingModule({
       imports: [BookingConfirmation],
-      providers: [provideRouter([]), { provide: BookingService, useValue: stubService(confirmation) }],
+      providers: [
+        provideRouter([]),
+        { provide: BookingService, useValue: stubService(confirmation) },
+      ],
     }).compileComponents();
     const fixture = TestBed.createComponent(BookingConfirmation);
     await fixture.whenStable();

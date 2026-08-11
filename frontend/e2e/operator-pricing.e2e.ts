@@ -117,7 +117,9 @@ async function mockPricing(
     mapReads += 1;
     return route.fulfill({ json: { ...VENUE_MAP, setVersion: serverSetVersion } });
   });
-  await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
@@ -129,7 +131,9 @@ async function mockPricing(
       },
     }),
   );
-  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
   return { puts, bump, mapReads: () => mapReads };
 }
 

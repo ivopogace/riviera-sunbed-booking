@@ -3,7 +3,10 @@ import { TestBed } from '@angular/core/testing';
 
 import { CardGlass } from './card-glass';
 
-@Component({ imports: [CardGlass], template: `<article appCardGlass data-testid="host"></article>` })
+@Component({
+  imports: [CardGlass],
+  template: `<article appCardGlass data-testid="host"></article>`,
+})
 class Host {}
 
 describe('CardGlass', () => {

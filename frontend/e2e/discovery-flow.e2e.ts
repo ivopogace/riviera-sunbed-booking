@@ -51,8 +51,28 @@ const VENUE_MAP = {
   amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
   distanceToWaterM: 15,
   sets: [
-    { id: 1, rowLabel: 'Front row · Sea view', positionNo: 1, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 4500, currency: 'EUR' }, gridX: 1, gridY: 1, availability: 'FREE' },
-    { id: 2, rowLabel: 'Row 4 · Back', positionNo: 1, tier: 'STANDARD', pool: 'WALK_IN', price: { minorUnits: 2500, currency: 'EUR' }, gridX: 1, gridY: 2, availability: 'FREE' },
+    {
+      id: 1,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 1,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 4500, currency: 'EUR' },
+      gridX: 1,
+      gridY: 1,
+      availability: 'FREE',
+    },
+    {
+      id: 2,
+      rowLabel: 'Row 4 · Back',
+      positionNo: 1,
+      tier: 'STANDARD',
+      pool: 'WALK_IN',
+      price: { minorUnits: 2500, currency: 'EUR' },
+      gridX: 1,
+      gridY: 2,
+      availability: 'FREE',
+    },
   ],
 };
 
@@ -199,7 +219,9 @@ test('discovery load-failure panel recovers when Retry is pressed (#149)', async
   await expectNoSeriousAxeViolations(page, 'discovery list after retry');
 });
 
-test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, accessibly (#154)', async ({ page }) => {
+test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, accessibly (#154)', async ({
+  page,
+}) => {
   // A brand-new venue: ratingTenths/reviewsCount both 0. It must read as "New", never "rated 0.0".
   const unrated = {
     id: 2,
@@ -213,7 +235,13 @@ test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, acc
     availability: { free: 10, total: 10 },
   };
   await page.route(/\/api\/venues\/2(\?.*)?$/, (route) =>
-    route.fulfill({ json: { ...unrated, description: 'Newly listed on the Borsh shoreline.', sets: VENUE_MAP.sets } }),
+    route.fulfill({
+      json: {
+        ...unrated,
+        description: 'Newly listed on the Borsh shoreline.',
+        sets: VENUE_MAP.sets,
+      },
+    }),
   );
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [unrated] }));
 

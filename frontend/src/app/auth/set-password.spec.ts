@@ -89,8 +89,8 @@ function byId(fixture: ComponentFixture<SetPassword>, testid: string): HTMLEleme
 
 function text(fixture: ComponentFixture<SetPassword>, testid: string): string {
   return (
-    (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)?.textContent ??
-    ''
+    (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)
+      ?.textContent ?? ''
   ).trim();
 }
 

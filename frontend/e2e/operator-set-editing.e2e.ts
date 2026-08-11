@@ -28,10 +28,50 @@ interface MockSet {
 
 function seedSets(): MockSet[] {
   return [
-    { id: 10, rowLabel: 'A', positionNo: 1, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 3500, currency: 'EUR' }, gridX: 1, gridY: 1, availability: 'FREE' },
-    { id: 11, rowLabel: 'A', positionNo: 2, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 3500, currency: 'EUR' }, gridX: 2, gridY: 1, availability: 'FREE' },
-    { id: 12, rowLabel: 'B', positionNo: 1, tier: 'STANDARD', pool: 'ONLINE', price: { minorUnits: 2000, currency: 'EUR' }, gridX: 1, gridY: 2, availability: 'FREE' },
-    { id: 13, rowLabel: 'B', positionNo: 2, tier: 'STANDARD', pool: 'ONLINE', price: { minorUnits: 2000, currency: 'EUR' }, gridX: 2, gridY: 2, availability: 'TAKEN' },
+    {
+      id: 10,
+      rowLabel: 'A',
+      positionNo: 1,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 3500, currency: 'EUR' },
+      gridX: 1,
+      gridY: 1,
+      availability: 'FREE',
+    },
+    {
+      id: 11,
+      rowLabel: 'A',
+      positionNo: 2,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 3500, currency: 'EUR' },
+      gridX: 2,
+      gridY: 1,
+      availability: 'FREE',
+    },
+    {
+      id: 12,
+      rowLabel: 'B',
+      positionNo: 1,
+      tier: 'STANDARD',
+      pool: 'ONLINE',
+      price: { minorUnits: 2000, currency: 'EUR' },
+      gridX: 1,
+      gridY: 2,
+      availability: 'FREE',
+    },
+    {
+      id: 13,
+      rowLabel: 'B',
+      positionNo: 2,
+      tier: 'STANDARD',
+      pool: 'ONLINE',
+      price: { minorUnits: 2000, currency: 'EUR' },
+      gridX: 2,
+      gridY: 2,
+      availability: 'TAKEN',
+    },
   ];
 }
 
@@ -100,15 +140,40 @@ async function mockConsole(page: Page): Promise<{ sets: () => MockSet[] }> {
 
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
     route.request().method() === 'GET'
-      ? route.fulfill({ json: { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil', region: 'Albanian Riviera', description: '', ratingTenths: 48, reviewsCount: 12, bookingMode: 'INSTANT', fromPrice: null, sets, setVersion: 0 } })
+      ? route.fulfill({
+          json: {
+            id: 1,
+            name: 'Miramar Beach Club',
+            beach: 'Ksamil',
+            region: 'Albanian Riviera',
+            description: '',
+            ratingTenths: 48,
+            reviewsCount: 12,
+            bookingMode: 'INSTANT',
+            fromPrice: null,
+            sets,
+            setVersion: 0,
+          },
+        })
       : route.fallback(),
   );
-  await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
-    route.fulfill({ json: { gross: { minorUnits: 0, currency: 'EUR' }, net: { minorUnits: 0, currency: 'EUR' }, commissionBps: 1500, date: '2026-07-08' } }),
+    route.fulfill({
+      json: {
+        gross: { minorUnits: 0, currency: 'EUR' },
+        net: { minorUnits: 0, currency: 'EUR' },
+        commissionBps: 1500,
+        date: '2026-07-08',
+      },
+    }),
   );
-  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
 
   return { sets: () => sets };
 }

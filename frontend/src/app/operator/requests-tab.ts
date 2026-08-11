@@ -94,7 +94,6 @@ export class RequestsTab {
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
-
   constructor() {
     // Re-runs on an in-place venue switch: reset to the fresh-mount state, then load.
     effect(() => {

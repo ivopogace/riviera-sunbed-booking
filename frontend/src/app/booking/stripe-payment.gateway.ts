@@ -97,7 +97,8 @@ export class FakeStripePaymentGateway extends StripePaymentGateway {
     host.appendChild(input);
     return {
       confirm: async () =>
-        (window as unknown as { __RIVIERA_FAKE_STRIPE_FAIL__?: boolean }).__RIVIERA_FAKE_STRIPE_FAIL__
+        (window as unknown as { __RIVIERA_FAKE_STRIPE_FAIL__?: boolean })
+          .__RIVIERA_FAKE_STRIPE_FAIL__
           ? { error: 'This PaymentIntent has been canceled.' }
           : {},
     };

@@ -113,7 +113,9 @@ import { VenueCreateCard } from './venue-create-card';
           >
         </div>
       } @else {
-        <output class="text-center text-[15px] text-(--riv-card-ink-soft)" data-testid="operator-home-loading"
+        <output
+          class="text-center text-[15px] text-(--riv-card-ink-soft)"
+          data-testid="operator-home-loading"
           >Opening your console…</output
         >
       }

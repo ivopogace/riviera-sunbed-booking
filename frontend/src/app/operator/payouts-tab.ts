@@ -133,7 +133,9 @@ export class PayoutsTab {
   protected readonly isEmpty = computed(() => this.entries().length === 0);
 
   /** The "Owed to you" figure — the SERVER's net owed, rendered as-is (invariant #9). */
-  protected readonly owedStr = computed(() => money(this.ledger()?.netOwedMinor ?? 0, this.currency()));
+  protected readonly owedStr = computed(() =>
+    money(this.ledger()?.netOwedMinor ?? 0, this.currency()),
+  );
 
   /** The ledger's ISO currency, for the statement header/footnote (EUR collection currency, invariant #5). */
   protected readonly statementCurrency = computed(() => this.currency());
@@ -155,10 +157,16 @@ export class PayoutsTab {
   /** Display-only period sums (signed: an accrual adds, a reversal subtracts) — presentation, not the
    *  authoritative owed (that stays {@link owedStr} = the server figure). */
   protected readonly grossTotalStr = computed(() =>
-    money(signedSum(this.entries(), (e) => e.grossMinor), this.currency()),
+    money(
+      signedSum(this.entries(), (e) => e.grossMinor),
+      this.currency(),
+    ),
   );
   protected readonly commissionTotalStr = computed(() =>
-    money(signedSum(this.entries(), (e) => e.commissionMinor), this.currency()),
+    money(
+      signedSum(this.entries(), (e) => e.commissionMinor),
+      this.currency(),
+    ),
   );
 
   /** The selected weather-refund date as a human label (e.g. `Sat 5 Jul 2026`) — for the confirm copy. */

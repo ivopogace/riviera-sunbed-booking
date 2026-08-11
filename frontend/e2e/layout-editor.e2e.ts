@@ -36,7 +36,10 @@ test.use({ colorScheme: 'dark' });
  * mismatch is 409 STALE_WRITE) and bumps it on success. `bump()` simulates a concurrent writer moving the
  * layout on behind the tab's back, so a subsequent stale save is genuinely rejected.
  */
-async function mockEditor(page: Page, lock = false): Promise<{ puts: Request[]; bump: () => void }> {
+async function mockEditor(
+  page: Page,
+  lock = false,
+): Promise<{ puts: Request[]; bump: () => void }> {
   const puts: Request[] = [];
   let sessionLive = false;
   let serverSetVersion = 0;
@@ -85,12 +88,23 @@ async function mockEditor(page: Page, lock = false): Promise<{ puts: Request[]; 
       ? route.fulfill({ json: { ...VENUE_MAP, setVersion: serverSetVersion } })
       : route.fallback(),
   );
-  await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
-    route.fulfill({ json: { gross: { minorUnits: 0, currency: 'EUR' }, net: { minorUnits: 0, currency: 'EUR' }, commissionBps: 1500, date: '2026-07-08' } }),
+    route.fulfill({
+      json: {
+        gross: { minorUnits: 0, currency: 'EUR' },
+        net: { minorUnits: 0, currency: 'EUR' },
+        commissionBps: 1500,
+        date: '2026-07-08',
+      },
+    }),
   );
-  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
   return { puts, bump };
 }
 
@@ -168,7 +182,10 @@ test('regenerating over a grid confirms first and moves focus with the confirmat
 
   // Computed styles, not the class list — the only way to see drift from the extraction.
   await expect(confirm).toHaveCSS('background-color', 'rgb(255, 244, 224)');
-  await expect(page.getByTestId('layout-confirm-yes')).toHaveCSS('background-color', 'rgb(10, 95, 116)');
+  await expect(page.getByTestId('layout-confirm-yes')).toHaveCSS(
+    'background-color',
+    'rgb(10, 95, 116)',
+  );
   await expect(page.getByTestId('layout-confirm-yes')).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(page.getByTestId('layout-confirm-yes')).toHaveCSS('min-height', '44px');
   await expect(page.getByTestId('layout-confirm-no')).toHaveCSS('min-height', '44px');
@@ -202,7 +219,9 @@ test('shows the layout-locked message when the venue has bookings (409 LAYOUT_IN
   await expect(page.getByTestId('layout-cell')).toHaveCount(1);
   await page.getByTestId('layout-save').click();
   await expect(page.getByTestId('layout-error')).toContainText(/locked/i);
-  await expect(page.getByTestId('layout-error')).toContainText(/bookings, or sets that are still held/i);
+  await expect(page.getByTestId('layout-error')).toContainText(
+    /bookings, or sets that are still held/i,
+  );
 });
 
 test('a stale-tab save is rejected 409, keeps the painted grid, and Reload recovers (#226, + axe)', async ({

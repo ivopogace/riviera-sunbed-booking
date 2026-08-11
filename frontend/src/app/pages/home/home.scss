@@ -104,7 +104,9 @@
   border-radius: 26px;
   padding: 20px 22px;
   margin: 34px 0 4px;
-  box-shadow: 0 14px 44px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 14px 44px rgba(7, 42, 58, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .field {
@@ -188,16 +190,23 @@
   backdrop-filter: blur(26px) saturate(170%);
   border-radius: 28px;
   overflow: hidden;
-  box-shadow: 0 12px 40px rgba(7, 42, 58, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 12px 40px rgba(7, 42, 58, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   text-decoration: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
 /* Hover lift only where hover is a real affordance (pointer devices) — avoids the sticky-hover artifact on touch. */
 @media (hover: hover) {
   .card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 26px 60px rgba(7, 42, 58, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    box-shadow:
+      0 26px 60px rgba(7, 42, 58, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
     border-color: rgba(255, 255, 255, 0.85);
   }
 }
@@ -236,7 +245,11 @@
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, rgba(255, 236, 180, 0.95), rgba(240, 170, 46, 0.5) 72%);
+  background: radial-gradient(
+    circle at 34% 30%,
+    rgba(255, 236, 180, 0.95),
+    rgba(240, 170, 46, 0.5) 72%
+  );
   filter: blur(0.5px);
   opacity: 0.85;
 }

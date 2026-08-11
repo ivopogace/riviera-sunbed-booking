@@ -20,7 +20,11 @@ const RESULTS: MailDeliveryLookupView = {
       bookingDate: '2026-08-01',
       everConfirmed: true,
       attempts: [
-        { source: 'AUTOMATIC', outcome: 'WITHHELD_SUPPRESSED', attemptedAt: '2026-07-29T14:02:11Z' },
+        {
+          source: 'AUTOMATIC',
+          outcome: 'WITHHELD_SUPPRESSED',
+          attemptedAt: '2026-07-29T14:02:11Z',
+        },
       ],
     },
     {
@@ -40,7 +44,9 @@ function serviceStub(lookup: MailDeliveryLookupView): Partial<AdminMailDeliveryS
   };
 }
 
-async function render(lookup: MailDeliveryLookupView): Promise<ComponentFixture<AdminMailDelivery>> {
+async function render(
+  lookup: MailDeliveryLookupView,
+): Promise<ComponentFixture<AdminMailDelivery>> {
   await TestBed.configureTestingModule({
     imports: [AdminMailDelivery],
     providers: [{ provide: AdminMailDeliveryService, useValue: serviceStub(lookup) }],
@@ -58,7 +64,9 @@ async function search(fixture: ComponentFixture<AdminMailDelivery>): Promise<voi
   input.dispatchEvent(new Event('input'));
   fixture.detectChanges();
   (
-    fixture.nativeElement.querySelector('[data-testid="admin-delivery-lookup"]') as HTMLButtonElement
+    fixture.nativeElement.querySelector(
+      '[data-testid="admin-delivery-lookup"]',
+    ) as HTMLButtonElement
   ).click();
   await fixture.whenStable();
   fixture.detectChanges();
