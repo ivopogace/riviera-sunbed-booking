@@ -189,11 +189,12 @@ commit: confirm #615 closed and the PR-activity subscription ended.
 
 | Gate | Result |
 |---|---|
-| CI (`ff1ad1c`) | all 8 checks **success** — and the two that matter here: `Frontend (lint + test + build)` ran `Format (diff-scoped Prettier, hard gate)` green, and `Repo hygiene (diff-scoped)`, which installs nothing, ran the new guard's suite green (AC-9) |
+| CI (`a66e0b0`, the head that merges) | all 8 checks **success** — and the two that matter here: `Frontend (lint + test + build)` ran `Format (diff-scoped Prettier, hard gate)` green, and `Repo hygiene (diff-scoped)`, which installs nothing, ran the new guard's suite green (AC-9) |
 | Review | **ran in full, twice** — ladder **rung 1** (`Skill("code-review")` was accepted), with `riviera-review-overlay` layered on; re-run over the fix diff per the re-entry rule. 15 + 12 findings; see the register. The second round is the one that earned its keep: it found that the central claim did not hold for Angular templates (G-1) |
-| Sonar (`ff1ad1c`) | Quality Gate **passed**, 0 new issues, 0 accepted issues, 0 security hotspots, 0.0 % duplication |
+| Sonar (`a66e0b0`) | Quality Gate **passed**. Read from the API rather than the badge (`references/pr-gates.md` §2): `api/issues/search` **total 0** with an empty array, and `api/measures/component` **populated** — `new_bugs` / `new_vulnerabilities` / `new_code_smells` all 0 — so this is an analysis that ran, not the unanalyzed false-clean |
 | CI (fix round) | `c4edfed` — all 8 checks **success**, Sonar Quality Gate passed again |
 | CI (round 2) | `42447f0` — **red, and rightly so**: the new gate fired on lines PR #617 wrote, which the stale `base.sha` had handed to this PR. That is G-13, and it is the only way this class of bug was ever going to surface — the guard catching a defect in its own wiring, on its own PR |
+| Overlay re-walk (phase 7) | G-13's fix touches `.github/workflows/ci.yml` only — a CI argument, no code. The overlay carries no CI bank item; RV-PROC-1 is unchanged (repo tooling, same routing rows). Re-walked rather than re-running the full fan-out, and recorded here rather than left implicit |
 
 > **What Sonar's green does and does not say here** (R-7, and #533's F-5 before it):
 > `sonar.sources=platform/src/main/java,frontend/src`, and this diff touches neither, so
@@ -480,12 +481,39 @@ this plan
 
 ---
 
+## Phase 7 — G-13, the stale CI diff base
+
+**Files:** Modify `.github/workflows/ci.yml` · this plan
+
+> A red CI run on this PR, and the most useful failure of the slice: the new gate reported five
+> misformatted regions that belonged to **PR #617**, which merged into `main` while this PR was
+> open. The lines were genuinely misformatted; the attribution was wrong, and the cause sat in the
+> wiring all three guards share.
+
+- [x] **Step 1: Reproduce** — fetch `refs/pull/618/merge`, the ref CI actually builds, and run the
+  guard against it with the stale `base.sha`: five findings, none of them this PR's.
+- [x] **Step 2: Diagnose** — the merge ref's parents are `7c1234a` (main's current tip) and this
+  PR's head. `merge-base(base.sha, merge-ref)` is the *stale* sha, so the diff spans everything main
+  gained since the PR opened.
+- [x] **Step 3: Fix** — each job fetches the base branch, and all three guards take
+  `origin/${{ github.event.pull_request.base.ref }}`: the merge ref's first parent, whose merge base
+  with the merge ref is itself, so the diff is exactly what this PR adds.
+- [x] **Step 4: Verify** — the same merge ref, same guards, new base: **zero** findings from all
+  three. Confirmed in CI by the `Repo hygiene (diff-scoped)` job going green on the fix.
+- [x] **Step 5: Generalization-audit pass** — the defect was reported against the Prettier gate and
+  belongs to all three invocations; recorded in the audit log.
+- [x] **Step 6: Commit** — `git commit -m "Diff the base branch's live tip, not the PR's opening sha (#615)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
+
+---
+
 ## Generalization-audit log
 
 > Append-only. One row per bug-fix / pattern-introducing phase.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-11 | Phase 7 — G-13 was reported against the Prettier gate | Whether the stale-`base.sha` wiring is this guard's mistake or all three guards' | Read the three `--diff` invocations in `ci.yml`, then re-ran each against the real `refs/pull/618/merge` with both bases | **All three.** Every invocation passed `github.event.pull_request.base.sha`, and both shipped guards resolve a merge base from it exactly as this one does, so each was one mid-flight merge away from judging someone else's lines. #533's guard would have flagged any path #617 changed that its own plan doc omitted | **Fixed all three**, in the one file they share. The `--diff` argument is the guards' only coupling to CI, so the fix is three lines plus a fetch step per job — and this is the second time in the slice (after F-3/F-4/F-9) that a finding reported against one guard was true of all three |
 | 2026-08-10 | Phase 6 — G-1's fix changed how every hunk is computed | Whether finer hunks change **which** commits the gate stops, or only **how much** each is asked to fix | Re-ran the 40-commit replay against the new detector and measured the lines `--fix` would rewrite, not just the hunk count | **The same 9 of 40 commits fire** — the gate's reach is unchanged, which is the point: a finding was never wrong, only wider than it needed to be. What changed is the ask: hunk counts rise (they are line-sized now) while the lines rewritten fall — `e350e43` 163 hunks / **306 lines** for a slice that added seven files of new template, `5f415a2` (PR #612 itself) 23 hunks / **29 lines** | **Kept.** Recorded here because the hunk count in the phase-2 audit row below now means something different, and a later reader comparing "40 hunks" with "163 hunks" would otherwise read a regression |
 | 2026-08-10 | Phase 5 — three review findings were each reported against one guard | Whether F-3 (C-quoted non-ASCII paths), F-4 (`diff.relative`) and F-9 (an added `++ ` line read as a `+++` header) are defects of the other two guards as well | Read all three guards' git front-ends side by side; reproduced each in a scratch repository against the real scripts | **All three are shared.** Every guard parses `+++` headers with the same code and, before this round, ran git in the caller's cwd. F-9 in particular predates this slice: it has been in `check-inline-comments.mjs` since #529 and in `check-plan-file-structure.mjs`'s sibling parse since #533 | **Fixed all, once.** The three fixes live in `scripts/git-diff.mjs` — which is what F-10's "extract the rest too" finding bought: `git()` pins `core.quotepath=false` and runs from `repoRoot()`, `diffArgs()` adds `--no-relative`, and `parseAddedLines` honours `+++` only between hunks. Had the helpers still been triplicated this would have been three edits and three chances to miss one |
 | 2026-08-10 | Phase 2 — the gate is about to bind every future frontend PR | How often the finished guard would have fired on work that already merged — R-1's evidence, measured rather than argued | Replayed the detector over the last **40** `main` commits (`git show <sha>:<path>` for each in-scope path with added lines, so history is judged as it stood) | **9 of 40** commits (22.5 %) would have failed: 5f415a2 (#612, the PR that raised the issue) 4 hunks, 7b2edca 1, e350e43 (#603, a large template slice) 40, b70171b 2, 5fce213 3, 03dcfe4 11, 9709fed 1, 3a77080 1, 8acf922 3 | **Accept and ship.** One frontend PR in four would need a `--fix` run, and every hunk it names is a line that PR itself wrote. The distribution is the reassuring part: seven of the nine are 1–4 hunks, and the two outliers are large slices that rewrote whole templates. The alternative measured for comparison — file-scoped — would have fired on essentially every one of the 40, since 200 of the tree's files are dirty |
@@ -499,11 +527,16 @@ this plan
 
 - [x] **AC-1…AC-8:** `node --test "scripts/*.test.mjs"` → **75 pass, 0 fail** (all three guards'
   suites; 17 of them this guard's, 5 the extracted helpers').
-- [x] **AC-9:** **green on PR #618's own run.** The frontend job's step list shows
-  `Format (diff-scoped Prettier, hard gate): success` — it ran, it did not skip — and
-  `Repo hygiene (diff-scoped)`, which has no install step, shows `Test the guards themselves:
-  success` over a glob that now includes two new suites. Both halves of the AC, from the two jobs
-  that had to prove them.
+- [x] **AC-9:** **red, then green, on PR #618's own runs** — the strongest evidence available, and
+  it arrived the hard way:
+  - `42447f0`: `Format (diff-scoped Prettier, hard gate)` **failure**, with `Lint` green beside it.
+    The gate bites, independently of its neighbour — and what it bit was real (G-13).
+  - `a66e0b0`: the frontend job's step list shows `Format (diff-scoped Prettier, hard gate):
+    success` — it ran, it did not skip — and `Repo hygiene (diff-scoped)`, which has no install
+    step, shows `Test the guards themselves: success` over a glob that now includes two new suites.
+
+  Both halves of the AC, from the two jobs that had to prove them. The close-out commit's own run is
+  not cited here because a commit cannot name the run it triggers.
 - [x] **AC-10:** `grep -c "RV-STYLE-2" .claude/skills/riviera-review-overlay/SKILL.md` → 1.
 
 > Proven end-to-end by hand ahead of CI, which is the strongest evidence available without a run:
