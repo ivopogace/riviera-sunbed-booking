@@ -46,8 +46,9 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   moving focus for one surface no longer excuses a second one the same component owns, which is how
   the payout statement modal's teardown shipped — so a reported line is the `set(false)` that strands
   focus, or the branch itself when the component moves focus nowhere at all. A signal is excused by
-  **one** compliant flip site, because a bulk state reset beside a compliant dismiss is not a bug; a
-  teardown written some other way (`update(…)`, a `linkedSignal`) is a deliberate miss. Both are
+  **one** compliant flip site, because a bulk state reset beside a compliant dismiss is not a bug —
+  so a *second* stranding flip added beside a good one goes unreported, as does a teardown written
+  some other way (`update(…)`, a `linkedSignal`). Both are deliberate misses. Both rules are
   **diff-scoped**, so the standing
   tree never fails the repo — and only **BUSY-1 fails a build**: FOCUS-1 prints and returns 0,
   because "does this teardown move focus" is a runtime property a regex can only approximate, and a

@@ -328,7 +328,9 @@ function busyViolations(path, lines, added, template) {
  * other surface the component owned (#624). It is narrower than that exemption and wider than the
  * flip-level rule #621 rejected, which demanded a leg at *every* flip site and so reported the bulk
  * state resets — a venue switch, a route change — where no move is wanted. **One compliant flip site
- * exempts the signal**; a signal nothing flips closed is not a teardown this component performs.
+ * exempts the signal**; a signal nothing flips closed is not a teardown this component performs. The
+ * cost is a second stranding flip added beside a compliant one: unreported, and the price of not
+ * reporting every bulk reset.
  *
  * <p>**Rendering `<app-confirm-panel>` is not an exemption.** Those components own the *open* leg
  * only — their own TSDoc says focus back out is the caller's — so a component that delegates and

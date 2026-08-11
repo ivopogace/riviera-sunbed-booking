@@ -103,6 +103,11 @@ frontend-tree file touched is `frontend/.claude/CLAUDE.md`, the convention prose
   by `trapFocusWithin` / `aria-modal` / `role="dialog"` in the file its selector's basename names; an
   unresolvable tag is not a modal. That is the safe error direction, and the same posture
   `BUSY_STEMS` takes.
+- **A second stranding flip beside a compliant one stays unreported.** One compliant flip site excuses
+  the signal, so adding a *new* teardown to a signal that already has a good one is silent — verified
+  against `payouts-tab`'s `statementOpen` through the hook. That is the direct price of not reporting
+  every bulk state reset, which is the rule #621 killed; the alternative trades this miss for the
+  false positive the guard cannot afford. Stated in the guard's TSDoc and in the conventions doc.
 - **No `--fix` mode**, unchanged from #621: where focus should land stays a judgement call.
 - **No new e2e or component specs.** No file under `frontend/src` changes, so there is no runtime
   behaviour to pin; the 14 shipped instances keep their existing specs.
