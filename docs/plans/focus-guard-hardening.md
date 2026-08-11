@@ -145,15 +145,15 @@ N/A — no contract change.
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session before acting.
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** phase 2 — inject `isFocusTrap` into the three impure tests, then the hygiene list.
+**Next action:** phase 3 — the AC-6 flags/spares tests red-first, then BUSY-2 + the doc twins.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 4857d27 |
-| 1 — #629 parser fixes 1–4 (declaresClass, one-line siblings, apostrophe, negated-floor dedup) | ✅ | (this commit) |
-| 2 — #629 hygiene (test purity AC-5, header count, advice wording + twin, ls-files dedupe, RegExp.escape, memberOf early-exit, lazy sibling reads) | | |
+| 1 — #629 parser fixes 1–4 (declaresClass, one-line siblings, apostrophe, negated-floor dedup) | ✅ | 4a2b337 |
+| 2 — #629 hygiene (test purity AC-5, header count, advice wording + twin, ls-files dedupe, RegExp.escape, memberOf early-exit, lazy sibling reads) | ✅ | (this commit) |
 | 3 — #628 BUSY-2 rule + doc twins + AC-7 sweep | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

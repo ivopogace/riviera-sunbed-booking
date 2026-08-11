@@ -61,7 +61,9 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   only and the back-out and settled legs are still yours. It is judged **per gating signal** (#624) —
   moving focus for one surface no longer excuses a second one the same component owns, which is how
   the payout statement modal's teardown shipped — so a reported line is the `set(false)` that strands
-  focus, or the branch itself when the component moves focus nowhere at all. A signal is excused by
+  focus, or the branch: both when the component moves focus nowhere at all, and in a file that holds
+  no flip of that signal (an external `.html` anchors on its branch whatever its component does
+  elsewhere). A signal is excused by
   **one** compliant flip site, because a bulk state reset beside a compliant dismiss is not a bug —
   so a *second* stranding flip added beside a good one goes unreported, as does a teardown written
   some other way (`update(…)`, a `linkedSignal`). Both are deliberate misses. Both rules are

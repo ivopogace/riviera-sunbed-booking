@@ -11,8 +11,9 @@
  *   component is not enough, since those own the open leg only. Judged per **gating signal** (#624):
  *   moving focus for one surface used to excuse every other surface the component owned.
  *
- * Only ever reasons about lines a diff **added**: ~12 legitimate `[disabled]` bindings and 8 standing
- * confirm surfaces must never fail the repo, and a guard that goes red on day one gets switched off
+ * Only ever reasons about lines a diff **added**: ~12 legitimate `[disabled]` bindings and 11
+ * standing surfaces — 8 confirm + 3 focus-trapped modals, the count #626's widened trigger judges —
+ * must never fail the repo, and a guard that goes red on day one gets switched off
  * (issue #529). `--all` sweeps the whole tree for an audit instead.
  *
  * BUSY-1 discriminates on a curated busy-flag vocabulary rather than on a state/validity allow-list,
@@ -126,9 +127,11 @@ function movesFocus(code) {
  * reports its own flips, and the `.html` reports the branch — neither reports the other's lines, and
  * nothing is reported twice.
  *
- * @param {{ path: string, lines: string[], added: Set<number>, componentSource?: string,
- *   templateSource?: string, isFocusTrap?: (tag: string) => boolean }} input the file's new content,
- *   the 1-based line numbers the diff added, the sibling's source for whichever half is missing, and
+ * @param {{ path: string, lines: string[], added: Set<number>,
+ *   componentSource?: string | (() => string), templateSource?: string | (() => string),
+ *   isFocusTrap?: (tag: string) => boolean }} input the file's new content,
+ *   the 1-based line numbers the diff added, the sibling's source for whichever half is missing
+ *   (a thunk defers the read until a verdict actually needs it), and
  *   the seam that answers whether a child component traps focus
  * @returns {{ path: string, line: number, rule: string, text: string }[]} one entry per violation
  */
@@ -144,9 +147,9 @@ export function findViolations({
 
   const html = path.endsWith('.html');
   const scanned = html ? htmlRegions(lines) : typescriptRegions(lines);
-  const code = html ? codeOf(componentSource ?? '') : scanned.code;
+  const code = html ? codeOf(sourceOf(componentSource)) : scanned.code;
   const inline = html || scanned.template.some((line) => line.trim() !== '');
-  const template = inline ? scanned.template : maskHtmlComments((templateSource ?? '').split('\n'));
+  const template = inline ? scanned.template : maskHtmlComments(sourceOf(templateSource).split('\n'));
   const violations = [
     ...busyViolations(path, lines, added, scanned.template),
     ...focusViolations({
@@ -166,6 +169,15 @@ export function findViolations({
 /** An `.html` file is all template but for its comments, and carries no TypeScript at all. */
 function htmlRegions(lines) {
   return { template: maskHtmlComments(lines), code: [] };
+}
+
+/**
+ * A sibling source may arrive as a thunk, so `checkOne` reads the disk only for the half a verdict
+ * actually needs — a `.ts` with an inline template asked for its `.html` sibling on every sweep,
+ * ~300 swallowed ENOENTs per `--all` (#629).
+ */
+function sourceOf(source) {
+  return (typeof source === 'function' ? source() : source) ?? '';
 }
 
 /** Strips a sibling component's comments and strings so `movesFocus` sees call sites only. */
@@ -504,7 +516,7 @@ function gatingSignal(condition) {
  * as `BUSY_STEMS` is for BUSY-1. Widen this rather than route around it.
  */
 function flipSites(code, signal) {
-  const flip = new RegExp(`(?<![\\w$])${escaped(signal)}\\s*\\.set\\(\\s*(?:false|undefined|null)\\s*\\)`);
+  const flip = new RegExp(`(?<![\\w$])${RegExp.escape(signal)}\\s*\\.set\\(\\s*(?:false|undefined|null)\\s*\\)`);
   const sites = [];
 
   for (let i = 0; i < code.length; i++) {
@@ -528,7 +540,7 @@ function moverNames(code) {
 function movesFocusIn(member, movers) {
   return (
     /\.focus\s*\(/.test(member) ||
-    movers.some((name) => new RegExp(`(?<![\\w$])${escaped(name)}\\s*\\(`).test(member))
+    movers.some((name) => new RegExp(`(?<![\\w$])${RegExp.escape(name)}\\s*\\(`).test(member))
   );
 }
 
@@ -538,21 +550,22 @@ function movesFocusIn(member, movers) {
  * Not the innermost block: a flip inside a `subscribe(…)` callback and the leg beside it belong to
  * the same handler, and `venue-map` writes its focus restore inside a `queueMicrotask`. Both ends
  * are column-precise, or a neighbour sharing the member's opening or closing line lends it a
- * `.focus()` it does not have.
+ * `.focus()` it does not have. The walk stops at the class-declaring brace — the outermost
+ * non-class block seen by then IS the member, so continuing to line 0 bought nothing (#629).
  */
 function memberOf(code, site) {
-  const enclosing = [];
+  let member;
   let depth = 0;
 
   for (let i = site.line; i >= 0; i--) {
     for (let c = (i === site.line ? site.column : code[i].length) - 1; c >= 0; c--) {
       if (code[i][c] === '}') depth++;
       else if (code[i][c] !== '{') continue;
-      else if (depth === 0) enclosing.push({ line: i, column: c });
-      else depth--;
+      else if (depth > 0) depth--;
+      else if (declaresClass(code, i)) return member === undefined ? '' : blockText(code, member);
+      else member = { line: i, column: c };
     }
   }
-  const member = enclosing.filter((open) => !declaresClass(code, open.line)).at(-1);
   return member === undefined ? '' : blockText(code, member);
 }
 
@@ -611,11 +624,6 @@ function closingBrace(lines, from) {
     }
   }
   return null;
-}
-
-/** `$` is legal in an identifier and special in a pattern. */
-function escaped(name) {
-  return name.replaceAll('$', '\\$');
 }
 
 /**
@@ -814,8 +822,17 @@ function trackedAmong(paths) {
  * diff-scoping exists to avoid.
  */
 export function sweep() {
-  const paths = changedPaths(git(['ls-files', '-z', 'frontend/src/app']));
-  return paths.flatMap((path) => checkOne(path, null));
+  return appPaths().flatMap((path) => checkOne(path, null));
+}
+
+/**
+ * One `git ls-files` per process: `sweep()` and the trap index used to run the identical command
+ * separately — two subprocesses per `--all`, in a guard a `PostToolUse` hook runs on every edit
+ * (#629). Built lazily, so the hook still forks nothing until something actually asks.
+ */
+let appPathsIndex;
+function appPaths() {
+  return (appPathsIndex ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app'])));
 }
 
 /** Checks one path; `added` of null lifts the diff scoping, which is what `sweep()` wants. */
@@ -828,8 +845,8 @@ function checkOne(path, added, read = readText) {
     path,
     lines,
     added: added ?? new Set(lines.map((_, i) => i + 1)),
-    componentSource: sibling(path, '.html', '.ts', read),
-    templateSource: sibling(path, '.ts', '.html', read),
+    componentSource: () => sibling(path, '.html', '.ts', read),
+    templateSource: () => sibling(path, '.ts', '.html', read),
   });
 }
 
@@ -861,7 +878,7 @@ function sibling(path, from, to, read) {
  * @param {(path: string) => string | null} [read] disk, injectable for the test suite
  * @param {() => string[]} [list] the candidate paths, likewise
  */
-export function focusTraps(read = readText, list = trackedComponents) {
+export function focusTraps(read = readText, list = appPaths) {
   const answers = new Map();
   let index;
 
@@ -873,10 +890,6 @@ export function focusTraps(read = readText, list = trackedComponents) {
     }
     return answers.get(tag);
   };
-}
-
-function trackedComponents() {
-  return changedPaths(git(['ls-files', '-z', 'frontend/src/app']));
 }
 
 function trapsFocus(source, read) {
@@ -900,11 +913,13 @@ const ADVICE = {
     'FOCUS-1: a transition that destroys the element focus sits on — a confirm prompt settling, a ' +
     'focus-trapped modal dismissed or torn down by a state reset — strands focus on <body> unless ' +
     'it is moved deliberately (WCAG 2.4.3). Give the surface all three legs — open, back-out and ' +
-    "settled — via shared/focus-after-render.ts's focusMover(). The line reported is either the " +
-    'branch, when the component moves focus nowhere at all, or the flip that closes the surface, ' +
-    'when that flip’s own handler does: judged per gating signal, so moving focus for one surface ' +
-    'no longer excuses another. Rendering <app-confirm-panel>/<app-confirm-with-reason> does NOT ' +
-    'clear this: they own the open leg only. See frontend/.claude/CLAUDE.md.',
+    "settled — via shared/focus-after-render.ts's focusMover(). The line reported is the branch " +
+    'when the component moves focus nowhere at all; otherwise it is the flip that closes the ' +
+    'surface while its own handler moves none — or the branch again in a file that holds no flip, ' +
+    "as an external template's .html does whatever its component holds elsewhere. Judged per " +
+    'gating signal, so moving focus for one surface no longer excuses another. Rendering ' +
+    '<app-confirm-panel>/<app-confirm-with-reason> does NOT clear this: they own the open leg ' +
+    'only. See frontend/.claude/CLAUDE.md.',
 };
 
 function report(violations) {

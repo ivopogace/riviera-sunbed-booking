@@ -120,7 +120,7 @@ test('judges only the controls appBusy can actually replace', () => {
     '<div [disabled]="busy()"></div>',
   ];
 
-  assert.deepEqual(scan(HTML, lines), []);
+  assert.deepEqual(scan(HTML, lines, { isFocusTrap: () => false }), []);
 });
 
 test('survives a less-than inside an interpolation', () => {
@@ -371,9 +371,13 @@ test('does not accept delegation as a substitute for the caller own legs', () =>
     '  <app-confirm-panel [prompt]="\'Regenerate?\'" (confirmed)="regen()" />',
     '}',
   ];
+  const seams = { componentSource: '', isFocusTrap: () => false };
 
-  assert.equal(scan(HTML, panel, { componentSource: '' }).length, 1);
-  assert.deepEqual(scan(HTML, panel, { componentSource: 'const m = focusMover();' }), []);
+  assert.equal(scan(HTML, panel, seams).length, 1);
+  assert.deepEqual(
+    scan(HTML, panel, { ...seams, componentSource: 'const m = focusMover();' }),
+    [],
+  );
 });
 
 /**
@@ -390,8 +394,9 @@ test('does not report the trigger half of a trigger and prompt pair', () => {
     '  <app-confirm-panel label="x" />',
     '}',
   ];
+  const seams = { componentSource: 'const m = focusMover();', isFocusTrap: () => false };
 
-  assert.deepEqual(scan(HTML, lines, { componentSource: 'const m = focusMover();' }), []);
+  assert.deepEqual(scan(HTML, lines, seams), []);
 });
 
 /**
