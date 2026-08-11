@@ -16,6 +16,7 @@ import { formatBookingDate } from '../shared/booking-date-label';
 import { trapFocusWithin } from '../shared/focus-trap';
 import { formatMoney } from '../shared/money';
 import { touristTierLabel } from '../shared/set-label';
+import { BusyAction } from '../shared/busy-action';
 import { BookingMode, SetView } from '../shared/venue-views';
 import {
   AwaitingPayment,
@@ -40,7 +41,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
  */
 @Component({
   selector: 'app-booking-dialog',
-  imports: [FormField],
+  imports: [FormField, BusyAction],
   host: {
     class: 'booking-backdrop',
     '(click)': 'requestClose()',
@@ -169,7 +170,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
             type="submit"
             class="btn-primary"
             data-testid="dialog-primary"
-            [disabled]="submitting()"
+            [appBusy]="submitting()"
           >
             {{ submitting() ? busyLabel() : primaryLabel() }}
           </button>

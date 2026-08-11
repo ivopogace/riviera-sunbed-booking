@@ -16,6 +16,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { PanelGlass } from '../shared/panel-glass';
+import { BusyAction } from '../shared/busy-action';
 import { WithheldEmailNotice } from './withheld-email-notice';
 import { BookingService } from './booking.service';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
@@ -49,7 +50,7 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
  */
 @Component({
   selector: 'app-booking-pay',
-  imports: [RouterLink, CardGlass, PanelGlass, WithheldEmailNotice],
+  imports: [RouterLink, CardGlass, PanelGlass, WithheldEmailNotice, BusyAction],
   template: `
     <!-- One persistent live region announces every state change. A live region only announces
          content that MUTATES after it is in the DOM — a region re-created together with the
@@ -180,7 +181,7 @@ type PayState = 'mounting' | 'ready' | 'processing' | 'confirmed' | 'awaiting' |
                 type="button"
                 class="btn-primary"
                 (click)="pay()"
-                [disabled]="paying()"
+                [appBusy]="paying()"
                 data-testid="pay-button"
               >
                 {{ paying() ? 'Processing…' : payLabel() }}

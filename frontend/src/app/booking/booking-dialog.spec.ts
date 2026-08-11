@@ -190,6 +190,23 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     expect(host().querySelector('[data-testid="step-1"]')?.getAttribute('aria-current')).toBe('step');
   });
 
+  /**
+   * The busy posture is `aria-disabled`, which does not stop a form being submitted with Enter from
+   * a text field the way a disabled submit button did. Only the handler's own guard does, and this
+   * is the money path: a second POST here is a second booking.
+   */
+  it('posts one booking when the guest submits twice before the first settles', async () => {
+    await goToReview();
+
+    submitForm();
+    await fixture.whenStable();
+    submitForm();
+    await fixture.whenStable();
+
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`).flush(CONFIRMATION);
+    await fixture.whenStable();
+  });
+
   it('posts the booking with the seeded date and emits booked on a 201 CONFIRMED', async () => {
     await goToReview();
     let emitted: BookingConfirmation | undefined;
