@@ -55,21 +55,21 @@ describe('AdminAudit a11y', () => {
   it('has no axe violations with recorded actions (AC-5)', async () => {
     const fixture = await render(ENTRIES);
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   it('has no axe violations with an empty trail (AC-5)', async () => {
     const fixture = await render([]);
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   it('labels the table by the card heading, with real column headers (AC-5)', async () => {
     const fixture = await render(ENTRIES);
 
-    const table: HTMLTableElement = fixture.nativeElement.querySelector(
+    const table: HTMLTableElement = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="admin-audit-table"]',
-    );
+    )!;
     expect(table.getAttribute('aria-labelledby')).toBe('admin-audit-heading');
     const headers = Array.from(table.querySelectorAll('th')).map((th) => th.textContent?.trim());
     expect(headers).toEqual(['When', 'Who', 'Action', 'Result', 'Reason']);

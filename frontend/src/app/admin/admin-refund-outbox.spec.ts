@@ -60,16 +60,20 @@ async function render(
 
 function text(fixture: ComponentFixture<AdminRefundOutbox>, testId: string): string {
   return (
-    fixture.nativeElement.querySelector(`[data-testid="${testId}"]`)?.textContent?.trim() ?? ''
+    (fixture.nativeElement as HTMLElement)
+      .querySelector(`[data-testid="${testId}"]`)
+      ?.textContent?.trim() ?? ''
   );
 }
 
 function has(fixture: ComponentFixture<AdminRefundOutbox>, testId: string): boolean {
-  return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) !== null;
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testId}"]`) !== null;
 }
 
 async function press(fixture: ComponentFixture<AdminRefundOutbox>): Promise<void> {
-  fixture.nativeElement.querySelector('[data-testid="admin-refunds-resubmit"]').click();
+  (fixture.nativeElement as HTMLElement)
+    .querySelector<HTMLElement>('[data-testid="admin-refunds-resubmit"]')!
+    .click();
   // resubmit() -> describe() -> reconcile() -> status(): three awaits before the notice settles.
   await fixture.whenStable();
   await fixture.whenStable();

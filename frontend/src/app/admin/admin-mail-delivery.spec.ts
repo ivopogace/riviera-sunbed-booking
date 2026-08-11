@@ -49,7 +49,7 @@ async function render(
 }
 
 function testId(fixture: ComponentFixture<AdminMailDelivery>, id: string): HTMLElement | null {
-  return fixture.nativeElement.querySelector(`[data-testid="${id}"]`);
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
 }
 
 async function lookUp(fixture: ComponentFixture<AdminMailDelivery>, email = EMAIL): Promise<void> {
@@ -70,7 +70,7 @@ describe('AdminMailDelivery', () => {
     await lookUp(fixture);
 
     expect(service.lookup).toHaveBeenCalledWith(EMAIL);
-    const attempts = fixture.nativeElement.querySelectorAll(
+    const attempts = (fixture.nativeElement as HTMLElement).querySelectorAll(
       '[data-testid="admin-delivery-attempts"] li',
     );
     expect(attempts).toHaveLength(2);
@@ -84,7 +84,7 @@ describe('AdminMailDelivery', () => {
 
     await lookUp(fixture);
 
-    const attempts = fixture.nativeElement.querySelector(
+    const attempts = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="admin-delivery-attempts"]',
     ) as HTMLElement;
     expect(attempts.textContent).toContain('withheld');
@@ -237,7 +237,9 @@ describe('AdminMailDelivery', () => {
 
     await lookUp(fixture);
 
-    expect(fixture.nativeElement.textContent).not.toContain('ABCD2345');
-    expect(fixture.nativeElement.querySelector('[data-testid*="code"]')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('ABCD2345');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid*="code"]'),
+    ).toBeNull();
   });
 });

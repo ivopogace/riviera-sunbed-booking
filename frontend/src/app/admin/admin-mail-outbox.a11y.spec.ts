@@ -62,13 +62,13 @@ describe('AdminMailOutbox a11y', () => {
   it('has no axe violations with mail outstanding (AC-10)', async () => {
     const fixture = await render({ outstanding: 3, cooldownRemainingSeconds: 0 });
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   it('has no axe violations with an empty outbox (AC-10)', async () => {
     const fixture = await render({ outstanding: 0, cooldownRemainingSeconds: 0 });
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   /**
@@ -78,9 +78,9 @@ describe('AdminMailOutbox a11y', () => {
   it('announces the outcome through a polite live region', async () => {
     const fixture = await render({ outstanding: 1, cooldownRemainingSeconds: 0 });
 
-    const notice: HTMLElement = fixture.nativeElement.querySelector(
+    const notice: HTMLElement = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="admin-outbox-notice"]',
-    );
+    )!;
     expect(notice.getAttribute('role')).toBe('status');
     expect(notice.getAttribute('aria-live')).toBe('polite');
   });

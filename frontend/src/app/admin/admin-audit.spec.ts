@@ -79,7 +79,7 @@ function byTestId<T extends HTMLElement>(
   fixture: ComponentFixture<AdminAudit>,
   id: string,
 ): T | null {
-  return fixture.nativeElement.querySelector(`[data-testid="${id}"]`);
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
 }
 
 describe('AdminAudit', () => {
@@ -167,7 +167,9 @@ describe('AdminAudit', () => {
     const fixture = await render(authStub({ signedIn: false, isAdmin: false }), service);
 
     expect(byTestId(fixture, 'admin-audit-signed-out')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('app-admin-console-tabs')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('app-admin-console-tabs'),
+    ).toBeNull();
     expect(service.latest).not.toHaveBeenCalled();
   });
 

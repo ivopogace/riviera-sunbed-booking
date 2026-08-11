@@ -88,7 +88,7 @@ function byTestId<T extends HTMLElement>(
   fixture: ComponentFixture<AdminCommissions>,
   id: string,
 ): T | null {
-  return fixture.nativeElement.querySelector(`[data-testid="${id}"]`);
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
 }
 
 function text(fixture: ComponentFixture<AdminCommissions>, id: string): string {
@@ -394,7 +394,9 @@ describe('AdminCommissions', () => {
     expect(byTestId(fixture, 'admin-commissions-forbidden')).not.toBeNull();
     expect(byTestId(fixture, 'admin-commission-row-7')).toBeNull();
     // A signed-out visitor is never told which admin surfaces exist.
-    expect(fixture.nativeElement.querySelector('app-admin-console-tabs')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('app-admin-console-tabs'),
+    ).toBeNull();
     expect(service.venues).not.toHaveBeenCalled();
   });
 

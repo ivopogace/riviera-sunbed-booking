@@ -125,8 +125,8 @@ before trusting it if `main` has moved.**
 
 ## Non-goals
 
-- **Enabling TypeScript `strict`** — discovered off during the spike (see R-3). Explicitly out of
-  scope by decision; recorded as a risk, no follow-up issue filed (user's call, 2026-08-11).
+- ~~**Enabling TypeScript `strict`**~~ — moot: it is already on, via TypeScript 6.0's default.
+  See the correction under *Open questions* (R-3 withdrawn).
 - **Bumping `typescript-eslint` or `eslint`** — 8.64.0 already ships every preset and option this
   plan uses, so no version is changed. `package.json` gains exactly one line (`@types/node` as a
   declared devDependency, phase 0 — see Resolved), and the lockfile one; no bump, minimal overlap
@@ -160,13 +160,73 @@ before trusting it if `main` has moved.**
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Lint runtime 2.3× (8.7s → 20.3s) pushes the CI frontend job past its observed-green budget | high | low | Measured: +11.6s absolute on a job that also runs Vitest, a prod build and Playwright — noise-level. Re-check the job duration on the first green CI run and record it here | Ivo | open |
-| R-2 | **`no-unnecessary-type-assertion`'s 42 verdicts are computed under a non-strict compiler.** With `strictNullChecks` off, `x as T` where `x: T \| null` reads as unnecessary and the fixer **deletes** it — removing null-safety that a future strict migration would need | med | **med** | Do **not** blind-`--fix` this rule. Phase 1 applies the fixer for `non-nullable-type-assertion-style` + `prefer-*` only; the 42 `no-unnecessary-type-assertion` sites are reviewed by hand in phase 1b, and any assertion that is only "unnecessary" because strict is off is **kept** by rewriting to `!` rather than deleted | Ivo | open |
-| R-3 | **TypeScript `strict` is off** — `strict`, `strictNullChecks`, `noImplicitAny` all unset in `frontend/tsconfig.json` (confirmed via `tsc --showConfig`). This contradicts `frontend/.claude/CLAUDE.md`'s "Use strict type checking", and is the root cause of the unsafe-`any` volume | certain | med | **Accepted, not fixed** — out of scope by explicit decision (2026-08-11). Recorded here so the next session finds it rather than rediscovering it. Enabling strict later would *reduce* the unsafe-`any` surface, not grow it | Ivo | accepted — noted, no issue filed |
+| R-2 | **The assertion-rewriting rules' verdicts are computed under a non-strict compiler *and* against `any`-typed DOM roots, so their fixers destroy real type information.** Confirmed empirically — see the phase-ordering note below | **certain** | **high** | Fix the *root typing* before running any fixer, so every assertion verdict is computed against real types. Phase 1 (accessor idiom) now precedes phase 2 (auto-fix); `no-unnecessary-type-assertion` is still hand-reviewed (phase 3) | Ivo | **mitigated by reordering — see below** |
+| R-3 | ~~TypeScript `strict` is off~~ — **withdrawn, the premise was wrong.** See the correction below | — | — | No action needed; `frontend/.claude/CLAUDE.md`'s "Use strict type checking" is in fact satisfied | Ivo | **closed — not a risk** |
 | R-4 | Dependabot PRs **#337** (typescript-eslint 8.64→8.66) and **#335** (eslint 10.7→10.8) touch `frontend/package.json` + lockfile | med | low | Reduced but not eliminated in phase 0: this slice now adds one `devDependencies` line (`@types/node`) and one lockfile line, in a different part of the file from either bump. Whoever merges second takes a trivial merge-from-main; no version is contested | Ivo | open |
 | R-5 | A new `frontend/e2e/tsconfig.json` changes how Playwright's own transpiler resolves the suite | low | med | Playwright reads tsconfig for `paths` mapping; this file declares none and only sets `include`/`outDir`/`types: []`. AC-7 (the mocked suite must still pass) is the proof, and it runs in CI on every push | Ivo | open |
 | R-6 | ~400 mechanical edits across ~110 files silently change test semantics (e.g. an `await` added to a mock that changes timing, a removed assertion that was load-bearing) | med | high | Every phase ends with the **full Vitest suite**, not a scoped run — this slice's blast radius *is* the suite. AC-6 pins "no change in test count". The e2e legs are pinned by AC-7 | Ivo | open |
 | R-7 | The `require-await` fixes (74) tempt a mechanical `async` removal that breaks an interface contract — e.g. `FakeStripePaymentGateway.mountPaymentElement` **overrides** an abstract `Promise`-returning method | med | med | Fix by returning `Promise.resolve(…)` / keeping the declared return type, **never** by narrowing an override's signature. `npm run build` (prod build, AC-6's neighbour) catches a broken override | Ivo | open |
 | R-8 | Landing ~110 changed files beside an in-flight feature branch causes painful conflicts (the issue's own timing caution, inherited from #631) | low | med | Working tree was clean at branch time and the only open PRs are dependabot bumps (verified 2026-08-11). Land promptly rather than letting the branch age | Ivo | open |
+
+### Correction: TypeScript `strict` is ON, not off (R-3 withdrawn)
+
+The spike concluded `strict` was off, from `tsc --showConfig` reporting `strict`,
+`strictNullChecks` and `noImplicitAny` as `undefined`. **That reading was wrong, and it was wrong
+in a way worth writing down: `--showConfig` echoes only *explicitly set* options, never effective
+defaults.** The repo pins `typescript: ~6.0.2`, and **TypeScript 6.0 turns `strict` on by
+default** — a probe compiled with `--ignoreConfig` and no tsconfig at all errors on both
+`const s: string = null` (TS2322) and a possibly-undefined access (TS18048).
+
+Proof from this branch rather than from the flag: phase 1 produced **20 genuine strict-mode
+errors** (`Type 'HTMLElement | null' is not assignable to type 'HTMLElement'`, `Object is possibly
+'null'`) the moment the DOM root stopped being `any`. A non-strict compiler could not have emitted
+one of them.
+
+Consequences: **R-3 is closed as not-a-risk** — `frontend/.claude/CLAUDE.md`'s "use strict type
+checking" is satisfied. The unsafe-`any` volume has a single cause, `ComponentFixture.nativeElement:
+any`, and nothing to do with compiler strictness. **R-2's stated premise is likewise corrected**
+below: its danger is real but comes from the `any` root, not from a lax compiler. The phase-0
+commit message and the original PR body both assert "strict is off"; both are superseded by this
+section.
+
+### Phase-ordering correction (discovered while executing the original phase 1)
+
+The plan originally ran the auto-fix sweep first and the spec typing fix fourth. **That order was
+wrong, and running it proved it.** Recorded here rather than silently re-ordered, because the
+reasoning generalizes to any type-aware lint adoption.
+
+Applying `eslint --fix` to `non-nullable-type-assertion-style` on the *untyped* tree took the count
+from 409 to 394 — but the composition moved the wrong way: `non-nullable-type-assertion-style` -74,
+`no-unsafe-call` **+62**, and one brand-new `no-non-null-asserted-optional-chain`. Two distinct
+failures:
+
+1. **It destroyed type information.** `fixture.nativeElement.querySelector(…) as HTMLButtonElement`
+   became `…!`. The rule fired only because `nativeElement` is `any`, which makes the assertion
+   look like pure null-removal; it is actually a **downcast** carrying the author's intent. Once
+   the root is typed (phase 1), `querySelector` returns `Element | null`, and `Element` has no
+   `.click()`, `.value` or `.disabled` — so the "fix" would have broken those specs at the next
+   typing improvement, with no lint signal pointing back at the cause.
+2. **It created a violation the same preset flags.** `field?.querySelector('input, select')!`
+   trips `no-non-null-asserted-optional-chain` — *"Optional chain expressions can return undefined
+   by design — using a non-null assertion is unsafe and wrong."*
+
+Generalized rule, now the plan's spine: **fix the root typing first; run fixers only against real
+types.** R-2 anticipated this for one rule (`no-unnecessary-type-assertion`); the empirical result
+is that it applies at least as strongly to `non-nullable-type-assertion-style`, whose fixer is the
+one that runs by default.
+
+### Design correction: no new helper file
+
+The plan proposed a new `src/testing/fixture-dom.ts` accessor. Measuring the call sites first
+retired that idea: the tree **already has a house idiom** — `fixture.nativeElement as HTMLElement`,
+used at **164** sites (97 `const host =`, 38 `host =`, 29 `return`). The ~186 unsafe-`any` findings
+come from roughly **66** lines that simply skip it (`fixture.nativeElement.querySelector(…)` ×45,
+`expectNoAxeViolations(fixture.nativeElement)` ×15, `.textContent` ×3, `.querySelectorAll` ×3).
+
+So the fix is to make the stragglers adopt the existing idiom, not to introduce a second one. A new
+helper would either leave **two** competing idioms (helper at ~66 sites, `as HTMLElement` at 164)
+or force a 230-site refactor that #632 did not ask for. `FE-1` is dropped from the surfaces table
+and `src/testing/fixture-dom.ts` from the File-structure section.
 
 ## Open questions / Assumptions
 
@@ -235,7 +295,7 @@ contract.
 
 | # | Surface | Existing/new | Type | State/reactivity | Forms |
 |---|---|---|---|---|---|
-| FE-1 | `src/testing/fixture-dom.ts` | **new** | test helper (not a component) | none — pure accessor | none |
+| FE-1 | ~~`src/testing/fixture-dom.ts`~~ | **dropped** | — | — | see *Design correction* above |
 | FE-2 | `src/app/booking/booking-dialog.ts` | existing | standalone component | unchanged | Signal Forms — `void submit(…)` |
 | FE-3 | `src/app/operator/venue-create-card.ts` | existing | standalone component | unchanged | Signal Forms — `void submit(…)` |
 | FE-4 | `src/app/operator/venue-tab.ts` | existing | standalone component | unchanged | Signal Forms — `void submit(…)` |
@@ -261,22 +321,22 @@ machine-checked one, which is #632's third stated motivation.)
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phase 0 done (gate is RED at 409, by design); phase 1 next`
+**Stage pointer:** `implement — phases 0-1 done (gate RED at 259, down from 409); phase 2 next`
 
-**Next action:** Phase 1 — apply `eslint --fix` for the **safe** rules only
-(`non-nullable-type-assertion-style`, `prefer-includes`, `prefer-string-starts-ends-with`),
-explicitly **not** `no-unnecessary-type-assertion` (R-2). Then `npm run format`, then `npm test`.
+**Next action:** Phase 2 — now that the DOM root is typed, re-run the auto-fixer for the safe rules
+(`non-nullable-type-assertion-style`, `prefer-*`), whose verdicts are finally computed against real
+types. Still **not** `no-unnecessary-type-assertion` (phase 3 reviews those by hand).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Flip the gate (RED at 409) | ✅ | `<sha>` |
-| 1 — Safe auto-fix sweep (~78) | | |
-| 1b — `no-unnecessary-type-assertion` by hand (42) | | |
-| 2 — Production source (9, incl. B-1..B-3) | | |
-| 3 — e2e (11, incl. B-4/B-5) | | |
-| 4 — Spec unsafe-`any` family via typed accessor (~186) | | |
-| 5 — Spec `require-await` + `unbound-method` + `no-misused-promises` (87) | | |
-| 6 — Green: AC red-checks, docs, close-out | | |
+| 0 — Flip the gate (RED at 409) | ✅ | `e05e1c4c` |
+| 1 — Spec unsafe-`any`: adopt the `as HTMLElement` idiom (409 → 259) | ✅ | `<sha>` |
+| 2 — Auto-fix sweep, now against real types | | |
+| 3 — `no-unnecessary-type-assertion` by hand (42) | | |
+| 4 — Production source (9, incl. B-1..B-3) | | |
+| 5 — e2e (11, incl. B-4/B-5) | | |
+| 6 — Spec `require-await` + `unbound-method` + `no-misused-promises` (87) | | |
+| 7 — Green: AC red-checks, docs, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -297,9 +357,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
   type-aware rules reach them. `types: ["node"]` — three photo specs use `Buffer.from` (phase 0).
 - `frontend/package.json` — one line: `@types/node` promoted from transitive to declared.
 - `frontend/package-lock.json` — the corresponding one-line entry.
-- `frontend/src/testing/fixture-dom.ts` — **new**; the typed `ComponentFixture` DOM accessor that
-  removes the ~186 unsafe-`any` findings at their source.
-- `frontend/src/app/**/*.spec.ts` — ~94 spec files: adopt the accessor, fix `require-await`,
+- `frontend/src/app/**/*.spec.ts` — ~94 spec files: adopt the `as HTMLElement` idiom, fix `require-await`,
   `unbound-method`, `no-misused-promises`, and the mechanical assertion nits.
 - `frontend/src/app/booking/booking-dialog.ts` — B-1, `void submit(…)`.
 - `frontend/src/app/operator/venue-create-card.ts` — B-2, `void submit(…)`.

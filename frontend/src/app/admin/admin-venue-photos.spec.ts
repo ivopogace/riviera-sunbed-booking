@@ -101,7 +101,7 @@ function byTestId<T extends HTMLElement>(
   fixture: ComponentFixture<AdminVenuePhotos>,
   id: string,
 ): T | null {
-  return fixture.nativeElement.querySelector(`[data-testid="${id}"]`);
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
 }
 
 /** Pick a venue in the native <select> and let the slots load. */
@@ -397,7 +397,9 @@ describe('AdminVenuePhotos', () => {
     expect(byTestId(fixture, 'admin-photos-forbidden')).not.toBeNull();
     expect(byTestId(fixture, 'admin-photos-venue')).toBeNull();
     // A signed-out visitor is never told which admin surfaces exist.
-    expect(fixture.nativeElement.querySelector('app-admin-console-tabs')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('app-admin-console-tabs'),
+    ).toBeNull();
     expect(service.venues).not.toHaveBeenCalled();
   });
 

@@ -13,7 +13,9 @@ describe('FieldGlass', () => {
   function host(): HTMLElement {
     const fixture = TestBed.configureTestingModule({ imports: [Host] }).createComponent(Host);
     fixture.detectChanges();
-    return fixture.nativeElement.querySelector('[data-testid="host"]') as HTMLElement;
+    return (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="host"]',
+    ) as HTMLElement;
   }
 
   it('applies the field-glass surface utilities to the host', () => {

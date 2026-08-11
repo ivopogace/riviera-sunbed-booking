@@ -46,7 +46,7 @@ describe('SegmentedControl', () => {
   });
 
   function group(): HTMLElement {
-    return fixture.nativeElement.querySelector('[role="radiogroup"]')!;
+    return (fixture.nativeElement as HTMLElement).querySelector('[role="radiogroup"]')!;
   }
 
   function options(): HTMLElement[] {
@@ -118,12 +118,16 @@ describe('SegmentedControl', () => {
 
   it('shows each option description only in the card variant', async () => {
     // The pill variant is the compact audience tab strip — label only.
-    expect(fixture.nativeElement.textContent).not.toContain('Find beaches and reserve your spot.');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+      'Find beaches and reserve your spot.',
+    );
 
     host.variant.set('card');
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.textContent).toContain('Find beaches and reserve your spot.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Find beaches and reserve your spot.',
+    );
     // The selected-state glyph is decorative — aria-checked already carries the state.
     expect(group().querySelector('[data-riv-check]')?.getAttribute('aria-hidden')).toBe('true');
   });

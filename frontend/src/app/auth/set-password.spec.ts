@@ -227,7 +227,9 @@ describe('SetPassword', () => {
     expect(auth.eraseAccount).toHaveBeenCalledOnce();
     expect(text(fixture, 'erase-done')).toContain('have been erased');
     // The account form is gone once erased.
-    expect(fixture.nativeElement.querySelector('[data-testid="setpw-email"]')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="setpw-email"]'),
+    ).toBeNull();
   });
 
   it('can cancel the erase confirmation without erasing', async () => {
@@ -238,7 +240,9 @@ describe('SetPassword', () => {
     click(fixture, 'erase-cancel');
 
     expect(auth.eraseAccount).not.toHaveBeenCalled();
-    expect(fixture.nativeElement.querySelector('[data-testid="erase-account"]')).not.toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="erase-account"]'),
+    ).not.toBeNull();
   });
 
   it('surfaces an error and stays signed in when erasure fails', async () => {
@@ -251,7 +255,9 @@ describe('SetPassword', () => {
     fixture.detectChanges();
 
     expect(text(fixture, 'erase-error')).toContain('Something went wrong');
-    expect(fixture.nativeElement.querySelector('[data-testid="erase-done"]')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="erase-done"]'),
+    ).toBeNull();
   });
 
   it('focuses the first field when the page mounts', async () => {
