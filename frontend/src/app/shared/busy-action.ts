@@ -15,7 +15,9 @@ import { Directive, ElementRef, inject, input } from '@angular/core';
  * clicks and Enter/Space on the control itself, which a button reports as a click — it does not
  * cover submitting a form with Enter from a text field, which never reaches the button.** A busy
  * submit button therefore still needs the re-entrancy guard in its own submit handler; this
- * directive narrows that duty rather than retiring it.
+ * directive narrows that duty rather than retiring it. The listener is a native capture-phase one
+ * rather than a host binding because Angular coalesces same-element listeners into a single native
+ * listener and walks its own chain, which `stopImmediatePropagation()` cannot break.
  *
  * <p>Deliberately carries **no styling**: the dim values in use genuinely differ across the app
  * (`opacity-50`/`-60`/`-65`), so each consumer keeps its own utility with the `aria-disabled:`
@@ -30,8 +32,6 @@ export class BusyAction {
 
   constructor() {
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-    // Native, not a host binding: Angular coalesces same-element listeners into one native
-    // listener and walks its own chain, which stopImmediatePropagation cannot break.
     host.addEventListener('click', (event) => this.blockWhileBusy(event), { capture: true });
   }
 
