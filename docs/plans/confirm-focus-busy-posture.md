@@ -73,7 +73,7 @@ literal `bugfix/<slug>` name applies; no cloud-branch substitution.)
 - [x] **AC-3:** Given the erase confirmation open, when the erasure succeeds, then the whole account
   panel is replaced by the terminal erased state and focus lands on it. *Pinned by:*
   `set-password.spec.ts` › `parks focus on the erased notice when the erasure completes`
-- [ ] **AC-4:** Given the erase confirmation open, when the erasure **fails**, then focus is still
+- [x] **AC-4:** Given the erase confirmation open, when the erasure **fails**, then focus is still
   on the confirm button it started on — never `<body>` — for the whole in-flight window and after
   the failure. *Pinned by:* `e2e/erasure.e2e.ts` › `a failed erasure never strands focus while the request is in flight`
   (Chromium only — R-1.)
@@ -103,16 +103,16 @@ literal `bugfix/<slug>` name applies; no cloud-branch substitution.)
 
 ### The busy posture (issue item 4)
 
-- [ ] **AC-11:** Given a control the customer has just activated, when its in-flight flag goes true,
+- [x] **AC-11:** Given a control the customer has just activated, when its in-flight flag goes true,
   then the control is announced as disabled (`aria-disabled="true"`) and **keeps focus** for the
   whole request. *Pinned by:* `busy-action.spec.ts` › `marks the control disabled to assistive tech without taking it out of the document`
   **and**, for the real unfocus-on-disable behaviour jsdom cannot show, `e2e/erasure.e2e.ts` ›
   `a failed erasure never strands focus while the request is in flight` (AC-4's twin — same test, both claims).
-- [ ] **AC-12:** Given a busy control, when it is activated again, then no second write is issued —
+- [x] **AC-12:** Given a busy control, when it is activated again, then no second write is issued —
   the re-entrancy guard, not the `disabled` attribute, is what makes it inert. *Pinned by:*
   `set-password.spec.ts` › `issues no second erase while one is in flight` and the sweep's
   per-surface guard specs listed in Phase 5.
-- [ ] **AC-13:** Given any swept control, when it is busy, then it renders **identically** to the
+- [x] **AC-13:** Given any swept control, when it is busy, then it renders **identically** to the
   `[disabled]` state it replaced — same opacity, same cursor. *Pinned by:*
   `e2e/operator-set-editing.e2e.ts` › `a busy action dims exactly as the disabled state did`
   (computed-style assertion, per `riviera-tailwind`'s no-drift rule — a class-list assertion cannot
@@ -177,15 +177,15 @@ literal `bugfix/<slug>` name applies; no cloud-branch substitution.)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **jsdom does not implement unfocus-on-disable.** Every item-4 claim can pass on a unit spec *without* the fix — a false green. Inherited from #614 R-1, where it fired exactly as predicted | high | high | Item-4 ACs (AC-4, AC-11, AC-13) are pinned in **Chromium only**. No unit spec is allowed to stand as the sole evidence for a busy-window claim, and none models the blur with a hand-written `blur()` | Ivo | open |
+| R-1 | **jsdom does not implement unfocus-on-disable.** Every item-4 claim can pass on a unit spec *without* the fix — a false green. Inherited from #614 R-1, where it fired exactly as predicted | high | high | Item-4 ACs (AC-4, AC-11, AC-13) are pinned in **Chromium only**. No unit spec is allowed to stand as the sole evidence for a busy-window claim, and none models the blur with a hand-written `blur()` | Ivo | **closed** — every item-4 claim is pinned in Chromium (`erasure.e2e.ts`, `operator-set-editing.e2e.ts`), and both new erasure tests were verified RED against `origin/main`'s `set-password.ts` (`unexpected value "inactive"`). No unit spec stands as sole evidence for a busy-window claim, and none models the blur by hand |
 | R-2 | **Host-listener ordering is unspecified.** If the directive is to block activation structurally it must `stopImmediatePropagation()` *before* the element's own template `(click)`, and the relative registration order of a directive host listener and a template listener on the same element is an Ivy implementation detail, not a documented contract | med | med | **Do not build on it.** The plan of record is the issue's own prescription — directive carries the attribute, guard lives in the handler. Phase 1 runs a spike test that pins the actual order; the directive gains structural blocking **only if** the spike proves it | Ivo | **closed — and the spike overturned its own first answer.** The probe showed the directive host listener *does* run first (`['directive','template']`), but the blocking test then failed anyway: Ivy **coalesces same-element same-event listeners into one native listener** and walks its own internal chain, which `stopImmediatePropagation()` cannot break. Host-binding blocking is therefore impossible, not merely fragile. The directive instead registers a **native capture-phase listener in its constructor**, which does block (pinned by `blocks the control own handler while busy`). The probe was deleted rather than shipped: it pinned an ordering the code no longer depends on, and a green test for a false lead is worse than none |
-| R-3 | **`aria-disabled` does not prevent form submission.** A submit button that was `[disabled]="submitting()"` also blocked Enter-in-a-text-field; after the swap only the handler guard does. A missed guard is a **double-submit** — a worse bug than the stranded focus being fixed, and one that can charge a card twice on `booking-pay` | med | high | **Narrowed by R-2's outcome, not eliminated.** The directive now consumes the activating click, which covers pointer clicks *and* Enter/Space on the control itself (a button reports both as a click). What it cannot see is a form submitted by Enter from a **text field**, which never reaches the button — so the guard duty survives exactly for `<form>` submit handlers, a much smaller set than "every swept control". Phase 5 step 1 audits those forms specifically; `booking-pay.ts` and `booking-dialog.ts` are done first and separately because they are the money path | Ivo | open |
-| R-4 | **Visual drift across the variant swap.** Three different dim values are in use (`opacity-50`, `-60`, `-65`) plus inconsistent `cursor-not-allowed`; a directive-carried style, or a careless find-and-replace, silently restyles ~10 controls | med | med | The directive carries **no** styling (the architecture decision above). The swap is prefix-only, per site. Proven by AC-13's **computed-style** assertion in Chromium — `riviera-tailwind`'s hard rule says a class-list diff cannot see this | Ivo | open |
-| R-5 | Busy controls stay in the tab order, so a keyboard user meets an inert-but-focusable control during the in-flight window | high | low | **Accepted deliberately** — it is the mechanism, not a side effect. `aria-disabled="true"` is what tells AT the control is unavailable, and WAI-ARIA prefers exactly this trade where removing focus would strand it. The window is one request long | Ivo | open |
-| R-6 | 24 existing unit assertions across 9 spec files assert `.disabled`; they will pass-then-fail misleadingly (a swept control's `.disabled` is simply `false`, so an inverted assertion could stay green while asserting nothing) | high | med | Each is converted to assert `aria-disabled` **in the same commit as its surface's swap**, never in a batch, and each converted spec is proven RED against the pre-swap component. 0 e2e assertions to convert (verified) | Ivo | open |
-| R-7 | The sweep touches 25 files across four feature folders — a large diff whose mechanical bulk can hide the behavioural changes from review | med | med | Phases 2–4 (behavioural, three surfaces) and Phase 5 (mechanical sweep) are separate commits with separate ACs, so review can read them apart. Phase 5's own diff is prefix-swaps + guard assertions and nothing else | Ivo | open |
-| R-8 | **The `focusMover()` host fallback is a contract change for seven live adopters.** Its TSDoc documents the no-op as deliberate; a caller that aims at an element a later state legitimately removes will now focus the component host instead of staying put | med | med | Phase 0 audits all seven call sites and records the verdict per site in the generalization log before the fallback ships. Any site that genuinely wants the silence gets it — the host fallback is reached only after the optional fallback id, and a caller can be given an explicit opt-out if the audit finds one that needs it | Ivo | open |
-| R-9 | `set-password` has **no focus specs at all** today, so AC-1..AC-3 have no parity net — a regression in the page-mount focus leg (which #604 mistook for the confirm surface) would go unnoticed | med | low | Phase 2 step 1 writes a characterization spec for the **existing** page-mount leg *first*, before touching anything, and leaves it unmodified thereafter as the parity net — the role AC-7 played in #614 | Ivo | open |
+| R-3 | **`aria-disabled` does not prevent form submission.** A submit button that was `[disabled]="submitting()"` also blocked Enter-in-a-text-field; after the swap only the handler guard does. A missed guard is a **double-submit** — a worse bug than the stranded focus being fixed, and one that can charge a card twice on `booking-pay` | med | high | **Narrowed by R-2's outcome, not eliminated.** The directive now consumes the activating click, which covers pointer clicks *and* Enter/Space on the control itself (a button reports both as a click). What it cannot see is a form submitted by Enter from a **text field**, which never reaches the button — so the guard duty survives exactly for `<form>` submit handlers, a much smaller set than "every swept control". Phase 5 step 1 audits those forms specifically; `booking-pay.ts` and `booking-dialog.ts` are done first and separately because they are the money path | Ivo | **closed — the audit came back clean.** Read all 12 form submit handlers before touching a binding. Nine carry an explicit `if (busy()) return;`. Two (`booking-dialog`, `venue-create-card`) route through Signal Forms' `submit()`, which opens `if (untracked(node.submitState.submitting)) return false;` — read in `@angular/forms` source, not assumed. The twelfth (`admin-privacy.review`) performs no write. The money path's half is pinned by `posts one booking when the guest submits twice before the first settles` |
+| R-4 | **Visual drift across the variant swap.** Three different dim values are in use (`opacity-50`, `-60`, `-65`) plus inconsistent `cursor-not-allowed`; a directive-carried style, or a careless find-and-replace, silently restyles ~10 controls | med | med | The directive carries **no** styling (the architecture decision above). The swap is prefix-only, per site. Proven by AC-13's **computed-style** assertion in Chromium — `riviera-tailwind`'s hard rule says a class-list diff cannot see this | Ivo | **closed** — the directive carries no styling, so each site kept its own value; proven by AC-13's computed-style assertion in Chromium: the busy save reads `opacity: 0.5`, byte-identical to the `disabled:opacity-50` it replaced, and returns to `1` once the write settles |
+| R-5 | Busy controls stay in the tab order, so a keyboard user meets an inert-but-focusable control during the in-flight window | high | low | **Accepted deliberately** — it is the mechanism, not a side effect. `aria-disabled="true"` is what tells AT the control is unavailable, and WAI-ARIA prefers exactly this trade where removing focus would strand it. The window is one request long | Ivo | **closed — accepted as designed.** It is the mechanism, not a side effect; `aria-disabled="true"` is what tells AT the control is unavailable. Narrowed in practice: text inputs and validity-driven bindings kept `[disabled]`, so the extra tab stop is only ever the busy action itself |
+| R-6 | 24 existing unit assertions across 9 spec files assert `.disabled`; they will pass-then-fail misleadingly (a swept control's `.disabled` is simply `false`, so an inverted assertion could stay green while asserting nothing) | high | med | Each is converted to assert `aria-disabled` **in the same commit as its surface's swap**, never in a batch, and each converted spec is proven RED against the pre-swap component. 0 e2e assertions to convert (verified) | Ivo | **closed** — six specs across six files, each converted with its own surface's swap. Every one kept its behavioural assertion untouched and swapped only the posture claim, so none was weakened to pass; the four in 5c were seen failing first |
+| R-7 | The sweep touches 25 files across four feature folders — a large diff whose mechanical bulk can hide the behavioural changes from review | med | med | Phases 2–4 (behavioural, three surfaces) and Phase 5 (mechanical sweep) are separate commits with separate ACs, so review can read them apart. Phase 5's own diff is prefix-swaps + guard assertions and nothing else | Ivo | **closed** — phases 2–4 (behavioural) and 5a/5b/5c (mechanical) are six separate commits with separate ACs, so the sweep's bulk cannot hide the behavioural work from review |
+| R-8 | **The `focusMover()` host fallback is a contract change for seven live adopters.** Its TSDoc documents the no-op as deliberate; a caller that aims at an element a later state legitimately removes will now focus the component host instead of staying put | med | med | Phase 0 audits all seven call sites and records the verdict per site in the generalization log before the fallback ships. Any site that genuinely wants the silence gets it — the host fallback is reached only after the optional fallback id, and a caller can be given an explicit opt-out if the audit finds one that needs it | Ivo | **closed** — the 24-call-site audit (generalization log, row 1) found none relying on the silence, and all seven adopters' suites passed unmodified (174). It also widened the fix: a named fallback is usually a `<p>`/`<span>`, so the helper makes whatever it lands on focusable, not only the host |
+| R-9 | `set-password` has **no focus specs at all** today, so AC-1..AC-3 have no parity net — a regression in the page-mount focus leg (which #604 mistook for the confirm surface) would go unnoticed | med | low | Phase 2 step 1 writes a characterization spec for the **existing** page-mount leg *first*, before touching anything, and leaves it unmodified thereafter as the parity net — the role AC-7 played in #614 | Ivo | **closed** — `focuses the first field when the page mounts` was written first, passed before any change, and is untouched since. It is the leg #604's audit mistook for the confirm surface |
 
 ## Open questions / Assumptions
 
@@ -259,9 +259,9 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phase 5`
+**Stage pointer:** `review gate — PR marked ready`
 
-**Next action:** Phase 5 — the busy sweep. Step 1 is the form-submit guard audit (R-3), money path first.
+**Next action:** Run the review gate (`/code-review`) per `pr-gates.md` §1, then the Sonar gate.
 characterization spec for the existing page-mount focus leg.
 
 PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
@@ -275,9 +275,9 @@ PR: draft opened at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on t
 | 1 — The `BusyAction` directive + the ordering spike | ✅ | `bb73467` |
 | 2 — `set-password`'s three erase transitions | ✅ | `455c24c` |
 | 3 — `admin-venue-photos`' takedown failure leg | ✅ | `409dd1c` |
-| 4 — `admin-operators`' notice region + four settled legs | ✅ | `<phase-4>` |
-| 5 — The busy sweep (money path first, then the rest) | | |
-| 6 — Real-browser e2e + full verification | | |
+| 4 — `admin-operators`' notice region + four settled legs | ✅ | `1baa6e6` |
+| 5 — The busy sweep (money path first, then the rest) | ✅ | `f30a683` (5a) · `2b58f90` (5b) · `fd9890f` (5c) |
+| 6 — Real-browser e2e + full verification | ✅ | `<phase-6>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -304,9 +304,33 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/admin/admin-operators.ts` — the `role="status"` notice + four settled legs
 - `frontend/src/app/admin/admin-operators.spec.ts` — AC-7..AC-10
 - `frontend/src/app/admin/admin-operators.a11y.spec.ts` — axe over the new notice region
-- `frontend/src/app/{auth,booking,admin,operator,shared}/**` — the Phase 5 sweep: the binding and
-  variant-prefix swap plus the guard assertions, across the 23 remaining files enumerated in that
-  phase and their specs
+The Phase 5 sweep — the `[disabled]`→`[appBusy]` binding swap, the `disabled:`→`aria-disabled:`
+variant rename, and the directive wiring. Grouped as the phase committed them:
+
+- `frontend/src/app/booking/booking-pay.ts`, `frontend/src/app/booking/booking-dialog.ts` — 5a, the
+  money path; `booking-dialog.spec.ts` adds the double-submit pin
+- `frontend/src/app/auth/auth-page.ts`, `frontend/src/app/auth/forgot-password.ts`,
+  `frontend/src/app/auth/reset-password.ts`, `frontend/src/app/auth/operator-password.ts`,
+  `frontend/src/app/booking/find-booking.ts`, `frontend/src/app/booking/booking-view.ts`,
+  `frontend/src/app/operator/venue-create-card.ts`, `.html`,
+  `frontend/src/app/operator/venue-tab.ts`, `.html` — 5b, the remaining forms
+- `frontend/src/app/shared/confirm-with-reason.ts`, `frontend/src/app/admin/admin-commissions.ts`,
+  `frontend/src/app/admin/admin-mail-delivery.ts`, `frontend/src/app/admin/admin-mail-outbox.ts`,
+  `frontend/src/app/admin/admin-privacy.ts`, `frontend/src/app/admin/admin-refund-outbox.ts`,
+  `frontend/src/app/operator/daily-view-tab.ts`, `.html`,
+  `frontend/src/app/operator/layout-editor.ts`, `.html`,
+  `frontend/src/app/operator/payouts-tab.ts`, `.html`,
+  `frontend/src/app/operator/pricing-tab.ts`, `.html`,
+  `frontend/src/app/operator/requests-tab.ts`, `.html`,
+  `frontend/src/app/operator/set-editor.ts`, `.html`,
+  `frontend/src/app/operator/stale-write-banner.ts` — 5c, the admin and operator actions
+- `frontend/src/app/booking/find-booking.spec.ts`,
+  `frontend/src/app/operator/venue-create-card.spec.ts`,
+  `frontend/src/app/admin/admin-commissions.spec.ts`,
+  `frontend/src/app/admin/admin-privacy.spec.ts`,
+  `frontend/src/app/operator/stale-write-banner.spec.ts`,
+  `frontend/src/app/shared/confirm-with-reason.spec.ts` — the six specs that asserted the old
+  posture (R-6), each converted with its own surface's swap
 - `frontend/e2e/erasure.e2e.ts` — AC-4 / AC-11's Chromium half
 - `frontend/e2e/admin-venue-photos.e2e.ts` — the takedown failure leg in a real browser
 - `frontend/e2e/admin-operator-suspension.e2e.ts` — the settled-action leg in a real browser
@@ -495,6 +519,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-11 | Phase 5 step 1 — the R-3 form-submit guard audit | every `<form>` whose submit can be triggered by Enter from a text field, asked whether its handler guards re-entry once `aria-disabled` stops the button blocking implicit submission | `grep -rn "(submit)=\|(ngSubmit)=" src/app --include=*.ts --include=*.html`, then read each handler | 12 forms | **All 12 already guarded; no fix needed, and the risk is retired rather than mitigated.** Nine carry an explicit `if (busy()) return;`. Two go through Signal Forms' `submit()`, which opens `if (untracked(node.submitState.submitting)) return false;` — read in `@angular/forms` source rather than assumed, because the public TSDoc does not state it. The twelfth (`admin-privacy.review`) only advances a stage. The generalization worth recording is the **inverse** one: the audit is what showed the swap is unsafe for `<input>`, where `aria-disabled` does not stop typing — three inputs were reverted to `[disabled]`, since focus is on the clicked button and never on them |
+| 2026-08-11 | Phase 5 — sweeping `[disabled]`→`[appBusy]` | every remaining `[disabled]` binding, asked whether it expresses an **in-flight write the user's own activation started** (the failure class) or **validity/state** (not it) | `grep -rn '\[disabled\]=' src/app --include=*.ts --include=*.html` | 57 total; 46 swapped, 11 deliberately kept | **The exclusions are the finding.** `isPending(set)`, `cell.disabled`, `!canAddRow()`, `!canAddCol()` and two `form().invalid()` express *unavailability*, not busyness — focus is never on them when they flip, and `aria-disabled` would be a regression there because a genuinely unavailable control **should** leave the tab order. Four bindings mixed both (`busy() \|\| dirty()`, `saving() \|\| !hasLayout()`, two `invalid() \|\| saving()`); each was **split** so both halves keep the posture they need, rather than swapped wholesale |
 | 2026-08-11 | Phase 0 — changing `focusMover()`'s missing-target contract (R-8) | every live call site, asked whether a **silent no-op is load-bearing** there — i.e. does any caller mean "move focus only if X exists, else leave it alone" | `grep -rn "focusAfterRender(\`\|focusAfterRender('" src/app --include=*.ts \| grep -v spec` | **24 call sites across 7 components** — `admin-commissions` (4), `admin-privacy` (5), `booking-view` (8), `admin-venue-photos` (2), `layout-editor` (2), `set-editor` (2), `admin-operators` (1) | **None relies on the silence; the contract change is safe.** Every one of the 24 is a deliberate "focus lands here" leg fired *because* the element focus was on is being destroyed — so the pre-change alternative was never "focus stays somewhere useful", it was `<body>`. Parity proven by running all seven adopters' suites unmodified (174 passed). Two corrections to the plan's assumptions came out of it: (1) the adopter list is those **7 components**, not `confirm-panel`/`confirm-with-reason` — those focus their own confirm button via their own `afterNextRender` and are not `focusMover()` callers; (2) a named fallback is usually a `<p>`/`<span>` landmark, so the helper had to be extended to make **whatever it lands on** focusable, not just the host — otherwise naming a landmark that forgot `tabindex="-1"` silently reintroduces the exact no-op being fixed |
 | 2026-08-11 | Phase 0 — reading every adopter for the audit above | pre-existing **hand-rolled workarounds** for the `[disabled]` busy blur (item 4), which would go stale or become wrong once the posture changes | read each adopter's settle legs while auditing | 1 — `admin-privacy.ts:344`, whose comment reads *"Disabling Erase blurred it to `<body>`; re-enabling does not bring focus back (WCAG 2.4.3)"* and whose `catch` re-focuses `admin-privacy-confirm` purely to undo that blur | **Recorded, fixed in Phase 5.** It is independent evidence that item 4's blur is real and already costing local workarounds — a **tenth** instance of the class, which #616 had not counted. After the `aria-disabled` swap focus never leaves that button, so the re-focus becomes a harmless self-focus and its comment becomes false; both are corrected with that file's swap rather than here, so the sweep owns its own cleanup |
 
@@ -502,13 +528,31 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-3, AC-12:** `npx ng test --include="src/app/auth/set-password.spec.ts"` → all pass, each proven RED first.
-- [ ] **AC-4, AC-11 (Chromium half), AC-13:** `npx playwright test --config playwright.a11y.config.ts erasure operator-set-editing` → pass, each proven RED against `origin/main`.
-- [ ] **AC-5, AC-6:** `npx ng test --include="src/app/admin/admin-venue-photos.spec.ts"` → pass.
-- [ ] **AC-7..AC-10:** `npx ng test --include="src/app/admin/admin-operators*.spec.ts"` → pass.
-- [ ] **AC-11 (unit half):** `npx ng test --include="src/app/shared/busy-action.spec.ts"` → pass.
-- [ ] **AC-14..AC-16:** `npx ng test --include="src/app/shared/focus-after-render.spec.ts"` → pass, existing cases unmodified.
-- [ ] **Full verification:** `npm run lint` · `npm test` · `npm run build` · `npm run test:e2e:a11y`, all green.
+- [x] **AC-1..AC-3, AC-12:** `npx ng test --include="src/app/auth/set-password.spec.ts"` → **18 passed**;
+      AC-1..AC-3 verified RED first (`3 failed | 15 passed`). AC-12 passed before the swap too — the
+      `erasing()` guard already existed, which is the point of asserting it rather than assuming it.
+- [x] **AC-4, AC-11 (Chromium half):** `npx playwright test --config playwright.a11y.config.ts erasure`
+      → **4 passed**; both new tests **verified RED against `origin/main`'s `set-password.ts`**
+      (`toBeFocused` … `unexpected value "inactive"`). The erasure response is held open so the
+      assertion lands mid-request, which is the window that used to sit on `<body>`.
+- [x] **AC-5, AC-6:** `npx ng test --include="src/app/admin/admin-venue-photos.spec.ts"` → **18 passed**;
+      AC-5 verified RED first. AC-6 passed before the fix (nothing moved focus at all), so it was
+      **mutation-checked**: relocating the focus call outside `reportOnlyIfStillViewing` turns it RED.
+- [x] **AC-7..AC-10:** `npx ng test --include="src/app/admin/admin-operators*.spec.ts"` → **32 passed**,
+      all four verified RED first; plus the Chromium leg
+      `a settled suspension announces the outcome and lands focus on it`.
+- [x] **AC-11 (unit half):** `npx ng test --include="src/app/shared/busy-action.spec.ts"` → **7 passed**.
+- [x] **AC-13:** `npx playwright test --config playwright.a11y.config.ts operator-set-editing` →
+      **6 passed**; the busy save measures `opacity: 0.5` via `getComputedStyle`, byte-identical to
+      the `disabled:opacity-50` it replaced, and `1` once settled.
+- [x] **AC-14..AC-16:** `npx ng test --include="src/app/shared/focus-after-render.spec.ts"` →
+      **8 passed**, RED first at the type level. One pre-existing case was deliberately rewritten
+      (it asserted the no-op contract this slice replaces); the rest are unmodified, and all seven
+      adopters' suites passed unmodified (**174**).
+- [x] **Full verification:** `npx ng lint` clean · `npm test` **1362 passed (156 files)** ·
+      `npm run build` succeeds · `npm run test:e2e:a11y` **173 passed (5.5m)** · both repo-hygiene
+      guards clean over the whole diff (`check-plan-file-structure --diff origin/main` exit 0,
+      `check-inline-comments` exit 0).
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 

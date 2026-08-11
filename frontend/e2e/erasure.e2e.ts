@@ -71,3 +71,51 @@ test('a failed erasure keeps the tourist signed in with an error', async ({ page
   await expect(page.getByTestId('erase-done')).toBeHidden();
   await expect(page.getByTestId('setpw-email')).toBeVisible();
 });
+
+/**
+ * The in-flight window, which only a real browser shows: it runs the unfocusing steps the instant a
+ * focused element is disabled, and jsdom does not. The erasure is held open so the assertion lands
+ * mid-request rather than after it, because that whole window is what used to sit on `<body>`.
+ */
+test('a failed erasure never strands focus while the request is in flight', async ({ page }) => {
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    route.fulfill({ json: { username: EMAIL, principalType: 'CUSTOMER', emailVerified: true } }),
+  );
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/api\/me\/erasure$/, async (route) => {
+    await held;
+    return route.fulfill({ status: 500 });
+  });
+
+  await gotoAccount(page);
+  await page.getByTestId('erase-account').click();
+  await expect(page.getByTestId('erase-confirm')).toBeFocused();
+
+  await page.getByTestId('erase-confirm').click();
+
+  // Mid-request: announced as unavailable, still holding focus.
+  await expect(page.getByTestId('erase-confirm')).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByTestId('erase-confirm')).toBeFocused();
+
+  release();
+  await expect(page.getByTestId('erase-error')).toBeVisible();
+  await expect(page.getByTestId('erase-confirm')).toBeFocused();
+  await expectNoSeriousAxeViolations(page, 'account page after a failed erasure');
+});
+
+test('the erase confirmation returns focus to the trigger when the tourist backs out', async ({
+  page,
+}) => {
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    route.fulfill({ json: { username: EMAIL, principalType: 'CUSTOMER', emailVerified: true } }),
+  );
+
+  await gotoAccount(page);
+  await page.getByTestId('erase-account').click();
+  await expect(page.getByTestId('erase-confirm')).toBeFocused();
+
+  await page.getByTestId('erase-cancel').click();
+
+  await expect(page.getByTestId('erase-account')).toBeFocused();
+});

@@ -197,3 +197,30 @@ test('a signed-out visitor is shown no picker and no tab strip', async ({ page }
   await expect(page.getByTestId('admin-photos-venue')).toBeHidden();
   await expect(page.getByTestId('admin-tab-photos')).toBeHidden();
 });
+
+/**
+ * The failure leg. The `finally` clears the confirmation whether or not the takedown worked, so a
+ * failed removal destroys the button focus was on — the success twin already parked focus, this is
+ * the gap that made it read as an oversight.
+ */
+test('a failed takedown lands focus on the notice carrying the reason', async ({ page }) => {
+  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await mockPhotoModeration(page);
+  await page.route(/\/api\/admin\/venues\/7\/photos\/cover$/, (route) =>
+    route.request().method() === 'DELETE' ? route.fulfill({ status: 500 }) : route.fallback(),
+  );
+  await openPhotosTab(page);
+
+  await page.getByTestId('admin-photos-venue').selectOption('7');
+  await page.getByTestId('admin-photo-remove-cover').click();
+  await expect(page.getByTestId('admin-photo-confirm-cover')).toBeFocused();
+
+  await page.getByTestId('admin-photo-confirm-cover').click();
+
+  const notice = page.getByTestId('admin-photos-notice');
+  await expect(notice).toContainText('Could not remove');
+  await expect(notice).toBeFocused();
+  // Nothing was changed, so the photo is still there.
+  await expect(page.getByTestId('admin-photo-preview-cover')).toBeVisible();
+  await expectNoSeriousAxeViolations(page, 'admin photos after a failed takedown');
+});

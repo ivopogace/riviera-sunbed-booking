@@ -263,3 +263,41 @@ test('stays inside its own scroll at a phone width, with tappable controls (+ ax
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'per-set beach map editor at 390px');
 });
+
+/**
+ * The busy posture swapped `[disabled]` for `aria-disabled` so a busy control keeps focus. That is
+ * a rename of the styling variant, not a restyle, and the project's no-drift rule says a class-list
+ * assertion cannot prove it — only the computed style can. The save is held open so the busy state
+ * is on screen while it is measured.
+ */
+test('a busy action dims exactly as the disabled state did', async ({ page }) => {
+  await mockConsole(page);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/api\/venues\/1\/sets\/12$/, async (route) => {
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    await held;
+    return route.fallback();
+  });
+
+  await page.goto('/operator/1');
+  await signIn(page);
+  await expect(page.getByTestId('set-editor')).toBeVisible();
+  await cell(page, 1, 2).click();
+
+  const save = page.getByTestId('set-save');
+  const idleOpacity = await save.evaluate((el) => getComputedStyle(el).opacity);
+  expect(idleOpacity).toBe('1');
+
+  await page.getByTestId('set-price').fill('25');
+  await save.click();
+
+  await expect(save).toHaveAttribute('aria-disabled', 'true');
+  // 0.5 is `aria-disabled:opacity-50`, byte-identical to the `disabled:opacity-50` it replaced.
+  expect(await save.evaluate((el) => getComputedStyle(el).opacity)).toBe('0.5');
+  await expect(save).toBeFocused();
+
+  release();
+  await expect(page.getByTestId('set-saved')).toBeVisible();
+  expect(await save.evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+});

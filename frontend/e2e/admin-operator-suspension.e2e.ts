@@ -113,3 +113,25 @@ test('a sign-out that never reaches the server warns, and the retry clears it', 
   await page.getByTestId('sign-out-retry').click();
   await expect(warning).toBeHidden();
 });
+
+/**
+ * The settled-action leg. The queue reconciles from the server after every decision, so the
+ * confirm button focus was on is gone by the time the suspension returns — a real browser then
+ * leaves focus on `<body>` unless it is parked deliberately (WCAG 2.4.3).
+ */
+test('a settled suspension announces the outcome and lands focus on it', async ({ page }) => {
+  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await seedApprovedOperator(page);
+
+  const row = page.getByTestId('admin-account-row').filter({ hasText: OP.username });
+  await row.getByRole('button', { name: 'Suspend' }).click();
+  // Armed, the trigger is replaced by the panel, so the only Suspend left is the confirm.
+  await expect(row.getByRole('button', { name: 'Suspend' })).toBeFocused();
+
+  await row.getByRole('button', { name: 'Suspend' }).click();
+
+  const notice = page.getByTestId('admin-ops-notice');
+  await expect(notice).toHaveText(`Suspended ${OP.username}.`);
+  await expect(notice).toBeFocused();
+  await expectNoSeriousAxeViolations(page, 'admin operators after a settled suspension');
+});
