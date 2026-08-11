@@ -13,7 +13,8 @@ the unawaited-promise and unsafe-`any` bug classes that nothing else in the tool
 409 findings are 95% concentrated in `**/*.spec.ts`, and the cheap answer — relaxing `no-unsafe-*`
 and `require-await` for specs — was considered and **rejected** (see Open questions → Resolved):
 the noise is a *typing* defect (`ComponentFixture.nativeElement` is `any`), so it is fixed at the
-source with a typed accessor in `src/testing/`, not suppressed at the gate. The only carve-out is
+source — by adopting the tree's existing `as HTMLElement` idiom at the ~66 sites that skipped it
+(see *Design correction*) — not suppressed at the gate. The only carve-out is
 `playwright*.config.ts`, which belongs to no TS project and gets `disableTypeChecked` — build
 tooling, not app code.
 
@@ -32,14 +33,15 @@ recorded count) · `riviera-review-overlay` (review gate — due at ready-for-re
 the e2e-suite placement question this slice reopens by adding `e2e/tsconfig.json`) ·
 `riviera-docs-freshness` (N/A at plan time — **due at merge close-out step 5** over this branch's
 merge span; `CLAUDE.md`'s CI paragraph states the frontend job's checks and will need the
-type-aware flip recorded) · `riviera-frontend` (STRUCTURE — placed the typed fixture accessor in
-`src/testing/` alongside the existing `axe.ts`/`contrast.ts`/`glass-tokens.ts` helpers rather than
-in `shared/`, which is app code; also confirmed `e2e/tsconfig.json` sits beside the suite it
+type-aware flip recorded) · `riviera-frontend` (STRUCTURE — its "colocate what the feature owns"
+rule is what prompted measuring the call sites before adding a `src/testing/` helper, which
+**retired the helper entirely**: the tree already had a house idiom at 164 sites, and a second one
+would have been the placement mistake. Also confirmed `e2e/tsconfig.json` sits beside the suite it
 scopes) · `riviera-local-debug` (frontend recipe — `npm run lint`, and the Windows note that the
 mocked e2e suite is `npm run test:e2e:a11y`, not `test:e2e`) · `angular-developer` + angular-cli
 MCP (consulted for the Signal Forms `submit()` idiom; the MCP doc search returned nothing for v22,
 so the signature was read from the shipped typings instead — `submit()` returns `Promise<boolean>`,
-which is what makes the three production findings real) · `playwright-cli` (due at phase 3 — the
+which is what makes the three production findings real) · `playwright-cli` (due at phase 5 — the
 two `route.fulfill` fixes are e2e authoring, and the suite must still pass afterwards)
 
 **Branch:** `feature/eslint-type-aware` — created before phase 0. ✅
@@ -364,7 +366,7 @@ only a typecheck caught; phase 3 caught two more.
 | 1 — Spec unsafe-`any`: adopt the `as HTMLElement` idiom (409 → 259) | ✅ | `<sha>` |
 | 2 — `querySelector<T>(…)!` codemod + safe fixers (259 → 179) | ✅ | `<sha>` |
 | 3 — `no-unnecessary-type-assertion`, verified not trusted (179 → 139) | ✅ | `<sha>` |
-| 4 — Production source (9, incl. B-1..B-3) | | |
+| 4 — Production source clean (139 → 130, incl. B-1..B-3) | ✅ | `<sha>` |
 | 5 — e2e (11, incl. B-4/B-5) | | |
 | 6 — Spec `require-await` + `unbound-method` + `no-misused-promises` (87) | | |
 | 7 — Green: AC red-checks, docs, close-out | | |

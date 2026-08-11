@@ -88,19 +88,21 @@ export class StripeJsPaymentGateway extends StripePaymentGateway {
  */
 @Injectable()
 export class FakeStripePaymentGateway extends StripePaymentGateway {
-  override async mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+  override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = '4242 4242 4242 4242';
     input.setAttribute('aria-label', 'Card number (test mode)');
     input.dataset['testid'] = 'fake-card-input';
     host.appendChild(input);
-    return {
-      confirm: async () =>
-        (window as unknown as { __RIVIERA_FAKE_STRIPE_FAIL__?: boolean })
-          .__RIVIERA_FAKE_STRIPE_FAIL__
-          ? { error: 'This PaymentIntent has been canceled.' }
-          : {},
-    };
+    return Promise.resolve({
+      confirm: () =>
+        Promise.resolve(
+          (window as unknown as { __RIVIERA_FAKE_STRIPE_FAIL__?: boolean })
+            .__RIVIERA_FAKE_STRIPE_FAIL__
+            ? { error: 'This PaymentIntent has been canceled.' }
+            : {},
+        ),
+    });
   }
 }

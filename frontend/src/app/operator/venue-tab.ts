@@ -218,7 +218,7 @@ export class VenueTab {
     this.saved.set(false);
     this.errorCode.set(null);
     this.distanceError.set(false);
-    submit(this.detailsForm, async () => {
+    void submit(this.detailsForm, async () => {
       const raw = this.distanceDraft().trim();
       let distanceToWaterM: number | null;
       if (raw === '') {
