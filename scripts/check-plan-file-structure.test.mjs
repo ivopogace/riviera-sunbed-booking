@@ -445,6 +445,27 @@ test('a bare filename resolves against the path before it, not against the whole
   ]);
 });
 
+/**
+ * A repo-root file is written bare because it has no directory to qualify it. When the diff also
+ * touches a same-named file deeper in the tree, suffix-matching made the root token look ambiguous
+ * and the root file became unlistable — no spelling of it could satisfy the guard. An exact match
+ * is not a guess, so it settles the token regardless of what else it suffix-matches.
+ */
+test('an exact path match is never ambiguous, however many paths share its basename', () => {
+  const omissions = findOmissions({
+    docs: [
+      doc(
+        withHeading(
+          '- `CLAUDE.md` — the hygiene-check count\n- `frontend/.claude/CLAUDE.md` — the guard note',
+        ),
+      ),
+    ],
+    changed: ['CLAUDE.md', 'frontend/.claude/CLAUDE.md'],
+  });
+
+  assert.deepEqual(omissions, []);
+});
+
 test('a bare name matching exactly one path is still the common idiom', () => {
   const omissions = findOmissions({
     docs: [doc(withHeading('- `SecurityConfig.java` — two matcher constants'))],

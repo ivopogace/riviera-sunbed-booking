@@ -184,10 +184,15 @@ function covers(token, path) {
  * `SecurityConfig.java`) and stays covered — the floor has to sit here rather than at "must contain
  * a `/`", because that stricter rule false-flags eleven legitimately-named files on PR #516 alone,
  * and a noisy gate is one that gets switched off (R-2).
+ *
+ * <p>An **exact** match is settled rather than counted: a repo-root file is written bare because it
+ * has nothing to qualify it, so counting suffix matches made root `CLAUDE.md` unlistable whenever a
+ * diff also touched `frontend/.claude/CLAUDE.md` — no spelling could satisfy the guard.
  */
 function unambiguous(listed, changed) {
   return listed.filter((token) => {
     if (token.replace(/\/$/, '').includes('/') || token.includes('*')) return true;
+    if (changed.includes(token)) return true;
     return changed.filter((path) => covers(token, path)).length <= 1;
   });
 }

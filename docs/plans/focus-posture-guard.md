@@ -284,6 +284,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (repo hygiene) | **A latent defect in the sibling plan-doc guard, surfaced by this slice's own docs-freshness patch.** `check-plan-file-structure.mjs` counts a bare token's *suffix* matches to decide whether it is ambiguous, and this diff touches both `CLAUDE.md` and `frontend/.claude/CLAUDE.md`. A repo-root file is written bare because nothing qualifies it, so the root token matched two paths, was dropped as ambiguous, and `CLAUDE.md` became **unlistable — no spelling of it could satisfy the guard.** The pairing is not exotic: it is what a docs-freshness sweep produces whenever it patches the root doc on a frontend slice | fixed-in-`22bd944` — an **exact** match now settles the token rather than being counted among its suffix matches (`changed.includes(token)`). Written test-first and verified RED; the bare-name ambiguity rule for genuinely ambiguous tokens (`index.ts` across two folders) is untouched, pinned by its existing case |
 
 ---
 
@@ -301,6 +302,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/e2e/operator-payouts.e2e.ts` — AC-17
 - `CLAUDE.md` — the docs-freshness counting-sweep patch: three → **four** diff-scoped hygiene
   checks, and the job split re-stated as "the first three"
+- `scripts/check-plan-file-structure.mjs`, `scripts/check-plan-file-structure.test.mjs` — F-1: an
+  exact path match settles a bare token instead of being counted among its suffix matches
 
 > Reconcile this section with `node scripts/check-plan-file-structure.mjs --diff origin/main`
 > before pushing.
