@@ -206,7 +206,10 @@ jobs:
         run: git fetch --no-tags origin ${{ github.event.pull_request.base.ref }}
 
       - name: Test the guards themselves
-        # Globs both suites; a new scripts/*.test.mjs is picked up with no edit here.
+        # Globs every guard suite; a new scripts/*.test.mjs is picked up with no edit here. Two
+        # kinds run under it since #619: the per-guard detector suites, and one that spawns each
+        # guard's CLI against a throwaway `git init` repository to cover the front-end the
+        # detectors cannot see. Both obey the no-node_modules constraint above.
         run: node --test "scripts/*.test.mjs"
 
       - name: Check the diff for multi-line inline comments (RV-STYLE-1, hard gate)

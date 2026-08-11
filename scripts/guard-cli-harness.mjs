@@ -73,12 +73,11 @@ export function createRepo() {
   /** git resolves symlinks in the temp path on some platforms, so ask it where the root really is. */
   const root = raw(['rev-parse', '--show-toplevel'], dir).trim();
 
-  const repo = {
+  return {
     root,
-    env,
 
-    /** Runs git inside the repository (or a subdirectory of it) and returns stdout. */
-    git: (args, cwd = root) => raw(args, cwd),
+    /** Runs git at the repository root and returns stdout, throwing on a non-zero exit. */
+    git: (args) => raw(args, root),
 
     /** Sets a repository-local config value — the contributor-config regressions' input. */
     config: (key, value) => raw(['config', key, value], root),
@@ -121,7 +120,6 @@ export function createRepo() {
 
     dispose: () => rmSync(dir, { recursive: true, force: true }),
   };
-  return repo;
 }
 
 /** Runs `body` against a fresh repository and disposes of it however the body ends. */
