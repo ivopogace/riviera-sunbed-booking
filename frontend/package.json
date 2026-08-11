@@ -12,7 +12,8 @@
     "test:e2e": "playwright test",
     "test:e2e:a11y": "playwright test --config playwright.a11y.config.ts",
     "lint": "ng lint",
-    "format:check": "node ../scripts/check-prettier-format.mjs --diff"
+    "format": "prettier --write src e2e",
+    "format:check": "prettier --check src e2e"
   },
   "private": true,
   "packageManager": "npm@11.12.1",

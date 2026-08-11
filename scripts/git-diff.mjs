@@ -11,8 +11,8 @@
  *
  * **Every git call is made from the repository root with path output pinned.** Three ways a guard
  * can otherwise report a false clean, all found by PR #618's review and all fixed here rather than
- * three times over: a pathspec resolves against the *caller's* cwd (so `npm run format:check`, which
- * runs in `frontend/`, matched nothing), `diff.relative=true` in a contributor's config strips the
+ * three times over: a pathspec resolves against the *caller's* cwd (#615's since-retired wrapper
+ * ran from `frontend/` and matched nothing), `diff.relative=true` in a contributor's config strips the
  * leading directory from every path (so a `frontend/` scope test rejects them all), and a path
  * holding a non-ASCII byte comes back C-quoted (`"b/src/caf\303\251.ts"`) and matches nothing at
  * all — the same defect PR #538 fixed for `changedPaths`, one function below, and which this module
