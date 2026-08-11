@@ -1,11 +1,15 @@
 /**
- * Diff-scoped guard for the two focus postures `frontend/.claude/CLAUDE.md` states, both of them
- * causes of the same WCAG 2.4.3 stranded-focus class (#604, #614, #616, #621, #625 — fifteen
- * instances; #625 is one neither rule can see, a field disabled by a write it starts itself). The
+ * Diff-scoped guard for the focus postures `frontend/.claude/CLAUDE.md` states, all causes of the
+ * same WCAG 2.4.3 stranded-focus class (#604, #614, #616, #621, #625 — fifteen instances). The
  * human half of the check, for those shapes, is `riviera-review-overlay`'s RV-FE-9 (#623).
  *
  * - **BUSY-1** — a control disabled by a flag *its own activation set* blurs to `<body>` for the
  *   whole request. It belongs on `[appBusy]`, which announces the same state via `aria-disabled`.
+ * - **BUSY-2** — the self-committing field, #625's shape (#628): a text-entry `<input>`/`<textarea>`
+ *   whose own start tag carries `(change)`/`(blur)` and a busy `[disabled]` — Enter fires
+ *   `change` without leaving the field, so the flag blurs the field focus is in. The fix is
+ *   `[readonly]`, which locks typing without blurring; the kinds `readonly` cannot lock are out of
+ *   scope and stay RV-FE-9's, as is a `(input)`-only field (draft-sync, not a commit).
  * - **FOCUS-1** — a confirm-before-destroy surface, or a focus-trapped modal, destroys the element
  *   focus is sitting on, so its component must move focus deliberately — rendering a shared confirm
  *   component is not enough, since those own the open leg only. Judged per **gating signal** (#624):
@@ -40,16 +44,17 @@ import {
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
 
 /**
- * The rules that **fail** a build. BUSY-1 only, deliberately.
+ * The rules that **fail** a build: the two syntactic ones, deliberately.
  *
- * BUSY-1 is syntactic — an element name, an attribute, a vocabulary — and swept 297 files with no
- * false positive. FOCUS-1 asks whether a component *moves focus*, which is a runtime property being
+ * BUSY-1 and BUSY-2 are element names, attributes and a curated vocabulary — each swept the whole
+ * tree with no false positive before gating (297 files for BUSY-1; #628's sweep for BUSY-2).
+ * FOCUS-1 asks whether a component *moves focus*, which is a runtime property being
  * approximated over source: five components in this app move focus with a plain `.focus()`, and each
  * widening of the predicate trades a false positive for a false negative. It still runs, still
- * reports, and still found the two live bugs this slice fixed — it just advises rather than blocks.
+ * reports, and still found the two live bugs #621's slice fixed — it just advises rather than blocks.
  * Decision and the three review rounds behind it: `docs/plans/focus-posture-guard.md`.
  */
-const GATING = new Set(['BUSY-1']);
+const GATING = new Set(['BUSY-1', 'BUSY-2']);
 
 /**
  * Identifier stems that denote an in-flight write the user's own activation started. Derived from
@@ -93,6 +98,38 @@ export const BUSY_STEMS = [
  * app is on a `<button>`.
  */
 const ACTIONABLE = new Set(['button', 'a']);
+
+/**
+ * The `<input>` kinds `readonly` actually locks, per the HTML spec — the allow-list #628 scopes
+ * BUSY-2 to. The inert kinds (`<select>`, checkbox, radio, `file`, `range`, `color`) get no advice
+ * at all: `readonly` cannot lock them, no attribute locks without blurring, and the right posture
+ * there — serialize in the handler — is RV-FE-9's human call (`frontend/.claude/CLAUDE.md`).
+ */
+const READONLY_KINDS = new Set([
+  'text',
+  'search',
+  'url',
+  'tel',
+  'email',
+  'password',
+  'date',
+  'month',
+  'week',
+  'time',
+  'datetime-local',
+  'number',
+]);
+
+/**
+ * The commit bindings a field starts its own write from — #625's shape, on the field's own tag:
+ * Enter fires `change` without leaving the field, a click-away fires `blur`. Deliberately NOT
+ * `(input)`: that is a per-keystroke event whose dominant use is draft-sync into a signal while a
+ * *button* starts the write — `admin-commissions` and `admin-privacy` bind exactly
+ * `(input)` + `[disabled]="busy()"` as correct code, and the sweep that gates this rule found all
+ * three. A field that genuinely commits per keystroke is a deliberate miss, as `BUSY_STEMS` misses
+ * a novel flag name.
+ */
+const COMMIT_HANDLERS = ['(change)', '(blur)'];
 
 /** The repo's focus helper, as a call site — a TSDoc mention is not compliance. */
 const FOCUS_HELPER = /\b(focusMover|focusAfterRender)\s*\(/;
@@ -320,18 +357,33 @@ function busyViolations(path, lines, added, template) {
   const violations = [];
 
   for (const tag of startTags(template)) {
-    if (!ACTIONABLE.has(tag.name)) continue;
     const disabled = tag.attributes.get('[disabled]');
     if (!disabled || !isBusyFlag(disabled.value)) continue;
     if (!added.has(disabled.line + 1)) continue;
+    const rule = ACTIONABLE.has(tag.name) ? 'BUSY-1' : selfCommits(tag) ? 'BUSY-2' : null;
+    if (rule === null) continue;
     violations.push({
       path,
       line: disabled.line + 1,
-      rule: 'BUSY-1',
+      rule,
       text: lines[disabled.line].trim(),
     });
   }
   return violations;
+}
+
+/**
+ * #625's shape, mechanically (#628): the field's own start tag both starts the write and is
+ * disabled by it. Only for the kinds `readonly` applies to — a dynamic `[type]` is skipped because
+ * the kind cannot be read off the tag, and a missing `type` defaults to `text`, which can. The
+ * safe error direction, as `BUSY_STEMS` is for BUSY-1.
+ */
+function selfCommits(tag) {
+  if (!COMMIT_HANDLERS.some((handler) => tag.attributes.has(handler))) return false;
+  if (tag.name === 'textarea') return true;
+  if (tag.name !== 'input' || tag.attributes.has('[type]')) return false;
+  const type = tag.attributes.get('type');
+  return type === undefined || READONLY_KINDS.has(type.value.toLowerCase());
 }
 
 /**
@@ -909,6 +961,14 @@ const ADVICE = {
     'A binding that mixes busyness with validity splits, with the VALIDITY half left on [disabled] ' +
     '— the same flag on both is still this violation. Every other element is out of scope. ' +
     'See frontend/.claude/CLAUDE.md.',
+  'BUSY-2':
+    'BUSY-2: a text-entry field disabled by a flag its own (change)/(blur) set blurs the ' +
+    'field focus is in — Enter fires change without leaving it, and a click-away disables the ' +
+    'next field just as focus lands (WCAG 2.4.3, #625). Use [readonly] instead (style with the ' +
+    'read-only: variant): it locks typing while keeping the field focused and in the tab order — ' +
+    'pricing-tab.html is the live shape. The kinds readonly cannot lock (select, checkbox, radio, ' +
+    'file, range, color) are out of scope: serialize in the handler instead of locking the ' +
+    'control. See frontend/.claude/CLAUDE.md.',
   'FOCUS-1':
     'FOCUS-1: a transition that destroys the element focus sits on — a confirm prompt settling, a ' +
     'focus-trapped modal dismissed or torn down by a state reset — strands focus on <body> unless ' +
@@ -991,7 +1051,7 @@ function main(argv) {
 
   if (mode === '--all') {
     const violations = sweep();
-    const counts = ['BUSY-1', 'FOCUS-1']
+    const counts = ['BUSY-1', 'BUSY-2', 'FOCUS-1']
       .map((rule) => `${rule}: ${violations.filter((v) => v.rule === rule).length}`)
       .join('  ');
     process.stdout.write(`${violations.length ? `${report(violations)}\n` : ''}${counts}\n`);

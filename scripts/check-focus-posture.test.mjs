@@ -123,6 +123,80 @@ test('judges only the controls appBusy can actually replace', () => {
   assert.deepEqual(scan(HTML, lines, { isFocusTrap: () => false }), []);
 });
 
+/**
+ * #628: the self-committing-field shape (#625's class) — a field whose own start tag both starts
+ * the write (`(change)`/`(blur)`) and is disabled by it, judged only for the kinds
+ * `readonly` actually locks. `pricing-tab.html` is the live fixed shape.
+ */
+test('flags a self-committing text field disabled by its own busy flag', () => {
+  for (const shape of [
+    '<input type="number" [value]="row.priceEur" (change)="onPriceChange(row)" [disabled]="saving()" />',
+    '<input (blur)="commit()" [disabled]="saving()" />',
+    '<input type="date" (change)="onDate()" [disabled]="submitting()" />',
+    '<textarea (blur)="onEdit()" [disabled]="busy()"></textarea>',
+  ]) {
+    const violations = scan(HTML, [shape]);
+    assert.equal(violations.length, 1, `expected ${shape} to be flagged`);
+    assert.equal(violations[0].rule, 'BUSY-2');
+    assert.equal(violations[0].line, 1);
+  }
+});
+
+/**
+ * The rule stays silent wherever `readonly` is inert (`<select>`, checkbox, radio, `file`,
+ * `range`, `color`), on a dynamic `[type]` it cannot read, on a field no handler of its own
+ * commits, and on a validity binding — the deny-list posture `BUSY_STEMS` set (#628's narrow
+ * option; the inert kinds stay RV-FE-9's human check).
+ */
+test('leaves the controls readonly cannot lock and every non-self-committing field alone', () => {
+  const lines = [
+    '<select (change)="pick()" [disabled]="busy()"></select>',
+    '<input type="checkbox" (change)="toggle()" [disabled]="saving()" />',
+    '<input type="radio" (change)="choose()" [disabled]="saving()" />',
+    '<input type="file" (change)="upload()" [disabled]="uploading()" />',
+    '<input type="range" (input)="slide()" [disabled]="saving()" />',
+    '<input type="color" (change)="tint()" [disabled]="saving()" />',
+    '<input [type]="kind()" (change)="commit()" [disabled]="saving()" />',
+    '<input type="number" [value]="row.priceEur" [disabled]="saving()" />',
+    '<input type="number" (change)="commit()" [disabled]="detailsForm().invalid()" />',
+  ];
+
+  assert.deepEqual(scan(HTML, lines), []);
+});
+
+/**
+ * `(input)` is a per-keystroke event whose dominant use is draft-sync into a signal while a
+ * BUTTON starts the write — the shape `admin-commissions` and `admin-privacy` bind three times as
+ * correct code, and the sweep that gates BUSY-2 found. A per-keystroke committer is a deliberate
+ * miss, the same trade `BUSY_STEMS` makes for a novel flag name.
+ */
+test('does not read a draft-sync input binding as self-committing', () => {
+  const lines = [
+    '<input type="number" [value]="draftPercent()" [disabled]="busy()" (input)="onPercentTyped($event)" />',
+    '<input type="text" [value]="reason()" [disabled]="busy()" (input)="onReasonTyped($event)" />',
+  ];
+
+  assert.deepEqual(scan(HTML, lines), []);
+});
+
+/** #628's gating argument is BUSY-1's: syntactic, and swept with zero standing violations. */
+test('gates BUSY-2 like BUSY-1', () => {
+  const sink = () => ({ written: [], write(text) { this.written.push(text); } });
+  const out = sink();
+  const err = sink();
+
+  const failed = settle(
+    [{ path: HTML, line: 1, rule: 'BUSY-2', text: '[disabled]="saving()"' }],
+    'Focus posture',
+    out,
+    err,
+  );
+
+  assert.equal(failed, 1);
+  assert.match(err.written.join(''), /BUSY-2/);
+  assert.match(err.written.join(''), /readonly/);
+});
+
 test('survives a less-than inside an interpolation', () => {
   const lines = [
     '<div>{{ a<b ? \'x\' : \'y\' }}</div>',

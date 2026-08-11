@@ -66,10 +66,12 @@ branch, standing in for `bugfix/focus-guard-hardening` per the riviera-sdlc remo
   the whole suite run from `/tmp` (the three previously-impure tests now inject `isFocusTrap`).
 - [ ] **AC-6 (#628):** Given a diff adds a text-like `<input>` (literal `type` in the readonly
   set, or no `type`) or `<textarea>` whose **own start tag** carries a commit handler
-  (`(change)`/`(blur)`/`(input)`) and a `[disabled]` bound to a `BUSY_STEMS` flag, then
+  (`(change)`/`(blur)` — **not** `(input)`, see the audit log) and a `[disabled]` bound to a
+  `BUSY_STEMS` flag, then
   **BUSY-2** is reported and **fails the build**; a `<select>`/checkbox/radio/`file`/`range`/
-  `color`, a dynamic `[type]`, a handler-less field, or a validity-bound `[disabled]` reports
-  nothing. *Pinned by:* the `BUSY-2` test group (flags/spares cases).
+  `color`, a dynamic `[type]`, a handler-less field, a draft-sync `(input)`-only field, or a
+  validity-bound `[disabled]` reports
+  nothing. *Pinned by:* the `BUSY-2` test group (flags/spares/draft-sync cases).
 - [ ] **AC-7 (#628):** Given the standing tree, when `node scripts/check-focus-posture.mjs --all`
   sweeps it, then BUSY-2 reports **0** — the rule gates with no standing violation (the #625
   site already carries `[readonly]`; the four standing self-committing controls are inert kinds).
@@ -104,12 +106,16 @@ N/A — no surface is retired or replaced; the guard's contract is corrected and
 
 ## Open questions / Assumptions
 
-- **Assumption:** the four standing self-committing controls of inert kinds
-  (`admin-venue-photos`'s venue `<select>`, `venue-tab`'s photo `file` input, `pages/home`'s two
-  filter `<select>`s) bind no busy `[disabled]` on their own start tag, so AC-7's sweep is
-  clean. — *Owner:* session · *Resolves by:* phase 3 (the AC-7 sweep is the verification).
-
 ### Resolved
+
+- **Assumption (falsified, then resolved by narrowing):** "the sweep will be clean with
+  `(change)`/`(blur)`/`(input)` as the commit handlers" — **wrong**: the gating sweep found three
+  standing hits (`admin-commissions` ×2, `admin-privacy`), all `(input)`-draft-sync fields whose
+  write a *button* starts — the exact "mirror case" `docs/plans/focus-posture-bank-item.md`'s
+  generalization audit had already classified as correct code. `(input)` is excluded from
+  `COMMIT_HANDLERS` (it is a per-keystroke event, not a commit point; #625's shape is
+  `(change)`/`(blur)`, which is also what that audit grepped), pinned by
+  `does not read a draft-sync input binding as self-committing`; the re-run sweep is clean.
 
 - **BUSY-2 scope** (issue #628's open design decision): narrow — text-like kinds only, silent
   on the rest — chosen at plan time with the user's go-ahead on that recommendation;
@@ -145,16 +151,17 @@ N/A — no contract change.
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session before acting.
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** CI gate (draft PR #630) → ready-for-review
 
-**Next action:** phase 3 — the AC-6 flags/spares tests red-first, then BUSY-2 + the doc twins.
+**Next action:** confirm CI green on the phase-3 push, then mark PR #630 ready and run the
+review gate per `riviera-sdlc` `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 4857d27 |
 | 1 — #629 parser fixes 1–4 (declaresClass, one-line siblings, apostrophe, negated-floor dedup) | ✅ | 4a2b337 |
-| 2 — #629 hygiene (test purity AC-5, header count, advice wording + twin, ls-files dedupe, RegExp.escape, memberOf early-exit, lazy sibling reads) | ✅ | (this commit) |
-| 3 — #628 BUSY-2 rule + doc twins + AC-7 sweep | | |
+| 2 — #629 hygiene (test purity AC-5, header count, advice wording + twin, ls-files dedupe, RegExp.escape, memberOf early-exit, lazy sibling reads) | ✅ | 2674c48 |
+| 3 — #628 BUSY-2 rule + doc twins + AC-7 sweep | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -251,14 +258,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|---|---|
 | 2026-08-11 | Phase 1 (prose-apostrophe fix) | naive same-line quote-skipping over prose-bearing text | `grep -n "skipString" scripts/*.mjs` | `check-inline-comments.mjs` `scan()` — an HTML prose apostrophe can hide a same-line `<!--` | no fix: that guard's error direction is a **miss** (a comment goes unchecked), never a false positive, and it scans comment syntax, not block structure; out of #629's scope |
 | 2026-08-11 | Phase 1 (`declaresClass` order) | walk-up classification testing a keyword before a boundary terminator | `grep -n "class\\\\b" scripts/*.mjs` | none — no other guard walks source upward | no action |
+| 2026-08-11 | Phase 3 (BUSY-2 gating sweep) | every standing site the candidate rule would fail | `node scripts/check-focus-posture.mjs --all` | 3 with `(input)` in `COMMIT_HANDLERS` (`admin-commissions.ts:175,202`, `admin-privacy.ts:173`) — all draft-sync, write started by a button | narrowed the rule: `(input)` removed from `COMMIT_HANDLERS` (deliberate miss, documented in the constant's TSDoc + a pinning spare test); re-swept → 0 |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-4, AC-6:** `node --test scripts/check-focus-posture.test.mjs` → all pass.
-- [ ] **AC-5:** `cd /tmp && node --test <abs path>/check-focus-posture.test.mjs` → all pass.
-- [ ] **AC-7:** `node scripts/check-focus-posture.mjs --all` → `BUSY-2: 0`.
+- [x] **AC-1..AC-4, AC-6:** `node --test scripts/check-focus-posture.test.mjs` → 53/53 pass.
+- [x] **AC-5:** `cd /tmp && node --test <abs path>/check-focus-posture.test.mjs` → 53/53 pass.
+- [x] **AC-7:** `node scripts/check-focus-posture.mjs --all` → `BUSY-1: 0  BUSY-2: 0  FOCUS-1: 0`.
 
 ## Self-review checklist (before merge / PR)
 

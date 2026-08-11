@@ -111,8 +111,10 @@ lint/format/test/build + e2e, **four** diff-scoped hygiene checks — inline com
 `.claude/settings.json`), the plan doc's File-structure section (#533,
 `node scripts/check-plan-file-structure.mjs --diff origin/main` by hand), the two
 stranded-focus postures (#621, `node scripts/check-focus-posture.mjs --diff origin/main`;
-`--all` sweeps the standing tree, and it is the CI half of a second `PostToolUse` guard — of its two
-rules only **BUSY-1 fails a build**, FOCUS-1 prints and returns 0, since its predicate approximates a
+`--all` sweeps the standing tree, and it is the CI half of a second `PostToolUse` guard — of its
+three rules only **the BUSY pair fails a build** (BUSY-1; BUSY-2 since #628 — #625's self-committing
+field, `(change)`/`(blur)` + busy `[disabled]` on a `readonly`-lockable kind), while FOCUS-1 prints
+and returns 0, since its predicate approximates a
 runtime property; FOCUS-1 is scoped **per gating signal** since #624, so a component that moves focus
 for one surface no longer stands exempt for a second one, and a focus-trapped modal's teardown counts
 as a surface),

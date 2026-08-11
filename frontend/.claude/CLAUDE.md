@@ -55,7 +55,13 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   runs from a `PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff, covering
   `frontend/src/app/**` templates — inline `template:` literals and external `.html` alike. **BUSY-1**
   flags a `[disabled]` bound to an in-flight flag on a `<button>`/`<a>` — the only controls `[appBusy]`
-  can replace, so every other element is out of its reach, inputs included. **FOCUS-1** flags a branch
+  can replace, so every other element is out of its reach. **BUSY-2** (#628) flags the #625 shape
+  mechanically where `readonly` applies: a text-entry `<input>`/`<textarea>` whose own start tag
+  carries `(change)`/`(blur)` **and** a busy `[disabled]` — the fix is `[readonly]`, per the clause
+  above. The inert kinds stay out of its reach (no attribute locks them without blurring), and so
+  does a `(input)`-only field: that is draft-sync while a button starts the write, the carve-out's
+  premise holding — `admin-commissions` and `admin-privacy` bind exactly that as correct code.
+  **FOCUS-1** flags a branch
   that renders a confirm prompt or a focus trap and whose teardown moves focus nowhere; **rendering
   `<app-confirm-panel>`/`<app-confirm-with-reason>` does not excuse it**, since those own the open leg
   only and the back-out and settled legs are still yours. It is judged **per gating signal** (#624) —
@@ -66,16 +72,16 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   elsewhere). A signal is excused by
   **one** compliant flip site, because a bulk state reset beside a compliant dismiss is not a bug —
   so a *second* stranding flip added beside a good one goes unreported, as does a teardown written
-  some other way (`update(…)`, a `linkedSignal`). Both are deliberate misses. Both rules are
+  some other way (`update(…)`, a `linkedSignal`). Both are deliberate misses. All three rules are
   **diff-scoped**, so the standing
-  tree never fails the repo — and only **BUSY-1 fails a build**: FOCUS-1 prints and returns 0,
+  tree never fails the repo — and only **the BUSY pair fails a build**: FOCUS-1 prints and returns 0,
   because "does this teardown move focus" is a runtime property a regex can only approximate, and a
   gate that fails correct code is the error direction this layer cannot afford. Treat a FOCUS-1 line
   as a prompt to check the three legs yourself. Run either by hand with
   `node scripts/check-focus-posture.mjs --files <path…>` (which judges those files whole, committed
   or not), or sweep the app with `--all`.
-  BUSY-1 matches a curated vocabulary of busy-flag stems, so a novel flag name is a deliberate
-  false negative — extend `BUSY_STEMS` rather than working around it. Note it does **not** exempt a
+  The BUSY rules match a curated vocabulary of busy-flag stems, so a novel flag name is a deliberate
+  false negative — extend `BUSY_STEMS` rather than working around it. Note BUSY-1 does **not** exempt a
   `[disabled]` just because `[appBusy]` sits beside it: the native attribute still blurs the pressed
   control, so a genuine split has to put a validity expression on the `[disabled]` half.
 
