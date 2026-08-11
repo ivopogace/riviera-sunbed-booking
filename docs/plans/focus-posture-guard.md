@@ -96,8 +96,8 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
   judges what a diff writes, never the standing tree. *Pinned by:*
   `check-focus-posture.test.mjs` › `judges only the lines a diff added`
 - [ ] **AC-11:** Given the **whole** `frontend/src/app` tree swept with `--all`, then rule 1 reports
-  **0** violations and rule 2 reports exactly **1** — `operator/payouts-tab`, the live bug — before
-  phase 2, and **0** after it. *Verified by:* the recorded `--all` runs in Acceptance-criteria
+  **0** violations and rule 2 reports exactly **1** component — `operator/payouts-tab`, the live bug —
+  before phase 2, and **0** after it. *Verified by:* the recorded `--all` runs in Acceptance-criteria
   verification. This is the guard's real proof: zero false positives against 12 standing `[disabled]`
   bindings and 8 standing confirm surfaces, and one true positive.
 
@@ -243,19 +243,22 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phase 0 done, opening the draft PR, then phase 1`
+**Stage pointer:** `implement — phases 0–1 done, entering phase 2`
 
-**Next action:** Open the draft PR (rule 3 — CI fires on `pull_request` only), then Phase 1 step 1:
-write rule 2's cases (AC-6..AC-9) and prove them RED.
+**Next action:** Phase 2 step 1 — write `payouts-tab.spec.ts`'s AC-12..AC-16 focus cases and prove
+them RED against the current component.
 
-**Gates:** CI — not yet run. Review gate — due at ready-for-review. Sonar gate — due at PR.
+PR: **#622** — opened as a draft at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
+`pull_request` event only).
+
+**Gates:** CI — running on the draft. Review gate — due at ready-for-review. Sonar gate — due at PR.
 docs-freshness — due at close-out (the counting sweep matters: this is the **fourth**
 `scripts/check-*.mjs` guard and the **third** CI hygiene step).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Rule 1: `[disabled]` on a busy flag | ✅ | |
-| 1 — Rule 2: a confirm surface with no focus leg | | |
+| 1 — Rule 2: a confirm surface with no focus leg | ✅ | |
 | 2 — The twelfth instance: `payouts-tab`'s three legs | | |
 | 3 — Wire it: `PostToolUse` hook + the CI step | | |
 | 4 — Full verification + the conventions doc | | |
@@ -319,20 +322,26 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `scripts/check-focus-posture.mjs`, `scripts/check-focus-posture.test.mjs`
 
-- [ ] **Step 1: Write the failing tests** — AC-6..AC-9, including the external-template pairing and
+- [x] **Step 1: Write the failing tests** — AC-6..AC-9, including the external-template pairing and
       both domain-noun exclusions.
-- [ ] **Step 2: Run them, verify they fail.**
-- [ ] **Step 3: Implement** — find `@if` conditions whose first called identifier matches
+- [x] **Step 2: Run them, verify they fail.** → **2 failed | 12 passed** — the honest red for this
+      shape: only the two *flagging* cases can fail before the rule exists, since the four carve-out
+      cases pass vacuously against a rule that reports nothing. Both were re-checked green after.
+- [x] **Step 3: Implement** — find `@if` conditions whose first called identifier matches
       `/confirm/i` and which are not the `; as` aliasing form; a component is compliant when its
       `.ts` obtains `focusMover()` or its template uses `<app-confirm-panel>` /
       `<app-confirm-with-reason>`.
-- [ ] **Step 4: Run them, verify they pass.**
-- [ ] **Step 5: Add the `--all` sweep mode** and run it over the tree → **must** report rule 1: 0,
-      rule 2: 1 (`payouts-tab`). Record both numbers; this is AC-11's first half.
-- [ ] **Step 6: Generalization-audit pass** — the `--all` sweep *is* the generalization question this
-      phase exists to answer; record the two false positives the naive match would have produced.
-- [ ] **Step 7: Commit** — `git commit -m "Detect a confirm surface with no focus leg (#621)"`
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass.** → **15 passed**, one case more than planned: the sweep
+      showed a surface routinely spans two `@if` blocks (the trigger's and the prompt's), so
+      FOCUS-1 reports **one finding per component** and a new case pins it.
+- [x] **Step 5: Add the `--all` sweep mode** and run it over the tree → `BUSY-1: 0  FOCUS-1: 1`,
+      the single hit being `operator/payouts-tab.html:84`. AC-11's first half, exactly as predicted.
+      `check()` gained the sibling-`.ts` pairing in the same step — without it every compliant
+      external template (`set-editor`, `layout-editor`) would have reported, since their confirm
+      surface and their `focusMover()` live in different files.
+- [x] **Step 6: Generalization-audit pass** — see the log's third row.
+- [x] **Step 7: Commit** — `git commit -m "Detect a confirm surface with no focus leg (#621)"`
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -403,6 +412,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-11 | Plan time — the issue-intake grill, asking whether #616's sweep was complete | every component rendering a **confirm-before-destroy surface**, asked whether it moves focus at all | `grep -rn "@if (.*[Cc]onfirm" src/app` cross-referenced with `grep -rln "focusAfterRender\|focusMover" src/app` | 8 components with a confirm surface; 7 compliant, **1 not** — `operator/payouts-tab`, with zero focus handling and zero focus specs | **The twelfth instance, and the finding that justifies item 2.** #604, #614 and #616 each audited the *adopters of `focusMover()`* — a population `payouts-tab` is not in, so three consecutive audits could not see it. Searching the adopters of the **confirm surface** instead is what found it. Fixed in Phase 2; it is also rule 2's single true positive in AC-11 |
+| 2026-08-11 | Phase 1 — choosing rule 2's confirm-surface predicate | every `@if` condition in the app whose text mentions `confirm`, asked whether it is a confirm **prompt flag** or something else | `grep -rn "@if (.*[Cc]onfirm" src/app --include=*.ts --include=*.html` | 10 conditions: 8 real prompts across 7 files, **2 not** — `booking-pay.ts:70` `@if (state() === 'confirmed')` and `booking-confirmation.ts:30` `@if (confirmation(); as c)` | **Both would have been false positives**, and neither component moves focus, so both would have failed a PR on correct code — one of them on the money path. The predicate was tightened twice as a result: match the **called identifier** rather than the condition text (which drops the payment state, where `confirmed` is a string literal), and reject the `; as` aliasing form (which drops the domain noun, since binding a value is never a prompt). AC-9 pins both. The inverse case is a deliberate false negative worth recording: `admin-operators` renders its prompt through `<app-confirm-panel>` with no `@if (confirm…)` at all, so the predicate never sees it — harmless, because delegation is itself a carve-out |
 | 2026-08-11 | Phase 0 — choosing rule 1's discriminator | every expression the app binds to `[appBusy]`, asked which identifier stems denote an in-flight write, and every expression it still binds to `[disabled]`, asked which must never match | `grep -rhno '\[appBusy\]="[^"]*"' src/app` (51 bindings, 17 distinct) and `grep -rn '\[disabled\]=' src/app` (13 hits, 12 real + 1 in `busy-action.ts`'s own TSDoc) | 22 stems adopted; **5 rejected** — `loading`, `pending`, `processing`, `updating`, `creating` | **The rejections are the finding, and one of them was nearly a live false positive.** `pending` would have matched the standing `[disabled]="isPending(set)"` in `daily-view-tab.html` — a *state* binding #616 deliberately kept — turning the first PR that touched that line red on correct code. The other four read as state at least as often as busyness. Two controls on the outcome: the whole tree sweeps to **0** violations across 297 files, and a **positive control** (rewriting every real `[disabled]` expression to `saving()` in memory) flags 3 in `set-editor.html` and 1 in `daily-view-tab.html` while leaving the four inputs and the `[appBusy]` splits clean — so the zero is a real zero, not a scanner that reaches nothing. The 13th grep hit is why AC-5 exists |
 
 ---

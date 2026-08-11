@@ -141,3 +141,104 @@ test('judges only the lines a diff added', () => {
   assert.equal(violations.length, 1);
   assert.equal(violations[0].line, 2);
 });
+
+/** A component rendering its own confirm surface, parameterised by what it does about focus. */
+function component(body) {
+  return [
+    '@Component({',
+    "  selector: 'app-payouts-tab',",
+    '  template: `',
+    '    <button data-testid="weather-trigger" (click)="ask()">Weather refund</button>',
+    '    @if (weatherConfirm()) {',
+    '      <button data-testid="weather-confirm-btn" (click)="go()">Issue refund</button>',
+    '    }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    ...body,
+    '}',
+  ];
+}
+
+test('flags a confirm surface with no focus leg', () => {
+  const lines = component(['  protected readonly weatherConfirm = signal(false);']);
+
+  const violations = scan(TS, lines);
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].rule, 'FOCUS-1');
+  assert.equal(violations[0].line, 5);
+});
+
+test('accepts a confirm surface whose component moves focus', () => {
+  const lines = component(['  private readonly focusAfterRender = focusMover();']);
+
+  assert.deepEqual(scan(TS, lines), []);
+});
+
+test('pairs an external template with its component', () => {
+  const lines = [
+    '<button data-testid="set-remove" (click)="askToRemove()">Remove</button>',
+    '@if (confirmRemove()) {',
+    '  <button data-testid="set-remove-confirm">Remove set</button>',
+    '}',
+  ];
+
+  const stranded = scan(HTML, lines, { componentSource: 'export class SetEditor {}' });
+  const moved = scan(HTML, lines, {
+    componentSource: 'const focusAfterRender = focusMover();',
+  });
+
+  assert.equal(stranded.length, 1);
+  assert.equal(stranded[0].rule, 'FOCUS-1');
+  assert.equal(stranded[0].line, 2);
+  assert.deepEqual(moved, []);
+});
+
+test('accepts delegation to the shared confirm components', () => {
+  const panel = [
+    '@if (confirmRegen()) {',
+    '  <app-confirm-panel [prompt]="\'Regenerate?\'" (confirmed)="regen()" />',
+    '}',
+  ];
+  const withReason = [
+    '@if (confirming() === slot.slot) {',
+    '  <app-confirm-with-reason (confirmed)="remove(slot)" />',
+    '}',
+  ];
+
+  assert.deepEqual(scan(HTML, panel, { componentSource: '' }), []);
+  assert.deepEqual(scan(HTML, withReason, { componentSource: '' }), []);
+});
+
+test('does not mistake confirmed state or a confirmation value for a prompt', () => {
+  const paymentState = ["@if (state() === 'confirmed') {", '  <p>Paid</p>', '}'];
+  const domainNoun = ['@if (confirmation(); as c) {', '  <p>{{ c.code }}</p>', '}'];
+
+  assert.deepEqual(scan(HTML, paymentState, { componentSource: '' }), []);
+  assert.deepEqual(scan(HTML, domainNoun, { componentSource: '' }), []);
+});
+
+test('reports one finding per component however many blocks the surface spans', () => {
+  const lines = [
+    '@if (!weatherConfirm()) {',
+    '  <button data-testid="weather-trigger">Weather refund</button>',
+    '}',
+    '@if (weatherConfirm()) {',
+    '  <button data-testid="weather-confirm-btn">Issue refund</button>',
+    '}',
+  ];
+
+  const violations = scan(HTML, lines, { componentSource: '' });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 1);
+});
+
+test('judges only the confirm surfaces a diff added', () => {
+  const lines = ['@if (confirmRemove()) {', '  <button>Remove</button>', '}'];
+
+  const untouched = scan(HTML, lines, { added: new Set([2]), componentSource: '' });
+
+  assert.deepEqual(untouched, []);
+});
