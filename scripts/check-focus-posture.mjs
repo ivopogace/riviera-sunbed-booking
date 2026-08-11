@@ -5,7 +5,8 @@
  * - **BUSY-1** — a control disabled by a flag *its own activation set* blurs to `<body>` for the
  *   whole request. It belongs on `[appBusy]`, which announces the same state via `aria-disabled`.
  * - **FOCUS-1** — a confirm-before-destroy surface destroys the element focus is sitting on, so its
- *   component must move focus deliberately, or delegate to a shared confirm component that does.
+ *   component must move focus deliberately — rendering a shared confirm component is not enough,
+ *   since those own the open leg only.
  *
  * Only ever reasons about lines a diff **added**: ~12 legitimate `[disabled]` bindings and 8 standing
  * confirm surfaces must never fail the repo, and a guard that goes red on day one gets switched off
@@ -118,7 +119,7 @@ function htmlRegions(lines) {
   return { template: maskHtmlComments(lines), code: [] };
 }
 
-/** Strips a sibling component's comments and strings so `MOVES_FOCUS` sees call sites only. */
+/** Strips a sibling component's comments and strings so `movesFocus` sees call sites only. */
 function codeOf(source) {
   return typescriptRegions(source.split('\n')).code.join('\n');
 }
@@ -459,18 +460,23 @@ export function check(range) {
  * A new file has no diff against `HEAD`, so the plain diff path reported it clean — and a new
  * component is exactly how a FOCUS-1 surface enters the tree, on the `Write` the hook fires for.
  *
+ * <p>Tracked first, then diff only what is tracked: the new-file case this exists for would
+ * otherwise always fork a `git diff` guaranteed to come back empty, on the interactive edit loop.
+ *
  * @param {string[]} paths repo-relative paths
- * @param {{ tracked?: (paths: string[]) => Set<string>, read?: (path: string) => string | null }}
- *   [seams] injection points for the test suite; both hit git/disk by default
+ * @param {{ tracked?: (paths: string[]) => Set<string>, read?: (path: string) => string | null,
+ *   diff?: (paths: string[]) => Map<string, Set<number>> }} [seams] injection points for the test
+ *   suite; all three hit git or disk by default
  */
 export function checkPaths(paths, seams = {}) {
-  const { tracked = trackedAmong, read = readText } = seams;
-  const added = tracked === trackedAmong ? diffedLines(paths) : new Map();
+  const { tracked = trackedAmong, read = readText, diff = diffedLines } = seams;
   const known = tracked(paths);
-  return paths.flatMap((path) => {
-    if (added.has(path)) return checkOne(path, added.get(path), read);
-    return known.has(path) ? [] : checkOne(path, null, read);
-  });
+  const added = known.size === 0 ? new Map() : diff([...known]);
+  return paths.flatMap((path) =>
+    known.has(path)
+      ? checkOne(path, added.get(path) ?? new Set(), read)
+      : checkOne(path, null, read),
+  );
 }
 
 function diffedLines(paths) {
@@ -480,9 +486,10 @@ function diffedLines(paths) {
 /**
  * One `git ls-files` for the whole set. `--error-unmatch` per path would fork N processes and print
  * git's "did you forget to 'git add'?" to stderr for every new file — telling the author the guard
- * failed when it worked.
+ * failed when it worked. An empty set short-circuits, since a bare `ls-files` lists the repository.
  */
 function trackedAmong(paths) {
+  if (paths.length === 0) return new Set();
   return new Set(changedPaths(git(['ls-files', '-z', '--', ...paths])));
 }
 
@@ -525,16 +532,17 @@ function ownerSource(path, read) {
 
 const ADVICE = {
   'BUSY-1':
-    'BUSY-1: a control disabled by a flag its own activation set strands focus on <body> for the ' +
-    'whole request (WCAG 2.4.3). Use [appBusy], and style it with the aria-disabled: variant. ' +
-    'Inputs and validity/state bindings keep [disabled] — split a binding that mixes the two. ' +
+    'BUSY-1: a <button>/<a> disabled by a flag its own activation set strands focus on <body> for ' +
+    'the whole request (WCAG 2.4.3). Use [appBusy], and style it with the aria-disabled: variant. ' +
+    'A binding that mixes busyness with validity splits, with the VALIDITY half left on [disabled] ' +
+    '— the same flag on both is still this violation. Every other element is out of scope. ' +
     'See frontend/.claude/CLAUDE.md.',
   'FOCUS-1':
     'FOCUS-1: this component renders a confirm-before-destroy surface but moves focus nowhere, so ' +
     'each transition strands focus on <body> (WCAG 2.4.3). Give it all three legs — open, back-out ' +
-    "and settled — via shared/focus-after-render.ts's focusMover(), or render the prompt with " +
-    '<app-confirm-panel>/<app-confirm-with-reason>, which focus themselves. ' +
-    'See frontend/.claude/CLAUDE.md.',
+    "and settled — via shared/focus-after-render.ts's focusMover(). Rendering " +
+    '<app-confirm-panel>/<app-confirm-with-reason> does NOT clear this: they own the open leg only, ' +
+    'and the back-out and settled legs are still yours. See frontend/.claude/CLAUDE.md.',
 };
 
 function report(violations) {

@@ -411,13 +411,41 @@ test('judges an untracked file whole, and reports nothing for a clean tracked on
       'export class NewTab {}',
     ].join('\n');
 
-  const asNew = checkPaths([path], { tracked: () => new Set(), read });
-  const asTracked = checkPaths([path], { tracked: (paths) => new Set(paths), read });
+  const asNew = checkPaths([path], { tracked: () => new Set(), read, diff: () => new Map() });
 
   assert.equal(asNew.length, 1);
   assert.equal(asNew[0].rule, 'FOCUS-1');
   assert.equal(asNew[0].path, path);
-  assert.deepEqual(asTracked, []);
+});
+
+/**
+ * The tracked branch stays **diff-scoped**, and it has to be reachable to prove it: gating on a
+ * `tracked === trackedAmong` identity check left the branch unexercised, so deleting the diff
+ * scoping outright — which would report every standing binding on any edit — kept the suite green.
+ */
+test('judges a tracked file by the lines its diff added, and no others', () => {
+  const path = 'frontend/src/app/operator/new-tab.ts';
+  const read = () =>
+    [
+      '@Component({',
+      '  template: `',
+      '    @if (confirmRemove()) { <button data-testid="rm">Remove</button> }',
+      '  `,',
+      '})',
+      'export class NewTab {}',
+    ].join('\n');
+  const tracked = (paths) => new Set(paths);
+
+  const untouched = checkPaths([path], { tracked, read, diff: () => new Map() });
+  const rewritten = checkPaths([path], {
+    tracked,
+    read,
+    diff: () => new Map([[path, new Set([3])]]),
+  });
+
+  assert.deepEqual(untouched, []);
+  assert.equal(rewritten.length, 1);
+  assert.equal(rewritten[0].rule, 'FOCUS-1');
 });
 
 test('does not mistake confirmed state or a confirmation value for a prompt', () => {

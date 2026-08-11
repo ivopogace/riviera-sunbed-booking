@@ -462,6 +462,38 @@ describe('PayoutsTab (#173) — ledger', () => {
     expect(document.activeElement).toBe(byId('statement-open'));
   });
 
+  it('parks focus on the tab when a venue switch tears down the open statement', async () => {
+    render(ledger());
+    byId('statement-open')!.click();
+    await settle();
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/payout-ledger'))
+      .flush(ledger({ venueId: 2 }));
+    await settle();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(byId('payout-statement')).toBeNull();
+    expect(document.activeElement).toBe(byId('payouts-tab'));
+  });
+
+  it('grabs no focus when a venue switch happens with no statement open', async () => {
+    render(ledger());
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/payout-ledger'))
+      .flush(ledger({ venueId: 2 }));
+    await settle();
+    host = fixture.nativeElement as HTMLElement;
+
+    // Unguarded, the leg above would pull focus onto the tab from wherever the picker left it.
+    expect(document.activeElement).not.toBe(byId('payouts-tab'));
+  });
+
   it('moves no focus when changing the date closes the prompt', async () => {
     render(ledger());
     await openWeatherConfirm();

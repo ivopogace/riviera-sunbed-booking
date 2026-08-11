@@ -169,9 +169,23 @@ function globBody(token) {
  * `usable` for the one case it is not.
  */
 function covers(token, path) {
-  if (token.endsWith('/')) return path.startsWith(token) || path.includes(`/${token}`);
+  if (token.endsWith('/')) return isDirectChild(token, path);
   if (token.includes('*')) return new RegExp(`(^|/)${globBody(token)}$`).test(path);
   return path === token || path.endsWith(`/${token}`);
+}
+
+/**
+ * A directory token reaches the files **directly** in it, not the whole subtree beneath it.
+ *
+ * Without that floor `frontend/` — or `frontend/src/`, which is the same trick one segment along —
+ * satisfies the guard for the entire app, and #533's point is that a resuming session can read what
+ * the slice touched. A deeper file names its own directory instead.
+ */
+function isDirectChild(token, path) {
+  const at = path.startsWith(token) ? 0 : path.indexOf(`/${token}`) + 1;
+  if (at === 0 && !path.startsWith(token)) return false;
+  const rest = path.slice(at + token.length);
+  return rest !== '' && !rest.includes('/');
 }
 
 /**
@@ -190,20 +204,17 @@ function covers(token, path) {
  * nothing qualifies it, so counting suffix matches made root `CLAUDE.md` unlistable whenever a diff
  * also touched `frontend/.claude/CLAUDE.md`.
  *
- * <p>A **rooted** directory token is exempt from the count — covering several files is its job, and
+ * <p>A **rooted** directory token escapes the count — covering several files is its job, and
  * stripping its only slash before the `/` test left a top-level `scripts/` with no spelling that
- * could work — but only over its **direct children**. Without that floor `frontend/` satisfies the
- * guard for the whole app, which defeats the point: a resuming session learns nothing from a
- * four-character token. An *unrooted* one (`components/` matching two trees) is still ambiguous.
+ * could work. It reaches its **direct children only**, decided per path in `covers` rather than per
+ * token: judging the whole token disqualified `scripts/` for `scripts/a.mjs` merely because
+ * `scripts/lib/b.mjs` was also in the diff, which fails the direct child the token names exactly.
+ * Without the floor at all, `frontend/` — or `frontend/src/` — satisfies the guard for the whole app.
  */
 function usable(token, changed) {
   if (token.includes('*')) return true;
+  if (token.endsWith('/') && changed.some((path) => path.startsWith(token))) return true;
   if (token.replace(/\/$/, '').includes('/')) return true;
-  if (token.endsWith('/') && changed.some((path) => path.startsWith(token))) {
-    return changed
-      .filter((path) => covers(token, path))
-      .every((path) => !path.slice(token.length).includes('/'));
-  }
   return changed.filter((path) => covers(token, path)).length <= 1;
 }
 

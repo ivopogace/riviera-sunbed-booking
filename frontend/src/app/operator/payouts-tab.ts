@@ -97,6 +97,10 @@ export class PayoutsTab {
     this.weatherConfirm.set(false);
     this.refunding.set(false);
     this.notice.set(undefined);
+    // The statement traps focus, so tearing it down mid-switch would strand it on `<body>`.
+    if (this.statementOpen()) {
+      this.focusAfterRender('payouts-tab');
+    }
     this.statementOpen.set(false);
     this.load();
   }

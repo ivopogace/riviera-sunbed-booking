@@ -539,3 +539,27 @@ test('a repo-relative multi-segment token still suffix-matches', () => {
   });
   assert.deepEqual(omissions, []);
 });
+
+/**
+ * The direct-children floor is decided per path, not per token: judging the whole token disqualified
+ * `scripts/` for `scripts/a.mjs` merely because a deeper sibling was also in the diff, failing the
+ * direct child the token names exactly — a false positive on a hard gate.
+ */
+test('a rooted directory token still covers its direct children beside a deeper sibling', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `scripts/` — the guards'))],
+    changed: ['scripts/check-a.mjs', 'scripts/lib/util.mjs'],
+  });
+
+  assert.deepEqual(paths(omissions), ['scripts/lib/util.mjs']);
+});
+
+/** One segment along is the same blanket: the floor has to bite on multi-segment tokens too. */
+test('a multi-segment rooted token does not blanket a whole tree either', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `frontend/src/` — everything'))],
+    changed: ['frontend/src/main.ts', 'frontend/src/app/a.ts', 'frontend/src/app/deep/b.ts'],
+  });
+
+  assert.deepEqual(paths(omissions), ['frontend/src/app/a.ts', 'frontend/src/app/deep/b.ts']);
+});

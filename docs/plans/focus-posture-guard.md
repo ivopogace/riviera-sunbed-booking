@@ -83,9 +83,11 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
 
 ### Rule 2 — a confirm surface with no focus leg (issue item 2)
 
-- [x] **AC-6:** Given a diff adds `@if (confirmRemove()) { … }` to a component that calls neither
-  `focusMover()` nor a shared confirm component, then one violation is reported against that
-  component. *Pinned by:* `check-focus-posture.test.mjs` › `flags a confirm surface with no focus leg`
+- [x] **AC-6:** Given a diff adds `@if (confirmRemove()) { … }` to a component that holds no focus
+  call site, then one violation is reported against that component. *Pinned by:*
+  `check-focus-posture.test.mjs` › `flags a confirm surface with no focus leg`.
+  **Corrected at the re-review gate (G-7/H-7):** as first written this AC also exempted a component
+  rendering a shared confirm component, which contradicts the AC-8 below.
 - [x] **AC-7:** Given the same, but the component's `.ts` obtains `focusMover()`, then no violation —
   including when the surface lives in a sibling `.html` and the helper in the `.ts`. *Pinned by:*
   `check-focus-posture.test.mjs` › `accepts a confirm surface whose component moves focus` and
@@ -209,6 +211,13 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
   derived mechanically from the 17 distinct expressions already bound to `[appBusy]` in the tree, not
   invented. — *Owner:* Ivo · *Resolves by:* Phase 0 (flagged for review at the PR).
 
+- **Open question:** should **FOCUS-1** stay a hard CI gate, or become an authoring-time advisory
+  (hook only)? Three review passes have each produced a fresh false-positive finding against its
+  "does this component move focus?" predicate (H-5, H-9, and G-2/G-4 before them), because that
+  question is a runtime property being approximated by a regex over source. BUSY-1 has been stable
+  across all three passes — a crisp syntactic rule, an element allow-list, a curated vocabulary, 0
+  false positives over 297 files — and is not in question. — *Owner:* Ivo · *Resolves by:* the PR.
+
 ### Resolved
 
 - **Open question:** build item 2 at all, and in which shape? — **Resolved 2026-08-11 at plan time by
@@ -273,11 +282,12 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `review gate — 12 + 13 findings fixed across two passes; third pass due on this round`
+**Stage pointer:** `review gate — three passes run, 12 + 13 + 14 findings; FOCUS-1's precision
+escalated to the human`
 
-**Next action:** Re-review this second fix round (it changed rule semantics, not just bugs), then pull Sonar’s reported issue list from the API — the badge is not the check.
-justifies the rule: #616's second pass found a fix shipped with no coverage), then pull Sonar's
-reported issue list from the API — the badge is not the check.
+**Next action:** Settle whether FOCUS-1 stays a hard CI gate (see the Open question below), then
+re-review whatever that decides and pull Sonar's reported issue list from the API — the badge is not
+the check.
 
 PR: **#622** — opened as a draft at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
 `pull_request` event only); marked ready for review at the Phase 4 commit.
@@ -305,6 +315,17 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| H-1 | **3rd review** (CONFIRMED) | G-3's direct-children floor was judged **per token**, so one deeper sibling disqualified the whole token — `scripts/` stopped covering `scripts/a.mjs` merely because `scripts/lib/b.mjs` was also in the diff. A false positive on a hard gate, and a regression | fixed — the floor moved into `covers`, decided per path. Pinned by `a rooted directory token still covers its direct children beside a deeper sibling` |
+| H-2 | **3rd review** (CONFIRMED) | G-3's floor only bit single-segment tokens, so `frontend/src/` restored the whole-app blanket four characters along | fixed by the same move — `isDirectChild` applies to every directory token. Pinned by `a multi-segment rooted token does not blanket a whole tree either` |
+| H-3 | **3rd review** (CONFIRMED) | **G-6's fix was still untestable.** `checkPaths` gated its diff scoping on a `tracked === trackedAmong` identity check, so the injected seam could never reach that branch — deleting the diff scoping outright left all 27 tests green | fixed — a third `diff` seam. **Mutation-verified**: deleting the scoping now fails the suite (27/28) |
+| H-4 | **3rd review** (CONFIRMED) | The FOCUS-1 **advice string** — the thing an author actually reads when the gate fails — still offered delegation as the remedy G-11 deleted, as did the module header. An author would follow it, push, and fail identically | fixed — both rewritten to say delegation does **not** clear the rule and why |
+| H-6 | **3rd review** (CONFIRMED, doc) | A careless `sed` left the previous "Next action" tail behind, so the declared session-recovery anchor carried an orphaned clause with an unmatched `)` and a duplicated instruction | fixed — rewritten by hand |
+| H-7 | **3rd review** (CONFIRMED, doc) | AC-6 still stated delegation as an exemption, contradicting the AC-8 the same diff inverted — two incompatible statements of FOCUS-1 six lines apart | fixed |
+| H-8 | **3rd review** (CONFIRMED, doc) | `codeOf`'s TSDoc pointed at `MOVES_FOCUS`, renamed in the same commit that fixed the identical G-8 defect | fixed |
+| H-10 | **3rd review** (CONFIRMED) | The BUSY-1 advice string still said "Inputs … keep `[disabled]`" (the guard allow-lists `button`/`a`, so *everything* else is out of scope) and still told the author to "split a binding", which F-4 made a violation when both halves carry the same flag | fixed — rewritten to name the allow-list and to say the **validity** half is what stays on `[disabled]` |
+| H-13 | **3rd review** (CONFIRMED) | `checkPaths` forked `git diff` before knowing anything was tracked — pure waste on the new-file case the path exists for — and `trackedAmong([])` would have enumerated the whole repository | fixed — tracked first, diff only the tracked subset, empty short-circuits |
+| H-14 | **3rd review** (CONFIRMED) | **A fourteenth instance, and one the guard structurally cannot see.** `resetForVenue()` tears down the focus-**trapped** statement modal with no focus leg, so a venue switch or route change while it is open strands focus on `<body>`. `payouts-tab.ts` holds `focusMover()`, so the component-scoped exemption (known limit (a)) excuses it forever | fixed — the leg fires only when the statement was actually open, so an ordinary venue switch still grabs nothing. Pinned by `parks focus on the tab when a venue switch tears down the open statement` and its guard twin, both verified RED |
+| H-5, H-9, H-11, H-12 | **3rd review** (CONFIRMED) | **Four findings with one root cause: FOCUS-1's "does this component move focus?" predicate is a regex over source, and it cannot be made both safe and precise.** H-5: five live components (`venue-map`, `app`, `operator-chrome`, `focus-trap`, `segmented-control`) move focus with a plain `.focus()` and would fail the hard gate on correct code the moment they grow a confirm branch. H-9: the `afterNextRender` + `.focus(` pair need not be related. H-11: `--files` on a committed file prints nothing whether or not it is clean. H-12: the violation is reported at the negated *trigger* branch, not the prompt | **open — escalated to the human**, see the Open question. Three rounds have each traded one error direction for the other on this predicate; the choice between "hard gate" and "authoring-time advisory" is the human's, not a fourth patch |
 | G-1 | **re-review** (CONFIRMED) | **F-11's fix was inert and made things worse.** The new `string` state sat *below* the backtick handler, so the closing backtick re-entered `string` and the `state = 'code'` line was dead — the code mask lost everything after the first plain backtick string. Live shape: `booking-pay.ts` orders a `` `Pay ${…}` `` string before its `afterNextRender(`, so the moment its template grew an `@if (confirmX())` the hard gate would fail a component that demonstrably moves focus | fixed — the `string` branch moved above the opener. Pinned by `returns to code after a plain backtick string closes`, written from the live `booking-pay.ts` shape |
 | G-2 | **re-review** (CONFIRMED) | **F-9's per-block delegation flagged the trigger half of a trigger/prompt pair.** `isConfirmPrompt` accepts a negated condition, so `@if (!confirmRemove()) { trigger }` is itself a surface — and only the *prompt* block carries the panel. That is exactly how `payouts-tab.html` is written | fixed by G-11's change, which removes block scoping altogether. Pinned by `does not report the trigger half of a trigger and prompt pair` |
 | G-11 | **re-review** (CONFIRMED) | **Delegation excused two thirds of the rule.** `<app-confirm-panel>` owns the *open* leg only — its own TSDoc says "focus back **out** is the caller's" — so a component that delegates and holds no focus helper still strands focus on cancel and on settle, and FOCUS-1 called it clean | fixed — **delegation is no longer an exemption at all**. The rule is now simply "a component rendering a confirm branch holds a focus call site", which also deleted `blockAfter` and with it G-5. AC-8 is inverted to match; all four standing delegators pass on their own helpers |
