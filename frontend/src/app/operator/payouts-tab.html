@@ -106,9 +106,9 @@
           <div class="flex flex-wrap gap-2.5">
             <button
               type="button"
-              class="rounded-[12px] bg-[#9a6410] px-[18px] py-2.5 text-[13.5px] font-bold text-white disabled:opacity-60"
+              class="rounded-[12px] bg-[#9a6410] px-[18px] py-2.5 text-[13.5px] font-bold text-white aria-disabled:opacity-60"
               data-testid="weather-confirm-btn"
-              [disabled]="refunding()"
+              [appBusy]="refunding()"
               (click)="onConfirmWeather()"
             >
               Issue full weather refund
@@ -117,7 +117,7 @@
               type="button"
               class="rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[18px] py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)"
               data-testid="weather-cancel-btn"
-              [disabled]="refunding()"
+              [appBusy]="refunding()"
               (click)="onCancelWeather()"
             >
               Cancel

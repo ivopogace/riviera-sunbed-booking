@@ -3,6 +3,7 @@ import { disabled, form, FormField } from '@angular/forms/signals';
 import { firstValueFrom, Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmPanel } from '../shared/confirm-panel';
 import { focusMover } from '../shared/focus-after-render';
@@ -70,7 +71,7 @@ function draftForNewCell(gridY: number): SetDraft {
  */
 @Component({
   selector: 'app-set-editor',
-  imports: [CardGlass, BeachGridFrame, BeachCell, ConfirmPanel, FormField],
+  imports: [CardGlass, BeachGridFrame, BeachCell, ConfirmPanel, FormField, BusyAction],
   templateUrl: './set-editor.html',
 })
 export class SetEditor {

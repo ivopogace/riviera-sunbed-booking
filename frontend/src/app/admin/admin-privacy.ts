@@ -3,6 +3,7 @@ import { email, FormField, form, required } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { focusMover } from '../shared/focus-after-render';
 import { AdminConsoleTabs } from './admin-console-tabs';
@@ -47,7 +48,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
  */
 @Component({
   selector: 'app-admin-privacy',
-  imports: [RouterLink, FormField, CardGlass, AdminConsoleTabs],
+  imports: [RouterLink, FormField, CardGlass, AdminConsoleTabs, BusyAction],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[880px] px-4 py-10" aria-labelledby="admin-privacy-title">
@@ -179,18 +180,18 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                   <button
                     type="button"
                     data-testid="admin-privacy-confirm"
-                    [disabled]="busy()"
+                    [appBusy]="busy()"
                     (click)="erase()"
-                    class="rounded-[12px] border border-[rgba(179,54,43,0.6)] bg-[rgba(179,54,43,0.1)] px-5 py-3 text-[13.5px] font-bold text-[#8f2c22] disabled:cursor-not-allowed disabled:opacity-60"
+                    class="rounded-[12px] border border-[rgba(179,54,43,0.6)] bg-[rgba(179,54,43,0.1)] px-5 py-3 text-[13.5px] font-bold text-[#8f2c22] aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                   >
                     {{ busy() ? 'Erasing…' : 'Erase permanently' }}
                   </button>
                   <button
                     type="button"
                     data-testid="admin-privacy-cancel"
-                    [disabled]="busy()"
+                    [appBusy]="busy()"
                     (click)="cancel()"
-                    class="rounded-[12px] border border-(--riv-field-border) bg-white/70 px-5 py-3 text-[13.5px] font-semibold text-(--riv-card-ink) disabled:cursor-not-allowed disabled:opacity-60"
+                    class="rounded-[12px] border border-(--riv-field-border) bg-white/70 px-5 py-3 text-[13.5px] font-semibold text-(--riv-card-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                   >
                     Cancel
                   </button>
@@ -341,7 +342,7 @@ export class AdminPrivacy {
       this.focusAfterRender('admin-privacy-done-panel');
     } catch (error) {
       this.erasureError.set(messageFor(erasureErrorOf(error)));
-      // Disabling Erase blurred it to `<body>`; re-enabling does not bring focus back (WCAG 2.4.3).
+      // Redundant since the busy posture stopped blurring, but kept: the leg must still land.
       this.focusAfterRender('admin-privacy-confirm');
     } finally {
       this.busy.set(false);

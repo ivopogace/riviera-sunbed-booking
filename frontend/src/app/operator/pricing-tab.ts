@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { groupSetsByRow } from '../shared/availability-grid';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { eurosToMinorUnits, formatMoney, minorUnitsToEuros, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -43,7 +44,7 @@ interface PriceRow {
  */
 @Component({
   selector: 'app-pricing-tab',
-  imports: [CardGlass, StaleWriteBanner],
+  imports: [CardGlass, StaleWriteBanner, BusyAction],
   templateUrl: './pricing-tab.html',
 })
 export class PricingTab {

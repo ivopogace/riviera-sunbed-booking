@@ -22,6 +22,7 @@ import {
   groupSetsByRow,
   tileTapAction,
 } from '../shared/availability-grid';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { StatusChip } from '../shared/status-chip';
 import { formatMoney, MoneyView } from '../shared/money';
@@ -110,7 +111,7 @@ interface CheckInNotice {
  */
 @Component({
   selector: 'app-daily-view-tab',
-  imports: [CardGlass, BeachGridFrame, StatusChip],
+  imports: [CardGlass, BeachGridFrame, StatusChip, BusyAction],
   templateUrl: './daily-view-tab.html',
 })
 export class DailyViewTab {

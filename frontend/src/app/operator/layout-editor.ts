@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmPanel } from '../shared/confirm-panel';
 import { focusMover } from '../shared/focus-after-render';
@@ -75,7 +76,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
  */
 @Component({
   selector: 'app-layout-editor',
-  imports: [CardGlass, BeachCell, BeachGridFrame, ConfirmPanel, SetEditor, StaleWriteBanner],
+  imports: [CardGlass, BeachCell, BeachGridFrame, ConfirmPanel, SetEditor, StaleWriteBanner, BusyAction],
   templateUrl: './layout-editor.html',
 })
 export class LayoutEditor {

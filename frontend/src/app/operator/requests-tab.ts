@@ -3,6 +3,7 @@ import { Component, DestroyRef, computed, effect, inject, signal, untracked } fr
 import { ActivatedRoute } from '@angular/router';
 
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline, isUrgent, timeLeftLabel } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
@@ -53,7 +54,7 @@ interface RequestRow {
  */
 @Component({
   selector: 'app-requests-tab',
-  imports: [CardGlass],
+  imports: [CardGlass, BusyAction],
   templateUrl: './requests-tab.html',
 })
 export class RequestsTab {

@@ -57,7 +57,7 @@ describe('StaleWriteBanner', () => {
     fixture.componentInstance.reloading.set(true);
     fixture.detectChanges();
     const button = byId('host-stale-reload') as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
     expect(button.textContent).toContain('Reloading…');
   });
 

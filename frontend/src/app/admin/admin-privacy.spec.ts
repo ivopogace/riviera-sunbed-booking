@@ -280,8 +280,8 @@ describe('AdminPrivacy', () => {
     byTestId<HTMLButtonElement>(fixture, 'admin-privacy-confirm')!.click();
     fixture.detectChanges();
 
-    expect(byTestId<HTMLButtonElement>(fixture, 'admin-privacy-confirm')!.disabled).toBe(true);
-    expect(byTestId<HTMLButtonElement>(fixture, 'admin-privacy-cancel')!.disabled).toBe(true);
+    expect(byTestId(fixture, 'admin-privacy-confirm')!.getAttribute('aria-disabled')).toBe('true');
+    expect(byTestId(fixture, 'admin-privacy-cancel')!.getAttribute('aria-disabled')).toBe('true');
     // The field too, not just the buttons — grounds typed mid-flight would never be sent.
     expect(byTestId<HTMLInputElement>(fixture, 'admin-privacy-reason')!.disabled).toBe(true);
 

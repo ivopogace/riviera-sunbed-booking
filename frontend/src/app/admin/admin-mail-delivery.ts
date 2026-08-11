@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormField, form } from '@angular/forms/signals';
 
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { AdminMailDeliveryService } from './admin-mail-delivery.service';
 import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from './admin.model';
@@ -29,7 +30,7 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
  */
 @Component({
   selector: 'app-admin-mail-delivery',
-  imports: [FormField, CardGlass],
+  imports: [FormField, CardGlass, BusyAction],
   template: `
     <div
       appCardGlass
@@ -65,8 +66,8 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
         </label>
         <button
           type="submit"
-          class="inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-          [disabled]="searching()"
+          class="inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+          [appBusy]="searching()"
           data-testid="admin-delivery-lookup"
         >
           {{ searching() ? 'Looking up…' : 'Look up' }}
@@ -121,8 +122,8 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
 
               <button
                 type="button"
-                class="mt-3 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                [disabled]="resending() !== undefined"
+                class="mt-3 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                [appBusy]="resending() !== undefined"
                 (click)="onResend(booking.bookingId)"
                 [attr.data-testid]="'admin-delivery-resend-' + booking.bookingId"
               >
