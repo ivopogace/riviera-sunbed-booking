@@ -199,15 +199,15 @@ N/A — no contract change.
 > `riviera-sdlc` reference file) before acting. Update it in the SAME commit window as the change it
 > records — at every phase boundary AND every SDLC stage transition.
 
-**Stage pointer:** `implement — phase 0 done, phase 1 next`
+**Stage pointer:** `implement — phase 1 done, phase 2 next`
 
-**Next action:** Phase 1 step 1 — RED tests for AC-8 (external template anchoring), AC-9 (diff
-scoping over flip lines) and AC-10 (advisory posture).
+**Next action:** Phase 2 — record the four-tree measurement, then update the FOCUS-1 prose in both
+`CLAUDE.md` files and #621's known limit (a).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The rule: widened trigger + signal-scoped exemption | ✅ | this commit |
-| 1 — Anchoring: external templates, diff scoping, advisory posture | | |
+| 0 — The rule: widened trigger + signal-scoped exemption | ✅ | `0fe1ebd` |
+| 1 — Anchoring: external templates, diff scoping, advisory posture | ✅ | this commit |
 | 2 — Measure the four trees, then the conventions doc | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

@@ -739,8 +739,8 @@ function checkOne(path, added, read = readText) {
     path,
     lines,
     added: added ?? new Set(lines.map((_, i) => i + 1)),
-    componentSource: siblingSource(path, '.html', read),
-    templateSource: siblingSource(path, '.ts', read),
+    componentSource: sibling(path, '.html', '.ts', read),
+    templateSource: sibling(path, '.ts', '.html', read),
   });
 }
 
@@ -752,9 +752,9 @@ function checkOne(path, added, read = readText) {
  * `.html` in the app, and what lets the `.ts` report the flip that strands focus. `set-editor` and
  * `layout-editor` are both written this way.
  */
-function siblingSource(path, extension, read) {
-  if (!path.endsWith(extension)) return '';
-  return read(path.replace(new RegExp(`\\${extension}$`), extension === '.html' ? '.ts' : '.html')) ?? '';
+function sibling(path, from, to, read) {
+  if (!path.endsWith(from)) return '';
+  return read(`${path.slice(0, -from.length)}${to}`) ?? '';
 }
 
 /**
@@ -811,16 +811,19 @@ function advise(violations) {
  *
  * An advisory still reaches the log — a rule nobody sees is a rule nobody follows — but a build is
  * never red because a heuristic guessed wrong about how a component moves focus.
+ *
+ * @param {{ write: (text: string) => void }} [out] the streams, injectable so the posture itself is
+ *   testable rather than asserted about
  */
-function settle(violations, headline) {
+export function settle(violations, headline, out = process.stdout, err = process.stderr) {
   const gating = violations.filter((v) => GATING.has(v.rule));
   const advisory = violations.filter((v) => !GATING.has(v.rule));
 
   if (advisory.length > 0) {
-    process.stdout.write(`${headline} — advisory, not gating:\n${report(advisory)}\n${advise(advisory)}\n`);
+    out.write(`${headline} — advisory, not gating:\n${report(advisory)}\n${advise(advisory)}\n`);
   }
   if (gating.length === 0) return 0;
-  process.stderr.write(`${headline}:\n${report(gating)}\n${advise(gating)}\n`);
+  err.write(`${headline}:\n${report(gating)}\n${advise(gating)}\n`);
   return 1;
 }
 

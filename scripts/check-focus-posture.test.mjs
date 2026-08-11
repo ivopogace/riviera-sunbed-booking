@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { checkPaths, findViolations } from './check-focus-posture.mjs';
+import { checkPaths, findViolations, settle } from './check-focus-posture.mjs';
 
 const HTML = 'frontend/src/app/operator/payouts-tab.html';
 const TS = 'frontend/src/app/admin/admin-privacy.ts';
@@ -617,6 +617,85 @@ test('counts a call to a mover field under any name', () => {
  * `payouts-tab` as it stood mid-#621 — the weather-confirm legs landed, the statement modal's had
  * not — which is the tree FOCUS-1 reported clean and #621's own review pass caught by hand.
  */
+/**
+ * `set-editor` and `layout-editor` split the component in two, so each half sees only one side of
+ * the rule. The finding belongs where the fix goes — the flip — which puts it in the `.ts`, and the
+ * `.html` must not report it as well or the same bug arrives twice with two different line numbers.
+ */
+test('judges a component with an external template against its sibling', () => {
+  const template = [
+    '<button data-testid="statement-open" (click)="open()">Statement</button>',
+    '@if (statementOpen()) {',
+    '  <app-payout-statement (dismissed)="close()" />',
+    '}',
+  ];
+  const component = [
+    'export class PayoutsTab {',
+    '  private readonly focusAfterRender = focusMover();',
+    '  close() {',
+    '    this.statementOpen.set(false);',
+    '  }',
+    '}',
+  ];
+
+  const fromComponent = scan(TS, component, {
+    templateSource: template.join('\n'),
+    isFocusTrap: TRAPS,
+  });
+  const fromTemplate = scan(HTML, template, {
+    componentSource: component.join('\n'),
+    isFocusTrap: TRAPS,
+  });
+
+  assert.equal(fromComponent.length, 1);
+  assert.equal(fromComponent[0].line, 4);
+  assert.deepEqual(fromTemplate, []);
+});
+
+/** The rule's second half asks a question about the flip, so the flip is the line a diff must write. */
+test('judges only the surfaces and flips a diff added', () => {
+  const lines = modalComponent([
+    '  open() { this.statementOpen.set(true); }',
+    '  close() { this.statementOpen.set(false); }',
+  ]);
+
+  const elsewhere = scan(TS, lines, { added: new Set([1, 10]), isFocusTrap: TRAPS });
+  const theFlip = scan(TS, lines, { added: new Set([11]), isFocusTrap: TRAPS });
+
+  assert.deepEqual(elsewhere, []);
+  assert.equal(theFlip.length, 1);
+  assert.equal(theFlip[0].line, 11);
+});
+
+/**
+ * #621's third review pass settled this: FOCUS-1 approximates a runtime property, so it prints and
+ * returns 0 while BUSY-1 — syntactic, and unchallenged across three passes — fails the build.
+ */
+test('keeps FOCUS-1 advisory and BUSY-1 gating', () => {
+  const sink = () => ({ written: [], write(text) { this.written.push(text); } });
+  const advisory = { out: sink(), err: sink() };
+  const gating = { out: sink(), err: sink() };
+
+  const advised = settle(
+    [{ path: HTML, line: 3, rule: 'FOCUS-1', text: '@if (confirmRemove()) {' }],
+    'Focus posture',
+    advisory.out,
+    advisory.err,
+  );
+  const failed = settle(
+    [{ path: HTML, line: 5, rule: 'BUSY-1', text: '[disabled]="saving()"' }],
+    'Focus posture',
+    gating.out,
+    gating.err,
+  );
+
+  assert.equal(advised, 0);
+  assert.match(advisory.out.written.join(''), /advisory, not gating/);
+  assert.deepEqual(advisory.err.written, []);
+  assert.equal(failed, 1);
+  assert.match(gating.err.written.join(''), /BUSY-1/);
+});
+
 test('reports the surface that hid behind the weather-confirm legs', () => {
   const lines = [
     '@Component({',
