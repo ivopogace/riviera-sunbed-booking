@@ -11,7 +11,7 @@
 
 * text=auto eol=lf
 
-# Shell scripts are LF wherever they run — CI containers and the session-start hooks.
+# Shell scripts stay LF wherever they run — the cloud-session hooks, and any Linux shell.
 *.sh text eol=lf
 
 # Binaries: never line-ending-converted, never diffed as text.
