@@ -45,7 +45,7 @@ function text(fixture: ComponentFixture<AdminConsoleStats>, testId: string): str
 
 describe('AdminConsoleStats', () => {
   it('renders the operator counts it is given', async () => {
-    const fixture = await render(async () => [venue(1, 1500)]);
+    const fixture = await render(() => Promise.resolve([venue(1, 1500)]));
 
     expect(text(fixture, 'admin-stat-pending')).toBe('2');
     expect(text(fixture, 'admin-stat-active')).toBe('3');
@@ -53,29 +53,29 @@ describe('AdminConsoleStats', () => {
   });
 
   it('counts venues and renders the mean rate', async () => {
-    const fixture = await render(async () => [venue(1, 1500), venue(2, 1000)]);
+    const fixture = await render(() => Promise.resolve([venue(1, 1500), venue(2, 1000)]));
 
     expect(text(fixture, 'admin-stat-venues')).toBe('2');
     expect(text(fixture, 'admin-stat-mean-rate')).toBe('mean rate 12.5%');
   });
 
   it('rounds the mean to whole basis points', async () => {
-    const fixture = await render(async () => [venue(1, 1500), venue(2, 1000), venue(3, 1000)]);
+    const fixture = await render(() =>
+      Promise.resolve([venue(1, 1500), venue(2, 1000), venue(3, 1000)]),
+    );
 
     expect(text(fixture, 'admin-stat-mean-rate')).toBe('mean rate 11.67%');
   });
 
   it('names the aggregation so the mean is never read as the platform take rate', async () => {
-    const fixture = await render(async () => [venue(1, 1500), venue(2, 1000)]);
+    const fixture = await render(() => Promise.resolve([venue(1, 1500), venue(2, 1000)]));
 
     expect(text(fixture, 'admin-stats-mean-note')).toContain('averages venue rates equally');
     expect(text(fixture, 'admin-stats-mean-note')).toContain('where bookings land');
   });
 
   it('a failed venue read dashes only its own tile', async () => {
-    const fixture = await render(async () => {
-      throw new Error('boom');
-    });
+    const fixture = await render(() => Promise.reject(new Error('boom')));
 
     expect(text(fixture, 'admin-stat-venues')).toBe('—');
     expect(text(fixture, 'admin-stat-mean-rate')).toBeUndefined();
@@ -86,7 +86,7 @@ describe('AdminConsoleStats', () => {
   });
 
   it('unknown counts render a dash, never a zero', async () => {
-    const fixture = await render(async () => [venue(1, 1500)], {});
+    const fixture = await render(() => Promise.resolve([venue(1, 1500)]), {});
 
     expect(text(fixture, 'admin-stat-pending')).toBe('—');
     expect(text(fixture, 'admin-stat-active')).toBe('—');
@@ -94,7 +94,7 @@ describe('AdminConsoleStats', () => {
   });
 
   it('keeps a real zero distinct from an unknown count', async () => {
-    const fixture = await render(async () => [venue(1, 1500)], {
+    const fixture = await render(() => Promise.resolve([venue(1, 1500)]), {
       pendingCount: 0,
       activeCount: 0,
       suspendedCount: 0,
@@ -106,7 +106,7 @@ describe('AdminConsoleStats', () => {
   });
 
   it('no venues means a real zero and no mean', async () => {
-    const fixture = await render(async () => []);
+    const fixture = await render(() => Promise.resolve([]));
 
     expect(text(fixture, 'admin-stat-venues')).toBe('0');
     expect(text(fixture, 'admin-stat-mean-rate')).toBeUndefined();
@@ -114,14 +114,14 @@ describe('AdminConsoleStats', () => {
   });
 
   it('is inert — no link, button or focusable tile', async () => {
-    const fixture = await render(async () => [venue(1, 1500)]);
+    const fixture = await render(() => Promise.resolve([venue(1, 1500)]));
     const host = fixture.nativeElement as HTMLElement;
 
     expect(host.querySelectorAll('a, button, input, select, textarea, [tabindex]')).toHaveLength(0);
   });
 
   it('names the strip for assistive tech as a labelled region', async () => {
-    const fixture = await render(async () => [venue(1, 1500)]);
+    const fixture = await render(() => Promise.resolve([venue(1, 1500)]));
     const strip = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="admin-stats"]',
     )!;

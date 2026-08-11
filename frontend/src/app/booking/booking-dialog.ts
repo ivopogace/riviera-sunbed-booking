@@ -341,7 +341,7 @@ export class BookingDialog implements OnInit {
 
   private onSubmit(): void {
     this.errorCode.set(undefined);
-    submit(this.bookingForm, async () => {
+    void submit(this.bookingForm, async () => {
       const m = this.model();
       this.submitting.set(true);
       try {

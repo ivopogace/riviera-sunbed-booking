@@ -1,14 +1,16 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { vi } from 'vitest';
+import { Mock, vi } from 'vitest';
 
 import { OperatorAuth, OperatorPasswordChangeResult } from '../core/operator-auth';
 import { OperatorPassword } from './operator-password';
 
 type AuthStub = Partial<OperatorAuth> & {
-  changePassword: ReturnType<typeof vi.fn>;
-  sessionLost: ReturnType<typeof vi.fn>;
+  changePassword: Mock<
+    (currentPassword: string, newPassword: string) => Promise<OperatorPasswordChangeResult>
+  >;
+  sessionLost: Mock<() => void>;
 };
 
 function authStub(result: OperatorPasswordChangeResult = 'changed'): AuthStub {
@@ -16,9 +18,9 @@ function authStub(result: OperatorPasswordChangeResult = 'changed'): AuthStub {
     signedIn: signal(true),
     restoring: signal(false),
     username: signal('adriatica'),
-    changePassword: vi.fn(async () => result),
+    changePassword: vi.fn(() => Promise.resolve(result)),
     sessionLost: vi.fn(),
-  } as unknown as AuthStub;
+  };
 }
 
 async function render(auth: AuthStub): Promise<ComponentFixture<OperatorPassword>> {

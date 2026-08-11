@@ -101,7 +101,7 @@ test('an SSO-only account sets its first password with no current password', asy
 
   let setPasswordRequests = 0;
   page.on('request', (request) => {
-    if (/\/api\/me\/password$/.test(request.url())) {
+    if (request.url().endsWith('/api/me/password')) {
       setPasswordRequests += 1;
     }
   });

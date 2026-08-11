@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { vi } from 'vitest';
+import { Mock, vi } from 'vitest';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { AdminPrivacy } from './admin-privacy';
@@ -35,8 +35,8 @@ function authStub(state: AuthState = {}): OperatorAuth {
 
 const EMAIL = 'ana@example.com';
 
-function serviceStub(): { erase: ReturnType<typeof vi.fn> } {
-  return { erase: vi.fn(async () => undefined) };
+function serviceStub(): { erase: Mock<AdminPrivacyService['erase']> } {
+  return { erase: vi.fn(() => Promise.resolve(undefined)) };
 }
 
 /** An RFC-7807 failure as the interceptor-free service surfaces it. */
@@ -72,7 +72,7 @@ function byTestId<T extends HTMLElement>(
   fixture: ComponentFixture<AdminPrivacy>,
   id: string,
 ): T | null {
-  return fixture.nativeElement.querySelector(`[data-testid="${id}"]`);
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
 }
 
 function text(fixture: ComponentFixture<AdminPrivacy>, id: string): string {
@@ -301,7 +301,9 @@ describe('AdminPrivacy', () => {
     expect(byTestId(fixture, 'admin-privacy-forbidden')).not.toBeNull();
     expect(byTestId(fixture, 'admin-privacy-email')).toBeNull();
     // A signed-out visitor is never told which admin surfaces exist.
-    expect(fixture.nativeElement.querySelector('app-admin-console-tabs')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('app-admin-console-tabs'),
+    ).toBeNull();
     expect(service.erase).not.toHaveBeenCalled();
   });
 

@@ -55,7 +55,7 @@ describe('OperatorHome (#277, create state #278)', () => {
   }
 
   function el(testId: string): HTMLElement {
-    return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+    return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testId}"]`)!;
   }
 
   it('renders the create card inline for an operator with no venues (#278)', async () => {
@@ -63,9 +63,9 @@ describe('OperatorHome (#277, create state #278)', () => {
 
     expect(navigate).not.toHaveBeenCalled();
     expect(el('venue-create-card')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('#operator-home-title')?.textContent).toContain(
-      'Create your venue',
-    );
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('#operator-home-title')?.textContent,
+    ).toContain('Create your venue');
   });
 
   it('?create=1 renders the create card instead of forwarding a venue owner (#278)', async () => {
@@ -76,9 +76,9 @@ describe('OperatorHome (#277, create state #278)', () => {
 
     expect(navigate).not.toHaveBeenCalled();
     expect(el('venue-create-card')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('#operator-home-title')?.textContent).toContain(
-      'Add another venue',
-    );
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('#operator-home-title')?.textContent,
+    ).toContain('Add another venue');
   });
 
   it('forwards a single-venue operator straight into that console', async () => {

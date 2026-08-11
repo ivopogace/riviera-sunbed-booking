@@ -82,11 +82,13 @@ describe('Operator console — in-place venue switch over the real routes (#180)
   }
 
   function shell(): OperatorConsole {
-    return harness.fixture.debugElement.query(By.directive(OperatorConsole)).componentInstance;
+    return harness.fixture.debugElement.query(By.directive(OperatorConsole))
+      .componentInstance as OperatorConsole;
   }
 
   function tab(): LayoutEditor {
-    return harness.fixture.debugElement.query(By.directive(LayoutEditor)).componentInstance;
+    return harness.fixture.debugElement.query(By.directive(LayoutEditor))
+      .componentInstance as LayoutEditor;
   }
 
   function text(testid: string): string {

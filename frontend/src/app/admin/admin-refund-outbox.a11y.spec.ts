@@ -23,12 +23,13 @@ const authStub = {
 
 function serviceStub(status: OutboxStatusView): Partial<AdminRefundOutboxService> {
   return {
-    status: async () => status,
-    resubmit: async () => ({
-      outcome: 'RESUBMITTED',
-      resubmitted: 0,
-      cooldownRemainingSeconds: 60,
-    }),
+    status: () => Promise.resolve(status),
+    resubmit: () =>
+      Promise.resolve({
+        outcome: 'RESUBMITTED',
+        resubmitted: 0,
+        cooldownRemainingSeconds: 60,
+      }),
   };
 }
 
@@ -53,22 +54,22 @@ describe('AdminRefundOutbox a11y', () => {
   it('has no axe violations with refunds outstanding (AC-3)', async () => {
     const fixture = await render({ outstanding: 3, cooldownRemainingSeconds: 0 });
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   it('has no axe violations with an empty outbox (AC-3)', async () => {
     const fixture = await render({ outstanding: 0, cooldownRemainingSeconds: 0 });
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   // The outcome appears without a focus change, so only a self-announcing region reaches AT users.
   it('announces the outcome through a polite live region (AC-3)', async () => {
     const fixture = await render({ outstanding: 1, cooldownRemainingSeconds: 0 });
 
-    const notice: HTMLElement = fixture.nativeElement.querySelector(
+    const notice: HTMLElement = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="admin-refunds-notice"]',
-    );
+    )!;
     expect(notice.getAttribute('role')).toBe('status');
     expect(notice.getAttribute('aria-live')).toBe('polite');
   });

@@ -94,8 +94,7 @@ export class Home {
 
   /** True only once a response has arrived and it is empty (distinct from the loading state). */
   protected readonly isEmpty = computed(() => {
-    const list = this.venues();
-    return list !== undefined && list.length === 0;
+    return this.venues()?.length === 0;
   });
 
   /**

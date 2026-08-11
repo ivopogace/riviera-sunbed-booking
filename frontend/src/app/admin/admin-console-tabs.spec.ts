@@ -36,13 +36,13 @@ async function renderAt(url: string): Promise<ComponentFixture<TabsHost>> {
 }
 
 function tab(fixture: ComponentFixture<TabsHost>, testId: string): HTMLElement {
-  return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testId}"]`)!;
 }
 
 /** The rendered pill labels, in DOM order. */
 function labels(fixture: ComponentFixture<TabsHost>): string[] {
-  return [...fixture.nativeElement.querySelectorAll('nav a')].map((a) =>
-    (a as HTMLElement).textContent!.trim(),
+  return [...(fixture.nativeElement as HTMLElement).querySelectorAll('nav a')].map((a) =>
+    (a as HTMLElement).textContent.trim(),
   );
 }
 
@@ -123,7 +123,7 @@ describe('AdminConsoleTabs', () => {
   });
 
   /** The guard above is only worth having if it fails on the mistake it exists to catch. */
-  it('rejects a tab appended out of its canonical slot', async () => {
+  it('rejects a tab appended out of its canonical slot', () => {
     const appendedByShipDate = ['Operators', 'Email', 'Audit', 'Commissions'];
 
     expect(appendedByShipDate).not.toEqual(canonicalOrderOf(appendedByShipDate));
@@ -132,7 +132,7 @@ describe('AdminConsoleTabs', () => {
   it('is a labelled landmark, so two navs never read alike', async () => {
     const fixture = await renderAt('/admin');
 
-    const nav: HTMLElement = fixture.nativeElement.querySelector('nav');
+    const nav: HTMLElement = (fixture.nativeElement as HTMLElement).querySelector('nav')!;
     expect(nav.getAttribute('aria-label')).toBe('Admin console sections');
   });
 });

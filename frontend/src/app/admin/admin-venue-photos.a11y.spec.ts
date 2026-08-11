@@ -36,9 +36,9 @@ const PHOTOS: AdminVenuePhotosView = {
 
 function serviceStub(): Partial<AdminVenuePhotosService> {
   return {
-    venues: async () => [{ id: 7, name: 'Bora Bora Beach', beach: 'Dhërmi' }],
-    slots: async () => PHOTOS,
-    takedown: async () => undefined,
+    venues: () => Promise.resolve([{ id: 7, name: 'Bora Bora Beach', beach: 'Dhërmi' }]),
+    slots: () => Promise.resolve(PHOTOS),
+    takedown: () => Promise.resolve(undefined),
   };
 }
 
@@ -61,9 +61,9 @@ async function renderWithVenuePicked(): Promise<ComponentFixture<AdminVenuePhoto
   fixture.detectChanges();
   await settle(fixture);
 
-  const select: HTMLSelectElement = fixture.nativeElement.querySelector(
+  const select: HTMLSelectElement = (fixture.nativeElement as HTMLElement).querySelector(
     '[data-testid="admin-photos-venue"]',
-  );
+  )!;
   select.value = '7';
   select.dispatchEvent(new Event('change'));
   fixture.detectChanges();
@@ -75,15 +75,17 @@ describe('AdminVenuePhotos a11y', () => {
   it('has no axe violations showing a venue’s slots', async () => {
     const fixture = await renderWithVenuePicked();
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   it('has no axe violations while a takedown confirmation is open', async () => {
     const fixture = await renderWithVenuePicked();
 
-    fixture.nativeElement.querySelector('[data-testid="admin-photo-remove-cover"]').click();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLElement>('[data-testid="admin-photo-remove-cover"]')!
+      .click();
     fixture.detectChanges();
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 });

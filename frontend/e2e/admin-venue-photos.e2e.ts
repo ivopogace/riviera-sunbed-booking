@@ -59,9 +59,9 @@ async function mockPhotoModeration(page: Page): Promise<void> {
       json: {
         venueId,
         photos: {
-          cover: { previewUrl: venue.cover },
-          sunbeds: { previewUrl: venue.sunbeds },
-          bar: { previewUrl: venue.bar },
+          cover: { previewUrl: venue['cover'] },
+          sunbeds: { previewUrl: venue['sunbeds'] },
+          bar: { previewUrl: venue['bar'] },
         },
       },
     });

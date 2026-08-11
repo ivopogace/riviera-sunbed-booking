@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Observable, Subject, of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { installFakeStorage, removeFakeStorage } from '../../testing/fake-storage';
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -50,9 +50,9 @@ function stubService(
     getByCode: (code: string) => {
       const r = byCode[code];
       if (r && 'error' in r) {
-        return throwError(() => r.error) as Observable<BookingDetail>;
+        return throwError(() => r.error);
       }
-      return of(r as BookingDetail);
+      return of(r);
     },
   };
 }
@@ -255,9 +255,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     let calls = 0;
     const service: Partial<BookingService> = {
       getByCode: () =>
-        (calls++ === 0
-          ? throwError(() => ({ status: 500 }))
-          : of(detail('TRAN5678', 'CONFIRMED'))) as Observable<BookingDetail>,
+        calls++ === 0 ? throwError(() => ({ status: 500 })) : of(detail('TRAN5678', 'CONFIRMED')),
     };
     const fixture = await render(service);
     const host = fixture.nativeElement as HTMLElement;
@@ -266,7 +264,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     // The code is NOT forgotten on a transient failure.
     expect(TestBed.inject(DeviceLocalBookings).codes()).toEqual(['TRAN5678']);
 
-    (host.querySelector('[data-testid="row-retry"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="row-retry"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -434,7 +432,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
       seedCodes(['DEVONLY1']);
       const service: Partial<BookingService> = {
         ...stubService({ DEVONLY1: detail('DEVONLY1', 'CONFIRMED') }),
-        myBookings: () => throwError(() => ({ status: 500 })) as Observable<MyBookingSummary[]>,
+        myBookings: () => throwError(() => ({ status: 500 })),
       };
       const fixture = await render(service, authStub(true));
       const host = fixture.nativeElement as HTMLElement;
@@ -468,7 +466,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
       seedCodes([]);
       const service: Partial<BookingService> = {
         ...stubService({}),
-        myBookings: () => throwError(() => ({ status: 401 })) as Observable<MyBookingSummary[]>,
+        myBookings: () => throwError(() => ({ status: 401 })),
       };
       const fixture = await render(service, authStub(true));
       const host = fixture.nativeElement as HTMLElement;
@@ -589,15 +587,13 @@ describe('MyBookings (device-local list, issue #139)', () => {
       const service: Partial<BookingService> = {
         ...stubService({}),
         myBookings: () =>
-          (calls++ === 0
-            ? throwError(() => ({ status: 500 }))
-            : of([summary('ACCTLATER1')])) as Observable<MyBookingSummary[]>,
+          calls++ === 0 ? throwError(() => ({ status: 500 })) : of([summary('ACCTLATER1')]),
       };
       const fixture = await render(service, authStub(true));
       const host = fixture.nativeElement as HTMLElement;
 
       expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
-      (host.querySelector('[data-testid="account-retry"]') as HTMLButtonElement).click();
+      host.querySelector<HTMLButtonElement>('[data-testid="account-retry"]')!.click();
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();

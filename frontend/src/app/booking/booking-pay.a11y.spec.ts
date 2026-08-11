@@ -23,11 +23,11 @@ const AWAITING: AwaitingPayment = {
 };
 
 class FakeGateway extends StripePaymentGateway {
-  override async mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+  override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
     const input = document.createElement('input');
     input.setAttribute('aria-label', 'Card number (test)');
     host.appendChild(input);
-    return { confirm: async () => ({}) };
+    return Promise.resolve({ confirm: () => Promise.resolve({}) });
   }
 }
 

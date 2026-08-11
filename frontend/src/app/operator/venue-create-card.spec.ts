@@ -2,6 +2,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import type { MockInstance } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
@@ -19,7 +20,7 @@ describe('VenueCreateCard (#278)', () => {
   let fixture: ComponentFixture<VenueCreateCard>;
   let httpMock: HttpTestingController;
   let auth: OperatorAuth;
-  let router: Router;
+  let navigateByUrl: MockInstance<Router['navigateByUrl']>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -34,8 +35,7 @@ describe('VenueCreateCard (#278)', () => {
     fixture = TestBed.createComponent(VenueCreateCard);
     httpMock = TestBed.inject(HttpTestingController);
     auth = TestBed.inject(OperatorAuth);
-    router = TestBed.inject(Router);
-    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     fixture.detectChanges();
     // Guard-gated surface: the card only mounts signed in, so /me answers a principal.
     httpMock
@@ -56,7 +56,10 @@ describe('VenueCreateCard (#278)', () => {
     const field = Array.from(host().querySelectorAll('label.field')).find((l) =>
       l.querySelector('span')?.textContent?.trim().startsWith(label),
     );
-    const control = field?.querySelector('input, select') as HTMLInputElement | HTMLSelectElement;
+    if (!field) {
+      throw new Error(`No field labelled "${label}"`);
+    }
+    const control = field.querySelector<HTMLInputElement | HTMLSelectElement>('input, select')!;
     control.value = value;
     control.dispatchEvent(new Event('input', { bubbles: true }));
     control.dispatchEvent(new Event('change', { bubbles: true }));
@@ -65,7 +68,7 @@ describe('VenueCreateCard (#278)', () => {
   function submitButton(): HTMLButtonElement {
     return Array.from(host().querySelectorAll('button')).find((b) =>
       b.textContent?.trim().startsWith('Creat'),
-    ) as HTMLButtonElement;
+    )!;
   }
 
   async function fillRequiredAndSubmit(): Promise<void> {
@@ -134,9 +137,9 @@ describe('VenueCreateCard (#278)', () => {
 
     // The stale landing cache is dropped BEFORE navigating into the console it feeds.
     expect(reset).toHaveBeenCalledTimes(1);
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/operator/31/beach-map');
+    expect(navigateByUrl).toHaveBeenCalledWith('/operator/31/beach-map');
     expect(reset.mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(router.navigateByUrl).mock.invocationCallOrder[0],
+      navigateByUrl.mock.invocationCallOrder[0],
     );
   });
 
@@ -147,7 +150,7 @@ describe('VenueCreateCard (#278)', () => {
     httpMock.expectNone(`${environment.apiBaseUrl}/api/venues`);
     fixture.detectChanges();
     expect(host().querySelector('[role="alert"]')?.textContent).toContain('check the form values');
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(navigateByUrl).not.toHaveBeenCalled();
   });
 
   it('keeps the saving state on the submit button while the create is in flight', async () => {
@@ -179,7 +182,7 @@ describe('VenueCreateCard (#278)', () => {
     expect(auth.signedIn()).toBe(false);
     // The form body hides with the dead session — the chrome's sign-in link is the way back.
     expect(host().querySelector('form')).toBeNull();
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(navigateByUrl).not.toHaveBeenCalled();
   });
 
   it('maps a server INVALID_REQUEST problem to the check-the-form message', async () => {

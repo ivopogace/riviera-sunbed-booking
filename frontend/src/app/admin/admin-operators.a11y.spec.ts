@@ -36,8 +36,8 @@ const authStub = {
 } as unknown as OperatorAuth;
 
 const serviceStub: Partial<AdminOperatorsService> = {
-  pending: async () => rows,
-  accounts: async () => accountRows,
+  pending: () => Promise.resolve(rows),
+  accounts: () => Promise.resolve(accountRows),
 };
 
 const VENUES = [
@@ -51,7 +51,7 @@ const VENUES = [
 ];
 
 async function render(
-  venues: () => Promise<readonly VenueCommissionView[]> = async () => VENUES,
+  venues: () => Promise<readonly VenueCommissionView[]> = () => Promise.resolve(VENUES),
 ): Promise<ComponentFixture<AdminOperators>> {
   await TestBed.configureTestingModule({
     imports: [AdminOperators],
@@ -95,7 +95,7 @@ describe('AdminOperators accessibility (axe)', () => {
     const fixture = await render();
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="admin-suspend-11"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-11"]')!.click();
     fixture.detectChanges();
 
     // The inline confirmation replaces the trigger in place — axe must still pass in that state.
@@ -112,9 +112,7 @@ describe('AdminOperators accessibility (axe)', () => {
   });
 
   it('has no critical/serious violations with every stat tile dashed', async () => {
-    const fixture = await render(async () => {
-      throw new Error('offline');
-    });
+    const fixture = await render(() => Promise.reject(new Error('offline')));
     const host = fixture.nativeElement as HTMLElement;
 
     expect(host.querySelector('[data-testid="admin-stat-venues"]')?.textContent?.trim()).toBe('—');

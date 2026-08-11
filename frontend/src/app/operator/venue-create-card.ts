@@ -57,7 +57,7 @@ export class VenueCreateCard {
 
   protected onCreateVenue(): void {
     this.errorCode.set(undefined);
-    submit(this.venueForm, async () => {
+    void submit(this.venueForm, async () => {
       const m = this.venueModel();
       const commissionBps = parseWholeNumber(m.commissionBps);
       if (commissionBps === undefined) {

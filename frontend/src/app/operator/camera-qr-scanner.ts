@@ -80,7 +80,10 @@ export class CameraQrScanner extends QrScanner {
       await video.play();
     } catch (error_) {
       await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(() => reject(error_), 3000);
+        const timer = setTimeout(
+          () => reject(error_ instanceof Error ? error_ : new Error(String(error_))),
+          3000,
+        );
         video.addEventListener(
           'loadedmetadata',
           () => {

@@ -25,13 +25,9 @@ function authStub(o: Overrides = {}): Partial<CustomerAuth> & {
     signedIn: signal(o.signedIn ?? true),
     email: signal('ana@example.com'),
     emailVerified: signal<boolean | undefined>(o.emailVerified),
-    setPassword: vi.fn(async () => o.setPassword ?? 'set'),
-    requestVerification: vi.fn(async () => o.requestVerification ?? 'sent'),
-    eraseAccount: vi.fn(async () => o.eraseAccount ?? 'erased'),
-  } as unknown as Partial<CustomerAuth> & {
-    setPassword: ReturnType<typeof vi.fn>;
-    requestVerification: ReturnType<typeof vi.fn>;
-    eraseAccount: ReturnType<typeof vi.fn>;
+    setPassword: vi.fn(() => Promise.resolve(o.setPassword ?? 'set')),
+    requestVerification: vi.fn(() => Promise.resolve(o.requestVerification ?? 'sent')),
+    eraseAccount: vi.fn(() => Promise.resolve(o.eraseAccount ?? 'erased')),
   };
 }
 
@@ -227,7 +223,9 @@ describe('SetPassword', () => {
     expect(auth.eraseAccount).toHaveBeenCalledOnce();
     expect(text(fixture, 'erase-done')).toContain('have been erased');
     // The account form is gone once erased.
-    expect(fixture.nativeElement.querySelector('[data-testid="setpw-email"]')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="setpw-email"]'),
+    ).toBeNull();
   });
 
   it('can cancel the erase confirmation without erasing', async () => {
@@ -238,7 +236,9 @@ describe('SetPassword', () => {
     click(fixture, 'erase-cancel');
 
     expect(auth.eraseAccount).not.toHaveBeenCalled();
-    expect(fixture.nativeElement.querySelector('[data-testid="erase-account"]')).not.toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="erase-account"]'),
+    ).not.toBeNull();
   });
 
   it('surfaces an error and stays signed in when erasure fails', async () => {
@@ -251,7 +251,9 @@ describe('SetPassword', () => {
     fixture.detectChanges();
 
     expect(text(fixture, 'erase-error')).toContain('Something went wrong');
-    expect(fixture.nativeElement.querySelector('[data-testid="erase-done"]')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="erase-done"]'),
+    ).toBeNull();
   });
 
   it('focuses the first field when the page mounts', async () => {

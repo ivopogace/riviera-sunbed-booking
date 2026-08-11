@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { vi } from 'vitest';
+import { Mock, vi } from 'vitest';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { AdminCommissions } from './admin-commissions';
@@ -43,15 +43,17 @@ const VENUES: readonly VenueCommissionView[] = [
 ];
 
 function serviceStub(): {
-  venues: ReturnType<typeof vi.fn>;
-  setCommission: ReturnType<typeof vi.fn>;
+  venues: Mock<AdminCommissionsService['venues']>;
+  setCommission: Mock<AdminCommissionsService['setCommission']>;
 } {
   return {
-    venues: vi.fn(async () => VENUES),
-    setCommission: vi.fn(async (venueId: number, commissionBps: number) => ({
-      ...VENUES.find((venue) => venue.venueId === venueId)!,
-      commissionBps,
-    })),
+    venues: vi.fn(() => Promise.resolve(VENUES)),
+    setCommission: vi.fn((venueId: number, commissionBps: number) =>
+      Promise.resolve({
+        ...VENUES.find((venue) => venue.venueId === venueId)!,
+        commissionBps,
+      }),
+    ),
   };
 }
 
@@ -88,7 +90,7 @@ function byTestId<T extends HTMLElement>(
   fixture: ComponentFixture<AdminCommissions>,
   id: string,
 ): T | null {
-  return fixture.nativeElement.querySelector(`[data-testid="${id}"]`);
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
 }
 
 function text(fixture: ComponentFixture<AdminCommissions>, id: string): string {
@@ -394,7 +396,9 @@ describe('AdminCommissions', () => {
     expect(byTestId(fixture, 'admin-commissions-forbidden')).not.toBeNull();
     expect(byTestId(fixture, 'admin-commission-row-7')).toBeNull();
     // A signed-out visitor is never told which admin surfaces exist.
-    expect(fixture.nativeElement.querySelector('app-admin-console-tabs')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('app-admin-console-tabs'),
+    ).toBeNull();
     expect(service.venues).not.toHaveBeenCalled();
   });
 

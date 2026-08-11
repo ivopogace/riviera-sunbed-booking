@@ -89,7 +89,7 @@ Testcontainers ITs (they skip cleanly without a daemon, `@EnabledIfDockerAvailab
 ```bash
 npm ci
 npm start                # dev server on :4200
-npm run lint             # ESLint (angular-eslint)
+npm run lint             # ESLint — angular-eslint + the type-aware presets (#632)
 npm run format:check     # Prettier over frontend/src + frontend/e2e (`npm run format` to apply)
 npm test                 # Vitest unit tests, runs once in jsdom
 npm run test:a11y        # axe + contrast unit specs only
@@ -106,7 +106,12 @@ registration, scoped tests only; CI owns the full suite) and the known
 full-suite-only failure class (shared-state beans accumulating across tests).
 
 **CI/CD** (`.github/workflows/`): `ci.yml` runs backend build/test, frontend
-lint/format/test/build + e2e, **three** diff-scoped hygiene checks — inline comments
+lint/format/test/build + e2e — the lint step being **type-aware** since #632
+(`recommendedTypeChecked` + `stylisticTypeChecked` over a `projectService`, so
+`no-floating-promises` and the unsafe-`any` family are machine-checked; `frontend/e2e/` has
+its own `tsconfig.json` for the same reason, without which its 52 specs are *skipped* rather
+than checked, and `playwright*.config.ts` is the one `disableTypeChecked` carve-out) —
+**three** diff-scoped hygiene checks — inline comments
 (RV-STYLE-1, #529 — the CI half of the `PostToolUse` guard in
 `.claude/settings.json`), the plan doc's File-structure section (#533,
 `node scripts/check-plan-file-structure.mjs --diff origin/main` by hand), the two

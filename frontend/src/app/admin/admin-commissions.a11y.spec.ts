@@ -38,11 +38,12 @@ const VENUES: readonly VenueCommissionView[] = [
 
 function serviceStub(): Partial<AdminCommissionsService> {
   return {
-    venues: async () => VENUES,
-    setCommission: async (venueId: number, commissionBps: number) => ({
-      ...VENUES.find((venue) => venue.venueId === venueId)!,
-      commissionBps,
-    }),
+    venues: () => Promise.resolve(VENUES),
+    setCommission: (venueId: number, commissionBps: number) =>
+      Promise.resolve({
+        ...VENUES.find((venue) => venue.venueId === venueId)!,
+        commissionBps,
+      }),
   };
 }
 
@@ -71,16 +72,18 @@ describe('AdminCommissions a11y', () => {
   it('has no axe violations listing the venues and their rates', async () => {
     const fixture = await renderTab();
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   it('has no axe violations while a rate editor is open', async () => {
     const fixture = await renderTab();
 
-    fixture.nativeElement.querySelector('[data-testid="admin-commission-edit-7"]').click();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLElement>('[data-testid="admin-commission-edit-7"]')!
+      .click();
     fixture.detectChanges();
     await settle(fixture);
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 });

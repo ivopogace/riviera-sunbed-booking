@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { vi } from 'vitest';
+import { Mock, vi } from 'vitest';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { AdminVenuePhotos } from './admin-venue-photos';
@@ -45,16 +45,16 @@ function photosOf(coverUrl: string | null, venueId = 7): AdminVenuePhotosView {
 }
 
 function serviceStub(): {
-  venues: ReturnType<typeof vi.fn>;
-  slots: ReturnType<typeof vi.fn>;
-  takedown: ReturnType<typeof vi.fn>;
+  venues: Mock<AdminVenuePhotosService['venues']>;
+  slots: Mock<AdminVenuePhotosService['slots']>;
+  takedown: Mock<AdminVenuePhotosService['takedown']>;
 } {
   return {
-    venues: vi.fn(async () => VENUES),
-    slots: vi.fn(async (venueId: number) =>
-      photosOf(`/api/venues/${venueId}/photos/beef01`, venueId),
+    venues: vi.fn(() => Promise.resolve(VENUES)),
+    slots: vi.fn((venueId: number) =>
+      Promise.resolve(photosOf(`/api/venues/${venueId}/photos/beef01`, venueId)),
     ),
-    takedown: vi.fn(async () => undefined),
+    takedown: vi.fn(() => Promise.resolve(undefined)),
   };
 }
 
@@ -101,7 +101,7 @@ function byTestId<T extends HTMLElement>(
   fixture: ComponentFixture<AdminVenuePhotos>,
   id: string,
 ): T | null {
-  return fixture.nativeElement.querySelector(`[data-testid="${id}"]`);
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
 }
 
 /** Pick a venue in the native <select> and let the slots load. */
@@ -397,7 +397,9 @@ describe('AdminVenuePhotos', () => {
     expect(byTestId(fixture, 'admin-photos-forbidden')).not.toBeNull();
     expect(byTestId(fixture, 'admin-photos-venue')).toBeNull();
     // A signed-out visitor is never told which admin surfaces exist.
-    expect(fixture.nativeElement.querySelector('app-admin-console-tabs')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('app-admin-console-tabs'),
+    ).toBeNull();
     expect(service.venues).not.toHaveBeenCalled();
   });
 

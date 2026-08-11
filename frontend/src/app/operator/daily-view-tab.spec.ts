@@ -242,7 +242,7 @@ describe('DailyViewTab (#175)', () => {
     const rows = host.querySelectorAll('[data-testid="daily-arrival-row"]');
     expect(rows).toHaveLength(1);
     expect(rows[0].textContent).toContain('A \u00b7 2');
-    const chip = byId('arrival-no-show')!;
+    const chip = byId('arrival-no-show');
     expect(chip.textContent).toContain('No-show');
     expect(chip.className).toContain('chip--no-show');
     expect(byId('arrival-checked-in')).toBeNull();
@@ -267,7 +267,7 @@ describe('DailyViewTab (#175)', () => {
     );
     post.flush({ setId: 2, bookingDate: '2026-08-09' });
     fixture.detectChanges();
-    expect(byId('checkin-result')!.textContent).toContain('Checked in');
+    expect(byId('checkin-result').textContent).toContain('Checked in');
 
     flushLoad(SEED, [{ setId: 2, code: 'ABC12345', status: 'COMPLETED' }]);
     expect(byId('arrival-checked-in')).toBeTruthy();
@@ -284,7 +284,7 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'POST' && r.url.includes('/check-in'))
       .flush({ code: 'ALREADY_CHECKED_IN' }, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
-    expect(byId('checkin-result')!.textContent).toContain('Already checked in');
+    expect(byId('checkin-result').textContent).toContain('Already checked in');
   });
 
   it('names the booking’s real day on WRONG_SERVICE_DATE, never the code (#583)', () => {
@@ -300,7 +300,7 @@ describe('DailyViewTab (#175)', () => {
         { status: 409, statusText: 'Conflict' },
       );
     fixture.detectChanges();
-    const notice = byId('checkin-result')!.textContent!;
+    const notice = byId('checkin-result').textContent;
     expect(notice).toContain('2026-08-15');
     expect(notice).not.toContain('ABC12345');
   });
@@ -312,7 +312,7 @@ describe('DailyViewTab (#175)', () => {
     (byId('checkin-submit') as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    expect(byId('checkin-result')!.textContent).toContain('doesn’t look like a booking code');
+    expect(byId('checkin-result').textContent).toContain('doesn’t look like a booking code');
     http.verify();
   });
 
@@ -325,7 +325,7 @@ describe('DailyViewTab (#175)', () => {
       render();
       (byId('checkin-scan-toggle') as HTMLButtonElement).click();
       fixture.detectChanges();
-      expect(byId('checkin-result')!.textContent).toContain('isn’t a booking');
+      expect(byId('checkin-result').textContent).toContain('isn’t a booking');
 
       (byId('checkin-scan-toggle') as HTMLButtonElement).click();
       fixture.detectChanges();
@@ -333,7 +333,7 @@ describe('DailyViewTab (#175)', () => {
         .expectOne((r) => r.method === 'POST' && r.url.includes('/bookings/ABC12345/check-in'))
         .flush({ setId: 2, bookingDate: '2026-06-15' });
       fixture.detectChanges();
-      expect(byId('checkin-result')!.textContent).toContain('Checked in');
+      expect(byId('checkin-result').textContent).toContain('Checked in');
       flushLoad(SEED, [{ setId: 2, code: 'ABC12345', status: 'COMPLETED' }]);
     } finally {
       delete (globalThis as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__;
@@ -350,7 +350,7 @@ describe('DailyViewTab (#175)', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(byId('checkin-result')!.textContent).toContain('Camera unavailable');
+    expect(byId('checkin-result').textContent).toContain('Camera unavailable');
     expect(byId('checkin-video')).toBeNull();
   });
 
@@ -364,7 +364,7 @@ describe('DailyViewTab (#175)', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
-      return byId('checkin-result')!.textContent!;
+      return byId('checkin-result').textContent;
     };
 
     expect(await attempt(new DOMException('denied', 'NotAllowedError'))).toContain('blocked');
@@ -385,7 +385,7 @@ describe('DailyViewTab (#175)', () => {
         .expectOne((r) => r.method === 'POST' && r.url.includes('/check-in'))
         .flush(body, { status, statusText: 'x' });
       fixture.detectChanges();
-      return byId('checkin-result')!.textContent!;
+      return byId('checkin-result').textContent;
     };
 
     expect(submit(404, { code: 'BOOKING_NOT_FOUND' })).toContain('No booking with that code');

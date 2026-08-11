@@ -8,6 +8,20 @@ import { OperatorAuth } from '../core/operator-auth';
 import { VenueProfileView } from './operator-console.model';
 import { VenueTab } from './venue-tab';
 
+interface SentBody {
+  name: string;
+  amenities: string[];
+  bookingMode: string;
+  expectedVersion: number;
+  commissionBps?: number;
+  payoutCurrency?: string;
+}
+
+/** The captured request body, typed — Angular types `HttpRequest.body` as `any`. */
+function body(req: { request: { body: unknown } }): SentBody {
+  return req.request.body as SentBody;
+}
+
 /**
  * The Venue & commodities tab. Reads `:venueId` from the PARENT route (child routes don't
  * inherit it), loads the owner profile, and seeds: the details form, the read-only
@@ -133,8 +147,8 @@ describe('VenueTab (#177)', () => {
       expectedVersion: 7, // the loaded optimistic-concurrency token
     });
     // Read-only fields must not be on the wire.
-    expect(req.request.body.commissionBps).toBeUndefined();
-    expect(req.request.body.payoutCurrency).toBeUndefined();
+    expect(body(req).commissionBps).toBeUndefined();
+    expect(body(req).payoutCurrency).toBeUndefined();
     req.flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -152,10 +166,10 @@ describe('VenueTab (#177)', () => {
     await save();
 
     const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
-    expect(req.request.body.name).toBe('Miramar Renamed');
-    expect(req.request.body.amenities).toContain('RESTAURANT');
-    expect(req.request.body.amenities).toContain('BEACH_BAR');
-    expect(req.request.body.amenities).not.toContain('WIFI');
+    expect(body(req).name).toBe('Miramar Renamed');
+    expect(body(req).amenities).toContain('RESTAURANT');
+    expect(body(req).amenities).toContain('BEACH_BAR');
+    expect(body(req).amenities).not.toContain('WIFI');
     req.flush(null);
   });
 
@@ -165,7 +179,7 @@ describe('VenueTab (#177)', () => {
     await save();
 
     const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
-    expect(req.request.body.expectedVersion).toBe(7);
+    expect(body(req).expectedVersion).toBe(7);
     req.flush(null);
   });
 
@@ -186,7 +200,7 @@ describe('VenueTab (#177)', () => {
     setValue('venue-name', 'Second Edit');
     await save();
     const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
-    expect(req.request.body.expectedVersion).toBe(8);
+    expect(body(req).expectedVersion).toBe(8);
     req.flush(null);
   });
 
@@ -236,7 +250,7 @@ describe('VenueTab (#177)', () => {
     // The next save now carries the reloaded version (8), never the stale 7.
     await save();
     const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
-    expect(req.request.body.expectedVersion).toBe(8);
+    expect(body(req).expectedVersion).toBe(8);
     req.flush(null);
   });
 
@@ -252,7 +266,7 @@ describe('VenueTab (#177)', () => {
     await save();
 
     const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
-    expect(req.request.body.bookingMode).toBe('REQUEST');
+    expect(body(req).bookingMode).toBe('REQUEST');
     req.flush(null);
   });
 

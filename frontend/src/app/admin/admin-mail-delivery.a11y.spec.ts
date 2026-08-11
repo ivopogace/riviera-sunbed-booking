@@ -39,8 +39,8 @@ const RESULTS: MailDeliveryLookupView = {
 
 function serviceStub(lookup: MailDeliveryLookupView): Partial<AdminMailDeliveryService> {
   return {
-    lookup: async () => lookup,
-    resend: async () => ({ outcome: 'SENT' }),
+    lookup: () => Promise.resolve(lookup),
+    resend: () => Promise.resolve({ outcome: 'SENT' }),
   };
 }
 
@@ -57,17 +57,15 @@ async function render(
 }
 
 async function search(fixture: ComponentFixture<AdminMailDelivery>): Promise<void> {
-  const input: HTMLInputElement = fixture.nativeElement.querySelector(
+  const input: HTMLInputElement = (fixture.nativeElement as HTMLElement).querySelector(
     '[data-testid="admin-delivery-email"]',
-  );
+  )!;
   input.value = 'tourist@example.com';
   input.dispatchEvent(new Event('input'));
   fixture.detectChanges();
-  (
-    fixture.nativeElement.querySelector(
-      '[data-testid="admin-delivery-lookup"]',
-    ) as HTMLButtonElement
-  ).click();
+  (fixture.nativeElement as HTMLElement)
+    .querySelector<HTMLButtonElement>('[data-testid="admin-delivery-lookup"]')!
+    .click();
   await fixture.whenStable();
   fixture.detectChanges();
 }
@@ -76,14 +74,14 @@ describe('AdminMailDelivery a11y', () => {
   it('has no axe violations before a search (AC-10)', async () => {
     const fixture = await render({ bookings: [] });
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   it('has no axe violations with results (AC-10)', async () => {
     const fixture = await render(RESULTS);
     await search(fixture);
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   /**
@@ -93,9 +91,9 @@ describe('AdminMailDelivery a11y', () => {
   it('announces the resend outcome through a polite live region', async () => {
     const fixture = await render(RESULTS);
 
-    const notice: HTMLElement = fixture.nativeElement.querySelector(
+    const notice: HTMLElement = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="admin-delivery-notice"]',
-    );
+    )!;
     expect(notice.getAttribute('role')).toBe('status');
     expect(notice.getAttribute('aria-live')).toBe('polite');
   });
@@ -106,7 +104,9 @@ describe('AdminMailDelivery a11y', () => {
     await search(fixture);
 
     const buttons: HTMLButtonElement[] = Array.from(
-      fixture.nativeElement.querySelectorAll('[data-testid^="admin-delivery-resend-"]'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll(
+        '[data-testid^="admin-delivery-resend-"]',
+      ),
     );
     expect(buttons).toHaveLength(2);
     for (const button of buttons) {

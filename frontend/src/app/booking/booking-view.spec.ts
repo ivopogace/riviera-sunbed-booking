@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
+import { BehaviorSubject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -91,21 +91,17 @@ function stubService(opts: {
     getByCode: (code: string) => {
       opts.getCalls?.push(code);
       const detail = served++ === 0 ? opts.detail! : (opts.detailAfterCancel ?? opts.detail!);
-      return (
-        opts.getError ? throwError(() => opts.getError) : of(detail)
-      ) as Observable<BookingDetail>;
+      return opts.getError ? throwError(() => opts.getError) : of(detail);
     },
     cancel: (code: string) => {
       opts.cancelCalls?.push(code);
-      return (
-        opts.cancelError ? throwError(() => opts.cancelError) : of(opts.cancel ?? CANCELLATION)
-      ) as Observable<Cancellation>;
+      return opts.cancelError
+        ? throwError(() => opts.cancelError)
+        : of(opts.cancel ?? CANCELLATION);
     },
     withdraw: (code: string) => {
       opts.withdrawCalls?.push(code);
-      return (
-        opts.withdrawError ? throwError(() => opts.withdrawError) : of(WITHDRAWAL)
-      ) as Observable<Withdrawal>;
+      return opts.withdrawError ? throwError(() => opts.withdrawError) : of(WITHDRAWAL);
     },
     beginPayment: (handoff: PaymentHandoff) => {
       opts.handoffs?.push(handoff);
@@ -162,9 +158,9 @@ describe('BookingView', () => {
     const fixture = await render(stubService({ detail: DETAIL, cancelCalls }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-cancel"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -177,9 +173,9 @@ describe('BookingView', () => {
     const fixture = await render(stubService({ detail: DETAIL }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-cancel"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -195,7 +191,7 @@ describe('BookingView', () => {
     const fixture = await render(stubService({ detail: DETAIL }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -207,11 +203,11 @@ describe('BookingView', () => {
     const fixture = await render(stubService({ detail: DETAIL }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const keep = host.querySelector('[data-testid="keep-booking"]') as HTMLButtonElement;
+    const keep = host.querySelector<HTMLButtonElement>('[data-testid="keep-booking"]')!;
     expect(keep.textContent?.trim()).toBe('Keep booking');
     keep.click();
     fixture.detectChanges();
@@ -254,9 +250,9 @@ describe('BookingView', () => {
     );
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-withdraw"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -279,9 +275,9 @@ describe('BookingView', () => {
     );
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-withdraw"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -301,7 +297,7 @@ describe('BookingView', () => {
     const fixture = await render(stubService({ detail: PENDING }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -313,11 +309,11 @@ describe('BookingView', () => {
     const fixture = await render(stubService({ detail: PENDING }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
 
-    (host.querySelector('[data-testid="keep-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="keep-request"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -328,9 +324,9 @@ describe('BookingView', () => {
     const fixture = await render(stubService({ detail: PENDING }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-withdraw"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -345,11 +341,11 @@ describe('BookingView', () => {
     const fixture = await render(stubService({ detail: PENDING, withdrawCalls }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
     fixture.detectChanges();
     expect(host.textContent).toContain('Withdraw this request?');
 
-    const keep = host.querySelector('[data-testid="keep-request"]') as HTMLButtonElement;
+    const keep = host.querySelector<HTMLButtonElement>('[data-testid="keep-request"]')!;
     // The escape from a destructive prompt must say what it does, not just carry a test hook.
     expect(keep.textContent?.trim()).toBe('Keep request');
     keep.click();
@@ -363,9 +359,9 @@ describe('BookingView', () => {
     const fixture = await render(stubService({ detail: PENDING, withdrawError: { status: 409 } }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-withdraw"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -384,9 +380,9 @@ describe('BookingView', () => {
     );
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-withdraw"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -413,9 +409,9 @@ describe('BookingView', () => {
     );
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-withdraw"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -433,20 +429,20 @@ describe('BookingView', () => {
     const host = fixture.nativeElement as HTMLElement;
     const result = () => host.querySelector('[data-testid="withdraw-result"]')?.textContent ?? '';
 
-    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-withdraw"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-withdraw"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
     await fixture.whenStable();
     expect(result()).toContain('couldn’t withdraw');
 
-    (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
     fixture.detectChanges();
     expect(result()).not.toContain('couldn’t withdraw');
 
-    (host.querySelector('[data-testid="keep-request"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="keep-request"]')!.click();
     fixture.detectChanges();
     expect(result()).not.toContain('couldn’t withdraw');
   });
@@ -499,9 +495,9 @@ describe('BookingView', () => {
     );
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-cancel"]')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -528,9 +524,9 @@ describe('BookingView', () => {
     );
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-cancel"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -573,9 +569,9 @@ describe('BookingView', () => {
     const fixture = await render(stubService({ detail: DETAIL, detailAfterCancel: cancelled }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-cancel"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -731,9 +727,9 @@ describe('BookingView', () => {
     const fixture = await render(stubService({ detail: DETAIL, detailAfterCancel: stuck }));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-cancel"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -808,7 +804,7 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="request-accepted"]')?.textContent).toContain(
       'Request accepted',
     );
-    (host.querySelector('[data-testid="pay-now"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="pay-now"]')!.click();
 
     expect(handoffs).toEqual([
       {
@@ -905,10 +901,7 @@ describe('BookingView', () => {
   it('keeps the cancellation confirmation when the post-cancel reload fails', async () => {
     let calls = 0;
     const service: Partial<BookingService> = {
-      getByCode: () =>
-        (calls++ === 0
-          ? of(DETAIL)
-          : throwError(() => ({ status: 500 }))) as Observable<BookingDetail>,
+      getByCode: () => (calls++ === 0 ? of(DETAIL) : throwError(() => ({ status: 500 }))),
       cancel: () => of(CANCELLATION),
       beginPayment: () => undefined,
       takePrefetched: () => undefined,
@@ -916,9 +909,9 @@ describe('BookingView', () => {
     const fixture = await render(service);
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="start-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="confirm-cancel"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="confirm-cancel"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -965,7 +958,7 @@ describe('BookingView', () => {
 
   // A find-a-booking hand-off primes the detail, so the initial load renders it WITHOUT a second GET /api/bookings/{code} (two GETs per success can approach the rate-limit ceiling).
   it('renders a prefetched detail for the matching code without fetching (#168)', async () => {
-    const getByCode = vi.fn(() => of(DETAIL) as Observable<BookingDetail>);
+    const getByCode = vi.fn(() => of(DETAIL));
     let prefetched: BookingDetail | undefined = DETAIL;
     const service: Partial<BookingService> = {
       getByCode,
@@ -988,7 +981,7 @@ describe('BookingView', () => {
   });
 
   it('falls back to fetching when nothing is prefetched (deep-link / refresh, #168)', async () => {
-    const getByCode = vi.fn(() => of(DETAIL) as Observable<BookingDetail>);
+    const getByCode = vi.fn(() => of(DETAIL));
     const service: Partial<BookingService> = {
       getByCode,
       cancel: () => of(CANCELLATION),
@@ -1008,8 +1001,7 @@ describe('BookingView', () => {
     const detailB: BookingDetail = { ...DETAIL, code: 'BBBBBBBBBB', venueName: 'Venue Beta' };
     const paramMap$ = new BehaviorSubject(convertToParamMap({ code: 'AAAAAAAAAA' }));
     const service: Partial<BookingService> = {
-      getByCode: (code: string) =>
-        of(code === 'AAAAAAAAAA' ? detailA : detailB) as Observable<BookingDetail>,
+      getByCode: (code: string) => of(code === 'AAAAAAAAAA' ? detailA : detailB),
       cancel: () => of(CANCELLATION),
       beginPayment: () => undefined,
       takePrefetched: () => undefined,

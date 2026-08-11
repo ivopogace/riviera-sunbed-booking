@@ -84,12 +84,12 @@ describe('AuthPage', () => {
 
   function title(): string {
     return el('auth-form')
-      ? (fixture.nativeElement.querySelector('#auth-title')?.textContent ?? '')
+      ? ((fixture.nativeElement as HTMLElement).querySelector('#auth-title')?.textContent ?? '')
       : '';
   }
 
   function el<T extends HTMLElement>(testId: string): T {
-    return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) as T;
+    return (fixture.nativeElement as HTMLElement).querySelector<T>(`[data-testid="${testId}"]`)!;
   }
 
   function type(testId: string, value: string): void {
@@ -372,7 +372,7 @@ describe('AuthPage', () => {
       await navigateQueryParams({ mode: 'register' });
 
       expect(title()).toContain('Create your account');
-      expect(fixture.nativeElement.querySelector('#auth-hint')).not.toBeNull();
+      expect((fixture.nativeElement as HTMLElement).querySelector('#auth-hint')).not.toBeNull();
     });
 
     it('reverts to sign-in when the mode param is cleared', async () => {
@@ -382,7 +382,7 @@ describe('AuthPage', () => {
       await navigateQueryParams({});
 
       expect(title()).toContain('Welcome back');
-      expect(fixture.nativeElement.querySelector('#auth-hint')).toBeNull();
+      expect((fixture.nativeElement as HTMLElement).querySelector('#auth-hint')).toBeNull();
     });
 
     it('reacts to a live audience query-param change', async () => {

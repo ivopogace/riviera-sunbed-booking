@@ -28,12 +28,14 @@ function serviceStub(status: OutboxStatusView = { outstanding: 0, cooldownRemain
   resubmit: ReturnType<typeof vi.fn>;
 } {
   return {
-    status: vi.fn(async () => status),
-    resubmit: vi.fn(async (): Promise<ResubmissionResultView> => ({
-      outcome: 'RESUBMITTED',
-      resubmitted: 0,
-      cooldownRemainingSeconds: 60,
-    })),
+    status: vi.fn(() => Promise.resolve(status)),
+    resubmit: vi.fn((): Promise<ResubmissionResultView> =>
+      Promise.resolve({
+        outcome: 'RESUBMITTED',
+        resubmitted: 0,
+        cooldownRemainingSeconds: 60,
+      }),
+    ),
   };
 }
 
@@ -60,16 +62,20 @@ async function render(
 
 function text(fixture: ComponentFixture<AdminRefundOutbox>, testId: string): string {
   return (
-    fixture.nativeElement.querySelector(`[data-testid="${testId}"]`)?.textContent?.trim() ?? ''
+    (fixture.nativeElement as HTMLElement)
+      .querySelector(`[data-testid="${testId}"]`)
+      ?.textContent?.trim() ?? ''
   );
 }
 
 function has(fixture: ComponentFixture<AdminRefundOutbox>, testId: string): boolean {
-  return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) !== null;
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testId}"]`) !== null;
 }
 
 async function press(fixture: ComponentFixture<AdminRefundOutbox>): Promise<void> {
-  fixture.nativeElement.querySelector('[data-testid="admin-refunds-resubmit"]').click();
+  (fixture.nativeElement as HTMLElement)
+    .querySelector<HTMLElement>('[data-testid="admin-refunds-resubmit"]')!
+    .click();
   // resubmit() -> describe() -> reconcile() -> status(): three awaits before the notice settles.
   await fixture.whenStable();
   await fixture.whenStable();

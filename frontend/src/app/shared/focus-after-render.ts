@@ -13,7 +13,7 @@ import { afterNextRender, ElementRef, inject, Injector } from '@angular/core';
  * silently swallow the move. Must be called from an injection context, like `parentVenueId(route)`.
  */
 export function focusMover(): (testId: string, fallbackTestId?: string) => void {
-  const host: ElementRef<HTMLElement> = inject(ElementRef);
+  const host = inject<ElementRef<HTMLElement>>(ElementRef);
   const injector = inject(Injector);
   return (testId: string, fallbackTestId?: string) =>
     afterNextRender(

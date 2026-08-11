@@ -33,7 +33,7 @@ describe('StatTile', () => {
 
     expect(host.querySelector('.riv-stat-label')!.textContent).toContain('Free today');
     expect(
-      host.querySelector('[data-testid="t-value"]')!.textContent!.replace(/\s+/g, ' ').trim(),
+      host.querySelector('[data-testid="t-value"]')!.textContent.replace(/\s+/g, ' ').trim(),
     ).toBe('2/ 5');
   });
 

@@ -25,7 +25,7 @@ const authStub = {
 } as unknown as OperatorAuth;
 
 function serviceStub(): Partial<AdminPrivacyService> {
-  return { erase: async () => undefined };
+  return { erase: () => Promise.resolve(undefined) };
 }
 
 async function settle(fixture: ComponentFixture<AdminPrivacy>): Promise<void> {
@@ -50,15 +50,17 @@ async function renderTab(): Promise<ComponentFixture<AdminPrivacy>> {
 }
 
 function click(fixture: ComponentFixture<AdminPrivacy>, testId: string): void {
-  fixture.nativeElement.querySelector(`[data-testid="${testId}"]`).click();
+  (fixture.nativeElement as HTMLElement)
+    .querySelector<HTMLElement>(`[data-testid="${testId}"]`)!
+    .click();
   fixture.detectChanges();
 }
 
 /** Fill the address and arm the confirmation — the only way to reach the later two stages. */
 async function armConfirmation(fixture: ComponentFixture<AdminPrivacy>): Promise<void> {
-  const field: HTMLInputElement = fixture.nativeElement.querySelector(
+  const field: HTMLInputElement = (fixture.nativeElement as HTMLElement).querySelector(
     '[data-testid="admin-privacy-email"]',
-  );
+  )!;
   field.value = 'ana@example.com';
   field.dispatchEvent(new Event('input'));
   fixture.detectChanges();
@@ -70,7 +72,7 @@ describe('AdminPrivacy a11y', () => {
   it('has no axe violations on the erasure form', async () => {
     const fixture = await renderTab();
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   it('has no axe violations while a confirmation is armed', async () => {
@@ -78,7 +80,7 @@ describe('AdminPrivacy a11y', () => {
 
     await armConfirmation(fixture);
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 
   it('has no axe violations on the outcome', async () => {
@@ -88,6 +90,6 @@ describe('AdminPrivacy a11y', () => {
     click(fixture, 'admin-privacy-confirm');
     await settle(fixture);
 
-    await expectNoAxeViolations(fixture.nativeElement);
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
   });
 });

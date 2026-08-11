@@ -29,19 +29,21 @@ function serviceStub(status: OutboxStatusView = { outstanding: 0, cooldownRemain
   resubmit: ReturnType<typeof vi.fn>;
 } {
   return {
-    status: vi.fn(async () => status),
-    resubmit: vi.fn(async (): Promise<ResubmissionResultView> => ({
-      outcome: 'RESUBMITTED',
-      resubmitted: 0,
-      cooldownRemainingSeconds: 60,
-    })),
+    status: vi.fn(() => Promise.resolve(status)),
+    resubmit: vi.fn((): Promise<ResubmissionResultView> =>
+      Promise.resolve({
+        outcome: 'RESUBMITTED',
+        resubmitted: 0,
+        cooldownRemainingSeconds: 60,
+      }),
+    ),
   };
 }
 
 /** The nested delivery card's port — never exercised from these specs. */
 const inertDeliveryService = {
-  lookup: async () => ({ bookings: [] }),
-  resend: async () => ({ outcome: 'SENT' as const }),
+  lookup: () => Promise.resolve({ bookings: [] }),
+  resend: () => Promise.resolve({ outcome: 'SENT' as const }),
 };
 
 async function render(
@@ -69,16 +71,20 @@ async function render(
 
 function text(fixture: ComponentFixture<AdminMailOutbox>, testId: string): string {
   return (
-    fixture.nativeElement.querySelector(`[data-testid="${testId}"]`)?.textContent?.trim() ?? ''
+    (fixture.nativeElement as HTMLElement)
+      .querySelector(`[data-testid="${testId}"]`)
+      ?.textContent?.trim() ?? ''
   );
 }
 
 function has(fixture: ComponentFixture<AdminMailOutbox>, testId: string): boolean {
-  return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) !== null;
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testId}"]`) !== null;
 }
 
 async function press(fixture: ComponentFixture<AdminMailOutbox>): Promise<void> {
-  fixture.nativeElement.querySelector('[data-testid="admin-outbox-resubmit"]').click();
+  (fixture.nativeElement as HTMLElement)
+    .querySelector<HTMLElement>('[data-testid="admin-outbox-resubmit"]')!
+    .click();
   // resubmit() -> describe() -> reconcile() -> status(): three awaits before the notice settles.
   await fixture.whenStable();
   await fixture.whenStable();

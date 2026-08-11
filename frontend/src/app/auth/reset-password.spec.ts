@@ -8,9 +8,7 @@ import { ResetPassword } from './reset-password';
 function authStub(result: ResetPasswordResult): Partial<CustomerAuth> & {
   resetPassword: ReturnType<typeof vi.fn>;
 } {
-  return { resetPassword: vi.fn(async () => result) } as unknown as Partial<CustomerAuth> & {
-    resetPassword: ReturnType<typeof vi.fn>;
-  };
+  return { resetPassword: vi.fn(() => Promise.resolve(result)) };
 }
 
 async function render(

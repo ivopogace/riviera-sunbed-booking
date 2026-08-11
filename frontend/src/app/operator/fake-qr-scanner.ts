@@ -8,7 +8,7 @@ import { QrScanner } from './qr-scanner';
  * scripts payment outcomes.
  */
 export class FakeQrScanner extends QrScanner {
-  override async start(
+  override start(
     _video: HTMLVideoElement | undefined,
     onCode: (text: string) => void,
   ): Promise<void> {
@@ -17,6 +17,7 @@ export class FakeQrScanner extends QrScanner {
     if (next !== undefined) {
       onCode(next);
     }
+    return Promise.resolve();
   }
 
   override stop(): void {

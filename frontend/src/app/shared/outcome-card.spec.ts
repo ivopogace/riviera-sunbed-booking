@@ -30,7 +30,7 @@ describe('OutcomeCard', () => {
   });
 
   function card(): HTMLElement {
-    return fixture.nativeElement.querySelector('[data-testid="landed"]')!;
+    return (fixture.nativeElement as HTMLElement).querySelector('[data-testid="landed"]')!;
   }
 
   it('renders the heading, the projected body and the projected CTA', () => {

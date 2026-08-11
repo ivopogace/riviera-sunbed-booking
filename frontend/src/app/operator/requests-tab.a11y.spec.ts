@@ -6,7 +6,7 @@ import { of } from 'rxjs';
 
 import { expectNoAxeViolations } from '../../testing/axe';
 import { MoneyView } from '../shared/money';
-import { Pool, SetView, Tier } from '../shared/venue-views';
+import { SetView, Tier } from '../shared/venue-views';
 import { RequestsTab } from './requests-tab';
 
 /**
@@ -87,7 +87,7 @@ describe('RequestsTab a11y (#176)', () => {
   function decline(): HTMLButtonElement {
     return Array.from(host().querySelectorAll('button')).find(
       (b) => (b.textContent ?? '').trim() === 'Decline',
-    ) as HTMLButtonElement;
+    )!;
   }
 
   it('has no axe violations for the populated queue (with an urgent chip)', async () => {
@@ -105,7 +105,7 @@ describe('RequestsTab a11y (#176)', () => {
   it('has no axe violations for the dismissible expired-race card', async () => {
     render();
     Array.from(host().querySelectorAll('button'))
-      .find((b) => /Accept/.test(b.textContent ?? ''))!
+      .find((b) => (b.textContent ?? '').includes('Accept'))!
       .click();
     fixture.detectChanges();
     http
@@ -127,7 +127,7 @@ function seat(id: number, rowLabel: string, positionNo: number, tier: Tier): Set
     rowLabel,
     positionNo,
     tier,
-    pool: 'ONLINE' as Pool,
+    pool: 'ONLINE',
     price: { minorUnits: 4500, currency: 'EUR' },
     gridX: positionNo,
     gridY: 1,
