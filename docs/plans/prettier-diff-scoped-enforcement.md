@@ -66,8 +66,9 @@ the Gradle recipe nor the OOM-scoping rule binds here)
 - [x] **AC-3:** Given a file the diff creates, when the guard runs, then every misformatted hunk in
   it is reported — a new file has no pre-existing drift to protect. *Pinned by:*
   `check-prettier-format.test.mjs` › `"a file the diff creates is judged in full"`.
-- [x] **AC-4:** Given a changed path outside `frontend/`, when the guard runs, then it is not
-  checked. *Pinned by:* `check-prettier-format.test.mjs` › `"only frontend/ is in scope"`.
+- [x] **AC-4:** Given a changed path outside `frontend/src/` and `frontend/e2e/`, when the guard
+  runs, then it is not checked. *Pinned by:* `check-prettier-format.test.mjs` › `"only the Angular
+  app and its e2e suites are in scope"`. (Round 2 narrowed this from all of `frontend/` — G-9.)
 - [x] **AC-5:** Given `--fix` over a file that has one reported hunk **and** pre-existing drift
   elsewhere, when it runs, then the reported hunk is rewritten and every pre-existing-drift line is
   left byte-for-byte. *Pinned by:* `check-prettier-format.test.mjs` › `"--fix rewrites only the
@@ -177,9 +178,9 @@ added (hence no e2e spec, and no `playwright-cli` row in the routing gate).
 
 ## Execution status
 
-**Stage pointer:** `merge close-out` — CI green, the review gate run **twice** (round 1: 15 findings,
-14 fixed, 1 rejected with reason; round 2 over the fix diff: 12 findings, 11 fixed, 1 deferred to
-issue #619), Sonar gate green with an empty issue list. Awaiting the merge.
+**Stage pointer:** `merge close-out` — the review gate run **twice** (round 1: 15 findings, 14 fixed,
+1 rejected with reason; round 2 over the fix diff: 12 findings, 11 fixed, 1 deferred to issue #619),
+plus **G-13 from a red CI run**, Sonar green with an empty issue list. Awaiting the merge.
 
 **Next action:** Merge PR #618, then the post-merge remainder, which is GitHub-only and needs no
 commit: confirm #615 closed and the PR-activity subscription ended.
@@ -192,6 +193,7 @@ commit: confirm #615 closed and the PR-activity subscription ended.
 | Review | **ran in full, twice** — ladder **rung 1** (`Skill("code-review")` was accepted), with `riviera-review-overlay` layered on; re-run over the fix diff per the re-entry rule. 15 + 12 findings; see the register. The second round is the one that earned its keep: it found that the central claim did not hold for Angular templates (G-1) |
 | Sonar (`ff1ad1c`) | Quality Gate **passed**, 0 new issues, 0 accepted issues, 0 security hotspots, 0.0 % duplication |
 | CI (fix round) | `c4edfed` — all 8 checks **success**, Sonar Quality Gate passed again |
+| CI (round 2) | `42447f0` — **red, and rightly so**: the new gate fired on lines PR #617 wrote, which the stale `base.sha` had handed to this PR. That is G-13, and it is the only way this class of bug was ever going to surface — the guard catching a defect in its own wiring, on its own PR |
 
 > **What Sonar's green does and does not say here** (R-7, and #533's F-5 before it):
 > `sonar.sources=platform/src/main/java,frontend/src`, and this diff touches neither, so
@@ -207,7 +209,8 @@ commit: confirm #615 closed and the PR-activity subscription ended.
 | 3 — CI wiring, npm scripts, `.prettierignore` | ✅ | `5783195` |
 | 4 — Docs sweep + close-out | ✅ | `ff1ad1c` |
 | 5 — Review-gate findings F-1…F-15 | ✅ | `c4edfed` |
-| 6 — Second-round findings G-1…G-12 | ✅ | this commit |
+| 6 — Second-round findings G-1…G-12 | ✅ | `42447f0` |
+| 7 — G-13, the stale CI diff base | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -248,6 +251,7 @@ touches *before* editing).
 | G-9 | Review gate (round 2) | Scoping to all of `frontend/` pulled `angular.json`, `README.md` and `frontend/.claude/CLAUDE.md` into a hard gate nobody agreed to, each with drift of its own | fixed — `SCOPE` is now `frontend/src/` + `frontend/e2e/`, the two trees `riviera-frontend` governs. Tool-owned config and prose are out |
 | G-10 | Review gate (round 2, reproduced) | A CRLF working copy — git's Windows default, and **this repo's primary dev machine is Windows** — makes every line differ from Prettier's `lf` output, so the guard would have reported every touched file in full | fixed — the guard formats with `endOfLine: 'auto'`, which adopts the file's existing terminator. `.prettierrc` is untouched; line endings are a checkout concern, not a review one |
 | G-11 | Review gate (round 2) | `--fix` printed "Reformatted the reported hunks in:" even when every finding was refused and nothing was written | fixed — the stdout line is guarded on something actually being rewritten |
+| G-13 | **CI, red on this PR's own run** (`42447f0`, the strongest evidence available) | The three guards were invoked with `${{ github.event.pull_request.base.sha }}` — the base branch's tip **when the PR was opened**. CI checks out the PR's *merge* ref, so the moment `main` moves, that ref contains commits the stale sha predates, `git merge-base` resolves to the stale sha, and the diff hands this PR everything main gained meanwhile. PR #617 landed mid-flight and the Prettier gate reported **its** five misformatted regions against **this** PR | fixed — all three invocations now take `origin/${{ github.event.pull_request.base.ref }}`, the base branch's **current** tip, which is the merge ref's first parent, so the diff is exactly what this PR adds; each job fetches it first. Reproduced against the real merge ref before and after: five findings that were not this PR's → zero. **Latent in the two shipped guards too** — #533's would have false-flagged any path #617 changed that its own plan doc omitted; it escaped by luck, not by design |
 | G-12 | Review gate (round 2) | The plan-doc guard hand-spelled its diff flags, so the next pin added to `diffArgs` would silently miss it — the drift the extraction existed to end | fixed — `nameOnlyArgs()` in `scripts/git-diff.mjs`, used by that guard |
 
 **`riviera-docs-freshness` run** — range `origin/main...HEAD`, **5 findings, all patched**:

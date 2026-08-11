@@ -81,8 +81,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # The formatting guard below diffs against the PR's base commit, which a depth-1 clone
-          # does not contain — the same reason the repo-hygiene job fetches the full history.
+          # The formatting guard below diffs against the base branch, which a depth-1 clone does
+          # not contain — the same reason the repo-hygiene job fetches the full history.
           fetch-depth: 0
 
       - name: Set up Node (from .nvmrc)
@@ -102,6 +102,16 @@ jobs:
       - name: Lint (hard gate)
         run: npm run lint
 
+      - name: Fetch the base branch (the diff-scoped guards' base)
+        # NOT `github.event.pull_request.base.sha`, which is the base branch's tip when the PR was
+        # opened. CI checks out the PR's MERGE ref, so once `main` moves the merge commit contains
+        # commits the stale sha predates, `git merge-base` resolves to that stale sha, and the diff
+        # hands this PR everything main gained meanwhile — other people's merged lines, reported as
+        # yours. Caught on PR #618 the moment #617 landed mid-flight. The base branch's CURRENT tip
+        # is the first parent of the merge ref, so diffing it yields exactly what this PR adds.
+        run: git fetch --no-tags origin ${{ github.event.pull_request.base.ref }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && github.event_name == 'pull_request' }}
+
       - name: Format (diff-scoped Prettier, hard gate)
         # Judges the lines the diff WROTE, never the files it touched: 200 of this tree's files are
         # prettier-dirty, so a file-scoped check would demand an unrelated whole-file reformat on
@@ -118,7 +128,7 @@ jobs:
         # not failure). Pull requests only, like the other diff-scoped guards: the rule governs what
         # a diff writes, and a push to `main` has no base that means anything here.
         if: ${{ !cancelled() && steps.install.outcome == 'success' && github.event_name == 'pull_request' }}
-        run: node ../scripts/check-prettier-format.mjs --diff ${{ github.event.pull_request.base.sha }}
+        run: node ../scripts/check-prettier-format.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
       - name: Test (Vitest, once, with coverage)
         run: npm run test:coverage
@@ -200,18 +210,27 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      - name: Fetch the base branch (the diff-scoped guards' base)
+        # NOT `github.event.pull_request.base.sha`, which is the base branch's tip when the PR was
+        # opened. CI checks out the PR's MERGE ref, so once `main` moves the merge commit contains
+        # commits the stale sha predates, `git merge-base` resolves to that stale sha, and the diff
+        # hands this PR everything main gained meanwhile — other people's merged lines, reported as
+        # yours. Caught on PR #618 the moment #617 landed mid-flight. The base branch's CURRENT tip
+        # is the first parent of the merge ref, so diffing it yields exactly what this PR adds.
+        run: git fetch --no-tags origin ${{ github.event.pull_request.base.ref }}
+
       - name: Test the guards themselves
         # Globs both suites; a new scripts/*.test.mjs is picked up with no edit here.
         run: node --test "scripts/*.test.mjs"
 
       - name: Check the diff for multi-line inline comments (RV-STYLE-1, hard gate)
-        run: node scripts/check-inline-comments.mjs --diff ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-inline-comments.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
       - name: Check each plan doc lists what the diff changed (#533, hard gate)
         # Runs even when the step above failed, so one push surfaces both rules rather than
         # trickling them out over two round trips — each is a seconds-long fix on its own.
         if: ${{ !cancelled() }}
-        run: node scripts/check-plan-file-structure.mjs --diff ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-plan-file-structure.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
   sonar:
     name: SonarCloud scan
