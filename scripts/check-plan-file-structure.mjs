@@ -11,9 +11,9 @@
  * doc entirely, and a guard must not invent a requirement the SDLC does not make.
  */
 
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+
+import { changedPaths, git, mergeBase, nameOnlyArgs, readText } from './git-diff.mjs';
 
 /** The heading that opens the section, as the plan-doc template writes it. */
 const HEADING = /^##\s+File structure\s*$/i;
@@ -245,39 +245,6 @@ export function report(omissions) {
   return `Paths changed by this diff but absent from the plan doc:\n${lines.join('\n')}\n${ADVICE}`;
 }
 
-function git(args) {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-}
-
-/**
- * Splits `git diff --name-only -z` output. The `-z` is not a detail: without it git C-quotes and
- * octal-escapes any path holding a non-ASCII byte (`"src/logo-\360\237\230\200.png"`), and that
- * literal can never match a token, so **every** diff touching such a file failed unconditionally
- * with no way to satisfy the check. Found by PR #538's review.
- */
-export function changedPaths(raw) {
-  return raw.split('\0').filter(Boolean);
-}
-
-/** Resolves the merge base with `base`, falling back to a plain two-dot diff when it has none. */
-function rangeFor(base) {
-  try {
-    git(['merge-base', base, 'HEAD']);
-    return `${base}...HEAD`;
-  } catch {
-    return base;
-  }
-}
-
-/** Reads a path from the working tree, or null when it is unreadable (deleted, binary, gone). */
-function readText(path) {
-  try {
-    return readFileSync(path, 'utf8');
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Runs the detector over a diff.
  *
@@ -287,7 +254,7 @@ function readText(path) {
  */
 export function check(range) {
   const changed = changedPaths(
-    git(['diff', '--name-only', '-z', '--no-color', '--no-ext-diff', range]),
+    git(nameOnlyArgs(range)),
   );
 
   const docs = planDocsIn(changed)
@@ -302,7 +269,7 @@ function main(argv) {
     process.stderr.write('usage: check-plan-file-structure.mjs --diff [<base>]\n');
     return 2;
   }
-  const omissions = check(rangeFor(argv[1] ?? 'origin/main'));
+  const omissions = check(mergeBase(argv[1] ?? 'origin/main'));
   if (omissions.length === 0) return 0;
   process.stderr.write(`${report(omissions)}\n`);
   return 1;

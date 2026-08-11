@@ -90,6 +90,7 @@ Testcontainers ITs (they skip cleanly without a daemon, `@EnabledIfDockerAvailab
 npm ci
 npm start                # dev server on :4200
 npm run lint             # ESLint (angular-eslint)
+npm run format:check     # Prettier over the lines this branch wrote (`-- --fix` to apply)
 npm test                 # Vitest unit tests, runs once in jsdom
 npm run test:a11y        # axe + contrast unit specs only
 npm run test:e2e         # Playwright — local-only REAL-backend suite (frontend/e2e/real-backend/)
@@ -105,11 +106,15 @@ registration, scoped tests only; CI owns the full suite) and the known
 full-suite-only failure class (shared-state beans accumulating across tests).
 
 **CI/CD** (`.github/workflows/`): `ci.yml` runs backend build/test, frontend
-lint/test/build + e2e, **two** diff-scoped repo-hygiene checks — inline comments
+lint/format/test/build + e2e, **three** diff-scoped hygiene checks — inline comments
 (RV-STYLE-1, #529 — the CI half of the `PostToolUse` guard in
-`.claude/settings.json`) and the plan doc's File-structure section (#533,
-`node scripts/check-plan-file-structure.mjs --diff origin/main` by hand) — and a
-SonarCloud scan on every PR; `codeql.yml` scans;
+`.claude/settings.json`), the plan doc's File-structure section (#533,
+`node scripts/check-plan-file-structure.mjs --diff origin/main` by hand), and Prettier
+formatting (#615, `npm run format:check` from `frontend/`; `-- --fix` rewrites exactly the
+hunks it reports). The first two share the `Repo hygiene (diff-scoped)` job; the third is a
+step in the frontend job, which is where the pinned Prettier is installed — and both jobs
+are ruleset-required contexts **by name**, so a new job would report without blocking.
+`ci.yml` also runs a SonarCloud scan on every PR; `codeql.yml` scans;
 `deploy.yml` deploys the single backend image (which serves the SPA) to Render from `main`. The Sonar merge
 bar is stricter than the default quality gate: **0 new issues, 0 duplicated
 blocks, ≥80% new-code coverage** — review the issue list, not just the gate
