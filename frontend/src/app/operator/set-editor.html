@@ -102,28 +102,28 @@
           <button
             type="button"
             (click)="onSave()"
-            [appBusy]="busy()"
+              [appBusy]="busy()"
             data-testid="set-save"
-            class="min-h-11 flex-1 rounded-[14px] bg-(image:--riv-cta-grad) px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] aria-disabled:opacity-50"
+              class="min-h-11 flex-1 rounded-[14px] bg-(image:--riv-cta-grad) px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] aria-disabled:opacity-50"
           >
             {{ busy() ? 'Saving…' : 'Save set' }}
           </button>
           <button
             type="button"
             (click)="armMove()"
-            [disabled]="dirty()"
-            [appBusy]="busy()"
+              [disabled]="dirty()"
+              [appBusy]="busy()"
             data-testid="set-move"
-            class="min-h-11 rounded-[14px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) disabled:opacity-50 aria-disabled:opacity-50"
+              class="min-h-11 rounded-[14px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) disabled:opacity-50 aria-disabled:opacity-50"
           >
             Move
           </button>
           <button
             type="button"
             (click)="askRemove()"
-            [appBusy]="busy()"
+              [appBusy]="busy()"
             data-testid="set-remove"
-            class="min-h-11 rounded-[14px] border border-[#a3160e]/40 px-4 py-2.5 text-[13.5px] font-bold text-[#a3160e] aria-disabled:opacity-50"
+              class="min-h-11 rounded-[14px] border border-[#a3160e]/40 px-4 py-2.5 text-[13.5px] font-bold text-[#a3160e] aria-disabled:opacity-50"
           >
             Remove
           </button>

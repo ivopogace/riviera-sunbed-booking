@@ -76,7 +76,15 @@ const SWATCH_CLASS: Record<CellState, string> = {
  */
 @Component({
   selector: 'app-layout-editor',
-  imports: [CardGlass, BeachCell, BeachGridFrame, ConfirmPanel, SetEditor, StaleWriteBanner, BusyAction],
+  imports: [
+    CardGlass,
+    BeachCell,
+    BeachGridFrame,
+    ConfirmPanel,
+    SetEditor,
+    StaleWriteBanner,
+    BusyAction,
+  ],
   templateUrl: './layout-editor.html',
 })
 export class LayoutEditor {

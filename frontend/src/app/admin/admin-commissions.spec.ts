@@ -298,9 +298,15 @@ describe('AdminCommissions', () => {
     byTestId<HTMLButtonElement>(fixture, 'admin-commission-save-7')!.click();
     fixture.detectChanges();
 
-    expect(byTestId(fixture, 'admin-commission-cancel-7')!.getAttribute('aria-disabled')).toBe('true');
-    expect(byTestId(fixture, 'admin-commission-save-7')!.getAttribute('aria-disabled')).toBe('true');
-    expect(byTestId(fixture, 'admin-commission-edit-9')!.getAttribute('aria-disabled')).toBe('true');
+    expect(byTestId(fixture, 'admin-commission-cancel-7')!.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    expect(byTestId(fixture, 'admin-commission-save-7')!.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+    expect(byTestId(fixture, 'admin-commission-edit-9')!.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
     // The fields too, not just the buttons — a draft typed mid-flight is wiped when the write lands.
     expect(byTestId<HTMLInputElement>(fixture, 'admin-commission-percent-7')!.disabled).toBe(true);
     expect(byTestId<HTMLInputElement>(fixture, 'admin-commission-reason-7')!.disabled).toBe(true);
