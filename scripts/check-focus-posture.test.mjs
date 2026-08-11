@@ -1069,6 +1069,28 @@ test('does not pair prose apostrophes across a branch closing brace', () => {
   assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
 });
 
+/**
+ * PR #630 re-review F-5: an unmatched parenthesis in prose (`(today, don't wait`) re-enabled the
+ * expression-context quote pairing. Parentheses count only for a block condition — armed by its
+ * `@` keyword — so element text can never open one.
+ */
+test('does not let a prose parenthesis re-enable apostrophe pairing', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    "    @if (ready()) { <p>It's off (today, don't wait</p> } <p>It's true</p>",
+    '    <app-payout-statement (dismissed)="close()" />',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '  reload() { this.ready.set(false); }',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
+});
+
 /** The expression-context half of the same rule: a quoted brace in a condition is still skipped. */
 test('reads past a brace quoted inside a branch condition', () => {
   const lines = [

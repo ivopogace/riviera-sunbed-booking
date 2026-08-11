@@ -675,38 +675,48 @@ function blockText(lines, open) {
  * Quote-aware, because a template legitimately writes a brace inside an attribute, a condition or
  * an interpolation (`{{ label() ?? '}' }}`) and counting it closes a block lines early — which
  * moves a trap out of the branch that renders it, or into a later sibling that does not. A single
- * quote is a string opener only in **expression context** — inside an interpolation or unclosed
- * parentheses — and only when its mate closes on the same line: in element text it is prose, where
- * one apostrophe (`It's ready</p> }`) or a straddling pair (`It's on</p> } <p>Don't`) otherwise
- * swallows the real `}` and extends the branch to the end of the file (#629, PR #630 review F-3).
- * Double quotes keep the mated-on-line rule alone: attribute values are where they open, and
- * quoted prose is not idiom in these templates.
+ * quote is a string opener only in **expression context** — inside an interpolation, or inside a
+ * block condition's parentheses, which only an `@` keyword can open (a parenthesis in prose never
+ * counts, PR #630 re-review F-5) — and only when its mate closes on the same line: in element text
+ * it is prose, where one apostrophe (`It's ready</p> }`) or a straddling pair
+ * (`It's on</p> } <p>Don't`) otherwise swallows the real `}` and extends the branch to the end of
+ * the file (#629, PR #630 review F-3). Double quotes keep the mated-on-line rule alone: attribute
+ * values are where they open, and quoted prose is not idiom in these templates.
  */
 function closingBrace(lines, from) {
   let depth = 0;
   let parens = 0;
-  let interpolated = false;
+  let armed = false;
 
   for (let i = from.line; i < lines.length; i++) {
     for (let c = i === from.line ? from.column : 0; c < lines[i].length; c++) {
       const ch = lines[i][c];
-      if (ch === '"' || (ch === "'" && (interpolated || parens > 0))) {
+      if (ch === '"' || (ch === "'" && parens > 0)) {
         const end = stringEnd(lines[i], c);
         if (end !== -1) c = end;
       } else if (lines[i].startsWith('{{', c)) {
-        interpolated = true;
-        depth += 2;
+        parens++;
+        armed = false;
         c++;
-      } else if (interpolated && lines[i].startsWith('}}', c)) {
-        interpolated = false;
-        depth -= 2;
-        c++;
-      } else if (ch === '(') parens++;
-      else if (ch === ')') parens = Math.max(0, parens - 1);
-      else if (ch === '{') depth++;
-      else if (ch !== '}') continue;
-      else if (depth === 0) return null;
-      else if (--depth === 0) return { line: i, column: c };
+      } else if (parens > 0) {
+        if (ch === '(') parens++;
+        else if (ch === ')') parens--;
+        else if (ch === '}' && lines[i][c + 1] === '}') {
+          parens--;
+          c++;
+        }
+      } else if (ch === '@') {
+        armed = true;
+      } else if (armed && ch === '(') {
+        parens = 1;
+        armed = false;
+      } else {
+        if (armed && !/[A-Za-z\s]/.test(ch)) armed = false;
+        if (ch === '{') depth++;
+        else if (ch !== '}') continue;
+        else if (depth === 0) return null;
+        else if (--depth === 0) return { line: i, column: c };
+      }
     }
   }
   return null;

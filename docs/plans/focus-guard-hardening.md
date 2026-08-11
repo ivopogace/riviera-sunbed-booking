@@ -173,7 +173,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | review gate (`/code-review`, PR #630) | BUSY-2 skipped only `[type]`, so a dynamic `[attr.type]` field gate-failed even when the runtime kind is readonly-inert | fixed — `[attr.type]` joins the escape hatch, pinned in the spares matrix (review-fix commit) |
 | F-2 | review gate (`/code-review`, PR #630) | the reordered `declaresClass` misread `extends mixin({ … }) {` — the class body became a member, and any focus call in the class exempted every stranding flip (false-negative regression vs `origin/main`) | fixed — `declaresClass` is a brace-aware backward walk to the `class` keyword, pinned by `does not classify a heritage call argument closing line as a member` (review-fix commit) |
 | F-3 | review gate (`/code-review`, PR #630) | two prose apostrophes straddling a branch's `}` still read as a string, re-opening the #629.3 misattribution (advisory impact) | fixed — a single quote opens a string only in expression context (interpolation / unclosed parens), pinned by the straddling-pair and condition-quoted-brace tests (review-fix commit) |
-| F-4 | review gate (`/code-review`, PR #630) | the plan's Phase 3 step still said `(change)/(blur)/(input)`, contradicting AC-6 and `COMMIT_HANDLERS` | fixed — step reworded to match the shipped scope (review-fix commit) |
+| F-4 | review gate (`/code-review`, PR #630) | the plan's Phase 3 step still said `(change)/(blur)/(input)`, contradicting AC-6 and `COMMIT_HANDLERS` | fixed — step reworded to match the shipped scope (6bfe6c5) |
+| F-5 | re-review gate (second `/code-review` pass over the fix round) | an unmatched parenthesis in prose re-enabled the F-3 apostrophe pairing (`(today, don't` …) — advisory-impact misattribution again | fixed — parens count only for a block condition, armed by its `@` keyword (raw `@` cannot appear in Angular template text, it must be `&#64;`); pinned by `does not let a prose parenthesis re-enable apostrophe pairing` (review-fix commit 2) |
 
 ---
 
@@ -270,8 +271,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1..AC-4, AC-6:** `node --test scripts/check-focus-posture.test.mjs` → 56/56 pass (53 at 1bb93b4; 56 after the review-fix pins).
-- [x] **AC-5:** `cd /tmp && node --test <abs path>/check-focus-posture.test.mjs` → 56/56 pass.
+- [x] **AC-1..AC-4, AC-6:** `node --test scripts/check-focus-posture.test.mjs` → 57/57 pass (53 at 1bb93b4; 57 after the two review-fix rounds' pins).
+- [x] **AC-5:** `cd /tmp && node --test <abs path>/check-focus-posture.test.mjs` → 57/57 pass.
 - [x] **AC-7:** `node scripts/check-focus-posture.mjs --all` → `BUSY-1: 0  BUSY-2: 0  FOCUS-1: 0`.
 
 ## Self-review checklist (before merge / PR)
