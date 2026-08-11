@@ -17,8 +17,20 @@ const ROWS = [
   { label: 'Row 4 · Back', tier: 'STANDARD', price: 3000 },
 ];
 
+type MapSet = {
+  id: number;
+  rowLabel: string;
+  positionNo: number;
+  tier: string;
+  pool: string;
+  price: { minorUnits: number; currency: string };
+  gridX: number;
+  gridY: number;
+  availability: string;
+};
+
 function wideVenue() {
-  const sets = [];
+  const sets: MapSet[] = [];
   let id = 0;
   ROWS.forEach((row, r) => {
     for (let p = 1; p <= 20; p++) {

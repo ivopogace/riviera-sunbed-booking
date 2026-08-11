@@ -63,11 +63,9 @@ async function search(fixture: ComponentFixture<AdminMailDelivery>): Promise<voi
   input.value = 'tourist@example.com';
   input.dispatchEvent(new Event('input'));
   fixture.detectChanges();
-  (
-    (fixture.nativeElement as HTMLElement).querySelector(
-      '[data-testid="admin-delivery-lookup"]',
-    ) as HTMLButtonElement
-  ).click();
+  (fixture.nativeElement as HTMLElement)
+    .querySelector<HTMLButtonElement>('[data-testid="admin-delivery-lookup"]')!
+    .click();
   await fixture.whenStable();
   fixture.detectChanges();
 }

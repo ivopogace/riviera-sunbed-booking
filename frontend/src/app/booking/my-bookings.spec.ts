@@ -266,7 +266,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     // The code is NOT forgotten on a transient failure.
     expect(TestBed.inject(DeviceLocalBookings).codes()).toEqual(['TRAN5678']);
 
-    (host.querySelector('[data-testid="row-retry"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="row-retry"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -597,7 +597,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
       const host = fixture.nativeElement as HTMLElement;
 
       expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
-      (host.querySelector('[data-testid="account-retry"]') as HTMLButtonElement).click();
+      host.querySelector<HTMLButtonElement>('[data-testid="account-retry"]')!.click();
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();

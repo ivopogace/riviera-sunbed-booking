@@ -210,10 +210,31 @@ failures:
    trips `no-non-null-asserted-optional-chain` — *"Optional chain expressions can return undefined
    by design — using a non-null assertion is unsafe and wrong."*
 
-Generalized rule, now the plan's spine: **fix the root typing first; run fixers only against real
-types.** R-2 anticipated this for one rule (`no-unnecessary-type-assertion`); the empirical result
-is that it applies at least as strongly to `non-nullable-type-assertion-style`, whose fixer is the
-one that runs by default.
+Generalized rule: **fix the root typing first; run fixers only against real types.** R-2 anticipated
+this for one rule (`no-unnecessary-type-assertion`); the empirical result is that it applies at
+least as strongly to `non-nullable-type-assertion-style`, whose fixer is the one that runs by
+default.
+
+**Phase 2 then showed the ordering was necessary but not sufficient, and exposed the real
+mechanism.** Re-running the same fixer on the *typed* tree reproduced the damage — `no-unsafe-call`
++63, and **69** type errors. The cause is not strictness and not `any`; it is that
+**a trailing type assertion was silently supplying `querySelector`'s generic argument**:
+
+```ts
+el.querySelector('…') as HTMLButtonElement   // E infers as HTMLButtonElement -> HTMLButtonElement | null
+                                             // so the assertion looks like pure null-removal…
+el.querySelector('…')!                       // …but with it gone, E falls back to Element — no .click()
+```
+
+The fixer is therefore **unsound for any assertion that feeds inference**, in any codebase — worth
+knowing beyond this repo. The correct rewrite states the intent where no fixer can misread it:
+
+```ts
+el.querySelector<HTMLButtonElement>('…')!
+```
+
+Applied to **79 assertions across 14 files**, which took 259 → 181 with zero type errors, where the
+fixer had produced 69. Only after that were the genuinely-safe fixers (`prefer-*`) run.
 
 ### Design correction: no new helper file
 
@@ -321,17 +342,22 @@ machine-checked one, which is #632's third stated motivation.)
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phases 0-1 done (gate RED at 259, down from 409); phase 2 next`
+**Stage pointer:** `implement — phases 0-2 done (gate RED at 179, down from 409); phase 3 next`
 
-**Next action:** Phase 2 — now that the DOM root is typed, re-run the auto-fixer for the safe rules
-(`non-nullable-type-assertion-style`, `prefer-*`), whose verdicts are finally computed against real
-types. Still **not** `no-unnecessary-type-assertion` (phase 3 reviews those by hand).
+**Next action:** Phase 3 — hand-review the 42 `no-unnecessary-type-assertion` sites. Note R-2's
+original premise (non-strict compiler) is withdrawn; judge each on whether the assertion is
+genuinely redundant against the now-correct types, and prefer `!` over deletion where it removes
+null. All three TS projects currently typecheck clean — keep it that way.
+
+**Verification standing at phase 2:** `tsc --noEmit` clean for `tsconfig.app.json`,
+`tsconfig.spec.json` **and** `e2e/tsconfig.json`; Vitest **1372 passed / 156 files**; mocked
+Playwright **176 passed**; zero `it`/`test`/`describe` lines added or removed vs `origin/main`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Flip the gate (RED at 409) | ✅ | `e05e1c4c` |
 | 1 — Spec unsafe-`any`: adopt the `as HTMLElement` idiom (409 → 259) | ✅ | `<sha>` |
-| 2 — Auto-fix sweep, now against real types | | |
+| 2 — `querySelector<T>(…)!` codemod + safe fixers (259 → 179) | ✅ | `<sha>` |
 | 3 — `no-unnecessary-type-assertion` by hand (42) | | |
 | 4 — Production source (9, incl. B-1..B-3) | | |
 | 5 — e2e (11, incl. B-4/B-5) | | |
@@ -371,6 +397,10 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/e2e/booking-flow.e2e.ts` — two assertion-style nits.
 - `frontend/e2e/customer-password.e2e.ts` — `prefer-string-starts-ends-with`.
 - `frontend/e2e/operator-venue.e2e.ts` — 6 unsafe-`any` on an untyped request-body read.
+- `frontend/e2e/admin-venue-photos.e2e.ts` — index-signature access (`TS4111`), surfaced by the new
+  e2e project; pre-existing, invisible until now (Playwright transpiles without typechecking).
+- `frontend/e2e/venue-map-pan.e2e.ts` — implicit `any[]` (`TS7034`/`TS7005`), same origin; gains a
+  named `MapSet` type for the mocked payload.
 - `docs/plans/eslint-type-aware-linting.md` — this plan doc.
 - `CLAUDE.md` — CI paragraph: record that the frontend lint gate is now type-aware (phase 6,
   pending the `riviera-docs-freshness` run).

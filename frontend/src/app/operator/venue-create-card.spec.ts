@@ -56,7 +56,10 @@ describe('VenueCreateCard (#278)', () => {
     const field = Array.from(host().querySelectorAll('label.field')).find((l) =>
       l.querySelector('span')?.textContent?.trim().startsWith(label),
     );
-    const control = field?.querySelector('input, select') as HTMLInputElement | HTMLSelectElement;
+    if (!field) {
+      throw new Error(`No field labelled "${label}"`);
+    }
+    const control = field.querySelector<HTMLInputElement | HTMLSelectElement>('input, select')!;
     control.value = value;
     control.dispatchEvent(new Event('input', { bubbles: true }));
     control.dispatchEvent(new Event('change', { bubbles: true }));

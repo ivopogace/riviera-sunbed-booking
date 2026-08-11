@@ -84,9 +84,9 @@ describe('AdminMailDelivery', () => {
 
     await lookUp(fixture);
 
-    const attempts = (fixture.nativeElement as HTMLElement).querySelector(
+    const attempts = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
       '[data-testid="admin-delivery-attempts"]',
-    ) as HTMLElement;
+    )!;
     expect(attempts.textContent).toContain('withheld');
     expect(attempts.textContent).not.toContain('withheld (address suppressed) · delivered');
   });

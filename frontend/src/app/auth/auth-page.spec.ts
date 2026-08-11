@@ -89,7 +89,7 @@ describe('AuthPage', () => {
   }
 
   function el<T extends HTMLElement>(testId: string): T {
-    return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testId}"]`) as T;
+    return (fixture.nativeElement as HTMLElement).querySelector<T>(`[data-testid="${testId}"]`)!;
   }
 
   function type(testId: string, value: string): void {

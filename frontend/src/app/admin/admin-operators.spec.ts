@@ -94,7 +94,7 @@ describe('AdminOperators', () => {
     const fixture = await render(authStub({ isAdmin: true }), service);
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="admin-approve-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-approve-7"]')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -107,7 +107,7 @@ describe('AdminOperators', () => {
     const fixture = await render(authStub({ isAdmin: true }), service);
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="admin-reject-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-reject-7"]')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -127,11 +127,11 @@ describe('AdminOperators', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     // Suspension takes a deliberate second step — the first click only arms the confirmation.
-    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-7"]')!.click();
     fixture.detectChanges();
     expect(service.suspend).not.toHaveBeenCalled();
 
-    (host.querySelector('[data-testid="admin-suspend-confirm-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-confirm-7"]')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -145,13 +145,13 @@ describe('AdminOperators', () => {
     const fixture = await render(authStub({ isAdmin: true }), service);
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-7"]')!.click();
     fixture.detectChanges();
-    const input = host.querySelector('[data-testid="admin-suspend-reason-7"]') as HTMLInputElement;
+    const input = host.querySelector<HTMLInputElement>('[data-testid="admin-suspend-reason-7"]')!;
     input.value = '  repeated guest reports  ';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    (host.querySelector('[data-testid="admin-suspend-confirm-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-confirm-7"]')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -163,22 +163,22 @@ describe('AdminOperators', () => {
     const fixture = await render(authStub({ isAdmin: true }), service);
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-7"]')!.click();
     fixture.detectChanges();
-    const input = host.querySelector('[data-testid="admin-suspend-reason-7"]') as HTMLInputElement;
+    const input = host.querySelector<HTMLInputElement>('[data-testid="admin-suspend-reason-7"]')!;
     input.value = 'first grounds';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    (host.querySelector('[data-testid="admin-suspend-cancel-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-cancel-7"]')!.click();
     fixture.detectChanges();
 
     // Re-armed after a dismissal, the field is blank and an unstated reason stays unstated.
-    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-7"]')!.click();
     fixture.detectChanges();
     expect(
-      (host.querySelector('[data-testid="admin-suspend-reason-7"]') as HTMLInputElement).value,
+      host.querySelector<HTMLInputElement>('[data-testid="admin-suspend-reason-7"]')!.value,
     ).toBe('');
-    (host.querySelector('[data-testid="admin-suspend-confirm-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-confirm-7"]')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -193,7 +193,7 @@ describe('AdminOperators', () => {
     const fixture = await render(authStub({ isAdmin: true }), serviceStub(rows, accounts));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-7"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -207,9 +207,9 @@ describe('AdminOperators', () => {
     const fixture = await render(authStub({ isAdmin: true }), serviceStub(rows, accounts));
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-7"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="admin-suspend-cancel-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-cancel-7"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -222,9 +222,9 @@ describe('AdminOperators', () => {
     const fixture = await render(authStub({ isAdmin: true }), service);
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="admin-suspend-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-7"]')!.click();
     fixture.detectChanges();
-    (host.querySelector('[data-testid="admin-suspend-cancel-7"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-cancel-7"]')!.click();
     fixture.detectChanges();
 
     expect(service.suspend).not.toHaveBeenCalled();
@@ -237,7 +237,7 @@ describe('AdminOperators', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     expect(host.querySelector('[data-testid="admin-suspended-badge-8"]')).not.toBeNull();
-    (host.querySelector('[data-testid="admin-reinstate-8"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-reinstate-8"]')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -255,11 +255,9 @@ describe('AdminOperators', () => {
     fixture: ComponentFixture<AdminOperators>,
     testid: string,
   ): Promise<void> {
-    (
-      (fixture.nativeElement as HTMLElement).querySelector(
-        `[data-testid="${testid}"]`,
-      ) as HTMLButtonElement
-    ).click();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>(`[data-testid="${testid}"]`)!
+      .click();
     await fixture.whenStable();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -294,11 +292,9 @@ describe('AdminOperators', () => {
   it('parks focus on the notice when a suspension settles', async () => {
     const service = serviceStub(rows, accounts);
     const fixture = await render(authStub({ isAdmin: true }), service);
-    (
-      (fixture.nativeElement as HTMLElement).querySelector(
-        '[data-testid="admin-suspend-7"]',
-      ) as HTMLButtonElement
-    ).click();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[data-testid="admin-suspend-7"]')!
+      .click();
     fixture.detectChanges();
 
     await settleAction(fixture, 'admin-suspend-confirm-7');
@@ -314,11 +310,9 @@ describe('AdminOperators', () => {
     const service = serviceStub(rows, accounts);
     service.suspend.mockRejectedValue(new Error('nope'));
     const fixture = await render(authStub({ isAdmin: true }), service);
-    (
-      (fixture.nativeElement as HTMLElement).querySelector(
-        '[data-testid="admin-suspend-7"]',
-      ) as HTMLButtonElement
-    ).click();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[data-testid="admin-suspend-7"]')!
+      .click();
     fixture.detectChanges();
 
     await settleAction(fixture, 'admin-suspend-confirm-7');

@@ -95,7 +95,7 @@ describe('AdminOperators accessibility (axe)', () => {
     const fixture = await render();
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="admin-suspend-11"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="admin-suspend-11"]')!.click();
     fixture.detectChanges();
 
     // The inline confirmation replaces the trigger in place — axe must still pass in that state.

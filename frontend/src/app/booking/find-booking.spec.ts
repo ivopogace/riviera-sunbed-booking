@@ -223,9 +223,9 @@ describe('FindBooking', () => {
     await fixture.whenStable();
 
     expect(getByCode).toHaveBeenCalledTimes(1);
-    const button = (fixture.nativeElement as HTMLElement).querySelector(
+    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
       '[data-testid="find-submit"]',
-    ) as HTMLButtonElement;
+    )!;
     // Announced as unavailable, but still focusable — disabling it would strand focus on <body>.
     expect(button.getAttribute('aria-disabled')).toBe('true');
     expect(button.disabled).toBe(false);
@@ -238,7 +238,7 @@ describe('FindBooking', () => {
     fixture.componentInstance.dismissed.subscribe(closes);
     const host = fixture.nativeElement as HTMLElement;
 
-    (host.querySelector('[data-testid="find-close"]') as HTMLButtonElement).click();
+    host.querySelector<HTMLButtonElement>('[data-testid="find-close"]')!.click();
     host.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     host.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
@@ -272,9 +272,9 @@ describe('FindBooking', () => {
     fixture.detectChanges();
     expect(errorText(fixture)).toContain('No booking found');
 
-    const input = (fixture.nativeElement as HTMLElement).querySelector(
+    const input = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>(
       '[data-testid="find-code"]',
-    ) as HTMLInputElement;
+    )!;
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
@@ -298,9 +298,9 @@ describe('FindBooking', () => {
     expect(closes).toHaveBeenCalledTimes(1);
     // The un-navigated view never mounts to consume the prime, so it must be discarded here — otherwise a later deep-link to the same code would serve a now-stale detail.
     expect(takePrefetched).toHaveBeenCalledWith('ABCD234567');
-    const button = (fixture.nativeElement as HTMLElement).querySelector(
+    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
       '[data-testid="find-submit"]',
-    ) as HTMLButtonElement;
+    )!;
     expect(button.disabled).toBe(false); // not stuck disabled
   });
 });

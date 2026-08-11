@@ -147,7 +147,7 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   // Stacking pin: the modal scrim must paint ABOVE the sticky glass header —
   // a stacking context on <main> once trapped it below, leaving the header clickable.
   const headerHit = await page.evaluate(() => {
-    const header = document.querySelector('.riv-header') as HTMLElement;
+    const header = document.querySelector<HTMLElement>('.riv-header')!;
     const rect = header.getBoundingClientRect();
     const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
     return hit ? { insideHeader: header.contains(hit), tag: hit.tagName } : null;
@@ -200,7 +200,7 @@ test('booking dialog stays laptop-friendly at a ~700px viewport (#188, guards th
 
   // The scroll body doesn't overflow, so every field and the Continue button show without scrolling.
   const bodyOverflow = await page.evaluate(() => {
-    const body = document.querySelector('.dialog-body') as HTMLElement;
+    const body = document.querySelector<HTMLElement>('.dialog-body')!;
     return body.scrollHeight - body.clientHeight;
   });
   expect(bodyOverflow).toBeLessThanOrEqual(1);

@@ -85,9 +85,9 @@ describe('AuthPage a11y (#277)', () => {
 
   it('announces the failure message through a live region', async () => {
     const host = await render();
-    (host.querySelector('[data-testid="auth-form"]') as HTMLFormElement).dispatchEvent(
-      new Event('submit'),
-    );
+    host
+      .querySelector<HTMLFormElement>('[data-testid="auth-form"]')!
+      .dispatchEvent(new Event('submit'));
     await fixture.whenStable();
 
     const alert = host.querySelector('[data-testid="auth-error"]')!;
@@ -106,9 +106,9 @@ describe('AuthPage a11y (#277)', () => {
       input.value = value;
       input.dispatchEvent(new Event('input'));
     }
-    (host.querySelector('[data-testid="auth-form"]') as HTMLFormElement).dispatchEvent(
-      new Event('submit'),
-    );
+    host
+      .querySelector<HTMLFormElement>('[data-testid="auth-form"]')!
+      .dispatchEvent(new Event('submit'));
     await fixture.whenStable();
 
     expect(host.querySelector('[data-testid="auth-pending"]')).not.toBeNull();

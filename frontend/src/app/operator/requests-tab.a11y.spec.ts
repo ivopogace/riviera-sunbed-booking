@@ -105,7 +105,7 @@ describe('RequestsTab a11y (#176)', () => {
   it('has no axe violations for the dismissible expired-race card', async () => {
     render();
     Array.from(host().querySelectorAll('button'))
-      .find((b) => /Accept/.test(b.textContent ?? ''))!
+      .find((b) => (b.textContent ?? '').includes('Accept'))!
       .click();
     fixture.detectChanges();
     http
