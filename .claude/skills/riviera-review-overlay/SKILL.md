@@ -107,9 +107,13 @@ with a gate that already ran or wrong:
   are the two this gate exists to retire. A dirty file is fixed with `npm run format` (or a
   scoped `npx prettier --write <file>`), never by a review comment.
 
-Outside that scope there is no Prettier config at all (`resolveConfig` returns null for
-`scripts/`, `docs/`, `platform/`, and `frontend/`'s own root files), so formatting there is a
-matter of matching the surrounding file — judge it by eye, and lean toward leaving it alone.
+Outside that scope, hands off for two different reasons: `scripts/`, `docs/`, and `platform/`
+have no Prettier config at all (`resolveConfig` returns null there), while `frontend/`'s own
+root files (`angular.json`, `README.md`, the Playwright configs) *do* resolve the config but
+are tool- or prose-owned and deliberately excluded from the checked scope — and listed in
+`.prettierignore` so an ad-hoc `prettier --write .` cannot rewrite them. Either way, formatting
+there is a matter of matching the surrounding file — judge it by eye, and lean toward leaving
+it alone.
 
 ## RV-PROC-1 — skill-routing gate honored (when a plan doc is in scope)
 

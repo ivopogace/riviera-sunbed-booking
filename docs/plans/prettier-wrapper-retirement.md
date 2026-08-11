@@ -55,22 +55,22 @@ from `origin/main` between PR 0 → PR A → PR B, same name each time).
   `frontend/`, then it exits 0 — the whole scope is clean, which is the precondition for
   retiring line-scoping. *Pinned by:* the local check recorded in Execution status, then
   permanently by PR B's flipped CI step.
-- [ ] **AC-3:** Given PR B, when the `frontend` CI job runs on a pull request, then its
+- [x] **AC-3:** Given PR B, when the `frontend` CI job runs on a pull request, then its
   Format step executes bare `npx prettier --check src e2e` (no wrapper), the job's
   **name is unchanged** (`frontend` is a ruleset-required context by name), and
   `scripts/check-prettier-format.mjs` + its test no longer exist (the hygiene job's
   `node --test "scripts/*.test.mjs"` glob needs no edit). *Pinned by:* PR B's green CI run
   + `git ls-files scripts/ | grep prettier` returning nothing.
-- [ ] **AC-4:** Given PR B, when `git blame` (or GitHub's blame view) is consulted for a
+- [x] **AC-4:** Given PR B, when `git blame` (or GitHub's blame view) is consulted for a
   file the reformat touched, then PR A's squash SHA is listed in `.git-blame-ignore-revs`
   at the repo root and `CONTRIBUTING.md` documents
   `git config blame.ignoreRevsFile .git-blame-ignore-revs`. *Pinned by:* a recorded
   `git blame --ignore-revs-file` run attributing reformatted lines to pre-reformat commits.
-- [ ] **AC-5:** Given PR B, when a developer runs `npm run format:check` (or
+- [x] **AC-5:** Given PR B, when a developer runs `npm run format:check` (or
   `npm run format`) from `frontend/`, then it executes `prettier --check src e2e`
   (respectively `prettier --write src e2e`) — no `--diff`/`--fix` wrapper semantics.
   *Pinned by:* `frontend/package.json` scripts in PR B's diff + a recorded local run of each.
-- [ ] **AC-6:** Given PR B, when the doc twins are read, then none still describes a
+- [x] **AC-6:** Given PR B, when the doc twins are read, then none still describes a
   diff-scoped Prettier gate: RV-STYLE-2 (review overlay) reframed to "formatting is
   `prettier --check`'s job", root `CLAUDE.md`'s CI paragraph, `riviera-local-debug`'s
   frontend recipe, `frontend/.prettierignore`'s header rationale, and `ci.yml`'s two
@@ -88,7 +88,8 @@ from `origin/main` between PR 0 → PR A → PR B, same name each time).
 - **No porting of the focus-posture or inline-comment guards to ESLint** — considered and
   deliberately not filed (#631 "Explicitly out of scope"; revisit trigger recorded on #628).
 - **No change to the other three guard scripts or `git-diff.mjs`** — the shared diff library
-  keeps its three remaining importers.
+  keeps its three remaining importers. *(Amended at the review gate: F-3 fixed a stale
+  `format:check` example in `git-diff.mjs`'s header comment — prose only, no behavior.)*
 - **No Prettier version bump and no `.prettierrc` rule changes** — the pinned 3.9.5 does the
   reformat; rule values were out of scope for #615 and stay out.
 
@@ -169,16 +170,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase B — PR B built; opening the PR, then gates)
+**Stage pointer:** merge (PR B gates run; merging on green CI)
 
-**Next action:** open PR B, run CI + review + Sonar gates, write the final close-out (citing
-`merged via PR #NN`) as PR B's last commit, merge.
+**Next action:** none after merge — slice complete; issue #631 closes via PR #635.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — PR 0: precursor (3 comment shortenings + this plan doc) | ✅ | `38eb5c2` — merged via PR #633 (squash `653603a`) |
 | A — PR A: the pure reformat commit | ✅ | merged via PR #634 (squash `1a6933d9a7778d7bec71b94d03a15357f2cf20b7`, recorded in `.git-blame-ignore-revs`) |
-| B — PR B: blame file + CI flip + deletions + doc twins + close-out | ⏳ | |
+| B — PR B: blame file + CI flip + deletions + doc twins + close-out | ✅ | merged via PR #635 (first commit + the review-fix/close-out commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -204,6 +204,9 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | — | review (PR #633, /code-review + overlay) | zero findings | closed |
 | — | review (PR #634, /code-review + overlay; all 196 files byte-verified as pinned-Prettier output) | zero findings | closed |
 | — | sonar (PR #633: 0 issues; PR #634: 0 issues, 95.9% new-code coverage) | zero findings — R-1 did not materialise | closed |
+| F-1 | review (PR #635, /code-review) | RV-STYLE-2's rewritten closing over-generalized: `resolveConfig` does NOT return null for `frontend/`'s root files (the config sits above them) — they are excluded by scope, not config-less | fixed — sentence split into the two real reasons |
+| F-2 | review (PR #635, /code-review) | `.prettierignore`'s header named the root files as off-limits but did not list them, so the ad-hoc `prettier --write .` it exists for would rewrite exactly those files (nothing else guards them post-wrapper) | fixed — root files anchored by name; `npx prettier --check .` now passes whole-tree |
+| F-3 | review (PR #635, /code-review) | `git-diff.mjs`'s header still cited `npm run format:check` as the in-`frontend/` caller motivating cwd-pinning — retired by this PR | fixed — rephrased as the historical #615-wrapper incident |
 
 **Docs-freshness (pre-merge smoke, PR B's range):** rename/removal grep + counting sweep
 ("four hygiene checks" → three diff-scoped + one whole-scope; "200 prettier-dirty files"
@@ -230,7 +233,8 @@ diff base.
 - `scripts/check-prettier-format.mjs` — PR B: deleted
 - `scripts/check-prettier-format.test.mjs` — PR B: deleted
 - `frontend/package.json` — PR B: `format:check` flipped; `format` added
-- `frontend/.prettierignore` — PR B: header rationale rewritten
+- `frontend/.prettierignore` — PR B: header rewritten; root files anchored (review F-2)
+- `scripts/git-diff.mjs` — PR B: stale `format:check` example in the header comment rephrased (review F-3)
 - `CLAUDE.md` — PR B: CI-checks paragraph updated
 - `.claude/skills/riviera-review-overlay/SKILL.md` — PR B: RV-STYLE-2 reframed
 - `.claude/skills/riviera-local-debug/SKILL.md` — PR B: frontend recipe line updated
@@ -304,9 +308,11 @@ time), formatter output only.
 - [x] **Step 6: Verify** (guard suite 28 tests green; both npm scripts clean; sweeps clean) — `node --test "scripts/*.test.mjs"` green;
   `npm run format:check` + `npm run format` run clean; `check-plan-file-structure` exit 0;
   the AC-6 stale-phrase grep clean.
-- [ ] **Step 7: Close-out in-PR** — `riviera-docs-freshness` pre-merge smoke over PR B's
-  range; plan final state citing `merged via PR #NN`; ready → review gate + Sonar gate →
-  merge → close-out checklist (epic tick N/A — no parent epic; issue #631 closes via PR B).
+- [x] **Step 7: Close-out in-PR** — `riviera-docs-freshness` pre-merge smoke ran (zero
+  additional findings; note in Execution status); review gate ran (3 findings, F-1..F-3,
+  all fixed in this PR's last commit); Sonar clean on the first push and re-checked after
+  the fix push; plan final state cites `merged via PR #635`; epic tick N/A — no parent
+  epic; issue #631 closes via this PR.
 
 ---
 
@@ -321,30 +327,40 @@ time), formatter output only.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** guard runs over the live reformat diff → exit 0. Verify at PR A.
-- [ ] **AC-2:** `npx prettier --check src e2e` → exit 0. Verify at PR A / PR B.
-- [ ] **AC-3:** PR B CI green with bare `--check`; wrapper + test absent from `git ls-files`.
-- [ ] **AC-4:** `.git-blame-ignore-revs` names PR A's squash SHA; blame run recorded.
-- [ ] **AC-5:** `npm run format:check` / `npm run format` run scoped and clean.
-- [ ] **AC-6:** stale-phrase grep clean over the doc twins.
+- [x] **AC-1:** guards exit 0 on the live reformat diff — verified locally at PR A and by
+  PR #634's green `Repo hygiene (diff-scoped)` job.
+- [x] **AC-2:** `npx prettier --check src e2e` → exit 0 — verified locally post-reformat and
+  by PR #634's green frontend job; PR #635's flipped CI step makes it permanent.
+- [x] **AC-3:** PR #635's frontend job runs bare `npx prettier --check src e2e` (same
+  required-context job name); `git ls-files scripts/ | grep prettier` → nothing; the hygiene
+  job's test glob ran green post-deletion (28 files' suites, locally + CI).
+- [x] **AC-4:** `.git-blame-ignore-revs` names `1a6933d9…`; verified on
+  `admin-audit.ts` — without the file 3 lines blame to the reformat squash, with it they
+  re-attribute to their origin commits; CONTRIBUTING.md documents the one-time config.
+- [x] **AC-5:** `npm run format:check` and `npm run format` both run bare-scoped and clean
+  (recorded above); after F-2's fix, whole-tree `npx prettier --check .` passes too.
+- [x] **AC-6:** stale-phrase grep clean — remaining hits are historical plan docs and the
+  three surviving diff-scoped guards, both explicitly permitted.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying check.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases. (N/A — no typed code authored.)
-- [ ] **No JPA** introduced (invariant #1). (Nothing on the backend touched.)
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4). (N/A — untouched.)
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone rules untouched (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change → no Flyway migration (invariant #12).
-- [ ] **Frontend** standards: no authored Angular; formatter output verified behavior-neutral.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the pr-gates §1 invocation ladder plus the
-      `riviera-review-overlay` bank walk, on each of the three PRs.
+- [x] Every AC has an implementing task and a verifying check.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases. (N/A — no typed code authored.)
+- [x] **No JPA** introduced (invariant #1). (Nothing on the backend touched.)
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4). (N/A — untouched.)
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** justified N/A (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone rules untouched (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change → no Flyway migration (invariant #12).
+- [x] **Frontend** standards: no authored Angular; formatter output verified behavior-neutral
+      (lint + 1 372 unit tests + the a11y e2e, locally and on PR #634's CI).
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — final state cites `merged via PR #635`.
+- [x] **The review gate ran in full** — `/code-review` (invocation-ladder rung 1; single-pass
+      inline, declared in each PR) plus the `riviera-review-overlay` bank walk, on each of the
+      three PRs; PR #635's 3 findings fixed through the re-entry loop.

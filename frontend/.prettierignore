@@ -1,9 +1,9 @@
 # What a whole-tree `prettier --write .` must not touch. The supported invocations are scoped to
-# src/ + e2e/ (`npm run format` / `npm run format:check`, and CI's check) — frontend/'s own root
-# files (angular.json, README.md, the Playwright configs, .claude/CLAUDE.md) are tool- or
-# prose-owned and never agreed to Prettier's config (PR #618's call). This file covers the ad-hoc
-# `npx prettier --write .` that someone will eventually type anyway: build output takes minutes to
-# rewrite, and package-lock.json's shape is npm's.
+# src/ + e2e/ (`npm run format` / `npm run format:check`, and CI's check) — this file covers the
+# ad-hoc `npx prettier --write .` that someone will eventually type anyway: build output takes
+# minutes to rewrite, package-lock.json's shape is npm's, and frontend/'s root files are tool- or
+# prose-owned and deliberately outside the formatted scope (PR #618's call), so they are anchored
+# here by name to keep that true now that nothing else guards them.
 dist/
 coverage/
 .angular/
@@ -12,3 +12,18 @@ playwright-report/
 
 # npm owns this file's shape; reformatting it only makes the next `npm ci` rewrite it back.
 package-lock.json
+
+# frontend/'s own root files — the config resolves for them (frontend/.prettierrc sits above
+# them) but they never joined the formatted scope.
+/.claude/
+/.postcssrc.json
+/README.md
+/angular.json
+/eslint.config.js
+/package.json
+/playwright.a11y.config.ts
+/playwright.config.ts
+/tsconfig.app.json
+/tsconfig.json
+/tsconfig.spec.json
+/public/
