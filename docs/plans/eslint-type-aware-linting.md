@@ -128,8 +128,9 @@ before trusting it if `main` has moved.**
 - **Enabling TypeScript `strict`** — discovered off during the spike (see R-3). Explicitly out of
   scope by decision; recorded as a risk, no follow-up issue filed (user's call, 2026-08-11).
 - **Bumping `typescript-eslint` or `eslint`** — 8.64.0 already ships every preset and option this
-  plan uses, so `package.json` and the lockfile are **untouched**. This deliberately avoids
-  colliding with open dependabot PRs #337 and #335 (see R-4).
+  plan uses, so no version is changed. `package.json` gains exactly one line (`@types/node` as a
+  declared devDependency, phase 0 — see Resolved), and the lockfile one; no bump, minimal overlap
+  with open dependabot PRs #337 and #335 (see R-4).
 - **Adding new lint rules beyond the two presets** — no à-la-carte rules, no `strictTypeChecked`.
 - **Changing the CI workflow, job names, or required-context names** — `Frontend (lint + test +
   build)` stays exactly as-is (the issue is explicit about this).
@@ -161,7 +162,7 @@ before trusting it if `main` has moved.**
 | R-1 | Lint runtime 2.3× (8.7s → 20.3s) pushes the CI frontend job past its observed-green budget | high | low | Measured: +11.6s absolute on a job that also runs Vitest, a prod build and Playwright — noise-level. Re-check the job duration on the first green CI run and record it here | Ivo | open |
 | R-2 | **`no-unnecessary-type-assertion`'s 42 verdicts are computed under a non-strict compiler.** With `strictNullChecks` off, `x as T` where `x: T \| null` reads as unnecessary and the fixer **deletes** it — removing null-safety that a future strict migration would need | med | **med** | Do **not** blind-`--fix` this rule. Phase 1 applies the fixer for `non-nullable-type-assertion-style` + `prefer-*` only; the 42 `no-unnecessary-type-assertion` sites are reviewed by hand in phase 1b, and any assertion that is only "unnecessary" because strict is off is **kept** by rewriting to `!` rather than deleted | Ivo | open |
 | R-3 | **TypeScript `strict` is off** — `strict`, `strictNullChecks`, `noImplicitAny` all unset in `frontend/tsconfig.json` (confirmed via `tsc --showConfig`). This contradicts `frontend/.claude/CLAUDE.md`'s "Use strict type checking", and is the root cause of the unsafe-`any` volume | certain | med | **Accepted, not fixed** — out of scope by explicit decision (2026-08-11). Recorded here so the next session finds it rather than rediscovering it. Enabling strict later would *reduce* the unsafe-`any` surface, not grow it | Ivo | accepted — noted, no issue filed |
-| R-4 | Dependabot PRs **#337** (typescript-eslint 8.64→8.66) and **#335** (eslint 10.7→10.8) touch `frontend/package.json` + lockfile | med | low | This slice touches **neither file** (see Non-goals). If either merges first, this branch needs only a merge-from-main with no conflict. If this branch merges first, dependabot rebases itself | Ivo | open |
+| R-4 | Dependabot PRs **#337** (typescript-eslint 8.64→8.66) and **#335** (eslint 10.7→10.8) touch `frontend/package.json` + lockfile | med | low | Reduced but not eliminated in phase 0: this slice now adds one `devDependencies` line (`@types/node`) and one lockfile line, in a different part of the file from either bump. Whoever merges second takes a trivial merge-from-main; no version is contested | Ivo | open |
 | R-5 | A new `frontend/e2e/tsconfig.json` changes how Playwright's own transpiler resolves the suite | low | med | Playwright reads tsconfig for `paths` mapping; this file declares none and only sets `include`/`outDir`/`types: []`. AC-7 (the mocked suite must still pass) is the proof, and it runs in CI on every push | Ivo | open |
 | R-6 | ~400 mechanical edits across ~110 files silently change test semantics (e.g. an `await` added to a mock that changes timing, a removed assertion that was load-bearing) | med | high | Every phase ends with the **full Vitest suite**, not a scoped run — this slice's blast radius *is* the suite. AC-6 pins "no change in test count". The e2e legs are pinned by AC-7 | Ivo | open |
 | R-7 | The `require-await` fixes (74) tempt a mechanical `async` removal that breaks an interface contract — e.g. `FakeStripePaymentGateway.mountPaymentElement` **overrides** an abstract `Promise`-returning method | med | med | Fix by returning `Promise.resolve(…)` / keeping the declared return type, **never** by narrowing an override's signature. `npm run build` (prod build, AC-6's neighbour) catches a broken override | Ivo | open |
@@ -169,15 +170,27 @@ before trusting it if `main` has moved.**
 
 ## Open questions / Assumptions
 
-- **Assumption:** `npm run lint` (the `@angular-eslint/builder:lint` builder) honours
-  `parserOptions.projectService` identically to the bare `npx eslint` used in the spike. — *Owner:*
-  Ivo · *Resolves by:* phase 0, by running `npm run lint` itself and comparing the count to 409.
 - **Assumption:** The 285 `nativeElement` occurrences across 94 spec files are mechanically
   convertible to a single typed accessor without changing any assertion's meaning. — *Owner:* Ivo ·
   *Resolves by:* phase 4, spot-checked against the Vitest suite staying green.
 
 ### Resolved
 
+- **Assumption:** `npm run lint` (the `@angular-eslint/builder:lint` builder) honours
+  `parserOptions.projectService` identically to the bare `npx eslint` used in the spike.
+  — **Resolved in phase 0 (`<sha>`): confirmed, 409 both ways, zero parse errors.**
+- **Open question (raised and settled in phase 0):** what `types` should `e2e/tsconfig.json`
+  declare? The plan said `types: []` on the strength of a grep for `process.`/`__dirname` that
+  found nothing in `e2e/`. That grep was too narrow: three photo specs
+  (`admin-venue-photos`, `discover-photos`, `operator-venue-photos`) call
+  `Buffer.from(…, 'base64')` to mint mocked image bytes, and with no Node types those read as
+  *unresolved* — which showed up as **12 extra findings (421, not 409)** on the first builder run.
+  **Resolved: `types: ["node"]`, plus `@types/node` promoted to a declared devDependency.** It was
+  already installed transitively and would have "worked" undeclared, which is precisely the
+  fragility worth closing — a dependency-tree change could silently drop it and either resurrect
+  the 12 findings or, worse, let `Buffer` sit as `any`. The lockfile delta is one line, and
+  `tsconfig.app.json` (`types: []`) and `tsconfig.spec.json` (`types: ["vitest/globals"]`) both
+  pin their own `types`, so nothing leaks into the app or unit-test builds.
 - **Open question:** Should the 389 spec findings be suppressed with a narrow, rule-scoped
   relaxation for `**/*.spec.ts` (the option #632's own text floats), or fixed at the source?
   — **Resolved 2026-08-11 (Ivo): fixed at the source, zero relaxations.** The finding count alone
@@ -248,16 +261,15 @@ machine-checked one, which is #632's third stated motivation.)
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `plan — complete, awaiting go-ahead to implement`
+**Stage pointer:** `implement — phase 0 done (gate is RED at 409, by design); phase 1 next`
 
-**Next action:** Start phase 0 — flip `eslint.config.js` to the type-checked presets, add
-`frontend/e2e/tsconfig.json`, add the `playwright*.config.ts` carve-out, then run `npm run lint`
-and confirm the count is **409** (validating the spike against the builder, per the first
-Assumption). Commit as an explicit **red-TDD** push.
+**Next action:** Phase 1 — apply `eslint --fix` for the **safe** rules only
+(`non-nullable-type-assertion-style`, `prefer-includes`, `prefer-string-starts-ends-with`),
+explicitly **not** `no-unnecessary-type-assertion` (R-2). Then `npm run format`, then `npm test`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Flip the gate (RED at 409) | | |
+| 0 — Flip the gate (RED at 409) | ✅ | `<sha>` |
 | 1 — Safe auto-fix sweep (~78) | | |
 | 1b — `no-unnecessary-type-assertion` by hand (42) | | |
 | 2 — Production source (9, incl. B-1..B-3) | | |
@@ -282,7 +294,9 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/eslint.config.js` — the flip: type-checked presets, `projectService`,
   `tsconfigRootDir`, and the `playwright*.config.ts` `disableTypeChecked` block.
 - `frontend/e2e/tsconfig.json` — **new**; brings the 52 mocked-suite specs into a TS project so
-  type-aware rules reach them. `types: []` (the suite uses no Node globals — verified).
+  type-aware rules reach them. `types: ["node"]` — three photo specs use `Buffer.from` (phase 0).
+- `frontend/package.json` — one line: `@types/node` promoted from transitive to declared.
+- `frontend/package-lock.json` — the corresponding one-line entry.
 - `frontend/src/testing/fixture-dom.ts` — **new**; the typed `ComponentFixture` DOM accessor that
   removes the ~186 unsafe-`any` findings at their source.
 - `frontend/src/app/**/*.spec.ts` — ~94 spec files: adopt the accessor, fix `require-await`,

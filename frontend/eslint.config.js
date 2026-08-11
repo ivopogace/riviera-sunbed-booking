@@ -9,10 +9,13 @@ module.exports = defineConfig([
     files: ['**/*.ts'],
     extends: [
       eslint.configs.recommended,
-      tseslint.configs.recommended,
-      tseslint.configs.stylistic,
+      tseslint.configs.recommendedTypeChecked,
+      tseslint.configs.stylisticTypeChecked,
       angular.configs.tsRecommended,
     ],
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: __dirname },
+    },
     processor: angular.processInlineTemplates,
     rules: {
       '@angular-eslint/directive-selector': [
@@ -37,5 +40,10 @@ module.exports = defineConfig([
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {},
+  },
+  {
+    // Build tooling, outside every TS project: type-aware rules would only see `any`.
+    files: ['playwright*.config.ts'],
+    extends: [tseslint.configs.disableTypeChecked],
   },
 ]);
