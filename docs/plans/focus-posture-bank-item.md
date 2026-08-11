@@ -201,7 +201,7 @@ code). docs-freshness — **ran**, 3 stale statements, all patched.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Prove the gap, then plan | ✅ | `517ad93` |
-| 1 — RV-FE-9 + the scope pointer | ✅ | this commit |
+| 1 — RV-FE-9 + the scope pointer | ✅ | `c8f155b` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
