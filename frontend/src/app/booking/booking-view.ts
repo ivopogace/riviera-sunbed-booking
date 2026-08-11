@@ -1,11 +1,4 @@
-import {
-  afterRenderEffect,
-  Component,
-  ElementRef,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -16,6 +9,7 @@ import { formatBookingDate } from '../shared/booking-date-label';
 import { amountLabelFor, metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
+import { focusMover } from '../shared/focus-after-render';
 import { formatMoney, MoneyView } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
 import { BookingQr } from './booking-qr';
@@ -68,8 +62,9 @@ const CLS = {
   rowValue: 'm-0 text-right font-bold text-(--riv-card-ink)',
   rowAmount: 'm-0 text-right font-bold text-(--riv-accent-ink)',
   // `empty:hidden` is the twin of the retired `.result:empty` — both regions render an empty <p>.
+  // The outline shows a keyboard guest where a settled cancel/withdrawal parked their focus.
   result:
-    'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-(--riv-accent-ink) empty:hidden',
+    'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-(--riv-accent-ink) empty:hidden focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)',
   confirmQ: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-(--riv-card-ink)',
   confirmQOnBanner: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-[#334a52]',
   actions: 'flex flex-wrap gap-2.5',
@@ -212,7 +207,6 @@ const CLS = {
                     </p>
                     <div [class]="cls.actions">
                       <button
-                        #withdrawConfirmBtn
                         type="button"
                         [class]="cls.btnDanger"
                         [disabled]="withdrawing()"
@@ -226,6 +220,7 @@ const CLS = {
                         [class]="cls.btnOutline"
                         [disabled]="withdrawing()"
                         (click)="keepRequest()"
+                        data-testid="keep-request"
                       >
                         Keep request
                       </button>
@@ -370,16 +365,30 @@ const CLS = {
         </dl>
 
         <!-- Outside the status switch on purpose: scoped to PENDING_REQUEST it would unmount on success. -->
-        <p [class]="cls.result" role="status" aria-live="polite" data-testid="withdraw-result">
+        <p
+          [class]="cls.result"
+          role="status"
+          aria-live="polite"
+          tabindex="-1"
+          data-testid="withdraw-result"
+        >
           @if (withdrawn()) {
             Request withdrawn. The spot is free for other guests again.
+          } @else if (withdrawNotPending()) {
+            This request is no longer waiting for the venue, so it can’t be withdrawn.
           } @else if (withdrawFailed()) {
             We couldn’t withdraw the request. Please try again.
           }
         </p>
 
         <!-- Live result of a cancellation, announced to assistive tech. -->
-        <p [class]="cls.result" role="status" aria-live="polite" data-testid="cancel-result">
+        <p
+          [class]="cls.result"
+          role="status"
+          aria-live="polite"
+          tabindex="-1"
+          data-testid="cancel-result"
+        >
           @if (cancellation(); as c) {
             Booking cancelled.
             {{
@@ -411,7 +420,6 @@ const CLS = {
               <p [class]="cls.confirmQ">Cancel this booking? This can’t be undone.</p>
               <div [class]="cls.actions">
                 <button
-                  #confirmBtn
                   type="button"
                   [class]="cls.btnDanger"
                   [disabled]="cancelling()"
@@ -425,6 +433,7 @@ const CLS = {
                   [class]="cls.btnOutline"
                   [disabled]="cancelling()"
                   (click)="keepBooking()"
+                  data-testid="keep-booking"
                 >
                   Keep booking
                 </button>
@@ -472,11 +481,11 @@ export class BookingView {
   protected readonly confirmingWithdraw = signal(false);
   protected readonly withdrawing = signal(false);
   protected readonly withdrawFailed = signal(false);
+  /** The server says the venue already answered — a retry can never succeed (the withdraw twin of {@link cancelWindowClosed}). */
+  protected readonly withdrawNotPending = signal(false);
   protected readonly withdrawn = signal(false);
 
-  private readonly confirmButton = viewChild<ElementRef<HTMLButtonElement>>('confirmBtn');
-  private readonly withdrawConfirmButton =
-    viewChild<ElementRef<HTMLButtonElement>>('withdrawConfirmBtn');
+  private readonly focusAfterRender = focusMover();
 
   private code = '';
 
@@ -499,27 +508,13 @@ export class BookingView {
       this.confirmingWithdraw.set(false);
       this.withdrawing.set(false);
       this.withdrawFailed.set(false);
+      this.withdrawNotPending.set(false);
       this.withdrawn.set(false);
       if (this.code) {
         this.load();
       } else {
         this.notFound.set(true);
       }
-    });
-    // Move focus to the destructive confirm button when its prompt appears (a11y) — a DOM write.
-    afterRenderEffect({
-      write: () => {
-        if (this.confirming()) {
-          this.confirmButton()?.nativeElement.focus();
-        }
-      },
-    });
-    afterRenderEffect({
-      write: () => {
-        if (this.confirmingWithdraw()) {
-          this.withdrawConfirmButton()?.nativeElement.focus();
-        }
-      },
     });
   }
 
@@ -553,12 +548,18 @@ export class BookingView {
     });
   }
 
+  /**
+   * Open the cancel confirmation. Every focus move on both confirm surfaces, and why it lands
+   * where it does (WCAG 2.4.3): `docs/plans/booking-view-confirm-focus.md`.
+   */
   protected startCancel(): void {
     this.confirming.set(true);
+    this.focusAfterRender('confirm-cancel');
   }
 
   protected keepBooking(): void {
     this.confirming.set(false);
+    this.focusAfterRender('start-cancel');
   }
 
   protected confirmCancel(): void {
@@ -569,6 +570,8 @@ export class BookingView {
         this.cancellation.set(c);
         this.confirming.set(false);
         this.cancelling.set(false);
+        // The refresh below is async, so focus aims at the result this write populates synchronously.
+        this.focusAfterRender('cancel-result');
         this.load(true); // refresh to the CANCELLED detail (chip flips + refunded row appears, no reload)
       },
       error: (e: unknown) => {
@@ -578,6 +581,8 @@ export class BookingView {
         this.cancelFailed.set(!closed);
         this.cancelling.set(false);
         this.confirming.set(false);
+        // Not the trigger: the re-read below can withdraw it, and a refused cancel explains itself here.
+        this.focusAfterRender('cancel-result');
         // Re-read: the window may have closed since load, and only the server knows.
         this.load(true);
       },
@@ -586,10 +591,20 @@ export class BookingView {
 
   protected startWithdraw(): void {
     this.confirmingWithdraw.set(true);
+    this.clearWithdrawResult();
+    this.focusAfterRender('confirm-withdraw');
   }
 
   protected keepRequest(): void {
     this.confirmingWithdraw.set(false);
+    this.clearWithdrawResult();
+    this.focusAfterRender('withdraw-request');
+  }
+
+  /** A failure belongs to the attempt that produced it — arming or abandoning a new one retires it. */
+  private clearWithdrawResult(): void {
+    this.withdrawFailed.set(false);
+    this.withdrawNotPending.set(false);
   }
 
   /**
@@ -598,17 +613,25 @@ export class BookingView {
    */
   protected confirmWithdraw(): void {
     this.withdrawing.set(true);
-    this.withdrawFailed.set(false);
+    this.clearWithdrawResult();
     this.bookings.withdraw(this.code).subscribe({
       next: () => {
         this.withdrawn.set(true);
         this.confirmingWithdraw.set(false);
         this.withdrawing.set(false);
+        this.focusAfterRender('withdraw-result');
         this.load(true);
       },
-      error: () => {
-        this.withdrawFailed.set(true);
+      error: (e: unknown) => {
+        const answered =
+          e instanceof HttpErrorResponse && problemCodeOf(e) === 'REQUEST_NOT_PENDING';
+        this.withdrawNotPending.set(answered);
+        this.withdrawFailed.set(!answered);
         this.withdrawing.set(false);
+        this.confirmingWithdraw.set(false);
+        this.focusAfterRender('withdraw-result');
+        // Re-read for the same reason the cancel leg does: a refusal usually means it moved on.
+        this.load(true);
       },
     });
   }
