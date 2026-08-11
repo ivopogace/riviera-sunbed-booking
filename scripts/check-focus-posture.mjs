@@ -477,6 +477,25 @@ function toRepoRelative(argument) {
 function main(argv) {
   const mode = argv[0];
 
+  if (mode === '--hook') {
+    const payload = JSON.parse(readFileSync(0, 'utf8'));
+    const path = payload?.tool_response?.filePath ?? payload?.tool_input?.file_path;
+    if (!path) return 0;
+    const edited = toRepoRelative(path);
+    if (!IN_SCOPE.test(edited)) return 0;
+    const violations = check(['HEAD', '--', edited], [edited]);
+    if (violations.length === 0) return 0;
+    process.stdout.write(
+      JSON.stringify({
+        hookSpecificOutput: {
+          hookEventName: 'PostToolUse',
+          additionalContext: `Focus posture written by this edit:\n${report(violations)}\n${advise(violations)}`,
+        },
+      }),
+    );
+    return 0;
+  }
+
   if (mode === '--files') {
     const paths = argv.slice(1).map(toRepoRelative);
     const violations = check(['HEAD', '--', ...paths], paths);
@@ -504,7 +523,7 @@ function main(argv) {
   }
 
   process.stderr.write(
-    'usage: check-focus-posture.mjs (--diff <base> | --files <path…> | --all)\n',
+    'usage: check-focus-posture.mjs (--diff <base> | --files <path…> | --all | --hook)\n',
   );
   return 2;
 }

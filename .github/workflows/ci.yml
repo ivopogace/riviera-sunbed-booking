@@ -168,11 +168,12 @@ jobs:
     # change, which is a repository setting and not expressible in a diff — #539 records the
     # swap sequencing that lands the pair without an unmergeable window.
     name: Repo hygiene (diff-scoped)
-    # Two diff-scoped repo-hygiene guards, not one: RV-STYLE-1 inline comments (#529) and the plan
-    # doc's File-structure section (#533). They share this job because they share a shape — judge
-    # what a DIFF wrote, never the standing tree — and because the name above is the enforcement
-    # handle. Until #539 the job kept #529's original name, which described only the first guard;
-    # a plan-doc failure surfacing under "Inline comments" sent the author hunting the wrong rule.
+    # Three diff-scoped repo-hygiene guards, not one: RV-STYLE-1 inline comments (#529), the plan
+    # doc's File-structure section (#533), and the two stranded-focus postures (#621). They share
+    # this job because they share a shape — judge what a DIFF wrote, never the standing tree — and
+    # because the name above is the enforcement handle. Until #539 the job kept #529's original
+    # name, which described only the first guard; a plan-doc failure surfacing under "Inline
+    # comments" sent the author hunting the wrong rule.
     #
     # The authoring-time guard's backstop (#529). The hook in .claude/settings.json is the
     # primary control — it fires on the edit itself — but hooks are per-machine and an author
@@ -231,6 +232,14 @@ jobs:
         # trickling them out over two round trips — each is a seconds-long fix on its own.
         if: ${{ !cancelled() }}
         run: node scripts/check-plan-file-structure.mjs --diff origin/${{ github.event.pull_request.base.ref }}
+
+      - name: Check the diff for stranded-focus postures (#621, hard gate)
+        # The CI half of the authoring-time hook, same as the RV-STYLE-1 guard above: BUSY-1 (a
+        # control disabled by its own in-flight flag) and FOCUS-1 (a confirm surface with no focus
+        # leg). Both are diff-scoped — ~12 legitimate `[disabled]` bindings stand in the tree by
+        # design, so a repo-wide gate would go red on day one. `--all` sweeps them for an audit.
+        if: ${{ !cancelled() }}
+        run: node scripts/check-focus-posture.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
   sonar:
     name: SonarCloud scan

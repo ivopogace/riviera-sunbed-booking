@@ -243,10 +243,10 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement — phases 0–2 done, entering phase 3`
+**Stage pointer:** `implement — phases 0–3 done, entering phase 4 (the last)`
 
-**Next action:** Phase 3 step 1 — add the `--hook` mode, then wire the `PostToolUse` command and the
-CI step.
+**Next action:** Phase 4 step 1 — write AC-17's e2e leg in `e2e/operator-payouts.e2e.ts` and verify
+it RED against `origin/main`'s `payouts-tab.ts`.
 
 PR: **#622** — opened as a draft at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
 `pull_request` event only).
@@ -260,7 +260,7 @@ docs-freshness — due at close-out (the counting sweep matters: this is the **f
 | 0 — Rule 1: `[disabled]` on a busy flag | ✅ | |
 | 1 — Rule 2: a confirm surface with no focus leg | ✅ | |
 | 2 — The twelfth instance: `payouts-tab`'s three legs | ✅ | |
-| 3 — Wire it: `PostToolUse` hook + the CI step | | |
+| 3 — Wire it: `PostToolUse` hook + the CI step | ✅ | |
 | 4 — Full verification + the conventions doc | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -375,17 +375,28 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `.claude/settings.json`, `.github/workflows/ci.yml`
 
-- [ ] **Step 1: Add the `--hook` mode** and prove it by piping a `PostToolUse` payload on stdin,
+- [x] **Step 1: Add the `--hook` mode** and prove it by piping a `PostToolUse` payload on stdin,
       asserting `additionalContext` comes back for a violating file and nothing for a clean one.
-- [ ] **Step 2: Add the second `PostToolUse` command** to the existing `Write|Edit` matcher block,
+      → All three cases exercised by hand: a violating `payouts-tab.html` returns the BUSY-1
+      `additionalContext`, the same file clean returns nothing, and an out-of-scope path
+      (`scripts/check-focus-posture.mjs`) is ignored.
+- [x] **Step 2: Add the second `PostToolUse` command** to the existing `Write|Edit` matcher block,
       copying the sibling's `cd "$CLAUDE_PROJECT_DIR" && … 2>/dev/null || true` shape and `timeout`.
-- [ ] **Step 3: Add the CI step** to `Repo hygiene (diff-scoped)` — after the plan-doc guard, with
+      **It has already earned its keep:** it fired on this slice's own `payouts-tab.spec.ts` edit,
+      catching a six-line inline comment the author wrote — RV-STYLE-1's guard doing to this PR
+      exactly what the new one will do to the next.
+- [x] **Step 3: Add the CI step** to `Repo hygiene (diff-scoped)` — after the plan-doc guard, with
       `if: ${{ !cancelled() }}` and the same `origin/${{ github.event.pull_request.base.ref }}` base
       as its siblings (R-7). Do **not** add a new job (the ruleset names contexts by name).
-- [ ] **Step 4: Verify** — `node scripts/check-focus-posture.mjs --diff origin/main` exits 0 on this
-      branch, and `node --test "scripts/*.test.mjs"` (the exact CI invocation) passes all four suites.
-- [ ] **Step 5: Commit** — `git commit -m "Run the focus-posture guard at authoring time and in CI (#621)"`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+      **Also corrected the job's own header comment**, which read "Two diff-scoped repo-hygiene
+      guards, not one" — the counting-sweep staleness `riviera-docs-freshness` exists to catch,
+      here inside the diff that caused it.
+- [x] **Step 4: Verify** — `node scripts/check-focus-posture.mjs --diff origin/main` exits 0 on this
+      branch, and `node --test "scripts/*.test.mjs"` (the exact CI invocation) passes all four
+      suites → **93 tests, 0 failures**. `.claude/settings.json` and `ci.yml` both re-parsed after
+      editing, and the hygiene job's step list read back to confirm the new step landed in it.
+- [x] **Step 5: Commit** — `git commit -m "Run the focus-posture guard at authoring time and in CI (#621)"`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 
