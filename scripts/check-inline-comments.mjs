@@ -160,9 +160,10 @@ function scan(lines, syntax) {
       }
       const ch = line[c];
       if (ch === '"' || ch === "'" || ch === '`') {
-        c = skipString(line, c + 1, ch);
-        // A template literal may legally span lines, so an unclosed one carries to the next.
-        if (ch === '`' && line[c - 1] !== '`') inTemplate = true;
+        const body = c + 1;
+        c = skipString(line, body, ch);
+        // An unclosed template carries to the next line; `c === body` is the opener standing last.
+        if (ch === '`' && (c === body || line[c - 1] !== '`')) inTemplate = true;
         lineHasCode = true;
         continue;
       }
@@ -203,7 +204,9 @@ function scan(lines, syntax) {
 /**
  * Scans from `start` to just past the closing `quote`, honouring backslash escapes. When the quote
  * never closes on this line the end of the line is returned, so the caller can tell the two apart
- * by checking whether the character before the returned index is the quote.
+ * by checking whether the character before the returned index is the quote — **and whether the
+ * scan moved at all**: an opener standing last on its line returns `start` itself, where the
+ * character before is that opener, which read as a close and inverted the caller's state (#619).
  */
 function skipString(line, start, quote) {
   let c = start;

@@ -253,3 +253,47 @@ test('keeps a Java text block open across an escaped triple quote', () => {
 
   assert.deepEqual(violations, []);
 });
+
+/**
+ * A backtick that OPENS a template literal as the last character of its line was read as one that
+ * closed it: `skipString` starts past the backtick, runs off the end and returns `line.length`, and
+ * the character before that index is the opening backtick itself. The scanner's template state then
+ * inverted for the rest of the file — the literal's body read as code and the code after it read as
+ * a literal, hiding every comment there.
+ *
+ * <p>Not a corner: `template: \`` on its own line is how 44 components under `frontend/src/app` are
+ * written, so this is a false clean over a large part of the tree the guard gates. Found by the
+ * CLI harness in issue #619.
+ */
+test('a template literal opened at end of line does not invert the scanner (#619)', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    <p>Pricing</p>',
+    '  `,',
+    '})',
+    'export class PricingTab {',
+    '  rate = 1; /* the commission, in basis points —',
+    '     set per venue */',
+    '}',
+  ];
+
+  const violations = findViolations({ path: 'frontend/src/app/x.ts', lines, added: new Set([7, 8]) });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 7);
+  assert.equal(violations[0].endLine, 8);
+});
+
+test('an empty template literal at end of line is still closed', () => {
+  const lines = [
+    'const empty = ``;',
+    'const rate = 1; /* the commission, in basis points —',
+    '   set per venue */',
+  ];
+
+  const violations = findViolations({ path: 'frontend/src/app/x.ts', lines, added: new Set([2, 3]) });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 2);
+});
