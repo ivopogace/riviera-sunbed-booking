@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { checkPaths, findViolations } from './check-focus-posture.mjs';
+import { checkPaths, findViolations, focusTraps, settle } from './check-focus-posture.mjs';
 
 const HTML = 'frontend/src/app/operator/payouts-tab.html';
 const TS = 'frontend/src/app/admin/admin-privacy.ts';
@@ -483,4 +483,392 @@ test('judges only the confirm surfaces a diff added', () => {
   const untouched = scan(HTML, lines, { added: new Set([2]), componentSource: '' });
 
   assert.deepEqual(untouched, []);
+});
+
+/** Only `app-payout-statement` traps focus, so a template's other children stay ordinary markup. */
+const TRAPS = (tag) => tag === 'app-payout-statement';
+
+/** A component whose template holds the statement modal, parameterised by what its body does. */
+function modalComponent(body) {
+  return [
+    '@Component({',
+    '  template: `',
+    '    <button data-testid="statement-open" (click)="open()">Statement</button>',
+    '    @if (statementOpen()) {',
+    '      <app-payout-statement (dismissed)="close()" />',
+    '    }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    ...body,
+    '}',
+  ];
+}
+
+/**
+ * Instance 14 was a modal dismiss, not a confirm branch — `@if (statementOpen())` names no confirm
+ * flag, so the confirm-only trigger never saw the surface that stranded focus at all.
+ */
+test('treats a branch that renders a focus-trapped child as a surface', () => {
+  const lines = modalComponent(['  close() { this.statementOpen.set(false); }']);
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].rule, 'FOCUS-1');
+  assert.equal(violations[0].line, 10);
+});
+
+/**
+ * The exemption #624 exists to narrow: `payouts-tab` moved focus for its weather confirm, so the
+ * component-scoped question answered "yes" for the statement modal it stranded focus on as well.
+ */
+test('reports a second surface the component moves no focus for', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (weatherConfirm()) { <button data-testid="weather-confirm-btn">Refund</button> }',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="close()" /> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  private readonly focusAfterRender = focusMover();',
+    '  cancelWeather() { this.weatherConfirm.set(false); this.focusAfterRender("weather-trigger"); }',
+    '  close() { this.statementOpen.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].rule, 'FOCUS-1');
+  assert.equal(violations[0].line, 10);
+});
+
+/**
+ * The shape that killed the flip-level rule in #621: a bulk state reset flips the same signal with
+ * no focus move wanted. One compliant flip site is what exempts the signal, not every one of them.
+ */
+test('accepts a signal one of whose flip sites moves focus', () => {
+  const lines = modalComponent([
+    '  private readonly focusAfterRender = focusMover();',
+    '  close() { this.statementOpen.set(false); this.focusAfterRender("statement-open"); }',
+    '  resetForVenue() { this.notice.set(undefined); this.statementOpen.set(false); }',
+  ]);
+
+  assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
+});
+
+/**
+ * The component floor reads `afterNextRender` + `focus()`, which the two shell modals do not use:
+ * `app.ts` and `venue-map.ts` restore focus to the trigger with a plain `.focus()`. Applying the
+ * floor to the widened trigger reports both of them — correct code, the error direction #621 spent
+ * three review passes eliminating.
+ */
+test('does not apply the component floor to a modal branch', () => {
+  const lines = modalComponent([
+    '  private returnTo?: HTMLElement;',
+    '  close() { this.statementOpen.set(false); this.returnTo?.focus(); }',
+  ]);
+
+  assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
+});
+
+/**
+ * `venue-map.html` wraps its whole page in `@if (venueView(); as v)`, three hundred lines above the
+ * branch that renders the dialog. Attributing the modal to every enclosing branch would report the
+ * page-level one, whose signal is a loaded-state flag nothing dismisses.
+ */
+test('attributes a modal to the innermost branch that renders it', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (venueView(); as v) {',
+    '      <h1>{{ v.name }}</h1>',
+    '      @if (selectedSet(); as set) {',
+    '        <app-payout-statement (dismissed)="close()" />',
+    '      }',
+    '    }',
+    '  `,',
+    '})',
+    'export class VenueMap {',
+    '  close() { this.selectedSet.set(undefined); }',
+    '  reload() { this.venueView.set(undefined); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 12);
+});
+
+/** The mover is a field the component names itself, so the rule reads the binding, not a convention. */
+test('counts a call to a mover field under any name', () => {
+  const lines = modalComponent([
+    '  private readonly moveFocus = focusMover();',
+    '  close() { this.statementOpen.set(false); this.moveFocus("statement-open"); }',
+  ]);
+
+  assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
+});
+
+/**
+ * `set-editor` and `layout-editor` split the component in two, so each half sees only one side of
+ * the rule — and a diff routinely writes only one of them. Each half therefore reports at the line
+ * it can act on: the `.ts` at the flip where the leg goes, the `.html` at the branch it just added.
+ * Anchoring only in the `.ts` left a newly added stranding modal reported by nothing at all.
+ */
+test('judges a component with an external template against its sibling', () => {
+  const template = [
+    '<button data-testid="statement-open" (click)="open()">Statement</button>',
+    '@if (statementOpen()) {',
+    '  <app-payout-statement (dismissed)="close()" />',
+    '}',
+  ];
+  const component = [
+    'export class PayoutsTab {',
+    '  private readonly focusAfterRender = focusMover();',
+    '  close() {',
+    '    this.statementOpen.set(false);',
+    '  }',
+    '}',
+  ];
+
+  const fromComponent = scan(TS, component, {
+    templateSource: template.join('\n'),
+    isFocusTrap: TRAPS,
+  });
+  const fromTemplate = scan(HTML, template, {
+    componentSource: component.join('\n'),
+    isFocusTrap: TRAPS,
+  });
+
+  assert.equal(fromComponent.length, 1);
+  assert.equal(fromComponent[0].line, 4);
+  assert.equal(fromTemplate.length, 1);
+  assert.equal(fromTemplate[0].line, 2);
+});
+
+/**
+ * An `@else` body sits **outside** its `@if`'s braces, so scanning for `@if` alone attributed a trap
+ * rendered there to whatever branch wrapped the page — reporting that branch's signal, which is a
+ * loaded-state flag nothing dismisses, while the real dismiss handler went unjudged. Ten templates
+ * in the app already use `@else`/`@empty`.
+ */
+test('does not attribute a trap in an else block to the branch that wraps the page', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (venueView(); as v) {',
+    '      @if (ready()) {',
+    '        <p>ok</p>',
+    '      } @else {',
+    '        <app-payout-statement (dismissed)="close()" />',
+    '      }',
+    '    }',
+    '  `,',
+    '})',
+    'export class VenueMap {',
+    '  close() { this.dialogOpen.set(false); }',
+    '  reload() { this.venueView.set(undefined); }',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
+});
+
+/** A component that renders the same modal in two layouts has one teardown, so it has one finding. */
+test('reports a signal once however many branches are gated on it', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="close()" /> }',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="close()" /> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 8);
+});
+
+/** Prettier moves the brace onto its own line when the heritage clause overflows. */
+test('does not let an unrelated member excuse a flip when the class brace stands alone', () => {
+  const lines = modalComponent([
+    '  ngOnInit() { this.hostRef.nativeElement.focus(); }',
+    '  close() { this.statementOpen.set(false); }',
+  ]);
+  lines[8] = 'export class PayoutsTab';
+  lines.splice(9, 0, '  implements OnInit', '{');
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].text, 'close() { this.statementOpen.set(false); }');
+});
+
+/** Both ends of the member are column-precise, or a neighbour on the same line lends it a leg. */
+test('does not borrow a focus call from a member sharing the flip line', () => {
+  const lines = modalComponent([
+    '  other() { this.trigger.focus(); } close() { this.statementOpen.set(false); }',
+  ]);
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 10);
+});
+
+/** A brace inside an interpolation closed the branch early, dropping the trap out of every span. */
+test('reads past a brace quoted inside the branch body', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) {',
+    "      <p>{{ label() ?? '}' }}</p>",
+    '      <app-payout-statement (dismissed)="close()" />',
+    '    }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 10);
+});
+
+/**
+ * The most idiomatic dismiss in a small component is wired in the template, where there is no
+ * handler to hold a leg — so it is a complete teardown with provably no focus move, not a miss.
+ */
+test('reports a teardown wired in the template with no handler at all', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) {',
+    '      <app-payout-statement (dismissed)="statementOpen.set(false)" />',
+    '    }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 4);
+});
+
+/**
+ * `payout-statement.ts` names `role="dialog"` and `trapFocusWithin` in its TSDoc as well as its
+ * markup, so reading the raw file classified traps partly on prose — the same mistake the rule
+ * already refuses to make about a focus helper named only in a comment.
+ */
+test('does not call a component a focus trap on the strength of its comments', () => {
+  const files = {
+    'frontend/src/app/shared/plain-panel.ts': [
+      '/** Unlike a role="dialog" modal, this panel does not trap focus. */',
+      "@Component({ selector: 'app-plain-panel', template: `<p>hi</p>` })",
+      'export class PlainPanel {}',
+    ].join('\n'),
+    'frontend/src/app/operator/payout-statement.ts': [
+      '/** A modal. */',
+      '@Component({',
+      "  selector: 'app-payout-statement',",
+      '  template: `<div role="dialog" aria-modal="true"></div>`,',
+      '})',
+      'export class PayoutStatement {}',
+    ].join('\n'),
+  };
+  const traps = focusTraps((path) => files[path] ?? null, () => Object.keys(files));
+
+  assert.equal(traps('app-plain-panel'), false);
+  assert.equal(traps('app-payout-statement'), true);
+});
+
+/** The rule's second half asks a question about the flip, so the flip is the line a diff must write. */
+test('judges only the surfaces and flips a diff added', () => {
+  const lines = modalComponent([
+    '  open() { this.statementOpen.set(true); }',
+    '  close() { this.statementOpen.set(false); }',
+  ]);
+
+  const elsewhere = scan(TS, lines, { added: new Set([1, 10]), isFocusTrap: TRAPS });
+  const theFlip = scan(TS, lines, { added: new Set([11]), isFocusTrap: TRAPS });
+
+  assert.deepEqual(elsewhere, []);
+  assert.equal(theFlip.length, 1);
+  assert.equal(theFlip[0].line, 11);
+});
+
+/**
+ * #621's third review pass settled this: FOCUS-1 approximates a runtime property, so it prints and
+ * returns 0 while BUSY-1 — syntactic, and unchallenged across three passes — fails the build.
+ */
+test('keeps FOCUS-1 advisory and BUSY-1 gating', () => {
+  const sink = () => ({ written: [], write(text) { this.written.push(text); } });
+  const advisory = { out: sink(), err: sink() };
+  const gating = { out: sink(), err: sink() };
+
+  const advised = settle(
+    [{ path: HTML, line: 3, rule: 'FOCUS-1', text: '@if (confirmRemove()) {' }],
+    'Focus posture',
+    advisory.out,
+    advisory.err,
+  );
+  const failed = settle(
+    [{ path: HTML, line: 5, rule: 'BUSY-1', text: '[disabled]="saving()"' }],
+    'Focus posture',
+    gating.out,
+    gating.err,
+  );
+
+  assert.equal(advised, 0);
+  assert.match(advisory.out.written.join(''), /advisory, not gating/);
+  assert.deepEqual(advisory.err.written, []);
+  assert.equal(failed, 1);
+  assert.match(gating.err.written.join(''), /BUSY-1/);
+});
+
+/**
+ * `payouts-tab` as it stood mid-#621 — the weather-confirm legs landed, the statement modal's had
+ * not — which is the tree FOCUS-1 reported clean and #621's own review pass caught by hand.
+ */
+test('reports the surface that hid behind the weather-confirm legs', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (!weatherConfirm()) { <button data-testid="weather-trigger">Weather refund</button> }',
+    '    @if (weatherConfirm()) { <button data-testid="weather-confirm-btn">Issue refund</button> }',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="closeStatement()" /> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  private readonly focusAfterRender = focusMover();',
+    '  askWeather() { this.weatherConfirm.set(true); this.focusAfterRender("weather-confirm-btn"); }',
+    '  cancelWeather() { this.weatherConfirm.set(false); this.focusAfterRender("weather-trigger"); }',
+    '  closeStatement() { this.statementOpen.set(false); }',
+    '  private resetForVenue() {',
+    '    this.notice.set(undefined);',
+    '    this.weatherConfirm.set(false);',
+    '    this.statementOpen.set(false);',
+    '  }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].rule, 'FOCUS-1');
+  assert.equal(violations[0].line, 12);
 });

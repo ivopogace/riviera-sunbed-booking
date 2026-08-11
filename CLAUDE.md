@@ -113,7 +113,9 @@ lint/format/test/build + e2e, **four** diff-scoped hygiene checks — inline com
 stranded-focus postures (#621, `node scripts/check-focus-posture.mjs --diff origin/main`;
 `--all` sweeps the standing tree, and it is the CI half of a second `PostToolUse` guard — of its two
 rules only **BUSY-1 fails a build**, FOCUS-1 prints and returns 0, since its predicate approximates a
-runtime property),
+runtime property; FOCUS-1 is scoped **per gating signal** since #624, so a component that moves focus
+for one surface no longer stands exempt for a second one, and a focus-trapped modal's teardown counts
+as a surface),
 and Prettier formatting (#615, `npm run format:check` from `frontend/`; `-- --fix` rewrites
 exactly the hunks it reports). The first three share the `Repo hygiene (diff-scoped)` job;
 Prettier is a step in the frontend job, which is where the pinned Prettier is installed —

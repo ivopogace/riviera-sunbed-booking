@@ -32,16 +32,26 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - **A transition that destroys the focused element must move focus deliberately**, via
   `shared/focus-after-render.ts`'s `focusMover()`. This is the repo's most-repeated bug class (#604,
   #614, #616); confirm-before-destroy surfaces need all three legs — open, back-out, and settled.
+  **A focus-trapped modal is the same class**: dismissing one, or tearing it down from a state reset
+  a venue switch or route change runs, destroys the element focus sits on just as a confirm prompt
+  does.
 - **A guard enforces both of the above while you type** (#621): `scripts/check-focus-posture.mjs`
   runs from a `PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff, covering
   `frontend/src/app/**` templates — inline `template:` literals and external `.html` alike. **BUSY-1**
   flags a `[disabled]` bound to an in-flight flag on a `<button>`/`<a>` — the only controls `[appBusy]`
-  can replace, so every other element is out of its reach, inputs included. **FOCUS-1** flags a
-  component that renders a confirm branch and holds no focus call site; **rendering
+  can replace, so every other element is out of its reach, inputs included. **FOCUS-1** flags a branch
+  that renders a confirm prompt or a focus trap and whose teardown moves focus nowhere; **rendering
   `<app-confirm-panel>`/`<app-confirm-with-reason>` does not excuse it**, since those own the open leg
-  only and the back-out and settled legs are still yours. Both are **diff-scoped**, so the standing
+  only and the back-out and settled legs are still yours. It is judged **per gating signal** (#624) —
+  moving focus for one surface no longer excuses a second one the same component owns, which is how
+  the payout statement modal's teardown shipped — so a reported line is the `set(false)` that strands
+  focus, or the branch itself when the component moves focus nowhere at all. A signal is excused by
+  **one** compliant flip site, because a bulk state reset beside a compliant dismiss is not a bug —
+  so a *second* stranding flip added beside a good one goes unreported, as does a teardown written
+  some other way (`update(…)`, a `linkedSignal`). Both are deliberate misses. Both rules are
+  **diff-scoped**, so the standing
   tree never fails the repo — and only **BUSY-1 fails a build**: FOCUS-1 prints and returns 0,
-  because "does this component move focus" is a runtime property a regex can only approximate, and a
+  because "does this teardown move focus" is a runtime property a regex can only approximate, and a
   gate that fails correct code is the error direction this layer cannot afford. Treat a FOCUS-1 line
   as a prompt to check the three legs yourself. Run either by hand with
   `node scripts/check-focus-posture.mjs --files <path…>` (which judges those files whole, committed
