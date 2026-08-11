@@ -13,7 +13,20 @@
     "test:e2e:a11y": "playwright test --config playwright.a11y.config.ts",
     "lint": "ng lint",
     "format": "prettier --write src e2e",
-    "format:check": "prettier --check src e2e"
+    "format:check": "prettier --check src e2e",
+    "prepare": "cd .. && husky .husky"
+  },
+  "lint-staged": {
+    "{src,e2e}/**/*.ts": [
+      "prettier --write",
+      "eslint --max-warnings=0"
+    ],
+    "src/**/*.html": [
+      "prettier --write",
+      "eslint --max-warnings=0"
+    ],
+    "{src,e2e}/**/*.{scss,css,json,md}": "prettier --write",
+    "playwright*.config.ts": "eslint --max-warnings=0"
   },
   "private": true,
   "packageManager": "npm@11.12.1",
@@ -47,7 +60,9 @@
     "angular-eslint": "22.1.0",
     "axe-core": "^4.12.1",
     "eslint": "^10.7.0",
+    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
+    "lint-staged": "^17.3.0",
     "postcss": "^8.5.3",
     "prettier": "^3.9.5",
     "tailwindcss": "^4.3.2",
