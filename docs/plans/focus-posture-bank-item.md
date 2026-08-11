@@ -11,7 +11,7 @@ question on the slice that writes the bug instead of the next slice's generaliza
 turned up: `pricing-tab`'s price field is disabled by a write it starts itself.
 
 **Architecture:** The single most significant decision is that the item is written **around** the
-guard, not over it: `scripts/check-focus-posture.mjs` already discharges the syntactic half, so
+guard, not over it: `scripts/check-focus-posture.mjs` already covers what it can match, so
 RV-FE-9 states the rule once and then spends its length on the three things the guard structurally
 cannot judge — **where** focus should land, whether a component's *second* surface has a leg
 (FOCUS-1's exemption is component-scoped, #624), and teardowns that are not confirm surfaces at all.
@@ -75,8 +75,10 @@ written against.
   nothing before (recorded in Acceptance-criteria verification).
 - [x] **AC-2:** Given a diff containing `<button [disabled]="saving()">`, when the reviewer reaches
   RV-FE-9, then the item tells them **not** to hand-flag it — BUSY-1 is a hard gate that has already
-  failed the build and named the line. *Pinned by:* the item's "discharged mechanically" paragraph,
-  cross-checked against `GATING = new Set(['BUSY-1'])` in `scripts/check-focus-posture.mjs`.
+  failed the build and named the line — **and, since G-1, that this holds only for the shapes BUSY-1
+  matches**. *Pinned by:* the item's guard bullets, cross-checked against
+  `GATING = new Set(['BUSY-1'])` and `BUSY_STEMS`' documented exclusions in
+  `scripts/check-focus-posture.mjs`.
 - [x] **AC-3:** Given `payouts-tab.ts` with the two statement-modal focus legs deleted — instances 13
   and 14 re-introduced verbatim — when the guard judges that file both ways it can be asked
   (`--all` and an explicit `--files`), then it reports **0** violations, so nothing mechanical
@@ -205,8 +207,8 @@ None open.
 
 ## Availability & concurrency (invariant #2)
 
-N/A — does not affect availability. The slice changes the review bank, three agent-instruction docs
-and (Phase 2) one Angular attribute; no request is added or changed, and no line in the diff is
+N/A — does not affect availability. The slice changes the review bank, three agent-instruction docs,
+two TSDoc blocks and (Phase 2) one Angular attribute; no request is added or changed, and no line in the diff is
 reachable from any write path to `availability(set_id, booking_date)`.
 
 ## Spring Modulith — modules, interfaces, events
@@ -263,9 +265,15 @@ Review gate — **ran in full** via `pr-gates.md` §1 rung 1 (`Skill("code-revie
 fallback), high effort over `origin/main...HEAD`: **8 findings, all CONFIRMED on verification** — 7
 fixed here (F-1…F-7), 1 deferred with its argument intact (F-8 → **#628**). Two of them (F-1, F-2)
 were defects **in the new bank item itself**, which is the outcome that most justifies having run the
-gate on a docs slice. Sonar gate — quality gate **passed** on the PR; the reported list is pulled
-from the API below rather than read off the badge. docs-freshness — ran twice: Phase 1 (3 statements)
-and again in Phase 3 over the whole range with `frontend/src` added to the sweep set (5 more).
+gate on a docs slice. **Re-reviewed** after the fix round per §1 step 3 — **12 further findings, all
+CONFIRMED, all fixed** (G-1…G-12), most of them defects the fix round itself introduced. Sonar gate —
+**green, with the reported list pulled from the API rather than read off the badge** (the distinction
+`pr-gates.md` §2 exists for): `issues/search?pullRequest=627` total **0**, `hotspots/search` **0**,
+and `measures/component` **non-empty** — `new_lines 11`, `new_coverage 100.0`,
+`new_duplicated_lines_density 0.0`, `new_duplicated_blocks 0`, 0 new bugs / vulnerabilities / code
+smells. Non-empty measures are what distinguishes an analyzed PR from an unanalyzed one.
+docs-freshness — ran twice: Phase 1 (3 statements) and again in Phase 3 over the whole range with
+`frontend/src` added to the sweep set (5 more).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -281,6 +289,18 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| G-1 | **re-review** (CONFIRMED) | **F-2's remedy for readonly-inert controls did not prevent the harm.** "Keep `[disabled]` and move focus on settle" leaves focus on `<body>` for the **whole** in-flight window; a settle-time leg only fixes where it lands afterwards | fixed in both statements — for those kinds the answer is **don't lock the control at all**, serialize in the handler, and `[disabled]`-plus-a-leg is now explicitly named as *not* the answer |
+| G-2 | **re-review** (CONFIRMED) | F-3 added a **third** statement of the rule (`busy-action.ts`) and gave it the unqualified form F-2 had just fixed elsewhere — the point-of-use doc, which is the whole argument for F-3 | fixed — the directive no longer prescribes a remedy at all; it says the lock varies by control kind and points at the one statement that enumerates them, so a fourth restatement cannot drift |
+| G-3 | **re-review** (CONFIRMED) | F-1 rewrote the prose but left the **checklist box** — the thing a reviewer actually executes — reading "discharged mechanically" | fixed — the box now says CI gates only the shapes it matches and sends the reviewer to the section before ticking |
+| G-4 | **re-review** (CONFIRMED) | `SKILL.md`'s routing line, edited in the same commit, still claimed "the syntactic half is a CI gate" — the clean split that F-1 and S-2 both exist to deny | fixed — one rule gates, the other advises, and both have shapes they cannot match |
+| G-5 | **re-review** (CONFIRMED) | The inert-control census said "two such controls today" while this PR's own audit row lists **four** — `pages/home`'s two filter `<select>`s were dropped. The counting-sweep failure mode, inside the fix for a counting-sweep failure | fixed — four, each named |
+| G-6 | **re-review** (CONFIRMED) | "A binding the diff only moved or re-indented" was given as a BUSY-1 blind spot, and it is the opposite: the guards diff with `--unified=0` and no whitespace flag, so a moved line **is** an added line and BUSY-1 judges it — teaching reviewers to hand-check what CI already gates | fixed — the clause is inverted and parenthesised as a non-case, and the genuine second blind spot named instead: a flag renamed in the `.ts` while the template's `[disabled]` line stays untouched context |
+| G-7 | **re-review** (CONFIRMED) | The two-bucket taxonomy classified neither `type="number"` — the live example both statements cite — nor the app's three date pickers, so a reader applying the rule to the sanctioned example had to guess | fixed — the bucket is defined as "where `readonly` applies", spelled out to include `number` and the date/time types |
+| G-8 | **re-review** (CONFIRMED) | "(`focusMover()`, the same three legs)" imported the confirm-surface triad into a busy lock, which has no open/back-out/settled structure, and said one leg and three in the same sentence | fixed by G-1's rewrite, which drops the leg advice for those controls entirely |
+| G-9 | **re-review** (CONFIRMED, doc) | The recovery anchor cited a Sonar list "pulled from the API below" that existed nowhere in the document — a discharged evidence claim with no evidence, the same class as F-7 | fixed — the list is now actually pulled and recorded inline (0 issues, 0 hotspots, non-empty measures) |
+| G-10 | **re-review** (CONFIRMED, doc) | The phase table gained a Phase 3 row with no Phase 3 section and no criteria — a resuming session reads "✅" with nothing to look at | fixed — Phase 3 is written out below with its steps and verification |
+| G-11 | **re-review** (CONFIRMED, doc) | F-7's rewritten scope statements were already one commit stale: all four described Phase 2's four files and omitted Phase 3's own `frontend/src/app/shared/busy-action.ts` | fixed — all four now say five frontend files across phases 2–3 |
+| G-12 | **re-review** (CONFIRMED) | F-4 edited a line **inside** a three-line inline comment and left it three lines, against the one-line rule the same commit's F-6 cites as its authority; the guard misses it because a single edited continuation line is not a run | fixed — cut to one line, the rationale already being on the `saving` TSDoc |
 | F-1 | **review gate** (`/code-review`, high) | **RV-FE-9 told reviewers to stand down on exactly the shapes BUSY-1 cannot see.** "Not a finding at all for a BUSY-1 shape — CI already failed it" reads as *all* busy `[disabled]`, but the guard matches a curated deny-list that deliberately excludes `loading`, `pending`, `processing`, `updating`, `creating` — so `[disabled]="loading()"` is green **and** unreviewed. Same for a binding the diff only moved | fixed — the bullet now says silence from BUSY-1 means "not one of the shapes I match", never "checked and fine", and names the excluded stems and the added-lines scoping |
 | F-2 | **review gate** (CONFIRMED) | **The new rule was wrong for half the controls it addresses.** `[readonly]` is inert on `<select>`, checkbox, radio, `file`, `range` and `color` — and two of the app's nine self-committing fields are exactly those kinds (`admin-venue-photos`'s `<select>`, `venue-tab`'s `file` input). An author following the rule would ship a lock that does nothing | fixed in both statements — the rule is scoped to text-like inputs and `<textarea>`, with the inert-control list named and the alternative given (`[disabled]` **plus** a deliberate focus leg, or no lock) |
 | F-3 | **review gate** (CONFIRMED) | **The code-side statement of the carve-out was never in the sweep set.** `shared/busy-action.ts`'s TSDoc — what an author reads at the point of use — still said "Inputs keep the native `[disabled]`" unconditionally. The Phase 1 sweep grepped the doc tree and `scripts`, never `frontend/src`, so the one statement living in code was structurally unreachable by the audit meant to catch it | fixed — the directive now carries the condition and points at `frontend/.claude/CLAUDE.md`. The sweep-set gap itself is the Phase 3 audit row |
@@ -396,6 +416,33 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
 
 ---
 
+## Phase 3 — Review-gate fixes
+
+**Files:** Modify the two overlay files, `frontend/.claude/CLAUDE.md`,
+`frontend/src/app/shared/busy-action.ts`, `frontend/src/app/operator/pricing-tab.ts`,
+`scripts/check-focus-posture.mjs`, this plan
+
+> No new acceptance criteria: every fix restores a claim AC-1…AC-10 already make, or corrects a
+> statement about the code rather than the code's behavior. The two that touch behavior-adjacent
+> prose (G-1, G-7) are re-verified by the same AC-7/AC-8 runs, which are unaffected — the component
+> change from Phase 2 is untouched by this phase.
+
+- [x] **Step 1: Verify each finding before acting** — 8 in the first round, 12 in the re-review. The
+      one that looked wrong was checked against the code rather than accepted: G-6 claimed the
+      moved-binding clause was inverted, and `scripts/git-diff.mjs:63` (`--unified=0`, no
+      whitespace flag) plus `busyViolations`' `added.has(disabled.line + 1)` confirm it — a moved
+      line *is* an added line, so the guard does judge it and the clause was backwards.
+- [x] **Step 2: Fix the seven, then the twelve** — recorded one row each in the findings register.
+- [x] **Step 3: Re-run the docs-freshness sweep with `frontend/src` in the set** — the gap that let
+      F-3 through; see the audit log's Phase 3 row.
+- [x] **Step 4: Pull the Sonar list from the API**, not the badge (`pr-gates.md` §2).
+- [x] **Step 5: Re-verify** — lint, format, the touched unit specs, the full Pricing e2e, all four
+      hygiene guards. Recorded under Acceptance-criteria verification.
+- [x] **Step 6: Defer what should not be rushed** — F-8's guard rule → **#628**, with the reviewer's
+      argument and the reason a spike must come first (the correct advice differs by control kind).
+
+---
+
 ## Generalization-audit log
 
 > Append-only. One row per bug-fix / pattern-introducing phase.
@@ -438,8 +485,9 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
 - [x] **Repo guards over the diff:** `node scripts/check-plan-file-structure.mjs --diff origin/main`
       → clean; `node scripts/check-inline-comments.mjs --diff origin/main` → clean;
       `node scripts/check-focus-posture.mjs --diff origin/main` → clean, and from Phase 2 it is
-      judging real files: `pricing-tab.ts`/`.html` both match its `frontend/src/app/**` scope, so
-      this is "no violation", not "nothing looked at";
+      judging real files: `pricing-tab.ts`/`.html` and `shared/busy-action.ts` all match its
+      `frontend/src/app/**` scope — and `busy-action.ts`'s TSDoc quotes `[disabled]="saving()"`
+      verbatim, the case AC-5 of #621 exists for — so this is "no violation", not "nothing looked at";
       `node --test "scripts/*.test.mjs"` → **112 tests, 0 failures** — the guard's own suites still
       pass with its header rewritten, which is the only thing this diff could have broken in `scripts/`.
 
@@ -453,14 +501,15 @@ $ node scripts/check-focus-posture.mjs --files frontend/src/app/operator/payouts
 - [x] **Availability** section justified N/A; no write path touched (invariant #2).
 - [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking logic.
 - [x] **Modulith** section justified N/A (invariant #11) — no backend code. FE mirror RV-FE-8: no
-      import of any kind is added — the Phase 2 files are three existing `operator/pricing-tab.*`
-      edited in place plus an existing e2e spec, so no folder, edge or dependency direction moves.
+      import of any kind is added — the five frontend files across phases 2–3 are three existing
+      `operator/pricing-tab.*`, an existing e2e spec and `shared/busy-action.ts`, all edited in
+      place, so no folder, edge or dependency direction moves.
 - [x] **Payment/payout** section justified N/A (invariants #5, #8, #9) — no money logic.
 - [x] Refund policy enforced server-side (invariant #10) — untouched.
 - [x] Timezone correct (invariant #6) — N/A.
 - [x] Booking codes unguessable (invariant #7) — N/A.
 - [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [x] **Frontend** standards met (Phase 2): no new Angular API — `[readonly]` is a native property
+- [x] **Frontend** standards met (phases 2–3, five files): no new Angular API — `[readonly]` is a native property
       binding — no new component/service/route/token, no `as any`, and the angular-cli MCP
       `get_best_practices` walk found nothing to change. Deviations: none.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, and findings register.

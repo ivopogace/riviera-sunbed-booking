@@ -9,9 +9,9 @@ import { Directive, ElementRef, inject, input } from '@angular/core';
  *
  * <p>**For buttons only** — inertness comes from consuming the activating click, which a text field's
  * typing and a form's Enter-submit never reach. An input keeps the native `[disabled]` **when a button
- * starts the write**; a field that starts its own write takes `[readonly]` instead, since `[disabled]`
- * blurs it (`frontend/.claude/CLAUDE.md`). Every submit handler keeps its re-entrancy guard. Carries no
- * styling; each consumer keeps its own `aria-disabled:` utility.
+ * starts the write**; a control that starts its own write needs a different lock, which varies by
+ * control kind — see the carve-out in `frontend/.claude/CLAUDE.md`. Every submit handler keeps its
+ * re-entrancy guard. Carries no styling; each consumer keeps its own `aria-disabled:` utility.
  * Why a capture-phase listener: `docs/plans/confirm-focus-busy-posture.md`.
  */
 @Directive({

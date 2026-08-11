@@ -45,8 +45,9 @@ frontend-only review never pays for the backend bank:
   the frozen set is `riviera-frontend`'s residual table: five behavioral edges
   left after #489 moved the vocabulary to `shared/`), and **RV-FE-9** (a
   transition that destroys the focused element moves focus — the repo's
-  most-repeated bug class, fifteen instances across #604/#614/#616/#621/#625;
-  the syntactic half is a CI gate, the item covers what it cannot see).
+  most-repeated bug class, fifteen instances across #604/#614/#616/#621/#625.
+  One of the guard's two rules gates, the other only advises, and both have
+  shapes they cannot match — the item is what covers those).
 - **Fullstack diff** → both of the above, plus `references/fe-be-contract.md` —
   API typing, money/date on the wire, webhook-vs-redirect, idempotency.
 

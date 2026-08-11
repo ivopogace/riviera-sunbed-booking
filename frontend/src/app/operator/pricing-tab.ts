@@ -138,9 +138,7 @@ export class PricingTab {
       return;
     }
     if (this.saving()) {
-      // A reprice is already in flight; the shared set_version token would false-conflict a second
-      // concurrent write, so serialize — ignore this edit and restore the shown value. The row inputs are
-      // readonly during a save, so this guard is the defensive backstop for a change that slips through.
+      // Backstop for a change slipping past the readonly lock; a second write would false-conflict.
       input.value = row.priceEur;
       return;
     }

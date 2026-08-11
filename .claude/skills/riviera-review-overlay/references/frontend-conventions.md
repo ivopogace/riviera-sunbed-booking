@@ -275,7 +275,9 @@ sitting on** move focus somewhere deliberate, via `shared/focus-after-render.ts`
       superseded response moves nothing
 - [ ] focus lands somewhere that says something, and the landing spot can take it (`tabindex="-1"`
       on a landmark; `focusMover()` adds one rather than letting the move be swallowed)
-- [ ] a busy `<button>`/`<a>` uses `[appBusy]`, not `[disabled]` — **discharged mechanically**, below
+- [ ] a busy `<button>`/`<a>` uses `[appBusy]`, not `[disabled]` — CI gates the shapes it matches,
+      but its vocabulary has deliberate holes (`loading`, `pending`, …), so read the next section
+      before ticking this
 
 **Don't walk the mechanical half by hand — but don't read a green step as an all-clear either.**
 `node scripts/check-focus-posture.mjs --diff origin/main` (#621) runs from a `PostToolUse` hook while
@@ -287,9 +289,12 @@ postures**, and conflating them is the way to get this item wrong in both direct
   the line, so don't re-flag it (RV-STYLE-2's posture). But it discriminates on a **curated
   vocabulary**, a deny-list with deliberate false negatives — `loading`, `pending`, `processing`,
   `updating` and `creating` are excluded by name because each reads as often as *state* as it does as
-  busyness. So `[disabled]="loading()"` on a button is green **and** yours. Same for a binding the
-  diff only moved or re-indented: the guard judges added lines. Silence from BUSY-1 means "not one of
-  the shapes I match", never "checked and fine".
+  busyness. So `[disabled]="loading()"` on a button is green **and** yours. The other silent shape is
+  a **flag renamed in the `.ts`** while the template's `[disabled]` line stays untouched context —
+  the guard judges the lines a diff adds, and that line is not one of them. (A binding the diff
+  merely *moved* or re-indented is **not** in this set: the guards diff with `--unified=0` and no
+  whitespace-ignoring flag, so a re-indented line is an added line and BUSY-1 does judge it.) Silence
+  from BUSY-1 means "not one of the shapes I match", never "checked and fine".
 - **FOCUS-1 prints and returns 0.** It advises; it does not gate. So a **green** hygiene job can sit
   on top of unread FOCUS-1 findings — read the step's *output*, not its exit code. It went advisory
   deliberately: "does this component move focus?" is a runtime property approximated by a regex over
@@ -317,12 +322,14 @@ postures**, and conflating them is the way to get this item wrong in both direct
    button starts the write — and fails where the **field's own** `(change)`/`(blur)` starts it, which
    the guard cannot tell apart. `pricing-tab` was the live case (**#625**, fixed): Enter fired
    `change` without leaving the field, so the flag disabled the input focus was in; clicking to the
-   next row disabled *that* one just as focus landed. **On a text-like input or `<textarea>` the fix
-   is `[readonly]`**, not `[appBusy]` and not a focus leg — it blocks typing just as completely while
-   keeping the field focused. **Don't take that as universal**: `readonly` is inert on `<select>`,
-   checkbox, radio, `file`, `range` and `color`, so a self-committing control of those kinds needs
-   either `[disabled]` plus a deliberate focus leg on settle, or no lock at all. Ask where focus
-   actually is when the flag flips, and whether `readonly` even applies to that control.
+   next row disabled *that* one just as focus landed. **Where `readonly` applies** — text-entry
+   inputs including `number` and the date/time types, plus `<textarea>` — **the fix is `[readonly]`**,
+   not `[appBusy]` and not a focus leg: it blocks typing just as completely while keeping the field
+   focused. **Where it doesn't** — `<select>`, checkbox, radio, `file`, `range`, `color` — no
+   attribute locks without blurring, so the control must not be locked at all; serializing belongs in
+   the handler. Don't accept `[disabled]` plus a settle-time focus move there: focus is on `<body>`
+   for the whole request, and a leg afterwards only fixes where it lands. Ask where focus actually is
+   when the flag flips, and whether `readonly` even applies to that control.
 
 **Follow-up:**
 - The convention itself, both postures and the guard's flags: `frontend/.claude/CLAUDE.md`. The
