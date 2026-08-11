@@ -445,6 +445,69 @@ test('a bare filename resolves against the path before it, not against the whole
   ]);
 });
 
+/**
+ * A repo-root file is written bare because it has no directory to qualify it. When the diff also
+ * touches a same-named file deeper in the tree, suffix-matching made the root token look ambiguous
+ * and the root file became unlistable — no spelling of it could satisfy the guard. An exact match
+ * is not a guess, so it settles the token regardless of what else it suffix-matches.
+ */
+test('an exact path match is never ambiguous, however many paths share its basename', () => {
+  const omissions = findOmissions({
+    docs: [
+      doc(
+        withHeading(
+          '- `CLAUDE.md` — the hygiene-check count\n- `frontend/.claude/CLAUDE.md` — the guard note',
+        ),
+      ),
+    ],
+    changed: ['CLAUDE.md', 'frontend/.claude/CLAUDE.md'],
+  });
+
+  assert.deepEqual(omissions, []);
+});
+
+/**
+ * The exact match settles **that** path, not every path it happens to suffix-match. Admitting the
+ * token wholesale would have made root `CLAUDE.md` a blanket cover for every deeper `CLAUDE.md` the
+ * diff touched — the ambiguity #533 exists to catch, reintroduced by its own fix.
+ */
+test('an exact match settles its own path only, not its suffix matches', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `CLAUDE.md` — the hygiene-check count'))],
+    changed: ['CLAUDE.md', 'frontend/.claude/CLAUDE.md', 'docs/CLAUDE.md'],
+  });
+
+  assert.deepEqual(paths(omissions), ['frontend/.claude/CLAUDE.md', 'docs/CLAUDE.md']);
+});
+
+/**
+ * A directory token exists precisely to cover more than one file, so counting its matches against
+ * the `<= 1` ambiguity floor rejected it for doing its job — and stripping the trailing slash before
+ * the `/` test left a top-level `scripts/` with no slash at all, so no spelling of it could work.
+ */
+test('a top-level directory token covers the files directly beneath it', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `scripts/` — the guard and its suite'))],
+    changed: ['scripts/check-focus-posture.mjs', 'scripts/check-focus-posture.test.mjs'],
+  });
+
+  assert.deepEqual(omissions, []);
+});
+
+/**
+ * The rooted-directory rescue must not become a whole-tree blanket: `frontend/` satisfying the guard
+ * for the entire app defeats #533's point, since a resuming session learns nothing from a
+ * four-character token.
+ */
+test('a rooted token does not blanket a whole tree', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `frontend/` — everything'))],
+    changed: ['frontend/src/app/a.ts', 'frontend/src/app/b.ts'],
+  });
+
+  assert.deepEqual(paths(omissions), ['frontend/src/app/a.ts', 'frontend/src/app/b.ts']);
+});
+
 test('a bare name matching exactly one path is still the common idiom', () => {
   const omissions = findOmissions({
     docs: [doc(withHeading('- `SecurityConfig.java` — two matcher constants'))],
@@ -475,4 +538,28 @@ test('a repo-relative multi-segment token still suffix-matches', () => {
     ],
   });
   assert.deepEqual(omissions, []);
+});
+
+/**
+ * The direct-children floor is decided per path, not per token: judging the whole token disqualified
+ * `scripts/` for `scripts/a.mjs` merely because a deeper sibling was also in the diff, failing the
+ * direct child the token names exactly — a false positive on a hard gate.
+ */
+test('a rooted directory token still covers its direct children beside a deeper sibling', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `scripts/` — the guards'))],
+    changed: ['scripts/check-a.mjs', 'scripts/lib/util.mjs'],
+  });
+
+  assert.deepEqual(paths(omissions), ['scripts/lib/util.mjs']);
+});
+
+/** One segment along is the same blanket: the floor has to bite on multi-segment tokens too. */
+test('a multi-segment rooted token does not blanket a whole tree either', () => {
+  const omissions = findOmissions({
+    docs: [doc(withHeading('- `frontend/src/` — everything'))],
+    changed: ['frontend/src/main.ts', 'frontend/src/app/a.ts', 'frontend/src/app/deep/b.ts'],
+  });
+
+  assert.deepEqual(paths(omissions), ['frontend/src/app/a.ts', 'frontend/src/app/deep/b.ts']);
 });

@@ -32,6 +32,24 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - **A transition that destroys the focused element must move focus deliberately**, via
   `shared/focus-after-render.ts`'s `focusMover()`. This is the repo's most-repeated bug class (#604,
   #614, #616); confirm-before-destroy surfaces need all three legs — open, back-out, and settled.
+- **A guard enforces both of the above while you type** (#621): `scripts/check-focus-posture.mjs`
+  runs from a `PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff, covering
+  `frontend/src/app/**` templates — inline `template:` literals and external `.html` alike. **BUSY-1**
+  flags a `[disabled]` bound to an in-flight flag on a `<button>`/`<a>` — the only controls `[appBusy]`
+  can replace, so every other element is out of its reach, inputs included. **FOCUS-1** flags a
+  component that renders a confirm branch and holds no focus call site; **rendering
+  `<app-confirm-panel>`/`<app-confirm-with-reason>` does not excuse it**, since those own the open leg
+  only and the back-out and settled legs are still yours. Both are **diff-scoped**, so the standing
+  tree never fails the repo — and only **BUSY-1 fails a build**: FOCUS-1 prints and returns 0,
+  because "does this component move focus" is a runtime property a regex can only approximate, and a
+  gate that fails correct code is the error direction this layer cannot afford. Treat a FOCUS-1 line
+  as a prompt to check the three legs yourself. Run either by hand with
+  `node scripts/check-focus-posture.mjs --files <path…>` (which judges those files whole, committed
+  or not), or sweep the app with `--all`.
+  BUSY-1 matches a curated vocabulary of busy-flag stems, so a novel flag name is a deliberate
+  false negative — extend `BUSY_STEMS` rather than working around it. Note it does **not** exempt a
+  `[disabled]` just because `[appBusy]` sits beside it: the native attribute still blurs the pressed
+  control, so a genuine split has to put a validity expression on the `[disabled]` half.
 
 ### Components
 
