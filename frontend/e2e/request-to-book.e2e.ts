@@ -25,8 +25,28 @@ const VENUE = {
   bookingMode: 'REQUEST',
   fromPrice: { minorUnits: 2500, currency: 'EUR' },
   sets: [
-    { id: 1, rowLabel: 'Front row · Sea view', positionNo: 1, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 4500, currency: 'EUR' }, gridX: 1, gridY: 1, availability: 'TAKEN' },
-    { id: 2, rowLabel: 'Front row · Sea view', positionNo: 2, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 4500, currency: 'EUR' }, gridX: 2, gridY: 1, availability: 'FREE' },
+    {
+      id: 1,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 1,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 4500, currency: 'EUR' },
+      gridX: 1,
+      gridY: 1,
+      availability: 'TAKEN',
+    },
+    {
+      id: 2,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 2,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 4500, currency: 'EUR' },
+      gridX: 2,
+      gridY: 1,
+      availability: 'FREE',
+    },
   ],
 };
 
@@ -66,7 +86,9 @@ test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
 });
 
-test('request-to-book: request dialog → 202 PENDING_REQUEST → request-sent → pending view', async ({ page }) => {
+test('request-to-book: request dialog → 202 PENDING_REQUEST → request-sent → pending view', async ({
+  page,
+}) => {
   await page.route('**/api/bookings', (route) => route.fulfill({ status: 202, json: REQUESTED }));
   await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
     route.fulfill({ json: DETAIL_BASE }),
@@ -74,7 +96,10 @@ test('request-to-book: request dialog → 202 PENDING_REQUEST → request-sent �
 
   await page.goto('/venues/1');
   await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
-  await page.getByRole('button', { name: /Select to book/ }).first().click();
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -106,7 +131,9 @@ test('request-to-book: request dialog → 202 PENDING_REQUEST → request-sent �
   await expectNoSeriousAxeViolations(page, 'booking view (pending request)');
 });
 
-test('accepted request: Pay now → fake Stripe → poll to CONFIRMED (invariant #8)', async ({ page }) => {
+test('accepted request: Pay now → fake Stripe → poll to CONFIRMED (invariant #8)', async ({
+  page,
+}) => {
   // Deterministic fake Stripe (no js.stripe.com) for the pay-on-accept step.
   await page.addInitScript(() => {
     (window as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ = true;
@@ -148,7 +175,9 @@ test('accepted request: Pay now → fake Stripe → poll to CONFIRMED (invariant
   await expectNoSeriousAxeViolations(page, 'payment page (confirmed)');
 });
 
-test('pay window closed mid-page: Pay now fails → honest terminal state + link back (#126)', async ({ page }) => {
+test('pay window closed mid-page: Pay now fails → honest terminal state + link back (#126)', async ({
+  page,
+}) => {
   // Fake Stripe whose confirm fails like a dead PaymentIntent (the sweep cancelled it).
   await page.addInitScript(() => {
     const w = window as unknown as {
@@ -273,7 +302,9 @@ test('the withdraw confirmation moves focus in and back out (WCAG 2.4.3)', async
   await expect(page.getByTestId('withdraw-result')).toBeFocused();
 });
 
-test('a failed withdrawal parks focus on the outcome and re-reads the booking', async ({ page }) => {
+test('a failed withdrawal parks focus on the outcome and re-reads the booking', async ({
+  page,
+}) => {
   // REQUEST_NOT_PENDING is what BookingController.withdraw answers once the venue has responded.
   let answered = false;
   await page.route(new RegExp(`/api/bookings/${CODE}/withdraw$`), (route) => {
@@ -293,7 +324,9 @@ test('a failed withdrawal parks focus on the outcome and re-reads the booking', 
   await page.getByTestId('confirm-withdraw').click();
 
   // The copy must match the state the re-read just painted, never invite a retry that cannot work.
-  await expect(page.getByTestId('withdraw-result')).toContainText('no longer waiting for the venue');
+  await expect(page.getByTestId('withdraw-result')).toContainText(
+    'no longer waiting for the venue',
+  );
   await expect(page.getByTestId('withdraw-result')).not.toContainText('try again');
   await expect(page.getByTestId('withdraw-result')).toBeFocused();
 
@@ -302,7 +335,10 @@ test('a failed withdrawal parks focus on the outcome and re-reads the booking', 
   await expect(page.getByTestId('confirm-withdraw')).toHaveCount(0);
 
   await settle(page);
-  await expectNoSeriousAxeViolations(page, 'booking view (withdrawal refused, focus on the outcome)');
+  await expectNoSeriousAxeViolations(
+    page,
+    'booking view (withdrawal refused, focus on the outcome)',
+  );
 });
 
 test('an expired request shows terminal no-charge copy', async ({ page }) => {

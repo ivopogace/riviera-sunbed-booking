@@ -98,7 +98,9 @@ async function mockRequests(
   });
 
   // The pending queue (shell badge + tab both read this URL).
-  await page.route(/\/api\/venues\/1\/booking-requests$/, (route) => route.fulfill({ json: queue }));
+  await page.route(/\/api\/venues\/1\/booking-requests$/, (route) =>
+    route.fulfill({ json: queue }),
+  );
 
   // Accept / decline: fail per `overrides`, else remove the entry.
   await page.route(/\/api\/venues\/1\/booking-requests\/(\d+)\/(accept|decline)$/, (route) => {
@@ -131,7 +133,9 @@ async function mockRequests(
       },
     }),
   );
-  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
     mapReads += 1;
     return route.fulfill({ json: venueMap() });

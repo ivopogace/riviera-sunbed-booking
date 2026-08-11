@@ -1,4 +1,12 @@
-import { AA_LARGE, AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
+import {
+  AA_LARGE,
+  AA_NORMAL,
+  Rgb,
+  composite,
+  contrastRatio,
+  hexToRgb,
+  rgbToHex,
+} from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
@@ -55,7 +63,9 @@ const THEMES: readonly Theme[] = [
 describe('Booking dialog — theme-independent header + CTA (WCAG AA, issue #137)', () => {
   it('solid white header + step-label + CTA text meets AA on both teal-gradient stops', () => {
     for (const stop of TEAL_STOPS) {
-      expect(contrastRatio('#ffffff', stop), `white over ${stop}`).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(contrastRatio('#ffffff', stop), `white over ${stop}`).toBeGreaterThanOrEqual(
+        AA_NORMAL,
+      );
     }
   });
 
@@ -71,46 +81,51 @@ describe('Booking dialog — theme-independent header + CTA (WCAG AA, issue #137
   });
 });
 
-describe.each(THEMES)('Booking dialog panel contrast — $name theme (WCAG AA, issue #137)', (theme) => {
-  it('card ink (title, summary values) meets AA on the panel glass', () => {
-    expectAaOverStops(INK_DARK, 1, DIALOG_GLASS, theme.stops);
-  });
+describe.each(THEMES)(
+  'Booking dialog panel contrast — $name theme (WCAG AA, issue #137)',
+  (theme) => {
+    it('card ink (title, summary values) meets AA on the panel glass', () => {
+      expectAaOverStops(INK_DARK, 1, DIALOG_GLASS, theme.stops);
+    });
 
-  it('card ink-soft (keys, field labels, fine print, mode note) meets AA on the panel glass', () => {
-    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, DIALOG_GLASS, theme.stops);
-  });
+    it('card ink-soft (keys, field labels, fine print, mode note) meets AA on the panel glass', () => {
+      expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, DIALOG_GLASS, theme.stops);
+    });
 
-  it('accent ink (price, total) meets AA on the panel glass', () => {
-    expectAaOverStops(hexToRgb(ACCENT), 1, DIALOG_GLASS, theme.stops);
-  });
+    it('accent ink (price, total) meets AA on the panel glass', () => {
+      expectAaOverStops(hexToRgb(ACCENT), 1, DIALOG_GLASS, theme.stops);
+    });
 
-  it('field-error red meets AA on the panel glass', () => {
+    it('field-error red meets AA on the panel glass', () => {
       // .field-error sits directly on the panel (no fill of its own); .form-error is asserted theme-independently above.
-    expectAaOverStops(hexToRgb(ERROR_RED), 1, DIALOG_GLASS, theme.stops);
-  });
+      expectAaOverStops(hexToRgb(ERROR_RED), 1, DIALOG_GLASS, theme.stops);
+    });
 
-  it('field text (dark ink) meets AA on the field fill over the panel', () => {
-    for (const stop of theme.stops) {
-      const panel = surfaceOver(DIALOG_GLASS, stop);
-      const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
-      expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(field))).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
-  });
+    it('field text (dark ink) meets AA on the field fill over the panel', () => {
+      for (const stop of theme.stops) {
+        const panel = surfaceOver(DIALOG_GLASS, stop);
+        const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
+        expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(field))).toBeGreaterThanOrEqual(
+          AA_NORMAL,
+        );
+      }
+    });
 
-  it('field border marks the input boundary at 3:1 against its fill (WCAG 1.4.11)', () => {
-    for (const stop of theme.stops) {
-      const panel = surfaceOver(DIALOG_GLASS, stop);
-      const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
-      const border = composite(CARD_INK, FIELD_BORDER_ALPHA, field);
-      expect(contrastRatio(rgbToHex(border), rgbToHex(field))).toBeGreaterThanOrEqual(AA_LARGE);
-    }
-  });
+    it('field border marks the input boundary at 3:1 against its fill (WCAG 1.4.11)', () => {
+      for (const stop of theme.stops) {
+        const panel = surfaceOver(DIALOG_GLASS, stop);
+        const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
+        const border = composite(CARD_INK, FIELD_BORDER_ALPHA, field);
+        expect(contrastRatio(rgbToHex(border), rgbToHex(field))).toBeGreaterThanOrEqual(AA_LARGE);
+      }
+    });
 
-  it('Back button ink meets AA on its light-glass fill over the panel', () => {
-    for (const stop of theme.stops) {
-      const panel = surfaceOver(DIALOG_GLASS, stop);
-      const back = composite(WHITE, BACK_FILL_ALPHA, panel);
-      expect(contrastRatio(BACK_INK, rgbToHex(back))).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
-  });
-});
+    it('Back button ink meets AA on its light-glass fill over the panel', () => {
+      for (const stop of theme.stops) {
+        const panel = surfaceOver(DIALOG_GLASS, stop);
+        const back = composite(WHITE, BACK_FILL_ALPHA, panel);
+        expect(contrastRatio(BACK_INK, rgbToHex(back))).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    });
+  },
+);

@@ -90,10 +90,7 @@ import { OutboxLever } from './admin-outbox-lever';
 
             @if (lever.status(); as outbox) {
               @if (outbox.outstanding === 0) {
-                <p
-                  class="mt-2 text-[15px] text-(--riv-card-ink)"
-                  data-testid="admin-outbox-empty"
-                >
+                <p class="mt-2 text-[15px] text-(--riv-card-ink)" data-testid="admin-outbox-empty">
                   Nothing outstanding — every confirmation mail has been handed over.
                 </p>
               } @else {

@@ -89,7 +89,10 @@ export async function mockAuthApi(
     return route.fulfill({ status: 204 });
   });
 
-  await mockOwnedVenues(page, options.venues ?? [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }]);
+  await mockOwnedVenues(
+    page,
+    options.venues ?? [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }],
+  );
 
   await page.route(/\/api\/auth\/logout$/, (route) => {
     signedIn = false;
@@ -144,12 +147,18 @@ export async function mockCustomerAuthApi(
       taken.add(entered);
       signedIn = true;
     }
-    return route.fulfill({ status: 201, json: { username: body.email, principalType: 'CUSTOMER' } });
+    return route.fulfill({
+      status: 201,
+      json: { username: body.email, principalType: 'CUSTOMER' },
+    });
   });
 
   await page.route(/\/api\/auth\/customer\/login$/, (route) => {
     const body = route.request().postDataJSON() as { email?: string; password?: string };
-    if ((body.email ?? '').trim().toLowerCase() === email.toLowerCase() && body.password === options.validPassword) {
+    if (
+      (body.email ?? '').trim().toLowerCase() === email.toLowerCase() &&
+      body.password === options.validPassword
+    ) {
       signedIn = true;
       return route.fulfill({ json: { username: email, principalType: 'CUSTOMER' } });
     }
@@ -449,8 +458,11 @@ export async function mockCustomerRecoveryApi(
   await page.route(/\/api\/auth\/customer\/login$/, (route) => {
     const body = route.request().postDataJSON() as { email?: string; password?: string };
     // `password === undefined` is the SSO-only account: no stored credential, so nothing signs in.
-    if (password !== undefined
-      && (body.email ?? '').trim().toLowerCase() === email.toLowerCase() && body.password === password) {
+    if (
+      password !== undefined &&
+      (body.email ?? '').trim().toLowerCase() === email.toLowerCase() &&
+      body.password === password
+    ) {
       signedIn = true;
       return route.fulfill({ json: principal() });
     }

@@ -81,9 +81,7 @@ describe('AdminVenuePhotos a11y', () => {
   it('has no axe violations while a takedown confirmation is open', async () => {
     const fixture = await renderWithVenuePicked();
 
-    fixture.nativeElement
-      .querySelector('[data-testid="admin-photo-remove-cover"]')
-      .click();
+    fixture.nativeElement.querySelector('[data-testid="admin-photo-remove-cover"]').click();
     fixture.detectChanges();
 
     await expectNoAxeViolations(fixture.nativeElement);

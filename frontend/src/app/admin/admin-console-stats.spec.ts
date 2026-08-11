@@ -5,7 +5,13 @@ import { AdminConsoleStats } from './admin-console-stats';
 import { VenueCommissionView } from './admin.model';
 
 function venue(venueId: number, commissionBps: number): VenueCommissionView {
-  return { venueId, name: `Venue ${venueId}`, beach: 'Dhërmi', commissionBps, payoutCurrency: 'EUR' };
+  return {
+    venueId,
+    name: `Venue ${venueId}`,
+    beach: 'Dhërmi',
+    commissionBps,
+    payoutCurrency: 'EUR',
+  };
 }
 
 interface Counts {
@@ -116,7 +122,9 @@ describe('AdminConsoleStats', () => {
 
   it('names the strip for assistive tech as a labelled region', async () => {
     const fixture = await render(async () => [venue(1, 1500)]);
-    const strip = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-stats"]')!;
+    const strip = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="admin-stats"]',
+    )!;
 
     expect(strip.getAttribute('aria-label')).toBe('Platform at a glance');
   });

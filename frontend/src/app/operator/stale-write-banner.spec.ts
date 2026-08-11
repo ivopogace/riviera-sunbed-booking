@@ -68,6 +68,10 @@ describe('StaleWriteBanner', () => {
     const footer = byId('host-footer');
     expect(footer).toBeTruthy();
     const button = byId('host-stale-reload');
-    expect(button && footer ? button.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING : 0).toBeTruthy();
+    expect(
+      button && footer
+        ? button.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING
+        : 0,
+    ).toBeTruthy();
   });
 });

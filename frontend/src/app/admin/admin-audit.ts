@@ -178,7 +178,9 @@ export class AdminAudit {
       afterNextRender(
         {
           earlyRead: () =>
-            this.hostRef.nativeElement.querySelector<HTMLElement>('[data-testid="admin-audit-card"]'),
+            this.hostRef.nativeElement.querySelector<HTMLElement>(
+              '[data-testid="admin-audit-card"]',
+            ),
           write: (card) => card?.focus(),
         },
         { injector: this.injector },

@@ -1,6 +1,8 @@
 <section class="discover" aria-labelledby="discover-title">
   <div class="hero">
-    <p class="hero-chip"><span class="hero-chip-dash" aria-hidden="true"></span> Sunbeds by the sea</p>
+    <p class="hero-chip">
+      <span class="hero-chip-dash" aria-hidden="true"></span> Sunbeds by the sea
+    </p>
     <h1 id="discover-title" class="hero-title">Find your spot on the Riviera.</h1>
     <p class="hero-intro">
       Pick a beach and a date, then choose your sunbed straight from the venue’s map — front row to
@@ -11,7 +13,12 @@
   <form class="filter-bar" appCardGlass (submit)="$event.preventDefault()">
     <p class="field">
       <label class="field-label" for="filter-beach">Beach</label>
-      <select id="filter-beach" data-testid="filter-beach" [value]="beach()" (change)="onBeachChange($event)">
+      <select
+        id="filter-beach"
+        data-testid="filter-beach"
+        [value]="beach()"
+        (change)="onBeachChange($event)"
+      >
         <option value="">All beaches</option>
         @for (b of beaches(); track b) {
           <option [value]="b">{{ b }}</option>
@@ -21,7 +28,12 @@
 
     <p class="field">
       <label class="field-label" for="filter-region">Region</label>
-      <select id="filter-region" data-testid="filter-region" [value]="region()" (change)="onRegionChange($event)">
+      <select
+        id="filter-region"
+        data-testid="filter-region"
+        [value]="region()"
+        (change)="onRegionChange($event)"
+      >
         <option value="">All regions</option>
         @for (r of regions(); track r) {
           <option [value]="r">{{ r }}</option>
@@ -47,8 +59,11 @@
       @if (venues(); as list) {
         <!-- &ngsp; keeps a real space in the text content ("1 venue", not "1venue") for AT and
              text assertions — the compiler strips the inter-element whitespace otherwise. -->
-        <strong class="count-number">{{ list.length }}</strong>&ngsp;
-        <span class="count-sub">{{ list.length === 1 ? 'venue' : 'venues' }} · {{ dateLabel() }}</span>
+        <strong class="count-number">{{ list.length }}</strong
+        >&ngsp;
+        <span class="count-sub"
+          >{{ list.length === 1 ? 'venue' : 'venues' }} · {{ dateLabel() }}</span
+        >
       }
     </p>
   </form>
@@ -56,7 +71,10 @@
   <!-- Cutoff explainer (invariant #4 — display only; the server enforces the cutoff). Backed by a subtle glass pill so its ink clears WCAG AA over the bare gradient. The ngsp entity keeps a real space between the clock glyph and the copy (a known sibling-inline gotcha). -->
   <p class="cutoff-note" appCardGlass data-testid="cutoff-note">
     <span class="cutoff-icon" aria-hidden="true">⏰</span>&ngsp;
-    <span>Bookings close the evening before — book by 6&nbsp;PM the day before. Today isn’t available.</span>
+    <span
+      >Bookings close the evening before — book by 6&nbsp;PM the day before. Today isn’t
+      available.</span
+    >
   </p>
 
   @if (failed()) {
@@ -136,7 +154,9 @@
 
                 <span class="card-footer">
                   @if (card.priceLabel; as price) {
-                    <span class="price">from <strong>{{ price }}</strong> / set</span>
+                    <span class="price"
+                      >from <strong>{{ price }}</strong> / set</span
+                    >
                   } @else {
                     <span class="price">No sets yet</span>
                   }

@@ -17,7 +17,7 @@ describe('trapFocusWithin', () => {
 
   it('wraps Tab from the last focusable back to the first', () => {
     const el = container('<button id="a">A</button><button id="b">B</button>');
-    (el.querySelector<HTMLButtonElement>('#b'))!.focus();
+    el.querySelector<HTMLButtonElement>('#b')!.focus();
     const event = new KeyboardEvent('keydown', { key: 'Tab' });
     const prevent = vi.spyOn(event, 'preventDefault');
 
@@ -29,7 +29,7 @@ describe('trapFocusWithin', () => {
 
   it('wraps Shift+Tab from the first focusable to the last', () => {
     const el = container('<button id="a">A</button><button id="b">B</button>');
-    (el.querySelector<HTMLButtonElement>('#a'))!.focus();
+    el.querySelector<HTMLButtonElement>('#a')!.focus();
     const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true });
     const prevent = vi.spyOn(event, 'preventDefault');
 
@@ -43,7 +43,7 @@ describe('trapFocusWithin', () => {
     const el = container(
       '<button id="a">A</button><button id="b">B</button><button id="c">C</button>',
     );
-    (el.querySelector<HTMLButtonElement>('#b'))!.focus();
+    el.querySelector<HTMLButtonElement>('#b')!.focus();
     const event = new KeyboardEvent('keydown', { key: 'Tab' });
     const prevent = vi.spyOn(event, 'preventDefault');
 
@@ -67,7 +67,7 @@ describe('trapFocusWithin', () => {
       '<button id="a">A</button><button id="b" disabled>B</button><button id="c">C</button>',
     );
     // Focus the last ENABLED control; forward Tab should wrap to the first.
-    (el.querySelector<HTMLButtonElement>('#c'))!.focus();
+    el.querySelector<HTMLButtonElement>('#c')!.focus();
     const event = new KeyboardEvent('keydown', { key: 'Tab' });
 
     trapFocusWithin(el, event, false);

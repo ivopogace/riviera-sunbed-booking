@@ -14,7 +14,8 @@
 
 :root,
 [data-riv-theme='riviera'] {
-  --riv-font: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+  --riv-font:
+    -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
 
   --riv-bg:
     radial-gradient(110% 70% at 8% 2%, #93e6f2 0%, rgba(147, 230, 242, 0) 52%),
@@ -128,14 +129,26 @@ body {
 /* ---- animation ---- */
 
 @keyframes riv-drift {
-  0% { transform: translate(0, 0); }
-  50% { transform: translate(40px, -30px); }
-  100% { transform: translate(0, 0); }
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(40px, -30px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
 }
 
 @keyframes riv-pop {
-  from { opacity: 0; transform: translateY(12px) scale(0.96); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* NOTE: reduced-motion guards live NEXT TO each animation, in the component stylesheet that

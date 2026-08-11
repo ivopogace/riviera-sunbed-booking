@@ -97,43 +97,42 @@ async function mockVenue(
   // `/api/venues/1` path — one handler, branched on method. PATCH is captured (204, or 403 when
   // denied); on success the edit is folded into the stateful profile + map so the tourist re-render
   // assertion is genuine. The `(\?.*)?$` tail matches the dated GET too (it never matches `/1/profile`).
-  await page.route(
-    /\/api\/venues\/1(\?.*)?$/,
-    (route) => {
-      if (route.request().method() === 'PATCH') {
-        patches.push(route.request());
-        if (deny) {
-          return route.fulfill({
-            status: 403,
-            contentType: 'application/problem+json',
-            json: { code: 'NOT_VENUE_OWNER', detail: '' },
-          });
-        }
-        const body = route.request().postDataJSON() as Partial<typeof INITIAL_PROFILE> & {
-          expectedVersion?: number;
-        };
-      // Optimistic-concurrency guard: a stale token is a 409 STALE_WRITE, never a silent clobber; a match bumps the version.
-        if (body.expectedVersion !== serverVersion) {
-          return route.fulfill({
-            status: 409,
-            contentType: 'application/problem+json',
-            json: { code: 'STALE_WRITE', detail: '' },
-          });
-        }
-        serverVersion += 1;
-        const fields = { ...body };
-        delete fields.expectedVersion; // the token is not a profile field — don't fold it into state
-        Object.assign(profile, fields);
-        currentMap = venueMap(profile.name, profile.bookingMode);
-        return route.fulfill({ status: 204, body: '' });
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
+    if (route.request().method() === 'PATCH') {
+      patches.push(route.request());
+      if (deny) {
+        return route.fulfill({
+          status: 403,
+          contentType: 'application/problem+json',
+          json: { code: 'NOT_VENUE_OWNER', detail: '' },
+        });
       }
-      // GET /api/venues/1 (shell header/stats + tourist map) — the current (possibly edited) map.
-      return route.fulfill({ json: currentMap });
-    },
-  );
+      const body = route.request().postDataJSON() as Partial<typeof INITIAL_PROFILE> & {
+        expectedVersion?: number;
+      };
+      // Optimistic-concurrency guard: a stale token is a 409 STALE_WRITE, never a silent clobber; a match bumps the version.
+      if (body.expectedVersion !== serverVersion) {
+        return route.fulfill({
+          status: 409,
+          contentType: 'application/problem+json',
+          json: { code: 'STALE_WRITE', detail: '' },
+        });
+      }
+      serverVersion += 1;
+      const fields = { ...body };
+      delete fields.expectedVersion; // the token is not a profile field — don't fold it into state
+      Object.assign(profile, fields);
+      currentMap = venueMap(profile.name, profile.bookingMode);
+      return route.fulfill({ status: 204, body: '' });
+    }
+    // GET /api/venues/1 (shell header/stats + tourist map) — the current (possibly edited) map.
+    return route.fulfill({ json: currentMap });
+  });
 
   // Shell stats-strip reads (kept simple/empty — the tab under test doesn't need real values).
-  await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
@@ -145,7 +144,9 @@ async function mockVenue(
       },
     }),
   );
-  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
 
   return { patches, bump };
 }

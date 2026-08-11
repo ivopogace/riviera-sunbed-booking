@@ -172,8 +172,12 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
   it('keeps both live regions in the DOM before there is anything to announce', async () => {
     const fixture = await render(authStub('changed'));
 
-    const notice = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="oppw-notice"]');
-    const error = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="oppw-error"]');
+    const notice = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="oppw-notice"]',
+    );
+    const error = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="oppw-error"]',
+    );
     expect(notice?.getAttribute('role')).toBe('status');
     expect(error?.getAttribute('role')).toBe('alert');
     expect(notice?.textContent?.trim()).toBe('');

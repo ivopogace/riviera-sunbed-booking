@@ -73,7 +73,9 @@ async function settled(panel: Locator): Promise<Locator> {
   return panel;
 }
 
-test('an admin erases a subject through arm-then-confirm, sending one request', async ({ page }) => {
+test('an admin erases a subject through arm-then-confirm, sending one request', async ({
+  page,
+}) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
   await mockErasure(page);
   await openPrivacyTab(page);

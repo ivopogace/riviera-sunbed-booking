@@ -32,7 +32,13 @@ function authStub(state: AuthState = {}): OperatorAuth {
 }
 
 const VENUES: readonly VenueCommissionView[] = [
-  { venueId: 7, name: 'Bora Bora Beach', beach: 'Dhërmi', commissionBps: 1500, payoutCurrency: 'EUR' },
+  {
+    venueId: 7,
+    name: 'Bora Bora Beach',
+    beach: 'Dhërmi',
+    commissionBps: 1500,
+    payoutCurrency: 'EUR',
+  },
   { venueId: 9, name: 'Folie Marine', beach: 'Gjipe', commissionBps: 1000, payoutCurrency: 'EUR' },
 ];
 
@@ -104,10 +110,7 @@ async function typeRate(
   fixture.detectChanges();
 }
 
-async function save(
-  fixture: ComponentFixture<AdminCommissions>,
-  venueId: number,
-): Promise<void> {
+async function save(fixture: ComponentFixture<AdminCommissions>, venueId: number): Promise<void> {
   byTestId<HTMLButtonElement>(fixture, `admin-commission-save-${venueId}`)!.click();
   fixture.detectChanges();
   await settle(fixture);
@@ -413,7 +416,9 @@ describe('AdminCommissions', () => {
 
   it('keeps focus on Retry when the retried load fails again', async () => {
     const service = serviceStub();
-    service.venues.mockRejectedValueOnce(new Error('boom')).mockRejectedValueOnce(new Error('boom'));
+    service.venues
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockRejectedValueOnce(new Error('boom'));
     const fixture = await render(authStub(), service);
 
     byTestId<HTMLButtonElement>(fixture, 'admin-commissions-retry')!.click();

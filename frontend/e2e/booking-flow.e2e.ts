@@ -21,9 +21,39 @@ const VENUE = {
   bookingMode: 'INSTANT',
   fromPrice: { minorUnits: 2500, currency: 'EUR' },
   sets: [
-    { id: 1, rowLabel: 'Front row · Sea view', positionNo: 1, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 4500, currency: 'EUR' }, gridX: 1, gridY: 1, availability: 'TAKEN' },
-    { id: 2, rowLabel: 'Front row · Sea view', positionNo: 2, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 4500, currency: 'EUR' }, gridX: 2, gridY: 1, availability: 'FREE' },
-    { id: 3, rowLabel: 'Row 4 · Back', positionNo: 1, tier: 'STANDARD', pool: 'WALK_IN', price: { minorUnits: 2500, currency: 'EUR' }, gridX: 1, gridY: 2, availability: 'FREE' },
+    {
+      id: 1,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 1,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 4500, currency: 'EUR' },
+      gridX: 1,
+      gridY: 1,
+      availability: 'TAKEN',
+    },
+    {
+      id: 2,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 2,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 4500, currency: 'EUR' },
+      gridX: 2,
+      gridY: 1,
+      availability: 'FREE',
+    },
+    {
+      id: 3,
+      rowLabel: 'Row 4 · Back',
+      positionNo: 1,
+      tier: 'STANDARD',
+      pool: 'WALK_IN',
+      price: { minorUnits: 2500, currency: 'EUR' },
+      gridX: 1,
+      gridY: 2,
+      availability: 'FREE',
+    },
   ],
 };
 
@@ -90,9 +120,7 @@ function cancelledDetail(over: {
 
 test.beforeEach(async ({ page }) => {
   // Match with or without the `?date=` query the map appends.
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({ json: VENUE }),
-  );
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
   await page.route('**/api/bookings', (route) =>
     route.fulfill({ status: 201, json: CONFIRMATION }),
   );
@@ -146,13 +174,18 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   await expectNoSeriousAxeViolations(page, 'booking confirmation');
 });
 
-test('booking dialog stays laptop-friendly at a ~700px viewport (#188, guards the #186 regression)', async ({ page }) => {
+test('booking dialog stays laptop-friendly at a ~700px viewport (#188, guards the #186 regression)', async ({
+  page,
+}) => {
   // The dialog is compacted so step-1 sits above the fold on laptop viewports; this locks it in.
   const VIEWPORT_HEIGHT = 700;
   await page.setViewportSize({ width: 1280, height: VIEWPORT_HEIGHT });
 
   await page.goto('/venues/1');
-  await page.getByRole('button', { name: /Select to book/ }).first().click();
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -191,7 +224,10 @@ test('a taken-set rejection surfaces an accessible error in the dialog', async (
   );
 
   await page.goto('/venues/1');
-  await page.getByRole('button', { name: /Select to book/ }).first().click();
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
   const dialog = page.getByRole('dialog');
   await completeDialog(dialog, 'Continue to payment');
 
@@ -211,11 +247,16 @@ test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', asy
   // The status poll: AWAITING_PAYMENT first, then CONFIRMED once the (mocked) webhook lands.
   let polls = 0;
   await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
-    route.fulfill({ json: { ...AWAITING_DETAIL, status: polls++ === 0 ? 'AWAITING_PAYMENT' : 'CONFIRMED' } }),
+    route.fulfill({
+      json: { ...AWAITING_DETAIL, status: polls++ === 0 ? 'AWAITING_PAYMENT' : 'CONFIRMED' },
+    }),
   );
 
   await page.goto('/venues/1');
-  await page.getByRole('button', { name: /Select to book/ }).first().click();
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
   const dialog = page.getByRole('dialog');
   await completeDialog(dialog, 'Continue to payment');
 

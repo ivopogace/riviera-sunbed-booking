@@ -43,10 +43,9 @@ describe('SetEditor porcelain contrast (WCAG AA, #600)', () => {
   it('the Remove ink and the write-error ink meet AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       const hex = rgbToHex(stop);
-      expect(
-        contrastRatio(DESTRUCTIVE_INK, hex),
-        `destructive over ${hex}`,
-      ).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(contrastRatio(DESTRUCTIVE_INK, hex), `destructive over ${hex}`).toBeGreaterThanOrEqual(
+        AA_NORMAL,
+      );
       expect(contrastRatio('#0a6e85', hex), `saved notice over ${hex}`).toBeGreaterThanOrEqual(
         AA_NORMAL,
       );

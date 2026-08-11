@@ -79,7 +79,9 @@ describe('CustomerAuth', () => {
   it('maps a 401 sign-in to invalid-credentials and stays signed out', async () => {
     const auth = await create('signed-out');
     const result = auth.signIn('ana@example.com', 'wrong');
-    http.expectOne(`${AUTH_API}/customer/login`).flush({}, { status: 401, statusText: 'Unauthorized' });
+    http
+      .expectOne(`${AUTH_API}/customer/login`)
+      .flush({}, { status: 401, statusText: 'Unauthorized' });
     expect(await result).toBe('invalid-credentials');
     expect(auth.signedIn()).toBe(false);
   });
@@ -98,7 +100,10 @@ describe('CustomerAuth', () => {
     const result = auth.register('new@example.com', 'password123');
     http
       .expectOne(`${AUTH_API}/customer/register`)
-      .flush({ username: 'new@example.com', principalType: 'CUSTOMER' }, { status: 201, statusText: 'Created' });
+      .flush(
+        { username: 'new@example.com', principalType: 'CUSTOMER' },
+        { status: 201, statusText: 'Created' },
+      );
     await tick(); // let register's await resolve so loadPrincipal issues the follow-up /me
     http
       .expectOne(`${AUTH_API}/me`)
@@ -112,7 +117,10 @@ describe('CustomerAuth', () => {
     const result = auth.register('taken@example.com', 'password123');
     http
       .expectOne(`${AUTH_API}/customer/register`)
-      .flush({ username: 'taken@example.com', principalType: 'CUSTOMER' }, { status: 201, statusText: 'Created' });
+      .flush(
+        { username: 'taken@example.com', principalType: 'CUSTOMER' },
+        { status: 201, statusText: 'Created' },
+      );
     await tick(); // let register's await resolve so loadPrincipal issues the follow-up /me
     http.expectOne(`${AUTH_API}/me`).flush({}, { status: 401, statusText: 'Unauthorized' });
     expect(await result).toBe('exists');
@@ -124,7 +132,10 @@ describe('CustomerAuth', () => {
     const result = auth.register('new@example.com', 'password123');
     http
       .expectOne(`${AUTH_API}/customer/register`)
-      .flush({ username: 'new@example.com', principalType: 'CUSTOMER' }, { status: 201, statusText: 'Created' });
+      .flush(
+        { username: 'new@example.com', principalType: 'CUSTOMER' },
+        { status: 201, statusText: 'Created' },
+      );
     await tick(); // let register's await resolve so loadPrincipal issues the follow-up /me
     http
       .expectOne(`${AUTH_API}/me`)
@@ -138,9 +149,14 @@ describe('CustomerAuth', () => {
     const result = auth.register('taken@example.com', 'password123');
     http
       .expectOne(`${AUTH_API}/customer/register`)
-      .flush({ username: 'taken@example.com', principalType: 'CUSTOMER' }, { status: 201, statusText: 'Created' });
+      .flush(
+        { username: 'taken@example.com', principalType: 'CUSTOMER' },
+        { status: 201, statusText: 'Created' },
+      );
     await tick(); // let register's await resolve so loadPrincipal issues the follow-up /me
-    http.expectOne(`${AUTH_API}/me`).flush({ username: 'ana@example.com', principalType: 'CUSTOMER' });
+    http
+      .expectOne(`${AUTH_API}/me`)
+      .flush({ username: 'ana@example.com', principalType: 'CUSTOMER' });
     expect(await result).toBe('exists');
     expect(auth.email()).toBe('ana@example.com');
   });
@@ -183,15 +199,21 @@ describe('CustomerAuth', () => {
     const auth = await create('signed-out');
 
     const sent = auth.forgotPassword('ana@example.com');
-    http.expectOne(`${AUTH_API}/customer/forgot-password`).flush(null, { status: 204, statusText: 'No Content' });
+    http
+      .expectOne(`${AUTH_API}/customer/forgot-password`)
+      .flush(null, { status: 204, statusText: 'No Content' });
     expect(await sent).toBe('sent');
 
     const limited = auth.forgotPassword('ana@example.com');
-    http.expectOne(`${AUTH_API}/customer/forgot-password`).flush({}, { status: 429, statusText: 'Too Many' });
+    http
+      .expectOne(`${AUTH_API}/customer/forgot-password`)
+      .flush({}, { status: 429, statusText: 'Too Many' });
     expect(await limited).toBe('rate-limited');
 
     const errored = auth.forgotPassword('ana@example.com');
-    http.expectOne(`${AUTH_API}/customer/forgot-password`).flush({}, { status: 500, statusText: 'Error' });
+    http
+      .expectOne(`${AUTH_API}/customer/forgot-password`)
+      .flush({}, { status: 500, statusText: 'Error' });
     expect(await errored).toBe('error');
   });
 
@@ -199,7 +221,9 @@ describe('CustomerAuth', () => {
     const auth = await create('signed-out');
 
     const ok = auth.resetPassword('tok', 'password123');
-    http.expectOne(`${AUTH_API}/customer/reset-password`).flush(null, { status: 204, statusText: 'No Content' });
+    http
+      .expectOne(`${AUTH_API}/customer/reset-password`)
+      .flush(null, { status: 204, statusText: 'No Content' });
     expect(await ok).toBe('reset');
 
     const badToken = auth.resetPassword('tok', 'password123');
@@ -215,7 +239,9 @@ describe('CustomerAuth', () => {
     expect(await weak).toBe('invalid-password');
 
     const limited = auth.resetPassword('tok', 'password123');
-    http.expectOne(`${AUTH_API}/customer/reset-password`).flush({}, { status: 429, statusText: 'Too Many' });
+    http
+      .expectOne(`${AUTH_API}/customer/reset-password`)
+      .flush({}, { status: 429, statusText: 'Too Many' });
     expect(await limited).toBe('rate-limited');
   });
 
@@ -223,9 +249,13 @@ describe('CustomerAuth', () => {
     const auth = await create({ principalType: 'CUSTOMER' });
 
     const result = auth.verifyEmail('tok');
-    http.expectOne(`${AUTH_API}/customer/verify-email`).flush(null, { status: 204, statusText: 'No Content' });
+    http
+      .expectOne(`${AUTH_API}/customer/verify-email`)
+      .flush(null, { status: 204, statusText: 'No Content' });
     await tick(); // the signed-in branch reloads /me
-    http.expectOne(`${AUTH_API}/me`).flush({ username: 'ana@example.com', principalType: 'CUSTOMER', emailVerified: true });
+    http
+      .expectOne(`${AUTH_API}/me`)
+      .flush({ username: 'ana@example.com', principalType: 'CUSTOMER', emailVerified: true });
     expect(await result).toBe('verified');
     expect(auth.emailVerified()).toBe(true);
   });
@@ -233,7 +263,9 @@ describe('CustomerAuth', () => {
   it('verify-email maps a 400 → invalid-token (no /me reload when signed out)', async () => {
     const auth = await create('signed-out');
     const result = auth.verifyEmail('tok');
-    http.expectOne(`${AUTH_API}/customer/verify-email`).flush({}, { status: 400, statusText: 'Bad Request' });
+    http
+      .expectOne(`${AUTH_API}/customer/verify-email`)
+      .flush({}, { status: 400, statusText: 'Bad Request' });
     expect(await result).toBe('invalid-token');
   });
 
@@ -253,7 +285,9 @@ describe('CustomerAuth', () => {
     expect(await wrongCurrent).toBe('invalid-current');
 
     const weak = auth.setPassword('short');
-    http.expectOne(`${ME_API}/password`).flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
+    http
+      .expectOne(`${ME_API}/password`)
+      .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
     expect(await weak).toBe('invalid-password');
   });
 
@@ -274,7 +308,9 @@ describe('CustomerAuth', () => {
     const auth = await create({ principalType: 'CUSTOMER' });
 
     const throttled = auth.setPassword('brandnewpass1', 'currentpass1');
-    http.expectOne(`${ME_API}/password`).flush({}, { status: 429, statusText: 'Too Many Requests' });
+    http
+      .expectOne(`${ME_API}/password`)
+      .flush({}, { status: 429, statusText: 'Too Many Requests' });
 
     expect(await throttled).toBe('rate-limited');
   });
@@ -291,7 +327,9 @@ describe('CustomerAuth', () => {
     expect(await withheld).toBe('withheld');
 
     const errored = auth.requestVerification();
-    http.expectOne(`${ME_API}/verify-email/request`).flush({}, { status: 500, statusText: 'Error' });
+    http
+      .expectOne(`${ME_API}/verify-email/request`)
+      .flush({}, { status: 500, statusText: 'Error' });
     expect(await errored).toBe('error');
   });
 });

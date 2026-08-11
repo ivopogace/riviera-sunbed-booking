@@ -69,24 +69,27 @@ describe('Payment page — theme-independent CTA (WCAG AA, issue #137)', () => {
   });
 });
 
-describe.each(THEMES)('Payment page glass contrast — $name theme (WCAG AA, issue #137)', (theme) => {
-  it('card ink (headings, summary values, code) meets AA on the card glass', () => {
-    expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
-  });
+describe.each(THEMES)(
+  'Payment page glass contrast — $name theme (WCAG AA, issue #137)',
+  (theme) => {
+    it('card ink (headings, summary values, code) meets AA on the card glass', () => {
+      expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
+    });
 
-  it('card ink-soft (lead, summary keys, status, labels) meets AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
-  });
+    it('card ink-soft (lead, summary keys, status, labels) meets AA on the card glass', () => {
+      expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
+    });
 
-  it('card ink-faint (trust line) meets AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
-  });
+    it('card ink-faint (trust line) meets AA on the card glass', () => {
+      expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
+    });
 
-  it('accent ink (total, big code, links) meets AA on the card glass', () => {
-    expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
-  });
+    it('accent ink (total, big code, links) meets AA on the card glass', () => {
+      expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
+    });
 
-  it('cancel-chip ink meets AA on the dark header glass over every gradient stop', () => {
-    expectAaOverStops(theme.headInk, 1, theme.headerGlass, theme.stops);
-  });
-});
+    it('cancel-chip ink meets AA on the dark header glass over every gradient stop', () => {
+      expectAaOverStops(theme.headInk, 1, theme.headerGlass, theme.stops);
+    });
+  },
+);

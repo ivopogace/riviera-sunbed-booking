@@ -82,7 +82,12 @@ function buildView(b: MyBookingSummary): RowView {
  */
 type Row =
   | { readonly code: string; readonly state: 'loading' }
-  | { readonly code: string; readonly state: 'loaded'; readonly view: RowView; readonly bookingDate: string }
+  | {
+      readonly code: string;
+      readonly state: 'loaded';
+      readonly view: RowView;
+      readonly bookingDate: string;
+    }
   | { readonly code: string; readonly state: 'failed' };
 
 /**
@@ -115,7 +120,9 @@ const DEVICE_FETCH_CONCURRENCY = 5;
 
 /** A booking the backend does not return right now — a 404 on the per-code lookup. */
 function isNotFound(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && (error as { status?: number }).status === 404;
+  return (
+    typeof error === 'object' && error !== null && (error as { status?: number }).status === 404
+  );
 }
 
 /**
@@ -172,7 +179,12 @@ function isNotFound(error: unknown): boolean {
           </div>
         </div>
       } @else if (rows().length === 0 && !accountError()) {
-        <section class="empty-card" appCardGlass aria-labelledby="mb-empty-title" data-testid="my-bookings-empty">
+        <section
+          class="empty-card"
+          appCardGlass
+          aria-labelledby="mb-empty-title"
+          data-testid="my-bookings-empty"
+        >
           <h2 id="mb-empty-title">No booking yet</h2>
           <p class="empty-lead">
             Pick a beach, choose your exact set on the map, and your booking code will live here.
@@ -183,9 +195,15 @@ function isNotFound(error: unknown): boolean {
         @if (accountError()) {
           <section class="empty-card" appCardGlass role="status" data-testid="account-error">
             <p class="empty-lead">
-              We couldn’t load your account bookings just now — any made on other devices may be missing.
+              We couldn’t load your account bookings just now — any made on other devices may be
+              missing.
             </p>
-            <button type="button" class="btn-cta" (click)="retryAccount()" data-testid="account-retry">
+            <button
+              type="button"
+              class="btn-cta"
+              (click)="retryAccount()"
+              data-testid="account-retry"
+            >
               Retry
             </button>
           </section>
@@ -195,13 +213,20 @@ function isNotFound(error: unknown): boolean {
             <li>
               @switch (row.state) {
                 @case ('loaded') {
-                  <a [routerLink]="['/booking', row.view.code]" class="row" appCardGlass data-testid="booking-row">
+                  <a
+                    [routerLink]="['/booking', row.view.code]"
+                    class="row"
+                    appCardGlass
+                    data-testid="booking-row"
+                  >
                     <span class="row-main">
                       <span class="venue">{{ row.view.venueName }}</span>
                       <span class="meta">{{ row.view.setLabel }}</span>
                       <span class="meta">{{ row.view.dateLabel }}</span>
                       @if (row.view.subLine) {
-                        <span class="subline" data-testid="row-subline">{{ row.view.subLine }}</span>
+                        <span class="subline" data-testid="row-subline">{{
+                          row.view.subLine
+                        }}</span>
                       }
                       <span class="code">{{ row.view.code }}</span>
                       @if (row.view.showQr) {
@@ -239,7 +264,12 @@ function isNotFound(error: unknown): boolean {
                   </div>
                 }
                 @default {
-                  <div class="row row--loading" appCardGlass aria-busy="true" data-testid="booking-row-loading">
+                  <div
+                    class="row row--loading"
+                    appCardGlass
+                    aria-busy="true"
+                    data-testid="booking-row-loading"
+                  >
                     <span class="row-main">
                       <span class="skeleton skeleton-line"></span>
                       <span class="skeleton skeleton-line short"></span>
@@ -374,7 +404,10 @@ export class MyBookings {
       const byCode = new Map(incoming.map((r) => [r.code, r]));
       const listed = new Set(rows.map((r) => r.code));
       return inDisplayOrder(
-        [...rows.map((r) => byCode.get(r.code) ?? r), ...incoming.filter((r) => !listed.has(r.code))],
+        [
+          ...rows.map((r) => byCode.get(r.code) ?? r),
+          ...incoming.filter((r) => !listed.has(r.code)),
+        ],
         this.displayRank,
       );
     });
@@ -395,7 +428,12 @@ export class MyBookings {
     this.setRow({ code, state: 'loading' });
     return this.bookings.getByCode(code).pipe(
       tap((detail) =>
-        this.setRow({ code, state: 'loaded', view: buildView(detail), bookingDate: detail.bookingDate }),
+        this.setRow({
+          code,
+          state: 'loaded',
+          view: buildView(detail),
+          bookingDate: detail.bookingDate,
+        }),
       ),
       catchError((e: unknown) => {
         if (this.accountResolved.has(code)) {
@@ -416,7 +454,10 @@ export class MyBookings {
 
   private setRow(row: Row): void {
     this.rows.update((rows) =>
-      inDisplayOrder(rows.map((r) => (r.code === row.code ? row : r)), this.displayRank),
+      inDisplayOrder(
+        rows.map((r) => (r.code === row.code ? row : r)),
+        this.displayRank,
+      ),
     );
   }
 }

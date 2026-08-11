@@ -114,7 +114,9 @@ const CLS = {
     @if (notFound()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
         <h1 id="bv-title" [class]="cls.stateTitle">Booking not found</h1>
-        <p [class]="cls.lead">We couldn’t find a booking for that code. Check the code and try again.</p>
+        <p [class]="cls.lead">
+          We couldn’t find a booking for that code. Check the code and try again.
+        </p>
         <a routerLink="/" [class]="cls.link">Back to home</a>
       </section>
     } @else if (failed()) {
@@ -161,7 +163,12 @@ const CLS = {
                     This booking is reserved but unpaid. Pay now to confirm your spot.
                   </p>
                 }
-                <button type="button" [class]="cls.btnCta" (click)="payNow(b)" data-testid="pay-now">
+                <button
+                  type="button"
+                  [class]="cls.btnCta"
+                  (click)="payNow(b)"
+                  data-testid="pay-now"
+                >
                   Pay now
                 </button>
               </section>
@@ -192,8 +199,8 @@ const CLS = {
                 Waiting for the venue
               </h2>
               <p [class]="cls.bannerBody">
-                {{ b.venueName }} hasn’t responded to your booking request yet. You won’t be
-                charged unless they accept.
+                {{ b.venueName }} hasn’t responded to your booking request yet. You won’t be charged
+                unless they accept.
               </p>
               @if (b.requestExpiresAt; as deadline) {
                 <p [class]="cls.bannerBody">
@@ -238,7 +245,6 @@ const CLS = {
                   }
                 </div>
               }
-
             </section>
           }
           @case ('WITHDRAWN') {
@@ -251,8 +257,8 @@ const CLS = {
                 Request withdrawn
               </h2>
               <p [class]="cls.bannerBody">
-                You withdrew this request, so the spot is free for other guests again. You
-                haven’t been charged — pick another set or date to book again.
+                You withdrew this request, so the spot is free for other guests again. You haven’t
+                been charged — pick another set or date to book again.
               </p>
             </section>
           }
@@ -264,7 +270,9 @@ const CLS = {
             >
               @if (b.refundedAmount; as refunded) {
                 <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowCancelled }}">
-                  {{ b.cancelReason === 'WEATHER' ? 'Cancelled by the venue' : 'Booking cancelled' }}
+                  {{
+                    b.cancelReason === 'WEATHER' ? 'Cancelled by the venue' : 'Booking cancelled'
+                  }}
                 </h2>
                 <p [class]="cls.bannerBody">
                   {{ cancelledOpener(b) }}&ngsp;
@@ -407,7 +415,10 @@ const CLS = {
             class="mt-5 border-t border-(--riv-card-track) pt-[18px]"
             aria-labelledby="cancel-title"
           >
-            <h2 id="cancel-title" class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-(--riv-card-ink)">
+            <h2
+              id="cancel-title"
+              class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-(--riv-card-ink)"
+            >
               Cancel this booking
             </h2>
             <p

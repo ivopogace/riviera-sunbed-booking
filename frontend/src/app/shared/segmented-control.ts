@@ -151,8 +151,8 @@ export class SegmentedControl<T extends string> {
         `${base} rounded-[11px] border-0 py-[9px] text-[13.5px] ` +
         (selected
           ? 'font-bold text-(--riv-accent-ink) bg-white shadow-[0_4px_12px_rgba(7,42,58,0.16)]'
-          // ink-soft, not faint: the track tint drops 0.72 to 4.38:1 on the darkest riviera stop.
-          : 'font-semibold text-(--riv-card-ink-soft) bg-transparent')
+          : // ink-soft, not faint: the track tint drops 0.72 to 4.38:1 on the darkest riviera stop.
+            'font-semibold text-(--riv-card-ink-soft) bg-transparent')
       );
     }
     // 1.5px in BOTH states (design thickens only the selected): constant width, no reflow on switch.

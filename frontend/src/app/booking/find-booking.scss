@@ -23,7 +23,9 @@
   backdrop-filter: blur(34px) saturate(180%);
   border: 1px solid var(--riv-card-border);
   border-radius: 30px;
-  box-shadow: 0 40px 90px rgba(6, 30, 40, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 40px 90px rgba(6, 30, 40, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
   color: var(--riv-card-ink);
   padding: 28px 26px 24px;
   animation: riv-pop 0.26s cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -129,7 +131,9 @@
   font-weight: 700;
   font-size: 15px;
   cursor: pointer;
-  box-shadow: 0 10px 26px rgba(11, 120, 150, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 10px 26px rgba(11, 120, 150, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   transition: filter 0.15s ease;
 }
 .find-submit:disabled {

@@ -49,7 +49,10 @@ describe('VenueTab a11y (#177)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap({ venueId: '1' }) }, paramMap: of(convertToParamMap({ venueId: '1' })) },
+            parent: {
+              snapshot: { paramMap: convertToParamMap({ venueId: '1' }) },
+              paramMap: of(convertToParamMap({ venueId: '1' })),
+            },
           },
         },
       ],
@@ -94,7 +97,9 @@ describe('VenueTab a11y (#177)', () => {
     fixture.detectChanges();
 
     // Reveal the conflict banner by failing a save with a 409 STALE_WRITE.
-    host().querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    host()
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { cancelable: true }));
     await fixture.whenStable();
     fixture.detectChanges();
     http

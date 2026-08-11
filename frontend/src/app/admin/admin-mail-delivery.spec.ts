@@ -16,7 +16,11 @@ const WITHHELD_THEN_RESENT: MailDeliveryLookupView = {
       everConfirmed: true,
       attempts: [
         { source: 'ADMIN_RESEND', outcome: 'SENT', attemptedAt: '2026-07-30T09:31:00Z' },
-        { source: 'AUTOMATIC', outcome: 'WITHHELD_SUPPRESSED', attemptedAt: '2026-07-29T14:02:11Z' },
+        {
+          source: 'AUTOMATIC',
+          outcome: 'WITHHELD_SUPPRESSED',
+          attemptedAt: '2026-07-29T14:02:11Z',
+        },
       ],
     },
   ],
@@ -48,10 +52,7 @@ function testId(fixture: ComponentFixture<AdminMailDelivery>, id: string): HTMLE
   return fixture.nativeElement.querySelector(`[data-testid="${id}"]`);
 }
 
-async function lookUp(
-  fixture: ComponentFixture<AdminMailDelivery>,
-  email = EMAIL,
-): Promise<void> {
+async function lookUp(fixture: ComponentFixture<AdminMailDelivery>, email = EMAIL): Promise<void> {
   const input: HTMLInputElement = testId(fixture, 'admin-delivery-email') as HTMLInputElement;
   input.value = email;
   input.dispatchEvent(new Event('input'));
@@ -173,7 +174,9 @@ describe('AdminMailDelivery', () => {
 
   it('reports a refused resend of a never-confirmed booking', async () => {
     const service = serviceStub(WITHHELD_THEN_RESENT);
-    service.resend = vi.fn(async (): Promise<MailResendResultView> => ({ outcome: 'NOT_CONFIRMED' }));
+    service.resend = vi.fn(async (): Promise<MailResendResultView> => ({
+      outcome: 'NOT_CONFIRMED',
+    }));
     const fixture = await render(service);
     await lookUp(fixture);
 

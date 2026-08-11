@@ -61,7 +61,10 @@ describe('PayoutsTab a11y (#173)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap({ venueId: '1' }) }, paramMap: of(convertToParamMap({ venueId: '1' })) },
+            parent: {
+              snapshot: { paramMap: convertToParamMap({ venueId: '1' }) },
+              paramMap: of(convertToParamMap({ venueId: '1' })),
+            },
           },
         },
       ],

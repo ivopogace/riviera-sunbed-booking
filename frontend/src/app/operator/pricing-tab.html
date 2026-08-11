@@ -2,7 +2,8 @@
   <section appCardGlass class="rounded-[24px] px-[22px] py-5">
     <h2 class="text-[16px] font-bold text-(--riv-card-ink)">Row pricing</h2>
     <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)">
-      Full-day price per set (2 loungers + umbrella), charged in EUR. Applies to every set in the row.
+      Full-day price per set (2 loungers + umbrella), charged in EUR. Applies to every set in the
+      row.
     </p>
 
     @if (rows().length > 0) {
@@ -17,8 +18,11 @@
             >{{ row.label }}</span
           >
           <span class="flex-1 text-[13px] text-(--riv-card-ink-soft)"
-            >{{ row.desc }}@if (row.mixed) {<strong class="text-(--riv-card-ink)"> · mixed prices</strong>}</span
-          >
+            >{{ row.desc }}
+            @if (row.mixed) {
+              <strong class="text-(--riv-card-ink)"> · mixed prices</strong>
+            }
+          </span>
           <div class="flex items-center gap-1.5">
             <span class="text-[14px] text-(--riv-card-ink-soft)" aria-hidden="true">€</span>
             <input
@@ -62,8 +66,8 @@
           reloadTestId="pricing-stale-reload"
           (reload)="reloadAfterStale()"
         >
-          These prices were changed somewhere else since you opened this tab. Your edit was not applied —
-          reload the latest prices and try again.
+          These prices were changed somewhere else since you opened this tab. Your edit was not
+          applied — reload the latest prices and try again.
         </app-stale-write-banner>
       }
 

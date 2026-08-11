@@ -26,7 +26,9 @@ describe('failure-panel directives', () => {
     const el = root();
     expect(el.querySelector('[data-testid="panel"]')!.classList.contains('failure')).toBe(true);
     expect(el.querySelector('[data-testid="icon"]')!.classList.contains('failure-icon')).toBe(true);
-    expect(el.querySelector('[data-testid="title"]')!.classList.contains('failure-title')).toBe(true);
+    expect(el.querySelector('[data-testid="title"]')!.classList.contains('failure-title')).toBe(
+      true,
+    );
     expect(el.querySelector('[data-testid="text"]')!.classList.contains('failure-text')).toBe(true);
   });
 

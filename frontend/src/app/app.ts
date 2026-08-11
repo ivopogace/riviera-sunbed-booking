@@ -142,8 +142,7 @@ export class App {
   /** Open the find-a-booking modal, closing any open nav popover and recording the focus-return
    *  target (the desktop trigger, or the hamburger when opened from the collapsing mobile menu). */
   protected openFind(fromMobile: boolean): void {
-    this.findReturn =
-      (fromMobile ? this.menuButton() : this.findButton())?.nativeElement ?? null;
+    this.findReturn = (fromMobile ? this.menuButton() : this.findButton())?.nativeElement ?? null;
     this.menuOpen.set(false);
     this.themeOpen.set(false);
     this.accountOpen.set(false);

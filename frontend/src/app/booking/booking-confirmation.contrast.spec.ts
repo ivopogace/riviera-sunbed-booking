@@ -39,16 +39,19 @@ describe('Confirmation card — theme-independent CTA (WCAG AA, issue #137)', ()
   });
 });
 
-describe.each(THEMES)('Confirmation card glass contrast — $name theme (WCAG AA, issue #137)', (theme) => {
-  it('card ink (heading, summary values) meets AA on the card glass', () => {
-    expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
-  });
+describe.each(THEMES)(
+  'Confirmation card glass contrast — $name theme (WCAG AA, issue #137)',
+  (theme) => {
+    it('card ink (heading, summary values) meets AA on the card glass', () => {
+      expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
+    });
 
-  it('card ink-soft (lead, summary keys, code label + note) meets AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
-  });
+    it('card ink-soft (lead, summary keys, code label + note) meets AA on the card glass', () => {
+      expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
+    });
 
-  it('accent ink (Paid amount, big booking code, manage link) meets AA on the card glass', () => {
-    expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
-  });
-});
+    it('accent ink (Paid amount, big booking code, manage link) meets AA on the card glass', () => {
+      expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
+    });
+  },
+);

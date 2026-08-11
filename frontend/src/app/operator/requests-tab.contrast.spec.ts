@@ -49,17 +49,19 @@ describe('RequestsTab porcelain contrast (WCAG AA, #176)', () => {
 
   it('the price value (teal #0a6e85) meets AA on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
-      expect(contrastRatio(TEAL, cardSurface(stop)), `teal over ${rgbToHex(stop)}`).toBeGreaterThanOrEqual(
-        AA_NORMAL,
-      );
+      expect(
+        contrastRatio(TEAL, cardSurface(stop)),
+        `teal over ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
 
   it('the alert red (#a3160e: urgency text, decline text, expired-race, load-error) meets AA on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
-      expect(contrastRatio(ALERT, cardSurface(stop)), `alert over ${rgbToHex(stop)}`).toBeGreaterThanOrEqual(
-        AA_NORMAL,
-      );
+      expect(
+        contrastRatio(ALERT, cardSurface(stop)),
+        `alert over ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
 

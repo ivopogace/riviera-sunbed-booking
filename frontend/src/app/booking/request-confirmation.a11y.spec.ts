@@ -25,7 +25,9 @@ function stubService(requested: RequestedBooking | undefined): Partial<BookingSe
 }
 
 describe('RequestConfirmation accessibility (axe)', () => {
-  async function render(requested: RequestedBooking | undefined): Promise<ComponentFixture<RequestConfirmation>> {
+  async function render(
+    requested: RequestedBooking | undefined,
+  ): Promise<ComponentFixture<RequestConfirmation>> {
     await TestBed.configureTestingModule({
       imports: [RequestConfirmation],
       providers: [provideRouter([]), { provide: BookingService, useValue: stubService(requested) }],

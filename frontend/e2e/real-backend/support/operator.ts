@@ -23,7 +23,10 @@ export function venueName(label: string): string {
  * the credential once, the backend verifies the DB-backed hash and answers with the session cookie
  * + CSRF token every later write rides.
  */
-export async function signInOperator(page: Page, password: string = OPERATOR_PASSWORD): Promise<void> {
+export async function signInOperator(
+  page: Page,
+  password: string = OPERATOR_PASSWORD,
+): Promise<void> {
   await new OperatorSignInPage(page).signIn(OPERATOR_USERNAME, password);
 }
 

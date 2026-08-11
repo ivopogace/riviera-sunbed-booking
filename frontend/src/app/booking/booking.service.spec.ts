@@ -306,7 +306,9 @@ describe('bookingErrorOf', () => {
   it('maps known server codes', () => {
     expect(bookingErrorOf(httpError(409, 'SET_TAKEN'))).toBe('SET_TAKEN');
     expect(bookingErrorOf(httpError(422, 'BOOKING_CLOSED'))).toBe('BOOKING_CLOSED');
-    expect(bookingErrorOf(httpError(422, 'SET_NOT_BOOKABLE_ONLINE'))).toBe('SET_NOT_BOOKABLE_ONLINE');
+    expect(bookingErrorOf(httpError(422, 'SET_NOT_BOOKABLE_ONLINE'))).toBe(
+      'SET_NOT_BOOKABLE_ONLINE',
+    );
     expect(bookingErrorOf(httpError(404, 'NO_SUCH_SET'))).toBe('NO_SUCH_SET');
     expect(bookingErrorOf(httpError(400, 'INVALID_REQUEST'))).toBe('INVALID_REQUEST');
   });

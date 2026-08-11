@@ -54,7 +54,6 @@ export class ConsoleStatsStrip {
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
-
   /** Total sets across both pools (design "Free today {free}/{total}"). */
   protected readonly total = computed(() => this.venue()?.sets.length ?? 0);
   /** Free sets today, from the shared venue map's per-set availability. */
@@ -68,9 +67,7 @@ export class ConsoleStatsStrip {
    */
   protected readonly walkIns = computed(() => {
     const held = this.held();
-    return held === undefined
-      ? undefined
-      : held.filter((s) => s.state === 'STAFF_MARKED').length;
+    return held === undefined ? undefined : held.filter((s) => s.state === 'STAFF_MARKED').length;
   });
 
   /**

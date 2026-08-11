@@ -206,7 +206,10 @@ export class VenueMap {
       reviewsCount: v.reviewsCount,
       priceLabel: v.fromPrice ? formatMoney(v.fromPrice) : null,
       water: distanceToWaterLabel(v.distanceToWaterM ?? null),
-      amenities: orderedAmenities(v.amenities ?? []).map((code) => ({ code, label: amenityLabel(code) })),
+      amenities: orderedAmenities(v.amenities ?? []).map((code) => ({
+        code,
+        label: amenityLabel(code),
+      })),
     };
   });
 

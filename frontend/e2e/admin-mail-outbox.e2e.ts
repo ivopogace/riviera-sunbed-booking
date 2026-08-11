@@ -67,9 +67,7 @@ test('an admin resubmits the outstanding mail and is told how much was handed ba
 
   await page.getByTestId('admin-outbox-resubmit').click();
 
-  await expect(page.getByTestId('admin-outbox-notice')).toHaveText(
-    'Handed 3 back for delivery.',
-  );
+  await expect(page.getByTestId('admin-outbox-notice')).toHaveText('Handed 3 back for delivery.');
   // The card reconciles from the server rather than assuming — the outbox is now empty.
   await expect(page.getByTestId('admin-outbox-empty')).toBeVisible();
   await expectNoSeriousAxeViolations(page, 'admin mail outbox after resubmitting');
@@ -92,7 +90,9 @@ test('a press inside the cooldown reads as a refusal, not as a failure', async (
   await expectNoSeriousAxeViolations(page, 'admin mail outbox cooling down');
 });
 
-test('the tab strip marks the open tab and moves between the console sections', async ({ page }) => {
+test('the tab strip marks the open tab and moves between the console sections', async ({
+  page,
+}) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
   await mockMailOutbox(page, { outstanding: 0 });
   await openEmailTab(page);

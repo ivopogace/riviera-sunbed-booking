@@ -141,7 +141,9 @@ describe('OperatorConsoleService — Request-to-Book client (#176)', () => {
     let actual: number | undefined;
     service.pendingRequestCount(1).subscribe((n) => (actual = n));
 
-    httpMock.expectOne(`${BASE}/api/venues/1/booking-requests`).flush([REQUEST, { ...REQUEST, bookingId: 12 }]);
+    httpMock
+      .expectOne(`${BASE}/api/venues/1/booking-requests`)
+      .flush([REQUEST, { ...REQUEST, bookingId: 12 }]);
     expect(actual).toBe(2);
   });
 
@@ -285,10 +287,13 @@ describe('check-in error mapping (#583)', () => {
   });
 
   it('reads the bookingDate extension only when the problem body really carries one', () => {
-    expect(checkInWrongDateOf(http(409, { code: 'WRONG_SERVICE_DATE', bookingDate: '2026-08-15' })))
-      .toBe('2026-08-15');
+    expect(
+      checkInWrongDateOf(http(409, { code: 'WRONG_SERVICE_DATE', bookingDate: '2026-08-15' })),
+    ).toBe('2026-08-15');
     expect(checkInWrongDateOf(http(409, { code: 'WRONG_SERVICE_DATE' }))).toBeUndefined();
-    expect(checkInWrongDateOf(http(409, { code: 'WRONG_SERVICE_DATE', bookingDate: 7 }))).toBeUndefined();
+    expect(
+      checkInWrongDateOf(http(409, { code: 'WRONG_SERVICE_DATE', bookingDate: 7 })),
+    ).toBeUndefined();
     expect(checkInWrongDateOf(new Error('offline'))).toBeUndefined();
   });
 });

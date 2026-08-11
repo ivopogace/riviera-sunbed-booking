@@ -220,9 +220,7 @@ export class SetEditor {
           gridY,
           setId: set?.id ?? null,
           state,
-          selected: empty
-            ? cell?.gridX === gridX && cell?.gridY === gridY
-            : set.id === selectedId,
+          selected: empty ? cell?.gridX === gridX && cell?.gridY === gridY : set.id === selectedId,
           // While a move is armed only empty cells are targets, so an occupied one offers nothing.
           disabled: moving && !empty,
           label: `Row ${gridRowLabel(y)} position ${gridX}, ${
@@ -451,7 +449,10 @@ export class SetEditor {
    * untouched. The follow-up rides the success path rather than a resolved promise the caller awaits,
    * so it lands in the same turn as the announcement — and never at all for a superseded write.
    */
-  private async write<T>(call: () => Observable<T>, onApplied?: (result: T) => void): Promise<void> {
+  private async write<T>(
+    call: () => Observable<T>,
+    onApplied?: (result: T) => void,
+  ): Promise<void> {
     const venueId = this.venueId();
     this.busy.set(true);
     this.saved.set(false);
@@ -487,6 +488,9 @@ function slot(gridX: number, gridY: number): string {
  * The row label and position number a grid cell implies — the same derivation the bulk editor uses,
  * so a set placed here reads to the guest exactly as one generated there would.
  */
-function placementAt(gridX: number, gridY: number): Pick<SetWriteRequest, 'rowLabel' | 'positionNo' | 'gridX' | 'gridY'> {
+function placementAt(
+  gridX: number,
+  gridY: number,
+): Pick<SetWriteRequest, 'rowLabel' | 'positionNo' | 'gridX' | 'gridY'> {
   return { rowLabel: gridRowLabel(gridY - 1), positionNo: gridX, gridX, gridY };
 }

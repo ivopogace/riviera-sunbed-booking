@@ -47,7 +47,8 @@ const TOOL_LABEL: Record<CellState, string> = {
 const SWATCH_CLASS: Record<CellState, string> = {
   premium: 'bg-[linear-gradient(180deg,#ffe3a3,#f4c05a)]',
   standard: 'bg-white/85',
-  walkin: 'bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.35)_0_3px,rgba(12,42,51,0.12)_3px_6px)]',
+  walkin:
+    'bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.35)_0_3px,rgba(12,42,51,0.12)_3px_6px)]',
   gap: 'bg-transparent',
 };
 
@@ -153,7 +154,6 @@ export class LayoutEditor {
   /** Bumped per venue context: an identity guard — a venueId value check passes again
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
-
 
   /**
    * Prices of the sets loaded from the venue, keyed by `${gridX},${gridY}` — so a load→save round-trip
@@ -479,7 +479,9 @@ export class LayoutEditor {
           tier: premium ? 'PREMIUM' : 'STANDARD',
           pool: state === 'walkin' ? 'WALK_IN' : 'ONLINE',
           // Preserve a loaded set's price; only a new cell takes the tier default (Pricing owns prices).
-          price: this.priceByCoord.get(coordKey(x + 1, y + 1)) ?? (premium ? PREMIUM_PRICE : STANDARD_PRICE),
+          price:
+            this.priceByCoord.get(coordKey(x + 1, y + 1)) ??
+            (premium ? PREMIUM_PRICE : STANDARD_PRICE),
           gridX: x + 1,
           gridY: y + 1,
         });
@@ -546,7 +548,8 @@ export class LayoutEditor {
     }
     const premium = row[firstSet] === 'premium';
     const price =
-      this.priceByCoord.get(coordKey(firstSet + 1, y + 1)) ?? (premium ? PREMIUM_PRICE : STANDARD_PRICE);
+      this.priceByCoord.get(coordKey(firstSet + 1, y + 1)) ??
+      (premium ? PREMIUM_PRICE : STANDARD_PRICE);
     return formatMoney(price);
   }
 }
@@ -554,4 +557,3 @@ export class LayoutEditor {
 function coordKey(gridX: number, gridY: number): string {
   return `${gridX},${gridY}`;
 }
-

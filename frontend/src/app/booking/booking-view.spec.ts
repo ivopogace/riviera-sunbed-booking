@@ -91,7 +91,9 @@ function stubService(opts: {
     getByCode: (code: string) => {
       opts.getCalls?.push(code);
       const detail = served++ === 0 ? opts.detail! : (opts.detailAfterCancel ?? opts.detail!);
-      return (opts.getError ? throwError(() => opts.getError) : of(detail)) as Observable<BookingDetail>;
+      return (
+        opts.getError ? throwError(() => opts.getError) : of(detail)
+      ) as Observable<BookingDetail>;
     },
     cancel: (code: string) => {
       opts.cancelCalls?.push(code);
@@ -358,9 +360,7 @@ describe('BookingView', () => {
   });
 
   it('keeps the request on screen and explains when the withdraw fails', async () => {
-    const fixture = await render(
-      stubService({ detail: PENDING, withdrawError: { status: 409 } }),
-    );
+    const fixture = await render(stubService({ detail: PENDING, withdrawError: { status: 409 } }));
     const host = fixture.nativeElement as HTMLElement;
 
     (host.querySelector('[data-testid="withdraw-request"]') as HTMLButtonElement).click();
@@ -429,9 +429,7 @@ describe('BookingView', () => {
   });
 
   it('retires a failed withdrawal once the guest arms or abandons another', async () => {
-    const fixture = await render(
-      stubService({ detail: PENDING, withdrawError: { status: 500 } }),
-    );
+    const fixture = await render(stubService({ detail: PENDING, withdrawError: { status: 500 } }));
     const host = fixture.nativeElement as HTMLElement;
     const result = () => host.querySelector('[data-testid="withdraw-result"]')?.textContent ?? '';
 
@@ -455,9 +453,7 @@ describe('BookingView', () => {
 
   it('renders no withdraw control when the server says the request is not withdrawable', async () => {
     // The server owns the rule — the template gates on `withdrawable`, never on the status.
-    const fixture = await render(
-      stubService({ detail: { ...PENDING, withdrawable: false } }),
-    );
+    const fixture = await render(stubService({ detail: { ...PENDING, withdrawable: false } }));
     const host = fixture.nativeElement as HTMLElement;
 
     expect(host.querySelector('[data-testid="request-pending"]')).not.toBeNull();
@@ -584,7 +580,9 @@ describe('BookingView', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe('Cancelled');
+    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe(
+      'Cancelled',
+    );
     expect(host.querySelector('[data-testid="refunded-amount"]')?.textContent).toContain('45');
     expect(host.querySelector('[data-testid="cancel-result"]')?.textContent).toContain('refunded');
     // The cancel action is gone once cancelled.
@@ -890,11 +888,15 @@ describe('BookingView', () => {
   // A status outside the booking-status union (FE deployed before a new backend lifecycle state) must degrade to a humanized label, not throw in the STATUS_META lookup.
   it('renders an unmapped status gracefully instead of crashing (FE/BE skew)', async () => {
     const fixture = await render(
-      stubService({ detail: { ...DETAIL, status: 'ON_HOLD' as BookingStatus, cancellable: false } }),
+      stubService({
+        detail: { ...DETAIL, status: 'ON_HOLD' as BookingStatus, cancellable: false },
+      }),
     );
     const host = fixture.nativeElement as HTMLElement;
 
-    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe('On hold');
+    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe(
+      'On hold',
+    );
     // Unknown status must not claim money moved: the amount row falls back to "Amount".
     expect(host.textContent).toContain('Amount');
   });
@@ -904,7 +906,9 @@ describe('BookingView', () => {
     let calls = 0;
     const service: Partial<BookingService> = {
       getByCode: () =>
-        (calls++ === 0 ? of(DETAIL) : throwError(() => ({ status: 500 }))) as Observable<BookingDetail>,
+        (calls++ === 0
+          ? of(DETAIL)
+          : throwError(() => ({ status: 500 }))) as Observable<BookingDetail>,
       cancel: () => of(CANCELLATION),
       beginPayment: () => undefined,
       takePrefetched: () => undefined,
@@ -931,7 +935,9 @@ describe('BookingView', () => {
 
     expect(host.textContent).toContain('Booking status');
     // The chip's own text stays exactly the label (testid contract preserved).
-    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe('Confirmed');
+    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe(
+      'Confirmed',
+    );
   });
 
   // The celebratory emoji is decorative (aria-hidden), not part of the heading name.
@@ -951,7 +957,9 @@ describe('BookingView', () => {
 
     const hidden = host.querySelector('[data-testid="request-accepted"] [aria-hidden="true"]');
     expect(hidden?.textContent).toContain('🎉');
-    expect(host.querySelector('[data-testid="request-accepted"]')?.textContent).toContain('Request accepted');
+    expect(host.querySelector('[data-testid="request-accepted"]')?.textContent).toContain(
+      'Request accepted',
+    );
     await expectNoAxeViolations(host);
   });
 

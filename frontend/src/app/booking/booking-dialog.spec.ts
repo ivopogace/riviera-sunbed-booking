@@ -128,7 +128,9 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     expect(probe().step()).toBe(1);
     expect(host().querySelector('[data-testid="dialog-date"]')?.textContent).toContain('Dec');
     expect(host().querySelector('[data-testid="dialog-price"]')?.textContent).toContain('€45');
-    expect(host().querySelector('[data-testid="step-1"]')?.getAttribute('aria-current')).toBe('step');
+    expect(host().querySelector('[data-testid="step-1"]')?.getAttribute('aria-current')).toBe(
+      'step',
+    );
     expect(host().querySelector('[data-testid="step-2"]')?.getAttribute('aria-current')).toBeNull();
     // Date is now owned by the map — no editable date field in the dialog.
     expect(host().querySelector('input[type="date"]')).toBeNull();
@@ -171,7 +173,9 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
 
     await goToReview();
     expect(probe().step()).toBe(2);
-    expect(host().querySelector('[data-testid="step-2"]')?.getAttribute('aria-current')).toBe('step');
+    expect(host().querySelector('[data-testid="step-2"]')?.getAttribute('aria-current')).toBe(
+      'step',
+    );
   });
 
   it('Review step (INSTANT) shows the summary + total + Instant note + "Continue to payment"; Back returns', async () => {
@@ -187,7 +191,9 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     host().querySelector<HTMLButtonElement>('[data-testid="dialog-back"]')!.click();
     await fixture.whenStable();
     expect(probe().step()).toBe(1);
-    expect(host().querySelector('[data-testid="step-1"]')?.getAttribute('aria-current')).toBe('step');
+    expect(host().querySelector('[data-testid="step-1"]')?.getAttribute('aria-current')).toBe(
+      'step',
+    );
   });
 
   /**

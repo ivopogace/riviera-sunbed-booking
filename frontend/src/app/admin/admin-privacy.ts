@@ -147,10 +147,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                 aria-labelledby="admin-privacy-confirm-heading"
                 class="mt-4 rounded-[14px] border border-[rgba(179,54,43,0.35)] bg-[rgba(179,54,43,0.06)] p-4 [animation:riv-pop_0.22s_ease] motion-reduce:[animation:none]"
               >
-                <h3
-                  id="admin-privacy-confirm-heading"
-                  class="text-[14px] font-bold text-[#8f2c22]"
-                >
+                <h3 id="admin-privacy-confirm-heading" class="text-[14px] font-bold text-[#8f2c22]">
                   Erase everything linked to this email?
                 </h3>
                 <p class="mt-2 text-[13px] leading-relaxed text-(--riv-card-ink-soft)">
@@ -247,7 +244,9 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               What survives an erasure
             </h2>
 
-            <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-2 gap-y-2.5 text-[12.5px] leading-relaxed text-(--riv-card-ink-soft)">
+            <dl
+              class="mt-3 grid grid-cols-[auto_1fr] gap-x-2 gap-y-2.5 text-[12.5px] leading-relaxed text-(--riv-card-ink-soft)"
+            >
               <dt class="font-bold text-[#b3261e]">Erased</dt>
               <dd>Name, email, phone — overwritten in place, not deleted rows.</dd>
               <dt class="font-bold text-[#0a5f73]">Kept</dt>

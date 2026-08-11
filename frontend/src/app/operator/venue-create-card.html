@@ -22,7 +22,11 @@
   }
 
   @if (operator.signedIn()) {
-    <form class="flex flex-col gap-3" (submit)="onCreateVenue(); $event.preventDefault()" novalidate>
+    <form
+      class="flex flex-col gap-3"
+      (submit)="onCreateVenue(); $event.preventDefault()"
+      novalidate
+    >
       <label class="field flex flex-col gap-1">
         <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Name</span>
         <input

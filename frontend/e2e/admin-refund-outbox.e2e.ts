@@ -69,9 +69,7 @@ test('an admin resubmits the outstanding refunds and is told how much was handed
 
   await page.getByTestId('admin-refunds-resubmit').click();
 
-  await expect(page.getByTestId('admin-refunds-notice')).toHaveText(
-    'Handed 3 back to be retried.',
-  );
+  await expect(page.getByTestId('admin-refunds-notice')).toHaveText('Handed 3 back to be retried.');
   // The card reconciles from the server rather than assuming — the outbox is now empty.
   await expect(page.getByTestId('admin-refunds-empty')).toBeVisible();
   await expectNoSeriousAxeViolations(page, 'admin refund outbox after resubmitting');

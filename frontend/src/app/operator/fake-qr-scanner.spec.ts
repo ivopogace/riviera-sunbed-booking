@@ -4,7 +4,10 @@ import { FakeQrScanner } from './fake-qr-scanner';
 
 describe('FakeQrScanner', () => {
   it('emits the queued fake payloads one start() at a time, like successive real scans', async () => {
-    (globalThis as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__ = ['CODE-ONE', 'CODE-TWO'];
+    (globalThis as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__ = [
+      'CODE-ONE',
+      'CODE-TWO',
+    ];
     const scanner = new FakeQrScanner();
     const onCode = vi.fn();
 

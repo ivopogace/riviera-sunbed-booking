@@ -1,4 +1,9 @@
-import { AMENITY_CATALOGUE, amenityLabel, distanceToWaterLabel, orderedAmenities } from './amenities';
+import {
+  AMENITY_CATALOGUE,
+  amenityLabel,
+  distanceToWaterLabel,
+  orderedAmenities,
+} from './amenities';
 
 describe('amenities catalogue (shared vocabulary, T7 #140)', () => {
   it('is the 11 fixed catalogue codes in canonical order (mirrors the backend enum)', () => {

@@ -155,7 +155,6 @@ export class DailyViewTab {
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
-
   constructor() {
     // Re-runs on an in-place venue switch: reset to the fresh-mount state, then load.
     effect(() => {
@@ -174,10 +173,12 @@ export class DailyViewTab {
   }
 
   private startScanner(video: HTMLVideoElement | undefined): void {
-    this.scanner.start(video, (payload) => this.onScanPayload(payload)).catch((error: unknown) => {
-      this.closeScan();
-      this.checkInNotice.set({ tone: 'error', text: cameraUnavailableMessage(error) });
-    });
+    this.scanner
+      .start(video, (payload) => this.onScanPayload(payload))
+      .catch((error: unknown) => {
+        this.closeScan();
+        this.checkInNotice.set({ tone: 'error', text: cameraUnavailableMessage(error) });
+      });
   }
 
   protected toggleScan(): void {

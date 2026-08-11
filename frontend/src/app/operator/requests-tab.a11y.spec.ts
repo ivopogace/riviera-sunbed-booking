@@ -44,7 +44,10 @@ describe('RequestsTab a11y (#176)', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: { paramMap: convertToParamMap({}) },
-            parent: { snapshot: { paramMap: convertToParamMap({ venueId: '1' }) }, paramMap: of(convertToParamMap({ venueId: '1' })) },
+            parent: {
+              snapshot: { paramMap: convertToParamMap({ venueId: '1' }) },
+              paramMap: of(convertToParamMap({ venueId: '1' })),
+            },
           },
         },
       ],
@@ -59,8 +62,19 @@ describe('RequestsTab a11y (#176)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
       .flush(requests);
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1') && !r.url.includes('/booking-requests'))
-      .flush({ id: 1, name: 'V', beach: 'Ksamil', region: 'Riviera', sets: [seat(1, 'A', 1, 'PREMIUM')] });
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/booking-requests'),
+      )
+      .flush({
+        id: 1,
+        name: 'V',
+        beach: 'Ksamil',
+        region: 'Riviera',
+        sets: [seat(1, 'A', 1, 'PREMIUM')],
+      });
     fixture.detectChanges();
   }
 

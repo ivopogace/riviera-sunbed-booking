@@ -2,12 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from '../support/axe';
 import { OperatorSignInPage } from '../support/pages/operator-sign-in.page';
-import {
-  OPERATOR_USERNAME,
-  createVenue,
-  signInOperator,
-  venueName,
-} from './support/operator';
+import { OPERATOR_USERNAME, createVenue, signInOperator, venueName } from './support/operator';
 
 /**
  * Real-backend e2e for venue ONBOARDING, which lives on the operator home's create state

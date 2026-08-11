@@ -194,7 +194,9 @@ describe('LayoutEditor (#172)', () => {
   it('exposes an accessible per-cell label naming row, position and state', () => {
     render();
     generate('1', '2');
-    expect(cells()[0].getAttribute('aria-label')).toBe('Row A position 1, front row, premium, online');
+    expect(cells()[0].getAttribute('aria-label')).toBe(
+      'Row A position 1, front row, premium, online',
+    );
   });
 
   it('saves the whole grid as one PUT, omitting gap cells', async () => {
@@ -207,7 +209,9 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
 
     byId('layout-save').click();
-    const req = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'));
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+    );
     expect(req.request.body.sets).toHaveLength(1);
     expect(req.request.body.sets[0]).toMatchObject({
       rowLabel: 'A',
@@ -335,14 +339,18 @@ describe('LayoutEditor (#172)', () => {
     generate('1', '1');
 
     byId('layout-save').click();
-    const first = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'));
+    const first = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+    );
     expect(first.request.body.expectedVersion).toBe(5);
     first.flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
 
     byId('layout-save').click();
-    const second = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'));
+    const second = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+    );
     expect(second.request.body.expectedVersion).toBe(6); // advanced, not the stale 5
     second.flush(null);
     await fixture.whenStable();
@@ -440,7 +448,12 @@ describe('LayoutEditor (#172)', () => {
     // The RETURN visit's read settles first (empty layout at version 9)…
     venue1Reads[1].flush({ id: 1, name: 'V', sets: [], setVersion: 9 });
     // …then the FIRST visit's response arrives last. It must not seed the returned-to editor.
-    venue1Reads[0].flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 7 });
+    venue1Reads[0].flush({
+      id: 1,
+      name: 'V',
+      sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)],
+      setVersion: 7,
+    });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
 

@@ -63,7 +63,9 @@ import { LedgerRow } from './operator-console.model';
 
         <div class="mt-5 overflow-hidden rounded-[14px] border border-[#0c2a33]/12">
           <table class="w-full border-collapse text-[12.5px]">
-            <caption class="sr-only">Statement entries</caption>
+            <caption class="sr-only">
+              Statement entries
+            </caption>
             <thead>
               <tr
                 class="bg-[#0c2a33]/4 text-[10.5px] uppercase tracking-[0.06em] text-(--riv-card-ink-soft)"
@@ -133,8 +135,8 @@ import { LedgerRow } from './operator-console.model';
           </div>
         </div>
         <p class="mt-3.5 text-[11.5px] leading-[1.5] text-(--riv-card-ink-faint)">
-          Payouts are batched and settled manually by bank transfer at period end. Refund reversals are
-          netted into the total above. Amounts in {{ currency() }}.
+          Payouts are batched and settled manually by bank transfer at period end. Refund reversals
+          are netted into the total above. Amounts in {{ currency() }}.
         </p>
       </div>
     </div>

@@ -60,7 +60,17 @@ const VENUE_MAP = {
   amenities: [],
   distanceToWaterM: 15,
   sets: [
-    { id: 1, rowLabel: 'Front row', positionNo: 1, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 4500, currency: 'EUR' }, gridX: 1, gridY: 1, availability: 'FREE' },
+    {
+      id: 1,
+      rowLabel: 'Front row',
+      positionNo: 1,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 4500, currency: 'EUR' },
+      gridX: 1,
+      gridY: 1,
+      availability: 'FREE',
+    },
   ],
   coverPhoto: COVER,
 };

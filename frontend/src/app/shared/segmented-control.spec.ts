@@ -19,8 +19,16 @@ type Audience = 'tourist' | 'operator';
 })
 class SegmentedControlHost {
   readonly options: readonly SegmentedOption<Audience>[] = [
-    { value: 'tourist', label: 'Book a sunbed', description: 'Find beaches and reserve your spot.' },
-    { value: 'operator', label: 'Run a venue', description: 'List your beach and manage bookings.' },
+    {
+      value: 'tourist',
+      label: 'Book a sunbed',
+      description: 'Find beaches and reserve your spot.',
+    },
+    {
+      value: 'operator',
+      label: 'Run a venue',
+      description: 'List your beach and manage bookings.',
+    },
   ];
   readonly audience = signal<Audience>('tourist');
   readonly variant = signal<'pill' | 'card'>('pill');

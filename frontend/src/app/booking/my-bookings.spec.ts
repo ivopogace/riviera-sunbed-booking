@@ -80,7 +80,10 @@ function pendingService(): Partial<BookingService> & {
 }
 
 /** Resolve one held per-code lookup with a CONFIRMED detail. */
-function resolve(service: { readonly inFlight: Map<string, Subject<BookingDetail>> }, code: string): void {
+function resolve(
+  service: { readonly inFlight: Map<string, Subject<BookingDetail>> },
+  code: string,
+): void {
   const subject = service.inFlight.get(code);
   subject?.next(detail(code, 'CONFIRMED'));
   subject?.complete();
@@ -194,7 +197,9 @@ describe('MyBookings (device-local list, issue #139)', () => {
     const fixture = await render(
       stubService({
         // 16:00Z on a CET (winter, UTC+1) date → 17:00 Europe/Tirane wall clock.
-        PEND0001: detail('PEND0001', 'PENDING_REQUEST', { requestExpiresAt: '2026-11-30T16:00:00Z' }),
+        PEND0001: detail('PEND0001', 'PENDING_REQUEST', {
+          requestExpiresAt: '2026-11-30T16:00:00Z',
+        }),
       }),
     );
     const host = fixture.nativeElement as HTMLElement;
@@ -232,13 +237,18 @@ describe('MyBookings (device-local list, issue #139)', () => {
     ['EXPIRED', {}, 'Amount'],
     ['AWAITING_PAYMENT', {}, 'Amount'],
     ['PENDING_REQUEST', { requestExpiresAt: '2026-11-30T16:00:00Z' }, 'Amount'],
-  ])('labels the row amount for %s as "%s" (no-charge states not shown as Paid)', async (status, extra, label) => {
-    seedCodes(['AMNT0001']);
-    const fixture = await render(stubService({ AMNT0001: detail('AMNT0001', status, extra) }));
-    const host = fixture.nativeElement as HTMLElement;
+  ])(
+    'labels the row amount for %s as "%s" (no-charge states not shown as Paid)',
+    async (status, extra, label) => {
+      seedCodes(['AMNT0001']);
+      const fixture = await render(stubService({ AMNT0001: detail('AMNT0001', status, extra) }));
+      const host = fixture.nativeElement as HTMLElement;
 
-    expect(host.querySelector('[data-testid="row-amount-label"]')?.textContent?.trim()).toBe(label);
-  });
+      expect(host.querySelector('[data-testid="row-amount-label"]')?.textContent?.trim()).toBe(
+        label,
+      );
+    },
+  );
 
   it('keeps a transiently-failed code and retries it (never loses a valid booking)', async () => {
     seedCodes(['TRAN5678']);
@@ -340,7 +350,9 @@ describe('MyBookings (device-local list, issue #139)', () => {
       await fixture.whenStable();
       fixture.detectChanges();
       const interim = [
-        ...host.querySelectorAll('[data-testid="booking-row"], [data-testid="booking-row-loading"]'),
+        ...host.querySelectorAll(
+          '[data-testid="booking-row"], [data-testid="booking-row-loading"]',
+        ),
       ];
       expect(interim[0].getAttribute('data-testid')).toBe('booking-row');
       expect(interim[0].textContent).toContain('FAST0001');
@@ -591,7 +603,9 @@ describe('MyBookings (device-local list, issue #139)', () => {
       fixture.detectChanges();
 
       expect(host.querySelector('[data-testid="account-error"]')).toBeNull();
-      expect(host.querySelector('[data-testid="booking-row"]')?.textContent).toContain('ACCTLATER1');
+      expect(host.querySelector('[data-testid="booking-row"]')?.textContent).toContain(
+        'ACCTLATER1',
+      );
     });
   });
 });

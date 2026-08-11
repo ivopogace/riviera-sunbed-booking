@@ -81,7 +81,10 @@ describe('Home (venue discovery)', () => {
   it('renders the cover photo on a card that has one and the gradient fallback on one that does not (#142)', async () => {
     const [withCover, noPhoto] = venues();
     listRequest().flush([
-      { ...withCover, coverPhoto: { card: '/api/venues/1/photos/aa01', banner: '/api/venues/1/photos/bb02' } },
+      {
+        ...withCover,
+        coverPhoto: { card: '/api/venues/1/photos/aa01', banner: '/api/venues/1/photos/bb02' },
+      },
       noPhoto,
     ]);
     await fixture.whenStable();
@@ -90,7 +93,9 @@ describe('Home (venue discovery)', () => {
     const cards = el().querySelectorAll('[data-testid="venue-card"]');
     const coverImg = cards[0].querySelector<HTMLImageElement>('[data-testid="card-photo-img"]');
     // The service resolves the wire's root-relative path against the API origin.
-    expect(coverImg?.getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/aa01`);
+    expect(coverImg?.getAttribute('src')).toBe(
+      `${environment.apiBaseUrl}/api/venues/1/photos/aa01`,
+    );
     // The scrim stays layered over the photo — the location text's AA floor depends on it.
     expect(cards[0].querySelector('.photo-scrim')).toBeTruthy();
     expect(cards[0].querySelector('.photo-sun')).toBeNull();
@@ -111,12 +116,20 @@ describe('Home (venue discovery)', () => {
     expect(first.textContent).toContain('Ksamil · Albanian Riviera');
     expect(first.textContent).toContain('4.8'); // rating tenths → display
     expect(first.textContent).toContain('€25'); // fromPrice 2500 minor units
-    expect(first.querySelector('[data-testid="card-availability"]')?.textContent).toContain('18 of 24');
+    expect(first.querySelector('[data-testid="card-availability"]')?.textContent).toContain(
+      '18 of 24',
+    );
   });
 
   it('renders a "New" state (no ★ 0.0 / "0 reviews") for an unrated venue (#154)', async () => {
     const [rated] = venues();
-    const unrated: VenueSummary = { ...rated, id: 2, name: 'Miramare', ratingTenths: 0, reviewsCount: 0 };
+    const unrated: VenueSummary = {
+      ...rated,
+      id: 2,
+      name: 'Miramare',
+      ratingTenths: 0,
+      reviewsCount: 0,
+    };
     listRequest().flush([unrated]);
     await fixture.whenStable();
 
@@ -130,11 +143,18 @@ describe('Home (venue discovery)', () => {
 
   it('does not announce "rated 0.0 out of 5" for an unrated venue (#154)', async () => {
     const [rated] = venues();
-    const unrated: VenueSummary = { ...rated, id: 2, name: 'Miramare', ratingTenths: 0, reviewsCount: 0 };
+    const unrated: VenueSummary = {
+      ...rated,
+      id: 2,
+      name: 'Miramare',
+      ratingTenths: 0,
+      reviewsCount: 0,
+    };
     listRequest().flush([unrated]);
     await fixture.whenStable();
 
-    const label = el().querySelector('[data-testid="venue-card"]')?.getAttribute('aria-label') ?? '';
+    const label =
+      el().querySelector('[data-testid="venue-card"]')?.getAttribute('aria-label') ?? '';
     expect(label).toContain('no reviews yet');
     expect(label).not.toContain('rated 0.0 out of 5');
   });
@@ -330,7 +350,9 @@ describe('Home (venue discovery)', () => {
 
     // Venue 1: to-water chip first, then the first 3 amenities in catalogue order (WiFi dropped).
     const firstChips = cards[0].querySelector('[data-testid="card-chips"]')!;
-    const chipTexts = [...firstChips.querySelectorAll('.amenity-chip')].map((c) => c.textContent?.trim());
+    const chipTexts = [...firstChips.querySelectorAll('.amenity-chip')].map((c) =>
+      c.textContent?.trim(),
+    );
     expect(chipTexts).toEqual(['15m to water', 'Beach bar', 'Free parking', 'Showers']);
 
     // The card content is aria-hidden, so the chip text must also reach AT via the accessible name.

@@ -25,7 +25,17 @@ const VENUE = {
   bookingMode: 'INSTANT',
   fromPrice: { minorUnits: 2500, currency: 'EUR' },
   sets: [
-    { id: 2, rowLabel: 'Front row · Sea view', positionNo: 2, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 4500, currency: 'EUR' }, gridX: 2, gridY: 1, availability: 'FREE' },
+    {
+      id: 2,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 2,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 4500, currency: 'EUR' },
+      gridX: 2,
+      gridY: 1,
+      availability: 'FREE',
+    },
   ],
 };
 
@@ -89,7 +99,10 @@ test.beforeEach(async ({ page }) => {
 
 async function bookThroughDialog(page: import('@playwright/test').Page): Promise<void> {
   await page.goto('/venues/1');
-  await page.getByRole('button', { name: /Select to book/ }).first().click();
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
   await completeDialog(page.getByRole('dialog'), 'Continue to payment');
 }
 

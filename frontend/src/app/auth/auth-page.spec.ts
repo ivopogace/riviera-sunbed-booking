@@ -83,7 +83,9 @@ describe('AuthPage', () => {
   }
 
   function title(): string {
-    return el('auth-form') ? (fixture.nativeElement.querySelector('#auth-title')?.textContent ?? '') : '';
+    return el('auth-form')
+      ? (fixture.nativeElement.querySelector('#auth-title')?.textContent ?? '')
+      : '';
   }
 
   function el<T extends HTMLElement>(testId: string): T {
@@ -161,7 +163,9 @@ describe('AuthPage', () => {
       type('auth-password', 'wrong');
       await submit();
 
-      expect(el('auth-error').textContent).toContain('Sign-in failed. Check your email and password.');
+      expect(el('auth-error').textContent).toContain(
+        'Sign-in failed. Check your email and password.',
+      );
       expect(navigate).not.toHaveBeenCalled();
     });
 

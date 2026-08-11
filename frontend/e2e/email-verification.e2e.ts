@@ -60,7 +60,9 @@ test('the resend keeps the sent copy for a deliverable address', async ({ page }
   await page.goto('/account/password');
   await page.getByTestId('setpw-resend').click();
 
-  await expect(page.getByTestId('setpw-notice')).toContainText('Verification email sent. Check your inbox.');
+  await expect(page.getByTestId('setpw-notice')).toContainText(
+    'Verification email sent. Check your inbox.',
+  );
 });
 
 test('an invalid or missing verification link is a clear dead-end', async ({ page }) => {

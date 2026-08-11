@@ -66,10 +66,8 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
 
   function text(testid: string): string {
     return (
-      host()
-        .querySelector(`[data-testid="${testid}"]`)
-        ?.textContent?.replace(/\s+/g, ' ')
-        .trim() ?? ''
+      host().querySelector(`[data-testid="${testid}"]`)?.textContent?.replace(/\s+/g, ' ').trim() ??
+      ''
     );
   }
 

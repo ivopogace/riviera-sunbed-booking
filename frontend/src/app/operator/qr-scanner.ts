@@ -11,7 +11,10 @@ export abstract class QrScanner {
    * via `codeFromScan`). `video` is the live preview element when the adapter drives a camera; the
    * fake ignores it. Resolves once scanning is underway; rejects when the camera is unavailable.
    */
-  abstract start(video: HTMLVideoElement | undefined, onCode: (text: string) => void): Promise<void>;
+  abstract start(
+    video: HTMLVideoElement | undefined,
+    onCode: (text: string) => void,
+  ): Promise<void>;
 
   /** Stop scanning and release the camera. Safe to call when never started. */
   abstract stop(): void;

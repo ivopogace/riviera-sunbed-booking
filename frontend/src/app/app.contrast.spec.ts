@@ -37,12 +37,48 @@ interface GlassPair {
 }
 
 const PAIRS: readonly GlassPair[] = [
-  { usage: 'riviera: ink (brand, chip text) on header glass', ink: WHITE, inkAlpha: 1, glass: RIVIERA_HEADER_GLASS, stops: RIVIERA_STOPS },
-  { usage: 'riviera: ink-soft (nav links, footer) on header glass', ink: WHITE, inkAlpha: 0.86, glass: RIVIERA_HEADER_GLASS, stops: RIVIERA_STOPS },
-  { usage: 'riviera: ink-faint (brand subtitle) on header glass', ink: WHITE, inkAlpha: 0.8, glass: RIVIERA_HEADER_GLASS, stops: RIVIERA_STOPS },
-  { usage: 'porcelain: ink on header glass', ink: INK_DARK, inkAlpha: 1, glass: PORCELAIN_HEADER_GLASS, stops: PORCELAIN_STOPS },
-  { usage: 'porcelain: ink-soft (nav links, footer) on header glass', ink: INK_DARK, inkAlpha: 0.7, glass: PORCELAIN_HEADER_GLASS, stops: PORCELAIN_STOPS },
-  { usage: 'porcelain: ink-faint (brand subtitle) on header glass', ink: INK_DARK, inkAlpha: 0.66, glass: PORCELAIN_HEADER_GLASS, stops: PORCELAIN_STOPS },
+  {
+    usage: 'riviera: ink (brand, chip text) on header glass',
+    ink: WHITE,
+    inkAlpha: 1,
+    glass: RIVIERA_HEADER_GLASS,
+    stops: RIVIERA_STOPS,
+  },
+  {
+    usage: 'riviera: ink-soft (nav links, footer) on header glass',
+    ink: WHITE,
+    inkAlpha: 0.86,
+    glass: RIVIERA_HEADER_GLASS,
+    stops: RIVIERA_STOPS,
+  },
+  {
+    usage: 'riviera: ink-faint (brand subtitle) on header glass',
+    ink: WHITE,
+    inkAlpha: 0.8,
+    glass: RIVIERA_HEADER_GLASS,
+    stops: RIVIERA_STOPS,
+  },
+  {
+    usage: 'porcelain: ink on header glass',
+    ink: INK_DARK,
+    inkAlpha: 1,
+    glass: PORCELAIN_HEADER_GLASS,
+    stops: PORCELAIN_STOPS,
+  },
+  {
+    usage: 'porcelain: ink-soft (nav links, footer) on header glass',
+    ink: INK_DARK,
+    inkAlpha: 0.7,
+    glass: PORCELAIN_HEADER_GLASS,
+    stops: PORCELAIN_STOPS,
+  },
+  {
+    usage: 'porcelain: ink-faint (brand subtitle) on header glass',
+    ink: INK_DARK,
+    inkAlpha: 0.66,
+    glass: PORCELAIN_HEADER_GLASS,
+    stops: PORCELAIN_STOPS,
+  },
 ];
 
 describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {

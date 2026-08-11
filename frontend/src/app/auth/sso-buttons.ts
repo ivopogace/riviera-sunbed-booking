@@ -23,11 +23,11 @@ import { SsoProviderId } from '../core/sso-redirect';
 
       <div class="flex flex-col gap-2.5" role="group" aria-label="Continue with a provider">
         @for (provider of providers; track provider.id) {
-        <button
-          type="button"
-          [attr.data-testid]="provider.testId"
-          class="w-full cursor-pointer rounded-[14px] border border-(--riv-field-border) bg-(--riv-field-fill) px-3 py-3 text-[14px] font-semibold text-(--riv-card-ink) transition hover:brightness-[0.97] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-[color:var(--riv-accent-ink)]"
-          (click)="continueWith(provider.id)"
+          <button
+            type="button"
+            [attr.data-testid]="provider.testId"
+            class="w-full cursor-pointer rounded-[14px] border border-(--riv-field-border) bg-(--riv-field-fill) px-3 py-3 text-[14px] font-semibold text-(--riv-card-ink) transition hover:brightness-[0.97] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-[color:var(--riv-accent-ink)]"
+            (click)="continueWith(provider.id)"
           >
             {{ provider.label }}
           </button>

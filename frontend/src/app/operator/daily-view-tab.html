@@ -34,8 +34,8 @@
           aria-live="polite"
         >
           <strong class="text-(--riv-card-ink)">{{ markedCount() }}</strong> walk-in marked ·
-          <strong class="text-(--riv-card-ink)">{{ freeCount() }}</strong> of {{ totalCount() }} sets
-          free on {{ dateLabel() }}
+          <strong class="text-(--riv-card-ink)">{{ freeCount() }}</strong> of
+          {{ totalCount() }} sets free on {{ dateLabel() }}
         </p>
       </div>
       @if (notice(); as msg) {
@@ -55,10 +55,7 @@
           <span class="w-5 flex-shrink-0 text-center text-[11px] font-bold text-(--riv-card-ink)">{{
             row.label
           }}</span>
-          <ul
-            class="grid flex-1 list-none gap-1 p-0"
-            [style.grid-template-columns]="columns(row)"
-          >
+          <ul class="grid flex-1 list-none gap-1 p-0" [style.grid-template-columns]="columns(row)">
             @for (set of row.sets; track set.id) {
               <li
                 class="set-tile"
@@ -124,7 +121,11 @@
     </ul>
 
     <!-- Arrivals: the day's bookings (confirmed, checked-in, no-show) with their arrival codes -->
-    <section appCardGlass class="mt-4 rounded-[20px] px-[18px] py-4" aria-labelledby="arrivals-title">
+    <section
+      appCardGlass
+      class="mt-4 rounded-[20px] px-[18px] py-4"
+      aria-labelledby="arrivals-title"
+    >
       <h2 id="arrivals-title" class="text-[15px] font-bold text-(--riv-card-ink)">Arrivals</h2>
       <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
         Scan the guest's QR code — or type their booking code — to check them in.
@@ -178,7 +179,8 @@
           class="m-0 block text-[13px] leading-[1.45] font-semibold empty:hidden"
           [class]="checkInNotice()?.tone === 'ok' ? 'text-(--riv-accent-ink)' : 'text-[#a3372a]'"
           data-testid="checkin-result"
-        >{{ checkInNotice()?.text }}</output>
+          >{{ checkInNotice()?.text }}</output
+        >
       </div>
       @if (arrivals().length) {
         <ul class="flex list-none flex-col gap-1.5 p-0">
@@ -189,11 +191,9 @@
             >
               <span class="text-[13.5px] font-semibold text-(--riv-card-ink)">{{ a.label }}</span>
               @if (a.chip; as chip) {
-                <span
-                  [appStatusChip]="chip.modifier"
-                  [attr.data-testid]="chip.testId"
-                  >{{ chip.label }}</span
-                >
+                <span [appStatusChip]="chip.modifier" [attr.data-testid]="chip.testId">{{
+                  chip.label
+                }}</span>
               }
               <code
                 class="rounded-[8px] bg-(--riv-chip-bg) px-2 py-1 font-mono text-[13px] font-bold tracking-[0.06em] text-(--riv-card-ink)"

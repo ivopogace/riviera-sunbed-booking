@@ -3,7 +3,10 @@ import { TestBed } from '@angular/core/testing';
 
 import { PanelGlass } from './panel-glass';
 
-@Component({ imports: [PanelGlass], template: `<header appPanelGlass data-testid="host"></header>` })
+@Component({
+  imports: [PanelGlass],
+  template: `<header appPanelGlass data-testid="host"></header>`,
+})
 class Host {}
 
 describe('PanelGlass', () => {

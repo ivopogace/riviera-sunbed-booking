@@ -105,7 +105,9 @@
                 data-testid="venue-cutoff"
                 class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
               />
-              @if (detailsForm.bookingCutoff().touched() && detailsForm.bookingCutoff().errors().length) {
+              @if (
+                detailsForm.bookingCutoff().touched() && detailsForm.bookingCutoff().errors().length
+              ) {
                 <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
                   detailsForm.bookingCutoff().errors()[0].message
                 }}</span>
@@ -146,9 +148,7 @@
           </button>
 
           @if (saved()) {
-            <output
-              class="text-[11.5px] font-semibold text-[#0a6e85]"
-              data-testid="venue-saved"
+            <output class="text-[11.5px] font-semibold text-[#0a6e85]" data-testid="venue-saved"
               >Saved. Your venue card and beach-map page now show these details.</output
             >
           }
@@ -168,8 +168,8 @@
               reloadTestId="venue-stale-reload"
               (reload)="reloadAfterStale()"
             >
-              This venue was changed somewhere else since you opened it. Your edits are kept — reload
-              the latest details, re-apply your changes, then Save again.
+              This venue was changed somewhere else since you opened it. Your edits are kept —
+              reload the latest details, re-apply your changes, then Save again.
             </app-stale-write-banner>
           }
         </form>
@@ -190,7 +190,9 @@
                 data-testid="photo-slot"
                 [attr.data-slot]="slot.key"
               >
-                <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">{{ slot.label }}</span>
+                <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">{{
+                  slot.label
+                }}</span>
 
                 @if (slotUi()[slot.key].previewUrl; as previewUrl) {
                   <!-- alt avoids the words image/photo (Web:S6851 — screen readers announce the
@@ -268,7 +270,9 @@
           </p>
 
           <fieldset class="border-0 p-0">
-            <legend class="mb-2 text-[12.5px] font-semibold text-(--riv-card-ink)">Amenities</legend>
+            <legend class="mb-2 text-[12.5px] font-semibold text-(--riv-card-ink)">
+              Amenities
+            </legend>
             <div class="flex flex-wrap gap-2">
               @for (code of amenityCatalogue; track code) {
                 <button

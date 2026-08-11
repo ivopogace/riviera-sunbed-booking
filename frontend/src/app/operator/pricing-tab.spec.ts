@@ -114,7 +114,9 @@ describe('PricingTab (#174)', () => {
   it('projects the full-day take from ONLY the online-pool sets, rendered from minor units', () => {
     render();
     // 3500 + 3500 (row A online) + 2000 (row B online) = 9000; the WALK_IN 3500 is excluded.
-    expect(byId('pricing-projected').textContent).toContain(formatMoney({ minorUnits: 9000, currency: 'EUR' }));
+    expect(byId('pricing-projected').textContent).toContain(
+      formatMoney({ minorUnits: 9000, currency: 'EUR' }),
+    );
   });
 
   it('commits a € edit as an integer-minor-unit reprice PUT and recomputes the projection', async () => {
@@ -144,7 +146,9 @@ describe('PricingTab (#174)', () => {
   it('rounds a whole-euro edit to exact minor units', () => {
     render();
     editRow('B', '25');
-    const req = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/B/price'));
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/B/price'),
+    );
     expect(req.request.body.price.minorUnits).toBe(2500);
     req.flush(null);
   });
@@ -158,7 +162,9 @@ describe('PricingTab (#174)', () => {
     // projection is unchanged.
     http.expectNone((r) => r.method === 'PUT');
     expect(input('A').value).toBe('35');
-    expect(byId('pricing-projected').textContent).toContain(formatMoney({ minorUnits: 9000, currency: 'EUR' }));
+    expect(byId('pricing-projected').textContent).toContain(
+      formatMoney({ minorUnits: 9000, currency: 'EUR' }),
+    );
   });
 
   it('reverts the failing row on error without touching other rows (sequential edits)', async () => {
@@ -269,14 +275,18 @@ describe('PricingTab (#174)', () => {
     // The conditional write bumps set_version by one; the tab advances its token for the next edit.
     render(SEED, 5);
     editRow('A', '40');
-    const first = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'));
+    const first = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
+    );
     expect(first.request.body.expectedVersion).toBe(5);
     first.flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
 
     editRow('B', '30');
-    const second = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/B/price'));
+    const second = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/B/price'),
+    );
     expect(second.request.body.expectedVersion).toBe(6); // advanced, not the stale 5
     second.flush(null);
     await fixture.whenStable();
@@ -293,7 +303,9 @@ describe('PricingTab (#174)', () => {
 
     // Editing a mixed row unifies it: the reprice PUT carries the typed price for the whole row.
     editRow('A', '45');
-    const req = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'));
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
+    );
     expect(req.request.body.price.minorUnits).toBe(4500);
     req.flush(null);
   });
@@ -327,7 +339,9 @@ describe('PricingTab (#174)', () => {
 
     // ...and the token came with it: a reprice sends set_version 3, so it is genuinely the same read.
     editRow('A', '40');
-    const put = http.expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'));
+    const put = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
+    );
     expect(put.request.body.expectedVersion).toBe(3);
     put.flush(null);
   });
@@ -433,7 +447,6 @@ describe('PricingTab (#174)', () => {
     expect(rows()).toHaveLength(1);
     expect(rows()[0].getAttribute('data-row')).toBe('C');
   });
-
 });
 
 function seat(

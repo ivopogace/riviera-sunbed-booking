@@ -23,7 +23,10 @@ export class CameraQrScanner extends QrScanner {
       throw new Error('camera scanning needs a preview element');
     }
     if (navigator.mediaDevices?.getUserMedia === undefined) {
-      throw new DOMException('camera capture is not available in this browser', 'NotSupportedError');
+      throw new DOMException(
+        'camera capture is not available in this browser',
+        'NotSupportedError',
+      );
     }
     this.stop();
     const generation = this.generation;

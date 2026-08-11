@@ -49,8 +49,9 @@ const RESEND_NOTICES = {
 
         @if (erased()) {
           <p class="auth-intro" role="status" tabindex="-1" data-testid="erase-done">
-            Your account and personal data have been erased, and you have been signed out. Any booking
-            records are kept only as long as the law requires, with your personal details removed.
+            Your account and personal data have been erased, and you have been signed out. Any
+            booking records are kept only as long as the law requires, with your personal details
+            removed.
           </p>
         } @else if (auth.restoring()) {
           <p class="auth-intro" role="status">Loading…</p>
@@ -128,12 +129,15 @@ const RESEND_NOTICES = {
             class="mt-7 border-t border-[color:var(--riv-field-border)] pt-5"
             aria-labelledby="erase-title"
           >
-            <h2 id="erase-title" class="m-0 mb-1 text-[15px] font-bold text-[color:var(--riv-card-ink)]">
+            <h2
+              id="erase-title"
+              class="m-0 mb-1 text-[15px] font-bold text-[color:var(--riv-card-ink)]"
+            >
               Delete your account
             </h2>
             <p class="auth-hint">
-              Permanently erase your account and personal details. Booking records are kept only as long
-              as the law requires, with your personal data removed. This cannot be undone.
+              Permanently erase your account and personal details. Booking records are kept only as
+              long as the law requires, with your personal data removed. This cannot be undone.
             </p>
 
             @if (confirming()) {

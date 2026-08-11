@@ -77,10 +77,7 @@ import { OutboxLever } from './admin-outbox-lever';
 
             @if (lever.status(); as outbox) {
               @if (outbox.outstanding === 0) {
-                <p
-                  class="mt-2 text-[15px] text-(--riv-card-ink)"
-                  data-testid="admin-refunds-empty"
-                >
+                <p class="mt-2 text-[15px] text-(--riv-card-ink)" data-testid="admin-refunds-empty">
                   Nothing outstanding — no refund is waiting to be retried.
                 </p>
               } @else {

@@ -273,7 +273,9 @@ describe('AdminPrivacy', () => {
   it('locks the confirmation while the erasure is in flight', async () => {
     const service = serviceStub();
     let resolveErase!: () => void;
-    service.erase.mockImplementation(() => new Promise<void>((resolve) => (resolveErase = resolve)));
+    service.erase.mockImplementation(
+      () => new Promise<void>((resolve) => (resolveErase = resolve)),
+    );
     const fixture = await render(authStub(), service);
 
     await armConfirmation(fixture);

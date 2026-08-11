@@ -24,8 +24,28 @@ const VENUE = {
   bookingMode: 'INSTANT',
   fromPrice: { minorUnits: 2500, currency: 'EUR' },
   sets: [
-    { id: 1, rowLabel: 'Front row · Sea view', positionNo: 1, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 4500, currency: 'EUR' }, gridX: 1, gridY: 1, availability: 'TAKEN' },
-    { id: 2, rowLabel: 'Front row · Sea view', positionNo: 2, tier: 'PREMIUM', pool: 'ONLINE', price: { minorUnits: 4500, currency: 'EUR' }, gridX: 2, gridY: 1, availability: 'FREE' },
+    {
+      id: 1,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 1,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 4500, currency: 'EUR' },
+      gridX: 1,
+      gridY: 1,
+      availability: 'TAKEN',
+    },
+    {
+      id: 2,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 2,
+      tier: 'PREMIUM',
+      pool: 'ONLINE',
+      price: { minorUnits: 4500, currency: 'EUR' },
+      gridX: 2,
+      gridY: 1,
+      availability: 'FREE',
+    },
   ],
 };
 
@@ -69,7 +89,9 @@ test('a booking made here appears in My bookings, and a cancellation reflects th
   page,
 }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
-  await page.route('**/api/bookings', (route) => route.fulfill({ status: 201, json: CONFIRMATION }));
+  await page.route('**/api/bookings', (route) =>
+    route.fulfill({ status: 201, json: CONFIRMATION }),
+  );
 
   // The per-code detail: CONFIRMED until cancelled, then CANCELLED (server-truth) on the next fetch.
   let cancelled = false;
@@ -79,13 +101,21 @@ test('a booking made here appears in My bookings, and a cancellation reflects th
   await page.route(`**/api/bookings/${CODE}/cancel`, (route) => {
     cancelled = true;
     route.fulfill({
-      json: { code: CODE, status: 'CANCELLED', refund: { minorUnits: 4500, currency: 'EUR' }, tier: 'FULL' },
+      json: {
+        code: CODE,
+        status: 'CANCELLED',
+        refund: { minorUnits: 4500, currency: 'EUR' },
+        tier: 'FULL',
+      },
     });
   });
 
   // Book an instant set (writes the code into the device-local store on success).
   await page.goto('/venues/1');
-  await page.getByRole('button', { name: /Select to book/ }).first().click();
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
   await completeDialog(page.getByRole('dialog'), 'Continue to payment');
   await expect(page).toHaveURL(/\/booking\/confirmation/);
 
@@ -126,7 +156,12 @@ test('the cancel confirmation moves focus in and back out (WCAG 2.4.3)', async (
   await page.route(`**/api/bookings/${CODE}/cancel`, (route) => {
     cancelled = true;
     route.fulfill({
-      json: { code: CODE, status: 'CANCELLED', refund: { minorUnits: 4500, currency: 'EUR' }, tier: 'FULL' },
+      json: {
+        code: CODE,
+        status: 'CANCELLED',
+        refund: { minorUnits: 4500, currency: 'EUR' },
+        tier: 'FULL',
+      },
     });
   });
 
@@ -191,7 +226,12 @@ const ACCOUNT_ROWS = [
   },
 ];
 
-function deviceDetail(code: string, venueName: string, positionNo: number, bookingDate = '2026-12-01') {
+function deviceDetail(
+  code: string,
+  venueName: string,
+  positionNo: number,
+  bookingDate = '2026-12-01',
+) {
   return {
     code,
     status: 'CONFIRMED',
@@ -210,7 +250,7 @@ function deviceDetail(code: string, venueName: string, positionNo: number, booki
   };
 }
 
-test('signed in: My bookings unions the account list with this device\'s codes, deduped (a11y)', async ({
+test("signed in: My bookings unions the account list with this device's codes, deduped (a11y)", async ({
   page,
 }) => {
   // A CUSTOMER session: /api/auth/me returns a customer principal, so the app restores signed-in.

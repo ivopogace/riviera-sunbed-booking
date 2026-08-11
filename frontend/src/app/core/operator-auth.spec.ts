@@ -59,7 +59,9 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
   it('does NOT adopt a CUSTOMER /me principal — a customer session never signs an operator in (F2)', async () => {
     // /me is polymorphic; OperatorAuth must filter to its own principal type.
     const auth = TestBed.inject(OperatorAuth);
-    httpMock.expectOne(`${AUTH_API}/me`).flush({ username: 'ana@example.com', principalType: 'CUSTOMER' });
+    httpMock
+      .expectOne(`${AUTH_API}/me`)
+      .flush({ username: 'ana@example.com', principalType: 'CUSTOMER' });
     await Promise.resolve();
 
     expect(auth.signedIn()).toBe(false);
@@ -84,7 +86,8 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     const auth = serviceWithRestore('signed-out');
 
     const result = auth.signIn('operator', 'wrong');
-    httpMock.expectOne(`${AUTH_API}/operator/login`)
+    httpMock
+      .expectOne(`${AUTH_API}/operator/login`)
       .flush({ code: 'INVALID_CREDENTIALS' }, PROBLEM_401);
 
     expect(await result).toBe('invalid-credentials');
@@ -95,7 +98,8 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     const auth = serviceWithRestore('signed-out');
 
     const result = auth.signIn('operator', 'pw');
-    httpMock.expectOne(`${AUTH_API}/operator/login`)
+    httpMock
+      .expectOne(`${AUTH_API}/operator/login`)
       .flush({ code: 'RATE_LIMITED' }, { status: 429, statusText: 'Too Many Requests' });
 
     expect(await result).toBe('rate-limited');
@@ -285,7 +289,9 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
       await Promise.resolve();
 
       const done = auth.signOut();
-      httpMock.expectOne(`${AUTH_API}/logout`).flush(null, { status: 204, statusText: 'No Content' });
+      httpMock
+        .expectOne(`${AUTH_API}/logout`)
+        .flush(null, { status: 204, statusText: 'No Content' });
       await done;
 
       expect(TestBed.inject(OwnedVenues).venues()).toBeUndefined();

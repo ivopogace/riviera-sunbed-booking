@@ -37,8 +37,24 @@ describe('SetEditor (#600)', () => {
   }
 
   const SETS: SetView[] = [
-    set({ id: 10, rowLabel: 'A', positionNo: 1, tier: 'PREMIUM', gridX: 1, gridY: 1, price: { minorUnits: 3500, currency: 'EUR' } }),
-    set({ id: 11, rowLabel: 'A', positionNo: 2, tier: 'PREMIUM', gridX: 2, gridY: 1, price: { minorUnits: 3500, currency: 'EUR' } }),
+    set({
+      id: 10,
+      rowLabel: 'A',
+      positionNo: 1,
+      tier: 'PREMIUM',
+      gridX: 1,
+      gridY: 1,
+      price: { minorUnits: 3500, currency: 'EUR' },
+    }),
+    set({
+      id: 11,
+      rowLabel: 'A',
+      positionNo: 2,
+      tier: 'PREMIUM',
+      gridX: 2,
+      gridY: 1,
+      price: { minorUnits: 3500, currency: 'EUR' },
+    }),
     set({ id: 12, rowLabel: 'B', positionNo: 1, gridX: 1, gridY: 2 }),
     set({ id: 13, rowLabel: 'B', positionNo: 2, gridX: 2, gridY: 2, pool: 'WALK_IN' }),
   ];
@@ -94,7 +110,9 @@ describe('SetEditor (#600)', () => {
   }
 
   function expectPatch(setId: number): TestRequest {
-    return http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith(`/api/venues/1/sets/${setId}`));
+    return http.expectOne(
+      (r) => r.method === 'PATCH' && r.url.endsWith(`/api/venues/1/sets/${setId}`),
+    );
   }
 
   it('renders one cell per grid position, saved sets carrying their id and state', () => {
@@ -188,7 +206,10 @@ describe('SetEditor (#600)', () => {
     expect((byId('set-pool-WALK_IN') as HTMLElement).getAttribute('aria-pressed')).toBe('true');
 
     // A re-read lands from another device: the draft must follow the server, not outlive its basis.
-    fixture.componentRef.setInput('sets', [...SETS.filter((s) => s.id !== 12), set({ id: 12, rowLabel: 'B', positionNo: 1, gridX: 1, gridY: 2 })]);
+    fixture.componentRef.setInput('sets', [
+      ...SETS.filter((s) => s.id !== 12),
+      set({ id: 12, rowLabel: 'B', positionNo: 1, gridX: 1, gridY: 2 }),
+    ]);
     fixture.detectChanges();
 
     expect((byId('set-pool-ONLINE') as HTMLElement).getAttribute('aria-pressed')).toBe('true');
@@ -241,7 +262,9 @@ describe('SetEditor (#600)', () => {
     click(byId('set-remove'));
     await fixture.whenStable();
     click(byId('set-remove-yes'));
-    http.expectOne((r) => r.method === 'DELETE').flush(null, { status: 204, statusText: 'No Content' });
+    http
+      .expectOne((r) => r.method === 'DELETE')
+      .flush(null, { status: 204, statusText: 'No Content' });
     await fixture.whenStable();
     fixture.detectChanges();
     await fixture.whenStable();
@@ -285,7 +308,9 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-add')).toBeTruthy();
     click(byId('set-add'));
 
-    const request = http.expectOne((r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/sets'));
+    const request = http.expectOne(
+      (r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/sets'),
+    );
     expect(request.request.body).toEqual({
       rowLabel: 'A',
       positionNo: 3,
@@ -334,7 +359,9 @@ describe('SetEditor (#600)', () => {
     click(byId('set-move'));
     click(emptyCell(3, 1));
 
-    const request = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1/sets/12'));
+    const request = http.expectOne(
+      (r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1/sets/12'),
+    );
     expect(request.request.body).toEqual({
       rowLabel: 'A',
       positionNo: 3,
@@ -370,7 +397,9 @@ describe('SetEditor (#600)', () => {
     // Remove the set the move was armed for: the arm loses its subject AND its own Cancel button.
     click(byId('set-remove'));
     click(byId('set-remove-yes'));
-    http.expectOne((r) => r.method === 'DELETE').flush(null, { status: 204, statusText: 'No Content' });
+    http
+      .expectOne((r) => r.method === 'DELETE')
+      .flush(null, { status: 204, statusText: 'No Content' });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -403,7 +432,10 @@ describe('SetEditor (#600)', () => {
     selectSet(12);
     expect(byId('set-panel-empty')).toBeFalsy();
 
-    fixture.componentRef.setInput('sets', SETS.filter((s) => s.id !== 12));
+    fixture.componentRef.setInput(
+      'sets',
+      SETS.filter((s) => s.id !== 12),
+    );
     fixture.detectChanges();
 
     expect(byId('set-panel-empty')).toBeTruthy();

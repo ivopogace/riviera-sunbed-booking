@@ -59,7 +59,9 @@ function humanizeAmenity(code: string): string {
 export function amenityLabel(code: string): string {
   // Object.hasOwn (not a bracket-`!== undefined` check) so a code that collides with an inherited
   // Object.prototype member ('valueOf', 'toString', …) is treated as unknown, not as a "label".
-  return Object.hasOwn(AMENITY_LABELS, code) ? AMENITY_LABELS[code as Amenity] : humanizeAmenity(code);
+  return Object.hasOwn(AMENITY_LABELS, code)
+    ? AMENITY_LABELS[code as Amenity]
+    : humanizeAmenity(code);
 }
 
 /**

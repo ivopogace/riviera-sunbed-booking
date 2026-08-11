@@ -24,7 +24,12 @@ const EMAIL = 'ana@example.com';
 const unauthorized = {
   status: 401,
   contentType: 'application/problem+json',
-  body: JSON.stringify({ type: 'about:blank', title: 'Unauthorized', status: 401, code: 'UNAUTHENTICATED' }),
+  body: JSON.stringify({
+    type: 'about:blank',
+    title: 'Unauthorized',
+    status: 401,
+    code: 'UNAUTHENTICATED',
+  }),
 };
 
 test('a signed-in tourist erases their account behind a confirm', async ({ page }) => {

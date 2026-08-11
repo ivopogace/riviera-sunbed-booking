@@ -44,7 +44,13 @@ const ACCOUNTS = [
 
 /** Rates chosen so the mean is not a whole percent — 1500/1000/1000 → 1166.67 → 1167 bps → 11.67%. */
 const VENUES = [
-  { venueId: 7, name: 'Bora Bora Beach', beach: 'Dhërmi', commissionBps: 1500, payoutCurrency: 'EUR' },
+  {
+    venueId: 7,
+    name: 'Bora Bora Beach',
+    beach: 'Dhërmi',
+    commissionBps: 1500,
+    payoutCurrency: 'EUR',
+  },
   { venueId: 9, name: 'Folie Marine', beach: 'Gjipe', commissionBps: 1000, payoutCurrency: 'EUR' },
   { venueId: 11, name: 'Kalypso', beach: 'Jal', commissionBps: 1000, payoutCurrency: 'EUR' },
 ];
@@ -141,9 +147,8 @@ test('sits below the tab strip, so the pills never move between tabs', async ({ 
 
   const tabsBottom = await page.evaluate(() =>
     Math.round(
-      document
-        .querySelector('nav[aria-label="Admin console sections"]')!
-        .getBoundingClientRect().bottom,
+      document.querySelector('nav[aria-label="Admin console sections"]')!.getBoundingClientRect()
+        .bottom,
     ),
   );
   expect(await topOf(page, '[data-testid="admin-stats"]')).toBeGreaterThanOrEqual(tabsBottom);

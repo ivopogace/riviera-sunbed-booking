@@ -41,9 +41,7 @@ describe('ConsoleVenueMap (#486)', () => {
 
   /** Assert exactly one map request is outstanding for `date`, and answer it. */
   function flushMap(date: string, body: VenueMapView): void {
-    http
-      .expectOne(`${environment.apiBaseUrl}/api/venues/${VENUE}?date=${date}`)
-      .flush(body);
+    http.expectOne(`${environment.apiBaseUrl}/api/venues/${VENUE}?date=${date}`).flush(body);
   }
 
   beforeEach(() => {
