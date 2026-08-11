@@ -98,9 +98,9 @@ test('a booking made here appears in My bookings, and a cancellation reflects th
   await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
     route.fulfill({ json: cancelled ? CANCELLED_DETAIL : CONFIRMED_DETAIL }),
   );
-  await page.route(`**/api/bookings/${CODE}/cancel`, (route) => {
+  await page.route(`**/api/bookings/${CODE}/cancel`, async (route) => {
     cancelled = true;
-    route.fulfill({
+    await route.fulfill({
       json: {
         code: CODE,
         status: 'CANCELLED',
@@ -153,9 +153,9 @@ test('the cancel confirmation moves focus in and back out (WCAG 2.4.3)', async (
   await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
     route.fulfill({ json: cancelled ? CANCELLED_DETAIL : CONFIRMED_DETAIL }),
   );
-  await page.route(`**/api/bookings/${CODE}/cancel`, (route) => {
+  await page.route(`**/api/bookings/${CODE}/cancel`, async (route) => {
     cancelled = true;
-    route.fulfill({
+    await route.fulfill({
       json: {
         code: CODE,
         status: 'CANCELLED',

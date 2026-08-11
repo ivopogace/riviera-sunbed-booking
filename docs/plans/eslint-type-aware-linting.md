@@ -367,7 +367,7 @@ only a typecheck caught; phase 3 caught two more.
 | 2 — `querySelector<T>(…)!` codemod + safe fixers (259 → 179) | ✅ | `<sha>` |
 | 3 — `no-unnecessary-type-assertion`, verified not trusted (179 → 139) | ✅ | `<sha>` |
 | 4 — Production source clean (139 → 130, incl. B-1..B-3) | ✅ | `<sha>` |
-| 5 — e2e (11, incl. B-4/B-5) | | |
+| 5 — e2e clean (130 → 121, incl. B-4/B-5) | ✅ | `<sha>` |
 | 6 — Spec `require-await` + `unbound-method` + `no-misused-promises` (87) | | |
 | 7 — Green: AC red-checks, docs, close-out | | |
 

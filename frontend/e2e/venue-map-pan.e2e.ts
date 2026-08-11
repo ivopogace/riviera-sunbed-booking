@@ -17,7 +17,7 @@ const ROWS = [
   { label: 'Row 4 · Back', tier: 'STANDARD', price: 3000 },
 ];
 
-type MapSet = {
+interface MapSet {
   id: number;
   rowLabel: string;
   positionNo: number;
@@ -27,7 +27,7 @@ type MapSet = {
   gridX: number;
   gridY: number;
   availability: string;
-};
+}
 
 function wideVenue() {
   const sets: MapSet[] = [];

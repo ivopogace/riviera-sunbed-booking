@@ -190,7 +190,13 @@ test('pre-fills the form, saves the widened profile without commission/currency,
 
   await expect(page.getByTestId('venue-saved')).toBeVisible();
   expect(patches).toHaveLength(1);
-  const body = patches[0].postDataJSON();
+  const body = patches[0].postDataJSON() as {
+    name?: string;
+    bookingMode?: string;
+    amenities?: string[];
+    commissionBps?: number;
+    payoutCurrency?: string;
+  };
   expect(body.name).toBe('Miramar Renamed');
   expect(body.bookingMode).toBe('REQUEST'); // flips the tourist Instant→Request flow server-side
   expect(body.amenities).toEqual(expect.arrayContaining(['WIFI', 'BEACH_BAR', 'RESTAURANT']));
