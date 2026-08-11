@@ -112,8 +112,7 @@ async function mockVenue(
         const body = route.request().postDataJSON() as Partial<typeof INITIAL_PROFILE> & {
           expectedVersion?: number;
         };
-        // Optimistic-concurrency guard: a write whose token no longer matches the row is a
-        // 409 STALE_WRITE — never a silent clobber. A match bumps the row's version by one.
+      // Optimistic-concurrency guard: a stale token is a 409 STALE_WRITE, never a silent clobber; a match bumps the version.
         if (body.expectedVersion !== serverVersion) {
           return route.fulfill({
             status: 409,
