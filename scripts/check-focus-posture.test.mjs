@@ -120,7 +120,82 @@ test('judges only the controls appBusy can actually replace', () => {
     '<div [disabled]="busy()"></div>',
   ];
 
+  assert.deepEqual(scan(HTML, lines, { isFocusTrap: () => false }), []);
+});
+
+/**
+ * #628: the self-committing-field shape (#625's class) — a field whose own start tag both starts
+ * the write (`(change)`/`(blur)`) and is disabled by it, judged only for the kinds
+ * `readonly` actually locks. `pricing-tab.html` is the live fixed shape.
+ */
+test('flags a self-committing text field disabled by its own busy flag', () => {
+  for (const shape of [
+    '<input type="number" [value]="row.priceEur" (change)="onPriceChange(row)" [disabled]="saving()" />',
+    '<input (blur)="commit()" [disabled]="saving()" />',
+    '<input type="date" (change)="onDate()" [disabled]="submitting()" />',
+    '<textarea (blur)="onEdit()" [disabled]="busy()"></textarea>',
+  ]) {
+    const violations = scan(HTML, [shape]);
+    assert.equal(violations.length, 1, `expected ${shape} to be flagged`);
+    assert.equal(violations[0].rule, 'BUSY-2');
+    assert.equal(violations[0].line, 1);
+  }
+});
+
+/**
+ * The rule stays silent wherever `readonly` is inert (`<select>`, checkbox, radio, `file`,
+ * `range`, `color`), on a dynamic `[type]` it cannot read, on a field no handler of its own
+ * commits, and on a validity binding — the deny-list posture `BUSY_STEMS` set (#628's narrow
+ * option; the inert kinds stay RV-FE-9's human check).
+ */
+test('leaves the controls readonly cannot lock and every non-self-committing field alone', () => {
+  const lines = [
+    '<select (change)="pick()" [disabled]="busy()"></select>',
+    '<input type="checkbox" (change)="toggle()" [disabled]="saving()" />',
+    '<input type="radio" (change)="choose()" [disabled]="saving()" />',
+    '<input type="file" (change)="upload()" [disabled]="uploading()" />',
+    '<input type="range" (input)="slide()" [disabled]="saving()" />',
+    '<input type="color" (change)="tint()" [disabled]="saving()" />',
+    '<input [type]="kind()" (change)="commit()" [disabled]="saving()" />',
+    '<input [attr.type]="kind()" (change)="commit()" [disabled]="saving()" />',
+    '<input type="number" [value]="row.priceEur" [disabled]="saving()" />',
+    '<input type="number" (change)="commit()" [disabled]="detailsForm().invalid()" />',
+  ];
+
   assert.deepEqual(scan(HTML, lines), []);
+});
+
+/**
+ * `(input)` is a per-keystroke event whose dominant use is draft-sync into a signal while a
+ * BUTTON starts the write — the shape `admin-commissions` and `admin-privacy` bind three times as
+ * correct code, and the sweep that gates BUSY-2 found. A per-keystroke committer is a deliberate
+ * miss, the same trade `BUSY_STEMS` makes for a novel flag name.
+ */
+test('does not read a draft-sync input binding as self-committing', () => {
+  const lines = [
+    '<input type="number" [value]="draftPercent()" [disabled]="busy()" (input)="onPercentTyped($event)" />',
+    '<input type="text" [value]="reason()" [disabled]="busy()" (input)="onReasonTyped($event)" />',
+  ];
+
+  assert.deepEqual(scan(HTML, lines), []);
+});
+
+/** #628's gating argument is BUSY-1's: syntactic, and swept with zero standing violations. */
+test('gates BUSY-2 like BUSY-1', () => {
+  const sink = () => ({ written: [], write(text) { this.written.push(text); } });
+  const out = sink();
+  const err = sink();
+
+  const failed = settle(
+    [{ path: HTML, line: 1, rule: 'BUSY-2', text: '[disabled]="saving()"' }],
+    'Focus posture',
+    out,
+    err,
+  );
+
+  assert.equal(failed, 1);
+  assert.match(err.written.join(''), /BUSY-2/);
+  assert.match(err.written.join(''), /readonly/);
 });
 
 test('survives a less-than inside an interpolation', () => {
@@ -371,9 +446,13 @@ test('does not accept delegation as a substitute for the caller own legs', () =>
     '  <app-confirm-panel [prompt]="\'Regenerate?\'" (confirmed)="regen()" />',
     '}',
   ];
+  const seams = { componentSource: '', isFocusTrap: () => false };
 
-  assert.equal(scan(HTML, panel, { componentSource: '' }).length, 1);
-  assert.deepEqual(scan(HTML, panel, { componentSource: 'const m = focusMover();' }), []);
+  assert.equal(scan(HTML, panel, seams).length, 1);
+  assert.deepEqual(
+    scan(HTML, panel, { ...seams, componentSource: 'const m = focusMover();' }),
+    [],
+  );
 });
 
 /**
@@ -390,8 +469,9 @@ test('does not report the trigger half of a trigger and prompt pair', () => {
     '  <app-confirm-panel label="x" />',
     '}',
   ];
+  const seams = { componentSource: 'const m = focusMover();', isFocusTrap: () => false };
 
-  assert.deepEqual(scan(HTML, lines, { componentSource: 'const m = focusMover();' }), []);
+  assert.deepEqual(scan(HTML, lines, seams), []);
 });
 
 /**
@@ -838,6 +918,196 @@ test('keeps FOCUS-1 advisory and BUSY-1 gating', () => {
   assert.deepEqual(advisory.err.written, []);
   assert.equal(failed, 1);
   assert.match(gating.err.written.join(''), /BUSY-1/);
+});
+
+/**
+ * `declaresClass` used to test `\bclass\b` before the statement-terminator, so walking up from a
+ * FIRST member's own brace read `export class A {` and classified the member as the class body —
+ * `memberOf` returned nothing, and a handler that demonstrably moves focus was reported (#629.1).
+ * Member order must not change the verdict; a decorator-preceded member is the same walk.
+ */
+test('judges a first-member handler by its own body, not the class\'s', () => {
+  const firstMember = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="close()" /> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); this.trigger.focus(); }',
+    '  statementOpen = signal(false);',
+    '}',
+  ];
+  const fieldFirst = [...firstMember];
+  [fieldFirst[6], fieldFirst[7]] = [fieldFirst[7], fieldFirst[6]];
+  const decorated = [...firstMember];
+  decorated.splice(6, 0, "  @HostListener('document:keydown.escape')");
+
+  assert.deepEqual(scan(TS, firstMember, { isFocusTrap: TRAPS }), []);
+  assert.deepEqual(scan(TS, fieldFirst, { isFocusTrap: TRAPS }), []);
+  assert.deepEqual(scan(TS, decorated, { isFocusTrap: TRAPS }), []);
+});
+
+/**
+ * Two blocks opening and closing on one line both span it, and the line-granular innermost pick
+ * took the LATER sibling — a false positive against its signal plus a silent miss on the signal
+ * that actually gates the trap (#629.2). Attribution has to be column-precise.
+ */
+test('attributes a trap to the block that renders it when two share a line', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="close()" /> } @if (banner()) { <p>x</p> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '  dismissBanner() { this.banner.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 7);
+});
+
+/**
+ * `closingBrace` read the apostrophe in ordinary template prose as a string opener, skipped the
+ * real `}` beside it, and extended the branch to the end of the file — so a trap rendered AFTER
+ * the branch was attributed to it (#629.3). A quote with no mate on its own line is prose.
+ */
+test('does not let a prose apostrophe extend a branch to the end of file', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    "    @if (ready()) { <p>It's ready</p> }",
+    '    <app-payout-statement (dismissed)="close()" />',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '  reload() { this.ready.set(false); }',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
+});
+
+/**
+ * When the diff adds the trigger half and a flip but not the prompt line, the floor lands on the
+ * negated trigger — whose signal `gatingSignal` failed to read, so `reported` recorded null and
+ * the prompt surface was reported a second time at its flip (#629.4). One finding per signal.
+ */
+test('reports a surface once when the floor lands on the negated trigger', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (!confirmRemove()) { <button data-testid="rm-trigger">Remove</button> }',
+    '    @if (confirmRemove()) { <button data-testid="rm-confirm">Really remove</button> }',
+    '  `,',
+    '})',
+    'export class Thing {',
+    '  cancel() { this.confirmRemove.set(false); }',
+    '}',
+  ];
+  const added = all(lines);
+  added.delete(4);
+
+  const violations = scan(TS, lines, { added });
+
+  assert.equal(violations.length, 1);
+});
+
+/**
+ * PR #630 review F-2: a heritage clause carrying a multi-line call argument
+ * (`extends mixin({ … }) {`) put a statement-terminator-looking line between the class-body brace
+ * and the `class` keyword, so the line-walk classified the class body as a member — and a focus
+ * call anywhere in the class then exempted every stranding flip. The walk is brace-aware now.
+ */
+test('does not classify a heritage call argument closing line as a member', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="close()" /> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab extends mixin({',
+    '  a: 1,',
+    '}) {',
+    '  private readonly m = focusMover();',
+    '  other() { this.m("statement-open"); }',
+    '  close() { this.statementOpen.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 11);
+});
+
+/**
+ * PR #630 review F-3: two prose apostrophes on one line straddled a branch's `}` and read as a
+ * string, re-opening the #629.3 misattribution. A quote is a string opener only in expression
+ * context — an interpolation or a condition's parentheses — never in element text.
+ */
+test('does not pair prose apostrophes across a branch closing brace', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    "    @if (ready()) { <p>It's on</p> } <p>Don't miss it</p>",
+    '    <app-payout-statement (dismissed)="close()" />',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '  reload() { this.ready.set(false); }',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
+});
+
+/**
+ * PR #630 re-review F-5: an unmatched parenthesis in prose (`(today, don't wait`) re-enabled the
+ * expression-context quote pairing. Parentheses count only for a block condition — armed by its
+ * `@` keyword — so element text can never open one.
+ */
+test('does not let a prose parenthesis re-enable apostrophe pairing', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    "    @if (ready()) { <p>It's off (today, don't wait</p> } <p>It's true</p>",
+    '    <app-payout-statement (dismissed)="close()" />',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '  reload() { this.ready.set(false); }',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
+});
+
+/** The expression-context half of the same rule: a quoted brace in a condition is still skipped. */
+test('reads past a brace quoted inside a branch condition', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen() && label() !== \'}\') { <app-payout-statement (dismissed)="close()" /> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 7);
 });
 
 /**

@@ -1,18 +1,23 @@
 /**
- * Diff-scoped guard for the two focus postures `frontend/.claude/CLAUDE.md` states, both of them
- * causes of the same WCAG 2.4.3 stranded-focus class (#604, #614, #616, #621, #625 — fifteen
- * instances; #625 is one neither rule can see, a field disabled by a write it starts itself). The
+ * Diff-scoped guard for the focus postures `frontend/.claude/CLAUDE.md` states, all causes of the
+ * same WCAG 2.4.3 stranded-focus class (#604, #614, #616, #621, #625 — fifteen instances). The
  * human half of the check, for those shapes, is `riviera-review-overlay`'s RV-FE-9 (#623).
  *
  * - **BUSY-1** — a control disabled by a flag *its own activation set* blurs to `<body>` for the
  *   whole request. It belongs on `[appBusy]`, which announces the same state via `aria-disabled`.
+ * - **BUSY-2** — the self-committing field, #625's shape (#628): a text-entry `<input>`/`<textarea>`
+ *   whose own start tag carries `(change)`/`(blur)` and a busy `[disabled]` — Enter fires
+ *   `change` without leaving the field, so the flag blurs the field focus is in. The fix is
+ *   `[readonly]`, which locks typing without blurring; the kinds `readonly` cannot lock are out of
+ *   scope and stay RV-FE-9's, as is a `(input)`-only field (draft-sync, not a commit).
  * - **FOCUS-1** — a confirm-before-destroy surface, or a focus-trapped modal, destroys the element
  *   focus is sitting on, so its component must move focus deliberately — rendering a shared confirm
  *   component is not enough, since those own the open leg only. Judged per **gating signal** (#624):
  *   moving focus for one surface used to excuse every other surface the component owned.
  *
- * Only ever reasons about lines a diff **added**: ~12 legitimate `[disabled]` bindings and 8 standing
- * confirm surfaces must never fail the repo, and a guard that goes red on day one gets switched off
+ * Only ever reasons about lines a diff **added**: ~12 legitimate `[disabled]` bindings and 11
+ * standing surfaces — 8 confirm + 3 focus-trapped modals, the count #626's widened trigger judges —
+ * must never fail the repo, and a guard that goes red on day one gets switched off
  * (issue #529). `--all` sweeps the whole tree for an audit instead.
  *
  * BUSY-1 discriminates on a curated busy-flag vocabulary rather than on a state/validity allow-list,
@@ -39,16 +44,17 @@ import {
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
 
 /**
- * The rules that **fail** a build. BUSY-1 only, deliberately.
+ * The rules that **fail** a build: the two syntactic ones, deliberately.
  *
- * BUSY-1 is syntactic — an element name, an attribute, a vocabulary — and swept 297 files with no
- * false positive. FOCUS-1 asks whether a component *moves focus*, which is a runtime property being
+ * BUSY-1 and BUSY-2 are element names, attributes and a curated vocabulary — each swept the whole
+ * tree with no false positive before gating (297 files for BUSY-1; #628's sweep for BUSY-2).
+ * FOCUS-1 asks whether a component *moves focus*, which is a runtime property being
  * approximated over source: five components in this app move focus with a plain `.focus()`, and each
  * widening of the predicate trades a false positive for a false negative. It still runs, still
- * reports, and still found the two live bugs this slice fixed — it just advises rather than blocks.
+ * reports, and still found the two live bugs #621's slice fixed — it just advises rather than blocks.
  * Decision and the three review rounds behind it: `docs/plans/focus-posture-guard.md`.
  */
-const GATING = new Set(['BUSY-1']);
+const GATING = new Set(['BUSY-1', 'BUSY-2']);
 
 /**
  * Identifier stems that denote an in-flight write the user's own activation started. Derived from
@@ -93,6 +99,38 @@ export const BUSY_STEMS = [
  */
 const ACTIONABLE = new Set(['button', 'a']);
 
+/**
+ * The `<input>` kinds `readonly` actually locks, per the HTML spec — the allow-list #628 scopes
+ * BUSY-2 to. The inert kinds (`<select>`, checkbox, radio, `file`, `range`, `color`) get no advice
+ * at all: `readonly` cannot lock them, no attribute locks without blurring, and the right posture
+ * there — serialize in the handler — is RV-FE-9's human call (`frontend/.claude/CLAUDE.md`).
+ */
+const READONLY_KINDS = new Set([
+  'text',
+  'search',
+  'url',
+  'tel',
+  'email',
+  'password',
+  'date',
+  'month',
+  'week',
+  'time',
+  'datetime-local',
+  'number',
+]);
+
+/**
+ * The commit bindings a field starts its own write from — #625's shape, on the field's own tag:
+ * Enter fires `change` without leaving the field, a click-away fires `blur`. Deliberately NOT
+ * `(input)`: that is a per-keystroke event whose dominant use is draft-sync into a signal while a
+ * *button* starts the write — `admin-commissions` and `admin-privacy` bind exactly
+ * `(input)` + `[disabled]="busy()"` as correct code, and the sweep that gates this rule found all
+ * three. A field that genuinely commits per keystroke is a deliberate miss, as `BUSY_STEMS` misses
+ * a novel flag name.
+ */
+const COMMIT_HANDLERS = ['(change)', '(blur)'];
+
 /** The repo's focus helper, as a call site — a TSDoc mention is not compliance. */
 const FOCUS_HELPER = /\b(focusMover|focusAfterRender)\s*\(/;
 
@@ -126,9 +164,11 @@ function movesFocus(code) {
  * reports its own flips, and the `.html` reports the branch — neither reports the other's lines, and
  * nothing is reported twice.
  *
- * @param {{ path: string, lines: string[], added: Set<number>, componentSource?: string,
- *   templateSource?: string, isFocusTrap?: (tag: string) => boolean }} input the file's new content,
- *   the 1-based line numbers the diff added, the sibling's source for whichever half is missing, and
+ * @param {{ path: string, lines: string[], added: Set<number>,
+ *   componentSource?: string | (() => string), templateSource?: string | (() => string),
+ *   isFocusTrap?: (tag: string) => boolean }} input the file's new content,
+ *   the 1-based line numbers the diff added, the sibling's source for whichever half is missing
+ *   (a thunk defers the read until a verdict actually needs it), and
  *   the seam that answers whether a child component traps focus
  * @returns {{ path: string, line: number, rule: string, text: string }[]} one entry per violation
  */
@@ -144,9 +184,9 @@ export function findViolations({
 
   const html = path.endsWith('.html');
   const scanned = html ? htmlRegions(lines) : typescriptRegions(lines);
-  const code = html ? codeOf(componentSource ?? '') : scanned.code;
+  const code = html ? codeOf(sourceOf(componentSource)) : scanned.code;
   const inline = html || scanned.template.some((line) => line.trim() !== '');
-  const template = inline ? scanned.template : maskHtmlComments((templateSource ?? '').split('\n'));
+  const template = inline ? scanned.template : maskHtmlComments(sourceOf(templateSource).split('\n'));
   const violations = [
     ...busyViolations(path, lines, added, scanned.template),
     ...focusViolations({
@@ -166,6 +206,15 @@ export function findViolations({
 /** An `.html` file is all template but for its comments, and carries no TypeScript at all. */
 function htmlRegions(lines) {
   return { template: maskHtmlComments(lines), code: [] };
+}
+
+/**
+ * A sibling source may arrive as a thunk, so `checkOne` reads the disk only for the half a verdict
+ * actually needs — a `.ts` with an inline template asked for its `.html` sibling on every sweep,
+ * ~300 swallowed ENOENTs per `--all` (#629).
+ */
+function sourceOf(source) {
+  return (typeof source === 'function' ? source() : source) ?? '';
 }
 
 /** Strips a sibling component's comments and strings so `movesFocus` sees call sites only. */
@@ -290,30 +339,52 @@ function typescriptRegions(lines) {
 
 /** Scans from the opening quote at `c` to just past its match, honouring backslash escapes. */
 function skipString(chars, c) {
+  const end = stringEnd(chars, c);
+  return end === -1 ? chars.length : end + 1;
+}
+
+/** The closing quote's index on the same line, or -1 when the quote at `c` has no mate there. */
+function stringEnd(chars, c) {
   const quote = chars[c];
   for (let i = c + 1; i < chars.length; i++) {
     if (chars[i] === '\\') i++;
-    else if (chars[i] === quote) return i + 1;
+    else if (chars[i] === quote) return i;
   }
-  return chars.length;
+  return -1;
 }
 
 function busyViolations(path, lines, added, template) {
   const violations = [];
 
   for (const tag of startTags(template)) {
-    if (!ACTIONABLE.has(tag.name)) continue;
     const disabled = tag.attributes.get('[disabled]');
     if (!disabled || !isBusyFlag(disabled.value)) continue;
     if (!added.has(disabled.line + 1)) continue;
+    const rule = ACTIONABLE.has(tag.name) ? 'BUSY-1' : selfCommits(tag) ? 'BUSY-2' : null;
+    if (rule === null) continue;
     violations.push({
       path,
       line: disabled.line + 1,
-      rule: 'BUSY-1',
+      rule,
       text: lines[disabled.line].trim(),
     });
   }
   return violations;
+}
+
+/**
+ * #625's shape, mechanically (#628): the field's own start tag both starts the write and is
+ * disabled by it. Only for the kinds `readonly` applies to — a dynamic `[type]`/`[attr.type]` is
+ * skipped because the kind cannot be read off the tag, and a missing `type` defaults to `text`,
+ * which can. The safe error direction, as `BUSY_STEMS` is for BUSY-1.
+ */
+function selfCommits(tag) {
+  if (!COMMIT_HANDLERS.some((handler) => tag.attributes.has(handler))) return false;
+  if (tag.name === 'textarea') return true;
+  if (tag.name !== 'input') return false;
+  if (tag.attributes.has('[type]') || tag.attributes.has('[attr.type]')) return false;
+  const type = tag.attributes.get('type');
+  return type === undefined || READONLY_KINDS.has(type.value.toLowerCase());
 }
 
 /**
@@ -436,32 +507,58 @@ function trapSurfaces(lines, spans, isFocusTrap) {
   const traps = new Set();
 
   for (let i = 0; i < lines.length; i++) {
-    if (!rendersFocusTrap(lines[i], isFocusTrap)) continue;
-    const innermost = spans.filter((span) => span.line <= i && i <= bodyEnd(lines, span)).at(-1);
-    if (innermost !== undefined) traps.add(innermost);
+    for (const column of trapColumns(lines[i], isFocusTrap)) {
+      const innermost = spans.filter((span) => contains(span, bodyEnd(lines, span), i, column)).at(-1);
+      if (innermost !== undefined) traps.add(innermost);
+    }
   }
   return traps;
 }
 
-function rendersFocusTrap(line, isFocusTrap) {
-  if (FOCUS_TRAP.test(line)) return true;
-  return [...line.matchAll(COMPONENT_TAG)].some((match) => isFocusTrap(match[1]));
+/** Where on the line a trap is rendered — the column is what tells same-line siblings apart. */
+function trapColumns(line, isFocusTrap) {
+  const columns = [];
+  const direct = FOCUS_TRAP.exec(line);
+  if (direct !== null) columns.push(direct.index);
+  for (const match of line.matchAll(COMPONENT_TAG)) {
+    if (isFocusTrap(match[1])) columns.push(match.index);
+  }
+  return columns;
 }
 
 /**
- * The line a block's `{ … }` body closes on, computed on demand.
+ * Whether the position sits inside the block's span, column-precise at both ends. Two blocks
+ * opening and closing on one line both cover it line-wise, and the line-granular test attributed
+ * a trap in the first to the second — a false positive against a signal that gates nothing plus a
+ * silent miss on the one that does (#629).
+ */
+function contains(span, end, line, column) {
+  if (span.line > line || (span.line === line && span.head.column > column)) return false;
+  return end.line > line || (end.line === line && end.column >= column);
+}
+
+/**
+ * The position a block's `{ … }` body closes at, computed on demand.
  *
  * Only a template holding a trap ever asks, so a file with no `<app-…>` child pays no brace walk at
  * all — this runs from a `PostToolUse` hook on every edit.
  */
 function bodyEnd(lines, span) {
-  span.end ??= closingBrace(lines, span.head)?.line ?? lines.length - 1;
+  span.end ??= closingBrace(lines, span.head) ?? {
+    line: lines.length - 1,
+    column: (lines.at(-1) ?? '').length,
+  };
   return span.end;
 }
 
-/** The signal a branch is gated on: `(statementOpen()` and `(selectedSet(); as set` both name one. */
+/**
+ * The signal a branch is gated on: `(statementOpen()` and `(selectedSet(); as set` both name one,
+ * and so does the negated trigger half `(!confirmRemove()` — the floor can land there when the
+ * diff adds the trigger but not the prompt, and failing to read its signal recorded null in
+ * `reported`, so the same surface was reported a second time at its flip (#629).
+ */
 function gatingSignal(condition) {
-  return /^\(\s*([A-Za-z_$][\w$]*)\s*\(/.exec(condition)?.[1] ?? null;
+  return /^\(\s*!?\s*([A-Za-z_$][\w$]*)\s*\(/.exec(condition)?.[1] ?? null;
 }
 
 /**
@@ -472,7 +569,7 @@ function gatingSignal(condition) {
  * as `BUSY_STEMS` is for BUSY-1. Widen this rather than route around it.
  */
 function flipSites(code, signal) {
-  const flip = new RegExp(`(?<![\\w$])${escaped(signal)}\\s*\\.set\\(\\s*(?:false|undefined|null)\\s*\\)`);
+  const flip = new RegExp(`(?<![\\w$])${RegExp.escape(signal)}\\s*\\.set\\(\\s*(?:false|undefined|null)\\s*\\)`);
   const sites = [];
 
   for (let i = 0; i < code.length; i++) {
@@ -496,7 +593,7 @@ function moverNames(code) {
 function movesFocusIn(member, movers) {
   return (
     /\.focus\s*\(/.test(member) ||
-    movers.some((name) => new RegExp(`(?<![\\w$])${escaped(name)}\\s*\\(`).test(member))
+    movers.some((name) => new RegExp(`(?<![\\w$])${RegExp.escape(name)}\\s*\\(`).test(member))
   );
 }
 
@@ -506,34 +603,57 @@ function movesFocusIn(member, movers) {
  * Not the innermost block: a flip inside a `subscribe(…)` callback and the leg beside it belong to
  * the same handler, and `venue-map` writes its focus restore inside a `queueMicrotask`. Both ends
  * are column-precise, or a neighbour sharing the member's opening or closing line lends it a
- * `.focus()` it does not have.
+ * `.focus()` it does not have. The walk stops at the class-declaring brace — the outermost
+ * non-class block seen by then IS the member, so continuing to line 0 bought nothing (#629).
  */
 function memberOf(code, site) {
-  const enclosing = [];
+  let member;
   let depth = 0;
 
   for (let i = site.line; i >= 0; i--) {
     for (let c = (i === site.line ? site.column : code[i].length) - 1; c >= 0; c--) {
       if (code[i][c] === '}') depth++;
       else if (code[i][c] !== '{') continue;
-      else if (depth === 0) enclosing.push({ line: i, column: c });
-      else depth--;
+      else if (depth > 0) depth--;
+      else if (declaresClass(code, i, c)) return member === undefined ? '' : blockText(code, member);
+      else member = { line: i, column: c };
     }
   }
-  const member = enclosing.filter((open) => !declaresClass(code, open.line)).at(-1);
   return member === undefined ? '' : blockText(code, member);
 }
 
 /**
- * Whether the block opening here is the class body rather than one of its members.
+ * Whether the block opening at this brace is the class body rather than one of its members.
  *
- * Prettier moves the brace onto its own line whenever the heritage clause overflows, so the
- * declaration can end lines above it; the walk stops at the first line that closes a statement.
+ * Walks BACKWARD from the brace over the code mask, matching braces and parens, and answers true
+ * only when the `class` keyword is reached at depth 0 — through a heritage clause however many
+ * lines it spans, Prettier's standalone brace and `extends mixin({ … }) {` alike (#629, PR #630
+ * review F-2; the earlier line-granular walk got one of those wrong in each direction). Reaching a
+ * statement boundary (`;`) or exiting an enclosing group (`{`, or an unbalanced `(`) first means
+ * an ordinary member or block.
  */
-function declaresClass(code, line) {
+function declaresClass(code, line, column) {
+  let parens = 0;
+  let braces = 0;
+  let word = '';
+
   for (let i = line; i >= 0; i--) {
-    if (/\bclass\b/.test(code[i])) return true;
-    if (i < line && /[;{}]\s*$|^\s*$/.test(code[i])) return false;
+    for (let c = (i === line ? column : code[i].length) - 1; c >= 0; c--) {
+      const ch = code[i][c];
+      if (/[\w$]/.test(ch)) {
+        word = ch + word;
+        continue;
+      }
+      if (parens === 0 && braces === 0 && word === 'class') return true;
+      word = '';
+      if (ch === ')') parens++;
+      else if (ch === '(' && --parens < 0) return false;
+      else if (ch === '}') braces++;
+      else if (ch === '{' && --braces < 0) return false;
+      else if (ch === ';' && parens === 0 && braces === 0) return false;
+    }
+    if (parens === 0 && braces === 0 && word === 'class') return true;
+    word = '';
   }
   return false;
 }
@@ -552,29 +672,54 @@ function blockText(lines, open) {
 /**
  * The position of the `}` closing the first `{` at or after `from`.
  *
- * Quote-aware, because a template legitimately writes a brace inside an attribute or an
- * interpolation (`{{ label() ?? '}' }}`) and counting it closes a block lines early — which moves a
- * trap out of the branch that renders it, or into a later sibling that does not.
+ * Quote-aware, because a template legitimately writes a brace inside an attribute, a condition or
+ * an interpolation (`{{ label() ?? '}' }}`) and counting it closes a block lines early — which
+ * moves a trap out of the branch that renders it, or into a later sibling that does not. A single
+ * quote is a string opener only in **expression context** — inside an interpolation, or inside a
+ * block condition's parentheses, which only an `@` keyword can open (a parenthesis in prose never
+ * counts, PR #630 re-review F-5) — and only when its mate closes on the same line: in element text
+ * it is prose, where one apostrophe (`It's ready</p> }`) or a straddling pair
+ * (`It's on</p> } <p>Don't`) otherwise swallows the real `}` and extends the branch to the end of
+ * the file (#629, PR #630 review F-3). Double quotes keep the mated-on-line rule alone: attribute
+ * values are where they open, and quoted prose is not idiom in these templates.
  */
 function closingBrace(lines, from) {
   let depth = 0;
+  let parens = 0;
+  let armed = false;
 
   for (let i = from.line; i < lines.length; i++) {
     for (let c = i === from.line ? from.column : 0; c < lines[i].length; c++) {
       const ch = lines[i][c];
-      if (ch === '"' || ch === "'") c = skipString(lines[i], c) - 1;
-      else if (ch === '{') depth++;
-      else if (ch !== '}') continue;
-      else if (depth === 0) return null;
-      else if (--depth === 0) return { line: i, column: c };
+      if (ch === '"' || (ch === "'" && parens > 0)) {
+        const end = stringEnd(lines[i], c);
+        if (end !== -1) c = end;
+      } else if (lines[i].startsWith('{{', c)) {
+        parens++;
+        armed = false;
+        c++;
+      } else if (parens > 0) {
+        if (ch === '(') parens++;
+        else if (ch === ')') parens--;
+        else if (ch === '}' && lines[i][c + 1] === '}') {
+          parens--;
+          c++;
+        }
+      } else if (ch === '@') {
+        armed = true;
+      } else if (armed && ch === '(') {
+        parens = 1;
+        armed = false;
+      } else {
+        if (armed && !/[A-Za-z\s]/.test(ch)) armed = false;
+        if (ch === '{') depth++;
+        else if (ch !== '}') continue;
+        else if (depth === 0) return null;
+        else if (--depth === 0) return { line: i, column: c };
+      }
     }
   }
   return null;
-}
-
-/** `$` is legal in an identifier and special in a pattern. */
-function escaped(name) {
-  return name.replaceAll('$', '\\$');
 }
 
 /**
@@ -773,8 +918,17 @@ function trackedAmong(paths) {
  * diff-scoping exists to avoid.
  */
 export function sweep() {
-  const paths = changedPaths(git(['ls-files', '-z', 'frontend/src/app']));
-  return paths.flatMap((path) => checkOne(path, null));
+  return appPaths().flatMap((path) => checkOne(path, null));
+}
+
+/**
+ * One `git ls-files` per process: `sweep()` and the trap index used to run the identical command
+ * separately — two subprocesses per `--all`, in a guard a `PostToolUse` hook runs on every edit
+ * (#629). Built lazily, so the hook still forks nothing until something actually asks.
+ */
+let appPathsIndex;
+function appPaths() {
+  return (appPathsIndex ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app'])));
 }
 
 /** Checks one path; `added` of null lifts the diff scoping, which is what `sweep()` wants. */
@@ -787,8 +941,8 @@ function checkOne(path, added, read = readText) {
     path,
     lines,
     added: added ?? new Set(lines.map((_, i) => i + 1)),
-    componentSource: sibling(path, '.html', '.ts', read),
-    templateSource: sibling(path, '.ts', '.html', read),
+    componentSource: () => sibling(path, '.html', '.ts', read),
+    templateSource: () => sibling(path, '.ts', '.html', read),
   });
 }
 
@@ -820,7 +974,7 @@ function sibling(path, from, to, read) {
  * @param {(path: string) => string | null} [read] disk, injectable for the test suite
  * @param {() => string[]} [list] the candidate paths, likewise
  */
-export function focusTraps(read = readText, list = trackedComponents) {
+export function focusTraps(read = readText, list = appPaths) {
   const answers = new Map();
   let index;
 
@@ -832,10 +986,6 @@ export function focusTraps(read = readText, list = trackedComponents) {
     }
     return answers.get(tag);
   };
-}
-
-function trackedComponents() {
-  return changedPaths(git(['ls-files', '-z', 'frontend/src/app']));
 }
 
 function trapsFocus(source, read) {
@@ -855,15 +1005,25 @@ const ADVICE = {
     'A binding that mixes busyness with validity splits, with the VALIDITY half left on [disabled] ' +
     '— the same flag on both is still this violation. Every other element is out of scope. ' +
     'See frontend/.claude/CLAUDE.md.',
+  'BUSY-2':
+    'BUSY-2: a text-entry field disabled by a flag its own (change)/(blur) set blurs the ' +
+    'field focus is in — Enter fires change without leaving it, and a click-away disables the ' +
+    'next field just as focus lands (WCAG 2.4.3, #625). Use [readonly] instead (style with the ' +
+    'read-only: variant): it locks typing while keeping the field focused and in the tab order — ' +
+    'pricing-tab.html is the live shape. The kinds readonly cannot lock (select, checkbox, radio, ' +
+    'file, range, color) are out of scope: serialize in the handler instead of locking the ' +
+    'control. See frontend/.claude/CLAUDE.md.',
   'FOCUS-1':
     'FOCUS-1: a transition that destroys the element focus sits on — a confirm prompt settling, a ' +
     'focus-trapped modal dismissed or torn down by a state reset — strands focus on <body> unless ' +
     'it is moved deliberately (WCAG 2.4.3). Give the surface all three legs — open, back-out and ' +
-    "settled — via shared/focus-after-render.ts's focusMover(). The line reported is either the " +
-    'branch, when the component moves focus nowhere at all, or the flip that closes the surface, ' +
-    'when that flip’s own handler does: judged per gating signal, so moving focus for one surface ' +
-    'no longer excuses another. Rendering <app-confirm-panel>/<app-confirm-with-reason> does NOT ' +
-    'clear this: they own the open leg only. See frontend/.claude/CLAUDE.md.',
+    "settled — via shared/focus-after-render.ts's focusMover(). The line reported is the branch " +
+    'when the component moves focus nowhere at all; otherwise it is the flip that closes the ' +
+    'surface while its own handler moves none — or the branch again in a file that holds no flip, ' +
+    "as an external template's .html does whatever its component holds elsewhere. Judged per " +
+    'gating signal, so moving focus for one surface no longer excuses another. Rendering ' +
+    '<app-confirm-panel>/<app-confirm-with-reason> does NOT clear this: they own the open leg ' +
+    'only. See frontend/.claude/CLAUDE.md.',
 };
 
 function report(violations) {
@@ -935,7 +1095,7 @@ function main(argv) {
 
   if (mode === '--all') {
     const violations = sweep();
-    const counts = ['BUSY-1', 'FOCUS-1']
+    const counts = ['BUSY-1', 'BUSY-2', 'FOCUS-1']
       .map((rule) => `${rule}: ${violations.filter((v) => v.rule === rule).length}`)
       .join('  ');
     process.stdout.write(`${violations.length ? `${report(violations)}\n` : ''}${counts}\n`);
