@@ -4,9 +4,10 @@
 > or the superpowers `subagent-driven-development`/`executing-plans` skills if present
 > task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stop the repo's most-repeated bug class (WCAG 2.4.3 stranded focus, twelve instances
-across #604/#614/#616) from recurring, by making both compliant forms machine-checkable at
-authoring time and in CI — and fix the twelfth instance the detector found while it was being built.
+**Goal:** Stop the repo's most-repeated bug class (WCAG 2.4.3 stranded focus, **fourteen** instances
+across #604/#614/#616 and this slice) from recurring, by making both compliant forms machine-checkable
+at authoring time and in CI — and fix the three instances found along the way: the twelfth by the
+detector itself, the thirteenth and fourteenth by the review gate, in the very file the slice edits.
 
 **Architecture:** The single most significant decision is that **rule 1 discriminates on a curated
 busy-flag vocabulary (a deny-list), not on a state/validity allow-list.** For a hygiene guard the two
@@ -167,12 +168,14 @@ before phase 0 (the previous PR for this branch name, #620, is merged).
   so a shared abstraction would be a union of both, not a reuse of either. What the duplication
   genuinely cost, a diverged backtick case, is fixed and pinned (F-11).
 - **No new `riviera-review-overlay` bank item.** The docs-freshness sweep turned up that the overlay
-  has **no** RV-FE item for this bug class at all — which is part of why twelve instances shipped.
-  Adding one is deliberately not done here: with a hard CI gate now in place, an overlay item would
-  mostly restate what the guard discharges mechanically, and RV-STYLE-1's own history runs the other
-  way (bank item first, after eight PRs raised it by hand; guard second). **Flagged for the human at
-  the PR** rather than decided silently — the docs-freshness skill only reconciles existing
-  statements, it does not author new ones.
+  has **no** RV-FE item for this bug class at all — which is part of why fourteen instances shipped.
+  Adding one is deliberately not done here: RV-STYLE-1's own history runs the other way (bank item
+  first, after eight PRs raised it by hand; guard second). **Filed as #623**, which also carries the
+  argument the third review pass added: with FOCUS-1 advisory rather than gating, the human half of
+  the check is exactly the part still missing.
+- **No narrowing of FOCUS-1's component-scoped exemption.** Two narrower scopings were tried and both
+  were worse (known limit (a)); it is the gap that hid instance 14. **Filed as #624** with the two
+  shapes worth spiking.
 - **No new shared confirm component for `payouts-tab`.** Its amber weather panel is a fourth markup
   family; #604, #616 and now this slice have all made the same call, that a variant axis imposes
   drift.
@@ -294,13 +297,16 @@ check — then finish the merge close-out.
 PR: **#622** — opened as a draft at the Phase 0 commit, per `riviera-sdlc` rule 3 (CI fires on the
 `pull_request` event only); marked ready for review at the Phase 4 commit.
 
-**Gates:** CI — green on the draft's pushes. Review gate — **due now**. Sonar gate — the badge
-reported Quality Gate passed (0 new issues, 100% new-code coverage, 0% duplication) on the Phase-3
-push, but the **reported list must still be pulled from the API** at ready-for-review and re-checked
-against the final commit. docs-freshness — due at close-out; the counting sweep matters here, since
-this is the **fourth** `scripts/check-*.mjs` guard and the **third** CI hygiene step (the `ci.yml`
-job comment saying "Two diff-scoped repo-hygiene guards" was already corrected in Phase 3, but
-sibling statements elsewhere may not be).
+**Gates:** CI — green through the phase pushes; the final push's run is the one to confirm before
+merge. Review gate — **run in full, three times**: `/code-review` via ladder rung 1 over the PR diff
+(**12 findings**), again over the fix diff per `pr-gates.md` §1 step 3 (**13 more**, two of them
+false-positive regressions the first round introduced), and a third time because that round changed
+rule *semantics* (**14 more**, including a fourteenth instance of the bug class and the evidence that
+settled FOCUS-1's gating posture). **39 findings, all closed** — by fix, or by the human's decision on
+FOCUS-1. Sonar gate — reported list pulled from the API, not the badge: `issues/search` **total 0**,
+`measures` non-empty (`new_lines 16`, `new_coverage 100.0`, `new_duplicated_lines_density 0.0`), so
+not a false-clean read; re-confirm against the final head SHA before merging. docs-freshness — **ran**
+over `origin/main...HEAD`, 2 stale statements patched + 1 gap filed as #623.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -577,9 +583,12 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Flyway migration present for schema changes (invariant #12) — N/A.
 - [x] **Frontend** standards met; no `as any`; every `data-testid` preserved.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
-      `riviera-review-overlay`, not the overlay alone.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #622`.
+- [x] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
+      `riviera-review-overlay`, not the overlay alone. Run **three times** (PR diff, fix diff, and the
+      semantics-changing second fix round): 12 + 13 + 14 findings, all closed.
+- [x] Follow-ups filed for everything deferred: **#623** (the review bank's missing item) and
+      **#624** (FOCUS-1's component-scoped exemption).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
