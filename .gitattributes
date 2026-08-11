@@ -1,0 +1,23 @@
+# Line endings are a property of this repository, not of each contributor's git install.
+#
+# Every text file is stored LF and checked out LF on every platform. Without this, Git for
+# Windows' stock `core.autocrlf=true` checks the tree out CRLF, and the frontend Prettier gate
+# (`npm run format:check`, whose `endOfLine` default is `lf`) then reports every file as
+# unformatted while CI is green and nothing is actually mis-formatted — issue #636.
+#
+# `text=auto` decides text-vs-binary by content, so binaries are never converted; the explicit
+# `binary` lines below mean the tracked ones do not rely on that heuristic. `platform/.gitattributes`
+# sits deeper and so keeps precedence for the files it names (`gradlew`, `*.bat`, `*.jar`).
+
+* text=auto eol=lf
+
+# Shell scripts stay LF wherever they run — the cloud-session hooks, and any Linux shell.
+*.sh text eol=lf
+
+# Binaries: never line-ending-converted, never diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.jar binary

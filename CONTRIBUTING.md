@@ -44,6 +44,25 @@ so the tree-wide Prettier reformat (#631) stays invisible to line-history tools
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
+**Line endings need no setup.** [`.gitattributes`](.gitattributes) stores every text file as
+LF and checks it out LF in any fresh clone, so don't set `core.autocrlf` — on Windows its
+stock `true` is exactly what used to make `npm run format:check` report all 361 files as
+unformatted (#636).
+
+A clone made **before** that file landed keeps whatever is already on disk. An attribute
+doesn't rewrite existing files, and neither `git checkout` nor `git add --renormalize` will,
+because git reads a CRLF working file as *equal* to its LF blob. To renormalize the whole
+tree, commit or stash first, then re-checkout it through the new attribute:
+
+```bash
+git rm --cached -r .   # drop the index; the files stay on disk
+git reset --hard       # rewrite every one of them, now LF
+```
+
+Only `frontend/src` and `frontend/e2e` are gated, so `npm run format` from `frontend/` is
+enough if you'd rather leave the rest alone. Either way, check with
+`git ls-files --eol frontend/src` — every row should read `w/lf`.
+
 ## 3. How we work (spec-driven, vertical slices)
 
 We build in thin **vertical slices** — one path through every layer
