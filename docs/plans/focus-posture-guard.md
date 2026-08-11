@@ -243,10 +243,10 @@ N/A — no contract change. No request URL, method, body or header is added, rem
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, opening the draft PR, then phase 1`
 
-**Next action:** Phase 0 step 1 — write `scripts/check-focus-posture.test.mjs`'s rule-1 cases and
-prove them RED against the missing module.
+**Next action:** Open the draft PR (rule 3 — CI fires on `pull_request` only), then Phase 1 step 1:
+write rule 2's cases (AC-6..AC-9) and prove them RED.
 
 **Gates:** CI — not yet run. Review gate — due at ready-for-review. Sonar gate — due at PR.
 docs-freshness — due at close-out (the counting sweep matters: this is the **fourth**
@@ -254,7 +254,7 @@ docs-freshness — due at close-out (the counting sweep matters: this is the **f
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Rule 1: `[disabled]` on a busy flag | | |
+| 0 — Rule 1: `[disabled]` on a busy flag | ✅ | |
 | 1 — Rule 2: a confirm surface with no focus leg | | |
 | 2 — The twelfth instance: `payouts-tab`'s three legs | | |
 | 3 — Wire it: `PostToolUse` hook + the CI step | | |
@@ -292,18 +292,24 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Create `scripts/check-focus-posture.mjs`, `scripts/check-focus-posture.test.mjs`
 
-- [ ] **Step 1: Write the failing tests** — AC-1..AC-5 and AC-10, as fixture strings fed to the
+- [x] **Step 1: Write the failing tests** — AC-1..AC-5 and AC-10, as fixture strings fed to the
       exported detector (no git, no filesystem), mirroring `check-inline-comments.test.mjs`'s shape.
-- [ ] **Step 2: Run them, verify they fail** — `node --test scripts/check-focus-posture.test.mjs`
+      **Widened:** a second case walks all 12 distinct busy shapes the app already binds to
+      `[appBusy]`, so the vocabulary is pinned by evidence rather than by one example.
+- [x] **Step 2: Run them, verify they fail** — `node --test scripts/check-focus-posture.test.mjs`
       → RED on the missing module.
-- [ ] **Step 3: Implement** the template-region scanner (`.html` whole-file minus `<!-- -->`; `.ts`
+- [x] **Step 3: Implement** the template-region scanner (`.html` whole-file minus `<!-- -->`; `.ts`
       only inside `template:` backtick regions) plus rule 1: start-tag attribute scan, skipping
       `input`/`textarea`/`select`, skipping any tag carrying `[appBusy]`, flagging `[disabled]`
       whose expression contains a busy stem from the exported vocabulary.
-- [ ] **Step 4: Run them, verify they pass.**
-- [ ] **Step 5: Generalization-audit pass** — record the vocabulary's derivation from the 51 shipped
-      `[appBusy]` expressions, and the stems deliberately excluded as too close to state.
-- [ ] **Step 6: Commit** — `git commit -m "Detect a button disabled by its own in-flight flag (#621)"`
+- [x] **Step 4: Run them, verify they pass.** → **8 passed**, after one real defect the suite caught:
+      the inline-template scanner cleared its `template:` lookbehind buffer *before* testing it, so
+      every inline template was masked away and `scans the inline template of a component` failed.
+      That case is the only reason rule 1 is not silently blind to 55 of the app's 70 components.
+- [x] **Step 5: Generalization-audit pass** — see the log's second row: the vocabulary's derivation,
+      the five stems excluded as too close to state, and the positive control that proves the sweep's
+      `0` is a real zero rather than a scanner that reaches nothing.
+- [x] **Step 6: Commit** — `git commit -m "Detect a button disabled by its own in-flight flag (#621)"`
 - [ ] **Step 7: Open the draft PR** (`riviera-sdlc` rule 3 — CI fires on the `pull_request` event
       only) and **update plan-doc execution status** in the same commit window.
 
@@ -397,6 +403,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-11 | Plan time — the issue-intake grill, asking whether #616's sweep was complete | every component rendering a **confirm-before-destroy surface**, asked whether it moves focus at all | `grep -rn "@if (.*[Cc]onfirm" src/app` cross-referenced with `grep -rln "focusAfterRender\|focusMover" src/app` | 8 components with a confirm surface; 7 compliant, **1 not** — `operator/payouts-tab`, with zero focus handling and zero focus specs | **The twelfth instance, and the finding that justifies item 2.** #604, #614 and #616 each audited the *adopters of `focusMover()`* — a population `payouts-tab` is not in, so three consecutive audits could not see it. Searching the adopters of the **confirm surface** instead is what found it. Fixed in Phase 2; it is also rule 2's single true positive in AC-11 |
+| 2026-08-11 | Phase 0 — choosing rule 1's discriminator | every expression the app binds to `[appBusy]`, asked which identifier stems denote an in-flight write, and every expression it still binds to `[disabled]`, asked which must never match | `grep -rhno '\[appBusy\]="[^"]*"' src/app` (51 bindings, 17 distinct) and `grep -rn '\[disabled\]=' src/app` (13 hits, 12 real + 1 in `busy-action.ts`'s own TSDoc) | 22 stems adopted; **5 rejected** — `loading`, `pending`, `processing`, `updating`, `creating` | **The rejections are the finding, and one of them was nearly a live false positive.** `pending` would have matched the standing `[disabled]="isPending(set)"` in `daily-view-tab.html` — a *state* binding #616 deliberately kept — turning the first PR that touched that line red on correct code. The other four read as state at least as often as busyness. Two controls on the outcome: the whole tree sweeps to **0** violations across 297 files, and a **positive control** (rewriting every real `[disabled]` expression to `saving()` in memory) flags 3 in `set-editor.html` and 1 in `daily-view-tab.html` while leaving the four inputs and the `[appBusy]` splits clean — so the zero is a real zero, not a scanner that reaches nothing. The 13th grep hit is why AC-5 exists |
 
 ---
 
