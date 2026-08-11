@@ -42,7 +42,7 @@ function tab(fixture: ComponentFixture<TabsHost>, testId: string): HTMLElement {
 /** The rendered pill labels, in DOM order. */
 function labels(fixture: ComponentFixture<TabsHost>): string[] {
   return [...(fixture.nativeElement as HTMLElement).querySelectorAll('nav a')].map((a) =>
-    (a as HTMLElement).textContent!.trim(),
+    (a as HTMLElement).textContent.trim(),
   );
 }
 

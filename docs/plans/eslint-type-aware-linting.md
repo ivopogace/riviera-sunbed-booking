@@ -342,23 +342,28 @@ machine-checked one, which is #632's third stated motivation.)
 > **This section is the session-recovery anchor.** After a compaction or in a fresh session,
 > re-read it (plus the current `riviera-sdlc` stage reference) before acting.
 
-**Stage pointer:** `implement — phases 0-2 done (gate RED at 179, down from 409); phase 3 next`
+**Stage pointer:** `implement — phases 0-3 done (gate RED at 139, down from 409); phase 4 next`
 
-**Next action:** Phase 3 — hand-review the 42 `no-unnecessary-type-assertion` sites. Note R-2's
-original premise (non-strict compiler) is withdrawn; judge each on whether the assertion is
-genuinely redundant against the now-correct types, and prefer `!` over deletion where it removes
-null. All three TS projects currently typecheck clean — keep it that way.
+**Next action:** Phase 4 — the 9 production-source findings, including B-1..B-3 (`void submit(…)`).
+Apply R-7 to the three `require-await`: preserve each declared `Promise` return type and never
+narrow an `override`.
 
-**Verification standing at phase 2:** `tsc --noEmit` clean for `tsconfig.app.json`,
+**Verification standing at phase 3:** `tsc --noEmit` clean for `tsconfig.app.json`,
 `tsconfig.spec.json` **and** `e2e/tsconfig.json`; Vitest **1372 passed / 156 files**; mocked
-Playwright **176 passed**; zero `it`/`test`/`describe` lines added or removed vs `origin/main`.
+Playwright **176 passed** (last run at phase 2); zero `it`/`test`/`describe` lines added or removed
+vs `origin/main`.
+
+**Standing method (earned across phases 1–3, applies to every remaining phase):** never trust an
+ESLint autofix — apply it, then run `tsc --noEmit` on all three projects *and* the suite, and
+revert anything that regresses. Phase 1 and phase 2 each shipped a fixer-induced regression that
+only a typecheck caught; phase 3 caught two more.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Flip the gate (RED at 409) | ✅ | `e05e1c4c` |
 | 1 — Spec unsafe-`any`: adopt the `as HTMLElement` idiom (409 → 259) | ✅ | `<sha>` |
 | 2 — `querySelector<T>(…)!` codemod + safe fixers (259 → 179) | ✅ | `<sha>` |
-| 3 — `no-unnecessary-type-assertion` by hand (42) | | |
+| 3 — `no-unnecessary-type-assertion`, verified not trusted (179 → 139) | ✅ | `<sha>` |
 | 4 — Production source (9, incl. B-1..B-3) | | |
 | 5 — e2e (11, incl. B-4/B-5) | | |
 | 6 — Spec `require-await` + `unbound-method` + `no-misused-promises` (87) | | |

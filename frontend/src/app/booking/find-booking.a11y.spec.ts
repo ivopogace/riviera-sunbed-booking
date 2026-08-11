@@ -16,10 +16,7 @@ import { FindBooking } from './find-booking';
  */
 function stub(getError?: unknown): Partial<BookingService> {
   return {
-    getByCode: () =>
-      (getError
-        ? throwError(() => getError)
-        : of({} as BookingDetail)) as Observable<BookingDetail>,
+    getByCode: () => (getError ? throwError(() => getError) : of({} as BookingDetail)),
   };
 }
 

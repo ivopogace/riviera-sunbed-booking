@@ -203,7 +203,7 @@ describe('SetEditor (#600)', () => {
     render();
     selectSet(12);
     click(byId('set-pool-WALK_IN'));
-    expect((byId('set-pool-WALK_IN') as HTMLElement).getAttribute('aria-pressed')).toBe('true');
+    expect(byId('set-pool-WALK_IN').getAttribute('aria-pressed')).toBe('true');
 
     // A re-read lands from another device: the draft must follow the server, not outlive its basis.
     fixture.componentRef.setInput('sets', [
@@ -212,7 +212,7 @@ describe('SetEditor (#600)', () => {
     ]);
     fixture.detectChanges();
 
-    expect((byId('set-pool-ONLINE') as HTMLElement).getAttribute('aria-pressed')).toBe('true');
+    expect(byId('set-pool-ONLINE').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('removesASet: confirm, then DELETE, then the selection clears and the map re-reads (AC-4)', async () => {

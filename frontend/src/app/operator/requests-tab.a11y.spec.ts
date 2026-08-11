@@ -87,7 +87,7 @@ describe('RequestsTab a11y (#176)', () => {
   function decline(): HTMLButtonElement {
     return Array.from(host().querySelectorAll('button')).find(
       (b) => (b.textContent ?? '').trim() === 'Decline',
-    ) as HTMLButtonElement;
+    )!;
   }
 
   it('has no axe violations for the populated queue (with an urgent chip)', async () => {
@@ -127,7 +127,7 @@ function seat(id: number, rowLabel: string, positionNo: number, tier: Tier): Set
     rowLabel,
     positionNo,
     tier,
-    pool: 'ONLINE' as Pool,
+    pool: 'ONLINE',
     price: { minorUnits: 4500, currency: 'EUR' },
     gridX: positionNo,
     gridY: 1,

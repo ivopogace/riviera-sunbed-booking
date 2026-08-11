@@ -109,8 +109,8 @@ describe('ConfirmWithReason (#604)', () => {
     fixture.componentInstance.busy.set(true);
     fixture.detectChanges();
 
-    expect(byId('yes')!.getAttribute('aria-disabled')).toBe('true');
-    expect(byId('no')!.hasAttribute('aria-disabled')).toBe(false);
+    expect(byId('yes').getAttribute('aria-disabled')).toBe('true');
+    expect(byId('no').hasAttribute('aria-disabled')).toBe(false);
   });
 
   it('renders the prompt under the caller’s own test id', () => {

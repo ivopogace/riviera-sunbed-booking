@@ -28,10 +28,6 @@ function authStub(o: Overrides = {}): Partial<CustomerAuth> & {
     setPassword: vi.fn(async () => o.setPassword ?? 'set'),
     requestVerification: vi.fn(async () => o.requestVerification ?? 'sent'),
     eraseAccount: vi.fn(async () => o.eraseAccount ?? 'erased'),
-  } as unknown as Partial<CustomerAuth> & {
-    setPassword: ReturnType<typeof vi.fn>;
-    requestVerification: ReturnType<typeof vi.fn>;
-    eraseAccount: ReturnType<typeof vi.fn>;
   };
 }
 

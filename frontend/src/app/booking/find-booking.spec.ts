@@ -36,7 +36,7 @@ function foundService(detail: BookingDetail = DETAIL): {
   primeDetail: ReturnType<typeof vi.fn>;
   takePrefetched: ReturnType<typeof vi.fn>;
 } {
-  const getByCode = vi.fn(() => of(detail) as Observable<BookingDetail>);
+  const getByCode = vi.fn(() => of(detail));
   const primeDetail = vi.fn();
   const takePrefetched = vi.fn(() => undefined);
   return {

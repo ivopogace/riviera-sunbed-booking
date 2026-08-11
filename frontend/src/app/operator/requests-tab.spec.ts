@@ -113,7 +113,7 @@ describe('RequestsTab (#176)', () => {
   function button(name: RegExp): HTMLButtonElement {
     return Array.from(host.querySelectorAll('button')).find((b) =>
       name.test((b.textContent ?? '').trim()),
-    ) as HTMLButtonElement;
+    )!;
   }
 
   /** Flush the queue re-read a post-action (or poll) reconcile fires, with the fresh server queue. */
@@ -430,7 +430,7 @@ function seat(id: number, rowLabel: string, positionNo: number, tier: Tier): Set
     rowLabel,
     positionNo,
     tier,
-    pool: 'ONLINE' as Pool,
+    pool: 'ONLINE',
     price: { minorUnits: 4500, currency: 'EUR' },
     gridX: positionNo,
     gridY: 1,

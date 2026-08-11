@@ -91,21 +91,17 @@ function stubService(opts: {
     getByCode: (code: string) => {
       opts.getCalls?.push(code);
       const detail = served++ === 0 ? opts.detail! : (opts.detailAfterCancel ?? opts.detail!);
-      return (
-        opts.getError ? throwError(() => opts.getError) : of(detail)
-      ) as Observable<BookingDetail>;
+      return opts.getError ? throwError(() => opts.getError) : of(detail);
     },
     cancel: (code: string) => {
       opts.cancelCalls?.push(code);
-      return (
-        opts.cancelError ? throwError(() => opts.cancelError) : of(opts.cancel ?? CANCELLATION)
-      ) as Observable<Cancellation>;
+      return opts.cancelError
+        ? throwError(() => opts.cancelError)
+        : of(opts.cancel ?? CANCELLATION);
     },
     withdraw: (code: string) => {
       opts.withdrawCalls?.push(code);
-      return (
-        opts.withdrawError ? throwError(() => opts.withdrawError) : of(WITHDRAWAL)
-      ) as Observable<Withdrawal>;
+      return opts.withdrawError ? throwError(() => opts.withdrawError) : of(WITHDRAWAL);
     },
     beginPayment: (handoff: PaymentHandoff) => {
       opts.handoffs?.push(handoff);
@@ -905,10 +901,7 @@ describe('BookingView', () => {
   it('keeps the cancellation confirmation when the post-cancel reload fails', async () => {
     let calls = 0;
     const service: Partial<BookingService> = {
-      getByCode: () =>
-        (calls++ === 0
-          ? of(DETAIL)
-          : throwError(() => ({ status: 500 }))) as Observable<BookingDetail>,
+      getByCode: () => (calls++ === 0 ? of(DETAIL) : throwError(() => ({ status: 500 }))),
       cancel: () => of(CANCELLATION),
       beginPayment: () => undefined,
       takePrefetched: () => undefined,
@@ -965,7 +958,7 @@ describe('BookingView', () => {
 
   // A find-a-booking hand-off primes the detail, so the initial load renders it WITHOUT a second GET /api/bookings/{code} (two GETs per success can approach the rate-limit ceiling).
   it('renders a prefetched detail for the matching code without fetching (#168)', async () => {
-    const getByCode = vi.fn(() => of(DETAIL) as Observable<BookingDetail>);
+    const getByCode = vi.fn(() => of(DETAIL));
     let prefetched: BookingDetail | undefined = DETAIL;
     const service: Partial<BookingService> = {
       getByCode,
@@ -988,7 +981,7 @@ describe('BookingView', () => {
   });
 
   it('falls back to fetching when nothing is prefetched (deep-link / refresh, #168)', async () => {
-    const getByCode = vi.fn(() => of(DETAIL) as Observable<BookingDetail>);
+    const getByCode = vi.fn(() => of(DETAIL));
     const service: Partial<BookingService> = {
       getByCode,
       cancel: () => of(CANCELLATION),
@@ -1008,8 +1001,7 @@ describe('BookingView', () => {
     const detailB: BookingDetail = { ...DETAIL, code: 'BBBBBBBBBB', venueName: 'Venue Beta' };
     const paramMap$ = new BehaviorSubject(convertToParamMap({ code: 'AAAAAAAAAA' }));
     const service: Partial<BookingService> = {
-      getByCode: (code: string) =>
-        of(code === 'AAAAAAAAAA' ? detailA : detailB) as Observable<BookingDetail>,
+      getByCode: (code: string) => of(code === 'AAAAAAAAAA' ? detailA : detailB),
       cancel: () => of(CANCELLATION),
       beginPayment: () => undefined,
       takePrefetched: () => undefined,

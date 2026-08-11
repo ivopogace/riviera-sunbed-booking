@@ -1,14 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { vi } from 'vitest';
+import { Mock, vi } from 'vitest';
 
 import { CustomerAuth } from '../core/customer-auth';
+import { SsoProviderId } from '../core/sso-redirect';
 import { SsoButtons } from './sso-buttons';
 
 /** A CustomerAuth stub exposing only startSso — the rest of the service is inert. */
-function authStub(): Partial<CustomerAuth> & { startSso: ReturnType<typeof vi.fn> } {
-  return { startSso: vi.fn() } as unknown as Partial<CustomerAuth> & {
-    startSso: ReturnType<typeof vi.fn>;
-  };
+function authStub(): Partial<CustomerAuth> & { startSso: Mock<(provider: SsoProviderId) => void> } {
+  return { startSso: vi.fn<(provider: SsoProviderId) => void>() };
 }
 
 async function render(auth: Partial<CustomerAuth>): Promise<ComponentFixture<SsoButtons>> {

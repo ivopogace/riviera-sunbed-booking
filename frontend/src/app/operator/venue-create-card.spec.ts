@@ -68,7 +68,7 @@ describe('VenueCreateCard (#278)', () => {
   function submitButton(): HTMLButtonElement {
     return Array.from(host().querySelectorAll('button')).find((b) =>
       b.textContent?.trim().startsWith('Creat'),
-    ) as HTMLButtonElement;
+    )!;
   }
 
   async function fillRequiredAndSubmit(): Promise<void> {
