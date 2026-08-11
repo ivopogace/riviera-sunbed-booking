@@ -117,7 +117,7 @@ frontend-tree file touched is `frontend/.claude/CLAUDE.md`, the convention prose
 | A component that moves focus **anywhere** is exempt for **every** surface it owns | **changed (deliberate)** | that is the gap #624 exists for; the exemption is now per gating signal, and the floor is what stays component-wide |
 | The trigger is a confirm-conditioned branch | **changed (extended)** | a branch rendering a focus-trapped child is a surface too — instance 14 was a modal dismiss, not a confirm branch |
 | BUSY-1 gates the build; FOCUS-1 advises | preserved | untouched, and pinned by AC-10 |
-| Diff-scoped: only lines the diff added are judged | preserved (extended) | a surface is judged when the diff wrote its branch line **or** a flip site of its gating signal — the same scoping question asked of the second half of the rule |
+| Diff-scoped: only lines the diff added are judged | preserved (extended) | a surface is judged when the diff wrote its branch line **or** a flip site of its gating signal — the same scoping question asked of the second half of the rule, and what keeps a newly added stranding branch from going unreported when only one half of a split component is in the diff (F-10) |
 | `--hook` / `--files` judge a named file whole | preserved | unchanged; still the authoring-time half where a whole-file verdict is wanted |
 | The guard imports nothing outside `node:` and `./git-diff.mjs` | preserved | the modal index is one `git ls-files`, built lazily and cached, through the existing `git()` helper |
 | A `.ts` is scanned for its inline `template:` literal only | **changed (deliberate)** | a `.ts` whose sibling `.html` holds the template now reads it, so editing the component reports its own flip lines rather than nothing |
@@ -221,9 +221,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule (run the
 Skill-routing gate for what the fix touches *before* editing).
 
+> The review gate ran `/code-review` at **high** effort over `origin/main...HEAD` and returned **14
+> findings, every one in this slice's own new code**. Grouped below where they share a root cause.
+> All fixed in `37a9d1e`; the four-tree measurement and the mutation sweep were re-run after.
+
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (CONFIRMED) | **The false positive this rule cannot afford, reproduced.** An `@else` body sits *outside* its `@if`'s braces, so scanning for `@if` alone attributed a trap rendered there to whatever branch wrapped the page — reporting `reload() { this.venueView.set(undefined); }`, correct code, while the real dismiss went unjudged. Ten templates already use `@else`/`@empty`; `@case` and `@defer` have the same shape | fixed — the scan tracks **every** Angular block, and a trap whose innermost block carries no condition is left unattributed (a miss, not a report). Pinned by `does not attribute a trap in an else block to the branch that wraps the page`, verified RED |
+| F-2 | review (CONFIRMED) | The signal check looped per **branch**, so a component rendering one modal in two layouts emitted two byte-identical findings — and the rule both CLAUDE.md files call "judged per gating signal" was judged per branch | fixed — one finding per signal per file, seeded with the floor's own signal so the two halves cannot double up either. Pinned by `reports a signal once however many branches are gated on it` |
+| F-3, F-5 | review (CONFIRMED) | **Three ways `memberOf` could hand a flip a leg it does not have.** `/\bclass\b/` on the brace's own line misread Prettier's overflowed heritage clause (`class X` / `implements Y` / `{`) as a member, making the whole class the unit; `blockEnd` lacked its sibling's `opened` guard, so a member starting with `}` ran to EOF; and slicing whole lines let a neighbour sharing the opening line lend its `.focus()` | fixed — both ends column-precise, one shared quote-aware brace matcher, and the class body identified by walking the declaration rather than one line's text. Two RED tests |
+| F-4, F-10 | review (CONFIRMED) | The two halves of a split component both reported one surface — **and, worse, the inverse**: a diff adding a stranding modal branch to an `.html` whose `.ts` was unchanged reported **nothing**, because the `.ts` was never scanned and the `.html` could not anchor. That is exactly the miss #624 exists to close | fixed by choosing the miss over the duplicate: each half now reports at the line **it** can act on — the `.ts` at the flip, the `.html` at the branch. The double report is kept deliberately and documented in `findViolations`' TSDoc, which no longer claims otherwise. AC-8 rewritten to pin both halves |
+| F-6 | review (CONFIRMED) | `bodyEnd` counted raw braces, so `{{ label() ?? '}' }}` closed a branch early and dropped the trap out of every span — or into a later sibling, reporting the wrong signal | fixed — the brace matcher skips quoted strings. Pinned by `reads past a brace quoted inside the branch body` |
+| F-7 | review (CONFIRMED) | The trap resolver tested the child's **raw source**, comments included — `payout-statement.ts` names `role="dialog"` and `trapFocusWithin` in its TSDoc, so the classification was partly prose. The same mistake `movesFocus` already refuses to make | fixed — judged on the code and template regions plus any sibling `.html`. Pinned by `does not call a component a focus trap on the strength of its comments`, which needed `focusTraps` exported with its two seams |
+| F-11 | review (CONFIRMED) | `(dismissed)="statementOpen.set(false)"` — the most idiomatic dismiss in a small component — left the signal with zero flip sites and therefore **fully exempt**. Unlike the R-5 shapes this is a complete teardown with provably no leg | fixed — template flips count, and never count as compliant since there is no handler to hold a leg. Pinned by `reports a teardown wired in the template with no handler at all` |
+| F-8 | review (CONFIRMED, doc) | The AC-11 fixture's TSDoc was orphaned above the wrong test by an insertion, leaving AC-11's named test undocumented and the external-template test documented by someone else's paragraph | fixed — moved back onto its test |
+| F-9 | review (CONFIRMED, doc) | AC-4 cited a pinning test (`sweeps the standing tree clean`) that does not exist, and the verification section quietly downgraded it to a manual run | fixed by **correcting the AC, not writing the test**: a suite-level assertion over the real tree would be the repo-wide gate the diff-scoping exists to avoid (#621 R-1). AC-4 now names the recorded `--all` run as its evidence |
+| F-12, F-13, F-14 | review (CONFIRMED, quality) | Two near-duplicate brace matchers disagreeing on a corner one had already solved; `end` computed for every branch in every file though only a trap ever reads it; and `surfaces` bound to three different meanings in ninety lines | fixed — one matcher, `end` computed on demand (a file with no `<app-…>` child pays no brace walk), extractor renamed `surfacesIn` |
 
 ---
 
@@ -300,6 +313,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | 2026-08-11 | Phase 1 | components split across two files, where each half sees one side of the rule | `git ls-files 'frontend/src/app/**/*.html'` | 15 external templates, 4 holding a surface (`set-editor`, `layout-editor`, `payouts-tab`, `venue-map`) | both directions read the sibling, and the `.html` is barred from reporting a flip it cannot anchor — pinned by AC-8, which fails if either half reports the other's lines |
 | 2026-08-11 | Phase 2 | whether the standing tree's green is load-bearing or vacuous | strip every focus call from each component with a surface, then `--files` on it | 9 components, all 9 report (13 findings total) | no change needed — the sweep's 0 is a verdict, not an absence of surfaces |
 | 2026-08-11 | Phase 2 | every doc that states what FOCUS-1 flags | `grep -rn "FOCUS-1" --include=*.md .` | 4 files (`CLAUDE.md`, `frontend/.claude/CLAUDE.md`, both plan docs) | all four updated; #621's known limit (a) marked closed rather than deleted |
+| 2026-08-11 | review round (F-1) | every Angular block whose body sits outside its head's braces, since each is the same mis-attribution | the block vocabulary in the Angular control-flow syntax, checked against the templates in the tree | `@else`, `@empty`, `@case`, `@default`, `@placeholder`, `@loading`, `@error`, `@defer` | all scanned as spans, not just `@else` — fixing only the reported one would have left `@case` and `@empty` to be found by the next slice |
+| 2026-08-11 | review round (F-3/F-5) | every place the member's boundary was taken from a whole line rather than a position | reading both brace matchers against each other | 3 sites (class-brace detection, `blockEnd`'s missing guard, the whole-line slice) | all three fixed together and the two matchers merged into one, since the review's own finding was that keeping two means the next corner is fixed once |
 
 ---
 
@@ -307,11 +322,14 @@ Skill-routing gate for what the fix touches *before* editing).
 
 > The gate before claiming done. Not a wish.
 
-- [x] **AC-1..AC-3, AC-5..AC-11:** `node --test "scripts/*.test.mjs"` → **122 pass, 0 fail** (38 in
-      this suite, up from 24). Every new case was verified RED first; the four asserting *absence*
-      (AC-3, AC-5, AC-7, AC-8's second half) were mutation-checked rather than trusted.
+- [x] **AC-1..AC-3, AC-5..AC-11:** `node --test "scripts/*.test.mjs"` → **129 pass, 0 fail** (45 in
+      this suite, up from 24). Every new case was verified RED first; the ones asserting *absence*
+      (AC-3, AC-5, AC-7, F-1's) were mutation-checked rather than trusted.
 - [x] **AC-4:** `node scripts/check-focus-posture.mjs --all` → `BUSY-1: 0  FOCUS-1: 0`, over **11**
-      surfaces (8 confirm + 3 modal), in 0.3s for the whole app.
+      surfaces (8 confirm + 3 modal), in 0.3s for the whole app. Its evidence is that **recorded
+      run**, deliberately not a test: a suite-level assertion over the standing tree would be the
+      repo-wide gate diff-scoping exists to avoid (#621 R-1). Its regression net is the mutation
+      sweep below plus the per-shape cases.
 
 **The four-tree measurement** (the evidence R-1 and R-2 are closed on — the new guard run against
 each tree, not a model of it):
@@ -319,12 +337,14 @@ each tree, not a model of it):
 | Tree | FOCUS-1 | What it reports |
 |---|---|---|
 | HEAD (standing) | **0** | nothing — and stripping any one component's focus calls makes all 9 report, so the green is load-bearing |
-| mid-#621 counterfactual (instance 14 unfixed) | **1** | `payouts-tab.ts:100 this.statementOpen.set(false)` — the exact flip #621's review pass found by hand, at the line its fix went in |
-| pre-#621 (`c58317b`) | 3 | the weather confirm (branch + flip) and the statement modal — the two instances #621 fixed |
-| pre-#616 (`7c1234a`) | 4 | the above plus `set-password.ts:254`, the instance #616 fixed |
-| pre-#614 (`5f415a2`) | 5 | the above plus `booking-view.ts:209`, the instance #614 fixed |
+| mid-#621 counterfactual (instance 14 unfixed) | **2** | `payouts-tab.ts:100 this.statementOpen.set(false)` — the exact flip #621's review pass found by hand, at the line its fix went in — and the same surface's branch in the `.html`, per F-4/F-10 |
+| pre-#621 (`c58317b`) | 4 | the weather confirm and the statement modal, each at its branch and its flip — the two instances #621 fixed |
+| pre-#616 (`7c1234a`) | 5 | the above plus `set-password.ts:254`, the instance #616 fixed |
+| pre-#614 (`5f415a2`) | 6 | the above plus `booking-view.ts:209`, the instance #614 fixed |
 
-No tree reports anything that was not a real bug those slices went on to fix.
+No tree reports anything that was not a real bug those slices went on to fix. The counts are surfaces
+× reporting file, not distinct bugs: a component split across `.ts` + `.html` reports each surface
+once per half, at the line that half can act on (F-4/F-10).
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 

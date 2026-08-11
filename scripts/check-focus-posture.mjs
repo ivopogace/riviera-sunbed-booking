@@ -151,7 +151,8 @@ export function findViolations({
       path,
       lines,
       added,
-      surfaces: surfaces(template, isFocusTrap),
+      surfaces: surfacesIn(template, isFocusTrap),
+      template,
       code,
       ownsTemplate: inline,
       ownsCode: !html,
@@ -332,74 +333,87 @@ function busyViolations(path, lines, added, template) {
  * <p>**Rendering `<app-confirm-panel>` is not an exemption.** Those components own the *open* leg
  * only — their own TSDoc says focus back out is the caller's — so a component that delegates and
  * holds no focus helper still strands focus on cancel and on settle, two thirds of the rule.
+ *
+ * <p>One finding per **signal** per file. A component split across two files can report the same
+ * surface twice — the `.html` at its branch, the `.ts` at its flip — because neither half can anchor
+ * on a line it does not contain, and a diff that writes only one of them must still be told.
  */
-function focusViolations({ path, lines, added, surfaces, code, ownsTemplate, ownsCode }) {
+function focusViolations({ path, lines, added, surfaces, template, code, ownsTemplate, ownsCode }) {
   const violations = [];
-  const floor = ownsTemplate ? floorViolation(path, lines, added, surfaces, code) : undefined;
+  const floor = ownsTemplate ? floorSurface(added, surfaces, code) : undefined;
+  const reported = new Set();
 
-  if (floor !== undefined) violations.push(floor);
-  if (!ownsCode) return violations;
-
+  if (floor !== undefined) {
+    violations.push({ path, line: floor.line + 1, rule: 'FOCUS-1', text: lines[floor.line].trim() });
+    reported.add(gatingSignal(floor.condition));
+  }
   const movers = moverNames(code.join('\n'));
   for (const surface of surfaces) {
-    if (surface.negated || surface.line + 1 === floor?.line) continue;
     const signal = gatingSignal(surface.condition);
-    if (signal === null) continue;
-    const flips = flipSites(code, signal);
-    if (flips.length === 0 || flips.some((site) => movesFocusIn(memberOf(code, site), movers))) {
-      continue;
-    }
-    const stranding = flips.find((site) => added.has(site.line + 1));
-    if (stranding === undefined) continue;
-    violations.push({
-      path,
-      line: stranding.line + 1,
-      rule: 'FOCUS-1',
-      text: lines[stranding.line].trim(),
-    });
+    if (surface.negated || signal === null || reported.has(signal)) continue;
+    const flips = [
+      ...flipSites(code, signal).map((site) => ({ ...site, inFile: ownsCode, handler: true })),
+      ...flipSites(template, signal).map((site) => ({ ...site, inFile: ownsTemplate })),
+    ];
+    if (flips.length === 0) continue;
+    if (flips.some((site) => site.handler && movesFocusIn(memberOf(code, site), movers))) continue;
+    // The flip is where the leg goes; the branch is all a template can point at for a flip it lacks.
+    const anchors = [
+      ...flips.filter((site) => site.inFile).map((site) => site.line),
+      ...(ownsTemplate ? [surface.line] : []),
+    ];
+    const at = anchors.find((line) => added.has(line + 1));
+    if (at === undefined) continue;
+    reported.add(signal);
+    violations.push({ path, line: at + 1, rule: 'FOCUS-1', text: lines[at].trim() });
   }
   return violations;
 }
 
-function floorViolation(path, lines, added, surfaces, code) {
+function floorSurface(added, surfaces, code) {
   if (movesFocus(code.join('\n'))) return undefined;
 
   const confirm = surfaces.filter(
     (found) => found.kind === 'confirm' && added.has(found.line + 1),
   );
   // The negated half of a trigger/prompt pair renders no prompt, so point at the prompt if there is one.
-  const surface = confirm.find((found) => !found.negated) ?? confirm[0];
-  if (surface === undefined) return undefined;
-  return { path, line: surface.line + 1, rule: 'FOCUS-1', text: lines[surface.line].trim() };
+  return confirm.find((found) => !found.negated) ?? confirm[0];
 }
 
-/** `@if` and `@else if` alike — the latter is the idiomatic way to write a trigger/prompt pair. */
-const BRANCH = /@(?:else\s+)?if\b/g;
+/**
+ * **Every** Angular block, not only the branches.
+ *
+ * A trap is attributed to the innermost block holding it, so every block that can hold one has to be
+ * in the list: an `@else` body sits *outside* its `@if`'s braces, so scanning for `@if` alone
+ * attributed a trap in an `@else` to whatever `@if` wrapped the page — reporting a loaded-state flag
+ * nothing dismisses. `@empty`, `@case` and `@defer` bodies are all outside their heads the same way.
+ */
+const BLOCK = /@(?:else\s+if|if|else|for|empty|switch|case|default|defer|placeholder|loading|error)\b/g;
 
 /** Every branch a teardown can destroy the focused element from: a confirm prompt, or a focus trap. */
-function surfaces(lines, isFocusTrap) {
-  const found = branches(lines);
-  const modal = modalSurfaces(lines, found, isFocusTrap);
-  return found
-    .filter((branch) => isConfirmPrompt(branch.condition) || modal.has(branch))
-    .map((branch) => ({
-      ...branch,
-      kind: isConfirmPrompt(branch.condition) ? 'confirm' : 'modal',
+function surfacesIn(lines, isFocusTrap) {
+  const spans = blocks(lines);
+  const traps = trapSurfaces(lines, spans, isFocusTrap);
+  return spans
+    .filter((span) => span.condition !== null && (isConfirmPrompt(span.condition) || traps.has(span)))
+    .map((span) => ({
+      ...span,
+      kind: isConfirmPrompt(span.condition) ? 'confirm' : 'modal',
     }));
 }
 
-function branches(lines) {
+function blocks(lines) {
   const found = [];
 
   for (let i = 0; i < lines.length; i++) {
-    for (const match of lines[i].matchAll(BRANCH)) {
-      const condition = readCondition(lines, i, match.index + match[0].length);
-      if (condition === null) continue;
+    for (const match of lines[i].matchAll(BLOCK)) {
+      const after = { line: i, column: match.index + match[0].length };
+      const condition = /if\b/.test(match[0]) ? readCondition(lines, i, after.column) : null;
       found.push({
         line: i,
         condition,
-        negated: /^\(\s*!/.test(condition),
-        end: bodyEnd(lines, i),
+        negated: condition !== null && /^\(\s*!/.test(condition),
+        head: after,
       });
     }
   }
@@ -407,21 +421,22 @@ function branches(lines) {
 }
 
 /**
- * The branches that render a focus trap, each attributed to the **innermost** one holding it.
+ * The blocks that render a focus trap, each attributed to the **innermost** one holding it.
  *
  * `venue-map.html` wraps its whole page in an `@if`, three hundred lines above the branch that
- * renders the booking dialog; attributing the trap to every enclosing branch would report a
- * loaded-state flag nothing dismisses.
+ * renders the booking dialog. A trap whose innermost block is not a condition — an `@else`, a
+ * `@case` — is left unattributed rather than pushed outward onto a signal that does not gate it:
+ * a miss, which this rule can afford, instead of a report on correct code, which it cannot.
  */
-function modalSurfaces(lines, found, isFocusTrap) {
-  const surfaces = new Set();
+function trapSurfaces(lines, spans, isFocusTrap) {
+  const traps = new Set();
 
   for (let i = 0; i < lines.length; i++) {
     if (!rendersFocusTrap(lines[i], isFocusTrap)) continue;
-    const innermost = found.filter((branch) => branch.line <= i && i <= branch.end).at(-1);
-    if (innermost !== undefined) surfaces.add(innermost);
+    const innermost = spans.filter((span) => span.line <= i && i <= bodyEnd(lines, span)).at(-1);
+    if (innermost !== undefined) traps.add(innermost);
   }
-  return surfaces;
+  return traps;
 }
 
 function rendersFocusTrap(line, isFocusTrap) {
@@ -429,22 +444,15 @@ function rendersFocusTrap(line, isFocusTrap) {
   return [...line.matchAll(COMPONENT_TAG)].some((match) => isFocusTrap(match[1]));
 }
 
-/** The line a branch's `{ … }` body closes on; a body legitimately spans hundreds of lines. */
-function bodyEnd(lines, start) {
-  let depth = 0;
-  let opened = false;
-
-  for (let i = start; i < lines.length; i++) {
-    for (const ch of lines[i]) {
-      if (ch === '{') {
-        depth++;
-        opened = true;
-      } else if (ch === '}' && opened && --depth === 0) {
-        return i;
-      }
-    }
-  }
-  return lines.length - 1;
+/**
+ * The line a block's `{ … }` body closes on, computed on demand.
+ *
+ * Only a template holding a trap ever asks, so a file with no `<app-…>` child pays no brace walk at
+ * all — this runs from a `PostToolUse` hook on every edit.
+ */
+function bodyEnd(lines, span) {
+  span.end ??= closingBrace(lines, span.head)?.line ?? lines.length - 1;
+  return span.end;
 }
 
 /** The signal a branch is gated on: `(statementOpen()` and `(selectedSet(); as set` both name one. */
@@ -482,19 +490,19 @@ function moverNames(code) {
  * handler that closes this one surface, a focus call cannot plausibly be about something else.
  */
 function movesFocusIn(member, movers) {
-  const text = member.join('\n');
   return (
-    /\.focus\s*\(/.test(text) ||
-    movers.some((name) => new RegExp(`(?<![\\w$])${escaped(name)}\\s*\\(`).test(text))
+    /\.focus\s*\(/.test(member) ||
+    movers.some((name) => new RegExp(`(?<![\\w$])${escaped(name)}\\s*\\(`).test(member))
   );
 }
 
 /**
- * The class member holding a flip site — the unit a focus leg is judged in.
+ * The text of the class member holding a flip site — the unit a focus leg is judged in.
  *
  * Not the innermost block: a flip inside a `subscribe(…)` callback and the leg beside it belong to
- * the same handler, and `venue-map` writes its focus restore inside a `queueMicrotask`. The walk
- * starts at the flip's own column, or a member written on one line closes before it opens.
+ * the same handler, and `venue-map` writes its focus restore inside a `queueMicrotask`. Both ends
+ * are column-precise, or a neighbour sharing the member's opening or closing line lends it a
+ * `.focus()` it does not have.
  */
 function memberOf(code, site) {
   const enclosing = [];
@@ -504,24 +512,60 @@ function memberOf(code, site) {
     for (let c = (i === site.line ? site.column : code[i].length) - 1; c >= 0; c--) {
       if (code[i][c] === '}') depth++;
       else if (code[i][c] !== '{') continue;
-      else if (depth === 0) enclosing.push(i);
+      else if (depth === 0) enclosing.push({ line: i, column: c });
       else depth--;
     }
   }
-  const start = enclosing.filter((i) => !/\bclass\b/.test(code[i])).at(-1);
-  return start === undefined ? [] : code.slice(start, blockEnd(code, start) + 1);
+  const member = enclosing.filter((open) => !declaresClass(code, open.line)).at(-1);
+  return member === undefined ? '' : blockText(code, member);
 }
 
-function blockEnd(code, start) {
+/**
+ * Whether the block opening here is the class body rather than one of its members.
+ *
+ * Prettier moves the brace onto its own line whenever the heritage clause overflows, so the
+ * declaration can end lines above it; the walk stops at the first line that closes a statement.
+ */
+function declaresClass(code, line) {
+  for (let i = line; i >= 0; i--) {
+    if (/\bclass\b/.test(code[i])) return true;
+    if (i < line && /[;{}]\s*$|^\s*$/.test(code[i])) return false;
+  }
+  return false;
+}
+
+function blockText(lines, open) {
+  const close = closingBrace(lines, open);
+  if (close === null) return lines[open.line].slice(open.column);
+  if (close.line === open.line) return lines[open.line].slice(open.column, close.column + 1);
+  return [
+    lines[open.line].slice(open.column),
+    ...lines.slice(open.line + 1, close.line),
+    lines[close.line].slice(0, close.column + 1),
+  ].join('\n');
+}
+
+/**
+ * The position of the `}` closing the first `{` at or after `from`.
+ *
+ * Quote-aware, because a template legitimately writes a brace inside an attribute or an
+ * interpolation (`{{ label() ?? '}' }}`) and counting it closes a block lines early — which moves a
+ * trap out of the branch that renders it, or into a later sibling that does not.
+ */
+function closingBrace(lines, from) {
   let depth = 0;
 
-  for (let i = start; i < code.length; i++) {
-    for (const ch of code[i]) {
-      if (ch === '{') depth++;
-      else if (ch === '}' && --depth === 0) return i;
+  for (let i = from.line; i < lines.length; i++) {
+    for (let c = i === from.line ? from.column : 0; c < lines[i].length; c++) {
+      const ch = lines[i][c];
+      if (ch === '"' || ch === "'") c = skipString(lines[i], c) - 1;
+      else if (ch === '{') depth++;
+      else if (ch !== '}') continue;
+      else if (depth === 0) return null;
+      else if (--depth === 0) return { line: i, column: c };
     }
   }
-  return code.length - 1;
+  return null;
 }
 
 /** `$` is legal in an identifier and special in a pattern. */
@@ -761,21 +805,41 @@ function sibling(path, from, to, read) {
  * Answers whether a component tag renders a focus trap, by reading the file its selector's basename
  * names. An unresolvable tag is not a trap — the safe direction, as `BUSY_STEMS` is for BUSY-1.
  *
+ * <p>Judged on the child's markup and code, never its comments: `payout-statement.ts` names
+ * `role="dialog"` and `trapFocusWithin` in its TSDoc as well, and a component whose prose merely
+ * *discusses* a modal would otherwise turn every `@if` rendering it into a surface. Same discipline
+ * as `movesFocus`, which is why a helper named only in a comment is not compliance either.
+ *
  * <p>The index is one `git ls-files`, built only when a template actually renders an `<app-…>` child
  * and then cached for the process: the `PostToolUse` hook runs this guard on every edit (#621's R-6).
+ *
+ * @param {(path: string) => string | null} [read] disk, injectable for the test suite
+ * @param {() => string[]} [list] the candidate paths, likewise
  */
-function focusTraps(read = readText) {
+export function focusTraps(read = readText, list = trackedComponents) {
   const answers = new Map();
   let index;
 
   return (tag) => {
     if (!answers.has(tag)) {
-      index ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app']));
+      index ??= list();
       const source = index.find((path) => path.endsWith(`/${tag.replace(/^app-/, '')}.ts`));
-      answers.set(tag, source !== undefined && FOCUS_TRAP.test(read(source) ?? ''));
+      answers.set(tag, source !== undefined && trapsFocus(source, read));
     }
     return answers.get(tag);
   };
+}
+
+function trackedComponents() {
+  return changedPaths(git(['ls-files', '-z', 'frontend/src/app']));
+}
+
+function trapsFocus(source, read) {
+  const regions = typescriptRegions((read(source) ?? '').split('\n'));
+  const external = maskHtmlComments((read(source.replace(/\.ts$/, '.html')) ?? '').split('\n'));
+  return FOCUS_TRAP.test(
+    [...regions.code, ...regions.template, ...external].join('\n'),
+  );
 }
 
 const resolveFocusTrap = focusTraps();

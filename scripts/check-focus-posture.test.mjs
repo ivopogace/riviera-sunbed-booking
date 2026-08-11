@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { checkPaths, findViolations, settle } from './check-focus-posture.mjs';
+import { checkPaths, findViolations, focusTraps, settle } from './check-focus-posture.mjs';
 
 const HTML = 'frontend/src/app/operator/payouts-tab.html';
 const TS = 'frontend/src/app/admin/admin-privacy.ts';
@@ -614,13 +614,10 @@ test('counts a call to a mover field under any name', () => {
 });
 
 /**
- * `payouts-tab` as it stood mid-#621 — the weather-confirm legs landed, the statement modal's had
- * not — which is the tree FOCUS-1 reported clean and #621's own review pass caught by hand.
- */
-/**
  * `set-editor` and `layout-editor` split the component in two, so each half sees only one side of
- * the rule. The finding belongs where the fix goes — the flip — which puts it in the `.ts`, and the
- * `.html` must not report it as well or the same bug arrives twice with two different line numbers.
+ * the rule — and a diff routinely writes only one of them. Each half therefore reports at the line
+ * it can act on: the `.ts` at the flip where the leg goes, the `.html` at the branch it just added.
+ * Anchoring only in the `.ts` left a newly added stranding modal reported by nothing at all.
  */
 test('judges a component with an external template against its sibling', () => {
   const template = [
@@ -649,7 +646,154 @@ test('judges a component with an external template against its sibling', () => {
 
   assert.equal(fromComponent.length, 1);
   assert.equal(fromComponent[0].line, 4);
-  assert.deepEqual(fromTemplate, []);
+  assert.equal(fromTemplate.length, 1);
+  assert.equal(fromTemplate[0].line, 2);
+});
+
+/**
+ * An `@else` body sits **outside** its `@if`'s braces, so scanning for `@if` alone attributed a trap
+ * rendered there to whatever branch wrapped the page — reporting that branch's signal, which is a
+ * loaded-state flag nothing dismisses, while the real dismiss handler went unjudged. Ten templates
+ * in the app already use `@else`/`@empty`.
+ */
+test('does not attribute a trap in an else block to the branch that wraps the page', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (venueView(); as v) {',
+    '      @if (ready()) {',
+    '        <p>ok</p>',
+    '      } @else {',
+    '        <app-payout-statement (dismissed)="close()" />',
+    '      }',
+    '    }',
+    '  `,',
+    '})',
+    'export class VenueMap {',
+    '  close() { this.dialogOpen.set(false); }',
+    '  reload() { this.venueView.set(undefined); }',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines, { isFocusTrap: TRAPS }), []);
+});
+
+/** A component that renders the same modal in two layouts has one teardown, so it has one finding. */
+test('reports a signal once however many branches are gated on it', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="close()" /> }',
+    '    @if (statementOpen()) { <app-payout-statement (dismissed)="close()" /> }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 8);
+});
+
+/** Prettier moves the brace onto its own line when the heritage clause overflows. */
+test('does not let an unrelated member excuse a flip when the class brace stands alone', () => {
+  const lines = modalComponent([
+    '  ngOnInit() { this.hostRef.nativeElement.focus(); }',
+    '  close() { this.statementOpen.set(false); }',
+  ]);
+  lines[8] = 'export class PayoutsTab';
+  lines.splice(9, 0, '  implements OnInit', '{');
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].text, 'close() { this.statementOpen.set(false); }');
+});
+
+/** Both ends of the member are column-precise, or a neighbour on the same line lends it a leg. */
+test('does not borrow a focus call from a member sharing the flip line', () => {
+  const lines = modalComponent([
+    '  other() { this.trigger.focus(); } close() { this.statementOpen.set(false); }',
+  ]);
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 10);
+});
+
+/** A brace inside an interpolation closed the branch early, dropping the trap out of every span. */
+test('reads past a brace quoted inside the branch body', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) {',
+    "      <p>{{ label() ?? '}' }}</p>",
+    '      <app-payout-statement (dismissed)="close()" />',
+    '    }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 10);
+});
+
+/**
+ * The most idiomatic dismiss in a small component is wired in the template, where there is no
+ * handler to hold a leg — so it is a complete teardown with provably no focus move, not a miss.
+ */
+test('reports a teardown wired in the template with no handler at all', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen()) {',
+    '      <app-payout-statement (dismissed)="statementOpen.set(false)" />',
+    '    }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: TRAPS });
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 4);
+});
+
+/**
+ * `payout-statement.ts` names `role="dialog"` and `trapFocusWithin` in its TSDoc as well as its
+ * markup, so reading the raw file classified traps partly on prose — the same mistake the rule
+ * already refuses to make about a focus helper named only in a comment.
+ */
+test('does not call a component a focus trap on the strength of its comments', () => {
+  const files = {
+    'frontend/src/app/shared/plain-panel.ts': [
+      '/** Unlike a role="dialog" modal, this panel does not trap focus. */',
+      "@Component({ selector: 'app-plain-panel', template: `<p>hi</p>` })",
+      'export class PlainPanel {}',
+    ].join('\n'),
+    'frontend/src/app/operator/payout-statement.ts': [
+      '/** A modal. */',
+      '@Component({',
+      "  selector: 'app-payout-statement',",
+      '  template: `<div role="dialog" aria-modal="true"></div>`,',
+      '})',
+      'export class PayoutStatement {}',
+    ].join('\n'),
+  };
+  const traps = focusTraps((path) => files[path] ?? null, () => Object.keys(files));
+
+  assert.equal(traps('app-plain-panel'), false);
+  assert.equal(traps('app-payout-statement'), true);
 });
 
 /** The rule's second half asks a question about the flip, so the flip is the line a diff must write. */
@@ -696,6 +840,10 @@ test('keeps FOCUS-1 advisory and BUSY-1 gating', () => {
   assert.match(gating.err.written.join(''), /BUSY-1/);
 });
 
+/**
+ * `payouts-tab` as it stood mid-#621 — the weather-confirm legs landed, the statement modal's had
+ * not — which is the tree FOCUS-1 reported clean and #621's own review pass caught by hand.
+ */
 test('reports the surface that hid behind the weather-confirm legs', () => {
   const lines = [
     '@Component({',
