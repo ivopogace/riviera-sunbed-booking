@@ -260,10 +260,10 @@ describe('AdminCommissions', () => {
   });
 
   /**
-   * The fourth focus transition, and the one the other three hide: disabling Save while the write is
-   * in flight blurs it to `<body>`, and re-enabling it afterwards does not bring focus back. Success
-   * and dismissal both move focus deliberately; a failure left it stranded on the one path where the
-   * admin most needs to act next (WCAG 2.4.3 — the recurring stranded-focus class).
+   * The fourth focus transition. Success and dismissal both move focus deliberately; a failure left
+   * it stranded on the one path where the admin most needs to act next (WCAG 2.4.3 — the recurring
+   * stranded-focus class). The busy posture now keeps focus on Save throughout, so this asserts the
+   * leg still lands rather than that a blur is undone.
    */
   it('returns focus to Save when the write fails, rather than stranding it', async () => {
     const service = serviceStub();

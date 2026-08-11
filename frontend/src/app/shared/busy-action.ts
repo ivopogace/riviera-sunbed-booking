@@ -10,18 +10,13 @@ import { Directive, ElementRef, inject, input } from '@angular/core';
  * the document and Shift+Tab leaves the app entirely (WCAG 2.4.3). `aria-disabled` announces the
  * same unavailable state without touching focus or the tab order.
  *
- * <p>Because `aria-disabled` is only an announcement, this also has to make the control inert, which
- * it does by consuming the activating click ahead of the host's own handler. **That covers pointer
- * clicks and Enter/Space on the control itself, which a button reports as a click — it does not
- * cover submitting a form with Enter from a text field, which never reaches the button.** A busy
- * submit button therefore still needs the re-entrancy guard in its own submit handler; this
- * directive narrows that duty rather than retiring it. The listener is a native capture-phase one
- * rather than a host binding because Angular coalesces same-element listeners into a single native
- * listener and walks its own chain, which `stopImmediatePropagation()` cannot break.
+ * <p>**For buttons only.** `aria-disabled` is an announcement, so inertness comes from consuming the
+ * activating click — which covers a button's pointer, Enter and Space, but never a text field's
+ * typing or a form submitted by Enter. Use the native `[disabled]` on inputs and keep the
+ * re-entrancy guard in every submit handler.
  *
- * <p>Deliberately carries **no styling**: the dim values in use genuinely differ across the app
- * (`opacity-50`/`-60`/`-65`), so each consumer keeps its own utility with the `aria-disabled:`
- * variant. Rationale and the full sweep: `docs/plans/confirm-focus-busy-posture.md`.
+ * <p>Carries no styling: each consumer keeps its own dim utility under the `aria-disabled:` variant.
+ * Why a capture-phase listener, and the full sweep: `docs/plans/confirm-focus-busy-posture.md`.
  */
 @Directive({
   selector: '[appBusy]',

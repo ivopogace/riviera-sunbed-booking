@@ -10,10 +10,9 @@ import { afterNextRender, ElementRef, inject, Injector } from '@angular/core';
  * `earlyRead` — against the committed DOM — and the `focus()` in `write`.
  *
  * <p>Focus always lands somewhere: the primary target, else the optional `fallbackTestId`, else the
- * component host. A caller aims at an element a concurrent render can remove, so a missed target is
- * a real race and not a caller error — and silently doing nothing there is indistinguishable from
- * the bug this helper exists to fix. Whatever it lands on is made programmatically focusable first,
- * so naming a landmark that forgot its own `tabindex="-1"` cannot reintroduce that silence.
+ * component host — a missed target is a concurrent-render race, not a caller error, and a silent
+ * no-op there is the very bug this helper exists to fix. Whatever it lands on is made focusable
+ * first, so a landmark missing its own `tabindex="-1"` cannot reintroduce that silence.
  *
  * <p>Must be called from an injection context (a field initializer or constructor); it captures
  * the host and injector once, mirroring `parentVenueId(this.route)`.

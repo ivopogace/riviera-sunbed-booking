@@ -451,7 +451,7 @@ export class AdminCommissions {
       this.focusAfterRender(`admin-commission-edit-${venue.venueId}`);
     } catch (error) {
       this.editorError.set(messageFor(commissionWriteErrorOf(error)));
-      // Disabling Save blurred it to `<body>`; re-enabling does not bring focus back (WCAG 2.4.3).
+      // Redundant since the busy posture stopped blurring, but kept: the leg must still land.
       this.focusAfterRender(`admin-commission-save-${venue.venueId}`);
     } finally {
       this.busy.set(false);

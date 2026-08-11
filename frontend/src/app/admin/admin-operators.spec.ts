@@ -310,6 +310,24 @@ describe('AdminOperators', () => {
     expect(document.activeElement).toBe(notice(fixture));
   });
 
+  it('does not claim success when the decision failed', async () => {
+    const service = serviceStub(rows, accounts);
+    service.suspend.mockRejectedValue(new Error('nope'));
+    const fixture = await render(authStub({ isAdmin: true }), service);
+    (
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '[data-testid="admin-suspend-7"]',
+      ) as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+
+    await settleAction(fixture, 'admin-suspend-confirm-7');
+
+    expect(notice(fixture)?.textContent).not.toContain('Suspended');
+    expect(notice(fixture)?.textContent).toContain("didn't go through");
+    expect(document.activeElement).toBe(notice(fixture));
+  });
+
   it('parks focus on the notice when a reinstatement settles', async () => {
     const service = serviceStub(rows, accounts);
     const fixture = await render(authStub({ isAdmin: true }), service);

@@ -361,15 +361,9 @@ export class AdminOperators {
 
   /**
    * Run a decision, then RECONCILE the queue from the server (never a local-only card removal), and
-   * land the admin somewhere once it settles.
-   *
-   * <p>The reconcile is what makes the third transition necessary: whatever focus was on — a confirm
-   * button, or a row the re-fetch removes — is gone by the time this returns, stranding keyboard/AT
-   * focus on `<body>` (WCAG 2.4.3). The notice is both the landing spot and this page's only
-   * announcement that anything happened, so the outcome is read out rather than merely rendered.
-   *
-   * <p>The name is captured **before** the action, since the reconcile is exactly what removes the
-   * row holding it.
+   * land the admin on the notice — which the reconcile makes necessary, since it destroys whatever
+   * focus was on. The name is read **before** the action, because the reconcile removes the row
+   * holding it. Why the notice rather than the row: `docs/plans/confirm-focus-busy-posture.md`.
    */
   private async act(id: number, action: () => Promise<void>, outcome: string): Promise<void> {
     if (this.actingId() !== undefined) {
@@ -379,15 +373,19 @@ export class AdminOperators {
     this.actingId.set(id);
     this.confirmingId.set(undefined);
     this.notice.set('');
+    let settled = false;
     try {
       await action();
+      settled = true;
     } catch {
       // A 409 (already decided) / 404 (gone) resolves itself on the reload below; a transport error
       // surfaces as the load error. Either way, re-fetch the authoritative queue.
     } finally {
       this.actingId.set(undefined);
       await this.load();
-      this.notice.set(`${outcome} ${who}.`);
+      this.notice.set(
+        settled ? `${outcome} ${who}.` : `That didn't go through. ${who} is unchanged.`,
+      );
       this.focusAfterRender('admin-ops-notice');
     }
   }

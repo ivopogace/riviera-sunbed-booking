@@ -33,7 +33,7 @@ class FocusHost {
     this.focus('opener');
   }
 
-  /** The race #616 item 5 names: aim at a target a concurrent state change has already removed. */
+  /** The race: aim at a target a concurrent state change has already removed. */
   openIntoAVanishedTarget(): void {
     this.shown.set(false);
     this.focus('target', 'opener');
