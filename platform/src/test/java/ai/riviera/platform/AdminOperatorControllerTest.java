@@ -169,7 +169,9 @@ class AdminOperatorControllerTest {
 	void selfSuspendIsRefusedBeforeAnyRevoke() throws Exception {
 		mvc.perform(isolated(post(SUSPEND, ADMIN.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("CANNOT_SUSPEND_SELF"));
+				.andExpect(jsonPath("$.code").value("CANNOT_SUSPEND_SELF"))
+				.andExpect(jsonPath("$.detail")
+						.value("The target operator is the account this request is authenticated as."));
 
 		verify(lifecycle, never()).activeUsername(any());
 		verify(lifecycle, never()).suspend(any());

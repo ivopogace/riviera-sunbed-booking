@@ -79,12 +79,14 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
 
 	/**
-	 * Mirrors the {@link ApiProblem} RFC-7807 shape by hand: this filter rejects before MVC dispatch, so
-	 * {@code ApiErrorHandler} can never map it. Kept in lockstep by {@code RateLimitFilterTest}.
+	 * The RFC-7807 body built by hand: this filter rejects before MVC dispatch, so {@code ApiErrorHandler}
+	 * can never map it. It carries {@code type}/{@code title}/{@code status}/{@code detail}/{@code code}
+	 * but no {@code instance} — nothing to redact when no URI is ever written (invariant #7). The wait is
+	 * the {@code Retry-After} header, which is why {@code detail} states the condition alone.
 	 */
 	private static final String RATE_LIMITED_BODY = """
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
-			"detail":"Too many requests. Retry later.","code":"RATE_LIMITED"}""";
+			"detail":"Too many requests.","code":"RATE_LIMITED"}""";
 
 	// Mirrors the SecurityConfig matchers for the four public booking endpoints.
 	private static final String CREATE_PATH = "/api/bookings";

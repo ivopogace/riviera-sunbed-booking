@@ -88,7 +88,7 @@ class MyAccountController {
 		if (existing.isPresent()) {
 			if (!CustomerPasswords.isSupplied(request.currentPassword())) {
 				return ApiProblem.response(HttpStatus.BAD_REQUEST, "MISSING_CURRENT_PASSWORD",
-						"Enter your current password.");
+						"The request carries no current password.");
 			}
 			if (!currentPasswordMatches(request, existing.get())) {
 				return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",

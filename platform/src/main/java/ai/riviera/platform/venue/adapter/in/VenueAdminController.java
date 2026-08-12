@@ -63,6 +63,22 @@ class VenueAdminController {
 	/** The 404 problem detail shared by every NO_SUCH_VENUE outcome (profile write + beach-map edits). */
 	private static final String NO_SUCH_VENUE_DETAIL = "No such venue.";
 
+	/**
+	 * The profile write's STALE_WRITE detail, on the {@code venue.version} token (V22).
+	 * A detail states the condition, not the remedy: {@code riviera-java-conventions}
+	 * {@code references/error-contract.md}.
+	 */
+	private static final String STALE_PROFILE_DETAIL =
+			"The venue profile has changed since the version this request carries.";
+
+	/**
+	 * The STALE_WRITE detail shared by both set-writes — the row reprice and the bulk layout
+	 * replace turn on one {@code venue.set_version} token (V23), so either can lose to the other
+	 * and the wording may attribute the change to neither.
+	 */
+	private static final String STALE_SETS_DETAIL =
+			"This venue's sets have changed since the version this request carries.";
+
 	private final OnboardVenue onboardVenue;
 	private final EditBeachMap editBeachMap;
 	private final EditVenueProfile editVenueProfile;
@@ -143,7 +159,7 @@ class VenueAdminController {
 			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE",
 					NO_SUCH_VENUE_DETAIL);
 			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, "STALE_WRITE",
-					"This venue was changed by someone else. Reload the latest values and try again.");
+					STALE_PROFILE_DETAIL);
 		};
 	}
 
@@ -219,7 +235,7 @@ class VenueAdminController {
 			case NO_SUCH_ROW -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
 					"No set on this venue has that row label.");
 			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
-					"These prices were changed by someone else. Reload the latest and try again.");
+					STALE_SETS_DETAIL);
 			case SET_IN_USE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"This set has a booking or a current hold.");
 			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
@@ -234,7 +250,7 @@ class VenueAdminController {
 			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, reason.name(),
 					NO_SUCH_VENUE_DETAIL);
 			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
-					"This layout was changed by someone else. Reload the latest map and try again.");
+					STALE_SETS_DETAIL);
 			case LAYOUT_IN_USE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"This venue has a booking or a current hold.");
 			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),

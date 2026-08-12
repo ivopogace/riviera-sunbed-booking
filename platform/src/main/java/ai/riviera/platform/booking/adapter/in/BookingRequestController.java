@@ -67,11 +67,11 @@ class BookingRequestController {
 				case NO_SUCH_REQUEST -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_REQUEST",
 						"No pending request with this id at this venue.");
 				case NOT_PENDING -> problem(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING",
-						"This request has already been decided.");
+						RequestProblemDetails.NOT_PENDING);
 				case EXPIRED -> problem(HttpStatus.CONFLICT, "REQUEST_EXPIRED",
 						"This request's response deadline has passed.");
 				case PAYMENT_INIT_FAILED -> problem(HttpStatus.BAD_GATEWAY, "PAYMENT_INIT_FAILED",
-						"The payment request could not be issued; please retry.");
+						"The payment request could not be issued.");
 			};
 		};
 	}
@@ -90,7 +90,7 @@ class BookingRequestController {
 				case NO_SUCH_REQUEST -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_REQUEST",
 						"No pending request with this id at this venue.");
 				case NOT_PENDING -> problem(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING",
-						"This request has already been decided.");
+						RequestProblemDetails.NOT_PENDING);
 			};
 		};
 	}

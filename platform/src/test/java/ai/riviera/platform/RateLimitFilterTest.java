@@ -606,7 +606,7 @@ class RateLimitFilterTest {
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"))
 				// AC-6: the body is the fixed neutral ProblemDetail — it carries no identity field.
-				.andExpect(jsonPath("$.detail").value("Too many requests. Retry later."));
+				.andExpect(jsonPath("$.detail").value("Too many requests."));
 	}
 
 	@Test

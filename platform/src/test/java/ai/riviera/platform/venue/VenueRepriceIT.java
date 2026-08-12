@@ -54,6 +54,16 @@ class VenueRepriceIT {
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "test-operator-pw";
 
+	/**
+	 * The bulk layout replace shares this {@code STALE_WRITE} detail, because both set-writes turn on the
+	 * single {@code venue.set_version} token (V23) — either can lose to the other, so the wording
+	 * may attribute the change to neither. Production owns one constant
+	 * ({@code VenueAdminController.STALE_SETS_DETAIL}); this literal and BeachMapReplaceIT's are two views of
+	 * it, so a change that updates only one of them fails here rather than drifting silently.
+	 */
+	private static final String STALE_SETS_DETAIL =
+			"This venue's sets have changed since the version this request carries.";
+
 	@Autowired
 	MockMvc mvc;
 	@Autowired
@@ -188,7 +198,8 @@ class VenueRepriceIT {
 						.contentType(MediaType.APPLICATION_JSON).content(priceBody(9999, stale)))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("STALE_WRITE"));
+				.andExpect(jsonPath("$.code").value("STALE_WRITE"))
+				.andExpect(jsonPath("$.detail").value(STALE_SETS_DETAIL));
 
 		// The winner's 4200 survives (row A, first rendered set) — the stale 9999 never landed.
 		mvc.perform(get("/api/venues/{id}", venue))

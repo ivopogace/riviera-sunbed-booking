@@ -45,6 +45,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class SetPasswordIT {
 
+	/** Shared with the operator twin; {@code CurrentPasswordDetailTwinTest} pins that they agree. */
+	private static final String NO_CURRENT_PASSWORD_DETAIL = "The request carries no current password.";
+
 	private static final String SET_PASSWORD_PATH = "/api/me/password";
 	private static final String LOGIN_PATH = "/api/auth/customer/login";
 	private static final String ME_PATH = "/api/auth/me";
@@ -104,11 +107,13 @@ class SetPasswordIT {
 		setPassword(email, """
 				{"newPassword": "changedpass2"}""") // the field absent from the body entirely
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"));
+				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"))
+				.andExpect(jsonPath("$.detail").value(NO_CURRENT_PASSWORD_DETAIL));
 		setPassword(email, """
 				{"newPassword": "changedpass2", "currentPassword": ""}""") // present but empty
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"));
+				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"))
+				.andExpect(jsonPath("$.detail").value(NO_CURRENT_PASSWORD_DETAIL));
 
 		login(email, "originalpass1").andExpect(status().isOk()); // nothing rotated
 	}
