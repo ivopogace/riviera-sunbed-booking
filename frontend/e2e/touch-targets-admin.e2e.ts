@@ -74,11 +74,16 @@ test.describe('44px touch targets on the admin console — gated states', () => 
     await expectTouchTargets(page, 'admin operators (suspend confirm)');
   });
 
-  test('venue photos — the takedown confirm open', async ({ page }) => {
+  test('venue photos — an occupied slot, then its takedown confirm', async ({ page }) => {
     await signIn(page);
     await page.goto('/admin/photos');
     // The slots load only once a venue is picked; the mock then occupies its cover slot.
     await page.getByTestId('admin-photos-venue').selectOption('7');
+    await expect(page.getByTestId('admin-photo-remove-cover')).toBeVisible();
+
+    // Measure Remove BEFORE opening the confirm, which replaces it.
+    await expectTouchTargets(page, 'admin venue photos (slot occupied)');
+
     await page.getByTestId('admin-photo-remove-cover').click();
     await expect(page.getByTestId('admin-photo-confirm-panel-cover')).toBeVisible();
 

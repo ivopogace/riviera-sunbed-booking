@@ -14,25 +14,46 @@ const FLOOR = 44;
  * below the floor by its column. A control that is genuinely exempt carries `data-touch-exempt`,
  * on itself or on an ancestor, and the reason string is what a reviewer reads.
  *
- * <p>It settles animations first: `getBoundingClientRect()` returns the TRANSFORMED box, so a
- * surface measured mid-entry reads ~5% small — a 44px control at 42. Same hazard the axe policy
- * documents for mid-fade contrast.
+ * <p>Two things it has to get right, each of which it got wrong once:
+ * animations are settled first, because `getBoundingClientRect()` returns the TRANSFORMED box and a
+ * surface measured mid-entry reads ~5% small; and what it measures is the box a **clipping** ancestor
+ * leaves behind, which is not the same as what a **scrolling** ancestor currently shows.
  */
 export async function expectTouchTargets(page: Page, label: string): Promise<void> {
   await settle(page);
 
   const undersized = await page.evaluate(
     ({ controls, floor }) => {
-      const clippedAway = (el: Element, box: DOMRect): boolean => {
-        for (let p = el.parentElement; p; p = p.parentElement) {
-          const style = getComputedStyle(p);
-          if (style.overflowX === 'visible' && style.overflowY === 'visible') continue;
-          const clip = p.getBoundingClientRect();
-          const visibleW = Math.min(box.right, clip.right) - Math.max(box.left, clip.left);
-          const visibleH = Math.min(box.bottom, clip.bottom) - Math.max(box.top, clip.top);
-          if (visibleW <= 0 || visibleH <= 0) return true;
+      /**
+       * The part of a control that is actually hittable, clamped by every ancestor that CLIPS.
+       *
+       * <p>The distinction is the whole point: `overflow: hidden`/`clip` removes what it cuts off
+       * for good, so that area is not a target. `overflow: auto`/`scroll` merely puts it out of
+       * view — the user scrolls and taps it whole. Treating those the same silently dropped ~14 of
+       * 24 beach-map tiles; clamping on a clipping ancestor OUTSIDE the scrollport then reported
+       * the edge tile at 15px, though scrolling brings it fully inside. So the walk stops at the
+       * nearest scrollable ancestor: past it, position is the user's to change.
+       */
+      const hittableBox = (el: Element, box: DOMRect) => {
+        let { left, top, right, bottom } = box;
+        for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+          const style = getComputedStyle(parent);
+          const scrolls = (o: string) => o === 'auto' || o === 'scroll';
+          if (scrolls(style.overflowX) || scrolls(style.overflowY)) break;
+          const clipsX = style.overflowX === 'hidden' || style.overflowX === 'clip';
+          const clipsY = style.overflowY === 'hidden' || style.overflowY === 'clip';
+          if (!clipsX && !clipsY) continue;
+          const edge = parent.getBoundingClientRect();
+          if (clipsX) {
+            left = Math.max(left, edge.left);
+            right = Math.min(right, edge.right);
+          }
+          if (clipsY) {
+            top = Math.max(top, edge.top);
+            bottom = Math.min(bottom, edge.bottom);
+          }
         }
-        return false;
+        return { width: right - left, height: bottom - top };
       };
 
       const describe = (el: Element): string => {
@@ -47,18 +68,17 @@ export async function expectTouchTargets(page: Page, label: string): Promise<voi
       return (
         [...document.querySelectorAll(controls)]
           .filter((el) => !el.closest('[data-touch-exempt]'))
-          .map((el) => ({ el, box: el.getBoundingClientRect() }))
-          .filter(({ el, box }) => {
-            if (box.width === 0 || box.height === 0) return false;
-            if (getComputedStyle(el).visibility === 'hidden') return false;
-            // A control clipped away by an overflow ancestor still reports full geometry.
-            return !clippedAway(el, box);
+          .map((el) => ({ el, hittable: hittableBox(el, el.getBoundingClientRect()) }))
+          .filter(({ el, hittable }) => {
+            // Nothing left after clipping, or hidden outright: not a target, and not a finding.
+            if (hittable.width <= 0 || hittable.height <= 0) return false;
+            return getComputedStyle(el).visibility !== 'hidden';
           })
           // Round BEFORE comparing: Chromium returns 43.996 for a 44px box.
-          .map(({ el, box }) => ({
+          .map(({ el, hittable }) => ({
             selector: describe(el),
-            width: Math.round(box.width),
-            height: Math.round(box.height),
+            width: Math.round(hittable.width),
+            height: Math.round(hittable.height),
           }))
           .filter((c) => c.width < floor || c.height < floor)
       );

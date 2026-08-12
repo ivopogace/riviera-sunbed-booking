@@ -52,7 +52,7 @@
     <!-- The sea-facing availability grid -->
     <app-beach-grid-frame testid="daily-grid-frame">
       <!-- A 44px tile floor makes a wide venue overflow, so the map scrolls inside its own frame. -->
-      <section class="overflow-x-auto" data-testid="daily-grid" aria-label="Beach map">
+      <section class="overflow-x-auto" data-testid="daily-grid" tabindex="0" aria-label="Beach map">
         @for (row of rows(); track row.label) {
           <div class="mb-1.5 flex items-center gap-2">
             <span

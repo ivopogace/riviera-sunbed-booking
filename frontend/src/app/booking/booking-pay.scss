@@ -292,7 +292,10 @@ h1 {
   }
 }
 .link {
-  display: inline-block;
+  /* inline-flex, not inline-block, so the 44px floor has a box to apply to. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   margin-top: 12px;
   color: var(--riv-accent-ink);
   font-weight: 600;

@@ -118,7 +118,16 @@ test.describe('44px touch targets at a phone width', () => {
     await expectTouchTargets(page, 'operator daily view');
   });
 
-  test('operator console — beach map editor', async ({ page }) => {
+  test('operator console — beach map, per-set mode', async ({ page }) => {
+    await openConsoleTab(page, 'beach-map');
+    // The route's default surface, which #600 built and the bulk-mode sweep below moves off.
+    await expect(page.getByTestId('set-grid')).toBeVisible();
+
+    await expectNoClippedCells(page, 'set-grid');
+    await expectTouchTargets(page, 'operator beach map (per-set)');
+  });
+
+  test('operator console — beach map, bulk paint mode', async ({ page }) => {
     await openConsoleTab(page, 'beach-map');
     await expect(page.getByTestId('layout-mode-bulk')).toBeVisible();
     await page.getByTestId('layout-mode-bulk').click();

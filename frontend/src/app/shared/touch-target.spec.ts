@@ -17,8 +17,8 @@ import { TouchTarget } from './touch-target';
 class TouchTargetHost {}
 
 /**
- * Scope: the two things jsdom can actually settle — that the attribute selector attaches to every
- * native control kind, and that Angular merges the host class with the consumer's own rather than
+ * Scope: the two things jsdom can actually settle — that the attribute selector attaches to a
+ * button, an anchor and an input alike, and that Angular merges the host class with the consumer's own rather than
  * replacing it. **Whether the result measures 44 px is not provable here** (jsdom has no layout
  * engine, and the utilities are Tailwind's to generate); `frontend/e2e/touch-targets*.e2e.ts`
  * measures the rendered box, and that is the floor's only real proof.

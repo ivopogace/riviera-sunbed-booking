@@ -101,9 +101,19 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
 
   test('my bookings — the signed-out prompt and its links', async ({ page }) => {
     await page.goto('/my-bookings');
-    await expect(page.getByRole('link', { name: /All beaches/ })).toBeVisible();
+    // NOT the back-link: it renders in the loading skeleton too, so it cannot prove the page settled.
+    await expect(page.getByTestId('browse-beaches')).toBeVisible();
 
     await expectTouchTargets(page, 'my bookings');
+  });
+
+  test('the payment page chrome — the Stripe iframe is out of reach, ours is not', async ({
+    page,
+  }) => {
+    await page.goto('/booking/pay');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    await expectTouchTargets(page, 'booking pay chrome');
   });
 
   test('booking detail — a confirmed booking', async ({ page }) => {

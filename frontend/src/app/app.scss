@@ -59,13 +59,8 @@
     animation: none;
   }
   .riv-chip-btn,
-  .riv-menu-btn,
-  .riv-mobile-swatch::before {
+  .riv-menu-btn {
     transition: none;
-  }
-
-  .riv-mobile-swatch:hover::before {
-    transform: none;
   }
 }
 
@@ -468,6 +463,17 @@
 @media (hover: hover) {
   .riv-mobile-swatch:hover::before {
     transform: scale(1.12);
+  }
+}
+
+/* After the rules it overrides: same specificity, so the later declaration is the one that wins. */
+@media (prefers-reduced-motion: reduce) {
+  .riv-mobile-swatch::before {
+    transition: none;
+  }
+
+  .riv-mobile-swatch:hover::before {
+    transform: none;
   }
 }
 

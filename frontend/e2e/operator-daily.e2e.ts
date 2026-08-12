@@ -282,3 +282,44 @@ test('a wide venue keeps every tile tappable and scrolls inside its frame (#605)
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'daily view, wide venue at 390px');
 });
+
+/**
+ * A fully-sold day renders every tile as an inert `<span>`, so the scrolling map contains no
+ * focusable descendant at all. That is the one state where the scroller's own tab stop is the only
+ * way a keyboard user can reach the far columns — and axe's `scrollable-region-focusable` is what
+ * says so. No spec seeded this state before, which is how removing that tab stop went unnoticed.
+ */
+test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async ({ page }) => {
+  await mockDaily(page);
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: {
+        id: 1,
+        name: 'Sold Out Bay',
+        beach: 'Ksamil',
+        region: 'Albanian Riviera',
+        description: '',
+        ratingTenths: 48,
+        reviewsCount: 12,
+        bookingMode: 'INSTANT',
+        fromPrice: { minorUnits: 3000, currency: 'EUR' },
+        sets: Array.from({ length: 12 }, (_, i) => seat(i + 1, i + 1, 'ONLINE', 'TAKEN')),
+      },
+    }),
+  );
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: Array.from({ length: 12 }, (_, i) => ({ setId: i + 1, state: 'BOOKED_ONLINE' })),
+    }),
+  );
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  await expect(page.getByTestId('daily-tile')).toHaveCount(12);
+  await expect(page.getByTestId('daily-tile').locator('button')).toHaveCount(0);
+  await expect(page.getByTestId('daily-grid')).toHaveAttribute('tabindex', '0');
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view, fully sold at 390px');
+});
