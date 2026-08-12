@@ -134,8 +134,11 @@ machine-readable **`code`** extension, built in exactly two places: **`ApiProble
 factory for the wire shape — controllers use it when a typed-outcome `switch` rejects) and
 **`ApiErrorHandler`** (the **single** `@RestControllerAdvice` for everything thrown).
 **Per-controller `@ExceptionHandler`s are forbidden** — `ErrorContractArchitectureTests` enforces.
-Never leak internals into `detail`: no booking code (invariant #7), no exception message. Full
-mechanics, the status map, and the #97 no-`@Valid` decision: `references/error-contract.md`.
+Never leak internals into `detail`: no booking code (invariant #7), no exception message. And
+**`detail` states the condition, not the remedy** — user-facing wording belongs to the client, which
+switches on `code`; a `detail` written as UI copy is a second copy of that wording with nothing
+keeping the two in sync. Full mechanics, that rule's drift history, the status map, and the #97
+no-`@Valid` decision: `references/error-contract.md`.
 
 ### 6c. Comments: one line, or none (authoring side of RV-STYLE-1)
 

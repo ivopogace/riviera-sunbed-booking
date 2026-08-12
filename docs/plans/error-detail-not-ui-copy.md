@@ -156,15 +156,15 @@ single source of the wording; changing it would defeat the point.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `PR #643 — both phases built, marking ready for review`
 
-**Next action:** Phase 1 — state the condition-not-remedy rule in `ApiProblem`'s javadoc, §6b and
-`references/error-contract.md`, then open the draft PR so CI fires.
+**Next action:** Mark PR #643 ready for review, then run the Review gate (`pr-gates.md` §1
+invocation ladder + `riviera-review-overlay`) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Pin the arm-agnostic detail, then write it | ✅ red 3/3 + 2/2, green 53 tests 0 skipped | this commit |
-| 1 — Document the convention | ⏳ | |
+| 0 — Pin the arm-agnostic detail, then write it | ✅ red 3/3 + 2/2, green 53 tests 0 skipped | `897f6f8` |
+| 1 — Document the convention | ✅ AC-3/AC-4 greps clean, AC-5 43 specs pass unedited | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -252,12 +252,23 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `gradle test --tests "*VenueAdminControllerIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `gradle test --tests "*BeachMapReplaceIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run the AC-3 grep → no output. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run the AC-4 grep → three hits. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `npm test -- set-editor layout-editor` → PASS with no spec edits in the diff.
-  Verified at commit `<sha>`.
+- [x] **AC-1:** `gradle --no-daemon test --tests "*VenueAdminControllerIT*"` → 40 tests,
+  `skipped="0"`, 0 failures. Red first at `897f6f8~1`: all three arms failed on the old prose.
+  Verified at `897f6f8`.
+- [x] **AC-2:** `gradle --no-daemon test --tests "*BeachMapReplaceIT*"` → 13 tests, `skipped="0"`,
+  0 failures. Verified at `897f6f8`.
+- [x] **AC-3:** `grep -rn "so it can.t be moved, repooled or removed\|so its layout is locked"
+  platform/src` → no output. Verified at this commit.
+- [x] **AC-4:** grep for the rule across `ApiProblem.java`, `SKILL.md`,
+  `references/error-contract.md` → three hits. Verified at this commit.
+- [x] **AC-5:** `npx ng test --include "src/app/operator/set-editor.spec.ts" --include
+  "src/app/operator/layout-editor.spec.ts"` → 43 passed, and `git diff origin/main -- frontend/`
+  is empty. Verified at this commit. *(The `npm test -- <name>` form in the phase plan takes only
+  one positional filter; `--include` is the two-file form.)*
+
+**Also run:** the structural net (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`,
+`*PackageShapeArchitectureTests*`, `*ErrorContractArchitectureTests*`) → BUILD SUCCESSFUL; all four
+repo hygiene guards (inline comments, plan file-structure, focus posture, whole-scope Prettier) → clean.
 
 ## Self-review checklist (before merge / PR)
 
