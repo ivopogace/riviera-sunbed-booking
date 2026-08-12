@@ -28,7 +28,9 @@ against the *mutated* guard first: revert the fix, watch the case go red, restor
 `/code-review` fan-out did not run, see the self-review checklist) ·
 `riviera-docs-freshness` (**ran** over `origin/main..HEAD`, 1 finding — `ci.yml`'s test step said it
 "globs both suites", written when there were two and true of neither five nor six; found by the
-counting sweep, in a line the diff never went near) · `riviera-local-debug` (scoped runs — `node --test "scripts/*.test.mjs"`, never
+counting sweep, in a line the diff never went near; re-run after AC-15 landed, 2 further findings —
+the "diff-scoped, always" claim in `frontend/.claude/CLAUDE.md` and `riviera-java-conventions` §6c,
+both patched) · `riviera-local-debug` (scoped runs — `node --test "scripts/*.test.mjs"`, never
 the Gradle or Vitest suites, neither of which this slice touches).
 
 > The routed table matched no other row: the slice adds no Java, no Angular, no SQL, no Flyway
@@ -241,6 +243,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `scripts/guard-cli.test.mjs` — new: the end-to-end suite, one case per AC.
 - `scripts/check-inline-comments.mjs` — modified: the AC-13 scanner fix (one condition).
 - `scripts/check-inline-comments.test.mjs` — modified: the RED-first unit case for AC-13.
+- `frontend/.claude/CLAUDE.md` · `.claude/skills/riviera-java-conventions/SKILL.md` — modified: both
+  stated the inline-comment guard is "diff-scoped, always", which AC-15 makes false for an untracked
+  file. Same sentence in two places, both patched.
 - `.github/workflows/ci.yml` — modified: **one comment line**, the `riviera-docs-freshness` finding.
   "Globs both suites" was written when there were two and the tree now holds six; the job's steps,
   names and commands are untouched.

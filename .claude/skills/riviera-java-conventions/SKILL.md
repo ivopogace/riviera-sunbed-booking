@@ -159,9 +159,13 @@ feedback on the edit that wrote it; CI re-runs it over the PR diff. Run it by ha
 `node scripts/check-inline-comments.mjs --files <path…>`, or over a whole branch with
 `--diff origin/main`. Three things about its scope, so nobody "fixes" a deliberate gap:
 
-- **Diff-scoped, always.** It only judges lines a diff *added*. The existing tree carries many
-  pre-existing multi-line inline comments that read as established convention in their own files;
-  a repo-wide gate would go red on day one and get switched off. Don't reflow untouched comments.
+- **Diff-scoped for anything git already tracks.** It judges only lines a diff *added*. The existing
+  tree carries many pre-existing multi-line inline comments that read as established convention in
+  their own files; a repo-wide gate would go red on day one and get switched off. Don't reflow
+  untouched comments. The one exception is a file git has **never seen**, which `--files` and the
+  hook judge whole (#619): a new file has no diff against `HEAD`, so the diff-scoped path called it
+  clean — and a new file is the commonest way a violation enters the tree. Every line in it is
+  yours, so there is nothing of anyone else's to bury you in.
 - **Four languages, by comment syntax:** `.java`, `.ts`/`.tsx`/`.js`/`.mjs`/`.cjs`, `.scss`/`.css`,
   `.html`. **Not** `#` files (shell, YAML, `.properties`) — every one of those in this repo carries
   multi-line `#` header prose as its documented convention — and **not** SQL `--`, which #522's

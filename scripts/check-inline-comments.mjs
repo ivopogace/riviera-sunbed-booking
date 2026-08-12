@@ -2,9 +2,10 @@
  * Diff-scoped guard for RV-STYLE-1: an inline comment is one line, or it is not written
  * (`riviera-java-conventions` §6c, `frontend/.claude/CLAUDE.md`, review-bank item RV-STYLE-1).
  *
- * Only ever reasons about lines a diff **added**. The existing tree carries many pre-existing
- * multi-line inline comments that read as established convention in their own files; a
- * repo-wide gate would go red on day one and get switched off (issue #529).
+ * Reasons about lines a diff **added**, for anything git already tracks. The existing tree carries
+ * many pre-existing multi-line inline comments that read as established convention in their own
+ * files; a repo-wide gate would go red on day one and get switched off (issue #529). A file git has
+ * never seen is judged whole instead — see `checkPaths` (#619).
  *
  * Exempt by design: doc comments (`/** … *\/`, TSDoc — the rule's own carve-out), a block
  * comment standing before any code as the file's header, and `#`/SQL-`--` comment syntaxes
