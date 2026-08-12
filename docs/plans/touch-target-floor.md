@@ -253,7 +253,7 @@ gates due (`riviera-sdlc` `references/pr-gates.md`). Merged via PR #647.
 | 2 — The two map grids (geometry + in-frame scroll) | ✅ | `c87a776b` |
 | 3 — Platform-admin console | ✅ | `50a9fba2` |
 | 4 — Auth, booking, tourist pages, shared primitives | ✅ | `c0bb6838` |
-| 5 — Coverage reconciliation + close-out | ✅ | `<phase-5-sha>` |
+| 5 — Coverage reconciliation + close-out | ✅ | `f2e64024` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -264,7 +264,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (phase 1) | `Confirm decline` measured **43 × 163 on Linux** and 44 on Windows — it met the floor only through inherited line-height, never through an explicit rule | fixed in `c87a776b` — the directive now carries all five request-card actions, and every control on a swept surface is tagged rather than left to ambient metrics |
-| F-3 | CI (phase 4) | The Prettier gate failed on `e2e/support/touch-targets.ts`. Phases 4–5 formatted with a hand-written `npx prettier --write "src/app/**"` glob which, unlike `npm run format`, does **not** cover `e2e/` — so every edit to the sweep helper went unformatted | fixed in `<phase-5-sha>`; the lesson is the narrow glob, since CI's gate is `prettier --check src e2e` |
+| F-3 | CI (phase 4) | The Prettier gate failed on `e2e/support/touch-targets.ts`. Phases 4–5 formatted with a hand-written `npx prettier --write "src/app/**"` glob which, unlike `npm run format`, does **not** cover `e2e/` — so every edit to the sweep helper went unformatted | fixed in `f2e64024`; the lesson is the narrow glob, since CI's gate is `prettier --check src e2e` |
 | F-2 | CI (phase 1) | Making the shared `operator-chrome` nav links 44 px grew that header **131.8 → 187 px**, pushing `#admin-pending-title` past the 360 px fold (797 vs < 740). The chrome is shared with `/admin`, which phase 1 never swept | fixed in `c87a776b` — the header's own `py-3` and row-gaps were the redundancy: with 44 px items supplying the rhythm, dropping them returns the header to **133 px** and the title to 685. Layout fixed, assertion untouched |
 
 ---
@@ -692,11 +692,11 @@ and `field-glass.ts` match only inside doc comments, and `home.html`'s selects a
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1:** `npm run test:e2e:a11y` → all 25 sweeps across `touch-targets{,-admin,-tourist}.e2e.ts` pass; suite **205 passed, 0 skipped**. Verified at `<phase-5-sha>`.
+- [x] **AC-1:** `npm run test:e2e:a11y` → all 25 sweeps across `touch-targets{,-admin,-tourist}.e2e.ts` pass; suite **205 passed, 0 skipped**. Verified at `f2e64024`.
 - [x] **AC-2:** each phase's red run is recorded in its Step 2, with the measured selectors — phase 0's 11 shell controls, phase 2's 16×32 tiles, phase 3's ×40 pills, phase 5's 30×30 swatches.
 - [x] **AC-3:** `npx ng test --watch=false --include="src/app/shared/touch-target.spec.ts"` → 4 passed. Verified at `676b83c4`.
 - [x] **AC-4:** `npx playwright test operator-daily` → the 12-set row is ≥ 44 × 44, scrolls inside its frame, and the page does not scroll sideways. Verified at `c87a776b`.
-- [x] **AC-5:** `npx ng test --watch=false` → **1380 passed** with **zero** spec files modified across all five phases (`git diff --name-only origin/main -- '*.spec.ts'` is empty). Verified at `<phase-5-sha>`.
+- [x] **AC-5:** `npx ng test --watch=false` → **1380 passed** with **zero** spec files modified across all five phases (`git diff --name-only origin/main -- '*.spec.ts'` is empty). Verified at `f2e64024`.
 - [x] **AC-6:** `riviera-tailwind` carries the rule as its numbered rule 4 (floor, directive, the inline-box trap, the two exemption classes, the sweep as proof) plus two red-flag rows; `CLAUDE.md` carries the one-clause pointer. Confirmed by the docs-freshness run.
 
 ## Self-review checklist (before merge / PR)
