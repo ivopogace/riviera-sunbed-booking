@@ -168,8 +168,12 @@ The client already ignores `detail` (#610), and this slice does not start readin
 
 **Stage pointer:** `merge close-out` — CI green, review gate run (4 findings, all fixed), Sonar gate passed.
 
-**Next action:** Confirm CI is green on the review-fix push, then merge PR #646 and run the close-out
-checklist (`riviera-sdlc` `references/pr-gates.md` §3).
+**Next action:** None — the slice is complete and **merged via PR #646**. Follow-up work on this
+copy, if any, starts a fresh issue.
+
+**Gates:** CI green · review gate **ran** (`/code-review` at high effort, subagent fan-out, 4
+findings, all fixed in-PR) · Sonar **passed** (0 new issues, 0 accepted, 0 security hotspots, 0.0%
+duplication, 86.7% coverage on new code).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
