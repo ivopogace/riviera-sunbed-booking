@@ -214,10 +214,14 @@ Verified rather than assumed: `git diff origin/main -- frontend/` must be empty 
 
 ## Execution status
 
-**Stage pointer:** `review gate — 11 findings all resolved; re-running CI on the fix push`
+**Stage pointer:** `merge close-out — all three gates run and green; awaiting merge`
 
-**Next action:** Confirm CI green on the review-fix push, then re-read the Sonar list (the fix push
-changes the head Sonar analyzed), then merge via PR #645.
+**Merge vehicle:** this slice merges **via PR #645** — recorded pre-merge on purpose, since a squash
+SHA cannot exist yet and citing one would force a second docs-only PR (`pr-gates.md` §3 step 4).
+
+**Next action:** Merge PR #645. Post-merge, only GitHub-side items remain: confirm #644 closed (the
+PR's `Closes #644` does it) and confirm the PR-activity subscription ended. No epic owns this issue,
+so there is no checklist to tick.
 
 > **Testcontainers note for a resuming session.** Docker Hub's *unauthenticated* pull limit
 > (`429 toomanyrequests`) blocks `postgres:17`, so the ITs **fail** rather than skip — the daemon is
@@ -231,7 +235,8 @@ changes the head Sonar analyzed), then merge via PR #645.
 | 1 — The edge quartet (twin, self-suspend, ownership, rate limit) | ✅ red 7/7, green 80 tests | this commit |
 | 2 — The booking pair | ✅ red 7/7, green 10 tests 0 skipped | this commit |
 | 3 — Retire the lower-bound caveat and the grandfather list | ✅ AC-6/AC-7 greps clean, structural net green | `41dd780` |
-| 4 — Review round 1 fixes (11 findings) | ✅ all touched tests + structural net green | this commit |
+| 4 — Review round 1 fixes (11 findings) | ✅ all touched tests + structural net green | `eff1def` |
+| 5 — Close-out | ✅ all 8 checks green on `eff1def`; Sonar re-read on the new head | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -252,8 +257,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-9 | review | `VenueRepriceIT` and `BeachMapReplaceIT` each declare their own `STALE_SETS_DETAIL`, a hand-synced copy of the kind this slice's doc says to pin as a pair | **fixed in part** — javadocs now state that production owns the one constant and that a one-sided update **fails here rather than drifting silently**, which is the material difference from F-1. A shared test-support class for one string was judged not to earn itself; the risk is a confusing failure message, not silent drift |
 | F-10 | review | `WithdrawRequestIT`'s new javadoc claimed "all four arms this class provokes", but `codeNeverLeaksIntoTheProblemBody` provokes an unasserted fifth | **fixed** — "four of the five", with the fifth named and its invariant-#7-only assertion explained. Same shape as #610's F-11 |
 | F-11 | review | `RATE_LIMITED_BODY`'s javadoc claimed it "mirrors the `ApiProblem` shape" and is "kept in lockstep", but the body omits `instance` and no test compares the shapes | **fixed in part** — javadoc now enumerates what the body actually carries and why `instance` is absent (nothing to redact when no URI is written — invariant #7 is satisfied by the omission). **Adding `instance` is rejected**: it changes the 429 wire shape, which is beyond #644 and not a defect |
-| — | sonar | Quality gate **passed** — 0 new issues/bugs/vulnerabilities/smells, 0 duplicated blocks, 100.0% coverage on new code | verified against the API, not the badge; `new_lines = 36` proves an analysis exists, so the zeros are real (the false-clean check) |
-| — | CI | Run #2370 + CodeQL **green** on `41dd780` — the branch's first CI, and the first full-suite run | the shared-state failure class scoped runs cannot show did not bite |
+| — | sonar | Quality gate **passed** on both heads — 0 new issues/bugs/vulnerabilities/smells, 0 duplicated blocks, 100.0% coverage on new code | verified against the API, not the badge, and **re-read after the fix push** since that changed the head Sonar analyzed. `new_lines` came back `36` then `56`, which is what proves an analysis exists rather than the false-clean read |
+| — | CI | Run #2370 **green** on `41dd780` (the branch's first CI, and the first full-suite run), and all **8** checks green again on the fix push `eff1def` | the shared-state failure class scoped runs cannot show did not bite, on either head |
 
 ---
 
@@ -425,6 +430,13 @@ Skill-routing gate for what the fix touches *before* editing).
   any more"; the prose was reworded rather than the AC weakened (#610's F-2 shape). Verified at
   this commit.
 
+**Sonar (final, on `eff1def`):** `api/issues/search?…&pullRequest=645&resolved=false` → `"total": 0`;
+`api/measures/component?…&pullRequest=645` → `new_bugs 0`, `new_vulnerabilities 0`, `new_code_smells 0`,
+`new_duplicated_blocks 0`, `new_duplicated_lines_density 0.0`, `new_coverage 100.0`, **`new_lines 56`**.
+Read with `curl` rather than `WebFetch` to sidestep the response cache. The first read of this PR
+returned every value as `None` — a `periods[0].value` shape misread on my side, **not** the false-clean
+case; the raw JSON settled which it was before anything was ticked.
+
 **Also run:** the structural net (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`,
 `*PackageShapeArchitectureTests*`, `*ErrorContractArchitectureTests*`) → BUILD SUCCESSFUL. Repo
 hygiene guards: inline comments + plan file-structure → clean at every phase commit. **Not run
@@ -452,7 +464,7 @@ AC-6 asserts rather than assumes. **No CI has run on this branch at all**, since
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
       If tooling blocked the review, that is stated in the PR and its checkbox is left
       unticked.
