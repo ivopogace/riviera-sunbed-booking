@@ -14,6 +14,8 @@ import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminCommissionsService, commissionWriteErrorOf } from './admin-commissions.service';
 import { VenueCommissionView } from './admin.model';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * The admin console's Commissions tab — the surface that makes the admin rate write
  * usable. Until this tab a rate was settable only at venue creation: the owner's profile `PATCH`
@@ -57,7 +59,7 @@ import { VenueCommissionView } from './admin.model';
  */
 @Component({
   selector: 'app-admin-commissions',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs, BusyAction],
+  imports: [RouterLink, CardGlass, AdminConsoleTabs, BusyAction, TouchTarget],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[860px] px-4 py-10" aria-labelledby="admin-commissions-title">
@@ -106,6 +108,7 @@ import { VenueCommissionView } from './admin.model';
           >
             Something went wrong loading the venue list.
             <button
+              appTouchTarget
               type="button"
               class="font-semibold underline"
               data-testid="admin-commissions-retry"
@@ -169,6 +172,7 @@ import { VenueCommissionView } from './admin.model';
                       >New rate for {{ venue.name }} (%)</label
                     >
                     <input
+                      appTouchTarget
                       type="number"
                       min="0"
                       max="100"
@@ -199,6 +203,7 @@ import { VenueCommissionView } from './admin.model';
                       >Reason (optional)</label
                     >
                     <input
+                      appTouchTarget
                       type="text"
                       maxlength="500"
                       [attr.id]="'admin-commission-reason-' + venue.venueId"
@@ -218,6 +223,7 @@ import { VenueCommissionView } from './admin.model';
 
                     <div class="mt-3 flex flex-wrap items-center gap-2">
                       <button
+                        appTouchTarget
                         type="button"
                         [attr.data-testid]="'admin-commission-save-' + venue.venueId"
                         [attr.aria-label]="'Save rate for ' + venue.name"
@@ -228,6 +234,7 @@ import { VenueCommissionView } from './admin.model';
                         Save rate
                       </button>
                       <button
+                        appTouchTarget
                         type="button"
                         [attr.data-testid]="'admin-commission-cancel-' + venue.venueId"
                         [attr.aria-label]="'Cancel the rate change for ' + venue.name"
@@ -249,6 +256,7 @@ import { VenueCommissionView } from './admin.model';
                   </div>
                 } @else {
                   <button
+                    appTouchTarget
                     type="button"
                     [attr.data-testid]="'admin-commission-edit-' + venue.venueId"
                     [attr.aria-label]="'Edit rate for ' + venue.name"

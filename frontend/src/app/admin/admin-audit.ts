@@ -15,6 +15,8 @@ import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminAuditService } from './admin-audit.service';
 import { AdminAuditEntryView } from './admin.model';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * The admin console's Audit tab — the accountability record ADR-0013 requires: who did what,
  * to what, when, and (when offered) on what grounds, for every mutating `/api/admin/**` action that
@@ -30,7 +32,7 @@ import { AdminAuditEntryView } from './admin.model';
  */
 @Component({
   selector: 'app-admin-audit',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs],
+  imports: [RouterLink, CardGlass, AdminConsoleTabs, TouchTarget],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[860px] px-4 py-10" aria-labelledby="admin-audit-title">
@@ -65,6 +67,7 @@ import { AdminAuditEntryView } from './admin.model';
           <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-audit-error">
             Something went wrong loading the audit trail.
             <button
+              appTouchTarget
               type="button"
               class="font-semibold underline"
               data-testid="admin-audit-retry"

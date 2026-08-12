@@ -1,6 +1,8 @@
 import { Component, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * The console's canonical tab order — the strip's
  * information architecture is an ORDER, not a layout (see {@link AdminConsoleTabs}).
@@ -43,7 +45,7 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
  * Grouping degenerates: the natural
  * clusters put Operators and Privacy alone in groups of one. An overflow menu buys ~48px by hiding
  * admin surfaces and can strand `aria-current` inside a collapsed menu. Shrinking the pills trades
- * away touch target they do not have to spare — they are 40px, already under WCAG 2.5.5's 44px.
+ * away touch target they do not have to spare — they sit on WCAG 2.5.5's 44px floor (#605).
  * The trigger to revisit is a <strong>ninth</strong> tab: that is where 360px reaches four rows and
  * where new tabs would join existing clusters instead of forming singleton ones.
  * `e2e/admin-console-tabs.e2e.ts` fails if the budget is ever exceeded.
@@ -60,15 +62,16 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
  */
 @Component({
   selector: 'app-admin-console-tabs',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, TouchTarget],
   template: `
-    <nav class="mt-5 mb-1 flex flex-wrap gap-2" [attr.aria-label]="label()">
+    <nav class="mt-3 mb-1 flex flex-wrap gap-x-2 gap-y-1.5" [attr.aria-label]="label()">
       @for (tab of tabs; track tab.path) {
         <a
           [routerLink]="tab.path"
           routerLinkActive="riv-tab-active bg-white/85 text-[#0a4f5e] border-white/95 shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff]"
           [routerLinkActiveOptions]="{ exact: true }"
           ariaCurrentWhenActive="page"
+          appTouchTarget
           class="riv-tab inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/45 px-[18px] py-[9px] text-[13.5px] font-semibold text-(--riv-ink-soft) backdrop-blur-[10px] [transition:background_0.15s_ease] hover:bg-white/65"
           [attr.data-testid]="tab.testId"
           >{{ tab.label }}</a

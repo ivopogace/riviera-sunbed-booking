@@ -10,6 +10,8 @@ import {
 
 import { BusyAction } from './busy-action';
 
+import { TouchTarget } from './touch-target';
+
 /**
  * The admin console's confirm-before-destroy panel: a prompt, the optional grounds the audit trail
  * records (ADR-0013), and an outlined destructive action beside a way out. The operator console's
@@ -24,7 +26,7 @@ import { BusyAction } from './busy-action';
  */
 @Component({
   selector: 'app-confirm-with-reason',
-  imports: [BusyAction],
+  imports: [BusyAction, TouchTarget],
   host: {
     role: 'alertdialog',
     '[attr.aria-label]': 'label()',
@@ -41,6 +43,7 @@ import { BusyAction } from './busy-action';
       >Reason (optional)</label
     >
     <input
+      appTouchTarget
       type="text"
       maxlength="500"
       [attr.id]="reasonId()"
@@ -52,6 +55,7 @@ import { BusyAction } from './busy-action';
     />
     <div class="mt-2 flex flex-wrap items-center gap-2">
       <button
+        appTouchTarget
         #confirmButton
         type="button"
         [attr.data-testid]="confirmTestId()"
@@ -62,6 +66,7 @@ import { BusyAction } from './busy-action';
         {{ confirmLabel() }}
       </button>
       <button
+        appTouchTarget
         type="button"
         [attr.data-testid]="cancelTestId()"
         (click)="cancelled.emit()"

@@ -8,6 +8,8 @@ import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminRefundOutboxService } from './admin-refund-outbox.service';
 import { OutboxLever } from './admin-outbox-lever';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * The admin console's Refunds tab: what the Event Publication Registry still owes the
  * cancellation-refund listener — refunds whose gateway call failed or was shed — and the lever
@@ -26,7 +28,7 @@ import { OutboxLever } from './admin-outbox-lever';
  */
 @Component({
   selector: 'app-admin-refund-outbox',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs, BusyAction],
+  imports: [RouterLink, CardGlass, AdminConsoleTabs, BusyAction, TouchTarget],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-refunds-title">
@@ -60,7 +62,12 @@ import { OutboxLever } from './admin-outbox-lever';
         } @else if (lever.loadError()) {
           <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-refunds-error">
             Something went wrong loading the outbox.
-            <button type="button" class="font-semibold underline" (click)="lever.load()">
+            <button
+              appTouchTarget
+              type="button"
+              class="font-semibold underline"
+              (click)="lever.load()"
+            >
               Retry
             </button>
           </p>
@@ -94,6 +101,7 @@ import { OutboxLever } from './admin-outbox-lever';
             }
 
             <button
+              appTouchTarget
               type="button"
               class="mt-4 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
               [appBusy]="lever.busy()"

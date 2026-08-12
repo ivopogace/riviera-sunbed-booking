@@ -223,13 +223,13 @@ a static template `class` with a directive host `class`, so consumers keep their
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement — phases 0–2 complete; phase 3 next` · **draft PR #647** open. CI green
+**Stage pointer:** `implement — phases 0–3 complete; phase 4 next` · **draft PR #647** open. CI green
 on phase 0; phase 1 went **red** and its two findings (F-1, F-2) are fixed in phase 2. The review +
 Sonar gates fall due at ready-for-review, not while draft.
 
-**Next action:** phase 3 — the platform-admin console. Note F-2: its header is the *same*
-`operator-chrome` phase 2 already fixed, so what remains is `admin-console-tabs` (40 px pills, with a
-code comment admitting it) and the six admin routes' own controls.
+**Next action:** phase 4 — auth, booking, tourist pages and the remaining shared primitives.
+`shared/confirm-with-reason.ts` was already floored in phase 3 (the admin gated states needed it);
+`shared/confirm-panel.ts` has `min-h-11` but not `min-w-11`, so check the width half.
 
 > **Phase 0's measurement rewrote the phase-1 estimate.** The sweep measured all 15 controls on the
 > Requests tab: **the tab body is already compliant** — its accept/decline buttons wrap at 390 px and
@@ -247,7 +247,7 @@ code comment admitting it) and the six admin routes' own controls.
 | 0 — The floor: directive, sweep helper, stated convention | ✅ | `676b83c4` |
 | 1 — Operator console: 5 tabs + create card + shell chrome | ✅ | `425fdfbb` |
 | 2 — The two map grids (geometry + in-frame scroll) | ✅ | `c87a776b` |
-| 3 — Platform-admin console | | |
+| 3 — Platform-admin console | ✅ | `<phase-3-sha>` |
 | 4 — Auth, booking, tourist pages, shared primitives | | |
 | 5 — Coverage reconciliation + close-out | | |
 
@@ -276,8 +276,13 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/e2e/support/operator-console.mocks.ts` — `mockWholeConsole`/`signInToConsole`: a new
   breadth-first read-only mock for the sweep. **Not** a promotion of the per-spec mocks (R-10);
   the ten existing operator specs are untouched
-- `frontend/e2e/touch-targets.e2e.ts` — one test per surface (AC-1), each asserting a content
-  marker first so an empty render cannot sweep vacuously (R-11)
+- `frontend/e2e/touch-targets.e2e.ts` — one test per operator surface (AC-1), each asserting a
+  content marker first so an empty render cannot sweep vacuously (R-11)
+- `frontend/e2e/touch-targets-admin.e2e.ts` — the same for the seven admin routes; a separate spec
+  because the two consoles need different mocks and sign-in
+- `frontend/e2e/support/admin-console.mocks.ts` — `mockWholeAdminConsole`, the admin twin of the
+  operator mock
+- `frontend/e2e/admin-console-stats.e2e.ts` — its measured fold-budget comment, refreshed
 - `frontend/src/app/operator/` — every template and inline-template component with a control, plus
   `operator-console.scss` (the `.oc-tab` / `.oc-create-venue` rules)
 - `frontend/src/app/app.html` — the **app-level** footer, shared by the tourist shell and the
@@ -545,17 +550,30 @@ why every control on a swept surface now carries the directive rather than relyi
 
 ## Phase 3 — Platform-admin console
 
-**Files:** Modify `frontend/src/app/admin/**` (8 files with controls, incl. `admin-console-tabs.ts` — whose comment already admits its 40 px tabs are under the figure) · Test `frontend/e2e/touch-targets.e2e.ts`
+**Files:** Modify `frontend/src/app/admin/` (8 components + the tab strip), `frontend/src/app/shared/confirm-with-reason.ts` · Test `frontend/e2e/touch-targets-admin.e2e.ts`, `frontend/e2e/support/admin-console.mocks.ts`
 
-- [ ] **Step 1: Write the failing test** — one sweep test per admin route (operators, venue photos, audit, mail outbox, commissions, privacy).
-- [ ] **Step 2: Run it, verify it fails** — → FAIL, including the 40 px tab pills the code comment predicted.
-- [ ] **Step 3: Minimal implementation** — `[appTouchTarget]` + `inline-flex items-center` on the tab pills; delete the now-false comment at `admin-console-tabs.ts:46` and replace it with nothing (the code no longer needs an apology).
-- [ ] **Step 4: Run it, verify it passes** — the admin routes green; full mocked suite.
-- [ ] **Step 5: Generalization-audit pass** — population `every code comment in the repo that documents a known sub-44px control` → enumerate `git ls-files | xargs grep -n '44px\|2.5.5'` → decision recorded (a stale apology left behind is a doc-freshness bug).
-- [ ] **Step 6: Commit** — `git commit -m "Bring the platform-admin console to the 44px floor (#605)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1: Write the failing test** — a new spec (`touch-targets-admin.e2e.ts`, split from the
+      operator one because the two consoles need different mocks and sign-in) sweeping all seven
+      admin routes, plus a second describe for the gated editor/confirm states.
+- [x] **Step 2: Run it, verify it fails** — 7 red: the seven tab pills at ×40 on **every** surface,
+      plus each page's own controls at ×39–41.
+- [x] **Step 3: Minimal implementation** — the directive on the pills and on every control across 8
+      admin components + `shared/confirm-with-reason.ts`. The tab strip's `mt-5`/`gap-2` were
+      reduced for the F-2 reason, **proactively this time**.
+- [x] **Step 4: Run it, verify it passes** — 20 sweeps green across both consoles; full mocked suite
+      **197 passed, 0 skipped**; unit **1380 passed**; lint clean.
+- [x] **Step 5: Generalization-audit pass** — the stale-measured-comment population; see the log.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
----
+### The fold budget, paid for rather than gambled on
+
+F-2 taught that a 44px pill grows whatever contains it. Seven pills × 3 wrapped rows put the admin
+console's first heading back to **697** against a 740px fold — 43px of headroom, and Linux renders
+taller than the Windows dev machine. Rather than push and see, the strip's own `mt-5` and row-gap
+were cut (the 44px items now supply that rhythm), returning the heading to **685** — the exact
+configuration CI had already proved green on phase 2. The whole page is *shorter* than before the
+slice began: the old chrome alone cost 165px and now costs 133.
 
 ## Phase 4 — Auth, booking, tourist pages, shared primitives
 
@@ -603,6 +621,7 @@ why every control on a swept surface now carries the directive rather than relyi
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-12 | plan — issue-intake grill | every element the app renders as an interactive control (**not** "the other operator tabs" — the issue's own population was `operator/*.html`, which structurally cannot see inline `template:` literals or SCSS) | `git ls-files 'frontend/src/app/<dir>/*' \| grep -v '\.spec\.ts$' \| xargs grep -ho '<button\|<input\|<select\|<textarea'` per feature dir | ~145 controls + ~56 anchors across ~40 files in 7 feature folders — vs the issue's 8 files | scope widened to the whole app (maintainer decision); swept in phases 1–4, reconciled in phase 5 |
+| 2026-08-12 | phase 3 — the admin console | **every comment that states a measured pixel budget**, since this slice moves the bands those numbers describe and a stale measurement reads as fact. Enumerated by the numbers themselves, not by recalling which files discuss layout | `grep -rn "40px\|44px\|2\.5\.5" --include=*.ts --include=*.html --include=*.scss frontend/src \| grep -v spec` | 3 comments: `admin-console-tabs`'s "they are 40px, already under WCAG 2.5.5's 44px", and **two** in `admin-console-stats` — the per-band budget table and a second note claiming 22px of headroom | all three corrected against fresh measurements (chrome 0–133, h1 173–209, tabs 221–365, strip 385–626, heading 658–685). The second `admin-console-stats` note is the one resemblance would have missed: it is about *label wrapping*, not touch targets |
 | 2026-08-12 | phase 2 — the tile floor | **every grid whose columns are sized by an unbounded `1fr`**, since such a column squeezes its control below the floor at a narrow width no matter what the control's own classes say | `grep -rn "grid-template-columns\|grid-cols-\|repeat(" src/app --include=*.html --include=*.ts --include=*.scss \| grep -v spec` | 20 grids; only the **two beach-map grids** size interactive tiles by `1fr`. The tourist `venue-map` already floors its tiles at `clamp(44px, 11vw, 56px)`; the rest are layout grids whose children are fields already tagged | both map grids moved to `minmax(44px, 1fr)` + in-frame scroll; the others need nothing, and the tourist map is evidence the floor was already the house style for a *map* |
 | 2026-08-12 | phase 2 — CI findings F-1/F-2 | **every control that meets the floor only through ambient text metrics** (inherited line-height, flex `items-stretch`, text wrap) rather than an explicit rule — invisible locally because the dev machine is Windows and CI is Linux | per swept template, `grep -c "<button\|<input\|<select\|<textarea"` vs `grep -c "appTouchTarget"` | every swept template now balances except two deliberate cases: `venue-tab`'s `class="hidden"` file input (invisible; its visible proxy is the Add-photo button) and the exempt footer blocks. `statement-open` measured **exactly 44** — the definition of fragile | all tagged. The rule is now *tag the control*, never *measure and hope*; F-2 additionally proves a shared-chrome change must sweep **every** surface that renders it, not just the phase's own |
 | 2026-08-12 | phase 1 — the first sweep of a surface with confirm/modal states | **controls behind a gated interaction state** — a sweep of the resting surface cannot see them, so a green sweep is not a covered surface. Enumerated by the branch that gates them, not by recalling which tabs have dialogs | `grep -rln "app-confirm-panel\|app-confirm-with-reason\|@if (.*[Cc]onfirm" src/app/operator src/app/admin --include=*.html --include=*.ts` | 5 gating components: `payouts-tab` (weather confirm + statement modal), `requests-tab` (decline confirm), `venue-tab` (photo Remove, gated on a slot being occupied), plus `layout-editor`/`set-editor` (phase 2) and the admin four (phase 3) | all four phase-1 states now have their own sweep test; the mock occupies one photo slot so the Remove button renders. Found 3 controls no resting sweep could reach (`weather-confirm-btn` 194×40, `weather-cancel-btn` 78×42, `statement-close` 62×34) |
