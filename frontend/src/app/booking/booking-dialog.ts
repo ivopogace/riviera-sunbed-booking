@@ -26,6 +26,8 @@ import {
 } from './booking.model';
 import { BookingService, bookingErrorOf } from './booking.service';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /** What a set includes — the product's fixed unit (CLAUDE.md: 2 loungers + umbrella, full day). */
 const SET_INCLUDES = '2 loungers + umbrella · full day';
 
@@ -41,7 +43,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
  */
 @Component({
   selector: 'app-booking-dialog',
-  imports: [FormField, BusyAction],
+  imports: [FormField, BusyAction, TouchTarget],
   host: {
     class: 'booking-backdrop',
     '(click)': 'requestClose()',
@@ -59,6 +61,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
     >
       <header class="dialog-head">
         <button
+          appTouchTarget
           type="button"
           class="dialog-close"
           data-testid="dialog-close"
@@ -102,7 +105,12 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
             <div class="fields">
               <label class="field">
                 <span class="field-label">Full name</span>
-                <input type="text" autocomplete="name" [formField]="bookingForm.fullName" />
+                <input
+                  appTouchTarget
+                  type="text"
+                  autocomplete="name"
+                  [formField]="bookingForm.fullName"
+                />
                 @if (submitAttempted() && bookingForm.fullName().errors().length) {
                   <span class="field-error" role="alert">{{
                     bookingForm.fullName().errors()[0].message
@@ -111,7 +119,12 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               </label>
               <label class="field">
                 <span class="field-label">Email</span>
-                <input type="email" autocomplete="email" [formField]="bookingForm.email" />
+                <input
+                  appTouchTarget
+                  type="email"
+                  autocomplete="email"
+                  [formField]="bookingForm.email"
+                />
                 @if (submitAttempted() && bookingForm.email().errors().length) {
                   <span class="field-error" role="alert">{{
                     bookingForm.email().errors()[0].message
@@ -120,7 +133,12 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               </label>
               <label class="field">
                 <span class="field-label">Phone</span>
-                <input type="tel" autocomplete="tel" [formField]="bookingForm.phone" />
+                <input
+                  appTouchTarget
+                  type="tel"
+                  autocomplete="tel"
+                  [formField]="bookingForm.phone"
+                />
                 @if (submitAttempted() && bookingForm.phone().errors().length) {
                   <span class="field-error" role="alert">{{
                     bookingForm.phone().errors()[0].message
@@ -201,11 +219,18 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
 
         <div class="dialog-actions">
           @if (step() === 2) {
-            <button type="button" class="btn-back" data-testid="dialog-back" (click)="back()">
+            <button
+              appTouchTarget
+              type="button"
+              class="btn-back"
+              data-testid="dialog-back"
+              (click)="back()"
+            >
               Back
             </button>
           }
           <button
+            appTouchTarget
             type="submit"
             class="btn-primary"
             data-testid="dialog-primary"

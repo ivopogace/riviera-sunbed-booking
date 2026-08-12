@@ -15,6 +15,8 @@ import {
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * The signed-in operator's password-change page. Deliberately a **separate** page from the
  * customer's `set-password`, not an audience toggle on it: that page is the customer *account* page and
@@ -29,7 +31,7 @@ import { CardGlass } from '../shared/card-glass';
  */
 @Component({
   selector: 'app-operator-password',
-  imports: [FormField, RouterLink, CardGlass, BusyAction],
+  imports: [FormField, RouterLink, CardGlass, BusyAction, TouchTarget],
   template: `
     <section class="auth-wrap" aria-labelledby="oppw-title">
       <div class="auth-card" appCardGlass>
@@ -45,6 +47,7 @@ import { CardGlass } from '../shared/card-glass';
           <label class="auth-field">
             <span class="auth-label">Current password</span>
             <input
+              appTouchTarget
               type="password"
               data-testid="oppw-current"
               [formField]="changeForm.currentPassword"
@@ -55,6 +58,7 @@ import { CardGlass } from '../shared/card-glass';
           <label class="auth-field">
             <span class="auth-label">New password</span>
             <input
+              appTouchTarget
               type="password"
               data-testid="oppw-new"
               [formField]="changeForm.newPassword"
@@ -71,6 +75,7 @@ import { CardGlass } from '../shared/card-glass';
           </p>
 
           <button
+            appTouchTarget
             type="submit"
             class="auth-submit"
             data-testid="oppw-submit"

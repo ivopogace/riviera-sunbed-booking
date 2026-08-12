@@ -16,6 +16,8 @@ import { trapFocusWithin } from '../shared/focus-trap';
 import { normalizeCode } from '../shared/booking-code';
 import { BookingService } from './booking.service';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * "Find a booking" glass modal (design
  * `riviera-sunbeds-liquid-glass-v3.dc.html` → *Find booking*). A guest on a device that doesn't
@@ -32,7 +34,7 @@ import { BookingService } from './booking.service';
  */
 @Component({
   selector: 'app-find-booking',
-  imports: [FormField, BusyAction],
+  imports: [FormField, BusyAction, TouchTarget],
   host: {
     class: 'find-backdrop',
     '(click)': 'requestClose()',
@@ -50,6 +52,7 @@ import { BookingService } from './booking.service';
       (keydown.shift.tab)="trapFocus($event, true)"
     >
       <button
+        appTouchTarget
         type="button"
         class="find-close"
         data-testid="find-close"
@@ -69,6 +72,7 @@ import { BookingService } from './booking.service';
         <label class="find-field">
           <span class="find-label">Booking code</span>
           <input
+            appTouchTarget
             type="text"
             data-testid="find-code"
             [formField]="codeForm.code"
@@ -86,6 +90,7 @@ import { BookingService } from './booking.service';
         }
 
         <button
+          appTouchTarget
           type="submit"
           class="find-submit"
           data-testid="find-submit"

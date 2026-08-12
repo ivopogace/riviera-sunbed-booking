@@ -104,4 +104,34 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
 
     await expectTouchTargets(page, 'booking detail');
   });
+  test('venue detail — the booking dialog open', async ({ page }) => {
+    await page.goto('/venues/1');
+    await page
+      .getByRole('button', { name: /Select to book/ })
+      .first()
+      .click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    await expectTouchTargets(page, 'booking dialog');
+  });
+
+  test('the mobile menu, and the find-a-booking dialog behind it', async ({ page }) => {
+    await page.goto('/');
+    // At 390px the desktop nav is hidden; the menu is the only route to these controls.
+    await page.getByTestId('menu-toggle').click();
+    await expect(page.getByTestId('find-open-mobile')).toBeVisible();
+    await expectTouchTargets(page, 'tourist mobile menu');
+
+    await page.getByTestId('find-open-mobile').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    await expectTouchTargets(page, 'find a booking');
+  });
+
+  test('reset password — the no-token branch', async ({ page }) => {
+    await page.goto('/account/reset');
+    await expect(page.getByTestId('reset-no-token')).toBeVisible();
+
+    await expectTouchTargets(page, 'reset password (no token)');
+  });
 });

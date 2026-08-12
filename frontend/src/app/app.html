@@ -264,7 +264,7 @@
                     type="button"
                     class="riv-mobile-swatch"
                     [class.riv-mobile-swatch-active]="option.id === themes.theme()"
-                    [style.background]="option.swatch"
+                    [style.--riv-swatch]="option.swatch"
                     [attr.aria-pressed]="option.id === themes.theme()"
                     [attr.aria-label]="option.name"
                     [title]="option.name"

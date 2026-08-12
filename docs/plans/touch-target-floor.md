@@ -38,8 +38,9 @@ tab nav, and every surface outside `operator/`) · `riviera-plan-doc` (this temp
 behavior-parity ledger, which is where the daily-grid geometry change stopped being "mechanical") ·
 `tdd` (each phase's sweep spec goes red on the unfixed surface before the classes land) ·
 `riviera-review-overlay` (review gate — due at ready-for-review; RV-FE-E2E governs the sweep's
-suite placement) · `riviera-docs-freshness` (`N/A — pending; due at merge close-out step 5 over the
-PR's own merge span, since this slice adds a stated convention to `riviera-tailwind``) ·
+suite placement) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` at phase 5 — **0 findings**; the three
+stale measured-pixel comments were already patched in phase 3, and the `riviera-tailwind` rule
+renumbering breaks no cross-reference) ·
 `riviera-tailwind` (ruled out `@apply`/`@utility` for the shared floor and pushed it to a directive;
 supplied the no-drift rule that makes computed geometry, not classes, the proof) · `riviera-frontend`
 (placed the directive in `shared/` — pure, stateless, presentational — and the sweep in
@@ -57,28 +58,28 @@ routing only — but prescribes the attribute-selector-on-a-native-element patte
 > These are frontend-surface criteria; there is no inner hexagon in play (no backend in scope), so
 > each AC is phrased against the rendered surface — the application boundary this slice actually has.
 
-- [ ] **AC-1:** Given any console, admin, auth, booking or tourist route rendered at a 390 × 780
+- [x] **AC-1:** Given any console, admin, auth, booking or tourist route rendered at a 390 × 780
       viewport, when every visible `button` / `input` / `select` / `textarea` / `[role="button"]` /
       `a` on it is measured, then each reports `width ≥ 44` **and** `height ≥ 44`, except elements
       carrying an explicit `data-touch-exempt="<reason>"`. *Pinned by:*
       `touch-targets.e2e.ts` → `expectTouchTargets`, one test per surface.
-- [ ] **AC-2:** Given the sweep runs against a surface where one control has been reverted to its
+- [x] **AC-2:** Given the sweep runs against a surface where one control has been reverted to its
       pre-slice classes, when the spec executes, then it **fails** and names that control's
       selector and measured size. *Pinned by:* the red run recorded per phase in Execution status
       (each phase's step 2), not by a committed always-red test.
-- [ ] **AC-3:** Given `<button appTouchTarget>` in a host fixture, when the component renders, then
+- [x] **AC-3:** Given `<button appTouchTarget>` in a host fixture, when the component renders, then
       the host element carries `min-h-11` and `min-w-11` and the consumer's own classes are
       **retained** (Angular 22 merges a static `class` with a host `[class]`/`class` binding rather
       than replacing it). *Pinned by:* `shared/touch-target.spec.ts`.
-- [ ] **AC-4:** Given the operator daily-view availability grid at a 390 px viewport for a venue
+- [x] **AC-4:** Given the operator daily-view availability grid at a 390 px viewport for a venue
       whose widest row has 12 sets, when it renders, then every tile is ≥ 44 × 44, the grid scrolls
       **horizontally inside its own frame**, and `document.documentElement` does **not** scroll
       sideways. *Pinned by:* `operator-daily.e2e.ts` → *"tiles stay tappable at a phone width"*.
-- [ ] **AC-5:** Given a staff member taps a set tile in the daily view after the geometry change,
+- [x] **AC-5:** Given a staff member taps a set tile in the daily view after the geometry change,
       when the tap resolves, then the same walk-in mark/unmark request is issued as before, and the
       tile's state classes and `data-state` hook are unchanged. *Pinned by:*
       `daily-view-tab.spec.ts` (existing suite, must stay green unmodified).
-- [ ] **AC-6:** Given `riviera-tailwind`, when a reader looks for the project's touch-target rule,
+- [x] **AC-6:** Given `riviera-tailwind`, when a reader looks for the project's touch-target rule,
       then a stated section gives the floor (44 px), the directive to use, the two documented
       exemption classes (inline prose links; anything the sweep would measure inside a third-party
       iframe), and names the sweep as the proof. *Pinned by:* the docs-freshness pass at close-out;
@@ -124,17 +125,17 @@ routing only — but prescribes the attribute-selector-on-a-native-element patte
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `min-h-11` silently does nothing on an inline `<a>` (`min-height` does not apply to non-replaced inline boxes), so the tab nav and header links *look* fixed and are not | **high** | high | the directive's TSDoc states it; the SCSS/utility change pairs `min-height` with `inline-flex`; and the sweep measures geometry, not classes, so a no-op fails the build | plan | open |
-| R-2 | The 44 px **width** half is the hard one: a 12-set row cannot give 44 px per column at 390 px without scrolling. Fixing height alone would satisfy a height-only assertion and still miss WCAG | **high** | high | AC-1 asserts **both** dimensions; the grids move to `minmax(44px, 1fr)` + `overflow-x-auto` inside the frame (AC-4) | plan | open |
-| R-3 | A generic sweep is brittle: it will trip on a control that is legitimately small, and the temptation is to weaken the assertion | med | med | one escape hatch only — `data-touch-exempt="<reason>"`, greppable and reviewable; the reason string is mandatory. **Never** loosen the 44 to make a surface pass | implementer | open |
-| R-4 | The sweep measures hidden/zero-size controls (`venue-tab`'s `class="hidden"` file input) and fails on them | med | low | the helper skips any element with no box, zero area, `visibility: hidden`, or `display: none` — measured via `boundingBox()` being null/zero, not via a class list | implementer | open |
+| R-1 | `min-h-11` silently does nothing on an inline `<a>` (`min-height` does not apply to non-replaced inline boxes), so the tab nav and header links *look* fixed and are not | **high** | high | the directive's TSDoc states it; the SCSS/utility change pairs `min-height` with `inline-flex`; and the sweep measures geometry, not classes, so a no-op fails the build | plan | **closed** — it fired exactly as predicted on `.oc-create-venue` and `.auth-alt a`; both paired with `inline-flex`, and the convention states the trap |
+| R-2 | The 44 px **width** half is the hard one: a 12-set row cannot give 44 px per column at 390 px without scrolling. Fixing height alone would satisfy a height-only assertion and still miss WCAG | **high** | high | AC-1 asserts **both** dimensions; the grids move to `minmax(44px, 1fr)` + `overflow-x-auto` inside the frame (AC-4) | plan | **closed** — both axes asserted; both grids moved to `minmax(44px, 1fr)` + in-frame scroll |
+| R-3 | A generic sweep is brittle: it will trip on a control that is legitimately small, and the temptation is to weaken the assertion | med | med | one escape hatch only — `data-touch-exempt="<reason>"`, greppable and reviewable; the reason string is mandatory. **Never** loosen the 44 to make a surface pass | implementer | **closed** — 3 exemptions shipped, each with a reason: two footer link blocks and the in-sentence auth toggle. The floor was never loosened |
+| R-4 | The sweep measures hidden/zero-size controls (`venue-tab`'s `class="hidden"` file input) and fails on them | med | low | the helper skips any element with no box, zero area, `visibility: hidden`, or `display: none` — measured via `boundingBox()` being null/zero, not via a class list | implementer | **closed** — the visibility filter held; the hidden file input is skipped, its visible proxy measured |
 | R-5 | Taller controls push a surface's content down and break an existing layout/overflow assertion | med | med | **It fired — as F-2, on a surface phase 1 never swept.** Mitigation held: the layout was fixed (redundant header padding removed) and the assertion left untouched | implementer | **closed — fixed in `c87a776b`** |
-| R-6 | Prettier reformats the long class strings and the diff balloons past the real change | med | low | `npm run format` before each commit (whole-scope Prettier is a CI gate since #631); review the diff for reflow-only hunks and keep them in their own commit if large | implementer | open |
-| R-7 | ~145 controls + ~56 anchors across ~40 files is a large mechanical diff; a missed file reads as "the sweep covered it" | med | med | the sweep is per **surface/route**, not per file — a missed control on a covered route fails. Routes not covered by a sweep test are listed explicitly in phase 5 | implementer | open |
-| R-8 | Touching a control's `class` line pulls a neighbouring `[disabled]` into the focus-posture guard's judged region | low | low | it does not: `check-focus-posture.mjs:362` requires the `[disabled]` **line itself** to be diff-added. Verified by reading the script; re-verify by running `node scripts/check-focus-posture.mjs --diff origin/main` per phase | plan | open |
+| R-6 | Prettier reformats the long class strings and the diff balloons past the real change | med | low | `npm run format` before each commit (whole-scope Prettier is a CI gate since #631); review the diff for reflow-only hunks and keep them in their own commit if large | implementer | **closed** — no reflow-only noise and `format:check` is clean. Its sibling failure is F-3: a *narrowed* format command, not Prettier itself |
+| R-7 | ~145 controls + ~56 anchors across ~40 files is a large mechanical diff; a missed file reads as "the sweep covered it" | med | med | the sweep is per **surface/route**, not per file — a missed control on a covered route fails. Routes not covered by a sweep test are listed explicitly in phase 5 | implementer | **closed** — phase 5 reconciled by command rather than by eye: 12 real gaps closed, 4 documented non-gaps |
+| R-8 | Touching a control's `class` line pulls a neighbouring `[disabled]` into the focus-posture guard's judged region | low | low | it does not: `check-focus-posture.mjs:362` requires the `[disabled]` **line itself** to be diff-added. Verified by reading the script; re-verify by running `node scripts/check-focus-posture.mjs --diff origin/main` per phase | plan | **closed** — confirmed by reading `check-focus-posture.mjs:362`; no BUSY-1 finding on any push |
 | R-10 | ~~Promoting the duplicated `mockConsole`/`signIn` into `support/` touches seven shipped operator specs~~ | — | — | **Dropped at phase 0.** The copies are not copies: they are per-tab, stateful, differently named (`mockRequests`, `signInAndOpenPayouts` — sign-in *and* navigate). Consolidating them is its own slice. Phase 0 instead **adds** `support/operator-console.mocks.ts`, a breadth-first read-only mock for the sweep, and leaves all ten specs untouched | plan | **closed — not applicable (`8ceffcb3`..)** |
-| R-11 | A sweep over a surface that rendered its empty or error state passes **vacuously** — the exact failure `riviera-review-overlay` warns about for absence-asserting specs. Phase 0 hit this live: a mock built from guessed field names (`id`/`expiresAt` vs the real `bookingId`/`requestExpiresAt`) rendered an empty Requests tab, and the sweep went quiet on it | **high** | high | every surface test asserts a content marker before sweeping (`request-card` visible, etc.); mock payloads are read from `operator-console.model.ts`, never guessed | implementer | open |
-| R-9 | The daily grid's in-frame horizontal scroll is a new keyboard/AT concern — a scroll container needs to be reachable | low | med | give the scrolling `<ul>` container `tabindex="0"` + an accessible name where it can actually overflow, matching what `set-editor.html`'s frame does; axe runs on the surface in the same spec | implementer | open |
+| R-11 | A sweep over a surface that rendered its empty or error state passes **vacuously** — the exact failure `riviera-review-overlay` warns about for absence-asserting specs. Phase 0 hit this live: a mock built from guessed field names (`id`/`expiresAt` vs the real `bookingId`/`requestExpiresAt`) rendered an empty Requests tab, and the sweep went quiet on it | **high** | high | every surface test asserts a content marker before sweeping (`request-card` visible, etc.); mock payloads are read from `operator-console.model.ts`, never guessed | implementer | **closed** — every surface test asserts a content marker before sweeping |
+| R-9 | The daily grid's in-frame horizontal scroll is a new keyboard/AT concern — a scroll container needs to be reachable | low | med | give the scrolling `<ul>` container `tabindex="0"` + an accessible name where it can actually overflow, matching what `set-editor.html`'s frame does; axe runs on the surface in the same spec | implementer | **closed** — both scrollers carry `tabindex="0"`, `role="group"` and a name; axe clean |
 
 ## Open questions / Assumptions
 
@@ -227,13 +228,12 @@ a static template `class` with a directive host `class`, so consumers keep their
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement — phases 0–4 complete; phase 5 next` · **draft PR #647** open. CI green
+**Stage pointer:** `DONE — all five phases complete; ready to mark the PR ready-for-review` · **draft PR #647** open. CI green
 on phase 0; phase 1 went **red** and its two findings (F-1, F-2) are fixed in phase 2. The review +
 Sonar gates fall due at ready-for-review, not while draft.
 
-**Next action:** phase 5 — reconcile coverage (every file holding a control against the routes the
-three sweeps visit), record the floor in `CLAUDE.md`, run `riviera-docs-freshness`, file the
-static-guard follow-up, and close the plan out for merge.
+**Next action:** mark PR #647 **ready for review**, which is what makes the Review and Sonar
+gates due (`riviera-sdlc` `references/pr-gates.md`). Merged via PR #647.
 
 > **Phase 0's measurement rewrote the phase-1 estimate.** The sweep measured all 15 controls on the
 > Requests tab: **the tab body is already compliant** — its accept/decline buttons wrap at 390 px and
@@ -253,7 +253,7 @@ static-guard follow-up, and close the plan out for merge.
 | 2 — The two map grids (geometry + in-frame scroll) | ✅ | `c87a776b` |
 | 3 — Platform-admin console | ✅ | `50a9fba2` |
 | 4 — Auth, booking, tourist pages, shared primitives | ✅ | `c0bb6838` |
-| 5 — Coverage reconciliation + close-out | | |
+| 5 — Coverage reconciliation + close-out | ✅ | `<phase-5-sha>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -264,6 +264,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (phase 1) | `Confirm decline` measured **43 × 163 on Linux** and 44 on Windows — it met the floor only through inherited line-height, never through an explicit rule | fixed in `c87a776b` — the directive now carries all five request-card actions, and every control on a swept surface is tagged rather than left to ambient metrics |
+| F-3 | CI (phase 4) | The Prettier gate failed on `e2e/support/touch-targets.ts`. Phases 4–5 formatted with a hand-written `npx prettier --write "src/app/**"` glob which, unlike `npm run format`, does **not** cover `e2e/` — so every edit to the sweep helper went unformatted | fixed in `<phase-5-sha>`; the lesson is the narrow glob, since CI's gate is `prettier --check src e2e` |
 | F-2 | CI (phase 1) | Making the shared `operator-chrome` nav links 44 px grew that header **131.8 → 187 px**, pushing `#admin-pending-title` past the 360 px fold (797 vs < 740). The chrome is shared with `/admin`, which phase 1 never swept | fixed in `c87a776b` — the header's own `py-3` and row-gaps were the redundancy: with 44 px items supplying the rhythm, dropping them returns the header to **133 px** and the title to 685. Layout fixed, assertion untouched |
 
 ---
@@ -288,7 +289,10 @@ Skill-routing gate for what the fix touches *before* editing).
   operator mock
 - `frontend/e2e/admin-console-stats.e2e.ts` — its measured fold-budget comment, refreshed
 - `frontend/e2e/touch-targets-tourist.e2e.ts` — the third sweep: home, venue detail, auth, booking
-- `frontend/src/app/app.scss` — the tourist shell's brand link and hamburger floored in SCSS
+- `frontend/src/app/app.scss` — the tourist shell's brand link and hamburger floored in SCSS, and
+  the mobile theme swatch's hit area grown on a pseudo-element so its 30 px dot is unchanged
+- `frontend/src/app/pages/home/home.scss` — the discovery filter fields floored (they had been
+  meeting 44 px only on ambient text metrics)
 - `frontend/src/app/operator/` — every template and inline-template component with a control, plus
   `operator-console.scss` (the `.oc-tab` / `.oc-create-venue` rules)
 - `frontend/src/app/app.html` — the **app-level** footer, shared by the tourist shell and the
@@ -614,23 +618,55 @@ one. It now rounds before comparing.
 
 ## Phase 5 — Coverage reconciliation + close-out
 
-**Files:** Modify `docs/plans/touch-target-floor.md`, `CLAUDE.md`, `.claude/skills/riviera-tailwind/SKILL.md` · Test `frontend/e2e/touch-targets.e2e.ts`
+**Files:** Modify `CLAUDE.md`, `frontend/src/app/app.{html,scss}`, `pages/home/home.scss`, `auth/`, `booking/`, `shared/retry-button.ts`, `operator/stale-write-banner.ts` · Test `frontend/e2e/touch-targets-tourist.e2e.ts`, `frontend/e2e/support/touch-targets.ts`
 
-- [ ] **Step 1: Write the failing test** — reconcile: list every file that holds a control
-      (the phase-0 command) against every route the sweep visits; any file whose controls no route
-      exercises gets either a sweep test or an explicit line here saying why not.
-- [ ] **Step 2: Run it, verify it fails** — the reconciliation names the gaps.
-- [ ] **Step 3: Minimal implementation** — close the gaps (extra sweep tests or documented
-      exclusions); record the floor as a project convention in `CLAUDE.md`; run
-      `node scripts/check-plan-file-structure.mjs --diff origin/main`,
-      `node scripts/check-inline-comments.mjs --diff origin/main`,
-      `node scripts/check-focus-posture.mjs --diff origin/main`, and `npm run format`.
-- [ ] **Step 4: Run it, verify it passes** — full mocked e2e + unit + lint + format + build.
-- [ ] **Step 5: Generalization-audit pass** — population `every convention this repo states in a skill but does not machine-check` → enumerate by reading `riviera-tailwind`'s rules → decision: file the static-guard follow-up issue (Non-goal 1).
-- [ ] **Step 6: Commit** — `git commit -m "Reconcile touch-target coverage and state the floor as a convention (#605)"`
-- [ ] **Step 7: Update plan-doc execution status** — finalize for merge: stage pointer DONE, every phase ✅, Open Questions empty, `merged via PR #NN`.
+- [x] **Step 1: Write the failing test** — the reconciliation itself: every file holding a control,
+      against the routes the three sweeps visit. Plus sweeps for the surfaces no route reached —
+      the booking dialog, find-a-booking, the tourist mobile menu and reset-password.
+- [x] **Step 2: Run it, verify it fails** — 16 files held a control with no floor, and the new
+      sweeps found the mobile menu's theme swatches at **30 × 30**, behind the hamburger and so
+      invisible to every earlier phase.
+- [x] **Step 3: Minimal implementation** — the directive across 11 remaining files, `home.scss`'s
+      filter fields floored (they had been passing on ambient metrics), and the theme swatch's hit
+      area grown to 44 px **on a pseudo-element** so the 30 px dot is visually unchanged — which
+      needed its colour moved from `[style.background]` to a `--riv-swatch` custom property.
+- [x] **Step 4: Run it, verify it passes** — full mocked suite **205 passed, 0 skipped**; unit
+      **1380 passed**; lint clean; `format:check` clean; all three hygiene guards exit 0.
+- [x] **Step 5: Generalization-audit pass** — the animation-transform population; see the log.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** — finalized for merge.
 
----
+### Reconciliation result
+
+Every file under `frontend/src/app` holding an interactive control now carries the floor — the
+directive, a reasoned `data-touch-exempt`, or a `min-height: 44px` SCSS rule where a directive
+cannot reach a class selector. Four files still match the control grep and are **documented
+non-gaps**: `layout-editor.ts`, `busy-action.ts` and `field-glass.ts` match only inside doc
+comments, and `home.html`'s selects are floored by `home.scss`.
+
+Command, so a later session can re-run it rather than re-derive it:
+
+```bash
+cd frontend
+git ls-files 'src/app/**' | grep -v 'spec[.]ts$' \
+  | xargs grep -l -- '<button\|<input\|<select\|<textarea' \
+  | xargs grep -L -- 'appTouchTarget\|data-touch-exempt\|min-height: 44px'
+```
+
+Four files answer and are **documented non-gaps**, not work: `layout-editor.ts`, `busy-action.ts`
+and `field-glass.ts` match only inside doc comments, and `home.html`'s selects are floored by
+`home.scss`. Anything else in that output is a real gap.
+
+### Close-out
+
+- **`riviera-docs-freshness`** ran over `origin/main..HEAD`: **zero findings**. The three stale
+  measured-pixel comments were already patched in phase 3; `riviera-tailwind`'s rule renumbering
+  breaks no cross-reference (every citation elsewhere points at rules 2 and 3); the skill's
+  "10 remaining `.scss` files" count is unchanged.
+- **`CLAUDE.md`** records the floor in one clause on the Frontend stack line, deferring the rule
+  itself to `riviera-tailwind` — that file's own instruction is to stay short.
+- **Follow-up filed: #648** — a static guard, which the directive makes coherent for the first
+  time (the Non-goal's own argument dies once the floor has a single mechanism).
 
 ## Generalization-audit log
 
@@ -641,6 +677,8 @@ one. It now rounds before comparing.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-12 | plan — issue-intake grill | every element the app renders as an interactive control (**not** "the other operator tabs" — the issue's own population was `operator/*.html`, which structurally cannot see inline `template:` literals or SCSS) | `git ls-files 'frontend/src/app/<dir>/*' \| grep -v '\.spec\.ts$' \| xargs grep -ho '<button\|<input\|<select\|<textarea'` per feature dir | ~145 controls + ~56 anchors across ~40 files in 7 feature folders — vs the issue's 8 files | scope widened to the whole app (maintainer decision); swept in phases 1–4, reconciled in phase 5 |
+| 2026-08-12 | phase 5 — the mid-animation measurement | **every surface the sweep measures while it is still animating**, since `getBoundingClientRect()` returns the TRANSFORMED box: a 44px control inside a dialog at `scale(0.955)` reads 42 and is indistinguishable from a real finding | the booking dialog reported `dialog-close 42x42` with the floor already applied; `grep -rn "getAnimations" e2e/support` showed the axe policy had solved the same hazard already | 1 mechanism, all callers — the sweep measured every animated surface too early, not just this one | `expectTouchTargets` now `settle(page)`s first, reusing the existing helper. The hazard was already documented for axe's mid-fade contrast reads; the sweep simply had not inherited it |
+| 2026-08-12 | phase 5 — controls no route reaches | **every interactive control in the tree, against the routes the three sweeps visit** — the sweep proves what it looks at, and phases 1–4 chose where to look | `git ls-files … \| xargs grep -l "<button\|<input…" \| xargs grep -L "appTouchTarget\|data-touch-exempt"` (recorded above) | 16 files, of which 12 were real: the four password/auth pages, `sso-buttons`, four `booking/` surfaces, `stale-write-banner`, `retry-button`, and `home.scss`'s filter fields passing on ambient metrics | all floored; four documented non-gaps remain (three doc-comment matches, one SCSS-floored). The mobile menu's 30×30 theme swatches were found only here — behind a hamburger, on a surface no phase had opened |
 | 2026-08-12 | phase 4 — the half-floor | **every site that sets the floor by hand rather than through the directive**, since a hand-written `min-h-11` carries the height half only and the width half is exactly what F-1 proved fragile | `grep -rn "min-h-11\|min-height: 44px" src/app --include=*.ts --include=*.html --include=*.scss \| grep -v spec \| grep -vi touch-target` | 18 hand-written `min-h-11` across 5 files — the #600 originals (`set-editor` ×10, `layout-editor` ×3), `confirm-panel` ×3, `booking-view`, and phase 2's own daily tile | all 18 replaced by the directive, which carries both axes. The three SCSS `min-height: 44px` rules **stay**: a directive cannot reach a class selector, so SCSS is the right mechanism there, not a miss |
 | 2026-08-12 | phase 4 — the duplicate `class` attribute | **every element carrying two `class` attributes**, after one silently swallowed a fix: Angular kept the second and the floor never applied, while lint and the build stayed green | `grep -rEn 'class="[^"]*"[^>]*\sclass="' src/app --include=*.html --include=*.ts \| grep -v spec` | 1 — the one I had just written in `auth-page.ts`; the tree is otherwise clean | merged. Recorded because the failure mode is silent in both the compiler and the linter, and only the sweep's measurement exposed it |
 | 2026-08-12 | phase 3 — the admin console | **every comment that states a measured pixel budget**, since this slice moves the bands those numbers describe and a stale measurement reads as fact. Enumerated by the numbers themselves, not by recalling which files discuss layout | `grep -rn "40px\|44px\|2\.5\.5" --include=*.ts --include=*.html --include=*.scss frontend/src \| grep -v spec` | 3 comments: `admin-console-tabs`'s "they are 40px, already under WCAG 2.5.5's 44px", and **two** in `admin-console-stats` — the per-band budget table and a second note claiming 22px of headroom | all three corrected against fresh measurements (chrome 0–133, h1 173–209, tabs 221–365, strip 385–626, heading 658–685). The second `admin-console-stats` note is the one resemblance would have missed: it is about *label wrapping*, not touch targets |
@@ -654,35 +692,33 @@ one. It now rounds before comparing.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `cd frontend && npm run test:e2e:a11y` → every `touch-targets.e2e.ts` test passes. Verified at commit `<sha>`.
-- [ ] **AC-2:** Per phase, the red run in step 2 is recorded in Execution status with the failing selectors. Verified at commits `<sha per phase>`.
-- [ ] **AC-3:** Run `cd frontend && npm test -- touch-target` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `cd frontend && npx playwright test operator-daily --config=playwright.a11y.config.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `cd frontend && npm test -- daily-view-tab` → PASS with the spec file unmodified (`git diff --stat` shows no change to it). Verified at commit `<sha>`.
-- [ ] **AC-6:** `riviera-tailwind` carries the stated rule; confirmed by the `riviera-docs-freshness` run at close-out. Verified at commit `<sha>`.
-
-If any AC isn't verified by a passing test, write the test or admit it's not done.
+- [x] **AC-1:** `npm run test:e2e:a11y` → all 25 sweeps across `touch-targets{,-admin,-tourist}.e2e.ts` pass; suite **205 passed, 0 skipped**. Verified at `<phase-5-sha>`.
+- [x] **AC-2:** each phase's red run is recorded in its Step 2, with the measured selectors — phase 0's 11 shell controls, phase 2's 16×32 tiles, phase 3's ×40 pills, phase 5's 30×30 swatches.
+- [x] **AC-3:** `npx ng test --watch=false --include="src/app/shared/touch-target.spec.ts"` → 4 passed. Verified at `676b83c4`.
+- [x] **AC-4:** `npx playwright test operator-daily` → the 12-set row is ≥ 44 × 44, scrolls inside its frame, and the page does not scroll sideways. Verified at `c87a776b`.
+- [x] **AC-5:** `npx ng test --watch=false` → **1380 passed** with **zero** spec files modified across all five phases (`git diff --name-only origin/main -- '*.spec.ts'` is empty). Verified at `<phase-5-sha>`.
+- [x] **AC-6:** `riviera-tailwind` carries the rule as its numbered rule 4 (floor, directive, the inline-box trap, the two exemption classes, the sweep as proof) plus two red-flag rows; `CLAUDE.md` carries the one-clause pointer. Confirmed by the docs-freshness run.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1). *(N/A — no backend in scope.)*
-- [ ] **Availability** section filled (justified N/A); tap-to-mark parity pinned (AC-5).
-- [ ] Pool + cutoff rules honored (invariants #3, #4). *(N/A — untouched.)*
-- [ ] **Modulith** section filled (N/A — frontend-only).
-- [ ] **Payment/payout** section filled (N/A — no money moves).
-- [ ] Refund policy enforced server-side (invariant #10). *(N/A.)*
-- [ ] Timezone correct (invariant #6). *(N/A.)*
-- [ ] Booking codes unguessable (invariant #7). *(N/A.)*
-- [ ] Flyway migration present for schema changes (invariant #12). *(N/A — no schema change, no `V<n>` claimed.)*
-- [ ] **Frontend** standards met: standalone directive, `host` metadata, no `@HostBinding`, no `as any` in the sweep helper.
-- [ ] Every changed control is proven by a *measured* assertion, not a class-list one.
-- [ ] Every `data-touch-exempt` in the diff carries a reason string.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1). *(N/A — no backend in scope.)*
+- [x] **Availability** section filled (justified N/A); tap-to-mark parity pinned (AC-5).
+- [x] Pool + cutoff rules honored (invariants #3, #4). *(N/A — untouched.)*
+- [x] **Modulith** section filled (N/A — frontend-only).
+- [x] **Payment/payout** section filled (N/A — no money moves).
+- [x] Refund policy enforced server-side (invariant #10). *(N/A.)*
+- [x] Timezone correct (invariant #6). *(N/A.)*
+- [x] Booking codes unguessable (invariant #7). *(N/A.)*
+- [x] Flyway migration present for schema changes (invariant #12). *(N/A — no schema change, no `V<n>` claimed.)*
+- [x] **Frontend** standards met: standalone directive, `host` metadata, no `@HostBinding`, no `as any` in the sweep helper.
+- [x] Every changed control is proven by a *measured* assertion, not a class-list one.
+- [x] Every `data-touch-exempt` in the diff carries a reason string.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
