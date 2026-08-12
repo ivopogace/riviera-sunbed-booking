@@ -49,12 +49,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class WithdrawRequestIT {
 
 	/**
-	 * The one {@code REQUEST_NOT_PENDING} detail, asserted at all four arms this class provokes —
-	 * two withdraw legs and the accept/decline legs that meet an already-withdrawn request. A
-	 * withdrawal is what makes "already decided" false here, so the wording names no route out.
+	 * The one {@code REQUEST_NOT_PENDING} detail, asserted at four of the five arms this class
+	 * provokes — two withdraw legs and the accept/decline legs that meet an already-withdrawn
+	 * request. The fifth, in {@code codeNeverLeaksIntoTheProblemBody}, deliberately asserts only
+	 * that the booking code is absent (invariant #7). The wording names no route out of pending:
+	 * the withdraw leg reaches this refusal for any non-pending booking, an Instant one included.
 	 */
-	private static final String NOT_PENDING_DETAIL =
-			"This request is no longer waiting for the venue.";
+	private static final String NOT_PENDING_DETAIL = "This booking is not awaiting a venue response.";
 
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "withdraw-test-pw";

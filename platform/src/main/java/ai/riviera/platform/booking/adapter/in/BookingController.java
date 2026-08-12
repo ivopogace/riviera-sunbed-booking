@@ -108,7 +108,7 @@ class BookingController {
 				case NO_SUCH_BOOKING ->
 						error(HttpStatus.NOT_FOUND, UNKNOWN_CODE, UNKNOWN_CODE_DETAIL);
 				case NOT_PENDING -> error(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING",
-						"This request is no longer waiting for the venue.");
+						RequestProblemDetails.NOT_PENDING);
 			};
 		};
 	}

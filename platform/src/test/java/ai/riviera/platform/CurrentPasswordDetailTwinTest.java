@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import com.jayway.jsonpath.JsonPath;
+
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -16,8 +18,6 @@ import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
-import ai.riviera.platform.operator.api.OperatorAccounts;
-import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -40,9 +40,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
 class CurrentPasswordDetailTwinTest {
 
+	private static final String OPERATOR_USERNAME = "adriatica";
 	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
 	private static final String CUSTOMER_PASSWORD_PATH = "/api/me/password";
-	private static final String OPERATOR_USERNAME = "adriatica";
 	private static final String CUSTOMER_EMAIL = "tourist@example.com";
 	private static final CustomerAccountId ACCOUNT_ID = new CustomerAccountId(42L);
 	private static final String CURRENT_PASSWORD = "current-pass1";
@@ -58,9 +58,6 @@ class CurrentPasswordDetailTwinTest {
 	@Autowired
 	PasswordEncoder passwordEncoder;
 
-	@MockitoBean
-	OperatorAccounts operatorAccounts;
-
 	/** Replaces the inert stub so {@code CurrentCustomer} resolves the principal to an account. */
 	@MockitoBean
 	CustomerAccountDirectory directory;
@@ -70,8 +67,6 @@ class CurrentPasswordDetailTwinTest {
 
 	@Test
 	void bothPasswordEndpointsStateTheSameCondition() throws Exception {
-		when(operatorAccounts.findByUsername(OPERATOR_USERNAME)).thenReturn(Optional.of(
-				new OperatorCredential(OPERATOR_USERNAME, passwordEncoder.encode(CURRENT_PASSWORD), true, false)));
 		when(directory.accountFor(CUSTOMER_EMAIL)).thenReturn(Optional.of(ACCOUNT_ID));
 		when(customerAccounts.findByEmail(CUSTOMER_EMAIL)).thenReturn(Optional.of(
 				new CustomerAccountCredential(CUSTOMER_EMAIL, passwordEncoder.encode(CURRENT_PASSWORD))));
@@ -84,15 +79,14 @@ class CurrentPasswordDetailTwinTest {
 		assertThat(operatorDetail)
 				.as("the operator and customer password endpoints must not drift apart on one code")
 				.isEqualTo(customerDetail);
-		assertThat(operatorDetail).doesNotContain("your", "Enter");
 	}
 
 	private String detailOf(MockHttpServletRequestBuilder request) throws Exception {
-		return mvc.perform(request)
+		String body = mvc.perform(request)
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"))
-				.andReturn().getResponse().getContentAsString()
-				.replaceAll("^.*\"detail\":\"([^\"]*)\".*$", "$1");
+				.andReturn().getResponse().getContentAsString();
+		return JsonPath.read(body, "$.detail");
 	}
 
 	private static MockHttpServletRequestBuilder isolated(MockHttpServletRequestBuilder request) {

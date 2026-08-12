@@ -35,13 +35,6 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 @RequestMapping("/api/venues/{venueId}/booking-requests")
 class BookingRequestController {
 
-	/**
-	 * Shared by accept and decline, and matched by the guest withdraw in {@code BookingController}:
-	 * one code, one condition. It names no route out of pending because a withdrawal reaches this
-	 * refusal without anyone having decided anything.
-	 */
-	private static final String NOT_PENDING_DETAIL = "This request is no longer waiting for the venue.";
-
 	private final PendingRequests pendingRequests;
 	private final RespondToRequest respondToRequest;
 	private final CurrentOperator currentOperator;
@@ -74,7 +67,7 @@ class BookingRequestController {
 				case NO_SUCH_REQUEST -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_REQUEST",
 						"No pending request with this id at this venue.");
 				case NOT_PENDING -> problem(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING",
-						NOT_PENDING_DETAIL);
+						RequestProblemDetails.NOT_PENDING);
 				case EXPIRED -> problem(HttpStatus.CONFLICT, "REQUEST_EXPIRED",
 						"This request's response deadline has passed.");
 				case PAYMENT_INIT_FAILED -> problem(HttpStatus.BAD_GATEWAY, "PAYMENT_INIT_FAILED",
@@ -97,7 +90,7 @@ class BookingRequestController {
 				case NO_SUCH_REQUEST -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_REQUEST",
 						"No pending request with this id at this venue.");
 				case NOT_PENDING -> problem(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING",
-						NOT_PENDING_DETAIL);
+						RequestProblemDetails.NOT_PENDING);
 			};
 		};
 	}

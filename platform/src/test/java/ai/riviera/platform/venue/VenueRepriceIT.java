@@ -55,10 +55,11 @@ class VenueRepriceIT {
 	private static final String PASSWORD = "test-operator-pw";
 
 	/**
-	 * The one {@code STALE_WRITE} detail, shared with the bulk layout replace: both set-writes turn
-	 * on the single {@code venue.set_version} token (V23), so a reprice can lose to a replace and
-	 * the wording may attribute the change to neither. {@code BeachMapReplaceIT} asserts the same
-	 * string.
+	 * The bulk layout replace shares this {@code STALE_WRITE} detail, because both set-writes turn on the
+	 * single {@code venue.set_version} token (V23) — either can lose to the other, so the wording
+	 * may attribute the change to neither. Production owns one constant
+	 * ({@code VenueAdminController.STALE_SETS_DETAIL}); this literal and BeachMapReplaceIT's are two views of
+	 * it, so a change that updates only one of them fails here rather than drifting silently.
 	 */
 	private static final String STALE_SETS_DETAIL =
 			"This venue's sets have changed since the version this request carries.";

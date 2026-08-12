@@ -35,18 +35,22 @@ stable machine-readable **`code`** extension. The shape is built in exactly two 
     those slices removed. The shipped wording, "has a booking or a **current** hold", is the
     narrowest statement that is true at every arm: it conveys the hold's liveness without
     restating the guard's date arithmetic, which is the copy posture #607 settled.
-  - **The population, enumerated (#644) — no remedy-voiced `detail` is left.** The mechanism is
-    *a server `detail` whose `code` a client also renders its own copy from*; both halves were
-    enumerated by command (`grep -rn "ApiProblem\." platform/src/main` → 51 refs over 18 files,
-    unrolled through each controller's local `problem(...)`/`error(...)` helper, × `grep -rln
-    "case '[A-Z_]\{4,\}'" frontend/src/app` → 21 mappers) and judged pairwise. It found **ten**
-    call sites, not the seven a phrase sweep had filed. The three it added are the argument for
-    enumerating by mechanism: `PAYMENT_INIT_FAILED` (*"…please retry."* — the phrase was there,
-    but the literal sits in a `switch` arm behind a helper, out of `grep -A2` range), the
-    withdraw leg's `REQUEST_NOT_PENDING` (a *consequence* clause, no banned phrase), and
-    `RATE_LIMITED` (*"Retry later."* — hand-built JSON in `RateLimitFilter`, which no
-    `ApiProblem` grep can reach, and a remedy the response's own `Retry-After` header already
-    carries machine-readably).
+  - **The population, enumerated (#644) — no remedy-voiced `detail` is left.** The rule's scope is
+    *every* `detail` written in remedy voice; **client duplication is the sharpest symptom, not the
+    definition**, so a remedy with no client twin is still a finding — `detail` is not the place for
+    it either way. The sweep enumerated both halves by command (`grep -rn "ApiProblem\."
+    platform/src/main` → 51 refs over 18 files, unrolled through each controller's local
+    `problem(...)`/`error(...)` helper, × `grep -rln "case '[A-Z_]\{4,\}'" frontend/src/app` → 21
+    mappers), then judged every server literal on voice whether or not a mapper faced it. It found
+    **ten** call sites, not the seven a phrase sweep had filed. Two of the ten — `RATE_LIMITED` and
+    `CANNOT_SUSPEND_SELF` — have **no** client `code`→copy mapper at all; they are in because of the
+    voice, and reading the count as "ten duplicated sentences" will mis-scope the next sweep. The
+    three the enumeration added are the argument for not sweeping by phrase: `PAYMENT_INIT_FAILED`
+    (*"…please retry."* — the phrase was there, but the literal sits in a `switch` arm behind a
+    helper, out of `grep -A2` range), the withdraw leg's `REQUEST_NOT_PENDING` (a *consequence*
+    clause, no banned phrase), and `RATE_LIMITED` (*"Retry later."* — hand-built JSON in
+    `RateLimitFilter`, which no `ApiProblem` grep can reach, and a remedy the response's own
+    `Retry-After` header already carries machine-readably).
   - **One code, one string — pin the pair, not the sentence.** Three codes are emitted from more
     than one call site, and each was a drift risk of the kind this rule exists to stop:
     `MISSING_CURRENT_PASSWORD` (operator + customer password change — the client owns that exact

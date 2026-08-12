@@ -10,8 +10,9 @@ bound" caveat with an enumerated population, so absence from the list stops mean
 
 **Architecture:** The population is enumerated by **mechanism, not phrase** — every server `detail`
 literal (including the ones reached through a controller-local `problem(...)` helper and the one
-hand-built in `RateLimitFilter`, both invisible to a `grep -A2 "ApiProblem\."`) intersected with the
-21 client `code`→copy mappers. That enumeration is what turns 7 known call sites into 10. The one
+hand-built in `RateLimitFilter`, both invisible to a `grep -A2 "ApiProblem\."`) judged against the 21
+client `code`→copy mappers — duplication being the sharpest symptom, not the definition, so two of the
+ten are in for voice alone with no mapper facing them. That enumeration is what turns 7 known call sites into 10. The one
 significant wording decision is that **a code emitted from more than one call site gets one string,
 shared and pinned identical** — because the defect #610 named is drift between hand-synced copies,
 and three separate twins exist here (`MISSING_CURRENT_PASSWORD` across two controllers,
@@ -31,8 +32,7 @@ mis-attributes two `STALE_WRITE` details to *prices* and *layout* when both writ
 `riviera-plan-doc` (this template — its Generalization-audit blockquote is why the population was
 enumerated by mechanism rather than by grepping for strings resembling the seven, which is what
 surfaced `RATE_LIMITED`) · `tdd` (red-green per phase: every new `$.detail` assertion fails against
-the current prose before the controller changes) · `riviera-review-overlay` (review gate — **not yet
-run**; due when the PR is marked ready for review. RV-BE-10's seven-call-site grandfather carve-out is
+the current prose before the controller changes) · `riviera-review-overlay` (review gate — **ran** on PR #645 via `Skill("code-review")`, which the ladder's first rung accepted; 11 findings, all resolved (9 fixed, 2 fixed-in-part with the rejected half reasoned). RV-BE-10's seven-call-site grandfather carve-out is
 retired by this slice, since its whole population is fixed) · `riviera-docs-freshness` (**ran** over
 `origin/main...HEAD` — 1 finding patched: `missing-current-password-code.md`'s FE↔BE section quoted the
 now-changed wire body as a present-tense contract, the same one-hop-from-the-diff class as #643's G-2.
@@ -78,11 +78,13 @@ the daemon and the daemon was up).
   — asserted as an equality between the two live responses, not as two independent literal matches,
   so a one-sided edit is a red build. *Pinned by:*
   `CurrentPasswordDetailTwinTest.bothPasswordEndpointsStateTheSameCondition`.
-- [x] **AC-4:** Given a request that has left `PENDING_REQUEST`, when either the guest withdraw
+- [x] **AC-4:** Given a booking that is not `PENDING_REQUEST`, when either the guest withdraw
   (`BookingController`) or the venue accept/decline (`BookingRequestController`) answers `409
-  REQUEST_NOT_PENDING`, then both carry the same `detail` and it is **true of every route out of
-  pending** — decided, expired, *and withdrawn* — where today the accept-side string
-  ("already been decided") is false of the withdrawn route the suite already provokes. *Pinned by:*
+  REQUEST_NOT_PENDING`, then all three call sites carry **one** `detail` (`RequestProblemDetails.NOT_PENDING`)
+  and it is **true of the broadest arm** — not just decided/expired/withdrawn requests, but an
+  Instant-mode booking that was never a request at all, which `classifyMiss` also answers
+  `NOT_PENDING`. Review F-4 caught the first wording ("This request is no longer waiting for the
+  venue.") calling a direct booking a request. *Pinned by:*
   `WithdrawRequestIT.aBookingThatLeftPendingIsAConflict`,
   `BookingRequestControllerTest.acceptOfAWithdrawnRequestStatesTheConditionNotADecision`.
 - [x] **AC-5:** Given each remaining swept call site, when it rejects, then `detail` states the
@@ -129,7 +131,7 @@ the daemon and the daemon was up).
 | `instance` redacted to `about:blank` (invariant #7) | preserved | Still built by the one `ApiProblem` factory; `RateLimitFilter`'s hand-built body keeps its literal `"type":"about:blank"` |
 | `429` responses carry `Retry-After` | preserved | Untouched — and it is the reason the prose "Retry later." can go: the remedy is already on the wire machine-readably |
 | Server `detail` phrased as operator/tourist copy | **dropped** | Deliberate — no client reads `detail` (verified across `frontend/src`), so it reached no user and nothing kept it in sync with the copy that did |
-| Client-rendered copy for all ten codes | preserved | Not touched; it was always the only wording a user saw |
+| Client-rendered copy, where it exists | preserved | Not touched; it was always the only wording a user saw. **Eight of the ten codes have a client mapper; `RATE_LIMITED` and `CANNOT_SUSPEND_SELF` have none** — they were swept for voice, not duplication (review F-3 corrected an earlier "all ten" here) |
 | Mocked e2e 409/403s carrying `detail` sentinels | preserved | Every mock sends `''` or a #607 sentinel the server would never send; none quotes a swept string, so `frontend/e2e/` needs no edit — re-verified as AC-6's second half |
 | `"This request has already been decided."` on an accept after withdraw | **changed** | It was *false* on that route (a withdrawn request was decided by nobody) and the suite already provokes it via `acceptAfterWithdrawIsNotPending`; the shared replacement is true of all three routes out of pending |
 
@@ -212,11 +214,10 @@ Verified rather than assumed: `git diff origin/main -- frontend/` must be empty 
 
 ## Execution status
 
-**Stage pointer:** `implement — complete; PR not yet opened, so the Review and Sonar gates have not run`
+**Stage pointer:** `review gate — 11 findings all resolved; re-running CI on the fix push`
 
-**Next action:** Open the PR (draft), which is what makes CI run at all — `ci.yml` fires on
-`pull_request` only, so this branch has had **no CI**. Then mark ready for review and run the Review
-and Sonar gates, whose boxes below are deliberately unticked.
+**Next action:** Confirm CI green on the review-fix push, then re-read the Sonar list (the fix push
+changes the head Sonar analyzed), then merge via PR #645.
 
 > **Testcontainers note for a resuming session.** Docker Hub's *unauthenticated* pull limit
 > (`429 toomanyrequests`) blocks `postgres:17`, so the ITs **fail** rather than skip — the daemon is
@@ -229,7 +230,8 @@ and Sonar gates, whose boxes below are deliberately unticked.
 | 0 — The venue `STALE_WRITE` trio | ✅ red 3/3, green 61 tests 0 skipped | this commit |
 | 1 — The edge quartet (twin, self-suspend, ownership, rate limit) | ✅ red 7/7, green 80 tests | this commit |
 | 2 — The booking pair | ✅ red 7/7, green 10 tests 0 skipped | this commit |
-| 3 — Retire the lower-bound caveat and the grandfather list | ✅ AC-6/AC-7 greps clean, structural net green | this commit |
+| 3 — Retire the lower-bound caveat and the grandfather list | ✅ AC-6/AC-7 greps clean, structural net green | `41dd780` |
+| 4 — Review round 1 fixes (11 findings) | ✅ all touched tests + structural net green | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -239,7 +241,19 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *none yet* | — |
+| F-1 | review | `REQUEST_NOT_PENDING` was a constant in `BookingRequestController` but a raw literal in `BookingController`, leaving the slice's own "one code, one string" property unpinned in production — and only a Docker-gated IT compared them | **fixed** — one package-private `RequestProblemDetails.NOT_PENDING` referenced by all three call sites (§6a) |
+| F-2 | review | `detailOf` extracted `detail` with `String.replaceAll`, which returns the input unchanged on no-match, so the twin guard could degrade to comparing two whole bodies that differ only in `detail` — green while guarding nothing | **fixed** — `JsonPath.read`, which throws when the field is absent. Verified by hand: a one-sided edit to `MyAccountController` fails the test |
+| F-3 | review | `error-contract.md` defined the mechanism as "a `detail` whose `code` a client also renders", then counted `RATE_LIMITED` and `CANNOT_SUSPEND_SELF` in the ten though neither has a client mapper; the parity ledger separately claimed client copy for all ten | **fixed** — duplication restated as the sharpest *symptom*, not the definition; the two mapper-less codes named explicitly; ledger row corrected to eight of ten |
+| F-4 | review | The shortened `REQUEST_NOT_PENDING` was untrue of the withdraw leg's broadest arm: `classifyMiss` answers `NOT_PENDING` for **any** non-pending booking, so an Instant booking that was never a request was told "This request is no longer waiting for the venue." — RV-BE-10's own trap 2, in the rule this slice wrote | **fixed** — "This booking is not awaiting a venue response.", true at every arm of all three call sites |
+| F-5 | review | The twin test asserted `doesNotContain("your", "Enter")` — the banned-phrase machine check the plan's Non-goals records the maintainer as having *declined*, brittle ("Entered", "Enterprise") and applied to one twin only | **fixed** — removed. The wording is pinned by the sibling tests' literals; the voice rule stays a review item (RV-BE-10) |
+| F-6 | review | The twin test's `OperatorAccounts` mock and its bcrypt encode were dead setup — the operator arm returns `MISSING_CURRENT_PASSWORD` before `findByUsername` is reached — and the extra `@MockitoBean` forced a distinct context-cache key | **fixed** — mock, stubbing and imports removed; verified against the controller's check order |
+| F-7 | review | `BookingRequestControllerTest`'s javadoc claimed both codes lacked HTTP-level cover, then cited the IT that covers one of them; and its comment named a shared constant that did not exist | **fixed** — javadoc now says only `PAYMENT_INIT_FAILED` was unpinned and states why the pair is repeated (the IT is `@EnabledIfDockerAvailable`, so without it the pair has no Docker-less cover) |
+| F-8 | review | `SetPasswordIT` inlined the new detail literal twice instead of naming it, unlike its sibling in the same diff (§6a) | **fixed** — `NO_CURRENT_PASSWORD_DETAIL` |
+| F-9 | review | `VenueRepriceIT` and `BeachMapReplaceIT` each declare their own `STALE_SETS_DETAIL`, a hand-synced copy of the kind this slice's doc says to pin as a pair | **fixed in part** — javadocs now state that production owns the one constant and that a one-sided update **fails here rather than drifting silently**, which is the material difference from F-1. A shared test-support class for one string was judged not to earn itself; the risk is a confusing failure message, not silent drift |
+| F-10 | review | `WithdrawRequestIT`'s new javadoc claimed "all four arms this class provokes", but `codeNeverLeaksIntoTheProblemBody` provokes an unasserted fifth | **fixed** — "four of the five", with the fifth named and its invariant-#7-only assertion explained. Same shape as #610's F-11 |
+| F-11 | review | `RATE_LIMITED_BODY`'s javadoc claimed it "mirrors the `ApiProblem` shape" and is "kept in lockstep", but the body omits `instance` and no test compares the shapes | **fixed in part** — javadoc now enumerates what the body actually carries and why `instance` is absent (nothing to redact when no URI is written — invariant #7 is satisfied by the omission). **Adding `instance` is rejected**: it changes the 429 wire shape, which is beyond #644 and not a defect |
+| — | sonar | Quality gate **passed** — 0 new issues/bugs/vulnerabilities/smells, 0 duplicated blocks, 100.0% coverage on new code | verified against the API, not the badge; `new_lines = 36` proves an analysis exists, so the zeros are real (the false-clean check) |
+| — | CI | Run #2370 + CodeQL **green** on `41dd780` — the branch's first CI, and the first full-suite run | the shared-state failure class scoped runs cannot show did not bite |
 
 ---
 
@@ -247,6 +261,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueAdminController.java` — the
   three `STALE_WRITE` details, becoming two named constants (profile token, shared set token)
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/RequestProblemDetails.java` — **new**;
+  the one `REQUEST_NOT_PENDING` string all three call sites share (review F-1)
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingController.java` — the
   withdraw leg's `REQUEST_NOT_PENDING` detail
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingRequestController.java` —

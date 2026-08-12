@@ -20,13 +20,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Web-slice cover for the two request-queue rejections whose {@code detail} no HTTP-level test
- * reached: {@code PAYMENT_INIT_FAILED}, which only had a service test on the outcome enum, and the
- * {@code REQUEST_NOT_PENDING} wording shared with the guest withdraw in {@code BookingController}.
+ * Web-slice cover for the request-queue rejections. Only {@code PAYMENT_INIT_FAILED} was genuinely
+ * unpinned — it had a service test on the outcome enum and no HTTP-level test at all. The two
+ * {@code REQUEST_NOT_PENDING} arms are already covered by {@code WithdrawRequestIT}; they are
+ * repeated here because that class is {@code @EnabledIfDockerAvailable}, so without these the pair
+ * has no cover on a leg with no Docker daemon.
  *
- * <p>The accept and decline arms answer one string because one code describes one condition — and
- * that condition is "no longer pending", which a withdrawal reaches without anyone deciding
- * anything ({@code WithdrawRequestIT.acceptAfterWithdrawIsNotPending} provokes exactly that).
+ * <p>Both arms assert {@code RequestProblemDetails.NOT_PENDING}, the one constant all three call
+ * sites share.
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
@@ -37,8 +38,8 @@ class BookingRequestControllerTest {
 	private static final long VENUE = 12L;
 	private static final long BOOKING = 77L;
 
-	/** Shared with the withdraw leg; that all three call sites agree is the point of one constant. */
-	private static final String NOT_PENDING_DETAIL = "This request is no longer waiting for the venue.";
+	/** Mirrors {@code RequestProblemDetails.NOT_PENDING}, which production shares across all three. */
+	private static final String NOT_PENDING_DETAIL = "This booking is not awaiting a venue response.";
 
 	@Autowired
 	MockMvc mvc;
