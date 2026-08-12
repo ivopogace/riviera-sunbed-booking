@@ -122,6 +122,10 @@
 }
 
 .auth-alt a {
+  /* inline-flex, not inline: min-height does not apply to a non-replaced inline box. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--riv-accent-ink);
   font-weight: 700;
 }

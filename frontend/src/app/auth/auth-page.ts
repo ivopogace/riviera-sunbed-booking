@@ -31,6 +31,8 @@ import { OutcomeCard } from '../shared/outcome-card';
 import { SegmentedControl, SegmentedOption } from '../shared/segmented-control';
 import { SsoButtons } from './sso-buttons';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /** Who is signing in. Picks the client service, never a shared endpoint. */
 type Audience = 'tourist' | 'operator';
 type Mode = 'signin' | 'register';
@@ -84,6 +86,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
     OutcomeCard,
     SsoButtons,
     BusyAction,
+    TouchTarget,
   ],
   template: `
     <section class="mx-auto w-full max-w-[430px] px-6 pt-3.5 pb-14" aria-labelledby="auth-title">
@@ -242,7 +245,10 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
 
             <app-sso-buttons [audience]="audience()" />
 
-            <p class="mt-4 mb-0 text-center text-[13px] text-(--riv-card-ink-soft)">
+            <p
+              class="mt-4 mb-0 text-center text-[13px] text-(--riv-card-ink-soft)"
+              data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
+            >
               {{ togglePrompt() }}
               <button
                 type="button"
@@ -257,9 +263,10 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
             @if (audience() === 'tourist') {
               <p class="mt-2 mb-0 text-center text-[13px]">
                 <a
+                  appTouchTarget
                   routerLink="/account/forgot"
                   data-testid="auth-to-forgot"
-                  class="text-(--riv-accent-ink) underline"
+                  class="inline-flex items-center text-(--riv-accent-ink) underline"
                   >Forgot your password?</a
                 >
               </p>

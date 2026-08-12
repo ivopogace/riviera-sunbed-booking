@@ -31,12 +31,13 @@ export async function expectTouchTargets(page: Page, label: string): Promise<voi
           if (box.width === 0 || box.height === 0) return false;
           return getComputedStyle(el).visibility !== 'hidden';
         })
-        .filter(({ box }) => box.width < floor || box.height < floor)
+        // Round BEFORE comparing: Chromium returns 43.996 for a 44px box.
         .map(({ el, box }) => ({
           selector: describe(el),
           width: Math.round(box.width),
           height: Math.round(box.height),
-        }));
+        }))
+        .filter((c) => c.width < floor || c.height < floor);
     },
     { controls: CONTROLS, floor: FLOOR },
   );

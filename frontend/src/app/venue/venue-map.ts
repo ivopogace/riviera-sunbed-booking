@@ -29,6 +29,8 @@ import { tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from './venue.service';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * One rendered set on the map: the raw {@link SetView} plus its precomputed seat code
  * (`A1`, `B7`), whether it is bookable (invariant #3), and its accessible name (state
@@ -116,15 +118,17 @@ export function rowCode(index: number): string {
     PanelGlass,
     CardGlass,
     AmenityChip,
+    TouchTarget,
     ...FAILURE_DIRECTIVES,
   ],
   templateUrl: './venue-map.html',
   // Was `:host { display:block; --riv-tile: clamp(...); color: var(--riv-card-ink) }` in the deleted
   // SCSS. --riv-tile drives the seat-tile grid columns + the label/price side-cell heights; it lives
   // here now (one static host binding) so the grid stays row-aligned with no stylesheet.
+  // 47px, not 44: the tap target is the button INSIDE the tile's 1.5px border (#605).
   host: {
     class: 'block text-(--riv-card-ink)',
-    style: '--riv-tile: clamp(44px, 11vw, 56px)',
+    style: '--riv-tile: clamp(47px, 11vw, 56px)',
   },
 })
 export class VenueMap {

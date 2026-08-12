@@ -144,10 +144,14 @@ routing only — but prescribes the attribute-selector-on-a-native-element patte
 - **Assumption:** ~7 columns is where a 390 px daily grid starts scrolling (390 − 18×2 padding − 20
   gutter − gaps ≈ 310 px ÷ 44). The exact number is confirmed by measurement in phase 2, not by this
   arithmetic. — *Owner:* implementer · *Resolves by:* phase 2.
-- **Open question:** does `pages/home`'s two filter `<select>`s meeting 44 px change the tourist
-  hero's composition enough to need a design look? — *Owner:* Ivo · *Resolves by:* phase 4.
+
 
 ### Resolved
+
+- **Does flooring `pages/home`'s filter selects change the tourist hero?** → **No, and it needed no
+  design call.** The filter bar is a separate glass panel *below* the hero copy, and the fields'
+  SCSS floor adds ~4 px each. Answered from the code at phase 4 rather than escalated — it was a
+  discoverable question, not an intent one.
 
 - **Scope — how wide does the sweep go?** → **operator + admin + tourist** (the whole app).
   Maintainer decision, 2026-08-12, at plan time. The issue's "not in scope: the tourist surfaces"
@@ -223,13 +227,13 @@ a static template `class` with a directive host `class`, so consumers keep their
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement — phases 0–3 complete; phase 4 next` · **draft PR #647** open. CI green
+**Stage pointer:** `implement — phases 0–4 complete; phase 5 next` · **draft PR #647** open. CI green
 on phase 0; phase 1 went **red** and its two findings (F-1, F-2) are fixed in phase 2. The review +
 Sonar gates fall due at ready-for-review, not while draft.
 
-**Next action:** phase 4 — auth, booking, tourist pages and the remaining shared primitives.
-`shared/confirm-with-reason.ts` was already floored in phase 3 (the admin gated states needed it);
-`shared/confirm-panel.ts` has `min-h-11` but not `min-w-11`, so check the width half.
+**Next action:** phase 5 — reconcile coverage (every file holding a control against the routes the
+three sweeps visit), record the floor in `CLAUDE.md`, run `riviera-docs-freshness`, file the
+static-guard follow-up, and close the plan out for merge.
 
 > **Phase 0's measurement rewrote the phase-1 estimate.** The sweep measured all 15 controls on the
 > Requests tab: **the tab body is already compliant** — its accept/decline buttons wrap at 390 px and
@@ -248,7 +252,7 @@ Sonar gates fall due at ready-for-review, not while draft.
 | 1 — Operator console: 5 tabs + create card + shell chrome | ✅ | `425fdfbb` |
 | 2 — The two map grids (geometry + in-frame scroll) | ✅ | `c87a776b` |
 | 3 — Platform-admin console | ✅ | `50a9fba2` |
-| 4 — Auth, booking, tourist pages, shared primitives | | |
+| 4 — Auth, booking, tourist pages, shared primitives | ✅ | `<phase-4-sha>` |
 | 5 — Coverage reconciliation + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -283,6 +287,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/e2e/support/admin-console.mocks.ts` — `mockWholeAdminConsole`, the admin twin of the
   operator mock
 - `frontend/e2e/admin-console-stats.e2e.ts` — its measured fold-budget comment, refreshed
+- `frontend/e2e/touch-targets-tourist.e2e.ts` — the third sweep: home, venue detail, auth, booking
+- `frontend/src/app/app.scss` — the tourist shell's brand link and hamburger floored in SCSS
 - `frontend/src/app/operator/` — every template and inline-template component with a control, plus
   `operator-console.scss` (the `.oc-tab` / `.oc-create-venue` rules)
 - `frontend/src/app/app.html` — the **app-level** footer, shared by the tourist shell and the
@@ -577,20 +583,34 @@ slice began: the old chrome alone cost 165px and now costs 133.
 
 ## Phase 4 — Auth, booking, tourist pages, shared primitives
 
-**Files:** Modify `frontend/src/app/auth/**` (6), `booking/**` (5), `venue/**` (1), `pages/**` (1), `shared/**` (6) · Test `frontend/e2e/touch-targets.e2e.ts`
+**Files:** Modify `frontend/src/app/app.scss`, `auth/auth-page.ts`, `auth/auth.scss`, `booking/booking-view.ts`, `venue/venue-map.{ts,html}`, `shared/{confirm-panel,segmented-control}.ts`, `operator/{daily-view-tab,layout-editor,set-editor}.{ts,html}` · Test `frontend/e2e/touch-targets-tourist.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — sweep tests for `/account/sign-in`, the forgot/reset/verify/set-password pages, `/account/operator-password`, `/` (home + its two filter selects), a venue detail page, the booking view/confirmation, and the booking-pay page (which asserts the Stripe iframe is skipped, not measured).
-- [ ] **Step 2: Run it, verify it fails** — → FAIL per surface.
-- [ ] **Step 3: Minimal implementation** — apply the directive; exempt in-sentence links with a
-      reason; leave `shared/confirm-panel.ts` alone where it already carries `min-h-11`, but add
-      `min-w-11` for the width half. If `pages/home`'s selects change the hero's composition
-      materially, stop and raise the open question rather than deciding it here.
-- [ ] **Step 4: Run it, verify it passes** — full mocked suite + `npm test` + `npm run test:a11y`.
-- [ ] **Step 5: Generalization-audit pass** — population `every third-party-rendered control the sweep cannot reach` → enumerate `git ls-files 'frontend/src/app/**' | xargs grep -ln 'iframe\|mountPaymentElement'` → decision recorded (documented exemption, not a fix).
-- [ ] **Step 6: Commit** — `git commit -m "Bring the tourist, auth and booking surfaces to the 44px floor (#605)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1: Write the failing test** — a third sweep spec over home, venue detail, the unified
+      sign-in card, forgot-password and a confirmed booking.
+- [x] **Step 2: Run it, verify it fails** — 5 red: the tourist shell's brand link (158×35) and
+      hamburger (42×42) on every surface, the map's set buttons at 42×42, the audience tabs at
+      ×38, and three text links at ×17–22.
+- [x] **Step 3: Minimal implementation** — the shell header and `.auth-alt a` floored in SCSS (the
+      directive cannot reach a class selector); the directive on `shared/segmented-control.ts`,
+      the venue back-pill, the booking links and the standalone forgot link. The in-sentence
+      register/sign-in toggle takes `data-touch-exempt` — it is the genuine 2.5.5 inline case.
+- [x] **Step 4: Run it, verify it passes** — 25 sweeps green across all three specs; full mocked
+      suite **202 passed, 0 skipped**; unit **1380 passed**; lint clean.
+- [x] **Step 5: Generalization-audit pass** — the half-floor population; see the log.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
----
+### Two findings worth more than the sweep itself
+
+**The tourist map's tile was floored; its button was not.** Phase 2's audit recorded that
+`venue-map` "already floors its tiles at `clamp(44px, 11vw, 56px)`" — read from the CSS, not
+measured. The tap target is the `<button>` *inside* the tile's 1.5 px border, so it measured 42×42.
+The token is now `clamp(47px, …)`: 44 plus the border it sits inside. **Phase 2's audit row was
+wrong, and only a measurement caught it** — the same lesson as F-1, one layer further in.
+
+**The sweep had a defect that reported `44x44` as under 44 px.** It compared the raw
+`getBoundingClientRect()` value (Chromium returns 43.996 for a 44 px box) while printing a rounded
+one. It now rounds before comparing.
 
 ## Phase 5 — Coverage reconciliation + close-out
 
@@ -621,6 +641,8 @@ slice began: the old chrome alone cost 165px and now costs 133.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-12 | plan — issue-intake grill | every element the app renders as an interactive control (**not** "the other operator tabs" — the issue's own population was `operator/*.html`, which structurally cannot see inline `template:` literals or SCSS) | `git ls-files 'frontend/src/app/<dir>/*' \| grep -v '\.spec\.ts$' \| xargs grep -ho '<button\|<input\|<select\|<textarea'` per feature dir | ~145 controls + ~56 anchors across ~40 files in 7 feature folders — vs the issue's 8 files | scope widened to the whole app (maintainer decision); swept in phases 1–4, reconciled in phase 5 |
+| 2026-08-12 | phase 4 — the half-floor | **every site that sets the floor by hand rather than through the directive**, since a hand-written `min-h-11` carries the height half only and the width half is exactly what F-1 proved fragile | `grep -rn "min-h-11\|min-height: 44px" src/app --include=*.ts --include=*.html --include=*.scss \| grep -v spec \| grep -vi touch-target` | 18 hand-written `min-h-11` across 5 files — the #600 originals (`set-editor` ×10, `layout-editor` ×3), `confirm-panel` ×3, `booking-view`, and phase 2's own daily tile | all 18 replaced by the directive, which carries both axes. The three SCSS `min-height: 44px` rules **stay**: a directive cannot reach a class selector, so SCSS is the right mechanism there, not a miss |
+| 2026-08-12 | phase 4 — the duplicate `class` attribute | **every element carrying two `class` attributes**, after one silently swallowed a fix: Angular kept the second and the floor never applied, while lint and the build stayed green | `grep -rEn 'class="[^"]*"[^>]*\sclass="' src/app --include=*.html --include=*.ts \| grep -v spec` | 1 — the one I had just written in `auth-page.ts`; the tree is otherwise clean | merged. Recorded because the failure mode is silent in both the compiler and the linter, and only the sweep's measurement exposed it |
 | 2026-08-12 | phase 3 — the admin console | **every comment that states a measured pixel budget**, since this slice moves the bands those numbers describe and a stale measurement reads as fact. Enumerated by the numbers themselves, not by recalling which files discuss layout | `grep -rn "40px\|44px\|2\.5\.5" --include=*.ts --include=*.html --include=*.scss frontend/src \| grep -v spec` | 3 comments: `admin-console-tabs`'s "they are 40px, already under WCAG 2.5.5's 44px", and **two** in `admin-console-stats` — the per-band budget table and a second note claiming 22px of headroom | all three corrected against fresh measurements (chrome 0–133, h1 173–209, tabs 221–365, strip 385–626, heading 658–685). The second `admin-console-stats` note is the one resemblance would have missed: it is about *label wrapping*, not touch targets |
 | 2026-08-12 | phase 2 — the tile floor | **every grid whose columns are sized by an unbounded `1fr`**, since such a column squeezes its control below the floor at a narrow width no matter what the control's own classes say | `grep -rn "grid-template-columns\|grid-cols-\|repeat(" src/app --include=*.html --include=*.ts --include=*.scss \| grep -v spec` | 20 grids; only the **two beach-map grids** size interactive tiles by `1fr`. The tourist `venue-map` already floors its tiles at `clamp(44px, 11vw, 56px)`; the rest are layout grids whose children are fields already tagged | both map grids moved to `minmax(44px, 1fr)` + in-frame scroll; the others need nothing, and the tourist map is evidence the floor was already the house style for a *map* |
 | 2026-08-12 | phase 2 — CI findings F-1/F-2 | **every control that meets the floor only through ambient text metrics** (inherited line-height, flex `items-stretch`, text wrap) rather than an explicit rule — invisible locally because the dev machine is Windows and CI is Linux | per swept template, `grep -c "<button\|<input\|<select\|<textarea"` vs `grep -c "appTouchTarget"` | every swept template now balances except two deliberate cases: `venue-tab`'s `class="hidden"` file input (invisible; its visible proxy is the Add-photo button) and the exempt footer blocks. `statement-open` measured **exactly 44** — the definition of fragile | all tagged. The rule is now *tag the control*, never *measure and hope*; F-2 additionally proves a shared-chrome change must sweep **every** surface that renders it, not just the phase's own |

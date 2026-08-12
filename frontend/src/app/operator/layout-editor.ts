@@ -30,6 +30,8 @@ import { OperatorConsoleService, layoutErrorOf } from './operator-console.servic
 import { SetEditor } from './set-editor';
 import { StaleWriteBanner } from './stale-write-banner';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /** Which editing surface the tab is showing: the whole-map replace, or one set at a time. */
 type EditorMode = 'bulk' | 'sets';
 
@@ -85,6 +87,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
     SetEditor,
     StaleWriteBanner,
     BusyAction,
+    TouchTarget,
   ],
   templateUrl: './layout-editor.html',
 })

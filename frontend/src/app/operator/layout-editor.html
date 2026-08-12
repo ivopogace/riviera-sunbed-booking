@@ -4,11 +4,12 @@
     <legend class="sr-only">Beach map editing mode</legend>
     <div class="flex flex-wrap gap-2">
       <button
+        appTouchTarget
         type="button"
         [attr.aria-pressed]="mode() === 'bulk'"
         (click)="chooseMode('bulk')"
         data-testid="layout-mode-bulk"
-        class="min-h-11 flex-1 rounded-[13px] px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) sm:flex-none"
+        class="flex-1 rounded-[13px] px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) sm:flex-none"
         [class]="
           mode() === 'bulk'
             ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
@@ -18,11 +19,12 @@
         Bulk layout
       </button>
       <button
+        appTouchTarget
         type="button"
         [attr.aria-pressed]="mode() === 'sets'"
         (click)="chooseMode('sets')"
         data-testid="layout-mode-sets"
-        class="min-h-11 flex-1 rounded-[13px] px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) sm:flex-none"
+        class="flex-1 rounded-[13px] px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) sm:flex-none"
         [class]="
           mode() === 'sets'
             ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
@@ -54,6 +56,7 @@
                 >Rows</span
               >
               <input
+                appTouchTarget
                 type="number"
                 min="1"
                 [max]="26"
@@ -69,6 +72,7 @@
                 >Positions</span
               >
               <input
+                appTouchTarget
                 type="number"
                 min="1"
                 [max]="40"
@@ -80,6 +84,7 @@
             </label>
           </div>
           <button
+            appTouchTarget
             type="button"
             (click)="onGenerate()"
             data-testid="layout-generate"
@@ -114,6 +119,7 @@
           <div class="flex flex-col gap-2" aria-label="Paint tool">
             @for (tool of tools(); track tool.key) {
               <button
+                appTouchTarget
                 type="button"
                 [attr.aria-pressed]="tool.active"
                 (click)="selectTool(tool.key)"
@@ -163,6 +169,7 @@
                 >
                   @for (cell of row.cells; track $index; let ci = $index) {
                     <button
+                      appTouchTarget
                       type="button"
                       appBeachCell
                       [state]="cell.state"
@@ -172,7 +179,7 @@
                       [title]="cell.label"
                       [attr.aria-label]="cell.label"
                       data-testid="layout-cell"
-                      class="min-h-11 rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
+                      class="rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
                     ></button>
                   }
                 </div>
@@ -232,6 +239,7 @@
     <!-- Save + notices -->
     <div class="mt-4 flex flex-wrap items-center gap-3">
       <button
+        appTouchTarget
         type="button"
         (click)="onSave()"
         [disabled]="!hasLayout()"

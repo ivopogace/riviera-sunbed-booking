@@ -103,6 +103,7 @@
 .riv-brand {
   display: flex;
   align-items: center;
+  min-height: 44px;
   gap: 12px;
   text-decoration: none;
   color: var(--riv-ink);
@@ -347,8 +348,8 @@
   align-items: center;
   justify-content: center;
   gap: 4.5px;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
   background: var(--riv-chip-bg);
   border: 1px solid var(--riv-chip-border);

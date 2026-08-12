@@ -77,13 +77,14 @@
                 >
                   @if (isActionable(set)) {
                     <button
+                      appTouchTarget
                       type="button"
                       [attr.data-set-id]="set.id"
                       [attr.data-state]="stateOf(set)"
                       [attr.aria-label]="tileLabel(set)"
                       [disabled]="isPending(set)"
                       (click)="onTile(set)"
-                      class="min-h-11 w-full rounded-[6px] border text-[10.5px] font-semibold [transition:transform_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none"
+                      class="w-full rounded-[6px] border text-[10.5px] font-semibold [transition:transform_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none"
                       [class]="tileClass(set)"
                     >
                       <span aria-hidden="true">{{ tileGlyph(set) }}</span>
