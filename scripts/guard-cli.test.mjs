@@ -649,6 +649,10 @@ test('check-comment-only resolves paths from the repo root, not the caller cwd',
  * "Could not read it" must never render as "verified code-identical". The count printed on success
  * was `changed - skipped`, which included every file the loop had bailed on, so an unverifiable file
  * was indistinguishable from a checked one.
+ *
+ * <p>Mutation: drop the `unreadable` bucket so an unreadable file `continue`s silently again, and
+ * derive the printed count as `changed.length - skipped.length` instead of tallying comparisons.
+ * This case then exits 0.
  */
 test('check-comment-only fails loudly on a file it cannot read rather than counting it', () => {
   withRepo((repo) => {
