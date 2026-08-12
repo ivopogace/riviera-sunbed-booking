@@ -219,9 +219,8 @@ test('shows the layout-locked message when the venue has bookings (409 LAYOUT_IN
   await expect(page.getByTestId('layout-cell')).toHaveCount(1);
   await page.getByTestId('layout-save').click();
   await expect(page.getByTestId('layout-error')).toContainText(/locked/i);
-  await expect(page.getByTestId('layout-error')).toContainText(
-    /bookings, or sets that are still held/i,
-  );
+  await expect(page.getByTestId('layout-error')).toContainText(/booked at least once/i);
+  await expect(page.getByTestId('layout-error')).toContainText(/still held/i);
 });
 
 test('a stale-tab save is rejected 409, keeps the painted grid, and Reload recovers (#226, + axe)', async ({
