@@ -318,6 +318,12 @@ test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async
 
   await expect(page.getByTestId('daily-tile')).toHaveCount(12);
   await expect(page.getByTestId('daily-tile').locator('button')).toHaveCount(0);
+
+  // The fixture must really overflow, or the axe check below proves nothing.
+  const scrolls = await page
+    .getByTestId('daily-grid')
+    .evaluate((el) => el.scrollWidth > el.clientWidth);
+  expect(scrolls).toBe(true);
   await expect(page.getByTestId('daily-grid')).toHaveAttribute('tabindex', '0');
 
   await settle(page);
