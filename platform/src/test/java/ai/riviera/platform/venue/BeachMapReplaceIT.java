@@ -72,11 +72,11 @@ class BeachMapReplaceIT {
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane"); // the zone the guard's cutoff reads
 
 	/**
-	 * The one {@code LAYOUT_IN_USE} detail, asserted at both arms that raise it — a booking and a
-	 * future-dated walk-in hold. Naming no arm is what keeps it true when the guards change; the
-	 * operator-facing wording, including where to go instead, belongs to the console.
+	 * The one {@code LAYOUT_IN_USE} detail, asserted at both arms this class provokes — a booking of
+	 * any status and a future-dated walk-in hold. Naming no arm is what keeps it true when the guards
+	 * change; the operator-facing wording, including where to go instead, belongs to the console.
 	 */
-	private static final String LAYOUT_IN_USE_DETAIL = "This venue's layout is in use.";
+	private static final String LAYOUT_IN_USE_DETAIL = "This venue has a booking or a hold.";
 
 	@Autowired
 	MockMvc mvc;

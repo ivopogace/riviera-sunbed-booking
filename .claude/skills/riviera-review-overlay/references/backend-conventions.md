@@ -288,6 +288,16 @@ A controller introducing a bespoke `{"error": …}` body or a per-controller
 **Minor** (Major if it diverges the wire shape clients depend on). (Authority:
 `riviera-java-conventions` §6b.)
 
+**Also check the `detail` string's voice**, which nothing machine-checks: it states the
+**condition**, not the remedy. A `detail` written as user-facing copy — a remedy
+("Reload and try again"), a consequence ("…so it can't be removed"), UI navigation
+("Switch to Edit sets…") — duplicates wording the client already owns and renders,
+reaches no user, and drifts (#567 → #607 → #610). Default **Minor**. Two traps when a
+diff *fixes* one: shortening it into a restatement of the `code` (which carries nothing
+RFC 7807 asks `detail` to carry), and shortening it into something **untrue** of the
+broadest arm the code serves. (Authority: `riviera-java-conventions`
+`references/error-contract.md`.)
+
 ---
 
 ### RV-BE-11. Module responsibility placement (`RESPONSIBILITIES.md`)

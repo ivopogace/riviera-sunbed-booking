@@ -221,7 +221,7 @@ class VenueAdminController {
 			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"These prices were changed by someone else. Reload the latest and try again.");
 			case SET_IN_USE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
-					"This set is in use.");
+					"This set has a booking or a hold.");
 			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Another set already occupies this grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
@@ -236,7 +236,7 @@ class VenueAdminController {
 			case STALE_WRITE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"This layout was changed by someone else. Reload the latest map and try again.");
 			case LAYOUT_IN_USE -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
-					"This venue's layout is in use.");
+					"This venue has a booking or a hold.");
 			case CELL_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Two sets occupy the same grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),

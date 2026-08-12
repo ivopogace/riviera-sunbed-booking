@@ -171,7 +171,11 @@ for** `bugfix/bulk-replace-past-hold-freeze` (`riviera-sdlc` § Remote/cloud ses
   **Superseded by #607:** the maintainer settled the wording (lifetime-neutral — the hold clause
   now says the hold has not passed, without restating the guard's date arithmetic), and both codes
   moved together so the parity argued for here is preserved. Plan: `docs/plans/layout-lock-copy.md`,
-  merged via PR #608.
+  merged via PR #608. **Then superseded again by #610:** the server copies quoted above no longer
+  exist — operator-facing prose came off the wire entirely, because no client ever read `detail`, and
+  both codes now carry a condition-only string. The parity argument survives the move: it is now the
+  console's two mappers, and only those, that have to stay in step. Plan:
+  `docs/plans/error-detail-not-ui-copy.md`.
 
 ### Resolved
 
