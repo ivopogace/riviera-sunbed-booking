@@ -204,14 +204,20 @@ Verified rather than assumed: `git diff origin/main -- frontend/` must be empty 
 
 ## Execution status
 
-**Stage pointer:** `plan — committed; implement not started`
+**Stage pointer:** `implement — phase 1`
 
-**Next action:** Load `riviera-local-debug`, then run phase 0 step 1 (the three `STALE_WRITE`
-`$.detail` assertions) and confirm they fail against the current prose.
+**Next action:** Run phase 1 step 1 — the edge quartet's `$.detail` assertions plus the new
+`CurrentPasswordDetailTwinTest` — and confirm they fail against the current prose.
+
+> **Testcontainers note for a resuming session.** Docker Hub's *unauthenticated* pull limit
+> (`429 toomanyrequests`) blocks `postgres:17`, so the ITs **fail** rather than skip — the daemon is
+> up, which is what `@EnabledIfDockerAvailable` tests. Fix without touching repo or CI config:
+> `docker pull mirror.gcr.io/library/postgres:17 && docker tag mirror.gcr.io/library/postgres:17
+> postgres:17`. Testcontainers' `DefaultPullPolicy` then finds it locally and never calls Hub.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The venue `STALE_WRITE` trio | | |
+| 0 — The venue `STALE_WRITE` trio | ✅ red 3/3, green 61 tests 0 skipped | this commit |
 | 1 — The edge quartet (twin, self-suspend, ownership, rate limit) | | |
 | 2 — The booking pair | | |
 | 3 — Retire the lower-bound caveat and the grandfather list | | |
@@ -277,23 +283,23 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `VenueAdminController.java:145-146,221-222,236-237` · `VenueAdminControllerIT.java`
 · `VenueRepriceIT.java` · `BeachMapReplaceIT.java`
 
-- [ ] **Step 1: Write the failing assertions** — one `$.detail` assertion per call site. The reprice
+- [x] **Step 1: Write the failing assertions** — one `$.detail` assertion per call site. The reprice
   and replace tests assert the **same** constant, which is what states the shared-token property.
 
-- [ ] **Step 2: Run them, verify they fail** — `gradle test --tests "*VenueAdminControllerIT*"
+- [x] **Step 2: Run them, verify they fail** — `gradle test --tests "*VenueAdminControllerIT*"
   --tests "*VenueRepriceIT*" --tests "*BeachMapReplaceIT*"` → FAIL, actual is the old remedy prose.
 
-- [ ] **Step 3: Minimal implementation** — two constants in `VenueAdminController`: one for the
+- [x] **Step 3: Minimal implementation** — two constants in `VenueAdminController`: one for the
   profile token (`venue.version`, V22), one shared by both set-writes (`venue.set_version`, V23).
 
-- [ ] **Step 4: Run them, verify they pass** — same command → PASS.
+- [x] **Step 4: Run them, verify they pass** — same command → PASS.
 
-- [ ] **Step 5: Generalization-audit pass** — the population is already enumerated above; append the
+- [x] **Step 5: Generalization-audit pass** — the population is already enumerated above; append the
   row recording the mechanism, both enumeration commands, and the Group-C judgements.
 
-- [ ] **Step 6: Commit** — `git commit -m "State the stale-write condition without the reload remedy (#644)"`
+- [x] **Step 6: Commit** — `git commit -m "State the stale-write condition without the reload remedy (#644)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — The edge quartet
 

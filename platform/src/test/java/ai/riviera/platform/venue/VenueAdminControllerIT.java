@@ -51,6 +51,14 @@ class VenueAdminControllerIT {
 	 */
 	private static final String SET_IN_USE_DETAIL = "This set has a booking or a current hold.";
 
+	/**
+	 * The profile {@code STALE_WRITE} detail. Its token is {@code venue.version} (V22), kept
+	 * distinct from the set-writes' {@code set_version} (V23) on purpose, so this wording may name
+	 * the profile where {@code VenueRepriceIT}/{@code BeachMapReplaceIT}'s shared one may not.
+	 */
+	private static final String STALE_PROFILE_DETAIL =
+			"The venue profile has changed since the version this request carries.";
+
 	@Autowired
 	MockMvc mvc;
 
@@ -580,7 +588,8 @@ class VenueAdminControllerIT {
 						.content(profileBody("Stale Club", "INSTANT", "18:00", "[]", "null", 0)))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("STALE_WRITE"));
+				.andExpect(jsonPath("$.code").value("STALE_WRITE"))
+				.andExpect(jsonPath("$.detail").value(STALE_PROFILE_DETAIL));
 
 		// The safety fields survive at the winner's values — the stale INSTANT never landed.
 		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))

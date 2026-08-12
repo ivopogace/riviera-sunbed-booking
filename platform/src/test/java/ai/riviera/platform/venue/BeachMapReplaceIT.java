@@ -80,6 +80,14 @@ class BeachMapReplaceIT {
 	 */
 	private static final String LAYOUT_IN_USE_DETAIL = "This venue has a booking or a current hold.";
 
+	/**
+	 * The one {@code STALE_WRITE} detail, shared with the row reprice: both set-writes turn on the
+	 * single {@code venue.set_version} token (V23), so a replace can lose to a reprice and the
+	 * wording may attribute the change to neither. {@code VenueRepriceIT} asserts the same string.
+	 */
+	private static final String STALE_SETS_DETAIL =
+			"This venue's sets have changed since the version this request carries.";
+
 	@Autowired
 	MockMvc mvc;
 	@Autowired
@@ -208,7 +216,8 @@ class BeachMapReplaceIT {
 						.content(layout(0, cell("A", 1, "PREMIUM", "ONLINE", 9999, 1, 1))))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("STALE_WRITE"));
+				.andExpect(jsonPath("$.code").value("STALE_WRITE"))
+				.andExpect(jsonPath("$.detail").value(STALE_SETS_DETAIL));
 
 		// The winner's two-set layout survives untouched — the stale single-cell replace never landed, and
 		// the token is unchanged (a rejected stale write does not bump).
