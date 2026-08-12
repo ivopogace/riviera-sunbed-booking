@@ -247,7 +247,7 @@ Sonar gates fall due at ready-for-review, not while draft.
 | 0 — The floor: directive, sweep helper, stated convention | ✅ | `676b83c4` |
 | 1 — Operator console: 5 tabs + create card + shell chrome | ✅ | `425fdfbb` |
 | 2 — The two map grids (geometry + in-frame scroll) | ✅ | `c87a776b` |
-| 3 — Platform-admin console | ✅ | `<phase-3-sha>` |
+| 3 — Platform-admin console | ✅ | `50a9fba2` |
 | 4 — Auth, booking, tourist pages, shared primitives | | |
 | 5 — Coverage reconciliation + close-out | | |
 
