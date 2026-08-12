@@ -15,8 +15,10 @@ hand-built in `RateLimitFilter`, both invisible to a `grep -A2 "ApiProblem\."`) 
 significant wording decision is that **a code emitted from more than one call site gets one string,
 shared and pinned identical** — because the defect #610 named is drift between hand-synced copies,
 and three separate twins exist here (`MISSING_CURRENT_PASSWORD` across two controllers,
-`REQUEST_NOT_PENDING` across two, and the two `STALE_WRITE` set-writes that share one `set_version`
-token). Pinning the property, not the sentence, is what stops a future edit re-forking them.
+`REQUEST_NOT_PENDING` across **three** call sites — accept, decline and withdraw, a count this plan
+got wrong until phase 2 read the controller — and the two `STALE_WRITE` set-writes that share one
+`set_version` token). Pinning the property, not the sentence, is what stops a future edit re-forking
+them.
 
 **Persistence:** JDBC only (invariant #1). N/A — no table, migration or query touched.
 
@@ -29,13 +31,19 @@ mis-attributes two `STALE_WRITE` details to *prices* and *layout* when both writ
 `riviera-plan-doc` (this template — its Generalization-audit blockquote is why the population was
 enumerated by mechanism rather than by grepping for strings resembling the seven, which is what
 surfaced `RATE_LIMITED`) · `tdd` (red-green per phase: every new `$.detail` assertion fails against
-the current prose before the controller changes) · `riviera-review-overlay` (review gate — <when it
-ran>; RV-BE-10's seven-call-site grandfather carve-out is retired by this slice, since its whole
-population is fixed) · `riviera-docs-freshness` (<**ran** over `<range>`, N findings — **or** `N/A —
-<reason>`>) · `riviera-java-conventions` (§6b is the rule being applied; §6a named the shared
-constants rather than repeating literals across call sites, and §6d kept the new constant javadoc to
-contract-plus-pointer) · `riviera-local-debug` (scoped build/test recipe; the Testcontainers ITs in
-phases 0 and 2 need the manual dockerd fallback or they skip silently).
+the current prose before the controller changes) · `riviera-review-overlay` (review gate — **not yet
+run**; due when the PR is marked ready for review. RV-BE-10's seven-call-site grandfather carve-out is
+retired by this slice, since its whole population is fixed) · `riviera-docs-freshness` (**ran** over
+`origin/main...HEAD` — 1 finding patched: `missing-current-password-code.md`'s FE↔BE section quoted the
+now-changed wire body as a present-tense contract, the same one-hop-from-the-diff class as #643's G-2.
+Counting sweep clean — the slice makes no Nth instance of anything a doc counts. Deliberately **not**
+patched: `riviera-admin-console.dc.html`'s "Suspension rules" aside, whose sentence is the console's own
+design copy and whose claim about the server is still true) · `riviera-java-conventions` (§6b is the rule
+being applied; §6a named the shared constants rather than repeating literals across call sites, and §6d
+kept the new constant javadoc to contract-plus-pointer) · `riviera-local-debug` (scoped build/test recipe
+— and the session hit a failure mode the skill does not yet name: Docker Hub's *unauthenticated* pull
+limit 429s `postgres:17`, so the ITs **fail** rather than skip, since `@EnabledIfDockerAvailable` tests
+the daemon and the daemon was up).
 
 > `riviera-modulith` was **not** loaded, and the same reasoning #610 recorded applies at larger
 > scale: the diff creates no production class, moves none, and touches no published surface
@@ -55,39 +63,39 @@ phases 0 and 2 need the manual dockerd fallback or they skip silently).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue **profile** write carrying a stale `expectedVersion`, when the server
+- [x] **AC-1:** Given a venue **profile** write carrying a stale `expectedVersion`, when the server
   answers `409 STALE_WRITE`, then `detail` names the profile token and states no remedy. *Pinned
   by:* `VenueAdminControllerIT.staleVersionPatchIs409` (the existing `$.code` test, extended).
-- [ ] **AC-2:** Given a **set** write carrying a stale `expectedVersion` — a row reprice **or** a
+- [x] **AC-2:** Given a **set** write carrying a stale `expectedVersion` — a row reprice **or** a
   bulk layout replace, which share one `set_version` token (V23) — when the server answers `409
   STALE_WRITE`, then both arms carry the **same** `detail`, and it attributes the change to the
   venue's sets rather than to prices or layout specifically, because either write bumps the token.
   *Pinned by:* `VenueRepriceIT.staleRepriceIs409StaleWrite`,
   `BeachMapReplaceIT.staleReplaceIs409StaleWrite` — both asserting one shared constant.
-- [ ] **AC-3:** Given a password change omitting the current password, when either the operator
+- [x] **AC-3:** Given a password change omitting the current password, when either the operator
   endpoint (`POST /api/auth/operator/password`) or the customer endpoint (`POST /api/me/password`)
   answers `400 MISSING_CURRENT_PASSWORD`, then the two `detail` strings are **equal to each other**
   — asserted as an equality between the two live responses, not as two independent literal matches,
   so a one-sided edit is a red build. *Pinned by:*
   `CurrentPasswordDetailTwinTest.bothPasswordEndpointsStateTheSameCondition`.
-- [ ] **AC-4:** Given a request that has left `PENDING_REQUEST`, when either the guest withdraw
+- [x] **AC-4:** Given a request that has left `PENDING_REQUEST`, when either the guest withdraw
   (`BookingController`) or the venue accept/decline (`BookingRequestController`) answers `409
   REQUEST_NOT_PENDING`, then both carry the same `detail` and it is **true of every route out of
   pending** — decided, expired, *and withdrawn* — where today the accept-side string
   ("already been decided") is false of the withdrawn route the suite already provokes. *Pinned by:*
   `WithdrawRequestIT.aBookingThatLeftPendingIsAConflict`,
   `BookingRequestControllerTest.acceptOfAWithdrawnRequestStatesTheConditionNotADecision`.
-- [ ] **AC-5:** Given each remaining swept call site, when it rejects, then `detail` states the
+- [x] **AC-5:** Given each remaining swept call site, when it rejects, then `detail` states the
   condition and no remedy: `403 NOT_VENUE_OWNER` (`ApiErrorHandlerTest.notVenueOwnerIs403WithCode`),
   `409 CANNOT_SUSPEND_SELF` (`AdminOperatorControllerTest.selfSuspendIsRefusedBeforeAnyRevoke`),
   `502 PAYMENT_INIT_FAILED` (`BookingRequestControllerTest.paymentInitFailureStatesTheCondition` —
   the arm has **no** HTTP-level coverage today, only a service test on the outcome enum), and
   `429 RATE_LIMITED` (`RateLimitFilterTest`, whose literal `$.detail` assertion already exists).
-- [ ] **AC-6:** No swept string survives anywhere in `platform/src`, and the client keeps its copy —
+- [x] **AC-6:** No swept string survives anywhere in `platform/src`, and the client keeps its copy —
   `grep -rn "Reload the latest\|Enter your current password\.\|You cannot suspend the account\|You
   do not manage this venue\.\|please retry\|Retry later\." platform/src` returns nothing, while
   `git diff origin/main -- frontend/` is empty.
-- [ ] **AC-7:** The enumerated population replaces the lower-bound caveat — `error-contract.md` no
+- [x] **AC-7:** The enumerated population replaces the lower-bound caveat — `error-contract.md` no
   longer says the known exceptions are a floor, RV-BE-10 no longer grandfathers seven call sites
   (its whole population is fixed), and the three examined-but-unchanged strings are recorded with
   the reason, so a later reader can tell *judged clean* from *never looked at*. *Pinned by:*
@@ -129,11 +137,11 @@ phases 0 and 2 need the manual dockerd fallback or they skip silently).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A replacement is **untrue** at some arm — #610's trap 2, which bit inside that slice | high | med | Every multi-arm code gets one string checked against the broadest arm: the two `STALE_WRITE` set-writes share `set_version` (V23 says so explicitly), so neither may claim *prices* or *layout* changed; `REQUEST_NOT_PENDING` must survive the withdrawn route. Both pinned by asserting one shared constant at every arm (AC-2, AC-4) | claude | open |
-| R-2 | A replacement shortens into a **restatement of its `code`** — trap 1 | med | low | Each string must add what the code cannot: which token went stale and that the request carried one; that a *request* field is absent; that the operator/venue relation failed. **Accepted with reason for `RATE_LIMITED` alone** — every truthful widening either leaks which of the four rate-limit dimensions fired (an anti-abuse leak) or is false at one of them, so `"Too many requests."` is the honest floor | claude | open |
-| R-3 | Fixing one half of a twin and leaving the other — the exact defect the rule exists to stop, and how #643 found its own G-4 | med | med | Three twins exist, all enumerated up front. AC-3 asserts the two password responses **equal each other** rather than each matching a literal, so a one-sided edit fails even if both are individually plausible | claude | open |
-| R-4 | The enumeration is itself a lower bound again, and the docs claim otherwise | med | med | The population is defined by mechanism and both halves enumerated by command, including the two blind spots that made #610's sweep short (helper indirection, the hand-built `RateLimitFilter` body). The doc records the command, not just the verdict; Group C is recorded as *judged*, not omitted | claude | open |
-| R-5 | `PAYMENT_INIT_FAILED` has no HTTP-level test, so its arm is unpinned and a new test class is needed to reach it | high | low | Confirmed: only `RespondToRequestServiceTest` asserts the outcome enum. Phase 2 adds `BookingRequestControllerTest` as a `@WebMvcTest` slice with a stubbed port, matching `OperatorAccountControllerTest`'s house style rather than paying for a Testcontainers IT | claude | open |
+| R-1 | A replacement is **untrue** at some arm — #610's trap 2, which bit inside that slice | high | med | Every multi-arm code gets one string checked against the broadest arm: the two `STALE_WRITE` set-writes share `set_version` (V23 says so explicitly), so neither may claim *prices* or *layout* changed; `REQUEST_NOT_PENDING` must survive the withdrawn route. Both pinned by asserting one shared constant at every arm (AC-2, AC-4) | claude | **Closed** — every multi-arm string checked against its broadest arm; R-1 fired for real at R-4 below, where `REQUEST_NOT_PENDING` proved false on the withdrawn route |
+| R-2 | A replacement shortens into a **restatement of its `code`** — trap 1 | med | low | Each string must add what the code cannot: which token went stale and that the request carried one; that a *request* field is absent; that the operator/venue relation failed. **Accepted with reason for `RATE_LIMITED` alone** — every truthful widening either leaks which of the four rate-limit dimensions fired (an anti-abuse leak) or is false at one of them, so `"Too many requests."` is the honest floor | claude | **Closed** — accepted for `RATE_LIMITED` alone, recorded in `error-contract.md`; the other nine add what their code cannot |
+| R-3 | Fixing one half of a twin and leaving the other — the exact defect the rule exists to stop, and how #643 found its own G-4 | med | med | Three twins exist, all enumerated up front. AC-3 asserts the two password responses **equal each other** rather than each matching a literal, so a one-sided edit fails even if both are individually plausible | claude | **Closed** — and the count was worse than planned: `REQUEST_NOT_PENDING` had **three** call sites, not two. The twin test earns itself by comparing live responses rather than literals |
+| R-4 | The enumeration is itself a lower bound again, and the docs claim otherwise | med | med | The population is defined by mechanism and both halves enumerated by command, including the two blind spots that made #610's sweep short (helper indirection, the hand-built `RateLimitFilter` body). The doc records the command, not just the verdict; Group C is recorded as *judged*, not omitted | claude | **Closed** — the two blind spots were real (both new finds sat in one), and the docs now state the population rather than a floor |
+| R-5 | `PAYMENT_INIT_FAILED` has no HTTP-level test, so its arm is unpinned and a new test class is needed to reach it | high | low | Confirmed: only `RespondToRequestServiceTest` asserts the outcome enum. Phase 2 adds `BookingRequestControllerTest` as a `@WebMvcTest` slice with a stubbed port, matching `OperatorAccountControllerTest`'s house style rather than paying for a Testcontainers IT | claude | **Closed** — `BookingRequestControllerTest` added; it lives in the root test package because the three web-slice configs are package-private there, as all ten existing slices do |
 
 ## Open questions / Assumptions
 
@@ -204,10 +212,11 @@ Verified rather than assumed: `git diff origin/main -- frontend/` must be empty 
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 3`
+**Stage pointer:** `implement — complete; PR not yet opened, so the Review and Sonar gates have not run`
 
-**Next action:** Run phase 3 — retire the lower-bound caveat in `error-contract.md` and RV-BE-10's
-grandfather carve-out, then the AC-6/AC-7 greps.
+**Next action:** Open the PR (draft), which is what makes CI run at all — `ci.yml` fires on
+`pull_request` only, so this branch has had **no CI**. Then mark ready for review and run the Review
+and Sonar gates, whose boxes below are deliberately unticked.
 
 > **Testcontainers note for a resuming session.** Docker Hub's *unauthenticated* pull limit
 > (`429 toomanyrequests`) blocks `postgres:17`, so the ITs **fail** rather than skip — the daemon is
@@ -220,7 +229,7 @@ grandfather carve-out, then the AC-6/AC-7 greps.
 | 0 — The venue `STALE_WRITE` trio | ✅ red 3/3, green 61 tests 0 skipped | this commit |
 | 1 — The edge quartet (twin, self-suspend, ownership, rate limit) | ✅ red 7/7, green 80 tests | this commit |
 | 2 — The booking pair | ✅ red 7/7, green 10 tests 0 skipped | this commit |
-| 3 — Retire the lower-bound caveat and the grandfather list | | |
+| 3 — Retire the lower-bound caveat and the grandfather list | ✅ AC-6/AC-7 greps clean, structural net green | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -348,17 +357,17 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `references/error-contract.md` · `references/backend-conventions.md` · this plan
 
-- [ ] **Step 1: `error-contract.md`** — replace the six-strings/seven-call-sites paragraph with the
+- [x] **Step 1: `error-contract.md`** — replace the six-strings/seven-call-sites paragraph with the
   enumerated population: what the mechanism is, both commands, the ten fixed, the three judged.
 
-- [ ] **Step 2: RV-BE-10** — retire the grandfather carve-out; its whole population is fixed, so
+- [x] **Step 2: RV-BE-10** — retire the grandfather carve-out; its whole population is fixed, so
   leaving it would exempt strings that no longer exist and re-teach the reader they are sanctioned.
 
-- [ ] **Step 3: Verify** — AC-6 and AC-7 greps.
+- [x] **Step 3: Verify** — AC-6 and AC-7 greps.
 
-- [ ] **Step 4: Commit** — `git commit -m "Replace the error-detail lower-bound caveat with the enumerated population (#644)"`
+- [x] **Step 4: Commit** — `git commit -m "Replace the error-detail lower-bound caveat with the enumerated population (#644)"`
 
-- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -376,40 +385,56 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `gradle test --tests "*VenueAdminControllerIT*"` → PASS. Red first at phase 0 step 2.
-- [ ] **AC-2:** `gradle test --tests "*VenueRepriceIT*" --tests "*BeachMapReplaceIT*"` → PASS, both
-  asserting the one shared constant.
-- [ ] **AC-3:** `gradle test --tests "*CurrentPasswordDetailTwinTest*"` → PASS.
-- [ ] **AC-4:** `gradle test --tests "*WithdrawRequestIT*" --tests "*BookingRequestControllerTest*"` → PASS.
-- [ ] **AC-5:** `gradle test --tests "*ApiErrorHandlerTest*" --tests "*AdminOperatorControllerTest*"
-  --tests "*RateLimitFilterTest*" --tests "*BookingRequestControllerTest*"` → PASS.
-- [ ] **AC-6:** the swept-string grep over `platform/src` → no output; `git diff origin/main --
-  frontend/` → empty.
-- [ ] **AC-7:** `grep -c "lower bound\|grandfathered"` over both skill references → 0.
+> The gate before claiming done. Not a wish.
+
+- [x] **AC-1/AC-2:** `gradle --no-daemon test --tests "*VenueAdminControllerIT*" --tests
+  "*VenueRepriceIT*" --tests "*BeachMapReplaceIT*"` → 61 tests, `skipped="0"`, 0 failures. Red
+  first: exactly those 3 assertions failed, 58 passed, actual was the old remedy prose.
+  Verified at `20ec22a`.
+- [x] **AC-3/AC-5 (edge):** `gradle --no-daemon test --tests "*ApiErrorHandlerTest*" --tests
+  "*RateLimitFilterTest*" --tests "*AdminOperatorControllerTest*" --tests
+  "*OperatorAccountControllerTest*" --tests "*CurrentPasswordDetailTwinTest*" --tests
+  "*SetPasswordIT*"` → 80 tests, 0 failures. Red first: 7 failed. *The twin test's red came from
+  its voice check, not its equality check* — both endpoints already returned the identical
+  string, which is the point: equality is a forward drift guard, not a red-today assertion.
+  Verified at `0bed5e2`.
+- [x] **AC-4/AC-5 (booking):** `gradle --no-daemon test --tests "*WithdrawRequestIT*" --tests
+  "*BookingRequestControllerTest*"` → 10 tests, `skipped="0"`, 0 failures. Red first: 7 failed,
+  including both accept/decline-after-withdraw legs — the live proof that "already been decided"
+  was false. Verified at `c995d19`.
+- [x] **AC-6:** the swept-string grep over `platform/src` → no output; `git diff origin/main --
+  frontend/` → empty. Verified at this commit.
+- [x] **AC-7:** `grep -c "lower bound\|grandfathered"` over both skill references → `0` and `0`.
+  *The first run returned 1* — this slice's own replacement text said "Nothing is grandfathered
+  any more"; the prose was reworded rather than the AC weakened (#610's F-2 shape). Verified at
+  this commit.
 
 **Also run:** the structural net (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`,
-`*PackageShapeArchitectureTests*`, `*ErrorContractArchitectureTests*`) and all four repo hygiene
-guards (inline comments, plan file-structure, focus posture, whole-scope Prettier).
+`*PackageShapeArchitectureTests*`, `*ErrorContractArchitectureTests*`) → BUILD SUCCESSFUL. Repo
+hygiene guards: inline comments + plan file-structure → clean at every phase commit. **Not run
+locally:** the frontend suite and Prettier — the slice changes no file under `frontend/`, which
+AC-6 asserts rather than assumes. **No CI has run on this branch at all**, since `ci.yml` fires on
+`pull_request` and no PR is open yet.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND
       findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.

@@ -35,17 +35,34 @@ stable machine-readable **`code`** extension. The shape is built in exactly two 
     those slices removed. The shipped wording, "has a booking or a **current** hold", is the
     narrowest statement that is true at every arm: it conveys the hold's liveness without
     restating the guard's date arithmetic, which is the copy posture #607 settled.
-  - **Known exceptions, not yet fixed — a floor, not the population.** Six strings across
-    **seven call sites** still speak in remedy voice: the three `STALE_WRITE` details in
-    `VenueAdminController`, plus `"You cannot suspend the account you are signed in with."`,
-    `"You do not manage this venue."`, and `"Enter your current password."` — which is itself
-    **twinned** across `OperatorAccountController` and `MyAccountController`, so fixing the one
-    you grep first re-creates the drift-between-twins defect this rule exists to prevent. They
-    were found by a phrase sweep (`try again|reload|please|your |you `), which is a **lower
-    bound** — it would not have caught either string #610 fixed, since neither contains those
-    words. The real population is the intersection of ~49 server `detail` literals with the ~21
-    client `code`→copy mappers, and it has never been enumerated (issue #644). Treat an absence
-    from this list as unexamined, not clean.
+  - **The population, enumerated (#644) — no remedy-voiced `detail` is left.** The mechanism is
+    *a server `detail` whose `code` a client also renders its own copy from*; both halves were
+    enumerated by command (`grep -rn "ApiProblem\." platform/src/main` → 51 refs over 18 files,
+    unrolled through each controller's local `problem(...)`/`error(...)` helper, × `grep -rln
+    "case '[A-Z_]\{4,\}'" frontend/src/app` → 21 mappers) and judged pairwise. It found **ten**
+    call sites, not the seven a phrase sweep had filed. The three it added are the argument for
+    enumerating by mechanism: `PAYMENT_INIT_FAILED` (*"…please retry."* — the phrase was there,
+    but the literal sits in a `switch` arm behind a helper, out of `grep -A2` range), the
+    withdraw leg's `REQUEST_NOT_PENDING` (a *consequence* clause, no banned phrase), and
+    `RATE_LIMITED` (*"Retry later."* — hand-built JSON in `RateLimitFilter`, which no
+    `ApiProblem` grep can reach, and a remedy the response's own `Retry-After` header already
+    carries machine-readably).
+  - **One code, one string — pin the pair, not the sentence.** Three codes are emitted from more
+    than one call site, and each was a drift risk of the kind this rule exists to stop:
+    `MISSING_CURRENT_PASSWORD` (operator + customer password change — the client owns that exact
+    sentence as `CURRENT_PASSWORD_REQUIRED_MESSAGE`), `REQUEST_NOT_PENDING` (accept, decline,
+    withdraw — whose shared wording had to stop saying "already been decided", false of the
+    withdrawn route), and `STALE_WRITE`'s two set-writes, which turn on one `venue.set_version`
+    token (V23) and so may claim neither *prices* nor *layout* changed. `CurrentPasswordDetailTwinTest`
+    asserts its pair's two **live responses equal each other**, so a one-sided edit is red even
+    when the new wording is fine alone — a per-call-site literal assertion would not catch that.
+  - **Three examined and deliberately left, so absence now means judged.** `UNSUPPORTED_FORMAT`
+    (byte-identical to `venue-tab.ts`'s copy — the mechanism's purest instance, but a true
+    statement of what the server accepts rather than a remedy), `BOOTSTRAP_CREDENTIAL_MANAGED`
+    (trailing "…and cannot be changed here") and `SET_NOT_BOOKABLE_ONLINE` (a prose
+    transliteration of its own code). `RATE_LIMITED`'s replacement, *"Too many requests."*, is a
+    knowing trap-1 restatement: every truthful widening either leaks which of the four
+    rate-limit dimensions fired or is false at one of them.
 - **`ApiErrorHandler`** (root package) — the **single** `@RestControllerAdvice` for
   everything thrown: `shared.InvalidApiRequestException` (typed edge validation, #118) →
   `400 INVALID_REQUEST`, `DuplicateKeyException` → `409 CONFLICT` (the unique-constraint-race

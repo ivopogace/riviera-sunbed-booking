@@ -213,8 +213,11 @@ image, no `NgOptimizedImage` need. **`riviera-tailwind` not loaded — no class,
   - `POST /api/me/password` — `400 MISSING_CURRENT_PASSWORD` (**new**), taken *from* the set of cases that
     answered `INVALID_CURRENT_PASSWORD`.
 - **Body shape unchanged:** the standard `ProblemDetail` —
-  `{"type":"about:blank","title":"Bad Request","status":400,"detail":"Enter your current password.","code":"MISSING_CURRENT_PASSWORD","instance":"about:blank"}`,
-  `Content-Type: application/problem+json`, built by `ApiProblem`.
+  `{"type":"about:blank","title":"Bad Request","status":400,"detail":"The request carries no current password.","code":"MISSING_CURRENT_PASSWORD","instance":"about:blank"}`,
+  `Content-Type: application/problem+json`, built by `ApiProblem`. *(The shape is this slice's
+  claim and still holds; the `detail` value shown was `"Enter your current password."` until #644
+  swept remedy-voiced details off the wire. The client keeps that sentence as
+  `CURRENT_PASSWORD_REQUIRED_MESSAGE` — it was always the only copy a user read.)*
 - **`INVALID_CURRENT_PASSWORD` narrows** to "a current password was supplied and it was wrong".
   `INVALID_REQUEST` keeps every other malformed-body meaning.
 - **Request DTOs are wire-compatible:** `currentPassword` was already an optional JSON field on

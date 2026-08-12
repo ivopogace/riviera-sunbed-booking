@@ -297,15 +297,22 @@ diff *fixes* one: shortening it into a restatement of the `code` (which carries 
 RFC 7807 asks `detail` to carry), and shortening it into something **untrue** of the
 broadest arm the code serves.
 
-**Seven call sites are grandfathered, not findings** — the three `STALE_WRITE` details in
-`VenueAdminController`, `"You cannot suspend the account you are signed in with."`,
-`"You do not manage this venue."`, and `"Enter your current password."` in both
-`OperatorAccountController` and `MyAccountController`. They predate the rule and are
-tracked by **issue #644**; raising them again on a diff that merely touches those files is
-noise, which is how a bank item gets ignored. A diff that *changes* one of them, though, is
-the moment to fix it. (Authority: `riviera-java-conventions`
-`references/error-contract.md`, which also holds the caveat that those seven are a lower
-bound rather than the full population.)
+**No call site is exempt any more** — #644 swept the tree and fixed all ten remedy-voiced
+call sites, so a `detail` in remedy voice is now a plain finding wherever it appears. Two
+things to check that a diff can hide, both of which #644 hit:
+
+- **A code emitted from more than one call site must carry one string**, and the pin belongs
+  on the *pair* — `CurrentPasswordDetailTwinTest` compares two live responses to each other,
+  because per-call-site literal assertions pass happily while a pair drifts. A diff that
+  changes one arm of `MISSING_CURRENT_PASSWORD`, `REQUEST_NOT_PENDING` or `STALE_WRITE`
+  without the others is the finding.
+- **A shortened string must stay true of the broadest arm.** `REQUEST_NOT_PENDING` said
+  "already been decided" while a *withdrawn* request reaches the same refusal; the two
+  `STALE_WRITE` set-writes share one `venue.set_version` token, so neither may name prices or
+  layout. Check the guard, not the sentence.
+
+(Authority: `riviera-java-conventions` `references/error-contract.md`, which holds the
+enumerated population and the three strings examined and deliberately left.)
 
 ---
 
