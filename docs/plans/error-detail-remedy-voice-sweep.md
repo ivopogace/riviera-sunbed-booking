@@ -204,10 +204,10 @@ Verified rather than assumed: `git diff origin/main -- frontend/` must be empty 
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1`
+**Stage pointer:** `implement — phase 2`
 
-**Next action:** Run phase 1 step 1 — the edge quartet's `$.detail` assertions plus the new
-`CurrentPasswordDetailTwinTest` — and confirm they fail against the current prose.
+**Next action:** Run phase 2 step 1 — the booking pair's assertions, including the new
+`BookingRequestControllerTest` (first HTTP coverage of `PAYMENT_INIT_FAILED`).
 
 > **Testcontainers note for a resuming session.** Docker Hub's *unauthenticated* pull limit
 > (`429 toomanyrequests`) blocks `postgres:17`, so the ITs **fail** rather than skip — the daemon is
@@ -218,7 +218,7 @@ Verified rather than assumed: `git diff origin/main -- frontend/` must be empty 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The venue `STALE_WRITE` trio | ✅ red 3/3, green 61 tests 0 skipped | this commit |
-| 1 — The edge quartet (twin, self-suspend, ownership, rate limit) | | |
+| 1 — The edge quartet (twin, self-suspend, ownership, rate limit) | ✅ red 7/7, green 80 tests | this commit |
 | 2 — The booking pair | | |
 | 3 — Retire the lower-bound caveat and the grandfather list | | |
 
@@ -307,22 +307,22 @@ Skill-routing gate for what the fix touches *before* editing).
 `AdminOperatorController.java:142-143` · `OperatorAccountController.java:127-128` ·
 `MyAccountController.java:90-91` · four test classes · Create `CurrentPasswordDetailTwinTest.java`
 
-- [ ] **Step 1: Write the failing assertions** — including the twin guard, which asserts the two
+- [x] **Step 1: Write the failing assertions** — including the twin guard, which asserts the two
   password endpoints' `detail` values are equal to **each other**, not to a literal.
 
-- [ ] **Step 2: Run them, verify they fail** — `gradle test --tests "*ApiErrorHandlerTest*" --tests
+- [x] **Step 2: Run them, verify they fail** — `gradle test --tests "*ApiErrorHandlerTest*" --tests
   "*RateLimitFilterTest*" --tests "*AdminOperatorControllerTest*" --tests
   "*OperatorAccountControllerTest*" --tests "*CurrentPasswordDetailTwinTest*" --tests
   "*SetPasswordIT*"` → FAIL.
 
-- [ ] **Step 3: Minimal implementation** — rewrite the four strings; `RATE_LIMITED`'s lives inside
+- [x] **Step 3: Minimal implementation** — rewrite the four strings; `RATE_LIMITED`'s lives inside
   the hand-built text block, so the JSON stays byte-valid.
 
-- [ ] **Step 4: Run them, verify they pass** — same command → PASS.
+- [x] **Step 4: Run them, verify they pass** — same command → PASS.
 
-- [ ] **Step 5: Commit** — `git commit -m "Take the remedy out of the four platform-edge error details (#644)"`
+- [x] **Step 5: Commit** — `git commit -m "Take the remedy out of the four platform-edge error details (#644)"`
 
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — The booking pair
 

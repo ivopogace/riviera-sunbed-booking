@@ -65,7 +65,8 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 
 	@ExceptionHandler(NotVenueOwnerException.class)
 	ProblemDetail onNotVenueOwner(NotVenueOwnerException e) {
-		return ApiProblem.of(HttpStatus.FORBIDDEN, "NOT_VENUE_OWNER", "You do not manage this venue.");
+		return ApiProblem.of(HttpStatus.FORBIDDEN, "NOT_VENUE_OWNER",
+				"The authenticated operator does not own this venue.");
 	}
 
 	@ExceptionHandler(AccessDeniedException.class)

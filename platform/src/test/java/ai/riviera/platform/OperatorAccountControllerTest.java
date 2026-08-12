@@ -67,6 +67,12 @@ class OperatorAccountControllerTest {
 	private static final String CURRENT_PASSWORD = "current-pass1";
 	private static final String NEW_PASSWORD = "rotated-pass2";
 
+	/**
+	 * Shared with the customer twin at {@code POST /api/me/password}; that the two stay equal is
+	 * {@code CurrentPasswordDetailTwinTest}'s job, not this literal's.
+	 */
+	private static final String NO_CURRENT_PASSWORD_DETAIL = "The request carries no current password.";
+
 	@Autowired
 	MockMvc mvc;
 
@@ -251,13 +257,15 @@ class OperatorAccountControllerTest {
 						.content("""
 								{"newPassword": "%s"}""".formatted(NEW_PASSWORD)))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"));
+				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"))
+				.andExpect(jsonPath("$.detail").value(NO_CURRENT_PASSWORD_DETAIL));
 
 		mvc.perform(isolated(post(CHANGE_PASSWORD)).with(user(OPERATOR_USERNAME).roles("OPERATOR"))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(body("", NEW_PASSWORD)))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"));
+				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"))
+				.andExpect(jsonPath("$.detail").value(NO_CURRENT_PASSWORD_DETAIL));
 
 		verify(provisioning, never()).setPassword(anyString(), anyString());
 		verify(sessionRevoker, never()).revokeAllExcept(anyString(), any());
@@ -276,7 +284,8 @@ class OperatorAccountControllerTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(body("", "short")))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"));
+				.andExpect(jsonPath("$.code").value("MISSING_CURRENT_PASSWORD"))
+				.andExpect(jsonPath("$.detail").value(NO_CURRENT_PASSWORD_DETAIL));
 
 		verify(provisioning, never()).setPassword(anyString(), anyString());
 		verify(sessionRevoker, never()).revokeAllExcept(anyString(), any());

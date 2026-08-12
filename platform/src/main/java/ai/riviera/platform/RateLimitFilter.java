@@ -84,7 +84,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 */
 	private static final String RATE_LIMITED_BODY = """
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
-			"detail":"Too many requests. Retry later.","code":"RATE_LIMITED"}""";
+			"detail":"Too many requests.","code":"RATE_LIMITED"}""";
 
 	// Mirrors the SecurityConfig matchers for the four public booking endpoints.
 	private static final String CREATE_PATH = "/api/bookings";

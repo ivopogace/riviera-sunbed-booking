@@ -140,7 +140,7 @@ class AdminOperatorController {
 		OperatorId target = new OperatorId(operatorId);
 		if (target.equals(currentOperator.require(authentication))) {
 			return ApiProblem.response(HttpStatus.CONFLICT, "CANNOT_SUSPEND_SELF",
-					"You cannot suspend the account you are signed in with.");
+					"The target operator is the account this request is authenticated as.");
 		}
 		lifecycle.activeUsername(target).ifPresent(sessionRevoker::revokeAll);
 		return toResponse(lifecycle.suspend(target), true);

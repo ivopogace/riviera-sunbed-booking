@@ -63,6 +63,7 @@ class ApiErrorHandlerTest {
 				.andExpect(status().isForbidden())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"))
+				.andExpect(jsonPath("$.detail").value("The authenticated operator does not own this venue."))
 				.andExpect(jsonPath("$.status").value(403));
 	}
 

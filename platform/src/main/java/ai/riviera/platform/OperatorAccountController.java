@@ -125,7 +125,7 @@ class OperatorAccountController {
 		}
 		if (!CustomerPasswords.isSupplied(request.currentPassword())) {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "MISSING_CURRENT_PASSWORD",
-					"Enter your current password.");
+					"The request carries no current password.");
 		}
 		CustomerPasswords.validate(request.newPassword());
 		Optional<OperatorCredential> existing = accounts.findByUsername(username);
