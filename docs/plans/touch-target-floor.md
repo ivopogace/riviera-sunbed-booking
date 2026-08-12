@@ -223,7 +223,8 @@ a static template `class` with a directive host `class`, so consumers keep their
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement — phase 0 complete; phase 1 next`
+**Stage pointer:** `implement — phase 0 complete; phase 1 next` · **draft PR #647** open (CI runs
+per push from here; the review + Sonar gates fall due at ready-for-review, not while draft)
 
 **Next action:** phase 1 — bring the console **shell** to the floor (`operator-console.scss`'s
 `.oc-tab`/`.oc-create-venue`, `oc-signout`, and the two inline footer links), then un-skip the
