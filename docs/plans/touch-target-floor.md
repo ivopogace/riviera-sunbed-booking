@@ -244,7 +244,7 @@ scrolling (`daily-view-tab.ts`'s `columns()` and `layout-editor.html:162`, both 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The floor: directive, sweep helper, stated convention | ✅ | `676b83c4` |
-| 1 — Operator console: 5 tabs + create card + shell chrome | ✅ | `<phase-1-sha>` |
+| 1 — Operator console: 5 tabs + create card + shell chrome | ✅ | `425fdfbb` |
 | 2 — The two map grids (geometry + in-frame scroll) | | |
 | 3 — Platform-admin console | | |
 | 4 — Auth, booking, tourist pages, shared primitives | | |
