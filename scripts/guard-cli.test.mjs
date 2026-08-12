@@ -12,8 +12,6 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync } from 'node:fs';
-import { join } from 'node:path';
 
 import { hookPayload, withRepo } from './guard-cli-harness.mjs';
 
@@ -646,27 +644,52 @@ test('check-comment-only resolves paths from the repo root, not the caller cwd',
 });
 
 /**
- * "Could not read it" must never render as "verified code-identical". The count printed on success
- * was `changed - skipped`, which included every file the loop had bailed on, so an unverifiable file
- * was indistinguishable from a checked one.
+ * The guard mixed three reference points: the file list from `merge-base(base,HEAD)...HEAD`, the
+ * *before* side from the literal `base` **tip** via `git show`, and the *after* side from the working
+ * tree. So once `base` moved, it compared this branch's working tree against commits the branch was
+ * never based on, and blamed another branch's code on this one — the drift `mergeBase` exists to
+ * prevent, and which the three sibling guards had already collapsed onto one commit (#618).
  *
- * <p>Mutation: drop the `unreadable` bucket so an unreadable file `continue`s silently again, and
- * derive the printed count as `changed.length - skipped.length` instead of tallying comparisons.
- * This case then exits 0.
+ * <p>Mutation: take the file list from `${base}...HEAD` and the before side from `show(base, …)`
+ * again. This case then exits 1, reporting the other branch's code change as this branch's.
  */
-test('check-comment-only fails loudly on a file it cannot read rather than counting it', () => {
+test('check-comment-only judges against the merge base, not a base that has moved', () => {
+  withRepo((repo) => {
+    repo.write(TS, lines('// the rate', 'const rate = 1;'));
+    repo.commit('fork point');
+    repo.git(['checkout', '--quiet', '-b', 'feature']);
+    repo.write(TS, lines('// the commission rate', 'const rate = 1;'));
+    repo.commit('trim a comment — this branch changes no code');
+
+    repo.git(['checkout', '--quiet', 'main']);
+    repo.write(TS, lines('// the rate', 'const rate = 999;'));
+    repo.commit('someone else changes code, merged meanwhile');
+    repo.git(['checkout', '--quiet', 'feature']);
+
+    const result = repo.run(COMMENT_ONLY, ['main']);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /verified code-identical/);
+  });
+});
+
+/**
+ * One reference point also means one *new* side. The file list used to come from committed history
+ * while the content came from the working tree, so a code change that was only ever in the working
+ * tree was never listed and never inspected — and the run still reported success.
+ *
+ * <p>Mutation: as above. Taking the list from `${base}...HEAD` drops the uncommitted file and this
+ * case exits 0.
+ */
+test('check-comment-only inspects a code change that is only in the working tree', () => {
   withRepo((repo) => {
     repo.write(TS, lines('// the rate', 'const rate = 1;'));
     const before = repo.commit('base');
-    repo.write(TS, lines('// the commission rate', 'const rate = 1;'));
-    repo.commit('trim the comment');
-    repo.git(['rm', '--quiet', '--cached', TS]);
-    rmSync(join(repo.root, TS));
+    repo.write(TS, lines('// the commission rate', 'const rate = 999;'));
 
     const result = repo.run(COMMENT_ONLY, [before]);
 
     assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /could not be read/i);
-    assert.doesNotMatch(result.stdout, /verified code-identical/);
+    assert.match(result.stderr, /Not comment-only/);
   });
 });

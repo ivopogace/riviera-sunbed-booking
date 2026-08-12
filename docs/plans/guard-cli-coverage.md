@@ -401,15 +401,37 @@ failure into "verified code-identical". Its two cases extend this slice's ledger
 | AC | The revert | Case that goes RED | Restored |
 |---|---|---|---|
 | #642 AC-1 | `check-comment-only.mjs` — restore its private `git()` and cwd-relative `readFileSync(path)` | `check-comment-only resolves paths from the repo root, not the caller cwd` | ✅ 158 pass / 1 fail |
-| #642 AC-2 | `check-comment-only.mjs` — drop the `unreadable` bucket and derive the count from `changed.length - skipped.length` | `check-comment-only fails loudly on a file it cannot read rather than counting it` | ✅ 158 pass / 1 fail |
+| #642 AC-2 | `check-comment-only.mjs` — restore the three reference points: file list from `${base}...HEAD` and before side from `show(base, …)` | `judges against the merge base, not a base that has moved`; `inspects a code change that is only in the working tree` | ✅ 158 pass / 2 fail |
 
-**Left open by #642's review gate:** the guard still mixes three reference points — the file list from
-`merge-base(base,HEAD)...HEAD`, the *before* side from the literal `base` **tip** via `git show`, and
-the *after* side from the working tree. The other three guards collapse all of that onto one
-`mergeBase()`-resolved commit (#618). Reproduced: a comment-only branch reports **`Not comment-only`**
-once `main` gains an unrelated code change to the same file. It errs toward a false *red*, it is
-pre-existing, and fixing it makes the `unreadable` branch unreachable by construction — so it is a
-separate axis from #641's, tracked separately rather than folded in.
+**Raised by #642's review gate, then fixed there.** The guard mixed three reference points — the file
+list from `merge-base(base,HEAD)...HEAD`, the *before* side from the literal `base` **tip** via
+`git show`, and the *after* side from the working tree — where the three sibling guards collapse onto
+one `mergeBase()`-resolved commit (#618). Reproduced: a comment-only branch reported
+**`Not comment-only`** once `main` gained an unrelated code change to the same file. It now judges
+from one commit on both sides, which also closes a second hole the split created — a code change
+living only in the working tree was never listed, because the list came from committed history while
+the content came from disk.
+
+**What that cost, recorded because it is a real trade:** with the list taken against the working tree,
+`--diff-filter=M` guarantees both sides of every listed path exist, so the `unreadable` branch is now
+unreachable by construction. It is kept as a fail-closed backstop and says so in a comment, but its
+dedicated CLI case was **removed rather than left passing vacuously** — a case that can no longer go
+red is the decoration this ledger exists to prevent. The two cases above replace it and cover more.
+
+**Why it was in scope after all.** It was first recorded as a separate axis, on the grounds that #641
+was scoped to the cwd/pin/quoting one. That reasoning was thin: `mergeBase` is the fifth export of the
+module this PR was already importing four things from, the fix is three lines, and treating it as
+separate would have repeated the exact framing error that let this whole guard be missed for eight
+PRs — see below.
+
+**The framing error worth keeping.** `check-comment-only.mjs` was not known-and-dropped before #619;
+it was never enumerated. PR #618's plan doc — which fixed all five false cleans in this layer — does
+not mention it once, and its generalization-audit log asks twice whether a defect is "true of the
+other two guards as well", answering "all three" both times. The population was set by resemblance
+(*the diff-scoped guards*, which is what `git-diff.mjs` was extracted for) rather than by mechanism
+(*which files under `scripts/` invoke git*), and this guard is whole-file rather than diff-scoped, so
+it fell outside the frame. #619's issue text inherited the same count. **Define the audit population
+by mechanism, not by resemblance.**
 
 ## Self-review checklist (before merge / PR)
 
