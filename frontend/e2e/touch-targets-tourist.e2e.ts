@@ -141,7 +141,8 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
       .click();
     await completeDialog(page.getByRole('dialog'), 'Continue to payment');
     await expect(page).toHaveURL(/\/booking\/pay/);
-    await expect(page.getByTestId('pay-cancel')).toBeVisible();
+    // pay-cancel also renders while mounting and on error; pay-button is what proves `ready`.
+    await expect(page.getByTestId('pay-button')).toBeVisible();
 
     await expectTouchTargets(page, 'booking pay chrome');
   });

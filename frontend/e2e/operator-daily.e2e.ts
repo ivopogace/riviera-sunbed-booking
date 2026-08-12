@@ -34,6 +34,14 @@ function seat(
   };
 }
 
+/** The map is only a scrolling region if it actually overflows — both grid tests rest on that. */
+async function expectGridScrolls(page: Page): Promise<void> {
+  const overflows = await page
+    .getByTestId('daily-grid')
+    .evaluate((el) => el.scrollWidth > el.clientWidth);
+  expect(overflows, 'the grid scrolls inside its frame').toBe(true);
+}
+
 /** A twelve-set single row — wide enough that a 44px tile per column cannot fit a 390px viewport. */
 function wideVenue(name: string, availability: 'FREE' | 'TAKEN') {
   return {
@@ -274,9 +282,7 @@ test('a wide venue keeps every tile tappable and scrolls inside its frame (#605)
   }
 
   // The map scrolls inside the frame; the page itself never scrolls sideways.
-  const scroller = page.getByTestId('daily-grid');
-  const overflows = await scroller.evaluate((el) => el.scrollWidth > el.clientWidth);
-  expect(overflows, 'the grid scrolls inside its frame').toBe(true);
+  await expectGridScrolls(page);
   const pageOverflows = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   );
@@ -310,10 +316,7 @@ test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async
   await expect(page.getByTestId('daily-tile').locator('button')).toHaveCount(0);
 
   // The fixture must really overflow, or the axe check below proves nothing.
-  const scrolls = await page
-    .getByTestId('daily-grid')
-    .evaluate((el) => el.scrollWidth > el.clientWidth);
-  expect(scrolls).toBe(true);
+  await expectGridScrolls(page);
   await expect(page.getByTestId('daily-grid')).toHaveAttribute('tabindex', '0');
 
   await settle(page);
