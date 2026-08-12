@@ -32,10 +32,11 @@ type Selection =
 /**
  * Which per-set write was attempted. `SET_IN_USE` answers two guards of different breadth — an edit
  * refuses only for a live claim, a remove for any booking ever — so the refusal copy is chosen by
- * action, not by code alone. `repool` names the save path because pool is the only field of the
- * server's placement check a save can disturb: row, position and grid coordinates go out unchanged.
+ * action, not by code alone. `save` stays the neutral name: it sends pool alongside a placement
+ * snapshot that another tab may already have moved, so which field tripped the server is unknowable
+ * here and the copy names the frozen group rather than guessing the operator's intent.
  */
-type SetWrite = 'add' | 'move' | 'repool' | 'remove';
+type SetWrite = 'add' | 'move' | 'save' | 'remove';
 
 /** The editable copy of a set, seeded from the server and overwritten by the operator. */
 interface SetDraft {
@@ -390,7 +391,7 @@ export class SetEditor {
       gridX: selected.gridX,
       gridY: selected.gridY,
     };
-    await this.write('repool', () => this.console.editSet(this.venueId(), selected.id, request));
+    await this.write('save', () => this.console.editSet(this.venueId(), selected.id, request));
   }
 
   /**
@@ -458,7 +459,7 @@ export class SetEditor {
 
   /**
    * The refusal copy for `SET_IN_USE`, which the server answers from two guards of different reach.
-   * A move or repool is refused only while someone is still owed the spot, so both stay
+   * A move or save is refused only while someone is still owed the spot, so both stay
    * lifetime-neutral and point at the fields that remain editable. A remove is refused by any
    * booking that ever existed — the placement is pinned by the booking's own record — so that arm
    * says so instead of reading as a claim that will lapse.
@@ -467,8 +468,8 @@ export class SetEditor {
     switch (this.attempted()) {
       case 'move':
         return 'This set is booked, or still held, so it can’t be moved. Its price and tier can still change.';
-      case 'repool':
-        return 'This set is booked, or still held, so it can’t be repooled. Its price and tier can still change.';
+      case 'save':
+        return 'This set is booked, or still held, so its pool and position can’t change. Its price and tier can still change.';
       case 'remove':
         return 'This set can’t be removed: it is still held, or it has been booked at least once — and a booked set stays on the map for good.';
       default:

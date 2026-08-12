@@ -27,8 +27,9 @@ one: the server's copy of the three-verb claim is already gone, so this is wholl
 `riviera-plan-doc` (this template — forced the Behavior-parity ledger, which is what turned "reword
 two strings" into an enumerated four-verb table and exposed that `add` can never see this code) ·
 `tdd` (each phase writes the per-action spec first, red on the shared string, green on the split) ·
-`riviera-review-overlay` (review gate — **not yet run**: it is due at ready-for-review and no PR is
-open, see Execution status) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, 1 finding —
+`riviera-review-overlay` (review gate — **ran** on PR #646 at high effort via `/code-review`'s
+subagent fan-out, 4 findings, all fixed in this PR; it caught that R-4's "pool is the only field a
+save can disturb" holds against the client's snapshot but not the stored row) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, 1 finding —
 #607's plan-doc AC-1/AC-2 state the copy this slice replaces, struck through here rather than
 deferred; `operator-console.model.ts`'s `SetWriteErrorCode` TSDoc and `RESPONSIBILITIES.md` §`venue`
 were checked and already state both guards correctly) · `riviera-frontend` (placement — no new
@@ -47,11 +48,11 @@ addendum*.
 - [x] **AC-1:** Given a `SET_IN_USE` refusal of a **move**, when the panel renders the failure, then
   it says the set is booked or still held and names **only** moving as refused. *Pinned by:*
   `set-editor.spec.ts` › `explainsARefusedMove`.
-- [x] **AC-2:** Given a `SET_IN_USE` refusal of a **repool** (the save path — the only field of
-  `disturbedBy` a save can change), then the message names **only** repooling as refused, and still
-  says price and tier remain editable. *Pinned by:* `set-editor.spec.ts` ›
-  `keepsTheSetUnchangedOnSetInUse` (the repool refusal's existing home — kept rather than renamed,
-  since it also pins that the grid does not move).
+- [x] **AC-2:** Given a `SET_IN_USE` refusal of a **save**, then the message names the frozen group
+  — pool and position, the two `disturbedBy` fields a save carries — as refused, without claiming
+  which one tripped the server, and still says price and tier remain editable. *Pinned by:*
+  `set-editor.spec.ts` › `keepsTheSetUnchangedOnSetInUse` (the save refusal's existing home — kept
+  rather than renamed, since it also pins that the grid does not move).
 - [x] **AC-3:** Given a `SET_IN_USE` refusal of a **remove**, then the message states the permanent
   arm — that a set which has ever been booked stays on the map — and does **not** claim the set
   cannot be moved or repooled. *Pinned by:* `set-editor.spec.ts` › `explainsARefusedRemove`.
@@ -90,10 +91,10 @@ addendum*.
 | Old-surface behavior | Verdict | How the new surface does it, or why it's gone |
 |---|---|---|
 | `SET_IN_USE` after a **move** → "can't be moved, repooled or removed" | **changed** | move-specific string; the two false verbs dropped |
-| `SET_IN_USE` after a **repool** (save) → same string | **changed** | repool-specific string; keeps the "price and tier can still change" clause, which is true on this arm |
+| `SET_IN_USE` after a **save** (pool and/or a stale placement snapshot) → same string | **changed** | save-specific string naming the frozen group; keeps the "price and tier can still change" clause, which is true on this arm |
 | `SET_IN_USE` after a **remove** → same string | **changed** | remove-specific string naming the permanent arm; drops "moved, repooled", which are **not** refused for a set whose only booking is terminal |
 | `SET_IN_USE` after an **add** → same string | **dropped** (unreachable) | `addSet` cannot answer this code; the fallback covers it if the server ever changes |
-| "Its price and tier can still change." | **preserved** on move + repool | verbatim; **dropped** on remove, where it is not the operator's next step and can be false |
+| "Its price and tier can still change." | **preserved** on move + save | verbatim; **dropped** on remove, where it is not the operator's next step and can be false |
 | Every non-`SET_IN_USE` code (`CELL_TAKEN`, `NO_SUCH_SET`, `NOT_VENUE_OWNER`, `INVALID_REQUEST`, `UNAUTHORIZED`, default) | **preserved** | untouched; the action is ignored for these — they are action-independent |
 | `errorCode` cleared on every new write, on `armMove()`, on cell re-select | **preserved** | the action signal is set in the same places, so a stale action can never outlive its code |
 | `LAYOUT_IN_USE` → "has bookings, or sets that are still held" | **changed** | booking arm restated as permanent |
@@ -106,18 +107,22 @@ addendum*.
 | R-1 | A stale action outlives its code — the panel shows "can't be removed" for a later failed move | med | med | The action is written in `write()` **beside** `errorCode`, never separately, so the two cannot diverge; the `undefined` code case returns before the action is read | claude | **Closed** `9f10152` — both writes are adjacent lines in the one `catch`, and `refusalCopyIsDistinctPerAction` drives three refusals in sequence through one component instance, so a carried-over action would fail it |
 | R-2 | The remove string's permanence claim goes stale if the RESTRICT FK is ever relaxed | low | low | It restates `isLivelyClaimedOrEverBooked`'s own javadoc, which cites `RESPONSIBILITIES.md` §`venue`; a guard change would break AC-3's spec by intent, not silently | claude | **Closed** — accepted as designed; the pin is `explainsARefusedRemove`'s `/booked at least once/` |
 | R-3 | The three specs are split but still tautological — each asserting a substring of one shared template | med | med | AC-4 adds a spec that renders all three and asserts **mutual distinctness**, which no shared string can satisfy | claude | **Closed** `9f10152` — each spec also asserts a `not.toMatch` on a verb the other arms own, so the three cannot re-converge |
-| R-4 | The repool label is wrong if a save can disturb something other than pool | low | med | `onSave` sends `rowLabel`/`positionNo`/`gridX`/`gridY` from `selected`, unchanged, so `SetPlacement.disturbedBy` can only fire on `pool` — verified against `SetPlacement.java:17-23` | claude | **Closed** — verified at plan time and recorded in the `SetWrite` TSDoc so the next reader does not re-derive it |
+| R-4 | The repool label is wrong if a save can disturb something other than pool | low | med | ~~`onSave` sends the placement fields unchanged, so `disturbedBy` can only fire on `pool`~~ — **the mitigation was wrong**, and the review gate said so (F-1): those fields are unchanged relative to the *client's snapshot*, not the stored row, so a set another tab moved trips `disturbedBy` on position. `editSet` carries no `expectedVersion`, so nothing else catches it | claude | **Closed by re-scoping, not by the original argument** — the action is renamed `save` and the copy names the frozen group rather than the operator's presumed intent, which is true under both arms. The near-miss is why the `SetWrite` TSDoc now states the snapshot caveat |
 | R-5 | Copy churn breaks the two mocked e2e specs, which CI runs | high | low | Both are in this slice's File structure and updated with it; their `detail` sentinels (#607 AC-4) stay, so they keep proving the client mapped the code rather than echoing the server | claude | **Closed** — 16 mocked e2e green locally against the container Chromium; a **third** spec also asserted this copy (`operator-set-editing.e2e.ts` › *the locked bulk save…*), found by running the suite rather than by the File-structure list |
 
 ## Open questions / Assumptions
 
-- **Assumption:** Naming the booking arm's permanence on the **remove** path (and in the layout
-  banner) is not a reversal of #607's declined option D. Option D added a second sentence to a
-  *shared* string to reconcile two lifetimes; here each message describes the one guard that
-  refused it, which is the accuracy fix #609 asks for and is unreachable without it. Recorded rather
-  than escalated because copy wording is the author's call per `riviera-plan-doc` § *Workflow
-  additions at execution time* #2. — *Owner:* claude · *Resolves by:* review gate (maintainer may
-  trim the permanence clause to taste without touching the structure).
+None open.
+
+### Resolved
+
+- **Assumption (resolved at the review gate, `339500a`…this commit):** Naming the booking arm's
+  permanence on the **remove** path and in the layout banner is not a reversal of #607's declined
+  option D. Option D added a second sentence to a *shared* string to reconcile two lifetimes; here
+  each message describes the one guard that refused it, which is the accuracy fix #609 asks for and
+  is unreachable without it. The review gate did not challenge the posture — it sharpened both
+  strings' *reach* (F-1, F-2) while leaving the per-action structure intact. The maintainer may
+  still trim the permanence clause without touching that structure.
 
 ## Availability & concurrency (invariant #2)
 
@@ -161,18 +166,17 @@ The client already ignores `detail` (#610), and this slice does not start readin
 
 ## Execution status
 
-**Stage pointer:** `PR — branch pushed, PR not opened`
+**Stage pointer:** `merge close-out` — CI green, review gate run (4 findings, all fixed), Sonar gate passed.
 
-**Next action:** Open the draft PR. **Nothing has been CI-verified yet**: `ci.yml` fires on the
-`pull_request` event only (`push` is scoped to `main`, #417), so this branch gets no CI run at all
-until a PR exists. Opening it is also what makes the Review and Sonar gates due. Everything below was
-verified locally only.
+**Next action:** Confirm CI is green on the review-fix push, then merge PR #646 and run the close-out
+checklist (`riviera-sdlc` `references/pr-gates.md` §3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Thread the attempted action; per-action `SET_IN_USE` copy | ✅ | `9f10152` |
 | 1 — Layout-lock banner: permanent arm + honest remedy | ✅ | `7f9648c` |
-| 2 — Split the e2e assertions per action + docs-freshness patch | ✅ | pending |
+| 2 — Split the e2e assertions per action + docs-freshness patch | ✅ | `339500a` |
+| 3 — Review-gate fixes (F-1..F-4) | ✅ | this commit |
 
 **Local verification (not CI):** 1376 Vitest specs green (full suite); 16 mocked Playwright specs
 green against the container Chromium via `PW_CHROMIUM_EXECUTABLE`; `npm run lint` and
@@ -187,7 +191,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (`/code-review`, high) | The `repool` string misattributes the guard when the client's placement snapshot is stale: `onSave` sends cached coordinates, so if another tab moved the set, `disturbedBy` fires on **position**, and a price-only edit is told it "can't be repooled". R-4 held only against the client's snapshot, not the stored row | **fixed** — the action is renamed `save` and the copy names the frozen group ("its pool and position can't change") instead of guessing which field tripped the server |
+| F-2 | review (`/code-review`, high) | The layout banner's new caveat named only the ever-booked arm, but per-set remove is guarded by `isLivelyClaimedOrEverBooked` — a walk-in-only venue locked by a live hold is sent to Edit sets and then refused the remove the caveat implied was available | **fixed** — caveat broadened to "any set that is held or has ever been booked", matching the guard's two arms |
+| F-3 | review (`/code-review`, high) | AC-2's final verification named `explainsARefusedRepool`, a spec that never existed; a filtered run against it exits green with **zero** tests | **fixed** — corrected to `keepsTheSetUnchangedOnSetInUse`, and #607's AC-1 annotated to record that the same name was aspirational there too |
+| F-4 | review (`/code-review`, high) | Phase 2's commit column said "pending" in the commit that landed it; AC-6 was `[x]` in the AC list and `[ ]` in the verification list | **fixed** — both reconciled |
+| — | sonar | Quality gate **passed**: 0 new issues, 0 accepted, 0 security hotspots, 0.0% duplication, 86.7% coverage on new code (bar: 0/0/≥80%) | **clear** |
 
 ---
 
@@ -200,7 +208,7 @@ Skill-routing gate for what the fix touches *before* editing).
   mutual-distinctness spec (AC-4).
 - `frontend/src/app/operator/layout-editor.ts` — the `LAYOUT_IN_USE` string.
 - `frontend/src/app/operator/layout-editor.spec.ts` — the two banner assertions.
-- `frontend/e2e/operator-set-editing.e2e.ts` — the repool and remove assertions, split, plus the
+- `frontend/e2e/operator-set-editing.e2e.ts` — the save and remove assertions, split, plus the
   locked-bulk-save spec's twin of the unconditional-remove check.
 - `frontend/e2e/layout-editor.e2e.ts` — the banner assertion.
 - `docs/plans/layout-lock-copy.md` — #607's AC-1 and AC-2 state the copy this slice replaces; struck
@@ -214,17 +222,17 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `frontend/src/app/operator/set-editor.ts` · Test
 `frontend/src/app/operator/set-editor.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — split the three existing refusal specs so each asserts a
+- [x] **Step 1: Write the failing tests** — split the three existing refusal specs so each asserts a
   verb the other two messages lack, and add `refusalCopyIsDistinctPerAction`.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- set-editor` → FAIL (all three currently
+- [x] **Step 2: Run them, verify they fail** — `npm test -- set-editor` → FAIL (all three currently
   render the one shared string).
-- [ ] **Step 3: Minimal implementation** — add `type SetWrite = 'add' | 'move' | 'repool' | 'remove'`,
+- [x] **Step 3: Minimal implementation** — add `type SetWrite = 'add' | 'move' | 'save' | 'remove'`,
   a `private readonly attempted = signal<SetWrite | undefined>(undefined)`, a first parameter on
   `write()`, and the per-action `SET_IN_USE` arm.
-- [ ] **Step 4: Run them, verify they pass** — `npm test -- set-editor` → PASS.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Tell the set panel which write was refused (#609)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass** — `npm test -- set-editor` → PASS.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Tell the set panel which write was refused (#609)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -233,14 +241,14 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `frontend/src/app/operator/layout-editor.ts` · Test
 `frontend/src/app/operator/layout-editor.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — `pointsALockedLayoutAtPerSetEditing` additionally asserts
+- [x] **Step 1: Write the failing test** — `pointsALockedLayoutAtPerSetEditing` additionally asserts
   the advice does not offer an unconditional remove, and the banner names the permanent arm.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- layout-editor` → FAIL.
-- [ ] **Step 3: Minimal implementation** — rewrite the `LAYOUT_IN_USE` string.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- layout-editor` → PASS.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Stop the layout lock promising a remove it forbids (#609)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 2: Run it, verify it fails** — `npm test -- layout-editor` → FAIL.
+- [x] **Step 3: Minimal implementation** — rewrite the `LAYOUT_IN_USE` string.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- layout-editor` → PASS.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Stop the layout lock promising a remove it forbids (#609)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -248,12 +256,12 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `frontend/e2e/operator-set-editing.e2e.ts`, `frontend/e2e/layout-editor.e2e.ts`
 
-- [ ] **Step 1: Update the assertions** — the repool leg and the remove leg of *a booked set cannot
+- [x] **Step 1: Update the assertions** — the save leg and the remove leg of *a booked set cannot
   be repooled or removed* assert their own strings; the layout spec asserts the new banner.
-- [ ] **Step 2: Run them** — `npm run test:e2e:a11y -- operator-set-editing layout-editor` → PASS.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Split the e2e in-use assertions per action (#609)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 2: Run them** — `npm run test:e2e:a11y -- operator-set-editing layout-editor` → PASS.
+- [x] **Step 5: Generalization-audit pass.**
+- [x] **Step 6: Commit** — `git commit -m "Split the e2e in-use assertions per action (#609)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -272,34 +280,34 @@ Skill-routing gate for what the fix touches *before* editing).
 ## Acceptance-criteria verification (final)
 
 - [x] **AC-1:** Run `npm test -- set-editor` → `explainsARefusedMove` green.
-- [x] **AC-2:** Run `npm test -- set-editor` → `explainsARefusedRepool` green.
+- [x] **AC-2:** Run `npm test -- set-editor` → `keepsTheSetUnchangedOnSetInUse` green.
 - [x] **AC-3:** Run `npm test -- set-editor` → `explainsARefusedRemove` green.
 - [x] **AC-4:** Run `npm test -- set-editor` → `refusalCopyIsDistinctPerAction` green.
 - [x] **AC-5:** Run `npm test -- layout-editor` → both banner specs green.
-- [ ] **AC-6:** Run `grep -rn "or remove sets\|moved, repooled or removed" frontend/src frontend/e2e`
+- [x] **AC-6:** Run `grep -rn "or remove sets\|moved, repooled or removed" frontend/src frontend/e2e --include=*.ts | grep -v "not\.to"`
   → no output.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND
       findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
       If tooling blocked the review, that is stated in the PR and its checkbox is left
       unticked.

@@ -174,7 +174,8 @@ describe('SetEditor (#600)', () => {
     expect(cellForSet(12).getAttribute('data-state')).toBe('standard');
     expect(changed).toBe(0);
     const message = byId('set-error').textContent ?? '';
-    expect(message).toMatch(/can’t be repooled/i);
+    // The save carries pool AND the placement snapshot, so it names both rather than guessing which.
+    expect(message).toMatch(/pool and position can’t change/i);
     expect(message).toMatch(/price and tier can still change/i);
     // The edit guard refuses only a live claim, so the message must not speak for the remove guard.
     expect(message).not.toMatch(/removed/i);

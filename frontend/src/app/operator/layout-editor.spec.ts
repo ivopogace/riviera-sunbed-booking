@@ -406,6 +406,8 @@ describe('LayoutEditor (#172)', () => {
     // A terminal booking on one set locks the layout AND refuses that set's per-set remove.
     expect(message).not.toMatch(/or remove sets/i);
     expect(message).toMatch(/can’t be removed/i);
+    // removeSet refuses on a live hold too, so the caveat must not read as booking-only.
+    expect(message).toMatch(/held or has ever been booked/i);
   });
 
   it('seeds the grid from the venue’s existing layout, preserving the walk-in pool', () => {

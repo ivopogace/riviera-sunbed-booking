@@ -229,7 +229,7 @@ test('a booked set cannot be repooled or removed, and says so instead of failing
   await page.getByTestId('set-pool-WALK_IN').click();
   await page.getByTestId('set-save').click();
 
-  await expect(page.getByTestId('set-error')).toContainText(/can’t be repooled/i);
+  await expect(page.getByTestId('set-error')).toContainText(/pool and position can’t change/i);
   // Nothing moved: the server still has it online, and the map agrees.
   expect(mock.sets().find((s) => s.id === 13)!.pool).toBe('ONLINE');
   await expect(cell(page, 2, 2)).toHaveAttribute('data-state', 'standard');

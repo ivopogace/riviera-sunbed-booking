@@ -55,8 +55,10 @@ each feature component, no cross-feature import added).
 
 - **AC-1:** ~~Given a `SET_IN_USE` refusal, when the operator repools, moves or removes a set, then
   the panel says the set is booked *or still held*~~ — **superseded by #609 AC-1/AC-2/AC-3.** Pinned
-  then by `set-editor.spec.ts` (`explainsARefusedRepool`, `explainsARefusedRemove`,
-  `explainsARefusedMove`) and `operator-set-editing.e2e.ts` › *a booked set cannot be repooled or
+  then by `set-editor.spec.ts` (`explainsARefusedRemove`; `explainsARefusedMove` acquired that name
+  under #609, and **`explainsARefusedRepool` never existed** — the repool refusal has always lived in
+  `keepsTheSetUnchangedOnSetInUse`, so a filtered run against the aspirational name would have exited
+  green with zero tests) and `operator-set-editing.e2e.ts` › *a booked set cannot be repooled or
   removed…*.
 - **AC-2:** ~~Given a `LAYOUT_IN_USE` refusal, when the operator saves a bulk layout, then the banner
   says the venue has bookings *or sets that are still held*~~ — **superseded by #609 AC-5**; it still
