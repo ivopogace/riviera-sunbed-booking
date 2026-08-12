@@ -204,10 +204,10 @@ Verified rather than assumed: `git diff origin/main -- frontend/` must be empty 
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 2`
+**Stage pointer:** `implement — phase 3`
 
-**Next action:** Run phase 2 step 1 — the booking pair's assertions, including the new
-`BookingRequestControllerTest` (first HTTP coverage of `PAYMENT_INIT_FAILED`).
+**Next action:** Run phase 3 — retire the lower-bound caveat in `error-contract.md` and RV-BE-10's
+grandfather carve-out, then the AC-6/AC-7 greps.
 
 > **Testcontainers note for a resuming session.** Docker Hub's *unauthenticated* pull limit
 > (`429 toomanyrequests`) blocks `postgres:17`, so the ITs **fail** rather than skip — the daemon is
@@ -219,7 +219,7 @@ Verified rather than assumed: `git diff origin/main -- frontend/` must be empty 
 |-------|--------|---------|
 | 0 — The venue `STALE_WRITE` trio | ✅ red 3/3, green 61 tests 0 skipped | this commit |
 | 1 — The edge quartet (twin, self-suspend, ownership, rate limit) | ✅ red 7/7, green 80 tests | this commit |
-| 2 — The booking pair | | |
+| 2 — The booking pair | ✅ red 7/7, green 10 tests 0 skipped | this commit |
 | 3 — Retire the lower-bound caveat and the grandfather list | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -268,7 +268,7 @@ Skill-routing gate for what the fix touches *before* editing).
   `$.detail` assertion, updated
 - `platform/src/test/java/ai/riviera/platform/booking/WithdrawRequestIT.java` — `$.detail` on the
   withdraw-side `REQUEST_NOT_PENDING`
-- `platform/src/test/java/ai/riviera/platform/booking/BookingRequestControllerTest.java` — **new**;
+- `platform/src/test/java/ai/riviera/platform/BookingRequestControllerTest.java` — **new**;
   the accept-side twin plus the first HTTP-level coverage of `PAYMENT_INIT_FAILED`
 - `.claude/skills/riviera-java-conventions/references/error-contract.md` — the known-exceptions
   paragraph replaced by the enumerated population and the Group-C judgements
@@ -329,20 +329,20 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `BookingController.java:110-111` · `BookingRequestController.java:69-70,73-74` ·
 `WithdrawRequestIT.java` · Create `BookingRequestControllerTest.java`
 
-- [ ] **Step 1: Write the failing assertions** — the withdraw arm, the accept arm (same constant),
+- [x] **Step 1: Write the failing assertions** — the withdraw arm, the accept arm (same constant),
   and the first HTTP-level `PAYMENT_INIT_FAILED` assertion.
 
-- [ ] **Step 2: Run them, verify they fail** — `gradle test --tests "*WithdrawRequestIT*" --tests
+- [x] **Step 2: Run them, verify they fail** — `gradle test --tests "*WithdrawRequestIT*" --tests
   "*BookingRequestControllerTest*"` → FAIL.
 
-- [ ] **Step 3: Minimal implementation** — one shared `REQUEST_NOT_PENDING` constant true of all
+- [x] **Step 3: Minimal implementation** — one shared `REQUEST_NOT_PENDING` constant true of all
   three routes out of pending; drop "; please retry" from `PAYMENT_INIT_FAILED`.
 
-- [ ] **Step 4: Run them, verify they pass** — same command → PASS.
+- [x] **Step 4: Run them, verify they pass** — same command → PASS.
 
-- [ ] **Step 5: Commit** — `git commit -m "Give REQUEST_NOT_PENDING one true detail and drop the retry remedy (#644)"`
+- [x] **Step 5: Commit** — `git commit -m "Give REQUEST_NOT_PENDING one true detail and drop the retry remedy (#644)"`
 
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ## Phase 3 — Retire the lower-bound caveat and the grandfather list
 

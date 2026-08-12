@@ -48,6 +48,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class WithdrawRequestIT {
 
+	/**
+	 * The one {@code REQUEST_NOT_PENDING} detail, asserted at all four arms this class provokes —
+	 * two withdraw legs and the accept/decline legs that meet an already-withdrawn request. A
+	 * withdrawal is what makes "already decided" false here, so the wording names no route out.
+	 */
+	private static final String NOT_PENDING_DETAIL =
+			"This request is no longer waiting for the venue.";
+
 	private static final String OPERATOR = "operator";
 	private static final String PASSWORD = "withdraw-test-pw";
 
@@ -148,7 +156,8 @@ class WithdrawRequestIT {
 
 		mvc.perform(post("/api/bookings/{code}/withdraw", code))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
+				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"))
+				.andExpect(jsonPath("$.detail").value(NOT_PENDING_DETAIL));
 	}
 
 	/** A second withdraw is a conflict, not a second release — the guard makes it a 0-row no-op. */
@@ -160,7 +169,8 @@ class WithdrawRequestIT {
 		mvc.perform(post("/api/bookings/{code}/withdraw", code)).andExpect(status().isOk());
 		mvc.perform(post("/api/bookings/{code}/withdraw", code))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
+				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"))
+				.andExpect(jsonPath("$.detail").value(NOT_PENDING_DETAIL));
 	}
 
 	/** The code is a bearer credential — it must not come back in an error body (invariant #7). */
@@ -195,7 +205,8 @@ class WithdrawRequestIT {
 		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/accept", venueId, bookingId)
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
+				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"))
+				.andExpect(jsonPath("$.detail").value(NOT_PENDING_DETAIL));
 
 		// The stale accept must not resurrect the booking or re-claim the freed set.
 		assertEquals("WITHDRAWN", jdbc.sql("SELECT status FROM booking WHERE id = :id")
@@ -217,6 +228,7 @@ class WithdrawRequestIT {
 		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", venueId, bookingId)
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
+				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"))
+				.andExpect(jsonPath("$.detail").value(NOT_PENDING_DETAIL));
 	}
 }
