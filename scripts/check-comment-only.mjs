@@ -6,11 +6,18 @@
  * line by line; this is what makes it reviewable — the diff is large but provably inert.
  *
  * Usage: `node scripts/check-comment-only.mjs [<base>]`  (default base `origin/main`)
+ *
+ * **Every git call and every read goes through `git-diff.mjs`, from the repository root.** This guard
+ * was left out of PR #618's sweep and kept the front-end the other three shed: run from a
+ * subdirectory, every read threw, the `catch` around each one `continue`d, and the printed count —
+ * derived from the files it *meant* to inspect — still called them verified code-identical. On this
+ * tool's output a reviewer skips reading the diff, so a confident false clean here is the one that
+ * costs the most (issue #641).
  */
 
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+
+import { changedPaths, git, nameOnlyArgs, readText } from './git-diff.mjs';
 
 /** Extensions whose comment syntax `strip` understands. Anything else is skipped, not assumed safe. */
 const SUPPORTED = new Set(['.java', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.scss', '.css']);
@@ -180,8 +187,13 @@ export function strip(src) {
     .join('\n');
 }
 
-function git(args) {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+/** The base side of a file, or null when that revision does not hold it. */
+function show(base, path) {
+  try {
+    return git(['show', `${base}:${path}`]);
+  } catch {
+    return null;
+  }
 }
 
 function extensionOf(path) {
@@ -189,39 +201,44 @@ function extensionOf(path) {
   return dot === -1 ? '' : path.slice(dot).toLowerCase();
 }
 
-/** Returns one entry per file whose code changed, plus the paths skipped for an unsupported extension. */
+/**
+ * Returns one entry per file whose code changed, the paths skipped for an unsupported extension,
+ * the paths that could not be read at all, and how many were genuinely compared.
+ *
+ * <p>`verified` counts files this actually diffed, rather than deriving a count from the ones it
+ * *meant* to. Those are the same number only when nothing bailed, and the difference was the whole
+ * defect: run from a subdirectory, every read failed, every file `continue`d, and the derived count
+ * still reported them as verified code-identical — a confident false clean in the tool that
+ * authorises not reading a diff (issue #641). Reading through `git-diff.mjs` fixes the cause;
+ * counting what happened rather than what was planned makes any future cause visible.
+ */
 export function check(base) {
-  const changed = git(['diff', '--name-only', '--diff-filter=M', `${base}...HEAD`])
-    .split('\n')
-    .filter(Boolean);
+  const changed = changedPaths(git(nameOnlyArgs('--diff-filter=M', `${base}...HEAD`)));
   const codeChanged = [];
   const skipped = [];
+  const unreadable = [];
+  let verified = 0;
 
   for (const path of changed) {
     if (!SUPPORTED.has(extensionOf(path))) {
       skipped.push(path);
       continue;
     }
-    let before;
-    try {
-      before = git(['show', `${base}:${path}`]);
-    } catch {
+    const before = show(base, path);
+    const after = readText(path);
+    if (before === null || after === null) {
+      unreadable.push(path);
       continue;
     }
-    let after;
-    try {
-      after = readFileSync(path, 'utf8');
-    } catch {
-      continue;
-    }
+    verified++;
     if (strip(before) !== strip(after)) codeChanged.push(path);
   }
-  return { codeChanged, skipped, inspected: changed.length - skipped.length };
+  return { codeChanged, skipped, unreadable, verified };
 }
 
 function main(argv) {
   const base = argv[0] ?? 'origin/main';
-  const { codeChanged, skipped, inspected } = check(base);
+  const { codeChanged, skipped, unreadable, verified } = check(base);
 
   if (codeChanged.length > 0) {
     process.stderr.write(
@@ -231,7 +248,16 @@ function main(argv) {
     );
     return 1;
   }
-  process.stdout.write(`Comment-only: ${inspected} file(s) verified code-identical against ${base}.\n`);
+  // "Could not read it" is not "verified": on this tool's output a reviewer skips the diff.
+  if (unreadable.length > 0) {
+    process.stderr.write(
+      `Unverified — ${unreadable.length} file(s) could not be read on one side or the other:\n` +
+        unreadable.map((p) => `  ${p}`).join('\n') +
+        '\n',
+    );
+    return 1;
+  }
+  process.stdout.write(`Comment-only: ${verified} file(s) verified code-identical against ${base}.\n`);
   if (skipped.length > 0) {
     process.stdout.write(`Skipped ${skipped.length} file(s) with unsupported comment syntax.\n`);
   }

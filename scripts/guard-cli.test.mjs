@@ -12,6 +12,8 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { rmSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { hookPayload, withRepo } from './guard-cli-harness.mjs';
 
@@ -611,5 +613,56 @@ test('check-comment-only passes when only the comments moved, and counts what it
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /Comment-only: 1 file\(s\) verified code-identical/);
     assert.match(result.stdout, /Skipped 1 file\(s\) with unsupported comment syntax/);
+  });
+});
+
+/**
+ * The guard ran `git` and read the new side against the **caller's cwd**, so from a subdirectory
+ * every read threw, the `catch` around it `continue`d, and the file dropped out of the loop — while
+ * the printed count still included it. It did not skip quietly or warn: it announced that it had
+ * verified a file it never opened, in a tool whose whole job is to authorise *not* reading a diff.
+ *
+ * <p>The same defect class PR #618 removed from the other three guards, reachable for the same
+ * reason it was reachable there — tooling in this repo gets run from `frontend/` (issue #641).
+ *
+ * <p>Mutation: give the module back its private `git()` and `readFileSync(path)`. The subdirectory
+ * case then exits 0, reporting "1 file(s) verified code-identical".
+ */
+test('check-comment-only resolves paths from the repo root, not the caller cwd', () => {
+  withRepo((repo) => {
+    repo.write(TS, lines('// the rate', 'const rate = 1;'));
+    const before = repo.commit('base');
+    repo.write(TS, lines('// the commission rate', 'const rate = 999;'));
+    repo.commit('claims to be a comment trim');
+
+    for (const cwd of ['.', 'frontend']) {
+      const result = repo.run(COMMENT_ONLY, [before], { cwd });
+
+      assert.equal(result.status, 1, `from ${cwd}: ${result.stdout}`);
+      assert.match(result.stderr, /Not comment-only/);
+      assert.match(result.stderr, /pricing-tab\.ts/);
+    }
+  });
+});
+
+/**
+ * "Could not read it" must never render as "verified code-identical". The count printed on success
+ * was `changed - skipped`, which included every file the loop had bailed on, so an unverifiable file
+ * was indistinguishable from a checked one.
+ */
+test('check-comment-only fails loudly on a file it cannot read rather than counting it', () => {
+  withRepo((repo) => {
+    repo.write(TS, lines('// the rate', 'const rate = 1;'));
+    const before = repo.commit('base');
+    repo.write(TS, lines('// the commission rate', 'const rate = 1;'));
+    repo.commit('trim the comment');
+    repo.git(['rm', '--quiet', '--cached', TS]);
+    rmSync(join(repo.root, TS));
+
+    const result = repo.run(COMMENT_ONLY, [before]);
+
+    assert.equal(result.status, 1, result.stdout);
+    assert.match(result.stderr, /could not be read/i);
+    assert.doesNotMatch(result.stdout, /verified code-identical/);
   });
 });
