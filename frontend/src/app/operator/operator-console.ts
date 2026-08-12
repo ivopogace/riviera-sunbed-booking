@@ -12,6 +12,7 @@ import { OperatorAuth } from '../core/operator-auth';
 import { todayBookingDate } from '../shared/booking-date';
 import { venueIdParam } from '../shared/parent-venue-id';
 import { VenueMapView } from '../shared/venue-views';
+import { TouchTarget } from '../shared/touch-target';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { ConsoleVenueMap } from './console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
@@ -43,7 +44,7 @@ interface ConsoleTab {
  */
 @Component({
   selector: 'app-operator-console',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConsoleStatsStrip],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConsoleStatsStrip, TouchTarget],
   templateUrl: './operator-console.html',
   styleUrl: './operator-console.scss',
   host: { 'data-riv-theme': 'porcelain' },

@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, map } from 'rxjs';
 
+import { TouchTarget } from '../shared/touch-target';
 import { OperatorAuth } from '../core/operator-auth';
 
 /**
@@ -21,7 +22,7 @@ import { OperatorAuth } from '../core/operator-auth';
  */
 @Component({
   selector: 'app-operator-chrome',
-  imports: [RouterLink],
+  imports: [RouterLink, TouchTarget],
   template: `
     <header
       class="sticky top-0 z-20 border-b border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]"
@@ -32,7 +33,8 @@ import { OperatorAuth } from '../core/operator-auth';
       >
         <a
           routerLink="/operator"
-          class="text-[19px] leading-[1.15] font-bold tracking-[-0.01em] text-(--riv-ink) no-underline"
+          appTouchTarget
+          class="inline-flex items-center text-[19px] leading-[1.15] font-bold tracking-[-0.01em] text-(--riv-ink) no-underline"
           data-testid="opc-brand"
           >Riviera <span class="font-medium text-(--riv-ink-soft)">Operator</span></a
         >
@@ -41,7 +43,8 @@ import { OperatorAuth } from '../core/operator-auth';
           <nav class="flex flex-wrap items-center gap-3.5" aria-label="Operator">
             @if (operator.signedIn()) {
               <a
-                class="text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
+                appTouchTarget
+                class="inline-flex items-center text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
                 routerLink="/operator"
                 [queryParams]="{ create: '1' }"
                 data-testid="opc-create-venue"
@@ -49,14 +52,16 @@ import { OperatorAuth } from '../core/operator-auth';
               >
               @if (operator.isAdmin()) {
                 <a
-                  class="text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
+                  appTouchTarget
+                  class="inline-flex items-center text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
                   routerLink="/admin"
                   data-testid="opc-admin-link"
                   >Admin</a
                 >
               }
               <a
-                class="text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
+                appTouchTarget
+                class="inline-flex items-center text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
                 routerLink="/account/operator-password"
                 data-testid="opc-change-password"
                 >Change password</a
@@ -67,6 +72,7 @@ import { OperatorAuth } from '../core/operator-auth';
               >
               <button
                 type="button"
+                appTouchTarget
                 class="cursor-pointer rounded-full border border-[rgba(12,42,51,0.14)] bg-white px-3.75 py-1.75 font-sans text-[13px] font-semibold text-(--riv-ink) shadow-[0_1px_2px_rgba(7,42,58,0.08)] transition-colors hover:bg-[#eef1f2] motion-reduce:transition-none"
                 data-testid="opc-signout"
                 (click)="onSignOut()"
@@ -75,7 +81,8 @@ import { OperatorAuth } from '../core/operator-auth';
               </button>
             } @else {
               <a
-                class="text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
+                appTouchTarget
+                class="inline-flex items-center text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
                 routerLink="/account/sign-in"
                 [queryParams]="signInParams()"
                 data-testid="opc-signin"

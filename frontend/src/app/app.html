@@ -288,7 +288,10 @@
   @if (shellChrome() !== 'none') {
     <footer class="riv-footer">
       <!-- New tab: in-app nav would unmount /booking/pay's Payment Element or swap an admin into tourist chrome. -->
-      <div class="riv-footer-inner">
+      <div
+        class="riv-footer-inner"
+        data-touch-exempt="links inside a sentence (WCAG 2.5.5 inline exception)"
+      >
         © Riviera Sunbed Booking ·
         <a class="underline" href="/legal/privacy" target="_blank" rel="noopener">Privacy</a> ·
         <a class="underline" href="/legal/terms" target="_blank" rel="noopener">Terms</a>

@@ -33,6 +33,7 @@
               type="text"
               [formField]="detailsForm.name"
               data-testid="venue-name"
+              appTouchTarget
               class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
             />
             @if (detailsForm.name().touched() && detailsForm.name().errors().length) {
@@ -49,6 +50,7 @@
                 type="text"
                 [formField]="detailsForm.beach"
                 data-testid="venue-beach"
+                appTouchTarget
                 class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
               />
               @if (detailsForm.beach().touched() && detailsForm.beach().errors().length) {
@@ -63,6 +65,7 @@
                 type="text"
                 [formField]="detailsForm.region"
                 data-testid="venue-region"
+                appTouchTarget
                 class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
               />
               @if (detailsForm.region().touched() && detailsForm.region().errors().length) {
@@ -79,6 +82,7 @@
               type="text"
               [formField]="detailsForm.description"
               data-testid="venue-description"
+              appTouchTarget
               class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
             />
           </label>
@@ -89,6 +93,7 @@
               <select
                 [formField]="detailsForm.bookingMode"
                 data-testid="venue-booking-mode"
+                appTouchTarget
                 class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
               >
                 <option value="INSTANT">Instant Book</option>
@@ -103,6 +108,7 @@
                 type="time"
                 [formField]="detailsForm.bookingCutoff"
                 data-testid="venue-cutoff"
+                appTouchTarget
                 class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
               />
               @if (
@@ -139,6 +145,7 @@
 
           <button
             type="submit"
+            appTouchTarget
             class="mt-1 self-start rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
             data-testid="venue-save"
             [disabled]="detailsForm().invalid()"
@@ -220,6 +227,7 @@
                   />
                   <button
                     type="button"
+                    appTouchTarget
                     class="rounded-[12px] border border-(--riv-card-border) bg-white/70 px-3.5 py-1.5 text-[12.5px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/90 aria-disabled:opacity-50"
                     [attr.data-testid]="'photo-pick-' + slot.key"
                     [appBusy]="slotUi()[slot.key].busy"
@@ -236,6 +244,7 @@
                   @if (slotUi()[slot.key].previewUrl) {
                     <button
                       type="button"
+                      appTouchTarget
                       class="rounded-[12px] border border-(--riv-card-border) bg-white/50 px-3.5 py-1.5 text-[12.5px] font-bold text-[#a3160e] [transition:background_0.15s_ease] hover:bg-white/80 aria-disabled:opacity-50"
                       [attr.data-testid]="'photo-remove-' + slot.key"
                       [appBusy]="slotUi()[slot.key].busy"
@@ -277,6 +286,7 @@
               @for (code of amenityCatalogue; track code) {
                 <button
                   type="button"
+                  appTouchTarget
                   class="amenity-chip rounded-full border px-[15px] py-2 text-[12.5px] font-semibold [transition:background_0.15s_ease,border-color_0.15s_ease] [&.active]:border-[#0e8aa8] [&.active]:bg-[#2bb8d4]/[0.22] [&.active]:text-[#0a4f5e] [&:not(.active)]:border-(--riv-card-border) [&:not(.active)]:bg-white/50 [&:not(.active)]:text-(--riv-card-ink-soft)"
                   [class.active]="isAmenityActive(code)"
                   [attr.aria-pressed]="isAmenityActive(code)"
@@ -299,6 +309,7 @@
               data-testid="venue-distance"
               [value]="distanceDraft()"
               (input)="onDistanceInput($any($event.target).value)"
+              appTouchTarget
               class="w-[140px] rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
             />
             @if (distanceError()) {

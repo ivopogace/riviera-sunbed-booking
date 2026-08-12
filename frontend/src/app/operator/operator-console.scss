@@ -171,6 +171,10 @@
 }
 
 .oc-create-venue {
+  /* inline-flex, not inline: min-height does not apply to a non-replaced inline box. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   font-size: 13px;
   font-weight: 600;
   color: var(--riv-ink);
@@ -206,6 +210,7 @@
 .oc-tab {
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
   gap: 7px;
   font-size: 13.5px;
   font-weight: 600;

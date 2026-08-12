@@ -1,7 +1,11 @@
-import { expect, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 const NO_MONEY = { minorUnits: 0, currency: 'EUR' };
+const TINY_IMAGE = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
 
 /**
  * A whole-console API mock: every endpoint the shell and all six tabs read on mount, so one spec can
@@ -39,6 +43,9 @@ export async function mockWholeConsole(page: Page): Promise<void> {
     route.fulfill({ json: [{ setId: 10, code: 'RIV7K2QX', status: 'CONFIRMED' }] }),
   );
   await page.route(/\/api\/venues\/1\/profile$/, (route) => route.fulfill({ json: profile() }));
+  await page.route(/\/api\/venues\/1\/photos\/[0-9a-f]+$/, (route) =>
+    route.fulfill({ body: TINY_IMAGE, contentType: 'image/jpeg' }),
+  );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
       json: { gross: NO_MONEY, net: NO_MONEY, commissionBps: 1500, date: '2026-07-08' },
@@ -75,12 +82,15 @@ export async function mockWholeConsole(page: Page): Promise<void> {
   );
 }
 
-/** Signs in through the console's guard-driven card and waits for the shell to render. */
-export async function signInToConsole(page: Page): Promise<void> {
+/**
+ * Signs in through the guard-driven card, which `returnUrl` then bounces back to the requested
+ * surface. It waits for nothing itself — the console shell and the operator home render different
+ * chrome, so the caller's own content marker is the wait.
+ */
+export async function signInAsOperator(page: Page): Promise<void> {
   await page.getByLabel('Username', { exact: true }).fill('operator');
   await page.getByLabel('Password', { exact: true }).fill('pw');
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
-  await expect(page.getByTestId('oc-header')).toBeVisible();
 }
 
 function seedSets() {
@@ -136,7 +146,7 @@ function profile() {
     distanceToWaterM: 20,
     version: 0,
     photos: {
-      cover: { previewUrl: null },
+      cover: { previewUrl: '/api/venues/1/photos/cc03' },
       sunbeds: { previewUrl: null },
       bar: { previewUrl: null },
     },

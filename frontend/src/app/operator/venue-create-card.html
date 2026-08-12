@@ -33,6 +33,7 @@
           type="text"
           [formField]="venueForm.name"
           data-testid="venue-create-name"
+          appTouchTarget
           class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
         />
         @if (venueForm.name().touched() && venueForm.name().errors().length) {
@@ -49,6 +50,7 @@
             type="text"
             [formField]="venueForm.beach"
             data-testid="venue-create-beach"
+            appTouchTarget
             class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
           />
           @if (venueForm.beach().touched() && venueForm.beach().errors().length) {
@@ -63,6 +65,7 @@
             type="text"
             [formField]="venueForm.region"
             data-testid="venue-create-region"
+            appTouchTarget
             class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
           />
           @if (venueForm.region().touched() && venueForm.region().errors().length) {
@@ -79,6 +82,7 @@
           type="text"
           [formField]="venueForm.description"
           data-testid="venue-create-description"
+          appTouchTarget
           class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
         />
       </label>
@@ -89,6 +93,7 @@
           <select
             [formField]="venueForm.bookingMode"
             data-testid="venue-create-booking-mode"
+            appTouchTarget
             class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
           >
             <option value="INSTANT">Instant Book</option>
@@ -104,6 +109,7 @@
             inputmode="numeric"
             [formField]="venueForm.commissionBps"
             data-testid="venue-create-commission"
+            appTouchTarget
             class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
           />
           @if (venueForm.commissionBps().touched() && venueForm.commissionBps().errors().length) {
@@ -124,6 +130,7 @@
             autocomplete="off"
             [formField]="venueForm.payoutCurrency"
             data-testid="venue-create-currency"
+            appTouchTarget
             class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
           />
           @if (venueForm.payoutCurrency().touched() && venueForm.payoutCurrency().errors().length) {
@@ -140,6 +147,7 @@
             type="time"
             [formField]="venueForm.bookingCutoff"
             data-testid="venue-create-cutoff"
+            appTouchTarget
             class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
           />
           @if (venueForm.bookingCutoff().touched() && venueForm.bookingCutoff().errors().length) {
@@ -152,6 +160,7 @@
 
       <button
         type="submit"
+        appTouchTarget
         class="mt-1 self-start rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
         data-testid="venue-create-submit"
         [disabled]="venueForm().invalid()"

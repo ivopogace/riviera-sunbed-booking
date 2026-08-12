@@ -223,12 +223,12 @@ a static template `class` with a directive host `class`, so consumers keep their
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement — phase 0 complete; phase 1 next` · **draft PR #647** open (CI runs
-per push from here; the review + Sonar gates fall due at ready-for-review, not while draft)
+**Stage pointer:** `implement — phases 0–1 complete; phase 2 next` · **draft PR #647** open, CI green
+on phase 0 (all 7 checks). The review + Sonar gates fall due at ready-for-review, not while draft.
 
-**Next action:** phase 1 — bring the console **shell** to the floor (`operator-console.scss`'s
-`.oc-tab`/`.oc-create-venue`, `oc-signout`, and the two inline footer links), then un-skip the
-Requests sweep in `frontend/e2e/touch-targets.e2e.ts` and add the remaining console routes.
+**Next action:** phase 2 — give both beach-map grids a 44 px tile floor with in-frame horizontal
+scrolling (`daily-view-tab.ts`'s `columns()` and `layout-editor.html:162`, both `minmax(0, 1fr)` →
+`minmax(44px, 1fr)`), then un-skip the two `test.fixme` sweeps.
 
 > **Phase 0's measurement rewrote the phase-1 estimate.** The sweep measured all 15 controls on the
 > Requests tab: **the tab body is already compliant** — its accept/decline buttons wrap at 390 px and
@@ -244,7 +244,7 @@ Requests sweep in `frontend/e2e/touch-targets.e2e.ts` and add the remaining cons
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The floor: directive, sweep helper, stated convention | ✅ | `676b83c4` |
-| 1 — Operator console: 5 tabs + create card + shell chrome | | |
+| 1 — Operator console: 5 tabs + create card + shell chrome | ✅ | `<phase-1-sha>` |
 | 2 — The two map grids (geometry + in-frame scroll) | | |
 | 3 — Platform-admin console | | |
 | 4 — Auth, booking, tourist pages, shared primitives | | |
@@ -276,11 +276,17 @@ Skill-routing gate for what the fix touches *before* editing).
   the ten existing operator specs are untouched
 - `frontend/e2e/touch-targets.e2e.ts` — one test per surface (AC-1), each asserting a content
   marker first so an empty render cannot sweep vacuously (R-11)
-- `frontend/src/app/operator/**` — every template and inline-template component with a control, plus
-  `operator-console.scss` (the `.oc-tab` / `.oc-create-venue` / `.oc-signin-btn` rules)
-- `frontend/src/app/admin/**` — every inline template with a control
-- `frontend/src/app/auth/**`, `frontend/src/app/booking/**`, `frontend/src/app/venue/**`,
-  `frontend/src/app/pages/**`, `frontend/src/app/shared/**` — same
+- `frontend/src/app/operator/` — every template and inline-template component with a control, plus
+  `operator-console.scss` (the `.oc-tab` / `.oc-create-venue` rules)
+- `frontend/src/app/app.html` — the **app-level** footer, shared by the tourist shell and the
+  operator home; its Privacy/Terms links take the inline-prose exemption (phase 1)
+- `frontend/src/app/admin/` — every inline template with a control
+- `frontend/src/app/auth/`, `frontend/src/app/booking/`, `frontend/src/app/venue/`,
+  `frontend/src/app/pages/`, `frontend/src/app/shared/` — same
+
+> **Write a directory with a trailing slash, not `dir/**`.** The guard's `PATH_LIKE` requires a file
+> extension and `DIR_LIKE` a trailing slash, so a `dir/**` token matches neither and is silently
+> ignored — the section reads as covering the sweep while the guard counts nothing (caught at phase 1).
 - `frontend/e2e/operator-daily.e2e.ts` — the daily-grid geometry test (AC-4)
 - `frontend/e2e/operator-console.e2e.ts` — the existing narrow-viewport test, extended with the nav
 - `.claude/skills/riviera-tailwind/SKILL.md` — the stated convention (AC-6)
@@ -476,27 +482,33 @@ phase 5 reconciling the file list against the routes the sweep actually visits. 
 
 ## Phase 1 — Operator console: 5 tabs + create card + shell chrome
 
-**Files:** Modify `frontend/src/app/operator/{daily-view-tab,requests-tab,payouts-tab,pricing-tab,venue-tab,venue-create-card,operator-console}.html` · `operator/operator-console.scss` · `operator/{operator-chrome,operator-home,payout-statement,stale-write-banner,scan-input,camera-qr-scanner}.ts` · Test `frontend/e2e/touch-targets.e2e.ts`
+**Files:** Modify `frontend/src/app/operator/{operator-console,operator-chrome,payout-statement,payouts-tab,pricing-tab,venue-tab,venue-create-card}.{ts,html}` · `operator/operator-console.scss` · `frontend/src/app/app.html` · Test `frontend/e2e/touch-targets.e2e.ts` · `frontend/e2e/support/operator-console.mocks.ts`
 
-- [ ] **Step 1: Write the failing test** — extend `touch-targets.e2e.ts` with one test per console
-      route: `/operator/1/daily`, `/operator/1/requests`, `/operator/1/payouts`, `/operator/1/pricing`,
-      `/operator/1/venue`, `/operator` (home + create card). Each calls `expectTouchTargets`.
-      The daily route is expected to stay red until phase 2 — mark it `test.fixme` with a comment
-      naming phase 2, and remove the marker there.
-- [ ] **Step 2: Run it, verify it fails** — `npx playwright test touch-targets --config=playwright.a11y.config.ts` → FAIL on each route with the offending selectors listed.
-- [ ] **Step 3: Minimal implementation** — apply `[appTouchTarget]` (importing `TouchTarget` in each
-      component's `imports`) to every control the sweep named; where the element is an inline `<a>`
-      (`.oc-create-venue`, the tab pills) add `inline-flex items-center` alongside. In
-      `operator-console.scss`, give `.oc-tab`, `.oc-create-venue` and `.oc-signin-btn` a
-      `min-height: 44px` + `display: inline-flex; align-items: center` — SCSS, not Tailwind, because
-      those rules already live there and this slice is not an SCSS migration. Mark the footer
-      `Privacy`/`Terms` links `data-touch-exempt="inline prose link (WCAG 2.5.5 inline exception)"`.
-- [ ] **Step 4: Run it, verify it passes** — the six routes green; then `npm run test:e2e:a11y` in full (R-5) and `npm test` for the console unit specs.
-- [ ] **Step 5: Generalization-audit pass** — population `every operator control the sweep did not visit because its route/state was not rendered` (modals, error states, the QR scanner's camera branch) → enumerate by opening each state in the sweep spec → decision recorded.
-- [ ] **Step 6: Commit** — `git commit -m "Bring the operator console's controls to the 44px floor (#605)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1: Write the failing test** — a sweep per console route (requests, pricing, payouts,
+      venue, `/operator?create=1`), each asserting a content marker first. `daily` and `beach-map`
+      stay `test.fixme` for phase 2.
+- [x] **Step 2: Run it, verify it fails** — 5 red. The shell's 11 recur on every tab; the per-tab
+      additions were pricing 2, payouts 2, venue 22, create card 11 (incl. its own chrome).
+- [x] **Step 3: Minimal implementation** — `[appTouchTarget]` on 30 Tailwind-styled controls across
+      7 components; `min-height: 44px` + `display: inline-flex` on `.oc-tab` and `.oc-create-venue`
+      in `operator-console.scss` (SCSS because those rules already live there — this is not an SCSS
+      migration); `data-touch-exempt` on the two footer link blocks.
+- [x] **Step 4: Run it, verify it passes** — 8 sweeps green; full mocked suite **184 passed, 2
+      skipped**; unit suite **1380 passed**; lint clean; `npm run format` applied and the sweeps
+      re-run after it (template whitespace can move an inline box).
+- [x] **Step 5: Generalization-audit pass** — see the log's phase-1 row: the population is
+      **controls behind a gated interaction state**, which a sweep of the resting surface
+      structurally cannot see.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
----
+### What phase 1 established
+
+- **The shell was the whole story on four of five surfaces.** One SCSS file plus one template fixed
+  11 of the 13–33 findings per tab, because the header and tab nav render on every console route.
+- **Two defects were found in the *method*, not the code** — both recorded in the log below: the
+  resting-surface blind spot, and the plan doc's own `dir/**` glob notation, which the
+  file-structure guard silently ignores (it needs a trailing slash or an extension).
 
 ## Phase 2 — The two map grids (geometry + in-frame scroll)
 
@@ -579,6 +591,8 @@ phase 5 reconciling the file list against the routes the sweep actually visits. 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-12 | plan — issue-intake grill | every element the app renders as an interactive control (**not** "the other operator tabs" — the issue's own population was `operator/*.html`, which structurally cannot see inline `template:` literals or SCSS) | `git ls-files 'frontend/src/app/<dir>/*' \| grep -v '\.spec\.ts$' \| xargs grep -ho '<button\|<input\|<select\|<textarea'` per feature dir | ~145 controls + ~56 anchors across ~40 files in 7 feature folders — vs the issue's 8 files | scope widened to the whole app (maintainer decision); swept in phases 1–4, reconciled in phase 5 |
+| 2026-08-12 | phase 1 — the first sweep of a surface with confirm/modal states | **controls behind a gated interaction state** — a sweep of the resting surface cannot see them, so a green sweep is not a covered surface. Enumerated by the branch that gates them, not by recalling which tabs have dialogs | `grep -rln "app-confirm-panel\|app-confirm-with-reason\|@if (.*[Cc]onfirm" src/app/operator src/app/admin --include=*.html --include=*.ts` | 5 gating components: `payouts-tab` (weather confirm + statement modal), `requests-tab` (decline confirm), `venue-tab` (photo Remove, gated on a slot being occupied), plus `layout-editor`/`set-editor` (phase 2) and the admin four (phase 3) | all four phase-1 states now have their own sweep test; the mock occupies one photo slot so the Remove button renders. Found 3 controls no resting sweep could reach (`weather-confirm-btn` 194×40, `weather-cancel-btn` 78×42, `statement-close` 62×34) |
+| 2026-08-12 | phase 1 — file-structure guard reported 13 unlisted paths | **every path-token idiom the plan doc uses to stand in for a sweep**, since a token the guard cannot parse is indistinguishable from an omission — the section reads as covering the work while the guard counts nothing | read `scripts/check-plan-file-structure.mjs`'s `PATH_LIKE` / `DIR_LIKE` against the section's tokens | `frontend/src/app/operator/**` and 4 sibling `dir/**` tokens match neither pattern (`PATH_LIKE` needs an extension, `DIR_LIKE` a trailing slash) | all 5 rewritten as trailing-slash directories; the notation trap recorded in the section itself so phases 2–4 do not repeat it. `app.html` was a genuine omission and is now listed |
 | 2026-08-12 | phase 0 — the vacuous-sweep defect (R-11) | every **mock payload field name the sweep depends on**, since a wrong name renders an empty surface and silences the sweep rather than failing it. Enumerated from the contract, not from the mock | read `src/app/operator/operator-console.model.ts` (`PendingRequestItem`, `ConsoleDailyBooking`, `PayoutLedgerEntryView`, `VenueProfileView`) against `e2e/support/operator-console.mocks.ts` | 3 wrong shapes: request (`id`/`expiresAt` → `bookingId`/`requestExpiresAt`), ledger entry (`occurredAt` → `createdAt`, missing `currency`), booking (invented `guestName`/`amount`/`setLabel`) | all three corrected against the contract; **and** the class defect fixed structurally — every surface test now asserts a content marker before sweeping, so an empty render fails instead of passing |
 
 ---
