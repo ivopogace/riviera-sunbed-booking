@@ -138,6 +138,10 @@ frontend code reads `detail` (both surfaces map from `code`), so the server stri
 for non-console API clients only — which is why they were brought back into line with the console
 copy rather than left to drift. #610 tracks whether the server should carry operator prose at all.
 
+> **Superseded by #610:** it should not. Re-aligning the server prose by hand is exactly the practice
+> that slice removed — both `detail` strings are now condition-only and mirror no console copy, so the
+> paragraph above describes the pre-#610 contract. Plan: `docs/plans/error-detail-not-ui-copy.md`.
+
 ## Execution status
 
 **Stage pointer:** `merge close-out`

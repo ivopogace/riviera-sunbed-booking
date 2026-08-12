@@ -171,7 +171,13 @@ for** `bugfix/bulk-replace-past-hold-freeze` (`riviera-sdlc` § Remote/cloud ses
   **Superseded by #607:** the maintainer settled the wording (lifetime-neutral — the hold clause
   now says the hold has not passed, without restating the guard's date arithmetic), and both codes
   moved together so the parity argued for here is preserved. Plan: `docs/plans/layout-lock-copy.md`,
-  merged via PR #608.
+  merged via PR #608. **Then superseded again by #610**, which settles the question this entry
+  raised rather than re-answering it: the server carries **no** operator-facing copy for either code
+  any more. Both `detail` strings are condition-only ("This set / This venue has a booking or a
+  current hold."), because no client ever read `detail` — the console renders from `code`. So the
+  strings quoted above are doubly historical: #607 replaced them, #610 removed the whole category.
+  The parity argument survives the move; it is now the console's two mappers, and only those, that
+  have to stay in step. Plan: `docs/plans/error-detail-not-ui-copy.md`.
 
 ### Resolved
 

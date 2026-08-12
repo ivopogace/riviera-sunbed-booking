@@ -43,6 +43,14 @@ class VenueAdminControllerIT {
 	private static final String PASSWORD = "test-operator-pw";
 	private static final long MIRAMAR = 1L; // seeded public venue (U1)
 
+	/**
+	 * The one {@code SET_IN_USE} detail, asserted wherever this class provokes it — the remove
+	 * guard's hold and terminal-booking arms, and the edit guard's live hold. Why the wording names
+	 * no arm, and why it must stay true of a set held only by a long-cancelled booking:
+	 * {@code riviera-java-conventions} {@code references/error-contract.md}.
+	 */
+	private static final String SET_IN_USE_DETAIL = "This set has a booking or a current hold.";
+
 	@Autowired
 	MockMvc mvc;
 
@@ -261,7 +269,8 @@ class VenueAdminControllerIT {
 		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("SET_IN_USE"));
+				.andExpect(jsonPath("$.code").value("SET_IN_USE"))
+				.andExpect(jsonPath("$.detail").value(SET_IN_USE_DETAIL));
 
 		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :set")
 						.param("set", setId).query(Integer.class).single(),
@@ -305,7 +314,8 @@ class VenueAdminControllerIT {
 
 		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("SET_IN_USE"));
+				.andExpect(jsonPath("$.code").value("SET_IN_USE"))
+				.andExpect(jsonPath("$.detail").value(SET_IN_USE_DETAIL));
 	}
 
 	@Test
@@ -323,7 +333,8 @@ class VenueAdminControllerIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "WALK_IN", 3000, "EUR", 1, 1)))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("SET_IN_USE"));
+				.andExpect(jsonPath("$.code").value("SET_IN_USE"))
+				.andExpect(jsonPath("$.detail").value(SET_IN_USE_DETAIL));
 
 		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)

@@ -17,7 +17,9 @@ import org.springframework.http.ResponseEntity;
  * and the controller ITs.
  *
  * <p>{@code detail} must be safe for any caller: never a booking code (invariant #7),
- * an exception message, or another internal echo. The same rule forces {@code instance} to be
+ * an exception message, or another internal echo. It also states the condition, not the remedy —
+ * user-facing wording belongs to the client, which switches on {@code code}
+ * ({@code riviera-java-conventions} §6b). The safety rule forces {@code instance} to be
  * pinned here: Spring auto-fills a null {@code instance} with the raw request URI at
  * serialization, and on the code-scoped paths ({@code /api/bookings/{code}…}) that URI IS the
  * bearer credential. Every factory-built problem therefore starts at {@link #REDACTED_INSTANCE};
