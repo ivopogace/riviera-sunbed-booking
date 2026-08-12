@@ -132,7 +132,8 @@ routing only — but prescribes the attribute-selector-on-a-native-element patte
 | R-6 | Prettier reformats the long class strings and the diff balloons past the real change | med | low | `npm run format` before each commit (whole-scope Prettier is a CI gate since #631); review the diff for reflow-only hunks and keep them in their own commit if large | implementer | open |
 | R-7 | ~145 controls + ~56 anchors across ~40 files is a large mechanical diff; a missed file reads as "the sweep covered it" | med | med | the sweep is per **surface/route**, not per file — a missed control on a covered route fails. Routes not covered by a sweep test are listed explicitly in phase 5 | implementer | open |
 | R-8 | Touching a control's `class` line pulls a neighbouring `[disabled]` into the focus-posture guard's judged region | low | low | it does not: `check-focus-posture.mjs:362` requires the `[disabled]` **line itself** to be diff-added. Verified by reading the script; re-verify by running `node scripts/check-focus-posture.mjs --diff origin/main` per phase | plan | open |
-| R-10 | Promoting the duplicated `mockConsole`/`signIn` into `support/` touches seven shipped operator specs; a subtle divergence between the copies is flattened and a spec silently changes what it mocks | med | med | diff the copies before merging them; if they have genuinely diverged, promote the union with per-spec overrides rather than picking one. The specs' own assertions are the proof — all seven must stay green **unmodified** apart from the import line | implementer | open |
+| R-10 | ~~Promoting the duplicated `mockConsole`/`signIn` into `support/` touches seven shipped operator specs~~ | — | — | **Dropped at phase 0.** The copies are not copies: they are per-tab, stateful, differently named (`mockRequests`, `signInAndOpenPayouts` — sign-in *and* navigate). Consolidating them is its own slice. Phase 0 instead **adds** `support/operator-console.mocks.ts`, a breadth-first read-only mock for the sweep, and leaves all ten specs untouched | plan | **closed — not applicable (`8ceffcb3`..)** |
+| R-11 | A sweep over a surface that rendered its empty or error state passes **vacuously** — the exact failure `riviera-review-overlay` warns about for absence-asserting specs. Phase 0 hit this live: a mock built from guessed field names (`id`/`expiresAt` vs the real `bookingId`/`requestExpiresAt`) rendered an empty Requests tab, and the sweep went quiet on it | **high** | high | every surface test asserts a content marker before sweeping (`request-card` visible, etc.); mock payloads are read from `operator-console.model.ts`, never guessed | implementer | open |
 | R-9 | The daily grid's in-frame horizontal scroll is a new keyboard/AT concern — a scroll container needs to be reachable | low | med | give the scrolling `<ul>` container `tabindex="0"` + an accessible name where it can actually overflow, matching what `set-editor.html`'s frame does; axe runs on the surface in the same spec | implementer | open |
 
 ## Open questions / Assumptions
@@ -222,14 +223,26 @@ a static template `class` with a directive host `class`, so consumers keep their
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `plan — complete, awaiting go-ahead to implement`
+**Stage pointer:** `implement — phase 0 complete; phase 1 next`
 
-**Next action:** create branch `feature/touch-target-floor` off latest `origin/main`, commit this
-plan doc, then start phase 0 (the directive + the sweep helper, red first).
+**Next action:** phase 1 — bring the console **shell** to the floor (`operator-console.scss`'s
+`.oc-tab`/`.oc-create-venue`, `oc-signout`, and the two inline footer links), then un-skip the
+Requests sweep in `frontend/e2e/touch-targets.e2e.ts` and add the remaining console routes.
+
+> **Phase 0's measurement rewrote the phase-1 estimate.** The sweep measured all 15 controls on the
+> Requests tab: **the tab body is already compliant** — its accept/decline buttons wrap at 390 px and
+> measure 161×64 and 89×64, not the ~42 px the plan's padding arithmetic predicted. All 11 failures
+> are **console shell chrome** (`oc-create-venue` 87×20, `oc-change-password` 104×20, `oc-signout`
+> 82×36, six `.oc-tab` pills at ×38) plus the two inline footer links (40×17, 34×17) that become
+> `data-touch-exempt`. Phase 1 is therefore mostly **one SCSS file**, not five templates — but do not
+> assume the other four tabs match the Requests tab's luck: measure each before concluding.
+>
+> The corollary for phases 2–4: **estimate nothing from padding arithmetic.** A wrapping flex row,
+> `items-stretch`, and inherited line-height all move the rendered box, and only the sweep knows.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The floor: directive, sweep helper, stated convention | | |
+| 0 — The floor: directive, sweep helper, stated convention | ✅ | `<phase-0-sha>` |
 | 1 — Operator console: 5 tabs + create card + shell chrome | | |
 | 2 — The two map grids (geometry + in-frame scroll) | | |
 | 3 — Platform-admin console | | |
@@ -257,11 +270,11 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/shared/touch-target.ts` — the `[appTouchTarget]` directive
 - `frontend/src/app/shared/touch-target.spec.ts` — its unit spec (AC-3)
 - `frontend/e2e/support/touch-targets.ts` — `expectTouchTargets(page, label)`, the generic sweep
-- `frontend/e2e/support/operator-console.mocks.ts` — `mockConsole`/`signIn`, promoted out of the
-  operator specs that each hold a copy today
-- `frontend/e2e/operator-{set-editing,console,daily,requests,payouts,pricing,venue}.e2e.ts` —
-  re-pointed at the promoted mocks
-- `frontend/e2e/touch-targets.e2e.ts` — one test per surface (AC-1)
+- `frontend/e2e/support/operator-console.mocks.ts` — `mockWholeConsole`/`signInToConsole`: a new
+  breadth-first read-only mock for the sweep. **Not** a promotion of the per-spec mocks (R-10);
+  the ten existing operator specs are untouched
+- `frontend/e2e/touch-targets.e2e.ts` — one test per surface (AC-1), each asserting a content
+  marker first so an empty render cannot sweep vacuously (R-11)
 - `frontend/src/app/operator/**` — every template and inline-template component with a control, plus
   `operator-console.scss` (the `.oc-tab` / `.oc-create-venue` / `.oc-signin-btn` rules)
 - `frontend/src/app/admin/**` — every inline template with a control
@@ -278,9 +291,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `frontend/src/app/shared/touch-target.ts` · `frontend/src/app/shared/touch-target.spec.ts` · `frontend/e2e/support/touch-targets.ts` · `frontend/e2e/touch-targets.e2e.ts` · Modify `.claude/skills/riviera-tailwind/SKILL.md`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
-`frontend/src/app/shared/touch-target.spec.ts`:
+`frontend/src/app/shared/touch-target.spec.ts` (the shipped spec drives all three element kinds — `<button>`, `<a>`, `<input>` — via `it.each`):
 
 ```ts
 import { Component } from '@angular/core';
@@ -313,38 +326,51 @@ describe('TouchTarget', () => {
 `frontend/e2e/touch-targets.e2e.ts` (first surface only in this phase — the already-compliant
 per-set editor, which must pass, plus the requests tab, which must **fail** until phase 1):
 
-> **The console mocks are not shared today.** `mockConsole`/`signIn` are duplicated as
-> file-local functions in each operator spec (`operator-set-editing.e2e.ts:88,181` and siblings);
-> `support/pages/operator-sign-in.page.ts` exports only the `OperatorSignInPage` page object. A
-> sweep that visits every console route needs them once, so phase 0 promotes them to
-> `frontend/e2e/support/operator-console.mocks.ts` and re-points the existing specs at it — a
-> move, not a rewrite, and the specs' own assertions prove the move is faithful.
+> **Superseded at execution (R-10).** The per-spec console mocks turned out not to be copies of one
+> helper but ten tailored, stateful, differently-named mocks (`mockRequests`, `signInAndOpenPayouts`).
+> Phase 0 therefore **adds** `support/operator-console.mocks.ts` — a read-only, breadth-first mock
+> serving the sweep — and leaves every existing spec alone. The shipped shape is below.
 
 ```ts
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
+import { mockWholeConsole, signInToConsole } from './support/operator-console.mocks';
 import { expectTouchTargets } from './support/touch-targets';
-import { mockConsole, signIn } from './support/operator-console.mocks';
 
 test.describe('44px touch targets at a phone width', () => {
   test.beforeEach(async ({ page }) => {
-    await mockConsole(page);
+    await mockWholeConsole(page);
     await page.setViewportSize({ width: 390, height: 780 });
   });
 
-  test('operator console — requests tab', async ({ page }) => {
+  // Phase 1 brings the console shell to the floor and un-skips this; phase 0 only proves the sweep.
+  test.fixme('operator console — requests tab', async ({ page }) => {
     await page.goto('/operator/1/requests');
-    await signIn(page);
+    await signInToConsole(page);
+
+    // A surface that rendered its empty state has no controls to measure and would sweep vacuously.
+    await expect(page.getByTestId('request-card').first()).toBeVisible();
+
     await expectTouchTargets(page, 'operator requests tab');
   });
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `cd frontend && npx playwright test touch-targets --config=playwright.a11y.config.ts` → FAIL, naming each short control (e.g. `button[data-testid="request-accept"] — 130×42`)
+- [x] **Step 2: Run it, verify it fails** — both halves went red first:
+  - `npx ng test --watch=false --include="src/app/shared/touch-target.spec.ts"` → FAIL, `Could not
+    resolve "./touch-target"` (the directive did not exist yet).
+  - `npx playwright test touch-targets --config=playwright.a11y.config.ts` → FAIL with **11**
+    controls under 44 px, all in the console shell:
+    `a[data-testid="oc-create-venue"] 87×20 | a[data-testid="oc-change-password"] 104×20 |
+    button[data-testid="oc-signout"] 82×36 | a.oc-tab ×6 at 74–166 × 38 | a.underline 40×17 |
+    a.underline 34×17`.
+  - **Helper self-check** (temporarily `FLOOR = 999`, reverted): it measured **15** controls on that
+    surface, so the eleven are a real result and not four silently-missed elements. The four it
+    passed are the Requests tab's own accept/decline buttons at 161×64 and 89×64.
 
 > Scope: this one spec file only. The full mocked suite runs at the end of the phase.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 `frontend/src/app/shared/touch-target.ts`:
 
@@ -430,18 +456,20 @@ Then add the stated convention to `.claude/skills/riviera-tailwind/SKILL.md` —
 under **The rules**: the floor, `[appTouchTarget]`, the inline-box trap, the two exemption classes,
 and that the proof is the e2e sweep, never the class list.
 
-- [ ] **Step 4: Run it, verify it passes** — `cd frontend && npm test -- touch-target` → PASS. The e2e sweep stays RED on the requests tab; that is phase 1's job and is recorded as such in Execution status.
+- [x] **Step 4: Run it, verify it passes** — `npx ng test --watch=false --include="src/app/shared/touch-target.spec.ts"` → **4 passed** (AC-3). `npm run lint` clean, `npm run format` applied. The console sweep is `test.fixme` pending phase 1, so the branch carries no red test; its RED evidence is step 2 above.
 
-- [ ] **Step 5: Generalization-audit pass**
+> `npm test -- touch-target` from the plan does **not** work: the script is `ng test`, which reads a bare argument as a *project* name (`Invalid values: Argument: project`). Filter with `--include=<path>`.
+
+- [x] **Step 5: Generalization-audit pass**
 
 Population `every element the app renders as an interactive control` → enumerate
 `git ls-files 'frontend/src/app/**' | grep -v '\.spec\.ts$' | xargs grep -l '<button\|<input\|<select\|<textarea\|<a '` →
 candidates: the ~40 files counted in the scope table → decision: swept phase by phase (1–4), with
 phase 5 reconciling the file list against the routes the sweep actually visits. Append to the log.
 
-- [ ] **Step 6: Commit** — `git commit -m "Add the 44px touch-target floor as a directive and a measured sweep (#605)"`
+- [x] **Step 6: Commit** — `git commit -m "Add the 44px touch-target floor as a directive and a measured sweep (#605)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -550,6 +578,7 @@ phase 5 reconciling the file list against the routes the sweep actually visits. 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-12 | plan — issue-intake grill | every element the app renders as an interactive control (**not** "the other operator tabs" — the issue's own population was `operator/*.html`, which structurally cannot see inline `template:` literals or SCSS) | `git ls-files 'frontend/src/app/<dir>/*' \| grep -v '\.spec\.ts$' \| xargs grep -ho '<button\|<input\|<select\|<textarea'` per feature dir | ~145 controls + ~56 anchors across ~40 files in 7 feature folders — vs the issue's 8 files | scope widened to the whole app (maintainer decision); swept in phases 1–4, reconciled in phase 5 |
+| 2026-08-12 | phase 0 — the vacuous-sweep defect (R-11) | every **mock payload field name the sweep depends on**, since a wrong name renders an empty surface and silences the sweep rather than failing it. Enumerated from the contract, not from the mock | read `src/app/operator/operator-console.model.ts` (`PendingRequestItem`, `ConsoleDailyBooking`, `PayoutLedgerEntryView`, `VenueProfileView`) against `e2e/support/operator-console.mocks.ts` | 3 wrong shapes: request (`id`/`expiresAt` → `bookingId`/`requestExpiresAt`), ledger entry (`occurredAt` → `createdAt`, missing `currency`), booking (invented `guestName`/`amount`/`setLabel`) | all three corrected against the contract; **and** the class defect fixed structurally — every surface test now asserts a content marker before sweeping, so an empty render fails instead of passing |
 
 ---
 

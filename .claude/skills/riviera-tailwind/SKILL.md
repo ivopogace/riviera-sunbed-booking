@@ -30,7 +30,25 @@ This skill states only the few decisions and traps the *code can't show you*.
    competing `border-radius` utilities by **stylesheet order, not `class` order**, so a
    directive `rounded-[26px]` + a consumer `rounded-full` is a coin-flip. Each consumer sets
    its own radius. (`panel-glass.ts` documents this.)
-4. **Idiom quick-reference** (match the exemplars, don't reinvent):
+4. **Every interactive control meets a 44 × 44 CSS px floor** (WCAG 2.5.5 / iOS HIG) — set it with
+   **`[appTouchTarget]`** (`shared/touch-target.ts`), not by hand-tuning padding per control. Both
+   axes: a control tall enough but 20 px wide is as unhittable as a short one. Three things the
+   rule's shape depends on, each of which has already caught someone:
+   - **`min-height` is a no-op on a `display: inline` box.** On an `<a>`, the directive does nothing
+     until you pair it with `inline-flex items-center` — which is why it deliberately sets no
+     `display` of its own (rule 3's stylesheet-order problem applies to `display` too).
+   - **The proof is the rendered box, never the class list.** `frontend/e2e/touch-targets.e2e.ts`
+     measures `getBoundingClientRect()` on every visible control per surface. A class-based check
+     would both miss real failures (the inline case above; a grid tile squeezed by its column) and
+     flag correct code — `py-[11px] text-[14px]` in a wrapping flex row measures 64 px.
+   - **Exemptions are marked, not assumed:** `data-touch-exempt="<reason>"` on the control or an
+     ancestor. Two documented classes — a link inside a sentence (2.5.5's own inline exception) and
+     anything rendered by a third party in an iframe (the Stripe Payment Element). Anything else
+     that "can't" meet the floor is a layout to fix, not an exemption to write.
+
+   Origin and the app-wide sweep that applied it: `docs/plans/touch-target-floor.md` (#605); the
+   first surface to state the floor was the per-set beach-map editor (#600).
+5. **Idiom quick-reference** (match the exemplars, don't reinvent):
    - `text-[14px]`, **not** `text-sm` — named sizes bundle a `line-height` and drift.
    - Arbitrary variants for what utilities/plugins don't cover (no plugins — locked stack):
      `[scrollbar-width:none]`, `[&::-webkit-scrollbar]:hidden`, `[&.premium]:bg-[#…]`.
@@ -116,6 +134,8 @@ been added since.
 | "Branch the component on `data-riv-theme` for this colour." | Colours switch via `--riv-*` tokens; components stay theme-agnostic. `:host-context` is only for whole-treatment differences. |
 | "Same padding, I'll just add the riviera background." | Shared layout on the base rule; theme-conditional *background* only — else content shifts between themes. |
 | "Classes look right, ship it." | Diff computed styles; contrast specs can't see drift. |
+| "I added `min-h-11`, the target's fixed." | Not on a `display: inline` `<a>` — it's a no-op there. Pair it with `inline-flex items-center` and let the sweep measure it. |
+| "This control can't be 44 px, the layout won't allow it." | Then the layout is the bug. `data-touch-exempt` is for inline prose links and third-party iframes, not for tight spots. |
 | "`bg-(--riv-photo-grad)` for the gradient." | That's a color. Use `bg-(image:--riv-photo-grad)`. |
 
 ## When NOT to use
