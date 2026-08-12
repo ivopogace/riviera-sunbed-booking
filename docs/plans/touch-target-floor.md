@@ -228,12 +228,40 @@ a static template `class` with a directive host `class`, so consumers keep their
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `DONE — all five phases complete; ready to mark the PR ready-for-review` · **draft PR #647** open. CI green
+**Stage pointer:** `DONE — merged via PR #647` · **draft PR #647** open. CI green
 on phase 0; phase 1 went **red** and its two findings (F-1, F-2) are fixed in phase 2. The review +
 Sonar gates fall due at ready-for-review, not while draft.
 
-**Next action:** mark PR #647 **ready for review**, which is what makes the Review and Sonar
-gates due (`riviera-sdlc` `references/pr-gates.md`). Merged via PR #647.
+**Next action:** none — merged via PR #647. One item is the maintainer's, below.
+
+### Gate record
+
+- **CI:** green on every phase head. Phase 1 went red twice (F-1, F-2) and phase 4 once (F-3); each
+  is in the findings register with its fix.
+- **Review gate:** ran **four times** — high on the full diff, then high/low/low on each fix round.
+  Findings: **10 → 10 → 9 → 3**. Every round found real defects, and rounds 2–4 found them mostly in
+  the *previous round's fixes* rather than in the original work. The sweep helper alone needed four
+  corrections (raw-vs-rounded, mid-animation, clipped-vs-scrolled, per-axis clamp).
+- **Sonar:** 0 bugs, 0 vulnerabilities, 0 duplicated blocks, new-code coverage **86.2%** (bar 80%).
+  **One new code smell remains open and is a deliberate deviation** — see below.
+
+### Sonar note — one accepted deviation (`Web:S6845`)
+
+`daily-view-tab.html:55` carries `tabindex="0"` on the scrolling beach map, which S6845 reads as a
+tabindex on a non-interactive element. It is not removable: on a fully-sold day every tile renders
+as an inert `<span>`, so the scroller has **no focusable descendant** and a keyboard user cannot
+scroll it at all. Measured with the tab stop removed — the grid still scrolls 600 px inside a 264 px
+box and axe fails `scrollable-region-focusable` as **serious**; pinned by `operator-daily.e2e.ts`,
+*"a fully-sold day keeps the scrolling map keyboard-reachable"*. `role="group"` and `role="region"`
+are flagged by the same rule, so no markup satisfies both. The sibling `layout-grid` case **was**
+removable (it always holds focusable cells) and was removed, which is why this is one issue and not
+two.
+
+**Maintainer action outstanding:** mark that issue *Won't fix* in SonarCloud with the rationale
+above. The `SONAR_TOKEN` available to the agent session does not authenticate
+(`api/authentication/validate` → `{"valid": false}`), so it could not be done from here. Until then
+the slice merged with the reported list at **1**, not 0 — recorded here rather than presented as a
+cleared gate.
 
 > **Phase 0's measurement rewrote the phase-1 estimate.** The sweep measured all 15 controls on the
 > Requests tab: **the tab body is already compliant** — its accept/decline buttons wrap at 390 px and
@@ -264,6 +292,18 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (phase 1) | `Confirm decline` measured **43 × 163 on Linux** and 44 on Windows — it met the floor only through inherited line-height, never through an explicit rule | fixed in `c87a776b` — the directive now carries all five request-card actions, and every control on a swept surface is tagged rather than left to ambient metrics |
+| F-35 | re-review 3 (low) | The two grid-overflow assertions were copies, the second having dropped its message | fixed in `03515e4c` — one `expectGridScrolls` helper |
+| F-34 | re-review 3 (low) | The pay sweep gated on `pay-cancel`, which also renders while mounting and on error, so a hung gateway would sweep a page with no pay button and still pass | fixed in `03515e4c` — gated on `pay-button`, as the sibling spec already was |
+| F-33 | re-review 3 (low) | **`display: block` → `display: flex` on the pay cards' link dropped the inherited `text-align: center`**, leaving both trailing links flush left under centred cards — and bought nothing, since `min-height` floors a block box identically | fixed in `03515e4c` — reverted to `block`, and the comment claiming the two equivalent corrected |
+| F-32 | re-review 2 (low) | `hittableBox` broke on a scrolling axis before applying that same ancestor's clip on the other | fixed in `d66fb8dd` — clamps per axis, breaks after |
+| F-31 | re-review 2 (low) | The reduced-motion guard had been fixed for the swatch only; `.riv-pop-in` and both button transitions still won on source order | fixed in `d66fb8dd` — one guard, at the end, all five selectors |
+| F-30 | re-review 2 (low) | The layout grid's `tabindex`/`aria-label` were wrong in the opposite direction: it always holds focusable cells, so axe could never fire, and the label is prohibited on a generic-role div | fixed in `d66fb8dd`. This also **retired one of the two Sonar S6845 issues** |
+| F-29 | re-review 2 (low) | `.link`'s floor was **inert** where it renders: a later `display: block` override outranked `inline-flex` | fixed in `d66fb8dd`, then corrected again by F-33 |
+| F-28 | re-review 2 (low) | **The `/booking/pay` sweep measured the empty branch.** Reached by URL the page renders "No payment in progress", so its one link was measured and the real chrome never was — hiding a 33 px Cancel link | fixed in `d66fb8dd` — driven through the booking dialog with the deterministic gateway; the Cancel link floored; the card input and legal sentence exempted with reasons |
+| F-27 | re-review 2 (low) | The tourist spec's header TSDoc still denied that any test navigates to `/booking/pay`, contradicted 100 lines below | fixed in `d66fb8dd` |
+| F-26 | re-review 2 (low) | Two near-identical venue payloads in `operator-daily.e2e.ts` | fixed in `d66fb8dd` — one `wideVenue(name, availability)` factory |
+| F-25 | re-review 2 (low) | TSDoc carrying review history in `operator-daily.e2e.ts` and on `hittableBox` | fixed in `d66fb8dd` |
+| F-24 | re-review 2 (low) | The all-locked-day test rested on axe alone; a fixture that stopped overflowing would have proved nothing | fixed in `9b72ec8c` — it now asserts the grid really overflows and the tab stop is present |
 | F-23 | re-review | `touch-target.spec.ts`'s reframed TSDoc claimed "every native control kind"; the host renders button/a/input only | fixed in `69eb9e7f` |
 | F-22 | re-review | A partially clipped control was still measured at its full box, so the clipping fix closed only the fully-off-screen half | fixed in `69eb9e7f` — the helper now measures the clamped box, so a half-cut control reports the part that is actually hittable |
 | F-21 | re-review | The exemption swap left `admin-audit.ts` with a dangling `TouchTarget` import and zero usages | fixed in `69eb9e7f` |
@@ -739,6 +779,6 @@ and `field-glass.ts` match only inside doc comments, and `home.html`'s selects a
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [x] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **The review gate ran in full** — four rounds (high, then high/low/low over each fix round); findings 10 → 10 → 9 → 3, all fixed.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
