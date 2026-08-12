@@ -2,9 +2,10 @@
  * Diff-scoped guard for RV-STYLE-1: an inline comment is one line, or it is not written
  * (`riviera-java-conventions` §6c, `frontend/.claude/CLAUDE.md`, review-bank item RV-STYLE-1).
  *
- * Only ever reasons about lines a diff **added**. The existing tree carries many pre-existing
- * multi-line inline comments that read as established convention in their own files; a
- * repo-wide gate would go red on day one and get switched off (issue #529).
+ * Reasons about lines a diff **added**, for anything git already tracks. The existing tree carries
+ * many pre-existing multi-line inline comments that read as established convention in their own
+ * files; a repo-wide gate would go red on day one and get switched off (issue #529). A file git has
+ * never seen is judged whole instead — see `checkPaths` (#619).
  *
  * Exempt by design: doc comments (`/** … *\/`, TSDoc — the rule's own carve-out), a block
  * comment standing before any code as the file's header, and `#`/SQL-`--` comment syntaxes
@@ -15,7 +16,15 @@ import { readFileSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { diffArgs, git, mergeBase, parseAddedLines, readText, repoRoot } from './git-diff.mjs';
+import {
+  changedPaths,
+  diffArgs,
+  git,
+  mergeBase,
+  parseAddedLines,
+  readText,
+  repoRoot,
+} from './git-diff.mjs';
 
 /**
  * Per-extension comment syntax. An extension absent from this map is not checked at all.
@@ -160,9 +169,10 @@ function scan(lines, syntax) {
       }
       const ch = line[c];
       if (ch === '"' || ch === "'" || ch === '`') {
-        c = skipString(line, c + 1, ch);
-        // A template literal may legally span lines, so an unclosed one carries to the next.
-        if (ch === '`' && line[c - 1] !== '`') inTemplate = true;
+        const body = c + 1;
+        c = skipString(line, body, ch);
+        // An unclosed template carries to the next line; `c === body` is the opener standing last.
+        if (ch === '`' && (c === body || line[c - 1] !== '`')) inTemplate = true;
         lineHasCode = true;
         continue;
       }
@@ -203,7 +213,9 @@ function scan(lines, syntax) {
 /**
  * Scans from `start` to just past the closing `quote`, honouring backslash escapes. When the quote
  * never closes on this line the end of the line is returned, so the caller can tell the two apart
- * by checking whether the character before the returned index is the quote.
+ * by checking whether the character before the returned index is the quote — **and whether the
+ * scan moved at all**: an opener standing last on its line returns `start` itself, where the
+ * character before is that opener, which read as a close and inverted the caller's state (#619).
  */
 function skipString(line, start, quote) {
   let c = start;
@@ -238,6 +250,38 @@ export function check(range, limitTo) {
   return violations;
 }
 
+/**
+ * Checks explicit paths against `HEAD`, judging an **untracked** file whole.
+ *
+ * A file git has never seen has no diff against `HEAD`, so the plain diff path reported it clean —
+ * and a brand-new file is the commonest way a violation enters the tree, on the very `Write` the
+ * `PostToolUse` hook fires for. `check-focus-posture` closed this in #618; this guard kept the gap
+ * until #619's CLI harness went looking for it.
+ *
+ * <p>Only the untracked half is judged whole. A **tracked** file stays diff-scoped even here, which
+ * is where this deliberately parts company with `check-focus-posture`'s `--files`: that rule has
+ * ~12 standing instances and can afford a whole-file verdict, while ~460 pre-existing multi-line
+ * comments stand in this tree by design, so judging a committed file whole would bury the author in
+ * lines someone else wrote — the day-one red issue #529 exists to avoid.
+ *
+ * @param {string[]} paths repo-relative paths
+ */
+export function checkPaths(paths) {
+  const inScope = paths.filter((path) => syntaxFor(path));
+  if (inScope.length === 0) return [];
+
+  const tracked = new Set(changedPaths(git(['ls-files', '-z', '--', ...inScope])));
+  const violations = tracked.size === 0 ? [] : check(['HEAD', '--', ...tracked], [...tracked]);
+
+  for (const path of inScope.filter((candidate) => !tracked.has(candidate))) {
+    const text = readText(path);
+    if (text === null) continue;
+    const lines = text.split('\n');
+    violations.push(...findViolations({ path, lines, added: new Set(lines.map((_, i) => i + 1)) }));
+  }
+  return violations.sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line);
+}
+
 const ADVICE =
   'RV-STYLE-1: an inline comment is one line, or it is not written. Shorten it, delete it, or ' +
   'move the prose to a doc comment (Javadoc/TSDoc), which is exempt. See ' +
@@ -259,8 +303,7 @@ function main(argv) {
     const payload = JSON.parse(readFileSync(0, 'utf8'));
     const path = payload?.tool_response?.filePath ?? payload?.tool_input?.file_path;
     if (!path || !syntaxFor(path)) return 0;
-    const edited = toRepoRelative(path);
-    const violations = check(['HEAD', '--', edited], [edited]);
+    const violations = checkPaths([toRepoRelative(path)]);
     if (violations.length === 0) return 0;
     process.stdout.write(
       JSON.stringify({
@@ -274,8 +317,7 @@ function main(argv) {
   }
 
   if (mode === '--files') {
-    const paths = argv.slice(1).map(toRepoRelative);
-    const violations = check(['HEAD', '--', ...paths], paths);
+    const violations = checkPaths(argv.slice(1).map(toRepoRelative));
     if (violations.length === 0) return 0;
     process.stderr.write(`Multi-line inline comments:\n${report(violations)}\n${ADVICE}\n`);
     return 1;

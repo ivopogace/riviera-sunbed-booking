@@ -137,9 +137,11 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   complies instead of being trimmed later.
 - **A guard enforces it while you type** (#529): `scripts/check-inline-comments.mjs` runs from a
   `PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff, covering `.ts`,
-  `.tsx`, `.js`, `.scss`, `.css` and `.html`. It is **diff-scoped** — it judges only lines your
-  diff adds, so the pre-existing multi-line blocks in `styles.scss` stay untouched and so should
-  yours. Run it by hand with `node scripts/check-inline-comments.mjs --files <path…>`. Scope
+  `.tsx`, `.js`, `.scss`, `.css` and `.html`. It is **diff-scoped for anything git already tracks**
+  — it judges only lines your diff adds, so the pre-existing multi-line blocks in `styles.scss` stay
+  untouched and so should yours — but a file git has never seen is judged whole (#619), since a new
+  file has no diff against `HEAD` and every line in it is yours anyway. Run it by hand with
+  `node scripts/check-inline-comments.mjs --files <path…>`. Scope
   details and the two exemptions: `riviera-java-conventions` §6c.
 
 ## Unit tests
