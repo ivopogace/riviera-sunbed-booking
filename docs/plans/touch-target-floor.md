@@ -242,7 +242,7 @@ Requests sweep in `frontend/e2e/touch-targets.e2e.ts` and add the remaining cons
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The floor: directive, sweep helper, stated convention | ✅ | `<phase-0-sha>` |
+| 0 — The floor: directive, sweep helper, stated convention | ✅ | `676b83c4` |
 | 1 — Operator console: 5 tabs + create card + shell chrome | | |
 | 2 — The two map grids (geometry + in-frame scroll) | | |
 | 3 — Platform-admin console | | |
