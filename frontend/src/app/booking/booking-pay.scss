@@ -50,7 +50,9 @@
 // where a chip on the bare gradient would not.
 .cancel-link {
   // Surface via appPanelGlass; the pill radius + own type styles stay here.
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   margin-bottom: 14px;
   padding: 8px 16px;
   border-radius: 999px;
@@ -303,7 +305,8 @@ h1 {
 }
 .pay-done .link,
 .pay-standalone .link {
-  display: block;
+  /* Block-level like the `block` it replaces, but a flex box so `.link`'s centring applies. */
+  display: flex;
 }
 .btn-primary:focus-visible,
 .link:focus-visible {

@@ -49,21 +49,6 @@
   animation: riv-drift 22s ease-in-out infinite reverse;
 }
 
-/* Inside the component style so the override carries the same emulated-encapsulation
-   attribute as the animation rules above — the global styles.scss guard alone loses that
-   specificity contest. */
-@media (prefers-reduced-motion: reduce) {
-  .riv-blob-1,
-  .riv-blob-2,
-  .riv-pop-in {
-    animation: none;
-  }
-  .riv-chip-btn,
-  .riv-menu-btn {
-    transition: none;
-  }
-}
-
 /* ---- glass header ---- */
 
 .riv-header {
@@ -466,17 +451,6 @@
   }
 }
 
-/* After the rules it overrides: same specificity, so the later declaration is the one that wins. */
-@media (prefers-reduced-motion: reduce) {
-  .riv-mobile-swatch::before {
-    transition: none;
-  }
-
-  .riv-mobile-swatch:hover::before {
-    transform: none;
-  }
-}
-
 .riv-mobile-swatch-active::before {
   box-shadow:
     0 0 0 2px #ffffff,
@@ -511,4 +485,23 @@
   padding: 16px 24px;
   font-size: 13px;
   color: var(--riv-ink-soft);
+}
+
+/* In-component (the global guard loses the specificity contest) and LAST (same specificity wins). */
+@media (prefers-reduced-motion: reduce) {
+  .riv-blob-1,
+  .riv-blob-2,
+  .riv-pop-in {
+    animation: none;
+  }
+
+  .riv-chip-btn,
+  .riv-menu-btn,
+  .riv-mobile-swatch::before {
+    transition: none;
+  }
+
+  .riv-mobile-swatch:hover::before {
+    transform: none;
+  }
 }

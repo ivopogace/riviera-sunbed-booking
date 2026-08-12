@@ -34,6 +34,22 @@ function seat(
   };
 }
 
+/** A twelve-set single row — wide enough that a 44px tile per column cannot fit a 390px viewport. */
+function wideVenue(name: string, availability: 'FREE' | 'TAKEN') {
+  return {
+    id: 1,
+    name,
+    beach: 'Ksamil',
+    region: 'Albanian Riviera',
+    description: '',
+    ratingTenths: 48,
+    reviewsCount: 12,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets: Array.from({ length: 12 }, (_, i) => seat(i + 1, i + 1, 'ONLINE', availability)),
+  };
+}
+
 /** Session + shell reads mocked; a `marked` set makes the mark/release round-trip survive reconcile. */
 async function mockDaily(page: Page): Promise<void> {
   const marked = new Set<number>();
@@ -241,20 +257,7 @@ test('a wide venue keeps every tile tappable and scrolls inside its frame (#605)
   await mockDaily(page);
   // Registered after mockDaily's, so this wide-venue payload wins the route match.
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({
-      json: {
-        id: 1,
-        name: 'Wide Bay',
-        beach: 'Ksamil',
-        region: 'Albanian Riviera',
-        description: '',
-        ratingTenths: 48,
-        reviewsCount: 12,
-        bookingMode: 'INSTANT',
-        fromPrice: { minorUnits: 3000, currency: 'EUR' },
-        sets: Array.from({ length: 12 }, (_, i) => seat(i + 1, i + 1, 'ONLINE', 'FREE')),
-      },
-    }),
+    route.fulfill({ json: wideVenue('Wide Bay', 'FREE') }),
   );
   await page.setViewportSize({ width: 390, height: 780 });
   await page.goto('/operator/1');
@@ -292,20 +295,7 @@ test('a wide venue keeps every tile tappable and scrolls inside its frame (#605)
 test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async ({ page }) => {
   await mockDaily(page);
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({
-      json: {
-        id: 1,
-        name: 'Sold Out Bay',
-        beach: 'Ksamil',
-        region: 'Albanian Riviera',
-        description: '',
-        ratingTenths: 48,
-        reviewsCount: 12,
-        bookingMode: 'INSTANT',
-        fromPrice: { minorUnits: 3000, currency: 'EUR' },
-        sets: Array.from({ length: 12 }, (_, i) => seat(i + 1, i + 1, 'ONLINE', 'TAKEN')),
-      },
-    }),
+    route.fulfill({ json: wideVenue('Sold Out Bay', 'TAKEN') }),
   );
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({

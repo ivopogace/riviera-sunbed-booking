@@ -1,15 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { completeDialog } from './support/booking-dialog';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
  * The 44 px touch-target floor (#605) over the tourist, auth and booking surfaces — the third and
  * last sweep spec, after the operator and admin consoles.
  *
- * <p>The Stripe Payment Element is deliberately out of reach: it renders inside a cross-origin
- * iframe the sweep cannot descend into and we cannot restyle (a stated Non-goal). No test navigates
- * to `/booking/pay` — the payment page needs a live PaymentIntent, and the mocked suite has none,
- * so the exemption rests on the iframe boundary rather than on an assertion.
+ * <p>The Stripe Payment Element itself is out of reach: it renders inside a cross-origin iframe the
+ * sweep cannot descend into and we cannot restyle (a stated Non-goal). The chrome AROUND it is
+ * ours, so `/booking/pay` is swept through the booking dialog — reaching it by URL alone renders
+ * only the empty state.
  */
 
 const VENUE = {
@@ -63,6 +64,24 @@ async function mockTourist(page: Page): Promise<void> {
   await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
     route.fulfill({ json: BOOKING }),
   );
+  await page.route('**/api/bookings', (route) =>
+    route.fulfill({
+      status: 202,
+      json: {
+        code: 'WXYZ345678',
+        status: 'AWAITING_PAYMENT',
+        venueId: 1,
+        venueName: 'Miramar Beach Club',
+        setId: 2,
+        rowLabel: 'Front row · Sea view',
+        positionNo: 2,
+        bookingDate: '2026-12-01',
+        amount: { minorUnits: 4500, currency: 'EUR' },
+        clientSecret: 'pi_123_secret_abc',
+        paymentIntentId: 'pi_123',
+      },
+    }),
+  );
 }
 
 test.describe('44px touch targets on the tourist surfaces at a phone width', () => {
@@ -110,8 +129,19 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
   test('the payment page chrome — the Stripe iframe is out of reach, ours is not', async ({
     page,
   }) => {
-    await page.goto('/booking/pay');
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    // The deterministic gateway: without it the page never leaves its mounting state.
+    await page.addInitScript(() => {
+      (window as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ = true;
+    });
+    // Via the dialog: a direct /booking/pay visit renders only the empty state.
+    await page.goto('/venues/1');
+    await page
+      .getByRole('button', { name: /Select to book/ })
+      .first()
+      .click();
+    await completeDialog(page.getByRole('dialog'), 'Continue to payment');
+    await expect(page).toHaveURL(/\/booking\/pay/);
+    await expect(page.getByTestId('pay-cancel')).toBeVisible();
 
     await expectTouchTargets(page, 'booking pay chrome');
   });

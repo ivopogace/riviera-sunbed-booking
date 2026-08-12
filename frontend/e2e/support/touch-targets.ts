@@ -25,33 +25,28 @@ export async function expectTouchTargets(page: Page, label: string): Promise<voi
   const undersized = await page.evaluate(
     ({ controls, floor }) => {
       /**
-       * The part of a control that is actually hittable, clamped by every ancestor that CLIPS.
-       *
-       * <p>The distinction is the whole point: `overflow: hidden`/`clip` removes what it cuts off
-       * for good, so that area is not a target. `overflow: auto`/`scroll` merely puts it out of
-       * view — the user scrolls and taps it whole. Treating those the same silently dropped ~14 of
-       * 24 beach-map tiles; clamping on a clipping ancestor OUTSIDE the scrollport then reported
-       * the edge tile at 15px, though scrolling brings it fully inside. So the walk stops at the
-       * nearest scrollable ancestor: past it, position is the user's to change.
+       * The part of a control a user can actually hit: its box, clamped per axis by each ancestor
+       * that CLIPS that axis (`hidden`/`clip`), and unclamped by one that merely SCROLLS it
+       * (`auto`/`scroll`) — a scrolled-away control is reachable whole. The walk ends at the
+       * nearest scrollable ancestor, since past it the position is the user's to change.
        */
       const hittableBox = (el: Element, box: DOMRect) => {
         let { left, top, right, bottom } = box;
+        const scrolls = (o: string) => o === 'auto' || o === 'scroll';
+        const clips = (o: string) => o === 'hidden' || o === 'clip';
         for (let parent = el.parentElement; parent; parent = parent.parentElement) {
           const style = getComputedStyle(parent);
-          const scrolls = (o: string) => o === 'auto' || o === 'scroll';
-          if (scrolls(style.overflowX) || scrolls(style.overflowY)) break;
-          const clipsX = style.overflowX === 'hidden' || style.overflowX === 'clip';
-          const clipsY = style.overflowY === 'hidden' || style.overflowY === 'clip';
-          if (!clipsX && !clipsY) continue;
           const edge = parent.getBoundingClientRect();
-          if (clipsX) {
+          // Per axis: a clipping axis clamps, a scrolling axis does not.
+          if (clips(style.overflowX)) {
             left = Math.max(left, edge.left);
             right = Math.min(right, edge.right);
           }
-          if (clipsY) {
+          if (clips(style.overflowY)) {
             top = Math.max(top, edge.top);
             bottom = Math.min(bottom, edge.bottom);
           }
+          if (scrolls(style.overflowX) || scrolls(style.overflowY)) break;
         }
         return { width: right - left, height: bottom - top };
       };

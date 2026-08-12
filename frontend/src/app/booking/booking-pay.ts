@@ -212,6 +212,7 @@ type PayState =
               <p
                 class="mt-[10px] text-[12px] leading-[1.5] text-(--riv-card-ink-soft)"
                 data-testid="legal-agreement"
+                data-touch-exempt="links inside a sentence (WCAG 2.5.5 inline exception)"
               >
                 By paying you agree to our
                 <a
