@@ -157,16 +157,16 @@ The client already ignores `detail` (#610), and this slice does not start readin
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Rewrite the `LAYOUT_IN_USE` string in `layout-editor.ts` against a failing
-`layout-editor.spec.ts` assertion (phase 1 step 1).
+**Next action:** Split the repool/remove assertions in `operator-set-editing.e2e.ts` and update the
+banner assertion in `layout-editor.e2e.ts` (phase 2 step 1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Thread the attempted action; per-action `SET_IN_USE` copy | ✅ | pending |
-| 1 — Layout-lock banner: permanent arm + honest remedy | ⏳ | |
-| 2 — Split the e2e assertions per action | | |
+| 0 — Thread the attempted action; per-action `SET_IN_USE` copy | ✅ | `9f10152` |
+| 1 — Layout-lock banner: permanent arm + honest remedy | ✅ | pending |
+| 2 — Split the e2e assertions per action | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
