@@ -173,7 +173,11 @@ describe('SetEditor (#600)', () => {
     // Still the SERVER's pool (nothing optimistic), and no re-read asked for — nothing changed.
     expect(cellForSet(12).getAttribute('data-state')).toBe('standard');
     expect(changed).toBe(0);
-    expect(byId('set-error').textContent).toMatch(/booked, or still held/i);
+    const message = byId('set-error').textContent ?? '';
+    expect(message).toMatch(/can’t be repooled/i);
+    expect(message).toMatch(/price and tier can still change/i);
+    // The edit guard refuses only a live claim, so the message must not speak for the remove guard.
+    expect(message).not.toMatch(/removed/i);
   });
 
   it('explains a cross-venue refusal in the operator’s terms (invariant #13)', async () => {
@@ -287,7 +291,11 @@ describe('SetEditor (#600)', () => {
 
     expect(cellForSet(12)).toBeTruthy();
     expect(changed).toBe(0);
-    expect(byId('set-error').textContent).toMatch(/booked, or still held/i);
+    const message = byId('set-error').textContent ?? '';
+    expect(message).toMatch(/can’t be removed/i);
+    // The remove guard reaches any booking ever, so the copy states that arm as permanent.
+    expect(message).toMatch(/booked at least once/i);
+    expect(message).not.toMatch(/repooled/i);
   });
 
   function emptyCell(gridX: number, gridY: number): HTMLButtonElement {
@@ -412,7 +420,7 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-move-armed')).toBeFalsy();
   });
 
-  it('surfaces a refused move without moving anything on the map', async () => {
+  it('explainsARefusedMove: surfaces a refused move without moving anything on the map', async () => {
     render();
     selectSet(12);
     click(byId('set-add-col'));
@@ -426,7 +434,41 @@ describe('SetEditor (#600)', () => {
 
     expect(cellForSet(12).dataset['gridX']).toBe('1');
     expect(changed).toBe(0);
-    expect(byId('set-error').textContent).toMatch(/booked, or still held/i);
+    const message = byId('set-error').textContent ?? '';
+    expect(message).toMatch(/can’t be moved/i);
+    expect(message).not.toMatch(/removed/i);
+  });
+
+  it('refusalCopyIsDistinctPerAction: the three in-use refusals share no one string (AC-4)', async () => {
+    render();
+    const seen = new Set<string>();
+    const conflict = { status: 409, statusText: 'Conflict' };
+
+    // Move first: the Move button is disabled while the draft is dirty, which a repool leaves it.
+    selectSet(12);
+    click(byId('set-add-col'));
+    click(byId('set-move'));
+    click(emptyCell(3, 1));
+    http.expectOne((r) => r.method === 'PATCH').flush({ code: 'SET_IN_USE' }, conflict);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    seen.add(byId('set-error').textContent ?? '');
+
+    click(byId('set-pool-WALK_IN'));
+    click(byId('set-save'));
+    expectPatch(12).flush({ code: 'SET_IN_USE' }, conflict);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    seen.add(byId('set-error').textContent ?? '');
+
+    click(byId('set-remove'));
+    click(byId('set-remove-yes'));
+    http.expectOne((r) => r.method === 'DELETE').flush({ code: 'SET_IN_USE' }, conflict);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    seen.add(byId('set-error').textContent ?? '');
+
+    expect(seen.size).toBe(3);
   });
 
   it('drops the selection when the selected set is gone from a re-read', () => {

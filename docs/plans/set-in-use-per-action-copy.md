@@ -47,7 +47,9 @@ addendum*.
   `set-editor.spec.ts` › `explainsARefusedMove`.
 - [ ] **AC-2:** Given a `SET_IN_USE` refusal of a **repool** (the save path — the only field of
   `disturbedBy` a save can change), then the message names **only** repooling as refused, and still
-  says price and tier remain editable. *Pinned by:* `set-editor.spec.ts` › `explainsARefusedRepool`.
+  says price and tier remain editable. *Pinned by:* `set-editor.spec.ts` ›
+  `keepsTheSetUnchangedOnSetInUse` (the repool refusal's existing home — kept rather than renamed,
+  since it also pins that the grid does not move).
 - [ ] **AC-3:** Given a `SET_IN_USE` refusal of a **remove**, then the message states the permanent
   arm — that a set which has ever been booked stays on the map — and does **not** claim the set
   cannot be moved or repooled. *Pinned by:* `set-editor.spec.ts` › `explainsARefusedRemove`.
@@ -155,14 +157,15 @@ The client already ignores `detail` (#610), and this slice does not start readin
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Write the three failing per-action specs in `set-editor.spec.ts` (phase 0 step 1).
+**Next action:** Rewrite the `LAYOUT_IN_USE` string in `layout-editor.ts` against a failing
+`layout-editor.spec.ts` assertion (phase 1 step 1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Thread the attempted action; per-action `SET_IN_USE` copy | ⏳ | |
-| 1 — Layout-lock banner: permanent arm + honest remedy | | |
+| 0 — Thread the attempted action; per-action `SET_IN_USE` copy | ✅ | pending |
+| 1 — Layout-lock banner: permanent arm + honest remedy | ⏳ | |
 | 2 — Split the e2e assertions per action | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -247,6 +250,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-12 | Phase 0 | **Client copy describing a server guard whose predicate differs by the request that hit it.** The mechanism needs one code reachable from call sites that ask different questions — so the population is the codes emitted from more than one call site, which #644 already enumerated in `error-contract.md` rather than leaving to resemblance | `sed -n 54,62p .claude/skills/riviera-java-conventions/references/error-contract.md` (the *One code, one string* enumeration), cross-read against `VenueAdminService`'s guards | 4: `MISSING_CURRENT_PASSWORD` (operator + customer change), `REQUEST_NOT_PENDING` (accept/decline/withdraw), `STALE_WRITE` (two set-writes), `SET_IN_USE` (edit + remove) | **Only `SET_IN_USE` qualifies** — the other three are multi-call-site but **single-predicate** (one `classifyMiss`, one `set_version` token, one password check), so one string is true at every site and #644 already pinned them. `LAYOUT_IN_USE` has one call site and one predicate; its defect is wording, fixed in phase 1, not an action split |
 
 ---
 
