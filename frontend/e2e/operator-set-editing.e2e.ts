@@ -229,14 +229,16 @@ test('a booked set cannot be repooled or removed, and says so instead of failing
   await page.getByTestId('set-pool-WALK_IN').click();
   await page.getByTestId('set-save').click();
 
-  await expect(page.getByTestId('set-error')).toContainText(/booked, or still held/i);
+  await expect(page.getByTestId('set-error')).toContainText(/pool and position can’t change/i);
   // Nothing moved: the server still has it online, and the map agrees.
   expect(mock.sets().find((s) => s.id === 13)!.pool).toBe('ONLINE');
   await expect(cell(page, 2, 2)).toHaveAttribute('data-state', 'standard');
 
   await page.getByTestId('set-remove').click();
   await page.getByTestId('set-remove-yes').click();
-  await expect(page.getByTestId('set-error')).toContainText(/booked, or still held/i);
+  // The remove guard is the wider one, and the copy is the panel's, not an echo of the mock's detail.
+  await expect(page.getByTestId('set-error')).toContainText(/can’t be removed/i);
+  await expect(page.getByTestId('set-error')).toContainText(/booked at least once/i);
   expect(mock.sets()).toHaveLength(4);
 });
 
@@ -301,6 +303,8 @@ test('the locked bulk save points at per-set editing instead of claiming it is i
   const message = page.getByTestId('layout-error');
   await expect(message).toContainText(/Edit sets/i);
   await expect(message).not.toContainText(/not possible/i);
+  // The advice must not offer a per-set remove that the same lock can itself refuse.
+  await expect(message).not.toContainText(/or remove sets/i);
 });
 
 test('stays inside its own scroll at a phone width, with tappable controls (+ axe)', async ({

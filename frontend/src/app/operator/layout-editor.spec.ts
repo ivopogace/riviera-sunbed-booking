@@ -385,7 +385,9 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
 
     expect(byId('layout-error').textContent?.toLowerCase()).toContain('locked');
-    expect(byId('layout-error').textContent).toMatch(/bookings, or sets that are still held/i);
+    // The booking arm is any booking ever (hasBookings), so the banner must not read as a live claim.
+    expect(byId('layout-error').textContent).toMatch(/booked at least once/i);
+    expect(byId('layout-error').textContent).toMatch(/still held/i);
   });
 
   it('pointsALockedLayoutAtPerSetEditing: the locked message no longer claims editing is impossible (AC-7)', async () => {
@@ -401,6 +403,11 @@ describe('LayoutEditor (#172)', () => {
     const message = byId('layout-error').textContent ?? '';
     expect(message).toMatch(/edit sets/i);
     expect(message).not.toMatch(/not possible/i);
+    // A terminal booking on one set locks the layout AND refuses that set's per-set remove.
+    expect(message).not.toMatch(/or remove sets/i);
+    expect(message).toMatch(/can’t be removed/i);
+    // removeSet refuses on a live hold too, so the caveat must not read as booking-only.
+    expect(message).toMatch(/held or has ever been booked/i);
   });
 
   it('seeds the grid from the venue’s existing layout, preserving the walk-in pool', () => {

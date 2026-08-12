@@ -29,6 +29,15 @@ type Selection =
   | { readonly kind: 'cell'; readonly gridX: number; readonly gridY: number }
   | null;
 
+/**
+ * Which per-set write was attempted. `SET_IN_USE` answers two guards of different breadth — an edit
+ * refuses only for a live claim, a remove for any booking ever — so the refusal copy is chosen by
+ * action, not by code alone. `save` stays the neutral name: it sends pool alongside a placement
+ * snapshot that another tab may already have moved, so which field tripped the server is unknowable
+ * here and the copy names the frozen group rather than guessing the operator's intent.
+ */
+type SetWrite = 'add' | 'move' | 'save' | 'remove';
+
 /** The editable copy of a set, seeded from the server and overwritten by the operator. */
 interface SetDraft {
   readonly tier: Tier;
@@ -92,6 +101,9 @@ export class SetEditor {
   protected readonly saved = signal(false);
   /** The last write failure, mapped to operator-facing copy, or undefined. */
   protected readonly errorCode = signal<SetWriteErrorCode | undefined>(undefined);
+
+  /** Which write {@link errorCode} answers — read only for `SET_IN_USE`, whose breadth varies by action. */
+  private readonly attempted = signal<SetWrite | undefined>(undefined);
   /** True while awaiting confirmation of a remove — a destructive action is never one tap away. */
   protected readonly confirmRemove = signal(false);
   /** Whether a Move has been armed. Read {@link armed}, never this — an arm outlives its own subject. */
@@ -314,7 +326,7 @@ export class SetEditor {
       return;
     }
     this.moving.set(false);
-    await this.write(() =>
+    await this.write('move', () =>
       this.console.editSet(this.venueId(), selected.id, {
         ...placementAt(gridX, gridY),
         tier: selected.tier,
@@ -337,6 +349,7 @@ export class SetEditor {
       return;
     }
     await this.write(
+      'add',
       () =>
         this.console.addSet(this.venueId(), {
           ...placementAt(cell.gridX, cell.gridY),
@@ -378,7 +391,7 @@ export class SetEditor {
       gridX: selected.gridX,
       gridY: selected.gridY,
     };
-    await this.write(() => this.console.editSet(this.venueId(), selected.id, request));
+    await this.write('save', () => this.console.editSet(this.venueId(), selected.id, request));
   }
 
   /**
@@ -408,6 +421,7 @@ export class SetEditor {
     }
     this.confirmRemove.set(false);
     await this.write(
+      'remove',
       () => this.console.removeSet(this.venueId(), selected.id),
       () => {
         this.selection.set(null);
@@ -424,7 +438,7 @@ export class SetEditor {
       case undefined:
         return undefined;
       case 'SET_IN_USE':
-        return 'This set is booked, or still held, so it can’t be moved, repooled or removed. Its price and tier can still change.';
+        return this.inUseMessage();
       case 'CELL_TAKEN':
       case 'DUPLICATE_POSITION':
         return 'Another set already occupies that spot. Reload the tab and pick a free one.';
@@ -444,12 +458,33 @@ export class SetEditor {
   }
 
   /**
+   * The refusal copy for `SET_IN_USE`, which the server answers from two guards of different reach.
+   * A move or save is refused only while someone is still owed the spot, so both stay
+   * lifetime-neutral and point at the fields that remain editable. A remove is refused by any
+   * booking that ever existed — the placement is pinned by the booking's own record — so that arm
+   * says so instead of reading as a claim that will lapse.
+   */
+  private inUseMessage(): string {
+    switch (this.attempted()) {
+      case 'move':
+        return 'This set is booked, or still held, so it can’t be moved. Its price and tier can still change.';
+      case 'save':
+        return 'This set is booked, or still held, so its pool and position can’t change. Its price and tier can still change.';
+      case 'remove':
+        return 'This set can’t be removed: it is still held, or it has been booked at least once — and a booked set stays on the map for good.';
+      default:
+        return 'This set is booked, or still held, so that change was refused.';
+    }
+  }
+
+  /**
    * Run one per-set write: on success run {@link onApplied} and announce {@link changed} so the
    * parent re-reads (the ONLY way this grid changes); on failure surface the code and leave the map
    * untouched. The follow-up rides the success path rather than a resolved promise the caller awaits,
    * so it lands in the same turn as the announcement — and never at all for a superseded write.
    */
   private async write<T>(
+    attempted: SetWrite,
     call: () => Observable<T>,
     onApplied?: (result: T) => void,
   ): Promise<void> {
@@ -470,6 +505,7 @@ export class SetEditor {
         return;
       }
       const code = setWriteErrorOf(error);
+      this.attempted.set(attempted);
       this.errorCode.set(code);
       if (code === 'UNAUTHORIZED') {
         this.operator.sessionLost();
