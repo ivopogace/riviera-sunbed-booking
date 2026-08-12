@@ -217,7 +217,8 @@ Angular-shaped strings inside a throwaway repository, never files under `fronten
 | 2 — Mode coverage: `--files`, `--hook`, `--all`, usage, loud failure | ✅ | `efcf0ae` |
 | 3 — The other three guards' CLIs | ✅ | `efcf0ae` |
 | 4 — AC-13: the template-literal scan defect the coverage found | ✅ | `efcf0ae` |
-| 5 — Close-out: docs freshness, timings, mutation ledger | ✅ | this commit |
+| 5 — Close-out: docs freshness, timings, mutation ledger | ✅ | `86f93d8` |
+| 6 — AC-15: the untracked-file gap the redundancy question surfaced | ✅ | `02688cf`, `5b45bd8` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -229,9 +230,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | harness spike (phase 0) | `check-inline-comments.mjs` reads a backtick that **opens** a template literal at end of line as one that closes it, inverting the scanner for the rest of the file — 44 files under `frontend/src/app` are written that way | fixed — AC-13 |
 | F-3 | plan-stage spike | `check-plan-file-structure.mjs` cannot be *satisfied* for a non-ASCII path: `PATH_LIKE`/`DIR_LIKE` are `\w`-based, so the token never matches | deferred → issue #641 (token grammar = the slice's non-goal) |
 | F-4 | plan-stage spike | `check-comment-only.mjs` pins none of the three git config settings and reads the new side cwd-relatively — the same false-clean class #618 fixed in the other three | deferred → issue #641 |
-| F-5 | `riviera-docs-freshness` (close-out) | `ci.yml`'s guard-suite step said it "globs **both** suites" — written at two, false at five and at six | fixed in this commit |
-| F-7 | post-review question: *are these guards redundant now that Prettier and ESLint are in place?* Answered by probe — 128 enabled ESLint rules, none about comment length or focus posture, and `eslint`/`prettier` both exit 0 on a file carrying BUSY-1 + FOCUS-1 + a multi-line inline comment. Chasing it surfaced the gap: `check-inline-comments`' `--hook`/`--files` were diff-against-`HEAD`, so an **untracked** file — the commonest way a violation enters the tree — read clean. `check-focus-posture` closed the same gap in #618 | fixed — `checkPaths` (AC-15) |
-| F-6 | `riviera-review-overlay` (inline; the `/code-review` fan-out did not run — see the self-review checklist) | the harness returned an unused `env` field and bound the object to a local only to return it; `git(args, cwd = root)` advertised a subdirectory parameter no case used | fixed in this commit — RV-STYLE-1 and RV-STYLE-2 are clean (`scripts/` resolves no Prettier config), RV-PROC-1 re-walked against the final diff, and the RV-BE/RV-FE banks are out of scope: the diff touches no Java, no `frontend/src`, and no wire shape |
+| F-5 | `riviera-docs-freshness` (close-out) | `ci.yml`'s guard-suite step said it "globs **both** suites" — written at two, false at five and at six | fixed in `86f93d8` |
+| F-6 | `riviera-review-overlay` (inline; the `/code-review` fan-out did not run — see the self-review checklist) | the harness returned an unused `env` field and bound the object to a local only to return it; `git(args, cwd = root)` advertised a subdirectory parameter no case used | fixed in `86f93d8` — RV-STYLE-1 and RV-STYLE-2 are clean (`scripts/` resolves no Prettier config), RV-PROC-1 re-walked against the final diff, and the RV-BE/RV-FE banks are out of scope: the diff touches no Java, no `frontend/src`, and no wire shape |
+| F-7 | post-merge-readiness question from the maintainer: *are these guards redundant now that Prettier and type-aware ESLint are in place?* | **No** — probed rather than argued: 128 enabled ESLint rules, of which the only comment-related two are `ban-ts-comment`/`ban-tslint-comment` and none touch focus posture; `eslint` and `prettier --check` both exit 0 on a file carrying BUSY-1 + FOCUS-1 + a multi-line inline comment that both guards catch. Chasing it surfaced a real gap: this guard's `--hook`/`--files` were diff-against-`HEAD`, so a file git had **never seen** read clean — the commonest way a violation enters the tree, and the gap `check-focus-posture` closed in #618 | fixed — AC-15, `02688cf`; the three substrate sentences it falsified patched in `5b45bd8` |
 
 ---
 
