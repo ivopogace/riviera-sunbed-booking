@@ -229,3 +229,56 @@ test('checks a guest in by typed code — the keyboard path needs no camera (#58
   await expect(page.getByTestId('checkin-result')).toContainText('Checked in');
   await expect(page.getByTestId('arrival-checked-in')).toBeVisible();
 });
+
+/**
+ * A wide venue is where the 44 px touch-target floor (#605) and the map's shape collide: twelve
+ * sets cannot each be 44 px across a 390 px phone, so the grid has to scroll inside its own frame
+ * rather than squeeze the tiles or push the page sideways.
+ */
+test('a wide venue keeps every tile tappable and scrolls inside its frame (#605)', async ({
+  page,
+}) => {
+  await mockDaily(page);
+  // Registered after mockDaily's, so this wide-venue payload wins the route match.
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: {
+        id: 1,
+        name: 'Wide Bay',
+        beach: 'Ksamil',
+        region: 'Albanian Riviera',
+        description: '',
+        ratingTenths: 48,
+        reviewsCount: 12,
+        bookingMode: 'INSTANT',
+        fromPrice: { minorUnits: 3000, currency: 'EUR' },
+        sets: Array.from({ length: 12 }, (_, i) => seat(i + 1, i + 1, 'ONLINE', 'FREE')),
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  await expect(page.getByTestId('daily-tile')).toHaveCount(12);
+  // Only a set the staff can act on renders a button; the held ones render inert tile content.
+  const tiles = page.getByTestId('daily-tile').locator('button');
+  await expect(tiles).toHaveCount(10);
+  for (const tile of await tiles.all()) {
+    const box = (await tile.boundingBox())!;
+    expect(box.width, 'tile width').toBeGreaterThanOrEqual(44);
+    expect(box.height, 'tile height').toBeGreaterThanOrEqual(44);
+  }
+
+  // The map scrolls inside the frame; the page itself never scrolls sideways.
+  const scroller = page.getByTestId('daily-grid');
+  const overflows = await scroller.evaluate((el) => el.scrollWidth > el.clientWidth);
+  expect(overflows, 'the grid scrolls inside its frame').toBe(true);
+  const pageOverflows = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  );
+  expect(pageOverflows, 'the page must not scroll sideways').toBe(false);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view, wide venue at 390px');
+});

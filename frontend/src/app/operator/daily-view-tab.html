@@ -25,6 +25,7 @@
             data-testid="daily-date"
             [value]="selectedDate()"
             (change)="onDateChange($event)"
+            appTouchTarget
             class="rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
           />
         </label>
@@ -50,49 +51,61 @@
 
     <!-- The sea-facing availability grid -->
     <app-beach-grid-frame testid="daily-grid-frame">
-      @for (row of rows(); track row.label) {
-        <div class="mb-1.5 flex items-center gap-2">
-          <span class="w-5 flex-shrink-0 text-center text-[11px] font-bold text-(--riv-card-ink)">{{
-            row.label
-          }}</span>
-          <ul class="grid flex-1 list-none gap-1 p-0" [style.grid-template-columns]="columns(row)">
-            @for (set of row.sets; track set.id) {
-              <li
-                class="set-tile"
-                data-testid="daily-tile"
-                [class.premium]="set.tier === 'PREMIUM'"
-              >
-                @if (isActionable(set)) {
-                  <button
-                    type="button"
-                    [attr.data-set-id]="set.id"
-                    [attr.data-state]="stateOf(set)"
-                    [attr.aria-label]="tileLabel(set)"
-                    [disabled]="isPending(set)"
-                    (click)="onTile(set)"
-                    class="h-8 w-full rounded-[6px] border text-[10.5px] font-semibold [transition:transform_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none"
-                    [class]="tileClass(set)"
-                  >
-                    <span aria-hidden="true">{{ tileGlyph(set) }}</span>
-                  </button>
-                } @else {
-                  <span
-                    [attr.data-set-id]="set.id"
-                    [attr.data-state]="stateOf(set)"
-                    class="flex h-8 w-full items-center justify-center rounded-[6px] border text-[10.5px] font-semibold"
-                    [class]="tileClass(set)"
-                  >
-                    <!-- Locked tile: an sr-only text alternative names the state (so it isn't colour-only)
-                         without an img role — the glyph itself is decorative. -->
-                    <span class="sr-only">{{ tileLabel(set) }}</span>
-                    <span aria-hidden="true">{{ tileGlyph(set) }}</span>
-                  </span>
-                }
-              </li>
-            }
-          </ul>
-        </div>
-      }
+      <!-- A 44px tile floor makes a wide venue overflow, so the map scrolls inside its own frame. -->
+      <div
+        class="overflow-x-auto"
+        data-testid="daily-grid"
+        tabindex="0"
+        role="group"
+        aria-label="Beach map"
+      >
+        @for (row of rows(); track row.label) {
+          <div class="mb-1.5 flex items-center gap-2">
+            <span
+              class="w-5 flex-shrink-0 text-center text-[11px] font-bold text-(--riv-card-ink)"
+              >{{ row.label }}</span
+            >
+            <ul
+              class="grid flex-1 list-none gap-1 p-0"
+              [style.grid-template-columns]="columns(row)"
+            >
+              @for (set of row.sets; track set.id) {
+                <li
+                  class="set-tile"
+                  data-testid="daily-tile"
+                  [class.premium]="set.tier === 'PREMIUM'"
+                >
+                  @if (isActionable(set)) {
+                    <button
+                      type="button"
+                      [attr.data-set-id]="set.id"
+                      [attr.data-state]="stateOf(set)"
+                      [attr.aria-label]="tileLabel(set)"
+                      [disabled]="isPending(set)"
+                      (click)="onTile(set)"
+                      class="min-h-11 w-full rounded-[6px] border text-[10.5px] font-semibold [transition:transform_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none"
+                      [class]="tileClass(set)"
+                    >
+                      <span aria-hidden="true">{{ tileGlyph(set) }}</span>
+                    </button>
+                  } @else {
+                    <span
+                      [attr.data-set-id]="set.id"
+                      [attr.data-state]="stateOf(set)"
+                      class="flex h-8 w-full items-center justify-center rounded-[6px] border text-[10.5px] font-semibold"
+                      [class]="tileClass(set)"
+                    >
+                      <!-- Locked tile: sr-only text names the state, so it is not colour-only. -->
+                      <span class="sr-only">{{ tileLabel(set) }}</span>
+                      <span aria-hidden="true">{{ tileGlyph(set) }}</span>
+                    </span>
+                  }
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
     </app-beach-grid-frame>
 
     <!-- Legend -->
@@ -136,6 +149,7 @@
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="button"
+            appTouchTarget
             class="cursor-pointer rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[14px] py-[9px] text-[13.5px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/85 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
             [appBusy]="checkInBusy()"
             (click)="toggleScan()"
@@ -151,12 +165,14 @@
             autocomplete="off"
             spellcheck="false"
             placeholder="Booking code"
+            appTouchTarget
             class="w-[170px] rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] font-mono text-[14px] tracking-[0.06em] text-(--riv-card-ink) uppercase placeholder:font-sans placeholder:normal-case"
             (keydown.enter)="submitCode(checkinCode)"
             data-testid="checkin-code-input"
           />
           <button
             type="button"
+            appTouchTarget
             class="cursor-pointer rounded-[12px] border border-transparent bg-(--riv-accent-ink) px-[14px] py-[9px] text-[13.5px] font-bold text-white [transition:filter_0.15s_ease] hover:brightness-110 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
             [appBusy]="checkInBusy()"
             (click)="submitCode(checkinCode)"

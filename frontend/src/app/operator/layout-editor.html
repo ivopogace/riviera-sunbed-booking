@@ -159,7 +159,7 @@
                 >
                 <div
                   class="grid flex-1 gap-1"
-                  [style.grid-template-columns]="'repeat(' + colCount() + ', minmax(0, 1fr))'"
+                  [style.grid-template-columns]="'repeat(' + colCount() + ', minmax(44px, 1fr))'"
                 >
                   @for (cell of row.cells; track $index; let ci = $index) {
                     <button
@@ -172,7 +172,7 @@
                       [title]="cell.label"
                       [attr.aria-label]="cell.label"
                       data-testid="layout-cell"
-                      class="h-7 rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
+                      class="min-h-11 rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
                     ></button>
                   }
                 </div>

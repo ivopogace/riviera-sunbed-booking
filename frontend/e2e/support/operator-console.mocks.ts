@@ -93,16 +93,17 @@ export async function signInAsOperator(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
 }
 
+/** Two rows of twelve: wide enough that a 390px viewport cannot fit a 44px tile per column. */
 function seedSets() {
-  return Array.from({ length: 12 }, (_, i) => ({
+  return Array.from({ length: 24 }, (_, i) => ({
     id: 10 + i,
-    rowLabel: i < 6 ? 'A' : 'B',
-    positionNo: (i % 6) + 1,
-    tier: i < 6 ? 'PREMIUM' : 'STANDARD',
+    rowLabel: i < 12 ? 'A' : 'B',
+    positionNo: (i % 12) + 1,
+    tier: i < 12 ? 'PREMIUM' : 'STANDARD',
     pool: 'ONLINE',
     price: { minorUnits: 2000, currency: 'EUR' },
-    gridX: i % 6,
-    gridY: i < 6 ? 0 : 1,
+    gridX: i % 12,
+    gridY: i < 12 ? 0 : 1,
   }));
 }
 

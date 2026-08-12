@@ -28,9 +28,7 @@ import { OperatorAuth } from '../core/operator-auth';
       class="sticky top-0 z-20 border-b border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]"
       data-testid="opc-header"
     >
-      <div
-        class="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-4 px-6 py-3"
-      >
+      <div class="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-x-4 px-6">
         <a
           routerLink="/operator"
           appTouchTarget
@@ -40,7 +38,7 @@ import { OperatorAuth } from '../core/operator-auth';
         >
 
         @if (!operator.restoring()) {
-          <nav class="flex flex-wrap items-center gap-3.5" aria-label="Operator">
+          <nav class="flex flex-wrap items-center gap-x-3.5" aria-label="Operator">
             @if (operator.signedIn()) {
               <a
                 appTouchTarget

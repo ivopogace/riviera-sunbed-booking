@@ -13,6 +13,7 @@ import {
 import { ActivatedRoute } from '@angular/router';
 import { catchError, forkJoin, of, tap } from 'rxjs';
 
+import { TouchTarget } from '../shared/touch-target';
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import {
   HeldSetState,
@@ -111,7 +112,7 @@ interface CheckInNotice {
  */
 @Component({
   selector: 'app-daily-view-tab',
-  imports: [CardGlass, BeachGridFrame, StatusChip, BusyAction],
+  imports: [CardGlass, BeachGridFrame, StatusChip, BusyAction, TouchTarget],
   templateUrl: './daily-view-tab.html',
 })
 export class DailyViewTab {
@@ -289,9 +290,9 @@ export class DailyViewTab {
   );
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
 
-  /** The per-row grid-template-columns value (one equal column per set). */
+  /** Per-row grid columns: equal share of the row, never below the 44px touch floor (#605). */
   protected columns(row: SetRow): string {
-    return `repeat(${row.sets.length}, minmax(0, 1fr))`;
+    return `repeat(${row.sets.length}, minmax(44px, 1fr))`;
   }
 
   /** State of one tile (defaults to FREE before the map loads). */

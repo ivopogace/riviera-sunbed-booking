@@ -99,6 +99,7 @@
                 </output>
                 <button
                   type="button"
+                  appTouchTarget
                   class="rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white motion-reduce:transition-none"
                   data-testid="dismiss-expired"
                   (click)="onDismissExpired(row)"
@@ -117,6 +118,7 @@
                 <div class="flex flex-wrap gap-2.5">
                   <button
                     type="button"
+                    appTouchTarget
                     class="rounded-[13px] bg-[#a3160e] px-5 py-[11px] text-[14px] font-bold text-white aria-disabled:opacity-60"
                     [appBusy]="isDeciding(row.bookingId)"
                     [attr.aria-label]="confirmDeclineLabel(row)"
@@ -126,6 +128,7 @@
                   </button>
                   <button
                     type="button"
+                    appTouchTarget
                     class="rounded-[13px] border border-(--riv-card-border) bg-white/60 px-5 py-[11px] text-[14px] font-semibold text-(--riv-card-ink)"
                     (click)="onCancelDecline(row)"
                   >
@@ -137,6 +140,7 @@
               <div class="mt-3.5 flex flex-wrap gap-2.5 border-t border-(--riv-card-border) pt-3.5">
                 <button
                   type="button"
+                  appTouchTarget
                   class="min-w-[130px] flex-1 rounded-[13px] bg-[#0a6e85] px-4 py-[11px] text-[14px] font-bold text-white aria-disabled:opacity-60"
                   [appBusy]="isDeciding(row.bookingId)"
                   [attr.aria-label]="acceptLabel(row)"
@@ -146,6 +150,7 @@
                 </button>
                 <button
                   type="button"
+                  appTouchTarget
                   class="rounded-[13px] border border-[#a3160e]/50 bg-white/50 px-5 py-[11px] text-[14px] font-semibold text-[#a3160e] aria-disabled:opacity-60"
                   [appBusy]="isDeciding(row.bookingId)"
                   [attr.aria-label]="declineLabel(row)"

@@ -18,9 +18,10 @@ export async function expectTouchTargets(page: Page, label: string): Promise<voi
       const describe = (el: Element): string => {
         const testid = el.getAttribute('data-testid');
         const tag = el.tagName.toLowerCase();
-        return testid
-          ? `${tag}[data-testid="${testid}"]`
-          : `${tag}.${el.className || '(no class)'}`;
+        if (testid) return `${tag}[data-testid="${testid}"]`;
+        // A Tailwind class list runs to hundreds of chars; a grid of them buries the failure.
+        const classes = el.className.split(/\s+/).filter(Boolean).slice(0, 2).join('.');
+        return classes ? `${tag}.${classes}…` : tag;
       };
 
       return [...document.querySelectorAll(controls)]

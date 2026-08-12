@@ -113,7 +113,7 @@ routing only — but prescribes the attribute-selector-on-a-native-element patte
 | Daily grid: the whole map is visible without horizontal scrolling on a phone for a typical venue | **changed** | still true up to ~7 columns at 390 px; wider venues now scroll **inside the frame**. The page itself still never scrolls sideways (asserted, AC-4) |
 | Daily grid: tap a tile → mark/unmark walk-in; optimistic state; `data-state` + tier classes as test hooks | preserved | tile markup, handlers, `data-state`, `.set-tile`/`.premium` hooks all unchanged — only `h-8` → `min-h-11 min-w-11`. Pinned by AC-5 |
 | Daily grid: `[disabled]="isPending(set)"` while a tile's write is in flight | preserved | untouched. **Not** converted to `[appBusy]` here — that is a focus-posture change, out of scope, and BUSY-1 only fires on a `[disabled]` line the diff *adds* (`check-focus-posture.mjs:362`), which this diff does not |
-| Daily grid: row-label gutter (`w-5`) beside each row | preserved | unchanged; the gutter sits outside the scrolling `<ul>` so labels stay pinned while tiles scroll |
+| Daily grid: row-label gutter (`w-5`) beside each row | **changed** | the plan intended to pin the gutter outside the scroller; the shipped code puts it **inside**, so a label scrolls with its row. That is what the sibling `set-editor` grid already does (#600), and matching a shipped sibling beat inventing a sticky-label behaviour only one of the two console grids would have |
 | Layout editor: paint by click and by drag across a `repeat(cols, minmax(0, 1fr))` grid | **changed** (geometry only) | same `minmax(44px, 1fr)` + in-frame scroll. Drag-paint is pointer-position based and unaffected by cell size; re-verified by the existing layout-editor e2e |
 | Layout editor: the whole R×C grid fits the frame after Generate | **changed** | a generated grid wider than the frame now scrolls inside it rather than squeezing |
 | Console tab nav (`.oc-tab`): pill row that **wraps** at narrow widths, never overflowing the page (#170, asserted in `operator-console.e2e.ts`) | preserved | the SCSS gains `min-height: 44px` + `display: inline-flex; align-items: center`; the row still wraps, it just wraps sooner. The existing overflow assertion is the guard |
@@ -128,7 +128,7 @@ routing only — but prescribes the attribute-selector-on-a-native-element patte
 | R-2 | The 44 px **width** half is the hard one: a 12-set row cannot give 44 px per column at 390 px without scrolling. Fixing height alone would satisfy a height-only assertion and still miss WCAG | **high** | high | AC-1 asserts **both** dimensions; the grids move to `minmax(44px, 1fr)` + `overflow-x-auto` inside the frame (AC-4) | plan | open |
 | R-3 | A generic sweep is brittle: it will trip on a control that is legitimately small, and the temptation is to weaken the assertion | med | med | one escape hatch only — `data-touch-exempt="<reason>"`, greppable and reviewable; the reason string is mandatory. **Never** loosen the 44 to make a surface pass | implementer | open |
 | R-4 | The sweep measures hidden/zero-size controls (`venue-tab`'s `class="hidden"` file input) and fails on them | med | low | the helper skips any element with no box, zero area, `visibility: hidden`, or `display: none` — measured via `boundingBox()` being null/zero, not via a class list | implementer | open |
-| R-5 | Taller controls push a surface's content down and break an existing layout/overflow assertion (e.g. the #600 "page does not scroll sideways" check, or a card that assumed its height) | med | med | run the full mocked e2e suite (`npm run test:e2e:a11y`) at the end of every phase, not just the phase's own spec; fix layout, never the assertion | implementer | open |
+| R-5 | Taller controls push a surface's content down and break an existing layout/overflow assertion | med | med | **It fired — as F-2, on a surface phase 1 never swept.** Mitigation held: the layout was fixed (redundant header padding removed) and the assertion left untouched | implementer | **closed — fixed in `<phase-2-sha>`** |
 | R-6 | Prettier reformats the long class strings and the diff balloons past the real change | med | low | `npm run format` before each commit (whole-scope Prettier is a CI gate since #631); review the diff for reflow-only hunks and keep them in their own commit if large | implementer | open |
 | R-7 | ~145 controls + ~56 anchors across ~40 files is a large mechanical diff; a missed file reads as "the sweep covered it" | med | med | the sweep is per **surface/route**, not per file — a missed control on a covered route fails. Routes not covered by a sweep test are listed explicitly in phase 5 | implementer | open |
 | R-8 | Touching a control's `class` line pulls a neighbouring `[disabled]` into the focus-posture guard's judged region | low | low | it does not: `check-focus-posture.mjs:362` requires the `[disabled]` **line itself** to be diff-added. Verified by reading the script; re-verify by running `node scripts/check-focus-posture.mjs --diff origin/main` per phase | plan | open |
@@ -223,12 +223,13 @@ a static template `class` with a directive host `class`, so consumers keep their
 > its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
 > never a merge SHA**.
 
-**Stage pointer:** `implement — phases 0–1 complete; phase 2 next` · **draft PR #647** open, CI green
-on phase 0 (all 7 checks). The review + Sonar gates fall due at ready-for-review, not while draft.
+**Stage pointer:** `implement — phases 0–2 complete; phase 3 next` · **draft PR #647** open. CI green
+on phase 0; phase 1 went **red** and its two findings (F-1, F-2) are fixed in phase 2. The review +
+Sonar gates fall due at ready-for-review, not while draft.
 
-**Next action:** phase 2 — give both beach-map grids a 44 px tile floor with in-frame horizontal
-scrolling (`daily-view-tab.ts`'s `columns()` and `layout-editor.html:162`, both `minmax(0, 1fr)` →
-`minmax(44px, 1fr)`), then un-skip the two `test.fixme` sweeps.
+**Next action:** phase 3 — the platform-admin console. Note F-2: its header is the *same*
+`operator-chrome` phase 2 already fixed, so what remains is `admin-console-tabs` (40 px pills, with a
+code comment admitting it) and the six admin routes' own controls.
 
 > **Phase 0's measurement rewrote the phase-1 estimate.** The sweep measured all 15 controls on the
 > Requests tab: **the tab body is already compliant** — its accept/decline buttons wrap at 390 px and
@@ -245,7 +246,7 @@ scrolling (`daily-view-tab.ts`'s `columns()` and `layout-editor.html:162`, both 
 |-------|--------|---------|
 | 0 — The floor: directive, sweep helper, stated convention | ✅ | `676b83c4` |
 | 1 — Operator console: 5 tabs + create card + shell chrome | ✅ | `425fdfbb` |
-| 2 — The two map grids (geometry + in-frame scroll) | | |
+| 2 — The two map grids (geometry + in-frame scroll) | ✅ | `<phase-2-sha>` |
 | 3 — Platform-admin console | | |
 | 4 — Auth, booking, tourist pages, shared primitives | | |
 | 5 — Coverage reconciliation + close-out | | |
@@ -258,7 +259,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (phase 1) | `Confirm decline` measured **43 × 163 on Linux** and 44 on Windows — it met the floor only through inherited line-height, never through an explicit rule | fixed in `<phase-2-sha>` — the directive now carries all five request-card actions, and every control on a swept surface is tagged rather than left to ambient metrics |
+| F-2 | CI (phase 1) | Making the shared `operator-chrome` nav links 44 px grew that header **131.8 → 187 px**, pushing `#admin-pending-title` past the 360 px fold (797 vs < 740). The chrome is shared with `/admin`, which phase 1 never swept | fixed in `<phase-2-sha>` — the header's own `py-3` and row-gaps were the redundancy: with 44 px items supplying the rhythm, dropping them returns the header to **133 px** and the title to 685. Layout fixed, assertion untouched |
 
 ---
 
@@ -512,24 +514,34 @@ phase 5 reconciling the file list against the routes the sweep actually visits. 
 
 ## Phase 2 — The two map grids (geometry + in-frame scroll)
 
-**Files:** Modify `frontend/src/app/operator/daily-view-tab.html`, `daily-view-tab.ts:293` (`columns()`), `layout-editor.html:162` · Test `frontend/e2e/operator-daily.e2e.ts`, `frontend/e2e/touch-targets.e2e.ts`
+**Files:** Modify `frontend/src/app/operator/daily-view-tab.html`, `daily-view-tab.ts` (`columns()`), `layout-editor.html` · `frontend/src/app/operator/operator-chrome.ts`, `requests-tab.{ts,html}`, `payouts-tab.html` (the two CI findings) · Test `frontend/e2e/operator-daily.e2e.ts`, `frontend/e2e/touch-targets.e2e.ts`, `frontend/e2e/support/touch-targets.ts`
 
-> This is the phase the issue called "mechanical" and is not. Read the parity ledger's grid rows
-> before starting.
+- [x] **Step 1: Write the failing test** — AC-4 in `operator-daily.e2e.ts`: a 12-set row at 390 px,
+      every tile ≥ 44 × 44, the grid scrolling inside its frame, the page not scrolling sideways,
+      axe clean. Plus the two `test.fixme` sweeps un-skipped and the sweep mock widened to 12 sets
+      per row (the old 6 fitted at 390 px and would have proved nothing).
+- [x] **Step 2: Run it, verify it fails** — tiles measured **16 × 32**; the daily sweep reported 28
+      controls under the floor.
+- [x] **Step 3: Minimal implementation** — `minmax(0, 1fr)` → `minmax(44px, 1fr)` in both grids;
+      the daily tile's fixed `h-8` → `min-h-11` and the editor cell's `h-7` → `min-h-11`; each grid
+      wrapped in an `overflow-x-auto` scroller inside `app-beach-grid-frame`, keyboard-reachable
+      (`tabindex="0"`, `role="group"`, an accessible name) per R-9. `flex-1` is kept and `w-max` is
+      **not** used: a flex item's `min-width: auto` already refuses to shrink below the grid's
+      min-content, so the row overflows into the scroller on a phone **and** still expands to fill
+      on a desktop. Plus the daily view's own date/check-in controls.
+- [x] **Step 4: Run it, verify it passes** — 19 phase-2 specs green; full mocked suite **187 passed,
+      0 skipped**; unit **1380 passed** with **zero** spec files modified (AC-5).
+- [x] **Step 5: Generalization-audit pass** — two rows in the log: the grid population, and the
+      ambient-text-metrics population the CI findings exposed.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
-- [ ] **Step 1: Write the failing test** — in `operator-daily.e2e.ts`, a 390 px test over a mock
-      venue whose widest row has 12 sets: every `[data-testid="daily-tile"] button` is ≥ 44 × 44;
-      the grid frame's scroller has `scrollWidth > clientWidth`; `document.documentElement` does
-      **not** overflow horizontally; axe clean. Remove the `test.fixme` from the daily route in
-      `touch-targets.e2e.ts`.
-- [ ] **Step 2: Run it, verify it fails** — → FAIL: tiles measure ~26×32 at that width.
-- [ ] **Step 3: Minimal implementation** — `columns()` returns `repeat(${row.sets.length}, minmax(44px, 1fr))`; the tile button's `h-8` becomes `min-h-11` (width comes from the column); the rows' shared parent gains `overflow-x-auto` inside `app-beach-grid-frame`, with the row-label gutter kept outside the scroller. Give the scroller `tabindex="0"` and an accessible name (R-9). Apply the same `minmax(44px, 1fr)` + in-frame scroll to `layout-editor.html:162`.
-- [ ] **Step 4: Run it, verify it passes** — `npx playwright test operator-daily touch-targets --config=playwright.a11y.config.ts`, then `npm test -- daily-view-tab layout-editor` (AC-5: unmodified unit specs stay green), then the full mocked suite.
-- [ ] **Step 5: Generalization-audit pass** — population `every grid in the app whose columns are sized by 1fr and can therefore squeeze below the floor` → enumerate `git ls-files 'frontend/src/app/**' | xargs grep -n 'grid-template-columns\|grid-cols-'` → judge each (the tourist `venue-map` already uses `clamp(44px, 11vw, 56px)` and passes) → decision recorded.
-- [ ] **Step 6: Commit** — `git commit -m "Give both beach-map grids a 44px tile floor that scrolls in-frame (#605)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+### The two CI findings this phase absorbed
 
----
+Phase 1 went green locally and **red on CI**, both failures caused by Linux text metrics being
+taller than Windows'. They are in the findings register as F-1 and F-2; the durable lesson is that
+**a control passing at 44 px by inherited line-height is one platform away from failing**, which is
+why every control on a swept surface now carries the directive rather than relying on measurement.
 
 ## Phase 3 — Platform-admin console
 
@@ -591,6 +603,8 @@ phase 5 reconciling the file list against the routes the sweep actually visits. 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-12 | plan — issue-intake grill | every element the app renders as an interactive control (**not** "the other operator tabs" — the issue's own population was `operator/*.html`, which structurally cannot see inline `template:` literals or SCSS) | `git ls-files 'frontend/src/app/<dir>/*' \| grep -v '\.spec\.ts$' \| xargs grep -ho '<button\|<input\|<select\|<textarea'` per feature dir | ~145 controls + ~56 anchors across ~40 files in 7 feature folders — vs the issue's 8 files | scope widened to the whole app (maintainer decision); swept in phases 1–4, reconciled in phase 5 |
+| 2026-08-12 | phase 2 — the tile floor | **every grid whose columns are sized by an unbounded `1fr`**, since such a column squeezes its control below the floor at a narrow width no matter what the control's own classes say | `grep -rn "grid-template-columns\|grid-cols-\|repeat(" src/app --include=*.html --include=*.ts --include=*.scss \| grep -v spec` | 20 grids; only the **two beach-map grids** size interactive tiles by `1fr`. The tourist `venue-map` already floors its tiles at `clamp(44px, 11vw, 56px)`; the rest are layout grids whose children are fields already tagged | both map grids moved to `minmax(44px, 1fr)` + in-frame scroll; the others need nothing, and the tourist map is evidence the floor was already the house style for a *map* |
+| 2026-08-12 | phase 2 — CI findings F-1/F-2 | **every control that meets the floor only through ambient text metrics** (inherited line-height, flex `items-stretch`, text wrap) rather than an explicit rule — invisible locally because the dev machine is Windows and CI is Linux | per swept template, `grep -c "<button\|<input\|<select\|<textarea"` vs `grep -c "appTouchTarget"` | every swept template now balances except two deliberate cases: `venue-tab`'s `class="hidden"` file input (invisible; its visible proxy is the Add-photo button) and the exempt footer blocks. `statement-open` measured **exactly 44** — the definition of fragile | all tagged. The rule is now *tag the control*, never *measure and hope*; F-2 additionally proves a shared-chrome change must sweep **every** surface that renders it, not just the phase's own |
 | 2026-08-12 | phase 1 — the first sweep of a surface with confirm/modal states | **controls behind a gated interaction state** — a sweep of the resting surface cannot see them, so a green sweep is not a covered surface. Enumerated by the branch that gates them, not by recalling which tabs have dialogs | `grep -rln "app-confirm-panel\|app-confirm-with-reason\|@if (.*[Cc]onfirm" src/app/operator src/app/admin --include=*.html --include=*.ts` | 5 gating components: `payouts-tab` (weather confirm + statement modal), `requests-tab` (decline confirm), `venue-tab` (photo Remove, gated on a slot being occupied), plus `layout-editor`/`set-editor` (phase 2) and the admin four (phase 3) | all four phase-1 states now have their own sweep test; the mock occupies one photo slot so the Remove button renders. Found 3 controls no resting sweep could reach (`weather-confirm-btn` 194×40, `weather-cancel-btn` 78×42, `statement-close` 62×34) |
 | 2026-08-12 | phase 1 — file-structure guard reported 13 unlisted paths | **every path-token idiom the plan doc uses to stand in for a sweep**, since a token the guard cannot parse is indistinguishable from an omission — the section reads as covering the work while the guard counts nothing | read `scripts/check-plan-file-structure.mjs`'s `PATH_LIKE` / `DIR_LIKE` against the section's tokens | `frontend/src/app/operator/**` and 4 sibling `dir/**` tokens match neither pattern (`PATH_LIKE` needs an extension, `DIR_LIKE` a trailing slash) | all 5 rewritten as trailing-slash directories; the notation trap recorded in the section itself so phases 2–4 do not repeat it. `app.html` was a genuine omission and is now listed |
 | 2026-08-12 | phase 0 — the vacuous-sweep defect (R-11) | every **mock payload field name the sweep depends on**, since a wrong name renders an empty surface and silences the sweep rather than failing it. Enumerated from the contract, not from the mock | read `src/app/operator/operator-console.model.ts` (`PendingRequestItem`, `ConsoleDailyBooking`, `PayoutLedgerEntryView`, `VenueProfileView`) against `e2e/support/operator-console.mocks.ts` | 3 wrong shapes: request (`id`/`expiresAt` → `bookingId`/`requestExpiresAt`), ledger entry (`occurredAt` → `createdAt`, missing `currency`), booking (invented `guestName`/`amount`/`setLabel`) | all three corrected against the contract; **and** the class defect fixed structurally — every surface test now asserts a content marker before sweeping, so an empty render fails instead of passing |

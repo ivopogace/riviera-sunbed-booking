@@ -92,14 +92,14 @@ test.describe('44px touch targets at a phone width', () => {
   });
 
   // Phase 2 gives both beach-map grids a 44px tile floor that scrolls in-frame, and un-skips these.
-  test.fixme('operator console — daily view', async ({ page }) => {
+  test('operator console — daily view', async ({ page }) => {
     await openConsoleTab(page, 'daily');
     await expect(page.getByTestId('daily-tile').first()).toBeVisible();
 
     await expectTouchTargets(page, 'operator daily view');
   });
 
-  test.fixme('operator console — beach map editor', async ({ page }) => {
+  test('operator console — beach map editor', async ({ page }) => {
     await openConsoleTab(page, 'beach-map');
     await expect(page.getByTestId('layout-mode-bulk')).toBeVisible();
 
