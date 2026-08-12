@@ -128,7 +128,7 @@ routing only — but prescribes the attribute-selector-on-a-native-element patte
 | R-2 | The 44 px **width** half is the hard one: a 12-set row cannot give 44 px per column at 390 px without scrolling. Fixing height alone would satisfy a height-only assertion and still miss WCAG | **high** | high | AC-1 asserts **both** dimensions; the grids move to `minmax(44px, 1fr)` + `overflow-x-auto` inside the frame (AC-4) | plan | open |
 | R-3 | A generic sweep is brittle: it will trip on a control that is legitimately small, and the temptation is to weaken the assertion | med | med | one escape hatch only — `data-touch-exempt="<reason>"`, greppable and reviewable; the reason string is mandatory. **Never** loosen the 44 to make a surface pass | implementer | open |
 | R-4 | The sweep measures hidden/zero-size controls (`venue-tab`'s `class="hidden"` file input) and fails on them | med | low | the helper skips any element with no box, zero area, `visibility: hidden`, or `display: none` — measured via `boundingBox()` being null/zero, not via a class list | implementer | open |
-| R-5 | Taller controls push a surface's content down and break an existing layout/overflow assertion | med | med | **It fired — as F-2, on a surface phase 1 never swept.** Mitigation held: the layout was fixed (redundant header padding removed) and the assertion left untouched | implementer | **closed — fixed in `<phase-2-sha>`** |
+| R-5 | Taller controls push a surface's content down and break an existing layout/overflow assertion | med | med | **It fired — as F-2, on a surface phase 1 never swept.** Mitigation held: the layout was fixed (redundant header padding removed) and the assertion left untouched | implementer | **closed — fixed in `c87a776b`** |
 | R-6 | Prettier reformats the long class strings and the diff balloons past the real change | med | low | `npm run format` before each commit (whole-scope Prettier is a CI gate since #631); review the diff for reflow-only hunks and keep them in their own commit if large | implementer | open |
 | R-7 | ~145 controls + ~56 anchors across ~40 files is a large mechanical diff; a missed file reads as "the sweep covered it" | med | med | the sweep is per **surface/route**, not per file — a missed control on a covered route fails. Routes not covered by a sweep test are listed explicitly in phase 5 | implementer | open |
 | R-8 | Touching a control's `class` line pulls a neighbouring `[disabled]` into the focus-posture guard's judged region | low | low | it does not: `check-focus-posture.mjs:362` requires the `[disabled]` **line itself** to be diff-added. Verified by reading the script; re-verify by running `node scripts/check-focus-posture.mjs --diff origin/main` per phase | plan | open |
@@ -246,7 +246,7 @@ code comment admitting it) and the six admin routes' own controls.
 |-------|--------|---------|
 | 0 — The floor: directive, sweep helper, stated convention | ✅ | `676b83c4` |
 | 1 — Operator console: 5 tabs + create card + shell chrome | ✅ | `425fdfbb` |
-| 2 — The two map grids (geometry + in-frame scroll) | ✅ | `<phase-2-sha>` |
+| 2 — The two map grids (geometry + in-frame scroll) | ✅ | `c87a776b` |
 | 3 — Platform-admin console | | |
 | 4 — Auth, booking, tourist pages, shared primitives | | |
 | 5 — Coverage reconciliation + close-out | | |
@@ -259,8 +259,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI (phase 1) | `Confirm decline` measured **43 × 163 on Linux** and 44 on Windows — it met the floor only through inherited line-height, never through an explicit rule | fixed in `<phase-2-sha>` — the directive now carries all five request-card actions, and every control on a swept surface is tagged rather than left to ambient metrics |
-| F-2 | CI (phase 1) | Making the shared `operator-chrome` nav links 44 px grew that header **131.8 → 187 px**, pushing `#admin-pending-title` past the 360 px fold (797 vs < 740). The chrome is shared with `/admin`, which phase 1 never swept | fixed in `<phase-2-sha>` — the header's own `py-3` and row-gaps were the redundancy: with 44 px items supplying the rhythm, dropping them returns the header to **133 px** and the title to 685. Layout fixed, assertion untouched |
+| F-1 | CI (phase 1) | `Confirm decline` measured **43 × 163 on Linux** and 44 on Windows — it met the floor only through inherited line-height, never through an explicit rule | fixed in `c87a776b` — the directive now carries all five request-card actions, and every control on a swept surface is tagged rather than left to ambient metrics |
+| F-2 | CI (phase 1) | Making the shared `operator-chrome` nav links 44 px grew that header **131.8 → 187 px**, pushing `#admin-pending-title` past the 360 px fold (797 vs < 740). The chrome is shared with `/admin`, which phase 1 never swept | fixed in `c87a776b` — the header's own `py-3` and row-gaps were the redundancy: with 44 px items supplying the rhythm, dropping them returns the header to **133 px** and the title to 685. Layout fixed, assertion untouched |
 
 ---
 
