@@ -72,11 +72,13 @@ class BeachMapReplaceIT {
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane"); // the zone the guard's cutoff reads
 
 	/**
-	 * The one {@code LAYOUT_IN_USE} detail, asserted at both arms this class provokes — a booking of
-	 * any status and a future-dated walk-in hold. Naming no arm is what keeps it true when the guards
-	 * change; the operator-facing wording, including where to go instead, belongs to the console.
+	 * The one {@code LAYOUT_IN_USE} detail, asserted at both arms this class provokes — a
+	 * {@code CONFIRMED} booking and a future-dated walk-in hold. The guard's booking arm is broader
+	 * than that (any status, permanently — {@code RESPONSIBILITIES.md} §venue), which this class does
+	 * not seed. Why the wording names no arm: {@code riviera-java-conventions}
+	 * {@code references/error-contract.md}.
 	 */
-	private static final String LAYOUT_IN_USE_DETAIL = "This venue has a booking or a hold.";
+	private static final String LAYOUT_IN_USE_DETAIL = "This venue has a booking or a current hold.";
 
 	@Autowired
 	MockMvc mvc;

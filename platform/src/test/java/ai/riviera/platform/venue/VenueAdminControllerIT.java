@@ -45,11 +45,11 @@ class VenueAdminControllerIT {
 
 	/**
 	 * The one {@code SET_IN_USE} detail, asserted wherever this class provokes it — the remove
-	 * guard's hold and terminal-booking arms, and the edit guard's live hold. Naming no arm is what
-	 * keeps it true when the guards change, and it must stay true of a set whose only booking is a
-	 * long-cancelled one, which is undeletable by RESTRICT FK rather than in use.
+	 * guard's hold and terminal-booking arms, and the edit guard's live hold. Why the wording names
+	 * no arm, and why it must stay true of a set held only by a long-cancelled booking:
+	 * {@code riviera-java-conventions} {@code references/error-contract.md}.
 	 */
-	private static final String SET_IN_USE_DETAIL = "This set has a booking or a hold.";
+	private static final String SET_IN_USE_DETAIL = "This set has a booking or a current hold.";
 
 	@Autowired
 	MockMvc mvc;

@@ -14,7 +14,11 @@ declined having `detail` state the *real reason* a write is refused ("this logic
 the future"), so the new strings are **arm-agnostic** — they name the condition class, not which
 guard arm fired. That is what makes them survive #609's pending change to the guards, and it is the
 property the ITs pin by asserting the *same* string across the hold arm, the terminal-booking arm and
-the edit guard.
+the edit guard. Two review rounds then bounded "arm-agnostic" from both sides: it must not become
+**untrue** (r1 — "This set is in use." is false of a set held only by a long-cancelled booking), and
+it must not become so broad it **characterizes nothing** (r2 — "a booking or a hold" is equally true
+of sets the server edits happily, since a past hold locks nothing). The shipped wording, "a booking
+or a **current** hold", is the narrowest form that survives both.
 
 **Persistence:** JDBC only (invariant #1). N/A — no table, migration or query touched.
 
@@ -27,10 +31,13 @@ console's three stale-write banners; the maintainer held scope at the two filed 
 `riviera-plan-doc` (this template — forced the Behavior-parity ledger, which is what turned "no
 user-visible change" from a claim into a checked row) · `tdd` (red-green on the two ITs: the `$.detail`
 assertions fail against the old prose before the controller changes) · `riviera-review-overlay`
-(review gate — **ran** on PR #643 at ready-for-review, medium effort, 11 findings; RV-BE-10 gained the
-`detail`-voice paragraph as part of the fix round) · `riviera-docs-freshness` (**ran** over
-`origin/main...HEAD` — 1 finding, patched here: `bulk-replace-past-hold-freeze.md:165` quoted the
-removed server string as present-tense fact. Counting sweep clean — the slice adds no Nth instance of
+(review gate — **ran twice** on PR #643 at medium effort: r1 11 findings, r2 10 findings on the fix
+round, which is where the over-broad wording and three doc inaccuracies were caught; RV-BE-10 gained
+the `detail`-voice paragraph and its grandfathered-exceptions carve-out) · `riviera-docs-freshness` (**ran** over
+`origin/main...HEAD` — 1 finding patched (`bulk-replace-past-hold-freeze.md` quoted the removed
+server string as present-tense fact); review r2 F-2 then found a **second** the sweep had missed one
+hop away, `layout-lock-copy.md`'s FE↔BE section still describing the server prose as deliberately
+aligned with the console copy — also patched. Counting sweep clean: the slice adds no Nth instance of
 anything) · `riviera-java-conventions` (§6b is the contract being amended; **§6d** kept the new
 `ApiProblem` javadoc free of an issue number, and at review round 1 trimmed it further to rule +
 pointer, with the rationale living once in the skill reference) · `riviera-local-debug` (scoped
@@ -59,10 +66,13 @@ session needed — no daemon was up, so the ITs would otherwise have skipped sil
   `VenueAdminControllerIT.removeSetOnABookedSetAnswers409NotAServerError`,
   `VenueAdminControllerIT.editSetKeepsAClaimedSetInItsPoolButStillTakesAPriceChange`.
 - [x] **AC-2:** Given a bulk layout replace refused by the venue-wide guard, when the server answers
-  `409 LAYOUT_IN_USE`, then `detail` is the matching arm-agnostic sentence whichever arm fired — a
-  booking of any status or a future-dated walk-in hold. *Pinned by:*
+  `409 LAYOUT_IN_USE`, then `detail` is the matching arm-agnostic sentence at both arms this suite
+  provokes — a `CONFIRMED` booking and a future-dated walk-in hold. *Pinned by:*
   `BeachMapReplaceIT.rejectsWhenVenueHasBooking`,
-  `BeachMapReplaceIT.rejectsWhenVenueHasWalkInHoldAndHoldSurvives`.
+  `BeachMapReplaceIT.rejectsWhenVenueHasWalkInHoldAndHoldSurvives`. *(Review r2 F-1: the guard's
+  booking arm is broader still — any status, permanently — and this suite seeds no terminal booking,
+  so the claim is scoped to what it provokes rather than to the guard. The sibling `SET_IN_USE`
+  suite does cover the terminal arm, which is where the falsehood r1 F-1 caught would have shown.)*
 - [x] **AC-3:** No sentence the console renders survives in the server's `detail` — `grep -rn "so it
   can.t be moved, repooled or removed\|so its layout is locked" platform/src` returns nothing.
 - [x] **AC-4:** The rule that produced the change is stated where the next author meets it —
@@ -104,14 +114,14 @@ session needed — no daemon was up, so the ITs would otherwise have skipped sil
 | `application/problem+json` body shape, `instance` redacted | preserved | Still built by the one `ApiProblem` factory |
 | Server `detail` states the refusal in operator voice | **dropped** | Deliberate — it reached no user (no client reads `detail`) and was a hand-synced duplicate of the console copy |
 | Console panel copy for both codes | preserved | Not touched; it was always the only rendered wording |
-| Mocked e2e 409s carrying `detail` sentinels (#607 AC-4) | preserved | #607 chose `'in use'` / `'locked'` as strings **the server would never send**, so an echoing client fails by construction. The first draft of this slice broke that — it sent "This set is in use.", making the sentinel a substring of the real prose (review r1 F-3). The shipped wording ("has a booking or a hold") restores the property without touching `frontend/e2e/` |
+| Mocked e2e 409s carrying `detail` sentinels (#607 AC-4) | preserved | #607 chose `'in use'` / `'locked'` as strings **the server would never send**, so an echoing client fails by construction. The first draft of this slice broke that — it sent "This set is in use.", making the sentinel a substring of the real prose (review r1 F-3). The shipped wording ("has a booking or a current hold") restores the property without touching `frontend/e2e/` |
 
 ## Risk register
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | A non-console API client depended on the prose | low | low | `code` is the documented contract and is unchanged; the console is the only known client and reads `code` only — verified: no `.detail` read anywhere in `frontend/src`, and #607's e2e mocks already send throwaway `detail` sentinels | claude | **Closed** — no client reads `detail`; 43 console specs pass unedited |
-| R-2 | The new `detail` drifts again when the guards change (#609) | med | low | Arm-agnostic wording — it names the condition class, not which arm fired — pinned *identical* across all three `SET_IN_USE` arms by AC-1, so a future guard change cannot falsify it | claude | **Closed, and it very nearly bit inside this slice** — the first draft ("This set is in use.") was arm-agnostic *and false* for the terminal-booking arm. Review r1 F-1 caught it; the shipped superset wording ("has a booking or a hold") is falsifiable by no narrowing or widening. The near-miss is written into `error-contract.md` as the trap |
+| R-2 | The new `detail` drifts again when the guards change (#609) | med | low | Arm-agnostic wording — it names the condition class, not which arm fired — pinned *identical* across all three `SET_IN_USE` arms by AC-1, so a future guard change cannot falsify it | claude | **Closed, and it very nearly bit inside this slice** — the first draft ("This set is in use.") was arm-agnostic *and false* for the terminal-booking arm. Review r1 F-1 caught it; the shipped wording ("has a booking or a current hold") is falsifiable by no narrowing or widening. The near-miss is written into `error-contract.md` as the trap |
 | R-3 | The documented convention indicts code this slice does not fix (the `STALE_WRITE` trio, other controllers) | high | low | State the rule as go-forward, name the known exceptions in the follow-up issue rather than leaving them silent; the convention text does not claim the tree already complies | claude | **Closed** — `error-contract.md` names the six known exceptions *and* labels them a lower bound (review r1 F-8), so absence from the list reads as unexamined, not clean. Follow-up: issue #644 |
 | R-4 | Pinning `detail` in an IT re-creates the brittleness #608 declined | low | low | #608 declined it because the string was a *duplicate* of the frontend's copy; once the server string is deliberately not UI copy, the IT is its only owner — and it asserts the arm-agnostic *property*, not a sentence rendered elsewhere | claude | **Closed** — and the pin earned itself immediately: it is what made review r1 F-1's falsehood concrete, by showing a CANCELLED-booking fixture asserting "in use" |
 
@@ -173,7 +183,11 @@ single source of the wording; changing it would defeat the point.
 
 ## Execution status
 
-**Stage pointer:** `merge close-out — all gates run; merged via PR #643`
+**Stage pointer:** `merge close-out — all gates run and green; awaiting merge`
+
+**Merge vehicle:** this slice merges **via PR #643** — recorded here pre-merge on purpose, since a
+squash SHA cannot exist yet and citing one would force a second docs-only PR (`pr-gates.md` §3
+step 4). The line names the vehicle, not a completed event.
 
 **Next action:** Merge PR #643. Post-merge, only GitHub-side items remain: confirm #610 closed (the
 PR's `Closes #610` does it) and confirm the PR-activity subscription ended. No epic owns this issue,
@@ -183,7 +197,8 @@ so there is no checklist to tick.
 |-------|--------|---------|
 | 0 — Pin the arm-agnostic detail, then write it | ✅ red 3/3 + 2/2, green 53 tests 0 skipped | `897f6f8` |
 | 1 — Document the convention | ✅ AC-3/AC-4 greps clean, AC-5 43 specs pass unedited | `d3a5208` |
-| 2 — Review round 1 fixes (11 findings) + close-out | ✅ 53 IT tests green on the new wording | this commit |
+| 2 — Review round 1 fixes (11 findings) + close-out | ✅ 53 IT tests green on the new wording | `c125cce` |
+| 3 — Review round 2 fixes (10 findings) | ✅ 53 IT tests green on the final wording | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -193,17 +208,27 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review r1 | **"This set is in use." is false on the ever-booked arm** — `removeSet` refuses on a booking of any status, so a set whose only booking is long-cancelled is not in use but undeletable by RESTRICT FK (`RESPONSIBILITIES.md`:121). The slice's own IT pinned that falsehood | **fixed** — both strings restated as the superset "has a booking or a hold", true at every arm and unfalsifiable by a guard change |
+| F-1 | review r1 | **"This set is in use." is false on the ever-booked arm** — `removeSet` refuses on a booking of any status, so a set whose only booking is long-cancelled is not in use but undeletable by RESTRICT FK (`RESPONSIBILITIES.md`:121). The slice's own IT pinned that falsehood | **fixed** — both strings restated as a superset true at every arm; narrowed once more in r2 (F-3) to "has a booking or a **current** hold" |
 | F-2 | review r1 | AC-4 ticked claiming three grep hits; the javadoc's `<em>` tags meant the named pattern matched only two | **fixed** — `<em>` removed so one literal pattern proves all three; AC-4 text corrected |
 | F-3 | review r1 | The new server string contained #607's e2e sentinel `'in use'`, quietly voiding the "server would never send this" property | **fixed by F-1** — the shipped wording contains neither sentinel; `frontend/e2e/` untouched |
 | F-4 | review r1 | Both details were prose transliterations of their `code`, carrying nothing RFC 7807 asks `detail` to carry | **fixed by F-1** — the shipped strings state the condition |
 | F-5 | review r1 | Plan declared complete with 35 unticked boxes | **fixed** — every box evaluated and ticked in this commit |
 | F-6 | review r1 | Literal template placeholders `<when it ran>` / `<ran/N/A>` left in *Skills consulted* | **fixed** — both filled; the freshness run it was hiding found a real stale quote |
-| F-7 | review r1 | The duplication fix introduced three copies of its own rationale; javadoc restated it *and* pointed | **fixed** — javadoc trimmed to rule + pointer (§6d shape). The three layers are now contract / summary / rationale, not three copies. *Partly rejected:* the pointer targets `riviera-java-conventions` §6b rather than `RESPONSIBILITIES.md`, matching existing precedent (`ResubmissionOutcome`, `ObservabilityMetrics`) — the error contract is not a module responsibility |
+| F-7 | review r1 | The duplication fix introduced three copies of its own rationale; javadoc restated it *and* pointed | **fixed** — javadoc trimmed to rule + pointer (§6d shape). The three layers are now contract / summary / rationale, not three copies. *Partly rejected:* the pointer targets `riviera-java-conventions` §6b rather than `RESPONSIBILITIES.md`, matching existing precedent — `ResubmissionOutcome` points at `riviera-java-conventions` §6, and the error contract is not a module responsibility. *(r2 F-9 corrected this entry: `ObservabilityMetrics` was cited here too and does **not** support it — it points at `RESPONSIBILITIES.md`. The precedent is one class, not two.)* |
 | F-8 | review r1 | The "known exceptions" list read as complete, though its sweep was a lower bound | **fixed** — the reference now says so and states the real population |
 | F-9 | review r1 | No machine guard and no review-bank text for the new rule | **half fixed, half rejected** — RV-BE-10 gained the `detail`-voice paragraph incl. F-1's and F-4's traps. The machine check stays out: the maintainer declined it at the plan stage (brittle banned-phrase list; a gate that fails correct strings is the wrong error direction) |
 | F-10 | review r1 | All four risk rows still `open` in a plan declaring both phases done | **fixed** — all four closed with outcomes |
 | F-11 | review r1 | Test-constant javadoc claimed "every arm", but the guard has four sub-arms and the live-*booking* arm of `isLivelyClaimed` is never provoked | **fixed** — javadoc and AC-1 now say "every arm this suite provokes" and name them. Adding a live-booking fixture is out of scope; both `editSet` conditions share one return, so nothing is unpinned today |
+| G-1 | review r2 | `LAYOUT_IN_USE_DETAIL`'s javadoc and AC-2 claimed the class provokes "a booking of any status", but `seedBooking` only inserts a future-dated `CONFIRMED` one — the terminal arm, the one that made r1 F-1 real, is unpinned for this code | **fixed** — both scoped to "the arms this suite provokes" and the guard's wider reach named explicitly. Seeding a terminal booking here is #644/#609 territory, not this slice |
+| G-2 | review r2 | `layout-lock-copy.md` still described the server prose as deliberately aligned with the console copy — reversed by this slice, and one hop from the doc the freshness sweep did patch | **fixed** — supersession note added. A fair hit on the sweep: scope discipline says historical plans are records, but that paragraph states a *contract*, which this slice falsifies |
+| G-3 | review r2 | The details dropped the guard's currency qualifier, so "has a booking or a hold" is equally true of venues the server accepts — reviving the belief #599/#602 removed, that any hold locks a layout | **fixed in part** — "a booking or a **current** hold". The finding's own phrasing ("dated today or later") is **rejected**: that is the guard's date arithmetic, which #607 settled against and the maintainer declined again here. "Current" conveys liveness without it |
+| G-4 | review r2 | The known-exceptions list counts six strings but seven call sites — `"Enter your current password."` is twinned across `OperatorAccountController` and `MyAccountController` | **fixed** — verified (7 hits), and the twin is now called out in both the reference and issue #644, since fixing one of a pair is the exact defect this rule exists to stop |
+| G-5 | review r2 | Execution status claimed "merged via PR #643" beside "Next action: Merge PR #643" — recording a merge that had not happened | **fixed** — split into a stage pointer and a *Merge vehicle* line that names the vehicle without asserting the event |
+| G-6 | review r2 | Both test-constant javadocs restated the rationale, re-creating the five-copy shape r1 F-7 had just trimmed out of production javadoc | **fixed** — both cut to the contract plus a pointer to `error-contract.md` |
+| G-7 | review r2 | RV-BE-10 shipped with no grandfathered-exceptions carve-out, so reviewers would raise Minor findings on seven sanctioned legacy strings | **fixed** — carve-out added naming all seven and #644, with the `riviera-frontend` debt-ledger precedent the finding cited |
+| G-8 | review r2 | The freshness patch appended a third supersession layer rather than stating the current fact, and certified the disappearance of strings #607 had already replaced | **fixed** — rewritten to say plainly what is true now and why the quotes are doubly historical |
+| G-9 | review r2 | The F-7 register entry cited `ObservabilityMetrics` as precedent for a skill-directory javadoc pointer; that class points at `RESPONSIBILITIES.md` | **fixed** — verified and corrected; the precedent is `ResubmissionOutcome` alone |
+| G-10 | review r2 | `STALE_WRITE`'s remedy copy still sits two arms above the fixed ones in the same `switch`, with the deferral recorded only in the plan | **rejected** — the deferral is the maintainer's scope call and is now recorded in three durable places (`error-contract.md`, RV-BE-10, issue #644). A call-site comment pointing at an issue number is what §6d and RV-STYLE-1 explicitly discourage |
 | — | sonar | Quality gate **passed** — 0 new issues, 0 accepted issues, 0 security hotspots, 0.0% duplication on new code | verified against the API, not just the badge (see the Sonar note) |
 
 ---
@@ -224,6 +249,8 @@ Skill-routing gate for what the fix touches *before* editing).
   `detail`-voice paragraph (review r1 F-9), the review-time half of a rule nothing machine-checks
 - `docs/plans/bulk-replace-past-hold-freeze.md` — docs-freshness patch: its *Deliberate non-change*
   entry quoted the removed server string as present-tense fact
+- `docs/plans/layout-lock-copy.md` — the second freshness patch (review r2 G-2): its FE↔BE section
+  described the server prose as deliberately aligned with the console copy
 - `docs/plans/error-detail-not-ui-copy.md` — this plan
 
 ---

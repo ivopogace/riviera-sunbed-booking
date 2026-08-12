@@ -295,8 +295,17 @@ A controller introducing a bespoke `{"error": …}` body or a per-controller
 reaches no user, and drifts (#567 → #607 → #610). Default **Minor**. Two traps when a
 diff *fixes* one: shortening it into a restatement of the `code` (which carries nothing
 RFC 7807 asks `detail` to carry), and shortening it into something **untrue** of the
-broadest arm the code serves. (Authority: `riviera-java-conventions`
-`references/error-contract.md`.)
+broadest arm the code serves.
+
+**Seven call sites are grandfathered, not findings** — the three `STALE_WRITE` details in
+`VenueAdminController`, `"You cannot suspend the account you are signed in with."`,
+`"You do not manage this venue."`, and `"Enter your current password."` in both
+`OperatorAccountController` and `MyAccountController`. They predate the rule and are
+tracked by **issue #644**; raising them again on a diff that merely touches those files is
+noise, which is how a bank item gets ignored. A diff that *changes* one of them, though, is
+the moment to fix it. (Authority: `riviera-java-conventions`
+`references/error-contract.md`, which also holds the caveat that those seven are a lower
+bound rather than the full population.)
 
 ---
 
