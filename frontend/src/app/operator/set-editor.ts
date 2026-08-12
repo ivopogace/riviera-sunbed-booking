@@ -23,6 +23,8 @@ import { BeachGridFrame } from './beach-grid-frame';
 import { SetWriteErrorCode, SetWriteRequest } from './operator-console.model';
 import { OperatorConsoleService, setWriteErrorOf } from './operator-console.service';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /** What the panel is editing: one saved set, one empty cell to add into, or nothing. */
 type Selection =
   | { readonly kind: 'set'; readonly setId: number }
@@ -80,7 +82,7 @@ function draftForNewCell(gridY: number): SetDraft {
  */
 @Component({
   selector: 'app-set-editor',
-  imports: [CardGlass, BeachGridFrame, BeachCell, ConfirmPanel, FormField, BusyAction],
+  imports: [CardGlass, BeachGridFrame, BeachCell, ConfirmPanel, FormField, BusyAction, TouchTarget],
   templateUrl: './set-editor.html',
 })
 export class SetEditor {

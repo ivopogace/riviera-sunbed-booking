@@ -3,6 +3,8 @@ import { Component, inject, input } from '@angular/core';
 import { CustomerAuth } from '../core/customer-auth';
 import { SsoProviderId } from '../core/sso-redirect';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * Shared "Continue with Google / Continue with Apple" affordance for the sign-in and register
  * cards — one place so the SSO buttons never drift between the two pages, and adding a provider is a
@@ -12,6 +14,7 @@ import { SsoProviderId } from '../core/sso-redirect';
  * styling go-forward); the buttons are keyed by `data-testid` for the e2e.
  */
 @Component({
+  imports: [TouchTarget],
   selector: 'app-sso-buttons',
   template: `
     @if (audience() === 'tourist') {
@@ -24,6 +27,7 @@ import { SsoProviderId } from '../core/sso-redirect';
       <div class="flex flex-col gap-2.5" role="group" aria-label="Continue with a provider">
         @for (provider of providers; track provider.id) {
           <button
+            appTouchTarget
             type="button"
             [attr.data-testid]="provider.testId"
             class="w-full cursor-pointer rounded-[14px] border border-(--riv-field-border) bg-(--riv-field-fill) px-3 py-3 text-[14px] font-semibold text-(--riv-card-ink) transition hover:brightness-[0.97] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-[color:var(--riv-accent-ink)]"

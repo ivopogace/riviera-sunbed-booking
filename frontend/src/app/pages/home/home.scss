@@ -126,6 +126,7 @@
 
 .field select,
 .field input {
+  min-height: 44px;
   font: inherit;
   font-size: 15px;
   color: var(--riv-card-ink);

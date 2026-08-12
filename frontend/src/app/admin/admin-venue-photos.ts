@@ -12,6 +12,8 @@ import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminVenuePhotosService, ModerationVenue } from './admin-venue-photos.service';
 import { AdminPhotoSlotView } from './admin.model';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /** The slot labels, in the backend's `PhotoSlot` declaration order. */
 const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
   cover: 'Cover',
@@ -50,6 +52,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
     AdminConsoleTabs,
     ConfirmWithReason,
     BusyAction,
+    TouchTarget,
   ],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
@@ -90,6 +93,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
             >Venue</label
           >
           <select
+            appTouchTarget
             id="admin-photos-venue-select"
             data-testid="admin-photos-venue"
             [value]="selectedVenueId() ?? ''"
@@ -112,6 +116,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
             Something went wrong loading this venue's photos.
             <button
               type="button"
+              data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
               class="font-semibold underline"
               data-testid="admin-photos-retry"
               (click)="loadSlots()"
@@ -164,6 +169,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
                     />
                   } @else {
                     <button
+                      appTouchTarget
                       type="button"
                       [attr.data-testid]="'admin-photo-remove-' + slot.slot"
                       [appBusy]="busy()"

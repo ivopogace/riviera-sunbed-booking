@@ -17,6 +17,7 @@ import {
   WeatherRefundResult,
 } from './operator-console.model';
 import { OperatorConsoleService, payoutErrorOf } from './operator-console.service';
+import { TouchTarget } from '../shared/touch-target';
 import { PayoutStatement } from './payout-statement';
 
 /**
@@ -37,7 +38,7 @@ import { PayoutStatement } from './payout-statement';
  */
 @Component({
   selector: 'app-payouts-tab',
-  imports: [CardGlass, PayoutStatement, BusyAction],
+  imports: [CardGlass, PayoutStatement, BusyAction, TouchTarget],
   templateUrl: './payouts-tab.html',
 })
 export class PayoutsTab {

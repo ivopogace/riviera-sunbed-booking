@@ -60,7 +60,9 @@ established (per-slice history: the issues + `docs/plans/`):
 
 - **Frontend:** Angular 22 (mobile-friendly responsive web), Tailwind 4, signals,
   standalone components. Unit tests are **Vitest in jsdom** (not Karma); e2e is
-  Playwright. Native apps deferred.
+  Playwright. Native apps deferred. Every interactive control meets a **44 × 44 px**
+  touch floor via `shared/touch-target.ts` (#605) — the rule, its two exemptions and
+  the measured e2e proof are `riviera-tailwind`'s call.
 - **Backend:** Spring Boot 4 REST API on Java 25, organized as a **Spring
   Modulith** (2.1) with hexagonal (ports/adapters) modules. No Lombok.
 - **Persistence:** PostgreSQL via **Spring Data JDBC / `JdbcTemplate` only**.

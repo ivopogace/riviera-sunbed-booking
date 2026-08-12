@@ -12,6 +12,8 @@ import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { focusMover } from '../shared/focus-after-render';
 
+import { TouchTarget } from '../shared/touch-target';
+
 const RESEND_NOTICES = {
   sent: 'Verification email sent. Check your inbox.',
   withheld:
@@ -41,7 +43,7 @@ const RESEND_NOTICES = {
  */
 @Component({
   selector: 'app-set-password',
-  imports: [FormField, RouterLink, CardGlass, BusyAction],
+  imports: [FormField, RouterLink, CardGlass, BusyAction, TouchTarget],
   template: `
     <section class="auth-wrap" aria-labelledby="setpw-title">
       <div class="auth-card" appCardGlass>
@@ -67,6 +69,7 @@ const RESEND_NOTICES = {
             <p class="auth-hint" data-testid="setpw-unverified">
               Your email isn't verified yet.
               <button
+                appTouchTarget
                 type="button"
                 class="border-0 bg-transparent p-0 underline [cursor:pointer] [font:inherit] text-[inherit] aria-disabled:opacity-60"
                 data-testid="setpw-resend"
@@ -88,6 +91,7 @@ const RESEND_NOTICES = {
             <label class="auth-field">
               <span class="auth-label">Current password</span>
               <input
+                appTouchTarget
                 type="password"
                 data-testid="setpw-current"
                 [formField]="setForm.currentPassword"
@@ -102,6 +106,7 @@ const RESEND_NOTICES = {
             <label class="auth-field">
               <span class="auth-label">New password</span>
               <input
+                appTouchTarget
                 type="password"
                 data-testid="setpw-new"
                 [formField]="setForm.newPassword"
@@ -116,6 +121,7 @@ const RESEND_NOTICES = {
             }
 
             <button
+              appTouchTarget
               type="submit"
               class="auth-submit"
               data-testid="setpw-submit"
@@ -145,6 +151,7 @@ const RESEND_NOTICES = {
                 Erase your account and personal data? This cannot be undone.
               </p>
               <button
+                appTouchTarget
                 type="button"
                 class="auth-submit"
                 data-testid="erase-confirm"
@@ -154,6 +161,7 @@ const RESEND_NOTICES = {
                 {{ erasing() ? 'Erasing…' : 'Yes, erase everything' }}
               </button>
               <button
+                appTouchTarget
                 type="button"
                 class="mt-3 w-full border-0 bg-transparent p-0 underline [cursor:pointer] [font:inherit] text-[color:var(--riv-card-ink-soft)] aria-disabled:opacity-60"
                 data-testid="erase-cancel"
@@ -164,6 +172,7 @@ const RESEND_NOTICES = {
               </button>
             } @else {
               <button
+                appTouchTarget
                 type="button"
                 class="mt-2 w-full rounded-[16px] border border-[color:var(--riv-field-border)] bg-transparent px-[13px] py-[13px] text-[15px] font-bold text-[color:var(--riv-card-ink)] [cursor:pointer] [transition:background_0.15s_ease] hover:bg-[color:var(--riv-field-fill)]"
                 data-testid="erase-account"

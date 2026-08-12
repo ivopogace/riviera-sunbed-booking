@@ -1,12 +1,13 @@
 import { afterNextRender, Component, ElementRef, input, output, viewChild } from '@angular/core';
 
+import { TouchTarget } from './touch-target';
+
 /** Which ink the confirm button carries — the two the operator console already ships. */
 export type ConfirmTone = 'destructive' | 'primary';
 
 const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
-  destructive:
-    'min-h-11 rounded-[10px] bg-[#a3160e] px-4 py-1.5 text-[12.5px] font-bold text-white',
-  primary: 'min-h-11 rounded-[10px] bg-[#0a5f74] px-4 py-1.5 text-[12.5px] font-bold text-white',
+  destructive: 'rounded-[10px] bg-[#a3160e] px-4 py-1.5 text-[12.5px] font-bold text-white',
+  primary: 'rounded-[10px] bg-[#0a5f74] px-4 py-1.5 text-[12.5px] font-bold text-white',
 };
 
 /**
@@ -22,6 +23,7 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
  * `docs/plans/shared-confirm-panel.md`.
  */
 @Component({
+  imports: [TouchTarget],
   selector: 'app-confirm-panel',
   host: {
     role: 'alertdialog',
@@ -33,6 +35,7 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
     <p class="text-[12.5px] font-semibold leading-[1.45] text-[#7a4a08]">{{ message() }}</p>
     <div class="mt-2 flex flex-wrap gap-2">
       <button
+        appTouchTarget
         #confirmButton
         type="button"
         [class]="confirmClass()"
@@ -42,8 +45,9 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
         {{ confirmLabel() }}
       </button>
       <button
+        appTouchTarget
         type="button"
-        class="min-h-11 rounded-[10px] border border-(--riv-card-border) px-4 py-1.5 text-[12.5px] font-semibold text-(--riv-card-ink)"
+        class="rounded-[10px] border border-(--riv-card-border) px-4 py-1.5 text-[12.5px] font-semibold text-(--riv-card-ink)"
         [attr.data-testid]="cancelTestId()"
         (click)="cancelled.emit()"
       >

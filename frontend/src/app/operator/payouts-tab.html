@@ -46,6 +46,7 @@
         </div>
         <button
           type="button"
+          appTouchTarget
           class="rounded-[13px] bg-[#0a6e85] px-5 py-3 text-[14px] font-bold text-white [transition:background_0.15s_ease] hover:bg-[#0a5e72] motion-reduce:transition-none"
           data-testid="statement-open"
           (click)="openStatement()"
@@ -76,6 +77,7 @@
           >
           <input
             type="date"
+            appTouchTarget
             class="rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
             data-testid="weather-date"
             [value]="selectedDate()"
@@ -85,6 +87,7 @@
         @if (!weatherConfirm()) {
           <button
             type="button"
+            appTouchTarget
             class="rounded-[12px] border border-(--riv-card-border) bg-white/60 px-4 py-[9px] text-[13.5px] font-semibold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white motion-reduce:transition-none"
             data-testid="weather-trigger"
             (click)="onWeatherRefund()"
@@ -107,6 +110,7 @@
           <div class="flex flex-wrap gap-2.5">
             <button
               type="button"
+              appTouchTarget
               class="rounded-[12px] bg-[#9a6410] px-[18px] py-2.5 text-[13.5px] font-bold text-white aria-disabled:opacity-60"
               data-testid="weather-confirm-btn"
               [appBusy]="refunding()"
@@ -116,6 +120,7 @@
             </button>
             <button
               type="button"
+              appTouchTarget
               class="rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[18px] py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)"
               data-testid="weather-cancel-btn"
               [appBusy]="refunding()"

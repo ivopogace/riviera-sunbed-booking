@@ -66,6 +66,7 @@ import { AdminAuditEntryView } from './admin.model';
             Something went wrong loading the audit trail.
             <button
               type="button"
+              data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
               class="font-semibold underline"
               data-testid="admin-audit-retry"
               (click)="retry()"

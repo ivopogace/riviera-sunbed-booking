@@ -15,6 +15,8 @@ import { BookingQr } from './booking-qr';
 import { MyBookingSummary } from './booking.model';
 import { BookingService } from './booking.service';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /** The design's per-status sub-label (server-truth-adjacent); '' for CONFIRMED (no sub-label). */
 function subLineOf(b: MyBookingSummary): string {
   switch (b.status) {
@@ -163,7 +165,7 @@ function isNotFound(error: unknown): boolean {
  */
 @Component({
   selector: 'app-my-bookings',
-  imports: [RouterLink, CardGlass, StatusChip, BookingQr],
+  imports: [RouterLink, CardGlass, StatusChip, BookingQr, TouchTarget],
   template: `
     <section class="my-bookings" aria-labelledby="mb-title">
       <a routerLink="/" class="back-link">← All beaches</a>
@@ -199,6 +201,7 @@ function isNotFound(error: unknown): boolean {
               missing.
             </p>
             <button
+              appTouchTarget
               type="button"
               class="btn-cta"
               (click)="retryAccount()"
@@ -254,6 +257,7 @@ function isNotFound(error: unknown): boolean {
                       <span class="meta">Check your connection and try again.</span>
                     </span>
                     <button
+                      appTouchTarget
                       type="button"
                       class="btn-retry"
                       (click)="retry(row.code)"

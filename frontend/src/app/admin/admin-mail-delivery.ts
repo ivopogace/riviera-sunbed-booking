@@ -6,6 +6,8 @@ import { CardGlass } from '../shared/card-glass';
 import { AdminMailDeliveryService } from './admin-mail-delivery.service';
 import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from './admin.model';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * The admin console's per-booking mail-delivery card: what happened to a tourist's
  * booking-confirmation mail, and the button that sends it again.
@@ -30,7 +32,7 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
  */
 @Component({
   selector: 'app-admin-mail-delivery',
-  imports: [FormField, CardGlass, BusyAction],
+  imports: [FormField, CardGlass, BusyAction, TouchTarget],
   template: `
     <div
       appCardGlass
@@ -54,6 +56,7 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
         <label class="flex flex-col gap-1">
           <span class="text-[13.5px] font-semibold text-(--riv-card-ink)">Email address</span>
           <input
+            appTouchTarget
             type="email"
             data-testid="admin-delivery-email"
             [formField]="lookupForm.email"
@@ -65,6 +68,7 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
           />
         </label>
         <button
+          appTouchTarget
           type="submit"
           class="inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
           [appBusy]="searching()"
@@ -123,6 +127,7 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
               }
 
               <button
+                appTouchTarget
                 type="button"
                 class="mt-3 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                 [appBusy]="resending() !== undefined"

@@ -17,6 +17,8 @@ import { BookingQr } from './booking-qr';
 import { BookingDetail, Cancellation } from './booking.model';
 import { BookingService } from './booking.service';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /** The card-glass EXTRAS `appCardGlass` deliberately doesn't carry (radius stays with the consumer). */
 const CARD_SURFACE =
   'rounded-[28px] backdrop-blur-[26px] backdrop-saturate-[170%] shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)]';
@@ -40,8 +42,8 @@ const CLS = {
   title: 'm-0 text-[28px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
   stateTitle: 'mx-0 mt-0 mb-2 text-[22px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
   lead: 'mx-0 mt-0 mb-[18px] text-[14.5px] leading-[1.5] text-(--riv-card-ink-soft)',
-  link: LINK,
-  linkBack: `${LINK} mt-[18px] inline-block`,
+  link: `${LINK} inline-flex items-center`,
+  linkBack: `${LINK} mt-[18px] inline-flex items-center`,
   bannerAwaiting: `${BANNER} border-[#bfe6ee] bg-[#ddf4f8]`,
   bannerPending: `${BANNER} border-[#f3e3bf] bg-[#fdf5e6]`,
   bannerDeclined: `${BANNER} border-[#eed6ce] bg-[#faefec]`,
@@ -109,7 +111,7 @@ const CLS = {
  */
 @Component({
   selector: 'app-booking-view',
-  imports: [RouterLink, CardGlass, StatusChip, BookingQr, BusyAction],
+  imports: [RouterLink, CardGlass, StatusChip, BookingQr, BusyAction, TouchTarget],
   template: `
     @if (notFound()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
@@ -117,13 +119,13 @@ const CLS = {
         <p [class]="cls.lead">
           We couldn’t find a booking for that code. Check the code and try again.
         </p>
-        <a routerLink="/" [class]="cls.link">Back to home</a>
+        <a appTouchTarget routerLink="/" [class]="cls.link">Back to home</a>
       </section>
     } @else if (failed()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
         <h1 id="bv-title" [class]="cls.stateTitle">Couldn’t load your booking</h1>
         <p [class]="cls.lead">Something went wrong. Please try again in a moment.</p>
-        <a routerLink="/" [class]="cls.link">Back to home</a>
+        <a appTouchTarget routerLink="/" [class]="cls.link">Back to home</a>
       </section>
     } @else if (booking(); as b) {
       <section [class]="cls.card" appCardGlass aria-labelledby="bv-title">
@@ -463,7 +465,7 @@ const CLS = {
           </section>
         }
 
-        <a routerLink="/" [class]="cls.linkBack">Back to home</a>
+        <a appTouchTarget routerLink="/" [class]="cls.linkBack">Back to home</a>
       </section>
     } @else {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title" aria-busy="true">

@@ -11,6 +11,7 @@ import { parentVenueId } from '../shared/parent-venue-id';
 import { todayBookingDate } from '../shared/booking-date';
 import { tierLabel } from '../shared/set-label';
 import { SetView } from '../shared/venue-views';
+import { TouchTarget } from '../shared/touch-target';
 import { ConsoleVenueMap } from './console-venue-map';
 import { RepriceErrorCode } from './operator-console.model';
 import { OperatorConsoleService, repriceErrorOf } from './operator-console.service';
@@ -43,7 +44,7 @@ interface PriceRow {
  */
 @Component({
   selector: 'app-pricing-tab',
-  imports: [CardGlass, StaleWriteBanner],
+  imports: [CardGlass, StaleWriteBanner, TouchTarget],
   templateUrl: './pricing-tab.html',
 })
 export class PricingTab {

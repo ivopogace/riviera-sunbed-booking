@@ -6,6 +6,8 @@ import { CustomerAuth } from '../core/customer-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * "Forgot password" request page (design D-8). A tourist enters their email and we ask the
  * backend to send a reset link. The confirmation is deliberately uniform — it never reveals whether the
@@ -14,7 +16,7 @@ import { CardGlass } from '../shared/card-glass';
  */
 @Component({
   selector: 'app-forgot-password',
-  imports: [FormField, RouterLink, CardGlass, BusyAction],
+  imports: [FormField, RouterLink, CardGlass, BusyAction, TouchTarget],
   template: `
     <section class="auth-wrap" aria-labelledby="forgot-title">
       <div class="auth-card" appCardGlass>
@@ -37,6 +39,7 @@ import { CardGlass } from '../shared/card-glass';
             <label class="auth-field">
               <span class="auth-label">Email</span>
               <input
+                appTouchTarget
                 type="email"
                 data-testid="forgot-email"
                 [formField]="forgotForm.email"
@@ -52,6 +55,7 @@ import { CardGlass } from '../shared/card-glass';
             }
 
             <button
+              appTouchTarget
               type="submit"
               class="auth-submit"
               data-testid="forgot-submit"

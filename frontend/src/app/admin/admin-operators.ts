@@ -11,6 +11,8 @@ import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminOperatorsService } from './admin-operators.service';
 import { OperatorAccountView, PendingOperatorView } from './admin.model';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * The platform-admin operator surface: the approval queue (design D-5) and the account list
  * with suspend/reinstate. Every action <strong>reconciles both lists from the server</strong>
@@ -39,6 +41,7 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
     AdminConsoleStats,
     ConfirmWithReason,
     BusyAction,
+    TouchTarget,
   ],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
@@ -87,7 +90,14 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
         } @else if (loadError()) {
           <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-ops-error">
             Something went wrong loading operators.
-            <button type="button" class="font-semibold underline" (click)="reload()">Retry</button>
+            <button
+              type="button"
+              data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
+              class="font-semibold underline"
+              (click)="reload()"
+            >
+              Retry
+            </button>
           </p>
         } @else {
           <h2 class="mt-8 text-[18px] font-semibold text-(--riv-ink)" id="admin-pending-title">
@@ -120,6 +130,7 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
                   </div>
                   <div class="flex gap-2">
                     <button
+                      appTouchTarget
                       type="button"
                       [attr.data-testid]="'admin-approve-' + op.id"
                       [appBusy]="actingId() !== undefined"
@@ -129,6 +140,7 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
                       Approve
                     </button>
                     <button
+                      appTouchTarget
                       type="button"
                       [attr.data-testid]="'admin-reject-' + op.id"
                       [appBusy]="actingId() !== undefined"
@@ -198,6 +210,7 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
                     </p>
                   } @else if (op.suspended) {
                     <button
+                      appTouchTarget
                       type="button"
                       [attr.data-testid]="'admin-reinstate-' + op.id"
                       [appBusy]="actingId() !== undefined"
@@ -225,6 +238,7 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
                     />
                   } @else {
                     <button
+                      appTouchTarget
                       type="button"
                       [attr.data-testid]="'admin-suspend-' + op.id"
                       [appBusy]="actingId() !== undefined"

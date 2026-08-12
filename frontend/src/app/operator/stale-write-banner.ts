@@ -2,6 +2,8 @@ import { Component, input, output } from '@angular/core';
 
 import { BusyAction } from '../shared/busy-action';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * The recover-and-reload banner for a `409 STALE_WRITE` optimistic-concurrency loss, shared
  * across the venue, layout and pricing tabs. The <em>banner</em> is shared; the per-surface
@@ -16,7 +18,7 @@ import { BusyAction } from '../shared/busy-action';
  */
 @Component({
   selector: 'app-stale-write-banner',
-  imports: [BusyAction],
+  imports: [BusyAction, TouchTarget],
   host: {
     role: 'alert',
     class:
@@ -27,6 +29,7 @@ import { BusyAction } from '../shared/busy-action';
       <ng-content />
     </span>
     <button
+      appTouchTarget
       type="button"
       class="self-start rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2 text-[13px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/90 aria-disabled:opacity-50"
       [attr.data-testid]="reloadTestId()"

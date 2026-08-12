@@ -21,6 +21,8 @@ import { WithheldEmailNotice } from './withheld-email-notice';
 import { BookingService } from './booking.service';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /** Poll cadence and budget for awaiting the webhook-driven CONFIRMED transition. */
 const POLL_MS = 1500;
 const POLL_WINDOW_MS = 30_000;
@@ -51,7 +53,7 @@ type PayState =
  */
 @Component({
   selector: 'app-booking-pay',
-  imports: [RouterLink, CardGlass, PanelGlass, WithheldEmailNotice, BusyAction],
+  imports: [RouterLink, CardGlass, PanelGlass, WithheldEmailNotice, BusyAction, TouchTarget],
   template: `
     <!-- One persistent live region announces every state change. A live region only announces
          content that MUTATES after it is in the DOM — a region re-created together with the
@@ -210,6 +212,7 @@ type PayState =
               <p
                 class="mt-[10px] text-[12px] leading-[1.5] text-(--riv-card-ink-soft)"
                 data-testid="legal-agreement"
+                data-touch-exempt="links inside a sentence (WCAG 2.5.5 inline exception)"
               >
                 By paying you agree to our
                 <a
@@ -231,6 +234,7 @@ type PayState =
                 >.
               </p>
               <button
+                appTouchTarget
                 type="button"
                 class="btn-primary"
                 (click)="pay()"

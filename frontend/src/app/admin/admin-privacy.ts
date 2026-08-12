@@ -9,6 +9,8 @@ import { focusMover } from '../shared/focus-after-render';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminPrivacyService, erasureErrorOf } from './admin-privacy.service';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /** Which of the three panels the erasure card is showing. */
 type ErasureStage = 'form' | 'confirm' | 'done';
 
@@ -48,7 +50,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
  */
 @Component({
   selector: 'app-admin-privacy',
-  imports: [RouterLink, FormField, CardGlass, AdminConsoleTabs, BusyAction],
+  imports: [RouterLink, FormField, CardGlass, AdminConsoleTabs, BusyAction, TouchTarget],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[880px] px-4 py-10" aria-labelledby="admin-privacy-title">
@@ -109,6 +111,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                   >Email address</label
                 >
                 <input
+                  appTouchTarget
                   id="admin-privacy-email"
                   type="email"
                   data-testid="admin-privacy-email"
@@ -132,6 +135,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                 }
 
                 <button
+                  appTouchTarget
                   type="submit"
                   data-testid="admin-privacy-review"
                   class="mt-4 w-full rounded-[12px] border border-(--riv-field-border) bg-white/70 px-4 py-3 text-[14.5px] font-bold text-(--riv-card-ink)"
@@ -162,6 +166,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                   >Reason (optional)</label
                 >
                 <input
+                  appTouchTarget
                   id="admin-privacy-reason"
                   type="text"
                   maxlength="500"
@@ -175,6 +180,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
 
                 <div class="mt-3 flex flex-wrap items-center gap-2">
                   <button
+                    appTouchTarget
                     type="button"
                     data-testid="admin-privacy-confirm"
                     [appBusy]="busy()"
@@ -184,6 +190,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                     {{ busy() ? 'Erasing…' : 'Erase permanently' }}
                   </button>
                   <button
+                    appTouchTarget
                     type="button"
                     data-testid="admin-privacy-cancel"
                     [appBusy]="busy()"
@@ -220,6 +227,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                   us — this screen will never tell you which.
                 </p>
                 <button
+                  appTouchTarget
                   type="button"
                   data-testid="admin-privacy-another"
                   (click)="another()"

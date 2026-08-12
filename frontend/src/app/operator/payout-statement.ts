@@ -1,5 +1,6 @@
 import { afterNextRender, Component, ElementRef, inject, input, output } from '@angular/core';
 
+import { TouchTarget } from '../shared/touch-target';
 import { trapFocusWithin } from '../shared/focus-trap';
 import { LedgerRow } from './operator-console.model';
 
@@ -18,6 +19,7 @@ import { LedgerRow } from './operator-console.model';
  */
 @Component({
   selector: 'app-payout-statement',
+  imports: [TouchTarget],
   host: {
     class:
       'fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-[#061e28]/45 px-5 py-8',
@@ -39,6 +41,7 @@ import { LedgerRow } from './operator-console.model';
         <span class="text-[13px] font-semibold text-(--riv-card-ink-soft)">Payout statement</span>
         <button
           type="button"
+          appTouchTarget
           class="rounded-full border border-[#0c2a33]/14 bg-[#0c2a33]/5 px-3.5 py-1.5 text-[13px] font-semibold text-[#0a4f5e]"
           data-testid="statement-close"
           (click)="dismissed.emit()"

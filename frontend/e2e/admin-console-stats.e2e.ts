@@ -78,9 +78,11 @@ async function openConsole(page: Page, venues: unknown = VENUES): Promise<void> 
 }
 
 /**
- * The measured budget, at HEAD: chrome 0–165, `h1` 205–241, seven-tab strip 261–398, stat strip
- * 418–659, first content heading 691–**718**. Twenty-two pixels of headroom, which is exactly why
- * this is a test and not a note in a plan doc.
+ * The measured budget, at HEAD: chrome 0–133, `h1` 173–209, seven-tab strip 221–365, stat strip
+ * 385–626, first content heading 658–**685**. Fifty-five pixels of headroom, which is exactly why
+ * this is a test and not a note in a plan doc. The 44px touch-target floor (#605) moved every band:
+ * the pills and the chrome's links grew, and the padding they made redundant was removed to pay
+ * for it — a net gain, since the old chrome alone cost 165px.
  */
 const FOLD = 740;
 

@@ -1,5 +1,7 @@
 import { Component, ElementRef, computed, input, model, viewChildren } from '@angular/core';
 
+import { TouchTarget } from './touch-target';
+
 /** One choice in a {@link SegmentedControl}. `description` is rendered by the `card` variant only. */
 export interface SegmentedOption<T extends string> {
   readonly value: T;
@@ -29,11 +31,13 @@ export interface SegmentedOption<T extends string> {
  * every ink/fill pair is composited in the consumer's `*.contrast.spec.ts`.
  */
 @Component({
+  imports: [TouchTarget],
   selector: 'app-segmented-control',
   template: `
     <div [class]="groupClasses()" role="radiogroup" [attr.aria-label]="label()">
       @for (row of rows(); track row.option.value; let i = $index) {
         <button
+          appTouchTarget
           #optionButton
           type="button"
           role="radio"

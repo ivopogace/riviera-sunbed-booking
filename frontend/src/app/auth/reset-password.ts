@@ -6,6 +6,8 @@ import { CustomerAuth, MIN_PASSWORD_LENGTH, PASSWORD_LENGTH_MESSAGE } from '../c
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 
+import { TouchTarget } from '../shared/touch-target';
+
 /**
  * Password-reset page. Reached from the emailed link `/account/reset?token=…`; the token is
  * the bearer credential (invariant #7). The tourist sets a new password (confirmed) and, on success, the
@@ -14,7 +16,7 @@ import { CardGlass } from '../shared/card-glass';
  */
 @Component({
   selector: 'app-reset-password',
-  imports: [FormField, RouterLink, CardGlass, BusyAction],
+  imports: [FormField, RouterLink, CardGlass, BusyAction, TouchTarget],
   template: `
     <section class="auth-wrap" aria-labelledby="reset-title">
       <div class="auth-card" appCardGlass>
@@ -39,6 +41,7 @@ import { CardGlass } from '../shared/card-glass';
             <label class="auth-field">
               <span class="auth-label">New password</span>
               <input
+                appTouchTarget
                 type="password"
                 data-testid="reset-password"
                 [formField]="resetForm.newPassword"
@@ -51,6 +54,7 @@ import { CardGlass } from '../shared/card-glass';
             <label class="auth-field">
               <span class="auth-label">Confirm new password</span>
               <input
+                appTouchTarget
                 type="password"
                 data-testid="reset-confirm"
                 [formField]="resetForm.confirm"
@@ -63,6 +67,7 @@ import { CardGlass } from '../shared/card-glass';
             }
 
             <button
+              appTouchTarget
               type="submit"
               class="auth-submit"
               data-testid="reset-submit"

@@ -6,6 +6,7 @@ import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { TouchTarget } from '../shared/touch-target';
 import { Amenity, AMENITY_CATALOGUE, amenityLabel } from '../shared/amenities';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
@@ -85,7 +86,7 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
  */
 @Component({
   selector: 'app-venue-tab',
-  imports: [FormField, CardGlass, NgOptimizedImage, StaleWriteBanner, BusyAction],
+  imports: [FormField, CardGlass, NgOptimizedImage, StaleWriteBanner, BusyAction, TouchTarget],
   templateUrl: './venue-tab.html',
 })
 export class VenueTab {
