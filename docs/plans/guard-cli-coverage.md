@@ -125,6 +125,12 @@ fail, recorded in the Mutation ledger at the bottom.
   `check-inline-comments.mjs` reports it. *Pinned by:* `check-inline-comments.test.mjs` › `a
   template literal opened at end of line does not invert the scanner` **and** `guard-cli.test.mjs`
   › `an inline Angular template does not hide a later comment`.
+- [x] **AC-15 (the second defect the coverage found):** Given a file git has never seen, when
+  `check-inline-comments.mjs --files` or `--hook` runs over it, then the violations it holds are
+  reported — while a **tracked** file stays diff-scoped, so a committed file's pre-existing comments
+  are never surfaced. *Pinned by:* `--files judges a file git has never seen`, `--hook judges a file
+  git has never seen`, `--files reports a tracked and an untracked path in one call`, against the
+  standing `--files is scoped to what the working tree adds against HEAD`.
 - [x] **AC-14 (where it runs):** The whole suite passes with **no `node_modules` reachable** and is
   collected by the existing `node --test "scripts/*.test.mjs"` step, so `ci.yml` is unchanged.
   *Verified by:* running the suite from a scratch cwd with the repo's `node_modules` absent from the
@@ -222,6 +228,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | plan-stage spike | `check-plan-file-structure.mjs` cannot be *satisfied* for a non-ASCII path: `PATH_LIKE`/`DIR_LIKE` are `\w`-based, so the token never matches | deferred → issue #641 (token grammar = the slice's non-goal) |
 | F-4 | plan-stage spike | `check-comment-only.mjs` pins none of the three git config settings and reads the new side cwd-relatively — the same false-clean class #618 fixed in the other three | deferred → issue #641 |
 | F-5 | `riviera-docs-freshness` (close-out) | `ci.yml`'s guard-suite step said it "globs **both** suites" — written at two, false at five and at six | fixed in this commit |
+| F-7 | post-review question: *are these guards redundant now that Prettier and ESLint are in place?* Answered by probe — 128 enabled ESLint rules, none about comment length or focus posture, and `eslint`/`prettier` both exit 0 on a file carrying BUSY-1 + FOCUS-1 + a multi-line inline comment. Chasing it surfaced the gap: `check-inline-comments`' `--hook`/`--files` were diff-against-`HEAD`, so an **untracked** file — the commonest way a violation enters the tree — read clean. `check-focus-posture` closed the same gap in #618 | fixed — `checkPaths` (AC-15) |
 | F-6 | `riviera-review-overlay` (inline; the `/code-review` fan-out did not run — see the self-review checklist) | the harness returned an unused `env` field and bound the object to a local only to return it; `git(args, cwd = root)` advertised a subdirectory parameter no case used | fixed in this commit — RV-STYLE-1 and RV-STYLE-2 are clean (`scripts/` resolves no Prettier config), RV-PROC-1 re-walked against the final diff, and the RV-BE/RV-FE banks are out of scope: the diff touches no Java, no `frontend/src`, and no wire shape |
 
 ---
@@ -356,6 +363,7 @@ apply the revert, `node --test "scripts/*.test.mjs"`, `git checkout -- scripts/`
 | AC-5a | `git-diff.mjs` — only `core.quotepath=false` dropped from `PIN` | `a non-ASCII path is still read by the hunk front-end` | ✅ 153 pass / 1 fail |
 | AC-5b | `git-diff.mjs` — `-z` dropped from `nameOnlyArgs` | `a non-ASCII path is reported raw by the name-only front-end`; `--diff fails on a changed path the plan doc omits` | ✅ 151 pass / 3 fail |
 | AC-6 | `git-diff.mjs` — `next === 0 &&` dropped from `parseAddedLines` | `an added "++ " line does not re-target the lines after it` | ✅ 152 pass / 2 fail |
+| AC-15 | `check-inline-comments.mjs` — `--hook`/`--files` back to `check(['HEAD', '--', …paths], paths)` | all three AC-15 cases | ✅ 154 pass / 3 fail |
 | AC-13 | `check-inline-comments.mjs` — `line[c - 1] !== '\`'` restored as the sole open condition | `a template literal opened at end of line does not invert the scanner`; `an inline Angular template does not hide a later comment` | ✅ 152 pass / 2 fail |
 
 **AC-3 is the honest row.** Two independent mechanisms defeat `diff.relative` — running git from

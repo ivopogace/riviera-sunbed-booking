@@ -15,7 +15,15 @@ import { readFileSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { diffArgs, git, mergeBase, parseAddedLines, readText, repoRoot } from './git-diff.mjs';
+import {
+  changedPaths,
+  diffArgs,
+  git,
+  mergeBase,
+  parseAddedLines,
+  readText,
+  repoRoot,
+} from './git-diff.mjs';
 
 /**
  * Per-extension comment syntax. An extension absent from this map is not checked at all.
@@ -241,6 +249,38 @@ export function check(range, limitTo) {
   return violations;
 }
 
+/**
+ * Checks explicit paths against `HEAD`, judging an **untracked** file whole.
+ *
+ * A file git has never seen has no diff against `HEAD`, so the plain diff path reported it clean —
+ * and a brand-new file is the commonest way a violation enters the tree, on the very `Write` the
+ * `PostToolUse` hook fires for. `check-focus-posture` closed this in #618; this guard kept the gap
+ * until #619's CLI harness went looking for it.
+ *
+ * <p>Only the untracked half is judged whole. A **tracked** file stays diff-scoped even here, which
+ * is where this deliberately parts company with `check-focus-posture`'s `--files`: that rule has
+ * ~12 standing instances and can afford a whole-file verdict, while ~460 pre-existing multi-line
+ * comments stand in this tree by design, so judging a committed file whole would bury the author in
+ * lines someone else wrote — the day-one red issue #529 exists to avoid.
+ *
+ * @param {string[]} paths repo-relative paths
+ */
+export function checkPaths(paths) {
+  const inScope = paths.filter((path) => syntaxFor(path));
+  if (inScope.length === 0) return [];
+
+  const tracked = new Set(changedPaths(git(['ls-files', '-z', '--', ...inScope])));
+  const violations = tracked.size === 0 ? [] : check(['HEAD', '--', ...tracked], [...tracked]);
+
+  for (const path of inScope.filter((candidate) => !tracked.has(candidate))) {
+    const text = readText(path);
+    if (text === null) continue;
+    const lines = text.split('\n');
+    violations.push(...findViolations({ path, lines, added: new Set(lines.map((_, i) => i + 1)) }));
+  }
+  return violations.sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line);
+}
+
 const ADVICE =
   'RV-STYLE-1: an inline comment is one line, or it is not written. Shorten it, delete it, or ' +
   'move the prose to a doc comment (Javadoc/TSDoc), which is exempt. See ' +
@@ -262,8 +302,7 @@ function main(argv) {
     const payload = JSON.parse(readFileSync(0, 'utf8'));
     const path = payload?.tool_response?.filePath ?? payload?.tool_input?.file_path;
     if (!path || !syntaxFor(path)) return 0;
-    const edited = toRepoRelative(path);
-    const violations = check(['HEAD', '--', edited], [edited]);
+    const violations = checkPaths([toRepoRelative(path)]);
     if (violations.length === 0) return 0;
     process.stdout.write(
       JSON.stringify({
@@ -277,8 +316,7 @@ function main(argv) {
   }
 
   if (mode === '--files') {
-    const paths = argv.slice(1).map(toRepoRelative);
-    const violations = check(['HEAD', '--', ...paths], paths);
+    const violations = checkPaths(argv.slice(1).map(toRepoRelative));
     if (violations.length === 0) return 0;
     process.stderr.write(`Multi-line inline comments:\n${report(violations)}\n${ADVICE}\n`);
     return 1;

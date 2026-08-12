@@ -265,6 +265,57 @@ test('check-inline-comments --files is scoped to what the working tree adds agai
   });
 });
 
+/**
+ * A file git has never seen has no diff against `HEAD`, so the diff-scoped path reported it clean —
+ * and a brand-new file is the commonest way a violation enters the tree, on the very `Write` the
+ * hook fires for. `check-focus-posture` closed this in #618; this guard never got the same
+ * treatment, so its two authoring-time modes were silent exactly when they were most needed.
+ *
+ * <p>Untracked files are judged **whole**; tracked ones stay diff-scoped, which is the opposite of
+ * `check-focus-posture`'s `--files`. Deliberate: ~460 pre-existing multi-line comments stand in the
+ * tree by design, so judging a committed file whole would bury the author in other people's lines —
+ * the day-one red #529 exists to avoid. The case above pins that half.
+ */
+test('check-inline-comments --files judges a file git has never seen', () => {
+  withRepo((repo) => {
+    repo.write('README.md', lines('# Riviera'));
+    repo.commit('base');
+    repo.write(TS, lines('const base = 0;', ...TWO_LINE));
+
+    const result = repo.run(INLINE, ['--files', TS]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.ts:2-3/);
+  });
+});
+
+test('check-inline-comments --hook judges a file git has never seen', () => {
+  withRepo((repo) => {
+    repo.write('README.md', lines('# Riviera'));
+    repo.commit('base');
+    repo.write(TS, lines('const base = 0;', ...TWO_LINE));
+
+    const result = repo.run(INLINE, ['--hook'], { stdin: hookPayload(TS) });
+
+    assert.equal(result.status, 0);
+    assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /pricing-tab\.ts:2-3/);
+  });
+});
+
+test('check-inline-comments --files reports a tracked and an untracked path in one call', () => {
+  withRepo((repo) => {
+    const tracked = violatingDiff(repo);
+    repo.write(HTML, lines('<p>Pricing</p>', '<!-- the commission, in basis points —', '     set per venue -->'));
+
+    const result = repo.run(INLINE, ['--files', TS, HTML]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.ts:2-3/);
+    assert.match(result.stderr, /pricing-tab\.html:2-3/);
+    assert.notEqual(tracked, '');
+  });
+});
+
 test('check-inline-comments --hook answers a PostToolUse payload with advisory JSON', () => {
   withRepo((repo) => {
     violatingDiff(repo);
