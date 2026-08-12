@@ -67,8 +67,8 @@ import { TouchTarget } from '../shared/touch-target';
           <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-audit-error">
             Something went wrong loading the audit trail.
             <button
-              appTouchTarget
               type="button"
+              data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
               class="font-semibold underline"
               data-testid="admin-audit-retry"
               (click)="retry()"

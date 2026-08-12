@@ -6,9 +6,10 @@ import { expectTouchTargets } from './support/touch-targets';
  * The 44 px touch-target floor (#605) over the tourist, auth and booking surfaces — the third and
  * last sweep spec, after the operator and admin consoles.
  *
- * <p>The Stripe Payment Element is deliberately absent: it renders inside a cross-origin iframe the
- * sweep cannot descend into and we cannot restyle (a stated Non-goal). `/booking/pay` is swept for
- * the controls that ARE ours, which proves the iframe is skipped rather than silently measured.
+ * <p>The Stripe Payment Element is deliberately out of reach: it renders inside a cross-origin
+ * iframe the sweep cannot descend into and we cannot restyle (a stated Non-goal). No test navigates
+ * to `/booking/pay` — the payment page needs a live PaymentIntent, and the mocked suite has none,
+ * so the exemption rests on the iframe boundary rather than on an assertion.
  */
 
 const VENUE = {
@@ -96,6 +97,13 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expect(page.getByRole('button', { name: /send|reset/i }).first()).toBeVisible();
 
     await expectTouchTargets(page, 'forgot password');
+  });
+
+  test('my bookings — the signed-out prompt and its links', async ({ page }) => {
+    await page.goto('/my-bookings');
+    await expect(page.getByRole('link', { name: /All beaches/ })).toBeVisible();
+
+    await expectTouchTargets(page, 'my bookings');
   });
 
   test('booking detail — a confirmed booking', async ({ page }) => {

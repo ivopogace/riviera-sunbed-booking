@@ -13,7 +13,10 @@
 }
 
 .back-link {
-  display: inline-block;
+  /* inline-flex, not inline-block, so the 44px floor has a box to apply to. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   margin-bottom: 14px;
   color: var(--riv-accent-ink);
   font-weight: 600;
@@ -183,7 +186,9 @@ h1 {
 
 // Reuses --riv-cta-grad (AA-safe darker teal) — white body text, pinned in the contrast spec.
 .btn-cta {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 16px;
   background: var(--riv-cta-grad);

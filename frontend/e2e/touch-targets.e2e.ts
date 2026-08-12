@@ -14,6 +14,23 @@ import { expectTouchTargets } from './support/touch-targets';
  * <p>Surfaces are added here as each phase brings them to the floor; the phase that lands a surface
  * is the phase that un-skips it.
  */
+/**
+ * Asserts a grid that overflows its frame is SCROLLABLE rather than clipped. `app-beach-grid-frame`
+ * is `overflow-hidden`, so a grid wider than it loses its far columns silently — reachable by
+ * neither pointer nor keyboard, and invisible to a size sweep because a clipped box still measures.
+ */
+async function expectNoClippedCells(page: Page, scrollerTestId: string): Promise<void> {
+  const state = await page.getByTestId(scrollerTestId).evaluate((el) => ({
+    overflows: el.scrollWidth > el.clientWidth,
+    scrollable:
+      getComputedStyle(el).overflowX === 'auto' || getComputedStyle(el).overflowX === 'scroll',
+  }));
+  expect(
+    !state.overflows || state.scrollable,
+    `${scrollerTestId}: the grid overflows its frame but cannot scroll — its far columns are clipped`,
+  ).toBe(true);
+}
+
 test.describe('44px touch targets at a phone width', () => {
   test.beforeEach(async ({ page }) => {
     await mockWholeConsole(page);
@@ -96,12 +113,18 @@ test.describe('44px touch targets at a phone width', () => {
     await openConsoleTab(page, 'daily');
     await expect(page.getByTestId('daily-tile').first()).toBeVisible();
 
+    await expectNoClippedCells(page, 'daily-grid');
+
     await expectTouchTargets(page, 'operator daily view');
   });
 
   test('operator console — beach map editor', async ({ page }) => {
     await openConsoleTab(page, 'beach-map');
     await expect(page.getByTestId('layout-mode-bulk')).toBeVisible();
+    await page.getByTestId('layout-mode-bulk').click();
+
+    // Without a scroller the frame clips the far columns, which a size sweep alone cannot see.
+    await expectNoClippedCells(page, 'layout-grid');
 
     await expectTouchTargets(page, 'operator beach map editor');
   });

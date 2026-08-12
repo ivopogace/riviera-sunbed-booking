@@ -115,8 +115,8 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
           <p class="mt-6 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-photos-error">
             Something went wrong loading this venue's photos.
             <button
-              appTouchTarget
               type="button"
+              data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
               class="font-semibold underline"
               data-testid="admin-photos-retry"
               (click)="loadSlots()"

@@ -108,8 +108,8 @@ import { TouchTarget } from '../shared/touch-target';
           >
             Something went wrong loading the venue list.
             <button
-              appTouchTarget
               type="button"
+              data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
               class="font-semibold underline"
               data-testid="admin-commissions-retry"
               (click)="retry()"

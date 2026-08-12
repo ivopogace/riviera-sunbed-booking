@@ -77,8 +77,11 @@ test.describe('44px touch targets on the admin console — gated states', () => 
   test('venue photos — the takedown confirm open', async ({ page }) => {
     await signIn(page);
     await page.goto('/admin/photos');
-    await expect(page.getByTestId('admin-photos-venue')).toBeVisible();
+    // The slots load only once a venue is picked; the mock then occupies its cover slot.
+    await page.getByTestId('admin-photos-venue').selectOption('7');
+    await page.getByTestId('admin-photo-remove-cover').click();
+    await expect(page.getByTestId('admin-photo-confirm-panel-cover')).toBeVisible();
 
-    await expectTouchTargets(page, 'admin venue photos (resting)');
+    await expectTouchTargets(page, 'admin venue photos (takedown confirm)');
   });
 });

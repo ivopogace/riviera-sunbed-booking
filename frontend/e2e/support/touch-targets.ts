@@ -23,6 +23,18 @@ export async function expectTouchTargets(page: Page, label: string): Promise<voi
 
   const undersized = await page.evaluate(
     ({ controls, floor }) => {
+      const clippedAway = (el: Element, box: DOMRect): boolean => {
+        for (let p = el.parentElement; p; p = p.parentElement) {
+          const style = getComputedStyle(p);
+          if (style.overflowX === 'visible' && style.overflowY === 'visible') continue;
+          const clip = p.getBoundingClientRect();
+          const visibleW = Math.min(box.right, clip.right) - Math.max(box.left, clip.left);
+          const visibleH = Math.min(box.bottom, clip.bottom) - Math.max(box.top, clip.top);
+          if (visibleW <= 0 || visibleH <= 0) return true;
+        }
+        return false;
+      };
+
       const describe = (el: Element): string => {
         const testid = el.getAttribute('data-testid');
         const tag = el.tagName.toLowerCase();
@@ -38,7 +50,9 @@ export async function expectTouchTargets(page: Page, label: string): Promise<voi
           .map((el) => ({ el, box: el.getBoundingClientRect() }))
           .filter(({ el, box }) => {
             if (box.width === 0 || box.height === 0) return false;
-            return getComputedStyle(el).visibility !== 'hidden';
+            if (getComputedStyle(el).visibility === 'hidden') return false;
+            // A control clipped away by an overflow ancestor still reports full geometry.
+            return !clippedAway(el, box);
           })
           // Round BEFORE comparing: Chromium returns 43.996 for a 44px box.
           .map(({ el, box }) => ({

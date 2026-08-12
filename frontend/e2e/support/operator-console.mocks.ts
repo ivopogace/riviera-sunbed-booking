@@ -102,8 +102,8 @@ function seedSets() {
     tier: i < 12 ? 'PREMIUM' : 'STANDARD',
     pool: 'ONLINE',
     price: { minorUnits: 2000, currency: 'EUR' },
-    gridX: i % 12,
-    gridY: i < 12 ? 0 : 1,
+    gridX: (i % 12) + 1,
+    gridY: i < 12 ? 1 : 2,
   }));
 }
 

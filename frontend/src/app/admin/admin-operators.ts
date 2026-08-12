@@ -90,7 +90,12 @@ import { TouchTarget } from '../shared/touch-target';
         } @else if (loadError()) {
           <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-ops-error">
             Something went wrong loading operators.
-            <button appTouchTarget type="button" class="font-semibold underline" (click)="reload()">
+            <button
+              type="button"
+              data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
+              class="font-semibold underline"
+              (click)="reload()"
+            >
               Retry
             </button>
           </p>

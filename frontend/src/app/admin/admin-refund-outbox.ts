@@ -63,8 +63,8 @@ import { TouchTarget } from '../shared/touch-target';
           <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-refunds-error">
             Something went wrong loading the outbox.
             <button
-              appTouchTarget
               type="button"
+              data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
               class="font-semibold underline"
               (click)="lever.load()"
             >

@@ -16,6 +16,13 @@ import { TouchTarget } from './touch-target';
 })
 class TouchTargetHost {}
 
+/**
+ * Scope: the two things jsdom can actually settle — that the attribute selector attaches to every
+ * native control kind, and that Angular merges the host class with the consumer's own rather than
+ * replacing it. **Whether the result measures 44 px is not provable here** (jsdom has no layout
+ * engine, and the utilities are Tailwind's to generate); `frontend/e2e/touch-targets*.e2e.ts`
+ * measures the rendered box, and that is the floor's only real proof.
+ */
 describe('TouchTarget', () => {
   let fixture: ComponentFixture<TouchTargetHost>;
 
@@ -31,7 +38,7 @@ describe('TouchTarget', () => {
     )!;
   }
 
-  it.each(['button', 'link', 'field'])('floors both axes on a <%s>', (testid) => {
+  it.each(['button', 'link', 'field'])('attaches to a bare <%s> by attribute alone', (testid) => {
     expect(control(testid).classList).toContain('min-h-11');
     expect(control(testid).classList).toContain('min-w-11');
   });

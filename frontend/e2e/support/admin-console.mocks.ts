@@ -4,6 +4,11 @@ import { mockOperatorLifecycleApi } from './auth-mocks';
 
 export const ADMIN = { username: 'operator', password: 'admin-pw' };
 
+const TINY_IMAGE = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
 const VENUES = [
   { venueId: 7, name: 'Miramar', beach: 'Dhërmi', commissionBps: 1500, payoutCurrency: 'EUR' },
   { venueId: 11, name: 'Kalypso', beach: 'Jal', commissionBps: 1000, payoutCurrency: 'EUR' },
@@ -57,12 +62,15 @@ export async function mockWholeAdminConsole(page: Page): Promise<void> {
       json: {
         venueId: 7,
         photos: {
-          cover: { previewUrl: null },
+          cover: { previewUrl: '/api/venues/7/photos/cc03' },
           sunbeds: { previewUrl: null },
           bar: { previewUrl: null },
         },
       },
     }),
+  );
+  await page.route(/\/api\/venues\/\d+\/photos\/[0-9a-f]+$/, (route) =>
+    route.fulfill({ body: TINY_IMAGE, contentType: 'image/jpeg' }),
   );
   await page.route(/\/api\/admin\/audit$/, (route) =>
     route.fulfill({
