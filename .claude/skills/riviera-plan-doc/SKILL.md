@@ -85,6 +85,24 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
 1. **Per-phase generalization pass after every bug fix or new pattern.** Ask: where
    else does this apply? (A fix to one availability write path probably applies to the
    staff-mark path too.) Record the search and decision in the Generalization-audit log.
+
+   **Enumerate the population by mechanism, not by resemblance.** "Where else does this
+   apply?" invites you to list the places that *look like* the one in front of you, and
+   that list is drawn from what you already have in mind — so whatever you never thought
+   of stays invisible, and the audit returns clean. Instead, first name the **mechanism**
+   the defect needs (calls git, writes `availability`, listens to `BookingCancelled`,
+   reads a `@Profile`), then enumerate every member of that population with a command,
+   then judge each member. The search command in the log is the evidence: it should be
+   the one that *found* the population, not one that confirmed the members you had
+   already guessed.
+
+   > **Case history (#641).** PR #618 fixed five false-clean defects across the repo's
+   > guards, and its audit log twice asks whether a defect is "true of the other two
+   > guards as well", answering "all three" both times. There were **four**:
+   > `check-comment-only.mjs` invokes git exactly like its siblings, but it is whole-file
+   > rather than diff-scoped, so it did not resemble them and was never enumerated. It
+   > carried every one of those defects for eight further PRs. `git ls-files 'scripts/*.mjs'
+   > | xargs grep -l "execFileSync\('git'" ` would have returned four on day one.
 2. **Use AskUserQuestion for forks the evidence can't settle** — anything that
    changes the availability strategy, a module boundary, the payment flow, or a
    public `api/` port. Decide naming/style yourself.

@@ -208,7 +208,8 @@ Angular-shaped strings inside a throwaway repository, never files under `fronten
 
 **Stage pointer:** `merge close-out`
 
-**Next action:** none — merged via PR #640. The two deferred guard defects are tracked by issue #641.
+**Next action:** none. Merged via PR #640; the one deferred defect that survived scrutiny closed via
+PR #642 — see *Follow-up* below.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -228,8 +229,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | plan-stage grill (this doc) | the issue's CI-shape question was settled the other way by #635 | closed — no `ci.yml` change; rationale under *Issue-intake grill* |
 | F-2 | harness spike (phase 0) | `check-inline-comments.mjs` reads a backtick that **opens** a template literal at end of line as one that closes it, inverting the scanner for the rest of the file — 44 files under `frontend/src/app` are written that way | fixed — AC-13 |
-| F-3 | plan-stage spike | `check-plan-file-structure.mjs` cannot be *satisfied* for a non-ASCII path: `PATH_LIKE`/`DIR_LIKE` are `\w`-based, so the token never matches | deferred → issue #641 (token grammar = the slice's non-goal) |
-| F-4 | plan-stage spike | `check-comment-only.mjs` pins none of the three git config settings and reads the new side cwd-relatively — the same false-clean class #618 fixed in the other three | deferred → issue #641 |
+| F-3 | plan-stage spike | `check-plan-file-structure.mjs` cannot be *satisfied* for a non-ASCII path: `PATH_LIKE`/`DIR_LIKE` are `\w`-based, so the token never matches | **withdrawn — the finding was wrong.** Only the literal path token fails; `frontend/src/app/venue/`, `frontend/src/app/**/*.ts` and `frontend/src/app/venue/*.ts` all satisfy the guard for `café.ts`. Tested when #641 was re-scoped |
+| F-4 | plan-stage spike | `check-comment-only.mjs` pins none of the three git config settings and reads the new side cwd-relatively — the same false-clean class #618 fixed in the other three | fixed — issue #641, PR #642. Mutation rows in *Follow-up*, below |
 | F-5 | `riviera-docs-freshness` (close-out) | `ci.yml`'s guard-suite step said it "globs **both** suites" — written at two, false at five and at six | fixed in `86f93d8` |
 | F-6 | `riviera-review-overlay` (inline; the `/code-review` fan-out did not run — see the self-review checklist) | the harness returned an unused `env` field and bound the object to a local only to return it; `git(args, cwd = root)` advertised a subdirectory parameter no case used | fixed in `86f93d8` — RV-STYLE-1 and RV-STYLE-2 are clean (`scripts/` resolves no Prettier config), RV-PROC-1 re-walked against the final diff, and the RV-BE/RV-FE banks are out of scope: the diff touches no Java, no `frontend/src`, and no wire shape |
 | F-7 | post-merge-readiness question from the maintainer: *are these guards redundant now that Prettier and type-aware ESLint are in place?* | **No** — probed rather than argued: 128 enabled ESLint rules, of which the only comment-related two are `ban-ts-comment`/`ban-tslint-comment` and none touch focus posture; `eslint` and `prettier --check` both exit 0 on a file carrying BUSY-1 + FOCUS-1 + a multi-line inline comment that both guards catch. Chasing it surfaced a real gap: this guard's `--hook`/`--files` were diff-against-`HEAD`, so a file git had **never seen** read clean — the commonest way a violation enters the tree, and the gap `check-focus-posture` closed in #618 | fixed — AC-15, `02688cf`; the three substrate sentences it falsified patched in `5b45bd8` |
@@ -244,9 +245,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `scripts/guard-cli.test.mjs` — new: the end-to-end suite, one case per AC.
 - `scripts/check-inline-comments.mjs` — modified: the AC-13 scanner fix (one condition).
 - `scripts/check-inline-comments.test.mjs` — modified: the RED-first unit case for AC-13.
+- `scripts/check-comment-only.mjs` — modified by the **follow-up** (#641 / PR #642, see *Follow-up*
+  below), which routes its git calls and reads through `git-diff.mjs` and tallies verifications
+  instead of deriving the count. Listed here because that PR edits this plan doc, which puts both
+  in one diff and so under this section's guard.
 - `frontend/.claude/CLAUDE.md` · `.claude/skills/riviera-java-conventions/SKILL.md` — modified: both
   stated the inline-comment guard is "diff-scoped, always", which AC-15 makes false for an untracked
   file. Same sentence in two places, both patched.
+- `.claude/skills/riviera-plan-doc/SKILL.md` · `.claude/skills/riviera-plan-doc/references/plan-doc-template.md`
+  — modified by the follow-up: the generalization audit must enumerate its population by **mechanism**,
+  not by resemblance. The rule this slice's own history produced; see *Follow-up*.
 - `.github/workflows/ci.yml` — modified: **one comment line**, the `riviera-docs-freshness` finding.
   "Globs both suites" was written when there were two and the tree now holds six; the job's steps,
   names and commands are untouched.
@@ -309,9 +317,9 @@ filled in; the follow-up issue filed for F-3/F-4.
 
 ## Generalization-audit log
 
-| Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
+| Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-08-11 | Phase 4 (F-2 fix) | other places a scanner decides "did this delimiter close?" from the character *before* the returned index, where that character can be the delimiter that opened it | read every `skipString` / `stringEnd` caller in `check-inline-comments.mjs` and `check-focus-posture.mjs` | 3 call sites — `scan`'s open branch (the defect), `scan`'s `inTemplate` re-entry branch, and `check-focus-posture.mjs`'s `stringEnd` | only the first is reachable: the `inTemplate` branch starts at the line's own offset, never at a delimiter it just consumed, and `stringEnd` returns the index of the terminator itself rather than one past it. Fixed the one, added the unit case, left the other two |
+| 2026-08-11 | Phase 4 (F-2 fix) | every caller that decides "did this delimiter close?" from the character *before* the returned index, where that character can be the delimiter that opened it | read every `skipString` / `stringEnd` caller in `check-inline-comments.mjs` and `check-focus-posture.mjs` | 3 call sites — `scan`'s open branch (the defect), `scan`'s `inTemplate` re-entry branch, and `check-focus-posture.mjs`'s `stringEnd` | only the first is reachable: the `inTemplate` branch starts at the line's own offset, never at a delimiter it just consumed, and `stringEnd` returns the index of the terminator itself rather than one past it. Fixed the one, added the unit case, left the other two |
 
 ---
 
@@ -383,6 +391,59 @@ first applied to `check-inline-comments.mjs`, where `parseAddedLines` does not l
 changed and the case "survived". Re-applied to `git-diff.mjs` it went red immediately. Recorded
 because a mutation run that silently no-ops is indistinguishable from a weak test — the failure mode
 this ledger exists to expose, arriving first in the ledger itself.
+
+## Follow-up — #641 / PR #642
+
+The slice deferred two findings. Re-tested before implementing either, only one survived: F-3 was
+simply wrong (three token spellings satisfy the guard), so #641 was rewritten down to F-4 alone.
+
+PR #642 routes `check-comment-only.mjs`'s git calls and reads through `git-diff.mjs`, and replaces
+the derived success count with a tally of actual comparisons — the derivation was what turned a read
+failure into "verified code-identical". Its two cases extend this slice's ledger, same discipline:
+
+| AC | The revert | Case that goes RED | Restored |
+|---|---|---|---|
+| #642 AC-1 | `check-comment-only.mjs` — restore its private `git()` and cwd-relative `readFileSync(path)` | `check-comment-only resolves paths from the repo root, not the caller cwd` | ✅ 158 pass / 1 fail |
+| #642 AC-2 | `check-comment-only.mjs` — restore the three reference points: file list from `${base}...HEAD` and before side from `show(base, …)` | `judges against the merge base, not a base that has moved`; `inspects a code change that is only in the working tree` | ✅ 158 pass / 2 fail |
+
+**Raised by #642's review gate, then fixed there.** The guard mixed three reference points — the file
+list from `merge-base(base,HEAD)...HEAD`, the *before* side from the literal `base` **tip** via
+`git show`, and the *after* side from the working tree — where the three sibling guards collapse onto
+one `mergeBase()`-resolved commit (#618). Reproduced: a comment-only branch reported
+**`Not comment-only`** once `main` gained an unrelated code change to the same file. It now judges
+from one commit on both sides, which also closes a second hole the split created — a code change
+living only in the working tree was never listed, because the list came from committed history while
+the content came from disk.
+
+**What that cost, recorded because it is a real trade:** with the list taken against the working tree,
+`--diff-filter=M` guarantees both sides of every listed path exist, so the `unreadable` branch is now
+unreachable by construction. It is kept as a fail-closed backstop and says so in a comment, but its
+dedicated CLI case was **removed rather than left passing vacuously** — a case that can no longer go
+red is the decoration this ledger exists to prevent. The two cases above replace it and cover more.
+
+**Why it was in scope after all.** It was first recorded as a separate axis, on the grounds that #641
+was scoped to the cwd/pin/quoting one. That reasoning was thin: `mergeBase` is the fifth export of the
+module this PR was already importing four things from, the fix is three lines, and treating it as
+separate would have repeated the exact framing error that let this whole guard be missed for eight
+PRs — see below.
+
+**The rule that came out of it, and the sweep that validated it.** `riviera-plan-doc` now requires the
+generalization audit to enumerate its population by **mechanism** rather than resemblance, with the
+recorded search command being the one that *found* the population. Run that way here for the first
+time — `git ls-files 'scripts/*.mjs' | xargs grep -l "execFileSync('git'|from './git-diff.mjs'"` —
+the population is **six**: the four guards, the shared helper, and its test. All four guards now hold
+zero private `git()` calls and zero path-taking `readFileSync`; the only two raw reads left are
+`readFileSync(0, …)` on **stdin** for `--hook`, which take no path and so cannot drift with cwd. First
+time this population has been uniform.
+
+**The framing error worth keeping.** `check-comment-only.mjs` was not known-and-dropped before #619;
+it was never enumerated. PR #618's plan doc — which fixed all five false cleans in this layer — does
+not mention it once, and its generalization-audit log asks twice whether a defect is "true of the
+other two guards as well", answering "all three" both times. The population was set by resemblance
+(*the diff-scoped guards*, which is what `git-diff.mjs` was extracted for) rather than by mechanism
+(*which files under `scripts/` invoke git*), and this guard is whole-file rather than diff-scoped, so
+it fell outside the frame. #619's issue text inherited the same count. **Define the audit population
+by mechanism, not by resemblance.**
 
 ## Self-review checklist (before merge / PR)
 
