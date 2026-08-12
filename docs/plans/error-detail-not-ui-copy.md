@@ -156,15 +156,15 @@ single source of the wording; changing it would defeat the point.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 step 1 — add the `$.detail` assertions to the three `SET_IN_USE` ITs and the
-two `LAYOUT_IN_USE` ones, and watch them fail against the current prose.
+**Next action:** Phase 1 — state the condition-not-remedy rule in `ApiProblem`'s javadoc, §6b and
+`references/error-contract.md`, then open the draft PR so CI fires.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Pin the arm-agnostic detail, then write it | ⏳ | |
-| 1 — Document the convention | | |
+| 0 — Pin the arm-agnostic detail, then write it | ✅ red 3/3 + 2/2, green 53 tests 0 skipped | this commit |
+| 1 — Document the convention | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -245,6 +245,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-12 | Phase 0 | **Mechanism: a server `detail` literal whose `code` a client also renders its own copy from** — the thing that makes a string a hand-synced duplicate. Enumerated both halves rather than looking for strings resembling the two fixed ones | `grep -rn "ApiProblem\.\(response\|of\)(" platform/src/main --include=*.java` (49 detail literals) × `grep -rln "case '[A-Z_]\{4,\}':" frontend/src/app --include=*.ts` (21 client code→copy mappers) | 49 server details, 21 client mappers | Scope held at the 2 filed codes by the maintainer; the intersection needs per-code judgment (does *this* client render *this* code) and is the follow-up issue's job, not a sweep this slice can do blind |
+| 2026-08-12 | Phase 0 | **Sub-population: details written in remedy / second-person voice** — the drift-prone subset, since that voice is what makes a server string read as UI copy | `grep -rn "ApiProblem\.\(response\|of\)(" platform/src/main --include=*.java -A2 \| grep -iE '"[^"]*(try again\|reload\|please\|your \|you )'` | 6 — the 3 `STALE_WRITE` details in this controller, plus `"Enter your current password."`, `"You cannot suspend the account you are signed in with."`, `"You do not manage this venue."` | All 6 out of scope; named in the follow-up issue. **The phrase sweep is a lower bound, not the population** — it would not have caught either string this slice fixed (neither contains those words), which is why the row above enumerates by mechanism instead |
 
 ---
 

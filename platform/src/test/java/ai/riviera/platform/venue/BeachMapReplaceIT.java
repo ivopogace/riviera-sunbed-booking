@@ -71,6 +71,13 @@ class BeachMapReplaceIT {
 	private static final String PASSWORD = "test-operator-pw";
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane"); // the zone the guard's cutoff reads
 
+	/**
+	 * The one {@code LAYOUT_IN_USE} detail, asserted at both arms that raise it — a booking and a
+	 * future-dated walk-in hold. Naming no arm is what keeps it true when the guards change; the
+	 * operator-facing wording, including where to go instead, belongs to the console.
+	 */
+	private static final String LAYOUT_IN_USE_DETAIL = "This venue's layout is in use.";
+
 	@Autowired
 	MockMvc mvc;
 	@Autowired
@@ -240,7 +247,8 @@ class BeachMapReplaceIT {
 						.content(layout(tokenBefore, cell("A", 1, "PREMIUM", "ONLINE", 9999, 1, 1))))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("LAYOUT_IN_USE"));
+				.andExpect(jsonPath("$.code").value("LAYOUT_IN_USE"))
+				.andExpect(jsonPath("$.detail").value(LAYOUT_IN_USE_DETAIL));
 
 		// The original two sets are untouched (no partial delete), and the LAYOUT_IN_USE
 		// reject did NOT advance set_version (no spurious bump), so the acting tab's token still matches and
@@ -267,7 +275,8 @@ class BeachMapReplaceIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(layout(currentSetVersion(venue), cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1))))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("LAYOUT_IN_USE"));
+				.andExpect(jsonPath("$.code").value("LAYOUT_IN_USE"))
+				.andExpect(jsonPath("$.detail").value(LAYOUT_IN_USE_DETAIL));
 
 		// The hold row still exists — it was not silently cascade-deleted.
 		Long holds = jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")

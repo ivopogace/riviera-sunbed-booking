@@ -43,6 +43,13 @@ class VenueAdminControllerIT {
 	private static final String PASSWORD = "test-operator-pw";
 	private static final long MIRAMAR = 1L; // seeded public venue (U1)
 
+	/**
+	 * The one {@code SET_IN_USE} detail, asserted at every arm that raises it — a future-dated staff
+	 * hold, a terminal booking, and the edit guard's lively claim. Naming no arm is what keeps it
+	 * true when the guards change; the operator-facing wording belongs to the console.
+	 */
+	private static final String SET_IN_USE_DETAIL = "This set is in use.";
+
 	@Autowired
 	MockMvc mvc;
 
@@ -261,7 +268,8 @@ class VenueAdminControllerIT {
 		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("SET_IN_USE"));
+				.andExpect(jsonPath("$.code").value("SET_IN_USE"))
+				.andExpect(jsonPath("$.detail").value(SET_IN_USE_DETAIL));
 
 		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :set")
 						.param("set", setId).query(Integer.class).single(),
@@ -305,7 +313,8 @@ class VenueAdminControllerIT {
 
 		mvc.perform(delete("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("SET_IN_USE"));
+				.andExpect(jsonPath("$.code").value("SET_IN_USE"))
+				.andExpect(jsonPath("$.detail").value(SET_IN_USE_DETAIL));
 	}
 
 	@Test
@@ -323,7 +332,8 @@ class VenueAdminControllerIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "WALK_IN", 3000, "EUR", 1, 1)))
 				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("SET_IN_USE"));
+				.andExpect(jsonPath("$.code").value("SET_IN_USE"))
+				.andExpect(jsonPath("$.detail").value(SET_IN_USE_DETAIL));
 
 		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
