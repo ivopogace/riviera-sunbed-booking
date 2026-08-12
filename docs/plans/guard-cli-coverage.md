@@ -252,6 +252,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/.claude/CLAUDE.md` · `.claude/skills/riviera-java-conventions/SKILL.md` — modified: both
   stated the inline-comment guard is "diff-scoped, always", which AC-15 makes false for an untracked
   file. Same sentence in two places, both patched.
+- `.claude/skills/riviera-plan-doc/SKILL.md` · `.claude/skills/riviera-plan-doc/references/plan-doc-template.md`
+  — modified by the follow-up: the generalization audit must enumerate its population by **mechanism**,
+  not by resemblance. The rule this slice's own history produced; see *Follow-up*.
 - `.github/workflows/ci.yml` — modified: **one comment line**, the `riviera-docs-freshness` finding.
   "Globs both suites" was written when there were two and the tree now holds six; the job's steps,
   names and commands are untouched.
@@ -314,9 +317,9 @@ filled in; the follow-up issue filed for F-3/F-4.
 
 ## Generalization-audit log
 
-| Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
+| Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-08-11 | Phase 4 (F-2 fix) | other places a scanner decides "did this delimiter close?" from the character *before* the returned index, where that character can be the delimiter that opened it | read every `skipString` / `stringEnd` caller in `check-inline-comments.mjs` and `check-focus-posture.mjs` | 3 call sites — `scan`'s open branch (the defect), `scan`'s `inTemplate` re-entry branch, and `check-focus-posture.mjs`'s `stringEnd` | only the first is reachable: the `inTemplate` branch starts at the line's own offset, never at a delimiter it just consumed, and `stringEnd` returns the index of the terminator itself rather than one past it. Fixed the one, added the unit case, left the other two |
+| 2026-08-11 | Phase 4 (F-2 fix) | every caller that decides "did this delimiter close?" from the character *before* the returned index, where that character can be the delimiter that opened it | read every `skipString` / `stringEnd` caller in `check-inline-comments.mjs` and `check-focus-posture.mjs` | 3 call sites — `scan`'s open branch (the defect), `scan`'s `inTemplate` re-entry branch, and `check-focus-posture.mjs`'s `stringEnd` | only the first is reachable: the `inTemplate` branch starts at the line's own offset, never at a delimiter it just consumed, and `stringEnd` returns the index of the terminator itself rather than one past it. Fixed the one, added the unit case, left the other two |
 
 ---
 
@@ -423,6 +426,15 @@ was scoped to the cwd/pin/quoting one. That reasoning was thin: `mergeBase` is t
 module this PR was already importing four things from, the fix is three lines, and treating it as
 separate would have repeated the exact framing error that let this whole guard be missed for eight
 PRs — see below.
+
+**The rule that came out of it, and the sweep that validated it.** `riviera-plan-doc` now requires the
+generalization audit to enumerate its population by **mechanism** rather than resemblance, with the
+recorded search command being the one that *found* the population. Run that way here for the first
+time — `git ls-files 'scripts/*.mjs' | xargs grep -l "execFileSync('git'|from './git-diff.mjs'"` —
+the population is **six**: the four guards, the shared helper, and its test. All four guards now hold
+zero private `git()` calls and zero path-taking `readFileSync`; the only two raw reads left are
+`readFileSync(0, …)` on **stdin** for `--hook`, which take no path and so cannot drift with cwd. First
+time this population has been uniform.
 
 **The framing error worth keeping.** `check-comment-only.mjs` was not known-and-dropped before #619;
 it was never enumerated. PR #618's plan doc — which fixed all five false cleans in this layer — does

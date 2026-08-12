@@ -323,8 +323,16 @@ Skill-routing gate for what the fix touches *before* editing).
 
 - [ ] **Step 5: Generalization-audit pass** (after any bug fix / new pattern)
 
-Search `<command>` → candidates `<list>` → decision `<fix all / subset / skip + why>`.
-Append to the Generalization-audit log below.
+Population `<the mechanism, e.g. "every script that invokes git">` → enumerate `<command>` →
+candidates `<list>` → decision `<fix all / subset / skip + why>`. Append to the
+Generalization-audit log below.
+
+> **The population is defined by mechanism, not by resemblance.** Listing the places that
+> *look like* the one you just fixed draws only on what you already had in mind, so the
+> instance you never thought of stays invisible and the audit comes back clean. Name the
+> mechanism the defect needs, enumerate its members with a command, then judge each. The
+> command you record is the evidence — it must be the one that *found* the population, not
+> one that confirmed the members you had already guessed (case history: #641).
 
 - [ ] **Step 6: Commit** — `git commit -m "<imperative subject> (#NN)"`
 
@@ -334,9 +342,11 @@ Append to the Generalization-audit log below.
 
 ## Generalization-audit log
 
-> Append-only. One row per bug-fix / pattern-introducing phase.
+> Append-only. One row per bug-fix / pattern-introducing phase. **Population** names the
+> mechanism swept and how it was enumerated; a row whose population is "the other X like
+> this one" is the shape that misses things (Step 5).
 
-| Date | Trigger (commit/phase) | Pattern searched | Search command | Sites found | Action |
+| Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 
 ---
