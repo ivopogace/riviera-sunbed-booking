@@ -252,7 +252,7 @@ static-guard follow-up, and close the plan out for merge.
 | 1 — Operator console: 5 tabs + create card + shell chrome | ✅ | `425fdfbb` |
 | 2 — The two map grids (geometry + in-frame scroll) | ✅ | `c87a776b` |
 | 3 — Platform-admin console | ✅ | `50a9fba2` |
-| 4 — Auth, booking, tourist pages, shared primitives | ✅ | `<phase-4-sha>` |
+| 4 — Auth, booking, tourist pages, shared primitives | ✅ | `c0bb6838` |
 | 5 — Coverage reconciliation + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
