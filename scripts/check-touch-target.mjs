@@ -16,6 +16,20 @@
  * every #605 finding that mattered. This proves the mechanism reaches surfaces no sweep visits.
  */
 
+import { readFileSync } from 'node:fs';
+import { relative, resolve, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+import {
+  changedPaths,
+  diffArgs,
+  git,
+  mergeBase,
+  parseAddedLines,
+  readText,
+  repoRoot,
+} from './git-diff.mjs';
+
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
 
@@ -314,4 +328,163 @@ function readValue(lines, line, column) {
   return { value, line: lines.length - 1, column: 0 };
 }
 
-export { IN_SCOPE };
+/**
+ * Runs the detector over every in-scope file a diff touches.
+ *
+ * @param {string[]} range arguments describing the diff, e.g. `['<merge-base>']`
+ */
+export function check(range) {
+  return [...parseAddedLines(git(diffArgs(...range)))].flatMap(([path, added]) =>
+    checkOne(path, added),
+  );
+}
+
+/**
+ * Checks explicit paths against `HEAD`, judging an **untracked** file whole.
+ *
+ * A new file has no diff against `HEAD`, so the plain diff path reported it clean — and a new
+ * component is exactly how an undeclared control enters the tree, on the `Write` the hook fires for.
+ *
+ * @param {string[]} paths repo-relative paths
+ * @param {{ tracked?: (paths: string[]) => Set<string>, read?: (path: string) => string | null,
+ *   diff?: (paths: string[]) => Map<string, Set<number>> }} [seams] injection points for the test
+ *   suite; all three hit git or disk by default
+ */
+export function checkPaths(paths, seams = {}) {
+  const { tracked = trackedAmong, read = readText, diff = diffedLines } = seams;
+  const known = tracked(paths);
+  const added = known.size === 0 ? new Map() : diff([...known]);
+  return paths.flatMap((path) =>
+    known.has(path)
+      ? checkOne(path, added.get(path) ?? new Set(), read)
+      : checkOne(path, null, read),
+  );
+}
+
+function diffedLines(paths) {
+  return parseAddedLines(git(diffArgs('HEAD', '--', ...paths)));
+}
+
+/**
+ * One `git ls-files` for the whole set. `--error-unmatch` per path would fork N processes and print
+ * git's "did you forget to 'git add'?" to stderr for every new file — telling the author the guard
+ * failed when it worked. An empty set short-circuits, since a bare `ls-files` lists the repository.
+ */
+function trackedAmong(paths) {
+  if (paths.length === 0) return new Set();
+  return new Set(changedPaths(git(['ls-files', '-z', '--', ...paths])));
+}
+
+/** The whole-tree audit `--all` runs; never a gate, since it judges lines no diff added. */
+export function sweep() {
+  return appPaths().flatMap((path) => checkOne(path, null));
+}
+
+let appPathsIndex;
+function appPaths() {
+  return (appPathsIndex ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app'])));
+}
+
+/** Checks one path; `added` of null lifts the diff scoping, which is what `sweep()` wants. */
+function checkOne(path, added, read = readText) {
+  if (!IN_SCOPE.test(path)) return [];
+  const text = read(path);
+  if (text === null) return [];
+  const lines = text.split('\n');
+  return findViolations({ path, lines, added: added ?? new Set(lines.map((_, i) => i + 1)) });
+}
+
+const ADVICE = {
+  'TT-1':
+    'TT-1: an interactive control that declares neither the 44x44 floor nor an exemption ' +
+    '(WCAG 2.5.5). Add [appTouchTarget] from shared/touch-target.ts — and pair it with ' +
+    '`inline-flex items-center` if the element is inline, where min-height is a no-op. If the ' +
+    'control is genuinely exempt, say why in data-touch-exempt="<reason>", on it or on the ' +
+    'ancestor that is the sentence. This rule cannot see a rendered box: only ' +
+    'frontend/e2e/touch-targets*.e2e.ts measures that, and it stays the proof. <a> is out of ' +
+    'scope entirely. See frontend/.claude/CLAUDE.md.',
+  'TT-2':
+    'TT-2: a data-touch-exempt with no reason. The reason string is the whole point of marking ' +
+    'rather than assuming — an unexplained exemption is the drift the floor exists to stop. The ' +
+    'sanctioned classes are a control inside a sentence (2.5.5\'s own inline exception), a ' +
+    'third-party iframe, and a control that renders no box at all. Anything else that "cannot" ' +
+    'meet the floor is a layout to fix. See the riviera-tailwind skill, rule 4.',
+};
+
+function report(violations) {
+  return violations.map((v) => `  ${v.path}:${v.line}  [${v.rule}]  ${v.text}`).join('\n');
+}
+
+function advise(violations) {
+  return [...new Set(violations.map((v) => v.rule))].map((rule) => ADVICE[rule]).join('\n');
+}
+
+/** Both rules gate: each is element names and attributes, with no runtime property approximated. */
+export function settle(violations, headline, err = process.stderr) {
+  if (violations.length === 0) return 0;
+  err.write(`${headline}:\n${report(violations)}\n${advise(violations)}\n`);
+  return 1;
+}
+
+/** git runs from the repository root, so a pathspec has to be expressed from there too. */
+function toRepoRelative(argument) {
+  return relative(repoRoot(), resolve(process.cwd(), argument)).split(sep).join('/');
+}
+
+function main(argv) {
+  const mode = argv[0];
+
+  if (mode === '--hook') {
+    const payload = JSON.parse(readFileSync(0, 'utf8'));
+    const path = payload?.tool_response?.filePath ?? payload?.tool_input?.file_path;
+    if (!path) return 0;
+    const edited = toRepoRelative(path);
+    if (!IN_SCOPE.test(edited)) return 0;
+    const violations = checkPaths([edited]);
+    if (violations.length === 0) return 0;
+    process.stdout.write(
+      JSON.stringify({
+        hookSpecificOutput: {
+          hookEventName: 'PostToolUse',
+          additionalContext: `Touch-target declarations written by this edit:\n${report(violations)}\n${advise(violations)}`,
+        },
+      }),
+    );
+    return 0;
+  }
+
+  // An explicit request judges the named files whole; skipping committed ones would read as clean.
+  if (mode === '--files') {
+    const paths = argv.slice(1).map(toRepoRelative);
+    return settle(
+      paths.flatMap((path) => checkOne(path, null)),
+      'Touch-target declarations',
+    );
+  }
+
+  if (mode === '--diff') {
+    return settle(
+      check([mergeBase(argv[1] ?? 'origin/main')]),
+      'Touch-target declarations written by this diff',
+    );
+  }
+
+  if (mode === '--all') {
+    const violations = sweep();
+    const counts = ['TT-1', 'TT-2']
+      .map((rule) => `${rule}: ${violations.filter((v) => v.rule === rule).length}`)
+      .join('  ');
+    process.stdout.write(`${violations.length ? `${report(violations)}\n` : ''}${counts}\n`);
+    return 0;
+  }
+
+  process.stderr.write(
+    'usage: check-touch-target.mjs (--diff <base> | --files <path…> | --all | --hook)\n',
+  );
+  return 2;
+}
+
+// Only run the CLI when invoked directly, so the test suite can import the detector.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exitCode = main(process.argv.slice(2));
+}

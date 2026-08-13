@@ -191,17 +191,17 @@ actually applies (`riviera-tailwind` rule 4, first bullet).
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, phase 1 next` · draft **PR #649**, opened at the first
+**Stage pointer:** `implement — phase 1 done, phase 2 next` · draft **PR #649**, opened at the first
 phase commit so every later push is gated (#417: no PR, no CI)
 
-**Next action:** Phase 1 — add this guard's cases to `scripts/guard-cli.test.mjs` (AC-7 diff-scoped,
-AC-8 untracked-judged-whole, AC-9 both rules exit non-zero) and watch them fail before writing
-`main(argv)`.
+**Next action:** Phase 2 — establish the red with `node scripts/check-touch-target.mjs --all` (29
+TT-1 across 6 files), then measure `venue-map.html`'s set tile at 390 px **before** marking it
+(R-1), then mark file by file until `--all` reports 0.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Detector: TT-1, TT-2, ancestor walk, `<a>` out of scope | ✅ | `09f8402f` |
-| 1 — CLI front-end: `--diff` / `--files` / `--hook` / `--all` | | |
+| 1 — CLI front-end: `--diff` / `--files` / `--hook` / `--all` | ✅ | `<sha>` |
 | 2 — Mark the tree: 29 controls, 6 files, `--all` → 0 | | |
 | 3 — Wire it: `PostToolUse` hook, CI step, docs | | |
 
@@ -437,6 +437,7 @@ const GATING = new Set(['TT-1', 'TT-2']);
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-13 | Phase 0 — the nesting walk (void elements + self-closing tags) is a shape no sibling guard had | every guard that walks Angular template start tags | `git ls-files 'scripts/check-*.mjs' \| xargs grep -l "startTags\|walkTags"` | 1 — `check-focus-posture.mjs` | **No change.** Confirmed by reading rather than assumed: its walk is *flat* — it pushes no stack and its rules (BUSY-1/BUSY-2) judge one tag's own attributes — so void-element and self-closing handling has no counterpart there to be missing. An honest negative result, not a clean-looking sweep |
+| 2026-08-13 | Phase 1 — the CLI front-end, the layer where every false clean PR #618 fixed actually lived | every guard CLI with a `--diff` mode, crossed against the four front-end regression shapes (`diff.relative`, repo-root cwd, non-ASCII path, untracked file) | `git ls-files 'scripts/check-*.mjs' \| xargs grep -l "'--diff'"`, then a script attributing each `guard-cli.test.mjs` case to its guard | 4 guards; the matrix showed only `check-inline-comments` and `check-touch-target` carrying all four shapes | **No change — and the matrix was misleading.** `check-plan-file-structure` looked exposed: it has a `--diff` mode, no `diff.relative` case, and a *different* front-end (`nameOnlyArgs`, not `parseAddedLines`). Probed it with the harness rather than reasoning about it, and it holds — because `diffArgs` **and** `nameOnlyArgs` both pass `--no-relative` and `git()` runs from `repoRoot()`, so the exposure is closed once at the shared layer for every guard. Each guard's own case is therefore an *integration lock* proving it went through `git-diff.mjs` rather than rolling its own, not independent coverage of a per-guard bug. The uneven matrix is a coverage choice, not a defect. (Probe fixture note for anyone repeating this: the plan guard only judges a slice whose **diff contains the plan doc** — committing the doc in the base commit makes it ignore the slice, which reads as a false clean and is not one) |
 
 ---
 
