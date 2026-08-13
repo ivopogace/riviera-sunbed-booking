@@ -12,7 +12,7 @@ ones no e2e sweep visits.
 **Architecture:** The guard resolves **no stylesheets and keeps no class allowlist**. The issue
 sketched one, and that allowlist is the whole of its false-positive risk: a class-based carve-out
 cannot see `booking-view.ts`'s `[class]="cls.btnCta"` bindings at all, and it must be maintained
-against SCSS forever. Instead this slice **brings the 30 undeclared in-scope controls to a declared
+against SCSS forever. Instead this slice **brings the 29 undeclared in-scope controls to a declared
 state** (6 files), after which the rule rests on exactly two regex-visible mechanisms and can gate
 like `BUSY-1`/`BUSY-2` rather than merely advise. `<a>` is **out of scope entirely** — not
 advisory — because `min-height` is a no-op on an inline box, so a directive on a link is a
@@ -31,8 +31,12 @@ four, with 89 of 222 controls undeclared) · `riviera-plan-doc` (this template �
 behavior-parity ledger, which is what surfaced that `venue-map.html`'s set tile is a grid cell and
 not an ordinary button) · `tdd` (each guard rule lands red-first against
 `scripts/check-touch-target.test.mjs`; the marking sweep is red-first against the guard's own
-`--all`) · `riviera-review-overlay` (review gate — <when it ran>) · `riviera-docs-freshness`
-(<**ran** over `<range>`, N findings — **or** `N/A — <reason>`>) · `riviera-tailwind` (the floor is
+`--all`) · `riviera-review-overlay` (review gate — **not yet run**; due when PR #649 is marked ready
+for review, and it is what ratifies the two maintainer-confirmation items under Resolved) ·
+`riviera-docs-freshness` (**not yet loaded**; due at merge close-out step 5. Phase 3's generalization
+audit ran the counting sweep by hand over `git grep -ln "check-focus-posture\|check-inline-comments\|
+diff-scoped"` and updated 6 substrate docs, but that is the audit's own discipline, not this skill's
+run — do not read it as a substitute) · `riviera-tailwind` (the floor is
 its rule: set it with `[appTouchTarget]`, never hand-tuned padding; its two sanctioned exemption
 classes are why this plan adds a **third** deliberately and documents it rather than letting the
 marking pass invent reasons) · `riviera-frontend` (checked: the slice creates no file under
@@ -49,40 +53,40 @@ MCP (phase 2 — confirming `inline-flex` pairing is a template concern, not a d
 > Written at this slice's application boundary: the detector function (`findViolations`) and the
 > CLI's exit code. The Angular templates are the *input* to that boundary, not the boundary itself.
 
-- [ ] **AC-1:** Given a template with `<button type="button">` carrying no `appTouchTarget` and no
+- [x] **AC-1:** Given a template with `<button type="button">` carrying no `appTouchTarget` and no
       exemption, when the detector judges it, then one `TT-1` violation is reported at that tag's
       line. *Pinned by:* `check-touch-target.test.mjs` › `reports an undeclared button`
-- [ ] **AC-2:** Given the same button with `appTouchTarget` on its own start tag, when the detector
+- [x] **AC-2:** Given the same button with `appTouchTarget` on its own start tag, when the detector
       judges it, then nothing is reported. *Pinned by:* `check-touch-target.test.mjs` ›
       `accepts the directive on the tag`
-- [ ] **AC-3:** Given the same button with `data-touch-exempt="control inside a sentence"` on its
+- [x] **AC-3:** Given the same button with `data-touch-exempt="control inside a sentence"` on its
       own start tag, when the detector judges it, then nothing is reported. *Pinned by:*
       `check-touch-target.test.mjs` › `accepts an exemption on the tag`
-- [ ] **AC-4:** Given a `<button>` nested inside a `<p data-touch-exempt="…">` — `auth-page.ts`'s
+- [x] **AC-4:** Given a `<button>` nested inside a `<p data-touch-exempt="…">` — `auth-page.ts`'s
       shipped mode toggle — when the detector judges it, then nothing is reported; and given the
       same button after that `</p>` closes, then `TT-1` **is** reported. *Pinned by:*
       `check-touch-target.test.mjs` › `an ancestor exemption covers its subtree and no further`
-- [ ] **AC-5:** Given an undeclared `<a>`, when the detector judges it, then nothing is reported —
+- [x] **AC-5:** Given an undeclared `<a>`, when the detector judges it, then nothing is reported —
       whatever its classes or bindings. *Pinned by:* `check-touch-target.test.mjs` ›
       `never judges an anchor`
-- [ ] **AC-6:** Given `data-touch-exempt=""` (or whitespace-only) on any in-scope control, when the
+- [x] **AC-6:** Given `data-touch-exempt=""` (or whitespace-only) on any in-scope control, when the
       detector judges it, then one `TT-2` violation is reported — an unexplained exemption is the
       drift the marker exists to stop. *Pinned by:* `check-touch-target.test.mjs` ›
       `reports an exemption with no reason`
-- [ ] **AC-7:** Given a file whose diff adds one line, and an undeclared control on a line the diff
+- [x] **AC-7:** Given a file whose diff adds one line, and an undeclared control on a line the diff
       did **not** add, when the guard runs `--diff`, then nothing is reported. *Pinned by:*
       `check-touch-target.test.mjs` › `judges only lines the diff added`
-- [ ] **AC-8:** Given a file git has never seen, when the guard runs `--files` on it, then it is
+- [x] **AC-8:** Given a file git has never seen, when the guard runs `--files` on it, then it is
       judged **whole** (no diff against `HEAD` exists and every line in it is the author's — the
       #619 rule). *Pinned by:* `guard-cli.test.mjs` › `check-touch-target judges an untracked file whole`
-- [ ] **AC-9:** Given a diff introducing one `TT-1` and given another introducing one `TT-2`, when
+- [x] **AC-9:** Given a diff introducing one `TT-1` and given another introducing one `TT-2`, when
       the CLI runs, then it exits **non-zero** in both cases; given a clean diff it exits 0.
       *Pinned by:* `guard-cli.test.mjs` › `check-touch-target gates on both rules`
-- [ ] **AC-10:** Given the shipped tree at this branch's HEAD, when `node
+- [x] **AC-10:** Given the shipped tree at this branch's HEAD, when `node
       scripts/check-touch-target.mjs --all` runs, then it reports **zero** violations and exits 0.
       This is the precondition for gating, and the same bar `BUSY-1`/`BUSY-2` had to clear.
       *Pinned by:* the phase 2 command, recorded in Execution status.
-- [ ] **AC-11:** Given the sign-out-failure notice rendered at a 390 px viewport, when the sweep
+- [x] **AC-11:** Given the sign-out-failure notice rendered at a 390 px viewport, when the sweep
       measures its controls, then `Try again` and `Dismiss` each measure ≥ 44 × 44. *Pinned by:*
       `touch-targets-tourist.e2e.ts` › `sign-out failure notice`
 
@@ -128,29 +132,34 @@ MCP (phase 2 — confirming `inline-flex` pairing is a template concern, not a d
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | `min-w-11` on `venue-map.html`'s `.set-button` widens or overflows the tourist beach-map grid — the same failure #605 fixed on the two console grids, on a grid it never touched | **high** | high | measure before marking, per the ledger row | implementer | **closed — not applicable, verified.** The tile track is a fixed `--riv-tile: clamp(47px, 11vw, 56px)`, not `1fr`, inside an `overflow-x-auto` pan container, so nothing squeezes and `min-w-11` is a no-op. `venue-map-pan.e2e.ts` and the venue-detail sweep both still pass |
-| R-2 | Wiring the guard as a hard gate before the tree is clean turns this PR's own CI red | med | med | phase order is the mitigation: the guard lands unwired (phase 0–1), the tree is marked (phase 2), the hook + CI step land last (phase 3). `--all` clean is AC-10 and gates phase 3 | plan | open |
+| R-2 | Wiring the guard as a hard gate before the tree is clean turns this PR's own CI red | med | med | phase order was the mitigation and it held | plan | **closed** — the guard landed unwired, the tree reached zero in phase 2, the gate went on in phase 3. No push in this PR was ever red for a pre-existing violation |
 | R-3 | Ancestor resolution needs a real nesting walk — void elements (`<input>`, `<img>`), self-closing `<app-x />`, and Angular control-flow blocks (`@if`/`@for`) that open braces but no element. A bug here is a **false positive on a gating rule**, the one error direction this layer cannot afford (#529's lesson) | med | **high** | an explicit void-element set and a stack that only pushes non-void, non-self-closed tags; a unit case per shape; and AC-10's whole-tree sweep as the empirical backstop — 222 tags across 40 files is a real corpus | implementer | open |
-| R-4 | `--all` is clean at this branch's HEAD but a parallel PR merges a new undeclared control, so `main` is dirty the moment this lands | low | med | the guard is **diff-scoped**, so a pre-existing violation never fails a build — only a line a diff adds does. The `--all` sweep is a phase-2 gate, not a standing CI check. Whoever merges second marks their own control | plan | open |
-| R-5 | Marking a control already floored by SCSS leaves two mechanisms on one element; a later reader deletes one believing the other covers it | low | low | the ledger rows above name every such control and say the redundancy is deliberate; `riviera-tailwind` rule 4 already names the directive as the go-forward | plan | open |
-| R-6 | The `PostToolUse` hook fires on every `Write`/`Edit`; a fourth guard adds latency to the authoring loop | low | low | same shape and budget as the three existing guards (`timeout: 15`, `|| true`); the hygiene job's observed green is well under a minute with no install step | plan | open |
-| R-7 | A new `scripts/*.test.mjs` is auto-globbed by the hygiene job's `node --test "scripts/*.test.mjs"` step — so a suite importing anything outside `node:` breaks a job with no install step | low | med | dependency-free by construction, like every sibling guard; `guard-cli-harness.mjs` is reused rather than re-invented | implementer | open |
+| R-4 | `--all` is clean at this branch's HEAD but a parallel PR merges a new undeclared control, so `main` is dirty the moment this lands | low | med | the guard is **diff-scoped**, so a pre-existing violation never fails a build — only a line a diff adds does | plan | **closed by design** — no standing `--all` check exists to go red; whoever merges second marks their own control, and the diff-scoped rule makes that the only thing they must do |
+| R-5 | Marking a control already floored by SCSS leaves two mechanisms on one element; a later reader deletes one believing the other covers it | low | low | the ledger rows name every such control and say the redundancy is deliberate | plan | **closed** — accepted, and narrower than feared: only `home.html`’s three `.field` controls and `app.html`’s swatch are doubly floored. Rule 4 names the directive as the go-forward |
+| R-6 | The `PostToolUse` hook fires on every `Write`/`Edit`; a fourth guard adds latency to the authoring loop | low | low | same shape and budget as the three existing guards (`timeout: 15`, `|| true`) | plan | **closed** — the hygiene job ran the gate-proof commit in **21s** including all four guards and their suites |
+| R-7 | A new `scripts/*.test.mjs` is auto-globbed by the hygiene job's `node --test "scripts/*.test.mjs"` step — so a suite importing anything outside `node:` breaks a job with no install step | low | med | dependency-free by construction; `guard-cli-harness.mjs` reused rather than re-invented | implementer | **closed** — the job’s `Test the guards themselves` step is green with 180 tests, on a runner with no install step |
 
 ## Open questions / Assumptions
 
-- **Decision (mine, for confirmation at review):** the floor's exemption vocabulary gains a **third
-  documented class** — *not rendered: a zero-box control whose visible proxy carries the target*, for
-  `venue-tab.html`'s `<input type="file" class="hidden">`. `riviera-tailwind` rule 4 sanctions two
-  classes today (inline prose link; third-party iframe) and says anything else that "can't" meet the
-  floor is a layout to fix. A `display: none` input is not a layout to fix, and the alternative —
-  putting `appTouchTarget` on it — declares a floor a box-less element cannot have. The skill is
-  updated in this PR. — *Owner:* Ivo · *Resolves by:* review gate.
-- **Assumption:** the sign-out notice's two buttons should **grow** rather than be exempted. They are
-  flex children of a wrapping row, not words inside a sentence, so 2.5.5's inline exception does not
-  reach them. — *Owner:* Ivo · *Resolves by:* phase 2.
-- **Assumption:** `<a>` staying wholly out of scope is acceptable coverage. It leaves 59 undeclared
-  links checked only by the sweep and by RV-FE at review — the status quo, not a regression, but the
-  guard will not close that gap and should not be read as if it had. — *Owner:* Ivo ·
-  *Resolves by:* review gate.
+None open. The three below are implemented; the two marked **maintainer confirmation due** are
+judgement calls the author made and the review gate exists to ratify — they are not blockers, but
+neither has been agreed by anyone but the author.
+
+### Resolved
+
+- **Third exemption class — implemented, maintainer confirmation due** (`cad02c5d`). The floor's
+  vocabulary gains *not rendered: a zero-box control whose visible proxy carries the target*, for
+  `venue-tab.html`'s `<input type="file" class="hidden">`. `riviera-tailwind` rule 4 sanctioned two
+  classes and said anything else that "can't" meet the floor is a layout to fix; a `display: none`
+  input is not a layout to fix, and the alternative — `appTouchTarget` on it — would declare a floor
+  a box-less element cannot have, the same lie as the inline `<a>`. Rule 4 is updated in this PR.
+- **Sign-out notice buttons — resolved by measurement, not by argument** (`19cbd18f`). The
+  assumption was that they should grow rather than be exempted. They were not merely un-floored,
+  they were **broken**: 58 × 21 and 48 × 21. Grown, and AC-11's sweep case pins it.
+- **`<a>` out of scope — quantified, maintainer confirmation due** (`19cbd18f`). The residual is
+  **53** undeclared anchors, measured by widening `JUDGED` rather than estimated. Status quo, not a
+  regression; the guard does not close that gap and the docs now say so in four places so a green
+  guard is never read as full coverage.
 
 ## Availability & concurrency (invariant #2)
 
@@ -193,19 +202,37 @@ actually applies (`riviera-tailwind` rule 4, first bullet).
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 2 done, phase 3 next` · draft **PR #649**, opened at the first
-phase commit so every later push is gated (#417: no PR, no CI)
+**Stage pointer:** `implement — all four phases done; PR #649 ready to mark ready-for-review, which
+is what makes the Review and Sonar gates due`
 
-**Next action:** Phase 3 — wire the `PostToolUse` hook and the fourth `Repo hygiene (diff-scoped)`
-step, prove the gate red once on a throwaway commit, then the docs sweep (`riviera-tailwind` rule 4
-gains the third exemption class; `CLAUDE.md`'s "three diff-scoped hygiene checks" becomes four).
+**Next action:** Merge the latest `origin/main` in with full phase discipline, mark PR #649 ready for
+review, then run the Review gate (`/code-review` per `pr-gates.md` §1 **plus**
+`riviera-review-overlay`) and the Sonar gate — pulling Sonar's reported new-issue and duplication
+list from the API rather than reading the green badge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Detector: TT-1, TT-2, ancestor walk, `<a>` out of scope | ✅ | `09f8402f` |
 | 1 — CLI front-end: `--diff` / `--files` / `--hook` / `--all` | ✅ | `9876569a` |
 | 2 — Mark the tree: 29 controls, 6 files, `--all` → 0 | ✅ | `19cbd18f` |
-| 3 — Wire it: `PostToolUse` hook, CI step, docs | | |
+| 3 — Wire it: `PostToolUse` hook, CI step, docs | ✅ | `cad02c5d`, gate proof `32822932` → reverted `0a0ac56e` |
+
+**Phase 3 result.** A fourth `PostToolUse` hook and a fourth `Repo hygiene (diff-scoped)` **step** —
+not a job, since the ruleset keys required contexts by job name and a new job would report without
+blocking (#413/#420/#534). Context list unchanged at 7.
+
+**The gate was observed failing before being trusted.** A deliberate undeclared `<button>` pushed at
+`32822932` turned the hygiene job red in **21 s**, and the step conclusions isolate it exactly:
+
+```
+success  Test the guards themselves
+success  Check the diff for multi-line inline comments (RV-STYLE-1, hard gate)
+success  Check each plan doc lists what the diff changed (#533, hard gate)
+success  Check the diff for stranded-focus postures (#621, BUSY-1 gates)
+failure  Check the diff declares its touch targets (#648, both rules gate)
+```
+
+Reverted at `0a0ac56e`; `--all` back to 0/0.
 
 **Phase 0 result.** Ten detector cases, all green; the full guard suite (`node --test
 "scripts/*.test.mjs"`) is 170/170. Run over the real tree the detector reports **29 TT-1 and 0
@@ -279,7 +306,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `scripts/check-touch-target.mjs` · Create `scripts/check-touch-target.test.mjs`
 
-- [ ] **Step 1: Write the failing test** — AC-1 first, then one case per AC-2…AC-6. Reuse the
+- [x] **Step 1: Write the failing test** — AC-1 first, then one case per AC-2…AC-6. Reuse the
       sibling guards' shape: a `findViolations({ path, lines, added })` detector taking the file's
       lines and the diff-added line numbers, returning `{ path, line, rule, text }[]`.
 
@@ -323,12 +350,12 @@ test('never judges an anchor', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/check-touch-target.test.mjs` →
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/check-touch-target.test.mjs` →
       FAIL, `Cannot find module './check-touch-target.mjs'`, then per-assertion failures.
 
 > Scope: this one suite. The other guards' suites are untouched until phase 1.
 
-- [ ] **Step 3: Minimal implementation.** Import `maskHtmlComments`/`typescriptRegions`-equivalent
+- [x] **Step 3: Minimal implementation.** Import `maskHtmlComments`/`typescriptRegions`-equivalent
       region masking and the `startTags`/`readAttributes` walk from `check-focus-posture.mjs`'s
       shape — **copied deliberately, not imported**: that module is not a library, it caches
       nothing shareable, and the sibling guards each own their parser. Extend the walk to carry an
@@ -345,22 +372,22 @@ const JUDGED = new Set(['button', 'input', 'select', 'textarea']);
 const GATING = new Set(['TT-1', 'TT-2']);
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `node --test scripts/check-touch-target.test.mjs` →
+- [x] **Step 4: Run it, verify it passes** — `node --test scripts/check-touch-target.test.mjs` →
       PASS.
 
 > Scope (end-of-phase regression): `node --test "scripts/*.test.mjs"` — the whole guard suite, which
 > is what the hygiene job runs.
 
-- [ ] **Step 5: Generalization-audit pass.** Population: *every guard that walks Angular template
+- [x] **Step 5: Generalization-audit pass.** Population: *every guard that walks Angular template
       start tags* — enumerate with
       `git ls-files 'scripts/check-*.mjs' | xargs grep -l "startTags"`. Judge whether the
       void-element and self-closing handling this phase adds is a latent gap in the enumerated
       siblings too (`check-focus-posture.mjs` walks tags flat and never nests, so it may be
       unaffected — confirm rather than assume). Append the result to the log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "Detect undeclared touch targets in Angular templates (#648)"`
+- [x] **Step 6: Commit** — `git commit -m "Detect undeclared touch targets in Angular templates (#648)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -368,21 +395,21 @@ const GATING = new Set(['TT-1', 'TT-2']);
 
 **Files:** Modify `scripts/check-touch-target.mjs` · Modify `scripts/guard-cli.test.mjs`
 
-- [ ] **Step 1: Write the failing test** — add this guard's cases to `guard-cli.test.mjs`, spawning
+- [x] **Step 1: Write the failing test** — add this guard's cases to `guard-cli.test.mjs`, spawning
       the CLI against a throwaway `git init` repo via `withRepo`/`hookPayload`. Cases: AC-7
       (diff-scoped), AC-8 (untracked judged whole), AC-9 (both rules exit non-zero, clean exits 0),
       plus the front-end regressions #618 paid for once — a pathspec resolved from a subdirectory,
       a repo with `diff.relative` set, and a non-ASCII C-quoted path.
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/guard-cli.test.mjs` → FAIL.
-- [ ] **Step 3: Minimal implementation** — `check(range)`, `checkPaths(paths, seams)`, `sweep()`,
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/guard-cli.test.mjs` → FAIL.
+- [x] **Step 3: Minimal implementation** — `check(range)`, `checkPaths(paths, seams)`, `sweep()`,
       `settle(violations, headline)` and `main(argv)`, delegating every git call to
       `./git-diff.mjs` exactly as the siblings do. Nothing outside `node:` may be imported (R-7).
-- [ ] **Step 4: Run it, verify it passes** — `node --test "scripts/*.test.mjs"` → PASS.
-- [ ] **Step 5: Generalization-audit pass.** Population: *every guard CLI spawned by the harness* —
+- [x] **Step 4: Run it, verify it passes** — `node --test "scripts/*.test.mjs"` → PASS.
+- [x] **Step 5: Generalization-audit pass.** Population: *every guard CLI spawned by the harness* —
       enumerate with `git ls-files 'scripts/check-*.mjs'`. Confirm the new CLI's flag surface and
       exit-code discipline match all four, and that no sibling lacks a case this phase added.
-- [ ] **Step 6: Commit** — `git commit -m "Give the touch-target guard its diff, files and hook front-ends (#648)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Give the touch-target guard its diff, files and hook front-ends (#648)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -396,26 +423,26 @@ const GATING = new Set(['TT-1', 'TT-2']);
 > before the `inline-flex` pairing — both are Skill-routing-gate rows this phase enters (re-entry
 > rule).
 
-- [ ] **Step 1: Establish the red** — `node scripts/check-touch-target.mjs --all` → 30 `TT-1`
+- [x] **Step 1: Establish the red** — `node scripts/check-touch-target.mjs --all` → 29 `TT-1`
       violations across 6 files. Record the exact list in Execution status; it is the phase's
       work-list and the evidence AC-10 is a real transition, not a vacuous one.
-- [ ] **Step 2: Measure before marking (R-1).** Read the tourist map tile's rendered box at 390 px
+- [x] **Step 2: Measure before marking (R-1).** Read the tourist map tile's rendered box at 390 px
       via the existing venue-map sweep before adding `min-w-11`. If it is already ≥ 44 px, the
       directive is a declaration and nothing moves; if not, apply #605's shipped grid answer.
-- [ ] **Step 3: Mark, file by file**, in the order app.html → auth-page.ts → booking-view.ts →
+- [x] **Step 3: Mark, file by file**, in the order app.html → auth-page.ts → booking-view.ts →
       home.html → venue-tab.html → venue-map.html, running `--all` after each so the count only ever
       falls. `appTouchTarget` everywhere except `venue-tab.html`'s hidden file input, which takes
       the third exemption class.
-- [ ] **Step 4: Verify** — `node scripts/check-touch-target.mjs --all` → 0 (AC-10);
+- [x] **Step 4: Verify** — `node scripts/check-touch-target.mjs --all` → 0 (AC-10);
       `npm run lint`, `npm test`, `npm run format:check`, `npm run test:e2e:a11y` → green, with the
       new sign-out-notice sweep case covering AC-11.
-- [ ] **Step 5: Generalization-audit pass.** Population: *every control the guard cannot judge but
+- [x] **Step 5: Generalization-audit pass.** Population: *every control the guard cannot judge but
       the same argument reaches* — enumerate the `<a>` population with `--all` under a temporarily
       widened `JUDGED` set, and record the count as the documented residual rather than fixing it
       (Non-goals). This is the audit's honest negative result, and recording it is what stops a
       later session reading "guard is green" as "every control is declared".
-- [ ] **Step 6: Commit** — `git commit -m "Declare the touch-target mechanism on every judged control (#648)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Declare the touch-target mechanism on every judged control (#648)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -424,24 +451,24 @@ const GATING = new Set(['TT-1', 'TT-2']);
 **Files:** Modify `.claude/settings.json` · `.github/workflows/ci.yml` ·
 `frontend/.claude/CLAUDE.md` · `CLAUDE.md` · `.claude/skills/riviera-tailwind/SKILL.md`
 
-- [ ] **Step 1: Wire the hook** — a fourth `PostToolUse` entry, same shape as the three siblings
+- [x] **Step 1: Wire the hook** — a fourth `PostToolUse` entry, same shape as the three siblings
       (`|| true`, `timeout: 15`, a `statusMessage` naming the rules).
-- [ ] **Step 2: Wire CI** — a fourth step in `Repo hygiene (diff-scoped)`, `if: ${{ !cancelled() }}`
+- [x] **Step 2: Wire CI** — a fourth step in `Repo hygiene (diff-scoped)`, `if: ${{ !cancelled() }}`
       so one push surfaces every hygiene rule. **Do not rename the job** — the name is a required
       status-check context in the ruleset (#413/#420/#539).
-- [ ] **Step 3: Verify the gate is real** — push a throwaway commit adding an undeclared button,
+- [x] **Step 3: Verify the gate is real** — push a throwaway commit adding an undeclared button,
       confirm the hygiene job goes red naming `TT-1`, then revert it. A gate never observed failing
       is a gate assumed to work.
-- [ ] **Step 4: Docs** — the guard paragraph in `frontend/.claude/CLAUDE.md`; `CLAUDE.md`'s
+- [x] **Step 4: Docs** — the guard paragraph in `frontend/.claude/CLAUDE.md`; `CLAUDE.md`'s
       "three diff-scoped hygiene checks" → four, with the `<a>`-out-of-scope residual stated;
       `riviera-tailwind` rule 4 gains the third exemption class and a pointer to the guard.
-- [ ] **Step 5: Generalization-audit pass.** Population: *every doc that states the count or the
+- [x] **Step 5: Generalization-audit pass.** Population: *every doc that states the count or the
       roster of hygiene guards* — enumerate with
       `git grep -ln "check-focus-posture\|diff-scoped" -- '*.md' '*.yml' '*.json'`. This is the
       counting sweep `riviera-docs-freshness` exists for: this slice makes the Nth guard where every
       doc says "the three".
-- [ ] **Step 6: Commit** — `git commit -m "Gate the touch-target declaration in CI and while typing (#648)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Gate the touch-target declaration in CI and while typing (#648)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -462,36 +489,47 @@ const GATING = new Set(['TT-1', 'TT-2']);
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1…AC-7:** Run `node --test scripts/check-touch-target.test.mjs` → all pass. Verified at `<sha>`.
-- [ ] **AC-8, AC-9:** Run `node --test scripts/guard-cli.test.mjs` → all pass. Verified at `<sha>`.
-- [ ] **AC-10:** Run `node scripts/check-touch-target.mjs --all` → `0 violations`, exit 0. Verified at `<sha>`.
-- [ ] **AC-11:** Run `npm run test:e2e:a11y` → the `sign-out failure notice` case passes. Verified at `<sha>`.
+- [x] **AC-1…AC-7:** `node --test scripts/check-touch-target.test.mjs` → 10/10. Verified at `09f8402f`,
+      green in CI on every push since.
+- [x] **AC-8, AC-9:** `node --test scripts/guard-cli.test.mjs` → 46/46 (10 of them this guard's).
+      Verified at `9876569a`. AC-9's own front-end half was **mutation-proved**: stubbing
+      `toRepoRelative` to return its argument raw kills exactly the repo-root-cwd case.
+- [x] **AC-10:** `node scripts/check-touch-target.mjs --all` → `TT-1: 0  TT-2: 0`, exit 0. Verified at
+      `19cbd18f`; re-verified after the gate-proof revert at `0a0ac56e`.
+- [x] **AC-11:** `npx playwright test --config playwright.a11y.config.ts` → 210/210, the
+      `sign-out failure notice` case among them. Verified at `19cbd18f`; it was **observed red first**
+      (`58 × 21`, `48 × 21`).
+- [x] **The gate itself fails a build.** A deliberate undeclared `<button>` pushed at `32822932` took
+      `Repo hygiene (diff-scoped)` red in 21s on **only** the touch-target step — the other three
+      guards and the guard-suite step all green — then reverted at `0a0ac56e`. A gate never observed
+      failing is a gate assumed to work.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, no backend change.
-- [ ] **Availability** section filled (N/A justified); invariant #2 not engaged.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section filled (N/A, frontend-only); invariant #11 not engaged.
-- [ ] **Payment/payout** section filled (N/A); invariants #5, #8, #9 not engaged.
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented; the marking pass added no `as any`, no new
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, no backend change.
+- [x] **Availability** section filled (N/A justified); invariant #2 not engaged.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section filled (N/A, frontend-only); invariant #11 not engaged.
+- [x] **Payment/payout** section filled (N/A); invariants #5, #8, #9 not engaged.
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented; the marking pass added no `as any`, no new
       component, and no cross-feature import.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean (the File-structure
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean (the File-structure
       section matches the diff).
-- [ ] `node scripts/check-touch-target.mjs --all` → 0, and the guard's own hygiene siblings
+- [x] `node scripts/check-touch-target.mjs --all` → 0, and the guard's own hygiene siblings
       (`check-inline-comments`, `check-focus-posture`) are clean over this diff.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan state committed here citing `merged via PR #NN`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [ ] **Close-out written in THIS PR** — final plan state committed here citing `merged via PR #649`
+      (due in this PR's last commit, after the Review and Sonar gates, before the merge).
 - [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
 
