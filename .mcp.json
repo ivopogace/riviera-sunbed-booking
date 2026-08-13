@@ -3,8 +3,7 @@
     "angular-cli": {
       "command": "node",
       "args": [
-        "${CLAUDE_PROJECT_DIR:-.}/frontend/node_modules/@angular/cli/bin/ng.js",
-        "mcp"
+        "${CLAUDE_PROJECT_DIR:-.}/scripts/angular-cli-mcp.mjs"
       ]
     },
     "render": {
