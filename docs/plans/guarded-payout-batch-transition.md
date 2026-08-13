@@ -27,7 +27,10 @@ down) · `tdd` (the guard is proven by a test that goes red against an unguarded
 before the `WHERE` clause is added — see Phase 0 steps 2–5) · `riviera-review-overlay`
 (**ran** at ready-for-review, layered on `/code-review` at high effort per the money rule —
 6 findings, 4 fixed, 1 skipped, 1 deferred; see the findings register) · `riviera-docs-freshness`
-(pending — due at merge close-out over this PR's range) · `riviera-java-conventions` (typed outcome
+(**ran** pre-merge over `origin/main...HEAD`, **0 findings** — the rename grep shows no substrate
+doc or skill cites `updateStatus`, and the counting sweep finds no claim this slice falsifies:
+`CLAUDE.md`'s payout row and `CONTEXT.md`'s *Payout batch* entry describe ownership and
+vocabulary, neither of which moved) · `riviera-java-conventions` (typed outcome
 kept as the sealed `BatchStatusOutcome`; text-block SQL with named params; `Optional`
 from the port rather than a sentinel) · `riviera-modulith` (confirmed the change stays on
 an internal `application/` port + package-private `adapter/out` — no published surface,
@@ -173,15 +176,19 @@ documented response for this endpoint.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, awaiting re-run of CI + Sonar`
+**Stage pointer:** `merge close-out — all gates cleared, awaiting the maintainer's go-ahead to merge`
 
-**Next action:** Push the review-fix commit, confirm that push's CI run is green and the Sonar
-list is still empty, then open the two deferred follow-up issues (F-4, F-7) and merge.
+**Next action:** Merge **via PR #652**. Merging `main` deploys to Render (`deploy.yml`), so the
+merge itself is the maintainer's call, not the agent's. After merging: confirm #571 closed
+(the PR's `Closes` does it) — there is no parent epic to tick, and both deferred findings
+already have homes (#653, #654).
+
+**Slice closed out via PR #652.**
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Guard the transition | ✅ | plan `39a45f44`, fix `ba97ccd4`, status `9aad86c3` |
-| 1 — Review-gate fixes (F-1/F-2/F-3/F-5) | ✅ | `d76e3623` |
+| 1 — Review-gate fixes (F-1/F-2/F-3/F-5) | ✅ | `d76e3623`, plan `48a21256` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -198,10 +205,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | review (high) | Losing a race **to the same target** returned `IllegalTransition(from == to)` → a 409 naming a transition nobody attempted, and an unlisted parity change (both callers used to get 200) | fixed in `d76e3623` — `lostRace` reports `Marked` when the batch already sits at the requested target; pinned by `aBatchAlreadyAtTheRequestedTargetIsReportedMarked` |
 | F-2 | review (high) | `lostRace`'s re-read only reports the true status under READ COMMITTED, and nothing at the call site said so | fixed in `d76e3623` — stated on the method's Javadoc, including what a snapshot isolation level would hide |
 | F-3 | review (high) | `rejectsAnIllegalTransitionWithoutAttemptingTheWrite` never verified the write was skipped, so the name promised a guarantee nothing enforced | fixed in `d76e3623` — `verify(batches, never()).transition(…)` |
-| F-4 | review (high) | No test exercises the lost-race path end to end: the guard is proven at the adapter, the mapping only against mocks | deferred → follow-up issue. Closing it needs a Mockito spy bean or a delegating double, i.e. a second Spring context and a pattern the repo doesn't use, to pin a Postgres/Spring isolation guarantee rather than our own logic — which F-1/F-3 now cover at both levels |
+| F-4 | review (high) | No test exercises the lost-race path end to end: the guard is proven at the adapter, the mapping only against mocks | deferred → **issue #653**. Closing it needs a Mockito spy bean or a delegating double, i.e. a second Spring context and a pattern the repo doesn't use, to pin a Postgres/Spring isolation guarantee rather than our own logic — which F-1/F-3 now cover at both levels |
 | F-5 | review (high) | Adapter-level SQL test was bolted onto the service-level generation IT, which had to autowire the internal port | fixed in `d76e3623` — moved to `JdbcPayoutBatchesIT` beside its adapter, matching `JdbcPaymentsIT` / `JdbcBookingsTransitionIT`; the generation IT is back to driving the facade only |
 | F-6 | review (high) | SQL bind names inline where sibling adapters hoist `PARAM_*` constants | skipped — `"id"`/`"period"` appear ×2, under S1192's threshold of 3, and the rest of this file binds inline; hoisting only this statement would make the file less consistent, not more. Revisit if a third guarded statement lands (also R-4) |
-| F-7 | tooling (found at the gate) | `scripts/check-plan-file-structure.mjs --diff origin/main` reported clean while `JdbcPayoutBatchesIT.java` was untracked — `git diff` cannot see untracked files, so the guard false-cleans exactly when a slice **adds** a file, its most likely omission | deferred → follow-up issue; worked around here by staging before re-running. CI sees the committed diff, so it would have failed the PR rather than shipping the gap |
+| F-7 | tooling (found at the gate) | `scripts/check-plan-file-structure.mjs --diff origin/main` reported clean while `JdbcPayoutBatchesIT.java` was untracked — `git diff` cannot see untracked files, so the guard false-cleans exactly when a slice **adds** a file, its most likely omission | deferred → **issue #654**; worked around here by staging before re-running. CI sees the committed diff, so it would have failed the PR rather than shipping the gap |
 
 ---
 
@@ -298,5 +305,5 @@ All five were run together as
 - [x] **Frontend** N/A — backend-only.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **Close-out written in THIS PR** — final plan state committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
