@@ -11,7 +11,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -84,5 +88,21 @@ class PayoutReportServiceTest {
 				assertInstanceOf(BatchStatusOutcome.IllegalTransition.class, outcome);
 		assertEquals(BatchStatus.DRAFT, illegal.from());
 		assertEquals(BatchStatus.SETTLED, illegal.to());
+		verify(batches, never()).transition(anyLong(), any(), any());
+	}
+
+	@Test
+	void aBatchAlreadyAtTheRequestedTargetIsReportedMarked() {
+		PayoutBatch settledByTheWinner = batch(BatchStatus.REPORTED);
+		when(batches.findById(BATCH_ID))
+				.thenReturn(Optional.of(batch(BatchStatus.DRAFT)))
+				.thenReturn(Optional.of(settledByTheWinner));
+		when(batches.transition(BATCH_ID, BatchStatus.DRAFT, BatchStatus.REPORTED)).thenReturn(Optional.empty());
+
+		BatchStatusOutcome outcome = service.mark(BATCH_ID, BatchStatus.REPORTED);
+
+		BatchStatusOutcome.Marked marked = assertInstanceOf(BatchStatusOutcome.Marked.class, outcome,
+				"losing a race to the same target is not an error — the requested state holds");
+		assertEquals(settledByTheWinner, marked.batch());
 	}
 }
