@@ -191,7 +191,8 @@ actually applies (`riviera-tailwind` rule 4, first bullet).
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, phase 1 next`
+**Stage pointer:** `implement — phase 0 done, phase 1 next` · draft **PR #649**, opened at the first
+phase commit so every later push is gated (#417: no PR, no CI)
 
 **Next action:** Phase 1 — add this guard's cases to `scripts/guard-cli.test.mjs` (AC-7 diff-scoped,
 AC-8 untracked-judged-whole, AC-9 both rules exit non-zero) and watch them fail before writing
