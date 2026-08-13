@@ -8,6 +8,7 @@ import { CustomerAuth } from './core/customer-auth';
 import { SignOutNotice } from './core/sign-out-notice';
 import { ThemeId, ThemeService } from './core/theme';
 import { OperatorChrome } from './operator/operator-chrome';
+import { TouchTarget } from './shared/touch-target';
 
 /**
  * The Liquid Glass app shell: themed gradient background, sticky glass header with
@@ -18,7 +19,7 @@ import { OperatorChrome } from './operator/operator-chrome';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, FindBooking, OperatorChrome],
+  imports: [RouterOutlet, RouterLink, FindBooking, OperatorChrome, TouchTarget],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   host: {

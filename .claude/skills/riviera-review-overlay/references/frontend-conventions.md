@@ -46,8 +46,10 @@ reference `CLAUDE.md`.
 - [ ] a reused surface/element is a shared directive/component (`shared/*-glass.ts`, `retry-button.ts`), **not** `@apply`/`@utility`
 - [ ] a class a spec queries (`.set-tile.premium`, `.amenity-chip`, `.failure-title`, …) is retained as an inert marker after its styling moved to utilities
 - [ ] a restyle/migration proves **no rendered drift** with a computed-style diff, not just the class list (the `*.contrast.spec.ts` are pure maths and can't see it)
+- [ ] a new/changed interactive control meets the **44 × 44 px floor** (#605) — and the two halves of that check are **not** interchangeable (see Follow-up)
 
 **Follow-up:**
+- **The touch-target floor has a gating guard and a measuring sweep; neither is the other.** `check-touch-target.mjs` (#648, a `Repo hygiene (diff-scoped)` step and a `PostToolUse` hook) fails the build when a `<button>`/`<input>`/`<select>`/`<textarea>` declares neither `[appTouchTarget]` nor a reasoned `data-touch-exempt` — **both TT-1 and TT-2 gate**, so like BUSY-1 those lines are the build's finding and not yours (RV-STYLE-2's posture). But it proves only that somebody *declared* something. Two things it is blind to, which are exactly this item's: a declaration that is **false** (the directive is a no-op on a `display: inline` box, so `min-h-11` on a bare `<a>` changes nothing), and **every `<a>` in the app** — anchors are out of the guard's scope entirely and 53 stand undeclared by design. Rendered size is `frontend/e2e/touch-targets*.e2e.ts`'s to prove; a green guard on a surface the sweep never opens means nothing was measured.
 - Sharing moves to the directive/component layer — Tailwind has no mixin and this repo does not `@apply`. Surface directives carry no `border-radius` (it resolves by stylesheet order, not `class` order).
 - Don't flag a `getComputedStyle` `border-width` of `"1px"` for a `1.5px` border as a regression — Chromium snaps it, identically to the old SCSS. Diff against the SCSS's own computed values.
 - Load `riviera-tailwind` for the full conventions + the SCSS→Tailwind migration checklist.

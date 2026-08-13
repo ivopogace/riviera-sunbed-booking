@@ -90,6 +90,27 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await page.setViewportSize({ width: 390, height: 780 });
   });
 
+  /**
+   * The shell's sign-out warning renders only after a sign-out request fails, so no sweep of a
+   * resting surface has ever measured its two controls — the blind-spot class #648 was filed about.
+   */
+  test('the sign-out failure notice', async ({ page }) => {
+    await page.route(/\/api\/auth\/me$/, (route) =>
+      route.fulfill({
+        json: { username: 'guest@example.com', principalType: 'CUSTOMER', emailVerified: true },
+      }),
+    );
+    // Both the logout and its CSRF-rebootstrap retry fail, which is what raises the notice.
+    await page.route(/\/api\/auth\/logout$/, (route) => route.abort('failed'));
+
+    await page.goto('/');
+    await page.getByTestId('menu-toggle').click();
+    await page.getByTestId('nav-signout-mobile').click();
+    await expect(page.getByTestId('sign-out-warning')).toBeVisible();
+
+    await expectTouchTargets(page, 'sign-out failure notice');
+  });
+
   test('home — discovery with its filter bar', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByTestId('venue-card').first()).toBeVisible();

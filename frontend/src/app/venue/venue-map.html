@@ -75,6 +75,7 @@
             >Date</label
           >
           <input
+            appTouchTarget
             id="map-date"
             type="date"
             class="text-[15px] text-(--riv-card-ink) bg-[rgba(255,255,255,0.9)] border border-(--riv-field-border) rounded-[14px] px-3 py-2.5 cursor-pointer focus-visible:outline-[3px] focus-visible:outline-white focus-visible:outline-offset-2"
@@ -201,6 +202,7 @@
                       >
                         @if (tile.bookable) {
                           <button
+                            appTouchTarget
                             type="button"
                             class="set-button w-full h-full flex items-center justify-center border-0 rounded-[inherit] bg-transparent text-inherit cursor-pointer [transition:background_0.15s_ease,transform_0.12s_ease] hover:bg-[#e6f6f3] hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-[3px] focus-visible:outline-[#0f7d8c] focus-visible:outline-offset-2"
                             [attr.data-set-id]="tile.set.id"

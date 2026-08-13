@@ -19,6 +19,7 @@ const INLINE = 'check-inline-comments.mjs';
 const PLAN = 'check-plan-file-structure.mjs';
 const FOCUS = 'check-focus-posture.mjs';
 const COMMENT_ONLY = 'check-comment-only.mjs';
+const TOUCH = 'check-touch-target.mjs';
 
 const TS = 'frontend/src/app/venue/pricing-tab.ts';
 const HTML = 'frontend/src/app/venue/pricing-tab.html';
@@ -350,6 +351,7 @@ test('each guard exits 2 with usage when the mode is unknown or missing', () => 
       [INLINE, /--diff <base> \| --files/],
       [PLAN, /--diff \[<base>\]/],
       [FOCUS, /--diff <base> \| --files/],
+      [TOUCH, /--diff <base> \| --files/],
     ]) {
       for (const argv of [[], ['--nonsense']]) {
         const result = repo.run(guard, argv);
@@ -579,6 +581,156 @@ test('check-focus-posture --hook judges a file git has never seen', () => {
 
     assert.equal(result.status, 0);
     assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /\[BUSY-1\]/);
+  });
+});
+
+/** A control declaring neither the directive nor an exemption — the TT-1 shape. */
+const BARE_BUTTON = '<button type="button" (click)="onSave()">Save</button>';
+
+test('check-touch-target --diff gates on an undeclared control the diff added', () => {
+  withRepo((repo) => {
+    repo.write(HTML, lines('<p>Pricing</p>'));
+    const before = repo.commit('base');
+    repo.write(HTML, lines('<p>Pricing</p>', BARE_BUTTON));
+    repo.commit('add the control');
+
+    const result = repo.run(TOUCH, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.html:2 {2}\[TT-1\]/);
+    assert.equal(result.stdout, '');
+  });
+});
+
+test('check-touch-target --diff is silent once the control declares the floor', () => {
+  withRepo((repo) => {
+    repo.write(HTML, lines('<p>Pricing</p>'));
+    const before = repo.commit('base');
+    repo.write(
+      HTML,
+      lines('<p>Pricing</p>', '<button type="button" appTouchTarget (click)="onSave()">Save</button>'),
+    );
+    repo.commit('declare the floor');
+
+    const result = repo.run(TOUCH, ['--diff', before]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, '');
+  });
+});
+
+test('check-touch-target --diff gates on an exemption that gives no reason', () => {
+  withRepo((repo) => {
+    repo.write(HTML, lines('<p>Pricing</p>'));
+    const before = repo.commit('base');
+    repo.write(HTML, lines('<p>Pricing</p>', '<button type="button" data-touch-exempt>Save</button>'));
+    repo.commit('exempt it without saying why');
+
+    const result = repo.run(TOUCH, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.html:2 {2}\[TT-2\]/);
+  });
+});
+
+/** `--files` judges the named files whole, committed or not (#618/H-11) — see the sibling above. */
+test('check-touch-target --files judges a committed file whole', () => {
+  withRepo((repo) => {
+    repo.write(HTML, lines('<p>Pricing</p>', BARE_BUTTON));
+    repo.commit('base');
+
+    const result = repo.run(TOUCH, ['--files', HTML]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.html:2 {2}\[TT-1\]/);
+  });
+});
+
+test('check-touch-target --files resolves its arguments from the repo root, not the cwd', () => {
+  withRepo((repo) => {
+    repo.write(HTML, lines('<p>Pricing</p>', BARE_BUTTON));
+    repo.commit('base');
+
+    const result = repo.run(TOUCH, ['--files', '../frontend/src/app/venue/pricing-tab.html'], {
+      cwd: 'frontend',
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.html:2 {2}\[TT-1\]/);
+  });
+});
+
+/** False clean #2: a contributor's own `diff.relative` re-spells every path git reports. */
+test('check-touch-target: a contributor diff.relative cannot make the guard report clean', () => {
+  withRepo((repo) => {
+    repo.config('diff.relative', 'true');
+    repo.write(HTML, lines('<p>Pricing</p>'));
+    const before = repo.commit('base');
+    repo.write(HTML, lines('<p>Pricing</p>', BARE_BUTTON));
+    repo.commit('add the control');
+
+    const result = repo.run(TOUCH, ['--diff', before], { cwd: 'frontend' });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.html:2 {2}\[TT-1\]/);
+  });
+});
+
+/** False clean #4: git C-quotes a non-ASCII path, so the hunk front-end must unquote it. */
+test('check-touch-target: a non-ASCII path is still read by the hunk front-end', () => {
+  const path = 'frontend/src/app/venue/çmimet-tab.html';
+  withRepo((repo) => {
+    repo.write(path, lines('<p>Çmimet</p>'));
+    const before = repo.commit('base');
+    repo.write(path, lines('<p>Çmimet</p>', BARE_BUTTON));
+    repo.commit('add the control');
+
+    const result = repo.run(TOUCH, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /tab\.html:2 {2}\[TT-1\]/);
+  });
+});
+
+test('check-touch-target --all reports over the standing tree without gating', () => {
+  withRepo((repo) => {
+    repo.write(HTML, lines('<p>Pricing</p>', BARE_BUTTON));
+    repo.commit('base');
+
+    const result = repo.run(TOUCH, ['--all']);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /TT-1: 1/);
+    assert.match(result.stdout, /pricing-tab\.html:2 {2}\[TT-1\]/);
+  });
+});
+
+test('check-touch-target --hook answers a PostToolUse payload with advisory JSON', () => {
+  withRepo((repo) => {
+    repo.write(HTML, lines('<p>Pricing</p>'));
+    repo.commit('base');
+    repo.write(HTML, lines('<p>Pricing</p>', BARE_BUTTON));
+
+    const result = repo.run(TOUCH, ['--hook'], { stdin: hookPayload(HTML) });
+
+    assert.equal(result.status, 0);
+    const payload = JSON.parse(result.stdout);
+    assert.equal(payload.hookSpecificOutput.hookEventName, 'PostToolUse');
+    assert.match(payload.hookSpecificOutput.additionalContext, /\[TT-1\]/);
+  });
+});
+
+/** A new component is exactly how an undeclared control enters the tree, and it has no diff. */
+test('check-touch-target --hook judges a file git has never seen', () => {
+  withRepo((repo) => {
+    repo.write('README.md', lines('# Riviera'));
+    repo.commit('base');
+    repo.write(HTML, lines('<p>Pricing</p>', BARE_BUTTON));
+
+    const result = repo.run(TOUCH, ['--hook'], { stdin: hookPayload(HTML) });
+
+    assert.equal(result.status, 0);
+    assert.match(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, /\[TT-1\]/);
   });
 });
 

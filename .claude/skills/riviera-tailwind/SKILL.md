@@ -42,12 +42,27 @@ This skill states only the few decisions and traps the *code can't show you*.
      would both miss real failures (the inline case above; a grid tile squeezed by its column) and
      flag correct code — `py-[11px] text-[14px]` in a wrapping flex row measures 64 px.
    - **Exemptions are marked, not assumed:** `data-touch-exempt="<reason>"` on the control or an
-     ancestor. Two documented classes — a link inside a sentence (2.5.5's own inline exception) and
-     anything rendered by a third party in an iframe (the Stripe Payment Element). Anything else
-     that "can't" meet the floor is a layout to fix, not an exemption to write.
+     ancestor. Three documented classes — a link inside a sentence (2.5.5's own inline exception),
+     anything rendered by a third party in an iframe (the Stripe Payment Element), and a control
+     that **renders no box at all** whose visible proxy carries the target (`venue-tab.html`'s
+     `<input type="file" class="hidden">`, whose labelled button is the real control). The third
+     class is #648's: putting `[appTouchTarget]` on a `display: none` element would declare a floor
+     it cannot have, which is the same lie as the inline `<a>` above. Anything else that "can't"
+     meet the floor is a layout to fix, not an exemption to write.
+   - **A guard checks the declaration while you type** (#648): `scripts/check-touch-target.mjs` runs
+     from a `PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff. **TT-1**
+     flags a `<button>`/`<input>`/`<select>`/`<textarea>` carrying neither the directive nor an
+     exemption on itself or an ancestor; **TT-2** flags an exemption with no reason, since the reason
+     string is the whole point of marking rather than assuming. **Both gate.** It is the sweep's
+     complement, never its replacement — it proves the *mechanism* is declared everywhere, including
+     surfaces no sweep visits, and cannot see a rendered box at all. `<a>` is **out of its scope
+     entirely** (53 undeclared anchors stand by design): the no-op-on-inline trap above means a
+     directive on a link can be a false declaration, so links stay the sweep's and RV-FE's job. Run
+     it by hand with `node scripts/check-touch-target.mjs --files <path…>`, or sweep with `--all`.
 
    Origin and the app-wide sweep that applied it: `docs/plans/touch-target-floor.md` (#605); the
-   first surface to state the floor was the per-set beach-map editor (#600).
+   first surface to state the floor was the per-set beach-map editor (#600). The static guard and
+   the marking pass that made it gateable: `docs/plans/touch-target-guard.md` (#648).
 5. **Idiom quick-reference** (match the exemplars, don't reinvent):
    - `text-[14px]`, **not** `text-sm` — named sizes bundle a `line-height` and drift.
    - Arbitrary variants for what utilities/plugins don't cover (no plugins — locked stack):
@@ -135,7 +150,8 @@ been added since.
 | "Same padding, I'll just add the riviera background." | Shared layout on the base rule; theme-conditional *background* only — else content shifts between themes. |
 | "Classes look right, ship it." | Diff computed styles; contrast specs can't see drift. |
 | "I added `min-h-11`, the target's fixed." | Not on a `display: inline` `<a>` — it's a no-op there. Pair it with `inline-flex items-center` and let the sweep measure it. |
-| "This control can't be 44 px, the layout won't allow it." | Then the layout is the bug. `data-touch-exempt` is for inline prose links and third-party iframes, not for tight spots. |
+| "This control can't be 44 px, the layout won't allow it." | Then the layout is the bug. `data-touch-exempt` is for inline prose links, third-party iframes and box-less controls, not for tight spots. |
+| "`check-touch-target` is green, so the floor holds." | It only proves someone *declared* something. It never measures a box, and it never looks at `<a>`. The sweep is the proof. |
 | "`bg-(--riv-photo-grad)` for the gradient." | That's a color. Use `bg-(image:--riv-photo-grad)`. |
 
 ## When NOT to use

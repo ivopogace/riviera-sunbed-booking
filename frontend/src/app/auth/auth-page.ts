@@ -113,6 +113,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
             and payments, a platform admin reviews each request. You’ll be able to sign in once your
             account is approved, and can set up your beach map then.
             <button
+              appTouchTarget
               outcomeCta
               type="button"
               data-testid="auth-pending-back"
@@ -175,6 +176,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
                   identifierLabel()
                 }}</span>
                 <input
+                  appTouchTarget
                   #firstField
                   appFieldGlass
                   [class]="fieldClass"
@@ -192,6 +194,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
                 <label class="flex flex-col gap-1.5">
                   <span [class]="labelClass">Contact email</span>
                   <input
+                    appTouchTarget
                     appFieldGlass
                     [class]="fieldClass"
                     type="email"
@@ -207,6 +210,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
               <label class="flex flex-col gap-1.5">
                 <span [class]="labelClass">Password</span>
                 <input
+                  appTouchTarget
                   appFieldGlass
                   [class]="fieldClass"
                   type="password"
@@ -234,6 +238,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
               }
 
               <button
+                appTouchTarget
                 type="submit"
                 data-testid="auth-submit"
                 [appBusy]="submitting()"
