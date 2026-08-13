@@ -31,12 +31,12 @@ four, with 89 of 222 controls undeclared) · `riviera-plan-doc` (this template �
 behavior-parity ledger, which is what surfaced that `venue-map.html`'s set tile is a grid cell and
 not an ordinary button) · `tdd` (each guard rule lands red-first against
 `scripts/check-touch-target.test.mjs`; the marking sweep is red-first against the guard's own
-`--all`) · `riviera-review-overlay` (review gate — **not yet run**; due when PR #649 is marked ready
-for review, and it is what ratifies the two maintainer-confirmation items under Resolved) ·
-`riviera-docs-freshness` (**not yet loaded**; due at merge close-out step 5. Phase 3's generalization
-audit ran the counting sweep by hand over `git grep -ln "check-focus-posture\|check-inline-comments\|
-diff-scoped"` and updated 6 substrate docs, but that is the audit's own discipline, not this skill's
-run — do not read it as a substitute) · `riviera-tailwind` (the floor is
+`--all`) · `riviera-review-overlay` (review gate — **ran** at ready-for-review alongside
+`/code-review`'s five-agent fan-out; 6 findings, 5 fixed and 1 rejected at confidence 0, all in the
+register below) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` — **1 finding,
+patched**: `CLAUDE.md:146`'s second count statement still said "the three diff-scoped checks" after
+line 116 had been corrected to four. Exactly the counting-sweep class, and phase 3's by-hand sweep
+had missed it) · `riviera-tailwind` (the floor is
 its rule: set it with `[appTouchTarget]`, never hand-tuned padding; its two sanctioned exemption
 classes are why this plan adds a **third** deliberately and documents it rather than letting the
 marking pass invent reasons) · `riviera-frontend` (checked: the slice creates no file under
@@ -202,13 +202,30 @@ actually applies (`riviera-tailwind` rule 4, first bullet).
 
 ## Execution status
 
-**Stage pointer:** `implement — all four phases done; PR #649 ready to mark ready-for-review, which
-is what makes the Review and Sonar gates due`
+**Stage pointer:** `merge close-out — all gates passed; DONE on merge, via PR #649`
 
-**Next action:** Merge the latest `origin/main` in with full phase discipline, mark PR #649 ready for
-review, then run the Review gate (`/code-review` per `pr-gates.md` §1 **plus**
-`riviera-review-overlay`) and the Sonar gate — pulling Sonar's reported new-issue and duplication
-list from the API rather than reading the green badge.
+**Next action:** Merge PR #649. Everything else in the close-out is written here already; what
+remains after the merge is GitHub-only and needs no commit (confirm #648 closed — the PR body's
+`Closes #648` does it).
+
+### Gate record
+
+| Gate | Outcome |
+|---|---|
+| CI | **green** on every phase push and on the review-fix push — all 8 checks |
+| Review | **ran in full** — `Skill(code-review:code-review)` succeeded at rung 1 of the invocation ladder, five-agent fan-out, **plus** `riviera-review-overlay`. 6 findings: 5 fixed, 1 rejected at confidence 0. Register below |
+| Sonar | **green, and its reported list is genuinely empty** — pulled from the API, not read off the badge. Gate `OK` on all 5 conditions; `issues/search` total 0; `hotspots/search` total 0; `new_bugs`/`new_vulnerabilities`/`new_code_smells`/`new_duplicated_blocks` all 0, density 0.0. Analysis confirmed real (`new_lines: 33`, check-run `success`) — not the `total: 0` false-clean shape |
+
+### Sonar note — scope, stated so a future reader does not over-read the green
+
+`sonar-project.properties` sets `sonar.sources=platform/src/main/java,frontend/src`, so **`scripts/`
+is outside Sonar's analysis entirely** and the new guard — the bulk of this slice — was never
+analyzed by it. The 33 new lines Sonar saw are the `frontend/src` attribute additions and two
+imports; `new_lines_to_cover` is 0, so the ≥80% new-code-coverage bar is vacuously met rather than
+earned. This is a pre-existing scope decision that applies equally to all four hygiene guards, not
+something this slice introduces — but "Sonar clean" here means *the frontend marking pass is clean*,
+not *the guard is analyzed*. The guard's real proof is `node --test "scripts/*.test.mjs"` (183
+tests), which CI runs in the hygiene job's own step.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -534,9 +551,8 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
       (`check-inline-comments`, `check-focus-posture`) are clean over this diff.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan state committed here citing `merged via PR #649`
-      (due in this PR's last commit, after the Review and Sonar gates, before the merge).
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
+- [x] **Close-out written in THIS PR** — final plan state committed here, **merged via PR #649**.
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
