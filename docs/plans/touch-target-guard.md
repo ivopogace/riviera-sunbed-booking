@@ -191,17 +191,36 @@ actually applies (`riviera-tailwind` rule 4, first bullet).
 
 ## Execution status
 
-**Stage pointer:** `plan — complete, awaiting phase 0`
+**Stage pointer:** `implement — phase 0 done, phase 1 next`
 
-**Next action:** Phase 0 — write `scripts/check-touch-target.test.mjs`'s first failing case (AC-1)
-and watch it fail before writing the detector.
+**Next action:** Phase 1 — add this guard's cases to `scripts/guard-cli.test.mjs` (AC-7 diff-scoped,
+AC-8 untracked-judged-whole, AC-9 both rules exit non-zero) and watch them fail before writing
+`main(argv)`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Detector: TT-1, TT-2, ancestor walk, `<a>` out of scope | | |
+| 0 — Detector: TT-1, TT-2, ancestor walk, `<a>` out of scope | ✅ | `<sha>` |
 | 1 — CLI front-end: `--diff` / `--files` / `--hook` / `--all` | | |
-| 2 — Mark the tree: 30 controls, 6 files, `--all` → 0 | | |
+| 2 — Mark the tree: 29 controls, 6 files, `--all` → 0 | | |
 | 3 — Wire it: `PostToolUse` hook, CI step, docs | | |
+
+**Phase 0 result.** Ten detector cases, all green; the full guard suite (`node --test
+"scripts/*.test.mjs"`) is 170/170. Run over the real tree the detector reports **29 TT-1 and 0
+TT-2**, across exactly the six files the plan predicted:
+
+| File | TT-1 |
+|---|---|
+| `frontend/src/app/app.html` | 11 |
+| `frontend/src/app/booking/booking-view.ts` | 7 |
+| `frontend/src/app/auth/auth-page.ts` | 5 |
+| `frontend/src/app/pages/home/home.html` | 3 |
+| `frontend/src/app/venue/venue-map.html` | 2 |
+| `frontend/src/app/operator/venue-tab.html` | 1 |
+
+**29, not the 30 the plan estimated** — `auth-page.ts` shows 5 because the sixth, its mode toggle, is
+correctly cleared by the ancestor walk against real markup. Zero TT-2 confirms the six shipped
+exemptions all carry reasons. The corpus is 222 tags across 40 files with no parser blowup and no
+spurious finding, which settles **R-3** empirically a phase earlier than planned.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -416,6 +435,7 @@ const GATING = new Set(['TT-1', 'TT-2']);
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-13 | Phase 0 — the nesting walk (void elements + self-closing tags) is a shape no sibling guard had | every guard that walks Angular template start tags | `git ls-files 'scripts/check-*.mjs' \| xargs grep -l "startTags\|walkTags"` | 1 — `check-focus-posture.mjs` | **No change.** Confirmed by reading rather than assumed: its walk is *flat* — it pushes no stack and its rules (BUSY-1/BUSY-2) judge one tag's own attributes — so void-element and self-closing handling has no counterpart there to be missing. An honest negative result, not a clean-looking sweep |
 
 ---
 
