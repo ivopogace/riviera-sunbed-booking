@@ -229,7 +229,8 @@ The JetBrains `idea` MCP server is defined at **project scope** (`.mcp.json`) bu
 deliberately **absent from the committed `.claude/settings.json` `enabledMcpjsonServers`**
 list — it activates only where a machine-local setting enables it (the developer machine's
 gitignored `.claude/settings.local.json` sets `enableAllProjectMcpServers: true`). It points
-at `127.0.0.1:64342`, which exists only next to a running IDE; in a cloud session it stays
+at a `127.0.0.1` port (the one in `.mcp.json` — IntelliJ assigns it per machine, so read the
+file rather than trusting a number quoted here), which exists only next to a running IDE; in a cloud session it stays
 unapproved, or at worst is marked *failed* after connection retries. Do **not** "fix" that
 by adding `idea` to the committed `enabledMcpjsonServers`, and never add it to any
 `disabledMcpjsonServers` list — a deny at any scope wins over every enable, including the

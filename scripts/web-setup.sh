@@ -21,9 +21,11 @@
 #   * node/npm/npx resolve to the pinned version (no EBADENGINE), and
 #   * the Angular CLI MCP server connects on the first try.
 #
-# NOTE: the network-policy allowlist (registry.npmjs.org for the npx fetch,
-# angular.dev for the MCP doc-search tool) is enforced OUTSIDE this script, in
-# the environment's network-policy config. See the [F5] devops follow-up issue.
+# NOTE: the network-policy allowlist is enforced OUTSIDE this script, in the
+# environment's network-policy config. registry.npmjs.org is still required, but
+# now only for this script's own `npm ci` — since #656 the MCP server is the
+# repo-local CLI binary, so its SPAWN needs no network at all. angular.dev is
+# still needed at tool-call time for the MCP doc-search tool. See [F5].
 
 set -euo pipefail
 
@@ -66,13 +68,15 @@ done
 
 echo "web-setup: pinned node $("$NODE_BIN/node" --version) (npm $("$NODE_BIN/npm" --version)); a fresh shell should now resolve it via PATH."
 
-# Install the frontend dependencies so the Angular CLI MCP build/test targets
-# (@angular/build:application, @angular/build:unit-test) resolve their builder
-# packages. Selecting Node alone is not enough: run_target does NOT auto-install,
-# so without node_modules the `build`/`test` targets exit immediately with
-# "Could not find the builder's node package". registry.npmjs.org is allowlisted
-# by the env network policy. Idempotent: npm ci re-syncs against the lockfile.
-# Use the pinned npm so the install runs under Node 26.
+# Install the frontend dependencies. Since #656 this step is load-bearing for the
+# MCP server ITSELF, not just its targets: .mcp.json spawns
+# frontend/node_modules/@angular/cli/bin/ng.js, so node_modules must exist BEFORE
+# Claude Code launches or the server cannot start (and is not retried). It also
+# still does its original job — run_target does NOT auto-install, so without
+# node_modules the `build`/`test` targets (@angular/build:application,
+# @angular/build:unit-test) exit with "Could not find the builder's node package".
+# registry.npmjs.org is allowlisted by the env network policy. Idempotent: npm ci
+# re-syncs against the lockfile. Use the pinned npm so the install runs under Node 26.
 FRONTEND_DIR="$REPO_ROOT/frontend"
 if [ -f "$FRONTEND_DIR/package-lock.json" ]; then
   echo "web-setup: installing frontend deps (npm ci) in $FRONTEND_DIR ..."

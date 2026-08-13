@@ -1,10 +1,9 @@
 {
   "mcpServers": {
     "angular-cli": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "@angular/cli@22",
+        "${CLAUDE_PROJECT_DIR:-.}/frontend/node_modules/@angular/cli/bin/ng.js",
         "mcp"
       ]
     },
