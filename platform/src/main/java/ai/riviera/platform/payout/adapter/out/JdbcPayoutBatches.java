@@ -28,6 +28,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 @Repository
 class JdbcPayoutBatches implements PayoutBatches {
 
+	/** SQL named-param key for the batch primary key (named, not duplicated — S1192). */
+	private static final String PARAM_ID = "id";
+	/** SQL named-param key for the settlement period. */
+	private static final String PARAM_PERIOD = "period";
+
 	private final JdbcClient jdbc;
 
 	JdbcPayoutBatches(JdbcClient jdbc) {
@@ -46,7 +51,7 @@ class JdbcPayoutBatches implements PayoutBatches {
 				    WHERE payout_batch.status = 'DRAFT'
 				""")
 				.param("venue", total.venueId().value())
-				.param("period", period.value())
+				.param(PARAM_PERIOD, period.value())
 				.param("total", total.netMinor())
 				.param("currency", total.currency())
 				.update();
@@ -60,7 +65,7 @@ class JdbcPayoutBatches implements PayoutBatches {
 				WHERE period_key = :period
 				ORDER BY venue_id
 				""")
-				.param("period", period.value())
+				.param(PARAM_PERIOD, period.value())
 				.query(BATCH_MAPPER)
 				.list();
 	}
@@ -72,7 +77,7 @@ class JdbcPayoutBatches implements PayoutBatches {
 				FROM payout_batch
 				WHERE id = :id
 				""")
-				.param("id", id)
+				.param(PARAM_ID, id)
 				.query(BATCH_MAPPER)
 				.optional();
 	}
@@ -86,7 +91,7 @@ class JdbcPayoutBatches implements PayoutBatches {
 				RETURNING id, venue_id, period_key, total_net_minor, currency, status
 				""")
 				.param("target", target.name())
-				.param("id", id)
+				.param(PARAM_ID, id)
 				.param("expected", expected.name())
 				.query(BATCH_MAPPER)
 				.optional();
