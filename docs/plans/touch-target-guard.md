@@ -204,7 +204,7 @@ gains the third exemption class; `CLAUDE.md`'s "three diff-scoped hygiene checks
 |-------|--------|---------|
 | 0 — Detector: TT-1, TT-2, ancestor walk, `<a>` out of scope | ✅ | `09f8402f` |
 | 1 — CLI front-end: `--diff` / `--files` / `--hook` / `--all` | ✅ | `9876569a` |
-| 2 — Mark the tree: 29 controls, 6 files, `--all` → 0 | ✅ | `<sha>` |
+| 2 — Mark the tree: 29 controls, 6 files, `--all` → 0 | ✅ | `19cbd18f` |
 | 3 — Wire it: `PostToolUse` hook, CI step, docs | | |
 
 **Phase 0 result.** Ten detector cases, all green; the full guard suite (`node --test
