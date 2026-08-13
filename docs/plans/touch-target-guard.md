@@ -201,7 +201,7 @@ TT-1 across 6 files), then measure `venue-map.html`'s set tile at 390 px **befor
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Detector: TT-1, TT-2, ancestor walk, `<a>` out of scope | ✅ | `09f8402f` |
-| 1 — CLI front-end: `--diff` / `--files` / `--hook` / `--all` | ✅ | `<sha>` |
+| 1 — CLI front-end: `--diff` / `--files` / `--hook` / `--all` | ✅ | `9876569a` |
 | 2 — Mark the tree: 29 controls, 6 files, `--all` → 0 | | |
 | 3 — Wire it: `PostToolUse` hook, CI step, docs | | |
 
