@@ -78,77 +78,82 @@ review-only.
 ---
 
 ## `venue`
-**Job:** Own venue profiles (incl. amenities + distance-to-water), venue photos (#142: per-slot
-upload/replace/delete, processing, `bytea` storage behind the module-internal `PhotoStorage`
-port, and the public content-hash serving read — ADR-0008) **including platform-admin photo
-moderation** (#504's takedown, the "remove" half of #230's report-and-remove stance, plus #511's
-read): I own it because I own photos, but these are my only photo operations with **no ownership
-check** — a second port, `VenuePhotoModeration`, deliberately kept apart from the ownership-asserting
-`VenuePhotos` so that port's "asserts `assertOwns` first" contract stays uniform rather than becoming
-per-method. The port is named for the **posture** every one of its methods shares, which is why the
-read joined it rather than minting a third port: reading a reported photo and removing it is one
-conversation, one actor, one authorization posture. The
-*authority* is not mine: the `ADMIN` role gate on `GET /api/admin/venues/{venueId}/photos` and
-`DELETE /api/admin/venues/{venueId}/photos/{slot}` is the whole authorization (invariant #13 exempts `/api/admin/**`), which is the point — the
-venue-scoped twin refuses a non-owner `403` before it looks at the slot, i.e. refuses exactly the
-case moderation exists for. Both ports run the same single cascading delete, and takedown removes
-one **slot**, not one image (byte-identical variants in another slot keep serving; each published
-slot is its own takedown). Also own the beach map / layout, set
-positions, the online-vs-walk-in pool assignment for each set, pricing, and the booking mode
-(Instant / Request) — **including refusing a layout write that a live claim depends on** (#567).
-All three writes now guard, with the scope following what the write destroys: the bulk replace
-deletes every set, so it asks the venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet` touch
-one set, so they ask the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row.
-**On the availability arm there is no asymmetry left to state** (#602): every layout write asks the
-one question — is a hold on these sets dated today or later — through a single `hasLiveHold`
-predicate, and `SetAvailabilityLookup` no longer publishes a date-agnostic probe at all. What
-differs is the **booking** arm, along two axes. *What each write asks:* `removeSet` and the bulk
-replace refuse on a booking of any status ever recorded, `editSet` only on a non-terminal one.
-*When it asks at all:* the delete and the replace always probe, while the edit probes only when the
-command would repool or reposition the set — a price-or-tier-only edit is never refused, however
-live the claim. That surviving claim-breadth difference is forced by the one asymmetry in the
-database: the RESTRICT `booking.set_id` FK makes a set carrying any booking physically undeletable,
-so refusing early is what turns a 500 into an honest 409 — nothing equivalent forces the
-availability arm, because `set_availability`'s CASCADE means a *past* hold is simply removed along
-with the day it describes. It is also why the replace's booking arm stays venue-wide and was **not**
-narrowed with the availability one (#602's declined option 2): loosening it would need the write to
-stop deleting booked sets, which is a redesign, not a predicate swap. Two different reliefs follow,
-and they are not the same size. **On the availability arm the relief is total:** no write blocks on a
-hold that has been honoured, so last season's walk-in mark freezes nothing — per-set since #599,
-venue-wide since #602. **On the booking arm only the edit is relieved:** last season's *cancelled*
-booking stopped freezing a set's position and pool (#567's own review gate), but it still bars that
-set's deletion and its venue's whole-map regenerate permanently, because the RESTRICT FK leaves no
-choice. A venue with one ancient cancelled booking answering `LAYOUT_IN_USE` forever is therefore
-**by design**, not a regression. What keeps the narrowed probes race-safe is not their breadth but invariant #4 and
-the staff mark's `DATE_IN_PAST` refusal: **no write path can create a hold behind the cutoff**, so
-the range they stopped asking about is one nothing can still be written into.
-Which statuses are live is `booking`'s call via `BookingStatus#isTerminal`, reached
-through `BookingPresence#hasLiveBookings`; `venue` never enumerates booking statuses. Price and tier stay editable on a claimed set,
-which is the same call `repriceRow` already makes: a booking's charge is snapshotted at reserve
-time, so a reprice can never alter it. The one cross-module consequence: because the pool is
-**mutable** layout data, `SetBookingFacts#poolForClaim` is a **locking** read — `FOR KEY SHARE`, the
-weakest lock that conflicts with the edit's `FOR UPDATE`, and the very lock the claim's own insert
-takes for its FK check a moment later. It is named for that contract because it must run in a
-transaction and must never be called from a read-only one; the unlocked `setBookingInfo` stays
-unlocked precisely because it serves list and mail reads. Since A7 (#348) I also own the commission rate **over time**, not just its current
-value: `venue_commission_rate` (V39) is the effective-dated schedule behind `VenueRates#commissionBpsOn`,
-which answers "what rate applied to bookings served on date D" for the reporting reads, while
-`commissionBps` stays the live rate every *decision* re-reads. That is still storing the rate, not
-computing with it — `payout` keeps the arithmetic. It comes with the platform-admin rate write (my
-**second** ownership-free surface, on its own `VenueCommissionAdministration` port for the same reason
-`VenuePhotoModeration` is separate: `EditVenueProfile`'s "asserts `assertOwns` first" contract stays
-uniform), and the write is forward-only by construction — it pins the superseded rate back to an epoch
-floor, moves the live column, and schedules the new rate from tomorrow (`Europe/Tirane`), so no past
-service date reprices and no ledger entry is touched (invariant #9). Note the asymmetry it preserves:
-the *owner's* profile PATCH still cannot write the rate at all (O8 #177) — a venue does not set its own
-commission. Since S9 (#277) also **assemble the signed-in operator's own-venues read model**
-(`GET /api/venues/mine`): I ask `operator::api` for the ownership set and join the names, because
-naming venues is my job and `operator → venue` would cycle. Since #207 also **compose the owner's
-per-set daily availability read** (`GET /api/venues/{venueId}/availability?date=`, owner-asserted,
-403-before-existence): I own the set list and the map composition (the #44 split, one state-aware
-step deeper), while `availability` answers the per-`(set, date)` state tokens through my `spi`
-(`SetAvailabilityLookup#statesOn`); the public tourist map stays state-agnostic (`FREE`/`TAKEN`) —
-hold type never reaches the public surface.
+**Job:** Own venue profiles (incl. amenities + distance-to-water), the beach map /
+layout, set positions, the online-vs-walk-in pool assignment for each set, pricing, the
+booking mode (Instant / Request), venue photos, and the commission rate over time. The
+standing rules:
+
+- **Venue photos** (#142, ADR-0008): per-slot upload/replace/delete, processing, `bytea`
+  storage behind the module-internal `PhotoStorage` port, and the public content-hash
+  serving read.
+- **Photo moderation is ownership-free by design** (#504 takedown + #511 read — the
+  "remove" half of ADR-0013's report-and-remove stance). Both operations sit on their own
+  `VenuePhotoModeration` port, named for the posture its methods share (reading a reported
+  photo and removing it is one conversation, one actor, one authorization posture), so the
+  ownership-asserting `VenuePhotos` contract stays uniformly `assertOwns`-first rather
+  than per-method. The *authority* is not mine: the `ADMIN` role gate on
+  `GET`/`DELETE /api/admin/venues/{venueId}/photos…` is the whole authorization
+  (invariant #13 exempts `/api/admin/**`); the venue-scoped twin refuses a non-owner `403`
+  before it looks at the slot — i.e. refuses exactly the case moderation exists for. Both
+  ports run the same single cascading delete, and a takedown removes one **slot**, not one
+  image: byte-identical variants in another slot keep serving; each published slot is its
+  own takedown.
+- **A layout write that a live claim depends on is refused** (#567/#599/#602). Scope
+  follows what the write destroys: the bulk replace deletes every set, so it asks the
+  venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet` touch one set, so they ask
+  the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row.
+  - *Availability arm — symmetric, and the relief is total:* every write asks the one
+    question — is a hold on these sets dated today or later — through the single
+    `hasLiveHold` predicate (`SetAvailabilityLookup` publishes no date-agnostic probe at
+    all), so no write blocks on a hold that has been honoured: last season's walk-in mark
+    freezes nothing.
+  - *Booking arm — asymmetric, forced by the schema:* `removeSet` and the replace refuse
+    on a booking of **any status ever recorded**; `editSet` only on a non-terminal one,
+    and only when the command would repool or reposition the set — a price-or-tier-only
+    edit is never refused, however live the claim. The RESTRICT `booking.set_id` FK forces
+    the breadth: a set carrying any booking is physically undeletable, so refusing early
+    turns a 500 into an honest 409 — while `set_availability`'s CASCADE simply removes a
+    past hold with the day it describes. The replace's booking arm stays venue-wide
+    (narrowing it would need the write to stop deleting booked sets — a redesign, #602's
+    declined option 2). Consequence, **by design**: a venue with one ancient *cancelled*
+    booking answers `LAYOUT_IN_USE` on delete/regenerate forever; only the edit is
+    relieved of it.
+  - The narrowed probes are race-safe not by breadth: invariant #4 plus the staff mark's
+    `DATE_IN_PAST` refusal mean **no write path can create a hold behind the cutoff**, so
+    the range they stopped asking about is one nothing can be written into.
+  - Which statuses are live is `booking`'s call (`BookingStatus#isTerminal`, reached
+    through `BookingPresence#hasLiveBookings`); `venue` never enumerates booking statuses.
+    Price and tier stay editable on a claimed set — a booking's charge is snapshotted at
+    reserve time (the same call `repriceRow` already makes), so a reprice can never alter
+    it.
+  - Because the pool is **mutable** layout data, `SetBookingFacts#poolForClaim` is a
+    **locking** read — `FOR KEY SHARE`, the weakest lock that conflicts with the edit's
+    `FOR UPDATE`, and the very lock the claim's own insert takes for its FK check. It is
+    named for that contract: it must run in a transaction and never from a read-only one;
+    the unlocked `setBookingInfo` stays unlocked precisely because it serves list and mail
+    reads.
+- **The commission rate over time, not just its current value** (A7 #348):
+  `venue_commission_rate` (V39) is the effective-dated schedule behind
+  `VenueRates#commissionBpsOn` — the rate that applied to bookings served on date D, for
+  the reporting reads — while `commissionBps` stays the live rate every *decision*
+  re-reads. That is still storing the rate, not computing with it: `payout` keeps the
+  arithmetic. The platform-admin rate write is my **second** ownership-free surface, on
+  its own `VenueCommissionAdministration` port (same reason as `VenuePhotoModeration`:
+  `EditVenueProfile` stays uniformly `assertOwns`-first), and it is **forward-only by
+  construction** — it pins the superseded rate back to an epoch floor, moves the live
+  column, and schedules the new rate from tomorrow (`Europe/Tirane`) — so no past service
+  date reprices and no ledger entry is touched (invariant #9). The asymmetry it preserves:
+  the *owner's* profile PATCH still cannot write the rate at all (O8 #177) — a venue does
+  not set its own commission.
+- **The signed-in operator's own-venues read model** (`GET /api/venues/mine`, S9 #277): I
+  ask `operator::api` for the ownership set and join the names, because naming venues is
+  my job and `operator → venue` would cycle.
+- **The owner's per-set daily availability read**
+  (`GET /api/venues/{venueId}/availability?date=`, #207; owner-asserted,
+  403-before-existence): I own the set list and the map composition (the #44 split, one
+  state-aware step deeper); `availability` answers the per-`(set, date)` state tokens
+  through my `spi` (`SetAvailabilityLookup#statesOn`). The public tourist map stays
+  state-agnostic (`FREE`/`TAKEN`) — hold type never reaches the public surface.
 
 **Not My Job:**
 - Knowing whether a specific set is free on a date → **`availability`** (I own the
@@ -323,182 +328,163 @@ client). Collection only. Publish the read side of the refund conversation
 `NO_COLLECTION` / `OUTSTANDING` / `ACCEPTED` — answered from this module's own row, with
 "no row" meaning the wired gateway never collected, never that a refund failed.
 
-**Two rules make that reconciliation faithful under Stripe's delivery guarantees** (#568, #570).
-Stripe promises neither ordering nor a single delivery, and the handler widens the window itself
-(a transient failure rolls the whole transaction back, so the same event returns hours later):
+**Webhook reconciliation** (#568, #570). Stripe promises neither ordering nor a single
+delivery, and the handler widens the window itself — a transient failure rolls the whole
+transaction back, so the same event returns hours later. Two rules keep it faithful:
 
 - **The payment record has a state machine, in the SQL.** `markStatus` is a guarded
-  `UPDATE … WHERE status IN (REQUIRES_PAYMENT, FAILED)` — the *open* states, `FAILED` among them
-  because a declined intent is retryable at Stripe (the same set `findPendingCredentials` calls
-  payable). Everything else is terminal, so a late `payment_intent.payment_failed` can no longer
-  record collected money as failed, or contradict a `REFUNDED` row carrying `refunded_minor > 0`.
-  The guard is one statement, never a read-then-write, so two concurrent deliveries cannot both
-  see "open". Its consequence for the spine: `PaymentConfirmed`/`PaymentCanceled` are published
-  **only when a row actually moved** — a late `canceled` on a collected payment must not ask
-  `booking` to release the claim of a paid booking (invariant #2). `booking`'s own guarded
-  `AWAITING_PAYMENT` transitions stay as the second layer; they were the only one.
-- **A verified event is never consumed unapplied.** For every handled type — the three
-  `payment_intent` ones and the refund-lifecycle ones (#592) — a payload that yields no identified
-  PaymentIntent or Refund raises `UnreadableWebhookEventException` (`503`) instead of logging a
-  warning and answering `200`. One helper reads the data object for all of them, so the rule has one
-  home rather than one per branch. The rollback un-does the event-id dedup insert, so Stripe
-  re-delivers and the id is not locally blacklisted — otherwise a paid booking could sit in
-  `AWAITING_PAYMENT` forever, holding its `(set, date)` claim, with the abandoned sweep skipping it
-  by design ("the confirm webhook wins" — a webhook that had already been consumed). Types the
-  handler does not act on, and events for intents this app never recorded, stay `200`: there is no
-  fact to lose in the first, and re-delivery cannot help the second. Parking raw events for replay
-  was the rejected alternative — a table plus an admin re-drive surface, and the id staying
-  un-blacklisted already leaves a dashboard replay open.
+  `UPDATE … WHERE status IN (REQUIRES_PAYMENT, FAILED)` — the *open* states, `FAILED`
+  among them because a declined intent is retryable at Stripe (the same set
+  `findPendingCredentials` calls payable). Everything else is terminal, so a late
+  `payment_intent.payment_failed` cannot record collected money as failed or contradict a
+  `REFUNDED` row carrying `refunded_minor > 0`. The guard is one statement, never a
+  read-then-write, so two concurrent deliveries cannot both see "open". Spine consequence:
+  `PaymentConfirmed`/`PaymentCanceled` are published **only when a row actually moved** —
+  a late `canceled` on a collected payment must not ask `booking` to release a paid
+  booking's claim (invariant #2); `booking`'s own guarded `AWAITING_PAYMENT` transitions
+  stay as the second layer.
+- **A verified event is never consumed unapplied.** For every handled type, a payload
+  yielding no identified PaymentIntent or Refund raises `UnreadableWebhookEventException`
+  (`503`) instead of logging a warning and answering `200`; the rollback un-does the
+  event-id dedup insert, so Stripe re-delivers and the id is not locally blacklisted —
+  otherwise a paid booking could sit in `AWAITING_PAYMENT` forever, holding its
+  `(set, date)` claim, with the abandoned sweep skipping it by design. One helper reads
+  the data object for every type, so the rule has one home. Types the handler does not
+  act on, and events for intents this app never recorded, stay `200`: there is no fact to
+  lose in the first, and re-delivery cannot help the second. (Parking raw events for
+  replay was the rejected alternative — the un-blacklisted id already leaves a dashboard
+  replay open.)
+  - The advisory refund types are the one branch that fails **open** (#592):
+    `refund.failed` reports nothing but failures, so an unreadable one is a lost failure
+    and answers `503`; `refund.updated`/`charge.refund.updated` announce every transition
+    for every refund on the account, and a permanent retry loop there would get Stripe to
+    disable an endpoint that also carries the payment spine — losing an advisory
+    duplicate is much the smaller harm (invariants #2/#8).
 
-**One more rule governs refund *execution*, and it is not the idempotency key** (#569). The key
-(`booking-<id>-refund`) is a **time-bounded** defence: Stripe prunes keys after roughly a day, so a
-replay beyond that window is a brand-new request with the same parameters — and the vehicles that
-replay this call are precisely the slow ones (the restart republish, which on Render can be days
-away, and the admin re-drive, pressed exactly when someone notices `riviera.outbox.pending` late).
-Stripe's refundable-amount ceiling catches the *full*-refund case, so what got through was the
-partial one: two 50% refunds fit inside the charge and both succeed.
+**Refund execution** (#569, #592, #594). The idempotency key (`booking-<id>-refund`) is a
+**time-bounded** defence: Stripe prunes keys after roughly a day, and the vehicles that
+replay this call are precisely the slow ones (the restart republish, which on Render can
+be days away; the admin re-drive, pressed when someone notices `riviera.outbox.pending`
+late). Stripe's refundable-amount ceiling catches the full-refund replay; two 50% refunds
+fit inside the charge and both succeed. Hence the standing rules:
 
-- **A refund is never created without first asking the gateway what it already holds.** The adapter
-  lists the refunds on the booking's PaymentIntent and **adopts** one — records it and reports
-  success — instead of creating a second. A `failed`/`canceled` refund returned no money, so it is
-  not adoptable and a fresh attempt proceeds. This is invariant #8 applied to refunds, and it is why
-  the check is not the cheaper read of our own `refunded_minor`: that column is written *after* a
-  call returns, so it is silent about exactly the lost-response case being guarded — a partial refund
-  that posted but whose response was lost leaves it at 0. The read **fails closed**: an unreadable
-  list is `Failed`, never "no refund exists", so the publication stays outstanding and retries.
-- **Adoption is narrow on purpose: exactly one live refund, for exactly the amount requested.** That
-  is the shape a lost response leaves; nothing else is. Anything else — several live refunds, or one
-  for a different amount (a manual dashboard refund, say) — is `Failed("refund_mismatch")`, because
-  both alternatives are worse. Topping up a shortfall would be a refund **decision**, which is
-  `booking`'s; reporting success would complete the event publication and strand a guest still owed
-  money with only a log line behind it. `Failed` keeps the publication outstanding and lights
-  `riviera.refunds.failed`, whose meaning — "a refund the platform owes could not be issued" — is
-  exactly right. It will not clear itself: a human settles it at the gateway.
-- **Adoption is visible, not silent** — `riviera.refunds.adopted`. An increment means an earlier
-  attempt moved the money and lost the response; the money was always right, the record just caught up.
-- The refund create also **replays once on a connection timeout** with the same key, the twin of the
-  PaymentIntent path (one shared helper, so the rule has one home), so the common lost-response case
-  resolves while the key still holds.
-**Those rules left two residuals, and #592 closed both.**
-
-- **A refund the gateway later reports as dead is un-recorded, not left claiming the guest was
-  paid.** A `pending` refund stays adoptable — it is where a refund normally starts, and refusing to
-  count it would create the second refund the rule above exists to prevent — so the fix is not to
-  read `pending` differently but to act on the gateway's later word. A signature-verified
-  refund-lifecycle event, branched on the **refund's status**, clears `refunded_minor` and puts the
-  collection back to `SUCCEEDED`, which it still is: no money went back. All three types are handled,
-  because `canceled` has no failure-only event of its own — Stripe announces it solely on the
-  every-transition types. The event **type** decides one thing only, and it is the unreadable-payload
-  policy: `refund.failed` reports nothing but failures, so an unreadable one is a lost failure and
-  answers `503` to force re-delivery; `refund.updated`/`charge.refund.updated` announce every
-  transition for every refund on the account, so an unreadable one is fail-**open** — a permanent
-  retry loop there would get Stripe to disable an endpoint that also carries the payment spine, and
-  losing an advisory duplicate is much the smaller harm (invariants #2/#8).
-
-  That one write makes every existing mechanism
-  truthful — `RefundStatusLookup` answers `OUTSTANDING` again so the guest is told the refund is
-  still owed, `riviera.refunds.failed` lights the money-path signal, and the existence read above now
-  sees a dead refund rather than adopting the corpse. It is invariant #8 applied to the refund
-  lifecycle: reconcile from the webhook, not from the request-time answer.
-
-  **What it does not do is hand anyone a lever.** The cancellation's publication completed when the
-  refund was accepted, and `completion-mode=archive` removed it, so `POST /api/admin/refund-outbox`
-  neither counts nor re-drives it — that lever only reaches refunds that never succeeded. And a fresh
-  attempt inside the ~24h idempotency-key window does not create anything: the key is stable per
-  booking, so Stripe replays the original response — the dead refund — which the adapter now detects
-  and refuses (`refund_key_replay`) rather than recording a corpse as a live refund. So recovery is a
-  human issuing the refund at the gateway, or re-attempting once the key has expired. The un-record's
-  job is to make the state honest and loud, not to self-heal. **Nothing re-drives it automatically, deliberately** — an issuer rejection is not a
-  transient error, and the card that refused the money often cannot receive it, so an auto-retry would
-  repeat a call expected to fail again. Same posture as `refund_mismatch`: the alert stands until a
-  human settles it. The un-record is itself guarded on the recorded `refund_id`, so a re-delivery
-  moves nothing, a failure naming a refund we never issued (a manual dashboard one) moves nothing, and
-  a stale failure cannot un-record the retry that worked. (#594 added a second, narrower arm beside
-  that guard, for the refund this app has begun but not yet written down — see below; what keeps a
-  manual dashboard refund out is then the refund *attempt* record, not the absence of a match.)
-- **At-most-once is now the port's contract, enforced, not the collecting adapter's habit.**
-  `PaymentGatewayRefundContract` states it once against `PaymentGateway` — replay a refund past the
-  key window and exactly one must move, with the replay reporting the first — on a fixture that
-  deliberately never dedupes on the key, since that is the condition being simulated. A second case
-  guards the opposite error: a refund that returned nothing must **not** be adopted, or at-most-once
-  becomes at-most-zero. A coverage rule makes it unskippable — every production `PaymentGateway` is
-  either covered by a contract subclass or non-collecting, and neither half is a maintained list:
-  coverage is read from the subclasses' dependencies, the exemption from the `@Profile` that already
-  binds a gateway to its `CollectionGuarantee`. So ADR-0009's Paysera adapter arrives unclassified and
-  fails the build, which is what a javadoc could not do. The stub needed no state to participate — it
-  is exempt because it collects nothing, and the guarantee that says so already existed.
-
-**#592 in turn left three residuals, and #594 closed all three with one change: the refund record
-gained a trace, and every refund write became a guarded statement that reports whether it moved.**
-
-- **A refund failure can no longer be lost to the window before its own record.** The old guard
-  matched on the recorded `refund_id`, and a refund id is written down *after* the gateway already
-  knows about the refund — so a verified failure arriving inside that window matched nothing,
-  answered `200`, committed the dedup row, and left the collection at `REFUNDED` **permanently**
-  while the guest was told their money was on its way. The window is not instantaneous: the create's
-  timeout replay puts tens of seconds between Stripe minting the refund and the row being written.
-  The fix is to **record the attempt before asking the gateway** (`markRefundAttempted`), so a
-  failure arriving mid-call can be matched by **PaymentIntent** instead of by a refund id that does
-  not exist yet.
-
-  That attempt is also the **discriminator**, and it is why matching by PaymentIntent is safe. The
-  other thing a dead-refund event on our collection can be is a refund someone issued by hand at the
-  gateway — money the platform never promised, whose failure must raise no money-path alert. Without
-  an attempt on record, the by-intent arm moves nothing. This is the discrimination the rejected
-  alternative could not make: **deferring the event with a `503` would 5xx-loop for the ~3 days
-  Stripe retries on exactly that branch**, and the endpoint is shared, so Stripe disabling it would
-  stop `payment_intent.succeeded` delivery and strand paid bookings in `AWAITING_PAYMENT` holding
-  their `(set, date)` claim — the invariant-#2/#8 failure the `503` exists to prevent.
-
-  The recorded death then **blocks the record that lost the race**: `markRefunded` refuses a refund
-  id already reported dead, answers `Failed("refund_died_before_record")`, and the event publication
-  stays outstanding. So this one case *does* recover on its own — not because the posture on failed
-  refunds changed, but because a refund that was never recorded still has its publication, and a
-  re-drive past the key window creates a fresh refund. A refund that was recorded and *then* died is
-  unchanged: nothing re-drives it, an issuer rejection is not a transient error.
-
-  One consequence is worth stating because it looks like a bug: this is the shape that increments
-  `riviera.refunds.failed` **twice** for one incident — the webhook counts the refund it killed, and
-  the recording call it beat counts its own refusal. Both are true observations, and the gauge still
-  reads one booking. It is the sharpest illustration of why the counter measures observations and
-  `riviera.refunds.owed` measures debts.
-- **`markRefunded` moves only a collected payment**, so a refund can no longer assert a collection
-  that never succeeded. It was unguarded, and `markRefundFailed` writes `status = SUCCEEDED`
-  unconditionally, so the pair could fabricate a collected payment out of a `REQUIRES_PAYMENT`,
-  `FAILED` or `CANCELED` row — `findPendingCredentials` would stop offering the client secret and
-  `RefundProgress` would report `OUTSTANDING` for money never taken. Not reachable while the only
-  refund path is cancelling a `CONFIRMED` booking; reachable the moment a second one exists. The
-  guard is what makes the hard-coded `SUCCEEDED` restore **sound by construction rather than lucky**:
-  if the only statuses a refund record can replace are the collected ones, `SUCCEEDED` is the only
-  thing it can have replaced. That is why no "previous status" column was needed.
-- **An owed refund is enumerable, not just loggable.** The un-record used to leave a row
-  byte-identical to one whose refund was never attempted, save a stale `refund_id` with no flag
-  saying it died — the wrong shape for the remedy the runbook prescribes, which needs the *list* of
-  bookings owed money and cannot get it from log lines once retention is shorter than the incident.
-  The dead id now moves to `failed_refund_id`, `refund_id` stops claiming a live refund, and
-  `refund_failed_at` marks the debt, over a **partial index** that is empty in the healthy case.
-  `riviera.refunds.owed` gauges it: **distinct refunds owed**, where `riviera.refunds.failed` counts
-  observations and re-increments on every resubmission of the same stuck refund. The flag means
-  "owed **now**" — a retry that works clears it, while `failed_refund_id` keeps what died.
-
-  The attempt stamp carries two constraints worth stating, because the tidy-up that breaks each looks
-  like an improvement. **Placement:** it is written from `RefundService#refund`, which must stay
-  **outside a caller's transaction**, or the write stays invisible for the whole window it exists to
-  cover (`RefundAttemptVisibilityIT` reads it back on a second connection; `RefundBulkheadIT` is what
-  pins the listener's absence of a transaction). **Lifetime:** the stamp records an *unresolved refund
-  obligation at the gateway*, and every in-app resolution clears it — the recording write on success,
-  and both failure marks. It deliberately **survives a `Failed` return**, which is the counter-intuitive
-  half. Clearing there was tried and reverted: `RefundResult.Failed` carries an untyped reason, so the
-  service cannot tell a gateway-confirmed "nothing of ours is live" from the genuinely ambiguous
-  branches — a bare `StripeException` after a *double* timeout in the replay helper may well have left
-  a live refund at Stripe with no id on record, and that is precisely the case the discriminator exists
-  for. Clearing there would trade a bounded false positive for the silent loss this whole mechanism was
-  built to end. In every `Failed` branch the platform still owes the refund, so a stamp that outlives
-  the call is describing something true.
-
-  The residual is bounded and worth stating: a booking settled **by hand at the gateway** never runs an
-  in-app resolution, so its stamp stands, and a later failed refund on that collection would be recorded
-  as ours. Clear it when settling by hand — the observability runbook's owed-refund section says so.
+- **A refund is never created without first asking the gateway what it already holds.**
+  The adapter lists the refunds on the booking's PaymentIntent and **adopts** one —
+  records it and reports success — instead of creating a second; a `failed`/`canceled`
+  refund returned no money, so it is not adoptable and a fresh attempt proceeds. This is
+  invariant #8 applied to refunds, and why the check is not the cheaper read of our own
+  `refunded_minor`: that column is written *after* a call returns, so it is silent about
+  exactly the lost-response case being guarded. The read **fails closed**: an unreadable
+  list is `Failed`, never "no refund exists", so the publication stays outstanding and
+  retries.
+- **Adoption is narrow: exactly one live refund, for exactly the amount requested** — the
+  shape a lost response leaves; nothing else is. Anything else (several live refunds, or
+  one for a different amount — a manual dashboard refund, say) is
+  `Failed("refund_mismatch")`: topping up a shortfall would be a refund **decision**,
+  which is `booking`'s, and reporting success would strand a guest still owed money.
+  `Failed` keeps the publication outstanding and lights `riviera.refunds.failed` — "a
+  refund the platform owes could not be issued" — which never clears itself: a human
+  settles it at the gateway.
+- **Adoption is visible, not silent** — `riviera.refunds.adopted`: an earlier attempt
+  moved the money and lost the response; the money was always right, the record caught up.
+- The refund create **replays once on a connection timeout** with the same key (one
+  shared helper with the PaymentIntent path), so the common lost-response case resolves
+  while the key still holds.
+- **A refund the gateway later reports as dead is un-recorded** (#592), not left claiming
+  the guest was paid. A `pending` refund stays adoptable — it is where a refund normally
+  starts, and refusing it would create the second refund adoption prevents — so the fix
+  acts on the gateway's later word: a signature-verified refund-lifecycle event, branched
+  on the **refund's status**, clears `refunded_minor` and restores `SUCCEEDED` (which it
+  still is: no money went back). All three event types are handled, because `canceled`
+  has no failure-only event of its own. That one write makes every existing mechanism
+  truthful: `RefundStatusLookup` answers `OUTSTANDING` again so the guest is told the
+  refund is still owed, `riviera.refunds.failed` lights, and the existence read sees a
+  dead refund rather than adopting the corpse. Invariant #8 applied to the refund
+  lifecycle.
+- **The un-record hands nobody a lever, deliberately.** The cancellation's publication
+  completed when the refund was accepted (`completion-mode=archive` removed it), so the
+  refund-outbox re-drive cannot reach it; a fresh attempt inside the ~24h key window
+  replays the original response — the dead refund — which the adapter detects and refuses
+  (`refund_key_replay`). Recovery is a human issuing the refund at the gateway, or a
+  re-attempt once the key has expired. Nothing re-drives it automatically: an issuer
+  rejection is not a transient error, and the card that refused the money often cannot
+  receive it — the alert stands until a human settles it (same posture as
+  `refund_mismatch`). The un-record is guarded on the recorded `refund_id`: a re-delivery
+  moves nothing, a failure naming a refund we never issued moves nothing, and a stale
+  failure cannot un-record the retry that worked.
+- **At-most-once is the port's contract, enforced, not the collecting adapter's habit.**
+  `PaymentGatewayRefundContract` states it once against `PaymentGateway` — replay a
+  refund past the key window and exactly one moves, with the replay reporting the first —
+  on a fixture that deliberately never dedupes on the key; a second case guards the
+  opposite error: a refund that returned nothing must **not** be adopted, or at-most-once
+  becomes at-most-zero. A coverage rule makes it unskippable: every production
+  `PaymentGateway` is either covered by a contract subclass or non-collecting, and
+  neither half is a maintained list (coverage is read from the subclasses' dependencies,
+  the exemption from the `@Profile` that already binds a gateway to its
+  `CollectionGuarantee`) — so ADR-0009's Paysera adapter arrives unclassified and fails
+  the build, which is what a javadoc could not do.
+- **The refund attempt is recorded before the gateway is asked** (`markRefundAttempted`,
+  #594), and every refund write is a guarded statement that reports whether it moved:
+  - A verified failure arriving **before the refund id is written** — a real window: the
+    create's timeout replay puts tens of seconds between Stripe minting the refund and
+    the row write — is matched by **PaymentIntent** instead of by an id that does not
+    exist yet. Without the attempt record it matched nothing, answered `200`, committed
+    the dedup row, and left the collection at `REFUNDED` permanently while the guest was
+    told their money was on its way.
+  - The attempt is also the **discriminator** that makes by-intent matching safe: a
+    refund issued by hand at the gateway is money the platform never promised, whose
+    failure must raise no money-path alert — and with no attempt on record, the by-intent
+    arm moves nothing. The rejected alternative — deferring the event with a `503` —
+    would 5xx-loop for the ~3 days Stripe retries, on a shared endpoint whose disabling
+    would stop `payment_intent.succeeded` delivery and strand paid bookings in
+    `AWAITING_PAYMENT` holding their claims (the invariant-#2/#8 failure the `503` exists
+    to prevent).
+  - The recorded death **blocks the record that lost the race**: `markRefunded` refuses a
+    refund id already reported dead (`Failed("refund_died_before_record")`), so the
+    publication stays outstanding — and this one case recovers on its own: a
+    never-recorded refund still has its publication, and a re-drive past the key window
+    creates a fresh refund. A refund recorded and *then* dead is unchanged: nothing
+    re-drives it, an issuer rejection is not a transient error.
+  - A shape that looks like a bug and is not: one incident increments
+    `riviera.refunds.failed` **twice** — the webhook counts the refund it killed, and the
+    recording call it beat counts its own refusal. Both are true observations; the debt
+    gauge still reads one booking. It is the sharpest illustration of why the counter
+    measures observations and `riviera.refunds.owed` measures debts.
+  - **`markRefunded` moves only a collected payment.** Unguarded, it and
+    `markRefundFailed` (which restores `SUCCEEDED` unconditionally) could fabricate a
+    collected payment out of a `REQUIRES_PAYMENT`/`FAILED`/`CANCELED` row —
+    `findPendingCredentials` would stop offering the client secret and `RefundProgress`
+    would report `OUTSTANDING` for money never taken. Not reachable while the only refund
+    path is cancelling a `CONFIRMED` booking; reachable the moment a second one exists.
+    The guard makes the hard-coded `SUCCEEDED` restore sound **by construction rather
+    than lucky**: if the only statuses a refund record can replace are the collected
+    ones, `SUCCEEDED` is the only thing it can have replaced — why no "previous status"
+    column was needed.
+  - **An owed refund is enumerable, not just loggable.** The dead id moves to
+    `failed_refund_id`, `refund_id` stops claiming a live refund, and `refund_failed_at`
+    marks the debt over a **partial index** that is empty in the healthy case — the shape
+    the runbook's remedy needs: the *list* of bookings owed money, which log lines cannot
+    give once retention is shorter than the incident. `riviera.refunds.owed` gauges
+    **distinct refunds owed** (where `riviera.refunds.failed` counts observations and
+    re-increments on every resubmission of the same stuck refund); the flag means "owed
+    **now**" — a retry that works clears it, while `failed_refund_id` keeps what died.
+  - The attempt stamp carries two constraints whose tidy-up would look like an
+    improvement. **Placement:** it is written from `RefundService#refund`, which must
+    stay **outside a caller's transaction**, or the write is invisible for the whole
+    window it exists to cover (`RefundAttemptVisibilityIT` reads it back on a second
+    connection; `RefundBulkheadIT` pins the listener's absence of a transaction).
+    **Lifetime:** the stamp records an *unresolved refund obligation at the gateway*, and
+    every in-app resolution clears it — the recording write on success, and both failure
+    marks. It deliberately **survives a `Failed` return** (clearing there was tried and
+    reverted): `RefundResult.Failed` carries an untyped reason, so the service cannot
+    tell a gateway-confirmed "nothing of ours is live" from the genuinely ambiguous
+    branches — a bare `StripeException` after a *double* timeout in the replay helper may
+    well have left a live refund at Stripe with no id on record, exactly the
+    discriminator's case. In every `Failed` branch the platform still owes the refund.
+  - The bounded residual: a booking settled **by hand at the gateway** never runs an
+    in-app resolution, so its stamp stands, and a later failed refund on that collection
+    would be recorded as ours. Clear it when settling by hand — the observability
+    runbook's owed-refund section says so.
 
 **Not My Job:**
 - Deciding *whether* to refund or *how much* → **`booking`** owns the refund policy;
@@ -651,143 +637,158 @@ Security type inside the module (`OperatorAuthPlacementTests` green). See
 ---
 
 ## `notification`
-**Job:** Own transactional-mail **delivery** (#382): the `Mailer` transports (recording mock
-vs real SMTP, profile-swapped, mock prod-guarded), the two delivery vehicles — the Event
-Publication Registry listener for ids-only payloads and the bounded in-memory dispatcher for
-bearer-credential payloads (ADR-0011 decision 5), **each draining on its own bounded executor**
-(#383) so a degraded relay can never occupy the shared `applicationTaskExecutor` that carries the
-payment→booking and booking→payout listeners; the registry listener therefore spells out
-`@Async("registryMailExecutor")` + `@TransactionalEventListener` instead of
-`@ApplicationModuleListener`, and holds no transaction across the send — a rule pinned by
-`MailListenerExecutorArchitectureTest`, whose non-vacuity guard names all five shipped listeners off
-one list so the check cannot quietly start asserting nothing; that pool's size and queue
-depth are `riviera.notification.registry-mail.*` properties since #408 (defaults `2`/`200`, validated
-at boot **on both ends** — a non-positive `queue-capacity` would yield a `SynchronousQueue` that
-sheds nearly everything, an oversized one would restore the very unbounded queue the bulkhead
-removed, and both would boot clean — so #370 can retune them against a real relay without a deploy) — and since #410 both pools'
-shutdown drain window is **derived** from a third such property,
-`riviera.notification.mail.socket-timeout-ms`, which is also what every
-`spring.mail.properties.mail.smtp.*` timeout interpolates, so the relay budget and the drain cannot
-drift apart the way a flat 5s and a 10s socket timeout did; since #456 the drain arithmetic lives in
-`shared`'s `ShutdownBudget` (the discovery-and-sum rule: §`shared`); when that window expires both pools give
-up rather than interrupting, since an interrupt cannot tell a send that already reached the relay from
-one that has not. Both also carry the submitting request's MDC onto their workers through one shared
-`MdcTaskDecorator` (#410), composed onto the registry pool via `CompositeTaskDecorator` beside the
-shed policy that already owns its decorator slot (replacing it would silently strand the episode
-flag open) — a class that **#455 moved to `shared`**, because #404's refund pool needed the
-same mechanism and invariant #11 forbids `booking` importing this module's `application` package; the
-decorator is no longer this module's to own, and `WorkerContextArchitectureTest` now pins that every
-self-configured pool carries it. Each shed send increments
-`ObservabilityMetrics.MAIL_REGISTRY_SHED` while escalating one log line per saturation *episode*;
-the recovery dispatcher's mirror-image accounting is `MAIL_RECOVERY_DROPPED` (#415), and it is a
-mirror rather than a copy — **every** drop is logged, not one per episode, because a throttle trades
-repeated lines for the durable record that makes them redundant and this vehicle has none, and a
-rejection during **shutdown is counted here** (a real loss, tagged `reason=shutdown` so a redeploy
-cannot read as a degraded relay) where the registry excludes it as a non-event. A redeploy loses mail
-on both sides of `execute()`, so since #434 the tag has a third value, `abandoned` — the send accepted
-and still queued when the drain window expired — counted by draining the queue *after* the window is
-awaited, which is what makes the number a loss rather than a guess; the send caught **running** is
-deliberately excluded, being the one that may already have reached the relay. Read the name as **never
-ran**, not *refused*. #423 had extended that accounting with `MAIL_RECOVERY_FAILED` — the send this vehicle *accepts* and then cannot deliver,
-which is the likelier loss and the first of the mail counters to move in a relay outage. It is
-tagged by `kind` and by `reason` (`transport` / `suppression-lookup`) because the one swallowing catch
-can lose a mail to the relay or to a suppression read broken past #386's transient fail-open, and an
-operator acts on the cause, not the consequence. **Since #442 the drop counter carries `kind` too**, on
-all three of its reasons: the dimension had been missing not because a drop is less attributable than a
-failure but because `MailDispatcher.dispatch(Runnable)` never told the pool what it was carrying, so a
-lost approval notice read the same as a lost password reset. Widening that seam to
-`dispatch(MailKind, Runnable)` closed it — the drain path included, which needed the kind to travel
-into the queue — and made ADR-0011 decision 5's "mitigated only in part" clause false. The vocabulary
-is one enum (`MailKind`) shared by both counters, so the two cannot drift into two spellings of a kind;
-neither names the *person*, invariant #7 keeping the address off the tag. **The registry vehicle deliberately has no twin:**
-its transport failure propagates, so the publication stays outstanding and `riviera.outbox.pending`
-already accounts for it — an argument that holds only for failures that *throw*, which is why a
-confirmation this module **abandons** for a missing booking/set/contact (completing the publication,
-by design) gets the fourth name of its own, `MAIL_CONFIRMATION_ABANDONED` (#428), tagged
-`no-booking`/`no-set`/`no-contact` for the three modules it implicates and escalated per loss to
-`ERROR` — none of the three facts is reachable through any application path, so it is zero in a
-healthy system and reads as a data-integrity fault rather than a relay one; #374's cancellation
-listener abandons the same three ways and gets the **fifth** name, `MAIL_CANCELLATION_ABANDONED`,
-a sibling series rather than a `kind` tag, because #442 could tag `MAIL_RECOVERY_*` only where the
-name states the *vehicle* and these two state the *flow* — the shared part is the `reason`
-vocabulary, read off one enum so the two cannot drift into two spellings —
-the **registry-borne booking mails**, all assembled from `booking`/`venue`/`customer` published
-ports (ids only) by one module-internal resolver: the `BookingConfirmed` confirmation mail; since
-#374, the `BookingCancelled` cancellation/refund record — one listener covering every cancellation
-channel, tourist self-service and operator weather refund alike, because it subscribes to the fact
-rather than to either caller, and **rendering** the server-computed refund (invariant #10) rather
-than deciding it; since #373 the `BookingPaymentDue` notice an accepted Request-mode booking's
-guest gets, whose counter `MAIL_PAYMENT_DUE_ABANDONED` is the
-only abandoned flow whose loss is **predictive** — the sweep releases the set at the mailed
-deadline, so the errand it opens expires; and since #124 the `BookingRequestDeclined` /
-`BookingRequestExpired` records — plain-record copy, no CTA, published from inside
-`RequestReleaseService`'s winning decline/expire legs (the withdraw leg deliberately mails
-nothing, #123), each abandoning under its own sibling counter
-(`MAIL_REQUEST_DECLINED_ABANDONED` / `MAIL_REQUEST_EXPIRED_ABANDONED`). That listener also decides nothing about *whether* payment
-is owed: `booking` settles that by publishing the fact only on the accept branch where money is
-genuinely outstanding (a failed PaymentIntent reverts the booking to `PENDING_REQUEST`), which a
-status read here could not do without racing the stub's synchronous
-confirm — and the module's
-first owned state (the second is #380's delivery log, below): the **email-suppression list** (V32; **hashed/non-PII at rest since V33** —
-a `v1:`-tagged peppered-HMAC `email_key` plus the cleartext `domain`, never the address,
-deliberately surviving erasure per ADR-0012; the pepper is env-managed, fail-at-boot in prod),
-with the defining invariant **no send to a suppressed address**, enforced at the one send chokepoint
-(`TransactionalMailService`) on both vehicles — with **one deliberate carve-out** (#386): on the
-recovery vehicle a *transient* failure of the lookup itself sends the mail rather than dropping it,
-because the list is empty until #372's feed lands and D-8 makes a dropped reset indistinguishable
-from success to the user. The registry vehicle still propagates, so at-least-once retries against a
-healthy DB. The lookup is bounded by a `queryTimeout` scoped to its own adapter — never the global
-property, which would also bound `availability`'s `INSERT … ON CONFLICT` claim, whose loser waits on the winner's index tuple lock (invariant #2). V34 tightened
-the `domain` CHECK to mirror the Java writer exactly. **V35/#391 added the one sanctioned
-exception to never-deleted — and it is still not a deletion:** an ADMIN-gated
-`POST /api/admin/email-suppressions/reinstate` sets a `reinstated_at` flag on the row (so
-`isSuppressed` reads `email_key = ? AND reinstated_at IS NULL`), keeping `first_suppressed_at`
-and the prior `reason` so a reinstate→re-bounce loop stays visible; a later bounce clears the flag
-through the ordinary upsert. A hard `DELETE` on this table remains a defect. **#405 gave the registry vehicle an operational
-trigger:** an ADMIN-gated `GET`/`POST /api/admin/mail-outbox` reports what the Event Publication
-Registry still owes this module and re-drives it on demand, so the retry horizon for a failed
-confirmation stops being "the next deploy" (`republish-outstanding-events-on-restart` fires once, at
-boot). It is **scoped by listener-id prefix to this module's own listeners**, never by event type —
-`BookingConfirmed` fans out to `payout`'s accrual too, so an event-type predicate would replay
-invariant-#9 ledger work from a button labelled "mail" (`MailOutboxScopeIT` leaves an accrual
-outstanding and proves it is untouched). Two framework facts the trigger rests on, both of which
-issue #405 states the other way round because it read the **v1** JDBC repository: V8 ships the **v2**
-schema, so `markResubmitted` is a real claim (`… WHERE ID = ? AND STATUS != 'RESUBMITTED'`) that makes
-duplicate delivery a database guarantee rather than an application one, and `ResubmissionOptions`
-reaches only `FAILED` publications — never a **shed** send, which by construction never ran and so was
-never marked failed. The application-side single-flight + cooldown is therefore a throttle on the
-*sweep*, not the duplicate guard: during a relay outage every send fails fast and the whole scope is
-eligible again in milliseconds. Publishes exactly one
-named interface, `notification::api`, holding **two role-split ports**:
-the fire-and-forget `MailSender` (never throws, runs off the caller's thread,
-suppression-enforced — and since #375 carrying the **operator-approval notice**
-(`kind="operator-approved"`) alongside the two recovery kinds, which is why "recovery" in `MAIL_RECOVERY_*` names the *vehicle* and the `kind` tag
-names the flow: the notice carries no bearer credential, but it is edge-orchestrated from an admin
-request rather than driven by a domain fact, and ADR-0011 decision 5 reads both) and, since #400,
-the synchronous read `MailDeliverability`
-("would a mail to this address be withheld right now?"). They are deliberately separate
-conversations — `MailSender`'s contract is that a send influences neither the triggering
-response's status nor its latency (D-8, #369), which the anonymous `forgot-password` flow
-depends on, so the one surface that *does* reflect the answer cannot ride it.
-`MailDeliverability` is safe only where the caller already owns the address: its sole consumer is
-the authenticated verification-resend, which asks about its own session principal. Both are
-consumed by the composition root alone; **no module depends on `notification`**. Since #390 it also *implements* one port it does not own —
-`booking.spi.ConfirmationMailDelivery`, answering "would this customer's confirmation mail be
-withheld?" so a confirmed booking's read model can tell the guest to save their code. That is the
-inverted direction and preserves the rule: the dependency edge is still `notification → booking`.
-Since **#380** I also own the **booking-confirmation delivery log** (V36
-`booking_confirmation_mail_attempt`) — one row per attempt, carrying what triggered it
-(`AUTOMATIC` / `ADMIN_RESEND`) and what became of it (sent / withheld-suppressed / transport-failed /
-abandoned) — plus the ADMIN surface over it: a per-address lookup and a one-click **resend**
-(`/api/admin/mail-deliveries`, controller in my `adapter/in`, the #391/#405 precedent). The log
-exists because the Event Publication Registry cannot answer the question: `completion_date` records
-that the listener *returned*, which it equally does for a suppression skip and for a confirmation
-abandoned for missing facts, so a registry-derived view would report "dispatched" for the two losses
-support actually calls about. `booking.spi.ConfirmationMailDelivery` already stated the rule — a
-consumer needing the *historical* fact records it at send time. The resend sends **synchronously
-through the chokepoint and publishes nothing**, so it re-drives no other `BookingConfirmed`
-consumer (invariants #8/#9 are untouched by construction, pinned by `AdminMailDeliveryIT`), and the
-admin gets the real outcome rather than "queued".
+**Job:** Own transactional-mail **delivery** (#382): the `Mailer` transports (recording
+mock vs real SMTP, profile-swapped, the mock prod-guarded) and the two delivery vehicles
+of ADR-0011 decision 5 — the Event Publication Registry listener for **ids-only**
+payloads, the bounded in-memory dispatcher for **bearer-credential** ones. The suppression
+list and the delivery log below are the module's two pieces of owned state.
+
+**Executors and shutdown:**
+
+- Each vehicle drains on **its own bounded executor** (#383) — never Boot's shared
+  `applicationTaskExecutor`, which carries the payment→booking and booking→payout
+  listeners, so a degraded relay could otherwise starve the money spine. The registry
+  listener therefore spells out `@Async("registryMailExecutor")` +
+  `@TransactionalEventListener` instead of `@ApplicationModuleListener`, and holds no
+  transaction across the send — pinned by `MailListenerExecutorArchitectureTest`, whose
+  non-vacuity guard names all five shipped listeners off one list so the check cannot
+  quietly start asserting nothing.
+- The registry pool's size and queue depth are `riviera.notification.registry-mail.*`
+  properties (#408; defaults `2`/`200`, validated at boot **on both ends** — a
+  non-positive `queue-capacity` would yield a `SynchronousQueue` that sheds nearly
+  everything, an oversized one would restore the unbounded queue the bulkhead removed,
+  and both would boot clean) — so #370 can retune against a real relay without a deploy.
+- Both pools' shutdown drain window is **derived** from
+  `riviera.notification.mail.socket-timeout-ms` (#410), which every
+  `spring.mail.properties.mail.smtp.*` timeout also interpolates, so the relay budget and
+  the drain cannot drift apart; the drain arithmetic lives in `shared`'s `ShutdownBudget`
+  (#456). When the window expires both pools **give up rather than interrupt** — an
+  interrupt cannot tell a send that already reached the relay from one that has not.
+- Both pools carry the submitting request's MDC through the shared `MdcTaskDecorator`
+  (#455; `WorkerContextArchitectureTest` pins that every self-configured pool carries
+  it), composed onto the registry pool via `CompositeTaskDecorator` **beside** the shed
+  policy that already owns its decorator slot — replacing it would silently strand the
+  episode flag open.
+
+**Loss accounting** (names in `shared`'s `ObservabilityMetrics`; no tag names the person
+— invariant #7 keeps the address off every one):
+
+- `MAIL_REGISTRY_SHED` (#408): a shed registry send, escalating one log line per
+  saturation *episode*.
+- `MAIL_RECOVERY_DROPPED` (#415): the dispatcher's mirror — **every** drop is logged, not
+  one per episode, because this vehicle has no durable record to make repeated lines
+  redundant. A rejection during **shutdown counts here** (`reason=shutdown`, so a
+  redeploy cannot read as a degraded relay) where the registry excludes it as a
+  non-event; `reason=abandoned` (#434) is the send accepted and still queued when the
+  drain window expired — counted by draining the queue *after* the window is awaited,
+  which makes it a loss rather than a guess; the send caught **running** is deliberately
+  excluded, being the one that may already have reached the relay. Read the name as
+  *never ran*, not *refused*.
+- `MAIL_RECOVERY_FAILED` (#423): the send this vehicle *accepts* and then cannot deliver
+  — the likelier loss, and the first mail counter to move in a relay outage. Tagged by
+  `kind` and by `reason` (`transport` / `suppression-lookup`), because the one swallowing
+  catch can lose a mail to the relay or to a broken suppression read, and an operator
+  acts on the cause.
+- Both recovery counters carry `kind` (#442 widened the seam to
+  `dispatch(MailKind, Runnable)`, the drain path included, retiring ADR-0011 decision 5's
+  "mitigated only in part" clause), off one shared `MailKind` enum so the two cannot
+  drift into two spellings.
+- **The registry vehicle deliberately has no failure twin:** its transport failure
+  propagates, the publication stays outstanding, and `riviera.outbox.pending` already
+  accounts for it. That argument holds only for failures that *throw* — a mail this
+  module **abandons** for a missing fact completes the publication by design, so each
+  abandoning flow has a counter of its own, flow-named where `MAIL_RECOVERY_*` is
+  vehicle-named (why they are sibling series rather than `kind` tags):
+  `MAIL_CONFIRMATION_ABANDONED` (#428) and `MAIL_CANCELLATION_ABANDONED` (#374), tagged
+  `no-booking`/`no-set`/`no-contact` off one shared reason enum and escalated per loss to
+  `ERROR` — none of the three facts is reachable through any application path, so they
+  are zero in a healthy system and read as data-integrity faults, not relay ones;
+  `MAIL_PAYMENT_DUE_ABANDONED` (#373), the only abandoned flow whose loss is
+  **predictive** — the sweep releases the set at the mailed deadline, so the errand it
+  opens expires; and `MAIL_REQUEST_DECLINED_ABANDONED` /
+  `MAIL_REQUEST_EXPIRED_ABANDONED` (#124).
+
+**Owned flows and surfaces:**
+
+- The **registry-borne booking mails**, all assembled from `booking`/`venue`/`customer`
+  published ports (ids only) by one module-internal resolver: the `BookingConfirmed`
+  confirmation (#371); the `BookingCancelled` cancellation/refund record (#374) — one
+  listener covering every cancellation channel, tourist self-service and operator weather
+  refund alike, because it subscribes to the fact rather than to either caller, and
+  **rendering** the server-computed refund (invariant #10), never deciding it; the
+  `BookingPaymentDue` notice (#373) — the listener decides nothing about *whether*
+  payment is owed: `booking` settles that by publishing the fact only on the accept
+  branch where money is genuinely outstanding (a failed PaymentIntent reverts the booking
+  to `PENDING_REQUEST`), which a status read here could not learn without racing the
+  stub's synchronous confirm; and the `BookingRequestDeclined` / `BookingRequestExpired`
+  records (#124) — plain-record copy, no CTA; the withdraw leg deliberately mails nothing
+  (#123).
+- The **operator-approval notice** (#375), on the recovery vehicle
+  (`kind="operator-approved"`) beside the two recovery kinds: it carries no bearer
+  credential, but it is edge-orchestrated from an admin request rather than driven by a
+  domain fact — which is why "recovery" in `MAIL_RECOVERY_*` names the *vehicle* and the
+  `kind` tag names the flow.
+- The **email-suppression list** (V32; hashed/non-PII at rest since V33 — a `v1:`-tagged
+  peppered-HMAC `email_key` plus the cleartext `domain`, never the address, deliberately
+  surviving erasure per ADR-0012; the pepper is env-managed, fail-at-boot in prod). The
+  defining invariant — **no send to a suppressed address** — is enforced at the one send
+  chokepoint (`TransactionalMailService`) on both vehicles, with one deliberate carve-out
+  (#386): on the recovery vehicle a *transient* failure of the lookup itself sends the
+  mail rather than dropping it, because the list is empty until #372's feed lands and D-8
+  makes a dropped reset indistinguishable from success to the user; the registry vehicle
+  still propagates, so at-least-once retries against a healthy DB. The lookup's
+  `queryTimeout` is scoped to its own adapter — never the global property, which would
+  also bound `availability`'s `INSERT … ON CONFLICT` claim (invariant #2). V34's `domain`
+  CHECK mirrors the Java writer exactly.
+- **Reinstatement is a flag, never a deletion** (#391, V35 — the one sanctioned exception
+  to never-deleted, and still not a `DELETE`): the ADMIN-gated
+  `POST /api/admin/email-suppressions/reinstate` sets `reinstated_at` (`isSuppressed`
+  reads `email_key = ? AND reinstated_at IS NULL`), keeping `first_suppressed_at` and the
+  prior `reason` so a reinstate→re-bounce loop stays visible; a later bounce clears the
+  flag through the ordinary upsert. A hard `DELETE` on this table remains a defect.
+- The **mail-outbox re-drive** (#405): an ADMIN-gated `GET`/`POST /api/admin/mail-outbox`
+  reports what the registry still owes this module and re-drives it on demand, so the
+  retry horizon for a failed confirmation stops being "the next deploy"
+  (`republish-outstanding-events-on-restart` fires once, at boot). It is **scoped by
+  listener-id prefix to this module's own listeners, never by event type** —
+  `BookingConfirmed` fans out to `payout`'s accrual too, so an event-type predicate would
+  replay invariant-#9 ledger work from a button labelled "mail" (`MailOutboxScopeIT`
+  leaves an accrual outstanding and proves it is untouched). Two framework facts it rests
+  on (issue #405 states both the other way round, having read the **v1** JDBC
+  repository): V8 ships the **v2** schema, so `markResubmitted` is a real claim
+  (`… WHERE ID = ? AND STATUS != 'RESUBMITTED'`) that makes duplicate delivery a database
+  guarantee rather than an application one; and `ResubmissionOptions` reaches only
+  `FAILED` publications — never a **shed** send, which by construction never ran and so
+  was never marked failed. The single-flight + cooldown is therefore a throttle on the
+  *sweep*, not the duplicate guard: during a relay outage every send fails fast and the
+  whole scope is eligible again in milliseconds.
+- The published surface is exactly **`notification::api`**, two deliberately role-split
+  ports. `MailSender`: fire-and-forget, never throws, runs off the caller's thread,
+  suppression-enforced; its contract is that a send influences **neither the triggering
+  response's status nor its latency** (D-8, #369), which the anonymous `forgot-password`
+  flow depends on. `MailDeliverability` (#400): the synchronous read "would a mail to
+  this address be withheld right now?" — safe only where the caller already owns the
+  address; its sole consumer is the authenticated verification-resend asking about its
+  own session principal, and the one surface that *does* reflect the answer cannot ride
+  the port whose contract is not to. Both are consumed by the composition root alone;
+  **no module depends on `notification`**. Since #390 the module also *implements* one
+  port it does not own — `booking.spi.ConfirmationMailDelivery`, answering "would this
+  customer's confirmation mail be withheld?" for a confirmed booking's read model — the
+  inverted edge; the dependency is still `notification → booking`.
+- The **booking-confirmation delivery log** (#380; V36
+  `booking_confirmation_mail_attempt`): one row per attempt, carrying what triggered it
+  (`AUTOMATIC` / `ADMIN_RESEND`) and what became of it (sent / withheld-suppressed /
+  transport-failed / abandoned), plus the ADMIN surface over it — a per-address lookup
+  and a one-click **resend** (`/api/admin/mail-deliveries`, controller in my
+  `adapter/in`). The log exists because the registry cannot answer the question:
+  `completion_date` records that the listener *returned*, which it equally does for a
+  suppression skip and an abandonment, so a registry-derived view would report
+  "dispatched" for the two losses support actually calls about —
+  `booking.spi.ConfirmationMailDelivery` already stated the rule that a consumer needing
+  the *historical* fact records it at send time. The resend sends **synchronously through
+  the chokepoint and publishes nothing**, so it re-drives no other `BookingConfirmed`
+  consumer (invariants #8/#9 untouched by construction, pinned by `AdminMailDeliveryIT`)
+  and the admin gets the real outcome rather than "queued".
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building the **tokenized** links →
