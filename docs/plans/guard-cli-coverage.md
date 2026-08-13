@@ -209,7 +209,7 @@ Angular-shaped strings inside a throwaway repository, never files under `fronten
 **Stage pointer:** `merge close-out`
 
 **Next action:** none. Merged via PR #640; the one deferred defect that survived scrutiny closed via
-PR #642 — see *Follow-up* below.
+PR #642, and the sixth false clean in this layer via PR #662 — see the two *Follow-up* sections below.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -220,6 +220,7 @@ PR #642 — see *Follow-up* below.
 | 4 — AC-13: the template-literal scan defect the coverage found | ✅ | `efcf0ae` |
 | 5 — Close-out: docs freshness, timings, mutation ledger | ✅ | `86f93d8` |
 | 6 — AC-15: the untracked-file gap the redundancy question surfaced | ✅ | `02688cf`, `5b45bd8` |
+| 7 — #654: the same gap in the plan-doc guard, which had no `--files` half to close it | ✅ | `7663f76` (PR #662) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -233,6 +234,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-4 | plan-stage spike | `check-comment-only.mjs` pins none of the three git config settings and reads the new side cwd-relatively — the same false-clean class #618 fixed in the other three | fixed — issue #641, PR #642. Mutation rows in *Follow-up*, below |
 | F-5 | `riviera-docs-freshness` (close-out) | `ci.yml`'s guard-suite step said it "globs **both** suites" — written at two, false at five and at six | fixed in `86f93d8` |
 | F-6 | `riviera-review-overlay` (inline; the `/code-review` fan-out did not run — see the self-review checklist) | the harness returned an unused `env` field and bound the object to a local only to return it; `git(args, cwd = root)` advertised a subdirectory parameter no case used | fixed in `86f93d8` — RV-STYLE-1 and RV-STYLE-2 are clean (`scripts/` resolves no Prettier config), RV-PROC-1 re-walked against the final diff, and the RV-BE/RV-FE banks are out of scope: the diff touches no Java, no `frontend/src`, and no wire shape |
+| F-8 | field use, during PR #652 | `check-plan-file-structure --diff` reports clean for a path the slice **adds** but has not staged — `git diff` cannot see an untracked file, so the guard false-cleaned in the one case it exists for. AC-15's fix covered the sibling guards' `--files`/`--hook` halves; this guard has no such half, so nothing closed it here | fixed — issue #654, PR #662. Mutation rows in *Follow-up — #654 / PR #662*, below |
 | F-7 | post-merge-readiness question from the maintainer: *are these guards redundant now that Prettier and type-aware ESLint are in place?* | **No** — probed rather than argued: 128 enabled ESLint rules, of which the only comment-related two are `ban-ts-comment`/`ban-tslint-comment` and none touch focus posture; `eslint` and `prettier --check` both exit 0 on a file carrying BUSY-1 + FOCUS-1 + a multi-line inline comment that both guards catch. Chasing it surfaced a real gap: this guard's `--hook`/`--files` were diff-against-`HEAD`, so a file git had **never seen** read clean — the commonest way a violation enters the tree, and the gap `check-focus-posture` closed in #618 | fixed — AC-15, `02688cf`; the three substrate sentences it falsified patched in `5b45bd8` |
 
 ---
@@ -450,7 +452,7 @@ other two guards as well", answering "all three" both times. The population was 
 it fell outside the frame. #619's issue text inherited the same count. **Define the audit population
 by mechanism, not by resemblance.**
 
-## Follow-up — #654
+## Follow-up — #654 / PR #662
 
 The sixth false clean in this layer, and the first found by *using* the guards rather than by
 auditing them: during PR #652 a review finding moved a test into a new file, and
