@@ -128,4 +128,7 @@ runbooks in `docs/runbooks/`.
 - `riviera-sdlc` — routes here at the first local build/test invocation of a session.
 - `docs/agents/gradle-proxy-trust.md` — proxy CA / wrapper-403 details (authoritative).
 - `docs/agents/docker-testcontainers.md` — how the session's dockerd is provided (and stopped safely).
+- `docs/agents/cloud-environment.md` — what provisions a cloud session before these recipes run:
+  the out-of-repo setup script (recorded verbatim) vs the `SessionStart` hook, and the Node-pin
+  bump procedure.
 - `riviera-plan-doc` — the plan's per-phase test-scope rule defers to this skill's recipes.

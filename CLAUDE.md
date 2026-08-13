@@ -63,10 +63,11 @@ npm run build
 ```
 
 **CI/CD** (`.github/workflows/`): `ci.yml` runs the backend build/test, the
-frontend lint/format/test/build + mocked e2e, four diff-scoped hygiene checks
-(inline comments, plan-doc file structure, focus posture, touch-target
-declaration — each the CI half of a local `PostToolUse` guard; scripts under
-`scripts/check-*.mjs`), and a SonarCloud scan per PR. The Sonar merge bar is
+frontend lint/format/test/build + mocked e2e, five hygiene checks under
+`scripts/check-*.mjs` (four diff-scoped — inline comments, plan-doc file
+structure, focus posture, touch-target declaration, most with a local
+`PostToolUse` half — plus the standing-tree cloud Node pin, whose mirror is
+`docs/agents/cloud-environment.md`), and a SonarCloud scan per PR. The Sonar merge bar is
 stricter than the default gate: **0 new issues, 0 duplicated blocks, ≥80%
 new-code coverage** — review the issue list, not just the pass/fail
 (`riviera-sdlc` enforces this). `codeql.yml` scans; `deploy.yml` deploys the

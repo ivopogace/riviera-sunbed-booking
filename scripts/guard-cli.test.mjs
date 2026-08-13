@@ -20,6 +20,7 @@ const PLAN = 'check-plan-file-structure.mjs';
 const FOCUS = 'check-focus-posture.mjs';
 const COMMENT_ONLY = 'check-comment-only.mjs';
 const TOUCH = 'check-touch-target.mjs';
+const CLOUD_PIN = 'check-cloud-node-pin.mjs';
 
 const TS = 'frontend/src/app/venue/pricing-tab.ts';
 const HTML = 'frontend/src/app/venue/pricing-tab.html';
@@ -843,5 +844,79 @@ test('check-comment-only inspects a code change that is only in the working tree
 
     assert.equal(result.status, 1, result.stdout);
     assert.match(result.stderr, /Not comment-only/);
+  });
+});
+
+const CLOUD_DOC = 'docs/agents/cloud-environment.md';
+
+/** Writes the two files the pin guard compares, plus a `frontend/` for the subdirectory case. */
+function cloudPin(repo, pinned, recorded) {
+  repo.write('.nvmrc', `${pinned}\n`);
+  repo.write(CLOUD_DOC, lines(
+    '<!-- cloud-setup-script:start -->',
+    '```bash',
+    `nvm install ${recorded}`,
+    `NODE_BIN="$NVM_DIR/versions/node/v${recorded}/bin"`,
+    '```',
+    '<!-- cloud-setup-script:end -->',
+  ));
+  repo.write('frontend/package.json', lines('{}'));
+  repo.commit('the cloud environment doc');
+}
+
+/**
+ * The drift the guard exists for: `.nvmrc` bumped, the recorded setup script left behind. Run from
+ * the repository root **and** from a subdirectory, which is where every other guard's false clean
+ * has lived (#618/#641) and which this one avoids only by reading through `git-diff.mjs`.
+ *
+ * <p>Mutation: give the module a plain `readFileSync(path)` instead. The `frontend` case then reads
+ * nothing, and a guard that cannot read the doc must not report a pass.
+ */
+test('check-cloud-node-pin fails on a doc the .nvmrc bump left behind, from any directory', () => {
+  withRepo((repo) => {
+    cloudPin(repo, '27.1.0', '26.0.0');
+
+    for (const cwd of ['.', 'frontend']) {
+      const result = repo.run(CLOUD_PIN, [], { cwd });
+
+      assert.equal(result.status, 1, `from ${cwd}: ${result.stdout}`);
+      assert.match(result.stderr, /records Node 26\.0\.0 but \.nvmrc pins 27\.1\.0/);
+      assert.equal(result.stdout, '');
+    }
+  });
+});
+
+test('check-cloud-node-pin passes once the recorded script carries the pinned version', () => {
+  withRepo((repo) => {
+    cloudPin(repo, '26.0.0', '26.0.0');
+
+    const result = repo.run(CLOUD_PIN, []);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /records Node 26\.0\.0 in 2 place\(s\)/);
+  });
+});
+
+/** No doc means no reviewable copy of the field, which is the state #659 found — never a pass. */
+test('check-cloud-node-pin fails closed when the doc is absent', () => {
+  withRepo((repo) => {
+    repo.write('.nvmrc', '26.0.0\n');
+    repo.commit('base');
+
+    const result = repo.run(CLOUD_PIN, []);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /cloud-environment\.md could not be read/);
+  });
+});
+
+test('check-cloud-node-pin exits 2 with usage when given an argument', () => {
+  withRepo((repo) => {
+    cloudPin(repo, '26.0.0', '26.0.0');
+
+    const result = repo.run(CLOUD_PIN, ['--diff', 'main']);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /no arguments/);
   });
 });

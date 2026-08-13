@@ -9,6 +9,9 @@
 # Angular CLI MCP server spawns under it), but it runs before the repo is
 # checked out, so it cannot do repo-dependent provisioning. This hook runs
 # AFTER checkout (with $CLAUDE_PROJECT_DIR available), the supported place for it.
+# That setup script is NOT in this repo — it is a field on claude.ai, recorded
+# verbatim in docs/agents/cloud-environment.md (#659). Read that before assuming
+# anything about what has already run when this hook starts.
 #
 # Six idempotent, cloud-only steps:
 #   1. Frontend deps — `npm ci` so the Angular CLI MCP build/test targets
