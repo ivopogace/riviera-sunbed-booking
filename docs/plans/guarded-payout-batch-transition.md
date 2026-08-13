@@ -25,8 +25,9 @@ claim in #571 against today's code and ran the generalization sweep that proved
 forced the Payment & payout section, which is where the invariant-#9 argument got written
 down) · `tdd` (the guard is proven by a test that goes red against an unguarded UPDATE
 before the `WHERE` clause is added — see Phase 0 steps 2–5) · `riviera-review-overlay`
-(review gate — pending, due at ready-for-review) · `riviera-docs-freshness` (pending —
-due at merge close-out over this PR's range) · `riviera-java-conventions` (typed outcome
+(**ran** at ready-for-review, layered on `/code-review` at high effort per the money rule —
+6 findings, 4 fixed, 1 skipped, 1 deferred; see the findings register) · `riviera-docs-freshness`
+(pending — due at merge close-out over this PR's range) · `riviera-java-conventions` (typed outcome
 kept as the sealed `BatchStatusOutcome`; text-block SQL with named params; `Optional`
 from the port rather than a sentinel) · `riviera-modulith` (confirmed the change stays on
 an internal `application/` port + package-private `adapter/out` — no published surface,
@@ -42,10 +43,13 @@ IS the record of what has been paid by BKT; that framing set the severity)
 
 - [x] **AC-1:** Given a batch that is `SETTLED`, when a transition is attempted with
       `expected = DRAFT`, then no row changes and the port reports no transition.
-      *Pinned by:* `PayoutBatchGenerationIT.staleTransitionCannotRegressStatus`
-- [x] **AC-2:** Given a batch whose status advanced after the service read it, when
-      `mark` runs, then the outcome is `IllegalTransition` carrying the **actual current**
-      status — never `Marked`. *Pinned by:* `PayoutReportServiceTest.lostRaceReportsActualStatus`
+      *Pinned by:* `JdbcPayoutBatchesIT.staleTransitionCannotRegressStatus`
+- [x] **AC-2:** Given a batch whose status advanced **past** the requested target after the
+      service read it, when `mark` runs, then the outcome is `IllegalTransition` carrying the
+      **actual current** status — never a false `Marked`. (A batch that landed **on** the
+      requested target is `Marked` — F-1.)
+      *Pinned by:* `PayoutReportServiceTest.lostRaceReportsActualStatus` and
+      `PayoutReportServiceTest.aBatchAlreadyAtTheRequestedTargetIsReportedMarked`
 - [x] **AC-3:** Given an uncontended `DRAFT` batch, when `mark(REPORTED)` runs, then the
       outcome is `Marked` carrying the batch **as persisted**.
       *Pinned by:* `PayoutReportServiceTest.markedCarriesThePersistedRow` and the existing
@@ -74,6 +78,7 @@ IS the record of what has been paid by BKT; that framing set the severity)
 | `mark` returns `IllegalTransition(from, to)` for an illegal move (→ 409) | preserved | `canTransitionTo` check unchanged; the guarded 0-row case now maps here too |
 | `mark` returns `Marked(batch)` on success (→ 200) | changed | payload now comes from `RETURNING` (the row as persisted) instead of being rebuilt from the pre-update read — same values uncontended, truthful under contention |
 | `updateStatus` stamps `updated_at = NOW()` | preserved | same `SET` clause, now inside the guarded statement |
+| Two admins marking the **same** target concurrently both get `200 Marked` | preserved | initially dropped by the guard (the loser got a 409 naming `REPORTED → REPORTED`); restored at the review gate — `lostRace` reports `Marked` when the batch already sits at the requested target, so only the write itself is exclusive, not the answer (F-1) |
 | An unconditional write regressed a raced batch | **dropped (the bug)** | `AND status = :expected` makes the loser a 0-row no-op |
 
 ## Risk register
@@ -168,14 +173,15 @@ documented response for this endpoint.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, awaiting CI`
+**Stage pointer:** `review gate — findings fixed, awaiting re-run of CI + Sonar`
 
-**Next action:** Push the branch, confirm the CI run for that push is green, then mark the PR
-ready for review, which makes the Review gate and the Sonar gate due.
+**Next action:** Push the review-fix commit, confirm that push's CI run is green and the Sonar
+list is still empty, then open the two deferred follow-up issues (F-4, F-7) and merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Guard the transition | ✅ | plan `39a45f44`, fix `ba97ccd4` |
+| 0 — Guard the transition | ✅ | plan `39a45f44`, fix `ba97ccd4`, status `9aad86c3` |
+| 1 — Review-gate fixes (F-1/F-2/F-3/F-5) | ✅ | `d76e3623` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -189,7 +195,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (high) | Losing a race **to the same target** returned `IllegalTransition(from == to)` → a 409 naming a transition nobody attempted, and an unlisted parity change (both callers used to get 200) | fixed in `d76e3623` — `lostRace` reports `Marked` when the batch already sits at the requested target; pinned by `aBatchAlreadyAtTheRequestedTargetIsReportedMarked` |
+| F-2 | review (high) | `lostRace`'s re-read only reports the true status under READ COMMITTED, and nothing at the call site said so | fixed in `d76e3623` — stated on the method's Javadoc, including what a snapshot isolation level would hide |
+| F-3 | review (high) | `rejectsAnIllegalTransitionWithoutAttemptingTheWrite` never verified the write was skipped, so the name promised a guarantee nothing enforced | fixed in `d76e3623` — `verify(batches, never()).transition(…)` |
+| F-4 | review (high) | No test exercises the lost-race path end to end: the guard is proven at the adapter, the mapping only against mocks | deferred → follow-up issue. Closing it needs a Mockito spy bean or a delegating double, i.e. a second Spring context and a pattern the repo doesn't use, to pin a Postgres/Spring isolation guarantee rather than our own logic — which F-1/F-3 now cover at both levels |
+| F-5 | review (high) | Adapter-level SQL test was bolted onto the service-level generation IT, which had to autowire the internal port | fixed in `d76e3623` — moved to `JdbcPayoutBatchesIT` beside its adapter, matching `JdbcPaymentsIT` / `JdbcBookingsTransitionIT`; the generation IT is back to driving the facade only |
+| F-6 | review (high) | SQL bind names inline where sibling adapters hoist `PARAM_*` constants | skipped — `"id"`/`"period"` appear ×2, under S1192's threshold of 3, and the rest of this file binds inline; hoisting only this statement would make the file less consistent, not more. Revisit if a third guarded statement lands (also R-4) |
+| F-7 | tooling (found at the gate) | `scripts/check-plan-file-structure.mjs --diff origin/main` reported clean while `JdbcPayoutBatchesIT.java` was untracked — `git diff` cannot see untracked files, so the guard false-cleans exactly when a slice **adds** a file, its most likely omission | deferred → follow-up issue; worked around here by staging before re-running. CI sees the committed diff, so it would have failed the PR rather than shipping the gap |
 
 ---
 
@@ -199,8 +211,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/payout/application/PayoutBatches.java` — port: `updateStatus` → guarded `transition` returning `Optional<PayoutBatch>`
 - `platform/src/main/java/ai/riviera/platform/payout/adapter/out/JdbcPayoutBatches.java` — the guarded `UPDATE … WHERE status = :expected RETURNING …`
 - `platform/src/main/java/ai/riviera/platform/payout/application/PayoutReportService.java` — `mark` maps a 0-row transition to the actual current status
-- `platform/src/test/java/ai/riviera/platform/payout/application/PayoutReportServiceTest.java` — NEW: lost-race outcome mapping at the seam (fakes, no DB)
-- `platform/src/test/java/ai/riviera/platform/payout/PayoutBatchGenerationIT.java` — the stale-transition guard test against real Postgres
+- `platform/src/test/java/ai/riviera/platform/payout/application/PayoutReportServiceTest.java` — NEW: lost-race outcome mapping at the seam (mocked port, no DB)
+- `platform/src/test/java/ai/riviera/platform/payout/adapter/out/JdbcPayoutBatchesIT.java` — NEW: the SQL guard against real Postgres, beside its adapter like `JdbcPaymentsIT` (review finding F-5)
+- `platform/src/test/java/ai/riviera/platform/payout/PayoutBatchGenerationIT.java` — reverted to its facade-only shape when F-5 moved the adapter test out
 
 ---
 
