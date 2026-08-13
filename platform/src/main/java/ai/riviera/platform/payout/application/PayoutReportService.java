@@ -2,6 +2,7 @@ package ai.riviera.platform.payout.application;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -80,10 +81,32 @@ class PayoutReportService implements PayoutReport {
 		if (!batch.status().canTransitionTo(target)) {
 			return new BatchStatusOutcome.IllegalTransition(batch.status(), target);
 		}
-		batches.updateStatus(batchId, target);
+		Optional<PayoutBatch> moved = batches.transition(batchId, batch.status(), target);
+		if (moved.isEmpty()) {
+			return lostRace(batchId, target);
+		}
 		log.info("payout batch {} ({} {}) -> {}", batchId, batch.venueId().value(),
 				batch.periodKey().value(), target);
-		return new BatchStatusOutcome.Marked(new PayoutBatch(batch.id(), batch.venueId(),
-				batch.periodKey(), batch.totalNetMinor(), batch.currency(), target));
+		return new BatchStatusOutcome.Marked(moved.get());
+	}
+
+	/**
+	 * The guarded write matched no row, so the batch moved between {@link #mark}'s read and its
+	 * write. Re-read to report where it actually is: {@code mark}'s local {@code batch} is known
+	 * stale here, and reporting its status would name a transition the caller could retry forever.
+	 * A batch that another actor already moved <em>to the requested target</em> is reported
+	 * {@link BatchStatusOutcome.Marked} — the caller asked for a state that now holds, and only the
+	 * actor that performed the write logs the transition.
+	 *
+	 * <p>Requires READ COMMITTED (the Postgres and Spring default): this re-read must observe the
+	 * winner's committed row, which a snapshot isolation level would hide behind {@code mark}'s
+	 * original snapshot — reporting the stale status as though the transition were still legal.
+	 */
+	private BatchStatusOutcome lostRace(long batchId, BatchStatus target) {
+		return batches.findById(batchId)
+				.<BatchStatusOutcome>map(current -> current.status() == target
+						? new BatchStatusOutcome.Marked(current)
+						: new BatchStatusOutcome.IllegalTransition(current.status(), target))
+				.orElseGet(BatchStatusOutcome.NotFound::new);
 	}
 }

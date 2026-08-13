@@ -28,6 +28,12 @@ public interface PayoutBatches {
 	/** The batch with {@code id}, or empty if none — read before a status transition. */
 	Optional<PayoutBatch> findById(long id);
 
-	/** Persist a status transition (already validated by the caller), stamping {@code updated_at}. */
-	void updateStatus(long id, BatchStatus status);
+	/**
+	 * Move the batch with {@code id} from {@code expected} to {@code target}, stamping
+	 * {@code updated_at} — returning the row <strong>as persisted</strong>, or empty when no row
+	 * matched. Empty means the batch is gone or another actor already moved it off {@code expected};
+	 * the caller re-reads to tell those apart. The expected status is part of the write's own
+	 * predicate, so a caller acting on a stale read cannot regress a batch (invariant #9).
+	 */
+	Optional<PayoutBatch> transition(long id, BatchStatus expected, BatchStatus target);
 }
