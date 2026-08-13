@@ -121,6 +121,27 @@ export function changedPaths(raw) {
 }
 
 /**
+ * Every file the working tree holds that git has never been told about.
+ *
+ * A diff cannot report one: `git diff` compares an index or a commit against the tree, and an
+ * untracked path is in neither side. A guard that reads its file list from a diff alone therefore
+ * reports **clean** for a brand-new file — which is the likeliest omission there is (issue #654).
+ *
+ * <p>Lives here rather than in the one guard that calls it because it is the same pinning every
+ * other call in this module exists for, and each miss is a false clean already paid for once: run
+ * from the repository root, or a pathspec resolves against the caller's cwd and matches nothing;
+ * `-z` plus `core.quotepath=false`, or a non-ASCII path comes back C-quoted and matches nothing
+ * either (#538). Spelled inline in a guard, those are re-earned one at a time.
+ *
+ * <p>`--exclude-standard` is what keeps the answer meaningful rather than merely complete. Without
+ * it every build artefact in a contributor's tree becomes something a guard has an opinion about,
+ * and a gate that fires on `dist/` is one that gets switched off.
+ */
+export function untrackedPaths() {
+  return changedPaths(git(['ls-files', '--others', '--exclude-standard', '-z']));
+}
+
+/**
  * The merge base with `base`, or `base` itself when there is none.
  *
  * Diffing a *commit* rather than a `a...b` range is what puts the **working tree** on the new side,

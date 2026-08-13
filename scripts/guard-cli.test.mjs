@@ -454,6 +454,83 @@ test('check-plan-file-structure: a non-ASCII path is reported raw by the name-on
   });
 });
 
+/**
+ * False clean #6 (issue #654): `git diff` cannot see a file git has never been told about, so the
+ * guard reported clean in the one case it exists for — a slice that **adds** a file and forgets to
+ * list it. The omissions are never the interesting files, and a brand-new file is the likeliest
+ * omission of all.
+ *
+ * <p>Mutation: drop `untrackedPaths()` from `check`'s union and this exits 0.
+ */
+test('check-plan-file-structure --diff sees a file the slice adds but has not staged', () => {
+  withRepo((repo) => {
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
+    repo.write(TS, lines('const base = 0;'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.ts {2}— not listed in the File structure section/);
+  });
+});
+
+/**
+ * The same slice one step earlier, when the plan doc is itself unstaged. Before #654 this was a
+ * vacuous pass rather than a near miss: with no plan doc in the diff, `findOmissions` short-circuits
+ * and every path in the slice goes unjudged.
+ */
+test('check-plan-file-structure --diff reads a plan doc that is itself untracked', () => {
+  withRepo((repo) => {
+    repo.write('README.md', lines('# Riviera'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
+    repo.write(TS, lines('const base = 0;'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.ts/);
+    assert.doesNotMatch(result.stderr, /some-slice\.md/);
+  });
+});
+
+/** An untracked path is judged like any other — the union adds paths to check, not verdicts. */
+test('check-plan-file-structure --diff passes when the section lists the unstaged path', () => {
+  withRepo((repo) => {
+    repo.write('README.md', lines('# Riviera'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc(TS));
+    repo.write(TS, lines('const base = 0;'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+/**
+ * `--exclude-standard` is what keeps the union from becoming noise: a contributor's build output is
+ * untracked too, and a gate that demands a plan doc account for `dist/` is one that gets switched
+ * off (R-2).
+ *
+ * <p>Mutation: drop `--exclude-standard` and the ignored path is reported as an omission.
+ */
+test('check-plan-file-structure --diff ignores an untracked path git is told to ignore', () => {
+  withRepo((repo) => {
+    repo.write('.gitignore', lines('build/'));
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
+    repo.write('build/generated.ts', lines('const generated = 0;'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
 const BUSY_BUTTON = '<button (click)="save()" [disabled]="saving()">Save</button>';
 
 test('check-focus-posture --diff gates on a BUSY-1 binding the diff added', () => {

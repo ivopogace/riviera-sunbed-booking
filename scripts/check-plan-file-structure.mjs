@@ -13,7 +13,14 @@
 
 import { pathToFileURL } from 'node:url';
 
-import { changedPaths, git, mergeBase, nameOnlyArgs, readText } from './git-diff.mjs';
+import {
+  changedPaths,
+  git,
+  mergeBase,
+  nameOnlyArgs,
+  readText,
+  untrackedPaths,
+} from './git-diff.mjs';
 
 /** The heading that opens the section, as the plan-doc template writes it. */
 const HEADING = /^##\s+File structure\s*$/i;
@@ -276,11 +283,20 @@ export function report(omissions) {
  * Plan docs are read from the **working tree**, not from the diff: the section is judged as it
  * stands now, which is also what the author is about to fix. A doc the diff deletes reads as null
  * and drops out.
+ *
+ * <p>The file list is the diff **unioned with the untracked tree** (issue #654). A path this guard
+ * has to judge is one the slice touched, and a file git has not been told about yet is touched in
+ * the way that matters most here — it is added, and an added file is the omission a File-structure
+ * section is likeliest to miss. The two lists cannot overlap: staging a path moves it out of
+ * `ls-files --others` and into the diff in the same stroke, which is why this reads as a plain
+ * concatenation and why the diff's own order survives at the front.
+ *
+ * <p>Only a **path-scoped** guard can close the gap this cheaply. The sibling line-scoped guards
+ * need added-line numbers a new file has no diff to supply, so they answer it with a whole-file
+ * verdict behind `--files`/`--hook` instead; this one needs names alone.
  */
 export function check(range) {
-  const changed = changedPaths(
-    git(nameOnlyArgs(range)),
-  );
+  const changed = [...changedPaths(git(nameOnlyArgs(range))), ...untrackedPaths()];
 
   const docs = planDocsIn(changed)
     .map((path) => ({ path, text: readText(path) }))

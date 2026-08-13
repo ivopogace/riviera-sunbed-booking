@@ -249,6 +249,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   below), which routes its git calls and reads through `git-diff.mjs` and tallies verifications
   instead of deriving the count. Listed here because that PR edits this plan doc, which puts both
   in one diff and so under this section's guard.
+- `scripts/git-diff.mjs` · `scripts/check-plan-file-structure.mjs` — modified by the **#654
+  follow-up** (see *Follow-up — #654* below): `untrackedPaths()` joins the shared helper and the
+  plan-doc guard's `check` unions it into the file list, so a path git has never been told about is
+  judged like any other. Listed here for the same reason `check-comment-only.mjs` is — that work
+  edits this plan doc, which puts every path in one diff and so under this section's own guard.
 - `frontend/.claude/CLAUDE.md` · `.claude/skills/riviera-java-conventions/SKILL.md` — modified: both
   stated the inline-comment guard is "diff-scoped, always", which AC-15 makes false for an untracked
   file. Same sentence in two places, both patched.
@@ -444,6 +449,53 @@ other two guards as well", answering "all three" both times. The population was 
 (*which files under `scripts/` invoke git*), and this guard is whole-file rather than diff-scoped, so
 it fell outside the frame. #619's issue text inherited the same count. **Define the audit population
 by mechanism, not by resemblance.**
+
+## Follow-up — #654
+
+The sixth false clean in this layer, and the first found by *using* the guards rather than by
+auditing them: during PR #652 a review finding moved a test into a new file, and
+`check-plan-file-structure --diff` reported clean because `git diff` cannot see a path git has
+never been told about. It inverted the guard in precisely the case it exists for — the plan-doc
+rule is written because *the omissions are never the interesting files*, and an added file is the
+likeliest omission there is.
+
+`untrackedPaths()` joins `git-diff.mjs` (`ls-files --others --exclude-standard -z`) and
+`check-plan-file-structure.mjs`'s `check` unions it into the file list. Four cases, same discipline:
+
+| AC | The revert | Cases that go RED | Restored |
+|---|---|---|---|
+| #654 AC-1 | `check-plan-file-structure.mjs` — `check` back to `changedPaths(git(nameOnlyArgs(range)))` alone | `--diff sees a file the slice adds but has not staged`; `--diff reads a plan doc that is itself untracked` | ✅ 215 pass / 2 fail |
+| #654 AC-2 | `git-diff.mjs` — `--exclude-standard` dropped from `untrackedPaths` | `--diff ignores an untracked path git is told to ignore` | ✅ 216 pass / 1 fail |
+| #654 AC-3 | `git-diff.mjs` — `-z` dropped from `untrackedPaths` | both AC-1 cases (the whole listing arrives as one newline-joined token) | ✅ 215 pass / 2 fail |
+| #654 AC-4 | `check-plan-file-structure.mjs` — untracked paths appended to `findOmissions`' **result** instead of to its input | `--diff passes when the section lists the unstaged path` (+ both AC-1 cases) | ✅ 214 pass / 3 fail |
+
+**AC-4 is this ledger's honest row.** Dropping the union (AC-1) leaves the two exit-0 cases green,
+because a guard that sees nothing also exits 0 — they would have been decoration against that
+mutation alone. AC-4 is the wrong implementation they actually pin: unioning into the *verdicts*
+rather than into the *paths to judge*, which reports every untracked file whether or not the plan
+doc lists it. The union adds paths to check, not findings.
+
+**Only a path-scoped guard could take this fix.** The three sibling `--diff` modes share the blind
+spot, and none is changed here: they key on added **line numbers**, which a file with no diff cannot
+supply, so they answer the new-file case with a whole-file verdict behind `--files`/`--hook`
+instead (AC-15 above, and #618 before it). This guard needs names alone, so the union is four
+tokens. What made it the urgent one is that it is the only member of the four with **no**
+`PostToolUse` half — CLAUDE.md's "most with a local `PostToolUse` half" is this guard being the
+exception — so nothing else was catching the case locally.
+
+**Not done, and why.** A `.husky/pre-commit` call was considered once F-7's question resurfaced
+(below) and rejected: everything is staged by then, so it cannot see the window the bug lives in,
+and it would red every WIP commit whose plan doc has not caught up. CI is unaffected either way —
+it diffs committed history on a clean checkout, where `ls-files --others` is empty — which is why
+this was a local-feedback defect and never a merge-gate hole.
+
+**F-7, asked again and answered the same way.** The maintainer's post-merge question — *are these
+guards redundant now that Prettier and type-aware ESLint are in place?* — came up again against the
+Husky/lint-staged wiring added in #639, which is new since F-7 was closed. Still no, and now for a
+third reason on top of F-7's two: `lint-staged` operates on the **staged** set, which is the far
+side of exactly this bug. Its globs are frontend-only (`{src,e2e}/**`), so neither `platform/` nor
+`docs/plans/` is in scope, and no ESLint rule can express "is this path named in a markdown
+section" — a cross-file relationship rather than an in-file one.
 
 ## Self-review checklist (before merge / PR)
 
