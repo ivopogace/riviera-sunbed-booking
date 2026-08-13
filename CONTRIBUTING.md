@@ -21,9 +21,10 @@ The full product design lives in
 
 ## 2. Current state & setup
 
-The full stack is built and deployed (the frontend is live on GitHub Pages). The
-backend lives in `platform/` (Spring Boot, Spring Modulith) and the frontend in
-`frontend/` (Angular). To work locally:
+The full stack is built and deployed **same-origin**: Spring bundles the Angular SPA into its
+Docker image and serves it (#110 — the old GitHub Pages deployment is retired). The backend
+lives in `platform/` (Spring Boot, Spring Modulith) and the frontend in `frontend/` (Angular).
+To work locally:
 
 ```bash
 cd platform && ./gradlew build      # backend: compile + test
@@ -62,6 +63,23 @@ git reset --hard       # rewrite every one of them, now LF
 Only `frontend/src` and `frontend/e2e` are gated, so `npm run format` from `frontend/` is
 enough if you'd rather leave the rest alone. Either way, check with
 `git ls-files --eol frontend/src` — every row should read `w/lf`.
+
+**Commits are gated too.** `npm ci` in `frontend/` installs a husky `pre-commit` hook
+([`.husky/pre-commit`](.husky/pre-commit)) that runs lint-staged over the files you staged,
+with the same scope as the two CI steps. Prettier **writes** and the result is re-staged for
+you; ESLint only **checks** — it deliberately does not `--fix`, because #632 measured five
+regressions introduced by ESLint's own fixers that neither the linter nor the test suite
+caught, only a typecheck. Budget ~5 seconds; the type-aware rules need a TypeScript program.
+
+Two consequences worth knowing. It sets `core.hooksPath` **locally**, so the hook arrives with
+`npm install`, not with the clone — if you have never installed in `frontend/`, you have no
+hook. And it sees **staged files only**, so it narrows the CI round-trip rather than replacing
+it: a staged change that breaks an unstaged file still fails in CI. To skip it deliberately:
+
+```bash
+HUSKY=0 git commit …          # this commit only
+git config --unset core.hooksPath   # turn it off in your clone
+```
 
 ## 3. How we work (spec-driven, vertical slices)
 

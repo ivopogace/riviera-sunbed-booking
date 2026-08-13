@@ -20,6 +20,8 @@ FROM node:26-bookworm-slim AS web
 WORKDIR /web
 ARG STRIPE_PUBLISHABLE_KEY=""
 COPY frontend/package.json frontend/package-lock.json ./
+# This runs frontend's `prepare` (husky), which no-ops here — husky prints and exits 0 when it
+# finds no `.git`. Do NOT add `--omit=dev`: husky would be absent and `prepare` would fail hard.
 RUN npm ci
 COPY frontend/ ./
 # Inject the public Stripe publishable key into the COMMITTED prod environment (which already sets
