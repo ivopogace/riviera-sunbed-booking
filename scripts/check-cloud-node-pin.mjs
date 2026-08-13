@@ -76,6 +76,8 @@ export function check(nvmrcText, docText) {
     return { problems, pinned, matched: 0 };
   }
 
+  // Counted from the tokens themselves, never as found-minus-stale: the report deduplicates.
+  const matched = found.filter((version) => version === pinned).length;
   const stale = [...new Set(found.filter((version) => version !== pinned))];
   if (stale.length > 0) {
     problems.push(
@@ -83,7 +85,7 @@ export function check(nvmrcText, docText) {
         'update the recorded script AND paste it into the environment\'s Setup script field.',
     );
   }
-  return { problems, pinned, matched: found.length - stale.length };
+  return { problems, pinned, matched };
 }
 
 function main(argv) {

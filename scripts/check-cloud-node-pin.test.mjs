@@ -62,6 +62,17 @@ test('one stale token among current ones still fails, and the rest still count a
   assert.equal(matched, 2);
 });
 
+/**
+ * `matched` counts tokens, while the reported stale list is deduplicated — so the count cannot be
+ * derived by subtracting one from the other. It reads as a passing number on a failing run, which is
+ * the #641 defect class in miniature: a guard reporting a total it did not earn.
+ */
+test('a stale token repeated does not inflate the matched count', () => {
+  const doubled = [START, 'a 26.0.0', 'b 27.0.0', 'c 27.0.0', END].join('\n');
+
+  assert.equal(check('26.0.0\n', doubled).matched, 1);
+});
+
 /** Prose is not the field's content; only what sits between the markers gets pasted into it. */
 test('a version mentioned in prose outside the markers is not scanned', () => {
   const withProse = `The engine range is ^22.22.3 || >=26.0.0.\n${doc('26.0.0')}`;
