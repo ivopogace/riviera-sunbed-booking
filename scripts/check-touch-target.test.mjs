@@ -125,6 +125,17 @@ test('carries an exemption across control flow, self-closing tags and void eleme
   );
 });
 
+test('an expression whose identifier spells a judged element is not a control', () => {
+  for (const expression of [
+    '{{ i<select.length ? "a" : "b" }}',
+    '{{ value<input.max }}',
+    '{{ rows<textarea.rows }}',
+    '{{ count<button.limit }}',
+  ]) {
+    assert.deepEqual(scan(HTML, [`<span>${expression}</span>`]), [], expression);
+  }
+});
+
 test('an expression that reads as a tag does not swallow the controls after it', () => {
   const lines = [
     '<span>{{ shown<total ? "some" : "all" }}</span>',
@@ -136,6 +147,37 @@ test('an expression that reads as a tag does not swallow the controls after it',
   assert.deepEqual(
     violations.map((v) => v.line),
     [2],
+  );
+});
+
+test('an unquoted value glued to the self-closing slash does not leak its exemption', () => {
+  const lines = [
+    '<app-badge data-touch-exempt="control inside a sentence" mode=compact/>',
+    '<button type="button" (click)="submit()">Submit</button>',
+  ];
+
+  const violations = scan(HTML, lines);
+
+  assert.deepEqual(
+    violations.map((v) => v.line),
+    [2],
+  );
+});
+
+/** Only a slash the `>` follows is a self-close marker; one inside a path is part of the value. */
+test('a bare value that legitimately contains slashes still opens an exemption scope', () => {
+  const lines = [
+    '<div data-touch-exempt="control inside a sentence" data-href=/legal/terms>',
+    '  <button type="button" (click)="retry()">Retry</button>',
+    '</div>',
+    '<button type="button" (click)="submit()">Submit</button>',
+  ];
+
+  const violations = scan(HTML, lines);
+
+  assert.deepEqual(
+    violations.map((v) => v.line),
+    [4],
   );
 });
 

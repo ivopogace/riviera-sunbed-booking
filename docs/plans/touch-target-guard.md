@@ -55,33 +55,33 @@ MCP (phase 2 — confirming `inline-flex` pairing is a template concern, not a d
 
 - [x] **AC-1:** Given a template with `<button type="button">` carrying no `appTouchTarget` and no
       exemption, when the detector judges it, then one `TT-1` violation is reported at that tag's
-      line. *Pinned by:* `check-touch-target.test.mjs` › `reports an undeclared button`
+      line. *Pinned by:* `check-touch-target.test.mjs` › `flags a button that declares neither the directive nor an exemption`
 - [x] **AC-2:** Given the same button with `appTouchTarget` on its own start tag, when the detector
       judges it, then nothing is reported. *Pinned by:* `check-touch-target.test.mjs` ›
-      `accepts the directive on the tag`
+      `accepts either declaration on the control itself`
 - [x] **AC-3:** Given the same button with `data-touch-exempt="control inside a sentence"` on its
       own start tag, when the detector judges it, then nothing is reported. *Pinned by:*
-      `check-touch-target.test.mjs` › `accepts an exemption on the tag`
+      `check-touch-target.test.mjs` › `accepts either declaration on the control itself` (one case covers AC-2 and AC-3)
 - [x] **AC-4:** Given a `<button>` nested inside a `<p data-touch-exempt="…">` — `auth-page.ts`'s
       shipped mode toggle — when the detector judges it, then nothing is reported; and given the
       same button after that `</p>` closes, then `TT-1` **is** reported. *Pinned by:*
       `check-touch-target.test.mjs` › `an ancestor exemption covers its subtree and no further`
 - [x] **AC-5:** Given an undeclared `<a>`, when the detector judges it, then nothing is reported —
       whatever its classes or bindings. *Pinned by:* `check-touch-target.test.mjs` ›
-      `never judges an anchor`
+      `never judges an anchor, however it is written`
 - [x] **AC-6:** Given `data-touch-exempt=""` (or whitespace-only) on any in-scope control, when the
       detector judges it, then one `TT-2` violation is reported — an unexplained exemption is the
       drift the marker exists to stop. *Pinned by:* `check-touch-target.test.mjs` ›
-      `reports an exemption with no reason`
+      `flags an exemption that gives no reason`
 - [x] **AC-7:** Given a file whose diff adds one line, and an undeclared control on a line the diff
       did **not** add, when the guard runs `--diff`, then nothing is reported. *Pinned by:*
-      `check-touch-target.test.mjs` › `judges only lines the diff added`
+      `check-touch-target.test.mjs` › `judges only the lines the diff added`
 - [x] **AC-8:** Given a file git has never seen, when the guard runs `--files` on it, then it is
       judged **whole** (no diff against `HEAD` exists and every line in it is the author's — the
-      #619 rule). *Pinned by:* `guard-cli.test.mjs` › `check-touch-target judges an untracked file whole`
+      #619 rule). *Pinned by:* `guard-cli.test.mjs` › `check-touch-target --hook judges a file git has never seen` and `check-touch-target --files judges a committed file whole`
 - [x] **AC-9:** Given a diff introducing one `TT-1` and given another introducing one `TT-2`, when
       the CLI runs, then it exits **non-zero** in both cases; given a clean diff it exits 0.
-      *Pinned by:* `guard-cli.test.mjs` › `check-touch-target gates on both rules`
+      *Pinned by:* `guard-cli.test.mjs` › `check-touch-target --diff gates on an undeclared control the diff added`, `… --diff gates on an exemption that gives no reason`, `… --diff is silent once the control declares the floor`
 - [x] **AC-10:** Given the shipped tree at this branch's HEAD, when `node
       scripts/check-touch-target.mjs --all` runs, then it reports **zero** violations and exits 0.
       This is the precondition for gating, and the same bar `BUSY-1`/`BUSY-2` had to clear.
@@ -136,7 +136,7 @@ MCP (phase 2 — confirming `inline-flex` pairing is a template concern, not a d
 | R-3 | Ancestor resolution needs a real nesting walk — void elements (`<input>`, `<img>`), self-closing `<app-x />`, and Angular control-flow blocks (`@if`/`@for`) that open braces but no element. A bug here is a **false positive on a gating rule**, the one error direction this layer cannot afford (#529's lesson) | med | **high** | an explicit void-element set and a stack that only pushes non-void, non-self-closed tags; a unit case per shape; and AC-10's whole-tree sweep as the empirical backstop — 222 tags across 40 files is a real corpus | implementer | open |
 | R-4 | `--all` is clean at this branch's HEAD but a parallel PR merges a new undeclared control, so `main` is dirty the moment this lands | low | med | the guard is **diff-scoped**, so a pre-existing violation never fails a build — only a line a diff adds does | plan | **closed by design** — no standing `--all` check exists to go red; whoever merges second marks their own control, and the diff-scoped rule makes that the only thing they must do |
 | R-5 | Marking a control already floored by SCSS leaves two mechanisms on one element; a later reader deletes one believing the other covers it | low | low | the ledger rows name every such control and say the redundancy is deliberate | plan | **closed** — accepted, and narrower than feared: only `home.html`’s three `.field` controls and `app.html`’s swatch are doubly floored. Rule 4 names the directive as the go-forward |
-| R-6 | The `PostToolUse` hook fires on every `Write`/`Edit`; a fourth guard adds latency to the authoring loop | low | low | same shape and budget as the three existing guards (`timeout: 15`, `|| true`) | plan | **closed** — the hygiene job ran the gate-proof commit in **21s** including all four guards and their suites |
+| R-6 | The `PostToolUse` hook fires on every `Write`/`Edit`; a third hook adds latency to the authoring loop | low | low | same shape and budget as the two existing hooks (`timeout: 15`, `|| true`) | plan | **closed** — the hygiene job ran the gate-proof commit in **21s** including all four guards and their suites |
 | R-7 | A new `scripts/*.test.mjs` is auto-globbed by the hygiene job's `node --test "scripts/*.test.mjs"` step — so a suite importing anything outside `node:` breaks a job with no install step | low | med | dependency-free by construction; `guard-cli-harness.mjs` reused rather than re-invented | implementer | **closed** — the job’s `Test the guards themselves` step is green with 180 tests, on a runner with no install step |
 
 ## Open questions / Assumptions
@@ -217,7 +217,8 @@ list from the API rather than reading the green badge.
 | 2 — Mark the tree: 29 controls, 6 files, `--all` → 0 | ✅ | `19cbd18f` |
 | 3 — Wire it: `PostToolUse` hook, CI step, docs | ✅ | `cad02c5d`, gate proof `32822932` → reverted `0a0ac56e` |
 
-**Phase 3 result.** A fourth `PostToolUse` hook and a fourth `Repo hygiene (diff-scoped)` **step** —
+**Phase 3 result.** A **third** `PostToolUse` hook and a **fourth** `Repo hygiene (diff-scoped)`
+**step** — the counts differ because `check-plan-file-structure.mjs` is a CI step with no hook —
 not a job, since the ruleset keys required contexts by job name and a new job would report without
 blocking (#413/#420/#534). Context list unchanged at 7.
 
@@ -271,7 +272,12 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (`/code-review`, agents 2+3; **reproduced before fixing**) | **False positive on a gating rule.** A JS comparison with no space after `<` parsed as a start tag, and when the identifier spelled a judged element the guard reported a spurious `TT-1`: `{{ i<select.length }}` and `{{ value<input.max }}` each failed a line holding no control. Exactly R-3's error direction, live. Prettier's angular parser does not reformat the 55 inline `template:` literals, so the exposure was real | **fixed-in-`<sha>`** — `TAG_NAME_END`: a real tag name is followed by whitespace, `/` or `>`. Red-first via `an expression whose identifier spells a judged element is not a control` |
+| F-2 | review (`/code-review`, agent 2; **reproduced before fixing**) | **Silent false negative.** An unquoted value glued to the self-closing slash (`mode=compact/>`) swallowed the slash, so `selfClosed` stayed false, the element joined the ancestor stack, was never popped, and leaked its `data-touch-exempt` to every later control | **fixed-in-`<sha>`** — strip only a *trailing* slash from a bare value, so `data-href=/legal/terms` still reads as a value. Red-first, with a second case locking the non-regression |
+| F-3 | review (agents 4+5) | The guard's own module header cited **59** undeclared anchors — the pre-implementation estimate this plan had already corrected to the measured **53** everywhere else in the same PR | **fixed-in-`<sha>`** (and in the PR body) |
+| F-4 | review (agent 4, scored 95) | Eight of nine `*Pinned by:*` citations named tests that do not exist under those names; AC-8 and AC-9 named `guard-cli.test.mjs` tests that do not exist at all. A reader verifying an AC as instructed would find nothing | **fixed-in-`<sha>`** — every citation now matches a shipped `test()` name verbatim |
+| F-5 | review (agent 1) | The plan called the new hook "a **fourth** `PostToolUse` hook"; `.claude/settings.json` had two before this PR, so it is the **third**. Root `CLAUDE.md` said "third" correctly. The four-count is right for the CI *steps*, since `check-plan-file-structure.mjs` is a step with no hook | **fixed-in-`<sha>`** — the two counts are now stated separately, with the reason they differ |
+| F-6 | review (agent 1, **scored 0 — rejected**) | Claimed the multi-line TSDoc above the new Playwright `test()` breaches the one-line inline-comment rule | **not a finding.** 11 e2e specs already carry doc comments above `test()`/`describe()`; the guard exempts every `/** */` block regardless of what it is attached to. Established pattern, not drift |
 
 ---
 
@@ -281,7 +287,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `scripts/check-touch-target.mjs` — the guard: detector + CLI
 - `scripts/check-touch-target.test.mjs` — its detector suite (dependency-free, `node --test`)
 - `scripts/guard-cli.test.mjs` — add this guard's CLI cases to the shared harness suite
-- `.claude/settings.json` — the fourth `PostToolUse` guard entry
+- `.claude/settings.json` — the third `PostToolUse` guard entry
 - `.github/workflows/ci.yml` — the fourth step in `Repo hygiene (diff-scoped)`
 - `frontend/src/app/app.html` — 11 controls marked; sign-out notice buttons brought to the floor
 - `frontend/src/app/app.ts` — the `TouchTarget` import its template now needs
@@ -451,7 +457,7 @@ const GATING = new Set(['TT-1', 'TT-2']);
 **Files:** Modify `.claude/settings.json` · `.github/workflows/ci.yml` ·
 `frontend/.claude/CLAUDE.md` · `CLAUDE.md` · `.claude/skills/riviera-tailwind/SKILL.md`
 
-- [x] **Step 1: Wire the hook** — a fourth `PostToolUse` entry, same shape as the three siblings
+- [x] **Step 1: Wire the hook** — a third `PostToolUse` entry, same shape as the two siblings
       (`|| true`, `timeout: 15`, a `statusMessage` naming the rules).
 - [x] **Step 2: Wire CI** — a fourth step in `Repo hygiene (diff-scoped)`, `if: ${{ !cancelled() }}`
       so one push surfaces every hygiene rule. **Do not rename the job** — the name is a required

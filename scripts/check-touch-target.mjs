@@ -7,7 +7,7 @@
  *   anyone decided.
  *
  * `<a>` is deliberately **out of scope**: `min-height` is a no-op on a `display: inline` box, so a
- * directive on a link is a declaration that can be false, and marking the app's 59 undeclared links
+ * directive on a link is a declaration that can be false, and marking the app's 53 undeclared links
  * would manufacture exactly that. Links stay `frontend/e2e/touch-targets*.e2e.ts`'s and RV-FE's job.
  * The same posture `check-focus-posture.mjs` takes with the `<input>` kinds `readonly` cannot lock:
  * cover what the predicate judges exactly, and say plainly what is out of reach.
@@ -237,6 +237,16 @@ function blank(chars, at, length) {
 }
 
 /**
+ * What may follow an element name in a real tag: whitespace, the self-closing slash, or `>`.
+ *
+ * Without this, `{{ i<select.length }}` parses as a `<select>` and the guard fails a build on a
+ * line holding no control — the false-positive direction #529's lesson rules out. The sibling
+ * `check-focus-posture.mjs` shares the misparse harmlessly, because its walk is flat and its rules
+ * read one tag's own attributes; here a phantom tag also joins the ancestor-exemption stack.
+ */
+const TAG_NAME_END = /[\s/>]/;
+
+/**
  * Walks the template and returns one entry per element tag — start and end alike, in document
  * order — with a start tag's attributes and the line it opens on.
  *
@@ -253,6 +263,8 @@ function walkTags(lines) {
       const from = closing ? c + 2 : c + 1;
       if (!/[A-Za-z]/.test(lines[i][from] ?? '')) continue;
       const name = /^[\w-]+/.exec(lines[i].slice(from))[0].toLowerCase();
+      // `{{ i<select.length }}` is a comparison, not a <select>: a real tag name ends the name.
+      if (!TAG_NAME_END.test(lines[i][from + name.length] ?? ' ')) continue;
       if (closing) {
         tags.push({ kind: 'close', name });
         c = from + name.length - 1;
@@ -312,7 +324,9 @@ function readAttributes(lines, line, column) {
 function readValue(lines, line, column) {
   const quote = lines[line][column];
   if (quote !== '"' && quote !== "'") {
-    const bare = /^[^\s>]*/.exec(lines[line].slice(column))[0];
+    const raw = /^[^\s>]*/.exec(lines[line].slice(column))[0];
+    // Only a trailing slash is the self-close marker; one inside `data-href=/legal/terms` is value.
+    const bare = raw.endsWith('/') ? raw.slice(0, -1) : raw;
     return { value: bare, line, column: column + bare.length };
   }
   let value = '';
