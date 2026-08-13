@@ -17,6 +17,7 @@ import { PanelGlass } from '../../shared/panel-glass';
 import { isRated, ratingScore } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
 import { defaultBookingDate } from '../../shared/booking-date';
+import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
 
@@ -64,6 +65,7 @@ interface VenueCard {
     PanelGlass,
     CardGlass,
     AmenityChip,
+    TouchTarget,
     ...FAILURE_DIRECTIVES,
   ],
   templateUrl: './home.html',

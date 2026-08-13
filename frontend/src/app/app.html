@@ -8,6 +8,7 @@
     >
       <span>Sign-out didn't reach the server. You may still be signed in on this device.</span>
       <button
+        appTouchTarget
         type="button"
         class="font-semibold underline"
         data-testid="sign-out-retry"
@@ -16,6 +17,7 @@
         Try again
       </button>
       <button
+        appTouchTarget
         type="button"
         class="font-semibold underline"
         data-testid="sign-out-dismiss"
@@ -55,6 +57,7 @@
           <a routerLink="/" class="riv-nav-link">Beaches</a>
           <a routerLink="/my-bookings" class="riv-nav-link">My bookings</a>
           <button
+            appTouchTarget
             #findButton
             type="button"
             class="riv-nav-link riv-nav-btn"
@@ -70,6 +73,7 @@
               <!-- Account menu — a disclosure, not role=menu; see App.accountOpen for why. -->
               <div class="riv-account-menu">
                 <button
+                  appTouchTarget
                   #accountButton
                   type="button"
                   class="riv-nav-user riv-nav-btn"
@@ -99,6 +103,7 @@
                       >Your account</a
                     >
                     <button
+                      appTouchTarget
                       type="button"
                       class="riv-account-item riv-account-btn"
                       data-testid="nav-signout"
@@ -125,6 +130,7 @@
 
           <div class="riv-theme-picker">
             <button
+              appTouchTarget
               #themeButton
               type="button"
               class="riv-chip-btn"
@@ -154,6 +160,7 @@
               <div class="riv-pop riv-pop-in riv-theme-pop">
                 @for (option of themes.options; track option.id) {
                   <button
+                    appTouchTarget
                     type="button"
                     class="riv-theme-option"
                     [attr.aria-pressed]="option.id === themes.theme()"
@@ -177,6 +184,7 @@
         </nav>
 
         <button
+          appTouchTarget
           #menuButton
           type="button"
           class="riv-menu-btn"
@@ -208,6 +216,7 @@
               >My bookings</a
             >
             <button
+              appTouchTarget
               type="button"
               class="riv-mobile-link riv-mobile-btn"
               data-testid="find-open-mobile"
@@ -231,6 +240,7 @@
                   >Your account</a
                 >
                 <button
+                  appTouchTarget
                   type="button"
                   class="riv-mobile-link riv-mobile-btn"
                   data-testid="nav-signout-mobile"
@@ -261,6 +271,7 @@
               <div class="riv-mobile-swatches">
                 @for (option of themes.options; track option.id) {
                   <button
+                    appTouchTarget
                     type="button"
                     class="riv-mobile-swatch"
                     [class.riv-mobile-swatch-active]="option.id === themes.theme()"

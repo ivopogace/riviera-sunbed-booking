@@ -166,6 +166,7 @@ const CLS = {
                   </p>
                 }
                 <button
+                  appTouchTarget
                   type="button"
                   [class]="cls.btnCta"
                   (click)="payNow(b)"
@@ -217,6 +218,7 @@ const CLS = {
                     </p>
                     <div [class]="cls.actions">
                       <button
+                        appTouchTarget
                         type="button"
                         [class]="cls.btnDanger"
                         [appBusy]="withdrawing()"
@@ -226,6 +228,7 @@ const CLS = {
                         {{ withdrawing() ? 'Withdrawing…' : 'Confirm withdrawal' }}
                       </button>
                       <button
+                        appTouchTarget
                         type="button"
                         [class]="cls.btnOutline"
                         [appBusy]="withdrawing()"
@@ -237,6 +240,7 @@ const CLS = {
                     </div>
                   } @else {
                     <button
+                      appTouchTarget
                       type="button"
                       [class]="cls.btnOutlineDanger"
                       (click)="startWithdraw()"
@@ -434,6 +438,7 @@ const CLS = {
               <p [class]="cls.confirmQ">Cancel this booking? This can’t be undone.</p>
               <div [class]="cls.actions">
                 <button
+                  appTouchTarget
                   type="button"
                   [class]="cls.btnDanger"
                   [appBusy]="cancelling()"
@@ -443,6 +448,7 @@ const CLS = {
                   {{ cancelling() ? 'Cancelling…' : 'Confirm cancellation' }}
                 </button>
                 <button
+                  appTouchTarget
                   type="button"
                   [class]="cls.btnOutline"
                   [appBusy]="cancelling()"
@@ -454,6 +460,7 @@ const CLS = {
               </div>
             } @else {
               <button
+                appTouchTarget
                 type="button"
                 [class]="cls.btnOutlineDanger"
                 (click)="startCancel()"

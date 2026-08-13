@@ -88,9 +88,11 @@ MCP (phase 2 — confirming `inline-flex` pairing is a template concern, not a d
 
 ## Non-goals
 
-- **`<a>` elements, in any form** — not gated, not advised, not counted. 59 of the 89 undeclared
-  controls are links, and the directive is a silent no-op on an inline one, so marking them would
-  manufacture false declarations. The guard's header says so out loud.
+- **`<a>` elements, in any form** — not gated, not advised, not counted. The directive is a silent
+  no-op on an inline one, so marking them would manufacture false declarations. The guard's header
+  says so out loud. **Measured residual: 53 undeclared anchors** (phase 2's audit, by widening
+  `JUDGED` and re-sweeping — not the 59 this plan first estimated from a scratch scan that applied
+  no ancestor exemptions). They stay the measured sweep's and RV-FE's job.
 - **Replacing the e2e sweep.** It is the only thing that measures a rendered box; the guard only
   ever proves a declaration exists. #605's findings that mattered came from the sweep.
 - **A class allowlist / any stylesheet resolution.** See Architecture. The SCSS floors that remain
@@ -112,20 +114,20 @@ MCP (phase 2 — confirming `inline-flex` pairing is a template concern, not a d
 
 | Old-surface behavior | Verdict | How the new surface does it, or why it's gone |
 |---|---|---|
-| `app.html` sign-out notice: `Try again` / `Dismiss` are 14 px underlined text buttons, flex siblings of the message `<span>`, no padding | **changed** | both grow to the 44 px floor. They are flex children of a `flex-wrap` row, not words inside a sentence, so 2.5.5's inline exception does not apply — this is a real failure the sweep never saw, because the notice renders only after a sign-out request fails |
+| `app.html` sign-out notice: `Try again` / `Dismiss` are 14 px underlined text buttons, flex siblings of the message `<span>`, no padding | **changed — and they were broken** | measured before the change at **58 × 21** and **48 × 21**, both under the floor on height. Real shipped WCAG 2.5.5 failures, invisible to every sweep because the notice renders only after a sign-out request fails. Now floored by `appTouchTarget`; AC-11's sweep case took them red → green |
 | `app.html` header/menu buttons (`riv-nav-btn`, `riv-chip-btn`, `riv-menu-btn`, `riv-account-btn`, `riv-mobile-btn`, `riv-mobile-swatch`) already floored by `app.scss` (`.riv-mobile-swatch` via `width`/`height: 44px`, others via padding measured in #605 phase 5) | preserved | they gain `appTouchTarget` as a **declaration** of a floor they already meet; `min-height: 44px` over a `height: 44px` box is a no-op. The visual 30 px swatch dot is on `::before` and untouched |
 | `auth-page.ts` three `appFieldGlass` inputs + submit button, floored by their own `px-4 py-3.5` padding | preserved | declaration only; the padding already exceeds the floor (measured by the auth surface sweep) |
 | `auth-page.ts` mode-toggle `<button>` inside `<p data-touch-exempt="…">` | preserved | already exempt via its ancestor — this slice only makes the guard able to *see* that |
 | `booking-view.ts` 7 buttons bound via `[class]="cls.btnCta"` etc. | preserved | declaration only; the shared class constants already carry ≥ 44 px padding (measured by the booking-view sweep) |
 | `home.html` two filter `<select>`s + date `<input>`, floored by `home.scss`'s `.field select, .field input { min-height: 44px }` | preserved | declaration only, redundant with the SCSS rule and deliberately so — the directive is the go-forward mechanism (`riviera-tailwind` rule 4) and the SCSS stays until that file migrates |
 | `venue-tab.html` photo `<input type="file" class="hidden">` — `display: none`, zero box, its visible proxy is the labelled button beside it | preserved | marked `data-touch-exempt` under the **new third class** (not rendered). Adding the directive instead would declare a floor a `display: none` box cannot have — the R-1 lie #605 warned about |
-| `venue-map.html` set tile `<button class="set-button w-full h-full">` — fills its grid cell, sized by the tourist beach map's column track | **changed, and the one to watch** | see R-1. `min-w-11` on a cell whose track is narrower than 44 px will widen the grid or overflow it, which is exactly what #605 solved for the *console* grids with `minmax(44px, 1fr)` + in-frame scroll. The tourist map is a different grid and was not part of that change |
+| `venue-map.html` set tile `<button class="set-button w-full h-full">` — fills its grid cell, sized by the tourist beach map's column track | preserved — **the feared change does not happen** | R-1 closed by reading the sizing chain: the track is `repeat(var(--riv-map-cols,1), var(--riv-tile))` with `--riv-tile: clamp(47px, 11vw, 56px)`, inside an `overflow-x-auto` drag-to-pan container. A **fixed 47 px floor**, never `1fr`, so tiles cannot squeeze and a wide venue already pans. `min-w-11` is a strict no-op. The console grids #605 fixed were `minmax(0, 1fr)`, which did squeeze — the concern was real for that pattern and does not transfer to this one |
 
 ## Risk register
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `min-w-11` on `venue-map.html`'s `.set-button` widens or overflows the tourist beach-map grid — the same failure #605 fixed on the two console grids, on a grid it never touched | **high** | high | measure before marking: read the tile's rendered box in the existing venue-map sweep first. If it is already ≥ 44 px the directive is a no-op and the row is preserved; if not, apply #605's shipped answer (`minmax(44px, 1fr)` + in-frame scroll with `tabindex="0"` + a name) rather than inventing a second pattern. `venue-map-pan.e2e.ts` guards the pan behaviour | implementer | open |
+| R-1 | `min-w-11` on `venue-map.html`'s `.set-button` widens or overflows the tourist beach-map grid — the same failure #605 fixed on the two console grids, on a grid it never touched | **high** | high | measure before marking, per the ledger row | implementer | **closed — not applicable, verified.** The tile track is a fixed `--riv-tile: clamp(47px, 11vw, 56px)`, not `1fr`, inside an `overflow-x-auto` pan container, so nothing squeezes and `min-w-11` is a no-op. `venue-map-pan.e2e.ts` and the venue-detail sweep both still pass |
 | R-2 | Wiring the guard as a hard gate before the tree is clean turns this PR's own CI red | med | med | phase order is the mitigation: the guard lands unwired (phase 0–1), the tree is marked (phase 2), the hook + CI step land last (phase 3). `--all` clean is AC-10 and gates phase 3 | plan | open |
 | R-3 | Ancestor resolution needs a real nesting walk — void elements (`<input>`, `<img>`), self-closing `<app-x />`, and Angular control-flow blocks (`@if`/`@for`) that open braces but no element. A bug here is a **false positive on a gating rule**, the one error direction this layer cannot afford (#529's lesson) | med | **high** | an explicit void-element set and a stack that only pushes non-void, non-self-closed tags; a unit case per shape; and AC-10's whole-tree sweep as the empirical backstop — 222 tags across 40 files is a real corpus | implementer | open |
 | R-4 | `--all` is clean at this branch's HEAD but a parallel PR merges a new undeclared control, so `main` is dirty the moment this lands | low | med | the guard is **diff-scoped**, so a pre-existing violation never fails a build — only a line a diff adds does. The `--all` sweep is a phase-2 gate, not a standing CI check. Whoever merges second marks their own control | plan | open |
@@ -191,18 +193,18 @@ actually applies (`riviera-tailwind` rule 4, first bullet).
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 done, phase 2 next` · draft **PR #649**, opened at the first
+**Stage pointer:** `implement — phase 2 done, phase 3 next` · draft **PR #649**, opened at the first
 phase commit so every later push is gated (#417: no PR, no CI)
 
-**Next action:** Phase 2 — establish the red with `node scripts/check-touch-target.mjs --all` (29
-TT-1 across 6 files), then measure `venue-map.html`'s set tile at 390 px **before** marking it
-(R-1), then mark file by file until `--all` reports 0.
+**Next action:** Phase 3 — wire the `PostToolUse` hook and the fourth `Repo hygiene (diff-scoped)`
+step, prove the gate red once on a throwaway commit, then the docs sweep (`riviera-tailwind` rule 4
+gains the third exemption class; `CLAUDE.md`'s "three diff-scoped hygiene checks" becomes four).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Detector: TT-1, TT-2, ancestor walk, `<a>` out of scope | ✅ | `09f8402f` |
 | 1 — CLI front-end: `--diff` / `--files` / `--hook` / `--all` | ✅ | `9876569a` |
-| 2 — Mark the tree: 29 controls, 6 files, `--all` → 0 | | |
+| 2 — Mark the tree: 29 controls, 6 files, `--all` → 0 | ✅ | `<sha>` |
 | 3 — Wire it: `PostToolUse` hook, CI step, docs | | |
 
 **Phase 0 result.** Ten detector cases, all green; the full guard suite (`node --test
@@ -222,6 +224,17 @@ TT-2**, across exactly the six files the plan predicted:
 correctly cleared by the ancestor walk against real markup. Zero TT-2 confirms the six shipped
 exemptions all carry reasons. The corpus is 222 tags across 40 files with no parser blowup and no
 spurious finding, which settles **R-3** empirically a phase earlier than planned.
+
+**Phase 2 result.** All 29 declared — 28 `appTouchTarget`, 1 `data-touch-exempt` (the hidden file
+input) — and `--all` now reports **TT-1: 0  TT-2: 0**, which is **AC-10**. Verification: Prettier
+clean, ESLint clean, Vitest **1380/1380**, the whole mocked Playwright suite **210/210** including
+`venue-map-pan.e2e.ts` and all three touch-target sweeps.
+
+Only one control's geometry actually moved, and it was broken: the sign-out notice's `Try again`
+(**58 × 21**) and `Dismiss` (**48 × 21**). **AC-11**'s new sweep case measured them red first, then
+green after the fix — real shipped WCAG 2.5.5 failures on a surface that renders only when a
+sign-out request fails, which is precisely the blind spot #648 was filed about. Everything else was
+already at or above the floor, so its marking is a declaration rather than a change.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -244,12 +257,13 @@ Skill-routing gate for what the fix touches *before* editing).
 - `.claude/settings.json` — the fourth `PostToolUse` guard entry
 - `.github/workflows/ci.yml` — the fourth step in `Repo hygiene (diff-scoped)`
 - `frontend/src/app/app.html` — 11 controls marked; sign-out notice buttons brought to the floor
-- `frontend/src/app/app.scss` — only if the sign-out buttons need an `inline-flex` pairing
+- `frontend/src/app/app.ts` — the `TouchTarget` import its template now needs
 - `frontend/src/app/auth/auth-page.ts` — 5 controls marked (the 6th is ancestor-exempt already)
 - `frontend/src/app/booking/booking-view.ts` — 7 controls marked
 - `frontend/src/app/operator/venue-tab.html` — the hidden file input exempted
 - `frontend/src/app/pages/home/home.html` — 3 controls marked
-- `frontend/src/app/venue/venue-map.html` — the set tile, per R-1
+- `frontend/src/app/pages/home/home.ts` — the `TouchTarget` import its template now needs
+- `frontend/src/app/venue/venue-map.html` — the set tile and the date input, per R-1
 - `frontend/e2e/touch-targets-tourist.e2e.ts` — the sign-out-notice sweep case (AC-11)
 - `frontend/.claude/CLAUDE.md` — the guard paragraph, beside the focus-posture one
 - `CLAUDE.md` — "three diff-scoped hygiene checks" becomes four
@@ -437,6 +451,7 @@ const GATING = new Set(['TT-1', 'TT-2']);
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-13 | Phase 0 — the nesting walk (void elements + self-closing tags) is a shape no sibling guard had | every guard that walks Angular template start tags | `git ls-files 'scripts/check-*.mjs' \| xargs grep -l "startTags\|walkTags"` | 1 — `check-focus-posture.mjs` | **No change.** Confirmed by reading rather than assumed: its walk is *flat* — it pushes no stack and its rules (BUSY-1/BUSY-2) judge one tag's own attributes — so void-element and self-closing handling has no counterpart there to be missing. An honest negative result, not a clean-looking sweep |
+| 2026-08-13 | Phase 2 — the marking pass declares what the guard *can* judge, which says nothing about what it cannot | every interactive control the same 44 px argument reaches but this guard does not judge — i.e. the `<a>` population | temporarily widened `JUDGED` to include `'a'`, re-ran `node scripts/check-touch-target.mjs --all`, restored | **53** undeclared anchors | **Deliberately not fixed** — marking them is the Non-goal, since the directive is a no-op on an inline box and would manufacture false declarations. Recorded as a **measured** residual so a green guard is never read as full coverage. Also corrects this plan's own pre-implementation estimate of 59, which came from a scratch scan that applied no ancestor exemptions |
 | 2026-08-13 | Phase 1 — the CLI front-end, the layer where every false clean PR #618 fixed actually lived | every guard CLI with a `--diff` mode, crossed against the four front-end regression shapes (`diff.relative`, repo-root cwd, non-ASCII path, untracked file) | `git ls-files 'scripts/check-*.mjs' \| xargs grep -l "'--diff'"`, then a script attributing each `guard-cli.test.mjs` case to its guard | 4 guards; the matrix showed only `check-inline-comments` and `check-touch-target` carrying all four shapes | **No change — and the matrix was misleading.** `check-plan-file-structure` looked exposed: it has a `--diff` mode, no `diff.relative` case, and a *different* front-end (`nameOnlyArgs`, not `parseAddedLines`). Probed it with the harness rather than reasoning about it, and it holds — because `diffArgs` **and** `nameOnlyArgs` both pass `--no-relative` and `git()` runs from `repoRoot()`, so the exposure is closed once at the shared layer for every guard. Each guard's own case is therefore an *integration lock* proving it went through `git-diff.mjs` rather than rolling its own, not independent coverage of a per-guard bug. The uneven matrix is a coverage choice, not a defect. (Probe fixture note for anyone repeating this: the plan guard only judges a slice whose **diff contains the plan doc** — committing the doc in the base commit makes it ignore the slice, which reads as a false clean and is not one) |
 
 ---
