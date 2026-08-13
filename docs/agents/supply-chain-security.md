@@ -15,8 +15,8 @@ behavior and should be chosen deliberately.
   (`/frontend`), and github-actions, weekly. **There is no auto-merge workflow** — dep bumps
   go through CI + the SDLC review gate like any PR. Good: that is the recommended posture; do
   **not** add blind auto-merge for dependency PRs.
-- **`npm ci` runs with install scripts enabled** in `ci.yml`, `deploy.yml`,
-  `scripts/web-setup.sh`, and `scripts/cloud-session-setup.sh`. A compromised frontend dep's
+- **`npm ci` runs with install scripts enabled** in `ci.yml`, `deploy.yml`, and
+  `scripts/cloud-session-setup.sh`. A compromised frontend dep's
   `postinstall` would therefore execute in CI, in the deploy job, and in agent sessions — the
   exact Shai-Hulud vector.
 - **Third-party skills are vendored after a manual safety review** (e.g. the Supabase Postgres
@@ -43,8 +43,8 @@ behavior and should be chosen deliberately.
 - **`npm ci --ignore-scripts` in CI/deploy.** Strongly reduces the postinstall blast radius,
   but can break legitimate postinstalls (Playwright browser wiring, some Angular tooling). If
   adopted, test the FE build/test first and add an explicit allowlisted step for any script
-  that is genuinely required. Candidate change in `ci.yml`, `deploy.yml`, and the two session
-  scripts.
+  that is genuinely required. Candidate change in `ci.yml`, `deploy.yml`, and
+  `scripts/cloud-session-setup.sh`.
 - **Branch protection on `main`:** the CI, CodeQL, and SonarCloud checks already run and
   pass on PRs; making them *required* status checks (plus a required review) before merge —
   so a poisoned PR can't land green-but-unreviewed — is still a repo setting to turn on.
@@ -59,5 +59,5 @@ behavior and should be chosen deliberately.
 
 - `riviera-review-overlay` → `RV-BE-13` (no injection: SQL / log / deserialization) covers the
   *code* side; this note covers the *dependency/build* side.
-- `docs/agents/gradle-proxy-trust.md`, `docs/agents/docker-testcontainers.md` — other
-  build-environment notes.
+- `docs/agents/gradle-proxy-trust.md`, `docs/agents/docker-testcontainers.md`,
+  `docs/agents/cloud-environment.md` — other build-environment notes.

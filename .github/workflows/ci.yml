@@ -162,6 +162,11 @@ jobs:
     # name, which described only the first guard; a plan-doc failure surfacing under "Inline
     # comments" sent the author hunting the wrong rule.
     #
+    # One standing-tree check rides along since #659 — the cloud Node pin — and the job name is why
+    # it is a comment rather than a rename: `Repo hygiene (diff-scoped)` is a required-status-check
+    # context (see above), so the accurate name costs a ruleset edit this check does not justify.
+    # Its own step says why it cannot be diff-scoped.
+    #
     # The authoring-time guard's backstop (#529). The hook in .claude/settings.json is the
     # primary control — it fires on the edit itself — but hooks are per-machine and an author
     # can disable them, so the rule also has to hold somewhere the merge gate can read. The #533
@@ -250,6 +255,19 @@ jobs:
         # can be a false declaration) — 53 anchors stay the measured sweep's and RV-FE's job.
         if: ${{ !cancelled() }}
         run: node scripts/check-touch-target.mjs --diff origin/${{ github.event.pull_request.base.ref }}
+
+      - name: Check the cloud setup script's Node pin still matches .nvmrc (#659, hard gate)
+        # The odd one out: standing-tree, no `--diff`. The thing it guards — the environment's Setup
+        # script field on claude.ai — is not in version control, so there is no diff that can carry
+        # its drift; docs/agents/cloud-environment.md is the reviewable mirror and this proves the
+        # mirror still says what .nvmrc says. Diff-scoping it would mean the bump PR is the only run
+        # that could ever catch the bump PR's omission.
+        #
+        # No day-one red to avoid (#529's constraint on the guards above): the two agree the moment
+        # the doc is written, and a red is a seconds-long fix. What it CANNOT prove is that the field
+        # itself was updated — the doc spells the bump out as three steps for that reason.
+        if: ${{ !cancelled() }}
+        run: node scripts/check-cloud-node-pin.mjs
 
   sonar:
     name: SonarCloud scan
