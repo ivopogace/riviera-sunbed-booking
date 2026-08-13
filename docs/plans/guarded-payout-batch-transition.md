@@ -40,20 +40,20 @@ IS the record of what has been paid by BKT; that framing set the severity)
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a batch that is `SETTLED`, when a transition is attempted with
+- [x] **AC-1:** Given a batch that is `SETTLED`, when a transition is attempted with
       `expected = DRAFT`, then no row changes and the port reports no transition.
       *Pinned by:* `PayoutBatchGenerationIT.staleTransitionCannotRegressStatus`
-- [ ] **AC-2:** Given a batch whose status advanced after the service read it, when
+- [x] **AC-2:** Given a batch whose status advanced after the service read it, when
       `mark` runs, then the outcome is `IllegalTransition` carrying the **actual current**
       status — never `Marked`. *Pinned by:* `PayoutReportServiceTest.lostRaceReportsActualStatus`
-- [ ] **AC-3:** Given an uncontended `DRAFT` batch, when `mark(REPORTED)` runs, then the
+- [x] **AC-3:** Given an uncontended `DRAFT` batch, when `mark(REPORTED)` runs, then the
       outcome is `Marked` carrying the batch **as persisted**.
       *Pinned by:* `PayoutReportServiceTest.markedCarriesThePersistedRow` and the existing
-      `PayoutBatchGenerationIT.generatesFreezesAndAdvancesBatches`
-- [ ] **AC-4:** Given an unknown batch id, when `mark` runs, then the outcome is `NotFound`
+      `PayoutBatchGenerationIT.lifecycleAdvancesAndFreezesReported`
+- [x] **AC-4:** Given an unknown batch id, when `mark` runs, then the outcome is `NotFound`
       (→ 404) and no row is written. *Pinned by:* the existing
-      `PayoutBatchGenerationIT.generatesFreezesAndAdvancesBatches`
-- [ ] **AC-5:** Given a batch that vanished between the read and the guarded update, when
+      `PayoutBatchGenerationIT.rejectsIllegalTransitionAndUnknownBatch`
+- [x] **AC-5:** Given a batch that vanished between the read and the guarded update, when
       `mark` runs, then the outcome is `NotFound`, not a false `IllegalTransition`.
       *Pinned by:* `PayoutReportServiceTest.lostRaceOnMissingBatchIsNotFound`
 
@@ -80,17 +80,23 @@ IS the record of what has been paid by BKT; that framing set the severity)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The guard is assumed atomic but isn't, and the race survives the fix | low | high | A single `UPDATE … WHERE status = :expected` is atomic: under READ COMMITTED the statement blocks on the concurrent writer's row lock, then re-evaluates its own `WHERE` against the **latest** row version (EvalPlanQual) — so the loser matches 0 rows. This is the same mechanism that made #391's data-modifying CTE unsafe, applied in the direction where it helps: the predicate lives in the UPDATE, not in a separate outer SELECT | Ivo | open |
-| R-2 | The regression test passes against the buggy code, proving nothing (#391's second lesson) | med | high | Phase 0 lands the signature change with the **unguarded** SQL first and runs the test to observe RED, then adds the `WHERE` clause. The red run is recorded in the phase table, not assumed | Ivo | open |
-| R-3 | `Marked` now echoes `RETURNING`, so a concurrent `upsertDraft` refresh of a still-`DRAFT` batch changes the reported total | low | low | This is the improvement, not a regression: the response reports what was persisted. Called out in the parity ledger so review reads it as intended | Ivo | open |
-| R-4 | Sonar S1192 (duplicated string literals) on the new named params | med | low | Bind through `private static final` param-name constants, matching `JdbcBookings`/`JdbcPayments` (`riviera-java-conventions` §6a) | Ivo | open |
-| R-5 | Signature change ripples beyond the module | low | low | `updateStatus` has exactly one caller (`PayoutReportService:83`) and one implementation (`JdbcPayoutBatches:78`), both inside `payout`; the port is internal to `application/`, not published | Ivo | open |
+| R-1 | The guard is assumed atomic but isn't, and the race survives the fix | low | high | A single `UPDATE … WHERE status = :expected` is atomic: under READ COMMITTED the statement blocks on the concurrent writer's row lock, then re-evaluates its own `WHERE` against the **latest** row version (EvalPlanQual) — so the loser matches 0 rows. This is the same mechanism that made #391's data-modifying CTE unsafe, applied in the direction where it helps: the predicate lives in the UPDATE, not in a separate outer SELECT | Ivo | closed — `staleTransitionCannotRegressStatus` proves it against real Postgres in `ba97ccd4` |
+| R-2 | The regression test passes against the buggy code, proving nothing (#391's second lesson) | med | high | Phase 0 lands the signature change with the **unguarded** SQL first and runs the test to observe RED, then adds the `WHERE` clause. The red run is recorded in the phase table, not assumed | Ivo | closed — red run observed: 4 of the 5 new tests failed against the unguarded write (`10 tests completed, 4 failed`), all green after the guard |
+| R-3 | `Marked` now echoes `RETURNING`, so a concurrent `upsertDraft` refresh of a still-`DRAFT` batch changes the reported total | low | low | This is the improvement, not a regression: the response reports what was persisted. Called out in the parity ledger so review reads it as intended | Ivo | closed — pinned by `markedCarriesThePersistedRow`, which fails if the payload is rebuilt from the pre-read |
+| R-4 | Sonar S1192 (duplicated string literals) on the new named params | med | low | Bind through `private static final` param-name constants, matching `JdbcBookings`/`JdbcPayments` (`riviera-java-conventions` §6a) | Ivo | closed — not needed: after the change the file's most-repeated literals are `"id"` and `"period"` at ×2 each, under S1192's threshold of 3. Kept inline to match the file's existing style; revisit if a fourth statement lands |
+| R-5 | Signature change ripples beyond the module | low | low | `updateStatus` has exactly one caller (`PayoutReportService:83`) and one implementation (`JdbcPayoutBatches:78`), both inside `payout`; the port is internal to `application/`, not published | Ivo | closed — confirmed by compilation; the diff touches 5 files, all under `payout` |
 
 ## Open questions / Assumptions
 
+*(none open)*
+
+### Resolved
+
 - **Assumption:** `payout_batch` rows are never deleted, so AC-5's "vanished between read
-  and update" is defensive rather than reachable today. Handling it costs one `orElseGet`
-  and keeps `NotFound` honest if a purge is ever added. — *Owner:* Ivo · *Resolves by:* Phase 0
+  and update" is defensive rather than reachable today. — **Resolved:** handled anyway; the
+  empty-`Optional` branch re-reads and returns `NotFound` when the row is gone, which cost one
+  `orElseGet` in `PayoutReportService#lostRace` and keeps the 404/409 split honest if a purge is
+  ever added (`ba97ccd4`).
 
 ## Availability & concurrency (invariant #2)
 
@@ -162,17 +168,22 @@ documented response for this endpoint.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `PR — draft open, awaiting CI`
 
-**Next action:** Write `PayoutReportServiceTest` + the `PayoutBatchGenerationIT` guard test,
-land the port/adapter signature change with the SQL still **unguarded**, and run the tests to
-observe RED (R-2) before adding the `WHERE status = :expected` clause.
+**Next action:** Push the branch, confirm the CI run for that push is green, then mark the PR
+ready for review, which makes the Review gate and the Sonar gate due.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Guard the transition | ⏳ | |
+| 0 — Guard the transition | ✅ | plan `39a45f44`, fix `ba97ccd4` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Local verification (scoped per `riviera-local-debug`; CI owns the full suite):**
+`./gradlew test --tests "*payout*" --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*"
+--tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"`
+→ BUILD SUCCESSFUL. Docker was available, so the Testcontainers ITs ran rather than skipping —
+`staleTransitionCannotRegressStatus` is verified against real Postgres, not skipped.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
 
@@ -199,17 +210,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `PayoutReportService.java:74-88` · Create `PayoutReportServiceTest.java` · Modify
 `PayoutBatchGenerationIT.java`
 
-- [ ] **Step 1: Write the failing tests** — `PayoutReportServiceTest` (fakes at the
+- [x] **Step 1: Write the failing tests** — `PayoutReportServiceTest` (fakes at the
       `PayoutBatches` seam: `findById` reports `DRAFT`, `transition` reports no row, assert
       `IllegalTransition` carries the actual `SETTLED`) and
       `PayoutBatchGenerationIT.staleTransitionCannotRegressStatus` (settle a batch, then call
       `transition(id, DRAFT, REPORTED)` and assert empty + row still `SETTLED`).
 
-- [ ] **Step 2: Land the signature change with the SQL still UNGUARDED** — `transition`
+- [x] **Step 2: Land the signature change with the SQL still UNGUARDED** — `transition`
       returning `Optional<PayoutBatch>` via `UPDATE … WHERE id = :id RETURNING …`, no
       `AND status`. This reproduces today's bug behind the new shape.
 
-- [ ] **Step 3: Run them, verify they FAIL** —
+- [x] **Step 3: Run them, verify they FAIL** —
       `./gradlew test --tests "*PayoutReportServiceTest*" --tests "*PayoutBatchGenerationIT*"`
       → FAIL: the unguarded UPDATE returns the row, so the IT sees `REPORTED` where it
       asserted `SETTLED`, and the service returns `Marked`. **This red run is the point of
@@ -217,23 +228,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 > Scope: target these two classes with `--tests`. Not the full suite.
 
-- [ ] **Step 4: Add the guard** — `AND status = :expected` in the adapter; `mark` maps the
+- [x] **Step 4: Add the guard** — `AND status = :expected` in the adapter; `mark` maps the
       empty `Optional` through a re-read to `IllegalTransition(actual, target)` or `NotFound`.
 
-- [ ] **Step 5: Run them, verify they PASS** — same command → PASS.
+- [x] **Step 5: Run them, verify they PASS** — same command → PASS.
 
 > Scope (end-of-phase regression): broaden to `--tests "*payout*"`.
 
-- [ ] **Step 6: Generalization-audit pass**
+- [x] **Step 6: Generalization-audit pass**
 
 Population `every SQL statement in the repo that writes a status column` → enumerate
 `grep -rn --include=*.java "SET status" platform/src/main/java` → candidates
 `JdbcOperators` (×2), `JdbcPayments`, `JdbcBookings` (×10), `JdbcPayoutBatches` →
 decision: recorded in the log below. Run **before** the fix so the sweep is honest.
 
-- [ ] **Step 7: Commit** — `git commit -m "Guard the payout batch status transition (#571)"`
+- [x] **Step 7: Commit** — `git commit -m "Guard the payout batch status transition (#571)"`
 
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -247,28 +258,32 @@ decision: recorded in the log below. Run **before** the fix so the sweep is hone
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `./gradlew test --tests "*PayoutBatchGenerationIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `./gradlew test --tests "*PayoutReportServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `./gradlew test --tests "*PayoutReportServiceTest*" --tests "*PayoutBatchGenerationIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `./gradlew test --tests "*PayoutBatchGenerationIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `./gradlew test --tests "*PayoutReportServiceTest*"` → PASS. Verified at commit `<sha>`.
+All five were run together as
+`./gradlew test --tests "*PayoutReportServiceTest*" --tests "*PayoutBatchGenerationIT*"` —
+**RED before the guard** (`10 tests completed, 4 failed`), **BUILD SUCCESSFUL** after it.
+
+- [x] **AC-1:** `PayoutBatchGenerationIT.staleTransitionCannotRegressStatus` → PASS (real Postgres). Verified at commit `ba97ccd4`.
+- [x] **AC-2:** `PayoutReportServiceTest.lostRaceReportsActualStatus` → PASS. Verified at commit `ba97ccd4`.
+- [x] **AC-3:** `PayoutReportServiceTest.markedCarriesThePersistedRow` + `PayoutBatchGenerationIT.lifecycleAdvancesAndFreezesReported` → PASS. Verified at commit `ba97ccd4`.
+- [x] **AC-4:** `PayoutBatchGenerationIT.rejectsIllegalTransitionAndUnknownBatch` → PASS. Verified at commit `ba97ccd4`.
+- [x] **AC-5:** `PayoutReportServiceTest.lostRaceOnMissingBatchIsNotFound` → PASS. Verified at commit `ba97ccd4`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section justified N/A (no availability write in scope).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — not in scope.
-- [ ] **Modulith** section filled; no cross-module imports added; no published surface change (invariant #11).
-- [ ] **Payment/payout** section filled; payout ledger untouched; batch status now atomically forward-only (invariant #9).
-- [ ] Refund policy enforced server-side (invariant #10) — not in scope.
-- [ ] Timezone correct (invariant #6) — `updated_at = NOW()` unchanged.
-- [ ] Booking codes unguessable (invariant #7) — not in scope.
-- [ ] No schema change, so no Flyway migration (invariant #12) — verified: the fix is a `WHERE` clause.
-- [ ] **Frontend** N/A — backend-only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section justified N/A (no availability write in scope).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — not in scope.
+- [x] **Modulith** section filled; no cross-module imports added; no published surface change (invariant #11).
+- [x] **Payment/payout** section filled; payout ledger untouched; batch status now atomically forward-only (invariant #9).
+- [x] Refund policy enforced server-side (invariant #10) — not in scope.
+- [x] Timezone correct (invariant #6) — `updated_at = NOW()` unchanged.
+- [x] Booking codes unguessable (invariant #7) — not in scope.
+- [x] No schema change, so no Flyway migration (invariant #12) — verified: the fix is a `WHERE` clause.
+- [x] **Frontend** N/A — backend-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — final plan state committed here, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
