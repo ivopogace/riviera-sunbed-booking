@@ -1,8 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
+import { todayBookingDate } from '../shared/booking-date';
 import { Pool, SeatAvailability, SetView, VenueMapView } from '../shared/venue-views';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { SetDayState, TakingsView } from './operator-console.model';
@@ -206,5 +208,32 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     expect(text('oc-stat-booked')).toBe('1');
     expect(text('oc-stat-takings')).toBe('€50');
     expect(text('oc-stat-walkins')).toBe('1');
+  });
+
+  it('re-derives today at a venue switch made past Tirane midnight (#572, invariant #6)', async () => {
+    await render(venueMap([]), 2, TAKINGS);
+
+    const frozen = new Date();
+    // The console was opened before midnight and kept open; the switch happens just after it.
+    vi.setSystemTime(new Date(frozen.getTime() + 12 * 60 * 60 * 1000 + 60_000));
+    try {
+      const today = todayBookingDate(new Date());
+      expect(today).not.toBe(todayBookingDate(frozen));
+
+      fixture.componentRef.setInput('venueId', 2);
+      fixture.componentRef.setInput('venue', undefined);
+      await fixture.whenStable();
+
+      for (const path of ['bookings', 'takings', 'availability']) {
+        const req = httpMock.expectOne(
+          (r) => r.url === `${BASE}/api/venues/2/${path}` && r.method === 'GET',
+        );
+        expect(req.request.params.get('date')).toBe(today);
+        req.flush(path === 'takings' ? TAKINGS : []);
+      }
+      await fixture.whenStable();
+    } finally {
+      vi.setSystemTime(frozen);
+    }
   });
 });
