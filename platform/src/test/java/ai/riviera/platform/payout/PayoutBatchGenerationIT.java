@@ -2,6 +2,7 @@ package ai.riviera.platform.payout;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import ch.qos.logback.core.read.ListAppender;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
+import ai.riviera.platform.payout.application.PayoutBatches;
 import ai.riviera.platform.payout.application.PayoutReport;
 import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PayoutBatch;
@@ -40,6 +42,9 @@ class PayoutBatchGenerationIT {
 
 	@Autowired
 	PayoutReport payoutReport;
+
+	@Autowired
+	PayoutBatches batches;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -179,6 +184,22 @@ class PayoutBatchGenerationIT {
 				payoutReport.mark(draftId, BatchStatus.SETTLED), "cannot settle a DRAFT directly");
 		assertInstanceOf(BatchStatusOutcome.NotFound.class,
 				payoutReport.mark(999_999_999L, BatchStatus.REPORTED), "unknown batch id");
+	}
+
+	@Test
+	void staleTransitionCannotRegressStatus() {
+		PeriodKey period = PeriodKey.of("2099-W48");
+		long venue = newVenue();
+		accrual(venue, newBooking(venue, "BATCHRC1"), 4000L, period.value());
+		long batchId = batchFor(payoutReport.generate(period), venue).id();
+		payoutReport.mark(batchId, BatchStatus.REPORTED);
+		payoutReport.mark(batchId, BatchStatus.SETTLED);
+
+		Optional<PayoutBatch> stale = batches.transition(batchId, BatchStatus.DRAFT, BatchStatus.REPORTED);
+
+		assertTrue(stale.isEmpty(), "a transition whose expected status no longer holds must write nothing");
+		assertEquals(BatchStatus.SETTLED, batchFor(payoutReport.forPeriod(period), venue).status(),
+				"a settled batch is never regressed by a stale write");
 	}
 
 	@Test

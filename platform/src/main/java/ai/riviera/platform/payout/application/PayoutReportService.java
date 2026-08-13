@@ -2,6 +2,7 @@ package ai.riviera.platform.payout.application;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -80,10 +81,23 @@ class PayoutReportService implements PayoutReport {
 		if (!batch.status().canTransitionTo(target)) {
 			return new BatchStatusOutcome.IllegalTransition(batch.status(), target);
 		}
-		batches.updateStatus(batchId, target);
+		Optional<PayoutBatch> moved = batches.transition(batchId, batch.status(), target);
+		if (moved.isEmpty()) {
+			return lostRace(batchId, target);
+		}
 		log.info("payout batch {} ({} {}) -> {}", batchId, batch.venueId().value(),
 				batch.periodKey().value(), target);
-		return new BatchStatusOutcome.Marked(new PayoutBatch(batch.id(), batch.venueId(),
-				batch.periodKey(), batch.totalNetMinor(), batch.currency(), target));
+		return new BatchStatusOutcome.Marked(moved.get());
+	}
+
+	/**
+	 * The guarded write matched no row, so the batch moved between the read above and the write.
+	 * Re-read to report where it actually is — the status in {@link #mark}'s local {@code batch} is
+	 * known stale by this point, and reporting it would name a status the caller could act on again.
+	 */
+	private BatchStatusOutcome lostRace(long batchId, BatchStatus target) {
+		return batches.findById(batchId)
+				.<BatchStatusOutcome>map(current -> new BatchStatusOutcome.IllegalTransition(current.status(), target))
+				.orElseGet(BatchStatusOutcome.NotFound::new);
 	}
 }
