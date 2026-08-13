@@ -61,8 +61,9 @@ established (per-slice history: the issues + `docs/plans/`):
 - **Frontend:** Angular 22 (mobile-friendly responsive web), Tailwind 4, signals,
   standalone components. Unit tests are **Vitest in jsdom** (not Karma); e2e is
   Playwright. Native apps deferred. Every interactive control meets a **44 × 44 px**
-  touch floor via `shared/touch-target.ts` (#605) — the rule, its two exemptions and
-  the measured e2e proof are `riviera-tailwind`'s call.
+  touch floor via `shared/touch-target.ts` (#605) — the rule, its **three** exemption
+  classes, the measured e2e proof and the static declaration guard (#648) are
+  `riviera-tailwind`'s call.
 - **Backend:** Spring Boot 4 REST API on Java 25, organized as a **Spring
   Modulith** (2.1) with hexagonal (ports/adapters) modules. No Lombok.
 - **Persistence:** PostgreSQL via **Spring Data JDBC / `JdbcTemplate` only**.
@@ -113,7 +114,7 @@ lint/format/test/build + e2e — the lint step being **type-aware** since #632
 `no-floating-promises` and the unsafe-`any` family are machine-checked; `frontend/e2e/` has
 its own `tsconfig.json` for the same reason, without which its 52 specs are *skipped* rather
 than checked, and `playwright*.config.ts` is the one `disableTypeChecked` carve-out) —
-**three** diff-scoped hygiene checks — inline comments
+**four** diff-scoped hygiene checks — inline comments
 (RV-STYLE-1, #529 — the CI half of the `PostToolUse` guard in
 `.claude/settings.json`), the plan doc's File-structure section (#533,
 `node scripts/check-plan-file-structure.mjs --diff origin/main` by hand), the two
@@ -124,7 +125,17 @@ field, `(change)`/`(blur)` + busy `[disabled]` on a `readonly`-lockable kind), w
 and returns 0, since its predicate approximates a
 runtime property; FOCUS-1 is scoped **per gating signal** since #624, so a component that moves focus
 for one surface no longer stands exempt for a second one, and a focus-trapped modal's teardown counts
-as a surface),
+as a surface), and the touch-target **declaration** (#648,
+`node scripts/check-touch-target.mjs --diff origin/main`; `--all` sweeps the standing tree, and it is
+the CI half of a third `PostToolUse` guard — **both** its rules fail a build, TT-1 for a
+`<button>`/`<input>`/`<select>`/`<textarea>` carrying neither `[appTouchTarget]` nor a
+`data-touch-exempt` on itself or an ancestor, TT-2 for an exemption with an empty reason, since
+neither predicate approximates a runtime property; the tree was brought to zero in the same slice,
+which is what earns the gate. `<a>` is out of scope **entirely** — `min-height` is a no-op on an
+inline box, so a directive there can be a false declaration, leaving 53 undeclared anchors to the
+measured sweep by design. The guard proves the *mechanism* is declared, never that a box is 44 px:
+`frontend/e2e/touch-targets*.e2e.ts` stays the proof, and the two are complements — the guard reaches
+surfaces no sweep opens, which is how the shell's sign-out-failure notice was found at 58 × 21)
 — plus **whole-scope** Prettier formatting (bare `prettier --check` over `frontend/src` +
 `frontend/e2e`; the tree has been clean since #631's one-time reformat, recorded in
 `.git-blame-ignore-revs`, which retired #615's diff-scoped wrapper — `npm run format`

@@ -103,6 +103,12 @@
             "command": "cd \"$CLAUDE_PROJECT_DIR\" && node scripts/check-focus-posture.mjs --hook 2>/dev/null || true",
             "statusMessage": "Checking focus posture (BUSY-1 / FOCUS-1)",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && node scripts/check-touch-target.mjs --hook 2>/dev/null || true",
+            "statusMessage": "Checking touch-target declarations (TT-1 / TT-2)",
+            "timeout": 15
           }
         ]
       }

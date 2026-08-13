@@ -153,6 +153,12 @@ coverage corrections folded in here.
   kind. Two mechanical reasons: the repo-hygiene job installs nothing and this guard needs the
   Prettier pinned in `frontend/package-lock.json`, and the same ruleset arithmetic as above rules out
   a new job. The context list is again **untouched at 7** — the frontend job was already one of them.
+
+  **#648 adds a fourth, back inside the repo-hygiene job** — the touch-target declaration guard
+  (`check-touch-target.mjs`), which needs no install and so belongs where #615's could not go. Same
+  arithmetic, same outcome: a *step*, not a job, so the context list stays **at 7**. Unlike the focus
+  guard beside it, **both** its rules gate; it earned that by the tree being brought to zero in the
+  same slice, which is the bar BUSY-1/BUSY-2 cleared and FOCUS-1 could not.
   — *Owner:* maintainer · *Resolved by:* the ruleset read above, re-verified per #534; the #539
   swap verified by the post-swap ruleset read recorded on PR #540.
 - **Open question:** none blocking. No material scope change surfaced in the audit.

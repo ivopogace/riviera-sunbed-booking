@@ -85,6 +85,26 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   `[disabled]` just because `[appBusy]` sits beside it: the native attribute still blurs the pressed
   control, so a genuine split has to put a validity expression on the `[disabled]` half.
 
+- **Every interactive control declares the 44 × 44 px floor, and a guard checks that while you type**
+  (#605, #648). `[appTouchTarget]` (`shared/touch-target.ts`) sets it; `data-touch-exempt="<reason>"`
+  on the control or an ancestor opts out, in one of three documented classes — a control inside a
+  sentence, a third-party iframe, or a control that renders no box at all.
+  `scripts/check-touch-target.mjs` runs from a `PostToolUse` hook on every `Write`/`Edit` and again
+  in CI over the PR diff, over `frontend/src/app/**` templates — inline `template:` literals and
+  external `.html` alike. **TT-1** flags a `<button>`/`<input>`/`<select>`/`<textarea>` declaring
+  neither; **TT-2** flags an exemption whose reason is empty. **Both fail a build**, because both are
+  element names and attributes with nothing runtime approximated — the bar `BUSY-1`/`BUSY-2` set, and
+  the reason the tree was brought to zero before the gate went on.
+  **`<a>` is out of scope entirely**, not merely unreported: `min-height` is a no-op on a
+  `display: inline` box, so the directive on a link would be a declaration that can be false. 53
+  undeclared anchors stand by design and stay the sweep's and RV-FE's job.
+  **A green guard is not a compliant surface.** It proves a declaration exists, never a rendered
+  size — only `frontend/e2e/touch-targets*.e2e.ts` measures the box, and it remains the proof. The
+  two are complements: the guard covers the whole tree cheaply including surfaces no sweep opens
+  (the shell's sign-out-failure notice was 58 × 21 and 48 × 21 for exactly that reason), the sweep
+  covers the geometry the guard cannot see. Run it by hand with
+  `node scripts/check-touch-target.mjs --files <path…>`, or sweep with `--all`.
+
 ### Components
 
 - Keep components small and focused on a single responsibility
