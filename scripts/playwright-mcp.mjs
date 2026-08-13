@@ -36,6 +36,10 @@ const DEFAULT_BROWSERS_ROOT = '/opt/pw-browsers';
 /**
  * Locates the chromium Playwright should drive, or null to let it resolve its own.
  *
+ * `<root>/chromium` is the cloud image's own symlink, NOT Playwright's layout
+ * (`<root>/chromium-<rev>/chrome-linux/chrome`). A stock install therefore misses here by
+ * design and falls through to Playwright's own resolution — which is what it wants anyway.
+ *
  * Pure — `env` and `exists` are injected so the decision is testable off this machine.
  *
  * @returns {string | null} the executable path to pass, or null to omit the flag
