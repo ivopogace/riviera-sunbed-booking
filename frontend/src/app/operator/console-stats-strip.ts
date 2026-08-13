@@ -34,9 +34,6 @@ export class ConsoleStatsStrip {
   /** The venue map the shell loads per venue and shares — the source of free/total (undefined until loaded). */
   readonly venue = input<VenueMapView | undefined>(undefined);
 
-  /** Today in Europe/Tirane — the civil day all tiles report on (invariant #6). */
-  private readonly date = todayBookingDate(new Date());
-
   /**
    * Confirmed online bookings for the venue today (the "Booked online" tile), or `undefined` until
    * the read resolves — a failed read stays `undefined` (rendered "—"), distinct from a real 0, so a
@@ -98,12 +95,14 @@ export class ConsoleStatsStrip {
 
   private load(venueId: number): void {
     const epoch = ++this.epoch;
+    // Re-derived per load, once for all three reads: the strip outlives Tirane midnight (invariant #6).
+    const date = todayBookingDate(new Date());
     // A venue switch reuses this strip — reset to dash defaults while the new reads run.
     this.bookedOnline.set(undefined);
     this.takings.set(undefined);
     this.held.set(undefined);
     // Continuations re-check the venue so a superseded venue's reads never land here.
-    this.console.dailyBookingCount(venueId, this.date).subscribe({
+    this.console.dailyBookingCount(venueId, date).subscribe({
       next: (count) => {
         if (this.epoch === epoch) {
           this.bookedOnline.set(count);
@@ -113,7 +112,7 @@ export class ConsoleStatsStrip {
         // best-effort — leave bookedOnline undefined so the tile (and walk-ins) render "—", not 0
       },
     });
-    this.console.dailyTakings(venueId, this.date).subscribe({
+    this.console.dailyTakings(venueId, date).subscribe({
       next: (value) => {
         if (this.epoch === epoch) {
           this.takings.set(value);
@@ -123,7 +122,7 @@ export class ConsoleStatsStrip {
         // best-effort — the takings tile shows a dash
       },
     });
-    this.console.dailyAvailability(venueId, this.date).subscribe({
+    this.console.dailyAvailability(venueId, date).subscribe({
       next: (states) => {
         if (this.epoch === epoch) {
           this.held.set(states);
