@@ -14,15 +14,9 @@
       }
     },
     "playwright": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "@playwright/mcp@latest",
-        "--headless",
-        "--no-sandbox",
-        "--isolated",
-        "--executable-path",
-        "/opt/pw-browsers/chromium"
+        "${CLAUDE_PROJECT_DIR:-.}/scripts/playwright-mcp.mjs"
       ]
     },
     "idea": {

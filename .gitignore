@@ -13,6 +13,9 @@ Thumbs.db
 /frontend/dist/
 node_modules/
 
+# Playwright MCP server scratch output (snapshots, traces) — written to wherever it is spawned
+.playwright-mcp/
+
 # JVM crash dumps
 hs_err_pid*.log
 replay_pid*.log
