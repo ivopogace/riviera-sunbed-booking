@@ -199,7 +199,7 @@ AC-8 untracked-judged-whole, AC-9 both rules exit non-zero) and watch them fail 
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Detector: TT-1, TT-2, ancestor walk, `<a>` out of scope | ✅ | `<sha>` |
+| 0 — Detector: TT-1, TT-2, ancestor walk, `<a>` out of scope | ✅ | `09f8402f` |
 | 1 — CLI front-end: `--diff` / `--files` / `--hook` / `--all` | | |
 | 2 — Mark the tree: 29 controls, 6 files, `--all` → 0 | | |
 | 3 — Wire it: `PostToolUse` hook, CI step, docs | | |
