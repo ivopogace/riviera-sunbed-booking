@@ -1,11 +1,9 @@
 {
   "mcpServers": {
     "angular-cli": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "@angular/cli@22",
-        "mcp"
+        "${CLAUDE_PROJECT_DIR:-.}/scripts/angular-cli-mcp.mjs"
       ]
     },
     "render": {

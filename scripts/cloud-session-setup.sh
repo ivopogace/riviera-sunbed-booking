@@ -13,7 +13,9 @@
 # Six idempotent, cloud-only steps:
 #   1. Frontend deps — `npm ci` so the Angular CLI MCP build/test targets
 #      (@angular/build:application, @angular/build:unit-test via run_target)
-#      resolve their builder packages.
+#      resolve their builder packages. This hook runs AFTER Claude Code launches,
+#      so it is too late for the angular-cli MCP server's own spawn — which is why
+#      scripts/angular-cli-mcp.mjs keeps an npx fallback (#656).
 #   2. Backend JDK 25 — platform/build.gradle targets JavaLanguageVersion.of(25),
 #      but the image ships only JDK 21 and no foojay resolver is configured, so
 #      ./gradlew can't otherwise provision the toolchain.
