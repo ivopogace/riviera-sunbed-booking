@@ -21,16 +21,20 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doReturn;
 
 /**
  * The lost-race path end to end, against real Postgres: a stale pre-read, a real guarded
- * {@code UPDATE} that matches no row, and the re-read that must observe the winner's committed
- * status from inside {@code mark}'s own transaction. The adapter's guard and the service's outcome
- * mapping are each pinned elsewhere ({@code JdbcPayoutBatchesIT}, {@code PayoutReportServiceTest});
- * this is the one test that proves they compose — and the only one that would notice if the
- * transaction stopped running at READ COMMITTED. Testcontainers; skipped without Docker.
+ * {@code UPDATE} that matches no row, and the re-read that reports where the batch actually is.
+ * The adapter's guard and the service's outcome mapping are each pinned elsewhere
+ * ({@code JdbcPayoutBatchesIT}, {@code PayoutReportServiceTest}); this is the test that proves
+ * they compose.
+ *
+ * <p>The stale read is injected with a spy rather than produced by a concurrent writer, so this
+ * does <strong>not</strong> pin {@code mark}'s READ COMMITTED dependency: the row is already
+ * committed at its final status before the transaction opens, which every isolation level would
+ * show. Pinning that needs a second connection committing mid-transaction.
+ * Testcontainers; skipped without Docker.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -48,7 +52,7 @@ class PayoutBatchRaceIT {
 	@MockitoSpyBean
 	PayoutBatches batches;
 
-	private long settledBatch() {
+	private long newBatch(BatchStatus status) {
 		long venue = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
 				VALUES ('Batch Race Venue', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
@@ -56,21 +60,23 @@ class PayoutBatchRaceIT {
 				""").query(Long.class).single();
 		return jdbc.sql("""
 				INSERT INTO payout_batch (venue_id, period_key, total_net_minor, currency, status)
-				VALUES (:venue, :period, 4000, 'EUR', 'SETTLED')
+				VALUES (:venue, :period, 4000, 'EUR', :status)
 				RETURNING id
 				""")
-				.param("venue", venue).param("period", PERIOD.value())
+				.param("venue", venue).param("period", PERIOD.value()).param("status", status.name())
 				.query(Long.class).single();
 	}
 
-	/** What the loser's pre-read returned before the winner advanced the batch to SETTLED. */
+	/** The loser's pre-read: the row as it really is, with only the status gone stale. */
 	private PayoutBatch staleDraft(long batchId) {
-		return new PayoutBatch(batchId, new VenueId(1), PERIOD, 4000, "EUR", BatchStatus.DRAFT);
+		long venue = jdbc.sql("SELECT venue_id FROM payout_batch WHERE id = :id")
+				.param("id", batchId).query(Long.class).single();
+		return new PayoutBatch(batchId, new VenueId(venue), PERIOD, 4000, "EUR", BatchStatus.DRAFT);
 	}
 
 	@Test
 	void aStaleReadCannotMarkAndLearnsTheRealStatus() {
-		long batchId = settledBatch();
+		long batchId = newBatch(BatchStatus.SETTLED);
 		doReturn(Optional.of(staleDraft(batchId))).doCallRealMethod().when(batches).findById(batchId);
 
 		BatchStatusOutcome outcome = payoutReport.mark(batchId, BatchStatus.REPORTED);
@@ -79,7 +85,7 @@ class PayoutBatchRaceIT {
 				assertInstanceOf(BatchStatusOutcome.IllegalTransition.class, outcome,
 						"a stale DRAFT read must not mark a SETTLED batch REPORTED");
 		assertEquals(BatchStatus.SETTLED, illegal.from(),
-				"the re-read inside mark's transaction sees the committed SETTLED, not the stale DRAFT");
+				"the outcome reports the batch's real status, not the stale DRAFT the pre-read returned");
 		assertEquals(BatchStatus.REPORTED, illegal.to());
 		assertEquals("SETTLED", jdbc.sql("SELECT status FROM payout_batch WHERE id = :id")
 				.param("id", batchId).query(String.class).single(), "and the row is untouched");
@@ -87,8 +93,7 @@ class PayoutBatchRaceIT {
 
 	@Test
 	void aStaleReadLosingToTheSameTargetIsStillMarked() {
-		long batchId = settledBatch();
-		jdbc.sql("UPDATE payout_batch SET status = 'REPORTED' WHERE id = :id").param("id", batchId).update();
+		long batchId = newBatch(BatchStatus.REPORTED);
 		doReturn(Optional.of(staleDraft(batchId))).doCallRealMethod().when(batches).findById(batchId);
 
 		BatchStatusOutcome outcome = payoutReport.mark(batchId, BatchStatus.REPORTED);
@@ -100,9 +105,7 @@ class PayoutBatchRaceIT {
 
 	@Test
 	void anUncontendedMarkStillSucceeds() {
-		long batchId = settledBatch();
-		jdbc.sql("UPDATE payout_batch SET status = 'DRAFT' WHERE id = :id").param("id", batchId).update();
-		doCallRealMethod().when(batches).findById(batchId);
+		long batchId = newBatch(BatchStatus.DRAFT);
 
 		BatchStatusOutcome outcome = payoutReport.mark(batchId, BatchStatus.REPORTED);
 
