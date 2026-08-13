@@ -70,10 +70,12 @@ done
 echo "web-setup: pinned node $("$NODE_BIN/node" --version) (npm $("$NODE_BIN/npm" --version)); a fresh shell should now resolve it via PATH."
 
 # Install the frontend dependencies. Since #656 this also decides which path the
-# angular-cli MCP launcher takes: with node_modules present it spawns the local CLI
-# in ~0.8s; without, it falls back to npx and risks the 30s connect timeout. This
-# script cannot GUARANTEE the fast path — it runs only when no cached environment
-# exists — which is exactly why the launcher keeps a fallback rather than assuming.
+# angular-cli MCP launcher takes: with node_modules already on disk at launch it spawns
+# the local CLI in ~0.8s, otherwise it falls back to npx. That only applies when the
+# environment's setup-script field actually points at THIS file (see the header). When
+# it holds an inline script instead, frontend deps arrive later from the
+# cloud-session-setup.sh SessionStart hook — after MCP servers spawn — so the launcher
+# takes npx every time; hence its fallback, and MCP_TIMEOUT in .claude/settings.json.
 # It also still does its original job: run_target does NOT auto-install, so without
 # node_modules the `build`/`test` targets (@angular/build:application,
 # @angular/build:unit-test) exit with "Could not find the builder's node package".
