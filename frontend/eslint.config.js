@@ -34,30 +34,17 @@ module.exports = defineConfig([
           style: 'kebab-case',
         },
       ],
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['**/test-setup', '**/test-setup.*'],
-              message:
-                'src/test-setup.ts must stay un-imported: a second importer makes esbuild hoist its body into a shared chunk, and the clock freeze then runs once per Vitest worker instead of once per test file (#663). Import freezeClock from src/testing/freeze-clock instead.',
-            },
-          ],
-        },
-      ],
     },
   },
   {
-    files: ['src/**/*.spec.ts'],
+    files: ['src/**/*.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',
         {
-          selector:
-            "CallExpression[callee.object.name='vi'][callee.property.name='useRealTimers']",
+          selector: "CallExpression[callee.object.name='vi'][callee.property.name='useRealTimers']",
           message:
-            'Restore the frozen clock with freezeClock() from src/testing/freeze-clock; vi.useRealTimers() unfakes Date and leaves the rest of the file on the machine calendar (#663).',
+            'Restore the frozen clock with freezeClock() from src/testing/freeze-clock; vi.useRealTimers() unfakes Date and leaves every later test in the file on the machine calendar (ADR-0014).',
         },
       ],
     },
@@ -69,7 +56,7 @@ module.exports = defineConfig([
   },
   {
     // Build tooling, outside every TS project: type-aware rules would only see `any`.
-    files: ['playwright*.config.ts'],
+    files: ['playwright*.config.ts', 'vitest-base.config.ts'],
     extends: [tseslint.configs.disableTypeChecked],
   },
 ]);

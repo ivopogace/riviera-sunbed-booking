@@ -89,17 +89,20 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   **every test file** (`src/test-setup.ts`): `new Date()` in a spec is deterministic,
   never the machine's real calendar. Never write a spec that needs the real "today".
   Only `Date` is faked, so real timers already work — a spec needing **full** fake
-  timers calls `vi.useFakeTimers()` and restores with **`freezeClock()`** (exported by
-  **`src/testing/freeze-clock.ts`**), never `vi.useRealTimers()`: that unfakes `Date` as
-  well and leaves every later test in the file on the machine calendar. `no-restricted-syntax`
-  fails the lint on `vi.useRealTimers()` in a spec.
-- **Nothing may import `src/test-setup.ts`** — `no-restricted-imports` fails the lint on
-  it, and the per-file freeze depends on it. Vitest re-imports each setup file before
-  each test file, but `@angular/build:unit-test` pre-bundles setup files with esbuild: a
-  second importer makes the module *shared*, esbuild hoists its body into a chunk, and
-  Vitest re-imports a shim whose chunk is already evaluated — so the freeze silently
-  drops to **once per worker process** and each file inherits whatever the last one left
-  on the clock (ADR-0014, #663). Shared test helpers live in `src/testing/`.
+  timers calls `vi.useFakeTimers()` and restores with **`freezeClock()`**
+  (**`src/testing/freeze-clock.ts`**), never `vi.useRealTimers()`: that unfakes `Date` as
+  well and leaves every later test in the file on the machine calendar. Two guards, not a
+  convention — `no-restricted-syntax` fails the lint on `vi.useRealTimers()` anywhere
+  under `src/`, and `src/test-setup.ts`'s `afterEach` fails the **exact test** that leaves
+  the clock off the frozen instant.
+- **The setup file is registered in `vitest-base.config.ts`, not `angular.json`.** The
+  builder pre-bundles its `setupFiles` as esbuild entry points, and an entry point is a
+  re-export shim whenever it is shared *or* coverage is on (CI runs only the coverage
+  variant) — so Vitest's per-file re-import reaches the shim and the body behind it runs
+  **once per worker process**, handing each file whatever the last one left on the clock
+  (ADR-0014, #663). Don't move it back; `freeze-clock.spec.ts` fails if you do. Shared
+  test helpers live in `src/testing/`, and `freeze-clock.ts` must stay **stateless** —
+  specs import it, so it lives in a chunk evaluated once per worker.
 - **`isolate` stays `false`** (the `@angular/build:unit-test` default): test files in a
   worker share one jsdom and one module graph. `src/test-setup.ts` re-establishes the
   global posture per file; anything else a spec mutates globally, it restores itself.

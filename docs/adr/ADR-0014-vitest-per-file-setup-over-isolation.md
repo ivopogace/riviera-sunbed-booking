@@ -1,4 +1,4 @@
-# ADR-0014: The frontend suite keeps `isolate: false` and buys per-file setup by keeping `test-setup.ts` un-imported
+# ADR-0014: The frontend suite registers its Vitest setup file outside the Angular builder, and keeps `isolate: false`
 
 - **Status:** Accepted
 - **Date:** 2026-08-14
@@ -8,9 +8,8 @@
 
 ## Context
 
-`frontend/src/test-setup.ts` is the `setupFiles` entry of the `@angular/build:unit-test` target. It
-freezes `Date` at a fixed instant so no spec can depend on the machine's calendar. The contract
-everyone read into it was **"this runs before every test file"**.
+`frontend/src/test-setup.ts` freezes `Date` at a fixed instant so no spec can depend on the
+machine's calendar. The contract everyone read into it was **"this runs before every test file"**.
 
 It did not. #662 traced a CI flake to a spec that ended on `vi.useRealTimers()` and handed the real
 calendar to a *later file*, and closed it by exporting `freezeClock()` and calling that at the seven
@@ -20,58 +19,64 @@ the leak with a visible symptom.
 
 ### What the measurement says
 
-Instrumenting the setup body with a per-process counter, over the real 157-file suite:
+Instrumenting the setup body with a per-process counter, over the real suite:
 
 | Configuration | Setup body executions | Wall clock |
 |---|---|---|
-| As shipped by #662 (`isolate: false`) | **3** — one per worker process | ~14 s |
-| `--isolate` (one process per file) | **157** — one per file | ~97 s |
-| This ADR (`isolate: false`, setup un-imported) | **157** — one per file | ~11 s |
+| As shipped by #662, `npm test` | **3** — one per worker process | ~14 s |
+| As shipped by #662, `--isolate` | 157 — one per file | ~97 s |
+| This ADR, `npm test` | **158** — one per file | ~14 s |
+| This ADR, `npm run test:coverage` (what CI runs) | **158** — one per file | ~20 s |
 
-So the premise was right, but the *cause* was not Vitest's isolation setting. Vitest invalidates and
-re-imports each setup file before each test file (`TestRunner.importFile(…, 'setup')`), and a plain
-Vitest project re-executes the setup body per file even with `isolate: false` — verified separately.
+The premise was right; the suspected cause was not. Vitest re-imports each setup file before each
+test file — `TestRunner.importFile(…, 'setup')` invalidates the module first — and a bare Vitest
+project with `isolate: false` re-executes its setup body per file (measured 6/6). Isolation is not
+what breaks it.
 
-The cause is the Angular builder. `@angular/build:unit-test` pre-bundles setup files with esbuild
-alongside every spec entry point. #662 exported `freezeClock` from `test-setup.ts` and had three
-specs import it, which made the module **shared between entry points**; esbuild hoisted its body
-into a chunk and left the entry as a re-export shim:
+**The cause is that `@angular/build:unit-test` pre-bundles setup files as esbuild entry points.**
+Two independent paths turn that entry into a re-export shim, and Vitest's invalidation reaches only
+the shim, never the already-evaluated module behind it:
 
-```js
-__vite_ssr_exportName__("freezeClock", () => __vite_ssr_import_0__.freezeClock);
-const __vite_ssr_import_0__ = await __vite_ssr_import__("/chunk-5XKCZ4NE.js", …);
-```
-
-Vitest's per-file invalidation clears that one node, so the **shim** re-executes 157 times — but its
-import resolves to a chunk that is already evaluated and is never invalidated. The freeze therefore
-ran once per worker process, and the fix for #662 is what put it there.
+1. **A second importer.** #662 exported `freezeClock` to three specs, which made the module *shared*
+   between entry points, so esbuild hoisted its body into a chunk:
+   `__vite_ssr_exportName__("freezeClock", …); await __vite_ssr_import__("/chunk-5XKCZ4NE.js")`.
+2. **Coverage — unconditionally, for every entry point.** The builder's in-memory loader emits
+   `import "./setup-test-setup.js";` as the whole module whenever `coverage.enabled`, so that the
+   real file can be excluded from the coverage report. CI's frontend job runs **only**
+   `npm run test:coverage`, so this path alone would have kept the freeze per-worker in the exact
+   place #662's flake happened — no arrangement of the source files can avoid it.
 
 ## Decision
 
-**1. `test-setup.ts` stays an entry point with no importers.** `freezeClock()` and the frozen instant
-move to `frontend/src/testing/freeze-clock.ts`; `test-setup.ts` imports it and calls it. The setup
-body then stays in its own entry, and Vitest's per-file re-import re-freezes the clock before every
-test file — measured 157/157, at no cost in wall clock.
+**1. The setup file is registered with Vitest, not with the builder.** `angular.json`'s `test` target
+sets `runnerConfig: true`, and `frontend/vitest-base.config.ts` carries
+`test.setupFiles: ['./src/test-setup.ts']`. The builder merges that config into its own, so Vitest
+resolves the file through Vite directly instead of pre-bundling it as an entry point. It is then a
+real module that per-file invalidation re-evaluates — measured 158/158 in both modes, at no cost in
+wall clock. It also puts the file out of reach of both shim paths at once, rather than dodging one.
 
 **2. `isolate` stays `false`** — the `@angular/build:unit-test` default. Isolation closes the whole
-leak class structurally, but at ~9× the suite's wall clock on 4 cores (worse on CI's 2), because the
+leak class structurally, but at ~7× the suite's wall clock on 4 cores (worse on CI's 2), because the
 forks pool starts a fresh process per file. That is not a price this suite needs to pay for a
 property per-file setup already delivers for the state the setup file owns.
 
-**3. The rule that keeps 1 true is machine-checked, not written down.** `eslint.config.js` fails on
-any import of `test-setup` (`no-restricted-imports`) and on `vi.useRealTimers()` in a spec
-(`no-restricted-syntax`). `test-setup.ts` additionally carries a runtime tripwire: from the second
-file in a worker onward it compares the clock it *inherited* against the frozen instant and, on a
-mismatch, throws naming the file that left it that way.
+**3. The property is pinned by a test, not by a convention.** `src/test-setup.ts` stamps the file its
+run belongs to, and `src/testing/freeze-clock.spec.ts` asserts the stamp is its own path — which is
+true only if setup ran for *that* file. It goes red under both regression paths: re-sharing the
+module, and moving it back under the builder's `setupFiles`. Alongside it, the setup file registers
+an `afterEach` that fails the exact test which leaves the clock off the frozen instant, and
+`eslint.config.js` fails the lint on `vi.useRealTimers()` under `src/`.
 
 ## Consequences
 
 - The `freezeClock()` restore convention stays, for a narrower reason: within a single file, a spec
   that installs full fake timers still owes the rest of that file the frozen posture.
 - Sibling test files in a worker still share one jsdom document and one module graph. Anything a spec
-  mutates globally that `test-setup.ts` does not re-establish, that spec restores itself — the
-  tripwire covers the clock only.
-- The freeze is now one esbuild decision away from silently regressing. That is why the guard is a
-  lint rule rather than a paragraph, and why the tripwire reports rather than trusting the rule.
+  mutates globally that `src/test-setup.ts` does not re-establish, that spec restores itself — the
+  `afterEach` guard covers the clock only.
+- `vitest-base.config.ts` becomes a load-bearing file: deleting it, or dropping `runnerConfig`, moves
+  the setup file back under the builder. The `freeze-clock.spec.ts` assertion is what says so.
+- `src/testing/freeze-clock.ts` is imported by specs and therefore lives in a chunk evaluated once
+  per worker. It must stay stateless; its TSDoc says so.
 - Choosing `isolate: true` later is a one-word change in `angular.json`; the cost measured above is
   the number to re-take before making it.

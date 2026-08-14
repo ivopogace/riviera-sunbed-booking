@@ -581,12 +581,15 @@ global posture is restored rather than abandoned. `frontend/.claude/CLAUDE.md` r
 > `docs/adr/ADR-0014-vitest-per-file-setup-over-isolation.md` and
 > `docs/plans/vitest-per-file-setup.md`.
 
-> **Not reproduced locally, and said so rather than implied otherwise.** The full suite passes here
-> both with and without the fix, as do the two specs run together in the poisoning order — the leak
-> needs CI's worker-reuse conditions (2 cores, 157 files). What is proved locally is the assertion's
-> time-of-day dependence and the three unrestored opt-outs; what only CI can confirm is that they
-> are the same defect. The fix stands on its own terms either way: restoring the documented posture
-> is strictly more correct than unfaking `Date`, whatever else is true.
+> **Not reproduced locally at the time, and said so rather than implied otherwise.** The full suite
+> passed here both with and without the fix, as did the two specs run together in the poisoning
+> order. What was proved locally was the assertion's time-of-day dependence and the three unrestored
+> opt-outs; what only CI could confirm was that they are the same defect. The fix stands on its own
+> terms either way: restoring the documented posture is strictly more correct than unfaking `Date`.
+>
+> **#663 reproduced it locally afterwards**, once it knew what to instrument: the leak needs the
+> victim to land behind the polluter *in the same worker*, which shuffles between runs — not CI's
+> core count. See the note above.
 
 **The residual, stated rather than hidden.** With plan docs scoped to the diff, an unrelated
 untracked scratch file is still judged **when the slice has a plan doc in its diff** — git cannot
