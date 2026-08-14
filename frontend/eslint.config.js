@@ -37,13 +37,26 @@ module.exports = defineConfig([
     },
   },
   {
+    files: ['src/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.object.name='vi'][callee.property.name='useRealTimers']",
+          message:
+            'Restore the frozen clock with freezeClock() from src/testing/freeze-clock; vi.useRealTimers() unfakes Date and leaves every later test in the file on the machine calendar (ADR-0014).',
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {},
   },
   {
     // Build tooling, outside every TS project: type-aware rules would only see `any`.
-    files: ['playwright*.config.ts'],
+    files: ['playwright*.config.ts', 'vitest-base.config.ts'],
     extends: [tseslint.configs.disableTypeChecked],
   },
 ]);

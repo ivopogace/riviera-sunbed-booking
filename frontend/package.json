@@ -12,8 +12,8 @@
     "test:e2e": "playwright test",
     "test:e2e:a11y": "playwright test --config playwright.a11y.config.ts",
     "lint": "ng lint",
-    "format": "prettier --write src e2e",
-    "format:check": "prettier --check src e2e",
+    "format": "prettier --write src e2e vitest-base.config.ts",
+    "format:check": "prettier --check src e2e vitest-base.config.ts",
     "prepare": "cd .. && husky .husky"
   },
   "lint-staged": {

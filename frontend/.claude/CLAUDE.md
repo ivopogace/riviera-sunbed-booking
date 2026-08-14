@@ -85,14 +85,27 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 ## Unit tests
 
-- **The Vitest clock is frozen** at Monday 2026-06-15 midday Europe/Tirane
-  (`src/test-setup.ts`): `new Date()` in a spec is deterministic, never the machine's
-  real calendar. Never write a spec that needs the real "today". Only `Date` is faked,
-  so real timers already work — a spec needing **full** fake timers calls
-  `vi.useFakeTimers()` and restores with **`freezeClock()`** (exported by
-  `src/test-setup.ts`), never `vi.useRealTimers()`: that unfakes `Date` as well and
-  hands the real calendar to whatever runs next in the same worker, which reddened CI
-  on every run outside 09:59–21:59 UTC (#662).
+- **The Vitest clock is frozen** at Monday 2026-06-15 midday Europe/Tirane, before
+  **every test file** (`src/test-setup.ts`): `new Date()` in a spec is deterministic,
+  never the machine's real calendar. Never write a spec that needs the real "today".
+  Only `Date` is faked, so real timers already work — a spec needing **full** fake
+  timers calls `vi.useFakeTimers()` and restores with **`freezeClock()`**
+  (**`src/testing/freeze-clock.ts`**), never `vi.useRealTimers()`: that unfakes `Date` as
+  well and leaves every later test in the file on the machine calendar. Two guards, not a
+  convention — `no-restricted-syntax` fails the lint on `vi.useRealTimers()` anywhere
+  under `src/`, and `src/test-setup.ts`'s `afterEach` fails the **exact test** that leaves
+  the clock off the frozen instant.
+- **The setup file is registered in `vitest-base.config.ts`, not `angular.json`.** The
+  builder pre-bundles its `setupFiles` as esbuild entry points, and an entry point is a
+  re-export shim whenever it is shared *or* coverage is on (CI runs only the coverage
+  variant) — so Vitest's per-file re-import reaches the shim and the body behind it runs
+  **once per worker process**, handing each file whatever the last one left on the clock
+  (ADR-0014, #663). Don't move it back; `freeze-clock.spec.ts` fails if you do. Shared
+  test helpers live in `src/testing/`, and `freeze-clock.ts` must stay **stateless** —
+  specs import it, so it lives in a chunk evaluated once per worker.
+- **`isolate` stays `false`** (the `@angular/build:unit-test` default): test files in a
+  worker share one jsdom and one module graph. `src/test-setup.ts` re-establishes the
+  global posture per file; anything else a spec mutates globally, it restores itself.
 
 ## Services
 

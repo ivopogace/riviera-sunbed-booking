@@ -7,7 +7,7 @@ import { vi } from 'vitest';
 import { environment } from '../../environments/environment';
 import { AwaitingPayment, BookingDetail, CreateBookingRequest } from './booking.model';
 import { BookingService } from './booking.service';
-import { freezeClock } from '../../test-setup';
+import { freezeClock } from '../../testing/freeze-clock';
 import { BookingPay } from './booking-pay';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
 

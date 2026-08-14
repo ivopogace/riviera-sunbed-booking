@@ -83,9 +83,7 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "setupFiles": [
-              "src/test-setup.ts"
-            ]
+            "runnerConfig": true
           }
         },
         "lint": {
@@ -95,7 +93,8 @@
               "src/**/*.ts",
               "src/**/*.html",
               "e2e/**/*.ts",
-              "playwright*.config.ts"
+              "playwright*.config.ts",
+              "vitest-base.config.ts"
             ]
           }
         }

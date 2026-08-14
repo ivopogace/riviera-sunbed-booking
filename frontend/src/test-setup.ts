@@ -1,34 +1,32 @@
-import { vi } from 'vitest';
+import { afterEach, expect } from 'vitest';
+
+import { FROZEN_INSTANT, freezeClock, type StampedGlobal } from './testing/freeze-clock';
 
 /**
- * Global unit-test setup (wired via the `test` target's `setupFiles` in `angular.json`):
- * **the suite's clock is frozen** at a fixed instant — Monday 2026-06-15, midday in
- * Europe/Tirane — so no spec can ever depend on the machine's real calendar.
+ * Global unit-test setup: the suite's clock is frozen at Monday 2026-06-15, midday
+ * `Europe/Tirane`, before **every test file**, so no spec can depend on the machine's real
+ * calendar. The `afterEach` below holds that posture inside a file, naming the test that breaks it.
  *
- * Why: a spec once hardcoded `'2026-08-01'` as a "different" date for a date-change
- * interaction; the day the real calendar reached it, the value equalled "today", the change
- * never fired, and CI went red repo-wide for exactly one day. Freezing `Date`
- * makes "today" deterministic forever: literals can never drift into collision, and a
- * date-dependent test fails on the day it is written or never.
- *
- * Only `Date` is faked — real timers (`setTimeout`, intervals, rAF) are untouched, so
- * async/debounce behavior and Angular's own `fakeAsync` zone are unaffected.
- *
- * Midday Tirane is deliberate: the local civil date agrees across every plausible developer
- * timezone (UTC-9 … UTC+13), so even a spec formatting without an explicit zone stays stable.
- *
- * **A spec that needs full fake timers restores this posture with `freezeClock()`, never with
- * `vi.useRealTimers()`.** `useRealTimers` unfakes `Date` too, and `setupFiles` runs once per file
- * while a worker environment is reused across files — so a spec that ended on real timers handed
- * the *next* file the machine's real calendar, and every spec downstream silently stopped being
- * deterministic. That is what this file exists to prevent, and it made
- * `console-stats-strip.spec.ts` fail for exactly the reason the anecdote above describes: its
- * `+12h` date-change assertion holds against the real clock only between 09:59 and 21:59 UTC, so
- * CI went red on every run in the other half of the day (#662).
+ * Registered in `vitest-base.config.ts`, **not** in `angular.json`'s `setupFiles`: the builder
+ * pre-bundles its setup files as esbuild entry points, and an entry point is a re-export shim
+ * whenever it is shared or coverage is on — which is what Vitest's per-file re-import would reach
+ * instead of this body. `freeze-clock.spec.ts` fails if that ever changes. Mechanism, measurements
+ * and the rejected alternative: `docs/adr/ADR-0014-vitest-per-file-setup-over-isolation.md`.
  */
-export function freezeClock(): void {
-  vi.useFakeTimers({ toFake: ['Date'] });
-  vi.setSystemTime(new Date('2026-06-15T12:00:00+02:00'));
-}
+const frozen = Date.parse(FROZEN_INSTANT);
 
+(globalThis as StampedGlobal).__rivieraSetupFile = expect.getState().testPath;
 freezeClock();
+
+afterEach(() => {
+  const drift = Date.now() - frozen;
+  freezeClock();
+
+  if (drift !== 0) {
+    throw new Error(
+      `This test left the clock ${drift} ms off the frozen instant. A spec that opts into full ` +
+        `fake timers restores with freezeClock() from src/testing/freeze-clock, never with ` +
+        `vi.useRealTimers().`,
+    );
+  }
+});
