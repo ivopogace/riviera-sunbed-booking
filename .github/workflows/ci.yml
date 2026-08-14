@@ -157,7 +157,8 @@ jobs:
     # Four diff-scoped repo-hygiene guards, not one: RV-STYLE-1 inline comments (#529), the plan
     # doc's File-structure section (#533), the two stranded-focus postures (#621), and the
     # touch-target declaration (#648). They share
-    # this job because they share a shape — judge what a DIFF wrote, never the standing tree — and
+    # this job because they share a shape — judge what a DIFF wrote, not the standing tree (the
+    # plan-doc guard also judges untracked paths since #654, which is empty on a CI checkout) — and
     # because the name above is the enforcement handle. Until #539 the job kept #529's original
     # name, which described only the first guard; a plan-doc failure surfacing under "Inline
     # comments" sent the author hunting the wrong rule.

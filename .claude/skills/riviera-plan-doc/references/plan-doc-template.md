@@ -286,6 +286,9 @@ Skill-routing gate for what the fix touches *before* editing).
 > node scripts/check-plan-file-structure.mjs --diff origin/main
 > ```
 >
+> Since #654 it judges untracked paths as well as the diff, so a file you have written but not
+> staged is caught too; a scratch file you never intend to commit belongs in `.gitignore`.
+>
 > The guard reads paths written any way real plans write them — repo-relative
 > (`payout/application/DailyTakingsServiceTest.java`), sibling extensions
 > (`` `privacy-policy.ts` `` then `` `.html` ``), brace sets, `a.ts|.html`, a bare directory, and

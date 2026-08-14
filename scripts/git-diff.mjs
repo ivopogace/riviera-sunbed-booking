@@ -135,10 +135,20 @@ export function changedPaths(raw) {
  *
  * <p>`--exclude-standard` is what keeps the answer meaningful rather than merely complete. Without
  * it every build artefact in a contributor's tree becomes something a guard has an opinion about,
- * and a gate that fires on `dist/` is one that gets switched off.
+ * and a gate that fires on `dist/` is one that gets switched off. What survives it is still the
+ * whole tree, not a range: a caller folding this into a range-scoped answer is widening what it
+ * **judges**, and must not thereby widen what it treats as **authoritative** (PR #662 review).
+ *
+ * <p>Split into an args builder so the flag-pinning case in `git-diff.test.mjs` can reach these two
+ * flags directly, as it does for `diffArgs`/`nameOnlyArgs` — this module exists to enforce exactly
+ * that convention, and its newest invocation was the one no unit case could see.
  */
+export function untrackedArgs() {
+  return ['ls-files', '--others', '--exclude-standard', '-z'];
+}
+
 export function untrackedPaths() {
-  return changedPaths(git(['ls-files', '--others', '--exclude-standard', '-z']));
+  return changedPaths(git(untrackedArgs()));
 }
 
 /**

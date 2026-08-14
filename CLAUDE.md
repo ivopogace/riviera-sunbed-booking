@@ -66,7 +66,8 @@ npm run build
 frontend lint/format/test/build + mocked e2e, five hygiene checks under
 `scripts/check-*.mjs` (four diff-scoped — inline comments, plan-doc file
 structure, focus posture, touch-target declaration, most with a local
-`PostToolUse` half — plus the standing-tree cloud Node pin, whose mirror is
+`PostToolUse` half; the plan-doc one also judges untracked paths, #654 — plus
+the standing-tree cloud Node pin, whose mirror is
 `docs/agents/cloud-environment.md`), and a SonarCloud scan per PR. The Sonar merge bar is
 stricter than the default gate: **0 new issues, 0 duplicated blocks, ≥80%
 new-code coverage** — review the issue list, not just the pass/fail

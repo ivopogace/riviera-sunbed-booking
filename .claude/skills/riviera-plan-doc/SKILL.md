@@ -114,6 +114,9 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    node scripts/check-plan-file-structure.mjs --diff origin/main
    ```
 
+   Since #654 it reports untracked paths too, so it catches a file you have written but not staged —
+   the likeliest omission of all. A scratch file you never intend to commit belongs in `.gitignore`.
+
    It reports every path the diff changed that the section omits, and CI fails the PR on the same
    comparison (#533, a step in the `Repo hygiene (diff-scoped)` job, named `Inline comments
    (RV-STYLE-1)` until #539). Undercounting this section

@@ -477,22 +477,92 @@ test('check-plan-file-structure --diff sees a file the slice adds but has not st
 });
 
 /**
- * The same slice one step earlier, when the plan doc is itself unstaged. Before #654 this was a
- * vacuous pass rather than a near miss: with no plan doc in the diff, `findOmissions` short-circuits
- * and every path in the slice goes unjudged.
+ * False clean #7, which #654's own first fix opened (PR #662 review, finding 1). The union feeds
+ * the paths to **judge**; it must not widen which docs are **authoritative**. An untracked draft
+ * for a future slice is not this slice's plan, and real sections list directory tokens and globs,
+ * so one draft could blanket-satisfy every omission in the committed doc.
+ *
+ * <p>Mutation: hand `planDocsIn` the union instead of the diff and this exits 0.
  */
-test('check-plan-file-structure --diff reads a plan doc that is itself untracked', () => {
+test('check-plan-file-structure --diff ignores an untracked plan doc outside the range', () => {
   withRepo((repo) => {
-    repo.write('README.md', lines('# Riviera'));
-    const before = repo.commit('base');
     repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
     repo.write(TS, lines('const base = 0;'));
+    repo.write('docs/plans/next-epic.md', planDoc(TS));
 
     const result = repo.run(PLAN, ['--diff', before]);
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /pricing-tab\.ts/);
-    assert.doesNotMatch(result.stderr, /some-slice\.md/);
+  });
+});
+
+/**
+ * The same scoping seen from the other side, and the contract this file's header states outright:
+ * *a slice with no plan doc passes cleanly*. An untracked draft in the tree must not switch the
+ * guard on for a one-line fix that `riviera-sdlc` rule 6 lets skip the plan doc entirely.
+ *
+ * <p>Mutation: hand `planDocsIn` the union and this exits 1.
+ */
+test('check-plan-file-structure --diff stays off when only an untracked plan doc exists', () => {
+  withRepo((repo) => {
+    repo.write('README.md', lines('# Riviera'));
+    repo.write(TS, lines('const base = 0;'));
+    const before = repo.commit('base');
+    repo.write(TS, lines('const base = 1;'));
+    repo.commit('a one-line fix, no plan doc');
+    repo.write('docs/plans/next-epic.md', planDoc('unrelated/thing.ts'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+/**
+ * `git rm --cached` leaves a path in the working tree and out of the index, so the diff reports it
+ * deleted **and** `ls-files --others` reports it untracked — the one way the two lists overlap.
+ * Reported once, and counted once by `usable`, whose floor is `length <= 1`.
+ *
+ * <p>Mutation: drop the dedupe filter and the path is reported twice.
+ */
+test('check-plan-file-structure --diff reports a path in both lists exactly once', () => {
+  withRepo((repo) => {
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
+    repo.write('legacy.ts', lines('const base = 0;'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
+    repo.git(['rm', '--cached', '--quiet', 'legacy.ts']);
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stderr.match(/legacy\.ts/g).length, 1);
+  });
+});
+
+/**
+ * `usable`'s ambiguity floor is judged against the **diff**, not the union: an unstaged scratch file
+ * must not invalidate a plan-doc entry the author wrote correctly. `SecurityConfig.java` is the bare
+ * token `usable`'s own docstring blesses, and a second same-named file in the tree used to drop it.
+ *
+ * <p>Mutation: pass the union as `usable`'s population and this exits 1, naming the listed path.
+ */
+test('check-plan-file-structure --diff keeps a bare token an untracked file would shadow', () => {
+  withRepo((repo) => {
+    const java = 'platform/src/main/java/ai/riviera/platform/shared/SecurityConfig.java';
+    repo.write(PLAN_DOC, planDoc('SecurityConfig.java'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('SecurityConfig.java', 'README.md'));
+    repo.write(java, lines('class SecurityConfig {}'));
+    repo.commit('the slice');
+    repo.write('scratch/SecurityConfig.java', lines('class Other {}'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 0, result.stderr);
   });
 });
 

@@ -236,11 +236,18 @@ function isExempt(path, docs) {
 /**
  * Paths a slice changed that its plan doc's File-structure section does not account for.
  *
- * @param {{ docs: { path: string, text: string }[], changed: string[] }} input the plan docs the
- *   diff touches (new-side content) and every path it changed
- * @returns {{ path: string, reason: string }[]} one entry per unlisted path, in diff order
+ * `changed` and `untracked` are both judged, but only `changed` **measures**: `usable`'s ambiguity
+ * floor is counted against the diff alone. An unstaged scratch file must not invalidate an entry the
+ * author wrote correctly — a second `SecurityConfig.java` lying in the tree used to drop the bare
+ * token that legitimately named the changed one, and report that path as missing (PR #662 review).
+ *
+ * @param {{ docs: { path: string, text: string }[], changed: string[], untracked?: string[] }} input
+ *   the plan docs the **diff** touches (new-side content), every path it changed, and the untracked
+ *   paths to judge alongside them
+ * @returns {{ path: string, reason: string }[]} one entry per unlisted path: diff order, then the
+ *   untracked paths in `ls-files` order
  */
-export function findOmissions({ docs, changed }) {
+export function findOmissions({ docs, changed, untracked = [] }) {
   if (docs.length === 0) return [];
 
   const sections = docs.map((d) => sectionOf(d.text));
@@ -250,7 +257,7 @@ export function findOmissions({ docs, changed }) {
     ? 'no "## File structure" section'
     : 'not listed in the File structure section';
 
-  return changed
+  return [...changed, ...untracked]
     .filter((path) => !isExempt(path, docs))
     .filter((path) => !listed.includes(path))
     .filter((path) => !general.some((token) => covers(token, path)))
@@ -269,7 +276,8 @@ const ADVICE =
   'Add each path above to the plan doc\'s "## File structure" section — that section is what a ' +
   'resuming session reads to know what the slice touches, so an omission misleads exactly the ' +
   'reader it exists for (issue #533). A directory or a glob may stand in for a large mechanical ' +
-  'sweep. A slice with no plan doc is not checked at all.';
+  'sweep. Untracked paths are judged too (#654), so a scratch file you never intend to commit ' +
+  'belongs in .gitignore rather than the section. A slice with no plan doc is not checked at all.';
 
 /** Renders the findings for a terminal: one line per path, then the fix. */
 export function report(omissions) {
@@ -284,25 +292,36 @@ export function report(omissions) {
  * stands now, which is also what the author is about to fix. A doc the diff deletes reads as null
  * and drops out.
  *
- * <p>The file list is the diff **unioned with the untracked tree** (issue #654). A path this guard
- * has to judge is one the slice touched, and a file git has not been told about yet is touched in
- * the way that matters most here — it is added, and an added file is the omission a File-structure
- * section is likeliest to miss. The two lists cannot overlap: staging a path moves it out of
- * `ls-files --others` and into the diff in the same stroke, which is why this reads as a plain
- * concatenation and why the diff's own order survives at the front.
+ * <p>The paths **judged** are the diff unioned with the untracked tree (issue #654): a file git has
+ * not been told about yet is touched in the way that matters most here — it is added, and an added
+ * file is the omission a File-structure section is likeliest to miss.
+ *
+ * <p>**The union grants no authority.** `planDocsIn` reads the **diff only**, so an untracked draft
+ * for a future slice neither becomes this slice's plan nor contributes its listings. Widening it
+ * cost two false verdicts at once (PR #662 review): a draft whose section happened to name a changed
+ * path turned a red gate green — real sections carry directory tokens and globs, so one draft can
+ * blanket-satisfy a whole diff — and, in the other direction, any draft lying in the tree switched
+ * the guard **on** for a slice with no plan doc, which the header above promises passes cleanly.
+ * Judged-versus-authoritative is the seam that keeps both honest.
+ *
+ * <p>The two lists overlap in exactly one way, so the union is deduplicated: `git rm --cached`
+ * leaves a path in the working tree and out of the index, and the diff then reports it deleted while
+ * `ls-files --others` reports it untracked. Left doubled it was reported twice and counted twice by
+ * `usable`, whose floor is `length <= 1`.
  *
  * <p>Only a **path-scoped** guard can close the gap this cheaply. The sibling line-scoped guards
  * need added-line numbers a new file has no diff to supply, so they answer it with a whole-file
  * verdict behind `--files`/`--hook` instead; this one needs names alone.
  */
 export function check(range) {
-  const changed = [...changedPaths(git(nameOnlyArgs(range))), ...untrackedPaths()];
+  const changed = changedPaths(git(nameOnlyArgs(range)));
+  const untracked = untrackedPaths().filter((path) => !changed.includes(path));
 
   const docs = planDocsIn(changed)
     .map((path) => ({ path, text: readText(path) }))
     .filter((d) => d.text !== null);
 
-  return findOmissions({ docs, changed });
+  return findOmissions({ docs, changed, untracked });
 }
 
 function main(argv) {
