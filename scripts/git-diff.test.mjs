@@ -1,7 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { changedPaths, diffArgs, nameOnlyArgs, parseAddedLines } from './git-diff.mjs';
+import {
+  changedPaths,
+  diffArgs,
+  nameOnlyArgs,
+  parseAddedLines,
+  untrackedArgs,
+} from './git-diff.mjs';
 
 test('the diff invocations carry the flags that keep paths recognisable', () => {
   for (const args of [diffArgs('BASE'), nameOnlyArgs('BASE')]) {
@@ -12,6 +18,18 @@ test('the diff invocations carry the flags that keep paths recognisable', () => 
   }
   assert.ok(nameOnlyArgs('BASE').includes('-z'));
   assert.ok(diffArgs('BASE').includes('--unified=0'));
+});
+
+/**
+ * The untracked listing needs `-z` for the same reason the diff invocations do — a non-ASCII path
+ * comes back C-quoted otherwise and matches nothing — and `--exclude-standard` so a contributor's
+ * build output is not something a guard has an opinion about (issue #654, PR #662 review).
+ */
+test('the untracked listing pins the two flags that decide what it can report', () => {
+  assert.ok(untrackedArgs().includes('-z'), 'must pin -z');
+  assert.ok(untrackedArgs().includes('--exclude-standard'), 'must pin --exclude-standard');
+  assert.ok(untrackedArgs().includes('--full-name'), 'must pin --full-name');
+  assert.equal(untrackedArgs()[0], 'ls-files');
 });
 
 test('maps each hunk to the line numbers it adds', () => {

@@ -114,6 +114,12 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    node scripts/check-plan-file-structure.mjs --diff origin/main
    ```
 
+   Since #654 it judges untracked paths too, so a file you have written but not staged is caught —
+   the likeliest omission of all. **The plan doc itself must be staged or committed** for the guard
+   to run at all: `git add` is what says *this doc belongs to this change*, and with the doc merely
+   written the check short-circuits and passes. A file you never intend to commit belongs behind an
+   ignore rule — `.git/info/exclude` for a personal scratch path, `.gitignore` repo-wide.
+
    It reports every path the diff changed that the section omits, and CI fails the PR on the same
    comparison (#533, a step in the `Repo hygiene (diff-scoped)` job, named `Inline comments
    (RV-STYLE-1)` until #539). Undercounting this section

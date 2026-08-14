@@ -87,8 +87,12 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 - **The Vitest clock is frozen** at Monday 2026-06-15 midday Europe/Tirane
   (`src/test-setup.ts`): `new Date()` in a spec is deterministic, never the machine's
-  real calendar. Never write a spec that needs the real "today"; opt out with
-  `vi.useRealTimers()` if one genuinely does. Only `Date` is faked.
+  real calendar. Never write a spec that needs the real "today". Only `Date` is faked,
+  so real timers already work — a spec needing **full** fake timers calls
+  `vi.useFakeTimers()` and restores with **`freezeClock()`** (exported by
+  `src/test-setup.ts`), never `vi.useRealTimers()`: that unfakes `Date` as well and
+  hands the real calendar to whatever runs next in the same worker, which reddened CI
+  on every run outside 09:59–21:59 UTC (#662).
 
 ## Services
 

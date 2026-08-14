@@ -121,6 +121,43 @@ export function changedPaths(raw) {
 }
 
 /**
+ * Every file the working tree holds that git has never been told about.
+ *
+ * A diff cannot report one: `git diff` compares an index or a commit against the tree, and an
+ * untracked path is in neither side. A guard that reads its file list from a diff alone therefore
+ * reports **clean** for a brand-new file — which is the likeliest omission there is (issue #654).
+ *
+ * <p>Lives here rather than in the one guard that calls it because it is the same pinning every
+ * other call in this module exists for, and each miss is a false clean already paid for once: run
+ * from the repository root, or a pathspec resolves against the caller's cwd and matches nothing;
+ * `-z` plus `core.quotepath=false`, or a non-ASCII path comes back C-quoted and matches nothing
+ * either (#538). Spelled inline in a guard, those are re-earned one at a time.
+ *
+ * <p>`--exclude-standard` is what keeps the answer meaningful rather than merely complete. Without
+ * it every build artefact in a contributor's tree becomes something a guard has an opinion about,
+ * and a gate that fires on `dist/` is one that gets switched off. What survives it is still the
+ * whole tree, not a range: a caller folding this into a range-scoped answer is widening what it
+ * **judges**, and must not thereby widen what it treats as **authoritative** (PR #662 review).
+ *
+ * <p>`--full-name` is `ls-files`' analogue of the `--no-relative` the diff builders pin: run from a
+ * subdirectory a bare `ls-files` both truncates the prefix and omits everything above it — a double
+ * false clean of the class this module's header enumerates. `git()` already pins `cwd`, so this is
+ * belt-and-braces, which is exactly how `diffArgs`/`nameOnlyArgs` treat the same risk.
+ *
+ * <p>Split into an args builder so the flag-pinning case in `git-diff.test.mjs` can reach these
+ * flags directly, as it does for `diffArgs`/`nameOnlyArgs` — this module exists to enforce exactly
+ * that convention, and its newest invocation was the one no unit case could see.
+ */
+export function untrackedArgs() {
+  return ['ls-files', '--others', '--exclude-standard', '--full-name', '-z'];
+}
+
+/** Every untracked path in the repository, ignore rules honoured. See `untrackedArgs` for the why. */
+export function untrackedPaths() {
+  return changedPaths(git(untrackedArgs()));
+}
+
+/**
  * The merge base with `base`, or `base` itself when there is none.
  *
  * Diffing a *commit* rather than a `a...b` range is what puts the **working tree** on the new side,

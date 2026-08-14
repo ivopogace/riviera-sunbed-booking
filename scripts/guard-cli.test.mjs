@@ -454,6 +454,215 @@ test('check-plan-file-structure: a non-ASCII path is reported raw by the name-on
   });
 });
 
+/**
+ * False clean #6 (issue #654): `git diff` cannot see a file git has never been told about, so the
+ * guard reported clean in the one case it exists for — a slice that **adds** a file and forgets to
+ * list it. The omissions are never the interesting files, and a brand-new file is the likeliest
+ * omission of all.
+ *
+ * <p>Mutation: drop `untrackedPaths()` from `check`'s union and this exits 0.
+ */
+test('check-plan-file-structure --diff sees a file the slice adds but has not staged', () => {
+  withRepo((repo) => {
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
+    repo.write(TS, lines('const base = 0;'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.ts {2}— not listed in the File structure section/);
+  });
+});
+
+/**
+ * False clean #7, which #654's own first fix opened (PR #662 review, finding 1). The union feeds
+ * the paths to **judge**; it must not widen which docs are **authoritative**. An untracked draft
+ * for a future slice is not this slice's plan, and real sections list directory tokens and globs,
+ * so one draft could blanket-satisfy every omission in the committed doc.
+ *
+ * <p>Mutation: hand `planDocsIn` the union instead of the diff and this exits 0.
+ */
+test('check-plan-file-structure --diff ignores an untracked plan doc outside the range', () => {
+  withRepo((repo) => {
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
+    repo.write(TS, lines('const base = 0;'));
+    repo.write('docs/plans/next-epic.md', planDoc(TS));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.ts/);
+  });
+});
+
+/**
+ * The same scoping seen from the other side, and the contract this file's header states outright:
+ * *a slice with no plan doc passes cleanly*. An untracked draft in the tree must not switch the
+ * guard on for a one-line fix that `riviera-sdlc` rule 6 lets skip the plan doc entirely.
+ *
+ * <p>Mutation: hand `planDocsIn` the union and this exits 1.
+ */
+test('check-plan-file-structure --diff stays off when only an untracked plan doc exists', () => {
+  withRepo((repo) => {
+    repo.write('README.md', lines('# Riviera'));
+    repo.write(TS, lines('const base = 0;'));
+    const before = repo.commit('base');
+    repo.write(TS, lines('const base = 1;'));
+    repo.commit('a one-line fix, no plan doc');
+    repo.write('docs/plans/next-epic.md', planDoc('unrelated/thing.ts'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+/**
+ * `git rm --cached` leaves a path in the working tree and out of the index, so the diff reports it
+ * deleted **and** `ls-files --others` reports it untracked — the one way the two lists overlap.
+ * Reported once rather than twice.
+ *
+ * <p>Mutation: drop the dedupe filter and the path is reported twice.
+ */
+test('check-plan-file-structure --diff reports a path in both lists exactly once', () => {
+  withRepo((repo) => {
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
+    repo.write('legacy.ts', lines('const base = 0;'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
+    repo.git(['rm', '--cached', '--quiet', 'legacy.ts']);
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stderr.match(/legacy\.ts/g).length, 1);
+  });
+});
+
+/**
+ * `usable`'s floor for a **changed** path is judged against the diff, not the union: an unstaged
+ * scratch file must not invalidate a plan-doc entry the author wrote correctly. `SecurityConfig.java`
+ * is the bare token `usable`'s own docstring blesses, and a second same-named file in the tree used
+ * to drop it — reporting the *listed* path as missing.
+ *
+ * <p>The scratch file itself is reported, and should be: the section does not identify it, and the
+ * sibling case above is where that direction is pinned. What this case protects is the narrower
+ * contract — a correct entry survives whatever else is lying in the tree.
+ *
+ * <p>Mutation: pass the union as the changed floor's population and the listed path is named too.
+ */
+test('check-plan-file-structure --diff keeps a bare token an untracked file would shadow', () => {
+  withRepo((repo) => {
+    const java = 'platform/src/main/java/ai/riviera/platform/shared/SecurityConfig.java';
+    repo.write(PLAN_DOC, planDoc('SecurityConfig.java'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('SecurityConfig.java', 'README.md'));
+    repo.write(java, lines('class SecurityConfig {}'));
+    repo.commit('the slice');
+    repo.write('scratch/SecurityConfig.java', lines('class Other {}'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.doesNotMatch(result.stderr, /shared\/SecurityConfig\.java/);
+  });
+});
+
+/**
+ * An untracked path is judged like any other — the union adds paths to check, not verdicts.
+ *
+ * <p>The plan doc is **staged**, not merely written: `planDocsIn` reads the diff, and `git add` is
+ * the signal that says *this doc belongs to this change*. Written-but-unstaged it confers nothing,
+ * and an earlier version of this case wrote it unstaged — which made the case vacuous, passing
+ * against any implementation because `findOmissions` returned at `docs.length === 0` (PR #662
+ * re-review). `git diff <commit>` sees staged adds, so staging is enough; committing is not needed.
+ */
+test('check-plan-file-structure --diff passes when the section lists the unstaged path', () => {
+  withRepo((repo) => {
+    repo.write('README.md', lines('# Riviera'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc(TS));
+    repo.git(['add', PLAN_DOC]);
+    repo.write(TS, lines('const base = 0;'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+/**
+ * A draft plan doc for the **next** slice is untracked, so the union judges it — but a plan doc is
+ * never content its own section must list. Exemption keys off plan-doc **shape**, not off which docs
+ * happen to be authoritative, or the gate tells the author to list next slice's plan in this one's
+ * section (PR #662 re-review). The same root cause fired for a plan doc the diff *deletes*.
+ *
+ * <p>Mutation: key `isExempt` off `docs` again and the draft is reported as an omission.
+ */
+test('check-plan-file-structure --diff never reports a plan doc as its own omission', () => {
+  withRepo((repo) => {
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
+    repo.write('docs/plans/next-epic.md', planDoc('unrelated/thing.ts'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+/**
+ * `usable`'s floor is measured against the diff (so a scratch file cannot invalidate a correct
+ * entry — the R-3 fix), but `covers` is applied to the union, which left the mirror open: a bare
+ * token the diff blesses would absorb a *new* file sharing its basename, and the guard false-cleaned
+ * in the case #654 exists for. An untracked path needs a token unambiguous in the **union**.
+ *
+ * <p>Mutation: judge untracked coverage with `general` and this exits 0.
+ */
+test('check-plan-file-structure --diff reports a new file a bare token would absorb', () => {
+  withRepo((repo) => {
+    const shared = 'platform/src/main/java/ai/riviera/platform/shared/SecurityConfig.java';
+    const booking = 'platform/src/main/java/ai/riviera/platform/booking/SecurityConfig.java';
+    repo.write(PLAN_DOC, planDoc('SecurityConfig.java'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('SecurityConfig.java', 'README.md'));
+    repo.write(shared, lines('class SecurityConfig {}'));
+    repo.commit('the slice');
+    repo.write(booking, lines('class SecurityConfig {}'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /booking\/SecurityConfig\.java/);
+    assert.doesNotMatch(result.stderr, /shared\/SecurityConfig\.java/);
+  });
+});
+
+/**
+ * `--exclude-standard` is what keeps the union from becoming noise: a contributor's build output is
+ * untracked too, and a gate that demands a plan doc account for `dist/` is one that gets switched
+ * off (R-2).
+ *
+ * <p>Mutation: drop `--exclude-standard` and the ignored path is reported as an omission.
+ */
+test('check-plan-file-structure --diff ignores an untracked path git is told to ignore', () => {
+  withRepo((repo) => {
+    repo.write('.gitignore', lines('build/'));
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
+    repo.write('build/generated.ts', lines('const generated = 0;'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
 const BUSY_BUTTON = '<button (click)="save()" [disabled]="saving()">Save</button>';
 
 test('check-focus-posture --diff gates on a BUSY-1 binding the diff added', () => {

@@ -5,6 +5,7 @@ import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@ang
 import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
+import { freezeClock } from '../../test-setup';
 import { todayBookingDate } from '../shared/booking-date';
 import { MoneyView } from '../shared/money';
 import { SetView, Tier } from '../shared/venue-views';
@@ -193,7 +194,7 @@ describe('RequestsTab (#176)', () => {
       expect(cards()).toHaveLength(1);
       expect(store.count()).toBe(1);
     } finally {
-      vi.useRealTimers();
+      freezeClock();
     }
   });
 

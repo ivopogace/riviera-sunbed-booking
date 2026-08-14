@@ -209,7 +209,7 @@ Angular-shaped strings inside a throwaway repository, never files under `fronten
 **Stage pointer:** `merge close-out`
 
 **Next action:** none. Merged via PR #640; the one deferred defect that survived scrutiny closed via
-PR #642 — see *Follow-up* below.
+PR #642, and the sixth false clean in this layer via PR #662 — see the two *Follow-up* sections below.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -220,6 +220,7 @@ PR #642 — see *Follow-up* below.
 | 4 — AC-13: the template-literal scan defect the coverage found | ✅ | `efcf0ae` |
 | 5 — Close-out: docs freshness, timings, mutation ledger | ✅ | `86f93d8` |
 | 6 — AC-15: the untracked-file gap the redundancy question surfaced | ✅ | `02688cf`, `5b45bd8` |
+| 7 — #654: the same gap in the plan-doc guard, which had no `--files` half to close it | ✅ | `7663f76`, `b582223`, `+ review round 2` (PR #662) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -234,6 +235,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | `riviera-docs-freshness` (close-out) | `ci.yml`'s guard-suite step said it "globs **both** suites" — written at two, false at five and at six | fixed in `86f93d8` |
 | F-6 | `riviera-review-overlay` (inline; the `/code-review` fan-out did not run — see the self-review checklist) | the harness returned an unused `env` field and bound the object to a local only to return it; `git(args, cwd = root)` advertised a subdirectory parameter no case used | fixed in `86f93d8` — RV-STYLE-1 and RV-STYLE-2 are clean (`scripts/` resolves no Prettier config), RV-PROC-1 re-walked against the final diff, and the RV-BE/RV-FE banks are out of scope: the diff touches no Java, no `frontend/src`, and no wire shape |
 | F-7 | post-merge-readiness question from the maintainer: *are these guards redundant now that Prettier and type-aware ESLint are in place?* | **No** — probed rather than argued: 128 enabled ESLint rules, of which the only comment-related two are `ban-ts-comment`/`ban-tslint-comment` and none touch focus posture; `eslint` and `prettier --check` both exit 0 on a file carrying BUSY-1 + FOCUS-1 + a multi-line inline comment that both guards catch. Chasing it surfaced a real gap: this guard's `--hook`/`--files` were diff-against-`HEAD`, so a file git had **never seen** read clean — the commonest way a violation enters the tree, and the gap `check-focus-posture` closed in #618 | fixed — AC-15, `02688cf`; the three substrate sentences it falsified patched in `5b45bd8` |
+| F-8 | field use, during PR #652 | `check-plan-file-structure --diff` reports clean for a path the slice **adds** but has not staged — `git diff` cannot see an untracked file, so the guard false-cleaned in the one case it exists for. AC-15's fix covered the sibling guards' `--files`/`--hook` halves; this guard has no such half, so nothing closed it here | fixed — issue #654, PR #662. Mutation rows in *Follow-up — #654 / PR #662*, below |
 
 ---
 
@@ -249,6 +251,21 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   below), which routes its git calls and reads through `git-diff.mjs` and tallies verifications
   instead of deriving the count. Listed here because that PR edits this plan doc, which puts both
   in one diff and so under this section's guard.
+- `scripts/git-diff.mjs` · `scripts/check-plan-file-structure.mjs` · `scripts/git-diff.test.mjs` —
+  modified by the **#654 follow-up** (see *Follow-up — #654 / PR #662* below): `untrackedArgs()` /
+  `untrackedPaths()` join the shared helper and the plan-doc guard unions the untracked tree into the
+  paths it **judges** — while `planDocsIn` and `usable`'s floor stay on the diff, which is the seam
+  the review round put there. Listed here for the same reason `check-comment-only.mjs` is — that work
+  edits this plan doc, which puts every path in one diff and so under this section's own guard.
+- `CLAUDE.md` — modified by the follow-up's docs-freshness pass: the CI bullet classed all four
+  hygiene guards as diff-scoped, which #654 makes false for the plan-doc one.
+- `frontend/src/test-setup.ts` · `frontend/src/app/operator/camera-qr-scanner.spec.ts` ·
+  `frontend/src/app/operator/requests-tab.spec.ts` · `frontend/src/app/booking/booking-pay.spec.ts` ·
+  `frontend/.claude/CLAUDE.md` — modified to unblock this PR's CI, see *The CI blocker* below. The
+  frozen-clock setup now exports `freezeClock()` and the seven `vi.useRealTimers()` restore sites
+  call it, so a spec needing full fake timers no longer hands the real calendar to the next file in
+  the worker. Out of this slice's scope and folded in on the maintainer's call, because it reddened
+  **every** CI run outside 09:59–21:59 UTC, repo-wide.
 - `frontend/.claude/CLAUDE.md` · `.claude/skills/riviera-java-conventions/SKILL.md` — modified: both
   stated the inline-comment guard is "diff-scoped, always", which AC-15 makes false for an untracked
   file. Same sentence in two places, both patched.
@@ -444,6 +461,157 @@ other two guards as well", answering "all three" both times. The population was 
 (*which files under `scripts/` invoke git*), and this guard is whole-file rather than diff-scoped, so
 it fell outside the frame. #619's issue text inherited the same count. **Define the audit population
 by mechanism, not by resemblance.**
+
+## Follow-up — #654 / PR #662
+
+The sixth false clean in this layer, and the first found by *using* the guards rather than by
+auditing them: during PR #652 a review finding moved a test into a new file, and
+`check-plan-file-structure --diff` reported clean because `git diff` cannot see a path git has
+never been told about. It inverted the guard in precisely the case it exists for — the plan-doc
+rule is written because *the omissions are never the interesting files*, and an added file is the
+likeliest omission there is.
+
+`untrackedPaths()` joins `git-diff.mjs` (`ls-files --others --exclude-standard -z`) and
+`check-plan-file-structure.mjs`'s `check` unions it into the paths it judges. Four cases, same
+discipline:
+
+| AC | The revert | Cases that go RED | Restored |
+|---|---|---|---|
+| #654 AC-1 | `check-plan-file-structure.mjs` — `check` back to `changedPaths(git(nameOnlyArgs(range)))` alone | `--diff sees a file the slice adds but has not staged`; `--diff reads a plan doc that is itself untracked` | ✅ 215 pass / 2 fail |
+| #654 AC-2 | `git-diff.mjs` — `--exclude-standard` dropped from `untrackedPaths` | `--diff ignores an untracked path git is told to ignore` | ✅ 216 pass / 1 fail |
+| #654 AC-3 | `git-diff.mjs` — `-z` dropped from `untrackedPaths` | both AC-1 cases (the whole listing arrives as one newline-joined token) | ✅ 215 pass / 2 fail |
+| #654 AC-4 | `check-plan-file-structure.mjs` — untracked paths appended to `findOmissions`' **result** instead of to its input | `--diff passes when the section lists the unstaged path`; `… never reports a plan doc as its own omission`; `… reports a path in both lists exactly once`; `… sees a file the slice adds but has not staged` | ✅ 219 pass / 4 fail |
+
+### The review round — where the first cut was wrong
+
+**The `/code-review` fan-out ran on PR #662 and found the fix had opened a worse hole than it
+closed.** Recorded at length because the failure is the instructive kind: every finding below was
+reproduced in a throwaway repo before being accepted, and the first three were invisible to a suite
+that was 217/217 green.
+
+| # | Finding | Verified | Fix |
+|---|---|---|---|
+| R-1 | **False clean #7.** The union fed `planDocsIn`, so any untracked markdown under `docs/plans/` became authoritative for the whole range — an unrelated draft whose section named a changed path turned a red gate **green**. Real sections carry directory tokens and globs, so one draft could blanket-satisfy an entire diff | exit 1 → **0** | `planDocsIn` reads the **diff only** |
+| R-2 | The same widening in reverse: a slice with **no plan doc** stopped passing cleanly, because any untracked draft anywhere switched the guard on — contradicting this guard's own header contract and `riviera-sdlc` rule 6 | exit 0 → **1** | same |
+| R-3 | `usable`'s ambiguity floor counted the union, so an unstaged `scratch/SecurityConfig.java` dropped the bare token `SecurityConfig.java` and reported the **correctly listed** path as missing | exit 0 → **1** | floor measured against the diff |
+| R-4 | "The two lists cannot overlap" — asserted in the docstring — is **false**: `git rm --cached` leaves a path in the tree and out of the index, so the diff reports it deleted while `ls-files --others` reports it untracked. Reported twice, and double-counted by `usable`'s `length <= 1` | reported **2×** | dedupe the union |
+| R-5 | The four original cases pinned only the happy path; the over-reach direction was pinned by nothing | — | four cases added, each mutation-proved below |
+| R-6 | No docs-freshness pass, though the change falsifies the same sentence class AC-15 patched | — | `ci.yml`, `CLAUDE.md`, `riviera-plan-doc` SKILL + template patched |
+| R-7 | `untrackedPaths` inlined its argv, so `git-diff.test.mjs`'s flag-pinning case could not reach `--exclude-standard`/`-z` — the one convention this module exists to enforce | — | `untrackedArgs()` extracted; case added |
+| R-8 | The F-8 row was inserted between F-6 and F-7 | — | moved |
+
+**The seam that came out of it: judged ≠ authoritative.** The union widens which paths get
+**judged**; it must not widen which docs confer **authority**, nor which population **measures**
+ambiguity. One list serving all three purposes is what produced R-1, R-2 and R-3 from a single
+four-token change. `check` now derives the three separately, and `findOmissions` takes `untracked`
+as its own parameter so the asymmetry is in the signature rather than in a comment.
+
+**What this says about the original fix's confidence.** The PR body argued the union was safe
+because `git ls-files --others --exclude-standard` returned **zero** in this container — a clean
+CI-shaped checkout — and generalized from that to contributors' trees. That reasoning was the
+common cause of R-1 through R-4: a sample of one, taken in the environment least like the one the
+change was for. The guard exists for the local mid-slice run, which is exactly where scratch files,
+drafts and half-staged work live.
+
+| AC | The revert | Cases that go RED | Restored |
+|---|---|---|---|
+| #654 AC-5 | `check-plan-file-structure.mjs` — `planDocsIn(changed)` back to the union | `--diff ignores an untracked plan doc outside the range`; `--diff stays off when only an untracked plan doc exists` | ✅ 219 pass / 2 fail |
+| #654 AC-6 | `check-plan-file-structure.mjs` — dedupe filter dropped from `untracked` | `--diff reports a path in both lists exactly once` | ✅ 220 pass / 1 fail |
+| #654 AC-7 | `check-plan-file-structure.mjs` — `usable`'s population back to the union | `--diff keeps a bare token an untracked file would shadow` | ✅ 220 pass / 1 fail |
+| #654 AC-8 | `git-diff.mjs` — `--exclude-standard` dropped from `untrackedArgs` | `the untracked listing pins the two flags that decide what it can report` (unit) + the ignore case (CLI) | ✅ 219 pass / 2 fail |
+
+### The second review round — where the scoping was still wrong
+
+**Re-review of the R-1…R-8 rework found twelve more, four of them behavioural.** Recorded because
+the pattern is the point: each round's fix was locally reasonable and globally incomplete, and a
+221/221 green suite hid all four. This layer's defects have never been visible to a green suite —
+the plan doc said so at #619 and it has now been demonstrated twice more.
+
+| # | Finding | Fix |
+|---|---|---|
+| S-1 | The R-3 fix left its mirror open. `usable`'s floor moved to the diff, but `covers` still ran over the union, so a bare token the diff blessed **absorbed** a new file sharing its basename — `shared/SecurityConfig.java` listed, `booking/SecurityConfig.java` added, exit 0. Within a diff alone two matches drop the token, so the union had broken the invariant `usable` encodes | untracked paths need the **stricter** token: unambiguous across the union. Changed paths keep the diff's floor, so R-3 stays fixed |
+| S-2 | `isExempt` keyed off `docs` — the *authoritative* set — so an untracked draft for the **next** slice was reported as this slice's omission, advising the author to list it here or ignore a file meant to be committed. Same root cause for a plan doc the diff **deletes** | exemption keys off plan-doc **shape** |
+| S-3 | The commonest #654 shape — a brand-new slice whose plan doc is *itself* unstaged — still passes vacuously, because R-1 scoped `planDocsIn` to the diff. `riviera-plan-doc` and its template, patched in the same round, advertised the catch unconditionally | **behaviour kept, docs corrected.** Staging is the author's own signal that a doc belongs to the change, and it is the only signal git offers: the alternative — treating any untracked draft as authoritative — is exactly R-1/R-2. Both docs now say the plan doc must be staged |
+| S-4 | `--diff passes when the section lists the unstaged path` was **vacuous**: it wrote the plan doc unstaged, so the guard short-circuited before reading a token and the case passed against any implementation | fixture stages the doc; the case now fails under AC-4's mutation |
+| S-5 | `untrackedArgs` omitted `--full-name`, `ls-files`' analogue of the `--no-relative` the diff builders pin — from a subdirectory a bare `ls-files` truncates the prefix *and* omits everything above it | pinned, and asserted |
+| S-6 | `report()`'s header still said "Paths changed by this diff", sending the author to look for an untracked path in a diff that cannot contain it — the #539 failure mode | header now reads "Paths this slice touches" |
+| S-7 | The dedupe rationale claimed the duplicate was "counted twice by `usable`". False for the shipped code: the floor is measured against `changed`, where such a path appears once either way | docstring and the mirrored test docstring corrected to the double-**report** |
+| S-8 | The AC-4 mutation row recorded 214/3 — measured against the pre-review code and never re-run after R-1/R-3 changed `planDocsIn` and `usable` | re-measured: 219/4 |
+| S-9 | `untrackedPaths()` walked the whole tree before `check` knew a plan doc existed, discarding it in the majority case; dedupe was an `Array.includes` scan per path | walk hoisted below the `docs.length === 0` return; dedupe via a `Set` |
+| S-10 | The advice sent personal scratch files to the **committed** `.gitignore`, when `--exclude-standard` already honours `.git/info/exclude` and `core.excludesFile` | advice names all three, in the right order |
+| S-11 | `untrackedPaths()` carried no doc comment while the block above it documented `untrackedArgs()` in its own voice | doc comment added |
+| S-12 | Phase row 7 cited only the first, superseded commit | both commits listed |
+
+| AC | The revert | Cases that go RED | Restored |
+|---|---|---|---|
+| #654 AC-9 | `check-plan-file-structure.mjs` — untracked coverage judged with `general` rather than `strict` | `--diff reports a new file a bare token would absorb` | ✅ 222 pass / 1 fail |
+| #654 AC-10 | `check-plan-file-structure.mjs` — `isExempt` keyed off `docs` again | `--diff never reports a plan doc as its own omission` | ✅ 222 pass / 1 fail |
+| #654 AC-11 | `git-diff.mjs` — `--full-name` dropped from `untrackedArgs` | `the untracked listing pins the two flags that decide what it can report` | ✅ 222 pass / 1 fail |
+
+**What two rounds of this say.** Both rounds found the same *shape* of error: one list, or one floor,
+serving purposes that had quietly diverged. The four-token union broke three contracts; scoping it
+broke two more in the opposite direction. The seam that finally holds is stated in `findOmissions`'
+signature — `changed` and `untracked` arrive separately and are measured by different floors — rather
+than in a comment above a single list. A reviewer should check that the two floors still differ.
+
+### The CI blocker — a flake this slice did not cause, and could not merge around
+
+`Frontend (lint + test + build)` went red on this PR at 03:53 and again on re-run at 04:05 UTC, on a
+diff containing **no frontend file**. `console-stats-strip.spec.ts`'s `#572` case asserts that
+`+12h01m` crosses a Tirane date boundary — true against the **frozen** clock always, and against the
+**real** clock only between 09:59 and 21:59 UTC, since Tirane midnight is 22:00 UTC.
+
+The natural experiment settles the cause: the identical frontend tree passed at **20:32** UTC (first
+push) and failed at **03:53** and **04:05**. So a spec was reading the real clock, and only three
+files can unfake it — `camera-qr-scanner`, `requests-tab` and `booking-pay` each call
+`vi.useRealTimers()` to restore after `vi.useFakeTimers()`, which unfakes `Date` too and leaves the
+machine's calendar for whatever runs next in that worker. `setupFiles` re-freezing per file is what
+*should* contain it; under CI's worker reuse it evidently does not.
+
+`freezeClock()` is now exported from `test-setup.ts` and all seven restore sites call it, so the
+global posture is restored rather than abandoned. `frontend/.claude/CLAUDE.md` recommended
+`vi.useRealTimers()` by name and is corrected.
+
+> **Not reproduced locally, and said so rather than implied otherwise.** The full suite passes here
+> both with and without the fix, as do the two specs run together in the poisoning order — the leak
+> needs CI's worker-reuse conditions (2 cores, 157 files). What is proved locally is the assertion's
+> time-of-day dependence and the three unrestored opt-outs; what only CI can confirm is that they
+> are the same defect. The fix stands on its own terms either way: restoring the documented posture
+> is strictly more correct than unfaking `Date`, whatever else is true.
+
+**The residual, stated rather than hidden.** With plan docs scoped to the diff, an unrelated
+untracked scratch file is still judged **when the slice has a plan doc in its diff** — git cannot
+tell a draft of this slice's new file from a stray download. That is the trade #654 asked for, and
+the guard now says so in its own advice line: `.gitignore` is where a file you never intend to commit
+belongs. CI is unaffected in either direction — a fresh checkout has no untracked files.
+
+**AC-4 is this ledger's honest row.** Dropping the union (AC-1) leaves the two exit-0 cases green,
+because a guard that sees nothing also exits 0 — they would have been decoration against that
+mutation alone. AC-4 is the wrong implementation they actually pin: unioning into the *verdicts*
+rather than into the *paths to judge*, which reports every untracked file whether or not the plan
+doc lists it. The union adds paths to check, not findings.
+
+**Only a path-scoped guard could take this fix.** The three sibling `--diff` modes share the blind
+spot, and none is changed here: they key on added **line numbers**, which a file with no diff cannot
+supply, so they answer the new-file case with a whole-file verdict behind `--files`/`--hook`
+instead (AC-15 above, and #618 before it). This guard needs names alone, so the union is four
+tokens. What made it the urgent one is that it is the only member of the four with **no**
+`PostToolUse` half — CLAUDE.md's "most with a local `PostToolUse` half" is this guard being the
+exception — so nothing else was catching the case locally.
+
+**Not done, and why.** A `.husky/pre-commit` call was considered once F-7's question resurfaced
+(below) and rejected: everything is staged by then, so it cannot see the window the bug lives in,
+and it would red every WIP commit whose plan doc has not caught up. CI is unaffected either way —
+it diffs committed history on a clean checkout, where `ls-files --others` is empty — which is why
+this was a local-feedback defect and never a merge-gate hole.
+
+**F-7, asked again and answered the same way.** The maintainer's post-merge question — *are these
+guards redundant now that Prettier and type-aware ESLint are in place?* — came up again against the
+Husky/lint-staged wiring added in #639, which is new since F-7 was closed. Still no, and now for a
+third reason on top of F-7's two: `lint-staged` operates on the **staged** set, which is the far
+side of exactly this bug. Its globs are frontend-only (`{src,e2e}/**`), so neither `platform/` nor
+`docs/plans/` is in scope, and no ESLint rule can express "is this path named in a markdown
+section" — a cross-file relationship rather than an in-file one.
 
 ## Self-review checklist (before merge / PR)
 

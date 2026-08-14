@@ -7,6 +7,7 @@ import { vi } from 'vitest';
 import { environment } from '../../environments/environment';
 import { AwaitingPayment, BookingDetail, CreateBookingRequest } from './booking.model';
 import { BookingService } from './booking.service';
+import { freezeClock } from '../../test-setup';
 import { BookingPay } from './booking-pay';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
 
@@ -205,7 +206,7 @@ describe('BookingPay', () => {
 
       httpMock.verify();
     } finally {
-      vi.useRealTimers();
+      freezeClock();
     }
   });
 
@@ -232,7 +233,7 @@ describe('BookingPay', () => {
 
       httpMock.verify();
     } finally {
-      vi.useRealTimers();
+      freezeClock();
     }
   });
 
@@ -254,7 +255,7 @@ describe('BookingPay', () => {
 
       httpMock.verify();
     } finally {
-      vi.useRealTimers();
+      freezeClock();
     }
   });
 
@@ -354,7 +355,7 @@ describe('BookingPay', () => {
       expect(comp.state()).not.toBe('awaiting');
       httpMock.verify();
     } finally {
-      vi.useRealTimers();
+      freezeClock();
     }
   });
 
@@ -378,7 +379,7 @@ describe('BookingPay', () => {
       expect(comp.state()).not.toBe('confirmed');
       httpMock.verify();
     } finally {
-      vi.useRealTimers();
+      freezeClock();
     }
   });
 });

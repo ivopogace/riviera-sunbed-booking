@@ -286,6 +286,12 @@ Skill-routing gate for what the fix touches *before* editing).
 > node scripts/check-plan-file-structure.mjs --diff origin/main
 > ```
 >
+> Since #654 it judges untracked paths as well as the diff, so a file you have written but not
+> staged is caught too. **Stage or commit this plan doc first** — `git add` is what marks it as part
+> of the change, and with the doc merely written the guard short-circuits and passes whatever the
+> section says. A file you never intend to commit belongs behind an ignore rule (`.git/info/exclude`
+> for a personal scratch path, `.gitignore` repo-wide).
+>
 > The guard reads paths written any way real plans write them — repo-relative
 > (`payout/application/DailyTakingsServiceTest.java`), sibling extensions
 > (`` `privacy-policy.ts` `` then `` `.html` ``), brace sets, `a.ts|.html`, a bare directory, and
