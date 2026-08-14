@@ -28,6 +28,7 @@ test('the diff invocations carry the flags that keep paths recognisable', () => 
 test('the untracked listing pins the two flags that decide what it can report', () => {
   assert.ok(untrackedArgs().includes('-z'), 'must pin -z');
   assert.ok(untrackedArgs().includes('--exclude-standard'), 'must pin --exclude-standard');
+  assert.ok(untrackedArgs().includes('--full-name'), 'must pin --full-name');
   assert.equal(untrackedArgs()[0], 'ls-files');
 });
 

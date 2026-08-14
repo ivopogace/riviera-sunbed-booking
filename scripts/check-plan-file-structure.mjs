@@ -226,20 +226,35 @@ function usable(token, changed) {
 }
 
 /**
- * Paths never worth reporting. The plan docs themselves are self-evident to anyone reading one,
- * and a lockfile is a tool's output rather than a file the author chose to touch.
+ * Paths never worth reporting. A plan doc is self-evident to anyone reading one, and a lockfile is
+ * a tool's output rather than a file the author chose to touch.
+ *
+ * <p>Judged by plan-doc **shape**, not by membership in the authoritative set: an untracked draft
+ * for the *next* slice is in the union but not in `docs`, and keying off `docs` reported it as this
+ * slice's omission — advising the author to list next slice's plan in this one's section, or to
+ * ignore a file meant to be committed. A plan doc the diff *deletes* took the same wrong turn, its
+ * `readText` having come back null (PR #662 re-review).
  */
-function isExempt(path, docs) {
-  return docs.some((d) => d.path === path) || /(^|\/)package-lock\.json$/.test(path);
+function isExempt(path) {
+  return isPlanDoc(path) || /(^|\/)package-lock\.json$/.test(path);
 }
 
 /**
  * Paths a slice changed that its plan doc's File-structure section does not account for.
  *
- * `changed` and `untracked` are both judged, but only `changed` **measures**: `usable`'s ambiguity
- * floor is counted against the diff alone. An unstaged scratch file must not invalidate an entry the
- * author wrote correctly — a second `SecurityConfig.java` lying in the tree used to drop the bare
- * token that legitimately named the changed one, and report that path as missing (PR #662 review).
+ * `changed` and `untracked` are both judged, but they are measured by **different floors**, because
+ * the two directions of `usable`'s ambiguity rule fail on opposite sides of the union.
+ *
+ * <p>A **changed** path is covered by a token unambiguous within the diff. Counting the union there
+ * lets an unstaged scratch file invalidate an entry the author wrote correctly: a second
+ * `SecurityConfig.java` lying in the tree dropped the bare token that legitimately named the changed
+ * one, and reported that path as missing (PR #662 review).
+ *
+ * <p>An **untracked** path needs the stricter token — unambiguous across the union. With only the
+ * diff's floor, a bare token the diff blesses silently absorbed a *new* file sharing its basename
+ * (`shared/SecurityConfig.java` listed, `booking/SecurityConfig.java` added), so the guard
+ * false-cleaned in the very case #654 exists for. Within a diff alone that cannot happen — two
+ * matches drop the token — so the union had broken the invariant `usable` encodes (re-review).
  *
  * @param {{ docs: { path: string, text: string }[], changed: string[], untracked?: string[] }} input
  *   the plan docs the **diff** touches (new-side content), every path it changed, and the untracked
@@ -253,15 +268,18 @@ export function findOmissions({ docs, changed, untracked = [] }) {
   const sections = docs.map((d) => sectionOf(d.text));
   const listed = sections.filter((section) => section !== null).flatMap(listedPaths);
   const general = listed.filter((token) => usable(token, changed));
+  const strict = general.filter((token) => usable(token, [...changed, ...untracked]));
   const reason = sections.every((section) => section === null)
     ? 'no "## File structure" section'
     : 'not listed in the File structure section';
 
-  return [...changed, ...untracked]
-    .filter((path) => !isExempt(path, docs))
-    .filter((path) => !listed.includes(path))
-    .filter((path) => !general.some((token) => covers(token, path)))
-    .map((path) => ({ path, reason }));
+  const omits = (path, tokens) =>
+    !isExempt(path) && !listed.includes(path) && !tokens.some((token) => covers(token, path));
+
+  return [
+    ...changed.filter((path) => omits(path, general)),
+    ...untracked.filter((path) => omits(path, strict)),
+  ].map((path) => ({ path, reason }));
 }
 
 /**
@@ -269,20 +287,27 @@ export function findOmissions({ docs, changed, untracked = [] }) {
  * directory (`docs/plans/<slug>/screenshot.png`) is content the section should list, not a plan.
  */
 export function planDocsIn(changed) {
-  return changed.filter((path) => /^docs\/plans\/[^/]+\.md$/.test(path));
+  return changed.filter(isPlanDoc);
+}
+
+/** Top-level markdown under `docs/plans/` — the shape both `planDocsIn` and `isExempt` key on. */
+function isPlanDoc(path) {
+  return /^docs\/plans\/[^/]+\.md$/.test(path);
 }
 
 const ADVICE =
   'Add each path above to the plan doc\'s "## File structure" section — that section is what a ' +
   'resuming session reads to know what the slice touches, so an omission misleads exactly the ' +
   'reader it exists for (issue #533). A directory or a glob may stand in for a large mechanical ' +
-  'sweep. Untracked paths are judged too (#654), so a scratch file you never intend to commit ' +
-  'belongs in .gitignore rather than the section. A slice with no plan doc is not checked at all.';
+  'sweep. Untracked paths are judged too (#654), so a file you never intend to commit belongs ' +
+  'behind an ignore rule rather than in the section — .git/info/exclude or core.excludesFile for ' +
+  'a personal scratch path, .gitignore only when the whole repo should ignore it. A slice whose ' +
+  'diff carries no plan doc is not checked at all.';
 
 /** Renders the findings for a terminal: one line per path, then the fix. */
 export function report(omissions) {
   const lines = omissions.map((o) => `  ${o.path}  — ${o.reason}`);
-  return `Paths changed by this diff but absent from the plan doc:\n${lines.join('\n')}\n${ADVICE}`;
+  return `Paths this slice touches but the plan doc does not list:\n${lines.join('\n')}\n${ADVICE}`;
 }
 
 /**
@@ -306,8 +331,13 @@ export function report(omissions) {
  *
  * <p>The two lists overlap in exactly one way, so the union is deduplicated: `git rm --cached`
  * leaves a path in the working tree and out of the index, and the diff then reports it deleted while
- * `ls-files --others` reports it untracked. Left doubled it was reported twice and counted twice by
- * `usable`, whose floor is `length <= 1`.
+ * `ls-files --others` reports it untracked. Left doubled it was reported twice — the double-report
+ * is the whole of it, since the floor that counts occurrences is measured against `changed`, where
+ * such a path appears exactly once either way.
+ *
+ * <p>The tree walk happens only once a plan doc is in the diff. Every slice `riviera-sdlc` rule 6
+ * lets skip the plan doc returns at `docs.length === 0`, and walking the working tree to build a
+ * list that is then discarded is work the common path should not pay for.
  *
  * <p>Only a **path-scoped** guard can close the gap this cheaply. The sibling line-scoped guards
  * need added-line numbers a new file has no diff to supply, so they answer it with a whole-file
@@ -315,11 +345,14 @@ export function report(omissions) {
  */
 export function check(range) {
   const changed = changedPaths(git(nameOnlyArgs(range)));
-  const untracked = untrackedPaths().filter((path) => !changed.includes(path));
 
   const docs = planDocsIn(changed)
     .map((path) => ({ path, text: readText(path) }))
     .filter((d) => d.text !== null);
+  if (docs.length === 0) return [];
+
+  const diffed = new Set(changed);
+  const untracked = untrackedPaths().filter((path) => !diffed.has(path));
 
   return findOmissions({ docs, changed, untracked });
 }

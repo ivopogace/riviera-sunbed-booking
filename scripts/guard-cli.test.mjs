@@ -524,7 +524,7 @@ test('check-plan-file-structure --diff stays off when only an untracked plan doc
 /**
  * `git rm --cached` leaves a path in the working tree and out of the index, so the diff reports it
  * deleted **and** `ls-files --others` reports it untracked — the one way the two lists overlap.
- * Reported once, and counted once by `usable`, whose floor is `length <= 1`.
+ * Reported once rather than twice.
  *
  * <p>Mutation: drop the dedupe filter and the path is reported twice.
  */
@@ -544,11 +544,16 @@ test('check-plan-file-structure --diff reports a path in both lists exactly once
 });
 
 /**
- * `usable`'s ambiguity floor is judged against the **diff**, not the union: an unstaged scratch file
- * must not invalidate a plan-doc entry the author wrote correctly. `SecurityConfig.java` is the bare
- * token `usable`'s own docstring blesses, and a second same-named file in the tree used to drop it.
+ * `usable`'s floor for a **changed** path is judged against the diff, not the union: an unstaged
+ * scratch file must not invalidate a plan-doc entry the author wrote correctly. `SecurityConfig.java`
+ * is the bare token `usable`'s own docstring blesses, and a second same-named file in the tree used
+ * to drop it — reporting the *listed* path as missing.
  *
- * <p>Mutation: pass the union as `usable`'s population and this exits 1, naming the listed path.
+ * <p>The scratch file itself is reported, and should be: the section does not identify it, and the
+ * sibling case above is where that direction is pinned. What this case protects is the narrower
+ * contract — a correct entry survives whatever else is lying in the tree.
+ *
+ * <p>Mutation: pass the union as the changed floor's population and the listed path is named too.
  */
 test('check-plan-file-structure --diff keeps a bare token an untracked file would shadow', () => {
   withRepo((repo) => {
@@ -562,21 +567,78 @@ test('check-plan-file-structure --diff keeps a bare token an untracked file woul
 
     const result = repo.run(PLAN, ['--diff', before]);
 
-    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stderr, /shared\/SecurityConfig\.java/);
   });
 });
 
-/** An untracked path is judged like any other — the union adds paths to check, not verdicts. */
+/**
+ * An untracked path is judged like any other — the union adds paths to check, not verdicts.
+ *
+ * <p>The plan doc is **staged**, not merely written: `planDocsIn` reads the diff, and `git add` is
+ * the signal that says *this doc belongs to this change*. Written-but-unstaged it confers nothing,
+ * and an earlier version of this case wrote it unstaged — which made the case vacuous, passing
+ * against any implementation because `findOmissions` returned at `docs.length === 0` (PR #662
+ * re-review). `git diff <commit>` sees staged adds, so staging is enough; committing is not needed.
+ */
 test('check-plan-file-structure --diff passes when the section lists the unstaged path', () => {
   withRepo((repo) => {
     repo.write('README.md', lines('# Riviera'));
     const before = repo.commit('base');
     repo.write(PLAN_DOC, planDoc(TS));
+    repo.git(['add', PLAN_DOC]);
     repo.write(TS, lines('const base = 0;'));
 
     const result = repo.run(PLAN, ['--diff', before]);
 
     assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+/**
+ * A draft plan doc for the **next** slice is untracked, so the union judges it — but a plan doc is
+ * never content its own section must list. Exemption keys off plan-doc **shape**, not off which docs
+ * happen to be authoritative, or the gate tells the author to list next slice's plan in this one's
+ * section (PR #662 re-review). The same root cause fired for a plan doc the diff *deletes*.
+ *
+ * <p>Mutation: key `isExempt` off `docs` again and the draft is reported as an omission.
+ */
+test('check-plan-file-structure --diff never reports a plan doc as its own omission', () => {
+  withRepo((repo) => {
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('frontend/src/app/venue/something-else.ts', 'README.md'));
+    repo.write('docs/plans/next-epic.md', planDoc('unrelated/thing.ts'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+/**
+ * `usable`'s floor is measured against the diff (so a scratch file cannot invalidate a correct
+ * entry — the R-3 fix), but `covers` is applied to the union, which left the mirror open: a bare
+ * token the diff blesses would absorb a *new* file sharing its basename, and the guard false-cleaned
+ * in the case #654 exists for. An untracked path needs a token unambiguous in the **union**.
+ *
+ * <p>Mutation: judge untracked coverage with `general` and this exits 0.
+ */
+test('check-plan-file-structure --diff reports a new file a bare token would absorb', () => {
+  withRepo((repo) => {
+    const shared = 'platform/src/main/java/ai/riviera/platform/shared/SecurityConfig.java';
+    const booking = 'platform/src/main/java/ai/riviera/platform/booking/SecurityConfig.java';
+    repo.write(PLAN_DOC, planDoc('SecurityConfig.java'));
+    const before = repo.commit('base');
+    repo.write(PLAN_DOC, planDoc('SecurityConfig.java', 'README.md'));
+    repo.write(shared, lines('class SecurityConfig {}'));
+    repo.commit('the slice');
+    repo.write(booking, lines('class SecurityConfig {}'));
+
+    const result = repo.run(PLAN, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /booking\/SecurityConfig\.java/);
+    assert.doesNotMatch(result.stderr, /shared\/SecurityConfig\.java/);
   });
 });
 

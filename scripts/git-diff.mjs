@@ -139,14 +139,20 @@ export function changedPaths(raw) {
  * whole tree, not a range: a caller folding this into a range-scoped answer is widening what it
  * **judges**, and must not thereby widen what it treats as **authoritative** (PR #662 review).
  *
- * <p>Split into an args builder so the flag-pinning case in `git-diff.test.mjs` can reach these two
+ * <p>`--full-name` is `ls-files`' analogue of the `--no-relative` the diff builders pin: run from a
+ * subdirectory a bare `ls-files` both truncates the prefix and omits everything above it — a double
+ * false clean of the class this module's header enumerates. `git()` already pins `cwd`, so this is
+ * belt-and-braces, which is exactly how `diffArgs`/`nameOnlyArgs` treat the same risk.
+ *
+ * <p>Split into an args builder so the flag-pinning case in `git-diff.test.mjs` can reach these
  * flags directly, as it does for `diffArgs`/`nameOnlyArgs` — this module exists to enforce exactly
  * that convention, and its newest invocation was the one no unit case could see.
  */
 export function untrackedArgs() {
-  return ['ls-files', '--others', '--exclude-standard', '-z'];
+  return ['ls-files', '--others', '--exclude-standard', '--full-name', '-z'];
 }
 
+/** Every untracked path in the repository, ignore rules honoured. See `untrackedArgs` for the why. */
 export function untrackedPaths() {
   return changedPaths(git(untrackedArgs()));
 }

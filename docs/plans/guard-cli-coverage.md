@@ -220,7 +220,7 @@ PR #642, and the sixth false clean in this layer via PR #662 — see the two *Fo
 | 4 — AC-13: the template-literal scan defect the coverage found | ✅ | `efcf0ae` |
 | 5 — Close-out: docs freshness, timings, mutation ledger | ✅ | `86f93d8` |
 | 6 — AC-15: the untracked-file gap the redundancy question surfaced | ✅ | `02688cf`, `5b45bd8` |
-| 7 — #654: the same gap in the plan-doc guard, which had no `--files` half to close it | ✅ | `7663f76` (PR #662) |
+| 7 — #654: the same gap in the plan-doc guard, which had no `--files` half to close it | ✅ | `7663f76`, `b582223`, `+ review round 2` (PR #662) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -473,7 +473,7 @@ discipline:
 | #654 AC-1 | `check-plan-file-structure.mjs` — `check` back to `changedPaths(git(nameOnlyArgs(range)))` alone | `--diff sees a file the slice adds but has not staged`; `--diff reads a plan doc that is itself untracked` | ✅ 215 pass / 2 fail |
 | #654 AC-2 | `git-diff.mjs` — `--exclude-standard` dropped from `untrackedPaths` | `--diff ignores an untracked path git is told to ignore` | ✅ 216 pass / 1 fail |
 | #654 AC-3 | `git-diff.mjs` — `-z` dropped from `untrackedPaths` | both AC-1 cases (the whole listing arrives as one newline-joined token) | ✅ 215 pass / 2 fail |
-| #654 AC-4 | `check-plan-file-structure.mjs` — untracked paths appended to `findOmissions`' **result** instead of to its input | `--diff passes when the section lists the unstaged path` (+ both AC-1 cases) | ✅ 214 pass / 3 fail |
+| #654 AC-4 | `check-plan-file-structure.mjs` — untracked paths appended to `findOmissions`' **result** instead of to its input | `--diff passes when the section lists the unstaged path`; `… never reports a plan doc as its own omission`; `… reports a path in both lists exactly once`; `… sees a file the slice adds but has not staged` | ✅ 219 pass / 4 fail |
 
 ### The review round — where the first cut was wrong
 
@@ -512,6 +512,40 @@ drafts and half-staged work live.
 | #654 AC-6 | `check-plan-file-structure.mjs` — dedupe filter dropped from `untracked` | `--diff reports a path in both lists exactly once` | ✅ 220 pass / 1 fail |
 | #654 AC-7 | `check-plan-file-structure.mjs` — `usable`'s population back to the union | `--diff keeps a bare token an untracked file would shadow` | ✅ 220 pass / 1 fail |
 | #654 AC-8 | `git-diff.mjs` — `--exclude-standard` dropped from `untrackedArgs` | `the untracked listing pins the two flags that decide what it can report` (unit) + the ignore case (CLI) | ✅ 219 pass / 2 fail |
+
+### The second review round — where the scoping was still wrong
+
+**Re-review of the R-1…R-8 rework found twelve more, four of them behavioural.** Recorded because
+the pattern is the point: each round's fix was locally reasonable and globally incomplete, and a
+221/221 green suite hid all four. This layer's defects have never been visible to a green suite —
+the plan doc said so at #619 and it has now been demonstrated twice more.
+
+| # | Finding | Fix |
+|---|---|---|
+| S-1 | The R-3 fix left its mirror open. `usable`'s floor moved to the diff, but `covers` still ran over the union, so a bare token the diff blessed **absorbed** a new file sharing its basename — `shared/SecurityConfig.java` listed, `booking/SecurityConfig.java` added, exit 0. Within a diff alone two matches drop the token, so the union had broken the invariant `usable` encodes | untracked paths need the **stricter** token: unambiguous across the union. Changed paths keep the diff's floor, so R-3 stays fixed |
+| S-2 | `isExempt` keyed off `docs` — the *authoritative* set — so an untracked draft for the **next** slice was reported as this slice's omission, advising the author to list it here or ignore a file meant to be committed. Same root cause for a plan doc the diff **deletes** | exemption keys off plan-doc **shape** |
+| S-3 | The commonest #654 shape — a brand-new slice whose plan doc is *itself* unstaged — still passes vacuously, because R-1 scoped `planDocsIn` to the diff. `riviera-plan-doc` and its template, patched in the same round, advertised the catch unconditionally | **behaviour kept, docs corrected.** Staging is the author's own signal that a doc belongs to the change, and it is the only signal git offers: the alternative — treating any untracked draft as authoritative — is exactly R-1/R-2. Both docs now say the plan doc must be staged |
+| S-4 | `--diff passes when the section lists the unstaged path` was **vacuous**: it wrote the plan doc unstaged, so the guard short-circuited before reading a token and the case passed against any implementation | fixture stages the doc; the case now fails under AC-4's mutation |
+| S-5 | `untrackedArgs` omitted `--full-name`, `ls-files`' analogue of the `--no-relative` the diff builders pin — from a subdirectory a bare `ls-files` truncates the prefix *and* omits everything above it | pinned, and asserted |
+| S-6 | `report()`'s header still said "Paths changed by this diff", sending the author to look for an untracked path in a diff that cannot contain it — the #539 failure mode | header now reads "Paths this slice touches" |
+| S-7 | The dedupe rationale claimed the duplicate was "counted twice by `usable`". False for the shipped code: the floor is measured against `changed`, where such a path appears once either way | docstring and the mirrored test docstring corrected to the double-**report** |
+| S-8 | The AC-4 mutation row recorded 214/3 — measured against the pre-review code and never re-run after R-1/R-3 changed `planDocsIn` and `usable` | re-measured: 219/4 |
+| S-9 | `untrackedPaths()` walked the whole tree before `check` knew a plan doc existed, discarding it in the majority case; dedupe was an `Array.includes` scan per path | walk hoisted below the `docs.length === 0` return; dedupe via a `Set` |
+| S-10 | The advice sent personal scratch files to the **committed** `.gitignore`, when `--exclude-standard` already honours `.git/info/exclude` and `core.excludesFile` | advice names all three, in the right order |
+| S-11 | `untrackedPaths()` carried no doc comment while the block above it documented `untrackedArgs()` in its own voice | doc comment added |
+| S-12 | Phase row 7 cited only the first, superseded commit | both commits listed |
+
+| AC | The revert | Cases that go RED | Restored |
+|---|---|---|---|
+| #654 AC-9 | `check-plan-file-structure.mjs` — untracked coverage judged with `general` rather than `strict` | `--diff reports a new file a bare token would absorb` | ✅ 222 pass / 1 fail |
+| #654 AC-10 | `check-plan-file-structure.mjs` — `isExempt` keyed off `docs` again | `--diff never reports a plan doc as its own omission` | ✅ 222 pass / 1 fail |
+| #654 AC-11 | `git-diff.mjs` — `--full-name` dropped from `untrackedArgs` | `the untracked listing pins the two flags that decide what it can report` | ✅ 222 pass / 1 fail |
+
+**What two rounds of this say.** Both rounds found the same *shape* of error: one list, or one floor,
+serving purposes that had quietly diverged. The four-token union broke three contracts; scoping it
+broke two more in the opposite direction. The seam that finally holds is stated in `findOmissions`'
+signature — `changed` and `untracked` arrive separately and are measured by different floors — rather
+than in a comment above a single list. A reviewer should check that the two floors still differ.
 
 **The residual, stated rather than hidden.** With plan docs scoped to the diff, an unrelated
 untracked scratch file is still judged **when the slice has a plan doc in its diff** — git cannot
