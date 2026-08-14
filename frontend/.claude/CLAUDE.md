@@ -85,14 +85,24 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 ## Unit tests
 
-- **The Vitest clock is frozen** at Monday 2026-06-15 midday Europe/Tirane
-  (`src/test-setup.ts`): `new Date()` in a spec is deterministic, never the machine's
-  real calendar. Never write a spec that needs the real "today". Only `Date` is faked,
-  so real timers already work — a spec needing **full** fake timers calls
-  `vi.useFakeTimers()` and restores with **`freezeClock()`** (exported by
-  `src/test-setup.ts`), never `vi.useRealTimers()`: that unfakes `Date` as well and
-  hands the real calendar to whatever runs next in the same worker, which reddened CI
-  on every run outside 09:59–21:59 UTC (#662).
+- **The Vitest clock is frozen** at Monday 2026-06-15 midday Europe/Tirane, before
+  **every test file** (`src/test-setup.ts`): `new Date()` in a spec is deterministic,
+  never the machine's real calendar. Never write a spec that needs the real "today".
+  Only `Date` is faked, so real timers already work — a spec needing **full** fake
+  timers calls `vi.useFakeTimers()` and restores with **`freezeClock()`** (exported by
+  **`src/testing/freeze-clock.ts`**), never `vi.useRealTimers()`: that unfakes `Date` as
+  well and leaves every later test in the file on the machine calendar. `no-restricted-syntax`
+  fails the lint on `vi.useRealTimers()` in a spec.
+- **Nothing may import `src/test-setup.ts`** — `no-restricted-imports` fails the lint on
+  it, and the per-file freeze depends on it. Vitest re-imports each setup file before
+  each test file, but `@angular/build:unit-test` pre-bundles setup files with esbuild: a
+  second importer makes the module *shared*, esbuild hoists its body into a chunk, and
+  Vitest re-imports a shim whose chunk is already evaluated — so the freeze silently
+  drops to **once per worker process** and each file inherits whatever the last one left
+  on the clock (ADR-0014, #663). Shared test helpers live in `src/testing/`.
+- **`isolate` stays `false`** (the `@angular/build:unit-test` default): test files in a
+  worker share one jsdom and one module graph. `src/test-setup.ts` re-establishes the
+  global posture per file; anything else a spec mutates globally, it restores itself.
 
 ## Services
 

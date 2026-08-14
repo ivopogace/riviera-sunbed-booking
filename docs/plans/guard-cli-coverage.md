@@ -572,6 +572,15 @@ machine's calendar for whatever runs next in that worker. `setupFiles` re-freezi
 global posture is restored rather than abandoned. `frontend/.claude/CLAUDE.md` recommended
 `vi.useRealTimers()` by name and is corrected.
 
+> **The open unknown above is closed — and the fix here is what caused it.** #663 measured it:
+> `setupFiles` re-freezing per file fails because `@angular/build:unit-test` pre-bundles setup files
+> with esbuild, and exporting `freezeClock()` from `test-setup.ts` made that module *shared* between
+> entry points — so esbuild hoisted its body into a chunk and Vitest re-imported a shim. The freeze
+> ran once per worker process, not once per file. `test-setup.ts` no longer exports anything;
+> `freezeClock()` lives in `src/testing/freeze-clock.ts` and the body re-executes 157/157. See
+> `docs/adr/ADR-0014-vitest-per-file-setup-over-isolation.md` and
+> `docs/plans/vitest-per-file-setup.md`.
+
 > **Not reproduced locally, and said so rather than implied otherwise.** The full suite passes here
 > both with and without the fix, as do the two specs run together in the poisoning order — the leak
 > needs CI's worker-reuse conditions (2 cores, 157 files). What is proved locally is the assertion's

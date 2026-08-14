@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { freezeClock } from '../../test-setup';
+import { freezeClock } from '../../testing/freeze-clock';
 import { CameraQrScanner } from './camera-qr-scanner';
 
 vi.mock('jsqr', () => ({

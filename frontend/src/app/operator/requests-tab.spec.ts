@@ -5,7 +5,7 @@ import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@ang
 import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
-import { freezeClock } from '../../test-setup';
+import { freezeClock } from '../../testing/freeze-clock';
 import { todayBookingDate } from '../shared/booking-date';
 import { MoneyView } from '../shared/money';
 import { SetView, Tier } from '../shared/venue-views';
