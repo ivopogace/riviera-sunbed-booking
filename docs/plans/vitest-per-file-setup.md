@@ -164,9 +164,9 @@ N/A — no HTTP surface.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-pushed`; CI + Sonar re-check next.
+**Stage pointer:** `merge close-out` — all gates green, **merged via PR #664**.
 
-**Next action:** confirm the re-pushed CI run and the Sonar quality gate, then close out and merge.
+**Next action:** none. The slice is complete; #663 closes with the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -174,7 +174,8 @@ N/A — no HTTP surface.
 | 1 — Split `freezeClock()` out so the setup entry stays un-shared | ✅ | `a5f6a45` |
 | 2 — Guard it: lint rules + runtime tripwire + regression spec | ✅ | `a5f6a45` |
 | 3 — Docs: ADR-0014, `frontend/.claude/CLAUDE.md`, this plan, #662's open unknown | ✅ | `a5f6a45` |
-| 4 — Review findings: register the setup file outside the builder; F-1…F-12 | ✅ | this branch |
+| 4 — Review findings: register the setup file outside the builder; F-1…F-13 | ✅ | `a180c82` |
+| 5 — Close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -331,6 +332,8 @@ three specs that import it
 - [x] Risk register has no stale `open` rows; Open Questions empty.
 - [x] **The review gate ran in full** — `/code-review` over `origin/main...HEAD`; 12 findings, all
       resolved above, one of which (F-1) changed the shape of the fix.
-- [ ] **CI gate** — re-due on the phase-4 push; unticked until that run is checked.
-- [ ] **Sonar gate** — re-due on the phase-4 push (F-13 is the fix); unticked until green.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #664`.
+- [x] **CI gate** — green on `a180c82`: backend, frontend, repo hygiene, CodeQL (both analyses).
+- [x] **Sonar gate** — green on `a180c82`, and its issue list is empty, not merely passing:
+      0 new issues, 0 accepted issues, 0 security hotspots, **100.0% coverage on new code**,
+      0.0% duplication on new code.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #664`.
