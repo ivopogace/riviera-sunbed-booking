@@ -259,6 +259,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   edits this plan doc, which puts every path in one diff and so under this section's own guard.
 - `CLAUDE.md` — modified by the follow-up's docs-freshness pass: the CI bullet classed all four
   hygiene guards as diff-scoped, which #654 makes false for the plan-doc one.
+- `frontend/src/test-setup.ts` · `frontend/src/app/operator/camera-qr-scanner.spec.ts` ·
+  `frontend/src/app/operator/requests-tab.spec.ts` · `frontend/src/app/booking/booking-pay.spec.ts` ·
+  `frontend/.claude/CLAUDE.md` — modified to unblock this PR's CI, see *The CI blocker* below. The
+  frozen-clock setup now exports `freezeClock()` and the seven `vi.useRealTimers()` restore sites
+  call it, so a spec needing full fake timers no longer hands the real calendar to the next file in
+  the worker. Out of this slice's scope and folded in on the maintainer's call, because it reddened
+  **every** CI run outside 09:59–21:59 UTC, repo-wide.
 - `frontend/.claude/CLAUDE.md` · `.claude/skills/riviera-java-conventions/SKILL.md` — modified: both
   stated the inline-comment guard is "diff-scoped, always", which AC-15 makes false for an untracked
   file. Same sentence in two places, both patched.
@@ -546,6 +553,31 @@ serving purposes that had quietly diverged. The four-token union broke three con
 broke two more in the opposite direction. The seam that finally holds is stated in `findOmissions`'
 signature — `changed` and `untracked` arrive separately and are measured by different floors — rather
 than in a comment above a single list. A reviewer should check that the two floors still differ.
+
+### The CI blocker — a flake this slice did not cause, and could not merge around
+
+`Frontend (lint + test + build)` went red on this PR at 03:53 and again on re-run at 04:05 UTC, on a
+diff containing **no frontend file**. `console-stats-strip.spec.ts`'s `#572` case asserts that
+`+12h01m` crosses a Tirane date boundary — true against the **frozen** clock always, and against the
+**real** clock only between 09:59 and 21:59 UTC, since Tirane midnight is 22:00 UTC.
+
+The natural experiment settles the cause: the identical frontend tree passed at **20:32** UTC (first
+push) and failed at **03:53** and **04:05**. So a spec was reading the real clock, and only three
+files can unfake it — `camera-qr-scanner`, `requests-tab` and `booking-pay` each call
+`vi.useRealTimers()` to restore after `vi.useFakeTimers()`, which unfakes `Date` too and leaves the
+machine's calendar for whatever runs next in that worker. `setupFiles` re-freezing per file is what
+*should* contain it; under CI's worker reuse it evidently does not.
+
+`freezeClock()` is now exported from `test-setup.ts` and all seven restore sites call it, so the
+global posture is restored rather than abandoned. `frontend/.claude/CLAUDE.md` recommended
+`vi.useRealTimers()` by name and is corrected.
+
+> **Not reproduced locally, and said so rather than implied otherwise.** The full suite passes here
+> both with and without the fix, as do the two specs run together in the poisoning order — the leak
+> needs CI's worker-reuse conditions (2 cores, 157 files). What is proved locally is the assertion's
+> time-of-day dependence and the three unrestored opt-outs; what only CI can confirm is that they
+> are the same defect. The fix stands on its own terms either way: restoring the documented posture
+> is strictly more correct than unfaking `Date`, whatever else is true.
 
 **The residual, stated rather than hidden.** With plan docs scoped to the diff, an unrelated
 untracked scratch file is still judged **when the slice has a plan doc in its diff** — git cannot

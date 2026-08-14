@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { freezeClock } from '../../test-setup';
 import { CameraQrScanner } from './camera-qr-scanner';
 
 vi.mock('jsqr', () => ({
@@ -40,7 +41,7 @@ describe('CameraQrScanner', () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    freezeClock();
   });
 
   it('refuses to start without a preview element (the fake path never reaches it)', async () => {
