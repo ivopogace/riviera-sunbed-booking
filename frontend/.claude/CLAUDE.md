@@ -16,6 +16,10 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Implement lazy loading for feature routes
 - Do NOT use the `@HostBinding` and `@HostListener` decorators. Put host bindings inside the `host` object of the `@Component` or `@Directive` decorator instead
 - Use `NgOptimizedImage` for all static images (not for inline base64 images).
+- **Uncertain about an Angular API's behavior** (signals, `linkedSignal`, forms, lifecycle,
+  router)? Verify against angular.dev via the angular-cli MCP's `search_documentation`
+  (version 22) — never from memory; training data trails a v22 codebase. Same when a review
+  finding hinges on a framework-behavior claim.
 
 ## Accessibility Requirements
 

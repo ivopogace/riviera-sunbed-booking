@@ -6,7 +6,8 @@ description: The Angular frontend STRUCTURE authority for riviera-sunbed-booking
 # Riviera frontend structure
 
 This is the **frontend counterpart of `riviera-modulith`**: it owns the *where*,
-not the *how*. `angular-developer` (+ the angular-cli MCP `get_best_practices`)
+not the *how*. `angular-developer` (+ the angular-cli MCP: `get_best_practices` for the
+version posture, `search_documentation` for API truth when behavior is uncertain)
 owns component/service/routing/signals technique; `frontend/.claude/CLAUDE.md`
 owns the language idioms (standalone, signals, Signal Forms, `@Service`,
 `inject()`); `riviera-review-overlay` RV-FE-* checks the result. Load this skill
