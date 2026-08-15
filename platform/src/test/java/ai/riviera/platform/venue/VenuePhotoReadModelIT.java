@@ -123,6 +123,12 @@ class VenuePhotoReadModelIT {
 				.andExpect(jsonPath("$[?(@.id == %d)].photos", venue.value())
 						.value(contains(contains(
 								url(venue, "4a04"), url(venue, "4d04"), url(venue, "4f04")))));
+
+		// The map read prefers BANNER per slot, falling back CARD → PREVIEW for older uploads.
+		mvc.perform(get("/api/venues/{v}", venue.value()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.photos").value(contains(
+						url(venue, "4b04"), url(venue, "4d04"), url(venue, "4f04"))));
 	}
 
 	@Test
@@ -134,11 +140,14 @@ class VenuePhotoReadModelIT {
 		mvc.perform(get("/api/venues/{v}", withCover.value()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.coverPhoto.card").value(url(withCover, "2a02")))
-				.andExpect(jsonPath("$.coverPhoto.banner").value(url(withCover, "2b02")));
+				.andExpect(jsonPath("$.coverPhoto.banner").value(url(withCover, "2b02")))
+				// The banner slideshow serves the banner-sized variant of the one occupied slot.
+				.andExpect(jsonPath("$.photos").value(contains(url(withCover, "2b02"))));
 
 		mvc.perform(get("/api/venues/{v}", noPhoto.value()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.coverPhoto").value(nullValue()));
+				.andExpect(jsonPath("$.coverPhoto").value(nullValue()))
+				.andExpect(jsonPath("$.photos").value(empty()));
 	}
 
 	@Test

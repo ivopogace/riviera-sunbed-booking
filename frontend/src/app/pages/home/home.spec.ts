@@ -124,7 +124,7 @@ describe('Home (venue discovery)', () => {
 
     const item = el().querySelector('[data-testid="venue-card"]')!.closest('li')!;
     const slides = item.querySelectorAll<HTMLImageElement>(
-      '[data-testid="card-photo-img"], [data-testid="card-slide-img"]',
+      '[data-testid="card-photo-img"], [data-testid="card-photo-slide-img"]',
     );
     expect(slides.length).toBe(3);
     // The service resolves each wire path against the API origin.

@@ -122,25 +122,23 @@
           </div>
         </div>
 
-        <!-- The venue's cover photo when uploaded; the gradient + sun as the empty state (the "coming soon" pill is gone — photos have shipped). The photo (the sea view) sits above the grid card's "Facing the sea" banner — the v3 design's spatial order: sea ↑ / promenade ↓. Decorative (aria-hidden): the header already names the venue. -->
+        <!-- The venue's photos as the shared slideshow (own controls — the band is no link); the gradient + sun as the empty state. Sea view sits above the grid card's "Facing the sea" banner — the v3 design's spatial order: sea ↑ / promenade ↓. The imagery is decorative (the component hides it from AT); only the step buttons are exposed, so the band itself is NOT aria-hidden. -->
         <div
           class="photo-band relative h-[150px] rounded-[20px] overflow-hidden bg-(image:--riv-photo-grad)"
-          aria-hidden="true"
         >
-          @if (v.coverPhoto; as cover) {
-            <img
-              [ngSrc]="cover.banner"
-              fill
-              class="object-cover"
-              alt=""
-              data-testid="map-banner-img"
-            />
-          } @else {
+          <app-photo-slideshow
+            [photos]="v.photos"
+            [name]="v.name"
+            testId="map-banner"
+            ownControls
+          />
+          @if (v.photos.length === 0) {
             <span
+              aria-hidden="true"
               class="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-[radial-gradient(circle_at_34%_30%,rgba(255,236,180,0.95),rgba(240,170,46,0.5)_72%)] blur-[0.5px] opacity-[0.85]"
             ></span>
           }
-          <span class="absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
+          <span aria-hidden="true" class="absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
         </div>
       </div>
 

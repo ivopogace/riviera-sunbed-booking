@@ -185,6 +185,40 @@ describe('VenueMap', () => {
     expect(el().textContent).not.toContain('coming soon');
   });
 
+  it('cycles the banner slideshow through every occupied slot with its own controls', async () => {
+    venueRequest().flush({
+      ...miramar(),
+      photos: [
+        '/api/venues/1/photos/bb02',
+        '/api/venues/1/photos/cc03',
+        '/api/venues/1/photos/dd04',
+      ],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const band = el().querySelector('.photo-band')!;
+    const slides = band.querySelectorAll<HTMLImageElement>(
+      '[data-testid="map-banner-img"], [data-testid="map-banner-slide-img"]',
+    );
+    expect(slides.length).toBe(3);
+    // The service resolves each wire path against the API origin.
+    expect(slides[0].getAttribute('src')).toBe(
+      `${environment.apiBaseUrl}/api/venues/1/photos/bb02`,
+    );
+    expect(band.querySelectorAll('[data-testid="map-banner-dots"] span').length).toBe(3);
+
+    // The band hosts its own labelled controls (it is no link), outside the aria-hidden imagery.
+    const next = band.querySelector<HTMLButtonElement>('[data-testid="map-banner-next"]')!;
+    expect(next.getAttribute('aria-label')).toBe('Next photo, Miramar Beach Club');
+    expect(next.closest('[aria-hidden="true"]')).toBeNull();
+
+    next.click();
+    fixture.detectChanges();
+    expect(slides[0].classList.contains('opacity-0')).toBe(true);
+    expect(slides[1].classList.contains('opacity-0')).toBe(false);
+  });
+
   it('marks the premium front row and the taken sets distinctly', async () => {
     flushVenue();
     await fixture.whenStable();

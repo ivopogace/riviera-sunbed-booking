@@ -56,6 +56,12 @@ export class VenueService {
       .get<VenueMapView>(`${environment.apiBaseUrl}/api/venues/${venueId}`, {
         params: new HttpParams().set('date', date),
       })
-      .pipe(map((venue) => ({ ...venue, coverPhoto: resolveCoverPhoto(venue.coverPhoto) })));
+      .pipe(
+        map((venue) => ({
+          ...venue,
+          coverPhoto: resolveCoverPhoto(venue.coverPhoto),
+          photos: (venue.photos ?? []).map(apiPhotoUrl),
+        })),
+      );
   }
 }

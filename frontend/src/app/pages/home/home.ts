@@ -1,4 +1,3 @@
-import { NgOptimizedImage } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
@@ -15,6 +14,8 @@ import { focusMover } from '../../shared/focus-after-render';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
+import { PhotoSlideshow } from '../../shared/photo-slideshow';
+import { slideshowPhotos } from '../../shared/photo-url';
 import { isRated, ratingScore } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
 import { defaultBookingDate } from '../../shared/booking-date';
@@ -51,17 +52,6 @@ interface VenueCard {
 }
 
 /**
- * The card's slideshow photos: the summary's `photos` when present, else the cover alone (older
- * payloads/doubles omit `photos`), else empty — the gradient placeholder renders instead.
- */
-function slideshowPhotos(venue: VenueSummary): readonly string[] {
-  if (venue.photos?.length) {
-    return venue.photos;
-  }
-  return venue.coverPhoto ? [venue.coverPhoto.card] : [];
-}
-
-/**
  * Tourist venue discovery — the app's landing page (`/`).
  * Hero + one glass filter bar (beach/region/date with the live result count inside) + glass venue
  * cards (a crossfading slideshow of the venue's uploaded photos when any exist — stepped by
@@ -74,10 +64,10 @@ function slideshowPhotos(venue: VenueSummary): readonly string[] {
 @Component({
   selector: 'app-home',
   imports: [
-    NgOptimizedImage,
     RouterLink,
     RetryButton,
     PanelGlass,
+    PhotoSlideshow,
     CardGlass,
     AmenityChip,
     TouchTarget,
@@ -108,9 +98,6 @@ export class Home {
   /** Distinct beaches/regions for the filter selects, captured once from the unfiltered catalogue. */
   protected readonly beaches = signal<readonly string[]>([]);
   protected readonly regions = signal<readonly string[]>([]);
-
-  /** Per-venue slideshow position (venue id → photo index); absent = the first photo. */
-  private readonly slideIndexes = signal<ReadonlyMap<number, number>>(new Map());
 
   /** The skeleton grid renders this many placeholder cards while a request is in flight. */
   protected readonly skeletons = [0, 1, 2, 3, 4, 5] as const;
@@ -203,25 +190,9 @@ export class Home {
   private beginRequest(): string {
     this.venues.set(undefined);
     this.failed.set(false);
-    this.slideIndexes.set(new Map());
     const token = `${this.beach()}|${this.region()}|${this.selectedDate()}`;
     this.lastRequest = token;
     return token;
-  }
-
-  /** The photo the venue's card slideshow currently shows (0 = the first). */
-  protected slideIndex(venueId: number): number {
-    return this.slideIndexes().get(venueId) ?? 0;
-  }
-
-  /** Step one card's slideshow forward/back, wrapping at either end. */
-  protected stepSlide(venueId: number, photoCount: number, step: 1 | -1): void {
-    this.slideIndexes.update((indexes) => {
-      const next = new Map(indexes);
-      const current = next.get(venueId) ?? 0;
-      next.set(venueId, (current + step + photoCount) % photoCount);
-      return next;
-    });
   }
 
   protected onBeachChange(event: Event): void {
@@ -277,7 +248,7 @@ export class Home {
       .slice(0, 3)
       .map((code) => ({ code, label: amenityLabel(code) }));
     const priceLabel = venue.fromPrice ? formatMoney(venue.fromPrice) : null;
-    const photos = slideshowPhotos(venue);
+    const photos = slideshowPhotos(venue, 'card');
     const { free, total } = venue.availability;
     const freePercent = total === 0 ? 0 : Math.round((free / total) * 100);
 

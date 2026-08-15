@@ -68,6 +68,12 @@ export interface VenueMapView {
   readonly setVersion?: number;
   /** The cover photo's serving URLs, or `null`/absent — the banner then keeps its gradient. */
   readonly coverPhoto?: CoverPhotoView | null;
+  /**
+   * The beach-map banner's slideshow: one banner-sized serving URL per occupied photo slot in
+   * slot order (cover, sunbeds, bar), possibly empty. Optional because test doubles and older
+   * payloads may omit it; the band then falls back to `coverPhoto` alone.
+   */
+  readonly photos?: readonly string[];
 }
 
 /**
