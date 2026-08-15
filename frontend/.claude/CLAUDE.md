@@ -71,9 +71,11 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 ## Styling
 
-- Tailwind v4 is the go-forward and **mandatory for new styling**: a new component or
-  template is styled with utilities, never a fresh `.scss` (review finding; component
-  SCSS is being retired). Load **`riviera-tailwind`** before styling anything.
+- Tailwind v4 is the **default for new styling**: whenever Tailwind can express it, style
+  with utilities, not SCSS. SCSS is not obsolete — it stays legitimate for what Tailwind
+  can't express cleanly (e.g. the `home.scss` scrim), with the justification stated; an
+  **unjustified** fresh `.scss` is a review finding. Load **`riviera-tailwind`** before
+  styling anything.
 
 ## Comments
 

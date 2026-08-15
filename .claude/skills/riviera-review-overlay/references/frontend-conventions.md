@@ -42,7 +42,7 @@ reference `CLAUDE.md`.
 
 ### RV-FE-7. Styling is Tailwind, shared via directives, with no rendered drift (`riviera-tailwind`)
 **Gate:** Does new/changed styling follow the project's Tailwind conventions?
-- [ ] Tailwind utilities (SCSS is being retired) — new component styling isn't a fresh `.scss`
+- [ ] Tailwind utilities by default — new component styling isn't a fresh `.scss` **unless justified** (Tailwind-expressible → Tailwind; SCSS needs its stated why, per the `home.scss` scrim precedent)
 - [ ] a reused surface/element is a shared directive/component (`shared/*-glass.ts`, `retry-button.ts`), **not** `@apply`/`@utility`
 - [ ] a class a spec queries (`.set-tile.premium`, `.amenity-chip`, `.failure-title`, …) is retained as an inert marker after its styling moved to utilities
 - [ ] a restyle/migration proves **no rendered drift** with a computed-style diff, not just the class list (the `*.contrast.spec.ts` are pure maths and can't see it)
