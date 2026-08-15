@@ -71,8 +71,14 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 ## Styling
 
-- Tailwind v4 is the go-forward; component SCSS is being retired. Load the
-  **`riviera-tailwind`** skill before writing or refactoring any Tailwind.
+- Tailwind v4 is the **default for new styling**: whenever Tailwind can express it, style
+  with utilities, not SCSS. SCSS is not obsolete — it stays legitimate for what Tailwind
+  can't express cleanly (e.g. the `home.scss` scrim), with the justification stated; an
+  **unjustified** fresh `.scss` is a review finding. **Migrate on touch:** a slice that
+  touches a component still carrying legacy SCSS migrates that styling to Tailwind in the
+  same slice; deferral only by **asking the maintainer** (`AskUserQuestion`), recorded
+  with a follow-up issue — `riviera-tailwind` owns the rule. Load **`riviera-tailwind`**
+  before styling anything.
 
 ## Comments
 

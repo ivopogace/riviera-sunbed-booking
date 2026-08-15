@@ -126,25 +126,14 @@ Re-walk on **every re-review, including review-fix commits** — fixes change th
 
 ## Verification commands surfaced
 
-Backend:
-- `./gradlew build` — no JPA on the classpath (a build pulling
-  `spring-boot-starter-data-jpa` is itself a finding)
-- `./gradlew test --tests "<package>.<ClassName>"` for targeted tests; `--tests
-  "*ModularityTests*"` if module structure changed (Modulith verification is a test, not a Gradle task)
-
-Frontend (run in `frontend/`):
-- `npm run lint`; `npm run build` if production-build risk
-- `npm test` — Vitest via `@angular/build:unit-test` (Angular 22+), once in jsdom;
-  NOT Karma — there is no `--browsers=ChromeHeadless` flag
+The command set is CLAUDE.md §Commands. Two review-specific notes: Modulith verification is
+a **test**, not a Gradle task (`./gradlew test --tests "*ModularityTests*"` when structure
+changed), and `npm test` is Vitest-in-jsdom — there is no `--browsers=ChromeHeadless` flag.
 
 ## Red flags specific to this repo
 
 | Thought | Reality |
 |---|---|
-| "Two reservations rarely collide; a check-then-insert is fine." | Check-then-insert races. Needs a unique constraint + row lock / `ON CONFLICT` (invariant #2). |
-| "The frontend confirmed payment, mark the booking paid." | Confirm only on a signature-verified webhook (invariant #8). |
-| "I'll use Stripe Connect to pay the venue." | No Connect (invariant #8) — collect-only + manual BKT payout (invariant #9). |
-| "Booking codes can be sequential ids." | Unguessable bearer credential (invariant #7). |
 | "`gradlew.bat` flipped CRLF→LF — that's corruption, revert it." | Check `.gitattributes` at every level (incl. `platform/.gitattributes`) first: `*.bat text eol=crlf` stores the blob **LF** and checks out CRLF, so an LF blob is the **correct** normalized form — don't "revert" it (git re-normalizes on `add`). Only a wrong **working-tree** EOL is a real finding (PR #37). |
 
 The authoring-idiom red flags (JPA/Lombok, float money, JVM-default-zone time,

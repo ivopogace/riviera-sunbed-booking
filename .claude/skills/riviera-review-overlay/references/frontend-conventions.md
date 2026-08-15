@@ -42,7 +42,8 @@ reference `CLAUDE.md`.
 
 ### RV-FE-7. Styling is Tailwind, shared via directives, with no rendered drift (`riviera-tailwind`)
 **Gate:** Does new/changed styling follow the project's Tailwind conventions?
-- [ ] Tailwind utilities (SCSS is being retired) — new component styling isn't a fresh `.scss`
+- [ ] Tailwind utilities by default — new component styling isn't a fresh `.scss` **unless justified** (Tailwind-expressible → Tailwind; SCSS needs its stated why, per the `home.scss` scrim precedent)
+- [ ] **migrate-on-touch:** a component the diff touches that still carries legacy component SCSS had that styling migrated to Tailwind in this same slice — or the SCSS is a justified holdout (scrim-class), or the defer was **maintainer-approved** (asked via `AskUserQuestion`, recorded with a follow-up issue — never self-granted; `riviera-tailwind` owns the rule + checklist)
 - [ ] a reused surface/element is a shared directive/component (`shared/*-glass.ts`, `retry-button.ts`), **not** `@apply`/`@utility`
 - [ ] a class a spec queries (`.set-tile.premium`, `.amenity-chip`, `.failure-title`, …) is retained as an inert marker after its styling moved to utilities
 - [ ] a restyle/migration proves **no rendered drift** with a computed-style diff, not just the class list (the `*.contrast.spec.ts` are pure maths and can't see it)
@@ -195,14 +196,9 @@ in the **suite that will actually run it**?
 > real-backend suite (`frontend/e2e/real-backend/`, boots Spring Boot + Flyway Postgres,
 > `playwright.config.ts`). Render/a11y/interaction → mocked suite (so CI covers it);
 > wiring / real HTTP status / DB UNIQUE constraint / cross-feature round-trip → real-backend
-> suite. A spec must live in exactly one tree. **In cloud sessions** a Chromium is
-> pre-installed under `/opt/pw-browsers` and you must **not** `playwright install` there — but
-> the pinned `@playwright/test` generally wants a *newer* revision than the image ships (as of
-> #164: it looked for `chromium_headless_shell-1228`, the image had 1194), so a bare run fails
-> with "Executable doesn't exist". Point it at the shipped build instead of downloading:
-> `PW_CHROMIUM_EXECUTABLE=$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome | tail -1) npm run test:e2e:a11y`.
-> Both configs honour that variable; on local machines they fall back to Playwright's own
-> browser resolution.
+> suite. A spec must live in exactly one tree. **In cloud sessions** never `playwright
+> install` — a Chromium is pre-installed and both configs take `PW_CHROMIUM_EXECUTABLE`; the
+> run recipe and the revision-mismatch trap (#164) live in `riviera-local-debug`.
 
 **Follow-up:**
 - A frontend flow change with **no** e2e consideration, or a backend-only spec dropped into

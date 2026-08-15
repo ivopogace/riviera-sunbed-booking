@@ -21,7 +21,7 @@ cheap here and expensive at review.
 | `shared/` | **Pure, stateless utilities and presentational primitives**: no HTTP, no app state — including the published API-view vocabulary (backend-vocabulary mirrors like `venue-views.ts`, `amenities.ts`, `booking-status.ts`) | nothing app-internal (`environments/` is config, not app code — see note below) | `money.ts`, `venue-views.ts` |
 | `pages/` | **Static/marketing routes** with no domain logic | `core/`, `shared/` | `pages/home/` |
 | Feature folders (`booking/`, `venue/`, `operator/`, `auth/`, `admin/`, …) | One user-facing domain area: its components, its models, its HTTP service | `core/`, `shared/` — **never another feature folder** | `booking/booking-view.ts`, `venue/venue.service.ts` |
-| `environments/` | `apiBaseUrl` + public config (e.g. `stripePublishableKey`) | — | see Environment rules |
+| `environments/` (at `frontend/src/environments/` — a *sibling* of `app/`, in the table for completeness) | `apiBaseUrl` + public config (e.g. `stripePublishableKey`) | — | see Environment rules |
 
 **Import direction is one-way:** features → `core`/`shared`; `core` → `shared`;
 `shared` → nothing. When two features need the same thing, promote it: pure →
@@ -39,27 +39,12 @@ but config-dependent, so without this note it had no legal address at all.)
 
 ### The residual cross-feature imports — five, behavioral, frozen (#489)
 
-**The placement debt is paid.** #488 recorded thirty-three cross-feature imports
-across twenty-one files; #489 moved the published API-view vocabulary that caused
-twenty-eight of them out of `venue/` (decision + rationale:
-`docs/plans/vocabulary-out-of-venue.md`). The split by kind it chose:
-
-- **`shared/venue-views.ts`** (was `venue/venue.model.ts`) — the venue-owned
-  API-view vocabulary, the FE mirror of the backend's `venue::vocabulary`
-  published surface (the #95 shape in spirit). The `venue` feature remains its
-  **editor of record** — changes ride venue API slices — following the exact
-  precedent of `amenities.ts`/`booking-status.ts`, both already
-  backend-vocabulary mirrors living in `shared/`.
-- **`MoneyView` → `shared/money.ts`** — platform money vocabulary (invariant #5)
-  colocated with its renderer/parser, the one home of the euros↔minor boundary
-  (the #371 kernel shape).
-- **`shared/booking-date.ts`**, **`shared/photo-url.ts`** — genuinely
-  cross-cutting pure helpers (#371 shape).
-
-On the frontend the #95-vs-#371 distinction **collapses at the address level**:
-there is no `allowedDependencies` analogue, and the one-way rule leaves `shared/`
-as the only stratum every consumer may import — so the split is expressed in file
-grain and documented ownership, not folder taxonomy.
+**The placement debt is paid.** #489 moved the published API-view vocabulary out
+of `venue/` into `shared/` (`venue-views.ts`, `money.ts`, `booking-date.ts`,
+`photo-url.ts`); the `venue` feature remains **editor of record** for its mirror,
+per the `amenities.ts`/`booking-status.ts` precedent. The split's rationale and
+kind-by-kind decision: `docs/plans/vocabulary-out-of-venue.md` (history: #488 the
+diagnosis, PR #490 the review record).
 
 **What remains — frozen by `riviera-review-overlay` RV-FE-8** (a *new* edge is a
 Major finding, Blocker if `shared/`- or `core/`-directed; a pre-existing edge
@@ -77,8 +62,7 @@ component edge — and each needs its own argument on its merits (e.g. promoting
 `VenueService` to `core/`, or inverting the dialog edge); never a blanket
 "features may import features" rule, which could not absolve the `pages/` edge
 anyway. With the set this small, mechanical ESLint pinning is the natural
-follow-up (deliberately not added by #489). History: #488 (the diagnosis), PR
-#490 (the review record), #489 (the move).
+follow-up (deliberately not added by #489).
 
 **New feature = new folder.** The auth epic (#108) added `auth/` as a feature
 folder: **one audience-aware sign-in card** (`auth/auth-page.ts` at
@@ -190,10 +174,9 @@ The only place providers are wired:
 ## External reference
 
 [Ismaestro/angular-example-app](https://github.com/Ismaestro/angular-example-app)
-uses the same `core/`/`shared/`/feature taxonomy. Two deliberate deltas: **adopt
-its `features/` wrapper only past ~8–10 top-level feature folders** (mechanical
-move; update this skill then); and do **not** import its JWT-auth pattern — the
-auth decision is ADR'd (`docs/architecture/auth-signin-register.md` D-1).
+shares this taxonomy. Two deliberate deltas: adopt its `features/` wrapper only
+past ~8–10 top-level feature folders, and never its JWT-auth pattern (ADR'd:
+`docs/architecture/auth-signin-register.md` D-1).
 
 ## When NOT to apply
 

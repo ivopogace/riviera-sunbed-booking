@@ -63,14 +63,13 @@ pin this down rather than re-derive it:
   a **fresh PaymentIntent** is created for the guest, confirmed by the **same
   verified webhook** as Instant Book — from `AWAITING_PAYMENT` onward the two flows
   are identical, so the payment/confirmation code is written once.
-- **Windows & sweep:** venue accept deadline = `booking.request.expiry-window`
-  (capped at the evening-before cutoff); guest pay window = `booking.request.pay-window`,
-  measured from `accepted_at` — never the instant TTL's creation clock — and **capped at the
-  service day's opening** (`00:00 Europe/Tirane`), which the abandoned sweep enforces as its
-  own `booking_date` arm and the code-gated view enforces by withholding the `clientSecret`.
-  `ExpireRequestsService` + `RequestSweepScheduler` run **lockless** like the
-  abandoned-payment sweep (guarded `UPDATE … RETURNING`; single-instance posture per
-  `docs/deploy/production-hardening.md`); ShedLock only when scaling out — improvement-plan D3.
+- **Windows & sweep:** venue accept deadline = `booking.request.expiry-window`, capped at
+  the **evening-before cutoff**; guest pay window = `booking.request.pay-window`, measured
+  from `accepted_at` — never the instant TTL's creation clock — capped at **service-day
+  open** (the two caps differ; invariant #4, detail in `RESPONSIBILITIES.md` §`booking`).
+  `ExpireRequestsService` +
+  `RequestSweepScheduler` run **lockless** (guarded `UPDATE … RETURNING`; single-instance
+  posture per `docs/deploy/production-hardening.md`); ShedLock only when scaling out.
 - Do **NOT** model this as auth-and-capture — the model is payment-request-on-accept; treat any older doc implying manual capture/void as stale.
 
 ### Refunds & cancellation
@@ -94,10 +93,12 @@ pin this down rather than re-derive it:
 
 ## Boundary / module placement
 
-- `payment` and `payout` are **separate modules** collaborating with `booking` via
-  events, not direct calls (invariant #11): a confirmation (published after a
-  verified webhook) → `availability` marks the set taken, `payout` accrues; a
-  cancellation/refund → the set is freed, the accrual reversed.
+- `payment` and `payout` are **separate modules** collaborating with `booking` per
+  invariant #11: `BookingConfirmed`/`BookingCancelled` fan out to `payout` (accrue /
+  reverse) and `notification`, and `booking`'s own `BookingCancelled` listener drives
+  the refund via `payment.api.RefundPort`. **`availability` consumes no events** — the
+  `(set, date)` row was claimed synchronously at reserve time and is released
+  synchronously on cancel (CLAUDE.md's five-event inventory is canonical).
 - The Stripe SDK and webhook controller live in `payment`'s adapter layer only
   (`adapter/in/StripeWebhookController`, `adapter/out/StripePaymentGateway`); the
   `booking`/`payout` domains never import Stripe types — they speak `Money`,
