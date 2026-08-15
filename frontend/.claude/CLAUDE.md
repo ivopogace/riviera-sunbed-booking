@@ -71,8 +71,9 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 ## Styling
 
-- Tailwind v4 is the go-forward; component SCSS is being retired. Load the
-  **`riviera-tailwind`** skill before writing or refactoring any Tailwind.
+- Tailwind v4 is the go-forward and **mandatory for new styling**: a new component or
+  template is styled with utilities, never a fresh `.scss` (review finding; component
+  SCSS is being retired). Load **`riviera-tailwind`** before styling anything.
 
 ## Comments
 
