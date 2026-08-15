@@ -3,6 +3,7 @@ package ai.riviera.platform.venue.adapter.out;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.CoverPhotoView;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
+import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -201,10 +203,14 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		// bytea column is never selected here — R-3/ADR-0008), bucketed by venue like the rest.
 		Map<Long, CoverPhotoView> coverByVenue = coverPhotosByVenue(venueIds);
 
+		// One slideshow read for ALL matched venues, blob-free and bucketed like the cover read.
+		Map<Long, List<String>> photosByVenue = slideshowPhotosByVenue(venueIds);
+
 		return venues.stream()
 				.map(v -> toSummary(v, setsByVenue.getOrDefault(v.id(), List.of()), taken,
 						amenitiesByVenue.getOrDefault(v.id(), List.of()),
-						coverByVenue.get(v.id())))
+						coverByVenue.get(v.id()),
+						photosByVenue.getOrDefault(v.id(), List.of())))
 				.toList();
 	}
 
@@ -244,8 +250,44 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		return covers;
 	}
 
+	/**
+	 * The Discover slideshow's card-sized serving URL per occupied slot, per venue, in one
+	 * blob-free query: {@link PhotoSlot} order (cover, sunbeds, bar), preferring the CARD variant
+	 * and falling back to PREVIEW for secondary-slot uploads predating their CARD variant.
+	 */
+	private Map<Long, List<String>> slideshowPhotosByVenue(List<Long> venueIds) {
+		record SlideVariantRow(long venueId, PhotoSlot slot, String surface, String hash) {
+		}
+		List<SlideVariantRow> rows = jdbc.sql("""
+				SELECT vp.venue_id, vp.slot, vv.surface, vv.content_hash
+				FROM venue_photo vp
+				JOIN venue_photo_variant vv ON vv.photo_id = vp.id
+				WHERE vp.venue_id IN (:venueIds) AND vv.surface IN ('CARD', 'PREVIEW')
+				""")
+				.param(P_VENUE_IDS, venueIds)
+				.query((rs, rowNum) -> new SlideVariantRow(
+						rs.getLong(COL_VENUE_ID), PhotoSlot.valueOf(rs.getString("slot")),
+						rs.getString("surface"), rs.getString("content_hash")))
+				.list();
+		Map<Long, Map<PhotoSlot, String>> hashBySlot = new HashMap<>();
+		for (SlideVariantRow row : rows) {
+			Map<PhotoSlot, String> slots = hashBySlot
+					.computeIfAbsent(row.venueId(), id -> new EnumMap<>(PhotoSlot.class));
+			// At most a CARD and a PREVIEW row per slot; CARD wins whichever arrives first.
+			if (SURFACE_CARD.equals(row.surface()) || !slots.containsKey(row.slot())) {
+				slots.put(row.slot(), row.hash());
+			}
+		}
+		Map<Long, List<String>> photos = new HashMap<>();
+		// An EnumMap iterates in enum-declaration order — the designed cover → sunbeds → bar order.
+		hashBySlot.forEach((venueId, slots) -> photos.put(venueId, slots.values().stream()
+				.map(hash -> PhotoServingUrls.servingUrl(venueId, new ContentHash(hash)))
+				.toList()));
+		return photos;
+	}
+
 	private static VenueSummaryView toSummary(SummaryRow v, List<SetPriceRow> sets, Set<SetId> taken,
-			List<Amenity> amenities, CoverPhotoView coverPhoto) {
+			List<Amenity> amenities, CoverPhotoView coverPhoto, List<String> photos) {
 		int total = sets.size();
 		int free = (int) sets.stream().filter(s -> !taken.contains(new SetId(s.id()))).count();
 		MoneyView fromPrice = sets.stream()
@@ -256,7 +298,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		return new VenueSummaryView(v.id(), v.name(), v.beach(), v.region(),
 				v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, ordered, v.distanceToWaterM(), new AvailabilitySummary(free, total),
-				coverPhoto);
+				coverPhoto, photos);
 	}
 
 	@Override

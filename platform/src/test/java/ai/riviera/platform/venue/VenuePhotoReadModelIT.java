@@ -23,6 +23,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import jakarta.servlet.http.Cookie;
 
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -31,11 +32,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Verifies the venue read models carry the photo URLs (AC-8): the public discovery list and
  * beach-map read expose the COVER slot's card + banner serving URLs when a cover photo exists and
- * {@code null} otherwise, and the operator profile read exposes per-slot
- * {@code {present, previewUrl}}. URLs are the content-addressed serving path. The {@code bytea}
- * column must never be selected by these queries — that is pinned at review (R-3, the SQL selects
- * metadata columns only); this IT pins the wire shape. Testcontainers Postgres; skipped where
- * Docker is absent (CI runs it).
+ * {@code null} otherwise, the discovery list's {@code photos} slideshow lists one card-sized URL
+ * per occupied slot in slot order (CARD preferred, PREVIEW fallback for legacy secondary uploads),
+ * and the operator profile read exposes per-slot {@code {present, previewUrl}}. URLs are the
+ * content-addressed serving path. The {@code bytea} column must never be selected by these
+ * queries — that is pinned at review (R-3, the SQL selects metadata columns only); this IT pins
+ * the wire shape. Testcontainers Postgres; skipped where Docker is absent (CI runs it).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -96,7 +98,31 @@ class VenuePhotoReadModelIT {
 				.andExpect(jsonPath("$[?(@.id == %d)].coverPhoto.banner", withCover.value())
 						.value(contains(url(withCover, "1b01"))))
 				// The photo-less venue is present and its coverPhoto is null — the FE gradient fallback.
-				.andExpect(jsonPath("$[?(@.id == %d && @.coverPhoto == null)]", noPhoto.value()).exists());
+				.andExpect(jsonPath("$[?(@.id == %d && @.coverPhoto == null)]", noPhoto.value()).exists())
+				// Slideshow: cover-only venue lists just the cover card; photo-less venue lists nothing.
+				.andExpect(jsonPath("$[?(@.id == %d)].photos", withCover.value())
+						.value(contains(contains(url(withCover, "1a01")))))
+				.andExpect(jsonPath("$[?(@.id == %d)].photos", noPhoto.value())
+						.value(contains(empty())));
+	}
+
+	@Test
+	void discoveryExposesTheSlideshowInSlotOrderPreferringCardOverLegacyPreview() throws Exception {
+		VenueId venue = newVenue("RM list venue with slideshow");
+		seedCover(venue, "4a04", "4b04", "4c04");
+		// A current secondary upload (CARD + PREVIEW) …
+		storage.replace(venue, PhotoSlot.SUNBEDS, new ProcessedPhoto(List.of(
+				variant(PhotoSurface.CARD, "4d04"),
+				variant(PhotoSurface.PREVIEW, "4e04"))));
+		// … and a legacy one from before secondary slots grew a CARD variant (PREVIEW only).
+		storage.replace(venue, PhotoSlot.BAR, new ProcessedPhoto(List.of(
+				variant(PhotoSurface.PREVIEW, "4f04"))));
+
+		mvc.perform(get("/api/venues"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == %d)].photos", venue.value())
+						.value(contains(contains(
+								url(venue, "4a04"), url(venue, "4d04"), url(venue, "4f04")))));
 	}
 
 	@Test

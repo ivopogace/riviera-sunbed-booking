@@ -99,7 +99,7 @@
     } @else {
       <ul class="venue-grid">
         @for (card of list; track card.id) {
-          <li>
+          <li class="relative">
             <a
               class="card"
               appCardGlass
@@ -110,22 +110,36 @@
             >
               <!-- The <a> carries the full accessible name via aria-label, so its visible content
                    is decorative to AT — the two inner blocks are aria-hidden. -->
-              <!-- The cover photo when uploaded; the gradient + sun placeholder as the empty state. The scrim ALWAYS layers over it — the location text's AA floor must hold over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
+              <!-- The uploaded photos as a crossfading slideshow stack (cover first); the gradient + sun placeholder as the empty state. The scrim ALWAYS layers over it — the location text's AA floor must hold over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
               <span class="card-photo" aria-hidden="true">
-                @if (card.coverPhoto; as cover) {
+                @for (photo of card.photos; track photo; let i = $index) {
                   <img
-                    [ngSrc]="cover.card"
+                    [ngSrc]="photo"
                     fill
-                    class="object-cover"
+                    class="object-cover [transition:opacity_0.45s_ease] motion-reduce:transition-none"
+                    [class.opacity-0]="i !== slideIndex(card.id)"
                     alt=""
-                    data-testid="card-photo-img"
+                    [attr.data-testid]="i === 0 ? 'card-photo-img' : 'card-slide-img'"
                   />
-                } @else {
+                } @empty {
                   <span class="photo-sun"></span>
                 }
                 <span class="photo-scrim"></span>
                 <span class="mode-chip">{{ card.modeLabel }}</span>
                 <span class="photo-location">{{ card.beach }} · {{ card.region }}</span>
+                @if (card.photos.length > 1) {
+                  <span
+                    class="absolute right-[15px] bottom-[13px] z-[1] flex gap-[6px]"
+                    data-testid="card-photo-dots"
+                  >
+                    @for (photo of card.photos; track photo; let i = $index) {
+                      <span
+                        class="size-[6px] rounded-full [transition:background_0.15s_ease]"
+                        [class]="i === slideIndex(card.id) ? 'bg-white' : 'bg-white/45'"
+                      ></span>
+                    }
+                  </span>
+                }
               </span>
 
               <span class="card-body" aria-hidden="true">
@@ -169,11 +183,67 @@
                 </span>
               </span>
             </a>
+            <!-- Slideshow controls live OUTSIDE the card <a> (nested interactive controls are invalid + an axe failure), layered over its photo band via the li's positioning context. -->
+            @if (card.photos.length > 1) {
+              <button
+                type="button"
+                appTouchTarget
+                class="group absolute top-[75px] left-[6px] z-10 inline-flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+                data-testid="card-photo-prev"
+                [attr.aria-label]="'Previous photo, ' + card.name"
+                (click)="stepSlide(card.id, card.photos.length, -1)"
+              >
+                <span
+                  aria-hidden="true"
+                  class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-card-border) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
+                  >‹</span
+                >
+              </button>
+              <button
+                type="button"
+                appTouchTarget
+                class="group absolute top-[75px] right-[6px] z-10 inline-flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+                data-testid="card-photo-next"
+                [attr.aria-label]="'Next photo, ' + card.name"
+                (click)="stepSlide(card.id, card.photos.length, 1)"
+              >
+                <span
+                  aria-hidden="true"
+                  class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-card-border) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
+                  >›</span
+                >
+              </button>
+            }
           </li>
         }
       </ul>
     }
   } @else {
-    <p class="state" appPanelGlass data-testid="loading" aria-live="polite">Loading venues…</p>
+    <!-- Pulsing skeleton cards mirror the loaded grid so the layout doesn't jump when results land; the visually-hidden line keeps the loading announcement for AT (the skeletons are decorative). -->
+    <div data-testid="loading" aria-live="polite">
+      <p class="sr-only">Loading venues…</p>
+      <ul class="venue-grid" aria-hidden="true">
+        @for (slot of skeletons; track slot) {
+          <li>
+            <span
+              appCardGlass
+              class="flex h-full animate-pulse flex-col overflow-hidden rounded-[28px] motion-reduce:animate-none"
+              data-testid="skeleton-card"
+            >
+              <span class="block h-[150px] bg-(--riv-card-track)"></span>
+              <span class="flex flex-1 flex-col gap-[10px] p-[18px]">
+                <span class="h-[18px] w-3/4 rounded-[6px] bg-(--riv-card-track)"></span>
+                <span class="h-[10px] w-1/2 rounded-[6px] bg-(--riv-card-track)"></span>
+                <span class="grid grid-cols-3 gap-[8px]">
+                  <span class="col-span-2 h-[10px] rounded-[6px] bg-(--riv-card-track)"></span>
+                  <span class="h-[10px] rounded-[6px] bg-(--riv-card-track)"></span>
+                </span>
+                <span class="mt-auto h-[6px] rounded-full bg-(--riv-card-track)"></span>
+              </span>
+            </span>
+          </li>
+        }
+      </ul>
+    </div>
   }
 </section>

@@ -27,6 +27,8 @@ const VENUE = {
   distanceToWaterM: 15,
   availability: { free: 4, total: 6 },
   coverPhoto: null,
+  // A multi-photo slideshow so the home sweep measures the card's step controls.
+  photos: ['/api/venues/1/photos/aa01', '/api/venues/1/photos/cc03', '/api/venues/1/photos/dd04'],
   sets: Array.from({ length: 6 }, (_, i) => ({
     id: i + 1,
     rowLabel: i < 3 ? 'Front row · Sea view' : 'Second row',
@@ -61,6 +63,16 @@ async function mockTourist(page: Page): Promise<void> {
   );
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [VENUE] }));
+  await page.route(/\/api\/venues\/1\/photos\/[0-9a-f]+$/, (route) =>
+    route.fulfill({
+      // A 1×1 PNG so the slideshow <img>s genuinely load under the sweep.
+      body: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+      contentType: 'image/png',
+    }),
+  );
   await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
     route.fulfill({ json: BOOKING }),
   );

@@ -102,6 +102,58 @@ describe('Home (venue discovery)', () => {
     // No cover → the gradient placeholder (sun, no img).
     expect(cards[1].querySelector('[data-testid="card-photo-img"]')).toBeNull();
     expect(cards[1].querySelector('.photo-sun')).toBeTruthy();
+    // A single photo is no slideshow: no step controls, no dots.
+    expect(cards[0].closest('li')?.querySelector('[data-testid="card-photo-next"]')).toBeNull();
+    expect(cards[0].querySelector('[data-testid="card-photo-dots"]')).toBeNull();
+  });
+
+  it('renders the photo slideshow — resolved slide stack, dots, and step controls outside the card link', async () => {
+    const [venue] = venues();
+    listRequest().flush([
+      {
+        ...venue,
+        photos: [
+          '/api/venues/1/photos/aa01',
+          '/api/venues/1/photos/cc03',
+          '/api/venues/1/photos/dd04',
+        ],
+      },
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const item = el().querySelector('[data-testid="venue-card"]')!.closest('li')!;
+    const slides = item.querySelectorAll<HTMLImageElement>(
+      '[data-testid="card-photo-img"], [data-testid="card-slide-img"]',
+    );
+    expect(slides.length).toBe(3);
+    // The service resolves each wire path against the API origin.
+    expect(slides[0].getAttribute('src')).toBe(
+      `${environment.apiBaseUrl}/api/venues/1/photos/aa01`,
+    );
+    expect(item.querySelectorAll('[data-testid="card-photo-dots"] span').length).toBe(3);
+
+    // The controls are the link's SIBLINGS (a nested interactive control is invalid + an axe fail).
+    const next = item.querySelector<HTMLButtonElement>('[data-testid="card-photo-next"]')!;
+    const prev = item.querySelector<HTMLButtonElement>('[data-testid="card-photo-prev"]')!;
+    expect(next.closest('a')).toBeNull();
+    expect(prev.closest('a')).toBeNull();
+
+    // First slide visible, the rest faded out.
+    expect(slides[0].classList.contains('opacity-0')).toBe(false);
+    expect(slides[1].classList.contains('opacity-0')).toBe(true);
+
+    next.click();
+    fixture.detectChanges();
+    expect(slides[0].classList.contains('opacity-0')).toBe(true);
+    expect(slides[1].classList.contains('opacity-0')).toBe(false);
+
+    // Stepping back from the first photo wraps to the last.
+    prev.click();
+    prev.click();
+    fixture.detectChanges();
+    expect(slides[2].classList.contains('opacity-0')).toBe(false);
+    expect(slides[0].classList.contains('opacity-0')).toBe(true);
   });
 
   it('renders a card per venue with name, location, rating, from-price and availability', async () => {
@@ -449,5 +501,23 @@ describe('Home (venue discovery)', () => {
     await fixture.whenStable();
     expect(el().querySelector('[data-testid="loading"]')).not.toBeNull();
     req.flush(venues()); // settle for httpMock.verify()
+  });
+
+  it('renders pulsing skeleton cards (decorative) with a text announcement while loading', async () => {
+    const req = listRequest(); // pending
+    await fixture.whenStable();
+
+    const loading = el().querySelector('[data-testid="loading"]')!;
+    // The announcement is real text for AT; the skeleton grid is decoration.
+    expect(loading.getAttribute('aria-live')).toBe('polite');
+    expect(loading.textContent).toContain('Loading venues…');
+    expect(loading.querySelector('ul')?.getAttribute('aria-hidden')).toBe('true');
+    const skeletons = loading.querySelectorAll('[data-testid="skeleton-card"]');
+    expect(skeletons.length).toBe(6);
+    expect(skeletons[0].classList.contains('animate-pulse')).toBe(true);
+
+    req.flush(venues());
+    await fixture.whenStable();
+    expect(el().querySelector('[data-testid="skeleton-card"]')).toBeNull();
   });
 });

@@ -95,13 +95,13 @@ class PhotoProcessor {
 
 	/**
 	 * The surfaces a slot needs: the cover feeds the tourist card + beach-map banner + operator
-	 * preview; the secondary slots are operator-preview only (their tourist gallery is a deferred
-	 * follow-up — see the plan's Non-goals).
+	 * preview; the secondary slots feed the tourist Discover-card slideshow (CARD) + operator
+	 * preview — no banner, which only the cover's beach-map band renders.
 	 */
 	private static List<PhotoSurface> surfacesFor(PhotoSlot slot) {
 		return slot == PhotoSlot.COVER
 				? List.of(PhotoSurface.CARD, PhotoSurface.BANNER, PhotoSurface.PREVIEW)
-				: List.of(PhotoSurface.PREVIEW);
+				: List.of(PhotoSurface.CARD, PhotoSurface.PREVIEW);
 	}
 
 	/** Renders one surface's JPEG; an {@link IOException} means the raster is undecodable (→ UNREADABLE). */
