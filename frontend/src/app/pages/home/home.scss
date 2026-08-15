@@ -183,6 +183,11 @@
   gap: 20px;
 }
 
+/* The photo band's one height — .card-photo and the step controls' top-[calc(var(--photo-band)/2)] both consume it. */
+.venue-grid > li {
+  --photo-band: 150px;
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -201,9 +206,9 @@
     border-color 0.2s ease;
 }
 
-/* Hover lift only where hover is a real affordance (pointer devices) — avoids the sticky-hover artifact on touch. */
+/* Hover lift only where hover is a real affordance (pointer devices) — avoids the sticky-hover artifact on touch. Keyed on the li so the slideshow controls layered over the card (siblings of the <a>, never nested in it) keep the lift while hovered. */
 @media (hover: hover) {
-  .card:hover {
+  .venue-grid > li:hover .card {
     transform: translateY(-5px);
     box-shadow:
       0 26px 60px rgba(7, 42, 58, 0.4),
@@ -215,7 +220,7 @@
 /* Motion guard lives next to the motion it guards (encapsulation specificity). */
 @media (prefers-reduced-motion: reduce) {
   .card,
-  .card:hover {
+  .venue-grid > li:hover .card {
     transition: none;
     transform: none;
   }
@@ -234,7 +239,7 @@
 .card-photo {
   position: relative;
   display: block;
-  height: 150px;
+  height: var(--photo-band, 150px);
   background: var(--riv-photo-grad);
 }
 

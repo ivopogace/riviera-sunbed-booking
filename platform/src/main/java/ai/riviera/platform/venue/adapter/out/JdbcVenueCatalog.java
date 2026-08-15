@@ -1,8 +1,10 @@
 package ai.riviera.platform.venue.adapter.out;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +23,8 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.CoverPhotoView;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
+import ai.riviera.platform.venue.vocabulary.PhotoSlot;
+import ai.riviera.platform.venue.vocabulary.PhotoSurface;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -59,10 +63,6 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	private static final String COL_AMENITY = "amenity";
 	/** The bulk IN-clause bind param shared by the three list-read queries (named once — Sonar S1192). */
 	private static final String P_VENUE_IDS = "venueIds";
-	// The two tourist-surfaced cover variants — kept in lockstep with the PhotoSurface enum
-	// tokens the V24 CHECK constraint lists.
-	private static final String SURFACE_CARD = "CARD";
-	private static final String SURFACE_BANNER = "BANNER";
 
 	private final JdbcClient jdbc;
 	private final SetAvailabilityLookup availability;
@@ -132,7 +132,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.sorted() // enum natural order == declaration order == canonical catalogue order
 				.toList();
 
-		CoverPhotoView coverPhoto = coverPhotosByVenue(List.of(id.value())).get(id.value());
+		CoverPhotoView coverPhoto = coverOf(id.value(),
+				photoVariantsByVenue(List.of(id.value())).getOrDefault(id.value(), Map.of()));
 
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
@@ -197,55 +198,81 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.collect(Collectors.groupingBy(AmenityRow::venueId,
 						Collectors.mapping(AmenityRow::amenity, Collectors.toList())));
 
-		// One cover-photo read for ALL matched venues, blob-free (only the hashes travel; the
-		// bytea column is never selected here — R-3/ADR-0008), bucketed by venue like the rest.
-		Map<Long, CoverPhotoView> coverByVenue = coverPhotosByVenue(venueIds);
+		// One blob-free photo read for ALL matched venues feeds both the cover pair and the slideshow.
+		Map<Long, Map<PhotoSlot, Map<PhotoSurface, String>>> photosByVenue = photoVariantsByVenue(venueIds);
 
 		return venues.stream()
 				.map(v -> toSummary(v, setsByVenue.getOrDefault(v.id(), List.of()), taken,
 						amenitiesByVenue.getOrDefault(v.id(), List.of()),
-						coverByVenue.get(v.id())))
+						coverOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of())),
+						slideshowOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of()))))
 				.toList();
 	}
 
 	/**
-	 * The COVER slot's card + banner serving URLs per venue, in one blob-free query — a venue
-	 * without a cover photo is simply absent from the map ({@code null} on the view → the FE
-	 * gradient fallback).
+	 * Every stored photo-variant hash for the venues, in one blob-free query (only hashes travel;
+	 * the {@code bytea} column is never selected here — R-3/ADR-0008), bucketed
+	 * venue → slot → surface with slots in {@link PhotoSlot} order. Both tourist photo views
+	 * derive from this one read — {@link #coverOf} and {@link #slideshowOf} — so they cannot drift.
 	 */
-	private Map<Long, CoverPhotoView> coverPhotosByVenue(List<Long> venueIds) {
-		record CoverVariantRow(long venueId, String surface, String hash) {
+	private Map<Long, Map<PhotoSlot, Map<PhotoSurface, String>>> photoVariantsByVenue(List<Long> venueIds) {
+		record VariantRow(long venueId, PhotoSlot slot, PhotoSurface surface, String hash) {
 		}
-		Map<Long, Map<String, String>> urlsByVenue = jdbc.sql("""
-				SELECT vp.venue_id, vv.surface, vv.content_hash
+		Map<Long, Map<PhotoSlot, Map<PhotoSurface, String>>> byVenue = new HashMap<>();
+		jdbc.sql("""
+				SELECT vp.venue_id, vp.slot, vv.surface, vv.content_hash
 				FROM venue_photo vp
 				JOIN venue_photo_variant vv ON vv.photo_id = vp.id
-				WHERE vp.venue_id IN (:venueIds) AND vp.slot = 'COVER'
-				  AND vv.surface IN ('CARD', 'BANNER')
+				WHERE vp.venue_id IN (:venueIds)
 				""")
 				.param(P_VENUE_IDS, venueIds)
-				.query((rs, rowNum) -> new CoverVariantRow(
-						rs.getLong(COL_VENUE_ID), rs.getString("surface"), rs.getString("content_hash")))
-				.list().stream()
-				.collect(Collectors.groupingBy(CoverVariantRow::venueId,
-						Collectors.toMap(CoverVariantRow::surface, r -> PhotoServingUrls
-								.servingUrl(r.venueId(), new ContentHash(r.hash())))));
-		// Only a COMPLETE pair becomes a CoverPhotoView (#142 review F-8): a cover missing one of
-		// its CARD/BANNER rows (manual data fix, future surface-set change) must read as "no cover"
-		// — otherwise the frontend's presence check passes and NgOptimizedImage receives a null URL.
-		Map<Long, CoverPhotoView> covers = new HashMap<>();
-		urlsByVenue.forEach((venueId, urls) -> {
-			String card = urls.get(SURFACE_CARD);
-			String banner = urls.get(SURFACE_BANNER);
-			if (card != null && banner != null) {
-				covers.put(venueId, new CoverPhotoView(card, banner));
+				.query((rs, rowNum) -> new VariantRow(
+						rs.getLong(COL_VENUE_ID), PhotoSlot.valueOf(rs.getString("slot")),
+						PhotoSurface.valueOf(rs.getString("surface")), rs.getString("content_hash")))
+				.list()
+				.forEach(row -> byVenue
+						.computeIfAbsent(row.venueId(), id -> new EnumMap<>(PhotoSlot.class))
+						.computeIfAbsent(row.slot(), slot -> new EnumMap<>(PhotoSurface.class))
+						.put(row.surface(), row.hash()));
+		return byVenue;
+	}
+
+	/**
+	 * The COVER slot's card + banner serving URLs, or {@code null} without a COMPLETE pair: a
+	 * cover missing one of its CARD/BANNER rows (manual data fix, future surface-set change) must
+	 * read as "no cover" — otherwise the frontend's presence check passes and
+	 * {@code NgOptimizedImage} receives a null URL.
+	 */
+	private static CoverPhotoView coverOf(long venueId, Map<PhotoSlot, Map<PhotoSurface, String>> slots) {
+		Map<PhotoSurface, String> cover = slots.getOrDefault(PhotoSlot.COVER, Map.of());
+		String card = cover.get(PhotoSurface.CARD);
+		String banner = cover.get(PhotoSurface.BANNER);
+		if (card == null || banner == null) {
+			return null;
+		}
+		return new CoverPhotoView(
+				PhotoServingUrls.servingUrl(venueId, new ContentHash(card)),
+				PhotoServingUrls.servingUrl(venueId, new ContentHash(banner)));
+	}
+
+	/**
+	 * The Discover slideshow: one card-sized serving URL per occupied slot, in {@link PhotoSlot}
+	 * order (the EnumMap's iteration order — cover, sunbeds, bar), preferring the CARD variant and
+	 * falling back to PREVIEW for secondary-slot uploads predating their CARD variant.
+	 */
+	private static List<String> slideshowOf(long venueId, Map<PhotoSlot, Map<PhotoSurface, String>> slots) {
+		List<String> photos = new ArrayList<>();
+		slots.forEach((slot, surfaces) -> {
+			String hash = surfaces.getOrDefault(PhotoSurface.CARD, surfaces.get(PhotoSurface.PREVIEW));
+			if (hash != null) {
+				photos.add(PhotoServingUrls.servingUrl(venueId, new ContentHash(hash)));
 			}
 		});
-		return covers;
+		return List.copyOf(photos);
 	}
 
 	private static VenueSummaryView toSummary(SummaryRow v, List<SetPriceRow> sets, Set<SetId> taken,
-			List<Amenity> amenities, CoverPhotoView coverPhoto) {
+			List<Amenity> amenities, CoverPhotoView coverPhoto, List<String> photos) {
 		int total = sets.size();
 		int free = (int) sets.stream().filter(s -> !taken.contains(new SetId(s.id()))).count();
 		MoneyView fromPrice = sets.stream()
@@ -256,7 +283,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		return new VenueSummaryView(v.id(), v.name(), v.beach(), v.region(),
 				v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, ordered, v.distanceToWaterM(), new AvailabilitySummary(free, total),
-				coverPhoto);
+				coverPhoto, photos);
 	}
 
 	@Override

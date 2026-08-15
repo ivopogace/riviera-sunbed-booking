@@ -104,6 +104,12 @@ export interface VenueSummary {
   readonly availability: AvailabilitySummary;
   /** The cover photo's serving URLs, or `null`/absent — the card then keeps its gradient. */
   readonly coverPhoto?: CoverPhotoView | null;
+  /**
+   * The Discover card's slideshow: one card-sized serving URL per occupied photo slot in
+   * slot order (cover, sunbeds, bar), possibly empty. Optional because test doubles and older
+   * payloads may omit it; the card then falls back to `coverPhoto` alone.
+   */
+  readonly photos?: readonly string[];
 }
 
 /**

@@ -18,6 +18,13 @@ const TINY_IMAGE = Buffer.from(
 
 const COVER = { card: '/api/venues/1/photos/aa01', banner: '/api/venues/1/photos/bb02' };
 
+/** The three-slot slideshow, slot order (cover, sunbeds, bar) — the summary's `photos`. */
+const SLIDESHOW = [
+  '/api/venues/1/photos/aa01',
+  '/api/venues/1/photos/cc03',
+  '/api/venues/1/photos/dd04',
+];
+
 const VENUES = [
   {
     id: 1,
@@ -32,6 +39,7 @@ const VENUES = [
     distanceToWaterM: 15,
     availability: { free: 18, total: 24 },
     coverPhoto: COVER,
+    photos: SLIDESHOW,
   },
   {
     id: 2,
@@ -44,6 +52,7 @@ const VENUES = [
     fromPrice: { minorUnits: 3000, currency: 'EUR' },
     availability: { free: 5, total: 10 },
     coverPhoto: null,
+    photos: [],
   },
 ];
 
@@ -101,6 +110,8 @@ test('the Discover card shows the cover photo (scrim kept), the photo-less card 
 
   // Venue 2 has none → the gradient placeholder (no image) — the empty state, not a broken photo.
   await expect(cards.nth(1).getByTestId('card-photo-img')).toBeHidden();
+  // …and a single- or no-photo card carries no slideshow chrome.
+  await expect(cards.nth(1).locator('..').getByTestId('card-photo-next')).toBeHidden();
   await expect(page.getByText('coming soon')).toBeHidden();
   await expectNoSeriousAxeViolations(page, 'discovery with cover photos');
 
@@ -112,4 +123,37 @@ test('the Discover card shows the cover photo (scrim kept), the photo-less card 
   await expect(banner).toHaveAttribute('src', /\/api\/venues\/1\/photos\/bb02$/);
   await expect(page.getByText('coming soon')).toBeHidden();
   await expectNoSeriousAxeViolations(page, 'beach map with cover banner');
+});
+
+test('the Discover card slideshow crossfades through all three slots via the step controls (dots track, wrap both ways, + axe)', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const item = page.getByTestId('venue-card').first().locator('..');
+  const slides = item.locator('[data-testid="card-photo-img"], [data-testid="card-slide-img"]');
+  await expect(slides).toHaveCount(3);
+  await expect(item.getByTestId('card-photo-dots').locator('span')).toHaveCount(3);
+
+  // First slide up (cover), the others faded out of the stack.
+  await expect(slides.nth(0)).toHaveCSS('opacity', '1');
+  await expect(slides.nth(1)).toHaveCSS('opacity', '0');
+
+  const next = item.getByTestId('card-photo-next');
+  const prev = item.getByTestId('card-photo-prev');
+  await next.click();
+  await expect(slides.nth(1)).toHaveCSS('opacity', '1');
+  await expect(slides.nth(0)).toHaveCSS('opacity', '0');
+
+  // Forward past the end wraps to the cover; back from the cover wraps to the last slot.
+  await next.click();
+  await next.click();
+  await expect(slides.nth(0)).toHaveCSS('opacity', '1');
+  await prev.click();
+  await expect(slides.nth(2)).toHaveCSS('opacity', '1');
+
+  // Stepping the slideshow must not navigate — the controls sit outside the card link.
+  await expect(page).toHaveURL('/');
+
+  // The toHaveCSS('opacity', '1') above already proved the crossfade settled (no mid-fade axe read).
+  await expectNoSeriousAxeViolations(page, 'discovery with an active slideshow');
 });

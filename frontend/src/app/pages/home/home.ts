@@ -11,6 +11,7 @@ import {
 import { AmenityChip } from '../../shared/amenity-chip';
 import { CardGlass } from '../../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
+import { focusMover } from '../../shared/focus-after-render';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
@@ -32,7 +33,8 @@ interface VenueCard {
   readonly name: string;
   readonly beach: string;
   readonly region: string;
-  readonly coverPhoto: VenueSummary['coverPhoto'];
+  /** The slideshow's photo URLs in slot order (cover first); empty → the gradient placeholder. */
+  readonly photos: readonly string[];
   readonly modeLabel: string;
   readonly isRated: boolean;
   readonly rating: string;
@@ -49,12 +51,25 @@ interface VenueCard {
 }
 
 /**
+ * The card's slideshow photos: the summary's `photos` when present, else the cover alone (older
+ * payloads/doubles omit `photos`), else empty — the gradient placeholder renders instead.
+ */
+function slideshowPhotos(venue: VenueSummary): readonly string[] {
+  if (venue.photos?.length) {
+    return venue.photos;
+  }
+  return venue.coverPhoto ? [venue.coverPhoto.card] : [];
+}
+
+/**
  * Tourist venue discovery — the app's landing page (`/`).
  * Hero + one glass filter bar (beach/region/date with the live result count inside) + glass venue
- * cards (the cover photo when uploaded, else the gradient placeholder; mode chip, rating,
- * availability bar), each a link to the beach map at `/venues/:id`. The date drives the per-venue availability count (invariant #2). Money is
- * rendered from integer minor units (invariant #5); every card fact is conveyed as text, not
- * colour alone (WCAG AA). Loading, empty, and error states are distinct.
+ * cards (a crossfading slideshow of the venue's uploaded photos when any exist — stepped by
+ * controls layered OUTSIDE the card link, never nested in it — else the gradient placeholder;
+ * mode chip, rating, availability bar), each a link to the beach map at `/venues/:id`. The date
+ * drives the per-venue availability count (invariant #2). Money is rendered from integer minor
+ * units (invariant #5); every card fact is conveyed as text, not colour alone (WCAG AA). Loading
+ * (a pulsing skeleton grid), empty, and error states are distinct.
  */
 @Component({
   selector: 'app-home',
@@ -94,6 +109,12 @@ export class Home {
   protected readonly beaches = signal<readonly string[]>([]);
   protected readonly regions = signal<readonly string[]>([]);
 
+  /** Per-venue slideshow position (venue id → photo index); absent = the first photo. */
+  private readonly slideIndexes = signal<ReadonlyMap<number, number>>(new Map());
+
+  /** The skeleton grid renders this many placeholder cards while a request is in flight. */
+  protected readonly skeletons = [0, 1, 2, 3, 4, 5] as const;
+
   /** True only once a response has arrived and it is empty (distinct from the loading state). */
   protected readonly isEmpty = computed(() => {
     return this.venues()?.length === 0;
@@ -115,6 +136,8 @@ export class Home {
 
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
   private lastRequest = '';
+
+  private readonly focusAfterRender = focusMover();
 
   /**
    * The fetch to repeat when Retry is pressed — the *failed* request, not a fixed one: an
@@ -180,9 +203,25 @@ export class Home {
   private beginRequest(): string {
     this.venues.set(undefined);
     this.failed.set(false);
+    this.slideIndexes.set(new Map());
     const token = `${this.beach()}|${this.region()}|${this.selectedDate()}`;
     this.lastRequest = token;
     return token;
+  }
+
+  /** The photo the venue's card slideshow currently shows (0 = the first). */
+  protected slideIndex(venueId: number): number {
+    return this.slideIndexes().get(venueId) ?? 0;
+  }
+
+  /** Step one card's slideshow forward/back, wrapping at either end. */
+  protected stepSlide(venueId: number, photoCount: number, step: 1 | -1): void {
+    this.slideIndexes.update((indexes) => {
+      const next = new Map(indexes);
+      const current = next.get(venueId) ?? 0;
+      next.set(venueId, (current + step + photoCount) % photoCount);
+      return next;
+    });
   }
 
   protected onBeachChange(event: Event): void {
@@ -210,9 +249,14 @@ export class Home {
     this.reload();
   }
 
-  /** Retry the load that failed (the failure panel's "Try again" button). */
+  /**
+   * Retry the load that failed (the failure panel's "Try again" button). Retry destroys the panel
+   * holding the pressed button (WCAG 2.4.3), so focus moves to the count block — which survives
+   * every list state, outliving the loading → grid/error transitions too.
+   */
   protected onRetryDiscover(): void {
     this.lastLoad();
+    this.focusAfterRender('results');
   }
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
@@ -233,6 +277,7 @@ export class Home {
       .slice(0, 3)
       .map((code) => ({ code, label: amenityLabel(code) }));
     const priceLabel = venue.fromPrice ? formatMoney(venue.fromPrice) : null;
+    const photos = slideshowPhotos(venue);
     const { free, total } = venue.availability;
     const freePercent = total === 0 ? 0 : Math.round((free / total) * 100);
 
@@ -253,7 +298,7 @@ export class Home {
       name: venue.name,
       beach: venue.beach,
       region: venue.region,
-      coverPhoto: venue.coverPhoto,
+      photos,
       modeLabel: venue.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
       isRated: rated,
       rating,

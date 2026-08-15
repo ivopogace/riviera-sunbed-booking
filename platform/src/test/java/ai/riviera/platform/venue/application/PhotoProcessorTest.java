@@ -57,12 +57,12 @@ class PhotoProcessorTest {
 	}
 
 	@Test
-	void secondarySlotProducesPreviewOnly() throws IOException {
+	void secondarySlotProducesCardAndPreviewButNoBanner() throws IOException {
 		Processed result = assertProcessed(processor.process(solidPng(1600, 1200), PhotoSlot.BAR));
 
-		assertEquals(List.of(PhotoSurface.PREVIEW),
+		assertEquals(List.of(PhotoSurface.CARD, PhotoSurface.PREVIEW),
 				result.photo().variants().stream().map(StoredVariant::surface).toList(),
-				"secondary slots are operator-preview only");
+				"secondary slots feed the Discover slideshow card + operator preview, never the banner");
 	}
 
 	@Test

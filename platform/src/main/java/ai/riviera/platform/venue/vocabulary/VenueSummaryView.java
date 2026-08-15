@@ -19,9 +19,14 @@ import java.util.List;
  *
  * <p>{@code coverPhoto} is the cover slot's card + banner serving URLs, or {@code null}
  * when no cover photo is uploaded — the card then renders its gradient fallback.
+ *
+ * <p>{@code photos} is the Discover card's slideshow: one card-sized serving URL per occupied
+ * photo slot, in {@link PhotoSlot} order (cover, sunbeds, bar), possibly empty. Uploads predating
+ * the secondary slots' CARD variant serve their PREVIEW variant instead, so a venue's slideshow
+ * never loses a photo to the rollout.
  */
 public record VenueSummaryView(long id, String name, String beach, String region,
 		int ratingTenths, int reviewsCount, String bookingMode,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
-		AvailabilitySummary availability, CoverPhotoView coverPhoto) {
+		AvailabilitySummary availability, CoverPhotoView coverPhoto, List<String> photos) {
 }

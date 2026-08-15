@@ -3,7 +3,7 @@ import { Service, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { resolveCoverPhoto } from '../shared/photo-url';
+import { apiPhotoUrl, resolveCoverPhoto } from '../shared/photo-url';
 import { VenueMapView, VenueSummary } from '../shared/venue-views';
 
 /** Optional discovery filters; an omitted dimension is no constraint (mirrors the backend). */
@@ -38,7 +38,11 @@ export class VenueService {
     return this.http.get<VenueSummary[]>(`${environment.apiBaseUrl}/api/venues`, { params }).pipe(
       // Photo paths resolve against the API origin (no-op in same-origin prod).
       map((venues) =>
-        venues.map((venue) => ({ ...venue, coverPhoto: resolveCoverPhoto(venue.coverPhoto) })),
+        venues.map((venue) => ({
+          ...venue,
+          coverPhoto: resolveCoverPhoto(venue.coverPhoto),
+          photos: (venue.photos ?? []).map(apiPhotoUrl),
+        })),
       ),
     );
   }
