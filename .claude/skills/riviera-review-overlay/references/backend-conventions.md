@@ -112,12 +112,8 @@ others *call* in `api/`, and a *driven* port another module *implements* in `spi
 - [ ] a driven port implemented by the module's OWN adapters wrongly published instead of staying internal in `application/`
 
 **Follow-up:**
-- Default is `api/` (inbound). Promote a driven port to a named interface **only** when
-  its adapter lives in a *different* module (cross-module dependency inversion done to
-  avoid a cycle); then it goes in `spi/`, never `api/`.
-- Tell them apart by direction: `api` = "call me"; `spi` = "implement me." A
-  `@NamedInterface("api")` type that a sibling module `implements` (not calls) is
-  misfiled — move it to `spi`.
+- Tell them apart by direction: `api` = "call me"; `spi` = "implement me" (the checkboxes
+  above encode the rest; deeper mechanics: `riviera-modulith`'s *`api` vs `spi`* section).
 - Least privilege: grant `<provider>::spi` only to the implementing module; caller-only
   modules get `<provider>::api`. Example: `venue.spi.SetAvailabilityLookup` is
   implemented by `availability` (granted `venue::api` + `venue::spi`); `booking`, which
@@ -361,30 +357,21 @@ module).
 
 ### RV-BE-12. Package-shape conformance (ADR-0007)
 
-Check any diff that adds or moves packages against the two-template layout.
-**Findings:**
-- **a `.in`/`.out` split at the *application* layer** (`application/in`, `application/out`)
-  — that split was removed; internal ports live in `application/` next to their service,
-  and direction lives at the adapter layer.
-- **`api`/`spi` nested under `application`** (or anywhere non-top-level) — the published
-  surface must stay top-level and exposed, or Modulith hides it.
-- **the adapter layer spelled by technology instead of direction** — `adapter/rest`,
-  `adapter/jdbc`, `adapter/event` at the top level instead of `adapter/in` + `adapter/out`
-  (technology, if needed, is a *sub*-package: `adapter/in/rest`).
-- **a package outside the allowed top-level set** `{api, spi, vocabulary, events, application,
-  domain, adapter}` (thin module: `{api, vocabulary?, adapter/out}` only) — e.g. a lingering
-  `infrastructure/`. `vocabulary` and `events` joined the set with ADR-0007 Amendment 1; flagging
-  either as a violation is a false finding.
-- **an adapter dependency pointing inward's opposite** — `application`/`domain` importing
-  `adapter.*` (the hexagon runs adapter → application/domain, never back).
-- **a thin (serviceless) module grown an empty `application/` or `domain/`** — ghost
-  packages; a thin module is `api/` + `adapter/out/`. Conversely, a module that *gained*
-  a service but kept the thin shape should **graduate** to full.
+Check any diff that adds or moves packages against the two-template layout — **split by
+what's checkable: verify `PackageShapeArchitectureTests` is green, don't hand-grep** the
+layout it machine-checks (allowed top-level set, adapter split by direction not technology,
+named interfaces top-level, no `application`/`domain` → `adapter.*` import). Spend review
+eyes only on what it can't see:
+- **an `in`/`out` split *below* the application top level** — the test checks top-level
+  packages only; internal ports live in `application/` next to their service.
+- **ghost packages / graduation** — a thin (serviceless) module grown an empty
+  `application/` or `domain/`; conversely a module that *gained* a service but kept the
+  thin shape should **graduate** to full.
+- **the use-case-slicing call** — is this the right slice, and only `booking` sliced.
 
-Structural half → `PackageShapeArchitectureTests` (always-on); the **thin-vs-full
-judgment** and the "is this the right use-case slice" call → review. Default **Major**
-(Minor for a cosmetic mis-slice inside a module). Authority: `ADR-0007` +
-`riviera-modulith`.
+False-positive warning: `vocabulary` and `events` joined the allowed set with ADR-0007
+Amendment 1 — flagging either is a false finding. Default **Major** (Minor for a cosmetic
+mis-slice inside a module). Authority: `ADR-0007` + `riviera-modulith`.
 
 ---
 

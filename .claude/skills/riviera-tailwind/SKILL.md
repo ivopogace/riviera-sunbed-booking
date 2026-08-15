@@ -37,7 +37,7 @@ This skill states only the few decisions and traps the *code can't show you*.
    - **`min-height` is a no-op on a `display: inline` box.** On an `<a>`, the directive does nothing
      until you pair it with `inline-flex items-center` — which is why it deliberately sets no
      `display` of its own (rule 3's stylesheet-order problem applies to `display` too).
-   - **The proof is the rendered box, never the class list.** `frontend/e2e/touch-targets.e2e.ts`
+   - **The proof is the rendered box, never the class list.** `frontend/e2e/touch-targets*.e2e.ts`
      measures `getBoundingClientRect()` on every visible control per surface. A class-based check
      would both miss real failures (the inline case above; a grid tile squeezed by its column) and
      flag correct code — `py-[11px] text-[14px]` in a wrapping flex row measures 64 px.
@@ -49,16 +49,10 @@ This skill states only the few decisions and traps the *code can't show you*.
      class is #648's: putting `[appTouchTarget]` on a `display: none` element would declare a floor
      it cannot have, which is the same lie as the inline `<a>` above. Anything else that "can't"
      meet the floor is a layout to fix, not an exemption to write.
-   - **A guard checks the declaration while you type** (#648): `scripts/check-touch-target.mjs` runs
-     from a `PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff. **TT-1**
-     flags a `<button>`/`<input>`/`<select>`/`<textarea>` carrying neither the directive nor an
-     exemption on itself or an ancestor; **TT-2** flags an exemption with no reason, since the reason
-     string is the whole point of marking rather than assuming. **Both gate.** It is the sweep's
-     complement, never its replacement — it proves the *mechanism* is declared everywhere, including
-     surfaces no sweep visits, and cannot see a rendered box at all. `<a>` is **out of its scope
-     entirely** (53 undeclared anchors stand by design): the no-op-on-inline trap above means a
-     directive on a link can be a false declaration, so links stay the sweep's and RV-FE's job. Run
-     it by hand with `node scripts/check-touch-target.mjs --files <path…>`, or sweep with `--all`.
+   - **A guard checks the declaration while you type** (#648): `scripts/check-touch-target.mjs`
+     (`PostToolUse` hook + CI; by hand `--files <path…>`, or `--all`). TT-1/TT-2 gate the
+     *declaration* only — a green guard is not a measured box, and `<a>` is out of its scope
+     entirely. Full mechanics: `frontend/.claude/CLAUDE.md` + the review overlay's TT items.
 
    Origin and the app-wide sweep that applied it: `docs/plans/touch-target-floor.md` (#605); the
    first surface to state the floor was the per-set beach-map editor (#600). The static guard and
@@ -81,10 +75,10 @@ Theme *ownership* (who writes `data-riv-theme`, the token registry, subtree pinn
 `riviera-frontend`'s call; this section owns only how a component styles across themes.
 Vary by theme in this order of preference:
 
-1. **Tokens do the switching (the norm).** Theme differences live as `--riv-*` custom
-   properties defined per theme in `styles.scss` under `[data-riv-theme='riviera'|'porcelain']`.
-   Components reference them (`var(--riv-*)`, `bg-(--riv-*)`) and stay **theme-agnostic** — they
-   never name a theme. Reach for a token first; add one to `styles.scss` if none fits.
+1. **Tokens do the switching (the norm).** Components consume `--riv-*` tokens
+   (`var(--riv-*)`, `bg-(--riv-*)`) and stay **theme-agnostic** — they never name a theme.
+   Reach for a token first; add one if none fits (where tokens are declared per theme is
+   `riviera-frontend`'s theming section).
 2. **`:host-context([data-riv-theme='riviera'])` is the escape hatch.** Only when a whole
    background *treatment* differs — not just a token value — does a component branch on the
    theme. The one precedent is the home-hero **scrim** (`home.scss`): a borderless feathered
@@ -116,26 +110,11 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 
 ## SCSS→Tailwind migration checklist
 
-The bulk of what remains is `booking/` — 6 of the 10 remaining `.scss` files under
-`frontend/src/app` sit there (plus `app.scss`, `auth.scss`, `home.scss` — the scrim
-stays SCSS on purpose — and `operator-console.scss`; `venue-editor.scss` retired with its
-page at #278). **There is no shared
-SCSS left**: `shared/_glass.scss` was retired at #477 when its last recipe, `status-chip`, became
-`shared/status-chip.ts` — so step 1's inventory now finds a shared recipe only if a new one has
-been added since.
-
-1. Inventory the shared SCSS recipes the file uses **and their blast radius** (grep every
-   `@include`/`@extend`). This decides scope.
-2. Pick scope: **narrow** (leave shared recipes as SCSS, Tailwind only the file's own
-   styles) or **full** (port the recipe to a directive/component and update every consumer).
-   Ask the user when the recipe is widely shared — it changes the diff size a lot.
-3. Retain test-hook classes (rule 2). A new shared primitive gets a `.spec.ts`; a **composited
-   or tinted surface** (glass, scrim) gets a `*.contrast.spec.ts` that **computes** AA over the
-   *actual* surface — worst-case gradient stops, then the alpha inks over that composite — with
-   the `testing/glass-tokens.ts` helpers. Don't eyeball it; the specs are pure maths.
-4. Verify: `npm run lint`, `npm test`, `npm run build`, `npm run test:e2e:a11y` (the CI-run
-   mocked suite; the two-suite split is `riviera-frontend`'s e2e section), plus the
-   computed-style diff above. Fix regressions; never retune a test to match one.
+**There is no shared SCSS left** (`shared/_glass.scss` retired at #477 with its last recipe,
+`status-chip`); what remains is 10 `.scss` files under `frontend/src/app`, 6 of them in
+`booking/` (the `home.scss` scrim stays SCSS on purpose — the blockquote above). Migrating
+one? Load `references/scss-migration.md` for the four-step checklist (inventory blast radius →
+pick scope → retain test hooks + contrast specs → verify).
 
 ## Red flags
 
