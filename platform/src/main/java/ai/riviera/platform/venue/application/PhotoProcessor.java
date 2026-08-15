@@ -19,13 +19,13 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.venue.application.PhotoProcessingResult.Reason;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
-import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.PhotoSurface;
 
 import net.coobird.thumbnailator.Thumbnails;
 
 /**
- * Turns a raw operator upload into the capped, EXIF-stripped JPEG variants a slot needs — the pure
+ * Turns a raw operator upload into the capped, EXIF-stripped JPEG variants every slot carries
+ * (one per {@link PhotoSurface}, uniform since the beach-map band began cycling every slot) — the pure
  * image pipeline (no I/O, no DB, deterministic): validate (size → magic bytes → a <em>header-only</em>
  * dimension guard against decompression bombs) → decode with EXIF orientation applied → downscale
  * per surface (fit-within; the frontend's {@code object-fit: cover} does the visible crop) → re-encode
@@ -60,7 +60,7 @@ class PhotoProcessor {
 		this.maxDimension = maxDimension;
 	}
 
-	PhotoProcessingResult process(byte[] upload, PhotoSlot slot) {
+	PhotoProcessingResult process(byte[] upload) {
 		if (upload.length > maxUploadBytes) {
 			return rejected(Reason.TOO_LARGE);
 		}
@@ -78,7 +78,7 @@ class PhotoProcessor {
 		}
 		List<StoredVariant> variants = new ArrayList<>();
 		try {
-			for (PhotoSurface surface : surfacesFor(slot)) {
+			for (PhotoSurface surface : PhotoSurface.values()) {
 				variants.add(render(upload, surface));
 			}
 		} catch (IOException e) {
@@ -91,17 +91,6 @@ class PhotoProcessor {
 
 	private static PhotoProcessingResult rejected(Reason reason) {
 		return new PhotoProcessingResult.Rejected(reason);
-	}
-
-	/**
-	 * The surfaces a slot needs: the cover feeds the tourist card + beach-map banner + operator
-	 * preview; the secondary slots feed the tourist Discover-card slideshow (CARD) + operator
-	 * preview — no banner, which only the cover's beach-map band renders.
-	 */
-	private static List<PhotoSurface> surfacesFor(PhotoSlot slot) {
-		return slot == PhotoSlot.COVER
-				? List.of(PhotoSurface.CARD, PhotoSurface.BANNER, PhotoSurface.PREVIEW)
-				: List.of(PhotoSurface.CARD, PhotoSurface.PREVIEW);
 	}
 
 	/** Renders one surface's JPEG; an {@link IOException} means the raster is undecodable (→ UNREADABLE). */

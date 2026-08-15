@@ -48,8 +48,8 @@ const EMPTY_DETAILS: VenueDetailsModel = {
   bookingCutoff: '18:00',
 };
 
-/** The three designed photo slots. All are tourist-surfaced in the Discover card's slideshow;
- *  only the cover additionally fronts the beach-map banner. */
+/** The three designed photo slots. All are tourist-surfaced in the Discover-card and beach-map
+ *  slideshows; the cover leads both. */
 const PHOTO_SLOTS: readonly { readonly key: PhotoSlotKey; readonly label: string }[] = [
   { key: 'cover', label: 'Cover photo — the beach' },
   { key: 'sunbeds', label: 'Sunbeds' },

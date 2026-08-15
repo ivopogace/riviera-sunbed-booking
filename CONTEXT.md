@@ -18,13 +18,13 @@ model in `docs/architecture/domain-model.md`.
 - **Venue photo** — venue profile media (#142): one image per photo slot, uploaded by the venue's
   operator, validated server-side (JPEG/PNG/WebP, ≤25 MB, real-bytes magic check, decompression-bomb
   guard), EXIF-stripped, and persisted only as its resized variants (the full-res upload is
-  discarded — ADR-0008). Every occupied slot is tourist-surfaced on the Discover card's photo
-  slideshow; only the **cover** additionally fronts the beach-map banner.
-- **Photo slot** — one of a venue's three fixed photo positions: `COVER` (the Discover card's
-  first slide + the beach-map banner), `SUNBEDS`, `BAR` (Discover-slideshow-only on the tourist
-  side — and, as always, visible to the venue's own operator and, since #511, to a platform admin
-  moderating them). At most one photo per `(venue, slot)`; uploading again replaces the slot;
-  deleting erases metadata + bytes in one transaction.
+  discarded — ADR-0008). Every occupied slot is tourist-surfaced in the photo slideshows on the
+  Discover card and the beach-map banner band; the **cover** leads both.
+- **Photo slot** — one of a venue's three fixed photo positions: `COVER` (the first slide of both
+  tourist slideshows), `SUNBEDS`, `BAR` (the later slides — and, as always, visible to the
+  venue's own operator and, since #511, to a platform admin moderating them). At most one photo
+  per `(venue, slot)`; uploading again replaces the slot; deleting erases metadata + bytes in one
+  transaction.
 - **Photo takedown** — the **platform admin's** removal of any venue's photo by `(venue, slot)`
   (#504) — the "remove" half of the report-and-remove moderation stance (ADR-0013, #230). Same
   single-transaction erase as the operator's own delete, driven through the same storage call, but

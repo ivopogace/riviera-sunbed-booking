@@ -18,9 +18,16 @@ const TINY_IMAGE = Buffer.from(
 
 const COVER = { card: '/api/venues/1/photos/aa01', banner: '/api/venues/1/photos/bb02' };
 
-/** The three-slot slideshow, slot order (cover, sunbeds, bar) — the summary's `photos`. */
-const SLIDESHOW = [
+/** The three-slot slideshow, slot order (cover, sunbeds, bar) — the summary's card-sized `photos`. */
+const CARD_SLIDESHOW = [
   '/api/venues/1/photos/aa01',
+  '/api/venues/1/photos/cc03',
+  '/api/venues/1/photos/dd04',
+];
+
+/** The same three slots banner-sized — the map read's `photos` (cover's BANNER variant first). */
+const BANNER_SLIDESHOW = [
+  '/api/venues/1/photos/bb02',
   '/api/venues/1/photos/cc03',
   '/api/venues/1/photos/dd04',
 ];
@@ -39,7 +46,7 @@ const VENUES = [
     distanceToWaterM: 15,
     availability: { free: 18, total: 24 },
     coverPhoto: COVER,
-    photos: SLIDESHOW,
+    photos: CARD_SLIDESHOW,
   },
   {
     id: 2,
@@ -82,6 +89,7 @@ const VENUE_MAP = {
     },
   ],
   coverPhoto: COVER,
+  photos: BANNER_SLIDESHOW,
 };
 
 test.beforeEach(async ({ page }) => {
@@ -115,14 +123,21 @@ test('the Discover card shows the cover photo (scrim kept), the photo-less card 
   await expect(page.getByText('coming soon')).toBeHidden();
   await expectNoSeriousAxeViolations(page, 'discovery with cover photos');
 
-  // The beach map renders the BANNER variant in the photo band; the retired pill is gone.
+  // The beach map's band is the same slideshow, banner-sized, with its own step controls.
   await cards.first().click();
   await expect(page).toHaveURL(/\/venues\/1/);
   const banner = page.getByTestId('map-banner-img');
   await expect(banner).toBeVisible();
   await expect(banner).toHaveAttribute('src', /\/api\/venues\/1\/photos\/bb02$/);
+  const bannerSlides = page.locator(
+    '[data-testid="map-banner-img"], [data-testid="map-banner-slide-img"]',
+  );
+  await expect(bannerSlides).toHaveCount(3);
+  await page.getByTestId('map-banner-next').click();
+  await expect(bannerSlides.nth(1)).toHaveCSS('opacity', '1');
+  await expect(bannerSlides.nth(0)).toHaveCSS('opacity', '0');
   await expect(page.getByText('coming soon')).toBeHidden();
-  await expectNoSeriousAxeViolations(page, 'beach map with cover banner');
+  await expectNoSeriousAxeViolations(page, 'beach map with its banner slideshow');
 });
 
 test('the Discover card slideshow crossfades through all three slots via the step controls (dots track, wrap both ways, + axe)', async ({
@@ -130,7 +145,9 @@ test('the Discover card slideshow crossfades through all three slots via the ste
 }) => {
   await page.goto('/');
   const item = page.getByTestId('venue-card').first().locator('..');
-  const slides = item.locator('[data-testid="card-photo-img"], [data-testid="card-slide-img"]');
+  const slides = item.locator(
+    '[data-testid="card-photo-img"], [data-testid="card-photo-slide-img"]',
+  );
   await expect(slides).toHaveCount(3);
   await expect(item.getByTestId('card-photo-dots').locator('span')).toHaveCount(3);
 

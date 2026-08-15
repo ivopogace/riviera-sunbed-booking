@@ -8,6 +8,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -63,6 +64,11 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	private static final String COL_AMENITY = "amenity";
 	/** The bulk IN-clause bind param shared by the three list-read queries (named once — Sonar S1192). */
 	private static final String P_VENUE_IDS = "venueIds";
+	// Slideshow preferences: own size first, then fallbacks for pre-uniform-surface uploads.
+	private static final List<PhotoSurface> CARD_SLIDESHOW =
+			List.of(PhotoSurface.CARD, PhotoSurface.PREVIEW);
+	private static final List<PhotoSurface> BANNER_SLIDESHOW =
+			List.of(PhotoSurface.BANNER, PhotoSurface.CARD, PhotoSurface.PREVIEW);
 
 	private final JdbcClient jdbc;
 	private final SetAvailabilityLookup availability;
@@ -132,12 +138,15 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.sorted() // enum natural order == declaration order == canonical catalogue order
 				.toList();
 
-		CoverPhotoView coverPhoto = coverOf(id.value(),
-				photoVariantsByVenue(List.of(id.value())).getOrDefault(id.value(), Map.of()));
+		Map<PhotoSlot, Map<PhotoSurface, String>> photoVariants =
+				photoVariantsByVenue(List.of(id.value())).getOrDefault(id.value(), Map.of());
+		CoverPhotoView coverPhoto = coverOf(id.value(), photoVariants);
+		List<String> photos = slideshowOf(id.value(), photoVariants, BANNER_SLIDESHOW);
 
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
-				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto));
+				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto,
+				photos));
 	}
 
 	@Override
@@ -205,7 +214,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.map(v -> toSummary(v, setsByVenue.getOrDefault(v.id(), List.of()), taken,
 						amenitiesByVenue.getOrDefault(v.id(), List.of()),
 						coverOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of())),
-						slideshowOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of()))))
+						slideshowOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of()),
+								CARD_SLIDESHOW)))
 				.toList();
 	}
 
@@ -256,18 +266,19 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	}
 
 	/**
-	 * The Discover slideshow: one card-sized serving URL per occupied slot, in {@link PhotoSlot}
-	 * order (the EnumMap's iteration order — cover, sunbeds, bar), preferring the CARD variant and
-	 * falling back to PREVIEW for secondary-slot uploads predating their CARD variant.
+	 * A tourist slideshow: one serving URL per occupied slot, in {@link PhotoSlot} order (the
+	 * EnumMap's iteration order — cover, sunbeds, bar), taking each slot's first present variant
+	 * per {@code preference} — the Discover card wants {@link #CARD_SLIDESHOW}, the beach-map band
+	 * {@link #BANNER_SLIDESHOW}.
 	 */
-	private static List<String> slideshowOf(long venueId, Map<PhotoSlot, Map<PhotoSurface, String>> slots) {
+	private static List<String> slideshowOf(long venueId, Map<PhotoSlot, Map<PhotoSurface, String>> slots,
+			List<PhotoSurface> preference) {
 		List<String> photos = new ArrayList<>();
-		slots.forEach((slot, surfaces) -> {
-			String hash = surfaces.getOrDefault(PhotoSurface.CARD, surfaces.get(PhotoSurface.PREVIEW));
-			if (hash != null) {
-				photos.add(PhotoServingUrls.servingUrl(venueId, new ContentHash(hash)));
-			}
-		});
+		slots.forEach((slot, surfaces) -> preference.stream()
+				.map(surfaces::get)
+				.filter(Objects::nonNull)
+				.findFirst()
+				.ifPresent(hash -> photos.add(PhotoServingUrls.servingUrl(venueId, new ContentHash(hash)))));
 		return List.copyOf(photos);
 	}
 
