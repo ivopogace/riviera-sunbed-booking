@@ -13,19 +13,6 @@ read each when its stage arrives, not before.
 
 **Announce at start:** "Using riviera-sdlc to drive the workflow."
 
-## Staying in touch (notifications)
-
-SDLC runs typically start from the Claude iOS app; the user then walks away, phone locked — when the workflow needs them, reach out; don't go silent and wait.
-
-- **Push via `PushNotification`** *before* any `AskUserQuestion` (a question prompt alone
-  does **not** buzz the phone), and when work finishes and you await the next command.
-- **Email backstop only if a send-capable (not draft-only) tool exists** — a short "done,
-  your move" mail to the maintainer address from the session context, never one hardcoded
-  here. Draft-only Gmail (the common cloud case): skip email, say push was the only channel.
-- **Never ping during live back-and-forth**; the trigger is "they may have walked away and
-  something is waiting" — err toward sending for blocking questions and completions.
-- If pushes don't arrive: iOS → Settings → Notifications → Claude → Allow Notifications.
-
 ## The loop
 
 ```
@@ -60,37 +47,15 @@ at Implement", it means this paragraph.
 ## Epic front-end (optional — for multi-slice epics)
 
 Ahead of `Refine → Issue`, a big change can be authored top-down through three
-Matt-Pocock craft skills. This is **optional scaffolding for epics**, not a new gate —
-a single slice or a one-liner skips it entirely.
-
-```
-wayfinder            →   to-spec               →   to-issues
-chart foggy              formalize: user           slice user stories into
-decisions across         stories + testing         tracer-bullet vertical
-sessions (epic map)      seams + out-of-scope      issues (ready-for-agent)
-(foggy epics only)       (committed epic issue)    (the normal Issue stage)
-```
-
-- **`wayfinder` — foggy epics only.** Use it *only* when the destination is clear but
-  the route is fog and the decisions won't fit one session (SSO / #112 had that shape
-  before it shipped). When
-  `to-issues` can already cut clean slices — the common case, since the product design spec
-  + domain model are captured up front — **skip it**. It charts a `wayfinder:map` issue of
-  **decision** tickets (not build slices), resolved one per session until the way is clear.
-- **`to-spec` — the epic spec.** Synthesizes the discussion into one committed epic issue
-  (Problem / Solution / numbered **User Stories** / Implementation Decisions / **Testing
-  Seams** / Out of scope). Its user stories are what `to-issues` then slices against.
-- **`to-issues` — unchanged.** The normal Issue stage; consumes the spec's user stories.
-
-**Two boundaries that keep this from fighting the rest of the loop:**
-
-1. **Altitude.** `to-spec` is **epic-level** (user stories, seams, out-of-scope, committed
-   once). `riviera-plan-doc` stays **slice-level** (testable ACs, risk register, invariant
-   proof, the Execution-status state store). Don't restate slice ACs in the spec — two spec
-   layers is the failure mode.
-2. **State store.** The `wayfinder:map` issue governs the **charting** phase only. The
-   moment a slice enters execution, the plan-doc **Execution status** section is the state
-   store (rules 10–11) — the map *indexes* decisions, it does not track build progress.
+Matt-Pocock craft skills: `wayfinder` (foggy epics **only** — destination clear, route
+fog, decisions that won't fit one session; when `to-issues` can already cut clean
+slices, skip it) → `to-spec` (synthesizes the discussion into one committed epic issue:
+user stories + testing seams + out-of-scope) → `to-issues` (slices the spec's user
+stories — the normal Issue stage). This is **optional scaffolding for epics, not a new
+gate** — a single slice or a one-liner skips it entirely. The full procedure and the two
+boundaries that keep it from fighting the loop (altitude: the spec is epic-level, the
+plan doc slice-level; state store: the `wayfinder:map` issue governs charting only,
+never build progress): `references/epic-front-end.md`.
 
 ## Issue-intake grill gate (summary)
 
@@ -154,7 +119,7 @@ sentence (re-load it; see Context hygiene) — and re-loading is cheap: when in 
 
 1. **One vertical slice per issue/PR.** A slice cuts through every layer (DB → API → UI → tests) and is demoable on its own — never a horizontal layer.
 2. **Branch per issue:** `feature/<slug>` or `bugfix/<slug>` off `main`; reference `#NN` in commits.
-3. **The CI gate is non-negotiable — and it runs per push, not per PR.** Which is why the PR is opened as a **draft as soon as the first phase commit exists**: CI fires on the `pull_request` event only, so an open PR is what makes "per push" true (#417). The CI-gate row (The loop); red → `diagnosing-bugs`.
+3. **The CI gate is non-negotiable — and it runs per push, not per PR.** Which is why the PR is opened as a **draft as soon as the first phase commit exists** — the PR row (The loop) owns the why (#417). Red → `diagnosing-bugs`.
 4. **The review gate is non-negotiable too — and "ran" means `/code-review` actually ran** (`references/pr-gates.md` §1).
 5. **The plan owns the invariants.** If the slice touches booking, availability, or money, the plan doc states how the invariant holds, and review checks it.
 6. **Right-size it.** A one-line/copy fix skips the plan doc; a spine-touching feature does not. (A code change still gets the review gate — proportional to size.)
@@ -167,9 +132,8 @@ sentence (re-load it; see Context hygiene) — and re-loading is cheap: when in 
     `docs/architecture/`, `docs/plans/`) before or with the artifacts that cite it —
     uncommitted means unavailable to the next session (case history: #93).
 11. **The conversation is never the state store — rule 10, extended to *progress*.** The
-    plan doc's Execution status section carries the stage pointer, next action, phase
-    status, and findings register; commit it at every phase boundary and stage transition,
-    and re-anchor from it after any compaction (Context hygiene, below).
+    plan doc's Execution status section carries it; Context hygiene (below) owns the
+    procedure.
 
 ## Context hygiene (long sessions, compaction, drift)
 
@@ -223,32 +187,27 @@ Cloud sessions (Claude Code on the web / iOS) differ from the idealized local se
   the substitute when `gh` is missing). When an instruction is impossible in the current
   toolset, do the nearest honest thing and **say so in the reply** — don't silently
   half-do it.
+- **Staying in touch (notifications):** SDLC runs typically start from the Claude iOS
+  app; the user then walks away, phone locked — when the workflow needs them, reach out;
+  don't go silent and wait. Push via `PushNotification` *before* any `AskUserQuestion`
+  (a question prompt alone does **not** buzz the phone), and when work finishes and you
+  await the next command. Email backstop only if a send-capable (not draft-only) tool
+  exists — a short "done, your move" mail to the maintainer address from the session
+  context, never one hardcoded here (draft-only Gmail, the common cloud case: skip
+  email, say push was the only channel). **Never ping during live back-and-forth**; the
+  trigger is "they may have walked away and something is waiting" — err toward sending
+  for blocking questions and completions. If pushes don't arrive: iOS → Settings →
+  Notifications → Claude → Allow Notifications.
+
 ## IntelliJ IDEA session addendum (`idea` MCP)
 
-The JetBrains `idea` MCP server is defined at **project scope** (`.mcp.json`) but is
-deliberately **absent from the committed `.claude/settings.json` `enabledMcpjsonServers`**
-list — it activates only where a machine-local setting enables it (the developer machine's
-gitignored `.claude/settings.local.json` sets `enableAllProjectMcpServers: true`). It points
-at a `127.0.0.1` port (the one in `.mcp.json` — IntelliJ assigns it per machine, so read the
-file rather than trusting a number quoted here), which exists only next to a running IDE; in a cloud session it stays
-unapproved, or at worst is marked *failed* after connection retries. Do **not** "fix" that
-by adding `idea` to the committed `enabledMcpjsonServers`, and never add it to any
-`disabledMcpjsonServers` list — a deny at any scope wins over every enable, including the
-developer machine's.
-
-- **Detection is tool presence, not environment guessing:** if `mcp__idea__*` tools are
-  available this session, the project is open in IntelliJ IDEA — apply this addendum. If
-  they're absent (cloud session, plain terminal), skip it entirely; never try to connect
-  or add the server yourself.
-- **Where they pay off in the loop:**
-  - *Implement:* after an edit, `get_file_problems` / `lint_files` return the IDE's
-    inspection verdict faster than a compile cycle; `rename_refactoring` for symbol
-    renames instead of grep-and-replace.
-  - *Plan / Detect:* `analyze_calls` + `get_symbol_info` when mapping blast radius.
-  - *Debug:* the `xdebug_*` breakpoint/session tools when `diagnosing-bugs` needs
-    runtime state.
-- They **supplement, never replace** the gates: scoped test runs (`riviera-local-debug`)
-  and CI remain the verification — an inspection-clean file is not a green build.
+Detection is tool presence, not environment guessing: if `mcp__idea__*` tools are
+available this session, the project is open in IntelliJ IDEA — read
+`references/idea-mcp.md` (where the tools pay off per stage, and why the server stays
+out of the committed settings). If they're absent (cloud session, plain terminal), skip
+it entirely; never try to connect, enable, or add the `idea` server yourself — and never
+add it to any `disabledMcpjsonServers` list (a deny at any scope wins over every enable,
+including the developer machine's).
 
 ## The substrate these skills read
 
@@ -266,24 +225,23 @@ developer machine's.
 
 ## Integration
 
-- **Riviera skills:** `riviera-plan-doc` (plan), `riviera-review-overlay` (review),
-  `riviera-modulith` (backend module structure / boundaries), `riviera-java-conventions`
-  (backend Java idioms), `riviera-stripe-payments` (money), `riviera-frontend` (FE
-  structure) + `angular-developer` + `playwright-cli` (frontend), `riviera-local-debug`
-  (build/test recipes), `riviera-docs-freshness` (merge close-out step 5).
-- **Vendored craft skills (Matt Pocock, MIT):** `grilling`/`grill-me`, `wayfinder`
-  (foggy-epic charting) → `to-spec` (epic spec) → `to-issues` (slice) — the *Epic
-  front-end* chain — plus `implement`, `tdd`, `diagnosing-bugs`, `codebase-design`,
-  `domain-modeling`, `triage`, `improve-codebase-architecture` (use the last one once
-  there is code to deepen).
+The loop table and the Skill-routing gate above ARE the skill map — there is no separate
+list to maintain. Vendored craft skills (Matt Pocock, MIT) are tracked in
+`skills-lock.json`; one of them is not routed above: `improve-codebase-architecture`,
+for deepening existing code outside slice work.
 
 ## References
 
+- `references/epic-front-end.md` — read at Refine/Issue when the change is a multi-slice
+  epic: the `wayfinder` → `to-spec` → `to-issues` chain and its two altitude/state-store
+  boundaries.
 - `references/issue-intake-gate.md` — read at plan entry whenever work starts from an
   existing issue: grill checklist, in-flight/Flyway-number check, module-ownership check.
 - `references/pr-gates.md` — read when the PR is marked **ready for review** (not when the
   draft opens, #417): the Review gate, the
   SonarCloud gate (API URLs, triage rules), and the Merge close-out checklist.
+- `references/idea-mcp.md` — read only when `mcp__idea__*` tools are present: per-stage
+  payoffs and the settings rules for the JetBrains `idea` MCP server.
 - `references/case-history.md` — the incidents behind the rules (#122/#127, #158, #72,
   #93, epic #141's un-ticked checklist, O6/PR #219, PR #318, the three docs-only
   close-out PRs, #351, PR #353/#355); read when you want the why.
