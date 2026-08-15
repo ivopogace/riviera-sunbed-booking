@@ -92,6 +92,19 @@ describe('PhotoSlideshow', () => {
     expect(slides[0].classList.contains('opacity-0')).toBe(false);
   });
 
+  it('resets to the first slide when the photos input changes (a surviving host reloads)', () => {
+    create({ photos: PHOTOS, ownControls: true });
+    el().querySelector<HTMLButtonElement>('[data-testid="photo-next"]')!.click();
+    el().querySelector<HTMLButtonElement>('[data-testid="photo-next"]')!.click();
+    fixture.detectChanges();
+
+    // The list shrinks under the same instance (e.g. photos deleted, date change re-fetches).
+    fixture.componentRef.setInput('photos', [PHOTOS[0]]);
+    fixture.detectChanges();
+    const only = el().querySelector<HTMLImageElement>('[data-testid="photo-img"]')!;
+    expect(only.classList.contains('opacity-0')).toBe(false);
+  });
+
   it('steps via the public prev()/next() API (the external-controls placement)', () => {
     create({ photos: PHOTOS });
 

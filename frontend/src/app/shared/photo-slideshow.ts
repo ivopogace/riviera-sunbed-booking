@@ -1,5 +1,5 @@
 import { NgOptimizedImage } from '@angular/common';
-import { booleanAttribute, Component, input, signal } from '@angular/core';
+import { booleanAttribute, Component, input, linkedSignal } from '@angular/core';
 
 import { TouchTarget } from './touch-target';
 
@@ -93,8 +93,15 @@ export class PhotoSlideshow {
   /** Render the component's own step buttons — only for hosts NOT inside a link/aria-hidden tree. */
   readonly ownControls = input(false, { transform: booleanAttribute });
 
-  /** The photo currently shown (0-based). */
-  protected readonly index = signal(0);
+  /**
+   * The photo currently shown (0-based). Linked to `photos` so a changed input (the host
+   * survived a reload — e.g. the beach map's date change) resets to the first slide instead of
+   * pointing past a shrunken list and blanking the band.
+   */
+  protected readonly index = linkedSignal({
+    source: this.photos,
+    computation: () => 0,
+  });
 
   /** Step forward, wrapping past the last photo. */
   next(): void {

@@ -15,6 +15,7 @@ import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
 import { PhotoSlideshow } from '../../shared/photo-slideshow';
+import { slideshowPhotos } from '../../shared/photo-url';
 import { isRated, ratingScore } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
 import { defaultBookingDate } from '../../shared/booking-date';
@@ -48,17 +49,6 @@ interface VenueCard {
   readonly total: number;
   /** The single accessible name carrying every card fact (nothing conveyed by layout alone). */
   readonly ariaLabel: string;
-}
-
-/**
- * The card's slideshow photos: the summary's `photos` when present, else the cover alone (older
- * payloads/doubles omit `photos`), else empty — the gradient placeholder renders instead.
- */
-function slideshowPhotos(venue: VenueSummary): readonly string[] {
-  if (venue.photos?.length) {
-    return venue.photos;
-  }
-  return venue.coverPhoto ? [venue.coverPhoto.card] : [];
 }
 
 /**
@@ -258,7 +248,7 @@ export class Home {
       .slice(0, 3)
       .map((code) => ({ code, label: amenityLabel(code) }));
     const priceLabel = venue.fromPrice ? formatMoney(venue.fromPrice) : null;
-    const photos = slideshowPhotos(venue);
+    const photos = slideshowPhotos(venue, 'card');
     const { free, total } = venue.availability;
     const freePercent = total === 0 ? 0 : Math.round((free / total) * 100);
 

@@ -21,6 +21,7 @@ import { formatMoney, MoneyView } from '../shared/money';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
 import { PhotoSlideshow } from '../shared/photo-slideshow';
+import { slideshowPhotos } from '../shared/photo-url';
 import { isRated, ratingScore } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
 import { defaultBookingDate, isIsoDate } from '../shared/booking-date';
@@ -76,18 +77,6 @@ interface VenueHeader {
   readonly priceLabel: string | null;
   readonly water: string | null;
   readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
-}
-
-/**
- * The banner band's slideshow photos: the map view's `photos` when present, else the cover's
- * banner alone (older payloads/doubles omit `photos`), else empty — the gradient placeholder
- * renders instead.
- */
-function bannerPhotos(venue: VenueMapView): readonly string[] {
-  if (venue.photos?.length) {
-    return venue.photos;
-  }
-  return venue.coverPhoto ? [venue.coverPhoto.banner] : [];
 }
 
 /**
@@ -215,7 +204,7 @@ export class VenueMap {
       beach: v.beach,
       region: v.region,
       description: v.description,
-      photos: bannerPhotos(v),
+      photos: slideshowPhotos(v, 'banner'),
       bookingMode: v.bookingMode,
       modeLabel: v.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
       isRated: isRated(v),
