@@ -51,6 +51,17 @@ interface VenueCard {
 }
 
 /**
+ * The card's slideshow photos: the summary's `photos` when present, else the cover alone (older
+ * payloads/doubles omit `photos`), else empty — the gradient placeholder renders instead.
+ */
+function slideshowPhotos(venue: VenueSummary): readonly string[] {
+  if (venue.photos?.length) {
+    return venue.photos;
+  }
+  return venue.coverPhoto ? [venue.coverPhoto.card] : [];
+}
+
+/**
  * Tourist venue discovery — the app's landing page (`/`).
  * Hero + one glass filter bar (beach/region/date with the live result count inside) + glass venue
  * cards (a crossfading slideshow of the venue's uploaded photos when any exist — stepped by
@@ -266,12 +277,7 @@ export class Home {
       .slice(0, 3)
       .map((code) => ({ code, label: amenityLabel(code) }));
     const priceLabel = venue.fromPrice ? formatMoney(venue.fromPrice) : null;
-    // Older payloads/doubles without `photos` still show the cover; nothing at all → gradient.
-    const photos = venue.photos?.length
-      ? venue.photos
-      : venue.coverPhoto
-        ? [venue.coverPhoto.card]
-        : [];
+    const photos = slideshowPhotos(venue);
     const { free, total } = venue.availability;
     const freePercent = total === 0 ? 0 : Math.round((free / total) * 100);
 
