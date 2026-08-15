@@ -217,8 +217,9 @@ detail in the in-repo `angular-developer` skill's `references/`.)
 > lives HERE, committed — never only in the conversation. After a compaction, in a fresh
 > session, or whenever unsure: re-read it (plus the current stage's `riviera-sdlc`
 > reference file) before acting. Update it in the SAME commit window as the change it
-> records, at every phase boundary and SDLC stage transition (why: `riviera-sdlc`
-> §Context hygiene).
+> records — the same commit or the immediately-following one, nothing unrelated between;
+> covers every plan-doc update incl. *Skills consulted* — at every phase boundary and
+> SDLC stage transition (why: `riviera-sdlc` §Context hygiene).
 >
 > **Finalize BEFORE the merge, in the PR's own last commit** — stage pointer DONE, phase
 > rows ✅ with commits, Open Questions empty, risk rows closed, AC pin-names matching the

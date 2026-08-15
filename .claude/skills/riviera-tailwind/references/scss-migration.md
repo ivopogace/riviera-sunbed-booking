@@ -5,13 +5,11 @@ Read this when a slice migrates a `.scss` file to Tailwind — including via the
 migration due in that same slice (SKILL.md carries the rule and the remaining-file
 inventory; this file is the procedure).
 
-The bulk of what remains is `booking/` — 6 of the 10 remaining `.scss` files under
-`frontend/src/app` sit there (plus `app.scss`, `auth.scss`, `home.scss` — the scrim
-stays SCSS on purpose, see SKILL.md's theming blockquote — and `operator-console.scss`;
-`venue-editor.scss` retired with its page at #278). **There is no shared SCSS left**:
-`shared/_glass.scss` was retired at #477 when its last recipe, `status-chip`, became
-`shared/status-chip.ts` — so step 1's inventory now finds a shared recipe only if a new one
-has been added since.
+The remaining-file inventory is stated **once, in SKILL.md** (don't restate it here — the
+migrate-on-touch rule shrinks it slice by slice, and two copies drift). One fact step 1
+depends on: **there is no shared SCSS left** (`shared/_glass.scss` retired at #477 when its
+last recipe, `status-chip`, became `shared/status-chip.ts`), so the inventory finds a shared
+recipe only if a new one has been added since.
 
 1. Inventory the shared SCSS recipes the file uses **and their blast radius** (grep every
    `@include`/`@extend`). This decides scope.

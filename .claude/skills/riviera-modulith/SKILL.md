@@ -186,7 +186,7 @@ Every venue-scoped **application service** consults `operator`'s ownership check
 (`VenueOwnership.assertOwns` → `403` on mismatch, pinned by `CrossVenueDenialIT`) so no driving
 adapter can bypass it — invariant #13. New venue-scoped command/query: grant `operator::api` +
 `::vocabulary` and put the ownership check in the service, not the controller. Platform-wide
-admin (`/api/admin/**`) stays role-gated. The module's contract, its five `api/` ports, and the
+admin (`/api/admin/**`) stays role-gated. The module's contract, its `api/` ports, and the
 shipped history (#73/#74/#115, the retired owns-all bootstrap): `RESPONSIBILITIES.md` §`operator`.
 
 ## Verification

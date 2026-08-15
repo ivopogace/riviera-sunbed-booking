@@ -63,10 +63,11 @@ pin this down rather than re-derive it:
   a **fresh PaymentIntent** is created for the guest, confirmed by the **same
   verified webhook** as Instant Book — from `AWAITING_PAYMENT` onward the two flows
   are identical, so the payment/confirmation code is written once.
-- **Windows & sweep:** venue accept deadline = `booking.request.expiry-window`; guest pay
-  window = `booking.request.pay-window`, measured from `accepted_at` — never the instant
-  TTL's creation clock. Both are fenced by invariant #4's service-day-open cap (canonical in
-  CLAUDE.md; detail in `RESPONSIBILITIES.md` §`booking`). `ExpireRequestsService` +
+- **Windows & sweep:** venue accept deadline = `booking.request.expiry-window`, capped at
+  the **evening-before cutoff**; guest pay window = `booking.request.pay-window`, measured
+  from `accepted_at` — never the instant TTL's creation clock — capped at **service-day
+  open** (the two caps differ; invariant #4, detail in `RESPONSIBILITIES.md` §`booking`).
+  `ExpireRequestsService` +
   `RequestSweepScheduler` run **lockless** (guarded `UPDATE … RETURNING`; single-instance
   posture per `docs/deploy/production-hardening.md`); ShedLock only when scaling out.
 - Do **NOT** model this as auth-and-capture — the model is payment-request-on-accept; treat any older doc implying manual capture/void as stale.
