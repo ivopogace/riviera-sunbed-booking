@@ -117,11 +117,14 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 **Migrate on touch — the retirement mechanism.** A slice that touches a component still
 carrying legacy component SCSS (any of its `.ts`/`.html`/`.scss`) migrates that component's
 styling to Tailwind **in the same slice** — narrow scope is fine (the checklist's step 2),
-and a justified holdout (the scrim class) stays SCSS with its why. If the migration would
-genuinely swamp the slice, defer it with a stated reason instead of silently skipping —
-RV-FE-7 checks touched-but-unmigrated SCSS either way. Load `references/scss-migration.md`
-for the four-step checklist (inventory blast radius → pick scope → retain test hooks +
-contrast specs → verify).
+and a justified holdout (the scrim class) stays SCSS with its why. **Deferral is never
+self-granted:** if migrating would genuinely swamp the slice (a one-line bug fix in a
+heavy-SCSS component), ask the maintainer via `AskUserQuestion` — *migrate now, or defer?*
+An approved defer means the slice ships just its own fix (the SCSS edit included), the
+review gate still runs, merge proceeds, and the migration gets a **follow-up issue** so it
+isn't lost. RV-FE-7 checks touched-but-unmigrated SCSS either way. Load
+`references/scss-migration.md` for the four-step checklist (inventory blast radius → pick
+scope → retain test hooks + contrast specs → verify).
 
 ## Red flags
 

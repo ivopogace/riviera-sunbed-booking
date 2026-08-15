@@ -76,8 +76,9 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   can't express cleanly (e.g. the `home.scss` scrim), with the justification stated; an
   **unjustified** fresh `.scss` is a review finding. **Migrate on touch:** a slice that
   touches a component still carrying legacy SCSS migrates that styling to Tailwind in the
-  same slice (or defers with a stated why — `riviera-tailwind` owns the rule). Load
-  **`riviera-tailwind`** before styling anything.
+  same slice; deferral only by **asking the maintainer** (`AskUserQuestion`), recorded
+  with a follow-up issue — `riviera-tailwind` owns the rule. Load **`riviera-tailwind`**
+  before styling anything.
 
 ## Comments
 
