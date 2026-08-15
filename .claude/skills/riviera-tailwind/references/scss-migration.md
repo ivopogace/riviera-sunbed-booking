@@ -1,7 +1,9 @@
 # SCSS→Tailwind migration checklist
 
-Read this when a slice migrates a `.scss` file to Tailwind (SKILL.md carries the trigger and
-the remaining-file inventory; this file is the procedure).
+Read this when a slice migrates a `.scss` file to Tailwind — including via the
+**migrate-on-touch** rule: touching a component that still carries legacy SCSS makes its
+migration due in that same slice (SKILL.md carries the rule and the remaining-file
+inventory; this file is the procedure).
 
 The bulk of what remains is `booking/` — 6 of the 10 remaining `.scss` files under
 `frontend/src/app` sit there (plus `app.scss`, `auth.scss`, `home.scss` — the scrim

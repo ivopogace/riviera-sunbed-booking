@@ -112,9 +112,16 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 
 **There is no shared SCSS left** (`shared/_glass.scss` retired at #477 with its last recipe,
 `status-chip`); what remains is 10 `.scss` files under `frontend/src/app`, 6 of them in
-`booking/` (the `home.scss` scrim stays SCSS on purpose — the blockquote above). Migrating
-one? Load `references/scss-migration.md` for the four-step checklist (inventory blast radius →
-pick scope → retain test hooks + contrast specs → verify).
+`booking/` (the `home.scss` scrim stays SCSS on purpose — the blockquote above).
+
+**Migrate on touch — the retirement mechanism.** A slice that touches a component still
+carrying legacy component SCSS (any of its `.ts`/`.html`/`.scss`) migrates that component's
+styling to Tailwind **in the same slice** — narrow scope is fine (the checklist's step 2),
+and a justified holdout (the scrim class) stays SCSS with its why. If the migration would
+genuinely swamp the slice, defer it with a stated reason instead of silently skipping —
+RV-FE-7 checks touched-but-unmigrated SCSS either way. Load `references/scss-migration.md`
+for the four-step checklist (inventory blast radius → pick scope → retain test hooks +
+contrast specs → verify).
 
 ## Red flags
 
