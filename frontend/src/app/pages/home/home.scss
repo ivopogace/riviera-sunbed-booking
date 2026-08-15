@@ -183,6 +183,11 @@
   gap: 20px;
 }
 
+/* The photo band's one height — .card-photo and the step controls' top-[calc(var(--photo-band)/2)] both consume it. */
+.venue-grid > li {
+  --photo-band: 150px;
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -234,7 +239,7 @@
 .card-photo {
   position: relative;
   display: block;
-  height: 150px;
+  height: var(--photo-band, 150px);
   background: var(--riv-photo-grad);
 }
 

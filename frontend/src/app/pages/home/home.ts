@@ -11,6 +11,7 @@ import {
 import { AmenityChip } from '../../shared/amenity-chip';
 import { CardGlass } from '../../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
+import { focusMover } from '../../shared/focus-after-render';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
@@ -125,6 +126,8 @@ export class Home {
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
   private lastRequest = '';
 
+  private readonly focusAfterRender = focusMover();
+
   /**
    * The fetch to repeat when Retry is pressed — the *failed* request, not a fixed one: an
    * initial-load failure retries `loadInitial` (which re-seeds the filter selects), whereas a
@@ -235,9 +238,14 @@ export class Home {
     this.reload();
   }
 
-  /** Retry the load that failed (the failure panel's "Try again" button). */
+  /**
+   * Retry the load that failed (the failure panel's "Try again" button). Retry destroys the panel
+   * holding the pressed button (WCAG 2.4.3), so focus moves to the count block — which survives
+   * every list state, outliving the loading → grid/error transitions too.
+   */
   protected onRetryDiscover(): void {
     this.lastLoad();
+    this.focusAfterRender('results');
   }
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */

@@ -461,6 +461,21 @@ describe('Home (venue discovery)', () => {
     expect(beachOptions).toEqual(['All beaches', 'Dhërmi', 'Ksamil']);
   });
 
+  it('moves keyboard focus to the persistent count block when Retry is pressed (WCAG 2.4.3)', async () => {
+    listRequest().error(new ProgressEvent('error'));
+    await fixture.whenStable();
+
+    el().querySelector<HTMLButtonElement>('[data-testid="retry"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Retry tears down the panel holding the pressed button; the count block outlives every state.
+    expect(document.activeElement).toBe(el().querySelector('[data-testid="results"]'));
+
+    listRequest().flush(venues()); // settle for httpMock.verify()
+  });
+
   it('retries the filtered request (not the initial load) when a filter-change fetch failed', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
