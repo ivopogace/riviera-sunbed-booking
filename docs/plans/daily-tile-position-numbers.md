@@ -42,21 +42,21 @@ stands in for `feature/daily-tile-position-numbers` (riviera-sdlc remote addendu
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the daily grid is loaded, when a set is FREE, then its tile's
+- [x] **AC-1:** Given the daily grid is loaded, when a set is FREE, then its tile's
   visible text is the set's position number (and no longer the price — the price remains
   on the zone rail chip and in the tile's accessible name). *Pinned by:*
   `daily-view-tab.spec.ts` — "shows each set's position number on its tile (#686)".
-- [ ] **AC-2:** Given a set is STAFF_MARKED, when its tile renders, then the tile shows
+- [x] **AC-2:** Given a set is STAFF_MARKED, when its tile renders, then the tile shows
   the `✓` state glyph AND the position number. *Pinned by:* same spec, marked-tile
   assertion.
-- [ ] **AC-3:** Given a set is BOOKED_ONLINE (locked), when its tile renders, then the
+- [x] **AC-3:** Given a set is BOOKED_ONLINE (locked), when its tile renders, then the
   tile shows the `●` state glyph AND the position number, and the sr-only accessible name
   still names the state (not colour-only). *Pinned by:* same spec, locked-tile assertion +
   `daily-view-tab.a11y.spec.ts` (axe, unchanged).
-- [ ] **AC-4:** Given the locked tile's number is meaningful ink over the striped fill,
+- [x] **AC-4:** Given the locked tile's number is meaningful ink over the striped fill,
   when composited over the wash's worst-case stops, then it meets WCAG AA. *Pinned by:*
   `daily-view-tab.contrast.spec.ts` — new locked-tile-number test.
-- [ ] **AC-5:** Given a wide venue on a 390px viewport, when the daily grid renders with
+- [x] **AC-5:** Given a wide venue on a 390px viewport, when the daily grid renders with
   numbers, then every actionable tile still meets the 44px touch-target floor and the
   grid still scrolls in-frame. *Pinned by:* `operator-daily.e2e.ts` (#605 tests, must stay
   green) + `touch-targets.e2e.ts` daily-view sweep.
@@ -86,17 +86,20 @@ stands in for `feature/daily-tile-position-numbers` (riviera-sdlc remote addendu
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Locked-tile number fails AA over the striped fill's dark stripe on a wash stop | low | med | Prove by composited-contrast test (worst-case stripe `rgba(12,42,51,0.28)` over every `WASH_STOPS` entry) before shipping | session | open |
-| R-2 | Dropping the FREE-tile price reads as a regression to the maintainer | low | low | Parity-ledger row + explicit PR callout; price remains on the rail + aria-label; trivially revertable | session | open |
-| R-3 | Two text nodes (glyph + number) disturb centering/fit in the 47–56px tile | low | low | Flex + gap on both tile variants; number at 12.5px matches the tourist tile that fits the same `--riv-tile` box; e2e touch/clip sweeps re-measure | session | open |
+| R-1 | Locked-tile number fails AA over the striped fill's dark stripe on a wash stop | low | med | Prove by composited-contrast test (worst-case stripe `rgba(12,42,51,0.28)` over every `WASH_STOPS` entry) before shipping | session | closed — spec passes (`0285161`) |
+| R-2 | Dropping the FREE-tile price reads as a regression to the maintainer | low | low | Parity-ledger row + explicit PR callout; price remains on the rail + aria-label; trivially revertable | session | closed — surfaced prominently in PR #688's body for veto |
+| R-3 | Two text nodes (glyph + number) disturb centering/fit in the 47–56px tile | low | low | Flex + gap on both tile variants; number at 12.5px matches the tourist tile that fits the same `--riv-tile` box; e2e touch/clip sweeps re-measure | session | closed — operator-daily + touch-targets e2e green (phase 2) |
 
 ## Open questions / Assumptions
+
+### Resolved
 
 - **Assumption:** The maintainer intends the tourist-map affordance literally — number on
   the tile, price on the rail — so the FREE tile's price glyph is replaced, not joined.
   Grounds: issue #686 "same affordance the tourist map already has"; the issue's premise
   that free tiles are blank shows the price glyph was not a considered constraint. —
-  *Owner:* session · *Resolves by:* PR description surfaces it for cheap veto.
+  *Resolved by decision at plan time, surfaced prominently in PR #688's body for a cheap
+  veto (revert is one small diff if vetoed).*
 
 ## Availability & concurrency (invariant #2)
 
@@ -129,16 +132,16 @@ N/A — no contract change (`SetView.positionNo` already delivered and consumed)
 
 > **This section is the session-recovery anchor.**
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** PR #688 ready for review — review + Sonar gates due
 
-**Next action:** extend `operator-daily.e2e.ts` with tile-number assertions
-(load `playwright-cli` first), then run the scoped checks.
+**Next action:** run the SDLC review gate (`/code-review` ladder + `riviera-review-overlay`)
+on PR #688, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc committed | ✅ | `88e789c` |
-| 1 — tile content (unit + contrast TDD, template + component) | ✅ | see phase-1 commit |
-| 2 — e2e assertions + full frontend verification | ⏳ | |
+| 1 — tile content (unit + contrast TDD, template + component) | ✅ | `0285161` |
+| 2 — e2e assertions + full frontend verification | ✅ | phase-2 commit (this window) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -169,26 +172,24 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `daily-view-tab.html`, `daily-view-tab.ts`, `daily-view-tab.spec.ts`,
 `daily-view-tab.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing unit test** — tile text per state (number always;
+- [x] **Step 1: Write the failing unit test** — tile text per state (number always;
   `✓`/`●` prefix for marked/locked; no `€` on the FREE tile).
-- [ ] **Step 2: Run it, verify it fails** — scoped Vitest run on
-  `daily-view-tab.spec.ts` → FAIL on the new assertions.
-- [ ] **Step 3: Minimal implementation** — `stateGlyph` + template spans + classes.
-- [ ] **Step 4: Run the operator daily-view specs (unit + contrast + a11y), verify pass.**
-- [ ] **Step 5: Generalization-audit pass** — sweep the "surface projects tiles into
-  `app-beach-map-canvas`" population for missing tile identity; record below.
-- [ ] **Step 6: Commit** — `git commit -m "<imperative subject> (#686)"`.
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 2: Run it, verify it fails** — scoped Vitest run on
+  `daily-view-tab.spec.ts` → FAIL: `expected '€30' to be '1'`.
+- [x] **Step 3: Minimal implementation** — `stateGlyph` + template spans + classes.
+- [x] **Step 4: Run the operator daily-view specs (unit + contrast + a11y)** — 44 passed.
+- [x] **Step 5: Generalization-audit pass** — recorded in the log below.
+- [x] **Step 6: Commit** — `0285161`.
+- [x] **Step 7: Update plan-doc execution status** — same commit window.
 
 ## Phase 2 — e2e + verification
 
-- [ ] **Step 1: Extend `operator-daily.e2e.ts`** tile-states test with number assertions
-  (load `playwright-cli` first).
-- [ ] **Step 2: Run scoped checks** — lint, format:check, unit tests, mocked e2e
-  (`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`, scoped to the
-  operator-daily + touch-targets specs).
-- [ ] **Step 3: `node scripts/check-plan-file-structure.mjs --diff origin/main`** → pass.
-- [ ] **Step 4: Commit + push; PR ready for review.**
+- [x] **Step 1: Extend `operator-daily.e2e.ts`** tile-states test with number assertions
+  (`playwright-cli` loaded first).
+- [x] **Step 2: Run scoped checks** — lint + format:check clean; 1448 unit tests pass;
+  mocked e2e operator-daily (6) + touch-targets (11) pass.
+- [x] **Step 3: `node scripts/check-plan-file-structure.mjs --diff origin/main`** → pass.
+- [x] **Step 4: Commit + push; PR #688 ready for review.**
 
 ---
 
@@ -202,8 +203,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-4:** scoped Vitest run over the operator daily-view specs → pass.
-- [ ] **AC-5:** mocked e2e `operator-daily.e2e.ts` + `touch-targets.e2e.ts` → pass.
+- [x] **AC-1..AC-4:** scoped Vitest run over the operator daily-view specs → 44 passed
+  (phase-2 verification window).
+- [x] **AC-5:** mocked e2e `operator-daily.e2e.ts` (6 passed) + `touch-targets.e2e.ts`
+  (11 passed).
 
 ## Self-review checklist (before merge / PR)
 
