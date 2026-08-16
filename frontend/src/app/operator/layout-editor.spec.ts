@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
+import { expectCellsMatchRailHeight } from '../../testing/beach-map-height';
 import { todayBookingDate } from '../shared/booking-date';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -131,6 +132,12 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()[3].getAttribute('data-state')).toBe('standard');
     // The Generate button shows the live total.
     expect(byId('layout-generate').textContent).toContain('6');
+  });
+
+  it('sizes bulk cells with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', () => {
+    render();
+    generate('2', '3');
+    expectCellsMatchRailHeight(host, '[data-testid="layout-cell"]');
   });
 
   it('asks for confirmation before regenerating over an existing grid, then replaces', () => {

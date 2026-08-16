@@ -5,6 +5,7 @@ import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@ang
 import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
+import { expectCellsMatchRailHeight } from '../../testing/beach-map-height';
 import { defaultBookingDate, todayBookingDate } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -126,6 +127,11 @@ describe('DailyViewTab (#175)', () => {
     expect(tile(1).tagName).toBe('BUTTON');
     expect(tile(3).tagName).toBe('BUTTON');
     expect(tile(2).tagName).toBe('SPAN');
+  });
+
+  it('sizes tiles with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', () => {
+    render();
+    expectCellsMatchRailHeight(host, '[data-testid="daily-tile"]');
   });
 
   it('locks an unpaid online hold — server state wins over the confirmed-bookings list (#207)', () => {

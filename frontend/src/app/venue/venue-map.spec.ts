@@ -16,6 +16,7 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
+import { expectCellsMatchRailHeight } from '../../testing/beach-map-height';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { defaultBookingDate } from '../shared/booking-date';
 import { SetView, VenueMapView } from '../shared/venue-views';
@@ -159,6 +160,12 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(24);
+  });
+
+  it('sizes set tiles with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    expectCellsMatchRailHeight(el(), '[data-testid="set-tile"]');
   });
 
   it('renders the cover banner photo when present, keeping the scrim; no "coming soon" pill either way (#142)', async () => {

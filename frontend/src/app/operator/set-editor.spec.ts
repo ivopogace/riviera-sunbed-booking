@@ -7,6 +7,7 @@ import {
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { expectCellsMatchRailHeight } from '../../testing/beach-map-height';
 import { SetView } from '../shared/venue-views';
 import { SetEditor } from './set-editor';
 
@@ -136,6 +137,11 @@ describe('SetEditor (#600)', () => {
     expect(codes.map((c) => c.textContent?.trim())).toEqual(['A', 'B']);
     // The rail is decorative for AT: every cell's aria-label already carries "Row X position N".
     expect(codes[0].closest('[aria-hidden="true"]')).toBeTruthy();
+  });
+
+  it('sizes set cells with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', () => {
+    render();
+    expectCellsMatchRailHeight(host, '[data-testid="set-cell"]');
   });
 
   it('chips every row’s price from its first set, and none for a set-less grown row (#677)', () => {
