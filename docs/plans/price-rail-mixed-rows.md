@@ -132,15 +132,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** red test for the daily-view mixed-price row in `daily-view-tab.spec.ts`
+**Next action:** mixed-price row in the `venue-map-pan.e2e.ts` fixture + chip-text assertion
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `formatMoneyRange` helper | ✅ | b2af56d |
-| 1 — tourist map (`venue-map.ts`) | ✅ | see branch |
-| 2 — daily view (`daily-view-tab.ts`) | | |
+| 1 — tourist map (`venue-map.ts`) | ✅ | 2ff1dcd |
+| 2 — daily view (`daily-view-tab.ts`) | ✅ | see branch |
 | 3 — mocked e2e assertion | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
