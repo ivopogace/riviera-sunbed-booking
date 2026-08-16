@@ -164,7 +164,7 @@
                 type="button"
                 appBeachCell
                 [state]="cell.state"
-                (mousedown)="onCellDown(ri, ci)"
+                (mousedown)="onCellDown(ri, ci, $event)"
                 (mouseenter)="onCellEnter(ri, ci, $event)"
                 (click)="paintCell(ri, ci)"
                 [title]="cell.label"

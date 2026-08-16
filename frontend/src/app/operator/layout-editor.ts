@@ -97,7 +97,10 @@ const SWATCH_CLASS: Record<CellState, string> = {
   ],
   templateUrl: './layout-editor.html',
   // Painting ends wherever the mouse is released — the grid container is canvas-owned now.
-  host: { '(document:mouseup)': 'onPaintEnd()' },
+  host: {
+    '(document:mouseup)': 'onPaintEnd()',
+    '(document:mousedown)': 'onDocumentMouseDown($event)',
+  },
 })
 export class LayoutEditor {
   private readonly route = inject(ActivatedRoute);
@@ -176,8 +179,8 @@ export class LayoutEditor {
   /**
    * The display rows on the shared canvas's contract. Every row is a zone of its own
    * (`zoneStart: true`): painting a tier re-prices a row live, and price-derived zones would
-   * insert/remove zone gaps mid drag-gesture, shifting rows under the cursor (#674 F-2) — constant
-   * per-row chips also restore the old editor's per-row price display.
+   * insert/remove zone gaps mid drag-gesture, shifting rows under the cursor — constant
+   * per-row chips also keep the editor's per-row price display.
    */
   protected readonly displayRows = computed<readonly LayoutRow[]>(() =>
     this.grid().map((row, y) => ({
@@ -345,7 +348,11 @@ export class LayoutEditor {
     this.savedNotice.set(false);
   }
 
-  protected onCellDown(r: number, c: number): void {
+  protected onCellDown(r: number, c: number, event: MouseEvent): void {
+    // Paint is a primary-button gesture, arming and disarming alike.
+    if (event.button !== 0) {
+      return;
+    }
     this.painting = true;
     this.paintCell(r, c);
   }
@@ -354,12 +361,22 @@ export class LayoutEditor {
     if (!this.painting) {
       return;
     }
-    // An off-window release fires no document mouseup — disarm when no button is held (#674 F-1).
+    // An off-window release fires no document mouseup — disarm when no button is held.
     if ((event.buttons & 1) === 0) {
       this.painting = false;
       return;
     }
     this.paintCell(r, c);
+  }
+
+  /** A press starting anywhere but a cell clears a stale armed flag (bubbles after onCellDown). */
+  protected onDocumentMouseDown(event: MouseEvent): void {
+    const onCell =
+      event.target instanceof Element &&
+      event.target.closest('[data-testid="layout-cell"]') !== null;
+    if (!onCell) {
+      this.painting = false;
+    }
   }
 
   protected onPaintEnd(): void {

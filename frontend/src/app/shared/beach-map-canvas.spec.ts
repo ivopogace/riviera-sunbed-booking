@@ -1,6 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from './beach-map-canvas';
 
@@ -58,13 +57,19 @@ class CanvasHost {
 }
 
 describe('BeachMapCanvas (#672)', () => {
-  function render(): { host: HTMLElement; component: CanvasHost; detect: () => void } {
+  function render(): {
+    host: HTMLElement;
+    component: CanvasHost;
+    detect: () => void;
+    fixture: ComponentFixture<CanvasHost>;
+  } {
     const fixture = TestBed.createComponent(CanvasHost);
     fixture.detectChanges();
     return {
       host: fixture.nativeElement as HTMLElement,
       component: fixture.componentInstance,
       detect: () => fixture.detectChanges(),
+      fixture,
     };
   }
 
@@ -190,21 +195,20 @@ describe('BeachMapCanvas (#672)', () => {
     expect(vp.getAttribute('role')).toBe('region');
   });
 
-  it('shows the pan hint only where drag actually pans (never on a dragPan-off surface)', () => {
-    const fixture = TestBed.createComponent(CanvasHost);
-    fixture.detectChanges();
-    const host = fixture.nativeElement as HTMLElement;
-    const canvas = fixture.debugElement.query(By.directive(BeachMapCanvas))
-      .componentInstance as BeachMapCanvas;
-    const forceHint = canvas as unknown as { scrollHint: { set(v: boolean): void } };
-
-    forceHint.scrollHint.set(true);
-    fixture.detectChanges();
+  it('shows the pan hint only where drag actually pans (never on a dragPan-off surface)', async () => {
+    const { host, component, detect, fixture } = render();
+    // jsdom measures 0 — give the viewport a real overflow through the DOM measurement seam.
+    const vp = viewport(host);
+    Object.defineProperty(vp, 'scrollWidth', { value: 500 });
+    Object.defineProperty(vp, 'clientWidth', { value: 100 });
+    component.rows.set([...ROWS]);
+    detect();
+    await fixture.whenStable();
+    detect();
     expect(host.querySelector('[data-testid="scroll-hint"]')).toBeTruthy();
 
-    fixture.componentInstance.dragPan.set(false);
-    forceHint.scrollHint.set(true);
-    fixture.detectChanges();
+    component.dragPan.set(false);
+    detect();
     // "Drag … to pan" would instruct the wrong (paint) gesture on a dragPan-off surface (#674 F-3).
     expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
   });

@@ -225,9 +225,9 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is).
 
 ## Execution status
 
-**Stage pointer:** review-gate fix round pushed — awaiting CI + Sonar on it
+**Stage pointer:** DONE — merged via PR #674
 
-**Next action:** verify CI + Sonar green on the fix push, finalize close-out, merge PR #674.
+**Next action:** none — slice complete; #672 closes with the merge (both slices shipped).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -252,6 +252,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | review (`/code-review`) | The "Drag … to pan" hint rendered on the editor, where that gesture paints (dragPan off) | fixed in the review-fix commit — hint gated on `scrollHint() && dragPan()`; spec added |
 | F-4 | review (`/code-review`) + overlay RV-FE-5 | `aria-label` on the focusable viewport `div` is prohibited on role=generic — the daily view regressed from `<section aria-label>` (named region) | fixed in the review-fix commit — `role="region"` applied whenever `viewportLabel` is set; spec extended |
 | F-5 | review (`/code-review`) | Three copies of the `zoneStart` derivation; suggested canvas-owned derivation from `priceLabel` | **declined with rationale** — after F-2 the three derivations legitimately differ (tourist: money equality; daily: label equality; editor: constant `true`), so a canvas-owned rule would need exactly the mode flag this slice forbids; the contract field stays |
+| F-6 | re-review of the fix round | Residual arming hole: a stale `painting` flag (off-window release) could still paint when a later press-and-hold swept into the grid | fixed in the second fix commit — a `document:mousedown` starting anywhere but a cell disarms; spec added. Accepted residual: a press made and held entirely *outside* the window then swept in (needs pointer capture; not worth the gesture rework) |
+| F-7 | re-review of the fix round | `onCellDown` armed on any button while the disarm honored only the primary — a middle-click painted one cell then killed the drag | fixed in the second fix commit — paint is a primary-button gesture end to end (`event.button === 0`); spec added |
+| F-8 | re-review of the fix round | `displayRows` TSDoc embedded an issue/finding reference (changelog in TSDoc, against `frontend/.claude/CLAUDE.md`) | fixed in the second fix commit — reference removed, mechanism rationale kept |
+| F-9 | re-review of the fix round | The F-3 hint spec force-set a protected signal via an unsafe double cast and duplicated the fixture setup | fixed in the second fix commit — the spec drives the DOM measurement seam (`scrollWidth`/`clientWidth`) through the shared `render()` helper |
 
 ---
 
@@ -439,5 +443,5 @@ spec), `venue-map.contrast.spec.ts` (banner stop refs).
 - [x] **Frontend** standards met; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (resolved above).
-- [ ] **Close-out written in THIS PR** — finalized in the PR's last commit once the gates clear (cites `merged via PR #674`).
-- [ ] **The review gate ran in full** — invocation ladder + `riviera-review-overlay` RV-FE walk (due now, at ready-for-review).
+- [x] **Close-out written in THIS PR** — this commit is the PR's last; final state cites `merged via PR #674`.
+- [x] **The review gate ran in full** — `/code-review` (ladder rung 1, forked execution) on the full diff + `riviera-review-overlay` RV-FE bank walk, then a second `/code-review` pass over the fix round; 9 findings + 1 declined-with-rationale, all resolved (register above).

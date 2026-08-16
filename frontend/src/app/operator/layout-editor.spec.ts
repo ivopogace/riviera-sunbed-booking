@@ -226,6 +226,39 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()[2].getAttribute('data-state')).toBe('premium');
   });
 
+  it('ignores non-primary buttons: a middle-click neither paints nor arms a drag', () => {
+    render();
+    generate('1', '4');
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+
+    cells()[0].dispatchEvent(new MouseEvent('mousedown', { button: 1, buttons: 4 }));
+    cells()[1].dispatchEvent(new MouseEvent('mouseenter', { buttons: 4 }));
+    fixture.detectChanges();
+
+    expect(cells()[0].getAttribute('data-state')).toBe('premium');
+    expect(cells()[1].getAttribute('data-state')).toBe('premium');
+  });
+
+  it('a press starting outside the grid clears a stale armed flag before it can paint', () => {
+    render();
+    generate('1', '4');
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+
+    // Arm, then simulate an off-window release (no mouseup anywhere) leaving the flag stale.
+    cells()[0].dispatchEvent(new MouseEvent('mousedown', { buttons: 1 }));
+    // A later press elsewhere on the page (e.g. starting a text selection) must disarm it…
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, buttons: 1 }));
+    // …so sweeping across the grid with that button held paints nothing.
+    cells()[1].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    cells()[2].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    fixture.detectChanges();
+
+    expect(cells()[1].getAttribute('data-state')).toBe('premium');
+    expect(cells()[2].getAttribute('data-state')).toBe('premium');
+  });
+
   it('marks every row a zone of its own: per-row price chips, no reflow while painting (#674 F-2)', () => {
     render();
     generate('2', '3');
