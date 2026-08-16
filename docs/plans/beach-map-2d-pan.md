@@ -53,32 +53,32 @@ branch stands in for `feature/beach-map-2d-pan` (riviera-sdlc remote addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a map whose wash scroller overflows vertically, when the mouse
+- [x] **AC-1:** Given a map whose wash scroller overflows vertically, when the mouse
   drags the viewport vertically past 6px, then the wash scroller's `scrollTop` follows
   the drag (1:1, opposite sign) while the viewport's `scrollLeft` is unchanged.
   *Pinned by:* `beach-map-canvas.spec.ts` "pans the wash scroller vertically…" +
   `venue-map-pan.e2e.ts` vertical-drag test (scrollTop delta).
-- [ ] **AC-2:** Given a vertically overflowing map, when a mostly-vertical drag
+- [x] **AC-2:** Given a vertically overflowing map, when a mostly-vertical drag
   (dx ≤ 6px, dy > 6px) releases over a tile, then the tile's click is suppressed
   (capture-phase, consume-once) — a subsequent genuine click activates, and a keyboard
   activation (`detail === 0`) is never suppressed. *Pinned by:*
   `beach-map-canvas.spec.ts` either-axis suppression specs +
   `venue-map-pan.e2e.ts` (no dialog on vertical-drag release) +
   `operator-set-editing.e2e.ts` (no selection on vertical-drag release over a set-cell).
-- [ ] **AC-3 (D-1):** Given a map with NO vertical overflow, when the mouse drags
+- [x] **AC-3 (D-1):** Given a map with NO vertical overflow, when the mouse drags
   vertically (any distance), then the wash scroller does not scroll and the following
   click is NOT suppressed — a sloppy tap still books. *Pinned by:*
   `beach-map-canvas.spec.ts` no-vertical-overflow spec.
-- [ ] **AC-4:** Given `dragPan` off (the bulk layout editor), when the mouse drags in
+- [x] **AC-4:** Given `dragPan` off (the bulk layout editor), when the mouse drags in
   any direction, then neither scroller moves and no click is suppressed — drag still
   paints. *Pinned by:* `beach-map-canvas.spec.ts` dragPan-off spec (extended to the
   vertical axis) + `layout-editor.e2e.ts` drag-paints-not-pans pin (verbatim).
-- [ ] **AC-5 (D-2):** Given a map that overflows only vertically, when it renders with
+- [x] **AC-5 (D-2):** Given a map that overflows only vertically, when it renders with
   `dragPan` on, then the "Drag or swipe to pan the map" hint shows; the `.pannable`
   class (edge fade, `scroll-pl`, snap padding — horizontal-only styling) stays keyed to
   horizontal overflow alone. *Pinned by:* `beach-map-canvas.spec.ts` vertical-hint spec
   + the existing `.pannable`/rest-offset pins holding verbatim.
-- [ ] **AC-6:** Given the shipped suites, when the slice completes, then the six
+- [x] **AC-6:** Given the shipped suites, when the slice completes, then the six
   `venue-map-pan.e2e.ts` pins (wash background-image, mask-image, scroll-snap-type,
   ≥16px rest offset, scrollLeft delta, rail x-stability) plus the box-shadow elevation
   pin hold verbatim, and the vertical analog holds: the row-code rail scrolls WITH the
@@ -107,11 +107,11 @@ horizontal contract is enumerated as AC-4/AC-6 and held by the existing pins ver
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Either-axis threshold swallows sloppy taps on short (non-overflowing) maps — a booking-conversion regression | med | high | D-1: the vertical axis (scroll write AND threshold contribution) engages only when the wash scroller actually overflows, measured at `mousedown`; AC-3 spec pins it | this slice | open |
-| R-2 | The new vertical writes break an existing horizontal pin (snap, fade, rest offset, rail x-stability) | low | med | Vertical writes target the wash scroller only; the viewport keeps `overflow-y-hidden`; full venue-map-pan + operator-daily + layout-editor + set-editor + touch-target suites run before push | this slice | open |
-| R-3 | e2e coordinate drags flake: raw `page.mouse.*` doesn't auto-scroll, the operator console header is sticky, a drag drifting over a rail leaves the viewport (`mouseleave` ends the pan) | med | med | The #674 recipe: anchor via `hover()`/`scrollIntoView({ block: 'center' })`, keep drag paths inside the tile grid, `PW_CHROMIUM_EXECUTABLE` set | this slice | open |
-| R-4 | Set editor (drag-pan ON since #678, canvas default) gets vertical pan implicitly — a vertical drag must not select a set-cell | med | med | AC-2's set-editor e2e pin with a tall (12-row) fixture; the same consume-once suppression path as the tourist tile | this slice | open |
-| R-5 | Sonar new-code gate (0 issues, 0 duplication, ≥80% coverage) on the touched lines | low | low | Gesture logic is unit-specced directly (AC-1..AC-5); review the issue list at the gate | this slice | open |
+| R-1 | Either-axis threshold swallows sloppy taps on short (non-overflowing) maps — a booking-conversion regression | med | high | D-1: the vertical axis (scroll write AND threshold contribution) engages only when the wash scroller actually overflows, measured at `mousedown`; AC-3 spec pins it | this slice | closed — `5b059e8` (AC-3 spec green) |
+| R-2 | The new vertical writes break an existing horizontal pin (snap, fade, rest offset, rail x-stability) | low | med | Vertical writes target the wash scroller only; the viewport keeps `overflow-y-hidden`; full venue-map-pan + operator-daily + layout-editor + set-editor + touch-target suites run before push | this slice | closed — full mocked suite 216/216 at HEAD, pre-existing pins byte-identical |
+| R-3 | e2e coordinate drags flake: raw `page.mouse.*` doesn't auto-scroll, the operator console header is sticky, a drag drifting over a rail leaves the viewport (`mouseleave` ends the pan) | med | med | The #674 recipe: anchor via `hover()`/`scrollIntoView({ block: 'center' })`, keep drag paths inside the tile grid, `PW_CHROMIUM_EXECUTABLE` set | this slice | closed — `afafcda` (both pins green on first run and on the post-format re-run) |
+| R-4 | Set editor (drag-pan ON since #678, canvas default) gets vertical pan implicitly — a vertical drag must not select a set-cell | med | med | AC-2's set-editor e2e pin with a tall (12-row) fixture; the same consume-once suppression path as the tourist tile | this slice | closed — `afafcda` (operator-set-editing 7/7) |
+| R-5 | Sonar new-code gate (0 issues, 0 duplication, ≥80% coverage) on the touched lines | low | low | Gesture logic is unit-specced directly (AC-1..AC-5); review the issue list at the gate | PR-time | open by design — Sonar analyzes PRs only; due with the review gate when the PR opens |
 
 ## Open questions / Assumptions
 
@@ -167,16 +167,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** implement complete — all local gates green; the PR-time gates (CI per #417, review per pr-gates §1, Sonar per §2) are due when the PR opens
 
-**Next action:** full sweeps + hand verification in the real browser + docs-freshness + close-out.
+**Next action:** open the PR for `claude/beach-map-canvas-2d-pan-u3nykc` (deliberately not created in-session — the task did not request one), run the review + Sonar gates there, and close #676 on merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 5b059e8 |
 | 1 — vertical pan in the canvas (TDD) | ✅ | 5b059e8 (14 canvas specs; 217 across the surface suites; lint + format green) |
-| 2 — e2e pins (tourist + set editor) | ✅ | this commit (venue-map-pan 3/3 + operator-set-editing 7/7; operator-daily + layout-editor + touch-targets 43/43 — all pre-existing pins verbatim) |
-| 3 — sweeps, hand verification, close-out | | |
+| 2 — e2e pins (tourist + set editor) | ✅ | afafcda (venue-map-pan 3/3 + operator-set-editing 7/7; operator-daily + layout-editor + touch-targets 43/43 — all pre-existing pins verbatim) |
+| 3 — sweeps, hand verification, close-out | ✅ | this commit (unit 1441, a11y 347, mocked e2e 216/216, lint/format/plan-guard green; real-browser diagonal-drag verification with screenshots — both axes pan in one gesture, no dialog on a vertical release, no set-cell selection, genuine clicks still land; docs-freshness: 1 finding — the canvas TSDoc — patched in `5b059e8`) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -279,27 +279,27 @@ Implementation (after the first red): `#washScroller` template ref on the wash d
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-5:** `npm test -- beach-map-canvas` → PASS. Verified at `<sha>`.
-- [ ] **AC-2 (e2e):** `npx playwright test -c playwright.a11y.config.ts venue-map-pan operator-set-editing` → PASS. Verified at `<sha>`.
-- [ ] **AC-4 (e2e):** `npx playwright test -c playwright.a11y.config.ts layout-editor` → PASS. Verified at `<sha>`.
-- [ ] **AC-6:** full mocked e2e suite → PASS with the pre-existing pins untouched in the diff. Verified at `<sha>`.
+- [x] **AC-1..AC-5:** `npm test -- --include '**/beach-map-canvas.spec.ts'` → 14 PASS. Verified at `5b059e8`.
+- [x] **AC-2 (e2e):** `npx playwright test -c playwright.a11y.config.ts venue-map-pan operator-set-editing` → 10 PASS. Verified at `afafcda` and re-verified after the phase-3 format pass.
+- [x] **AC-4 (e2e):** `npx playwright test -c playwright.a11y.config.ts layout-editor` (with operator-daily + touch-targets) → 43 PASS. Verified at `afafcda`.
+- [x] **AC-6:** full mocked e2e suite (`npm run test:e2e:a11y`) → 216/216 PASS; the pre-existing venue-map-pan pins are byte-identical in the diff. Verified at HEAD of this push.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1 — frontend-only).
-- [ ] **Availability** section justified N/A (display-only gesture).
-- [ ] Pool + cutoff rules honored (invariants #3, #4 — untouched).
-- [ ] **Modulith** N/A — frontend-only.
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy N/A.
-- [ ] Timezone N/A.
-- [ ] Booking codes N/A.
-- [ ] Flyway N/A.
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out state committed in the final push** — cites the PR once one exists.
-- [ ] **The review gate ran in full** — due at PR ready-for-review; not claimable in-session without a PR (recorded honestly in Execution status).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1 — frontend-only).
+- [x] **Availability** section justified N/A (display-only gesture).
+- [x] Pool + cutoff rules honored (invariants #3, #4 — untouched).
+- [x] **Modulith** N/A — frontend-only.
+- [x] **Payment/payout** N/A.
+- [x] Refund policy N/A.
+- [x] Timezone N/A.
+- [x] Booking codes N/A.
+- [x] Flyway N/A.
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows (R-5 is open **by design** — the Sonar gate only exists at PR time); Open Questions empty.
+- [x] **Close-out state committed in the final push** — cites the PR once one exists.
+- [ ] **The review gate ran in full** — due at PR ready-for-review; not claimable in-session without a PR (recorded honestly in Execution status; left unticked per the pr-gates rule).

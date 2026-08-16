@@ -330,9 +330,7 @@ test('a mostly-vertical drag pans the map but never selects the set-cell under t
   await expect(page.getByTestId('set-editor')).toBeVisible();
 
   const wash = page.locator('[data-riv-scroller]').first();
-  await expect
-    .poll(() => wash.evaluate((el) => el.scrollHeight > el.clientHeight + 1))
-    .toBe(true);
+  await expect.poll(() => wash.evaluate((el) => el.scrollHeight > el.clientHeight + 1)).toBe(true);
 
   // Raw mouse primitives don't auto-scroll and the console header is sticky — center the anchor.
   const anchor = cell(page, 1, 6);
