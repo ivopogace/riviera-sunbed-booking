@@ -17,7 +17,6 @@ import { TouchTarget } from '../shared/touch-target';
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import {
   HeldSetState,
-  SetRow,
   TileState,
   deriveTileStates,
   groupSetsByRow,
@@ -33,7 +32,7 @@ import { BookingStatus, metaFor } from '../shared/booking-status';
 import { setLabel, setsById, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
-import { BeachGridFrame } from './beach-grid-frame';
+import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { ConsoleDailyBooking, MarkErrorCode, ReleaseErrorCode } from './operator-console.model';
 import {
   OperatorConsoleService,
@@ -80,6 +79,11 @@ const ARRIVAL_CHIPS: Partial<Record<BookingStatus, ArrivalChip>> = {
   NO_SHOW: { modifier: metaFor('NO_SHOW').chip, label: 'No-show', testId: 'arrival-no-show' },
 };
 
+/** One availability row on the shared canvas's row contract, plus the sets its tiles render. */
+interface DailyRow extends BeachMapCanvasRow {
+  readonly sets: readonly SetView[];
+}
+
 /** The check-in panel's announced outcome; tone drives the ink, the text carries the meaning. */
 interface CheckInNotice {
   readonly tone: 'ok' | 'error';
@@ -104,7 +108,7 @@ interface CheckInNotice {
  * a safe no-op). Reads `:venueId` from the parent route via {@link parentVenueId} (child routes don't
  * inherit it), the same as {@link import('./pricing-tab').PricingTab}. Always
  * porcelain (inherited from the console shell); glass via {@link CardGlass}; the shared sea-facing
- * chrome via {@link BeachGridFrame}. Tile state is conveyed by an accessible name, not colour alone
+ * chrome via {@link BeachMapCanvas}. Tile state is conveyed by an accessible name, not colour alone
  * (WCAG AA); codes are bearer credentials (invariant #7), shown for arrival verification, never logged.
  *
  * <p>The Request-to-Book queue is deliberately out of scope — it is the Requests tab's job. This
@@ -112,7 +116,7 @@ interface CheckInNotice {
  */
 @Component({
   selector: 'app-daily-view-tab',
-  imports: [CardGlass, BeachGridFrame, StatusChip, BusyAction, TouchTarget],
+  imports: [CardGlass, BeachMapCanvas, BeachMapRowDef, StatusChip, BusyAction, TouchTarget],
   templateUrl: './daily-view-tab.html',
 })
 export class DailyViewTab {
@@ -261,10 +265,18 @@ export class DailyViewTab {
     this.load();
   }
 
-  /** Sets grouped into rows (read order preserved) for the grid. */
-  protected readonly rows = computed<readonly SetRow[]>(() =>
-    groupSetsByRow(this.venue()?.sets ?? []),
-  );
+  /** Sets grouped into rows (read order preserved), on the shared canvas's row contract. */
+  protected readonly rows = computed<readonly DailyRow[]>(() => {
+    const rows = groupSetsByRow(this.venue()?.sets ?? []);
+    const prices = rows.map((r) => formatMoney(r.sets[0].price));
+    return rows.map((row, i) => ({
+      code: row.label,
+      priceLabel: prices[i],
+      zoneStart: i === 0 || prices[i] !== prices[i - 1],
+      tileCount: row.sets.length,
+      sets: row.sets,
+    }));
+  });
 
   /** The effective tile state per set id: optimistic override, else the server state token. */
   private readonly tileState = computed<ReadonlyMap<number, TileState>>(() =>
@@ -289,11 +301,6 @@ export class DailyViewTab {
     () => [...this.tileState().values()].filter((s) => s === 'FREE').length,
   );
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
-
-  /** Per-row grid columns: equal share of the row, never below the 44px touch floor (#605). */
-  protected columns(row: SetRow): string {
-    return `repeat(${row.sets.length}, minmax(44px, 1fr))`;
-  }
 
   /** State of one tile (defaults to FREE before the map loads). */
   protected stateOf(set: SetView): TileState {

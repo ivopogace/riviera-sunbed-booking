@@ -20,7 +20,7 @@ import {
   MAX_COLS,
   MAX_ROWS,
 } from './beach-cell';
-import { BeachGridFrame } from './beach-grid-frame';
+import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { todayBookingDate } from '../shared/booking-date';
 import { SetView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
@@ -34,6 +34,11 @@ import { TouchTarget } from '../shared/touch-target';
 
 /** Which editing surface the tab is showing: the whole-map replace, or one set at a time. */
 type EditorMode = 'bulk' | 'sets';
+
+/** One paint-grid row on the shared canvas's row contract, plus the cells the editor paints. */
+interface LayoutRow extends BeachMapCanvasRow {
+  readonly cells: readonly { readonly state: CellState; readonly label: string }[];
+}
 
 const PREMIUM_PRICE: MoneyView = { minorUnits: 3500, currency: 'EUR' };
 const STANDARD_PRICE: MoneyView = { minorUnits: 2000, currency: 'EUR' };
@@ -82,7 +87,8 @@ const SWATCH_CLASS: Record<CellState, string> = {
   imports: [
     CardGlass,
     BeachCell,
-    BeachGridFrame,
+    BeachMapCanvas,
+    BeachMapRowDef,
     ConfirmPanel,
     SetEditor,
     StaleWriteBanner,
@@ -90,6 +96,11 @@ const SWATCH_CLASS: Record<CellState, string> = {
     TouchTarget,
   ],
   templateUrl: './layout-editor.html',
+  // Painting ends wherever the mouse is released — the grid container is canvas-owned now.
+  host: {
+    '(document:mouseup)': 'onPaintEnd()',
+    '(document:mousedown)': 'onDocumentMouseDown($event)',
+  },
 })
 export class LayoutEditor {
   private readonly route = inject(ActivatedRoute);
@@ -146,8 +157,6 @@ export class LayoutEditor {
 
   /** Whether a grid exists (drives the empty-state vs the grid + save button). */
   protected readonly hasLayout = computed(() => this.grid().length > 0);
-  /** The column count of the current grid (0 when empty) — drives the CSS grid template. */
-  protected readonly colCount = computed(() => this.grid()[0]?.length ?? 0);
   protected readonly genTotal = computed(
     () => clampGrid(this.genRows(), 1, MAX_ROWS) * clampGrid(this.genCols(), 1, MAX_COLS),
   );
@@ -167,11 +176,18 @@ export class LayoutEditor {
    */
   private readonly priceByCoord = new Map<string, MoneyView>();
 
-  /** The display rows: label, per-row price string, and each cell's state + AT label. */
-  protected readonly displayRows = computed(() =>
+  /**
+   * The display rows on the shared canvas's contract. Every row is a zone of its own
+   * (`zoneStart: true`): painting a tier re-prices a row live, and price-derived zones would
+   * insert/remove zone gaps mid drag-gesture, shifting rows under the cursor — constant
+   * per-row chips also keep the editor's per-row price display.
+   */
+  protected readonly displayRows = computed<readonly LayoutRow[]>(() =>
     this.grid().map((row, y) => ({
-      label: gridRowLabel(y),
-      priceStr: this.rowPriceStr(row, y),
+      code: gridRowLabel(y),
+      priceLabel: this.rowPriceStr(row, y) || null,
+      zoneStart: true,
+      tileCount: row.length,
       cells: row.map((state, x) => ({
         state,
         label: `Row ${gridRowLabel(y)} position ${x + 1}, ${CELL_STATE_DESC[state]}`,
@@ -332,14 +348,34 @@ export class LayoutEditor {
     this.savedNotice.set(false);
   }
 
-  protected onCellDown(r: number, c: number): void {
+  protected onCellDown(r: number, c: number, event: MouseEvent): void {
+    // Paint is a primary-button gesture, arming and disarming alike.
+    if (event.button !== 0) {
+      return;
+    }
     this.painting = true;
     this.paintCell(r, c);
   }
 
-  protected onCellEnter(r: number, c: number): void {
-    if (this.painting) {
-      this.paintCell(r, c);
+  protected onCellEnter(r: number, c: number, event: MouseEvent): void {
+    if (!this.painting) {
+      return;
+    }
+    // An off-window release fires no document mouseup — disarm when no button is held.
+    if ((event.buttons & 1) === 0) {
+      this.painting = false;
+      return;
+    }
+    this.paintCell(r, c);
+  }
+
+  /** A press starting anywhere but a cell clears a stale armed flag (bubbles after onCellDown). */
+  protected onDocumentMouseDown(event: MouseEvent): void {
+    const onCell =
+      event.target instanceof Element &&
+      event.target.closest('[data-testid="layout-cell"]') !== null;
+    if (!onCell) {
+      this.painting = false;
     }
   }
 

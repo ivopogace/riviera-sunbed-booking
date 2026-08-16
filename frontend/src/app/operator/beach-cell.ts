@@ -23,7 +23,8 @@ const CELL_CLASS: Record<CellState, string> = {
   standard: 'border-[#0c2a33]/15 bg-white/85',
   walkin:
     'border-[#0c2a33]/15 bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.3)_0_3px,rgba(12,42,51,0.12)_3px_6px)]',
-  gap: 'border-dashed border-[#0c2a33]/35 bg-transparent',
+  // 0.55, not 0.35: the gap cell's identity is its border alone, proven 3:1 over the canvas wash.
+  gap: 'border-dashed border-[#0c2a33]/55 bg-transparent',
 };
 
 /**

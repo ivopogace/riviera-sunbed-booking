@@ -1,20 +1,11 @@
-import {
-  afterRenderEffect,
-  Component,
-  computed,
-  effect,
-  ElementRef,
-  inject,
-  signal,
-  untracked,
-  viewChild,
-} from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
 import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../shared/amenities';
 import { AmenityChip } from '../shared/amenity-chip';
+import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { CardGlass } from '../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
 import { formatMoney, MoneyView } from '../shared/money';
@@ -49,12 +40,8 @@ interface MapTile {
   readonly bookName: string;
 }
 
-/** One row of the map: its derived letter code, its per-row price, and its tiles. */
-interface MapRow {
-  readonly code: string;
-  readonly price: MoneyView;
-  /** True where this row's price differs from the row before — a price-zone boundary. */
-  readonly zoneStart: boolean;
+/** One row of the map: the shared canvas's row contract plus this surface's tiles. */
+interface MapRow extends BeachMapCanvasRow {
   readonly tiles: readonly MapTile[];
 }
 
@@ -108,8 +95,9 @@ export function rowCode(index: number): string {
  * the two always agree. Reactive to in-place `:id`/`?date` route changes — the
  * router reuses the instance, so a change resets per-venue state and re-loads like a fresh
  * mount. Money is rendered from integer minor units; tile state is conveyed
- * by an accessible name, not colour alone (WCAG AA). Big venues pan horizontally by drag;
- * a click-vs-drag threshold keeps a pan-release from opening the booking dialog.
+ * by an accessible name, not colour alone (WCAG AA). The grid chrome — wash, rails, zone
+ * layout, drag-pan with its click-vs-drag threshold — is the shared {@link BeachMapCanvas};
+ * this component owns only the tourist tile vocabulary (tap-to-book) projected into it.
  *
  * Display parity only: availability truth stays server-side (invariant #2); only free
  * ONLINE-pool sets are bookable (invariant #3); the picker's `min` excludes today but the
@@ -125,25 +113,20 @@ export function rowCode(index: number): string {
     CardGlass,
     AmenityChip,
     TouchTarget,
+    BeachMapCanvas,
+    BeachMapRowDef,
     ...FAILURE_DIRECTIVES,
   ],
   templateUrl: './venue-map.html',
-  // Was `:host { display:block; --riv-tile: clamp(...); color: var(--riv-card-ink) }` in the deleted
-  // SCSS. --riv-tile drives the seat-tile grid columns + the label/price side-cell heights; it lives
-  // here now (one static host binding) so the grid stays row-aligned with no stylesheet.
-  // 47px, not 44: the tap target is the button INSIDE the tile's 1.5px border (#605).
+  // --riv-tile (tile size + rail-cell heights) now lives on the shared canvas's host.
   host: {
     class: 'block text-(--riv-card-ink)',
-    style: '--riv-tile: clamp(47px, 11vw, 56px)',
   },
 })
 export class VenueMap {
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);
   private readonly router = inject(Router);
-
-  /** A drag that travels beyond this many pixels is a pan, not a tap. */
-  private static readonly PAN_THRESHOLD_PX = 6;
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly failed = signal(false);
@@ -175,18 +158,6 @@ export class VenueMap {
   protected readonly selectedSet = signal<SetView | undefined>(undefined);
   /** Id of the tile that opened the dialog, so focus can return to it on close. */
   private lastTriggerId: number | undefined;
-
-  /** The horizontal pan viewport, present only once the map has rendered. */
-  private readonly panViewport = viewChild<ElementRef<HTMLElement>>('setRowsWrap');
-  /** True when the tile grid is wider than its viewport (show the drag-to-pan hint). */
-  protected readonly scrollHint = signal(false);
-
-  // --- pan gesture state (imperative; not rendered) ---
-  private panPointerDown = false;
-  private panStartX = 0;
-  private panStartScroll = 0;
-  /** Set when the current gesture crossed the drag threshold; consumed by the next select(). */
-  private panned = false;
 
   protected readonly freeCount = computed(
     () => this.venue()?.sets.filter((s) => s.availability === 'FREE').length ?? 0,
@@ -223,11 +194,6 @@ export class VenueMap {
     };
   });
 
-  /** Uniform column count so every row's grid aligns with the label/price side columns. */
-  protected readonly mapCols = computed(() =>
-    Math.max(1, ...this.rows().map((r) => r.tiles.length)),
-  );
-
   /** Sets grouped into rows (read order preserved), each with a derived code + per-row price. */
   protected readonly rows = computed<readonly MapRow[]>(() => {
     const byRow = new Map<string, SetView[]>();
@@ -243,22 +209,15 @@ export class VenueMap {
       const prev = index > 0 ? entries[index - 1][1][0].price : undefined;
       return {
         code,
-        price,
+        priceLabel: formatMoney(price),
         zoneStart: prev?.minorUnits !== price.minorUnits || prev?.currency !== price.currency,
+        tileCount: sets.length,
         tiles: sets.map((set) => this.toTile(set, code, label)),
       };
     });
   });
 
   constructor() {
-    // Re-measure the pan overflow after each render whose map data changed (jsdom reports 0,
-    // so the hint's visibility is proven in the real-browser e2e, not a unit test).
-    afterRenderEffect(() => {
-      this.venue(); // dependency: re-run when the grid is (re)rendered
-      const el = this.panViewport()?.nativeElement;
-      this.scrollHint.set(!!el && el.scrollWidth > el.clientWidth + 1);
-    });
-
     // In-place route changes only: skip runs matching the last route key (fresh mount loads below).
     let current = this.routeKey();
     effect(() => {
@@ -290,8 +249,6 @@ export class VenueMap {
     this.venue.set(undefined);
     this.selectedSet.set(undefined);
     this.lastTriggerId = undefined;
-    this.panPointerDown = false;
-    this.panned = false;
     const floor = defaultBookingDate(new Date());
     this.minDate.set(floor);
     this.selectedDate.set(this.routeDate(floor));
@@ -363,35 +320,6 @@ export class VenueMap {
     this.load();
   }
 
-  // --- drag-to-pan (mouse only; touch uses native overflow scrolling) ---
-
-  protected onMapMouseDown(event: MouseEvent): void {
-    const el = this.panViewport()?.nativeElement;
-    if (!el) {
-      return;
-    }
-    this.panPointerDown = true;
-    this.panned = false;
-    this.panStartX = event.clientX;
-    this.panStartScroll = el.scrollLeft;
-  }
-
-  protected onMapMouseMove(event: MouseEvent): void {
-    const el = this.panViewport()?.nativeElement;
-    if (!this.panPointerDown || !el) {
-      return;
-    }
-    const dx = event.clientX - this.panStartX;
-    if (Math.abs(dx) > VenueMap.PAN_THRESHOLD_PX) {
-      this.panned = true;
-    }
-    el.scrollLeft = this.panStartScroll - dx;
-  }
-
-  protected onMapMouseUp(): void {
-    this.panPointerDown = false;
-  }
-
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
   protected dateLabel(): string {
     return formatBookingDate(this.selectedDate(), { withYear: true });
@@ -402,17 +330,8 @@ export class VenueMap {
     return formatMoney(amount);
   }
 
-  protected select(set: SetView, event?: Event): void {
-    // A mouse pan-release fires a click too; swallow that one so dragging never opens the dialog.
-    // Guard on `detail > 0` (a real pointer click) so a KEYBOARD activation (Enter/Space fires a
-    // click with detail 0) is never swallowed — even if a prior pan ended off a tile and left the
-    // flag set. Any activation clears the flag, so it can never linger past one interaction.
-    const isPointerClick = ((event as MouseEvent | undefined)?.detail ?? 0) > 0;
-    const suppressed = this.panned && isPointerClick;
-    this.panned = false;
-    if (suppressed) {
-      return;
-    }
+  /** Open the booking dialog (a pan-release click never reaches here — the canvas swallows it). */
+  protected select(set: SetView): void {
     this.lastTriggerId = set.id;
     this.selectedSet.set(set);
   }

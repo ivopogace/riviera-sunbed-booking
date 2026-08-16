@@ -1,4 +1,4 @@
-import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
+import { AA_NORMAL, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
@@ -7,6 +7,7 @@ import {
   PORCELAIN_CARD_GLASS,
   PORCELAIN_CHIP,
   PORCELAIN_STOPS,
+  WHITE,
   expectAaOverStops,
   surfaceOver,
 } from '../../testing/glass-tokens';
@@ -14,14 +15,22 @@ import {
 /**
  * WCAG-AA contrast guard for the Daily view tab. The tab is always porcelain (console
  * host); its date + arrivals panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text
- * pairs: the headings, row/date labels, arrivals labels and the availability strong counts use
+ * pairs: the headings, date labels, arrivals labels and the availability strong counts use
  * `--riv-card-ink`; the helper/availability text uses `--riv-card-ink-soft` (0.78); the "Date"
  * mini-label uses `--riv-card-ink-faint` (0.72); the write-failure notice + load-error use `#a3160e`.
- * The arrival-code chip ink (`--riv-card-ink`) sits over `--riv-chip-bg` over the card glass. Tile
- * glyphs are `aria-hidden` decorative (state is conveyed by the tile's `aria-label`), so only the
- * filled STAFF_MARKED tile — white glyph on the `#0a6e85` teal, also its legend swatch — is asserted.
- * Values mirror the template + `styles.scss`; a token edit there must re-pass here.
+ * The arrival-code chip ink (`--riv-card-ink`) sits over `--riv-chip-bg` over the card glass.
+ * Since #672 slice 2 the grid sits on the shared canvas's sea→sand wash (rail-chip inks proven in
+ * `venue-map.contrast.spec.ts`): the FREE tile's glyph is the *visible price*, so it is proven AA
+ * composited over the wash's worst-case stops; the locked tile's `●` stays `aria-hidden` decorative
+ * (its state is carried by sr-only text), and the filled STAFF_MARKED tile — white glyph on the
+ * `#0a6e85` teal, also its legend swatch — is wash-independent. Values mirror the template +
+ * `styles.scss`; a token edit there must re-pass here.
  */
+
+// The shared canvas's sea→sand wash stops the grid tiles now composite over (#672).
+const WASH_STOPS = ['cfeef6', 'e7f5f1', 'f6eedb'].map(hexToRgb);
+// The FREE tile fill (`bg-white/85`, daily-view-tab.ts tileClass).
+const FREE_TILE_FILL = { color: WHITE, alpha: 0.85 };
 
 describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
   it('headings + labels + arrivals + availability counts (--riv-card-ink) meet AA on the card glass', () => {
@@ -52,6 +61,10 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
 
   it('the marked-tile glyph + legend swatch (white on #0a6e85) meet AA', () => {
     expect(contrastRatio('#ffffff', '#0a6e85')).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  it('the FREE tile price glyph (--riv-card-ink on white/85) meets AA over every wash stop (#672)', () => {
+    expectAaOverStops(INK_DARK, 1, FREE_TILE_FILL, WASH_STOPS);
   });
 
   it('the write-failure notice + load-error ink (#a3160e) meet AA over every porcelain stop', () => {
