@@ -225,15 +225,15 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** build `BeachMapCanvas` TDD (phase 2).
+**Next action:** move the tourist map onto the canvas (phase 3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 9907ffb (draft PR #674 opened) |
 | 1 — promote BeachGridFrame to shared/ (+ banner unification) | ✅ | this commit |
-| 2 — BeachMapCanvas (TDD, unit-spec complete) | | |
+| 2 — BeachMapCanvas (TDD, unit-spec complete) | ✅ | this commit |
 | 3 — tourist map onto the canvas | | |
 | 4 — layout editor onto the canvas | | |
 | 5 — daily view onto the canvas | | |
