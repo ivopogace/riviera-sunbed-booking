@@ -79,10 +79,24 @@ describe('BeachMapCanvas (#672)', () => {
     return el!;
   }
 
-  /** Drag the viewport horizontally by `dx` pixels (mousedown → mousemove → mouseup). */
-  function drag(el: HTMLElement, dx: number): void {
-    el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
-    el.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 100 + dx }));
+  function washScroller(host: HTMLElement): HTMLElement {
+    const el = host.querySelector<HTMLElement>('[data-riv-scroller]');
+    expect(el).toBeTruthy();
+    return el!;
+  }
+
+  /** jsdom measures 0 — seed a vertical overflow on the wash scroller through the DOM seam. */
+  function seedVerticalOverflow(wash: HTMLElement): void {
+    Object.defineProperty(wash, 'scrollHeight', { value: 800 });
+    Object.defineProperty(wash, 'clientHeight', { value: 500 });
+  }
+
+  /** Drag the viewport by `dx`/`dy` pixels (mousedown → mousemove → mouseup). */
+  function drag(el: HTMLElement, dx: number, dy = 0): void {
+    el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100, clientY: 200 }));
+    el.dispatchEvent(
+      new MouseEvent('mousemove', { bubbles: true, clientX: 100 + dx, clientY: 200 + dy }),
+    );
     el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
   }
 
@@ -172,14 +186,60 @@ describe('BeachMapCanvas (#672)', () => {
     vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
   });
 
+  it('suppresses the click after a mostly-vertical drag, once, and never a keyboard activation', () => {
+    const { host, component } = render();
+    const vp = viewport(host);
+    seedVerticalOverflow(washScroller(host));
+    const button = vp.querySelector<HTMLButtonElement>('button')!;
+
+    // A vertical drag past the 6px threshold: the release click must be swallowed, once.
+    drag(vp, 0, 40);
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+    expect(component.taps).toEqual([]);
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+    expect(component.taps).toEqual(['A1']);
+
+    // A keyboard activation (detail 0) right after a vertical pan is never swallowed.
+    drag(vp, 0, 40);
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
+    expect(component.taps).toEqual(['A1', 'A1']);
+  });
+
+  it('pans the wash scroller vertically on drag when it overflows, leaving scrollLeft alone', () => {
+    const { host } = render();
+    const vp = viewport(host);
+    const wash = washScroller(host);
+    seedVerticalOverflow(wash);
+    wash.scrollTop = 50;
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100, clientY: 200 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 100, clientY: 160 }));
+    expect(wash.scrollTop).toBe(90);
+    expect(vp.scrollLeft).toBe(0);
+    vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+  });
+
+  it('on a map without vertical overflow, a vertical drag neither scrolls nor suppresses', () => {
+    const { host, component } = render();
+    const vp = viewport(host);
+    const wash = washScroller(host);
+    drag(vp, 0, 40);
+    expect(wash.scrollTop).toBe(0);
+    vp.querySelector<HTMLButtonElement>('button')!.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, detail: 1 }),
+    );
+    expect(component.taps).toEqual(['A1']);
+  });
+
   it('with dragPan off, a drag neither pans nor suppresses the following click', () => {
     const { host, component, detect } = render();
     component.dragPan.set(false);
     detect();
     const vp = viewport(host);
+    seedVerticalOverflow(washScroller(host));
     vp.scrollLeft = 50;
-    drag(vp, -40);
+    drag(vp, -40, 40);
     expect(vp.scrollLeft).toBe(50);
+    expect(washScroller(host).scrollTop).toBe(0);
     vp.querySelector<HTMLButtonElement>('button')!.dispatchEvent(
       new MouseEvent('click', { bubbles: true, detail: 1 }),
     );
@@ -210,6 +270,20 @@ describe('BeachMapCanvas (#672)', () => {
     component.dragPan.set(false);
     detect();
     // "Drag … to pan" would instruct the wrong (paint) gesture on a dragPan-off surface (#674 F-3).
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+  });
+
+  it('shows the pan hint on vertical-only overflow, and never with dragPan off', async () => {
+    const { host, component, detect, fixture } = render();
+    seedVerticalOverflow(washScroller(host));
+    component.rows.set([...ROWS]);
+    detect();
+    await fixture.whenStable();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeTruthy();
+
+    component.dragPan.set(false);
+    detect();
     expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
   });
 
