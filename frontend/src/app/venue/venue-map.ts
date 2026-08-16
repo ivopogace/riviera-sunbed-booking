@@ -8,7 +8,7 @@ import { AmenityChip } from '../shared/amenity-chip';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { CardGlass } from '../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
-import { formatMoney, MoneyView } from '../shared/money';
+import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
 import { PhotoSlideshow } from '../shared/photo-slideshow';
@@ -194,7 +194,8 @@ export class VenueMap {
     };
   });
 
-  /** Sets grouped into rows (read order preserved), each with a derived code + per-row price. */
+  /** Sets grouped into rows (read order preserved), each with a derived code + its price label
+   *  (the single price, or the min–max span when the row's prices differ). */
   protected readonly rows = computed<readonly MapRow[]>(() => {
     const byRow = new Map<string, SetView[]>();
     for (const set of this.venue()?.sets ?? []) {
@@ -203,14 +204,14 @@ export class VenueMap {
       byRow.set(set.rowLabel, row);
     }
     const entries = [...byRow.entries()];
+    // A mixed-price row renders its min–max span, so zones compare the rendered labels (#689).
+    const prices = entries.map(([, sets]) => formatMoneyRange(sets.map((s) => s.price)));
     return entries.map(([label, sets], index) => {
       const code = rowCode(index);
-      const price = sets[0].price;
-      const prev = index > 0 ? entries[index - 1][1][0].price : undefined;
       return {
         code,
-        priceLabel: formatMoney(price),
-        zoneStart: prev?.minorUnits !== price.minorUnits || prev?.currency !== price.currency,
+        priceLabel: prices[index],
+        zoneStart: index === 0 || prices[index] !== prices[index - 1],
         tileCount: sets.length,
         tiles: sets.map((set) => this.toTile(set, code, label)),
       };

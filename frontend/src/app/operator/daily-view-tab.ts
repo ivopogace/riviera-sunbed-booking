@@ -25,7 +25,7 @@ import {
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { StatusChip } from '../shared/status-chip';
-import { formatMoney, MoneyView } from '../shared/money';
+import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
 import { BookingStatus, metaFor } from '../shared/booking-status';
@@ -268,7 +268,8 @@ export class DailyViewTab {
   /** Sets grouped into rows (read order preserved), on the shared canvas's row contract. */
   protected readonly rows = computed<readonly DailyRow[]>(() => {
     const rows = groupSetsByRow(this.venue()?.sets ?? []);
-    const prices = rows.map((r) => formatMoney(r.sets[0].price));
+    // A mixed-price row renders its min–max span, never just the first set's price (#689).
+    const prices = rows.map((r) => formatMoneyRange(r.sets.map((s) => s.price)));
     return rows.map((row, i) => ({
       code: row.label,
       priceLabel: prices[i],

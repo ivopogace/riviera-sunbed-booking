@@ -13,10 +13,17 @@ import { expectNoSeriousAxeViolations } from './support/axe';
  * booking-flow.e2e.ts). Runs axe over the map.
  */
 
-const ROWS = [
+const ROWS: {
+  label: string;
+  tier: string;
+  pool: string;
+  price: number;
+  lastSetPrice?: number;
+}[] = [
   { label: 'Front row · Sea view', tier: 'PREMIUM', pool: 'ONLINE', price: 5000 },
   { label: 'Row 2', tier: 'STANDARD', pool: 'ONLINE', price: 4000 },
-  { label: 'Row 3', tier: 'STANDARD', pool: 'ONLINE', price: 3500 },
+  // Row 3 is mixed-price (one repriced set), so its rail chip must render the span (#689).
+  { label: 'Row 3', tier: 'STANDARD', pool: 'ONLINE', price: 3500, lastSetPrice: 4500 },
   { label: 'Row 4 · Back', tier: 'STANDARD', pool: 'ONLINE', price: 3000 },
   { label: 'Row 5 · Walk-in', tier: 'STANDARD', pool: 'WALK_IN', price: 3000 },
 ];
@@ -45,7 +52,10 @@ function wideVenue() {
         positionNo: p,
         tier: row.tier,
         pool: row.pool,
-        price: { minorUnits: row.price, currency: 'EUR' },
+        price: {
+          minorUnits: p === 20 ? (row.lastSetPrice ?? row.price) : row.price,
+          currency: 'EUR',
+        },
         gridX: p,
         gridY: r + 1,
         availability: p % 7 === 0 ? 'TAKEN' : 'FREE', // a few taken per row; the rest free
@@ -154,8 +164,8 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
     .evaluate((el) => getComputedStyle(el).boxShadow);
   expect(frameShadow).toContain('rgba(7, 42, 58, 0.28)');
 
-  // The price renders once per zone: 5 rows but 4 chips (rows 4+5 share €30) (#672).
-  await expect(page.getByTestId('row-price')).toHaveCount(4);
+  // One chip per zone (rows 4+5 share €30, #672); mixed Row 3 chips its span, not set 1 (#689).
+  await expect(page.getByTestId('row-price')).toHaveText(['€50', '€40', '€35–€45', '€30']);
 
   // Taken sets are ghosts (#672): translucent FILL + dashed outline — group opacity broke AA.
   const ghost = await page

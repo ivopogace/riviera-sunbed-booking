@@ -142,6 +142,20 @@ describe('DailyViewTab (#175)', () => {
     expect(visible(4)).toBe('1'); // B1 — the position number, never the set id
   });
 
+  it('renders a mixed-price row as its min–max span on the zone rail (#689)', () => {
+    // Row A mixes €25 + €30 (a supported state); row B stays uniform at €30.
+    const mixed = SEED.map((s) =>
+      s.rowLabel === 'A' && s.positionNo === 1
+        ? { ...s, price: { minorUnits: 2500, currency: 'EUR' } }
+        : s,
+    );
+    render(mixed);
+    const chips = [...host.querySelectorAll('[data-testid="row-price"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    expect(chips).toEqual(['€25–€30', '€30']);
+  });
+
   it('fills the canvas-owned row height with tiles, never a height mechanism of its own (#685)', () => {
     render();
     expectCellsFillCanvasRow(host, '[data-testid="daily-tile"]');
