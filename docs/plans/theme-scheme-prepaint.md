@@ -49,28 +49,28 @@ branch stands in for `feature/theme-scheme-prepaint` (riviera-sdlc cloud addendu
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the riviera theme, when the shell renders, then the document's
+- [x] **AC-1:** Given the riviera theme, when the shell renders, then the document's
   computed `color-scheme` is `dark`; switching to porcelain makes it `light`. *Pinned by:*
   `theme-shell.e2e.ts` "the document color-scheme follows the theme".
-- [ ] **AC-2:** Given riviera, when a deliberately light-styled field renders, then its
+- [x] **AC-2:** Given riviera, when a deliberately light-styled field renders, then its
   computed `color-scheme` is `light` (dark-on-light native chrome). *Pinned by:*
   `theme-shell.e2e.ts` (computed style on home's `filter-date` under a dark document) +
   `venue-map.spec.ts` (class pin that `map-date` is in the swept set — jsdom computes no
   Tailwind CSS, so the computed proof rides the same utility in the e2e).
-- [ ] **AC-3:** Given a stored `porcelain` choice, when `index.html` is parsed with the app
+- [x] **AC-3:** Given a stored `porcelain` choice, when `index.html` is parsed with the app
   bundle withheld (Angular never boots), then `document.documentElement` already carries
   `data-riv-theme="porcelain"` and `<app-root>` is empty. *Pinned by:*
   `theme-shell.e2e.ts` "pre-paint theme seeding".
-- [ ] **AC-4:** Given every row of the resolution scenario table (stored valid / stored
+- [x] **AC-4:** Given every row of the resolution scenario table (stored valid / stored
   garbage / no stored × OS light / OS dark / blocked storage), when the `index.html` inline
   seed and `ThemeService` each resolve the boot theme, then they agree. *Pinned by:*
   `theme-boot.spec.ts` (executes the real inline script extracted from `index.html`).
-- [ ] **AC-5:** Given no stored choice, when the OS `prefers-color-scheme` flips
+- [x] **AC-5:** Given no stored choice, when the OS `prefers-color-scheme` flips
   mid-session, then the theme follows without reload; given a stored choice (pre-existing
   or via `select()`), the flip is ignored. *Pinned by:* `theme.spec.ts` OS-change cases.
-- [ ] **AC-6:** `npm test`, `npm run test:a11y`, and the mocked e2e suite
+- [x] **AC-6:** `npm test`, `npm run test:a11y`, and the mocked e2e suite
   (`test:e2e:a11y`) stay green, including the existing contrast specs.
-- [ ] **AC-7:** Given `npm run build`, when `dist/**/index.html` is inspected, then the
+- [x] **AC-7:** Given `npm run build`, when `dist/**/index.html` is inspected, then the
   inline seed script survives production index processing. *Verified by:* build + grep
   (recorded in Execution status; no CSP is set anywhere — see Risk R-5).
 
@@ -94,12 +94,12 @@ N/A — new behavior, replaces nothing. (The seed writes the same attribute valu
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The inline seed's resolution order drifts from `theme.ts` (no shared constant reachable from `index.html`) | med | med | `theme-boot.spec.ts` executes the real script from `index.html` against the same scenario table as `ThemeService` (AC-4) | this slice | open |
-| R-2 | Blocked storage (private mode) makes the inline script throw before first paint | low | high | `try/catch` around storage access, same posture as `shared/safe-storage.ts`; blocked-storage scenario row in AC-4 | this slice | open |
+| R-1 | The inline seed's resolution order drifts from `theme.ts` (no shared constant reachable from `index.html`) | med | med | `theme-boot.spec.ts` executes the real script from `index.html` against the same scenario table as `ThemeService` (AC-4) | this slice | closed — pinned by theme-boot.spec.ts |
+| R-2 | Blocked storage (private mode) makes the inline script throw before first paint | low | high | `try/catch` around storage access, same posture as `shared/safe-storage.ts`; blocked-storage scenario row in AC-4 | this slice | closed — pinned by theme-boot.spec.ts |
 | R-3 | `color-scheme: dark` leaks into the porcelain-pinned operator/admin subtrees | low | med | verified pre-plan: the pin sets `data-riv-theme="porcelain"` on the subtree host, so the porcelain block's `color-scheme: light` applies there and inherits | this slice | closed — by construction |
-| R-4 | Dark-scheme native chrome on deliberately light fields (white date field icon invisible, dark autofill tint on light glass) | high | med | `scheme-light` on: `FieldGlass` host (auth autofill fields), `map-date`, home's date+selects, booking-dialog's autofill inputs; AC-2 pins the worst case | this slice | open |
+| R-4 | Dark-scheme native chrome on deliberately light fields (white date field icon invisible, dark autofill tint on light glass) | high | med | `scheme-light` on: `FieldGlass` host (auth autofill fields), `map-date`, home's date+selects, booking-dialog's autofill inputs; AC-2 pins the worst case | this slice | closed — swept; pinned by theme-shell.e2e.ts + venue-map.spec.ts |
 | R-5 | A deploy CSP blocks the inline script | low | high | verified: no CSP is set anywhere (`SecurityConfig` sets none; `docs/deploy/*` mention none; grep over `platform/src/main/java` + `docs/deploy` empty) | this slice | closed — verified 2026-08-16 |
-| R-6 | Angular's production index processing strips or reorders the inline script | low | high | AC-7: `npm run build` + grep `dist` for the seed | this slice | open |
+| R-6 | Angular's production index processing strips or reorders the inline script | low | high | AC-7: `npm run build` + grep `dist` for the seed | this slice | closed — verified: seed present in dist index.html |
 
 ## Open questions / Assumptions
 
@@ -149,9 +149,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 4 — mocked e2e + production-build check running)
+**Stage pointer:** implemented + verified; pushed from the cloud session — PR/CI/Sonar/review gates due when the PR opens
 
-**Next action:** confirm mocked e2e green, `npm run build` + grep dist for the seed, finalize
+**Next action:** open the PR (draft → ready) so the CI, review, and Sonar gates can run; maintainer to rule on the RV-FE-7 deferral (F-1)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -159,7 +159,7 @@ N/A — no contract change.
 | 1 — per-theme color-scheme + scheme-light sweep (Gap A) | ✅ | (this commit) |
 | 2 — pre-paint seed + drift pin + e2e (Gap B) | ✅ | (this commit) |
 | 3 — OS-change listener | ✅ | (this commit) |
-| 4 — verification sweeps + build check | ⏳ | |
+| 4 — verification sweeps + build check | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -236,16 +236,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-3:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → green.
-- [ ] **AC-4, AC-5:** `npm test` (theme-boot.spec.ts, theme.spec.ts) → green.
-- [ ] **AC-6:** `npm test` + `npm run test:a11y` + mocked e2e → green.
-- [ ] **AC-7:** `npm run build` + `grep -l rivTheme dist/frontend/browser/index.html` → hit.
+- [x] **AC-1..AC-3:** mocked suite run twice — 213/214 then 214/214 (the one first-run failure, `operator-venue.e2e.ts:223`, is an unrelated mocked 409 flow; it passed alone, as a file, and in the full re-run — a cold-compile load flake).
+- [x] **AC-4, AC-5:** `npm test` green (17 theme tests incl. the 8-row drift table).
+- [x] **AC-6:** `npm test` + `npm run test:a11y` + mocked e2e → green.
+- [x] **AC-7:** `npm run build` + `grep -l rivTheme dist/frontend/browser/index.html` → hit.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
 - [x] **No JPA** introduced (invariant #1 — no backend code touched).
 - [x] **Availability** section justified N/A (invariant #2 — no data path touched).
 - [x] Pool + cutoff rules honored (invariants #3, #4 — untouched).
@@ -255,8 +255,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] Timezone untouched (invariant #6).
 - [x] Booking codes untouched (invariant #7).
 - [x] No schema change (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR.**
-- [ ] **The review gate ran** — recorded honestly in the Findings register.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; the one Open Question (RV-FE-7 deferral) is deferred to the maintainer at PR review, per its entry.
+- [ ] **Close-out written in THIS PR** — pending: the PR is opened by the maintainer/next session from the pushed branch; final close-out (merged via PR #NN) lands there.
+- [ ] **The review gate ran** — a pre-push `riviera-review-overlay` pass ran (F-1/F-2); the formal `/code-review` invocation-ladder run is due when the PR opens and is deliberately left unticked until then.
