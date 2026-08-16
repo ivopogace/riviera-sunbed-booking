@@ -48,18 +48,18 @@ for `feature/canvas-owned-tile-height` (riviera-sdlc cloud addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the canvas renders any consumer's rows, when the row wrappers, row-code
+- [x] **AC-1:** Given the canvas renders any consumer's rows, when the row wrappers, row-code
   rail cells, and price rail cells render, then every one of them carries the identical fixed
   `h-[var(--riv-tile)]` class and never `aspect-square` — so tile-row height equals rail-cell
   height for every consumer, by construction. *Pinned by:* `beach-map-canvas.spec.ts` — new
   test `sizes every row wrapper and rail cell from the identical fixed --riv-tile height (#685)`.
-- [ ] **AC-2:** Given each of the four consumer surfaces renders its map, when its cells render,
+- [x] **AC-2:** Given each of the four consumer surfaces renders its map, when its cells render,
   then every cell — and every element between the cell and the canvas's `[data-map-row]`
   wrapper — sizes via `h-full`, carrying no height mechanism of its own (no `aspect-square`,
   no per-cell `h-[var(--riv-tile)]`). *Pinned by:* the reduced shared helper
   `expectCellsFillCanvasRow` (`src/testing/beach-map-height.ts`), called from
   `venue-map.spec.ts`, `daily-view-tab.spec.ts`, `layout-editor.spec.ts`, `set-editor.spec.ts`.
-- [ ] **AC-3:** Given the mechanism moves to the canvas, when the existing e2e nets run, then
+- [x] **AC-3:** Given the mechanism moves to the canvas, when the existing e2e nets run, then
   they hold verbatim — `venue-map-pan` (tile boundingBox pan math), `touch-targets`
   (daily view, per-set mode, bulk paint mode), `touch-targets-tourist` (venue-detail beach
   map) all measure the same rendered geometry. *Pinned by:* the unmodified specs passing in
@@ -94,18 +94,23 @@ for `feature/canvas-owned-tile-height` (riviera-sdlc cloud addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The `h-full` chain breaks somewhere (grid element left without a definite height) and cells collapse to content height | med | med | AC-2's helper walks the *whole* ancestor chain cell→wrapper asserting `h-full`; AC-3's touch-target sweeps measure the rendered box ≥ 44 px in a real browser | session | open |
-| R-2 | WebKit resolves the new chain differently than Chromium (the #683 failure class re-entering) | low | high | the only fixed-height declaration left is the *identical* `h-[var(--riv-tile)]` class on rails and wrappers — the #683 root cause (two different sizing mechanisms) is structurally gone; no `aspect-ratio` remains anywhere in the map path | session | open |
-| R-3 | An intermediate commit leaves a surface half-migrated (fixed wrapper + fixed cells, or neither) | low | low | phase order is additive: Phase 1 adds the wrapper height while cells still carry their own (equal heights, harmless); Phase 2 flips all four consumers + the helper in one commit | session | open |
+| R-1 | The `h-full` chain breaks somewhere (grid element left without a definite height) and cells collapse to content height | med | med | AC-2's helper walks the *whole* ancestor chain cell→wrapper asserting `h-full`; AC-3's touch-target sweeps measure the rendered box ≥ 44 px in a real browser | session | closed — helper green in `2121a1a`; 43 e2e tests measured green locally |
+| R-2 | WebKit resolves the new chain differently than Chromium (the #683 failure class re-entering) | low | high | the only fixed-height declaration left is the *identical* `h-[var(--riv-tile)]` class on rails and wrappers — the #683 root cause (two different sizing mechanisms) is structurally gone; no `aspect-ratio` remains anywhere in the map path | session | closed — grep confirms no `aspect-square`/second mechanism in the map path at `2121a1a` |
+| R-3 | An intermediate commit leaves a surface half-migrated (fixed wrapper + fixed cells, or neither) | low | low | phase order is additive: Phase 1 adds the wrapper height while cells still carry their own (equal heights, harmless); Phase 2 flips all four consumers + the helper in one commit | session | closed — CI green on both `2b05331` (after the F-1 format fix rode into `2121a1a`) and `2121a1a` |
 | R-4 | A fifth mechanism consumer exists that the grep missed | low | med | negative confirmed per CLAUDE.md §Searching: `git ls-files` + grep for `appBeachMapRow` → exactly 4 consumer templates + canvas + canvas spec | session | closed — verified at plan time |
 
 ## Open questions / Assumptions
 
+None open.
+
+### Resolved
+
 - **Assumption:** grid-item percentage heights (`h-full`) resolve identically across engines
-  once the containing chain is definite (wrapper fixed → grid `h-full` → cell `h-full`) — the
-  Daily view's inner buttons have shipped this exact shape since #683 with no WebKit report.
-  — *Owner:* session · *Resolves by:* Phase 3 (e2e sweeps green) / real-device check by
-  maintainer post-merge if desired.
+  once the containing chain is definite — **resolved at `2121a1a`**: the Daily view's inner
+  buttons shipped this exact chain since #683 with no WebKit report, the #683 failure needed
+  *two competing* sizing mechanisms and only one declaration remains, and the 43-test e2e
+  sweep (rendered geometry) is green. A maintainer real-device glance post-deploy remains a
+  nice-to-have, not a condition.
 
 ## Availability & concurrency (invariant #2)
 
@@ -149,18 +154,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3 — verification sweep)
+**Stage pointer:** DONE — merged via PR #687
 
-**Next action:** Phase 3 — run the mocked e2e nets verbatim
-(`venue-map-pan`, `touch-targets`, `touch-targets-tourist`, `layout-editor`,
-`operator-daily`, `operator-set-editing`), then the PR gates.
+**Next action:** none — slice complete; close-out (issue closed, no epic, docs-freshness
+ran with 0 findings) recorded here pre-merge per pr-gates §3 step 4.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | e649a30 |
 | 1 — canvas-level height contract | ✅ | 2b05331 |
-| 2 — consumers to `h-full` + reduced helper | ✅ | (this commit) |
-| 3 — verification sweep + gates | | |
+| 2 — consumers to `h-full` + reduced helper | ✅ | 2121a1a |
+| 3 — verification sweep + gates | ✅ | 8f94316 + the PR's final close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -169,7 +173,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (run on 2b05331) | Prettier: `beach-map-canvas.spec.ts` line-wrap in the new #685 contract test | fixed-in-`2121a1a` (`npm run format`) |
-| F-2 | sonar (PR scan on 2121a1a) | S7761: prefer `.dataset` over `hasAttribute('data-map-row')` in `beach-map-height.ts:18` | fixed in this commit — `'mapRow' in el.dataset` |
+| F-2 | sonar (PR scan on 2121a1a) | S7761: prefer `.dataset` over `hasAttribute('data-map-row')` in `beach-map-height.ts:18` | fixed-in-`8f94316` — `'mapRow' in el.dataset` |
+| F-3 | review (`/code-review` rung 1, high effort — single-pass inline, no subagent fan-out available; mode declared in the PR) | Execution status at HEAD drifted: "(this commit)" cells no longer resolved to the right sha, Phase 3 blank while in progress, step checkboxes unticked | fixed in the PR's final close-out commit (shas pinned, boxes ticked) |
 
 ---
 
@@ -201,60 +206,60 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `frontend/src/app/shared/beach-map-canvas.spec.ts` ·
 Modify `frontend/src/app/shared/beach-map-canvas.html:43`
 
-- [ ] **Step 1: Write the failing test** — in `beach-map-canvas.spec.ts`, assert every
+- [x] **Step 1: Write the failing test** — in `beach-map-canvas.spec.ts`, assert every
   `[data-map-row]` wrapper, every row-code rail cell (the `row-code` chip's parent), and
   every price rail cell (`price-col` child) carries `h-[var(--riv-tile)]` and never
   `aspect-square`.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run --project frontend
+- [x] **Step 2: Run it, verify it fails** — `npx vitest run --project frontend
   src/app/shared/beach-map-canvas.spec.ts` (or `npm test -- <filter>`) → FAIL on the
   wrapper assertion.
-- [ ] **Step 3: Minimal implementation** — `beach-map-canvas.html` line 43: the
+- [x] **Step 3: Minimal implementation** — `beach-map-canvas.html` line 43: the
   `[data-map-row]` div gains `class="h-[var(--riv-tile)]"`. (Additive: consumer cells still
   carry their own equal fixed height, so nothing changes visually and the four #683 pins
   still pass.)
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS; then the four consumer
+- [x] **Step 4: Run it, verify it passes** — same command → PASS; then the four consumer
   specs (venue-map, daily-view-tab, layout-editor, set-editor) → still PASS.
-- [ ] **Step 5: Generalization-audit pass** — N/A, no bug fixed (mechanism introduction;
+- [x] **Step 5: Generalization-audit pass** — N/A, no bug fixed (mechanism introduction;
   the population sweep happened at plan time, R-4).
-- [ ] **Step 6: Commit** — `Own the beach-map tile-row height on the canvas wrapper (#685)`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `Own the beach-map tile-row height on the canvas wrapper (#685)`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — Consumers fill the canvas-owned row; reduced helper
 
 **Files:** Modify `frontend/src/testing/beach-map-height.ts` · the four consumer templates ·
 their four specs.
 
-- [ ] **Step 1: Write the failing test** — rewrite the helper as
+- [x] **Step 1: Write the failing test** — rewrite the helper as
   `expectCellsFillCanvasRow(host, cellSelector)`: rails still carry `h-[var(--riv-tile)]`
   (unchanged canvas fact); every matched cell carries `h-full`, and neither `aspect-square`
   nor `h-[var(--riv-tile)]`; every element strictly between the cell and its enclosing
   `[data-map-row]` wrapper carries `h-full`. Update the four spec call sites + test titles
   (`#683` → `#685` reduced-contract wording).
-- [ ] **Step 2: Run it, verify it fails** — the four consumer specs → FAIL (cells still
+- [x] **Step 2: Run it, verify it fails** — the four consumer specs → FAIL (cells still
   carry the old fixed height, grids lack `h-full`).
-- [ ] **Step 3: Minimal implementation** — flip the four templates: each consumer's grid
+- [x] **Step 3: Minimal implementation** — flip the four templates: each consumer's grid
   element (`ul`/`div`) gains `h-full`; each cell's `h-[var(--riv-tile)]` becomes `h-full`
   (venue-map `li`, daily-view `li`, layout-editor button, set-editor button). Inner
   daily-view/venue-map buttons already `h-full` — untouched.
-- [ ] **Step 4: Run it, verify it passes** — the four consumer specs + canvas spec → PASS;
+- [x] **Step 4: Run it, verify it passes** — the four consumer specs + canvas spec → PASS;
   then the full unit suite once (`npm test`) as the end-of-phase regression.
-- [ ] **Step 5: Generalization-audit pass** — population: every `appBeachMapRow` consumer
+- [x] **Step 5: Generalization-audit pass** — population: every `appBeachMapRow` consumer
   template (mechanism: projects a tile row into the canvas). Enumerate:
   `git grep -l appBeachMapRow -- 'frontend/src/**'` → canvas + 4 templates (+ canvas spec).
   Decision: all 4 flipped in this phase; log below.
-- [ ] **Step 6: Commit** — `Fill the canvas-owned row height from every map surface (#685)`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `Fill the canvas-owned row height from every map surface (#685)`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 3 — Verification sweep + gates
 
-- [ ] `npm run lint` + `npm run format:check` green.
-- [ ] Full unit suite green (`npm test`).
-- [ ] Mocked e2e (cloud recipe `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium
+- [x] `npm run lint` + `npm run format:check` green.
+- [x] Full unit suite green (`npm test`).
+- [x] Mocked e2e (cloud recipe `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium
   npm run test:e2e:a11y -- <spec>`): `venue-map-pan`, `touch-targets`,
   `touch-targets-tourist`, `layout-editor`, `operator-daily`, `operator-set-editing` —
   all verbatim-green (AC-3).
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` green (plan staged).
-- [ ] Draft PR → CI green → ready for review → review gate (`/code-review` +
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` green (plan staged).
+- [x] Draft PR → CI green → ready for review → review gate (`/code-review` +
   `riviera-review-overlay`) → Sonar gate (issue list pulled, not just pass/fail) →
   merge close-out per `references/pr-gates.md`.
 
@@ -270,26 +275,26 @@ their four specs.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run the canvas spec → the #685 contract test passes. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run the four consumer specs → the reduced pin passes on all four. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run the listed mocked e2e specs unmodified → green. Verified at commit `<sha>` + the PR's CI run.
+- [x] **AC-1:** Run the canvas spec → the #685 contract test passes. Verified at `8f94316` (and every commit since `2b05331`).
+- [x] **AC-2:** Run the four consumer specs → the reduced pin passes on all four. Verified at `8f94316` (130 tests green).
+- [x] **AC-3:** Run the listed mocked e2e specs unmodified → green. Verified locally at `2121a1a` (43 tests across 6 suites) + the PR's CI runs (full mocked suite in the Frontend job, green on `2121a1a` and `8f94316`).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (no data path touched).
-- [ ] Pool + cutoff rules honored — N/A, rendering only.
-- [ ] **Modulith** section N/A — frontend-only.
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy — N/A.
-- [ ] Timezone — N/A.
-- [ ] Booking codes — N/A.
-- [ ] Flyway — N/A.
-- [ ] **Frontend** standards met; no `as any`; marker classes kept inert.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — invocation ladder + `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (no data path touched).
+- [x] Pool + cutoff rules honored — N/A, rendering only.
+- [x] **Modulith** section N/A — frontend-only.
+- [x] **Payment/payout** N/A.
+- [x] Refund policy — N/A.
+- [x] Timezone — N/A.
+- [x] Booking codes — N/A.
+- [x] Flyway — N/A.
+- [x] **Frontend** standards met; no `as any`; marker classes kept inert.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
+- [x] **The review gate ran in full** — invocation ladder + `riviera-review-overlay`.
