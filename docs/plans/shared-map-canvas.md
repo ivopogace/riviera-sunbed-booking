@@ -225,9 +225,9 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 5)
+**Stage pointer:** implement (phase 6)
 
-**Next action:** move the daily view onto the canvas (phase 5, contrast math first).
+**Next action:** full sweeps + porcelain visual check, then ready-for-review + gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -236,7 +236,7 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is).
 | 2 — BeachMapCanvas (TDD, unit-spec complete) | ✅ | this commit |
 | 3 — tourist map onto the canvas | ✅ | this commit (unit 76 + e2e venue-map-pan 2/2 green) |
 | 4 — layout editor onto the canvas | ✅ | this commit (unit 36 + e2e layout-editor 5/5, touch-targets green; gap border /35→/55 for 1.4.11 over the wash) |
-| 5 — daily view onto the canvas | | |
+| 5 — daily view onto the canvas | ✅ | this commit (unit 47 incl. the new FREE-glyph AA proof + the beach-cell pin fix from the phase-4 CI red; e2e operator-daily + touch-targets 17/17) |
 | 6 — sweeps, porcelain check, gates, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -245,6 +245,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (phase-4 push) | `beach-cell.spec.ts`'s `PRE_MOVE_CELL_CLASS` no-drift pin still expected the gap border at `/35` after the 1.4.11 darkening to `/55` — the one beach-cell consumer spec the scoped phase-4 run missed | fixed in the phase-5 commit (pin updated + departure documented in its TSDoc) |
 
 ---
 

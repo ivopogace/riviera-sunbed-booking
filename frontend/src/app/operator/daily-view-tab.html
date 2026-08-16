@@ -49,59 +49,54 @@
       }
     </section>
 
-    <!-- The sea-facing availability grid -->
-    <app-beach-grid-frame testid="daily-grid-frame">
-      <!-- A 44px tile floor makes a wide venue overflow, so the map scrolls inside its own frame. -->
-      <section class="overflow-x-auto" data-testid="daily-grid" tabindex="0" aria-label="Beach map">
-        @for (row of rows(); track row.label) {
-          <div class="mb-1.5 flex items-center gap-2">
-            <span
-              class="w-5 flex-shrink-0 text-center text-[11px] font-bold text-(--riv-card-ink)"
-              >{{ row.label }}</span
+    <!-- The canvas viewport carries the daily-grid scroller contract (testid + tab stop + name). -->
+    <app-beach-map-canvas
+      frameTestid="daily-grid-frame"
+      viewportTestid="daily-grid"
+      [viewportTabindex]="0"
+      viewportLabel="Beach map"
+    >
+      <ng-template [appBeachMapRow]="rows()" let-row>
+        <ul
+          class="grid list-none gap-1.5 p-0 grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))]"
+        >
+          @for (set of row.sets; track set.id) {
+            <li
+              class="set-tile h-[var(--riv-tile)] min-w-0"
+              data-testid="daily-tile"
+              [class.premium]="set.tier === 'PREMIUM'"
             >
-            <ul
-              class="grid flex-1 list-none gap-1 p-0"
-              [style.grid-template-columns]="columns(row)"
-            >
-              @for (set of row.sets; track set.id) {
-                <li
-                  class="set-tile"
-                  data-testid="daily-tile"
-                  [class.premium]="set.tier === 'PREMIUM'"
+              @if (isActionable(set)) {
+                <button
+                  appTouchTarget
+                  type="button"
+                  [attr.data-set-id]="set.id"
+                  [attr.data-state]="stateOf(set)"
+                  [attr.aria-label]="tileLabel(set)"
+                  [disabled]="isPending(set)"
+                  (click)="onTile(set)"
+                  class="h-full w-full rounded-[6px] border text-[10.5px] font-semibold [transition:transform_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none"
+                  [class]="tileClass(set)"
                 >
-                  @if (isActionable(set)) {
-                    <button
-                      appTouchTarget
-                      type="button"
-                      [attr.data-set-id]="set.id"
-                      [attr.data-state]="stateOf(set)"
-                      [attr.aria-label]="tileLabel(set)"
-                      [disabled]="isPending(set)"
-                      (click)="onTile(set)"
-                      class="w-full rounded-[6px] border text-[10.5px] font-semibold [transition:transform_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none"
-                      [class]="tileClass(set)"
-                    >
-                      <span aria-hidden="true">{{ tileGlyph(set) }}</span>
-                    </button>
-                  } @else {
-                    <span
-                      [attr.data-set-id]="set.id"
-                      [attr.data-state]="stateOf(set)"
-                      class="flex min-h-11 w-full items-center justify-center rounded-[6px] border text-[10.5px] font-semibold"
-                      [class]="tileClass(set)"
-                    >
-                      <!-- Locked tile: sr-only text names the state, so it is not colour-only. -->
-                      <span class="sr-only">{{ tileLabel(set) }}</span>
-                      <span aria-hidden="true">{{ tileGlyph(set) }}</span>
-                    </span>
-                  }
-                </li>
+                  <span aria-hidden="true">{{ tileGlyph(set) }}</span>
+                </button>
+              } @else {
+                <span
+                  [attr.data-set-id]="set.id"
+                  [attr.data-state]="stateOf(set)"
+                  class="flex h-full w-full items-center justify-center rounded-[6px] border text-[10.5px] font-semibold"
+                  [class]="tileClass(set)"
+                >
+                  <!-- Locked tile: sr-only text names the state, so it is not colour-only. -->
+                  <span class="sr-only">{{ tileLabel(set) }}</span>
+                  <span aria-hidden="true">{{ tileGlyph(set) }}</span>
+                </span>
               }
-            </ul>
-          </div>
-        }
-      </section>
-    </app-beach-grid-frame>
+            </li>
+          }
+        </ul>
+      </ng-template>
+    </app-beach-map-canvas>
 
     <!-- Legend -->
     <ul
