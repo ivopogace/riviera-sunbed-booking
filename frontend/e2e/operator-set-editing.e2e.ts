@@ -283,6 +283,80 @@ test('grows the grid to add a lounger, moves it, then removes it', async ({ page
   expect(mock.sets().find((s) => s.id === added.id)).toBeUndefined();
 });
 
+test('a mostly-vertical drag pans the map but never selects the set-cell under the release (#676)', async ({
+  page,
+}) => {
+  await mockConsole(page);
+  // A 12-row map, so the wash scroller overflows its 532px cap.
+  const tallSets: MockSet[] = [];
+  let id = 100;
+  for (let r = 1; r <= 12; r++) {
+    for (let c = 1; c <= 2; c++) {
+      tallSets.push({
+        id: id++,
+        rowLabel: String.fromCharCode(64 + r),
+        positionNo: c,
+        tier: 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: 2000, currency: 'EUR' },
+        gridX: c,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({
+          json: {
+            id: 1,
+            name: 'Miramar Beach Club',
+            beach: 'Ksamil',
+            region: 'Albanian Riviera',
+            description: '',
+            ratingTenths: 48,
+            reviewsCount: 12,
+            bookingMode: 'INSTANT',
+            fromPrice: null,
+            sets: tallSets,
+            setVersion: 0,
+          },
+        })
+      : route.fallback(),
+  );
+
+  await page.goto('/operator/1');
+  await signIn(page);
+  await expect(page.getByTestId('set-editor')).toBeVisible();
+
+  const wash = page.locator('[data-riv-scroller]').first();
+  await expect
+    .poll(() => wash.evaluate((el) => el.scrollHeight > el.clientHeight + 1))
+    .toBe(true);
+
+  // Raw mouse primitives don't auto-scroll and the console header is sticky — center the anchor.
+  const anchor = cell(page, 1, 6);
+  await anchor.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  const scrollBefore = await wash.evaluate((el) => el.scrollTop);
+  const box = (await anchor.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  await page.mouse.move(x, startY);
+  await page.mouse.down();
+  await page.mouse.move(x, startY - 40, { steps: 6 });
+  await page.mouse.move(x, startY - 100, { steps: 10 });
+  await page.mouse.up();
+
+  // The map panned vertically, and the release selected nothing — the panel stays empty.
+  expect(await wash.evaluate((el) => el.scrollTop)).toBeGreaterThan(scrollBefore);
+  await expect(page.getByTestId('set-panel-empty')).toBeVisible();
+  await expect(page.getByTestId('set-selected')).toHaveCount(0);
+
+  // A genuine click afterwards still selects (the suppression is one-shot).
+  await cell(page, 1, 1).click();
+  await expect(page.getByTestId('set-selected')).toHaveText(/Row A · position 1/);
+});
+
 test('the locked bulk save points at per-set editing instead of claiming it is impossible', async ({
   page,
 }) => {

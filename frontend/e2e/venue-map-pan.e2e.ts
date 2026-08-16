@@ -66,8 +66,43 @@ function wideVenue() {
   };
 }
 
+/** A venue tall enough (12 rows) that the wash scroller overflows its 532px cap. */
+function tallVenue() {
+  const sets: MapSet[] = [];
+  let id = 0;
+  for (let r = 1; r <= 12; r++) {
+    for (let p = 1; p <= 20; p++) {
+      id += 1;
+      sets.push({
+        id,
+        rowLabel: `Row ${r}`,
+        positionNo: p,
+        tier: r === 1 ? 'PREMIUM' : 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: r === 1 ? 5000 : 3000, currency: 'EUR' },
+        gridX: p,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  return {
+    id: 2,
+    name: 'Tall Bay',
+    beach: 'Dhërmi',
+    region: 'Albanian Riviera',
+    description: 'A deep beach — the map pans on both axes.',
+    ratingTenths: 45,
+    reviewsCount: 80,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
 test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: wideVenue() }));
+  await page.route(/\/api\/venues\/2(\?.*)?$/, (route) => route.fulfill({ json: tallVenue() }));
 });
 
 test('a plain click on a free tile opens the booking dialog (and the map is accessible)', async ({
@@ -198,6 +233,50 @@ test('a drag-pan release over a tile pans the map but does NOT open the dialog; 
   expect(Math.abs(codeXAfter - codeXBefore)).toBeLessThan(2);
 
   // A genuine click afterwards still opens the dialog (the pan suppression is one-shot).
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('a vertical drag pans the wash scroller — rails ride along — and its release opens no dialog (#676)', async ({
+  page,
+}) => {
+  await page.goto('/venues/2');
+  await expect(page.getByRole('heading', { name: 'Tall Bay' })).toBeVisible();
+
+  // The wash scroller (the OUTER [data-riv-scroller]) is the vertical axis's scroll target.
+  const wash = page.locator('[data-riv-scroller]').first();
+  await expect
+    .poll(() => wash.evaluate((el) => el.scrollHeight > el.clientHeight + 1))
+    .toBe(true);
+
+  // Anchor on a mid-map tile; hover() scrolls it into view, so measure baselines afterwards.
+  const anchor = page.locator('.set-tile').nth(7 * 20).locator('button');
+  await anchor.hover();
+  const scrollBefore = await wash.evaluate((el) => el.scrollTop);
+  const chipYBefore = (await page.getByTestId('row-code').first().boundingBox())!.y;
+
+  // Drag mostly-vertically (x fixed): up 120px past the 6px threshold, staying inside the map.
+  const box = (await anchor.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  await page.mouse.down();
+  await page.mouse.move(x, startY - 40, { steps: 6 });
+  await page.mouse.move(x, startY - 120, { steps: 12 });
+  await page.mouse.up();
+
+  // The wash scrolled down...
+  const scrollAfter = await wash.evaluate((el) => el.scrollTop);
+  expect(scrollAfter).toBeGreaterThan(scrollBefore);
+  // ...the vertical-drag release over a tile did NOT open the booking dialog...
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // ...and the row-code rail scrolled WITH the tiles — it lives inside the wash scroller.
+  const chipYAfter = (await page.getByTestId('row-code').first().boundingBox())!.y;
+  expect(Math.abs(chipYBefore - chipYAfter - (scrollAfter - scrollBefore))).toBeLessThan(2);
+
+  // A genuine click afterwards still opens the dialog (the suppression is one-shot).
   await page
     .getByRole('button', { name: /Select to book/ })
     .first()

@@ -167,15 +167,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** author the two vertical e2e pins (tourist tall venue + set editor) and run the affected mocked suites.
+**Next action:** full sweeps + hand verification in the real browser + docs-freshness + close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ✅ | committed with phase 1 |
-| 1 — vertical pan in the canvas (TDD) | ✅ | this commit (14 canvas specs; 217 across the surface suites; lint + format green) |
-| 2 — e2e pins (tourist + set editor) | | |
+| 0 — plan doc | ✅ | 5b059e8 |
+| 1 — vertical pan in the canvas (TDD) | ✅ | 5b059e8 (14 canvas specs; 217 across the surface suites; lint + format green) |
+| 2 — e2e pins (tourist + set editor) | ✅ | this commit (venue-map-pan 3/3 + operator-set-editing 7/7; operator-daily + layout-editor + touch-targets 43/43 — all pre-existing pins verbatim) |
 | 3 — sweeps, hand verification, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
