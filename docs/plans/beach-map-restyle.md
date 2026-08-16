@@ -160,17 +160,17 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is; `pool` alre
 
 ## Execution status
 
-**Stage pointer:** implement (phase 4)
+**Stage pointer:** PR — ready-for-review prep (review + Sonar gates next)
 
-**Next action:** extend venue-map-pan.e2e.ts with the restyle pins, then close out.
+**Next action:** verify ACs, finalize the plan doc, mark PR #673 ready for review, run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 6fb3d7e |
 | 1 — restyle base (prototype `f781dbf` + zone unit specs) | ✅ | 0b64ed0 |
 | 2 — walk-in treatment + legend (TDD) | ✅ | 9cf4f67 |
-| 3 — composited contrast specs | ✅ | this commit |
-| 4 — e2e pins + a11y sweep + close-out | | |
+| 3 — composited contrast specs | ✅ | 60adb10 |
+| 4 — e2e pins + a11y sweep + close-out | ⏳ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
