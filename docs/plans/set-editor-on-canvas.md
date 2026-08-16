@@ -118,9 +118,9 @@ The old surface is the set-editor's bare-frame grid block (`set-editor.html` lin
 |---|---|---|---|---|---|---|
 | R-1 | Scroller/testid coupling: `set-grid` must name the element that actually overflows or `touch-targets.e2e.ts:121-128` fails / passes vacuously | med | med | `viewportTestid="set-grid"` (the canvas input built for exactly this, #674 R-4); run the per-set touch-targets test in phase 1 | this slice | open |
 | R-2 | Canvas hosted in the `lg:grid-cols-[300px_1fr]` `1fr` track keeps `min-width: auto` and blows the column out instead of scrolling (the #674 generalization-audit mechanism — this site did not exist when that audit ran) | high | med | `min-w-0` on the map-column wrapper; verified by the existing page-overflow e2e pin + the phase-2 screenshots | this slice | open |
-| R-3 | Selection outline `#0e8aa8` fails 1.4.11 (3:1) over a wash stop | low | med | Pre-checked at plan time: worst case (sand `#f6eedb`) computes ≈3.48:1 — passes; pinned by the new contrast spec so it can't drift | this slice | open |
+| R-3 | Selection outline `#0e8aa8` fails 1.4.11 (3:1) over a wash stop | low | med | Pre-checked at plan time: worst case (sand `#f6eedb`) computes ≈3.48:1 — passes; pinned by the new contrast spec so it can't drift | this slice | closed — phase-1 commit (spec green) |
 | R-4 | dragPan ON swallows a legitimate selection click (pan-release suppression misfires) | low | high | The suppression is canvas-owned and already pinned (#674 R-1: consume-once, `detail > 0` only, keyboard never); the existing set-editor e2e clicks cells through the viewport and stays green | this slice | open |
-| R-5 | AT regression from moving the visible row labels into the aria-hidden rail | low | low | Every cell's `aria-label` already carries row + position (a11y spec pins the exact strings); axe re-runs over the migrated structure in `set-editor.a11y.spec.ts` | this slice | open |
+| R-5 | AT regression from moving the visible row labels into the aria-hidden rail | low | low | Every cell's `aria-label` already carries row + position (a11y spec pins the exact strings); axe re-runs over the migrated structure in `set-editor.a11y.spec.ts` | this slice | closed — phase-1 commit (a11y suite green unmodified) |
 | R-6 | Sonar new-code gate (0 issues, 0 duplication, ≥80% coverage) on a template-heavy refactor | low | med | The slice deletes chrome rather than adding logic; the one new mapping lives in the existing `rows` computed and is unit-pinned; review the Sonar issue list at the gate | this slice | open |
 
 ## Open questions / Assumptions
@@ -182,14 +182,14 @@ N/A — no contract change (`SetView` consumed as-is).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** phase 1 — write the failing chrome pins, then migrate the template.
+**Next action:** phase 2 — run the coupled e2e (operator-set-editing + touch-targets, mocked config), then the porcelain two-mode screenshots.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + draft PR | ⏳ | |
-| 1 — pins red → set-editor onto the canvas → scoped suites green | | |
+| 0 — plan doc + draft PR | ✅ | 1ef4bab (draft PR #678 opened) |
+| 1 — pins red → set-editor onto the canvas → scoped suites green | ✅ | this commit (2 chrome pins red → green; unit 36, a11y 347, lint + format green) |
 | 2 — e2e + porcelain visual check | | |
 | 3 — sweeps, gates, close-out | | |
 
@@ -215,14 +215,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 0 — Plan doc
 
-- [ ] **Step 1:** Commit this plan; push; open the **draft PR** (CI vehicle, #417).
+- [x] **Step 1:** Commit this plan; push; open the **draft PR** (CI vehicle, #417).
 
 ## Phase 1 — Pins red → set-editor onto the canvas → scoped suites green
 
 **Files:** Modify `set-editor.ts`, `set-editor.html`, `set-editor.spec.ts`,
 `set-editor.contrast.spec.ts` (+ `set-editor.a11y.spec.ts` only if a selector rescopes).
 
-- [ ] **Step 1:** Write the failing chrome pins in `set-editor.spec.ts` (AC-1): the
+- [x] **Step 1:** Write the failing chrome pins in `set-editor.spec.ts` (AC-1): the
   canvas viewport carries `data-testid="set-grid"`; one aria-hidden `row-code` chip
   per row; a `row-price` chip per row-with-a-set (`€35.00` for row A, `€20.00` for
   row B in the standard fixture) and none for a grown set-less row; the frame testid
@@ -230,20 +230,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   `set-editor.contrast.spec.ts` (selection outline `#0e8aa8` ≥3:1 composited over
   each wash stop, referencing the pairs proven in `layout-editor.contrast.spec.ts`
   rather than re-deriving the cell fills).
-- [ ] **Step 2:** `npm test -- set-editor` → the new chrome pins FAIL (no canvas yet);
+- [x] **Step 2:** `npm test -- set-editor` → the new chrome pins FAIL (no canvas yet);
   the contrast pin passes (pure math — it pins against drift, it was never red).
-- [ ] **Step 3:** Implement: extend the `rows` computed with `code` (= the existing
+- [x] **Step 3:** Implement: extend the `rows` computed with `code` (= the existing
   label), `priceLabel` (`formatMoney` of the row's first set, `null` when none),
   `zoneStart: true`, `tileCount` (= the row's cell count); swap the imports; replace
   the grid block with `<app-beach-map-canvas frameTestid="set-grid-frame"
   viewportTestid="set-grid">` + the projected tile template (cell buttons verbatim,
   `h-11 w-11` → `aspect-square min-w-0` in the canvas's `--riv-tile` grid columns);
   `min-w-0` on the map column wrapper (R-2).
-- [ ] **Step 4:** `npm test -- set-editor` → PASS (all four suites);
+- [x] **Step 4:** `npm test -- set-editor` → PASS (all four suites);
   `npm run test:a11y` → PASS; `npm run lint` + `npm run format:check`.
-- [ ] **Step 5:** Generalization audit — if a fix emerges, log it below.
-- [ ] **Step 6:** Commit `Move the per-set editor onto the shared beach-map canvas (#677)`.
-- [ ] **Step 7:** Update Execution status; check the push's CI run.
+- [x] **Step 5:** Generalization audit — if a fix emerges, log it below.
+- [x] **Step 6:** Commit `Move the per-set editor onto the shared beach-map canvas (#677)`.
+- [x] **Step 7:** Update Execution status; check the push's CI run.
 
 ## Phase 2 — e2e + porcelain visual check
 
@@ -277,6 +277,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-16 | Phase 1 (this slice adds a member to #674's audited population: elements hosting `<app-beach-map-canvas>` inside a flex/grid track keep `min-width: auto` and blow the track out instead of scrolling) | every element hosting the canvas in a flex/grid track | `grep -rn "<app-beach-map-canvas" frontend/src/app` | layout-editor (fixed in #674), venue-map + daily-view (immune, #674), **set-editor (new — `1fr` grid column)** | fixed at birth: `min-w-0` on the map-column wrapper (R-2); page-overflow e2e re-verifies in phase 2 |
 
 ---
 

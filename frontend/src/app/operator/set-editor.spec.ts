@@ -125,6 +125,38 @@ describe('SetEditor (#600)', () => {
     expect(cellForSet(13).getAttribute('data-state')).toBe('walkin');
   });
 
+  it('renders on the shared canvas: frame, pan viewport and aria-hidden row-code rail (#677)', () => {
+    render();
+
+    expect(byId('set-grid-frame')).toBeTruthy();
+    // The testid rides the canvas pan viewport — the element the touch-target e2e measures.
+    expect(byId('set-grid').querySelectorAll('[data-testid="set-cell"]')).toHaveLength(4);
+
+    const codes = Array.from(host.querySelectorAll<HTMLElement>('[data-testid="row-code"]'));
+    expect(codes.map((c) => c.textContent?.trim())).toEqual(['A', 'B']);
+    // The rail is decorative for AT: every cell's aria-label already carries "Row X position N".
+    expect(codes[0].closest('[aria-hidden="true"]')).toBeTruthy();
+  });
+
+  it('chips every row’s price from its first set, and none for a set-less grown row (#677)', () => {
+    render();
+    const prices = () =>
+      Array.from(host.querySelectorAll<HTMLElement>('[data-testid="row-price"]')).map((n) =>
+        n.textContent?.trim(),
+      );
+
+    // The bulk editor’s posture (#674 F-2): every row is its own zone, chipped per row.
+    expect(prices()).toEqual(['€35', '€20']);
+
+    click(byId('set-add-row'));
+    expect(prices()).toEqual(['€35', '€20']);
+    expect(
+      Array.from(host.querySelectorAll<HTMLElement>('[data-testid="row-code"]')).map((c) =>
+        c.textContent?.trim(),
+      ),
+    ).toEqual(['A', 'B', 'C']);
+  });
+
   it('shows the empty-selection hint until a set is picked', () => {
     render();
 

@@ -220,44 +220,36 @@
       }
     </section>
 
-    <!-- The map. Scrolls inside its own frame so a wide venue never scrolls the page sideways. -->
-    <div class="flex flex-col gap-2">
-      <app-beach-grid-frame testid="set-grid-frame">
-        <div class="overflow-x-auto" data-testid="set-grid">
-          @for (row of rows(); track row.label) {
-            <div class="mb-1.5 flex w-max items-center gap-2">
-              <span
-                class="w-5 flex-shrink-0 text-center text-[11px] font-bold text-(--riv-card-ink)"
-                >{{ row.label }}</span
-              >
-              <div class="flex gap-1">
-                @for (cell of row.cells; track cell.gridX) {
-                  <button
-                    appTouchTarget
-                    type="button"
-                    appBeachCell
-                    [state]="cell.state"
-                    [disabled]="cell.disabled"
-                    [attr.data-set-id]="cell.setId"
-                    [attr.data-grid-x]="cell.gridX"
-                    [attr.data-grid-y]="cell.gridY"
-                    [attr.aria-pressed]="cell.selected"
-                    [attr.aria-label]="cell.label"
-                    [title]="cell.label"
-                    (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
-                    data-testid="set-cell"
-                    class="h-11 w-11 rounded-[8px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
-                    [class.outline]="cell.selected"
-                    [class.outline-2]="cell.selected"
-                    [class.outline-offset-2]="cell.selected"
-                    [class.outline-[#0e8aa8]]="cell.selected"
-                  ></button>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      </app-beach-grid-frame>
+    <!-- The map on the shared canvas; min-w-0 so the 1fr grid column scrolls instead of blowing out. -->
+    <div class="flex min-w-0 flex-col gap-2">
+      <app-beach-map-canvas frameTestid="set-grid-frame" viewportTestid="set-grid">
+        <ng-template [appBeachMapRow]="rows()" let-row>
+          <div class="grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5">
+            @for (cell of row.cells; track cell.gridX) {
+              <button
+                appTouchTarget
+                type="button"
+                appBeachCell
+                [state]="cell.state"
+                [disabled]="cell.disabled"
+                [attr.data-set-id]="cell.setId"
+                [attr.data-grid-x]="cell.gridX"
+                [attr.data-grid-y]="cell.gridY"
+                [attr.aria-pressed]="cell.selected"
+                [attr.aria-label]="cell.label"
+                [title]="cell.label"
+                (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
+                data-testid="set-cell"
+                class="aspect-square min-w-0 rounded-[8px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
+                [class.outline]="cell.selected"
+                [class.outline-2]="cell.selected"
+                [class.outline-offset-2]="cell.selected"
+                [class.outline-[#0e8aa8]]="cell.selected"
+              ></button>
+            }
+          </div>
+        </ng-template>
+      </app-beach-map-canvas>
 
       <!-- A full grid has nowhere to add a set, so the map itself has to be growable. -->
       <div class="flex flex-wrap gap-2">
