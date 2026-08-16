@@ -1,0 +1,48 @@
+import { Component, input } from '@angular/core';
+
+import { CardGlass } from './card-glass';
+
+/**
+ * The sea-facing beach-grid frame — the glass card with the "▲ Facing the sea"
+ * and "▼ Promenade · Entrance" orientation banners that make a grid of tiles read as a beach map.
+ *
+ * <p>The shared chrome of every beach-map surface (tourist map via {@link BeachMapCanvas},
+ * the operator layout editor and Daily view likewise, and the per-set editor's selection grid
+ * directly). The <strong>tiles differ by purpose</strong> — booking, painting, availability
+ * marking, selection — so only the framing (card + banners + orientation) is shared here; each
+ * consumer owns its own tile rendering and interaction, projected via {@code <ng-content>}.
+ * Theme-agnostic glass via {@link CardGlass}; the banner gradient is the beach-map restyle's
+ * sea teal. The ▲/▼ glyphs are {@code aria-hidden} — the banner text carries the meaning.
+ */
+@Component({
+  selector: 'app-beach-grid-frame',
+  imports: [CardGlass],
+  template: `
+    <section
+      appCardGlass
+      class="overflow-hidden rounded-[24px] px-[18px] pb-4"
+      [attr.data-testid]="testid()"
+      [attr.aria-label]="label() || null"
+    >
+      <p
+        class="sea-banner -mx-[18px] mb-3.5 bg-[linear-gradient(180deg,#0e7a89,#0c6675)] px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-white"
+      >
+        <span aria-hidden="true">▲</span>&nbsp;&nbsp;Facing the sea
+      </p>
+
+      <ng-content />
+
+      <p
+        class="promenade -mx-[18px] mt-3 border-t border-dashed border-[#0c2a33]/25 px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-(--riv-card-ink)"
+      >
+        <span aria-hidden="true">▼</span>&nbsp;&nbsp;Promenade · Entrance
+      </p>
+    </section>
+  `,
+})
+export class BeachGridFrame {
+  /** The section's `data-testid` (defaults to `beach-grid`), so a host can scope its own grid queries. */
+  readonly testid = input<string>('beach-grid');
+  /** Optional accessible name for the section (e.g. "Beach map — Miramar"); empty renders none. */
+  readonly label = input<string>('');
+}

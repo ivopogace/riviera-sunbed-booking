@@ -19,7 +19,7 @@ import {
   MAX_COLS,
   MAX_ROWS,
 } from './beach-cell';
-import { BeachGridFrame } from './beach-grid-frame';
+import { BeachGridFrame } from '../shared/beach-grid-frame';
 import { SetWriteErrorCode, SetWriteRequest } from './operator-console.model';
 import { OperatorConsoleService, setWriteErrorOf } from './operator-console.service';
 

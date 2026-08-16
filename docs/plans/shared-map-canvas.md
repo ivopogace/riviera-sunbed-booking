@@ -225,14 +225,14 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is).
 
 ## Execution status
 
-**Stage pointer:** plan committed — next: phase 1
+**Stage pointer:** implement (phase 2)
 
-**Next action:** open the draft PR (CI vehicle), then phase 1 (promote the frame).
+**Next action:** build `BeachMapCanvas` TDD (phase 2).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ⏳ | |
-| 1 — promote BeachGridFrame to shared/ (+ banner unification) | | |
+| 0 — plan doc | ✅ | 9907ffb (draft PR #674 opened) |
+| 1 — promote BeachGridFrame to shared/ (+ banner unification) | ✅ | this commit |
 | 2 — BeachMapCanvas (TDD, unit-spec complete) | | |
 | 3 — tourist map onto the canvas | | |
 | 4 — layout editor onto the canvas | | |

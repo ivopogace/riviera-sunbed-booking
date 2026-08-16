@@ -20,7 +20,7 @@ import {
   MAX_COLS,
   MAX_ROWS,
 } from './beach-cell';
-import { BeachGridFrame } from './beach-grid-frame';
+import { BeachGridFrame } from '../shared/beach-grid-frame';
 import { todayBookingDate } from '../shared/booking-date';
 import { SetView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';

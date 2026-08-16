@@ -20,8 +20,8 @@ import {
 
 // --riv-cta-grad stops (the AA-safe darkened teal, shared with every tourist/operator CTA).
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
-// The "Facing the sea" banner: solid white on a darkened teal gradient (kept AA, unlike the design cyan).
-const SEA_BANNER_STOPS = ['#0a6e85', '#0a5a6e'];
+// The "Facing the sea" banner: solid white on the restyle's sea teal (shared BeachGridFrame, #672).
+const SEA_BANNER_STOPS = ['#0e7a89', '#0c6675'];
 
 describe('LayoutEditor porcelain contrast (WCAG AA, #172)', () => {
   it('panel headings + row labels + promenade banner (--riv-card-ink) meet AA on the card glass', () => {

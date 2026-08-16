@@ -33,7 +33,7 @@ import { BookingStatus, metaFor } from '../shared/booking-status';
 import { setLabel, setsById, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
-import { BeachGridFrame } from './beach-grid-frame';
+import { BeachGridFrame } from '../shared/beach-grid-frame';
 import { ConsoleDailyBooking, MarkErrorCode, ReleaseErrorCode } from './operator-console.model';
 import {
   OperatorConsoleService,
