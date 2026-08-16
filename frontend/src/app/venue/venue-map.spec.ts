@@ -298,6 +298,22 @@ describe('VenueMap', () => {
     expect(priceCells.map((c) => c.classList.contains('mt-3'))).toEqual(zoneGaps);
   });
 
+  it('renders a mixed-price row as its min–max span, in a zone of its own (#689)', async () => {
+    const base = miramar();
+    const sets = base.sets.map((s) =>
+      s.rowLabel === 'Row 2' && s.positionNo === 2
+        ? { ...s, price: { minorUnits: 4500, currency: 'EUR' } }
+        : s,
+    );
+    venueRequest().flush({ ...base, sets });
+    await fixture.whenStable();
+    const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    // Row 2 mixes €35 + €45: its chip is the span, so it no longer shares Row 3's €35 zone.
+    expect(prices).toEqual(['€45', '€35–€45', '€35', '€25']);
+  });
+
   it('renders the venue description in the header', async () => {
     flushVenue();
     await fixture.whenStable();
