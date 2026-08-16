@@ -116,6 +116,18 @@ describe('ThemeService (Liquid Glass foundation, issue #134)', () => {
     expect(document.documentElement.getAttribute('data-riv-theme')).toBe('riviera');
   });
 
+  it('keeps an explicit in-session choice over an OS flip even with storage blocked (#680 review)', () => {
+    removeFakeStorage(); // no storage at all — the private-mode "session-only theming" degrade
+    const flipOsLight = fakeMatchMediaWithEvents(false);
+    const service = TestBed.inject(ThemeService);
+    service.select('porcelain');
+
+    flipOsLight(false);
+
+    expect(service.theme()).toBe('porcelain');
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('porcelain');
+  });
+
   it('ignores an OS scheme flip after select() persisted a choice (#675)', () => {
     const flipOsLight = fakeMatchMediaWithEvents(false);
     const service = TestBed.inject(ThemeService);

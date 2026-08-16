@@ -56,6 +56,9 @@ export class ThemeService {
 
   private readonly current = signal<ThemeId>(initialTheme());
 
+  /** With storage blocked, writeStorage no-ops — the OS-flip listener honors this marker instead. */
+  private chosenThisSession = false;
+
   /** The active theme id, as a read-only signal. */
   readonly theme = this.current.asReadonly();
 
@@ -65,6 +68,7 @@ export class ThemeService {
   }
 
   select(id: ThemeId): void {
+    this.chosenThisSession = true;
     this.current.set(id);
     applyToDocument(id);
     writeStorage(STORAGE_KEY, id);
@@ -80,7 +84,7 @@ export class ThemeService {
       return;
     }
     query.addEventListener('change', (event) => {
-      if (isThemeId(readStorage(STORAGE_KEY))) {
+      if (this.chosenThisSession || isThemeId(readStorage(STORAGE_KEY))) {
         return;
       }
       const next = osTheme(event.matches);

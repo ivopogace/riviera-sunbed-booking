@@ -80,20 +80,25 @@ const SCENARIOS: readonly Scenario[] = [
 function inlineSeedScript(): string {
   // import.meta.url is not a file URL under the builder's bundling; Vitest runs with cwd = frontend/.
   const indexHtml = readFileSync(join(process.cwd(), 'src/index.html'), 'utf8');
-  const match = /<script>([\s\S]*?)<\/script>/.exec(indexHtml);
-  if (!match) {
+  // Index slicing, not an HTML-tag regex: this extracts our own literal tag (CodeQL js/bad-tag-filter).
+  const open = indexHtml.indexOf('<script>');
+  const close = indexHtml.indexOf('</script>', open);
+  if (open === -1 || close === -1) {
     throw new Error('src/index.html carries no inline pre-paint theme seed script (#675)');
   }
-  return match[1];
+  return indexHtml.slice(open + '<script>'.length, close);
 }
+
+/** The seed's literal storage key — key-sensitive so a key drift vs `STORAGE_KEY` fails the pin. */
+const SEED_STORAGE_KEY = 'riviera-theme';
 
 function fakeLocalStorage(scenario: Scenario): Pick<Storage, 'getItem'> {
   return {
-    getItem: (): string | null => {
+    getItem: (key: string): string | null => {
       if (scenario.storageBlocked) {
         throw new Error('storage blocked (private mode)');
       }
-      return scenario.stored;
+      return key === SEED_STORAGE_KEY ? scenario.stored : null;
     },
   };
 }

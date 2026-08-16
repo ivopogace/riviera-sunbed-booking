@@ -141,9 +141,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implemented + verified; pushed from the cloud session — PR/CI/Sonar/review gates due when the PR opens
+**Stage pointer:** merge — review gate run (findings F-1..F-3 fixed), awaiting CI + Sonar on the fix push
 
-**Next action:** PR opened → drive the CI, review, and Sonar gates to merge (RV-FE-7 deferral resolved → #679)
+**Next action:** confirm CI + Sonar green on PR #680 (incl. the Sonar issue list, not just the gate), tick the PR's Gates boxes, merge, close-out
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -250,5 +250,5 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions resolved (RV-FE-7 deferral → maintainer-approved, follow-up issue #679).
-- [ ] **Close-out written in THIS PR** — pending: the PR is opened by the maintainer/next session from the pushed branch; final close-out (merged via PR #NN) lands there.
-- [ ] **The review gate ran** — a pre-push `riviera-review-overlay` pass ran (F-1/F-2); the formal `/code-review` invocation-ladder run is due when the PR opens and is deliberately left unticked until then.
+- [x] **Close-out written in THIS PR** — merged via PR #680 (recorded pre-merge, in the PR's last commit, per pr-gates §3 step 4).
+- [x] **The review gate ran** — invocation-ladder rung 1 (`Skill("code-review")` on PR #680, high effort) with `riviera-review-overlay` layered; the run declared itself single-pass inline (no subagent fan-out available) — recorded honestly here and in the PR. Findings F-1..F-3 fixed through the loop (re-entry rule).
