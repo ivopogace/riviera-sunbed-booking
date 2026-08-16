@@ -7,7 +7,7 @@ import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmPanel } from '../shared/confirm-panel';
 import { focusMover } from '../shared/focus-after-render';
-import { eurosToMinorUnits, minorUnitsToEuros } from '../shared/money';
+import { eurosToMinorUnits, formatMoney, minorUnitsToEuros } from '../shared/money';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import {
   BeachCell,
@@ -19,11 +19,24 @@ import {
   MAX_COLS,
   MAX_ROWS,
 } from './beach-cell';
-import { BeachGridFrame } from '../shared/beach-grid-frame';
+import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { SetWriteErrorCode, SetWriteRequest } from './operator-console.model';
 import { OperatorConsoleService, setWriteErrorOf } from './operator-console.service';
 
 import { TouchTarget } from '../shared/touch-target';
+
+/** One editor row on the shared canvas's row contract, plus the cells the panel selects from. */
+interface SetRow extends BeachMapCanvasRow {
+  readonly cells: readonly {
+    readonly gridX: number;
+    readonly gridY: number;
+    readonly setId: number | null;
+    readonly state: CellState;
+    readonly selected: boolean;
+    readonly disabled: boolean;
+    readonly label: string;
+  }[];
+}
 
 /** What the panel is editing: one saved set, one empty cell to add into, or nothing. */
 type Selection =
@@ -82,7 +95,16 @@ function draftForNewCell(gridY: number): SetDraft {
  */
 @Component({
   selector: 'app-set-editor',
-  imports: [CardGlass, BeachGridFrame, BeachCell, ConfirmPanel, FormField, BusyAction, TouchTarget],
+  imports: [
+    CardGlass,
+    BeachMapCanvas,
+    BeachMapRowDef,
+    BeachCell,
+    ConfirmPanel,
+    FormField,
+    BusyAction,
+    TouchTarget,
+  ],
   templateUrl: './set-editor.html',
 })
 export class SetEditor {
@@ -215,15 +237,19 @@ export class SetEditor {
   protected readonly canAddRow = computed(() => this.rowCount() < MAX_ROWS);
   protected readonly canAddCol = computed(() => this.colCount() < MAX_COLS);
 
-  /** The rendered grid: one entry per position, carrying its set (if any), state and AT label. */
-  protected readonly rows = computed(() => {
+  /**
+   * The rendered grid on the shared canvas's row contract: one entry per position, carrying its set
+   * (if any), state and AT label. Every row is a zone of its own (`zoneStart: true`) — the bulk
+   * editor's posture, so the tab's two modes keep one row rhythm — chipped with the price of the
+   * row's first set (a live per-set reprice updates the chip in place; rows never reflow).
+   */
+  protected readonly rows = computed<readonly SetRow[]>(() => {
     const bySlot = new Map(this.sets().map((s) => [slot(s.gridX, s.gridY), s]));
     const selectedId = this.selectedSet()?.id;
     const cell = this.selectedCell();
     const moving = this.armed();
-    return Array.from({ length: this.rowCount() }, (_, y) => ({
-      label: gridRowLabel(y),
-      cells: Array.from({ length: this.colCount() }, (_, x) => {
+    return Array.from({ length: this.rowCount() }, (_, y) => {
+      const cells = Array.from({ length: this.colCount() }, (_, x) => {
         const gridX = x + 1;
         const gridY = y + 1;
         const set = bySlot.get(slot(gridX, gridY));
@@ -241,8 +267,17 @@ export class SetEditor {
             empty && moving ? 'empty — move here' : CELL_STATE_DESC[state]
           }`,
         };
-      }),
-    }));
+      });
+      const first = cells.find((c) => c.setId !== null);
+      const firstSet = first === undefined ? undefined : bySlot.get(slot(first.gridX, first.gridY));
+      return {
+        code: gridRowLabel(y),
+        priceLabel: firstSet === undefined ? null : formatMoney(firstSet.price),
+        zoneStart: true,
+        tileCount: cells.length,
+        cells,
+      };
+    });
   });
 
   /**

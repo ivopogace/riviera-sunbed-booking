@@ -1,11 +1,4 @@
-import {
-  AA_LARGE,
-  AA_NORMAL,
-  composite,
-  contrastRatio,
-  hexToRgb,
-  rgbToHex,
-} from '../../testing/contrast';
+import { AA_LARGE, AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
@@ -13,6 +6,7 @@ import {
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
+  WASH_STOPS,
   expectAaOverStops,
 } from '../../testing/glass-tokens';
 
@@ -32,8 +26,6 @@ import {
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 // The "Facing the sea" banner: solid white on the restyle's sea teal (shared BeachGridFrame, #672).
 const SEA_BANNER_STOPS = ['#0e7a89', '#0c6675'];
-// The shared canvas's sea→sand wash stops the grid cells now composite over (#672).
-const WASH_STOPS = ['cfeef6', 'e7f5f1', 'f6eedb'].map(hexToRgb);
 // beach-cell.ts: the gap cell's dashed border is a CARD_INK tint at this alpha.
 const GAP_BORDER_ALPHA = 0.55;
 

@@ -22,6 +22,7 @@ import {
   RIVIERA_CHIP,
   RIVIERA_HEADER_GLASS,
   RIVIERA_STOPS,
+  WASH_STOPS,
   WHITE,
   expectAaOverStops,
   surfaceOver,
@@ -63,10 +64,6 @@ const DATE_FIELD_FILL_ALPHA = 0.9;
 
 // --riv-cta-grad stops (theme-invariant) — the failure-panel "Try again" button's white text.
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
-
-/** The sea→sand wash's gradient stops — the opaque, theme-independent backdrops behind every
- *  translucent tile and side chip (`venue-map.html` map scroller, #672). */
-const WASH_STOPS: readonly Rgb[] = ['cfeef6', 'e7f5f1', 'f6eedb'].map(hexToRgb);
 
 // Translucent tile/chip surfaces: ink on `fill`@`alpha`, composited over each wash stop.
 const TILE_SURFACES: readonly {
