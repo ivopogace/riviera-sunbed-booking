@@ -250,11 +250,8 @@ test('a vertical drag pans the wash scroller — rails ride along — and its re
   const wash = page.locator('[data-riv-scroller]').first();
   await expect.poll(() => wash.evaluate((el) => el.scrollHeight > el.clientHeight + 1)).toBe(true);
 
-  // Anchor on a mid-map tile; hover() scrolls it into view, so measure baselines afterwards.
-  const anchor = page
-    .locator('.set-tile')
-    .nth(7 * 20)
-    .locator('button');
+  // Anchor mid-map (row H = 8 of 12); hover() scrolls it into view, so measure baselines afterwards.
+  const anchor = page.getByRole('button', { name: /^Set H11, Row 8/ });
   await anchor.hover();
   const scrollBefore = await wash.evaluate((el) => el.scrollTop);
   const chipYBefore = (await page.getByTestId('row-code').first().boundingBox())!.y;

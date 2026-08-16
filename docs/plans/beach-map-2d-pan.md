@@ -31,8 +31,8 @@ additive gesture enhancement. Context chain: #672 slices 1–2 (PRs #673/#674,
 the issue matches main: four canvas surfaces, three with drag-pan on; only dependabot
 PRs in flight; no Flyway in scope) · `riviera-plan-doc` (this template — forced D-1/D-2/D-3
 to be decided and recorded, not left to the diff) · `tdd` (vertical slices: one
-behavior-spec → implementation per cycle) · `riviera-review-overlay` (review gate — due
-at ready-for-review) · `riviera-docs-freshness` (**ran** pre-push over
+behavior-spec → implementation per cycle) · `riviera-review-overlay` (review gate — ran
+on PR #682 with the `code-review` plugin; 3 minor findings, fixed) · `riviera-docs-freshness` (**ran** pre-push over
 `origin/main...HEAD` — 1 finding: the canvas's own TSDoc said "horizontally pannable";
 patched in the implementation commit; no substrate doc pins the pan to one axis) ·
 `riviera-frontend` (placement — the change stays in `shared/beach-map-canvas`; new e2e
@@ -167,9 +167,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement complete — all local gates green; the PR-time gates (CI per #417, review per pr-gates §1, Sonar per §2) are due when the PR opens
+**Stage pointer:** DONE — merged via PR #682
 
-**Next action:** open the PR for `claude/beach-map-canvas-2d-pan-u3nykc` (deliberately not created in-session — the task did not request one), run the review + Sonar gates there, and close #676 on merge.
+**Next action:** none — slice complete; #676 closes with the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -184,7 +184,18 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-1 | review (`/code-review` on PR #682) | The vertical-overflow predicate (`scrollHeight > clientHeight + 1`) duplicated between the mousedown D-1 gate and the `afterRenderEffect` hint measurement — the two D-1-coupled sites could silently desynchronize | fixed in the review-fix commit — extracted `overflowsVertically()` (type-predicate helper), both sites call it |
+| F-2 | review (`/code-review` on PR #682) | `onViewportMouseMove` re-resolved the wash `viewChild` and double-guarded (`panVertical && wash`) on the drag hot path | fixed in the review-fix commit — the gesture caches `panWash` at mousedown (null when the axis is gated off); `panVertical` folded into it |
+| F-3 | review (`/code-review` on PR #682) + overlay RV-FE-E2E | The vertical-drag e2e anchored via a CSS-class + magic-index locator (`.set-tile` `nth(140)`) where the file's shipped pattern is role locators | fixed in the review-fix commit — role anchor `^Set H11, Row 8` names the row explicitly |
+
+**Review-gate record:** ran on PR #682 via the `code-review` plugin (invocation-ladder
+rung 1, forked execution; single-pass inline — the fork spawns no subagent fan-out, noted
+per the ladder's honesty rule) + the `riviera-review-overlay` RV-FE bank walk. No
+correctness findings; 3 minor cleanups (register above), all fixed and re-verified
+(canvas 14 specs, venue-map-pan + operator-set-editing 10/10, lint/format green).
+**Sonar gate:** quality gate passed on PR #682 — 0 new issues, 0 accepted, 0 hotspots,
+96.7% new-code coverage, 0.0% duplication; the API issue list confirmed empty (re-checked
+after the review-fix push).
 
 ---
 
@@ -302,4 +313,4 @@ Implementation (after the first red): `#washScroller` template ref on the wash d
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [x] Risk register has no stale `open` rows (R-5 is open **by design** — the Sonar gate only exists at PR time); Open Questions empty.
 - [x] **Close-out state committed in the final push** — cites the PR once one exists.
-- [ ] **The review gate ran in full** — due at PR ready-for-review; not claimable in-session without a PR (recorded honestly in Execution status; left unticked per the pr-gates rule).
+- [x] **The review gate ran in full** — the `code-review` plugin executed on PR #682 (ladder rung 1, forked; single-pass inline, no subagent fan-out — declared) + the `riviera-review-overlay` RV-FE walk; 3 minor findings, all fixed and re-verified (Review-gate record above).

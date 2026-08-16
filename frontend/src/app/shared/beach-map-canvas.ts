@@ -124,10 +124,15 @@ export class BeachMapCanvas {
   private panStartY = 0;
   private panStartScroll = 0;
   private panStartScrollTop = 0;
-  /** Whether this gesture pans vertically — the wash scroller overflowed at mousedown. */
-  private panVertical = false;
+  /** The gesture's vertical scroll target — the wash scroller, only while it overflowed at mousedown (D-1). */
+  private panWash: HTMLElement | null = null;
   /** Set when the current gesture crossed the drag threshold; consumed by the next click. */
   private panned = false;
+
+  /** The D-1 gate: the vertical pan axis (and its hint) engages only on actual overflow. */
+  private static overflowsVertically(el: HTMLElement | undefined): el is HTMLElement {
+    return !!el && el.scrollHeight > el.clientHeight + 1;
+  }
 
   constructor() {
     // Re-measure the pan overflow per render (jsdom reads 0 — the hint is proven in e2e).
@@ -135,8 +140,7 @@ export class BeachMapCanvas {
       this.rows();
       const el = this.panViewport()?.nativeElement;
       this.scrollHint.set(!!el && el.scrollWidth > el.clientWidth + 1);
-      const wash = this.washScroller()?.nativeElement;
-      this.vScrollHint.set(!!wash && wash.scrollHeight > wash.clientHeight + 1);
+      this.vScrollHint.set(BeachMapCanvas.overflowsVertically(this.washScroller()?.nativeElement));
     });
 
     // Capture-phase because template bindings bubble — the tile's handler would fire first.
@@ -171,8 +175,8 @@ export class BeachMapCanvas {
     this.panStartX = event.clientX;
     this.panStartY = event.clientY;
     this.panStartScroll = el.scrollLeft;
-    this.panStartScrollTop = wash?.scrollTop ?? 0;
-    this.panVertical = !!wash && wash.scrollHeight > wash.clientHeight + 1;
+    this.panWash = BeachMapCanvas.overflowsVertically(wash) ? wash : null;
+    this.panStartScrollTop = this.panWash?.scrollTop ?? 0;
   }
 
   protected onViewportMouseMove(event: MouseEvent): void {
@@ -181,14 +185,13 @@ export class BeachMapCanvas {
       return;
     }
     const dx = event.clientX - this.panStartX;
-    const dy = this.panVertical ? event.clientY - this.panStartY : 0;
+    const dy = this.panWash ? event.clientY - this.panStartY : 0;
     if (Math.max(Math.abs(dx), Math.abs(dy)) > BeachMapCanvas.PAN_THRESHOLD_PX) {
       this.panned = true;
     }
     el.scrollLeft = this.panStartScroll - dx;
-    const wash = this.washScroller()?.nativeElement;
-    if (this.panVertical && wash) {
-      wash.scrollTop = this.panStartScrollTop - dy;
+    if (this.panWash) {
+      this.panWash.scrollTop = this.panStartScrollTop - dy;
     }
   }
 
