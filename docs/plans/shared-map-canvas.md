@@ -137,9 +137,9 @@ stands in for `feature/shared-map-canvas` (riviera-sdlc remote addendum).
 | **Tourist:** zone chips once per zone; `mt-3` zone gap on all three columns, on the `ul.set-row` itself | **preserved (DOM detail changed)** | Gap moves to a canvas-owned row wrapper `<div>` around the projected `ul` (the canvas owns zone layout); alignment spec updated to query the wrapper — behavior (aligned gaps, one chip per zone) identical |
 | **Tourist:** sea-banner gradient `#0e7a89→#0c6675`; card padding `px-4` | **preserved / changed (cosmetic)** | The unified frame adopts the tourist (restyle) gradient; card padding becomes the frame's `px-[18px]`. No spec/e2e pins either literal on the tourist side; mask/rest-offset coupling (16px ↔ inner `px-4`) is viewport-internal and kept |
 | **Tourist:** scroll hint on overflow; "Tap any free set…" tagline; legend; date picker; dialog flows; availability summary | preserved | Hint is canvas-owned (same copy); tagline projected into the canvas's below-viewport slot; the rest stays in `venue-map.html` untouched |
-| **Editor:** paint one cell per click (keyboard Enter/Space included); drag-paint via `mousedown`+`mouseenter`; paint ends on `mouseup`/`mouseleave` of the grid container | **preserved (paint-end re-homed)** | Cell handlers untouched. The grid container is canvas-owned now, so paint-end becomes a `document:mouseup` host listener — release *anywhere* ends painting (superset of the old grid-scoped end; `mouseleave` no longer needed). Spec's paint-end dispatch updated accordingly |
+| **Editor:** paint one cell per click (keyboard Enter/Space included); drag-paint via `mousedown`+`mouseenter`; paint ends on `mouseup`/`mouseleave` of the grid container | **preserved (paint-end re-homed)** | Cell handlers untouched. The grid container is canvas-owned now, so paint-end becomes a `document:mouseup` host listener — release *anywhere* ends painting; an off-window release is caught by `onCellEnter`'s `event.buttons` disarm (review F-1, the `mouseleave` guard's replacement). Spec's paint-end dispatch updated accordingly |
 | **Editor:** mouse drag = paint, never pan | preserved | The editor sets the canvas's drag-pan opt-out; native touch/trackpad overflow scrolling still works; a drag-across-cells e2e pin is added |
-| **Editor:** visible per-row price string readable by AT | **changed — deliberately** | Prices render as per-zone chips in the canvas's aria-hidden rail. The bulk editor's prices are display of tier defaults / preserved set prices (the Pricing tab owns pricing); sighted parity kept via zone chips. Cell aria-labels unchanged |
+| **Editor:** visible per-row price string readable by AT | **changed — deliberately** | Prices render as **per-row** chips in the canvas's aria-hidden rail (review F-2: every editor row is its own zone, so painting never reflows rows mid-gesture — and the old per-row price display is restored for sighted users). AT loses the price text (prices are tier defaults/preserved display; the Pricing tab owns pricing). Cell aria-labels unchanged |
 | **Editor:** row label `<span>` visible inline per row | **changed (cosmetic)** | Row codes render as canvas rail chips (aria-hidden); each cell's aria-label already carries "Row A position N" so AT loses nothing |
 | **Editor:** empty state ("Generate a layout to begin…") inside the frame | preserved | Canvas renders a fallback `<ng-content>` when `rows` is empty (no rails/wash around nothing) |
 | **Editor:** `LAYOUT_IN_USE`/stale-write/save/reload flows | preserved | Untouched — outside the grid chrome |
@@ -225,9 +225,9 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is).
 
 ## Execution status
 
-**Stage pointer:** review + Sonar gates (PR #674 ready for review)
+**Stage pointer:** review-gate fix round pushed — awaiting CI + Sonar on it
 
-**Next action:** run `/code-review` + the overlay walk; clear the Sonar issue list; merge; close-out.
+**Next action:** verify CI + Sonar green on the fix push, finalize close-out, merge PR #674.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -245,7 +245,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI (phase-4 push) | `beach-cell.spec.ts`'s `PRE_MOVE_CELL_CLASS` no-drift pin still expected the gap border at `/35` after the 1.4.11 darkening to `/55` — the one beach-cell consumer spec the scoped phase-4 run missed | fixed in the phase-5 commit (pin updated + departure documented in its TSDoc) |
+| F-CI-1 | CI (phase-4 push) | `beach-cell.spec.ts`'s `PRE_MOVE_CELL_CLASS` no-drift pin still expected the gap border at `/35` after the 1.4.11 darkening to `/55` — the one beach-cell consumer spec the scoped phase-4 run missed | fixed in the phase-5 commit (pin updated + departure documented in its TSDoc) |
+| F-CI-2 | CI (phase-5 push, repo hygiene) | `beach-cell.spec.ts` in the diff but not in the plan's File structure | fixed in the phase-6 commit |
+| F-1 | review (`/code-review`) | Off-window mouse release left painting armed (`document:mouseup` never fired; the old grid `mouseleave` guard was gone) — bare hover then painted cells | fixed in the review-fix commit — `onCellEnter` disarms when `event.buttons` shows no primary button; spec added |
+| F-2 | review (`/code-review`) | Live price-derived `zoneStart` made zone gaps appear mid drag-paint, reflowing rows under the cursor so the gesture painted the wrong row | fixed in the review-fix commit — every editor row is its own zone (constant rhythm, per-row chips = the old per-row price display); spec pins chip update without gap change |
+| F-3 | review (`/code-review`) | The "Drag … to pan" hint rendered on the editor, where that gesture paints (dragPan off) | fixed in the review-fix commit — hint gated on `scrollHint() && dragPan()`; spec added |
+| F-4 | review (`/code-review`) + overlay RV-FE-5 | `aria-label` on the focusable viewport `div` is prohibited on role=generic — the daily view regressed from `<section aria-label>` (named region) | fixed in the review-fix commit — `role="region"` applied whenever `viewportLabel` is set; spec extended |
+| F-5 | review (`/code-review`) | Three copies of the `zoneStart` derivation; suggested canvas-owned derivation from `priceLabel` | **declined with rationale** — after F-2 the three derivations legitimately differ (tourist: money equality; daily: label equality; editor: constant `true`), so a canvas-owned rule would need exactly the mode flag this slice forbids; the contract field stays |
 
 ---
 

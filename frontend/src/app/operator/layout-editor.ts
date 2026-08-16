@@ -173,20 +173,24 @@ export class LayoutEditor {
    */
   private readonly priceByCoord = new Map<string, MoneyView>();
 
-  /** The display rows on the shared canvas's contract: row code, per-zone price, and the cells. */
-  protected readonly displayRows = computed<readonly LayoutRow[]>(() => {
-    const prices = this.grid().map((row, y) => this.rowPriceStr(row, y) || null);
-    return this.grid().map((row, y) => ({
+  /**
+   * The display rows on the shared canvas's contract. Every row is a zone of its own
+   * (`zoneStart: true`): painting a tier re-prices a row live, and price-derived zones would
+   * insert/remove zone gaps mid drag-gesture, shifting rows under the cursor (#674 F-2) — constant
+   * per-row chips also restore the old editor's per-row price display.
+   */
+  protected readonly displayRows = computed<readonly LayoutRow[]>(() =>
+    this.grid().map((row, y) => ({
       code: gridRowLabel(y),
-      priceLabel: prices[y],
-      zoneStart: y === 0 || prices[y] !== prices[y - 1],
+      priceLabel: this.rowPriceStr(row, y) || null,
+      zoneStart: true,
       tileCount: row.length,
       cells: row.map((state, x) => ({
         state,
         label: `Row ${gridRowLabel(y)} position ${x + 1}, ${CELL_STATE_DESC[state]}`,
       })),
-    }));
-  });
+    })),
+  );
 
   /** The four paint tools with live cell counts (design order). */
   protected readonly tools = computed(() => {
@@ -346,10 +350,16 @@ export class LayoutEditor {
     this.paintCell(r, c);
   }
 
-  protected onCellEnter(r: number, c: number): void {
-    if (this.painting) {
-      this.paintCell(r, c);
+  protected onCellEnter(r: number, c: number, event: MouseEvent): void {
+    if (!this.painting) {
+      return;
     }
+    // An off-window release fires no document mouseup — disarm when no button is held (#674 F-1).
+    if ((event.buttons & 1) === 0) {
+      this.painting = false;
+      return;
+    }
+    this.paintCell(r, c);
   }
 
   protected onPaintEnd(): void {

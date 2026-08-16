@@ -197,9 +197,9 @@ describe('LayoutEditor (#172)', () => {
     byId('layout-tool-gap').click();
     fixture.detectChanges();
 
-    cells()[0].dispatchEvent(new MouseEvent('mousedown'));
-    cells()[1].dispatchEvent(new MouseEvent('mouseenter'));
-    cells()[2].dispatchEvent(new MouseEvent('mouseenter'));
+    cells()[0].dispatchEvent(new MouseEvent('mousedown', { buttons: 1 }));
+    cells()[1].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    cells()[2].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
     // Painting ends on release anywhere — the paint-end listener is document-level (#672 slice 2).
     document.dispatchEvent(new MouseEvent('mouseup'));
     fixture.detectChanges();
@@ -208,6 +208,47 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()[1].getAttribute('data-state')).toBe('gap');
     expect(cells()[2].getAttribute('data-state')).toBe('gap');
     expect(cells()[3].getAttribute('data-state')).toBe('premium'); // not dragged over (row A = premium)
+  });
+
+  it('disarms painting when the mouse re-enters with no button held (off-window release)', () => {
+    render();
+    generate('1', '4');
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+
+    // An off-window release fires no document mouseup; hovering back must not paint (F-1).
+    cells()[0].dispatchEvent(new MouseEvent('mousedown', { buttons: 1 }));
+    cells()[1].dispatchEvent(new MouseEvent('mouseenter', { buttons: 0 }));
+    cells()[2].dispatchEvent(new MouseEvent('mouseenter', { buttons: 0 }));
+    fixture.detectChanges();
+
+    expect(cells()[1].getAttribute('data-state')).toBe('premium');
+    expect(cells()[2].getAttribute('data-state')).toBe('premium');
+  });
+
+  it('marks every row a zone of its own: per-row price chips, no reflow while painting (#674 F-2)', () => {
+    render();
+    generate('2', '3');
+    fixture.detectChanges();
+
+    // Row A €35 premium, row B €20 standard — a chip per row, like the old per-row prices.
+    const prices = [...host.querySelectorAll<HTMLElement>('[data-testid="row-price"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    expect(prices).toEqual(['€35', '€20']);
+
+    // Painting B1 premium re-prices row B; the chip updates but no zone gap appears or moves.
+    const gapsBefore = host.querySelectorAll('[data-map-row].mt-3').length;
+    byId('layout-tool-premium').click();
+    fixture.detectChanges();
+    cells()[3].click();
+    fixture.detectChanges();
+    expect(
+      [...host.querySelectorAll<HTMLElement>('[data-testid="row-price"]')].map((n) =>
+        n.textContent?.trim(),
+      ),
+    ).toEqual(['€35', '€35']);
+    expect(host.querySelectorAll('[data-map-row].mt-3').length).toBe(gapsBefore);
   });
 
   it('exposes an accessible per-cell label naming row, position and state', () => {

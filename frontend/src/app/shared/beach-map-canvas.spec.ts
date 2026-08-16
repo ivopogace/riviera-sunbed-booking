@@ -1,5 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from './beach-map-canvas';
 
@@ -180,11 +181,32 @@ describe('BeachMapCanvas (#672)', () => {
     expect(component.taps).toEqual(['A1']);
   });
 
-  it('carries the viewport contract: testid, tabindex and accessible name on the scrolling element', () => {
+  it('carries the viewport contract: testid, tabindex, accessible name and a named-region role', () => {
     const { host } = render();
     const vp = viewport(host);
     expect(vp.getAttribute('tabindex')).toBe('0');
     expect(vp.getAttribute('aria-label')).toBe('Beach map');
+    // aria-label is prohibited on role=generic — a labelled viewport must be a named region (#674 F-4).
+    expect(vp.getAttribute('role')).toBe('region');
+  });
+
+  it('shows the pan hint only where drag actually pans (never on a dragPan-off surface)', () => {
+    const fixture = TestBed.createComponent(CanvasHost);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const canvas = fixture.debugElement.query(By.directive(BeachMapCanvas))
+      .componentInstance as BeachMapCanvas;
+    const forceHint = canvas as unknown as { scrollHint: { set(v: boolean): void } };
+
+    forceHint.scrollHint.set(true);
+    fixture.detectChanges();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeTruthy();
+
+    fixture.componentInstance.dragPan.set(false);
+    forceHint.scrollHint.set(true);
+    fixture.detectChanges();
+    // "Drag … to pan" would instruct the wrong (paint) gesture on a dragPan-off surface (#674 F-3).
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
   });
 
   it('projects the footer slot below the viewport and hides it with the grid when empty', () => {

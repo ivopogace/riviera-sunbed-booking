@@ -31,6 +31,7 @@
           [class.cursor-grab]="dragPan()"
           [attr.tabindex]="viewportTabindex()"
           [attr.aria-label]="viewportLabel() || null"
+          [attr.role]="viewportLabel() ? 'region' : null"
           (mousedown)="onViewportMouseDown($event)"
           (mousemove)="onViewportMouseMove($event)"
           (mouseup)="onViewportMouseUp()"
@@ -67,7 +68,7 @@
       </div>
     </div>
 
-    @if (scrollHint()) {
+    @if (scrollHint() && dragPan()) {
       <p
         class="text-center text-[12px] font-semibold text-(--riv-accent-ink) mt-3"
         data-testid="scroll-hint"
