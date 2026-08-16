@@ -2,10 +2,12 @@
  * Liquid Glass design tokens (design: the v2 tourist export, superseded in-repo by
  * docs/design/riviera-sunbeds-liquid-glass-v3.dc.html — every "(design: …)" note below cites it).
  *
- * Themes are CSS custom properties scoped by `data-riv-theme` on <html> — the attribute is
- * written only by core/theme.ts. Components consume tokens, never palette literals; a palette
- * change is one block here + one row in core/theme.ts. The set is fixed at these two — one
- * dark, one light — the full set by deliberate decision, not planned to grow.
+ * Themes are CSS custom properties scoped by `data-riv-theme` on <html> — at runtime the
+ * attribute is written only by core/theme.ts; the index.html inline seed pre-paints the same
+ * value before Angular boots (drift-pinned by theme-boot.spec.ts). Components consume tokens,
+ * never palette literals; a palette change is one block here + one row in core/theme.ts. The set
+ * is fixed at these two — one dark, one light — the full set by deliberate decision, not planned
+ * to grow.
  *
  * Deviation from the design file, on purpose: the riviera header glass is a DARK tint
  * (design: white 0.13) because white ink on the gradient's light top stops fails WCAG AA;
