@@ -170,6 +170,12 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'FREE');
   await expect(page.locator('[data-set-id="2"]')).toHaveAttribute('data-state', 'BOOKED_ONLINE');
 
+  // Every tile shows its position number beside the state glyph — the walk-in affordance (#686).
+  const visibleTileText = (setId: number) =>
+    page.locator(`[data-set-id="${setId}"] > [aria-hidden="true"]`);
+  await expect(visibleTileText(1)).toHaveText(['1']);
+  await expect(visibleTileText(2)).toHaveText(['●', '2']);
+
   // The UNPAID hold (set 4, no confirmed booking) is locked — never a tappable walk-in ✓.
   await expect(page.locator('[data-set-id="4"]')).toHaveAttribute('data-state', 'BOOKED_ONLINE');
 
@@ -186,6 +192,7 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   // Tap the free set 1 → mark walk-in; after the reconcile it stays walk-in marked.
   await page.locator('[data-set-id="1"]').click();
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'STAFF_MARKED');
+  await expect(visibleTileText(1)).toHaveText(['✓', '1']);
 });
 
 test('checks a guest in by QR scan — single-use, announced, and the row stays flagged (#583)', async ({

@@ -487,15 +487,16 @@ export class DailyViewTab {
     return formatMoney(amount);
   }
 
-  /** The tile glyph: a check for a staff mark, a dot when locked, else the price. */
-  protected tileGlyph(set: SetView): string {
+  /** The state glyph shown beside the position number: a check for a staff mark, a dot when
+   *  locked, none when free — state stays glyph + fill, never colour alone. */
+  protected stateGlyph(set: SetView): string | undefined {
     switch (this.stateOf(set)) {
       case 'STAFF_MARKED':
         return '✓';
       case 'BOOKED_ONLINE':
         return '●';
       default:
-        return this.money(set.price);
+        return undefined;
     }
   }
 

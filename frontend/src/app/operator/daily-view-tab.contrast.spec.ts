@@ -21,15 +21,18 @@ import {
  * mini-label uses `--riv-card-ink-faint` (0.72); the write-failure notice + load-error use `#a3160e`.
  * The arrival-code chip ink (`--riv-card-ink`) sits over `--riv-chip-bg` over the card glass.
  * Since #672 slice 2 the grid sits on the shared canvas's sea→sand wash (rail-chip inks proven in
- * `venue-map.contrast.spec.ts`): the FREE tile's glyph is the *visible price*, so it is proven AA
- * composited over the wash's worst-case stops; the locked tile's `●` stays `aria-hidden` decorative
- * (its state is carried by sr-only text), and the filled STAFF_MARKED tile — white glyph on the
- * `#0a6e85` teal, also its legend swatch — is wash-independent. Values mirror the template +
- * `styles.scss`; a token edit there must re-pass here.
+ * `venue-map.contrast.spec.ts`); since #686 every tile's visible text is its *position number*.
+ * The FREE tile's number is proven AA composited over the wash's worst-case stops; the locked
+ * tile's number is proven over its striped fill's worst case, the darker stripe (the `●` beside it
+ * stays `aria-hidden` decorative — state is carried by sr-only text); the filled STAFF_MARKED
+ * tile — white text on the `#0a6e85` teal, also its legend swatch — is wash-independent. Values
+ * mirror the template + `styles.scss`; a token edit there must re-pass here.
  */
 
 // The FREE tile fill (`bg-white/85`, daily-view-tab.ts tileClass).
 const FREE_TILE_FILL = { color: WHITE, alpha: 0.85 };
+// The locked tile's worst-case fill: the striped gradient's darker rgba(12,42,51,0.28) band.
+const LOCKED_STRIPE_FILL = { color: CARD_INK, alpha: 0.28 };
 
 describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
   it('headings + labels + arrivals + availability counts (--riv-card-ink) meet AA on the card glass', () => {
@@ -62,8 +65,12 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
     expect(contrastRatio('#ffffff', '#0a6e85')).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
-  it('the FREE tile price glyph (--riv-card-ink on white/85) meets AA over every wash stop (#672)', () => {
+  it('the FREE tile position number (--riv-card-ink on white/85) meets AA over every wash stop (#686)', () => {
     expectAaOverStops(INK_DARK, 1, FREE_TILE_FILL, WASH_STOPS);
+  });
+
+  it('the locked-tile position number (--riv-card-ink) meets AA over the dark stripe on every wash stop (#686)', () => {
+    expectAaOverStops(INK_DARK, 1, LOCKED_STRIPE_FILL, WASH_STOPS);
   });
 
   it('the write-failure notice + load-error ink (#a3160e) meet AA over every porcelain stop', () => {

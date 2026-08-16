@@ -129,6 +129,19 @@ describe('DailyViewTab (#175)', () => {
     expect(tile(2).tagName).toBe('SPAN');
   });
 
+  it('shows each set’s position number on its tile, beside the state glyph (#686)', () => {
+    render();
+    // Visible tile text only — the locked tile also carries an sr-only state label.
+    const visible = (setId: number): string =>
+      [...tile(setId).querySelectorAll('[aria-hidden="true"]')]
+        .map((s) => s.textContent?.trim())
+        .join(' ');
+    expect(visible(1)).toBe('1'); // FREE: the number alone — the zone rail carries the price
+    expect(visible(3)).toBe('✓ 3'); // STAFF_MARKED: state glyph + number
+    expect(visible(2)).toBe('● 2'); // BOOKED_ONLINE: state glyph + number
+    expect(visible(4)).toBe('1'); // B1 — the position number, never the set id
+  });
+
   it('fills the canvas-owned row height with tiles, never a height mechanism of its own (#685)', () => {
     render();
     expectCellsFillCanvasRow(host, '[data-testid="daily-tile"]');
