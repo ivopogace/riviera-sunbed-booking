@@ -26,7 +26,8 @@ import {
  * modal that floats over a dark scrim + the theme background, so every pair is the EFFECTIVE
  * colour: the panel glass composited over the theme's worst-case gradient stops, then each ink
  * composited over that (the `venue-map.contrast.spec.ts` pattern). This table mirrors every
- * text-bearing token in `booking-dialog.scss`.
+ * text-bearing colour in `booking-dialog.ts`'s inline template (Tailwind utilities since #679);
+ * a colour edit there must re-pass here.
  *
  * Deviations from the design file, on purpose: the gradient header
  * uses the AA-safe `--riv-cta-grad` teal with SOLID white ink (the design's brighter teal + opacity

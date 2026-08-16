@@ -178,10 +178,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement DONE — awaiting the PR review gate
+**Stage pointer:** merge close-out — merged via PR #691
 
-**Next action:** open/review the PR for this branch; the review gate
-(`riviera-review-overlay` + the pr-gates ladder) runs on the diff.
+**Next action:** none — slice complete (post-merge items are GitHub-only: issue #679
+auto-closes via the PR; no parent epic).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -199,6 +199,8 @@ before/after diff (the normalized diff was otherwise empty), each argued benign:
 |---|---|---|---|
 | F-1 | Phase-3 diff | Tailwind representation deltas: `--tw-*`/theme custom props now enumerate in computed style; `box-shadow` carries fully-transparent zero-size placeholder layers from the var chain; `rounded-full` computes `calc(infinity*1px)` where SCSS said `999px` (both clamp to the half-box). Normalized in the diff as documented-benign; where an exact twin was cheap the utility mirrors it instead (`rounded-[50%]`, side-scoped `border-b-(--riv-card-track)`, arbitrary `[transform:…]` over `translate-*`) | closed — no rendered difference |
 | F-2 | Phase-3 diff | `sum-row.total` `border-bottom-style` reads `solid` (preflight's `border: 0 solid`) where SCSS `border-bottom: 0` read `none` — width is `0px` on both sides, never painted | closed — no rendered difference |
+| F-4 | review gate (PR #691) | Two doc-staleness findings: `booking-dialog.contrast.spec.ts` + `home.contrast.spec.ts` headers still pointed at the deleted/reduced SCSS as what their tables mirror; repointed at the inline template / `home.html` utilities. The gate ran via the code-review skill (invocation-ladder rung 1) with `riviera-review-overlay`; single-pass inline (no subagent fan-out available in-session), declared in the PR. Zero correctness/a11y/invariant findings | fixed in the close-out commit of PR #691 |
+| F-5 | sonar gate (PR #691) | Quality Gate passed; API-verified lists: 0 new issues, 0 hotspots, 0.0% duplication, 100% coverage on new code | closed |
 | F-3 | Phase-3 diff | step-2 snapshot caught `.btn-primary` `filter` mid hover-transition (`brightness(1)` vs `1.06`) — a capture-timing race: the pointer rests on the button after the Continue click on both sides; the settled 400ms hover probe reads `brightness(1.06)` with `transition: filter 0.15s` identically before and after | closed — capture artifact, not drift |
 
 ---
@@ -212,6 +214,8 @@ before/after diff (the normalized diff was otherwise empty), each argued benign:
 - `frontend/src/app/booking/booking-dialog.ts` — utilities in the inline template + host class; `styleUrl` removed; `appFieldGlass` import.
 - `frontend/src/app/booking/booking-dialog.scss` — deleted.
 - `.claude/skills/riviera-tailwind/SKILL.md` — remaining-SCSS inventory refreshed (10→9 files, 6→5 in `booking/`; docs-freshness finding).
+- `frontend/src/app/booking/booking-dialog.contrast.spec.ts` — header repointed at the inline template (review finding F-4; assertions untouched).
+- `frontend/src/app/pages/home/home.contrast.spec.ts` — header + geometry comment repointed at `home.html`/`styles.scss` (review finding F-4; assertions untouched).
 
 (The baseline scratch spec lives behind `.git/info/exclude` and is never committed.)
 
@@ -292,5 +296,5 @@ before/after diff (the normalized diff was otherwise empty), each argued benign:
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing merged via PR #691.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 (rung 1: the code-review skill executed, medium effort; single-pass inline — the caveat is declared in the PR) *plus* `riviera-review-overlay` (frontend bank; findings F-4 fixed).

@@ -35,8 +35,8 @@ import {
  * alpha inks composited over that result (the `app.contrast.spec.ts` pattern).
  * Shared token mirrors + the AA-over-stops loop live in `testing/glass-tokens.ts`.
  *
- * This table mirrors every text-bearing token in `styles.scss` + `home.scss`; a token edit
- * there must re-pass here. Deviations from the design file, on purpose (the same
+ * This table mirrors every text-bearing colour in `styles.scss` + `home.html`'s utilities
+ * (since #679 `home.scss` holds only the hero scrim); an edit there must re-pass here. Deviations from the design file, on purpose (the same
  * class as the shell header's): the list-state panels (and, in the riviera theme, the hero) sit on
  * the AA-proven header glass instead of the bare gradient — the porcelain hero matches the
  * design (bare dark ink); the riviera card glass is 0.78 (design 0.55); the muted
@@ -214,7 +214,7 @@ describe('Discover photo-area contrast (theme-independent, issue #135; real phot
   });
 
   it('location overlay (white) meets AA over the weakest scrim under the text band, over any photo', () => {
-    // Geometry (kept true by home.scss + styles.scss): the photo is 150px; the scrim
+    // Geometry (kept true by home.html's utilities + styles.scss): the photo is 150px; the scrim
     // reaches alpha 0.68 at its 75% stop (y = 112.5px); the overlay text (bottom: 13px,
     // explicit 15px line box) occupies y ≈ 122–137px — entirely below the 0.68 stop, so
     // 0.68 is a floor with margin. History: #135 review raised the design curve (~0.35 under
