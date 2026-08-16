@@ -2,6 +2,7 @@
   @if (rows().length > 0) {
     <!-- The sea→sand wash: aqua at the sea banner fading to warm sand at the promenade, fixed to the viewport of the vertical scroller so "the water is up there" reads at any scroll depth. -->
     <div
+      #washScroller
       class="overflow-y-auto overflow-x-hidden max-h-[532px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-[18px] px-[18px] -mt-3.5 pt-3.5 pb-3 bg-[linear-gradient(180deg,#cfeef6_0%,#e7f5f1_55%,#f6eedb_100%)]"
       data-riv-scroller
     >
@@ -21,7 +22,7 @@
           }
         </div>
 
-        <!-- Center: the horizontally pannable tile grid (mouse drag; touch scrolls natively). The edge fade + inner padding + scroll-pl apply only while the grid actually overflows (.pannable ← scrollHint()), so a non-overflowing map never fades tile column 1 and a snapped tile rests past the 16px fade, not inside it. -->
+        <!-- Center: the pannable tile grid (2D mouse drag — vertical rides the wash scroller when it overflows; touch scrolls natively). The edge fade + inner padding + scroll-pl apply only while the grid actually overflows horizontally (.pannable ← scrollHint()), so a non-overflowing map never fades tile column 1 and a snapped tile rests past the 16px fade, not inside it. -->
         <div
           #canvasViewport
           class="group overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] flex-1 min-w-0 select-none snap-x snap-proximity [&.pannable]:scroll-pl-4 [&.pannable]:[mask-image:linear-gradient(90deg,transparent,black_16px,black_calc(100%-16px),transparent)]"
@@ -68,7 +69,7 @@
       </div>
     </div>
 
-    @if (scrollHint() && dragPan()) {
+    @if ((scrollHint() || vScrollHint()) && dragPan()) {
       <p
         class="text-center text-[12px] font-semibold text-(--riv-accent-ink) mt-3"
         data-testid="scroll-hint"

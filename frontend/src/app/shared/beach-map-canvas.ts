@@ -62,14 +62,18 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
  * Daily view and the per-set editor repeat around their tiles — the {@link BeachGridFrame}
  * chrome, the sea→sand wash
  * on the vertical scroller, the aria-hidden row-code and per-zone price rails, the zone-gap
- * layout, and the horizontally pannable viewport (mouse drag + scroll snap + edge fade, all
- * gated on actual overflow via `.pannable`). Tile rows are projected via
+ * layout, and the pannable viewport (2D mouse drag + horizontal scroll snap + edge fade, the
+ * horizontal chrome gated on actual overflow via `.pannable`). A drag pans horizontally via
+ * the viewport's `scrollLeft` and — whenever the wash scroller actually overflows — vertically
+ * via its `scrollTop`; on a short map the vertical axis stays inert, so a sloppy tap never
+ * loses its click. Tile rows are projected via
  * {@link BeachMapRowDef}, so each surface keeps its own tile vocabulary and interaction —
  * the canvas shares the chrome, never the behavior.
  *
- * <p>A drag past the 6px threshold is a pan: the canvas swallows the one pointer click that
- * ends it (capture phase, consume-once) so a pan release never activates a tile, while a
- * keyboard activation (`detail === 0`) is never swallowed. A surface whose mouse-drag gesture
+ * <p>A drag past the 6px threshold on either axis is a pan: the canvas swallows the one
+ * pointer click that ends it (capture phase, consume-once) so a pan release never activates
+ * a tile, while a keyboard activation (`detail === 0`) is never swallowed. A surface whose
+ * mouse-drag gesture
  * means something else (the editor paints by drag) opts out via `dragPan` — native touch and
  * trackpad scrolling still work. The rails are aria-hidden by design: every surface's tile
  * accessible names already carry the row and (where it matters) the price.
@@ -107,15 +111,28 @@ export class BeachMapCanvas {
 
   /** The horizontal pan viewport, present only while rows render. */
   private readonly panViewport = viewChild<ElementRef<HTMLElement>>('canvasViewport');
+  /** The vertical wash scroller wrapping the rails and the viewport; the 2D pan's y-axis target. */
+  private readonly washScroller = viewChild<ElementRef<HTMLElement>>('washScroller');
   /** True when the tile grid is wider than its viewport (drag hint + edge fade + snap padding). */
   protected readonly scrollHint = signal(false);
+  /** True when the rows outgrow the wash scroller's height cap (drag hint only — no fade/snap). */
+  protected readonly vScrollHint = signal(false);
 
   // --- pan gesture state (imperative; not rendered) ---
   private panPointerDown = false;
   private panStartX = 0;
+  private panStartY = 0;
   private panStartScroll = 0;
+  private panStartScrollTop = 0;
+  /** The gesture's vertical scroll target — the wash scroller, only while it overflowed at mousedown (D-1). */
+  private panWash: HTMLElement | null = null;
   /** Set when the current gesture crossed the drag threshold; consumed by the next click. */
   private panned = false;
+
+  /** The D-1 gate: the vertical pan axis (and its hint) engages only on actual overflow. */
+  private static overflowsVertically(el: HTMLElement | undefined): el is HTMLElement {
+    return !!el && el.scrollHeight > el.clientHeight + 1;
+  }
 
   constructor() {
     // Re-measure the pan overflow per render (jsdom reads 0 — the hint is proven in e2e).
@@ -123,6 +140,7 @@ export class BeachMapCanvas {
       this.rows();
       const el = this.panViewport()?.nativeElement;
       this.scrollHint.set(!!el && el.scrollWidth > el.clientWidth + 1);
+      this.vScrollHint.set(BeachMapCanvas.overflowsVertically(this.washScroller()?.nativeElement));
     });
 
     // Capture-phase because template bindings bubble — the tile's handler would fire first.
@@ -151,10 +169,14 @@ export class BeachMapCanvas {
     if (!el || !this.dragPan()) {
       return;
     }
+    const wash = this.washScroller()?.nativeElement;
     this.panPointerDown = true;
     this.panned = false;
     this.panStartX = event.clientX;
+    this.panStartY = event.clientY;
     this.panStartScroll = el.scrollLeft;
+    this.panWash = BeachMapCanvas.overflowsVertically(wash) ? wash : null;
+    this.panStartScrollTop = this.panWash?.scrollTop ?? 0;
   }
 
   protected onViewportMouseMove(event: MouseEvent): void {
@@ -163,10 +185,14 @@ export class BeachMapCanvas {
       return;
     }
     const dx = event.clientX - this.panStartX;
-    if (Math.abs(dx) > BeachMapCanvas.PAN_THRESHOLD_PX) {
+    const dy = this.panWash ? event.clientY - this.panStartY : 0;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) > BeachMapCanvas.PAN_THRESHOLD_PX) {
       this.panned = true;
     }
     el.scrollLeft = this.panStartScroll - dx;
+    if (this.panWash) {
+      this.panWash.scrollTop = this.panStartScrollTop - dy;
+    }
   }
 
   protected onViewportMouseUp(): void {
