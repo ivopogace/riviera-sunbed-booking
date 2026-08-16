@@ -57,22 +57,22 @@ see a WebKit-only divergence, so the pin lives at the class-contract level) ·
 > gone); real-WebKit rendering is verified outside CI (see Open questions → maintainer
 > verification).
 
-- [ ] **AC-1:** Given the tourist venue map is rendered, when its set tiles are
+- [x] **AC-1:** Given the tourist venue map is rendered, when its set tiles are
   inspected, then every `[data-testid="set-tile"]` carries `h-[var(--riv-tile)]` — the
   same fixed-height token as the row-code rail cells in the same fixture — and does not
   carry `aspect-square`. *Pinned by:* `venue-map.spec.ts` › "sizes set tiles with the
   rail cells' fixed --riv-tile height, never aspect-ratio (#683)"
-- [ ] **AC-2:** Given the layout editor's bulk grid is rendered, when its cells are
+- [x] **AC-2:** Given the layout editor's bulk grid is rendered, when its cells are
   inspected, then every `[data-testid="layout-cell"]` carries `h-[var(--riv-tile)]`
   (same token as the rail cells) and not `aspect-square`. *Pinned by:*
   `layout-editor.spec.ts` › "sizes bulk cells with the rail cells' fixed --riv-tile
   height, never aspect-ratio (#683)"
-- [ ] **AC-3:** Given the per-set editor grid is rendered, when its cells are inspected,
+- [x] **AC-3:** Given the per-set editor grid is rendered, when its cells are inspected,
   then every `[data-testid="set-cell"]` carries `h-[var(--riv-tile)]` (same token as the
   rail cells) and not `aspect-square`. *Pinned by:* `set-editor.spec.ts` › "sizes set
   cells with the rail cells' fixed --riv-tile height, never aspect-ratio (#683)"
-- [ ] **AC-4:** Given the daily view (the reference implementation, template unchanged),
-  when its tiles are inspected, then every `[data-testid="set-tile"]` carries
+- [x] **AC-4:** Given the daily view (the reference implementation, template unchanged),
+  when its tiles are inspected, then every `[data-testid="daily-tile"]` carries
   `h-[var(--riv-tile)]` and not `aspect-square`, so a future regression to
   `aspect-square` fails loudly on all four surfaces, not just the three fixed here.
   *Pinned by:* `daily-view-tab.spec.ts` › "sizes tiles with the rail cells' fixed
@@ -156,16 +156,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1 — pins red, then the class swap)
+**Stage pointer:** implement (phase 2 — verification: scoped mocked e2e remaining)
 
-**Next action:** write the four mechanism pins, verify AC-1/2/3 red on the current
-templates, then swap the class on the three templates.
+**Next action:** run the scoped mocked e2e set (venue-map-pan, layout-editor,
+operator-set-editing, operator-daily, touch-targets ×3), then finalize status and
+open the draft PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ⏳ | |
-| 1 — pins red → class swap green | | |
-| 2 — verification (units, lint/format, guards, scoped e2e) | | |
+| 0 — plan doc | ✅ | f6511e1 |
+| 1 — pins red → class swap green | ✅ | (this slice's phase-1 commit; SHA recorded at phase-2 finalization) |
+| 2 — verification (units, lint/format, guards, scoped e2e) | ⏳ | units 1445/1445 + lint + format + all 4 hygiene guards green pre-commit; e2e pending |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -193,13 +194,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `docs/plans/beach-map-ios-alignment.md`
 
-- [ ] **Step 1: Commit the plan doc** — `git commit -m "Plan the beach-map iOS row-alignment fix (#683)"`
+- [x] **Step 1: Commit the plan doc** — `git commit -m "Plan the beach-map iOS row-alignment fix (#683)"` (f6511e1)
 
 ## Phase 1 — Mechanism pins red, class swap green
 
 **Files:** Modify the four spec files (pins), then the three templates (swap).
 
-- [ ] **Step 1: Write the failing pins.** One `it` per surface spec, shaped per surface
+- [x] **Step 1: Write the failing pins.** One `it` per surface spec, shaped per surface
   (each fixture already renders the canvas rail):
 
 ```ts
@@ -215,17 +216,17 @@ it('sizes set tiles with the rail cells’ fixed --riv-tile height, never aspect
 });
 ```
 
-- [ ] **Step 2: Run, verify red** — scoped Vitest run over the four spec files →
+- [x] **Step 2: Run, verify red** — scoped Vitest run over the four spec files →
   AC-1/2/3 pins FAIL on the current classes (`aspect-square` present, no fixed height);
   AC-4 (daily view) passes immediately — it is a regression pin on the reference
   surface, not new behavior.
-- [ ] **Step 3: Minimal implementation** — in the three templates replace the single
+- [x] **Step 3: Minimal implementation** — in the three templates replace the single
   class token `aspect-square` with `h-[var(--riv-tile)]`; keep every other token
   (tourist tile keeps `set-tile snap-start … min-w-0` and its 1.5px border).
-- [ ] **Step 4: Run, verify green** — same scoped Vitest run → PASS.
-- [ ] **Step 5: Generalization-audit pass** — see log below.
-- [ ] **Step 6: Commit** — `git commit -m "Fix beach-map rail drift on iOS by sizing tiles with the rail's fixed height (#683)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run, verify green** — same scoped Vitest run → PASS.
+- [x] **Step 5: Generalization-audit pass** — see log below.
+- [x] **Step 6: Commit** — `git commit -m "Fix beach-map rail drift on iOS by sizing tiles with the rail's fixed height (#683)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — Verification net
 

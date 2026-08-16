@@ -161,6 +161,23 @@ describe('VenueMap', () => {
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(24);
   });
 
+  it('sizes set tiles with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+
+    // iOS WebKit resolves an aspect-ratio-derived height a couple px off the rail's fixed height per row.
+    const rails = [...el().querySelectorAll('[data-testid="row-code"]')].map(
+      (chip) => chip.parentElement!,
+    );
+    const tiles = [...el().querySelectorAll('[data-testid="set-tile"]')];
+    expect(rails.length).toBeGreaterThan(0);
+    expect(tiles.length).toBeGreaterThan(0);
+    for (const cell of [...rails, ...tiles]) {
+      expect(cell.classList.contains('h-[var(--riv-tile)]')).toBe(true);
+      expect(cell.classList.contains('aspect-square')).toBe(false);
+    }
+  });
+
   it('renders the cover banner photo when present, keeping the scrim; no "coming soon" pill either way (#142)', async () => {
     venueRequest().flush({
       ...miramar(),

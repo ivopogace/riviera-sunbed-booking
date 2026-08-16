@@ -128,6 +128,21 @@ describe('DailyViewTab (#175)', () => {
     expect(tile(2).tagName).toBe('SPAN');
   });
 
+  it('sizes tiles with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', () => {
+    render();
+
+    const rails = Array.from(host.querySelectorAll<HTMLElement>('[data-testid="row-code"]')).map(
+      (chip) => chip.parentElement!,
+    );
+    const tiles = Array.from(host.querySelectorAll<HTMLElement>('[data-testid="daily-tile"]'));
+    expect(rails.length).toBeGreaterThan(0);
+    expect(tiles.length).toBeGreaterThan(0);
+    for (const cell of [...rails, ...tiles]) {
+      expect(cell.classList.contains('h-[var(--riv-tile)]')).toBe(true);
+      expect(cell.classList.contains('aspect-square')).toBe(false);
+    }
+  });
+
   it('locks an unpaid online hold — server state wins over the confirmed-bookings list (#207)', () => {
     // Set 3: claimed BOOKED_ONLINE, unpaid, absent from bookings — the old derivation showed ✓.
     render(SEED, BOOKINGS, [

@@ -133,6 +133,21 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-generate').textContent).toContain('6');
   });
 
+  it('sizes bulk cells with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', () => {
+    render();
+    generate('2', '3');
+
+    const rails = Array.from(host.querySelectorAll<HTMLElement>('[data-testid="row-code"]')).map(
+      (chip) => chip.parentElement!,
+    );
+    expect(rails.length).toBeGreaterThan(0);
+    expect(cells().length).toBeGreaterThan(0);
+    for (const cell of [...rails, ...cells()]) {
+      expect(cell.classList.contains('h-[var(--riv-tile)]')).toBe(true);
+      expect(cell.classList.contains('aspect-square')).toBe(false);
+    }
+  });
+
   it('asks for confirmation before regenerating over an existing grid, then replaces', () => {
     render();
     generate('2', '2'); // 4 cells
