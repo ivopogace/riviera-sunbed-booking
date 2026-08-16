@@ -116,10 +116,10 @@ The old surface is the set-editor's bare-frame grid block (`set-editor.html` lin
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Scroller/testid coupling: `set-grid` must name the element that actually overflows or `touch-targets.e2e.ts:121-128` fails / passes vacuously | med | med | `viewportTestid="set-grid"` (the canvas input built for exactly this, #674 R-4); run the per-set touch-targets test in phase 1 | this slice | open |
-| R-2 | Canvas hosted in the `lg:grid-cols-[300px_1fr]` `1fr` track keeps `min-width: auto` and blows the column out instead of scrolling (the #674 generalization-audit mechanism — this site did not exist when that audit ran) | high | med | `min-w-0` on the map-column wrapper; verified by the existing page-overflow e2e pin + the phase-2 screenshots | this slice | open |
+| R-1 | Scroller/testid coupling: `set-grid` must name the element that actually overflows or `touch-targets.e2e.ts:121-128` fails / passes vacuously | med | med | `viewportTestid="set-grid"` (the canvas input built for exactly this, #674 R-4); run the per-set touch-targets test in phase 1 | this slice | closed — phase 2 (touch-targets per-set green) |
+| R-2 | Canvas hosted in the `lg:grid-cols-[300px_1fr]` `1fr` track keeps `min-width: auto` and blows the column out instead of scrolling (the #674 generalization-audit mechanism — this site did not exist when that audit ran) | high | med | `min-w-0` on the map-column wrapper; verified by the existing page-overflow e2e pin + the phase-2 screenshots | this slice | closed — phase 2 (page-overflow pin green; 390px screenshot contained) |
 | R-3 | Selection outline `#0e8aa8` fails 1.4.11 (3:1) over a wash stop | low | med | Pre-checked at plan time: worst case (sand `#f6eedb`) computes ≈3.48:1 — passes; pinned by the new contrast spec so it can't drift | this slice | closed — phase-1 commit (spec green) |
-| R-4 | dragPan ON swallows a legitimate selection click (pan-release suppression misfires) | low | high | The suppression is canvas-owned and already pinned (#674 R-1: consume-once, `detail > 0` only, keyboard never); the existing set-editor e2e clicks cells through the viewport and stays green | this slice | open |
+| R-4 | dragPan ON swallows a legitimate selection click (pan-release suppression misfires) | low | high | The suppression is canvas-owned and already pinned (#674 R-1: consume-once, `detail > 0` only, keyboard never); the existing set-editor e2e clicks cells through the viewport and stays green | this slice | closed — phase 2 (operator-set-editing 6/6 green) |
 | R-5 | AT regression from moving the visible row labels into the aria-hidden rail | low | low | Every cell's `aria-label` already carries row + position (a11y spec pins the exact strings); axe re-runs over the migrated structure in `set-editor.a11y.spec.ts` | this slice | closed — phase-1 commit (a11y suite green unmodified) |
 | R-6 | Sonar new-code gate (0 issues, 0 duplication, ≥80% coverage) on a template-heavy refactor | low | med | The slice deletes chrome rather than adding logic; the one new mapping lives in the existing `rows` computed and is unit-pinned; review the Sonar issue list at the gate | this slice | open |
 
@@ -182,15 +182,15 @@ N/A — no contract change (`SetView` consumed as-is).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** phase 2 — run the coupled e2e (operator-set-editing + touch-targets, mocked config), then the porcelain two-mode screenshots.
+**Next action:** phase 3 — full sweeps, merge latest main, mark the PR ready, run the review + Sonar gates, close out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | 1ef4bab (draft PR #678 opened) |
 | 1 — pins red → set-editor onto the canvas → scoped suites green | ✅ | this commit (2 chrome pins red → green; unit 36, a11y 347, lint + format green) |
-| 2 — e2e + porcelain visual check | | |
+| 2 — e2e + porcelain visual check | ✅ | no commit needed (e2e 38/38 green incl. both coupled per-set tests; porcelain screenshots at 1280px + 390px eyeballed — both modes read as one surface: shared frame/banners, wash, row-code + per-row price chips, aligned tile rhythm, edge-fade + pan hint only in Edit sets where the grid overflows and dragPan is on; page contained at phone width) |
 | 3 — sweeps, gates, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -247,14 +247,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 2 — e2e + porcelain visual check
 
-- [ ] **Step 1:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test
+- [x] **Step 1:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test
   operator-set-editing touch-targets --config playwright.a11y.config.ts` → PASS
   (AC-3; the coupled `set-grid` + page-overflow + 44px pins).
-- [ ] **Step 2:** Porcelain visual check: drive the operator console (mocked) with
+- [x] **Step 2:** Porcelain visual check: drive the operator console (mocked) with
   Playwright, screenshot the Beach-map tab in **both** modes under the console's
   pinned `data-riv-theme='porcelain'`; eyeball that Bulk layout and Edit sets read
   as one surface (AC-5); record findings here.
-- [ ] **Step 3:** Commit anything the check forces (else no commit); update Execution
+- [x] **Step 3:** Commit anything the check forces (else no commit); update Execution
   status; check CI.
 
 ## Phase 3 — Sweeps, gates, close-out
