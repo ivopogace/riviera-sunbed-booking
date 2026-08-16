@@ -149,15 +149,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** plan committed — next: implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** Phase 1 — write the red canvas contract spec, then add
-`h-[var(--riv-tile)]` to the `[data-map-row]` wrapper.
+**Next action:** Phase 2 — rewrite `beach-map-height.ts` as the reduced
+`expectCellsFillCanvasRow` (red), then flip the four consumer templates to `h-full`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ⏳ | |
-| 1 — canvas-level height contract | | |
+| 0 — plan doc | ✅ | e649a30 |
+| 1 — canvas-level height contract | ✅ | (this commit) |
 | 2 — consumers to `h-full` + reduced helper | | |
 | 3 — verification sweep + gates | | |
 

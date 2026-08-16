@@ -120,6 +120,22 @@ describe('BeachMapCanvas (#672)', () => {
     expect(viewport(host).querySelector('[data-testid="row-code"]')).toBeNull();
   });
 
+  it('sizes every row wrapper and rail cell from the identical fixed --riv-tile height (#685)', () => {
+    const { host } = render();
+    const railCells = Array.from(host.querySelectorAll<HTMLElement>('[data-testid="row-code"]')).map(
+      (chip) => chip.parentElement!,
+    );
+    const priceCells = Array.from(host.querySelector('[data-testid="price-col"]')!.children);
+    const rowWraps = Array.from(viewport(host).querySelectorAll<HTMLElement>('[data-map-row]'));
+    expect(railCells.length).toBe(4);
+    expect(priceCells.length).toBe(4);
+    expect(rowWraps.length).toBe(4);
+    for (const el of [...railCells, ...priceCells, ...rowWraps]) {
+      expect(el.classList.contains('h-[var(--riv-tile)]')).toBe(true);
+      expect(el.classList.contains('aspect-square')).toBe(false);
+    }
+  });
+
   it('renders the price chip once per zone, and never for a null priceLabel', () => {
     const { host } = render();
     const prices = Array.from(host.querySelectorAll('[data-testid="row-price"]')).map((e) =>
