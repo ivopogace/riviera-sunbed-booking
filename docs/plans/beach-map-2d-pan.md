@@ -111,7 +111,7 @@ horizontal contract is enumerated as AC-4/AC-6 and held by the existing pins ver
 | R-2 | The new vertical writes break an existing horizontal pin (snap, fade, rest offset, rail x-stability) | low | med | Vertical writes target the wash scroller only; the viewport keeps `overflow-y-hidden`; full venue-map-pan + operator-daily + layout-editor + set-editor + touch-target suites run before push | this slice | closed — full mocked suite 216/216 at HEAD, pre-existing pins byte-identical |
 | R-3 | e2e coordinate drags flake: raw `page.mouse.*` doesn't auto-scroll, the operator console header is sticky, a drag drifting over a rail leaves the viewport (`mouseleave` ends the pan) | med | med | The #674 recipe: anchor via `hover()`/`scrollIntoView({ block: 'center' })`, keep drag paths inside the tile grid, `PW_CHROMIUM_EXECUTABLE` set | this slice | closed — `afafcda` (both pins green on first run and on the post-format re-run) |
 | R-4 | Set editor (drag-pan ON since #678, canvas default) gets vertical pan implicitly — a vertical drag must not select a set-cell | med | med | AC-2's set-editor e2e pin with a tall (12-row) fixture; the same consume-once suppression path as the tourist tile | this slice | closed — `afafcda` (operator-set-editing 7/7) |
-| R-5 | Sonar new-code gate (0 issues, 0 duplication, ≥80% coverage) on the touched lines | low | low | Gesture logic is unit-specced directly (AC-1..AC-5); review the issue list at the gate | PR-time | open by design — Sonar analyzes PRs only; due with the review gate when the PR opens |
+| R-5 | Sonar new-code gate (0 issues, 0 duplication, ≥80% coverage) on the touched lines | low | low | Gesture logic is unit-specced directly (AC-1..AC-5); review the issue list at the gate | PR-time | closed — gate passed on PR #682, API-verified list empty (0 issues, 0 duplication, 100% new-code coverage) |
 
 ## Open questions / Assumptions
 
@@ -311,6 +311,6 @@ Implementation (after the first red): `#washScroller` template ref on the wash d
 - [x] Flyway N/A.
 - [x] **Frontend** standards met; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [x] Risk register has no stale `open` rows (R-5 is open **by design** — the Sonar gate only exists at PR time); Open Questions empty.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
 - [x] **Close-out state committed in the final push** — cites the PR once one exists.
 - [x] **The review gate ran in full** — the `code-review` plugin executed on PR #682 (ladder rung 1, forked; single-pass inline, no subagent fan-out — declared) + the `riviera-review-overlay` RV-FE walk; 3 minor findings, all fixed and re-verified (Review-gate record above).
