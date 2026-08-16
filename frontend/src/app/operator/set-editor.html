@@ -224,7 +224,9 @@
     <div class="flex min-w-0 flex-col gap-2">
       <app-beach-map-canvas frameTestid="set-grid-frame" viewportTestid="set-grid">
         <ng-template [appBeachMapRow]="rows()" let-row>
-          <div class="grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5">
+          <div
+            class="grid h-full grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
+          >
             @for (cell of row.cells; track cell.gridX) {
               <button
                 appTouchTarget
@@ -240,7 +242,7 @@
                 [title]="cell.label"
                 (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
                 data-testid="set-cell"
-                class="h-[var(--riv-tile)] min-w-0 rounded-[8px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
+                class="h-full min-w-0 rounded-[8px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
                 [class.outline]="cell.selected"
                 [class.outline-2]="cell.selected"
                 [class.outline-offset-2]="cell.selected"

@@ -40,7 +40,7 @@
         >
           <div class="flex flex-col gap-1.5 w-max group-[.pannable]:px-4">
             @for (row of rows(); track row.code; let i = $index) {
-              <div data-map-row [class.mt-3]="row.zoneStart && i > 0">
+              <div data-map-row class="h-[var(--riv-tile)]" [class.mt-3]="row.zoneStart && i > 0">
                 <ng-container
                   *ngTemplateOutlet="rowDef().template; context: { $implicit: row, index: i }"
                 />

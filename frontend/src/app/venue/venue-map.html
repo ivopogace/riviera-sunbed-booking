@@ -145,11 +145,11 @@
       <app-beach-map-canvas class="mt-[18px] block" label="Beach map — {{ v.name }}">
         <ng-template [appBeachMapRow]="rows()" let-row>
           <ul
-            class="set-row list-none grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
+            class="set-row list-none h-full grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
           >
             @for (tile of row.tiles; track tile.set.id) {
               <li
-                class="set-tile snap-start h-[var(--riv-tile)] min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] border-[#bfe3df] bg-white/75 text-[#0f7d8c] font-bold text-[12.5px] [&.premium]:bg-[#fbf1d9]/85 [&.premium]:border-[#e6c483] [&.premium]:text-[#875911] [&.walkin]:bg-[#efe0bd]/85 [&.walkin]:border-[#c8ab62] [&.walkin]:text-[#5f4d2a] [&.taken]:bg-white/20 [&.taken]:border-dashed [&.taken]:border-[#6b7d77] [&.taken]:text-[#566560] [&.bookable]:p-0"
+                class="set-tile snap-start h-full min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] border-[#bfe3df] bg-white/75 text-[#0f7d8c] font-bold text-[12.5px] [&.premium]:bg-[#fbf1d9]/85 [&.premium]:border-[#e6c483] [&.premium]:text-[#875911] [&.walkin]:bg-[#efe0bd]/85 [&.walkin]:border-[#c8ab62] [&.walkin]:text-[#5f4d2a] [&.taken]:bg-white/20 [&.taken]:border-dashed [&.taken]:border-[#6b7d77] [&.taken]:text-[#566560] [&.bookable]:p-0"
                 data-testid="set-tile"
                 [class.premium]="tile.set.tier === 'PREMIUM'"
                 [class.walkin]="tile.walkInOnly"

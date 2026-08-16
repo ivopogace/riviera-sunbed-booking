@@ -7,7 +7,7 @@ import {
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
-import { expectCellsMatchRailHeight } from '../../testing/beach-map-height';
+import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { SetView } from '../shared/venue-views';
 import { SetEditor } from './set-editor';
 
@@ -139,9 +139,9 @@ describe('SetEditor (#600)', () => {
     expect(codes[0].closest('[aria-hidden="true"]')).toBeTruthy();
   });
 
-  it('sizes set cells with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', () => {
+  it('fills the canvas-owned row height with set cells, never a height mechanism of its own (#685)', () => {
     render();
-    expectCellsMatchRailHeight(host, '[data-testid="set-cell"]');
+    expectCellsFillCanvasRow(host, '[data-testid="set-cell"]');
   });
 
   it('chips every row’s price from its first set, and none for a set-less grown row (#677)', () => {
