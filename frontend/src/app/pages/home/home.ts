@@ -10,6 +10,7 @@ import {
 import { AmenityChip } from '../../shared/amenity-chip';
 import { CardGlass } from '../../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
+import { FieldGlass } from '../../shared/field-glass';
 import { focusMover } from '../../shared/focus-after-render';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
@@ -70,9 +71,11 @@ interface VenueCard {
     PhotoSlideshow,
     CardGlass,
     AmenityChip,
+    FieldGlass,
     TouchTarget,
     ...FAILURE_DIRECTIVES,
   ],
+  host: { class: 'block text-(--riv-card-ink)' },
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })

@@ -111,8 +111,9 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 ## SCSS→Tailwind migration checklist
 
 **There is no shared SCSS left** (`shared/_glass.scss` retired at #477 with its last recipe,
-`status-chip`); what remains is 10 `.scss` files under `frontend/src/app`, 6 of them in
-`booking/` (the `home.scss` scrim stays SCSS on purpose — the blockquote above).
+`status-chip`); what remains is 9 `.scss` files under `frontend/src/app`, 5 of them in
+`booking/` (the `home.scss` scrim stays SCSS on purpose — the blockquote above; since #679 it
+is the scrim rule alone, the rest of Discover and the whole booking dialog are utilities).
 
 **Migrate on touch — the retirement mechanism.** A slice that touches a component still
 carrying legacy component SCSS (any of its `.ts`/`.html`/`.scss`) migrates that component's
