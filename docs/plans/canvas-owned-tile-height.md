@@ -168,7 +168,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | CI (run on 2b05331) | Prettier: `beach-map-canvas.spec.ts` line-wrap in the new #685 contract test | fixed in the Phase 2 commit (`npm run format`) |
+| F-1 | CI (run on 2b05331) | Prettier: `beach-map-canvas.spec.ts` line-wrap in the new #685 contract test | fixed-in-`2121a1a` (`npm run format`) |
+| F-2 | sonar (PR scan on 2121a1a) | S7761: prefer `.dataset` over `hasAttribute('data-map-row')` in `beach-map-height.ts:18` | fixed in this commit — `'mapRow' in el.dataset` |
 
 ---
 

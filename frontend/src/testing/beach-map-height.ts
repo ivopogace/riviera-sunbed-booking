@@ -15,7 +15,7 @@ export function expectCellsFillCanvasRow(host: HTMLElement, cellSelector: string
   expect(cells.length).toBeGreaterThan(0);
   for (const cell of cells) {
     let el: HTMLElement | null = cell;
-    while (el !== null && !el.hasAttribute('data-map-row')) {
+    while (el !== null && !('mapRow' in el.dataset)) {
       expect(el.classList.contains('h-full')).toBe(true);
       expect(el.classList.contains('h-[var(--riv-tile)]')).toBe(false);
       expect(el.classList.contains('aspect-square')).toBe(false);
