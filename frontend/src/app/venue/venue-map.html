@@ -142,128 +142,46 @@
         </div>
       </div>
 
-      <section
-        class="mt-[18px] backdrop-blur-[26px] backdrop-saturate-[1.7] rounded-[28px] shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] px-4 overflow-hidden"
-        appCardGlass
-        aria-label="Beach map — {{ v.name }}"
-      >
-        <!-- The sea banner IS the grid card's top edge (rounded via the card's overflow clip), so it
-             caps the front, sea-facing row while the promenade caps the back at the bottom. -->
-        <p
-          class="sea-banner text-center font-bold tracking-[0.16em] uppercase text-[12px] text-white bg-[linear-gradient(180deg,#0e7a89,#0c6675)] -mx-4 mb-[18px] p-[13px]"
-        >
-          <span aria-hidden="true">▲</span> Facing the sea
-        </p>
-
-        <!-- The sea→sand wash: aqua at the sea banner fading to warm sand at the promenade, fixed to the viewport of the vertical scroller so "the water is up there" reads at any scroll depth. -->
-        <div
-          class="overflow-y-auto overflow-x-hidden max-h-[532px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 -mt-[18px] pt-3.5 pb-3 bg-[linear-gradient(180deg,#cfeef6_0%,#e7f5f1_55%,#f6eedb_100%)]"
-          data-riv-scroller
-        >
-          <div class="flex items-start gap-2.5" [style.--riv-map-cols]="mapCols()">
-            <!-- Left: derived row codes (aria-hidden; each tile's name already carries its seat). -->
-            <div class="flex flex-col gap-1.5 shrink-0" aria-hidden="true">
-              @for (row of rows(); track row.code; let i = $index) {
-                <span
-                  class="h-[var(--riv-tile)] flex items-center justify-start"
-                  [class.mt-3]="row.zoneStart && i > 0"
-                  ><span
-                    class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
-                    data-testid="row-code"
-                    >{{ row.code }}</span
-                  ></span
-                >
-              }
-            </div>
-
-            <!-- Center: the horizontally pannable tile grid (mouse drag; touch scrolls natively). The edge fade + inner padding + scroll-pl apply only while the grid actually overflows (.pannable ← scrollHint()), so a non-overflowing map never fades column 1 and a snapped tile rests past the 16px fade, not inside it. -->
-            <div
-              #setRowsWrap
-              class="group overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] flex-1 min-w-0 cursor-grab select-none snap-x snap-proximity [&.pannable]:scroll-pl-4 [&.pannable]:[mask-image:linear-gradient(90deg,transparent,black_16px,black_calc(100%-16px),transparent)]"
-              data-testid="map-pan"
-              data-riv-scroller
-              [class.pannable]="scrollHint()"
-              (mousedown)="onMapMouseDown($event)"
-              (mousemove)="onMapMouseMove($event)"
-              (mouseup)="onMapMouseUp()"
-              (mouseleave)="onMapMouseUp()"
-            >
-              <div class="flex flex-col gap-1.5 w-max group-[.pannable]:px-4">
-                @for (row of rows(); track row.code; let i = $index) {
-                  <ul
-                    class="set-row list-none grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
-                    [class.mt-3]="row.zoneStart && i > 0"
-                  >
-                    @for (tile of row.tiles; track tile.set.id) {
-                      <li
-                        class="set-tile snap-start aspect-square min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] border-[#bfe3df] bg-white/75 text-[#0f7d8c] font-bold text-[12.5px] [&.premium]:bg-[#fbf1d9]/85 [&.premium]:border-[#e6c483] [&.premium]:text-[#875911] [&.walkin]:bg-[#efe0bd]/85 [&.walkin]:border-[#c8ab62] [&.walkin]:text-[#5f4d2a] [&.taken]:bg-white/20 [&.taken]:border-dashed [&.taken]:border-[#6b7d77] [&.taken]:text-[#566560] [&.bookable]:p-0"
-                        data-testid="set-tile"
-                        [class.premium]="tile.set.tier === 'PREMIUM'"
-                        [class.walkin]="tile.walkInOnly"
-                        [class.taken]="tile.set.availability === 'TAKEN'"
-                        [class.bookable]="tile.bookable"
-                        [attr.aria-label]="tile.bookable ? null : tile.name"
-                      >
-                        @if (tile.bookable) {
-                          <button
-                            appTouchTarget
-                            type="button"
-                            class="set-button w-full h-full flex items-center justify-center border-0 rounded-[inherit] bg-transparent text-inherit cursor-pointer [transition:background_0.15s_ease,transform_0.12s_ease] hover:bg-[#e6f6f3] hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-[3px] focus-visible:outline-[#0f7d8c] focus-visible:outline-offset-2"
-                            [attr.data-set-id]="tile.set.id"
-                            [attr.aria-label]="tile.bookName"
-                            (click)="select(tile.set, $event)"
-                          >
-                            <span aria-hidden="true">{{ tile.set.positionNo }}</span>
-                          </button>
-                        } @else {
-                          <span aria-hidden="true">{{ tile.set.positionNo }}</span>
-                        }
-                      </li>
-                    }
-                  </ul>
-                }
-              </div>
-            </div>
-
-            <!-- Right: the price, once per price zone (aria-hidden; carried in each tile's name too). -->
-            <div class="flex flex-col gap-1.5 shrink-0" data-testid="price-col" aria-hidden="true">
-              @for (row of rows(); track row.code; let i = $index) {
-                <span
-                  class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px]"
-                  [class.mt-3]="row.zoneStart && i > 0"
-                >
-                  @if (row.zoneStart) {
-                    <span
-                      class="rounded-full bg-white/80 border border-[#cfe3df] px-2 py-[3px] text-[11px] font-bold text-[#0a4f5e] shadow-[0_1px_4px_rgba(7,42,58,0.10)]"
-                      data-testid="row-price"
-                      >{{ money(row.price) }}</span
-                    >
-                  }
-                </span>
-              }
-            </div>
-          </div>
-        </div>
-
-        @if (scrollHint()) {
-          <p
-            class="text-center text-[12px] font-semibold text-(--riv-accent-ink) mt-3"
-            data-testid="scroll-hint"
+      <app-beach-map-canvas class="mt-[18px] block" label="Beach map — {{ v.name }}">
+        <ng-template [appBeachMapRow]="rows()" let-row>
+          <ul
+            class="set-row list-none grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
           >
-            <span aria-hidden="true">✦</span>&ngsp;
-            <span>Drag or swipe to pan the map — this beach is bigger than your screen.</span>
-          </p>
-        }
-        <p class="text-center text-[12px] text-(--riv-card-ink-faint) mt-2.5 tracking-[0.02em]">
+            @for (tile of row.tiles; track tile.set.id) {
+              <li
+                class="set-tile snap-start aspect-square min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] border-[#bfe3df] bg-white/75 text-[#0f7d8c] font-bold text-[12.5px] [&.premium]:bg-[#fbf1d9]/85 [&.premium]:border-[#e6c483] [&.premium]:text-[#875911] [&.walkin]:bg-[#efe0bd]/85 [&.walkin]:border-[#c8ab62] [&.walkin]:text-[#5f4d2a] [&.taken]:bg-white/20 [&.taken]:border-dashed [&.taken]:border-[#6b7d77] [&.taken]:text-[#566560] [&.bookable]:p-0"
+                data-testid="set-tile"
+                [class.premium]="tile.set.tier === 'PREMIUM'"
+                [class.walkin]="tile.walkInOnly"
+                [class.taken]="tile.set.availability === 'TAKEN'"
+                [class.bookable]="tile.bookable"
+                [attr.aria-label]="tile.bookable ? null : tile.name"
+              >
+                @if (tile.bookable) {
+                  <button
+                    appTouchTarget
+                    type="button"
+                    class="set-button w-full h-full flex items-center justify-center border-0 rounded-[inherit] bg-transparent text-inherit cursor-pointer [transition:background_0.15s_ease,transform_0.12s_ease] hover:bg-[#e6f6f3] hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-[3px] focus-visible:outline-[#0f7d8c] focus-visible:outline-offset-2"
+                    [attr.data-set-id]="tile.set.id"
+                    [attr.aria-label]="tile.bookName"
+                    (click)="select(tile.set)"
+                  >
+                    <span aria-hidden="true">{{ tile.set.positionNo }}</span>
+                  </button>
+                } @else {
+                  <span aria-hidden="true">{{ tile.set.positionNo }}</span>
+                }
+              </li>
+            }
+          </ul>
+        </ng-template>
+        <p
+          canvasFooter
+          class="text-center text-[12px] text-(--riv-card-ink-faint) mt-2.5 tracking-[0.02em]"
+        >
           Tap any free set to book it · prices are per set, full day.
         </p>
-
-        <p
-          class="text-center font-bold tracking-[0.16em] uppercase text-[12px] text-(--riv-card-ink-soft) -mx-4 mt-[6px] p-[13px] border-t border-dashed border-(--riv-card-track)"
-        >
-          <span aria-hidden="true">▼</span> Promenade · Entrance
-        </p>
-      </section>
+      </app-beach-map-canvas>
 
       <ul
         class="list-none flex gap-[18px] flex-wrap px-4 py-3 mt-4 rounded-2xl backdrop-blur-[20px] backdrop-saturate-[1.7] text-[13px] text-(--riv-card-ink-soft)"

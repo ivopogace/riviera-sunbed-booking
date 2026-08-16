@@ -278,7 +278,9 @@ describe('VenueMap', () => {
     await fixture.whenStable();
     // A opens the map (no gap), B opens the €35 zone, C continues it, D opens the €25 zone.
     const zoneGaps = [false, true, false, true];
-    const tileRows = [...el().querySelectorAll('ul.set-row')];
+    // The gap sits on the canvas-owned row wrapper around each projected ul.set-row (#672 slice 2).
+    const tileRows = [...el().querySelectorAll('[data-map-row]')];
+    expect(tileRows.length).toBe(4);
     expect(tileRows.map((r) => r.classList.contains('mt-3'))).toEqual(zoneGaps);
     const codeCells = [...el().querySelectorAll('[data-testid="row-code"]')].map(
       (n) => n.parentElement!,
@@ -383,45 +385,41 @@ describe('VenueMap', () => {
     expect(el().querySelector('app-booking-dialog')).toBeNull();
   });
 
-  interface PanHarness {
-    onMapMouseDown(e: MouseEvent): void;
-    onMapMouseMove(e: MouseEvent): void;
-    onMapMouseUp(): void;
-    select(s: SetView, e?: Event): void;
-    selectedSet(): SetView | undefined;
-    venue(): VenueMapView;
+  /** Drag the shared canvas's pan viewport 40px (> the 6px threshold) via real DOM events. */
+  function pan(): void {
+    const vp = el().querySelector<HTMLElement>('[data-testid="map-pan"]')!;
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 0 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 40 }));
+    vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
   }
-  function pan(c: PanHarness): void {
-    const scroller = { scrollLeft: 0 } as HTMLElement;
-    c.onMapMouseDown({ clientX: 0, currentTarget: scroller } as unknown as MouseEvent);
-    c.onMapMouseMove({ clientX: 40, currentTarget: scroller } as unknown as MouseEvent); // 40px > 6px → pan
-    c.onMapMouseUp();
+  function clickFreeButton(detail: number): void {
+    el()
+      .querySelector<HTMLButtonElement>('.set-button')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true, detail }));
   }
-  const mouseClick = { detail: 1 } as MouseEvent; // a pointer click carries detail > 0
-  const keyActivation = { detail: 0 } as MouseEvent; // Enter/Space fires a click with detail 0
 
   it('does not open the dialog when a drag-pan (not a tap) mouse-releases over a tile', async () => {
     flushVenue();
     await fixture.whenStable();
-    const c = fixture.componentInstance as unknown as PanHarness;
-    const free = c.venue().sets.find((s) => s.availability === 'FREE' && s.pool === 'ONLINE')!;
 
-    pan(c);
-    c.select(free, mouseClick); // the mouse click that follows a pan-release
-    expect(c.selectedSet()).toBeUndefined();
-    c.select(free, mouseClick); // a genuine mouse tap afterwards still opens the dialog
-    expect(c.selectedSet()).toBe(free);
+    pan();
+    clickFreeButton(1); // the mouse click that follows a pan-release (detail > 0)
+    await fixture.whenStable();
+    expect(el().querySelector('app-booking-dialog')).toBeNull();
+
+    clickFreeButton(1); // a genuine mouse tap afterwards still opens the dialog
+    await fixture.whenStable();
+    expect(el().querySelector('app-booking-dialog')).not.toBeNull();
   });
 
   it('does NOT swallow a keyboard activation after a pan that ended off a tile (a11y)', async () => {
     flushVenue();
     await fixture.whenStable();
-    const c = fixture.componentInstance as unknown as PanHarness;
-    const free = c.venue().sets.find((s) => s.availability === 'FREE' && s.pool === 'ONLINE')!;
 
-    pan(c); // a pan whose release fired no consuming click (ended off a button) — flag lingers
-    c.select(free, keyActivation); // tab to a tile, press Enter → must open, not be swallowed
-    expect(c.selectedSet()).toBe(free);
+    pan(); // a pan whose release fired no consuming click (ended off a button) — flag lingers
+    clickFreeButton(0); // tab to a tile, press Enter (detail 0) → must open, not be swallowed
+    await fixture.whenStable();
+    expect(el().querySelector('app-booking-dialog')).not.toBeNull();
   });
 
   it('shows the designed failure panel (alert semantics + retry) and recovers on Retry', async () => {
