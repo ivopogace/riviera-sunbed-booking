@@ -14,6 +14,21 @@ function removeMatchMedia(): void {
   delete (globalThis as unknown as { matchMedia?: unknown }).matchMedia;
 }
 
+/**
+ * A matchMedia fake with change-event support, for the #675 OS-follow cases. Returns a trigger
+ * that fires the captured `change` listener as if the OS light preference flipped to `matches`.
+ */
+function fakeMatchMediaWithEvents(prefersLight: boolean): (matches: boolean) => void {
+  let onChange: ((event: { matches: boolean }) => void) | undefined;
+  (globalThis as unknown as { matchMedia: unknown }).matchMedia = (query: string) => ({
+    matches: prefersLight && query.includes('prefers-color-scheme: light'),
+    addEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => {
+      onChange = listener;
+    },
+  });
+  return (matches: boolean) => onChange?.({ matches });
+}
+
 describe('ThemeService (Liquid Glass foundation, issue #134)', () => {
   let store: Map<string, string>;
 
@@ -74,5 +89,41 @@ describe('ThemeService (Liquid Glass foundation, issue #134)', () => {
     const service = TestBed.inject(ThemeService);
 
     expect(service.theme()).toBe('riviera');
+  });
+
+  it('follows a mid-session OS scheme flip when no choice is stored (#675)', () => {
+    const flipOsLight = fakeMatchMediaWithEvents(false);
+    const service = TestBed.inject(ThemeService);
+    expect(service.theme()).toBe('riviera');
+
+    flipOsLight(true);
+    expect(service.theme()).toBe('porcelain');
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('porcelain');
+
+    flipOsLight(false);
+    expect(service.theme()).toBe('riviera');
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('riviera');
+  });
+
+  it('ignores an OS scheme flip when a choice was stored before boot (#675)', () => {
+    store.set('riviera-theme', 'riviera');
+    const flipOsLight = fakeMatchMediaWithEvents(false);
+    const service = TestBed.inject(ThemeService);
+
+    flipOsLight(true);
+
+    expect(service.theme()).toBe('riviera');
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('riviera');
+  });
+
+  it('ignores an OS scheme flip after select() persisted a choice (#675)', () => {
+    const flipOsLight = fakeMatchMediaWithEvents(false);
+    const service = TestBed.inject(ThemeService);
+    service.select('porcelain');
+
+    flipOsLight(false);
+
+    expect(service.theme()).toBe('porcelain');
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('porcelain');
   });
 });

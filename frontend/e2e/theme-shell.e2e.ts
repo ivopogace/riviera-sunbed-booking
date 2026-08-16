@@ -45,6 +45,41 @@ test.describe('theme persistence', () => {
   });
 });
 
+test.describe('per-theme color-scheme (#675)', () => {
+  // Pin the OS scheme to dark so the boot theme is riviera (headless defaults to light).
+  test.use({ colorScheme: 'dark' });
+
+  test('native-UI scheme follows the theme; light-styled fields opt out (AC-1, AC-2)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+    await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark');
+    // The deliberately light filter-date field keeps dark-on-light native chrome (`scheme-light`).
+    await expect(page.getByTestId('filter-date')).toHaveCSS('color-scheme', 'light');
+
+    await page.getByTestId('theme-toggle').click();
+    await page.getByTestId('theme-option-porcelain').click();
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
+    await expect(page.locator('html')).toHaveCSS('color-scheme', 'light');
+  });
+});
+
+test.describe('pre-paint theme seeding (#675)', () => {
+  // A dark OS would boot riviera without the seed — exactly the FOUC the seed must beat.
+  test.use({ colorScheme: 'dark' });
+
+  test('a stored porcelain choice is applied before Angular boots (AC-3)', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('riviera-theme', 'porcelain'));
+    // Withhold the app bundle: the attribute can then only have come from the index.html seed.
+    await page.route('**/main*.js', (route) => route.abort());
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
+    await expect(page.locator('app-root')).toBeEmpty();
+  });
+});
+
 test.describe('axe sweeps', () => {
   // Without this, headless (light) boots porcelain and the "riviera" sweeps would silently
   // audit porcelain twice.

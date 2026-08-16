@@ -372,6 +372,14 @@ describe('VenueMap', () => {
     expect(input.getAttribute('min')).toBe(defaultBookingDate(new Date())); // tomorrow, Europe/Tirane
   });
 
+  it('keeps the white date field light-scheme under the dark riviera document (#675)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
+    // Class pin (jsdom computes no Tailwind CSS); the computed proof is theme-shell.e2e.ts AC-2.
+    expect(input.classList.contains('scheme-light')).toBe(true);
+  });
+
   it('opens the booking dialog when a free set is activated, and closes it on dismiss', async () => {
     flushVenue();
     await fixture.whenStable();
