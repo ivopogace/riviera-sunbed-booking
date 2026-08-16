@@ -11,8 +11,10 @@ import { CardGlass } from './card-glass';
  * directly). The <strong>tiles differ by purpose</strong> — booking, painting, availability
  * marking, selection — so only the framing (card + banners + orientation) is shared here; each
  * consumer owns its own tile rendering and interaction, projected via {@code <ng-content>}.
- * Theme-agnostic glass via {@link CardGlass}; the banner gradient is the beach-map restyle's
- * sea teal. The ▲/▼ glyphs are {@code aria-hidden} — the banner text carries the meaning.
+ * Theme-agnostic glass via {@link CardGlass}, elevated with the restyle's blur + drop shadow so
+ * the card reads as a card on the bare page gradient (not only on the console shell); the banner
+ * gradient is the restyle's sea teal. The ▲/▼ glyphs are {@code aria-hidden} — the banner text
+ * carries the meaning.
  */
 @Component({
   selector: 'app-beach-grid-frame',
@@ -20,7 +22,7 @@ import { CardGlass } from './card-glass';
   template: `
     <section
       appCardGlass
-      class="overflow-hidden rounded-[24px] px-[18px] pb-4"
+      class="overflow-hidden rounded-[28px] px-[18px] pb-4 backdrop-blur-[26px] backdrop-saturate-[1.7] shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)]"
       [attr.data-testid]="testid()"
       [attr.aria-label]="label() || null"
     >

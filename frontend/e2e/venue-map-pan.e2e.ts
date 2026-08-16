@@ -113,6 +113,12 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
     .evaluate((el) => getComputedStyle(el).backgroundImage);
   expect(wash).toContain('linear-gradient');
 
+  // The grid card keeps its elevation (#674: the frame swap silently dropped the drop shadow).
+  const frameShadow = await page
+    .getByTestId('beach-grid')
+    .evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(frameShadow).toContain('rgba(7, 42, 58, 0.28)');
+
   // The price renders once per zone: 5 rows but 4 chips (rows 4+5 share €30) (#672).
   await expect(page.getByTestId('row-price')).toHaveCount(4);
 
