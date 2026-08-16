@@ -128,10 +128,14 @@ The only place providers are wired:
 ## Theming & design tokens (Liquid Glass, epic #133)
 
 - **Themes are CSS custom properties** (`--riv-*`) scoped by `data-riv-theme` on
-  `<html>`, declared per theme in `src/styles.scss`. The **document-level**
+  `<html>`, declared per theme in `src/styles.scss`. At runtime the **document-level**
   attribute is written **only** by `core/theme.ts` (`ThemeService`: signal +
-  localStorage + `prefers-color-scheme` fallback; the theme registry lives there
-  as data). **Exception — a subtree may pin its own theme** by setting
+  localStorage + `prefers-color-scheme` fallback — followed live on OS flips when
+  no choice is stored; the theme registry lives there as data). The one non-runtime
+  writer is the `index.html` inline seed (#675), which pre-paints the same value
+  before Angular boots with the same resolution order — the two are drift-pinned
+  by `core/theme-boot.spec.ts`; extend `ThemeService`'s resolution only together
+  with the seed. **Exception — a subtree may pin its own theme** by setting
   `data-riv-theme` on its own host element (the attribute selector re-scopes the
   `--riv-*` tokens for that subtree): the **operator console** (#170) is always
   porcelain via a `host: { 'data-riv-theme': 'porcelain' }` binding, which does
