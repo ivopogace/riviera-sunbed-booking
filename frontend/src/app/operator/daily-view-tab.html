@@ -58,11 +58,11 @@
     >
       <ng-template [appBeachMapRow]="rows()" let-row>
         <ul
-          class="grid list-none gap-1.5 p-0 grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))]"
+          class="grid h-full list-none gap-1.5 p-0 grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))]"
         >
           @for (set of row.sets; track set.id) {
             <li
-              class="set-tile h-[var(--riv-tile)] min-w-0"
+              class="set-tile h-full min-w-0"
               data-testid="daily-tile"
               [class.premium]="set.tier === 'PREMIUM'"
             >

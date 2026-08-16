@@ -122,9 +122,9 @@ describe('BeachMapCanvas (#672)', () => {
 
   it('sizes every row wrapper and rail cell from the identical fixed --riv-tile height (#685)', () => {
     const { host } = render();
-    const railCells = Array.from(host.querySelectorAll<HTMLElement>('[data-testid="row-code"]')).map(
-      (chip) => chip.parentElement!,
-    );
+    const railCells = Array.from(
+      host.querySelectorAll<HTMLElement>('[data-testid="row-code"]'),
+    ).map((chip) => chip.parentElement!);
     const priceCells = Array.from(host.querySelector('[data-testid="price-col"]')!.children);
     const rowWraps = Array.from(viewport(host).querySelectorAll<HTMLElement>('[data-map-row]'));
     expect(railCells.length).toBe(4);

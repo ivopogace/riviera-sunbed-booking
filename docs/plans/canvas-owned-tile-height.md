@@ -149,16 +149,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3 — verification sweep)
 
-**Next action:** Phase 2 — rewrite `beach-map-height.ts` as the reduced
-`expectCellsFillCanvasRow` (red), then flip the four consumer templates to `h-full`.
+**Next action:** Phase 3 — run the mocked e2e nets verbatim
+(`venue-map-pan`, `touch-targets`, `touch-targets-tourist`, `layout-editor`,
+`operator-daily`, `operator-set-editing`), then the PR gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | e649a30 |
-| 1 — canvas-level height contract | ✅ | (this commit) |
-| 2 — consumers to `h-full` + reduced helper | | |
+| 1 — canvas-level height contract | ✅ | 2b05331 |
+| 2 — consumers to `h-full` + reduced helper | ✅ | (this commit) |
 | 3 — verification sweep + gates | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -167,6 +168,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (run on 2b05331) | Prettier: `beach-map-canvas.spec.ts` line-wrap in the new #685 contract test | fixed in the Phase 2 commit (`npm run format`) |
 
 ---
 

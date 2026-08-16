@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
-import { expectCellsMatchRailHeight } from '../../testing/beach-map-height';
+import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { todayBookingDate } from '../shared/booking-date';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -134,10 +134,10 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-generate').textContent).toContain('6');
   });
 
-  it('sizes bulk cells with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', () => {
+  it('fills the canvas-owned row height with bulk cells, never a height mechanism of its own (#685)', () => {
     render();
     generate('2', '3');
-    expectCellsMatchRailHeight(host, '[data-testid="layout-cell"]');
+    expectCellsFillCanvasRow(host, '[data-testid="layout-cell"]');
   });
 
   it('asks for confirmation before regenerating over an existing grid, then replaces', () => {

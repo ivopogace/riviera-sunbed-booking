@@ -157,7 +157,9 @@
         [dragPan]="false"
       >
         <ng-template [appBeachMapRow]="displayRows()" let-row let-ri="index">
-          <div class="grid gap-1.5 grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))]">
+          <div
+            class="grid h-full gap-1.5 grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))]"
+          >
             @for (cell of row.cells; track $index; let ci = $index) {
               <button
                 appTouchTarget
@@ -170,7 +172,7 @@
                 [title]="cell.label"
                 [attr.aria-label]="cell.label"
                 data-testid="layout-cell"
-                class="h-[var(--riv-tile)] min-w-0 rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
+                class="h-full min-w-0 rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
               ></button>
             }
           </div>
