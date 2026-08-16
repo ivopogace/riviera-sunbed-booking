@@ -129,16 +129,16 @@ N/A — no contract change (`SetView.positionNo` already delivered and consumed)
 
 > **This section is the session-recovery anchor.**
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** write the failing unit test for tile text per state, run it red, then
-implement `stateGlyph` + template.
+**Next action:** extend `operator-daily.e2e.ts` with tile-number assertions
+(load `playwright-cli` first), then run the scoped checks.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc committed | ⏳ | |
-| 1 — tile content (unit + contrast TDD, template + component) | | |
-| 2 — e2e assertions + full frontend verification | | |
+| 0 — plan doc committed | ✅ | `88e789c` |
+| 1 — tile content (unit + contrast TDD, template + component) | ✅ | see phase-1 commit |
+| 2 — e2e assertions + full frontend verification | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -196,6 +196,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-16 | Phase 1 (pattern: on-tile set identity) | Every surface projecting tiles into the shared canvas | `grep -rl "app-beach-map-canvas" src/app --include='*.html'` | `venue-map` (has numbers), `daily-view-tab` (this slice), `layout-editor` + `set-editor` (cells render no visible text; identity via `title`/aria-label) | this slice only — the editors are paint/design surfaces where cells may hold no set yet; a numbering affordance there is a separate product call, not this defect class |
 
 ---
 

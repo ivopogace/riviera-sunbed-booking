@@ -75,21 +75,31 @@
                   [attr.aria-label]="tileLabel(set)"
                   [disabled]="isPending(set)"
                   (click)="onTile(set)"
-                  class="h-full w-full rounded-[6px] border text-[10.5px] font-semibold [transition:transform_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none"
+                  class="flex h-full w-full items-center justify-center gap-1 rounded-[6px] border text-[10.5px] font-semibold [transition:transform_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none"
                   [class]="tileClass(set)"
                 >
-                  <span aria-hidden="true">{{ tileGlyph(set) }}</span>
+                  @if (stateGlyph(set); as glyph) {
+                    <span aria-hidden="true">{{ glyph }}</span>
+                  }
+                  <span aria-hidden="true" class="text-[12.5px] font-bold">{{
+                    set.positionNo
+                  }}</span>
                 </button>
               } @else {
                 <span
                   [attr.data-set-id]="set.id"
                   [attr.data-state]="stateOf(set)"
-                  class="flex h-full w-full items-center justify-center rounded-[6px] border text-[10.5px] font-semibold"
+                  class="flex h-full w-full items-center justify-center gap-1 rounded-[6px] border text-[10.5px] font-semibold"
                   [class]="tileClass(set)"
                 >
                   <!-- Locked tile: sr-only text names the state, so it is not colour-only. -->
                   <span class="sr-only">{{ tileLabel(set) }}</span>
-                  <span aria-hidden="true">{{ tileGlyph(set) }}</span>
+                  @if (stateGlyph(set); as glyph) {
+                    <span aria-hidden="true">{{ glyph }}</span>
+                  }
+                  <span aria-hidden="true" class="text-[12.5px] font-bold">{{
+                    set.positionNo
+                  }}</span>
                 </span>
               }
             </li>
