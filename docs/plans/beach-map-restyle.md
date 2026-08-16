@@ -160,14 +160,14 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is; `pool` alre
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** write the failing zone-chip unit specs, then apply prototype `f781dbf`.
+**Next action:** TDD the walk-in treatment (AC-3..AC-5).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ⏳ | |
-| 1 — restyle base (prototype `f781dbf` + zone unit specs) | | |
+| 0 — plan doc | ✅ | 6fb3d7e |
+| 1 — restyle base (prototype `f781dbf` + zone unit specs) | ✅ | this commit |
 | 2 — walk-in treatment + legend (TDD) | | |
 | 3 — composited contrast specs | | |
 | 4 — e2e pins + a11y sweep + close-out | | |

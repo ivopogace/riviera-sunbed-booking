@@ -51,6 +51,8 @@ interface MapTile {
 interface MapRow {
   readonly code: string;
   readonly price: MoneyView;
+  /** True where this row's price differs from the row before — a price-zone boundary. */
+  readonly zoneStart: boolean;
   readonly tiles: readonly MapTile[];
 }
 
@@ -232,11 +234,15 @@ export class VenueMap {
       row.push(set);
       byRow.set(set.rowLabel, row);
     }
-    return [...byRow.entries()].map(([label, sets], index) => {
+    const entries = [...byRow.entries()];
+    return entries.map(([label, sets], index) => {
       const code = rowCode(index);
+      const price = sets[0].price;
+      const prev = index > 0 ? entries[index - 1][1][0].price : undefined;
       return {
         code,
-        price: sets[0].price,
+        price,
+        zoneStart: prev?.minorUnits !== price.minorUnits || prev?.currency !== price.currency,
         tiles: sets.map((set) => this.toTile(set, code, label)),
       };
     });

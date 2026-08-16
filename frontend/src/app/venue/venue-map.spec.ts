@@ -21,7 +21,8 @@ import { defaultBookingDate } from '../shared/booking-date';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { rowCode, VenueMap } from './venue-map';
 
-/** A 24-set fixture mirroring the Miramar seed: 4 rows × 6, 6 taken (18 free), front row premium. */
+/** A 24-set fixture mirroring the Miramar seed: 4 rows × 6, 6 taken (18 free), front row premium.
+ *  Rows 2+3 share a price (€35) so the per-zone price rendering (#672) is observable. */
 function miramar(): VenueMapView {
   const rows: readonly {
     label: string;
@@ -51,7 +52,7 @@ function miramar(): VenueMapView {
       label: 'Row 3',
       tier: 'STANDARD',
       pool: 'ONLINE',
-      price: 3000,
+      price: 3500,
       gridY: 3,
       taken: [false, true, false, false, false, true],
     },
@@ -253,18 +254,39 @@ describe('VenueMap', () => {
     expect(header.textContent).not.toContain('0 reviews');
   });
 
-  it('renders rows with derived A/B/… codes in insertion order and per-row price from minor units', async () => {
+  it('renders rows with derived A/B/… codes in insertion order', async () => {
     flushVenue();
     await fixture.whenStable();
     const codes = [...el().querySelectorAll('[data-testid="row-code"]')].map((n) =>
       n.textContent?.trim(),
     );
     expect(codes).toEqual(['A', 'B', 'C', 'D']); // insertion order, not sorted by the descriptive label
+  });
+
+  it('renders the price once per price zone, not per row (#672)', async () => {
+    flushVenue();
+    await fixture.whenStable();
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
-    expect(prices[0]).toBe('€45'); // row A, 4500 minor units
-    expect(prices[3]).toBe('€25'); // row D, 2500 minor units
+    // Rows B and C share €35 — one zone, one chip: 4 rows render 3 chips, from minor units.
+    expect(prices).toEqual(['€45', '€35', '€25']);
+  });
+
+  it('separates price zones with a gap at zone starts, aligned across all three columns (#672)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    // A opens the map (no gap), B opens the €35 zone, C continues it, D opens the €25 zone.
+    const zoneGaps = [false, true, false, true];
+    const tileRows = [...el().querySelectorAll('ul.set-row')];
+    expect(tileRows.map((r) => r.classList.contains('mt-3'))).toEqual(zoneGaps);
+    const codeCells = [...el().querySelectorAll('[data-testid="row-code"]')].map(
+      (n) => n.parentElement!,
+    );
+    expect(codeCells.map((c) => c.classList.contains('mt-3'))).toEqual(zoneGaps);
+    const priceColumn = [...el().querySelectorAll('div.shrink-0')].at(-1)!;
+    const priceCells = [...priceColumn.children];
+    expect(priceCells.map((c) => c.classList.contains('mt-3'))).toEqual(zoneGaps);
   });
 
   it('renders the venue description in the header', async () => {
