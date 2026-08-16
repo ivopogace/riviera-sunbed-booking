@@ -107,6 +107,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 <span class="field-label">Full name</span>
                 <input
                   appTouchTarget
+                  class="scheme-light"
                   type="text"
                   autocomplete="name"
                   [formField]="bookingForm.fullName"
@@ -121,6 +122,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 <span class="field-label">Email</span>
                 <input
                   appTouchTarget
+                  class="scheme-light"
                   type="email"
                   autocomplete="email"
                   [formField]="bookingForm.email"
@@ -135,6 +137,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 <span class="field-label">Phone</span>
                 <input
                   appTouchTarget
+                  class="scheme-light"
                   type="tel"
                   autocomplete="tel"
                   [formField]="bookingForm.phone"

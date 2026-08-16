@@ -42,10 +42,13 @@ function isThemeId(value: string | null): value is ThemeId {
 }
 
 /**
- * The single writer of the document's `data-riv-theme` attribute. Resolution order on boot:
- * stored choice → OS `prefers-color-scheme: light` (→ porcelain) → riviera. `select` persists,
- * so the choice survives reloads; storage access is guarded — a blocked storage
- * (private mode) degrades to session-only theming, never an error.
+ * The runtime single writer of the document's `data-riv-theme` attribute (the `index.html`
+ * pre-paint seed writes the same value once, before Angular boots — drift-pinned by
+ * `theme-boot.spec.ts`). Resolution order on boot: stored choice → OS
+ * `prefers-color-scheme: light` (→ porcelain) → riviera. `select` persists, so the choice
+ * survives reloads; storage access is guarded — a blocked storage (private mode) degrades to
+ * session-only theming, never an error. With no stored choice, a mid-session OS scheme flip is
+ * followed live; a stored choice always wins.
  */
 @Service()
 export class ThemeService {
@@ -53,17 +56,41 @@ export class ThemeService {
 
   private readonly current = signal<ThemeId>(initialTheme());
 
+  /** With storage blocked, writeStorage no-ops — the OS-flip listener honors this marker instead. */
+  private chosenThisSession = false;
+
   /** The active theme id, as a read-only signal. */
   readonly theme = this.current.asReadonly();
 
   constructor() {
     applyToDocument(this.current());
+    this.followOsScheme();
   }
 
   select(id: ThemeId): void {
+    this.chosenThisSession = true;
     this.current.set(id);
     applyToDocument(id);
     writeStorage(STORAGE_KEY, id);
+  }
+
+  // Guarded: jsdom has no matchMedia (and test fakes may lack addEventListener) — then no listener.
+  private followOsScheme(): void {
+    if (typeof globalThis.matchMedia !== 'function') {
+      return;
+    }
+    const query = globalThis.matchMedia('(prefers-color-scheme: light)');
+    if (typeof query.addEventListener !== 'function') {
+      return;
+    }
+    query.addEventListener('change', (event) => {
+      if (this.chosenThisSession || isThemeId(readStorage(STORAGE_KEY))) {
+        return;
+      }
+      const next = osTheme(event.matches);
+      this.current.set(next);
+      applyToDocument(next);
+    });
   }
 }
 
@@ -75,6 +102,10 @@ function initialTheme(): ThemeId {
   const prefersLight =
     typeof globalThis.matchMedia === 'function' &&
     globalThis.matchMedia('(prefers-color-scheme: light)').matches;
+  return osTheme(prefersLight);
+}
+
+function osTheme(prefersLight: boolean): ThemeId {
   // Derived from the registry, not hardcoded, so the light default follows the data.
   const lightDefault = THEME_OPTIONS.find((option) => option.light)?.id ?? DEFAULT_THEME;
   return prefersLight ? lightDefault : DEFAULT_THEME;

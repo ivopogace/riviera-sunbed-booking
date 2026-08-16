@@ -10,11 +10,15 @@ import { Directive } from '@angular/core';
  * must clear 3:1 against its surroundings (WCAG 1.4.11), which the darker token already encodes.
  * Carries NO border-radius and NO padding — two competing radius utilities resolve by stylesheet
  * order, not class order, so each consumer sets its own (riviera-tailwind rule 3).
+ *
+ * `scheme-light`: the field is light-styled in both themes, so its native chrome (autofill tint,
+ * caret, selection) must not follow the riviera document's `color-scheme: dark`.
  */
 @Directive({
   selector: '[appFieldGlass]',
   host: {
-    class: 'bg-(--riv-field-fill) border border-(--riv-field-border) text-(--riv-card-ink)',
+    class:
+      'scheme-light bg-(--riv-field-fill) border border-(--riv-field-border) text-(--riv-card-ink)',
   },
 })
 export class FieldGlass {}
