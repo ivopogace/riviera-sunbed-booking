@@ -41,6 +41,8 @@ interface MapTile {
   readonly set: SetView;
   readonly seat: string;
   readonly bookable: boolean;
+  /** True for a FREE walk-in-pool set: rendered distinctly and named "walk-in only" (#672). */
+  readonly walkInOnly: boolean;
   /** Accessible name for a non-interactive tile (`<li>`). */
   readonly name: string;
   /** Accessible name for the bookable button (adds the "Select to book" affordance). */
@@ -303,11 +305,17 @@ export class VenueMap {
   /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */
   private toTile(set: SetView, code: string, descriptiveLabel: string): MapTile {
     const tier = tierSentenceLabel(set.tier);
-    const state = set.availability === 'TAKEN' ? 'taken' : 'available';
+    const walkInOnly = set.availability === 'FREE' && set.pool === 'WALK_IN';
+    let state = 'available';
+    if (set.availability === 'TAKEN') {
+      state = 'taken';
+    } else if (walkInOnly) {
+      state = 'walk-in only — book at the venue';
+    }
     const seat = `${code}${set.positionNo}`;
     const bookable = set.availability === 'FREE' && set.pool === 'ONLINE';
     const name = `Set ${seat}, ${descriptiveLabel}, ${tier}, ${this.money(set.price)}, ${state}`;
-    return { set, seat, bookable, name, bookName: `${name}. Select to book.` };
+    return { set, seat, bookable, walkInOnly, name, bookName: `${name}. Select to book.` };
   }
 
   /** Fetch the map for the currently selected date. */

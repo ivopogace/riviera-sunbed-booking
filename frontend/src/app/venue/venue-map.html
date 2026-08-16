@@ -195,9 +195,10 @@
                   >
                     @for (tile of row.tiles; track tile.set.id) {
                       <li
-                        class="set-tile snap-start aspect-square min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] border-[#bfe3df] bg-white/75 text-[#0f7d8c] font-bold text-[12.5px] [&.premium]:bg-[#fbf1d9]/85 [&.premium]:border-[#e6c483] [&.premium]:text-[#875911] [&.taken]:bg-white/20 [&.taken]:border-dashed [&.taken]:border-[#98aca7] [&.taken]:text-[#6b7d77] [&.taken]:opacity-60 [&.bookable]:p-0"
+                        class="set-tile snap-start aspect-square min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] border-[#bfe3df] bg-white/75 text-[#0f7d8c] font-bold text-[12.5px] [&.premium]:bg-[#fbf1d9]/85 [&.premium]:border-[#e6c483] [&.premium]:text-[#875911] [&.walkin]:bg-[#efe0bd]/85 [&.walkin]:border-[#c8ab62] [&.walkin]:text-[#5f4d2a] [&.taken]:bg-white/20 [&.taken]:border-dashed [&.taken]:border-[#98aca7] [&.taken]:text-[#6b7d77] [&.taken]:opacity-60 [&.bookable]:p-0"
                         data-testid="set-tile"
                         [class.premium]="tile.set.tier === 'PREMIUM'"
+                        [class.walkin]="tile.walkInOnly"
                         [class.taken]="tile.set.availability === 'TAKEN'"
                         [class.bookable]="tile.bookable"
                         [attr.aria-label]="tile.bookable ? null : tile.name"
@@ -270,21 +271,28 @@
       >
         <li class="flex items-center gap-2">
           <span
-            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#bfe3df] bg-white"
+            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#bfe3df] bg-white/75"
             aria-hidden="true"
           ></span>
           Available
         </li>
         <li class="flex items-center gap-2">
           <span
-            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#e6c483] bg-[#fbf1d9]"
+            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#e6c483] bg-[#fbf1d9]/85"
             aria-hidden="true"
           ></span>
           Front row
         </li>
         <li class="flex items-center gap-2">
           <span
-            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-dashed border-[#d2ccbf] bg-[#ece8e0]"
+            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#c8ab62] bg-[#efe0bd]/85"
+            aria-hidden="true"
+          ></span>
+          Walk-in only — book at the venue
+        </li>
+        <li class="flex items-center gap-2">
+          <span
+            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-dashed border-[#98aca7] bg-white/20 opacity-60"
             aria-hidden="true"
           ></span>
           Taken

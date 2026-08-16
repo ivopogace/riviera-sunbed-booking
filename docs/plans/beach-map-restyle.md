@@ -160,15 +160,15 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is; `pool` alre
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** TDD the walk-in treatment (AC-3..AC-5).
+**Next action:** rewrite the contrast spec's tile table as composited-over-wash pairs.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 6fb3d7e |
-| 1 — restyle base (prototype `f781dbf` + zone unit specs) | ✅ | this commit |
-| 2 — walk-in treatment + legend (TDD) | | |
+| 1 — restyle base (prototype `f781dbf` + zone unit specs) | ✅ | 0b64ed0 |
+| 2 — walk-in treatment + legend (TDD) | ✅ | this commit |
 | 3 — composited contrast specs | | |
 | 4 — e2e pins + a11y sweep + close-out | | |
 

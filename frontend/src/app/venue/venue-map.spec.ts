@@ -323,6 +323,36 @@ describe('VenueMap', () => {
     expect(el().querySelector('.set-tile.taken')?.querySelector('button')).toBeNull();
   });
 
+  it('gives free walk-in sets their own treatment: sand tile, no button, walk-in-only name (#672)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const walkins = [...el().querySelectorAll('.set-tile.walkin')];
+    expect(walkins.length).toBe(5); // row D is the walk-in pool: 6 sets, 1 taken
+    expect(walkins[0].querySelector('button')).toBeNull();
+    const label = walkins[0].getAttribute('aria-label') ?? '';
+    expect(label).toContain('walk-in only — book at the venue');
+    expect(label).not.toContain('available');
+  });
+
+  it('renders a taken walk-in set as taken, not walk-in — the ghost wins (#672)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const d4 = [...el().querySelectorAll('.set-tile')].find((t) =>
+      t.getAttribute('aria-label')?.startsWith('Set D4'),
+    )!;
+    expect(d4.classList.contains('taken')).toBe(true);
+    expect(d4.classList.contains('walkin')).toBe(false);
+    expect(d4.getAttribute('aria-label')).toContain('taken');
+  });
+
+  it('lists a walk-in entry in the legend, next to the restyled swatches (#672)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const legend = el().querySelector('ul[aria-label="Legend"]')!;
+    expect(legend.textContent).toContain('Walk-in only');
+    expect(legend.querySelectorAll('li').length).toBe(4); // Available · Front row · Walk-in · Taken
+  });
+
   it('keeps the bookable button accessible name ending in "Select to book"', async () => {
     flushVenue();
     await fixture.whenStable();
