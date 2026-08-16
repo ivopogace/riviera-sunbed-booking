@@ -225,9 +225,9 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 4)
+**Stage pointer:** implement (phase 5)
 
-**Next action:** move the layout editor onto the canvas (phase 4, contrast math first).
+**Next action:** move the daily view onto the canvas (phase 5, contrast math first).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -235,7 +235,7 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is).
 | 1 — promote BeachGridFrame to shared/ (+ banner unification) | ✅ | this commit |
 | 2 — BeachMapCanvas (TDD, unit-spec complete) | ✅ | this commit |
 | 3 — tourist map onto the canvas | ✅ | this commit (unit 76 + e2e venue-map-pan 2/2 green) |
-| 4 — layout editor onto the canvas | | |
+| 4 — layout editor onto the canvas | ✅ | this commit (unit 36 + e2e layout-editor 5/5, touch-targets green; gap border /35→/55 for 1.4.11 over the wash) |
 | 5 — daily view onto the canvas | | |
 | 6 — sweeps, porcelain check, gates, close-out | | |
 
@@ -399,6 +399,8 @@ spec), `venue-map.contrast.spec.ts` (banner stop refs).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-16 | Phase 4 (canvas viewport didn't overflow in the editor: a grid/flex **item** hosting the canvas keeps `min-width: auto` and blows the column out instead of scrolling) | every element hosting `<app-beach-map-canvas>` inside a flex/grid track | `grep -rn "<app-beach-map-canvas" frontend/src/app` | layout-editor (grid `1fr` item — fixed with `min-w-0`); venue-map (normal block flow — immune); daily-view (phase 5: plain flow — immune) | fix scoped to the editor; phase-5 site verified immune |
+| 2026-08-16 | Phase 4 (e2e raw `page.mouse.*` primitives don't auto-scroll and the console header is sticky — the drag landed on `oc-header`) | every e2e using raw mouse primitives instead of locator actions | `grep -rln "mouse\.down()" frontend/e2e` | `venue-map-pan.e2e.ts` (tourist page, no sticky header over the map — already green), the new editor drag pin (fixed with a `block: 'center'` scroll) | fix scoped to the new pin |
 
 ---
 

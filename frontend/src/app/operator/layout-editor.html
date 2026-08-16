@@ -148,57 +148,41 @@
         </section>
       </div>
 
-      <!-- The sea-facing grid -->
-      <app-beach-grid-frame testid="layout-grid-frame">
-        @if (hasLayout()) {
-          <div
-            class="select-none overflow-x-auto"
-            data-testid="layout-grid"
-            (mouseup)="onPaintEnd()"
-            (mouseleave)="onPaintEnd()"
-          >
-            @for (row of displayRows(); track $index; let ri = $index) {
-              <div class="mb-1.5 flex items-center gap-2">
-                <span
-                  class="w-5 flex-shrink-0 text-center text-[11px] font-bold text-(--riv-card-ink)"
-                  >{{ row.label }}</span
-                >
-                <div
-                  class="grid flex-1 gap-1"
-                  [style.grid-template-columns]="'repeat(' + colCount() + ', minmax(44px, 1fr))'"
-                >
-                  @for (cell of row.cells; track $index; let ci = $index) {
-                    <button
-                      appTouchTarget
-                      type="button"
-                      appBeachCell
-                      [state]="cell.state"
-                      (mousedown)="onCellDown(ri, ci)"
-                      (mouseenter)="onCellEnter(ri, ci)"
-                      (click)="paintCell(ri, ci)"
-                      [title]="cell.label"
-                      [attr.aria-label]="cell.label"
-                      data-testid="layout-cell"
-                      class="rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
-                    ></button>
-                  }
-                </div>
-                <span
-                  class="w-[58px] flex-shrink-0 text-right text-[11px] font-semibold text-(--riv-card-ink-soft)"
-                  >{{ row.priceStr }}</span
-                >
-              </div>
+      <!-- The sea-facing grid on the shared canvas; the editor's own drag gesture is paint, so drag-pan is off. -->
+      <!-- min-w-0: as the 1fr grid item, the canvas must shrink so its viewport scrolls (no column blowout). -->
+      <app-beach-map-canvas
+        class="min-w-0"
+        frameTestid="layout-grid-frame"
+        viewportTestid="layout-grid"
+        [dragPan]="false"
+      >
+        <ng-template [appBeachMapRow]="displayRows()" let-row let-ri="index">
+          <div class="grid gap-1.5 grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))]">
+            @for (cell of row.cells; track $index; let ci = $index) {
+              <button
+                appTouchTarget
+                type="button"
+                appBeachCell
+                [state]="cell.state"
+                (mousedown)="onCellDown(ri, ci)"
+                (mouseenter)="onCellEnter(ri, ci)"
+                (click)="paintCell(ri, ci)"
+                [title]="cell.label"
+                [attr.aria-label]="cell.label"
+                data-testid="layout-cell"
+                class="aspect-square min-w-0 rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
+              ></button>
             }
           </div>
-        } @else {
-          <p
-            class="px-3 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
-            data-testid="layout-empty"
-          >
-            Generate a layout to begin, then paint tiers, walk-in sets and aisles.
-          </p>
-        }
-      </app-beach-grid-frame>
+        </ng-template>
+        <p
+          canvasEmpty
+          class="px-3 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
+          data-testid="layout-empty"
+        >
+          Generate a layout to begin, then paint tiers, walk-in sets and aisles.
+        </p>
+      </app-beach-map-canvas>
     </div>
 
     <!-- Legend -->
@@ -229,7 +213,7 @@
       </li>
       <li class="flex items-center gap-[7px]">
         <span
-          class="h-[13px] w-[13px] rounded-[4px] border-[1.5px] border-dashed border-[#0c2a33]/45"
+          class="h-[13px] w-[13px] rounded-[4px] border-[1.5px] border-dashed border-[#0c2a33]/55"
           aria-hidden="true"
         ></span>
         Gap / aisle

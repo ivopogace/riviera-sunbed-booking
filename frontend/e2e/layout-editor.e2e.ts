@@ -152,6 +152,42 @@ test('generates a grid, paints a walk-in set, and saves the whole layout in one 
   expect(body.expectedVersion).toBe(0); // the setVersion loaded from the map read
 });
 
+test('drag-painting across cells paints them and never pans the overflowing grid (#672 slice 2)', async ({
+  page,
+}) => {
+  await mockEditor(page);
+  await page.goto('/operator/1');
+  await signIn(page);
+
+  // 20 columns overflow the console viewport, so a pan WOULD move if drag-pan were on.
+  await page.getByTestId('layout-gen-rows').fill('1');
+  await page.getByTestId('layout-gen-cols').fill('20');
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(20);
+  await expect
+    .poll(() => page.getByTestId('layout-grid').evaluate((el) => el.scrollWidth > el.clientWidth))
+    .toBe(true);
+
+  // Raw mouse primitives don't auto-scroll like click() — center the grid clear of the sticky header.
+  await page.getByTestId('layout-tool-walkin').click();
+  await page
+    .getByTestId('layout-cell')
+    .nth(0)
+    .evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  const from = (await page.getByTestId('layout-cell').nth(0).boundingBox())!;
+  const to = (await page.getByTestId('layout-cell').nth(2).boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+  await page.mouse.up();
+
+  for (const i of [0, 1, 2]) {
+    await expect(page.getByTestId('layout-cell').nth(i)).toHaveAttribute('data-state', 'walkin');
+  }
+  // The editor's drag gesture is paint, not pan: the canvas viewport never scrolled.
+  expect(await page.getByTestId('layout-grid').evaluate((el) => el.scrollLeft)).toBe(0);
+});
+
 test('regenerating over a grid confirms first and moves focus with the confirmation (#604, + axe)', async ({
   page,
 }) => {
