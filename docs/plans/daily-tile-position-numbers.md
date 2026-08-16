@@ -149,6 +149,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`/code-review` inline + overlay) | Zone-rail chip shows the row's first set's price, so a mixed-price row is misstated now that FREE tiles no longer show per-set price | deferred → issue #689 (pre-exists identically on the tourist map — `venue-map.ts` uses the same `sets[0].price`; a rail-semantics product decision spanning both surfaces, out of this slice's scope) |
+| F-2 | review (`/code-review` inline + overlay) | Glyph+number span block duplicated across the button and locked-span branches | declined — mirrors the shipped `venue-map.html` precedent (same span duplicated across its bookable/locked branches); an `NgTemplateOutlet` indirection for two spans costs more than the duplication; will refactor if Sonar reports a duplicated block |
+| F-3 | review (`/code-review` inline + overlay) | `stateGlyph` TSDoc embedded the issue number, against the no-changelog-in-TSDoc rule (RV-STYLE-1 adjacent) | fixed in the review-fix commit (issue ref removed) |
 
 ---
 

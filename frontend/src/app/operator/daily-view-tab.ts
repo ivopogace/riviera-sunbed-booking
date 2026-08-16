@@ -488,7 +488,7 @@ export class DailyViewTab {
   }
 
   /** The state glyph shown beside the position number: a check for a staff mark, a dot when
-   *  locked, none when free (#686) — state stays glyph + fill, never colour alone. */
+   *  locked, none when free — state stays glyph + fill, never colour alone. */
   protected stateGlyph(set: SetView): string | undefined {
     switch (this.stateOf(set)) {
       case 'STAFF_MARKED':
