@@ -77,7 +77,7 @@ see a WebKit-only divergence, so the pin lives at the class-contract level) ·
   `aspect-square` fails loudly on all four surfaces, not just the three fixed here.
   *Pinned by:* `daily-view-tab.spec.ts` › "sizes tiles with the rail cells' fixed
   --riv-tile height, never aspect-ratio (#683)"
-- [ ] **AC-5:** Given the class swap, when the existing nets run, then they hold
+- [x] **AC-5:** Given the class swap, when the existing nets run, then they hold
   verbatim: `venue-map-pan.e2e.ts` (ghost alpha, dashed border, scrollLeft/scrollTop
   deltas), `touch-targets*.e2e.ts` (three files — `--riv-tile` clamps at 47px ≥ the 44px
   floor), `layout-editor.e2e.ts`, `operator-set-editing.e2e.ts`, `operator-daily.e2e.ts`,
@@ -108,7 +108,7 @@ untouched suites.
 | R-1 | A spec pins the old class string and breaks on the swap (the #672 `PRE_MOVE_CELL_CLASS` trap, F-CI-1 in `docs/plans/shared-map-canvas.md`) | low | med | Grepped `frontend/` for `aspect-square` and `aspect-ratio` before editing: only the three template sites exist; `PRE_MOVE_CELL_CLASS` pins state-variant colors, not geometry. No pin update needed | session | closed — grep evidence, plan time |
 | R-2 | Removing `aspect-square` breaks squareness where tracks aren't fixed | low | high | All three grids verified fixed-track `repeat(var(--riv-map-cols,1),var(--riv-tile))` (incl. layout-editor, the one the issue asked to verify) | session | closed — template evidence, plan time |
 | R-3 | Height swap dips a control under the 44px touch floor | low | med | `--riv-tile: clamp(47px, 11vw, 56px)` (`beach-map-canvas.ts:85`) floors at 47px ≥ 44; proven by the rendered-box sweep `touch-targets*.e2e.ts`, run scoped locally + full in CI | session | closed — all three sweeps green locally at ec0cfc8; CI re-proves on the PR |
-| R-4 | Chromium-only CI cannot prove the iOS rendering is fixed | certain | med | Pin the mechanism (AC-1…4); real-WebKit proof is a dev-machine `npx playwright install webkit` run and/or the maintainer's post-deploy iPhone check (issue #683 verification note) | maintainer | open — post-deploy hand check |
+| R-4 | Chromium-only CI cannot prove the iOS rendering is fixed | certain | med | Pin the mechanism (AC-1…4); real-WebKit proof is a dev-machine `npx playwright install webkit` run and/or the maintainer's post-deploy iPhone check (issue #683 verification note) | maintainer | closed for this slice — transferred to the maintainer as the post-deploy on-device check, recorded in PR #684's Scope notes; not verifiable from Chromium CI by design |
 
 ## Open questions / Assumptions
 
@@ -156,16 +156,18 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** PR — draft open, awaiting the CI gate
+**Stage pointer:** merge close-out — plan finalized in the PR's last commit; merge
+once CI + Sonar re-verify green on this head
 
-**Next action:** when CI is green, mark ready-for-review and run the review gate
-(`/code-review` + `riviera-review-overlay`), then the Sonar gate.
+**Next action:** after the merge: confirm #683 closed, then the maintainer's
+post-deploy iPhone check (R-4, PR #684 Scope notes)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | f6511e1 |
 | 1 — pins red → class swap green | ✅ | ec0cfc8 |
-| 2 — verification (units, lint/format, guards, scoped e2e) | ✅ | validated at ec0cfc8: units 1445/1445, lint, format, 4 hygiene guards, 53 scoped e2e (pan + touch-targets ×3 + layout/set-editor/daily) — CI full suite pending on the PR |
+| 2 — verification (units, lint/format, guards, scoped e2e) | ✅ | validated at ec0cfc8: units 1445/1445, lint, format, 4 hygiene guards, 53 scoped e2e (pan + touch-targets ×3 + layout/set-editor/daily); CI run 31965948206 all 8 checks green |
+| 3 — review-gate fixes (F-2, F-3) | ✅ | this commit; units/lint/format re-run green |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -173,6 +175,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`code-review` skill, medium) | Height invariant enforced per-surface by convention + pins, not structurally by the canvas — a future fifth `appBeachMapRow` consumer could reintroduce the drift | deferred → issue #685 (reshapes all four consumers incl. the untouched daily view; out of #683's scope) |
+| F-2 | review | Plan-doc contradiction: phase table marked Phase 2 done while the Phase-2 checklist and AC-verification section sat unchecked | fixed in this commit (doc reconciled) |
+| F-3 | review | The 11-line mechanism pin copy-pasted across four spec files | fixed in this commit — extracted `src/testing/beach-map-height.ts` (`expectCellsMatchRailHeight`), four one-line call sites |
+| — | sonar | Quality gate passed; issue list pulled per pr-gates §2: 0 issues, 0 duplicated blocks, `new_lines: 3` (analysis confirmed present, not a false-clean) | closed |
+
+**Review-gate record:** `Skill("code-review")` ran at medium effort (probe succeeded)
++ `riviera-review-overlay` frontend bank walked. The run self-reported single-pass
+inline (no subagent fan-out) — recorded here and in the PR rather than silently
+treated as the full fan-out. 3 findings, all triaged above.
 
 ---
 
@@ -186,6 +197,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/set-editor.html` — set cell: `aspect-square` → `h-[var(--riv-tile)]`
 - `frontend/src/app/operator/set-editor.spec.ts` — AC-3 mechanism pin
 - `frontend/src/app/operator/daily-view-tab.spec.ts` — AC-4 regression pin (template untouched)
+- `frontend/src/testing/beach-map-height.ts` — shared pin helper `expectCellsMatchRailHeight` (review finding F-3)
 
 ---
 
@@ -229,16 +241,16 @@ it('sizes set tiles with the rail cells’ fixed --riv-tile height, never aspect
 
 ## Phase 2 — Verification net
 
-- [ ] `npm test` (full unit run incl. a11y/contrast specs) → green
-- [ ] `npm run lint` + `npm run format:check` → green
-- [ ] `node scripts/check-touch-target.mjs --files <3 templates>` (declaration guard) and
+- [x] `npm test` (full unit run incl. a11y/contrast specs) → green
+- [x] `npm run lint` + `npm run format:check` → green
+- [x] `node scripts/check-touch-target.mjs --files <3 templates>` (declaration guard) and
   `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc staged first)
   → green
-- [ ] Scoped mocked e2e (Chromium): `venue-map-pan`, `layout-editor`,
+- [x] Scoped mocked e2e (Chromium): `venue-map-pan`, `layout-editor`,
   `operator-set-editing`, `operator-daily`, `touch-targets`, `touch-targets-tourist`,
   `touch-targets-admin` → green (`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx
   playwright test --config=playwright.a11y.config.ts <files>`)
-- [ ] CI full suite green on the PR
+- [x] CI full suite green on the PR (run 31965948206, all 8 checks; re-run on the review-fix head verified before merge)
 
 ---
 
@@ -252,29 +264,30 @@ it('sizes set tiles with the rail cells’ fixed --riv-tile height, never aspect
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1…AC-4:** scoped Vitest run → the four #683 pins pass. Verified at commit `<sha>`.
-- [ ] **AC-5:** scoped mocked e2e + full unit suite green locally; CI full suite green on the PR.
+- [x] **AC-1…AC-4:** scoped Vitest run → the four #683 pins pass. Verified at ec0cfc8; re-verified after the F-3 helper extraction (full suite 1445/1445).
+- [x] **AC-5:** 53 scoped mocked e2e + full unit suite green locally at ec0cfc8; CI full suite green on PR #684 (run 31965948206), re-verified on the review-fix head before merge.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, frontend-only.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** N/A (invariants #5, #8, #9).
-- [ ] Refund policy N/A (invariant #10).
-- [ ] Timezone N/A (invariant #6).
-- [ ] Booking codes N/A (invariant #7).
-- [ ] Flyway N/A (invariant #12).
-- [ ] **Frontend** standards met: template-only class swap, markers inert, pins in
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, frontend-only.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** N/A (invariants #5, #8, #9).
+- [x] Refund policy N/A (invariant #10).
+- [x] Timezone N/A (invariant #6).
+- [x] Booking codes N/A (invariant #7).
+- [x] Flyway N/A (invariant #12).
+- [x] **Frontend** standards met: template-only class swap, markers inert, pins in
   Vitest, no `as any`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND
   findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state committed here,
-  citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-  `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state committed here;
+  merged via PR #684.
+- [x] **The review gate ran** — invocation-ladder rung 1 (`Skill("code-review")`, medium)
+  *plus* `riviera-review-overlay`; the run was single-pass inline (no subagent fan-out),
+  stated in the Review-gate record and the PR rather than claimed as the full fan-out.

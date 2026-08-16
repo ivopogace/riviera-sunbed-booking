@@ -7,6 +7,7 @@ import {
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
+import { expectCellsMatchRailHeight } from '../../testing/beach-map-height';
 import { SetView } from '../shared/venue-views';
 import { SetEditor } from './set-editor';
 
@@ -140,16 +141,7 @@ describe('SetEditor (#600)', () => {
 
   it('sizes set cells with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', () => {
     render();
-
-    const rails = Array.from(host.querySelectorAll<HTMLElement>('[data-testid="row-code"]')).map(
-      (chip) => chip.parentElement!,
-    );
-    expect(rails.length).toBeGreaterThan(0);
-    expect(cells().length).toBeGreaterThan(0);
-    for (const cell of [...rails, ...cells()]) {
-      expect(cell.classList.contains('h-[var(--riv-tile)]')).toBe(true);
-      expect(cell.classList.contains('aspect-square')).toBe(false);
-    }
+    expectCellsMatchRailHeight(host, '[data-testid="set-cell"]');
   });
 
   it('chips every row’s price from its first set, and none for a set-less grown row (#677)', () => {

@@ -5,6 +5,7 @@ import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@ang
 import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
+import { expectCellsMatchRailHeight } from '../../testing/beach-map-height';
 import { defaultBookingDate, todayBookingDate } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -130,17 +131,7 @@ describe('DailyViewTab (#175)', () => {
 
   it('sizes tiles with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', () => {
     render();
-
-    const rails = Array.from(host.querySelectorAll<HTMLElement>('[data-testid="row-code"]')).map(
-      (chip) => chip.parentElement!,
-    );
-    const tiles = Array.from(host.querySelectorAll<HTMLElement>('[data-testid="daily-tile"]'));
-    expect(rails.length).toBeGreaterThan(0);
-    expect(tiles.length).toBeGreaterThan(0);
-    for (const cell of [...rails, ...tiles]) {
-      expect(cell.classList.contains('h-[var(--riv-tile)]')).toBe(true);
-      expect(cell.classList.contains('aspect-square')).toBe(false);
-    }
+    expectCellsMatchRailHeight(host, '[data-testid="daily-tile"]');
   });
 
   it('locks an unpaid online hold — server state wins over the confirmed-bookings list (#207)', () => {

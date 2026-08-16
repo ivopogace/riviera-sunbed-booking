@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
+import { expectCellsMatchRailHeight } from '../../testing/beach-map-height';
 import { todayBookingDate } from '../shared/booking-date';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -136,16 +137,7 @@ describe('LayoutEditor (#172)', () => {
   it('sizes bulk cells with the rail cells’ fixed --riv-tile height, never aspect-ratio (#683)', () => {
     render();
     generate('2', '3');
-
-    const rails = Array.from(host.querySelectorAll<HTMLElement>('[data-testid="row-code"]')).map(
-      (chip) => chip.parentElement!,
-    );
-    expect(rails.length).toBeGreaterThan(0);
-    expect(cells().length).toBeGreaterThan(0);
-    for (const cell of [...rails, ...cells()]) {
-      expect(cell.classList.contains('h-[var(--riv-tile)]')).toBe(true);
-      expect(cell.classList.contains('aspect-square')).toBe(false);
-    }
+    expectCellsMatchRailHeight(host, '[data-testid="layout-cell"]');
   });
 
   it('asks for confirmation before regenerating over an existing grid, then replaces', () => {
