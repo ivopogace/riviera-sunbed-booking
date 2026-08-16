@@ -58,8 +58,9 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
 }
 
 /**
- * The shared beach-map canvas (#672): everything the tourist map, the layout editor and the
- * Daily view repeat around their tiles — the {@link BeachGridFrame} chrome, the sea→sand wash
+ * The shared beach-map canvas (#672): everything the tourist map, the layout editor, the
+ * Daily view and the per-set editor repeat around their tiles — the {@link BeachGridFrame}
+ * chrome, the sea→sand wash
  * on the vertical scroller, the aria-hidden row-code and per-zone price rails, the zone-gap
  * layout, and the horizontally pannable viewport (mouse drag + scroll snap + edge fade, all
  * gated on actual overflow via `.pannable`). Tile rows are projected via

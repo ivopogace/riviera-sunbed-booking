@@ -1,4 +1,4 @@
-import { AA_LARGE, AA_NORMAL, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
+import { AA_LARGE, AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
@@ -6,6 +6,7 @@ import {
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
+  WASH_STOPS,
   expectAaOverStops,
 } from '../../testing/glass-tokens';
 
@@ -23,8 +24,6 @@ import {
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 // The refund-red the payouts ledger already uses, here as the Remove ink and the error message.
 const DESTRUCTIVE_INK = '#a3160e';
-// The shared canvas's sea→sand wash stops the selection outline composites over (#677).
-const WASH_STOPS = ['cfeef6', 'e7f5f1', 'f6eedb'].map(hexToRgb);
 // set-editor.html: `outline-[#0e8aa8]` on the selected cell — its identity is this outline alone.
 const SELECTION_OUTLINE = '#0e8aa8';
 

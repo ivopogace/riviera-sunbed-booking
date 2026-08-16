@@ -32,9 +32,10 @@ the set-editor's `1fr` grid column) · `riviera-plan-doc` (this template — the
 ledger separates the byte-identical vocabulary from the deliberate restyle inheritances)
 · `tdd` (chrome pins written red before the migration; the existing suites are the
 behavior net) · `riviera-review-overlay` (review gate — due at ready-for-review) ·
-`riviera-docs-freshness` (due at close-out over `origin/main...HEAD` — #674's plan
-Non-goals names the set-editor cut this slice reverses; checked as a stated-fact
-candidate) · `riviera-frontend` (placement: no file moves — the canvas is already
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD` — **2 findings**, both
+source-TSDoc consumer enumerations (`beach-map-canvas.ts` "the three surfaces",
+`beach-grid-frame.ts` "per-set editor directly"), patched in the review-fix commit;
+no substrate `.md` stated the count) · `riviera-frontend` (placement: no file moves — the canvas is already
 `shared/`, the editor stays `operator/`; RV-FE-8 ledger untouched) · `riviera-tailwind`
 (utilities not `@apply`; keep `set-cell` hooks inert; tile geometry via the canvas's
 `--riv-tile` + `aspect-square`; the 44px floor stays measured, not asserted) ·
@@ -50,30 +51,30 @@ remote branch stands in for `feature/set-editor-on-canvas` (riviera-sdlc remote 
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue's sets, when the set editor renders, then the shared
+- [x] **AC-1:** Given a venue's sets, when the set editor renders, then the shared
   canvas chrome is present — `set-grid-frame` on the frame, `set-grid` on the canvas
   pan viewport (the element that actually overflows), an aria-hidden `row-code` chip
   per row, and an aria-hidden `row-price` chip on **every row that has a set**
   (`formatMoney` of the row's first set; none for a set-less row). *Pinned by:*
   `set-editor.spec.ts` "renders on the shared canvas…" specs (new).
-- [ ] **AC-2:** Given the migrated grid, when cells render and are activated, then the
+- [x] **AC-2:** Given the migrated grid, when cells render and are activated, then the
   tile vocabulary is byte-identical: `set-cell` testid, `data-set-id`/`data-grid-x`/
   `data-grid-y`/`data-state`, `aria-pressed` selection + outline classes, per-cell
   `aria-label`/`title`, `[disabled]` on occupied cells while a move is armed — and
   every select/add/move/remove/error flow behaves as today. *Pinned by:* the existing
   `set-editor.spec.ts` + `set-editor.a11y.spec.ts` suites green with zero behavioral
   edits.
-- [ ] **AC-3:** Given a phone-width viewport, when the per-set surface renders, then
+- [x] **AC-3:** Given a phone-width viewport, when the per-set surface renders, then
   every visible control measures ≥44×44, the `set-grid` element is scrollable when the
   grid overflows (never clipped), and the page never scrolls sideways. *Pinned by:*
   `touch-targets.e2e.ts` "beach map, per-set mode" + `operator-set-editing.e2e.ts`
   "stays inside its own scroll…" (existing, unchanged).
-- [ ] **AC-4:** Given the wash's worst-case stop (`#f6eedb` sand), when the selection
+- [x] **AC-4:** Given the wash's worst-case stop (`#f6eedb` sand), when the selection
   outline (`#0e8aa8`) is measured over every wash stop, then it meets 3:1 (WCAG
   1.4.11); the BeachCell fill/border pairs are already proven over the wash in
   `layout-editor.contrast.spec.ts` and are referenced, not re-derived. *Pinned by:*
   `set-editor.contrast.spec.ts` selection-outline spec (new).
-- [ ] **AC-5:** Given the operator console's pinned porcelain theme, when both
+- [x] **AC-5:** Given the operator console's pinned porcelain theme, when both
   Beach-map tab modes are screenshotted, then Bulk layout and Edit sets read as one
   surface (wash, rails, chips, tile rhythm). *Pinned by:* the phase-2 porcelain
   screenshot eyeball (visual, recorded in Execution status).
@@ -121,7 +122,7 @@ The old surface is the set-editor's bare-frame grid block (`set-editor.html` lin
 | R-3 | Selection outline `#0e8aa8` fails 1.4.11 (3:1) over a wash stop | low | med | Pre-checked at plan time: worst case (sand `#f6eedb`) computes ≈3.48:1 — passes; pinned by the new contrast spec so it can't drift | this slice | closed — phase-1 commit (spec green) |
 | R-4 | dragPan ON swallows a legitimate selection click (pan-release suppression misfires) | low | high | The suppression is canvas-owned and already pinned (#674 R-1: consume-once, `detail > 0` only, keyboard never); the existing set-editor e2e clicks cells through the viewport and stays green | this slice | closed — phase 2 (operator-set-editing 6/6 green) |
 | R-5 | AT regression from moving the visible row labels into the aria-hidden rail | low | low | Every cell's `aria-label` already carries row + position (a11y spec pins the exact strings); axe re-runs over the migrated structure in `set-editor.a11y.spec.ts` | this slice | closed — phase-1 commit (a11y suite green unmodified) |
-| R-6 | Sonar new-code gate (0 issues, 0 duplication, ≥80% coverage) on a template-heavy refactor | low | med | The slice deletes chrome rather than adding logic; the one new mapping lives in the existing `rows` computed and is unit-pinned; review the Sonar issue list at the gate | this slice | open |
+| R-6 | Sonar new-code gate (0 issues, 0 duplication, ≥80% coverage) on a template-heavy refactor | low | med | The slice deletes chrome rather than adding logic; the one new mapping lives in the existing `rows` computed and is unit-pinned; review the Sonar issue list at the gate | this slice | closed — Sonar on PR #678: quality gate passed, 0 new issues, 0 duplication, 100% new-code coverage (re-verified on the final push) |
 
 ## Open questions / Assumptions
 
@@ -182,16 +183,16 @@ N/A — no contract change (`SetView` consumed as-is).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** DONE — merged via PR #678
 
-**Next action:** phase 3 — full sweeps, merge latest main, mark the PR ready, run the review + Sonar gates, close out.
+**Next action:** none — slice complete; #677 closes with the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | 1ef4bab (draft PR #678 opened) |
 | 1 — pins red → set-editor onto the canvas → scoped suites green | ✅ | this commit (2 chrome pins red → green; unit 36, a11y 347, lint + format green) |
 | 2 — e2e + porcelain visual check | ✅ | no commit needed (e2e 38/38 green incl. both coupled per-set tests; porcelain screenshots at 1280px + 390px eyeballed — both modes read as one surface: shared frame/banners, wash, row-code + per-row price chips, aligned tile rhythm, edge-fade + pan hint only in Edit sets where the grid overflows and dragPan is on; page contained at phone width) |
-| 3 — sweeps, gates, close-out | | |
+| 3 — sweeps, gates, close-out | ✅ | this commit (full unit 1424 + a11y 347 + e2e 212/212 + lint/format/guard green; review gate ran — 4 findings, 3 fixed + 1 declined with rationale; Sonar 0/0/100%; docs-freshness 2 findings patched) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -199,6 +200,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`/code-review`) | The per-row price chip shows only the row's first set's price, so a mixed-price row's chip misstates the others | **declined with rationale** — the issue specifies exactly this (`priceLabel` from the row's first set), matching the bulk mode's identical chip semantics so the tab's two modes read as one; the chip is an aria-hidden rail hint, and per-set truth is in the panel + each cell's flow |
+| F-2 | review (`/code-review`) | `WASH_STOPS` copy-pasted verbatim into a fourth contrast spec instead of hoisted to the shared testing tokens | fixed in the review-fix commit — `WASH_STOPS` moved to `src/testing/glass-tokens.ts` (its documented home for keep-in-sync mirrors); all four contrast specs import it |
+| F-3 | review (`/code-review`) | `firstSet` re-derived each cell's set via a second `bySlot` sweep when the built cells already carry `setId` | fixed in the review-fix commit — first occupied cell found by `setId`, one `bySlot` lookup |
+| F-4 | review (`/code-review`) | Plan phase-1 step 1 cited `€35.00`/`€20.00` chip pins, but `formatMoney` drops cents on whole amounts (shipped pins assert `€35`/`€20`) | fixed in the review-fix commit — step text corrected |
+| F-5 | docs-freshness (counting sweep) | `beach-map-canvas.ts` TSDoc enumerated its surfaces as the tourist map, layout editor and Daily view — the fourth surface falsified it; `beach-grid-frame.ts` TSDoc said the per-set editor consumes the frame "directly" | fixed in the review-fix commit — both enumerations updated; the canvas is now the frame's only importer (verified by grep) |
 
 ---
 
@@ -210,6 +216,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/set-editor.spec.ts` — new chrome pins (AC-1); existing flows untouched
 - `frontend/src/app/operator/set-editor.a11y.spec.ts` — re-run over the migrated structure (touch only if a selector rescopes)
 - `frontend/src/app/operator/set-editor.contrast.spec.ts` — wash-stop refs + the selection-outline 1.4.11 pin (AC-4)
+- `frontend/src/testing/glass-tokens.ts` — `WASH_STOPS` hoisted here (review F-2)
+- `frontend/src/app/operator/layout-editor.contrast.spec.ts` — local `WASH_STOPS` → the shared token (F-2)
+- `frontend/src/app/operator/daily-view-tab.contrast.spec.ts` — local `WASH_STOPS` → the shared token (F-2)
+- `frontend/src/app/venue/venue-map.contrast.spec.ts` — local `WASH_STOPS` → the shared token (F-2)
+- `frontend/src/app/shared/beach-map-canvas.ts` — TSDoc surface enumeration freshness patch (F-5)
+- `frontend/src/app/shared/beach-grid-frame.ts` — TSDoc consumer enumeration freshness patch (F-5)
 
 ---
 
@@ -224,8 +236,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - [x] **Step 1:** Write the failing chrome pins in `set-editor.spec.ts` (AC-1): the
   canvas viewport carries `data-testid="set-grid"`; one aria-hidden `row-code` chip
-  per row; a `row-price` chip per row-with-a-set (`€35.00` for row A, `€20.00` for
-  row B in the standard fixture) and none for a grown set-less row; the frame testid
+  per row; a `row-price` chip per row-with-a-set (`€35` for row A, `€20` for row B
+  in the standard fixture — `formatMoney` drops cents on whole amounts) and none for
+  a grown set-less row; the frame testid
   `set-grid-frame` present. Write the AC-4 contrast pin in
   `set-editor.contrast.spec.ts` (selection outline `#0e8aa8` ≥3:1 composited over
   each wash stop, referencing the pairs proven in `layout-editor.contrast.spec.ts`
@@ -259,16 +272,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 3 — Sweeps, gates, close-out
 
-- [ ] **Step 1:** Full `npm test`, `npm run test:a11y`, `npm run test:e2e:a11y`,
+- [x] **Step 1:** Full `npm test`, `npm run test:a11y`, `npm run test:e2e:a11y`,
   `npm run lint`, `npm run format:check`,
   `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 2:** Merge latest `origin/main`; mark the PR ready for review; run the
+- [x] **Step 2:** Merge latest `origin/main`; mark the PR ready for review; run the
   Review gate (`/code-review` ladder + `riviera-review-overlay` RV-FE walk) and the
   Sonar gate (issue list, not pass/fail) per `references/pr-gates.md`.
-- [ ] **Step 3:** `riviera-docs-freshness` over `origin/main...HEAD` (the #674 plan's
+- [x] **Step 3:** `riviera-docs-freshness` over `origin/main...HEAD` (the #674 plan's
   Non-goals names this cut — final-state plan docs are history, not stale facts, but
   check the counting sweep: "three surfaces on the canvas" statements anywhere).
-- [ ] **Step 4:** Close-out: finalize Execution status (`merged via PR #NN`), tick the
+- [x] **Step 4:** Close-out: finalize Execution status (`merged via PR #NN`), tick the
   self-review checklist, close #677.
 
 ---
@@ -283,29 +296,29 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- set-editor` → the new chrome pins PASS. Verified at `<sha>`.
-- [ ] **AC-2:** `npm test -- set-editor` → the pre-existing flow specs PASS unmodified. Verified at `<sha>`.
-- [ ] **AC-3:** `npx playwright test operator-set-editing touch-targets` (mocked config) → PASS. Verified at `<sha>`.
-- [ ] **AC-4:** `npm test -- set-editor.contrast` → PASS. Verified at `<sha>`.
-- [ ] **AC-5:** Porcelain screenshots of both modes eyeballed; result recorded in Execution status. Verified at `<sha>`.
+- [x] **AC-1:** `npm test -- set-editor` → the new chrome pins PASS. Verified at `<sha>`.
+- [x] **AC-2:** `npm test -- set-editor` → the pre-existing flow specs PASS unmodified. Verified at `<sha>`.
+- [x] **AC-3:** `npx playwright test operator-set-editing touch-targets` (mocked config) → PASS. Verified at `<sha>`.
+- [x] **AC-4:** `npm test -- set-editor.contrast` → PASS. Verified at `<sha>`.
+- [x] **AC-5:** Porcelain screenshots of both modes eyeballed; result recorded in Execution status. Verified at `<sha>`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1 — frontend-only).
-- [ ] **Availability** section justified N/A; no write path touched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4 — display untouched).
-- [ ] **Modulith** N/A — frontend-only.
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy N/A.
-- [ ] Timezone N/A — no date logic touched.
-- [ ] Booking codes N/A.
-- [ ] Flyway N/A.
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (resolved above).
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1 — frontend-only).
+- [x] **Availability** section justified N/A; no write path touched.
+- [x] Pool + cutoff rules honored (invariants #3, #4 — display untouched).
+- [x] **Modulith** N/A — frontend-only.
+- [x] **Payment/payout** N/A.
+- [x] Refund policy N/A.
+- [x] Timezone N/A — no date logic touched.
+- [x] Booking codes N/A.
+- [x] Flyway N/A.
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (resolved above).
+- [x] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.

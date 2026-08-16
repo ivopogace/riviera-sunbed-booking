@@ -268,9 +268,8 @@ export class SetEditor {
           }`,
         };
       });
-      const firstSet = cells
-        .map((c) => bySlot.get(slot(c.gridX, c.gridY)))
-        .find((s) => s !== undefined);
+      const first = cells.find((c) => c.setId !== null);
+      const firstSet = first === undefined ? undefined : bySlot.get(slot(first.gridX, first.gridY));
       return {
         code: gridRowLabel(y),
         priceLabel: firstSet === undefined ? null : formatMoney(firstSet.price),

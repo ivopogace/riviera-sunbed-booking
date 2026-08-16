@@ -6,9 +6,9 @@ import { CardGlass } from './card-glass';
  * The sea-facing beach-grid frame — the glass card with the "▲ Facing the sea"
  * and "▼ Promenade · Entrance" orientation banners that make a grid of tiles read as a beach map.
  *
- * <p>The shared chrome of every beach-map surface (tourist map via {@link BeachMapCanvas},
- * the operator layout editor and Daily view likewise, and the per-set editor's selection grid
- * directly). The <strong>tiles differ by purpose</strong> — booking, painting, availability
+ * <p>The shared chrome of every beach-map surface — the tourist map, the operator layout
+ * editor, the Daily view and the per-set editor, all via {@link BeachMapCanvas}.
+ * The <strong>tiles differ by purpose</strong> — booking, painting, availability
  * marking, selection — so only the framing (card + banners + orientation) is shared here; each
  * consumer owns its own tile rendering and interaction, projected via {@code <ng-content>}.
  * Theme-agnostic glass via {@link CardGlass}, elevated with the restyle's blur + drop shadow so

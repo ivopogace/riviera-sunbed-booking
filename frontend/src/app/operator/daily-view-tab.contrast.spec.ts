@@ -1,4 +1,4 @@
-import { AA_NORMAL, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
+import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
@@ -7,6 +7,7 @@ import {
   PORCELAIN_CARD_GLASS,
   PORCELAIN_CHIP,
   PORCELAIN_STOPS,
+  WASH_STOPS,
   WHITE,
   expectAaOverStops,
   surfaceOver,
@@ -27,8 +28,6 @@ import {
  * `styles.scss`; a token edit there must re-pass here.
  */
 
-// The shared canvas's sea→sand wash stops the grid tiles now composite over (#672).
-const WASH_STOPS = ['cfeef6', 'e7f5f1', 'f6eedb'].map(hexToRgb);
 // The FREE tile fill (`bg-white/85`, daily-view-tab.ts tileClass).
 const FREE_TILE_FILL = { color: WHITE, alpha: 0.85 };
 
