@@ -107,7 +107,7 @@ untouched suites.
 |---|---|---|---|---|---|---|
 | R-1 | A spec pins the old class string and breaks on the swap (the #672 `PRE_MOVE_CELL_CLASS` trap, F-CI-1 in `docs/plans/shared-map-canvas.md`) | low | med | Grepped `frontend/` for `aspect-square` and `aspect-ratio` before editing: only the three template sites exist; `PRE_MOVE_CELL_CLASS` pins state-variant colors, not geometry. No pin update needed | session | closed — grep evidence, plan time |
 | R-2 | Removing `aspect-square` breaks squareness where tracks aren't fixed | low | high | All three grids verified fixed-track `repeat(var(--riv-map-cols,1),var(--riv-tile))` (incl. layout-editor, the one the issue asked to verify) | session | closed — template evidence, plan time |
-| R-3 | Height swap dips a control under the 44px touch floor | low | med | `--riv-tile: clamp(47px, 11vw, 56px)` (`beach-map-canvas.ts:85`) floors at 47px ≥ 44; proven by the rendered-box sweep `touch-targets*.e2e.ts`, run scoped locally + full in CI | session | open — closes at Phase 2 |
+| R-3 | Height swap dips a control under the 44px touch floor | low | med | `--riv-tile: clamp(47px, 11vw, 56px)` (`beach-map-canvas.ts:85`) floors at 47px ≥ 44; proven by the rendered-box sweep `touch-targets*.e2e.ts`, run scoped locally + full in CI | session | closed — all three sweeps green locally at ec0cfc8; CI re-proves on the PR |
 | R-4 | Chromium-only CI cannot prove the iOS rendering is fixed | certain | med | Pin the mechanism (AC-1…4); real-WebKit proof is a dev-machine `npx playwright install webkit` run and/or the maintainer's post-deploy iPhone check (issue #683 verification note) | maintainer | open — post-deploy hand check |
 
 ## Open questions / Assumptions
@@ -156,17 +156,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2 — verification: scoped mocked e2e remaining)
+**Stage pointer:** PR — draft open, awaiting the CI gate
 
-**Next action:** run the scoped mocked e2e set (venue-map-pan, layout-editor,
-operator-set-editing, operator-daily, touch-targets ×3), then finalize status and
-open the draft PR.
+**Next action:** when CI is green, mark ready-for-review and run the review gate
+(`/code-review` + `riviera-review-overlay`), then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | f6511e1 |
-| 1 — pins red → class swap green | ✅ | (this slice's phase-1 commit; SHA recorded at phase-2 finalization) |
-| 2 — verification (units, lint/format, guards, scoped e2e) | ⏳ | units 1445/1445 + lint + format + all 4 hygiene guards green pre-commit; e2e pending |
+| 1 — pins red → class swap green | ✅ | ec0cfc8 |
+| 2 — verification (units, lint/format, guards, scoped e2e) | ✅ | validated at ec0cfc8: units 1445/1445, lint, format, 4 hygiene guards, 53 scoped e2e (pan + touch-targets ×3 + layout/set-editor/daily) — CI full suite pending on the PR |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
