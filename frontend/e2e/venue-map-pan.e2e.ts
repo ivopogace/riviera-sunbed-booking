@@ -116,15 +116,17 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
   // The price renders once per zone: 5 rows but 4 chips (rows 4+5 share €30) (#672).
   await expect(page.getByTestId('row-price')).toHaveCount(4);
 
-  // Taken sets render as ghosts — translucent with a dashed outline (#672).
+  // Taken sets are ghosts (#672): translucent FILL + dashed outline — group opacity broke AA.
   const ghost = await page
     .locator('.set-tile.taken')
     .first()
     .evaluate((el) => {
       const cs = getComputedStyle(el);
-      return { opacity: parseFloat(cs.opacity), borderStyle: cs.borderTopStyle };
+      return { bg: cs.backgroundColor, borderStyle: cs.borderTopStyle };
     });
-  expect(ghost.opacity).toBeLessThan(1);
+  // Last number before ')' is the alpha in rgba()/oklab()/color() alike; an opaque rgb() fails.
+  const ghostAlpha = Number(/([\d.]+)\)$/.exec(ghost.bg)?.[1] ?? '1');
+  expect(ghostAlpha).toBeLessThan(0.5);
   expect(ghost.borderStyle).toBe('dashed');
 
   // Free walk-in sets: distinct tiles, never tap targets, and named in the legend (#672).
@@ -160,6 +162,11 @@ test('a drag-pan release over a tile pans the map but does NOT open the dialog; 
   });
   expect(viewport.mask).toContain('linear-gradient');
   expect(viewport.snap).toContain('x');
+
+  // At rest the leading tile sits PAST the 16px fade (inner padding), not half-faded inside it.
+  const panBox = (await pan.boundingBox())!;
+  const firstTileBox = (await page.locator('.set-tile').first().boundingBox())!;
+  expect(firstTileBox.x - panBox.x).toBeGreaterThanOrEqual(16);
 
   // Drag horizontally across the tile grid (down → move → up), well past the 6px threshold and
   // staying inside the scroller (a drag off its edge would end the pan early via mouseleave).

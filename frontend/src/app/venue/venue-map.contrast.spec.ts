@@ -44,14 +44,16 @@ import {
  * every wash stop) rather than as a solid pair; the date field is near-opaque (it sits on dark
  * glass, unlike Discover's field on light card glass).
  *
+ * The ghost-taken tile is deliberately the faintest surface (free inventory pops, #672) but is
+ * NOT excluded: its seat number is proven AA and its dashed border — the non-colour "taken"
+ * cue beside the accessible name — is proven at 3:1 (1.4.11), both composited below. The
+ * review gate rejected reading it as WCAG 1.4.3 "inactive component": the tile is static
+ * content, not a disabled control.
+ *
  * Deliberately excluded (WCAG 1.4.3 incidental / 1.4.11 redundant decoration): the availability
  * bar track+fill (`N of M free` carries the fact), the ★ / · glyphs and the sun disc
  * (aria-hidden; the numeric rating carries the value), the failure badge (aria-hidden; the
- * heading carries the meaning), the decorative tile/card borders — and the ghost-taken tile
- * glyph (#672): the tile is an INACTIVE component (never interactive, deliberately
- * near-transparent so free inventory pops — WCAG 1.4.3's inactive-component exemption), its
- * glyph is aria-hidden, and "taken" is carried by the tile's accessible name plus the dashed
- * border, never by contrast alone.
+ * heading carries the meaning), and the decorative live-tile/card borders.
  */
 
 const ACCENT = '#085a6e'; // --riv-accent-ink (availability count, scroll hint)
@@ -76,6 +78,8 @@ const TILE_SURFACES: readonly {
   { fg: '#0f7d8c', fill: WHITE, alpha: 0.75, usage: 'available tile' },
   { fg: '#875911', fill: hexToRgb('fbf1d9'), alpha: 0.85, usage: 'premium (front-row) tile' },
   { fg: '#5f4d2a', fill: hexToRgb('efe0bd'), alpha: 0.85, usage: 'walk-in tile' },
+  { fg: '#566560', fill: WHITE, alpha: 0.2, usage: 'ghost taken tile' },
+  // css:S7924 stayed quiet on the translucent chips (PR #673); if it re-fires, solidify per failure-panel.
   { fg: '#0a4f5e', fill: WHITE, alpha: 0.6, usage: 'row-code chip' },
   { fg: '#0a4f5e', fill: WHITE, alpha: 0.8, usage: 'zone price chip' },
 ];
@@ -181,6 +185,16 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
         contrastRatio(surface.fg, rgbToHex(bg)),
         `over stop ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('the ghost-taken dashed border marks "taken" at 3:1 against its tile fill (WCAG 1.4.11)', () => {
+    for (const stop of WASH_STOPS) {
+      const tile = composite(WHITE, 0.2, stop);
+      expect(
+        contrastRatio('#6b7d77', rgbToHex(tile)),
+        `over stop ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_LARGE);
     }
   });
 

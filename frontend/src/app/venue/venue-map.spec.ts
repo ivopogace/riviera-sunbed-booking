@@ -284,7 +284,7 @@ describe('VenueMap', () => {
       (n) => n.parentElement!,
     );
     expect(codeCells.map((c) => c.classList.contains('mt-3'))).toEqual(zoneGaps);
-    const priceColumn = [...el().querySelectorAll('div.shrink-0')].at(-1)!;
+    const priceColumn = el().querySelector('[data-testid="price-col"]')!;
     const priceCells = [...priceColumn.children];
     expect(priceCells.map((c) => c.classList.contains('mt-3'))).toEqual(zoneGaps);
   });
