@@ -132,16 +132,18 @@ N/A — no contract change (`SetView.positionNo` already delivered and consumed)
 
 > **This section is the session-recovery anchor.**
 
-**Stage pointer:** PR #688 ready for review — review + Sonar gates due
+**Stage pointer:** merge close-out — final state; merged via PR #688
 
-**Next action:** run the SDLC review gate (`/code-review` ladder + `riviera-review-overlay`)
-on PR #688, then the Sonar gate.
+**Next action:** none — gates green (CI all-green at `27589ec`; Sonar 0 issues /
+0 duplicated blocks / 100% new-code coverage, analysis confirmed non-empty), review
+findings dispositioned (F-1 → #689, F-2 declined w/ rationale, F-3 fixed).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc committed | ✅ | `88e789c` |
 | 1 — tile content (unit + contrast TDD, template + component) | ✅ | `0285161` |
-| 2 — e2e assertions + full frontend verification | ✅ | phase-2 commit (this window) |
+| 2 — e2e assertions + full frontend verification | ✅ | `cbf7da6` |
+| review-gate fixes | ✅ | `27589ec` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -213,20 +215,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — frontend-only.
-- [ ] **Availability** section justified N/A (display-only; invariant #2 untouched).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section N/A — frontend-only (invariant #11).
-- [ ] **Payment/payout** N/A (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change (invariant #12).
-- [ ] **Frontend** standards met; no `as any`.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or resolved section).
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder + `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — frontend-only.
+- [x] **Availability** section justified N/A (display-only; invariant #2 untouched).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section N/A — frontend-only (invariant #11).
+- [x] **Payment/payout** N/A (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change (invariant #12).
+- [x] **Frontend** standards met; no `as any`.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions has only the Resolved section.
+- [x] **Close-out written in THIS PR** — final state cites `merged via PR #688`.
+- [x] **The review gate ran in full** — the `code-review` skill executed (declared
+      single-pass inline mode, no subagent fan-out available) + `riviera-review-overlay`
+      bank walked; 3 findings dispositioned (F-1 → #689, F-2 declined, F-3 fixed).
