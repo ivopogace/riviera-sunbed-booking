@@ -81,8 +81,8 @@ branch stands in for `feature/theme-scheme-prepaint` (riviera-sdlc cloud addendu
 - No change to the theme set, the token registry shape, or the operator/admin porcelain
   subtree-pinning mechanism.
 - No SCSS→Tailwind migration of the touched legacy-SCSS components (`home`,
-  `booking-dialog`) — deferral recorded in Open questions; the touch is a single inert
-  utility class per control, not styling work on those components.
+  `booking-dialog`) — deferral maintainer-approved; follow-up: issue #679 (the touch is a
+  single inert utility class per control, not styling work on those components).
 - No `<meta name="theme-color">` / PWA chrome work.
 
 ## Behavior-parity ledger
@@ -103,14 +103,6 @@ N/A — new behavior, replaces nothing. (The seed writes the same attribute valu
 
 ## Open questions / Assumptions
 
-- **Decision needing maintainer confirmation — migrate-on-touch deferral:** adding the
-  `scheme-light` class touches `home.html` and `booking-dialog.ts`, which still carry
-  legacy SCSS. `riviera-tailwind` says deferral is never self-granted; the maintainer is
-  not available in this autonomous session, and migrating `home.scss` (~300 lines, incl.
-  the justified scrim holdout) + `booking-dialog.scss` would swamp a two-gap polish slice.
-  **Deferred with this recorded justification; flagged in the session hand-off for the
-  maintainer to confirm or direct a follow-up issue.** — *Owner:* maintainer · *Resolves
-  by:* PR review.
 - **Assumption:** text fields without autofill/`autocomplete` (find-booking code input,
   confirm-with-reason reason input) don't need `scheme-light` — the only scheme-dependent
   native chrome they render is the selection highlight, legible either way. — *Owner:*
@@ -151,7 +143,7 @@ N/A — no contract change.
 
 **Stage pointer:** implemented + verified; pushed from the cloud session — PR/CI/Sonar/review gates due when the PR opens
 
-**Next action:** open the PR (draft → ready) so the CI, review, and Sonar gates can run; maintainer to rule on the RV-FE-7 deferral (F-1)
+**Next action:** PR opened → drive the CI, review, and Sonar gates to merge (RV-FE-7 deferral resolved → #679)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -257,6 +249,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] No schema change (invariant #12).
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality.
-- [x] Risk register has no stale `open` rows; the one Open Question (RV-FE-7 deferral) is deferred to the maintainer at PR review, per its entry.
+- [x] Risk register has no stale `open` rows; Open Questions resolved (RV-FE-7 deferral → maintainer-approved, follow-up issue #679).
 - [ ] **Close-out written in THIS PR** — pending: the PR is opened by the maintainer/next session from the pushed branch; final close-out (merged via PR #NN) lands there.
 - [ ] **The review gate ran** — a pre-push `riviera-review-overlay` pass ran (F-1/F-2); the formal `/code-review` invocation-ladder run is due when the PR opens and is deliberately left unticked until then.
