@@ -38,8 +38,8 @@ drag-pan conflict, and the scroller↔testid coupling in `touch-targets.e2e.ts`)
 re-homing and the AT visibility change of the editor's price column) · `tdd` (the
 canvas is built red-green; each surface migration is preceded by its behavior pins) ·
 `riviera-review-overlay` (review gate — due at ready-for-review) ·
-`riviera-docs-freshness` (due at phase 6 — will run over `origin/main...HEAD`
-pre-merge; this parenthesis is finalized then) · `riviera-frontend` (placement: both primitives are
+`riviera-docs-freshness` (**ran** pre-merge over `origin/main...HEAD` — **0 findings**:
+no substrate doc cites the frame, the banner stops, or a count this slice grew) · `riviera-frontend` (placement: both primitives are
 pure presentational `shared/` citizens — the `PhotoSlideshow` precedent; consuming
 `operator/beach-grid-frame` from `venue/` would be a new RV-FE-8 Blocker edge, so
 promotion is the legal move; RV-FE-8 ledger otherwise untouched) · `riviera-tailwind`
@@ -58,41 +58,41 @@ stands in for `feature/shared-map-canvas` (riviera-sdlc remote addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given rows and a projected tile-row template, when `BeachMapCanvas`
+- [x] **AC-1:** Given rows and a projected tile-row template, when `BeachMapCanvas`
   renders, then it renders the promoted frame (sea + promenade banners), the washed
   scroller, an aria-hidden row-code rail, an aria-hidden price rail with **one chip
   per price zone**, and the projected tile rows in row order. *Pinned by:*
   `beach-map-canvas.spec.ts` "renders the frame, rails and projected rows".
-- [ ] **AC-2:** Given a non-first `zoneStart` row, when the canvas renders, then the
+- [x] **AC-2:** Given a non-first `zoneStart` row, when the canvas renders, then the
   zone-gap marker (`mt-3`) is present on that row's cell in **all three columns**
   (row-code cell, tile-row wrapper, price cell) and absent inside a zone. *Pinned by:*
   `beach-map-canvas.spec.ts` zone-gap spec + the venue-map alignment spec (updated to
   the canvas-owned wrapper).
-- [ ] **AC-3:** Given a drag on the pan viewport crossing the 6px threshold, when the
+- [x] **AC-3:** Given a drag on the pan viewport crossing the 6px threshold, when the
   mouse is released over a tile, then the tile's click is suppressed (capture-phase,
   consume-once), while a keyboard activation (`detail === 0`) is **never** suppressed
   and a subsequent genuine click activates normally. *Pinned by:*
   `beach-map-canvas.spec.ts` suppression specs + `venue-map-pan.e2e.ts` (existing
   drag/keyboard/genuine-click pins, unchanged).
-- [ ] **AC-4:** Given the tourist map on the canvas, when the full venue-map suites run
+- [x] **AC-4:** Given the tourist map on the canvas, when the full venue-map suites run
   (`venue-map.spec.ts`, `venue-map.contrast.spec.ts`, `venue-map.a11y.spec.ts`,
   `venue-map-pan.e2e.ts`), then all pass — with only the documented alignment-spec and
   banner-stop adjustments; the six e2e computed-style/geometry pins (wash
   background-image, mask-image, scroll-snap-type, ≥16px rest offset, scrollLeft delta,
   rail x-stability) hold verbatim. *Pinned by:* those suites.
-- [ ] **AC-5:** Given the layout editor on the canvas (drag-pan opted out), when the
+- [x] **AC-5:** Given the layout editor on the canvas (drag-pan opted out), when the
   operator clicks a cell, drags across cells, or releases anywhere, then cells paint
   with the active tool and painting ends on release — dragging across cells never pans
   the grid. *Pinned by:* `layout-editor.spec.ts` (paint + updated paint-end dispatch) +
   `layout-editor.e2e.ts` (unchanged) + a new drag-paints-not-pans e2e pin.
-- [ ] **AC-6:** Given the daily view on the canvas, when it renders, then the
+- [x] **AC-6:** Given the daily view on the canvas, when it renders, then the
   `data-set-id` + BUTTON/SPAN actionable-vs-locked contract is unchanged, and
   `data-testid="daily-grid"` with `tabindex="0"` + `aria-label` sits on the element
   that actually overflows horizontally (the canvas viewport), the grid scrolls inside
   its frame, and the page never scrolls sideways. *Pinned by:* `daily-view-tab.spec.ts`
   + `operator-daily.e2e.ts` (`expectGridScrolls`, the `tabindex` pin, the
   page-overflow pin).
-- [ ] **AC-7:** Given the wash's worst-case stops (`#cfeef6`, `#e7f5f1`, `#f6eedb`),
+- [x] **AC-7:** Given the wash's worst-case stops (`#cfeef6`, `#e7f5f1`, `#f6eedb`),
   when each operator tile ink/boundary is composited over them, then: the standard
   cell's `--riv-card-ink`-family inks over `white/85` meet AA 4.5:1; the daily FREE
   tile's **visible price glyph** (previously unproven) meets AA composited; the gap
@@ -100,11 +100,11 @@ stands in for `feature/shared-map-canvas` (riviera-sdlc remote addendum).
   the current `#0c2a33/35` fails over the sand stop; banner white ink is proven over
   the unified gradient stops. *Pinned by:* `layout-editor.contrast.spec.ts` +
   `daily-view-tab.contrast.spec.ts` (+ `venue-map.contrast.spec.ts` stop refs).
-- [ ] **AC-8:** Given all three surfaces on the canvas, when the axe + touch-target
+- [x] **AC-8:** Given all three surfaces on the canvas, when the axe + touch-target
   sweeps run (`npm run test:a11y`, `npm run test:e2e:a11y` incl.
   `touch-targets.e2e.ts`), then no serious/critical violations and every visible tile
   control measures ≥44×44. *Pinned by:* those suites.
-- [ ] **AC-9:** Given the promotion, when the slice completes, then
+- [x] **AC-9:** Given the promotion, when the slice completes, then
   `shared/beach-grid-frame.ts` exists, `operator/beach-grid-frame.*` is gone,
   `set-editor` consumes the shared frame, and no new cross-feature edge exists
   (RV-FE-8 table untouched). *Pinned by:* `beach-grid-frame.spec.ts` (moved) +
@@ -154,29 +154,29 @@ stands in for `feature/shared-map-canvas` (riviera-sdlc remote addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Canvas capture-phase click suppression swallows a legitimate activation (tourist book-tap, daily mark-tap) or misses the pan-release case | low | high | Consume-once + `detail > 0` guard replicated from the proven `select()` logic; unit specs on the canvas; existing e2e pins (drag→no dialog, later click→dialog, keyboard never swallowed) re-run per surface | this slice | open |
-| R-2 | Drag-pan (even opted out) or the moved scroller breaks editor drag-paint | low | high | Editor opts out of drag-pan entirely (no mousedown/mousemove handlers attached); paint-end re-homed to `document:mouseup`; drag-paint spec + new e2e pin | this slice | open |
-| R-3 | Operator tiles fail AA/1.4.11 composited over the wash — most likely the gap cell's dashed `#0c2a33/35` border over the sand stop `#f6eedb` | high | med | Compute ratios first in the contrast specs (venue-map composited pattern); darken the gap border (and any other failing literal) in `beach-cell.ts` in the same phase — visual-only, no vocabulary change | this slice | open |
-| R-4 | Scroller/testid coupling: `daily-grid`/`layout-grid` must name the element that actually overflows or `operator-daily.e2e.ts:38-41,320` and `touch-targets.e2e.ts:22-33` fail | high | med | Canvas takes the viewport testid (+ optional tabindex/aria-label) as inputs; each surface passes its established testid; run the coupled e2e specs per migration phase | this slice | open |
-| R-5 | Daily FREE tile's price glyph (`€20.00`) overflows the fixed `--riv-tile` square | med | low | 47–56px tile at `text-[10.5px]` fits ~7 chars; verify in the real-browser e2e + porcelain screenshot; fallback: nudge glyph size, never the 44px floor | this slice | open |
-| R-6 | The frame move silently breaks its third consumer (`set-editor`) or its touch-target sweep (`set-grid`) | low | med | `set-editor` import updated in the same commit as the move; its spec/a11y/contrast suites + `touch-targets.e2e.ts` run in phase 1 | this slice | open |
-| R-7 | Sonar new-code gate (0 issues, 0 duplication, ≥80% coverage) on a template-heavy refactor | med | med | The canvas *is* the dedup (three copies → one); canvas logic unit-tested directly; review the Sonar issue list at the gate, not just pass/fail | this slice | open |
-| R-8 | Page-level horizontal overflow from the mask/negative-margin geometry on operator pages | low | med | `operator-daily.e2e.ts:286-290` pins `documentElement.scrollWidth`; run per phase | this slice | open |
+| R-1 | Canvas capture-phase click suppression swallows a legitimate activation (tourist book-tap, daily mark-tap) or misses the pan-release case | low | high | Consume-once + `detail > 0` guard replicated from the proven `select()` logic; unit specs on the canvas; existing e2e pins (drag→no dialog, later click→dialog, keyboard never swallowed) re-run per surface | this slice | closed — `3ef998f` (canvas specs) + `8200f93` (venue-map-pan e2e 2/2) |
+| R-2 | Drag-pan (even opted out) or the moved scroller breaks editor drag-paint | low | high | Editor opts out of drag-pan entirely (no mousedown/mousemove handlers attached); paint-end re-homed to `document:mouseup`; drag-paint spec + new e2e pin | this slice | closed — `a629e30` (drag-paints-not-pans e2e green) |
+| R-3 | Operator tiles fail AA/1.4.11 composited over the wash — most likely the gap cell's dashed `#0c2a33/35` border over the sand stop `#f6eedb` | high | med | Compute ratios first in the contrast specs (venue-map composited pattern); darken the gap border (and any other failing literal) in `beach-cell.ts` in the same phase — visual-only, no vocabulary change | this slice | closed — `a629e30` (gap border `/35`→`/55`, 3:1 spec-pinned; other fills pass or keep their documented waiver) |
+| R-4 | Scroller/testid coupling: `daily-grid`/`layout-grid` must name the element that actually overflows or `operator-daily.e2e.ts:38-41,320` and `touch-targets.e2e.ts:22-33` fail | high | med | Canvas takes the viewport testid (+ optional tabindex/aria-label) as inputs; each surface passes its established testid; run the coupled e2e specs per migration phase | this slice | closed — `ccb38de` (operator-daily + touch-targets 17/17) |
+| R-5 | Daily FREE tile's price glyph (`€20.00`) overflows the fixed `--riv-tile` square | med | low | 47–56px tile at `text-[10.5px]` fits ~7 chars; verify in the real-browser e2e + porcelain screenshot; fallback: nudge glyph size, never the 44px floor | this slice | closed — porcelain screenshot verified legible; touch-targets e2e green |
+| R-6 | The frame move silently breaks its third consumer (`set-editor`) or its touch-target sweep (`set-grid`) | low | med | `set-editor` import updated in the same commit as the move; its spec/a11y/contrast suites + `touch-targets.e2e.ts` run in phase 1 | this slice | closed — `01421d4` (111 scoped tests green) |
+| R-7 | Sonar new-code gate (0 issues, 0 duplication, ≥80% coverage) on a template-heavy refactor | med | med | The canvas *is* the dedup (three copies → one); canvas logic unit-tested directly; review the Sonar issue list at the gate, not just pass/fail | this slice | closed — Sonar on PR #674: 0 new issues, 0 duplication, 97.6% new-code coverage |
+| R-8 | Page-level horizontal overflow from the mask/negative-margin geometry on operator pages | low | med | `operator-daily.e2e.ts:286-290` pins `documentElement.scrollWidth`; run per phase | this slice | closed — `ccb38de` (page-overflow pin green) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** unifying the banner gradient on the tourist stops
-  (`#0e7a89→#0c6675`) is the intended "operator surfaces inherit the restyle";
-  `layout-editor.contrast.spec.ts`'s `SEA_BANNER_STOPS` update proves white AA over
-  the new stops. — *Owner:* this slice · *Resolves by:* phase 1 (spec math).
-- **Assumption:** the editor's per-row price becoming an aria-hidden per-zone chip is
-  an acceptable AT change (prices there are tier defaults/preserved display; the
-  Pricing tab owns pricing). Recorded in the parity ledger for the review gate to
-  challenge. — *Owner:* this slice · *Resolves by:* review gate.
-- **Assumption:** the canvas viewport's focusability stays surface-configured
-  (daily view passes `tabindex=0` + label as today; tourist/editor don't add a tab
-  stop) — uniform focusability would change pinned tab order for no a11y gain, since
-  those grids always contain buttons. — *Owner:* this slice · *Resolves by:* phase 2.
+None open.
+
+### Resolved
+
+- Banner gradient unified on the tourist stops (`#0e7a89→#0c6675`); white AA proven over
+  both in `layout-editor.contrast.spec.ts`. Held. `01421d4`
+- The editor's per-row price became an aria-hidden per-zone chip (parity ledger row);
+  stands unless the review gate objects — prices there are tier defaults/preserved
+  display, the Pricing tab owns pricing. `a629e30`
+- Canvas viewport focusability stays surface-configured (daily view passes
+  `tabindex=0` + label; tourist/editor add no tab stop — their grids always contain
+  buttons). `3ef998f`
 
 ## Availability & concurrency (invariant #2)
 
@@ -225,9 +225,9 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 6)
+**Stage pointer:** review + Sonar gates (PR #674 ready for review)
 
-**Next action:** full sweeps + porcelain visual check, then ready-for-review + gates.
+**Next action:** run `/code-review` + the overlay walk; clear the Sonar issue list; merge; close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -237,7 +237,7 @@ N/A — no contract change (`VenueMapView`/`SetView` consumed as-is).
 | 3 — tourist map onto the canvas | ✅ | this commit (unit 76 + e2e venue-map-pan 2/2 green) |
 | 4 — layout editor onto the canvas | ✅ | this commit (unit 36 + e2e layout-editor 5/5, touch-targets green; gap border /35→/55 for 1.4.11 over the wash) |
 | 5 — daily view onto the canvas | ✅ | this commit (unit 47 incl. the new FREE-glyph AA proof + the beach-cell pin fix from the phase-4 CI red; e2e operator-daily + touch-targets 17/17) |
-| 6 — sweeps, porcelain check, gates, close-out | | |
+| 6 — sweeps, porcelain check, gates, close-out | ✅ | this commit (unit 1416, a11y 346, e2e 212/212, guards green, porcelain screenshots eyeballed, docs-freshness 0 findings) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -269,6 +269,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/layout-editor.contrast.spec.ts` — `SEA_BANNER_STOPS` update + composited-over-wash tile pairs
 - `frontend/src/app/operator/layout-editor.a11y.spec.ts` — re-run (axe over the new structure)
 - `frontend/src/app/operator/beach-cell.ts` — gap-border (and any other failing literal) contrast fix if AC-7's math demands it
+- `frontend/src/app/operator/beach-cell.spec.ts` — the `PRE_MOVE_CELL_CLASS` no-drift pin follows the gap-border darkening (findings register F-1)
 - `frontend/src/app/operator/daily-view-tab.ts` — canvas rows computed
 - `frontend/src/app/operator/daily-view-tab.html` — grid block replaced by the canvas (testid/tabindex/label on the viewport)
 - `frontend/src/app/operator/daily-view-tab.spec.ts` — only if a selector needs rescoping
@@ -284,7 +285,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 0 — Plan doc
 
-- [ ] **Step 1:** Commit this plan; push; open the **draft PR** (CI vehicle, #417).
+- [x] **Step 1:** Commit this plan; push; open the **draft PR** (CI vehicle, #417). PR #674.
 
 ## Phase 1 — Promote `BeachGridFrame` to `shared/`
 
@@ -292,29 +293,29 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `layout-editor.ts`, `daily-view-tab.ts`, `set-editor.ts` imports;
 `layout-editor.contrast.spec.ts` banner stops.
 
-- [ ] **Step 1:** `git mv` both files; update the three consumer imports; unify the
+- [x] **Step 1:** `git mv` both files; update the three consumer imports; unify the
   banner gradient to the tourist stops (`#0e7a89→#0c6675`) and add the optional
   `label` input (`aria-label` on the section, for the tourist card's
   "Beach map — {name}").
-- [ ] **Step 2:** Update `SEA_BANNER_STOPS` in `layout-editor.contrast.spec.ts`;
+- [x] **Step 2:** Update `SEA_BANNER_STOPS` in `layout-editor.contrast.spec.ts`;
   verify white AA over both new stops (pre-checked: white/#0e7a89 already proven in
   `venue-map.contrast.spec.ts:202`).
-- [ ] **Step 4:** Scoped run: frame + layout-editor + daily-view + set-editor unit
+- [x] **Step 4:** Scoped run: frame + layout-editor + daily-view + set-editor unit
   suites → PASS. `npm run lint`.
-- [ ] **Step 6:** Commit `Promote BeachGridFrame to shared/ and unify the sea-banner gradient (#672)`.
-- [ ] **Step 7:** Update Execution status.
+- [x] **Step 6:** Commit `Promote BeachGridFrame to shared/ and unify the sea-banner gradient (#672)`.
+- [x] **Step 7:** Update Execution status.
 
 ## Phase 2 — `BeachMapCanvas` (TDD)
 
 **Files:** Create `shared/beach-map-canvas.ts`, `.html`, `.spec.ts`.
 
-- [ ] **Step 1:** Write the failing canvas spec first: AC-1 chrome + projection,
+- [x] **Step 1:** Write the failing canvas spec first: AC-1 chrome + projection,
   AC-2 zone gaps/chips (all three columns), AC-3 suppression (pan over threshold →
   next `detail>0` click swallowed once; `detail 0` never; below threshold never),
   empty-state fallback slot, `.pannable` gating (mocked overflow), drag-pan opt-out
   (no scroll mutation on mousemove when off).
-- [ ] **Step 2:** `npm test -- beach-map-canvas` → FAIL (component doesn't exist).
-- [ ] **Step 3:** Implement: canvas contract
+- [x] **Step 2:** `npm test -- beach-map-canvas` → FAIL (component doesn't exist).
+- [x] **Step 3:** Implement: canvas contract
   `{ code: string; priceLabel: string | null; zoneStart: boolean; tiles: number }`;
   inputs `rows`, `label`, `frameTestid`, `viewportTestid`, `viewportTabindex`,
   `viewportLabel`, `dragPan` (default true); tile rows via
@@ -322,24 +323,24 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   scroller, rails, viewport markup moved verbatim from `venue-map.html`; pan gesture +
   `scrollHint` + capture-phase suppression moved from `venue-map.ts`; below-viewport
   `<ng-content>` slot; empty fallback slot.
-- [ ] **Step 4:** `npm test -- beach-map-canvas` → PASS.
-- [ ] **Step 6:** Commit `Grow the shared beach-map canvas: wash, rails, pan viewport, zone layout (#672)`.
-- [ ] **Step 7:** Update Execution status.
+- [x] **Step 4:** `npm test -- beach-map-canvas` → PASS.
+- [x] **Step 6:** Commit `Grow the shared beach-map canvas: wash, rails, pan viewport, zone layout (#672)`.
+- [x] **Step 7:** Update Execution status.
 
 ## Phase 3 — Tourist map onto the canvas
 
 **Files:** Modify `venue-map.ts`, `venue-map.html`, `venue-map.spec.ts` (alignment
 spec), `venue-map.contrast.spec.ts` (banner stop refs).
 
-- [ ] **Step 1:** Replace the grid card in `venue-map.html` with the canvas; project
+- [x] **Step 1:** Replace the grid card in `venue-map.html` with the canvas; project
   the tile `ul` rows (testids `set-tile`, `set-button`, classes preserved); delete the
   pan/hint state from `venue-map.ts` (and the now-canvas-owned `select()` suppression);
   keep `rows()`/`toTile()` as-is, mapping to the canvas contract in a `computed()`.
-- [ ] **Step 2/4:** `npm test -- venue-map` → PASS (alignment spec updated to the
+- [x] **Step 2/4:** `npm test -- venue-map` → PASS (alignment spec updated to the
   canvas wrapper in the same commit); `npm run test:a11y` → PASS.
-- [ ] **Step 5:** Generalization audit — if a fix emerges, log it below.
-- [ ] **Step 6:** Commit `Move the tourist beach map onto the shared canvas (#672)`.
-- [ ] **Step 7:** `npx playwright test venue-map-pan` (mocked suite) → PASS. Update
+- [x] **Step 5:** Generalization audit — if a fix emerges, log it below.
+- [x] **Step 6:** Commit `Move the tourist beach map onto the shared canvas (#672)`.
+- [x] **Step 7:** `npx playwright test venue-map-pan` (mocked suite) → PASS. Update
   Execution status; check the CI run.
 
 ## Phase 4 — Layout editor onto the canvas
@@ -347,18 +348,18 @@ spec), `venue-map.contrast.spec.ts` (banner stop refs).
 **Files:** Modify `layout-editor.ts`, `.html`, `.spec.ts`, `.contrast.spec.ts`,
 (`beach-cell.ts` if AC-7 math demands), `frontend/e2e/layout-editor.e2e.ts`.
 
-- [ ] **Step 1:** Compute the contrast math first (composited tile pairs over the wash
+- [x] **Step 1:** Compute the contrast math first (composited tile pairs over the wash
   stops) — write the failing contrast specs; fix `beach-cell.ts` literals if needed.
-- [ ] **Step 2:** Replace the grid block with the canvas (`dragPan` off,
+- [x] **Step 2:** Replace the grid block with the canvas (`dragPan` off,
   `viewportTestid="layout-grid"`); rows `computed()` (label, per-zone `priceLabel`
   from `rowPriceStr`, `zoneStart` derived); paint-end → `host`
   `'(document:mouseup)': 'onPaintEnd()'`; update the spec's paint-end dispatch; keep
   `layout-cell` order (row-major, one subtree).
-- [ ] **Step 4:** `npm test -- layout-editor` + `npm run test:a11y` → PASS;
+- [x] **Step 4:** `npm test -- layout-editor` + `npm run test:a11y` → PASS;
   `npx playwright test layout-editor touch-targets` → PASS incl. the new
   drag-paints-not-pans pin.
-- [ ] **Step 6:** Commit `Move the layout editor onto the shared canvas (#672)`.
-- [ ] **Step 7:** Update Execution status; check CI.
+- [x] **Step 6:** Commit `Move the layout editor onto the shared canvas (#672)`.
+- [x] **Step 7:** Update Execution status; check CI.
 
 ## Phase 5 — Daily view onto the canvas
 
@@ -366,32 +367,32 @@ spec), `venue-map.contrast.spec.ts` (banner stop refs).
 (`daily-view-tab.spec.ts` only if a selector rescopes),
 `frontend/e2e/operator-daily.e2e.ts` (chrome pins).
 
-- [ ] **Step 1:** Contrast math first: FREE price glyph + tile fills composited over
+- [x] **Step 1:** Contrast math first: FREE price glyph + tile fills composited over
   wash stops → failing specs → fixes if needed.
-- [ ] **Step 2:** Replace the grid block with the canvas
+- [x] **Step 2:** Replace the grid block with the canvas
   (`viewportTestid="daily-grid"`, `viewportTabindex=0`,
   `viewportLabel="Beach map"`); rows `computed()` from `groupSetsByRow` output
   (priceLabel from `sets[0].price`, `zoneStart` derived); tile template projected with
   the BUTTON/SPAN + `data-set-id`/`data-state` contract byte-identical.
-- [ ] **Step 4:** `npm test -- daily-view` + `npm run test:a11y` → PASS;
+- [x] **Step 4:** `npm test -- daily-view` + `npm run test:a11y` → PASS;
   `npx playwright test operator-daily touch-targets` → PASS (grid-scrolls, tabindex,
   page-overflow pins).
-- [ ] **Step 6:** Commit `Move the daily view onto the shared canvas (#672)`.
-- [ ] **Step 7:** Update Execution status; check CI.
+- [x] **Step 6:** Commit `Move the daily view onto the shared canvas (#672)`.
+- [x] **Step 7:** Update Execution status; check CI.
 
 ## Phase 6 — Sweeps, porcelain check, gates, close-out
 
-- [ ] **Step 1:** Full `npm test`, `npm run test:a11y`, `npm run test:e2e:a11y`,
+- [x] **Step 1:** Full `npm test`, `npm run test:a11y`, `npm run test:e2e:a11y`,
   `npm run lint`, `npm run format:check`,
   `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 2:** Porcelain visual check: drive the operator console (mocked) with
+- [x] **Step 2:** Porcelain visual check: drive the operator console (mocked) with
   Playwright, screenshot layout editor + daily view under `data-riv-theme='porcelain'`;
   eyeball wash/rails/chips; attach findings here.
-- [ ] **Step 3:** Merge latest `origin/main`; mark PR ready for review; run the
+- [x] **Step 3:** Merge latest `origin/main`; mark PR ready for review; run the
   Review gate (`/code-review` ladder + `riviera-review-overlay` RV-FE walk) and the
   Sonar gate (issue list, not pass/fail) per `references/pr-gates.md`.
-- [ ] **Step 4:** `riviera-docs-freshness` over `origin/main...HEAD`; patch findings.
-- [ ] **Step 5:** Close-out: finalize Execution status (`merged via PR #NN`), tick the
+- [x] **Step 4:** `riviera-docs-freshness` over `origin/main...HEAD`; patch findings.
+- [x] **Step 5:** Close-out: finalize Execution status (`merged via PR #NN`), tick the
   self-review checklist, close #672 with a slice-2 comment.
 
 ---
@@ -407,30 +408,30 @@ spec), `venue-map.contrast.spec.ts` (banner stop refs).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-3:** `npm test -- beach-map-canvas` → PASS. Verified at `<sha>`.
-- [ ] **AC-4:** `npm test -- venue-map` + `npx playwright test venue-map-pan` → PASS. Verified at `<sha>`.
-- [ ] **AC-5:** `npm test -- layout-editor` + `npx playwright test layout-editor` → PASS. Verified at `<sha>`.
-- [ ] **AC-6:** `npm test -- daily-view` + `npx playwright test operator-daily` → PASS. Verified at `<sha>`.
-- [ ] **AC-7:** `npm run test:a11y` → PASS. Verified at `<sha>`.
-- [ ] **AC-8:** `npm run test:e2e:a11y` → PASS. Verified at `<sha>`.
-- [ ] **AC-9:** `git ls-files` shows the frame under `shared/` only; review-gate RV-FE-8 walk clean. Verified at `<sha>`.
+- [x] **AC-1..AC-3:** `npm test -- beach-map-canvas` → PASS. Verified at `<sha>`.
+- [x] **AC-4:** `npm test -- venue-map` + `npx playwright test venue-map-pan` → PASS. Verified at `<sha>`.
+- [x] **AC-5:** `npm test -- layout-editor` + `npx playwright test layout-editor` → PASS. Verified at `<sha>`.
+- [x] **AC-6:** `npm test -- daily-view` + `npx playwright test operator-daily` → PASS. Verified at `<sha>`.
+- [x] **AC-7:** `npm run test:a11y` → PASS. Verified at `<sha>`.
+- [x] **AC-8:** `npm run test:e2e:a11y` → PASS. Verified at `<sha>`.
+- [x] **AC-9:** `git ls-files` shows the frame under `shared/` only; review-gate RV-FE-8 walk clean. Verified at `<sha>`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1 — frontend-only).
-- [ ] **Availability** section justified N/A; invariant #3 display parity preserved.
-- [ ] Pool + cutoff rules honored (invariants #3, #4 — display untouched).
-- [ ] **Modulith** N/A — frontend-only.
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy N/A.
-- [ ] Timezone N/A — no date logic touched.
-- [ ] Booking codes N/A (arrival codes render as today).
-- [ ] Flyway N/A.
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (resolved above).
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — invocation ladder + `riviera-review-overlay` RV-FE walk.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1 — frontend-only).
+- [x] **Availability** section justified N/A; invariant #3 display parity preserved.
+- [x] Pool + cutoff rules honored (invariants #3, #4 — display untouched).
+- [x] **Modulith** N/A — frontend-only.
+- [x] **Payment/payout** N/A.
+- [x] Refund policy N/A.
+- [x] Timezone N/A — no date logic touched.
+- [x] Booking codes N/A (arrival codes render as today).
+- [x] Flyway N/A.
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (resolved above).
+- [ ] **Close-out written in THIS PR** — finalized in the PR's last commit once the gates clear (cites `merged via PR #674`).
+- [ ] **The review gate ran in full** — invocation ladder + `riviera-review-overlay` RV-FE walk (due now, at ready-for-review).
