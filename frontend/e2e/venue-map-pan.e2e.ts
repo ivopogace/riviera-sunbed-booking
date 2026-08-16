@@ -6,15 +6,19 @@ import { expectNoSeriousAxeViolations } from './support/axe';
  * Real-render audit of the beach map's pan-vs-select distinction. A big
  * venue overflows the map viewport, so the tile grid pans horizontally by mouse drag. The pin:
  * a plain click on a free tile opens the booking dialog, but a drag-pan release does NOT — and
- * the row-code/price side columns stay fixed while the tiles pan. The API is mocked (`page.route`),
- * so the suite is CI-safe with no backend (like booking-flow.e2e.ts). Runs axe over the map.
+ * the row-code/price side columns stay fixed while the tiles pan. Also pins the #672 restyle as
+ * rendered (computed styles, not class lists): the sea→sand wash, the edge fade mask + scroll
+ * snap on the pan viewport, per-zone price chips, ghost-taken tiles, and the walk-in treatment.
+ * The API is mocked (`page.route`), so the suite is CI-safe with no backend (like
+ * booking-flow.e2e.ts). Runs axe over the map.
  */
 
 const ROWS = [
-  { label: 'Front row · Sea view', tier: 'PREMIUM', price: 5000 },
-  { label: 'Row 2', tier: 'STANDARD', price: 4000 },
-  { label: 'Row 3', tier: 'STANDARD', price: 3500 },
-  { label: 'Row 4 · Back', tier: 'STANDARD', price: 3000 },
+  { label: 'Front row · Sea view', tier: 'PREMIUM', pool: 'ONLINE', price: 5000 },
+  { label: 'Row 2', tier: 'STANDARD', pool: 'ONLINE', price: 4000 },
+  { label: 'Row 3', tier: 'STANDARD', pool: 'ONLINE', price: 3500 },
+  { label: 'Row 4 · Back', tier: 'STANDARD', pool: 'ONLINE', price: 3000 },
+  { label: 'Row 5 · Walk-in', tier: 'STANDARD', pool: 'WALK_IN', price: 3000 },
 ];
 
 interface MapSet {
@@ -40,11 +44,11 @@ function wideVenue() {
         rowLabel: row.label,
         positionNo: p,
         tier: row.tier,
-        pool: 'ONLINE',
+        pool: row.pool,
         price: { minorUnits: row.price, currency: 'EUR' },
         gridX: p,
         gridY: r + 1,
-        availability: p % 7 === 0 ? 'TAKEN' : 'FREE', // a few taken; the rest bookable
+        availability: p % 7 === 0 ? 'TAKEN' : 'FREE', // a few taken per row; the rest free
       });
     }
   });
@@ -102,6 +106,35 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
   const bannerY = (await page.locator('.sea-banner').boundingBox())!.y;
   expect(photoY).toBeLessThan(bannerY);
 
+  // The sea→sand wash actually paints the map scroller (#672) — computed style, not class list.
+  const wash = await page
+    .locator('[data-riv-scroller]')
+    .first()
+    .evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(wash).toContain('linear-gradient');
+
+  // The price renders once per zone: 5 rows but 4 chips (rows 4+5 share €30) (#672).
+  await expect(page.getByTestId('row-price')).toHaveCount(4);
+
+  // Taken sets are ghosts (#672): translucent FILL + dashed outline — group opacity broke AA.
+  const ghost = await page
+    .locator('.set-tile.taken')
+    .first()
+    .evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { bg: cs.backgroundColor, borderStyle: cs.borderTopStyle };
+    });
+  // Last number before ')' is the alpha in rgba()/oklab()/color() alike; an opaque rgb() fails.
+  const ghostAlpha = Number(/([\d.]+)\)$/.exec(ghost.bg)?.[1] ?? '1');
+  expect(ghostAlpha).toBeLessThan(0.5);
+  expect(ghost.borderStyle).toBe('dashed');
+
+  // Free walk-in sets: distinct tiles, never tap targets, and named in the legend (#672).
+  const walkins = page.locator('.set-tile.walkin');
+  await expect(walkins).toHaveCount(18); // row 5's 20 sets minus its 2 taken ones
+  await expect(walkins.first().locator('button')).toHaveCount(0);
+  await expect(page.getByRole('list', { name: 'Legend' })).toContainText('Walk-in only');
+
   await expectNoSeriousAxeViolations(page, 'beach map (wide, pannable)');
 
   await page
@@ -121,6 +154,19 @@ test('a drag-pan release over a tile pans the map but does NOT open the dialog; 
   const rowCode = page.getByTestId('row-code').first();
   const codeXBefore = (await rowCode.boundingBox())!.x;
   const scrollBefore = await pan.evaluate((el) => el.scrollLeft);
+
+  // The #672 edge fade + scroll snap are applied — the drag below proves they don't break panning.
+  const viewport = await pan.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { mask: cs.maskImage, snap: cs.scrollSnapType };
+  });
+  expect(viewport.mask).toContain('linear-gradient');
+  expect(viewport.snap).toContain('x');
+
+  // At rest the leading tile sits PAST the 16px fade (inner padding), not half-faded inside it.
+  const panBox = (await pan.boundingBox())!;
+  const firstTileBox = (await page.locator('.set-tile').first().boundingBox())!;
+  expect(firstTileBox.x - panBox.x).toBeGreaterThanOrEqual(16);
 
   // Drag horizontally across the tile grid (down → move → up), well past the 6px threshold and
   // staying inside the scroller (a drag off its edge would end the pan early via mouseleave).

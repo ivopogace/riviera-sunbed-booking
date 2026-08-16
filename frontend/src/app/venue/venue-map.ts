@@ -41,6 +41,8 @@ interface MapTile {
   readonly set: SetView;
   readonly seat: string;
   readonly bookable: boolean;
+  /** True for a FREE walk-in-pool set: rendered distinctly and named "walk-in only" (#672). */
+  readonly walkInOnly: boolean;
   /** Accessible name for a non-interactive tile (`<li>`). */
   readonly name: string;
   /** Accessible name for the bookable button (adds the "Select to book" affordance). */
@@ -51,6 +53,8 @@ interface MapTile {
 interface MapRow {
   readonly code: string;
   readonly price: MoneyView;
+  /** True where this row's price differs from the row before — a price-zone boundary. */
+  readonly zoneStart: boolean;
   readonly tiles: readonly MapTile[];
 }
 
@@ -232,11 +236,15 @@ export class VenueMap {
       row.push(set);
       byRow.set(set.rowLabel, row);
     }
-    return [...byRow.entries()].map(([label, sets], index) => {
+    const entries = [...byRow.entries()];
+    return entries.map(([label, sets], index) => {
       const code = rowCode(index);
+      const price = sets[0].price;
+      const prev = index > 0 ? entries[index - 1][1][0].price : undefined;
       return {
         code,
-        price: sets[0].price,
+        price,
+        zoneStart: prev?.minorUnits !== price.minorUnits || prev?.currency !== price.currency,
         tiles: sets.map((set) => this.toTile(set, code, label)),
       };
     });
@@ -297,11 +305,17 @@ export class VenueMap {
   /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */
   private toTile(set: SetView, code: string, descriptiveLabel: string): MapTile {
     const tier = tierSentenceLabel(set.tier);
-    const state = set.availability === 'TAKEN' ? 'taken' : 'available';
+    const walkInOnly = set.availability === 'FREE' && set.pool === 'WALK_IN';
+    let state = 'available';
+    if (set.availability === 'TAKEN') {
+      state = 'taken';
+    } else if (walkInOnly) {
+      state = 'walk-in only — book at the venue';
+    }
     const seat = `${code}${set.positionNo}`;
     const bookable = set.availability === 'FREE' && set.pool === 'ONLINE';
     const name = `Set ${seat}, ${descriptiveLabel}, ${tier}, ${this.money(set.price)}, ${state}`;
-    return { set, seat, bookable, name, bookName: `${name}. Select to book.` };
+    return { set, seat, bookable, walkInOnly, name, bookName: `${name}. Select to book.` };
   }
 
   /** Fetch the map for the currently selected date. */

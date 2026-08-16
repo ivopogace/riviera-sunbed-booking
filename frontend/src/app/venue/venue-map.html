@@ -155,17 +155,20 @@
           <span aria-hidden="true">▲</span> Facing the sea
         </p>
 
+        <!-- The sea→sand wash: aqua at the sea banner fading to warm sand at the promenade, fixed to the viewport of the vertical scroller so "the water is up there" reads at any scroll depth. -->
         <div
-          class="overflow-y-auto overflow-x-hidden max-h-[532px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          class="overflow-y-auto overflow-x-hidden max-h-[532px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 -mt-[18px] pt-3.5 pb-3 bg-[linear-gradient(180deg,#cfeef6_0%,#e7f5f1_55%,#f6eedb_100%)]"
           data-riv-scroller
         >
           <div class="flex items-start gap-2.5" [style.--riv-map-cols]="mapCols()">
             <!-- Left: derived row codes (aria-hidden; each tile's name already carries its seat). -->
             <div class="flex flex-col gap-1.5 shrink-0" aria-hidden="true">
-              @for (row of rows(); track row.code) {
-                <span class="h-[var(--riv-tile)] flex items-center justify-start"
+              @for (row of rows(); track row.code; let i = $index) {
+                <span
+                  class="h-[var(--riv-tile)] flex items-center justify-start"
+                  [class.mt-3]="row.zoneStart && i > 0"
                   ><span
-                    class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-[#e7ecee] text-[10.5px] font-bold text-[#0a4f5e]"
+                    class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
                     data-testid="row-code"
                     >{{ row.code }}</span
                   ></span
@@ -173,27 +176,30 @@
               }
             </div>
 
-            <!-- Center: the horizontally pannable tile grid (mouse drag; touch scrolls natively). -->
+            <!-- Center: the horizontally pannable tile grid (mouse drag; touch scrolls natively). The edge fade + inner padding + scroll-pl apply only while the grid actually overflows (.pannable ← scrollHint()), so a non-overflowing map never fades column 1 and a snapped tile rests past the 16px fade, not inside it. -->
             <div
               #setRowsWrap
-              class="overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] flex-1 min-w-0 cursor-grab select-none"
+              class="group overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] flex-1 min-w-0 cursor-grab select-none snap-x snap-proximity [&.pannable]:scroll-pl-4 [&.pannable]:[mask-image:linear-gradient(90deg,transparent,black_16px,black_calc(100%-16px),transparent)]"
               data-testid="map-pan"
               data-riv-scroller
+              [class.pannable]="scrollHint()"
               (mousedown)="onMapMouseDown($event)"
               (mousemove)="onMapMouseMove($event)"
               (mouseup)="onMapMouseUp()"
               (mouseleave)="onMapMouseUp()"
             >
-              <div class="flex flex-col gap-1.5 w-max">
-                @for (row of rows(); track row.code) {
+              <div class="flex flex-col gap-1.5 w-max group-[.pannable]:px-4">
+                @for (row of rows(); track row.code; let i = $index) {
                   <ul
                     class="set-row list-none grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
+                    [class.mt-3]="row.zoneStart && i > 0"
                   >
                     @for (tile of row.tiles; track tile.set.id) {
                       <li
-                        class="set-tile aspect-square min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] border-[#bfe3df] bg-white text-[#0f7d8c] font-bold text-[12.5px] [&.premium]:bg-[#fbf1d9] [&.premium]:border-[#e6c483] [&.premium]:text-[#875911] [&.taken]:bg-[#ece8e0] [&.taken]:border-dashed [&.taken]:border-[#d2ccbf] [&.taken]:text-[#696459] [&.bookable]:p-0"
+                        class="set-tile snap-start aspect-square min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] border-[#bfe3df] bg-white/75 text-[#0f7d8c] font-bold text-[12.5px] [&.premium]:bg-[#fbf1d9]/85 [&.premium]:border-[#e6c483] [&.premium]:text-[#875911] [&.walkin]:bg-[#efe0bd]/85 [&.walkin]:border-[#c8ab62] [&.walkin]:text-[#5f4d2a] [&.taken]:bg-white/20 [&.taken]:border-dashed [&.taken]:border-[#6b7d77] [&.taken]:text-[#566560] [&.bookable]:p-0"
                         data-testid="set-tile"
                         [class.premium]="tile.set.tier === 'PREMIUM'"
+                        [class.walkin]="tile.walkInOnly"
                         [class.taken]="tile.set.availability === 'TAKEN'"
                         [class.bookable]="tile.bookable"
                         [attr.aria-label]="tile.bookable ? null : tile.name"
@@ -219,16 +225,21 @@
               </div>
             </div>
 
-            <!-- Right: per-row price (aria-hidden; carried in each tile's name too). -->
-            <div class="flex flex-col gap-1.5 shrink-0" aria-hidden="true">
-              @for (row of rows(); track row.code) {
-                <span class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px]"
-                  ><span
-                    class="text-[12px] font-semibold text-(--riv-card-ink-soft)"
-                    data-testid="row-price"
-                    >{{ money(row.price) }}</span
-                  ></span
+            <!-- Right: the price, once per price zone (aria-hidden; carried in each tile's name too). -->
+            <div class="flex flex-col gap-1.5 shrink-0" data-testid="price-col" aria-hidden="true">
+              @for (row of rows(); track row.code; let i = $index) {
+                <span
+                  class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px]"
+                  [class.mt-3]="row.zoneStart && i > 0"
                 >
+                  @if (row.zoneStart) {
+                    <span
+                      class="rounded-full bg-white/80 border border-[#cfe3df] px-2 py-[3px] text-[11px] font-bold text-[#0a4f5e] shadow-[0_1px_4px_rgba(7,42,58,0.10)]"
+                      data-testid="row-price"
+                      >{{ money(row.price) }}</span
+                    >
+                  }
+                </span>
               }
             </div>
           </div>
@@ -261,21 +272,28 @@
       >
         <li class="flex items-center gap-2">
           <span
-            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#bfe3df] bg-white"
+            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#bfe3df] bg-white/75"
             aria-hidden="true"
           ></span>
           Available
         </li>
         <li class="flex items-center gap-2">
           <span
-            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#e6c483] bg-[#fbf1d9]"
+            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#e6c483] bg-[#fbf1d9]/85"
             aria-hidden="true"
           ></span>
           Front row
         </li>
         <li class="flex items-center gap-2">
           <span
-            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-dashed border-[#d2ccbf] bg-[#ece8e0]"
+            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#c8ab62] bg-[#efe0bd]/85"
+            aria-hidden="true"
+          ></span>
+          Walk-in only — book at the venue
+        </li>
+        <li class="flex items-center gap-2">
+          <span
+            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-dashed border-[#6b7d77] bg-white/20"
             aria-hidden="true"
           ></span>
           Taken
