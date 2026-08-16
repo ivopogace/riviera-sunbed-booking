@@ -39,14 +39,19 @@ import {
  * fills, so backdrop-independent; the failure panel's inks are the `--riv-card-ink` /
  * `--riv-card-ink-soft` pair already below). Deviations from the design file, on purpose:
  * the header + back pill sit on the AA-proven dark header glass, not the bare
- * gradient; the seat tiles keep SOLID colours (below) so their ink pairs are AA regardless of
- * backdrop; the date field is near-opaque (it sits on dark glass, unlike Discover's field on light
- * card glass).
+ * gradient; the seat tiles are TRANSLUCENT over the sea→sand wash (#672), whose gradient stops
+ * are opaque and theme-independent — so each tile/chip ink is proven composited (fill alpha over
+ * every wash stop) rather than as a solid pair; the date field is near-opaque (it sits on dark
+ * glass, unlike Discover's field on light card glass).
  *
  * Deliberately excluded (WCAG 1.4.3 incidental / 1.4.11 redundant decoration): the availability
  * bar track+fill (`N of M free` carries the fact), the ★ / · glyphs and the sun disc
  * (aria-hidden; the numeric rating carries the value), the failure badge (aria-hidden; the
- * heading carries the meaning), and the decorative tile/card borders.
+ * heading carries the meaning), the decorative tile/card borders — and the ghost-taken tile
+ * glyph (#672): the tile is an INACTIVE component (never interactive, deliberately
+ * near-transparent so free inventory pops — WCAG 1.4.3's inactive-component exemption), its
+ * glyph is aria-hidden, and "taken" is carried by the tile's accessible name plus the dashed
+ * border, never by contrast alone.
  */
 
 const ACCENT = '#085a6e'; // --riv-accent-ink (availability count, scroll hint)
@@ -57,13 +62,23 @@ const DATE_FIELD_FILL_ALPHA = 0.9;
 // --riv-cta-grad stops (theme-invariant) — the failure-panel "Try again" button's white text.
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 
-// Solid seat-tile colours (kept solid for backdrop-independent AA — see file header).
-const TILE_PAIRS: readonly { readonly fg: string; readonly bg: string; readonly usage: string }[] =
-  [
-    { fg: '#0f7d8c', bg: '#ffffff', usage: 'available tile' },
-    { fg: '#875911', bg: '#fbf1d9', usage: 'premium (front-row) tile' },
-    { fg: '#696459', bg: '#ece8e0', usage: 'taken tile' },
-  ];
+/** The sea→sand wash's gradient stops — the opaque, theme-independent backdrops behind every
+ *  translucent tile and side chip (`venue-map.html` map scroller, #672). */
+const WASH_STOPS: readonly Rgb[] = ['cfeef6', 'e7f5f1', 'f6eedb'].map(hexToRgb);
+
+// Translucent tile/chip surfaces: ink on `fill`@`alpha`, composited over each wash stop.
+const TILE_SURFACES: readonly {
+  readonly fg: string;
+  readonly fill: Rgb;
+  readonly alpha: number;
+  readonly usage: string;
+}[] = [
+  { fg: '#0f7d8c', fill: WHITE, alpha: 0.75, usage: 'available tile' },
+  { fg: '#875911', fill: hexToRgb('fbf1d9'), alpha: 0.85, usage: 'premium (front-row) tile' },
+  { fg: '#5f4d2a', fill: hexToRgb('efe0bd'), alpha: 0.85, usage: 'walk-in tile' },
+  { fg: '#0a4f5e', fill: WHITE, alpha: 0.6, usage: 'row-code chip' },
+  { fg: '#0a4f5e', fill: WHITE, alpha: 0.8, usage: 'zone price chip' },
+];
 
 interface Theme {
   readonly name: string;
@@ -144,7 +159,7 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
     expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
   });
 
-  it('card ink-soft (row price, promenade, legend, failure copy) meets AA on the card glass', () => {
+  it('card ink-soft (promenade, legend, failure copy) meets AA on the card glass', () => {
     expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
   });
 
@@ -158,15 +173,15 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
 });
 
 describe('Beach-map theme-independent contrast (issue #136)', () => {
-  it.each(TILE_PAIRS)('$usage text meets AA ($fg on $bg)', ({ fg, bg }) => {
-    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(AA_NORMAL);
-  });
-
-  it('row-label chip text (A–D) meets AA on its solid chip fill', () => {
-    // Decorative (the row-codes column is aria-hidden; each tile's name carries the seat) but proven
-    // anyway like the tiles — the v3 design's translucent rgba(12,42,51,.08) is replaced by this
-    // solid composited equivalent so the css:S7924 analyzer computes it (`venue-map.html` row-code).
-    expect(contrastRatio('#0a4f5e', '#e7ecee')).toBeGreaterThanOrEqual(AA_NORMAL);
+  // The chips are aria-hidden decoration (tile names carry seat+price) but proven like the tiles.
+  it.each(TILE_SURFACES)('$usage ink meets AA composited over every wash stop ($fg)', (surface) => {
+    for (const stop of WASH_STOPS) {
+      const bg = composite(surface.fill, surface.alpha, stop);
+      expect(
+        contrastRatio(surface.fg, rgbToHex(bg)),
+        `over stop ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
   });
 
   it('sea-banner white text meets AA on the lightest teal stop', () => {
