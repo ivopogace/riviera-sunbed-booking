@@ -83,7 +83,7 @@ class BookingModeSwitchIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"name":"%s","beach":"Ksamil","region":"Riviera","description":"x",
-								 "bookingMode":"INSTANT","commissionBps":1500,"payoutCurrency":"EUR",
+								 "bookingMode":"INSTANT","payoutCurrency":"EUR",
 								 "bookingCutoff":"18:00"}
 								""".formatted(name)))
 				.andExpect(status().isCreated())

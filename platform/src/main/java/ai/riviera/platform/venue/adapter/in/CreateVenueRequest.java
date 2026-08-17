@@ -14,6 +14,11 @@ import ai.riviera.platform.venue.application.NewVenueCommand;
  *
  * <p>Defaults at the slice: {@code payoutCurrency} defaults to {@code EUR} (per-venue ISO-4217,
  * decided at U7); {@code bookingCutoff} defaults to {@code 18:00} {@code Europe/Tirane} (invariant #4).
+ *
+ * <p>{@code commissionBps} survives as a component solely to be refused: the platform sets the
+ * commission (stamped server-side, adjusted only via the admin surface), so a body carrying any
+ * value is rejected {@code 400} rather than silently overridden — a client must never believe it
+ * chose a rate.
  */
 record CreateVenueRequest(String name, String beach, String region, String description,
 		String bookingMode, Integer commissionBps, String payoutCurrency, String bookingCutoff) {
@@ -22,12 +27,13 @@ record CreateVenueRequest(String name, String beach, String region, String descr
 	private static final LocalTime DEFAULT_CUTOFF = LocalTime.of(18, 0);
 
 	NewVenueCommand toCommand() {
-		if (commissionBps == null) {
-			throw new IllegalArgumentException("commissionBps is required");
+		if (commissionBps != null) {
+			throw new IllegalArgumentException(
+					"commissionBps is not accepted: the platform sets the commission rate");
 		}
 		String currency = (payoutCurrency == null || payoutCurrency.isBlank())
 				? DEFAULT_PAYOUT_CURRENCY : payoutCurrency;
-		return new NewVenueCommand(name, beach, region, description, bookingMode, commissionBps,
+		return new NewVenueCommand(name, beach, region, description, bookingMode,
 				currency, parseCutoff(bookingCutoff));
 	}
 
