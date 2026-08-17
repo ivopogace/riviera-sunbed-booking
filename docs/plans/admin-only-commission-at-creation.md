@@ -32,8 +32,9 @@ no ledger/repricing consideration; settled 400-reject vs silent-ignore with the 
 `riviera-plan-doc` (this template — forced the parity ledger over the retired commission input
 and the no-migration statement) · `tdd` (each phase is red test → minimal code → green at the
 named pin) · `riviera-review-overlay` (review gate — runs at ready-for-review) ·
-`riviera-docs-freshness` (N/A at plan time — due at merge close-out; `RESPONSIBILITIES.md`
-§`venue` "commission at creation" wording is expected to need a line) ·
+`riviera-docs-freshness` (**ran** pre-merge over `origin/main...HEAD`, 0 findings — no
+substrate doc states the old create contract; `RESPONSIBILITIES.md`'s "second ownership-free
+surface" count judged still true, the defaults read touching no venue object) ·
 `riviera-modulith` (kept `OnboardVenue`/the new defaults read **internal** to `venue` —
 no sibling module calls them, so no `api/` surface is added; properties registration follows
 the module-config-in-`adapter/in` precedent) · `riviera-java-conventions` (records, compact-ctor
