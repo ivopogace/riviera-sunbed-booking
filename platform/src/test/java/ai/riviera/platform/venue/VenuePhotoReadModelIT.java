@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.venue.application.PhotoStorage;
@@ -64,9 +65,7 @@ class VenuePhotoReadModelIT {
 				VALUES (:name, 'ReadModel Beach', 'ReadModel Region', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").param("name", name).query(Long.class).single();
-		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
-						+ "SELECT :v, id FROM operator WHERE username = 'operator'")
-				.param("v", id).update();
+		OwnershipFixtures.grantToBootstrap(jdbc, id);
 		return new VenueId(id);
 	}
 

@@ -47,45 +47,33 @@ class BookingEventIT {
 	@Autowired
 	ApplicationEvents events;
 
-	private record SetRef(long setId, long venueId, long priceMinor, String currency) {
-	}
-
-	private SetRef freeOnlineSet() {
-		return jdbc.sql("""
-				SELECT sp.id, sp.venue_id, sp.price_minor, sp.price_currency
-				FROM set_position sp
-				JOIN operator_venue ov ON ov.venue_id = sp.venue_id
-				JOIN operator o ON o.id = ov.operator_id AND o.status = 'ACTIVE'
-				WHERE sp.pool = 'ONLINE' ORDER BY sp.id DESC LIMIT 1
-				""")
-				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"),
-						rs.getLong("price_minor"), rs.getString("price_currency")))
-				.single();
+	private VisibleOnlineSets.VisibleOnlineSet freeOnlineSet() {
+		return VisibleOnlineSets.newest(jdbc);
 	}
 
 	@Test
 	void publishesBookingConfirmedOnConfirm() {
-		SetRef set = freeOnlineSet();
+		VisibleOnlineSets.VisibleOnlineSet set = freeOnlineSet();
 		// A distinctive far-future date so this (set, date) cannot collide with other create-flow
 		// ITs sharing the Testcontainers context (e.g. BookingServiceIT uses now()+1y).
 		LocalDate date = LocalDate.of(2035, 1, 15);
 
 		BookingOutcome outcome =
-				createBooking.create(new CreateBookingCommand(new SetId(set.setId()), date, GUEST));
+				createBooking.create(new CreateBookingCommand(new SetId(set.id()), date, GUEST));
 		assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
 
 		List<BookingConfirmed> published = events.stream(BookingConfirmed.class).toList();
 		assertEquals(1, published.size(), "exactly one BookingConfirmed is published on confirm");
 
 		BookingConfirmed event = published.getFirst();
-		assertEquals(set.setId(), event.setId().value(), "carries the set id");
+		assertEquals(set.id(), event.setId().value(), "carries the set id");
 		assertEquals(set.venueId(), event.venueId().value(), "carries the owning venue id");
 		assertEquals(date, event.bookingDate(), "carries the booking date");
 		assertEquals(set.priceMinor(), event.amountMinor(), "gross amount = set price, minor units (#5)");
-		assertEquals(set.currency(), event.currency(), "carries the ISO currency");
+		assertEquals(set.priceCurrency(), event.currency(), "carries the ISO currency");
 
 		long persistedId = jdbc.sql("SELECT id FROM booking WHERE set_id = :s AND booking_date = :d")
-				.param("s", set.setId()).param("d", date).query(Long.class).single();
+				.param("s", set.id()).param("d", date).query(Long.class).single();
 		assertEquals(persistedId, event.bookingId().value(), "carries the booking's technical id");
 	}
 }

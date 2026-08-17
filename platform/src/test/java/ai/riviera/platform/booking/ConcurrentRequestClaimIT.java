@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
@@ -55,9 +56,7 @@ class ConcurrentRequestClaimIT {
 				VALUES ('Request Beach Club', 'Race Beach', 'Race Region', 'REQUEST', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
-		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
-						+ "SELECT :v, id FROM operator WHERE username = 'operator'")
-				.param("v", venueId).update();
+		OwnershipFixtures.grantToBootstrap(jdbc, venueId);
 		requestModeSet = new SetId(jdbc.sql("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
 				                          price_currency, grid_x, grid_y)

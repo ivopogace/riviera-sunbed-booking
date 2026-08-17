@@ -17,6 +17,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.hamcrest.Matchers.contains;
@@ -90,9 +91,7 @@ class VenueListControllerIT {
 				.param("name", name).param("beach", beach).param("region", IT_REGION)
 				.param("rating", ratingTenths)
 				.query(Long.class).single();
-		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
-						+ "SELECT :v, id FROM operator WHERE username = 'operator'")
-				.param("v", id).update();
+		OwnershipFixtures.grantToBootstrap(jdbc, id);
 		return id;
 	}
 

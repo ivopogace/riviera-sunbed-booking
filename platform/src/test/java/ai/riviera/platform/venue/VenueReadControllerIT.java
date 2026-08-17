@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.hamcrest.Matchers.contains;
@@ -178,9 +179,7 @@ class VenueReadControllerIT {
 				        'EUR', :d)
 				RETURNING id
 				""").param("d", distanceToWaterM).query(Long.class).single();
-		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
-						+ "SELECT :v, id FROM operator WHERE username = 'operator'")
-				.param("v", id).update();
+		OwnershipFixtures.grantToBootstrap(jdbc, id);
 		for (String amenity : amenities) {
 			jdbc.sql("INSERT INTO venue_amenity (venue_id, amenity) VALUES (:v, :a)")
 					.param("v", id).param("a", amenity).update();

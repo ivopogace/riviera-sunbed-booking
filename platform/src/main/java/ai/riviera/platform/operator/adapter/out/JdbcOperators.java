@@ -40,6 +40,8 @@ class JdbcOperators implements Operators {
 	private static final String SUSPENDED_PARAM = "suspended";
 	/** SQL named-param key bound to an operator id in the ownership queries (named, not duplicated). */
 	private static final String OPERATOR_PARAM = "operator";
+	/** SQL named-param key bound to a venue id in the ownership/visibility queries (S1192). */
+	private static final String VENUE_PARAM = "venue";
 	/** SQL named-param key for an operator's primary key in the lifecycle statements (S1192). */
 	private static final String ID_PARAM = "id";
 	/** SQL named-param key for the status a lifecycle transition writes (S1192). */
@@ -268,7 +270,7 @@ class JdbcOperators implements Operators {
 				)
 				""")
 				.param(OPERATOR_PARAM, operator.value())
-				.param("venue", venue.value())
+				.param(VENUE_PARAM, venue.value())
 				.query(Boolean.class)
 				.single();
 	}
@@ -288,7 +290,7 @@ class JdbcOperators implements Operators {
 		// One owner per venue (operator_venue.venue_id is the PK) — a plain INSERT so a second owner
 		// for the same venue surfaces as a constraint violation rather than silently no-op'ing.
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:venue, :operator)")
-				.param("venue", venue.value())
+				.param(VENUE_PARAM, venue.value())
 				.param(OPERATOR_PARAM, operator.value())
 				.update();
 	}
@@ -303,7 +305,7 @@ class JdbcOperators implements Operators {
 				    WHERE ov.venue_id = :venue AND o.status = :active
 				)
 				""")
-				.param("venue", venue.value())
+				.param(VENUE_PARAM, venue.value())
 				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
 				.query(Boolean.class)
 				.single();

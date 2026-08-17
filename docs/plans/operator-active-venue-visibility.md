@@ -36,8 +36,9 @@ un-ticked epic-#573 boxes, fixed; surfaced the check-in-under-suspension nuance:
 only at the application seam because suspension already revokes sessions) ·
 `riviera-plan-doc` (this template — forced the behavior-parity ledger on the photo-console
 repoint and the SetBookingFacts consumer sweep) · `tdd` (each phase red-green at the
-narrowest seam) · `riviera-review-overlay` (review gate — due at ready-for-review, Phase 6; findings land in
-the register below) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` at Phase 6 — 8 findings, all
+narrowest seam) · `riviera-review-overlay` (review gate — **ran** at ready-for-review: `/code-review` via the
+Skill probe (rung 1; executed as a forked single-pass of the plugin workflow, declared) +
+the full RV bank walk; findings F-1..F-3 + Sonar S-1 in the register, all fixed) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` at Phase 6 — 8 findings, all
 patched: the §`operator` four→five count, the operator package-info "one job", the
 `OperatorService`/api-package port inventories, the §`venue`/§`booking` fence rules, the
 CONTEXT.md visibility term + suspension entry, the CLAUDE.md operator row; re-swept clean
@@ -66,34 +67,33 @@ Phase 5 — mocked-suite specs for the hidden-venue 404 and the repointed admin 
 Written at the application boundary; HTTP-level assertions ride existing adapter tests where
 they exist.
 
-- [ ] **AC-1:** Given a venue whose owning operator is `PENDING`, when `VenueCatalog.listVenues`
+- [x] **AC-1:** Given a venue whose owning operator is `PENDING`, when `VenueCatalog.listVenues`
   runs, then the venue is absent; when the operator is approved (`ACTIVE`), the venue appears
   with no operator action in between. *Pinned by:* `VenueCatalogVisibilityIT.listOmitsPendingOwnedVenueUntilApproved`
-- [ ] **AC-2:** Given a hidden venue (owner not `ACTIVE`), when `VenueCatalog.findVenueMap`
+- [x] **AC-2:** Given a hidden venue (owner not `ACTIVE`), when `VenueCatalog.findVenueMap`
   runs for it, then the result is empty (HTTP 404 via the existing controller mapping).
   *Pinned by:* `VenueCatalogVisibilityIT.mapReadIsEmptyForHiddenVenue`
-- [ ] **AC-3:** Given a hidden venue's set id, when a booking is attempted on the Instant path
+- [x] **AC-3:** Given a hidden venue's set id, when a booking is attempted on the Instant path
   and on the Request path, then both are refused as `Rejected(NO_SUCH_SET)` before any
   availability claim. *Pinned by:* `CreateBookingServiceTest.instantReserveRefusedForHiddenVenue`,
   `CreateBookingServiceTest.requestReserveRefusedForHiddenVenue` (the existing reserve harness —
   no separate `ReserveSetServiceTest` class exists)
-- [ ] **AC-4:** Given an `ACTIVE` operator with a listed venue, when the operator is suspended,
+- [x] **AC-4:** Given an `ACTIVE` operator with a listed venue, when the operator is suspended,
   then the venue leaves both reads; when reinstated, it returns. *Pinned by:*
   `VenueCatalogVisibilityIT.suspendHidesReinstateRestores`
-- [ ] **AC-5:** Given a booking made while the venue was visible, when the owning operator is
+- [x] **AC-5:** Given a booking made while the venue was visible, when the owning operator is
   suspended, then the booking still resolves by code, can still be cancelled (with its refund
   decision computed), and can still be checked in. *Pinned by:*
   `HiddenVenueSoldBookingRegressionIT.soldBookingSurvivesOwnerSuspension` +
   `.checkInStillWorksAfterOwnerSuspension`
-- [ ] **AC-6:** Given an operator is approved, when the approval mail is composed, then it
+- [x] **AC-6:** Given an operator is approved, when the approval mail is composed, then it
   states the venues-are-now-live-for-tourists news in copy that also holds for an operator
-  owning no venue yet. *Pinned by:* the operator-approved leg of the existing mail tests
-  (`SmtpMailer`/`MockMailer` copy assertions, exact class located in Phase 4)
-- [ ] **AC-7:** Given a venue whose owner is not `ACTIVE`, when the admin photo-moderation
+  owning no venue yet. *Pinned by:* `SmtpMailerIT.deliversOperatorApprovedEmailOverSmtp`
+- [x] **AC-7:** Given a venue whose owner is not `ACTIVE`, when the admin photo-moderation
   console loads its venue picker, then that venue is listed (source: `GET /api/admin/venues`,
   not the public catalogue). *Pinned by:* `admin-venue-photos.service.spec.ts` (asserts the
   admin endpoint + mapping) and the mocked-suite e2e for the console
-- [ ] **AC-8:** `ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`,
+- [x] **AC-8:** `ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`,
   `PublishedSurfacePlacementArchitectureTests` stay green; the only cross-module edges in play
   are `venue → operator::api` and `booking → operator::api`, both already granted. *Pinned by:*
   the structural net run at each phase end.
@@ -127,28 +127,26 @@ they exist.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Fence leaks into a sold-booking path (the `SetBookingFacts` trap) and strands a guest | med | high | Fence only `VenueCatalog` impl + `ReserveSetService`; AC-5 regression IT covers resolve-by-code, cancel, check-in under a suspended owner | session | open |
-| R-2 | Existing tests/fixtures create venues without ownership rows → fail-closed hides them and tests fail obscurely | med | med | Phase 2 sweeps fixtures of every touched test for ownership rows (mechanism: creates a `venue` row without a matching `operator_venue` row); add rows or assert hidden deliberately | session | open |
-| R-3 | Non-enumeration regression: a distinguishable refusal would let a tourist probe hidden venues | low | med | Reuse `NO_SUCH_SET` (wire-identical 404 "No such set."); detail read reuses the existing empty→404 mapping — hidden ≡ absent everywhere | session | open |
-| R-4 | `visibleAmong` with an empty candidate collection generates invalid `IN ()` SQL | med | low | Guard: empty in → empty set out, no query; unit-tested | session | open |
-| R-5 | Admin console repoint breaks on response-shape mismatch or double-fetch | low | med | FE unit spec pins URL + mapping; mocked e2e drives the picker | session | open |
-| R-6 | Docs go stale outside the diff (operator's "four things", the FE service doc's completeness claim) | high | low | Phase 6 pre-plans both edits; `riviera-docs-freshness` sweep at close-out | session | open |
-| R-7 | Approval-mail copy asserts venue names it can't have (zero-venue operator) | low | low | Copy is generic ("your venues… any venue you create"); AC-6 asserts it renders without venue data | session | open |
+| R-1 | Fence leaks into a sold-booking path (the `SetBookingFacts` trap) and strands a guest | med | high | Fence only `VenueCatalog` impl + `ReserveSetService`; AC-5 regression IT covers resolve-by-code, cancel, check-in under a suspended owner | session | closed — fence only in `JdbcVenueCatalog` + `ReserveSetService`; AC-5 IT green (`74f84b5`) |
+| R-2 | Existing tests/fixtures create venues without ownership rows → fail-closed hides them and tests fail obscurely | med | med | Phase 2 sweeps fixtures of every touched test for ownership rows (mechanism: creates a `venue` row without a matching `operator_venue` row); add rows or assert hidden deliberately | session | closed — Phase 2/3 fixture sweeps; helpers `OwnershipFixtures`/`VisibleOnlineSets` (review F-2) |
+| R-3 | Non-enumeration regression: a distinguishable refusal would let a tourist probe hidden venues | low | med | Reuse `NO_SUCH_SET` (wire-identical 404 "No such set."); detail read reuses the existing empty→404 mapping — hidden ≡ absent everywhere | session | closed — `NO_SUCH_SET` reuse + existing empty→404 mapping; hidden ≡ absent on every surface |
+| R-4 | `visibleAmong` with an empty candidate collection generates invalid `IN ()` SQL | med | low | Guard: empty in → empty set out, no query; unit-tested | session | closed — empty-input guard, pinned by `OperatorVenueVisibilityIT.visibleAmongEmptyInputAnswersEmptyWithoutQuerying` |
+| R-5 | Admin console repoint breaks on response-shape mismatch or double-fetch | low | med | FE unit spec pins URL + mapping; mocked e2e drives the picker | session | closed — service spec pins URL + mapping; mocked e2e drives the picker (`11d7f69`) |
+| R-6 | Docs go stale outside the diff (operator's "four things", the FE service doc's completeness claim) | high | low | Phase 6 pre-plans both edits; `riviera-docs-freshness` sweep at close-out | session | closed — docs pass + freshness sweep, 8 findings patched (`65911a4`) |
+| R-7 | Approval-mail copy asserts venue names it can't have (zero-venue operator) | low | low | Copy is generic ("your venues… any venue you create"); AC-6 asserts it renders without venue data | session | closed — zero-venue-safe copy asserted by `SmtpMailerIT` (`8d889bb`) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the reserve-path refusal reuses `BookingOutcome.Rejected.NO_SUCH_SET`
-  (no new enum constant): hidden must be indistinguishable from absent (R-3), and the
-  controller's exhaustive switch stays untouched. — *Owner:* session · *Resolves by:* Phase 3
-  (confirmed in review if contested)
-- **Assumption:** unowned venue ⇒ hidden (fail-closed) is safe in prod because V29 backfilled
-  every legacy venue (incl. seeded Miramar) to the bootstrap `ACTIVE` operator and
-  creator-owns-on-create writes the mapping transactionally since. — *Owner:* session ·
-  *Resolves by:* Phase 2 fixture sweep (R-2)
-- **Assumption:** the venue-map page gets a distinct "venue not available" state (404 vs
-  generic failure) — the current status-blind `failed` state offers a retry that can never
-  succeed for a hidden venue. Small, user-observable, in-scope for a demoable slice. —
-  *Owner:* session · *Resolves by:* Phase 5
+None open.
+
+### Resolved
+
+- **`NO_SUCH_SET` reuse** — confirmed at Phase 3 (`74f84b5`); the review gate raised no
+  objection, and the controller's exhaustive switch stayed untouched.
+- **Unowned ⇒ hidden (fail-closed)** — verified against V29's backfill (Miramar included);
+  test fallout handled by the Phase 2/3 fixture sweeps (`e2d05ff`, `74f84b5`).
+- **Venue-map not-available state** — shipped at Phase 5 (`11d7f69`) and hardened by review
+  F-1 in the final commit (stale-map teardown + RV-FE-9 focus move).
 
 ## Availability & concurrency (invariant #2)
 
@@ -240,9 +238,9 @@ other failures client-side.
 
 ## Execution status
 
-**Stage pointer:** implement (Phase 6 — docs + gates)
+**Stage pointer:** DONE — review + Sonar fix round complete; merged via PR #696
 
-**Next action:** RESPONSIBILITIES.md updates (§operator four→five, §venue catalogue line), docs-freshness sweep, merge latest main, mark PR ready, run Review + Sonar gates.
+**Next action:** (post-merge, GitHub-only) tick epic #573's B-scope boxes, verify #693 closed, confirm the PR subscription ended.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -252,7 +250,7 @@ other failures client-side.
 | 3 — `booking` reserve fence + sold-booking regression | ✅ | "Refuse Instant and Request reserves…" — refusal tests + AC-5 IT green; reserve-fixture sweep (6 classes) incl. visibility-aware newest-set pickers |
 | 4 — approval-mail reword | ✅ | "Approval mail states the venues-now-live news" — `SmtpMailerIT` red→green; zero-venue-safe copy |
 | 5 — FE: admin console repoint + venue-map not-found + e2e | ✅ | "Admin photo console reads the admin venue list; venue-map gains a not-available state" — 1459 unit + 13 scoped e2e green; lint/format/guards clean |
-| 6 — docs freshness + self-review + gates | | |
+| 6 — docs freshness + self-review + gates | ✅ | Docs pass `65911a4`; review + Sonar fix round in the PR's final commit ("Review-gate and Sonar fixes…") |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -260,7 +258,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-0 | CI (repo hygiene, Phase-1 push) | Plan File-structure globs didn't cover the two new test files | fixed-in-`e2d05ff` (explicit paths) |
+| F-1 | review (/code-review) | Date-change re-fetch error kept the stale map: `venue()` never cleared, so the new not-found panel (and the failure panel) were unreachable while a map was showing — the hidden-while-browsing case | fixed in the final commit: error handler clears `venue()` and moves focus onto the shown panel via `focusMover()` inside the epoch guard (RV-FE-9); spec + 1460 unit tests green |
+| F-2 | review (/code-review) | Visible-set picker SQL ×4 + bootstrap-grant INSERT ×6 copy-pasted across ITs | fixed in the final commit: `booking/VisibleOnlineSets` + `OwnershipFixtures` helpers, 10 sites swapped |
+| F-3 | review (/code-review) | `AdminVenueCommissionController` javadoc justified non-blurred 404s with "venues are already enumerable through the anonymous discovery read" — false since the fence | fixed in the final commit: rationale reworded to the admin's deliberately-complete list |
+| S-1 | sonar (`java:S1192`, CRITICAL smell) | `"venue"` bind-param literal ×3 in `JdbcOperators` | fixed in the final commit: `VENUE_PARAM` constant, matching the file's named-param convention |
 
 ---
 
@@ -302,6 +304,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `CLAUDE.md` — `operator` module-table row gains the tourist-visibility answer
 - `platform/src/main/java/ai/riviera/platform/operator/package-info.java` — "one job" → the two questions (docs-freshness)
 - `platform/src/main/java/ai/riviera/platform/operator/api/package-info.java` — port inventory + `VenueVisibility` (docs-freshness)
+- `platform/src/test/java/ai/riviera/platform/OwnershipFixtures.java` — shared bootstrap-owner grant (review F-2)
+- `platform/src/test/java/ai/riviera/platform/booking/VisibleOnlineSets.java` — shared visible-set picker (review F-2)
+- `platform/src/main/java/ai/riviera/platform/venue/adapter/in/AdminVenueCommissionController.java` — stale enumeration rationale reworded (review F-3)
 - `docs/plans/operator-active-venue-visibility.md` — execution-status updates throughout
 
 (Exact test-file names/paths firm up per phase; the guard
@@ -411,25 +416,29 @@ Test `admin-venue-photos.service.spec.ts`, `venue-map.spec.ts`, mocked e2e suite
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-8:** each verified by its pinned test at the recorded commit (filled at
-  Phase 6).
+- [x] **AC-1/2/4:** `gradle test --tests "*VenueCatalogVisibilityIT*"` → 4/4 green (from `e2d05ff`; re-run green after the fix round).
+- [x] **AC-3:** `gradle test --tests "*CreateBookingServiceTest*"` → green incl. both hidden-venue refusals (from `74f84b5`).
+- [x] **AC-5:** `gradle test --tests "*HiddenVenueSoldBookingRegressionIT*"` → 2/2 green (from `74f84b5`).
+- [x] **AC-6:** `gradle test --tests "*SmtpMailerIT*"` → green incl. the venues-live copy assertions (from `8d889bb`).
+- [x] **AC-7:** `npm test` (service spec) + `npm run test:e2e:a11y -- admin-venue-photos` → green (from `11d7f69`).
+- [x] **AC-8:** structural net (`ModularityTests`, `JdbcOnly*`, `PackageShape*`, `PublishedSurfacePlacement*`) → green after every phase and after the fix round.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section holds: no claim change; guard precedes claim; `ConcurrentReservationIT` green (invariant #2).
-- [ ] Pool + cutoff rules untouched and still ordered after the guard (invariants #3, #4).
-- [ ] **Modulith** section holds; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
-- [ ] **Payment/payout** N/A holds — no money path touched (invariants #5, #8, #9).
-- [ ] Refund policy untouched server-side; AC-5 proves it still computes (invariant #10).
-- [ ] Timezone: no new time arithmetic beyond existing cutoff use (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change — no Flyway migration needed (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register closed; Open Questions empty or deferred with an issue #.
-- [ ] **Close-out written in THIS PR** (`merged via PR #NN`).
-- [ ] **The review gate ran in full** per the invocation ladder + overlay.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section holds: no claim change; guard precedes claim; `ConcurrentReservationIT` green (invariant #2).
+- [x] Pool + cutoff rules untouched and still ordered after the guard (invariants #3, #4).
+- [x] **Modulith** section holds; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
+- [x] **Payment/payout** N/A holds — no money path touched (invariants #5, #8, #9).
+- [x] Refund policy untouched server-side; AC-5 proves it still computes (invariant #10).
+- [x] Timezone: no new time arithmetic beyond existing cutoff use (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change — no Flyway migration needed (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register closed; Open Questions empty or deferred with an issue #.
+- [x] **Close-out written in THIS PR** (`merged via PR #NN`).
+- [x] **The review gate ran in full** per the invocation ladder + overlay.

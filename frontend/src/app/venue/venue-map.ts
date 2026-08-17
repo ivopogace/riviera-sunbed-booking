@@ -10,6 +10,7 @@ import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/bea
 import { CardGlass } from '../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
 import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
+import { focusMover } from '../shared/focus-after-render';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
 import { PhotoSlideshow } from '../shared/photo-slideshow';
@@ -128,6 +129,8 @@ export class VenueMap {
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);
   private readonly router = inject(Router);
+  /** WCAG 2.4.3: a re-fetch failure tears down the map (which may hold focus) — move it (RV-FE-9). */
+  private readonly moveFocus = focusMover();
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly failed = signal(false);
@@ -300,11 +303,20 @@ export class VenueMap {
         if (this.epoch !== epoch) {
           return;
         }
+        // A stale map under a new date header misleads — the panel must win over the old view.
+        const toreDownMap = this.venue() !== undefined;
+        this.venue.set(undefined);
         // 404 is a distinct state: the venue is gone or hidden (#693); retrying cannot succeed.
         if (error instanceof HttpErrorResponse && error.status === 404) {
           this.notFound.set(true);
+          if (toreDownMap) {
+            this.moveFocus('map-not-found');
+          }
         } else {
           this.failed.set(true);
+          if (toreDownMap) {
+            this.moveFocus('map-error');
+          }
         }
       },
     });

@@ -488,6 +488,25 @@ describe('VenueMap', () => {
     expect(navigate).toHaveBeenCalledWith(['/']);
   });
 
+  /** #693 review F-1: a hidden-while-browsing venue must not keep serving the stale map. */
+  it('replaces a loaded map with the not-available panel when a date change 404s', async () => {
+    flushVenue();
+    await fixture.whenStable();
+
+    const c = fixture.componentInstance as unknown as { onDateChange(e: Event): void };
+    const dateB = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    c.onDateChange({ target: { value: dateB } } as unknown as Event);
+    venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
+    const panel = el().querySelector('[data-testid="map-not-found"]');
+    expect(panel).not.toBeNull();
+    // The teardown destroyed the subtree focus may sit in — the move is deliberate (RV-FE-9).
+    expect(document.activeElement).toBe(panel);
+  });
+
   it('navigates back to discovery when the back pill is pressed', async () => {
     flushVenue();
     await fixture.whenStable();
