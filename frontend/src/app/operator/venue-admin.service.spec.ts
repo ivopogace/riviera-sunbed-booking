@@ -12,7 +12,6 @@ const VENUE: CreateVenueRequest = {
   region: 'Riviera',
   description: 'on the shore',
   bookingMode: 'INSTANT',
-  commissionBps: 1500,
   payoutCurrency: 'EUR',
   bookingCutoff: '18:00',
 };
@@ -40,6 +39,15 @@ describe('VenueAdminService', () => {
     expect(req.request.body).toEqual(VENUE);
     req.flush({ id: 5 }, { status: 201, statusText: 'Created' });
     expect(id).toBe(5);
+  });
+
+  it('venueDefaults GETs the platform terms', () => {
+    let commissionBps: number | undefined;
+    service.venueDefaults().subscribe((d) => (commissionBps = d.commissionBps));
+    const req = httpMock.expectOne(`${base}/api/venue-defaults`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ commissionBps: 500 });
+    expect(commissionBps).toBe(500);
   });
 });
 

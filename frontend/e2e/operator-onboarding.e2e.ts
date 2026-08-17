@@ -18,6 +18,10 @@ const NEW_VENUE_ID = 31;
 
 /** The freshly created venue as the console shell + beach-map tab read it (empty map, no bookings). */
 async function mockNewVenueConsole(page: import('@playwright/test').Page): Promise<void> {
+  // The platform terms the create form disclosure line reads (#692) — commission is not an input.
+  await page.route(/\/api\/venue-defaults$/, (route) =>
+    route.fulfill({ json: { commissionBps: 500 } }),
+  );
   await page.route(/\/api\/venues$/, (route) =>
     route.request().method() === 'POST'
       ? route.fulfill({ status: 201, json: { id: NEW_VENUE_ID } })
@@ -75,6 +79,11 @@ test('a first-time operator creates their venue inline on /operator and lands in
   await expect(page).toHaveURL(/\/operator$/);
   await expect(page.getByTestId('venue-create-card')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
+  // No commission input (#692); the platform term is disclosed from the served default.
+  await expect(page.getByTestId('venue-create-commission')).toHaveCount(0);
+  await expect(page.getByTestId('venue-create-commission-note')).toHaveText(
+    'The platform commission is 5% per booking.',
+  );
   await expectNoSeriousAxeViolations(page, 'operator zero state — inline create form');
 
   await page.getByLabel('Name', { exact: true }).fill('Sunset Bar');

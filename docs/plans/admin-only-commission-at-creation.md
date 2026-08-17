@@ -216,18 +216,19 @@ literal exists in FE code; styling is Tailwind utilities beside the existing for
 > lives HERE, committed — never only in the conversation. Update it in the SAME commit
 > window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** implement (phase 4 — integration + gates)
 
-**Next action:** phase 3 red specs (`venue-create-card.spec.ts` + `venue-admin.service.spec.ts`);
-verify the draft PR's CI run (queued at phase-2 commit time) before the phase-3 push.
+**Next action:** verify the PR's CI run on the phase-3 head; then phase 4 (merge `origin/main`,
+finalize, ready-for-review → review + Sonar gates).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc on branch | ✅ | ef4d25f |
 | 1 — backend: stamp default + reject client rate | ✅ | c13dcdd |
-| 2 — backend: `GET /api/venue-defaults` | ✅ | (this commit) |
-| 3 — frontend: input removed, disclosure line, e2e | | |
-| 4 — merge `origin/main`, ready-for-review, gates | | |
+| 2 — backend: `GET /api/venue-defaults` | ✅ | 4868220 |
+| F-1 fix — web-slice stub for the new controller dep | ✅ | (commit after 4868220) |
+| 3 — frontend: input removed, disclosure line, e2e | ✅ | (this commit) |
+| 4 — merge `origin/main`, ready-for-review, gates | ⏳ | |
 
 Draft PR: #695 (opened at the phase-1 commit).
 
@@ -237,6 +238,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (run 32051404477, phase-2 head 4868220) | Every web-slice controller test failed: `VenueDefaultsController`'s `VenueCreationProperties` dependency had no bean in the shared `WebSliceStubs` context (`NoSuchBeanDefinitionException` — the full-suite-only failure class `riviera-local-debug` warns about; scoped runs never build that context). | fixed — stub bean added beside `OnboardVenue`'s, per the `StripeProperties` precedent; reproduced red locally on `AccountRecoveryControllerTest` first, green after |
 
 ---
 
@@ -429,6 +431,7 @@ void rejectsAnonymous() {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-17 | F-1 (red CI) — new controller dependency missing from the web-slice context | every constructor dependency of every `@RestController` vs. the `WebSliceStubs` bean set — the slice added exactly one new controller-injected type | `grep -rn "VenueCreationProperties" platform/src` (its only injection sites) + the CI run's failure list (every slice test named the same missing bean) | 1 (`VenueDefaultsController` → `VenueCreationProperties`) | stub bean added; no other new controller dependency exists in this slice |
 | 2026-08-17 | Phase 1 — `NewVenueCommand` loses `commissionBps`; create bodies now 400 on it | (a) every construction/stub site of `NewVenueCommand` + `Venues.insertVenue`; (b) every test body POSTing `/api/venues` with a `commissionBps` key | `grep -rn "new NewVenueCommand\|insertVenue(" platform/src` · `grep -rn "commissionBps" platform/src/test` | (a) 2 constructions + 1 fake impl; (b) 7 create bodies across 6 IT files + 3 stamped-value assertions | all updated (bodies drop the key; assertions move 1500→500). Raw-SQL `INSERT INTO venue` fixtures deliberately untouched — they exercise the DB, not the creation path, and pin non-default rates (e.g. `CrossVenueDenialIT`'s 1500) |
 
 ---

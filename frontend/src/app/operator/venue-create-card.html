@@ -102,27 +102,6 @@
         </label>
         <label class="field flex flex-col gap-1">
           <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
-            >Commission (basis points)</span
-          >
-          <input
-            type="text"
-            inputmode="numeric"
-            [formField]="venueForm.commissionBps"
-            data-testid="venue-create-commission"
-            appTouchTarget
-            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
-          />
-          @if (venueForm.commissionBps().touched() && venueForm.commissionBps().errors().length) {
-            <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
-              venueForm.commissionBps().errors()[0].message
-            }}</span>
-          }
-        </label>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <label class="field flex flex-col gap-1">
-          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
             >Payout currency (ISO 4217)</span
           >
           <input
@@ -139,6 +118,9 @@
             }}</span>
           }
         </label>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
         <label class="field flex flex-col gap-1">
           <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
             >Booking cutoff (Europe/Tirane)</span
@@ -157,6 +139,15 @@
           }
         </label>
       </div>
+
+      @if (platformDefaults(); as defaults) {
+        <p
+          class="m-0 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)"
+          data-testid="venue-create-commission-note"
+        >
+          The platform commission is {{ commissionPercent(defaults.commissionBps) }} per booking.
+        </p>
+      }
 
       <button
         type="submit"
