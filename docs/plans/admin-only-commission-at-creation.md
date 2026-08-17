@@ -238,6 +238,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | sonar (PR 695, java:S6539 INFO) | Adding `VenueCreationProperties` pushed `VenueAdminService` to 21 class dependencies (max 20, "Monster Class"). | fixed — onboarding split into its own package-private `OnboardVenueService` (port unchanged), dropping the edit service's coupling by three; re-entered at Implement with `riviera-modulith` + `riviera-java-conventions` loaded |
 | F-1 | CI (run 32051404477, phase-2 head 4868220) | Every web-slice controller test failed: `VenueDefaultsController`'s `VenueCreationProperties` dependency had no bean in the shared `WebSliceStubs` context (`NoSuchBeanDefinitionException` — the full-suite-only failure class `riviera-local-debug` warns about; scoped runs never build that context). | fixed — stub bean added beside `OnboardVenue`'s, per the `StripeProperties` precedent; reproduced red locally on `AccountRecoveryControllerTest` first, green after |
 
 ---
@@ -248,7 +249,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueCreationProperties.java` — new `@ConfigurationProperties("riviera.venue.creation")` record, compact-ctor 0–10000 guard
 - `platform/src/main/java/ai/riviera/platform/venue/application/NewVenueCommand.java` — drop `commissionBps` component
 - `platform/src/main/java/ai/riviera/platform/venue/application/Venues.java` — `insertVenue(NewVenueCommand, int commissionBps)`
-- `platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java` — stamp the configured default in `onboard`
+- `platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java` — sheds the onboard use case (F-2)
+- `platform/src/main/java/ai/riviera/platform/venue/application/OnboardVenueService.java` — new: the creation conversation, stamps the configured default (F-2 split)
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — stub `VenueCreationProperties` for the new controller dependency (F-1)
 - `platform/src/main/java/ai/riviera/platform/venue/application/OnboardVenue.java` — Javadoc: rate is stamped, not supplied
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/CreateVenueRequest.java` — invert the null check into a non-null rejection
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueCreationConfig.java` — new `@EnableConfigurationProperties` registration
