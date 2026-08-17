@@ -237,9 +237,9 @@ other failures client-side.
 
 ## Execution status
 
-**Stage pointer:** implement (Phase 4)
+**Stage pointer:** implement (Phase 5)
 
-**Next action:** approval-mail reword — RED on the copy assertions in the notification module, then `SmtpMailer`/`MockMailer`.
+**Next action:** frontend — load `riviera-frontend` + `angular-developer` + MCP + `riviera-tailwind` + `playwright-cli`; repoint the admin photo console; venue-map not-found state; specs + mocked e2e.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -247,7 +247,7 @@ other failures client-side.
 | 1 — `operator.api.VenueVisibility` port + JDBC impl | ✅ | "Publish operator VenueVisibility api port" — `OperatorVenueVisibilityIT` 6/6, structural net green |
 | 2 — `venue` catalogue fence (list + detail) | ✅ | "Fence the tourist venue reads…" — `VenueCatalogVisibilityIT` 4/4, fixture sweep (4 classes), structural net + role-split tests green; also fixes the Phase-1 plan-guard CI failure |
 | 3 — `booking` reserve fence + sold-booking regression | ✅ | "Refuse Instant and Request reserves…" — refusal tests + AC-5 IT green; reserve-fixture sweep (6 classes) incl. visibility-aware newest-set pickers |
-| 4 — approval-mail reword | | |
+| 4 — approval-mail reword | ✅ | "Approval mail states the venues-now-live news" — `SmtpMailerIT` red→green; zero-venue-safe copy |
 | 5 — FE: admin console repoint + venue-map not-found + e2e | | |
 | 6 — docs freshness + self-review + gates | | |
 
@@ -286,9 +286,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/booking/CancelBookingIT.java` — sweep: visible-set picker
 - `platform/src/test/java/ai/riviera/platform/booking/ConcurrentRequestClaimIT.java` — sweep: bootstrap-owned request venue
 - `platform/src/test/java/ai/riviera/platform/booking/RequestToBookFlowIT.java` — sweep: bootstrap-owned request venue
-- `platform/src/main/java/ai/riviera/platform/notification/adapter/out/SmtpMailer.java` — approval-mail copy
-- `platform/src/main/java/ai/riviera/platform/notification/adapter/out/MockMailer.java` — mirrored copy
-- `platform/src/test/java/ai/riviera/platform/notification/**` — copy assertions (exact class per Phase 4)
+- `platform/src/main/java/ai/riviera/platform/notification/adapter/out/SmtpMailer.java` — approval-mail copy (the one home of the body; `MockMailer`'s record carries no copy, so it needed no change)
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/out/SmtpMailerIT.java` — copy assertions (AC-6)
 - `frontend/src/app/admin/admin-venue-photos.service.ts` — repoint + doc rewrite
 - `frontend/src/app/admin/admin-venue-photos.service.spec.ts` — pins admin endpoint + mapping
 - `frontend/src/app/venue/venue-map.ts` · `.html` — `notFound` state

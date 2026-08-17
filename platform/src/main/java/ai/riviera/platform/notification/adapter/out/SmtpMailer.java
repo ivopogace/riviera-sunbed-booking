@@ -224,7 +224,8 @@ class SmtpMailer implements Mailer {
 
 				%s
 
-				Signing in for the first time takes you to venue onboarding.""".formatted(signInLink));
+				Venues you own are now live and bookable by tourists, and any venue you
+				add goes live as soon as you create it.""".formatted(signInLink));
 	}
 
 	/**
