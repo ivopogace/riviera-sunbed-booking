@@ -216,6 +216,12 @@ model in `docs/architecture/domain-model.md`.
   this venue?"*. Every venue-scoped operation (beach-map edit, staff bookings, staff
   availability, weather refund, payout ledger) verifies it in the application service and
   returns **403** on a mismatch (object-level authorization, not role-level — invariant #13).
+- **Operator approval** — a platform admin's decision on a self-registered (`PENDING`) operator:
+  approve (→ `ACTIVE`) or reject (→ `REJECTED`, terminal). Since #694 a `PENDING` operator already
+  signs in and uses the **entire** operator console — registering flows straight into it, and the
+  venue it creates is its own — so approval gates **venue visibility** (whether tourists see and
+  can book its venues), never console access. Rejection locks the account out and ends any live
+  session it holds. `SUSPENDED` and `REJECTED` accounts cannot sign in.
 - **Bootstrap operator** — the seeded `operator` account. **Retired as owns-all in #115** and
   **demoted to the platform admin** (`is_admin`): it no longer owns every venue — V29 dropped
   `owns_all_venues` and backfilled the venues it previously reached to it — and now approves operator

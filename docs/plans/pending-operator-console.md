@@ -299,8 +299,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/unified-auth.e2e.ts` — register test now lands under the pending notice
 - `frontend/e2e/admin-operator-suspension.e2e.ts` — seed updated (register auto-signs-in)
 - `frontend/e2e/support/auth-mocks.ts` — may-authenticate set + `operatorStatus` + reject revocation in the lifecycle mock
-- `RESPONSIBILITIES.md` — §`operator` (resolution sets; reject bracket)
-- `CONTEXT.md` — glossary: may-authenticate / may-operate / tourist-visible sets
+- `RESPONSIBILITIES.md` — §`operator` (the three-set statement; reject bracket; #693 mail-copy line)
+- `CONTEXT.md` — glossary: operator approval (console access vs tourist visibility)
+- `docs/adr/ADR-0013-photo-moderation-trusted-operators.md` — amendment: the human gate moved to the visibility fence
+- `docs/architecture/auth-signin-register.md` — D-5 updated to the #694 contract
 
 ---
 
