@@ -37,8 +37,11 @@ only at the application seam because suspension already revokes sessions) ·
 `riviera-plan-doc` (this template — forced the behavior-parity ledger on the photo-console
 repoint and the SetBookingFacts consumer sweep) · `tdd` (each phase red-green at the
 narrowest seam) · `riviera-review-overlay` (review gate — due at ready-for-review, Phase 6; findings land in
-the register below) · `riviera-docs-freshness` (runs over `origin/main..HEAD` at Phase 6 —
-the §`operator` "four things"→five counting fix is pre-planned there) ·
+the register below) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` at Phase 6 — 8 findings, all
+patched: the §`operator` four→five count, the operator package-info "one job", the
+`OperatorService`/api-package port inventories, the §`venue`/§`booking` fence rules, the
+CONTEXT.md visibility term + suspension entry, the CLAUDE.md operator row; re-swept clean
+after the fix round) ·
 `riviera-modulith` (the role-split port decision; adapter-consumes-port precedent;
 least-privilege grants already in place — no `allowedDependencies` change) ·
 `codebase-design` (fence placed behind the `VenueCatalog` interface, un-bypassable by any
@@ -294,7 +297,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/venue/venue-map.spec.ts` — not-found state spec
 - `frontend/e2e/discovery-flow.e2e.ts` — mocked-suite hidden-venue 404 flow (+ axe)
 - `frontend/e2e/admin-venue-photos.e2e.ts` — picker mock repointed to the admin wire shape
-- `RESPONSIBILITIES.md` — §`operator` four→five questions + new port; §`venue` catalogue contract line
+- `RESPONSIBILITIES.md` — §`operator` four→five questions + new port; §`venue` catalogue-fence rule + `SetBookingFacts` unfenced note; §`booking` reserve-fence line
+- `CONTEXT.md` — new "Venue visibility" glossary term; suspension entry notes the visibility flip
+- `CLAUDE.md` — `operator` module-table row gains the tourist-visibility answer
+- `platform/src/main/java/ai/riviera/platform/operator/package-info.java` — "one job" → the two questions (docs-freshness)
+- `platform/src/main/java/ai/riviera/platform/operator/api/package-info.java` — port inventory + `VenueVisibility` (docs-freshness)
 - `docs/plans/operator-active-venue-visibility.md` — execution-status updates throughout
 
 (Exact test-file names/paths firm up per phase; the guard
