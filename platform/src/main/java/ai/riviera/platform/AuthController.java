@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
+import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorRegistration;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -69,6 +70,7 @@ class AuthController {
 	private final PasswordEncoder passwordEncoder;
 	private final CustomerAccountProvisioning customerAccounts;
 	private final OperatorRegistration operatorRegistration;
+	private final OperatorAccounts operatorAccounts;
 	private final CustomerRecovery recovery;
 
 	AuthController(@Qualifier("authenticationManager") AuthenticationManager operatorManager,
@@ -77,6 +79,7 @@ class AuthController {
 			PasswordEncoder passwordEncoder,
 			CustomerAccountProvisioning customerAccounts,
 			OperatorRegistration operatorRegistration,
+			OperatorAccounts operatorAccounts,
 			CustomerRecovery recovery) {
 		this.operatorManager = operatorManager;
 		this.customerManager = customerManager;
@@ -84,6 +87,7 @@ class AuthController {
 		this.passwordEncoder = passwordEncoder;
 		this.customerAccounts = customerAccounts;
 		this.operatorRegistration = operatorRegistration;
+		this.operatorAccounts = operatorAccounts;
 		this.recovery = recovery;
 		this.timingEqualizerHash = passwordEncoder.encode("timing-equalizer-not-a-credential");
 	}
@@ -138,9 +142,12 @@ class AuthController {
 	 * is always {@code false}, and the neutral already-registered branch also reports {@code false} so the
 	 * response stays byte-identical (non-enumeration, D-8). {@code admin} is {@code true} for a
 	 * platform-admin operator ({@code ROLE_ADMIN}), so the FE can reveal the approval surface; always
-	 * {@code false} for a customer.
+	 * {@code false} for a customer. {@code operatorStatus} is the operator's lifecycle token
+	 * ({@code PENDING} or {@code ACTIVE} — no other status can hold a session), so the console can show
+	 * a pending-approval notice; {@code null} for a customer principal.
 	 */
-	record PrincipalResponse(String username, String principalType, Boolean emailVerified, boolean admin) {
+	record PrincipalResponse(String username, String principalType, Boolean emailVerified, boolean admin,
+			String operatorStatus) {
 	}
 
 	@PostMapping("/api/auth/operator/login")
@@ -151,7 +158,7 @@ class AuthController {
 		Authentication authentication =
 				establishSession(operatorManager, login.username(), login.password(), request, response);
 		return new PrincipalResponse(authentication.getName(), OPERATOR_PRINCIPAL_TYPE, null,
-				adminOf(authentication));
+				adminOf(authentication), operatorStatusOf(authentication));
 	}
 
 	/**
@@ -186,7 +193,7 @@ class AuthController {
 		Authentication authentication =
 				establishSession(customerManager, login.email(), login.password(), request, response);
 		return new PrincipalResponse(authentication.getName(), CUSTOMER_PRINCIPAL_TYPE,
-				verifiedStatus(authentication), false);
+				verifiedStatus(authentication), false, null);
 	}
 
 	/**
@@ -225,7 +232,7 @@ class AuthController {
 		// emailVerified is always false here — a fresh account is unverified and the neutral branch matches it.
 		// admin is always false because a customer is never a platform admin.
 		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(new PrincipalResponse(email, CUSTOMER_PRINCIPAL_TYPE, false, false));
+				.body(new PrincipalResponse(email, CUSTOMER_PRINCIPAL_TYPE, false, false, null));
 	}
 
 	/**
@@ -237,7 +244,7 @@ class AuthController {
 	@GetMapping("/api/auth/me")
 	PrincipalResponse me(Authentication authentication) {
 		return new PrincipalResponse(authentication.getName(), principalTypeOf(authentication),
-				verifiedStatus(authentication), adminOf(authentication));
+				verifiedStatus(authentication), adminOf(authentication), operatorStatusOf(authentication));
 	}
 
 	/**
@@ -275,5 +282,18 @@ class AuthController {
 			return null;
 		}
 		return recovery.verifiedFor(authentication.getName()).orElse(null);
+	}
+
+	/**
+	 * The signed-in operator's lifecycle status token, or {@code null} for a customer principal.
+	 * A single by-username read; the account always exists for a live operator session.
+	 */
+	private String operatorStatusOf(Authentication authentication) {
+		if (!OPERATOR_PRINCIPAL_TYPE.equals(principalTypeOf(authentication))) {
+			return null;
+		}
+		return operatorAccounts.findByUsername(authentication.getName())
+				.map(credential -> credential.status().name())
+				.orElse(null);
 	}
 }

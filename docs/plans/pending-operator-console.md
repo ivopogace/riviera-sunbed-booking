@@ -219,9 +219,9 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 
 ## Execution status
 
-**Stage pointer:** implement (phase 4)
+**Stage pointer:** implement (phase 5)
 
-**Next action:** phase 4 red — `AuthSessionIT` `operatorStatus` on the wire principal
+**Next action:** phase 5 red — FE auto-sign-in + pending banner specs
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -229,7 +229,7 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 | 1 — status published + may-authenticate set at the edge | ✅ | (this commit) |
 | 2 — ownership resolves for the may-operate set; console end-to-end | ✅ | (this commit) |
 | 3 — reject revocation bracket + #128 regressions | ✅ | (this commit) |
-| 4 — `operatorStatus` on the wire principal | | |
+| 4 — `operatorStatus` on the wire principal | ✅ | (this commit) |
 | 5 — FE auto-sign-in + pending banner | | |
 | 6 — mocked e2e rewrite | | |
 | 7 — docs close-out (RESPONSIBILITIES/CONTEXT/Javadoc) + gates | | |
@@ -274,6 +274,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/OperatorRejectionRevocationIT.java` — new: AC-6/AC-7
 - `platform/src/test/java/ai/riviera/platform/OperatorSuspensionRevocationIT.java` — regression additions if any assertions shift
 - `platform/src/test/java/ai/riviera/platform/AuthSessionIT.java` — AC-9
+- `platform/src/test/java/ai/riviera/platform/CustomerLoginIT.java` — customer principal carries no `operatorStatus`
 - `platform/src/test/java/ai/riviera/platform/AdminOperatorControllerTest.java` — reject-path unit updates
 - `platform/src/test/java/ai/riviera/platform/OperatorAccountControllerTest.java` — credential-shape updates (status-bearing record)
 - `platform/src/test/java/ai/riviera/platform/OperatorCredentialInitializerTest.java` — credential-shape updates (status-bearing record)
