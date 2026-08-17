@@ -1,5 +1,6 @@
 package ai.riviera.platform.operator.application;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 
@@ -10,6 +11,7 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
+import ai.riviera.platform.operator.api.VenueVisibility;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 /**
@@ -25,7 +27,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
  * {@link #assignOwner} (creator-owns-on-create), which joins the caller's transaction.
  */
 @Service
-class OperatorService implements VenueOwnership, OperatorDirectory {
+class OperatorService implements VenueOwnership, OperatorDirectory, VenueVisibility {
 
 	private final Operators operators;
 
@@ -54,5 +56,15 @@ class OperatorService implements VenueOwnership, OperatorDirectory {
 	@Override
 	public Optional<OperatorId> operatorFor(String username) {
 		return operators.idByActiveUsername(username);
+	}
+
+	@Override
+	public boolean isVisible(VenueRef venue) {
+		return operators.hasActiveOwner(venue);
+	}
+
+	@Override
+	public Set<VenueRef> visibleAmong(Collection<VenueRef> venues) {
+		return operators.venuesWithActiveOwner(venues);
 	}
 }

@@ -1,5 +1,6 @@
 package ai.riviera.platform.operator.adapter.out;
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -290,5 +291,39 @@ class JdbcOperators implements Operators {
 				.param("venue", venue.value())
 				.param(OPERATOR_PARAM, operator.value())
 				.update();
+	}
+
+	@Override
+	public boolean hasActiveOwner(VenueRef venue) {
+		// PK probe on operator_venue(venue_id) joined to the tiny operator table.
+		return jdbc.sql("""
+				SELECT EXISTS (
+				    SELECT 1 FROM operator_venue ov
+				    JOIN operator o ON o.id = ov.operator_id
+				    WHERE ov.venue_id = :venue AND o.status = :active
+				)
+				""")
+				.param("venue", venue.value())
+				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.query(Boolean.class)
+				.single();
+	}
+
+	@Override
+	public Set<VenueRef> venuesWithActiveOwner(Collection<VenueRef> venues) {
+		if (venues.isEmpty()) {
+			return Set.of();
+		}
+		return jdbc.sql("""
+				SELECT ov.venue_id FROM operator_venue ov
+				JOIN operator o ON o.id = ov.operator_id
+				WHERE o.status = :active AND ov.venue_id IN (:venues)
+				""")
+				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.param("venues", venues.stream().map(VenueRef::value).toList())
+				.query(Long.class)
+				.list().stream()
+				.map(VenueRef::new)
+				.collect(Collectors.toUnmodifiableSet());
 	}
 }

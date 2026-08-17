@@ -1,5 +1,6 @@
 package ai.riviera.platform.operator.application;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -88,4 +89,10 @@ public interface Operators {
 
 	/** Record an {@code operator_venue} mapping row (creator-owns-on-create). */
 	void assignOwner(OperatorId operator, VenueRef venue);
+
+	/** Whether {@code venue} has an {@code ACTIVE} owning operator; no ownership row means no. */
+	boolean hasActiveOwner(VenueRef venue);
+
+	/** The subset of {@code venues} that have an {@code ACTIVE} owning operator. */
+	Set<VenueRef> venuesWithActiveOwner(Collection<VenueRef> venues);
 }

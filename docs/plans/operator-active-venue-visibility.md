@@ -235,14 +235,14 @@ other failures client-side.
 
 ## Execution status
 
-**Stage pointer:** plan committed — next: Implement (Phase 1)
+**Stage pointer:** implement (Phase 2)
 
-**Next action:** commit plan doc, push branch, open draft PR; then Phase 1 (operator port, TDD).
+**Next action:** venue catalogue fence — RED `VenueCatalogVisibilityIT`, then `JdbcVenueCatalog` consults `VenueVisibility`; fixture sweep (R-2).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + draft PR | ⏳ | |
-| 1 — `operator.api.VenueVisibility` port + JDBC impl | | |
+| 0 — Plan doc + draft PR | ✅ | `bedc7a7`; draft PR #696 |
+| 1 — `operator.api.VenueVisibility` port + JDBC impl | ✅ | "Publish operator VenueVisibility api port" — `OperatorVenueVisibilityIT` 6/6, structural net green |
 | 2 — `venue` catalogue fence (list + detail) | | |
 | 3 — `booking` reserve fence + sold-booking regression | | |
 | 4 — approval-mail reword | | |
