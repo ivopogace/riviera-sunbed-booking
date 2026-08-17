@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -130,6 +131,8 @@ export class VenueMap {
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly failed = signal(false);
+  /** 404: the venue does not exist or is not tourist-visible (#693) — no retry can succeed. */
+  protected readonly notFound = signal(false);
 
   /** Earliest bookable day (tomorrow, Europe/Tirane): today is not offered (invariant #4, display).
    *  Re-derived from a fresh clock on every route reset — the instance outlives
@@ -284,6 +287,7 @@ export class VenueMap {
     }
     // A fresh attempt clears any prior failure so a recovered load renders the map.
     this.failed.set(false);
+    this.notFound.set(false);
     // The per-dispatch generation: any later dispatch or reset supersedes this response.
     const epoch = ++this.epoch;
     this.venues.getVenueMap(id, this.selectedDate()).subscribe({
@@ -292,8 +296,14 @@ export class VenueMap {
           this.venue.set(venue);
         }
       },
-      error: () => {
-        if (this.epoch === epoch) {
+      error: (error: unknown) => {
+        if (this.epoch !== epoch) {
+          return;
+        }
+        // 404 is a distinct state: the venue is gone or hidden (#693); retrying cannot succeed.
+        if (error instanceof HttpErrorResponse && error.status === 404) {
+          this.notFound.set(true);
+        } else {
           this.failed.set(true);
         }
       },

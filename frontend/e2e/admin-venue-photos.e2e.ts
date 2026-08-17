@@ -35,20 +35,18 @@ async function mockPhotoModeration(page: Page): Promise<void> {
     9: { cover: null, sunbeds: null, bar: null },
   };
 
-  await page.route(/\/api\/venues(\?.*)?$/, (route) =>
+  // The picker reads the ADMIN venue list (#693) — the catalogue hides not-ACTIVE-owned venues.
+  await page.route(/\/api\/admin\/venues$/, (route) =>
     route.fulfill({
-      json: VENUES.map((venue) => ({
-        ...venue,
-        region: 'Vlorë',
-        ratingTenths: 47,
-        reviewsCount: 12,
-        bookingMode: 'INSTANT',
-        fromPrice: null,
-        amenities: [],
-        distanceToWaterM: null,
-        availability: { free: 4, total: 10 },
-        coverPhoto: null,
-      })),
+      json: {
+        venues: VENUES.map((venue) => ({
+          venueId: venue.id,
+          name: venue.name,
+          beach: venue.beach,
+          commissionBps: 500,
+          payoutCurrency: 'EUR',
+        })),
+      },
     }),
   );
 

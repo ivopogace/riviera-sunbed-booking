@@ -471,6 +471,23 @@ describe('VenueMap', () => {
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(24);
   });
 
+  /** #693: a 404 (venue gone or hidden) is a distinct dead end — no retry, a way back instead. */
+  it('shows the not-available state on a 404, with back-to-Discover instead of retry', async () => {
+    venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
+    await fixture.whenStable();
+
+    const panel = el().querySelector('[data-testid="map-not-found"]');
+    expect(panel).not.toBeNull();
+    expect(panel?.getAttribute('role')).toBe('alert');
+    expect(panel?.querySelector('.failure-title')?.textContent).toContain('isn’t available');
+    expect(el().querySelector('[data-testid="map-error"]')).toBeNull();
+    expect(el().querySelector('[data-testid="map-retry"]')).toBeNull();
+
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    el().querySelector<HTMLButtonElement>('[data-testid="map-back-home"]')!.click();
+    expect(navigate).toHaveBeenCalledWith(['/']);
+  });
+
   it('navigates back to discovery when the back pill is pressed', async () => {
     flushVenue();
     await fixture.whenStable();
