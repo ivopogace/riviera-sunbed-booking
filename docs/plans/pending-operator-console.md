@@ -219,15 +219,15 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** phase 2 red — `OperatorOwnershipIT` may-operate cases + `PendingOperatorConsoleIT`
+**Next action:** phase 3 red — `OperatorRejectionRevocationIT` (reject bracket + #128 regression)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | 7947475 (PR #697 draft) |
 | 1 — status published + may-authenticate set at the edge | ✅ | (this commit) |
-| 2 — ownership resolves for the may-operate set; console end-to-end | | |
+| 2 — ownership resolves for the may-operate set; console end-to-end | ✅ | (this commit) |
 | 3 — reject revocation bracket + #128 regressions | | |
 | 4 — `operatorStatus` on the wire principal | | |
 | 5 — FE auto-sign-in + pending banner | | |
@@ -240,6 +240,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (hygiene, run 32068244247) | plan doc's File structure omitted three phase-1 test paths | fixed-in-`1787746` |
+| F-2 | CI (backend, run 32068351427) | `OperatorApprovalIT.approveEnablesLogin` still pinned the retired PENDING-cannot-log-in contract — scoped runs missed it; swept the test tree for sibling assertions (none) | fixed-in-phase-2 commit |
 
 ---
 
@@ -261,6 +263,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/AuthController.java` — `operatorStatus` on `PrincipalResponse`
 - `platform/src/main/java/ai/riviera/platform/AdminOperatorController.java` — reject revocation bracket
 - `platform/src/main/java/ai/riviera/platform/OperatorAccountController.java` — password change joins the may-operate set
+- `platform/src/main/java/ai/riviera/platform/shared/CurrentOperator.java` — Javadoc + denial message follow the may-operate set
+- `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueAdminController.java` — create-comment wording (any resolvable operator may create)
+- `platform/src/test/java/ai/riviera/platform/OperatorApprovalIT.java` — approve test repurposed: login works on both sides of approval
 - `platform/src/test/java/ai/riviera/platform/PerOperatorLoginIT.java` — AC-1/AC-2
 - `platform/src/test/java/ai/riviera/platform/OperatorRegistrationIT.java` — post-#694 meaning of registered-then-sign-in
 - `platform/src/test/java/ai/riviera/platform/PendingOperatorConsoleIT.java` — new: AC-4/AC-8 end-to-end
@@ -491,6 +496,7 @@ retired card)
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-17 | phase 1 (`OperatorCredential` shape change) | every reader of `OperatorCredential.active()` or the `OperatorStatus` type, enumerated by grep + the compiler after the field change | `grep -rn "\.active()\|OperatorStatus" platform/src` | `OperatorUserDetailsService` (login gate → may-authenticate set), `OperatorAccountController` (password-change gate → kept ACTIVE-only, widens in phase 2), `JdbcOperators` (mapper + SQL predicates → SQL swept in phase 2's audit), `OperatorAccountProvisioningIT`, `OperatorCredentialInitializerTest`, `OperatorAccountControllerTest`, `OperatorLifecycleIT` (mechanical updates) | fixed all; no reader left deriving the old ACTIVE-only boolean |
+| 2026-08-17 | phase 2 (may-operate resolution) | every SQL predicate on `operator.status` in the adapter + every edge status comparison | `grep -n "status" platform/src/main/java/ai/riviera/platform/operator/adapter/out/JdbcOperators.java` + phase-1's repo grep | widened: `idByOperableUsername`, `OperatorAccountController` (login set). Deliberately kept: `hasActiveOwner`/`venuesWithActiveOwner` (#693 fence, ACTIVE-only), `accounts()` (admin list of decided accounts), `pendingOperators()` (approval queue), `activeUsernameById` (suspend pre-revoke; reject bracket lands in phase 3), guarded lifecycle transitions | each site judged against the three-set split; none left implicitly coupled |
 
 ---
 

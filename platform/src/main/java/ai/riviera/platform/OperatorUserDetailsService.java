@@ -42,7 +42,7 @@ class OperatorUserDetailsService implements UserDetailsService {
 	static final String ADMIN_ROLE = "ADMIN";
 
 	/** The statuses the edge lets authenticate: approval gates tourist visibility, never console access. */
-	private static final Set<OperatorStatus> MAY_AUTHENTICATE =
+	static final Set<OperatorStatus> MAY_AUTHENTICATE =
 			EnumSet.of(OperatorStatus.ACTIVE, OperatorStatus.PENDING);
 
 	private final OperatorAccounts accounts;

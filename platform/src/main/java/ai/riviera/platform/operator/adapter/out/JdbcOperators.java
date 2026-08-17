@@ -38,6 +38,11 @@ class JdbcOperators implements Operators {
 	private static final String ACTIVE_PARAM = "active";
 	/** SQL named-param key bound to the {@code SUSPENDED} status token (invariant #6a). */
 	private static final String SUSPENDED_PARAM = "suspended";
+	/** SQL named-param key bound to the may-operate status tokens (invariant #6a). */
+	private static final String OPERABLE_PARAM = "operable";
+	/** The may-operate set: ownership resolves for these statuses; tourist visibility stays ACTIVE-only. */
+	private static final List<String> MAY_OPERATE =
+			List.of(OperatorStatus.ACTIVE.name(), OperatorStatus.PENDING.name());
 	/** SQL named-param key bound to an operator id in the ownership queries (named, not duplicated). */
 	private static final String OPERATOR_PARAM = "operator";
 	/** SQL named-param key bound to a venue id in the ownership/visibility queries (S1192). */
@@ -56,10 +61,10 @@ class JdbcOperators implements Operators {
 	}
 
 	@Override
-	public Optional<OperatorId> idByActiveUsername(String username) {
-		return jdbc.sql("SELECT id FROM operator WHERE username = :username AND status = :active")
+	public Optional<OperatorId> idByOperableUsername(String username) {
+		return jdbc.sql("SELECT id FROM operator WHERE username = :username AND status IN (:operable)")
 				.param(USERNAME, username)
-				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.param(OPERABLE_PARAM, MAY_OPERATE)
 				.query(Long.class)
 				.optional()
 				.map(OperatorId::new);

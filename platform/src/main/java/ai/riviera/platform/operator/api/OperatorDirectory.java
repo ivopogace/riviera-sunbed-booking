@@ -11,13 +11,15 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
  * controllers to turn {@code authentication.getName()} into the id they pass to their service.
  *
  * <p>Login/credentials themselves are a platform/edge concern. This port only answers
- * "which operator is this username?", and only for an {@code ACTIVE} account.
+ * "which operator is this username?", and only for the may-operate set ({@code ACTIVE} or
+ * {@code PENDING} — approval gates tourist visibility, not console access).
  */
 public interface OperatorDirectory {
 
 	/**
-	 * The id of the {@code ACTIVE} operator with this username, or empty if none (unknown or
-	 * suspended). A suspended or unknown principal therefore owns nothing and is denied.
+	 * The id of the operator with this username when its status is in the may-operate set
+	 * ({@code ACTIVE} or {@code PENDING}), or empty if none. A suspended, rejected, or unknown
+	 * principal therefore owns nothing and is denied.
 	 */
 	Optional<OperatorId> operatorFor(String username);
 }

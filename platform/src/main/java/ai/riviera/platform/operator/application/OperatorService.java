@@ -55,7 +55,7 @@ class OperatorService implements VenueOwnership, OperatorDirectory, VenueVisibil
 
 	@Override
 	public Optional<OperatorId> operatorFor(String username) {
-		return operators.idByActiveUsername(username);
+		return operators.idByOperableUsername(username);
 	}
 
 	@Override

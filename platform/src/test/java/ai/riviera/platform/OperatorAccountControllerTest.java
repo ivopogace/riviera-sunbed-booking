@@ -105,6 +105,20 @@ class OperatorAccountControllerTest {
 		verify(sessionRevoker).revokeAllExcept(OPERATOR_USERNAME, callingSessionId);
 	}
 
+	/** A PENDING operator holds a session, so it may rotate its own credential (the login set). */
+	@Test
+	void allowsAPendingAccountToChangeItsPassword() throws Exception {
+		when(accounts.findByUsername(OPERATOR_USERNAME)).thenReturn(Optional.of(new OperatorCredential(
+				OPERATOR_USERNAME, passwordEncoder.encode(CURRENT_PASSWORD), OperatorStatus.PENDING, false)));
+
+		mvc.perform(isolated(post(CHANGE_PASSWORD)).with(user(OPERATOR_USERNAME).roles("OPERATOR"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body(CURRENT_PASSWORD, NEW_PASSWORD)))
+				.andExpect(status().isNoContent());
+
+		verify(provisioning).setPassword(eq(OPERATOR_USERNAME), anyString());
+	}
+
 	/**
 	 * The revoke must run <strong>before</strong> the credential write. Ordered the other way,
 	 * a transient failure in the revoke — a connection reset, a Neon failover — is

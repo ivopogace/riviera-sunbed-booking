@@ -102,7 +102,7 @@ class VenueAdminController {
 			@RequestBody CreateVenueRequest request) {
 		// Creator-owns-on-create (invariant #13): resolve the authenticated operator and hand it
 		// to the service, which records ownership in the same transaction as the insert. Create is still
-		// role-gated only (any ACTIVE operator may create) — there is no prior owner to check against.
+		// role-gated only (any resolvable operator may create) — there is no prior owner to check against.
 		OperatorId creator = currentOperator.require(authentication);
 		// Conversion wraps here and below: bad request input stays a 400, a service IAE stays a 500.
 		var command = InvalidApiRequestException.parsing(request::toCommand);
