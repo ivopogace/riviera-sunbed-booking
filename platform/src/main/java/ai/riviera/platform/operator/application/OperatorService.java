@@ -1,5 +1,6 @@
 package ai.riviera.platform.operator.application;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 
@@ -10,14 +11,15 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.api.VenueOwnership;
+import ai.riviera.platform.operator.api.VenueVisibility;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 /**
  * The {@code operator} module's application service (invariant #13): resolves a principal to an
- * {@link OperatorId} and answers the ownership question. Package-private behind the published
- * {@link VenueOwnership} / {@link OperatorDirectory} ports (invariant #11); constructor injection
- * into a {@code final} {@link Operators} port. Read-only — the ownership decision is a pure query;
- * no {@code @Transactional} write path in this slice.
+ * {@link OperatorId} and answers the ownership and tourist-visibility questions. Package-private
+ * behind the published {@link VenueOwnership} / {@link OperatorDirectory} / {@link VenueVisibility}
+ * ports (invariant #11); constructor injection into a {@code final} {@link Operators} port.
+ * Read-only — both decisions are pure queries; no {@code @Transactional} write path in this slice.
  *
  * <p>It performs no enforcement of its own beyond answering: each venue-scoped service calls
  * {@link #assertOwns} and maps the failure to {@code 403}. That keeps {@code operator} out of every
@@ -25,7 +27,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
  * {@link #assignOwner} (creator-owns-on-create), which joins the caller's transaction.
  */
 @Service
-class OperatorService implements VenueOwnership, OperatorDirectory {
+class OperatorService implements VenueOwnership, OperatorDirectory, VenueVisibility {
 
 	private final Operators operators;
 
@@ -54,5 +56,15 @@ class OperatorService implements VenueOwnership, OperatorDirectory {
 	@Override
 	public Optional<OperatorId> operatorFor(String username) {
 		return operators.idByActiveUsername(username);
+	}
+
+	@Override
+	public boolean isVisible(VenueRef venue) {
+		return operators.hasActiveOwner(venue);
+	}
+
+	@Override
+	public Set<VenueRef> visibleAmong(Collection<VenueRef> venues) {
+		return operators.venuesWithActiveOwner(venues);
 	}
 }

@@ -272,3 +272,23 @@ test('discovery shows an accessible empty state when no venues match', async ({ 
   await expect(page.getByTestId('results')).toContainText('0 venues');
   await expectNoSeriousAxeViolations(page, 'discovery empty state');
 });
+
+test('a hidden venue answers a not-available state with a way back, not a retry loop (#693)', async ({
+  page,
+}) => {
+  // A venue whose owning operator is not ACTIVE 404s on the map read (#693's fence).
+  await page.route(/\/api\/venues\/9(\?.*)?$/, (route) =>
+    route.fulfill({ status: 404, json: { title: 'Not Found', status: 404 } }),
+  );
+  await page.goto('/venues/9');
+
+  const panel = page.getByTestId('map-not-found');
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText('isn’t available');
+  await expect(page.getByTestId('map-retry')).toHaveCount(0);
+  await expectNoSeriousAxeViolations(page, 'venue map not-available state');
+
+  await panel.getByTestId('map-back-home').click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByTestId('venue-card').first()).toBeVisible();
+});

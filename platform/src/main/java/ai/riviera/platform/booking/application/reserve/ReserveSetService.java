@@ -18,6 +18,8 @@ import ai.riviera.platform.booking.application.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.operator.api.VenueVisibility;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetBookingFacts;
@@ -48,6 +50,7 @@ class ReserveSetService {
 
 	private final SetBookingFacts setFacts;
 	private final AvailabilityClaim availability;
+	private final VenueVisibility visibility;
 	private final CustomerDirectory customers;
 	private final Bookings bookings;
 	private final BookingCodeGenerator codeGenerator;
@@ -56,10 +59,12 @@ class ReserveSetService {
 	private final Clock clock;
 
 	ReserveSetService(SetBookingFacts setFacts, AvailabilityClaim availability,
-			CustomerDirectory customers, Bookings bookings, BookingCodeGenerator codeGenerator,
-			BookingCutoff cutoff, RequestWindows requestWindows, Clock clock) {
+			VenueVisibility visibility, CustomerDirectory customers, Bookings bookings,
+			BookingCodeGenerator codeGenerator, BookingCutoff cutoff, RequestWindows requestWindows,
+			Clock clock) {
 		this.setFacts = setFacts;
 		this.availability = availability;
+		this.visibility = visibility;
 		this.customers = customers;
 		this.bookings = bookings;
 		this.codeGenerator = codeGenerator;
@@ -80,6 +85,10 @@ class ReserveSetService {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
 		}
 		SetBookingInfo set = found.get();
+		// A hidden venue's set books like one that does not exist (#693), refused before any claim.
+		if (!visibility.isVisible(new VenueRef(set.venueId().value()))) {
+			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
+		}
 		if (!ONLINE_POOL.equals(set.pool())) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NOT_ONLINE_POOL);
 		}

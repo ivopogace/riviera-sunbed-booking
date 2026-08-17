@@ -44,6 +44,10 @@ model in `docs/architecture/domain-model.md`.
   each served by its **content hash** at a public URL (`/api/venues/{venueId}/photos/{hash}`);
   a replace mints new hashes → new URLs, and a removed variant stops being served rather than
   outliving its removal in caches.
+- **Venue visibility** — whether tourists can discover and book a venue: a venue is
+  **visible iff its owning operator is `ACTIVE`** (#693) — derived, never a flag. Hidden
+  means absent from the tourist list, 404 on the map read, and both booking paths refused;
+  an unowned venue is hidden (fail-closed). Bookings sold while visible keep working.
 - **Beach map** — a venue's visual layout: rows and individual set positions.
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged
   by tier and pool, with its own price.
@@ -220,6 +224,8 @@ model in `docs/architecture/domain-model.md`.
   (creator-owns-on-create).
 - **Suspension / operator reinstatement** — an admin putting an `ACTIVE` operator account out of
   action (`SUSPENDED`) and later returning it to `ACTIVE`. Either transition kills that operator's
-  live sessions immediately, so a suspension takes effect now rather than at their next sign-in.
+  live sessions immediately, so a suspension takes effect now rather than at their next sign-in —
+  and, since #693, flips their venues' **venue visibility** (hidden while suspended, shown again
+  on reinstatement; bookings already sold keep working either way).
   An admin cannot suspend itself. Distinct from **reinstatement** in *Transactional mail* above,
   which lifts a suppressed email address and has nothing to do with sign-in.

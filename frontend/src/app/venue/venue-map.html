@@ -231,6 +231,16 @@
         (requested)="onRequested()"
       />
     }
+  } @else if (notFound()) {
+    <div appFailurePanel role="alert" data-testid="map-not-found">
+      <span appFailureIcon aria-hidden="true">🏖</span>
+      <h2 appFailureTitle>This venue isn’t available</h2>
+      <p appFailureText>
+        It may have been removed or paused by its owner. A booking you already hold is unaffected —
+        your booking code still finds it.
+      </p>
+      <app-retry-button testId="map-back-home" label="Back to Discover" (retry)="onBack()" />
+    </div>
   } @else if (failed()) {
     <div appFailurePanel role="alert" data-testid="map-error">
       <span appFailureIcon aria-hidden="true">⚠</span>

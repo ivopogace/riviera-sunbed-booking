@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.hamcrest.Matchers.contains;
@@ -154,6 +155,7 @@ class VenueReadControllerIT {
 					.andExpect(jsonPath("$.amenities")
 							.value(contains("BEACH_BAR", "FREE_PARKING", "SHOWERS")));
 		} finally {
+			jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :id").param("id", id).update();
 			jdbc.sql("DELETE FROM venue WHERE id = :id").param("id", id).update();
 		}
 	}
@@ -168,6 +170,7 @@ class VenueReadControllerIT {
 				.andExpect(jsonPath("$.distanceToWaterM").value(nullValue()));
 	}
 
+	/** Owned by the bootstrap ACTIVE operator — the tourist map read hides ownerless venues (#693). */
 	private long insertVenueWithAmenities(int distanceToWaterM, String... amenities) {
 		long id = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
@@ -176,6 +179,7 @@ class VenueReadControllerIT {
 				        'EUR', :d)
 				RETURNING id
 				""").param("d", distanceToWaterM).query(Long.class).single();
+		OwnershipFixtures.grantToBootstrap(jdbc, id);
 		for (String amenity : amenities) {
 			jdbc.sql("INSERT INTO venue_amenity (venue_id, amenity) VALUES (:v, :a)")
 					.param("v", id).param("a", amenity).update();

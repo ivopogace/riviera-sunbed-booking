@@ -83,6 +83,13 @@ layout, set positions, the online-vs-walk-in pool assignment for each set, prici
 booking mode (Instant / Request), venue photos, and the commission rate over time. The
 standing rules:
 
+- **The tourist catalogue reads are visibility-fenced** (#693): both `VenueCatalog` reads
+  (list + map) consult `operator.api.VenueVisibility` inside the adapter, so a venue whose
+  owning operator is not `ACTIVE` is absent from the list and 404 on the map —
+  indistinguishable from nonexistent. `SetBookingFacts` is deliberately **unfenced**: its
+  consumers include sold-booking paths (cancel, view, mails, staff marks) that must keep
+  answering for a hidden venue's sets; the reserve path applies the fence itself in
+  `booking`. The anonymous content-hash photo read stays unfenced (accepted, #693 intake).
 - **Venue photos** (#142, ADR-0008): per-slot upload/replace/delete, processing, `bytea`
   storage behind the module-internal `PhotoStorage` port, and the public content-hash
   serving read.
@@ -226,7 +233,10 @@ release (`NotCancellable` forever), and refunding cannot reuse `BookingCancelled
 never-confirmed booking has no `ACCRUAL`, so `payout`'s listener would defer that publication
 permanently and hold `riviera.outbox.pending` non-zero. The residual is a sub-sweep-interval
 race the guest opts into and is paid for with the full stay.
-Orchestrate the reserve → pay → confirm flow across `availability` and `payment`.
+Orchestrate the reserve → pay → confirm flow across `availability` and `payment` — since
+#693 refusing both reserve paths (Instant and Request) for a hidden venue's set before any
+claim, via `operator.api.VenueVisibility`, answering `NO_SUCH_SET` so hidden reads as
+nonexistent; no post-reserve leg (view, cancel, check-in, sweeps) consults visibility.
 Own the request lifecycle's three terminal legs on `RequestReleaseService` — decline,
 the expiry sweep, and the guest's own **withdraw** (#123): withdraw is authorized by the
 booking **code** alone (the only request command with no ownership check) and guarded by
@@ -580,12 +590,17 @@ into **`notification`** (#382), which the edge drives through `notification::api
 **Job:** Own operator accounts — incl. their **admin-driven lifecycle state**
 (`PENDING`→`ACTIVE`/`REJECTED` on approval #115; `ACTIVE`⇄`SUSPENDED` on suspend/reinstate
 #128) and the `is_admin` platform-admin flag — and the **operator↔venue ownership mapping**,
-now writable (creator-owns-on-create). Answer four things for the rest of the system: *does
+now writable (creator-owns-on-create). Answer five things for the rest of the system: *does
 this operator own this venue?*, *which operators are awaiting approval?*, *which accounts
-exist for an admin to act on?* (invariant #13), and — since #357 — *what is the ACTIVE
+exist for an admin to act on?* (invariant #13), — since #357 — *what is the ACTIVE
 operator with this id called?*, so the edge can revoke its sessions **before** a suspension
-commits rather than only after. A suspension **keeps** the operator's
-`operator_venue` rows — it is reversible, and ownership resolves ACTIVE-only anyway.
+commits rather than only after, and — since #693 — *does this venue have an `ACTIVE`
+owner?* (`VenueVisibility`, the one home of the platform rule *a venue is visible to
+tourists iff its owning operator is ACTIVE*; a venue with no ownership row answers no,
+fail-closed). `venue` fences its catalogue reads with it and `booking` its reserve path;
+sold-booking paths never consult it. A suspension **keeps** the operator's
+`operator_venue` rows — it is reversible, and ownership resolves ACTIVE-only anyway — but
+it does hide the operator's venues from tourists until reinstatement (#693).
 
 Since #375 an approval also **reports the approved operator's stored contact email**, on
 `ApprovalOutcome.Approved` — the same move `OperatorLifecycleOutcome.Changed` made for the username,

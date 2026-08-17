@@ -103,7 +103,7 @@ it** — that file holds the per-module contracts, settled rules, and history.
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
 | `payout` | the venue payout ledger (bookings − commission), manual BKT batch reporting; accrual/reversal is order-independent and idempotent | `PayoutLedgerEntry`, `PayoutBatch` |
 | `customer` | tourist identity: guest-checkout contact, the customer account (register/sign-in, SSO linkage, email verification, password recovery/set), GDPR erasure (ADR-0010) + the retention sweep, and the canonical email form (`customer.vocabulary.Emails`) | `Customer`, `CustomerAccount` |
-| `operator` | operator accounts, the operator↔venue ownership mapping (invariant #13), the admin-driven lifecycle (`PENDING`→`ACTIVE`⇄`SUSPENDED`), the `is_admin` flag | `Operator` |
+| `operator` | operator accounts, the operator↔venue ownership mapping (invariant #13), the admin-driven lifecycle (`PENDING`→`ACTIVE`⇄`SUSPENDED`), the `is_admin` flag, the tourist-visibility answer (a venue is visible iff its owner is `ACTIVE`, fail-closed for unowned — #693; `venue` fences its catalogue reads, `booking` its reserve paths) | `Operator` |
 | `notification` | transactional mail: both ADR-0011 delivery vehicles (Event Publication Registry for ids-only payloads, bounded in-memory dispatcher for bearer-credential ones) on their own bounded executors, the hashed email-suppression list (ADR-0012), the delivery log + admin resend/re-drive | (none — owns mail state, no aggregate yet) |
 
 Plus one **non-context** module: **`shared`**, an OPEN Shared Kernel of

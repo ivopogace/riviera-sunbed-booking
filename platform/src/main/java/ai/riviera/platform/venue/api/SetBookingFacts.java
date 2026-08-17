@@ -13,6 +13,10 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * consumer role (issue #94) so callers depend only on the surface they use. Consumed by
  * {@code booking} (reserve, cancel, view) and {@code availability} (claim pool check,
  * staff mark).
+ *
+ * <p>Deliberately <strong>not</strong> fenced by tourist visibility ({@code
+ * operator.api.VenueVisibility}): sold-booking paths — cancel, view, mails, staff marks —
+ * must keep answering for a hidden venue's sets. The reserve path applies the fence itself.
  */
 public interface SetBookingFacts {
 

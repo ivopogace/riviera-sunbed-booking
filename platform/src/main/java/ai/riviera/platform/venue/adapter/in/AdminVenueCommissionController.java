@@ -38,10 +38,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * missing or out-of-range rate is {@code 400 INVALID_REQUEST} via
  * {@link InvalidApiRequestException#parsing} at the conversion boundary — so the range guard yields a
  * 400 when a client trips it and would still yield a 500 if stored state ever did. Unlike the
- * photo-moderation twin this surface does not blur venue existence: venues are already enumerable
- * through the anonymous discovery read, and an admin correcting a rate needs a mistyped id to fail
- * loudly. The audit record is written at the edge for every mutating {@code /api/admin/**} action,
- * so there is no instrumentation here.
+ * photo-moderation twin this surface does not blur venue existence: the caller is the platform
+ * admin, whose venue list here is deliberately complete (it includes venues the tourist reads
+ * hide), and an admin correcting a rate needs a mistyped id to fail loudly. The audit record is
+ * written at the edge for every mutating {@code /api/admin/**} action, so there is no
+ * instrumentation here.
  */
 @RestController
 @RequestMapping("/api/admin/venues")

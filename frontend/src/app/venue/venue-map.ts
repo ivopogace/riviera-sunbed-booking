@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -9,6 +10,7 @@ import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/bea
 import { CardGlass } from '../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
 import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
+import { focusMover } from '../shared/focus-after-render';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
 import { PhotoSlideshow } from '../shared/photo-slideshow';
@@ -127,9 +129,13 @@ export class VenueMap {
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);
   private readonly router = inject(Router);
+  /** WCAG 2.4.3: a re-fetch failure tears down the map (which may hold focus) — move it (RV-FE-9). */
+  private readonly moveFocus = focusMover();
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly failed = signal(false);
+  /** 404: the venue does not exist or is not tourist-visible (#693) — no retry can succeed. */
+  protected readonly notFound = signal(false);
 
   /** Earliest bookable day (tomorrow, Europe/Tirane): today is not offered (invariant #4, display).
    *  Re-derived from a fresh clock on every route reset — the instance outlives
@@ -284,6 +290,7 @@ export class VenueMap {
     }
     // A fresh attempt clears any prior failure so a recovered load renders the map.
     this.failed.set(false);
+    this.notFound.set(false);
     // The per-dispatch generation: any later dispatch or reset supersedes this response.
     const epoch = ++this.epoch;
     this.venues.getVenueMap(id, this.selectedDate()).subscribe({
@@ -292,9 +299,24 @@ export class VenueMap {
           this.venue.set(venue);
         }
       },
-      error: () => {
-        if (this.epoch === epoch) {
+      error: (error: unknown) => {
+        if (this.epoch !== epoch) {
+          return;
+        }
+        // A stale map under a new date header misleads — the panel must win over the old view.
+        const toreDownMap = this.venue() !== undefined;
+        this.venue.set(undefined);
+        // 404 is a distinct state: the venue is gone or hidden (#693); retrying cannot succeed.
+        if (error instanceof HttpErrorResponse && error.status === 404) {
+          this.notFound.set(true);
+          if (toreDownMap) {
+            this.moveFocus('map-not-found');
+          }
+        } else {
           this.failed.set(true);
+          if (toreDownMap) {
+            this.moveFocus('map-error');
+          }
         }
       },
     });

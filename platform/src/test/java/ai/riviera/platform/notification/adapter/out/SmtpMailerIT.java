@@ -257,10 +257,10 @@ class SmtpMailerIT {
 	}
 
 	/**
-	 * The operator-approval notice (#375). Asserted through the same lens as every other kind — one
-	 * plain-text message, right recipient, right subject, the link exactly as handed in — because the
-	 * one thing that differs about this kind (its link is public, not a bearer credential) changes
-	 * nothing the transport is responsible for.
+	 * The operator-approval notice (#375, reworded by #693). Asserted through the same lens as every
+	 * other kind — one plain-text message, right recipient, right subject, the link exactly as handed
+	 * in — plus the approval's real news since #693: the operator's venues are now live for tourists.
+	 * The liveness copy is phrased to hold for an operator that owns no venue yet at approval time.
 	 */
 	@Test
 	void deliversOperatorApprovedEmailOverSmtp() throws Exception {
@@ -273,6 +273,9 @@ class SmtpMailerIT {
 		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
 		String body = message.getContent().toString();
 		assertThat(body).contains(signInLink.toString());
+		assertThat(body).as("the #693 news: approval makes the venues tourist-visible")
+				.contains("live and bookable by tourists")
+				.contains("goes live as soon as you create it");
 		assertThat(body).doesNotContain("<html", "<img", "http://track", "utm_");
 	}
 

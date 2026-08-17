@@ -1,6 +1,7 @@
 /**
  * Published <strong>ports</strong> surface of the {@code operator} module (invariant #11) —
- * "call-me" interfaces only: the ownership query ports ({@link VenueOwnership},
+ * "call-me" interfaces only: the ownership and tourist-visibility query ports
+ * ({@link VenueOwnership}, {@link VenueVisibility},
  * {@link OperatorDirectory}) and the credential read + provisioning ports that back
  * per-operator login ({@link OperatorAccounts}, {@link OperatorProvisioning}). The typed
  * ids and value types these ports speak in ({@code OperatorId}, {@code VenueRef},

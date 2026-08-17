@@ -1,5 +1,6 @@
 package ai.riviera.platform.operator.adapter.out;
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +40,8 @@ class JdbcOperators implements Operators {
 	private static final String SUSPENDED_PARAM = "suspended";
 	/** SQL named-param key bound to an operator id in the ownership queries (named, not duplicated). */
 	private static final String OPERATOR_PARAM = "operator";
+	/** SQL named-param key bound to a venue id in the ownership/visibility queries (S1192). */
+	private static final String VENUE_PARAM = "venue";
 	/** SQL named-param key for an operator's primary key in the lifecycle statements (S1192). */
 	private static final String ID_PARAM = "id";
 	/** SQL named-param key for the status a lifecycle transition writes (S1192). */
@@ -267,7 +270,7 @@ class JdbcOperators implements Operators {
 				)
 				""")
 				.param(OPERATOR_PARAM, operator.value())
-				.param("venue", venue.value())
+				.param(VENUE_PARAM, venue.value())
 				.query(Boolean.class)
 				.single();
 	}
@@ -287,8 +290,42 @@ class JdbcOperators implements Operators {
 		// One owner per venue (operator_venue.venue_id is the PK) — a plain INSERT so a second owner
 		// for the same venue surfaces as a constraint violation rather than silently no-op'ing.
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:venue, :operator)")
-				.param("venue", venue.value())
+				.param(VENUE_PARAM, venue.value())
 				.param(OPERATOR_PARAM, operator.value())
 				.update();
+	}
+
+	@Override
+	public boolean hasActiveOwner(VenueRef venue) {
+		// PK probe on operator_venue(venue_id) joined to the tiny operator table.
+		return jdbc.sql("""
+				SELECT EXISTS (
+				    SELECT 1 FROM operator_venue ov
+				    JOIN operator o ON o.id = ov.operator_id
+				    WHERE ov.venue_id = :venue AND o.status = :active
+				)
+				""")
+				.param(VENUE_PARAM, venue.value())
+				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.query(Boolean.class)
+				.single();
+	}
+
+	@Override
+	public Set<VenueRef> venuesWithActiveOwner(Collection<VenueRef> venues) {
+		if (venues.isEmpty()) {
+			return Set.of();
+		}
+		return jdbc.sql("""
+				SELECT ov.venue_id FROM operator_venue ov
+				JOIN operator o ON o.id = ov.operator_id
+				WHERE o.status = :active AND ov.venue_id IN (:venues)
+				""")
+				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.param("venues", venues.stream().map(VenueRef::value).toList())
+				.query(Long.class)
+				.list().stream()
+				.map(VenueRef::new)
+				.collect(Collectors.toUnmodifiableSet());
 	}
 }
