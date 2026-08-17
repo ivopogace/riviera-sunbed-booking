@@ -223,9 +223,9 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 
 ## Execution status
 
-**Stage pointer:** review gate ran — findings fixed; Sonar re-check after the fix push, then merge close-out
+**Stage pointer:** DONE — merged via PR #697
 
-**Next action:** confirm CI + Sonar (API issue list) on the review-fix push, tick the PR gates, merge, close out
+**Next action:** none — slice complete (close-out: epic #573 ticked, #694 closed, SCSS deferral tracked as #698)
 
 **Review gate record (2026-08-17):** invocation ladder rung 1 — the `code-review` Skill probe
 succeeded and ran at high effort; it declared itself a single-pass inline review (its
@@ -248,7 +248,7 @@ stands per the maintainer's #694 intake settlement with the rationale corrected.
 | 4 — `operatorStatus` on the wire principal | ✅ | (this commit) |
 | 5 — FE auto-sign-in + pending banner | ✅ | (this commit) |
 | 6 — mocked e2e rewrite | ✅ | (this commit) |
-| 7 — docs close-out (RESPONSIBILITIES/CONTEXT/ADR-0013/D-5) + gates | ⏳ | 62e48d7 |
+| 7 — docs close-out (RESPONSIBILITIES/CONTEXT/ADR-0013/D-5) + gates | ✅ | 62e48d7..5cde34f; merged via PR #697 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -543,20 +543,20 @@ retired card)
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
-- [ ] **Payment/payout** N/A holds (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: no new time logic (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change → no migration (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register closed; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** (`merged via PR #NN`).
-- [ ] **The review gate ran in full** — invocation ladder + `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
+- [x] **Payment/payout** N/A holds (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: no new time logic (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change → no migration (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register closed; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** (`merged via PR #NN`).
+- [x] **The review gate ran in full** — invocation ladder + `riviera-review-overlay`.
