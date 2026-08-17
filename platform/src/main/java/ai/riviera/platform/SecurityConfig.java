@@ -116,6 +116,12 @@ class SecurityConfig {
 	 * the ownership map to anyone. A literal segment, so it never collides with {@code /api/venues/*}.
 	 */
 	private static final String MY_VENUES_PATH = "/api/venues/mine";
+
+	/**
+	 * The operator create form's defaults read (issue #692) — the platform commission the create
+	 * path stamps. Operator-gated: the platform's commercial terms are operator-facing, not public.
+	 */
+	private static final String VENUE_DEFAULTS_PATH = "/api/venue-defaults";
 	/** The operator-only pending-requests queue. Order-sensitive. */
 	private static final String BOOKING_REQUESTS_PATH = "/api/venues/*/booking-requests";
 	/** Accept/decline a pending request; operator-session POSTs, CSRF token required. */
@@ -306,6 +312,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, DAILY_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: exposes the operator↔venue ownership map.
 						.requestMatchers(HttpMethod.GET, MY_VENUES_PATH).hasRole(OPERATOR_ROLE)
+						// The platform's venue-creation terms; a literal path outside /api/venues/**.
+						.requestMatchers(HttpMethod.GET, VENUE_DEFAULTS_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: guest names and venue demand are operator data.
 						.requestMatchers(HttpMethod.GET, BOOKING_REQUESTS_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, BOOKING_REQUEST_ACCEPT_PATH).hasRole(OPERATOR_ROLE)

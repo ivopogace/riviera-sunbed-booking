@@ -216,18 +216,20 @@ literal exists in FE code; styling is Tailwind utilities beside the existing for
 > lives HERE, committed — never only in the conversation. Update it in the SAME commit
 > window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** phase 2 red test (`VenueDefaultsControllerIT`), after checking the draft PR's
-first CI run.
+**Next action:** phase 3 red specs (`venue-create-card.spec.ts` + `venue-admin.service.spec.ts`);
+verify the draft PR's CI run (queued at phase-2 commit time) before the phase-3 push.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc on branch | ✅ | ef4d25f |
-| 1 — backend: stamp default + reject client rate | ✅ | (this commit) |
-| 2 — backend: `GET /api/venue-defaults` | | |
+| 1 — backend: stamp default + reject client rate | ✅ | c13dcdd |
+| 2 — backend: `GET /api/venue-defaults` | ✅ | (this commit) |
 | 3 — frontend: input removed, disclosure line, e2e | | |
 | 4 — merge `origin/main`, ready-for-review, gates | | |
+
+Draft PR: #695 (opened at the phase-1 commit).
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -246,7 +248,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/application/Venues.java` — `insertVenue(NewVenueCommand, int commissionBps)`
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java` — stamp the configured default in `onboard`
 - `platform/src/main/java/ai/riviera/platform/venue/application/OnboardVenue.java` — Javadoc: rate is stamped, not supplied
-- `platform/src/main/java/ai/riviera/platform/venue/application/VenueDefaults.java` — new internal read port (record-returning)
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/CreateVenueRequest.java` — invert the null check into a non-null rejection
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueCreationConfig.java` — new `@EnableConfigurationProperties` registration
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueDefaultsController.java` — new `GET /api/venue-defaults`
@@ -366,11 +367,13 @@ void rejectsAnonymous() {
 }
 ```
 
-- [ ] **Step 2: Run, verify red** — `./gradlew test --tests "*VenueDefaultsControllerIT*"` → FAIL (404/compile)
-- [ ] **Step 3: Minimal implementation** — internal `VenueDefaults` port returning the
-  configured bps (implemented by `VenueAdminService` from the same properties record —
-  single source by construction); package-private controller; `SecurityConfig` rule
-  `.requestMatchers(HttpMethod.GET, "/api/venue-defaults").hasRole(OPERATOR)` placed with the
+- [x] **Step 2: Run, verify red** — `gradle test --tests "*VenueDefaultsControllerIT*"` → FAIL (404 on the operator read)
+- [x] **Step 3: Minimal implementation** — package-private controller reading
+  `VenueCreationProperties` directly (plan deviation, recorded: the planned internal
+  `VenueDefaults` port was a one-implementation hypothetical seam — `codebase-design`'s
+  one-adapter rule says don't invent it; single-source-by-construction holds because the
+  controller and the stamp read the same bean); `SecurityConfig` rule
+  `.requestMatchers(HttpMethod.GET, VENUE_DEFAULTS_PATH).hasRole(OPERATOR)` placed with the
   operator-gated venue rules.
 - [ ] **Step 4: Run, verify green** — scoped, then the structural net
   `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` (AC-8)
