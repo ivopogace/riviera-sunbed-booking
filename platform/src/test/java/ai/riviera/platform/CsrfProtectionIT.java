@@ -39,7 +39,7 @@ class CsrfProtectionIT {
 
 	private static final String VENUE_BODY = """
 			{"name":"Csrf Venue","beach":"Ksamil","region":"Riviera","description":"x",
-			 "bookingMode":"INSTANT","commissionBps":1500,"payoutCurrency":"EUR","bookingCutoff":"18:00"}
+			 "bookingMode":"INSTANT","payoutCurrency":"EUR","bookingCutoff":"18:00"}
 			""";
 
 	@Autowired

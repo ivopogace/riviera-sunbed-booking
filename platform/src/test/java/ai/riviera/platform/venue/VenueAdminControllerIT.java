@@ -72,11 +72,11 @@ class VenueAdminControllerIT {
 		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
 	}
 
-	private static String venueBody(String name, String mode, int commissionBps, String currency) {
+	private static String venueBody(String name, String mode, String currency) {
 		return """
 				{"name":"%s","beach":"Ksamil","region":"Riviera","description":"on the shore",
-				 "bookingMode":"%s","commissionBps":%d,"payoutCurrency":"%s","bookingCutoff":"18:00"}
-				""".formatted(name, mode, commissionBps, currency);
+				 "bookingMode":"%s","payoutCurrency":"%s","bookingCutoff":"18:00"}
+				""".formatted(name, mode, currency);
 	}
 
 	private static String setBody(String rowLabel, int positionNo, String tier, String pool,
@@ -115,11 +115,40 @@ class VenueAdminControllerIT {
 	private long createVenue(String name) throws Exception {
 		MvcResult result = mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(venueBody(name, "INSTANT", 1500, "EUR")))
+						.content(venueBody(name, "INSTANT", "EUR")))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.id").isNumber())
 				.andReturn();
 		return idFrom(result);
+	}
+
+	@Test
+	void createStampsPlatformDefaultCommission() throws Exception {
+		// AC-1/AC-3 (#692): the body carries no commissionBps, yet the venue reads back at 500.
+		long venue = createVenue("Default Commission Club");
+
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.commissionBps").value(500));
+	}
+
+	@Test
+	void createRejectsClientSuppliedCommission() throws Exception {
+		// AC-2 (#692): a client-supplied rate — even 0 — is refused loudly; nothing is created.
+		mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"name":"Chosen Rate Club","beach":"Ksamil","region":"Riviera",
+								 "bookingMode":"INSTANT","commissionBps":0,"payoutCurrency":"EUR",
+								 "bookingCutoff":"18:00"}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM venue WHERE name = :name")
+						.param("name", "Chosen Rate Club").query(Integer.class).single(),
+				"a rejected create must write no venue row");
 	}
 
 	private long addSet(long venueId, String body) throws Exception {
@@ -444,7 +473,7 @@ class VenueAdminControllerIT {
 		// AC-6: no credentials → 401, and nothing is written. A valid CSRF token is supplied so the
 		// rejection pins the auth gate (401 from the entry point), not the CsrfFilter's 403.
 		mvc.perform(post("/api/venues").with(csrf()).contentType(MediaType.APPLICATION_JSON)
-						.content(venueBody("No Auth Club", "INSTANT", 1500, "EUR")))
+						.content(venueBody("No Auth Club", "INSTANT", "EUR")))
 				.andExpect(status().isUnauthorized());
 
 		// Wrong password → the session login itself is rejected with 401, so no cookie is ever issued.
@@ -526,11 +555,11 @@ class VenueAdminControllerIT {
 	void getProfileReturnsCommissionAndPayoutCurrency() throws Exception {
 		// AC-2: the owner profile read exposes the read-only display fields the form shows —
 		// commission (bps) + payout currency — which the PUBLIC tourist read must NOT carry (AC-3).
-		long venue = createVenue("Commission Club"); // created with 1500 bps / EUR
+		long venue = createVenue("Commission Club"); // stamped at the 500 bps platform default
 
 		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.commissionBps").value(1500))
+				.andExpect(jsonPath("$.commissionBps").value(500))
 				.andExpect(jsonPath("$.payoutCurrency").value("EUR"));
 
 		// The public tourist read must not leak commission / payout currency.
@@ -703,7 +732,7 @@ class VenueAdminControllerIT {
 	void patchIgnoresReadOnlyCommissionAndCurrency() throws Exception {
 		// AC-5: commission + payout currency are read-only. Even if a crafted body carries
 		// them, the write cannot touch them (the DTO/command has no such field, so they are ignored).
-		long venue = createVenue("Read Only Club"); // 1500 bps / EUR
+		long venue = createVenue("Read Only Club"); // stamped 500 bps / EUR
 
 		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
@@ -716,7 +745,7 @@ class VenueAdminControllerIT {
 				.andExpect(status().isNoContent());
 
 		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
-				.andExpect(jsonPath("$.commissionBps").value(1500))   // unchanged
+				.andExpect(jsonPath("$.commissionBps").value(500))    // unchanged
 				.andExpect(jsonPath("$.payoutCurrency").value("EUR")) // unchanged
 				.andExpect(jsonPath("$.name").value("Still Mine"));   // editable field did change
 	}

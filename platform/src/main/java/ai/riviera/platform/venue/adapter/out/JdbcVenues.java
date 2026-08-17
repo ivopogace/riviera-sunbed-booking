@@ -86,7 +86,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	@Override
-	public long insertVenue(NewVenueCommand c) {
+	public long insertVenue(NewVenueCommand c, int commissionBps) {
 		return jdbc.sql("""
 				INSERT INTO venue (name, beach, region, description, booking_mode,
 				                   commission_bps, payout_currency, booking_cutoff)
@@ -98,7 +98,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.param(COL_REGION, c.region())
 				.param(COL_DESCRIPTION, c.description())
 				.param("mode", c.bookingMode())
-				.param("bps", c.commissionBps())
+				.param("bps", commissionBps)
 				.param("currency", c.payoutCurrency())
 				.param("cutoff", c.bookingCutoff())
 				.query(Long.class)

@@ -137,7 +137,7 @@ class BeachMapReplaceIT {
 	private long createVenue(String name) throws Exception {
 		String body = """
 				{"name":"%s","beach":"Ksamil","region":"Riviera","description":"x",
-				 "bookingMode":"INSTANT","commissionBps":1500,"payoutCurrency":"EUR","bookingCutoff":"18:00"}
+				 "bookingMode":"INSTANT","payoutCurrency":"EUR","bookingCutoff":"18:00"}
 				""".formatted(name);
 		MvcResult result = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 						.post("/api/venues").cookie(operatorSession).with(csrf())

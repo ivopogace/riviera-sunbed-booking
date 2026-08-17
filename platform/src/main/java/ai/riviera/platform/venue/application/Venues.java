@@ -16,8 +16,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  */
 public interface Venues {
 
-	/** Insert a venue and return its generated id. */
-	long insertVenue(NewVenueCommand command);
+	/**
+	 * Insert a venue and return its generated id. {@code commissionBps} is the rate the caller
+	 * stamps — the platform default from {@link VenueCreationProperties}, never client input.
+	 */
+	long insertVenue(NewVenueCommand command, int commissionBps);
 
 	/** Whether a venue with this id exists. */
 	boolean venueExists(VenueId venueId);

@@ -50,20 +50,23 @@ class VenueAdminService
 	private final SetAvailabilityLookup availability;
 	private final BookingPresence bookings;
 	private final Clock clock;
+	private final VenueCreationProperties creation;
 
 	VenueAdminService(Venues venues, VenueOwnership ownership, SetAvailabilityLookup availability,
-			BookingPresence bookings, Clock clock) {
+			BookingPresence bookings, Clock clock, VenueCreationProperties creation) {
 		this.venues = venues;
 		this.ownership = ownership;
 		this.availability = availability;
 		this.bookings = bookings;
 		this.clock = clock;
+		this.creation = creation;
 	}
 
 	@Override
 	@Transactional
 	public VenueId onboard(OperatorId creator, NewVenueCommand command) {
-		VenueId id = new VenueId(venues.insertVenue(command));
+		// The platform's term, stamped here so no driving adapter can supply a rate (issue #692).
+		VenueId id = new VenueId(venues.insertVenue(command, creation.defaultCommissionBps()));
 		// Creator-owns-on-create (invariant #13): record ownership atomically with the insert.
 		// If this write fails the whole create rolls back — a venue is never left owned by no one, and
 		// the creator is never 403'd on the venue it just made.

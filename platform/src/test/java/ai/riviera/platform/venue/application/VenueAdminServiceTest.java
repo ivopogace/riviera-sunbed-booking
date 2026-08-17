@@ -72,8 +72,10 @@ class VenueAdminServiceTest {
 	private static final Clock CLOCK = Clock.fixed(Instant.parse("2027-06-15T22:30:00Z"), ZoneOffset.UTC);
 	private static final LocalDate TODAY_IN_TIRANE = LocalDate.of(2027, 6, 16);
 
+	private static final VenueCreationProperties CREATION = new VenueCreationProperties(500);
+
 	private final VenueAdminService service = new VenueAdminService(
-			venues, new FakeOwnership(OWNER, VENUE), availability, bookings, CLOCK);
+			venues, new FakeOwnership(OWNER, VENUE), availability, bookings, CLOCK, CREATION);
 
 	private static LayoutCommand grid(int rows, int cols) {
 		List<SetCommand> cells = new ArrayList<>();
@@ -91,12 +93,26 @@ class VenueAdminServiceTest {
 	void onboardReturnsTheInsertedVenueId() {
 		venues.nextVenueId = 99;
 		NewVenueCommand command = new NewVenueCommand("Sunset", "Ksamil", "Riviera", "nice",
-				"INSTANT", 1500, "EUR", LocalTime.of(18, 0));
+				"INSTANT", "EUR", LocalTime.of(18, 0));
 
 		// Creator-owns-on-create writes ownership too; the ownership write + non-owner denial is
 		// proven end-to-end by CrossVenueDenialIT.creatorOwnsCreatedVenueAndOthersAreDenied.
 		assertEquals(new VenueId(99), service.onboard(OWNER, command));
 		assertEquals(1, venues.insertedVenues);
+	}
+
+	@Test
+	void onboardStampsConfiguredDefaultCommission() {
+		// A non-500 configured rate proves the stamp reads configuration, never a literal (AC-4).
+		VenueAdminService configured = new VenueAdminService(venues,
+				new FakeOwnership(OWNER, VENUE), availability, bookings, CLOCK,
+				new VenueCreationProperties(700));
+		NewVenueCommand command = new NewVenueCommand("Sunset", "Ksamil", "Riviera", "nice",
+				"INSTANT", "EUR", LocalTime.of(18, 0));
+
+		configured.onboard(OWNER, command);
+
+		assertEquals(700, venues.lastInsertCommissionBps);
 	}
 
 	@Test
@@ -678,7 +694,7 @@ class VenueAdminServiceTest {
 		store.summaries.put(20L, new OwnedVenueView(20, "Aurora", "Borsh"));
 		VenueAdminService owned = new VenueAdminService(store, new MultiOwnership(Map.of(
 				MULTI_OWNER, Set.of(new VenueRef(12), new VenueRef(15)),
-				OTHER_OWNER, Set.of(new VenueRef(20)))), availability, bookings, CLOCK);
+				OTHER_OWNER, Set.of(new VenueRef(20)))), availability, bookings, CLOCK, CREATION);
 
 		List<OwnedVenueView> result = owned.ownedBy(MULTI_OWNER);
 
@@ -694,8 +710,8 @@ class VenueAdminServiceTest {
 	void ownedByReturnsEmptyWithoutHittingTheRepositoryWhenNothingIsOwned() {
 		// A freshly-approved operator owns nothing: an empty list, and no `IN ()` predicate at all.
 		FakeVenues store = new FakeVenues(new ArrayList<>());
-		VenueAdminService owned =
-				new VenueAdminService(store, new MultiOwnership(Map.of()), availability, bookings, CLOCK);
+		VenueAdminService owned = new VenueAdminService(store, new MultiOwnership(Map.of()),
+				availability, bookings, CLOCK, CREATION);
 
 		assertEquals(List.of(), owned.ownedBy(MULTI_OWNER));
 		assertEquals(List.of(), store.summaryQueries);
@@ -758,6 +774,7 @@ class VenueAdminServiceTest {
 		long nextVenueId = 1;
 		long nextSetId = 1;
 		int insertedVenues;
+		int lastInsertCommissionBps;
 		int insertedSets;
 		int updatedSets;
 		int deletedSets;
@@ -767,8 +784,9 @@ class VenueAdminServiceTest {
 		Integer forceProfileUpdateRows;
 
 		@Override
-		public long insertVenue(NewVenueCommand command) {
+		public long insertVenue(NewVenueCommand command, int commissionBps) {
 			insertedVenues++;
+			lastInsertCommissionBps = commissionBps;
 			return nextVenueId;
 		}
 
