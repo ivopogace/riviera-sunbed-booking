@@ -31,7 +31,9 @@ reject-revocation hole and the third gate `OperatorAccountController` ACCOUNT_NO
 `riviera-plan-doc` (this template — forced the behavior-parity ledger on the register flow and
 the may-authenticate/may-operate/tourist-visible three-set split into ACs) · `tdd` (each phase
 red-green on ITs before wiring) · `riviera-review-overlay` (review gate — at ready-for-review) ·
-`riviera-docs-freshness` (ran over the slice at close-out — see Execution status) ·
+`riviera-docs-freshness` (ran, pre-merge smoke over `origin/main...HEAD` — 1 finding: the
+review-overlay reference cited `OperatorLifecycle#activeUsername`, patched to
+`usernameInStatus`; counting sweep clean) ·
 `riviera-modulith` (OperatorStatus belongs in `vocabulary/` once published; ports stay in `api/`;
 no new module dependency) · `riviera-java-conventions` (records, typed outcomes —
 `Rejected(username)` mirrors `Changed`; EnumSet constants over magic strings; §6b error contract
@@ -305,6 +307,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `CONTEXT.md` — glossary: operator approval (console access vs tourist visibility)
 - `docs/adr/ADR-0013-photo-moderation-trusted-operators.md` — amendment: the human gate moved to the visibility fence
 - `docs/architecture/auth-signin-register.md` — D-5 updated to the #694 contract
+- `.claude/skills/riviera-review-overlay/references/backend-conventions.md` — freshness patch: `activeUsername` → `usernameInStatus` citation
 
 ---
 

@@ -457,8 +457,8 @@ unsanitized untrusted text in logs or unguarded deserialization.
 or session machinery.* The shipped ordering guarantees must hold: (a) the
 principal's sessions are revoked **at the edge, synchronously**
 (`PrincipalSessionRevoker`) — deliberately not an event (#128); (b) the revoke
-**brackets** the state change — before it (keyed by a pre-read:
-`OperatorLifecycle#activeUsername`, `CustomerAccountRecovery#emailForResetToken`)
+**brackets** the state change — before it (keyed by a status-guarded pre-read:
+`OperatorLifecycle#usernameInStatus`, `CustomerAccountRecovery#emailForResetToken`)
 AND after — so a transient revoke failure is retry-recoverable (#357); (c) a
 self-service password change revokes the *other* sessions before the hash write and
 re-issues the surviving session under a new id via `SessionIdentity#rotate` (#344;
