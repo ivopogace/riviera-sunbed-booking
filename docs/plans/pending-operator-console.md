@@ -268,6 +268,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/OperatorSuspensionRevocationIT.java` — regression additions if any assertions shift
 - `platform/src/test/java/ai/riviera/platform/AuthSessionIT.java` — AC-9
 - `platform/src/test/java/ai/riviera/platform/AdminOperatorControllerTest.java` — reject-path unit updates
+- `platform/src/test/java/ai/riviera/platform/OperatorAccountControllerTest.java` — credential-shape updates (status-bearing record)
+- `platform/src/test/java/ai/riviera/platform/OperatorCredentialInitializerTest.java` — credential-shape updates (status-bearing record)
+- `platform/src/test/java/ai/riviera/platform/operator/OperatorAccountProvisioningIT.java` — status-token asserts replace the `active` flag
 - `platform/src/test/java/ai/riviera/platform/operator/OperatorOwnershipIT.java` — AC-5
 - `platform/src/test/java/ai/riviera/platform/operator/OperatorLifecycleIT.java` — `usernameInStatus` coverage
 - `platform/src/test/java/ai/riviera/platform/operator/**` — any fixture touched by the credential shape
