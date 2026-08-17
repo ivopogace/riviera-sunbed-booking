@@ -106,6 +106,7 @@ import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ListOwnedVenues;
 import ai.riviera.platform.venue.application.OnboardVenue;
+import ai.riviera.platform.venue.application.VenueCreationProperties;
 import ai.riviera.platform.venue.application.PhotoProcessingResult;
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.PhotoUploadResult;
@@ -779,6 +780,11 @@ class WebSliceStubs {
 	@Bean
 	OnboardVenue onboardVenue() {
 		return (operator, command) -> new VenueId(0);
+	}
+
+	@Bean
+	VenueCreationProperties venueCreationProperties() {
+		return new VenueCreationProperties(500);
 	}
 
 	@Bean
