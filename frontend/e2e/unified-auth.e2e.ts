@@ -160,7 +160,9 @@ test('a returnUrl outranks the venue-count rule', async ({ page }) => {
   await expect(page).toHaveURL(/\/operator\/12\/payouts/);
 });
 
-test('an operator registration lands pending approval, with no session', async ({ page }) => {
+test('an operator registration auto-signs-in and lands under the pending notice', async ({
+  page,
+}) => {
   await mockOperatorLifecycleApi(page, { admin: { username: 'admin', password: 'admin-pw' } });
 
   await page.goto('/account/sign-in?audience=operator&mode=register');
@@ -170,16 +172,10 @@ test('an operator registration lands pending approval, with no session', async (
   await page.getByLabel('Password', { exact: true }).fill('password123');
   await page.getByRole('button', { name: /^(Request account|Submitting)/ }).click();
 
-  const pending = page.getByTestId('auth-pending');
-  await expect(pending).toBeVisible();
-  await expect(pending).toContainText('approv');
-  // No session is established — a PENDING operator cannot sign in until an admin approves.
-  await expect(page.getByTestId('nav-user')).toHaveCount(0);
-  await expectNoSeriousAxeViolations(page, 'operator registration pending');
-
-  // "Back to sign-in" returns to the card's sign-in mode rather than navigating away.
-  await page.getByTestId('auth-pending-back').click();
-  await expect(page.getByTestId('auth-form')).toBeVisible();
+  // The 202 is session-less; the card then signs in with the same credentials and lands us home.
+  await expect(page).toHaveURL(/\/operator$/);
+  await expect(page.getByTestId('pending-approval-banner')).toBeVisible();
+  await expectNoSeriousAxeViolations(page, 'operator home after register auto-sign-in');
 });
 
 test('the retired auth routes still land somewhere live', async ({ page }) => {

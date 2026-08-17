@@ -16,17 +16,19 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 const ADMIN = { username: 'operator', password: 'admin-pw' };
 const OP = { username: 'zoe', password: 'zoe-pw-12345', contactEmail: 'zoe@venue.example' };
 
-/** Register + approve an operator, leaving the admin signed in on the admin surface. */
+/** Register (auto-signed-in while PENDING) + approve, leaving the admin signed in on /admin. */
 async function seedApprovedOperator(page: import('@playwright/test').Page): Promise<void> {
+  const signIn = new OperatorSignInPage(page);
   await page.goto('/operator/register');
   await page.getByLabel('Username', { exact: true }).fill(OP.username);
   await page.getByLabel('Contact email', { exact: true }).fill(OP.contactEmail);
   await page.getByLabel('Password', { exact: true }).fill(OP.password);
   await page.getByRole('button', { name: /^(Request account|Submitting)/ }).click();
-  await expect(page.getByTestId('auth-pending')).toBeVisible();
+  await expect(page.getByTestId('pending-approval-banner')).toBeVisible();
+  await signIn.signOut();
 
   await page.goto('/operator');
-  await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+  await signIn.signIn(ADMIN.username, ADMIN.password);
   await page.goto('/admin');
   await page.getByRole('button', { name: 'Approve' }).click();
   await expect(page.getByTestId('admin-ops-empty')).toBeVisible();

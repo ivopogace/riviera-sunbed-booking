@@ -217,9 +217,9 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 
 ## Execution status
 
-**Stage pointer:** implement (phase 6)
+**Stage pointer:** implement (phase 7)
 
-**Next action:** phase 6 — mocked e2e rewrite (`operator-registration.e2e.ts`)
+**Next action:** phase 7 — docs close-out (RESPONSIBILITIES §operator, CONTEXT.md) + gates
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -229,7 +229,7 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 | 3 — reject revocation bracket + #128 regressions | ✅ | (this commit) |
 | 4 — `operatorStatus` on the wire principal | ✅ | (this commit) |
 | 5 — FE auto-sign-in + pending banner | ✅ | (this commit) |
-| 6 — mocked e2e rewrite | | |
+| 6 — mocked e2e rewrite | ✅ | (this commit) |
 | 7 — docs close-out (RESPONSIBILITIES/CONTEXT/Javadoc) + gates | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -239,7 +239,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (hygiene, run 32068244247) | plan doc's File structure omitted three phase-1 test paths | fixed-in-`1787746` |
-| F-2 | CI (backend, run 32068351427) | `OperatorApprovalIT.approveEnablesLogin` still pinned the retired PENDING-cannot-log-in contract — scoped runs missed it; swept the test tree for sibling assertions (none) | fixed-in-phase-2 commit |
+| F-2 | CI (backend, run 32068351427) | `OperatorApprovalIT.approveEnablesLogin` still pinned the retired PENDING-cannot-log-in contract — scoped runs missed it; swept the test tree for sibling assertions (none) | fixed-in-`4229861` |
+| F-3 | CI (frontend, run 32070791451) | phase-5 push went out with the OLD mocked e2e specs (4 failures: registration, unified-auth register, both suspension specs' seed) — the rewrite was already planned as phase 6; sequencing miss, not a new defect | fixed-in-phase-6 commit |
 
 ---
 
@@ -295,7 +296,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/operator-console.html` — hosts the banner above the tab outlet
 - `frontend/src/app/auth/auth-page.a11y.spec.ts` — fallback-card flow update
 - `frontend/e2e/operator-registration.e2e.ts` — flow rewrite (AC-10 e2e)
-- `frontend/e2e/**` — any sibling spec asserting the retired pending card or PENDING-cannot-sign-in mock
+- `frontend/e2e/unified-auth.e2e.ts` — register test now lands under the pending notice
+- `frontend/e2e/admin-operator-suspension.e2e.ts` — seed updated (register auto-signs-in)
+- `frontend/e2e/support/auth-mocks.ts` — may-authenticate set + `operatorStatus` + reject revocation in the lifecycle mock
 - `RESPONSIBILITIES.md` — §`operator` (resolution sets; reject bracket)
 - `CONTEXT.md` — glossary: may-authenticate / may-operate / tourist-visible sets
 
