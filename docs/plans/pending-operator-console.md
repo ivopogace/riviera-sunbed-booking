@@ -88,7 +88,9 @@ for `feature/pending-operator-console` per the riviera-sdlc remote addendum).
   when the auto-sign-in is refused")
 - [x] **AC-11:** Given a `PENDING` principal in the console, when the operator home or a venue
   console renders, then a pending-approval notice is shown (and absent for `ACTIVE`). *Pinned
-  by:* `operator-home.spec.ts` + `pending-approval-banner.spec.ts` (+ a11y spec)
+  by:* `pending-approval-banner.spec.ts` (+ its a11y spec) for the component;
+  `operator-registration.e2e.ts` proves it rendered on both hosts (home + console shell) and
+  gone after approval
 - [x] **AC-12:** `ModularityTests`, `JdbcOnlyArchitectureTests`,
   `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests` stay green.
   *Pinned by:* the structural net itself.
