@@ -57,41 +57,41 @@ form classes; no new SCSS) · `playwright-cli` (mocked-suite e2e update:
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (server stamps the default):** Given a valid onboarding command (which can no
+- [x] **AC-1 (server stamps the default):** Given a valid onboarding command (which can no
   longer carry a rate), when `OnboardVenue.onboard` runs, then the created venue persists at
   the configured platform default — 500 bps — and reads back at 500 via the owner profile read.
   *Pinned by:* `VenueAdminControllerIT.createStampsPlatformDefaultCommission` (adapter-level,
   full path) and `VenueAdminServiceTest.onboardStampsConfiguredDefaultCommission` (inner
   hexagon, proves the stamp comes from `VenueCreationProperties`, not a literal).
-- [ ] **AC-2 (client-supplied rate rejected):** Given a `POST /api/venues` body carrying any
+- [x] **AC-2 (client-supplied rate rejected):** Given a `POST /api/venues` body carrying any
   non-null `commissionBps`, when the request is handled, then the response is
   `400 INVALID_REQUEST` (RFC-7807, §6b) and **no venue row or ownership row is created**.
   *Pinned by:* `VenueAdminControllerIT.createRejectsClientSuppliedCommission`.
-- [ ] **AC-3 (no longer required):** Given a `POST /api/venues` body with no `commissionBps`
+- [x] **AC-3 (no longer required):** Given a `POST /api/venues` body with no `commissionBps`
   key at all, when handled, then `201` and the venue exists at 500 bps (the field's old
   "required" contract is gone). *Pinned by:* the same
   `VenueAdminControllerIT.createStampsPlatformDefaultCommission` (its body omits the key).
-- [ ] **AC-4 (default is configuration):** Given
+- [x] **AC-4 (default is configuration):** Given
   `riviera.venue.creation.default-commission-bps` overridden to a non-500 value, when a venue
   is onboarded, then it is stamped with the overridden value — no code edit.
   *Pinned by:* `VenueAdminServiceTest.onboardStampsConfiguredDefaultCommission`
   (constructs `VenueCreationProperties` with a non-500 value), plus
   `VenueCreationPropertiesTest.rejectsOutOfRangeDefault` for the 0–10000 boot guard.
-- [ ] **AC-5 (the disclosure read):** Given an authenticated operator, when it issues
+- [x] **AC-5 (the disclosure read):** Given an authenticated operator, when it issues
   `GET /api/venue-defaults`, then `200 {"commissionBps": <configured>}`; given an anonymous
   client, then `401`. The path sits outside `/api/venues/{venueId}`'s `long`-bound space.
   *Pinned by:* `VenueDefaultsControllerIT.servesConfiguredDefaultToOperators` /
   `.rejectsAnonymous`.
-- [ ] **AC-6 (form: no input, served disclosure):** Given the create form with the defaults
+- [x] **AC-6 (form: no input, served disclosure):** Given the create form with the defaults
   read mocked at 500, when it renders, then no commission control exists and the info line
   states "The platform commission is 5% per booking."; re-mocking at 550 renders "5.5%" with
   no frontend edit. *Pinned by:* `venue-create-card.spec.ts` (new cases) +
   `venue-create-card.a11y.spec.ts` (axe stays green).
-- [ ] **AC-7 (A7 regression):** The admin commission write (`PUT
+- [x] **AC-7 (A7 regression):** The admin commission write (`PUT
   /api/admin/venues/{venueId}/commission`) still changes the rate forward-only after creation.
   *Pinned by:* existing `AdminVenueCommissionIT` (unchanged, re-run in the venue-package
   regression sweep).
-- [ ] **AC-8 (structural net):** `ModularityTests`, `PackageShapeArchitectureTests`,
+- [x] **AC-8 (structural net):** `ModularityTests`, `PackageShapeArchitectureTests`,
   `JdbcOnlyArchitectureTests`, `PublishedSurfacePlacementArchitectureTests` stay green.
   *Pinned by:* the structural-net run at each phase end.
 
@@ -123,28 +123,27 @@ form classes; no new SCSS) · `playwright-cli` (mocked-suite e2e update:
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The reject path 500s instead of 400s (raw `IllegalArgumentException` no longer maps to 400 since #118) | med | med | Throw inside `toCommand()`, which the controller already wraps in `InvalidApiRequestException.parsing` (§6b); pinned by AC-2 asserting the wire code | agent | open |
-| R-2 | Dropping `commissionBps` from `NewVenueCommand` breaks its many test-fixture constructions | high | low | Compile-time sweep: `grep -rn "new NewVenueCommand" platform/src` and fix every call site in the same phase | agent | open |
-| R-3 | The properties record isn't registered → the service bean fails at boot | low | med | `@EnableConfigurationProperties` on a `venue/adapter/in` config class per the `BookingSchedulingConfig` precedent; every venue IT would catch a context failure | agent | open |
-| R-4 | The new path collides with `GET /api/venues/{venueId}` (`long`-bound) | low | med | Path chosen **outside** that space: `/api/venue-defaults` (issue constraint #13); pinned by AC-5 | agent | open |
-| R-5 | FE specs/e2e still reference the commission input and go red | high | low | Same-phase update of `venue-create-card.spec.ts`, a11y spec, and `operator-onboarding.e2e.ts` (its create mock never filled the field — only the takings mock names `commissionBps`, which stays) | agent | open |
-| R-6 | Disclosure line hardcodes "5%" and drifts from the stamp | med | med | The line renders `formatCommissionPercent(served.commissionBps)` — no literal percent anywhere in FE; AC-6's 550→"5.5%" case proves value-drivenness | agent | open |
-| R-7 | Out-of-range configured default (e.g. 20000) boots and stamps invalid rows | low | high | Compact-ctor validation in `VenueCreationProperties` reusing `VenueFieldValidation.requireCommissionBps` → boot failure; `VenueCreationPropertiesTest` | agent | open |
-| R-8 | A7 forward-only write regresses via the `Venues.insertVenue` signature change | low | high | Signature change is additive (an `int` parameter); `AdminVenueCommissionIT` + `JdbcVenueCommissionScheduleIT` re-run in the phase sweep (AC-7) | agent | open |
+| R-1 | The reject path 500s instead of 400s (raw `IllegalArgumentException` no longer maps to 400 since #118) | med | med | Throw inside `toCommand()`, which the controller already wraps in `InvalidApiRequestException.parsing` (§6b); pinned by AC-2 asserting the wire code | agent | closed — AC-2 pins the wire 400 INVALID_REQUEST via `InvalidApiRequestException.parsing` |
+| R-2 | Dropping `commissionBps` from `NewVenueCommand` breaks its many test-fixture constructions | high | low | Compile-time sweep: `grep -rn "new NewVenueCommand" platform/src` and fix every call site in the same phase | agent | closed — phase-1 sweep (generalization log); compile-enforced |
+| R-3 | The properties record isn't registered → the service bean fails at boot | low | med | `@EnableConfigurationProperties` on a `venue/adapter/in` config class per the `BookingSchedulingConfig` precedent; every venue IT would catch a context failure | agent | closed — `VenueCreationConfig` registration; every venue IT booted the context green |
+| R-4 | The new path collides with `GET /api/venues/{venueId}` (`long`-bound) | low | med | Path chosen **outside** that space: `/api/venue-defaults` (issue constraint #13); pinned by AC-5 | agent | closed — `/api/venue-defaults` outside the `{venueId}` space; AC-5 green |
+| R-5 | FE specs/e2e still reference the commission input and go red | high | low | Same-phase update of `venue-create-card.spec.ts`, a11y spec, and `operator-onboarding.e2e.ts` (its create mock never filled the field — only the takings mock names `commissionBps`, which stays) | agent | closed — card/a11y/service specs + both e2e suites updated (F-3 caught the missed real-backend one) |
+| R-6 | Disclosure line hardcodes "5%" and drifts from the stamp | med | med | The line renders `formatCommissionPercent(served.commissionBps)` — no literal percent anywhere in FE; AC-6's 550→"5.5%" case proves value-drivenness | agent | closed — `formatCommissionPercent` renders the served value; 550→"5.5%" spec pins it |
+| R-7 | Out-of-range configured default (e.g. 20000) boots and stamps invalid rows | low | high | Compact-ctor validation in `VenueCreationProperties` reusing `VenueFieldValidation.requireCommissionBps` → boot failure; `VenueCreationPropertiesTest` | agent | closed — compact-ctor guard + F-4 hardened the missing-key case to fail the boot (`Integer`) |
+| R-8 | A7 forward-only write regresses via the `Venues.insertVenue` signature change | low | high | Signature change is additive (an `int` parameter); `AdminVenueCommissionIT` + `JdbcVenueCommissionScheduleIT` re-run in the phase sweep (AC-7) | agent | closed — `AdminVenueCommissionIT` + `JdbcVenueCommissionScheduleIT` green (AC-7) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the disclosure read's path is `GET /api/venue-defaults` (operator-role-gated,
-  outside the `{venueId}` space; naming decided at plan time per issue #13's "shape decided at
-  plan time"). — *Owner:* agent · *Resolves by:* phase 2 (silently confirmed unless review objects).
-- **Assumption:** when the defaults read fails client-side, the info line is simply not rendered
-  (the disclosure is the issue's nice-to-have; the form itself must not block on it, and no
-  hardcoded fallback figure is allowed — a wrong figure is worse than none). — *Owner:* agent ·
-  *Resolves by:* phase 3.
-- **Assumption:** the role gate `hasRole(OPERATOR)` is the right auth posture for the defaults
-  read — issue AC requires "no ACTIVE-only assumption baked in", and role-gating (not
-  ownership/status resolution) satisfies that: slice A's PENDING principals will carry the same
-  role. — *Owner:* agent · *Resolves by:* phase 2.
+None.
+
+### Resolved
+
+- **Path shape** — `GET /api/venue-defaults`, operator-role-gated, outside the `{venueId}`
+  space; shipped in 4868220, review raised no objection.
+- **Failed defaults read hides the note** — no hardcoded fallback figure; pinned by the
+  card spec's error case (d43fbea).
+- **Role gate posture** — `hasRole(OPERATOR)` with no ownership/status resolution, so slice
+  A's PENDING principals reach it unchanged; shipped in 4868220.
 
 ## Availability & concurrency (invariant #2)
 
@@ -216,21 +215,31 @@ literal exists in FE code; styling is Tailwind utilities beside the existing for
 > lives HERE, committed — never only in the conversation. Update it in the SAME commit
 > window as the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** implement (phase 4 — integration + gates)
+**Stage pointer:** DONE — merged via PR #695
 
-**Next action:** verify the PR's CI run on the phase-3 head; then phase 4 (merge `origin/main`,
-finalize, ready-for-review → review + Sonar gates).
+**Next action:** none for this slice; the next slice of #573 is #693 (visibility fence), which
+restarts the designated branch from `main` after this merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc on branch | ✅ | ef4d25f |
 | 1 — backend: stamp default + reject client rate | ✅ | c13dcdd |
 | 2 — backend: `GET /api/venue-defaults` | ✅ | 4868220 |
-| F-1 fix — web-slice stub for the new controller dep | ✅ | (commit after 4868220) |
-| 3 — frontend: input removed, disclosure line, e2e | ✅ | (this commit) |
-| 4 — merge `origin/main`, ready-for-review, gates | ⏳ | |
+| F-1 fix — web-slice stub for the new controller dep | ✅ | e0369ba |
+| 3 — frontend: input removed, disclosure line, e2e | ✅ | d43fbea |
+| F-2 fix — onboarding split (Sonar S6539) | ✅ | 20af30b |
+| 4 — integration + gates (F-3/F-4/F-5 fixes, finalize) | ✅ | (the PR's last commit) |
 
-Draft PR: #695 (opened at the phase-1 commit).
+Merged via PR #695. `origin/main` did not move during the slice, so no integration merge was
+needed. **Review-gate note:** `/code-review` ran via the invocation ladder (Skill probe
+succeeded) at high effort but executed as a **single-pass inline review** — the session could
+not spawn the subagent fan-out — with `riviera-review-overlay` walked in full on top (all three
+reference banks; no findings beyond the three below); declared in the PR as a degraded mode.
+**Sonar gate:** analysis confirmed present (217 new lines), 0 open issues, 100% new-code
+coverage, 0 duplicated blocks — re-verified after the last push. The thrice-failed
+`Analyze (javascript-typescript)` CodeQL job was a GitHub-side incident ("No server is
+currently available", finally failing only at SARIF upload after a full clean analysis) —
+re-run until green before merge.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -238,6 +247,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-5 | review (Minor) | `VenueCreationProperties` javadoc still said `VenueAdminService` stamps the rate after the F-2 split moved it to `OnboardVenueService`. | fixed — javadoc corrected in the same commit as F-4 |
+| F-4 | review (Major) | Primitive `int defaultCommissionBps` defeats the fail-the-boot guarantee: a missing/renamed property key binds `0` under constructor binding — an accepted rate — so the app boots and silently stamps every venue at 0%. | fixed — component boxed to `Integer` with an explicit null rejection in the compact ctor; `rejectsAMissingValue` pins it |
+| F-3 | review (Major, RV-FE-E2E) | `frontend/e2e/real-backend/venue.e2e.ts` still asserted the UI-created venue shows `15%` commission (and its comment said "15% by default") — red under the new 500 bps stamp; local-only suite, so CI could not show it. | fixed — assertion moved to `5%`, comment updated |
 | F-2 | sonar (PR 695, java:S6539 INFO) | Adding `VenueCreationProperties` pushed `VenueAdminService` to 21 class dependencies (max 20, "Monster Class"). | fixed — onboarding split into its own package-private `OnboardVenueService` (port unchanged), dropping the edit service's coupling by three; re-entered at Implement with `riviera-modulith` + `riviera-java-conventions` loaded |
 | F-1 | CI (run 32051404477, phase-2 head 4868220) | Every web-slice controller test failed: `VenueDefaultsController`'s `VenueCreationProperties` dependency had no bean in the shared `WebSliceStubs` context (`NoSuchBeanDefinitionException` — the full-suite-only failure class `riviera-local-debug` warns about; scoped runs never build that context). | fixed — stub bean added beside `OnboardVenue`'s, per the `StripeProperties` precedent; reproduced red locally on `AccountRecoveryControllerTest` first, green after |
 
@@ -272,6 +284,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/venue-create-card.spec.ts` — AC-6 pins
 - `frontend/src/app/operator/venue-create-card.a11y.spec.ts` — axe over the new render
 - `frontend/e2e/operator-onboarding.e2e.ts` — mock `GET /api/venue-defaults`, assert the line, drop nothing else
+- `frontend/e2e/real-backend/venue.e2e.ts` — the local-only suite's commission assertion moves 15%→5% (F-3)
 
 ---
 
@@ -279,7 +292,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `docs/plans/admin-only-commission-at-creation.md`
 
-- [ ] **Step 1: Commit the plan** — `git commit -m "Plan admin-only commission at venue creation (#692)"`
+- [x] **Step 1: Commit the plan** — `git commit -m "Plan admin-only commission at venue creation (#692)"`
 
 ---
 
@@ -291,7 +304,7 @@ Create `VenueCreationProperties.java`, `VenueCreationConfig.java`,
 `VenueCreationPropertiesTest.java` · Test `VenueAdminControllerIT.java`,
 `VenueAdminServiceTest.java` + the R-2 fixture sweep
 
-- [ ] **Step 1: Write the failing tests** — in `VenueAdminControllerIT`:
+- [x] **Step 1: Write the failing tests** — in `VenueAdminControllerIT`:
 
 ```java
 @Test
@@ -328,8 +341,8 @@ void onboardStampsConfiguredDefaultCommission() {
 
 (exact helper shapes follow the classes' existing fixtures)
 
-- [ ] **Step 2: Run, verify red** — `./gradlew test --tests "*VenueAdminControllerIT*" --tests "*VenueAdminServiceTest*"` → FAIL (compile: no such ctor / required-field 400)
-- [ ] **Step 3: Minimal implementation** — drop the component from `NewVenueCommand`; add
+- [x] **Step 2: Run, verify red** — `./gradlew test --tests "*VenueAdminControllerIT*" --tests "*VenueAdminServiceTest*"` → FAIL (compile: no such ctor / required-field 400)
+- [x] **Step 3: Minimal implementation** — drop the component from `NewVenueCommand`; add
   `VenueCreationProperties(int defaultCommissionBps)` with
   `VenueFieldValidation.requireCommissionBps` in the compact ctor; register via
   `VenueCreationConfig`; `Venues.insertVenue(command, int)`; service stamps
@@ -338,14 +351,14 @@ void onboardStampsConfiguredDefaultCommission() {
   controller's existing `InvalidApiRequestException.parsing`); property line
   `riviera.venue.creation.default-commission-bps=500`; sweep every `new NewVenueCommand`/
   `insertVenue` fixture (R-2).
-- [ ] **Step 4: Run, verify green** — same scoped command → PASS; then the venue-package sweep
+- [x] **Step 4: Run, verify green** — same scoped command → PASS; then the venue-package sweep
   `./gradlew test --tests "ai.riviera.platform.venue.*"` (covers AC-7's `AdminVenueCommissionIT`)
-- [ ] **Step 5: Generalization-audit pass** — population: *every construction site of
+- [x] **Step 5: Generalization-audit pass** — population: *every construction site of
   `NewVenueCommand` and every caller/stub of `Venues.insertVenue`* → enumerate
   `grep -rn "new NewVenueCommand\|insertVenue" platform/src` → fix all (compile-enforced).
   Log below.
-- [ ] **Step 6: Commit** — `git commit -m "Stamp the platform default commission at venue creation; reject client-supplied rates (#692)"`
-- [ ] **Step 7: Push, open the DRAFT PR** (first phase commit → CI vehicle), update this
+- [x] **Step 6: Commit** — `git commit -m "Stamp the platform default commission at venue creation; reject client-supplied rates (#692)"`
+- [x] **Step 7: Push, open the DRAFT PR** (first phase commit → CI vehicle), update this
   Execution status in the same window.
 
 ---
@@ -356,7 +369,7 @@ void onboardStampsConfiguredDefaultCommission() {
 `VenueDefaultsControllerIT.java` · Modify `VenueAdminService.java` (implement the port),
 `SecurityConfig.java`
 
-- [ ] **Step 1: Write the failing test** — `VenueDefaultsControllerIT`:
+- [x] **Step 1: Write the failing test** — `VenueDefaultsControllerIT`:
 
 ```java
 @Test
@@ -380,11 +393,11 @@ void rejectsAnonymous() {
   controller and the stamp read the same bean); `SecurityConfig` rule
   `.requestMatchers(HttpMethod.GET, VENUE_DEFAULTS_PATH).hasRole(OPERATOR)` placed with the
   operator-gated venue rules.
-- [ ] **Step 4: Run, verify green** — scoped, then the structural net
+- [x] **Step 4: Run, verify green** — scoped, then the structural net
   `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` (AC-8)
-- [ ] **Step 5: Generalization audit** — N/A (no bug fix; new read follows an existing pattern)
-- [ ] **Step 6: Commit** — `git commit -m "Serve the platform commission default to the operator console (#692)"`
-- [ ] **Step 7: Push; check the PR's CI run before phase 3.** Update Execution status.
+- [x] **Step 5: Generalization audit** — N/A (no bug fix; new read follows an existing pattern)
+- [x] **Step 6: Commit** — `git commit -m "Serve the platform commission default to the operator console (#692)"`
+- [x] **Step 7: Push; check the PR's CI run before phase 3.** Update Execution status.
 
 ---
 
@@ -393,38 +406,38 @@ void rejectsAnonymous() {
 **Files:** Modify `venue-admin.model.ts`, `venue-admin.service.ts` (+`.spec.ts`),
 `venue-create-card.ts`, `.html`, `.spec.ts`, `.a11y.spec.ts`, `frontend/e2e/operator-onboarding.e2e.ts`
 
-- [ ] **Step 1: Write the failing specs** — card spec: renders no
+- [x] **Step 1: Write the failing specs** — card spec: renders no
   `venue-create-commission` control; renders `venue-create-commission-note` with "The platform
   commission is 5% per booking." when the mocked read returns `{commissionBps: 500}`, "5.5%"
   when 550, and no note when the read errors; submit payload carries no `commissionBps` key.
   Service spec: `venueDefaults()` GETs `/api/venue-defaults`.
-- [ ] **Step 2: Run, verify red** — `npm test -- --include='**/venue-create-card.spec.ts' --include='**/venue-admin.service.spec.ts'` (exact runner flags per the repo's Vitest setup) → FAIL
-- [ ] **Step 3: Minimal implementation** — model/service/read; card: drop the field from the
+- [x] **Step 2: Run, verify red** — `npm test -- --include='**/venue-create-card.spec.ts' --include='**/venue-admin.service.spec.ts'` (exact runner flags per the repo's Vitest setup) → FAIL
+- [x] **Step 3: Minimal implementation** — model/service/read; card: drop the field from the
   Signal Form model + schema + submit; `platformDefaults` signal loaded in the constructor
   (errors → `undefined` → note hidden); template: replace the commission `<label>` block with
   an info line `@if (platformDefaults(); as d) { <p data-testid="venue-create-commission-note">The platform commission is {{ formatCommissionPercent(d.commissionBps) }} per booking.</p> }`
   styled with the card's existing muted-text utilities.
-- [ ] **Step 4: Run, verify green** — the two specs + `npm run test:a11y`; then
+- [x] **Step 4: Run, verify green** — the two specs + `npm run test:a11y`; then
   `npm run lint && npm run format:check`
-- [ ] **Step 5: e2e** — update `operator-onboarding.e2e.ts`: mock
+- [x] **Step 5: e2e** — update `operator-onboarding.e2e.ts`: mock
   `GET /api/venue-defaults` → `{commissionBps: 500}`, assert the note text on the zero-state
   form (axe already runs there); run `npm run test:e2e:a11y` (or the repo-documented scoped
   variant per `riviera-local-debug`).
-- [ ] **Step 6: Commit** — `git commit -m "Replace the create form's commission input with the server-served platform default (#692)"`
-- [ ] **Step 7: Push; check CI. Update Execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Replace the create form's commission input with the server-served platform default (#692)"`
+- [x] **Step 7: Push; check CI. Update Execution status.**
 
 ---
 
 ## Phase 4 — Integration: merge main, finalize, ready-for-review
 
-- [ ] **Step 1:** `git fetch origin main && git merge origin/main` (routing gate for whatever
+- [x] **Step 1:** `git fetch origin main && git merge origin/main` (routing gate for whatever
   the integration touches; scoped tests on conflicts)
-- [ ] **Step 2:** `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc
+- [x] **Step 2:** `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc
   staged) + the diff-scoped guards
-- [ ] **Step 3:** Finalize Execution status (phases ✅, risks closed, Open Questions resolved),
+- [x] **Step 3:** Finalize Execution status (phases ✅, risks closed, Open Questions resolved),
   commit, push, mark the PR **ready for review** → run the Review gate + Sonar gate per
   `references/pr-gates.md`
-- [ ] **Step 4:** Merge close-out (epic tick on #573/#692, `riviera-docs-freshness` over the
+- [x] **Step 4:** Merge close-out (epic tick on #573/#692, `riviera-docs-freshness` over the
   merged range — §`venue` commission wording, `s6`/`RESPONSIBILITIES` "commission at creation"
   claims)
 
@@ -441,30 +454,30 @@ void rejectsAnonymous() {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-3:** `./gradlew test --tests "*VenueAdminControllerIT*"` → green. Verified at commit `<sha>`.
-- [ ] **AC-2:** same run, `createRejectsClientSuppliedCommission` green. Verified at `<sha>`.
-- [ ] **AC-4:** `./gradlew test --tests "*VenueAdminServiceTest*" --tests "*VenueCreationPropertiesTest*"` → green. Verified at `<sha>`.
-- [ ] **AC-5:** `./gradlew test --tests "*VenueDefaultsControllerIT*"` → green. Verified at `<sha>`.
-- [ ] **AC-6:** `npm test` (card + service specs) + `npm run test:a11y` → green. Verified at `<sha>`.
-- [ ] **AC-7:** `./gradlew test --tests "ai.riviera.platform.venue.*"` → green incl. `AdminVenueCommissionIT`. Verified at `<sha>`.
-- [ ] **AC-8:** structural-net run → green. Verified at `<sha>`.
+- [x] **AC-1/AC-3:** `./gradlew test --tests "*VenueAdminControllerIT*"` → green. Verified locally green + CI green on 20af30b (+ the fix commit).
+- [x] **AC-2:** same run, `createRejectsClientSuppliedCommission` green. Verified locally green + CI green on 20af30b (+ the fix commit).
+- [x] **AC-4:** `gradle test --tests "*VenueAdminServiceTest*" --tests "*VenueCreationPropertiesTest*"` → green. Verified locally green + CI green on 20af30b (+ the fix commit).
+- [x] **AC-5:** `gradle test --tests "*VenueDefaultsControllerIT*"` → green. Verified locally green + CI green on 20af30b (+ the fix commit).
+- [x] **AC-6:** `npm test` (card + service specs) + `npm run test:a11y` → green. Verified locally green + CI green on 20af30b (+ the fix commit).
+- [x] **AC-7:** `gradle test --tests "ai.riviera.platform.venue.*"` → green incl. `AdminVenueCommissionIT`. Verified locally green + CI green on 20af30b (+ the fix commit).
+- [x] **AC-8:** structural-net run → green. Verified locally green + CI green on 20af30b (+ the fix commit).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section justified N/A (invariant #2 untouched).
-- [ ] Pool + cutoff rules honored (invariants #3, #4 — untouched).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new published surface (invariant #11).
-- [ ] **Payment/payout** section filled; money in integer minor units/bps (invariants #5, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone rules untouched (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change → no Flyway migration needed (invariant #12 vacuously satisfied).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `references/pr-gates.md` §1 plus `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section justified N/A (invariant #2 untouched).
+- [x] Pool + cutoff rules honored (invariants #3, #4 — untouched).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new published surface (invariant #11).
+- [x] **Payment/payout** section filled; money in integer minor units/bps (invariants #5, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone rules untouched (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change → no Flyway migration needed (invariant #12 vacuously satisfied).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in `references/pr-gates.md` §1 plus `riviera-review-overlay`.

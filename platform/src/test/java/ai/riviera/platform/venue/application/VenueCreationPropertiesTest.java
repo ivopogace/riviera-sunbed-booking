@@ -24,4 +24,10 @@ class VenueCreationPropertiesTest {
 		assertThrows(IllegalArgumentException.class, () -> new VenueCreationProperties(-1));
 		assertThrows(IllegalArgumentException.class, () -> new VenueCreationProperties(10_001));
 	}
+
+	@Test
+	void rejectsAMissingValue() {
+		// A missing key binds null under constructor binding — fail the boot, never a silent 0%.
+		assertThrows(IllegalArgumentException.class, () -> new VenueCreationProperties(null));
+	}
 }
