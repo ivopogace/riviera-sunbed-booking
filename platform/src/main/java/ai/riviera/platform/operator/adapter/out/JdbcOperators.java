@@ -166,12 +166,12 @@ class JdbcOperators implements Operators {
 				.list();
 	}
 
-	/** Primary-key point lookup with {@link #idByActiveUsername}'s status filter — no new index needed. */
+	/** Primary-key point lookup guarded by the expected status — no new index needed. */
 	@Override
-	public Optional<String> activeUsernameById(OperatorId operatorId) {
-		return jdbc.sql("SELECT username FROM operator WHERE id = :id AND status = :active")
+	public Optional<String> usernameByIdInStatus(OperatorId operatorId, OperatorStatus expected) {
+		return jdbc.sql("SELECT username FROM operator WHERE id = :id AND status = :expected")
 				.param(ID_PARAM, operatorId.value())
-				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.param("expected", expected.name())
 				.query(String.class)
 				.optional();
 	}
@@ -186,31 +186,32 @@ class JdbcOperators implements Operators {
 	@Override
 	public ApprovalOutcome rejectPending(OperatorId operatorId) {
 		return transitionFromPending(operatorId, OperatorStatus.REJECTED)
-				.<ApprovalOutcome>map(row -> new ApprovalOutcome.Rejected())
+				.<ApprovalOutcome>map(row -> new ApprovalOutcome.Rejected(row.username()))
 				.orElseGet(() -> classifyMissedTransition(operatorId));
 	}
 
 	/** What the transition wrote — present iff this call is the one that flipped the row. */
-	private record TransitionedRow(String contactEmail) {
+	private record TransitionedRow(String contactEmail, String username) {
 	}
 
 	/**
 	 * Move a PENDING operator to {@code target}, reporting the row it wrote. The conditional
 	 * {@code WHERE status = PENDING} is the single source of truth, so two concurrent approvals cannot
-	 * both win; {@code RETURNING} hands the winner the stored contact email in the same statement,
-	 * which is what lets {@code activate}'s caller mail an approved operator without a second read and
-	 * without the loser being able to mail anything at all.
+	 * both win; {@code RETURNING} hands the winner the stored contact email and username in the same
+	 * statement, which is what lets {@code activate}'s caller mail an approved operator — and
+	 * {@code rejectPending}'s caller revoke a rejected one's sessions — without a second read and
+	 * without the loser being able to act at all.
 	 */
 	private Optional<TransitionedRow> transitionFromPending(OperatorId operatorId, OperatorStatus target) {
 		return jdbc.sql("""
 				UPDATE operator SET status = :target
 				WHERE id = :id AND status = :pending
-				RETURNING contact_email
+				RETURNING contact_email, username
 				""")
 				.param(TARGET_PARAM, target.name())
 				.param(ID_PARAM, operatorId.value())
 				.param(PENDING_PARAM, OperatorStatus.PENDING.name())
-				.query((rs, rowNum) -> new TransitionedRow(rs.getString(CONTACT_EMAIL)))
+				.query((rs, rowNum) -> new TransitionedRow(rs.getString(CONTACT_EMAIL), rs.getString(USERNAME)))
 				.optional();
 	}
 

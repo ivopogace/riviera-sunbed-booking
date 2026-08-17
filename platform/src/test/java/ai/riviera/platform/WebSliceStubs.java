@@ -307,7 +307,8 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public Optional<String> activeUsername(OperatorId operatorId) {
+			public Optional<String> usernameInStatus(OperatorId operatorId,
+					ai.riviera.platform.operator.vocabulary.OperatorStatus expected) {
 				return Optional.empty();
 			}
 

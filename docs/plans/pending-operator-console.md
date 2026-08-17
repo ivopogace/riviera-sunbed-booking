@@ -219,16 +219,16 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** implement (phase 4)
 
-**Next action:** phase 3 red — `OperatorRejectionRevocationIT` (reject bracket + #128 regression)
+**Next action:** phase 4 red — `AuthSessionIT` `operatorStatus` on the wire principal
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | 7947475 (PR #697 draft) |
 | 1 — status published + may-authenticate set at the edge | ✅ | (this commit) |
 | 2 — ownership resolves for the may-operate set; console end-to-end | ✅ | (this commit) |
-| 3 — reject revocation bracket + #128 regressions | | |
+| 3 — reject revocation bracket + #128 regressions | ✅ | (this commit) |
 | 4 — `operatorStatus` on the wire principal | | |
 | 5 — FE auto-sign-in + pending banner | | |
 | 6 — mocked e2e rewrite | | |
@@ -256,7 +256,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/operator/api/OperatorAccounts.java` — Javadoc (status-bearing credential)
 - `platform/src/main/java/ai/riviera/platform/operator/api/OperatorDirectory.java` — Javadoc (may-operate set)
 - `platform/src/main/java/ai/riviera/platform/operator/api/OperatorLifecycle.java` — `activeUsername` → `usernameInStatus`
-- `platform/src/main/java/ai/riviera/platform/operator/application/OperatorService.java` — resolution set + `usernameInStatus`
+- `platform/src/main/java/ai/riviera/platform/operator/application/OperatorService.java` — resolution via the may-operate set
+- `platform/src/main/java/ai/riviera/platform/operator/application/OperatorRegistrationService.java` — `usernameInStatus` replaces `activeUsername`
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — lifecycle stub follows the port signature
 - `platform/src/main/java/ai/riviera/platform/operator/application/Operators.java` — repository port updates
 - `platform/src/main/java/ai/riviera/platform/operator/adapter/out/JdbcOperators.java` — SQL predicate changes + `RETURNING username` on reject
 - `platform/src/main/java/ai/riviera/platform/OperatorUserDetailsService.java` — the may-authenticate set
@@ -497,6 +499,7 @@ retired card)
 |---|---|---|---|---|---|
 | 2026-08-17 | phase 1 (`OperatorCredential` shape change) | every reader of `OperatorCredential.active()` or the `OperatorStatus` type, enumerated by grep + the compiler after the field change | `grep -rn "\.active()\|OperatorStatus" platform/src` | `OperatorUserDetailsService` (login gate → may-authenticate set), `OperatorAccountController` (password-change gate → kept ACTIVE-only, widens in phase 2), `JdbcOperators` (mapper + SQL predicates → SQL swept in phase 2's audit), `OperatorAccountProvisioningIT`, `OperatorCredentialInitializerTest`, `OperatorAccountControllerTest`, `OperatorLifecycleIT` (mechanical updates) | fixed all; no reader left deriving the old ACTIVE-only boolean |
 | 2026-08-17 | phase 2 (may-operate resolution) | every SQL predicate on `operator.status` in the adapter + every edge status comparison | `grep -n "status" platform/src/main/java/ai/riviera/platform/operator/adapter/out/JdbcOperators.java` + phase-1's repo grep | widened: `idByOperableUsername`, `OperatorAccountController` (login set). Deliberately kept: `hasActiveOwner`/`venuesWithActiveOwner` (#693 fence, ACTIVE-only), `accounts()` (admin list of decided accounts), `pendingOperators()` (approval queue), `activeUsernameById` (suspend pre-revoke; reject bracket lands in phase 3), guarded lifecycle transitions | each site judged against the three-set split; none left implicitly coupled |
+| 2026-08-17 | phase 3 (reject revocation) | every lifecycle transition endpoint that removes the right to a session | `grep -n "PostMapping" AdminOperatorController.java` → approve/reject/suspend/reinstate | reject (now bracketed), suspend (already bracketed), approve + reinstate (deliberately no revoke — rights are kept/restored); customer-side erasure revocation is separate edge machinery, untouched | reject bracketed; no other transition removes session rights un-revoked |
 
 ---
 
