@@ -53,6 +53,9 @@ class RequestToBookFlowIT {
 				VALUES ('Request Flow Club', 'Flow Beach', 'Flow Region', 'REQUEST', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
+						+ "SELECT :v, id FROM operator WHERE username = 'operator'")
+				.param("v", venueId).update();
 		requestSet = jdbc.sql("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
 				                          price_currency, grid_x, grid_y)

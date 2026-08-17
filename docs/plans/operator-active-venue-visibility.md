@@ -71,15 +71,17 @@ they exist.
   *Pinned by:* `VenueCatalogVisibilityIT.mapReadIsEmptyForHiddenVenue`
 - [ ] **AC-3:** Given a hidden venue's set id, when a booking is attempted on the Instant path
   and on the Request path, then both are refused as `Rejected(NO_SUCH_SET)` before any
-  availability claim. *Pinned by:* `ReserveSetServiceTest.instantReserveRefusedForHiddenVenue`,
-  `ReserveSetServiceTest.requestReserveRefusedForHiddenVenue`
+  availability claim. *Pinned by:* `CreateBookingServiceTest.instantReserveRefusedForHiddenVenue`,
+  `CreateBookingServiceTest.requestReserveRefusedForHiddenVenue` (the existing reserve harness —
+  no separate `ReserveSetServiceTest` class exists)
 - [ ] **AC-4:** Given an `ACTIVE` operator with a listed venue, when the operator is suspended,
   then the venue leaves both reads; when reinstated, it returns. *Pinned by:*
   `VenueCatalogVisibilityIT.suspendHidesReinstateRestores`
 - [ ] **AC-5:** Given a booking made while the venue was visible, when the owning operator is
   suspended, then the booking still resolves by code, can still be cancelled (with its refund
   decision computed), and can still be checked in. *Pinned by:*
-  `HiddenVenueSoldBookingRegressionIT.soldBookingSurvivesOwnerSuspension`
+  `HiddenVenueSoldBookingRegressionIT.soldBookingSurvivesOwnerSuspension` +
+  `.checkInStillWorksAfterOwnerSuspension`
 - [ ] **AC-6:** Given an operator is approved, when the approval mail is composed, then it
   states the venues-are-now-live-for-tourists news in copy that also holds for an operator
   owning no venue yet. *Pinned by:* the operator-approved leg of the existing mail tests
@@ -235,16 +237,16 @@ other failures client-side.
 
 ## Execution status
 
-**Stage pointer:** implement (Phase 3)
+**Stage pointer:** implement (Phase 4)
 
-**Next action:** booking reserve fence — RED `ReserveSetServiceTest` hidden-venue refusals + `HiddenVenueSoldBookingRegressionIT`; sweep booking-IT reserve fixtures for ACTIVE owners.
+**Next action:** approval-mail reword — RED on the copy assertions in the notification module, then `SmtpMailer`/`MockMailer`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `bedc7a7`; draft PR #696 |
 | 1 — `operator.api.VenueVisibility` port + JDBC impl | ✅ | "Publish operator VenueVisibility api port" — `OperatorVenueVisibilityIT` 6/6, structural net green |
 | 2 — `venue` catalogue fence (list + detail) | ✅ | "Fence the tourist venue reads…" — `VenueCatalogVisibilityIT` 4/4, fixture sweep (4 classes), structural net + role-split tests green; also fixes the Phase-1 plan-guard CI failure |
-| 3 — `booking` reserve fence + sold-booking regression | | |
+| 3 — `booking` reserve fence + sold-booking regression | ✅ | "Refuse Instant and Request reserves…" — refusal tests + AC-5 IT green; reserve-fixture sweep (6 classes) incl. visibility-aware newest-set pickers |
 | 4 — approval-mail reword | | |
 | 5 — FE: admin console repoint + venue-map not-found + e2e | | |
 | 6 — docs freshness + self-review + gates | | |
@@ -276,7 +278,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/AdminPhotoTakedownIT.java` — fixture sweep: bystander ACTIVE owner keeps takedowns cross-venue
 - `platform/src/test/java/ai/riviera/platform/venue/VenueReadControllerIT.java` — fixture sweep: amenity-venue helper grants + cleanup order
 - `platform/src/main/java/ai/riviera/platform/booking/application/reserve/ReserveSetService.java` — the reserve guard
-- `platform/src/test/java/ai/riviera/platform/booking/**` — reserve refusal tests + `HiddenVenueSoldBookingRegressionIT`
+- `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — refusal tests + visibility fake in the harness
+- `platform/src/test/java/ai/riviera/platform/booking/HiddenVenueSoldBookingRegressionIT.java` — AC-5 at the application seam
+- `platform/src/test/java/ai/riviera/platform/booking/BookingViewIT.java` — sweep: owned seed venue + visible-set picker
+- `platform/src/test/java/ai/riviera/platform/booking/BookingEventIT.java` — sweep: visible-set picker
+- `platform/src/test/java/ai/riviera/platform/booking/BookingServiceIT.java` — sweep: visible-set picker
+- `platform/src/test/java/ai/riviera/platform/booking/CancelBookingIT.java` — sweep: visible-set picker
+- `platform/src/test/java/ai/riviera/platform/booking/ConcurrentRequestClaimIT.java` — sweep: bootstrap-owned request venue
+- `platform/src/test/java/ai/riviera/platform/booking/RequestToBookFlowIT.java` — sweep: bootstrap-owned request venue
 - `platform/src/main/java/ai/riviera/platform/notification/adapter/out/SmtpMailer.java` — approval-mail copy
 - `platform/src/main/java/ai/riviera/platform/notification/adapter/out/MockMailer.java` — mirrored copy
 - `platform/src/test/java/ai/riviera/platform/notification/**` — copy assertions (exact class per Phase 4)
@@ -389,6 +398,7 @@ Test `admin-venue-photos.service.spec.ts`, `venue-map.spec.ts`, mocked e2e suite
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-17 | Phase 2 (R-2 fixture sweep) | Tests that insert a `venue` row AND assert on a fenced tourist read (`GET /api/venues`, `GET /api/venues/{id}`, `VenueCatalog`) | `git grep -lE "INSERT INTO venue" -- platform/src/test` ∩ `git grep -lE 'get\("/api/venues"\|get\("/api/venues/\{' -- platform/src/test`, then **every** member judged line-by-line | 4 fixed (`VenueListControllerIT`, `VenuePhotoReadModelIT`, `AdminPhotoTakedownIT`, `VenueReadControllerIT`); `BeachMapReplaceIT`/`VenueAdminControllerIT`/`VenueRepriceIT` safe (venues via `POST /api/venues`, creator-owns-on-create by an ACTIVE session) | Grant fixture venues an ACTIVE owner (bootstrap or bystander); mapping rows deleted before venue deletes (no cascade). **Lesson re-learned (#641):** `VenueReadControllerIT` was pre-judged "Miramar-only, safe" from its class doc and failed in the batch — every enumerated member gets judged by its members, not its summary. Booking-side reserve fixtures are Phase 3's identical sweep |
+| 2026-08-17 | Phase 3 (reserve-fence sweep) | Tests that exercise the reserve path (`createBooking.create` / `POST /api/bookings` / `CreateBookingCommand`) | `git grep -lE 'createBooking\.create\|post\("/api/bookings"\|CreateBookingCommand' -- platform/src/test`, every member judged | 16 enumerated: 3 venue-inserting reserve ITs granted owners (`BookingViewIT`, `ConcurrentRequestClaimIT`, `RequestToBookFlowIT`); 4 "newest ONLINE set" pickers made visible-only (`BookingEventIT`, `BookingServiceIT`, `BookingViewIT`, `CancelBookingIT`) — a #127-class full-suite landmine: my own regression IT leaves a hidden venue owning the newest set, and any future PENDING-console fixture would too; rest use Miramar's first set / no reserve / slice stubs | Fixed as listed; the picker hardening is the forward defense for #694's fixtures |
 
 ---
 

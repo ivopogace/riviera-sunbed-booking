@@ -52,8 +52,11 @@ class BookingEventIT {
 
 	private SetRef freeOnlineSet() {
 		return jdbc.sql("""
-				SELECT id, venue_id, price_minor, price_currency
-				FROM set_position WHERE pool = 'ONLINE' ORDER BY id DESC LIMIT 1
+				SELECT sp.id, sp.venue_id, sp.price_minor, sp.price_currency
+				FROM set_position sp
+				JOIN operator_venue ov ON ov.venue_id = sp.venue_id
+				JOIN operator o ON o.id = ov.operator_id AND o.status = 'ACTIVE'
+				WHERE sp.pool = 'ONLINE' ORDER BY sp.id DESC LIMIT 1
 				""")
 				.query((rs, n) -> new SetRef(rs.getLong("id"), rs.getLong("venue_id"),
 						rs.getLong("price_minor"), rs.getString("price_currency")))

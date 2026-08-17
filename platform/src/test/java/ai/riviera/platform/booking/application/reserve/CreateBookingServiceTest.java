@@ -30,6 +30,8 @@ import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
+import ai.riviera.platform.operator.api.VenueVisibility;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.api.SetBookingFacts;
@@ -75,10 +77,15 @@ class CreateBookingServiceTest {
 
 	private CreateBookingService service(SetBookingInfo info, AvailabilityClaim claim,
 			CheckoutPort checkout, BookingCodeGenerator codes) {
+		return service(info, claim, checkout, codes, true);
+	}
+
+	private CreateBookingService service(SetBookingInfo info, AvailabilityClaim claim,
+			CheckoutPort checkout, BookingCodeGenerator codes, boolean venueVisible) {
 		SetBookingFacts catalog = new FakeCatalog(info);
 		CustomerDirectory customers = _ -> new CustomerId(99);
-		ReserveSetService reservation = new ReserveSetService(catalog, claim, customers, bookings,
-				codes, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
+		ReserveSetService reservation = new ReserveSetService(catalog, claim, visibility(venueVisible),
+				customers, bookings, codes, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		return new CreateBookingService(reservation, checkout, confirmer, release, confirmationMail,
 				collection, CLOCK);
 	}
@@ -220,7 +227,8 @@ class CreateBookingServiceTest {
 		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = _ -> new CustomerId(1);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
-				customers, collidingOnce, codes::removeFirst, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
+				visibility(true), customers, collidingOnce, codes::removeFirst,
+				new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		var service = new CreateBookingService(reservation,
 				(_, _) -> new PaymentOutcome.Succeeded("ok"), confirmer, release, confirmationMail,
 				collection, CLOCK);
@@ -293,7 +301,8 @@ class CreateBookingServiceTest {
 		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = contact -> new CustomerId(7);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
-				customers, bookings, () -> "CODE12345C", new BookingCutoff(CLOCK), WINDOWS, CLOCK);
+				visibility(true), customers, bookings, () -> "CODE12345C",
+				new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		CreateBookingService service = new CreateBookingService(reservation,
 				(ref, money) -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release,
 				confirmationMail, collection, CLOCK);
@@ -389,6 +398,54 @@ class CreateBookingServiceTest {
 		assertEquals(1, bookings.inserted.size(), "the booking was persisted before the throwing payment");
 		assertEquals(1, release.released.size(), "a thrown payment triggers exactly one compensating release");
 		assertTrue(confirmer.confirmed.isEmpty(), "a thrown payment confirms nothing");
+	}
+
+	/** A fixed-answer visibility fake (#693) — the real rule lives in operator's JDBC adapter. */
+	private static VenueVisibility visibility(boolean visible) {
+		return new VenueVisibility() {
+			@Override
+			public boolean isVisible(VenueRef venue) {
+				return visible;
+			}
+
+			@Override
+			public java.util.Set<VenueRef> visibleAmong(Collection<VenueRef> venues) {
+				return visible ? java.util.Set.copyOf(venues) : java.util.Set.of();
+			}
+		};
+	}
+
+	/** A claim port that fails the test if any claim is attempted (#693: refuse before claiming). */
+	private static AvailabilityClaim neverClaiming() {
+		return new AvailabilityClaim() {
+			@Override
+			public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
+				throw new AssertionError("claim must not be attempted for a hidden venue");
+			}
+
+			@Override
+			public void release(SetId setId, LocalDate bookingDate) {
+				throw new AssertionError("release must not be attempted for a hidden venue");
+			}
+		};
+	}
+
+	@Test
+	void instantReserveRefusedForHiddenVenue() {
+		CreateBookingService service = service(set("ONLINE"), neverClaiming(),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
+
+		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
+		assertTrue(bookings.inserted.isEmpty(), "no booking row for a hidden venue");
+	}
+
+	@Test
+	void requestReserveRefusedForHiddenVenue() {
+		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST), neverClaiming(),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
+
+		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
+		assertTrue(bookings.inserted.isEmpty(), "no pending request for a hidden venue");
 	}
 
 	@Test

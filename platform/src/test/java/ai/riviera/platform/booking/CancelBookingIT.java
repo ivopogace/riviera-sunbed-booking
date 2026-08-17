@@ -65,7 +65,12 @@ class CancelBookingIT {
 	}
 
 	private Created confirmBookingOn(LocalDate date) {
-		long setId = jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id DESC LIMIT 1")
+		long setId = jdbc.sql("""
+				SELECT sp.id FROM set_position sp
+				JOIN operator_venue ov ON ov.venue_id = sp.venue_id
+				JOIN operator o ON o.id = ov.operator_id AND o.status = 'ACTIVE'
+				WHERE sp.pool = 'ONLINE' ORDER BY sp.id DESC LIMIT 1
+				""")
 				.query(Long.class).single();
 		BookingOutcome outcome =
 				createBooking.create(new CreateBookingCommand(new SetId(setId), date, GUEST));

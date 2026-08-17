@@ -54,7 +54,12 @@ class BookingViewIT {
 	private static final LocalDate UNIQUE_DATE = LocalDate.of(2034, 6, 6);
 
 	private long onlineSet() {
-		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id DESC LIMIT 1")
+		return jdbc.sql("""
+				SELECT sp.id FROM set_position sp
+				JOIN operator_venue ov ON ov.venue_id = sp.venue_id
+				JOIN operator o ON o.id = ov.operator_id AND o.status = 'ACTIVE'
+				WHERE sp.pool = 'ONLINE' ORDER BY sp.id DESC LIMIT 1
+				""")
 				.query(Long.class).single();
 	}
 
@@ -199,6 +204,9 @@ class BookingViewIT {
 				VALUES (:name, 'Test Beach', 'Riviera', 'INSTANT', 1500, 'EUR', 5000, TIME '00:00')
 				RETURNING id
 				""").param("name", "Late Refund Club " + code).query(Long.class).single();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
+						+ "SELECT :v, id FROM operator WHERE username = 'operator'")
+				.param("v", venueId).update();
 		long setId = jdbc.sql("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
 				                          price_currency, grid_x, grid_y)

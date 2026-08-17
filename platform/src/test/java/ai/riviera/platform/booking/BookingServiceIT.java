@@ -40,7 +40,12 @@ class BookingServiceIT {
 
 	private SetId freeOnlineSet() {
 		// An online set with no availability row yet for the test date.
-		return new SetId(jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id DESC LIMIT 1")
+		return new SetId(jdbc.sql("""
+				SELECT sp.id FROM set_position sp
+				JOIN operator_venue ov ON ov.venue_id = sp.venue_id
+				JOIN operator o ON o.id = ov.operator_id AND o.status = 'ACTIVE'
+				WHERE sp.pool = 'ONLINE' ORDER BY sp.id DESC LIMIT 1
+				""")
 				.query(Long.class).single());
 	}
 
