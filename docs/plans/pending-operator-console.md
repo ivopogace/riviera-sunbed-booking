@@ -51,45 +51,45 @@ for `feature/pending-operator-console` per the riviera-sdlc remote addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a `PENDING` operator with a credential, when it authenticates at the
+- [x] **AC-1:** Given a `PENDING` operator with a credential, when it authenticates at the
   operator login, then a session is established. *Pinned by:*
   `PerOperatorLoginIT.aPendingOperatorCanLogIn`
-- [ ] **AC-2:** Given a `SUSPENDED` operator and a `REJECTED` operator, when each attempts to
+- [x] **AC-2:** Given a `SUSPENDED` operator and a `REJECTED` operator, when each attempts to
   authenticate, then both are refused with the one generic 401. *Pinned by:*
   `PerOperatorLoginIT.aSuspendedOperatorCannotLogIn` (existing) +
   `PerOperatorLoginIT.aRejectedOperatorCannotLogIn` (new)
-- [ ] **AC-3:** Given a fresh username and a duplicate username, when each registers, then both
+- [x] **AC-3:** Given a fresh username and a duplicate username, when each registers, then both
   receive the byte-identical session-less `202 {"status":"PENDING"}` (D-8). *Pinned by:*
   `OperatorRegistrationIT.duplicateRegistrationIsIndistinguishable` (existing, must stay green)
-- [ ] **AC-4:** Given a `PENDING` operator, when it creates a venue, then the ownership mapping
+- [x] **AC-4:** Given a `PENDING` operator, when it creates a venue, then the ownership mapping
   resolves for it: the venue lists under `GET /api/venues/mine` and every console read/write on
   that venue passes the invariant-#13 check. *Pinned by:*
   `PendingOperatorConsoleIT.aPendingOperatorCreatesAndWorksItsOwnVenue`
-- [ ] **AC-5:** Given a `SUSPENDED` or `REJECTED` operator, when ownership is resolved
+- [x] **AC-5:** Given a `SUSPENDED` or `REJECTED` operator, when ownership is resolved
   (`OperatorDirectory.operatorFor`), then it resolves to empty. *Pinned by:*
   `OperatorOwnershipIT.operatorForRejectsUnknownSuspendedAndRejectedUsernames`
-- [ ] **AC-6:** Given a `PENDING` operator with a live session, when an admin rejects it, then
+- [x] **AC-6:** Given a `PENDING` operator with a live session, when an admin rejects it, then
   the session is revoked (bracketed, #357 shape). *Pinned by:*
   `OperatorRejectionRevocationIT.rejectingAPendingOperatorKillsItsLiveSession`
-- [ ] **AC-7:** Given a session established while `PENDING` and the operator approved later,
+- [x] **AC-7:** Given a session established while `PENDING` and the operator approved later,
   when an admin suspends it, then that session is revoked (#128 regression). *Pinned by:*
   `OperatorRejectionRevocationIT.aSessionEstablishedWhilePendingIsRevokedBySuspensionAfterApproval`
-- [ ] **AC-8:** Given a venue created by a `PENDING` operator, when tourists list/read venues or
+- [x] **AC-8:** Given a venue created by a `PENDING` operator, when tourists list/read venues or
   try to book its sets, then the venue is absent/404/refused until approval flips it live
   (#693 fence exercised end-to-end). *Pinned by:*
   `PendingOperatorConsoleIT.aPendingOperatorsVenueStaysHiddenFromTouristsUntilApproval`
-- [ ] **AC-9:** Given a signed-in operator, when the edge serves `/api/auth/me` or the login
+- [x] **AC-9:** Given a signed-in operator, when the edge serves `/api/auth/me` or the login
   response, then the principal carries `operatorStatus` (`PENDING`/`ACTIVE`; null for
   customers). *Pinned by:* `AuthSessionIT.operatorPrincipalCarriesItsLifecycleStatus`
-- [ ] **AC-10:** Given a successful registration `202`, when the frontend receives it, then it
+- [x] **AC-10:** Given a successful registration `202`, when the frontend receives it, then it
   auto-signs-in with the just-entered credentials and lands in the operator console; a
   duplicate-username registration surfaces as a normal failed sign-in. *Pinned by:*
   `auth-page.spec.ts` ("auto-signs in after operator registration", "shows the sign-in error
   when the auto-sign-in is refused")
-- [ ] **AC-11:** Given a `PENDING` principal in the console, when the operator home or a venue
+- [x] **AC-11:** Given a `PENDING` principal in the console, when the operator home or a venue
   console renders, then a pending-approval notice is shown (and absent for `ACTIVE`). *Pinned
   by:* `operator-home.spec.ts` + `pending-approval-banner.spec.ts` (+ a11y spec)
-- [ ] **AC-12:** `ModularityTests`, `JdbcOnlyArchitectureTests`,
+- [x] **AC-12:** `ModularityTests`, `JdbcOnlyArchitectureTests`,
   `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests` stay green.
   *Pinned by:* the structural net itself.
 
@@ -123,14 +123,14 @@ retires); operator sign-in gains a case. Backend registration is untouched.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Widening ownership resolution accidentally widens the #693 tourist fence (both live in `JdbcOperators`) | low | high | fence SQL (`hasActiveOwner`/`venuesWithActiveOwner`) untouched; `OperatorVenueVisibilityIT` + `VenueCatalogVisibilityIT` must stay green in the same phase | session | open |
-| R-2 | A REJECTED operator keeps console access through a session established while PENDING | med | high | reject gets the #357 revocation bracket; `OperatorRejectionRevocationIT` (AC-6) | session | open |
-| R-3 | D-8 regression: register becomes distinguishable (timing/body/session) | low | high | zero backend change to `/register`; auto-sign-in is frontend-only; existing `duplicateRegistrationIsIndistinguishable` pins it | session | open |
-| R-4 | `OperatorCredential` shape change (`active` → `status`) ripples through edge + fixtures unevenly, leaving a caller deriving the old ACTIVE-only meaning | med | med | change the record field in one commit; compiler-driven sweep of every `active()` caller; grep recorded in the generalization log | session | open |
-| R-5 | Invariant #13 (BOLA): a PENDING operator must reach only *its own* venue | low | high | `assertOwns` path unchanged — only the username→id resolution set widens; `CrossVenueDenialIT` + `OperatorOwnershipIT` stay green | session | open |
-| R-6 | Per-status behavior hiding elsewhere behind `active()`/`ACTIVE` literals (a fourth gate the grill missed) | med | med | generalization audit: enumerate every `OperatorStatus.ACTIVE`/`active()` consumer by mechanism (grep command in the log), judge each | session | open |
-| R-7 | Mocked e2e suite drifts from the new flow (register spec asserts the retired pending card) | high | low | rewrite `operator-registration.e2e.ts` in the same slice (phase 6) | session | open |
-| R-8 | New wire field `operatorStatus` breaks the FE `AuthPrincipal` restore path or customer flows | low | med | field optional/nullable on both sides; customer paths never read it; unit specs on the mirror | session | open |
+| R-1 | Widening ownership resolution accidentally widens the #693 tourist fence (both live in `JdbcOperators`) | low | high | fence SQL (`hasActiveOwner`/`venuesWithActiveOwner`) untouched; `OperatorVenueVisibilityIT` + `VenueCatalogVisibilityIT` green | session | closed `4229861` |
+| R-2 | A REJECTED operator keeps console access through a session established while PENDING | med | high | reject gets the #357 revocation bracket; `OperatorRejectionRevocationIT` (AC-6) | session | closed `439e69e` |
+| R-3 | D-8 regression: register becomes distinguishable (timing/body/session) | low | high | zero backend change to `/register`; auto-sign-in is frontend-only; existing `duplicateRegistrationIsIndistinguishable` pins it | session | closed `a0d977b` |
+| R-4 | `OperatorCredential` shape change (`active` → `status`) ripples through edge + fixtures unevenly, leaving a caller deriving the old ACTIVE-only meaning | med | med | change the record field in one commit; compiler-driven sweep of every `active()` caller; grep recorded in the generalization log | session | closed `a0d977b` |
+| R-5 | Invariant #13 (BOLA): a PENDING operator must reach only *its own* venue | low | high | `assertOwns` path unchanged — only the username→id resolution set widens; `CrossVenueDenialIT` + `OperatorOwnershipIT` green | session | closed `4229861` |
+| R-6 | Per-status behavior hiding elsewhere behind `active()`/`ACTIVE` literals (a fourth gate the grill missed) | med | med | generalization audit: enumerate every `OperatorStatus.ACTIVE`/`active()` consumer by mechanism (grep command in the log), judge each — one missed test contract (F-2) caught by full-suite CI and fixed | session | closed `4229861` |
+| R-7 | Mocked e2e suite drifts from the new flow (register spec asserts the retired pending card) | high | low | rewrite `operator-registration.e2e.ts` (+ unified-auth, suspension seed) in the same slice | session | closed `7c1d5ca` |
+| R-8 | New wire field `operatorStatus` breaks the FE `AuthPrincipal` restore path or customer flows | low | med | field optional/nullable on both sides; customer paths never read it; unit specs on the mirror | session | closed `36913d2` |
 
 ## Open questions / Assumptions
 
@@ -217,9 +217,9 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 
 ## Execution status
 
-**Stage pointer:** implement (phase 7)
+**Stage pointer:** CI gate — awaiting green on `62e48d7`, then ready-for-review
 
-**Next action:** phase 7 — docs close-out (RESPONSIBILITIES §operator, CONTEXT.md) + gates
+**Next action:** verify CI on `62e48d7`, mark PR #697 ready for review, run the Review gate (`references/pr-gates.md` §1)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -230,7 +230,7 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 | 4 — `operatorStatus` on the wire principal | ✅ | (this commit) |
 | 5 — FE auto-sign-in + pending banner | ✅ | (this commit) |
 | 6 — mocked e2e rewrite | ✅ | (this commit) |
-| 7 — docs close-out (RESPONSIBILITIES/CONTEXT/Javadoc) + gates | | |
+| 7 — docs close-out (RESPONSIBILITIES/CONTEXT/ADR-0013/D-5) + gates | ⏳ | 62e48d7 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -511,8 +511,8 @@ retired card)
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..9, 12:** `./gradlew test --tests "*PerOperatorLoginIT*" --tests "*OperatorRegistrationIT*" --tests "*PendingOperatorConsoleIT*" --tests "*OperatorRejectionRevocationIT*" --tests "*OperatorSuspensionRevocationIT*" --tests "*OperatorOwnershipIT*" --tests "*OperatorLifecycleIT*" --tests "*AuthSessionIT*" --tests "*ModularityTests*" --tests "*ArchitectureTests*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-10, 11:** `npm test` + `npm run test:a11y` + `npm run test:e2e:a11y` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1..9, 12:** `gradle test` scoped to `PerOperatorLoginIT`, `OperatorRegistrationIT`, `PendingOperatorConsoleIT`, `OperatorRejectionRevocationIT`, `OperatorSuspensionRevocationIT`, `OperatorOwnershipIT`, `OperatorLifecycleIT`, `AuthSessionIT`, `CustomerLoginIT`, `OperatorApprovalIT`, `OperatorVenueVisibilityIT` + the structural net → PASS. Verified at commit `62e48d7`.
+- [x] **AC-10, 11:** `npm test` (1467 specs) + `npm run test:a11y` + `npm run test:e2e:a11y` (218 e2e) → PASS. Verified at commits `36913d2`/`7c1d5ca`; full-suite proof is the PR's CI run.
 
 ## Self-review checklist (before merge / PR)
 
