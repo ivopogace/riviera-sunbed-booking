@@ -54,20 +54,20 @@ class VenuePhotoReadModelIT {
 	@Autowired
 	JdbcClient jdbc;
 
+	/**
+	 * Owned by the bootstrap ACTIVE operator: the tourist reads hide ownerless venues (#693), and
+	 * the ownership row also lets the venue-scoped profile read pass (owns-all retired).
+	 */
 	private VenueId newVenue(String name) {
 		long id = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency)
 				VALUES (:name, 'ReadModel Beach', 'ReadModel Region', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").param("name", name).query(Long.class).single();
-		return new VenueId(id);
-	}
-
-	/** Make the bootstrap admin the explicit owner (owns-all retired) so a venue-scoped read passes. */
-	private void grantToBootstrap(VenueId venue) {
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
 						+ "SELECT :v, id FROM operator WHERE username = 'operator'")
-				.param("v", venue.value()).update();
+				.param("v", id).update();
+		return new VenueId(id);
 	}
 
 	private static StoredVariant variant(PhotoSurface surface, String hashHex) {
@@ -152,10 +152,9 @@ class VenuePhotoReadModelIT {
 
 	@Test
 	void operatorProfileExposesPerSlotPresenceAndPreviewUrl() throws Exception {
-		// The bootstrap admin must own this venue (owns-all retired); denial is CrossVenueDenialIT's job.
+		// newVenue makes the bootstrap admin the owner; denial is CrossVenueDenialIT's job.
 		Cookie session = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");
 		VenueId venue = newVenue("RM profile venue");
-		grantToBootstrap(venue);
 		seedCover(venue, "3a03", "3b03", "3c03");
 
 		// Emptiness IS the null previewUrl (review F-11) — all three slot keys are always present.

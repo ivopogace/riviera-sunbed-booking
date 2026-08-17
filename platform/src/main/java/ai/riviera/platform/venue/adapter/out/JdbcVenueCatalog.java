@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.operator.api.VenueVisibility;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
@@ -72,14 +74,20 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 
 	private final JdbcClient jdbc;
 	private final SetAvailabilityLookup availability;
+	private final VenueVisibility visibility;
 
-	JdbcVenueCatalog(JdbcClient jdbc, SetAvailabilityLookup availability) {
+	JdbcVenueCatalog(JdbcClient jdbc, SetAvailabilityLookup availability, VenueVisibility visibility) {
 		this.jdbc = jdbc;
 		this.availability = availability;
+		this.visibility = visibility;
 	}
 
 	@Override
 	public Optional<VenueMapView> findVenueMap(VenueId id, LocalDate date) {
+		// The #693 fence: a venue without an ACTIVE owner is absent, not partially rendered.
+		if (!visibility.isVisible(new VenueRef(id.value()))) {
+			return Optional.empty();
+		}
 		Optional<VenueRow> venue = jdbc.sql("""
 				SELECT id, name, beach, region, description, rating_tenths, reviews_count, booking_mode,
 				       distance_to_water_m, set_version
@@ -170,6 +178,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class)))
 				.list();
 
+		venues = onlyVisible(venues);
 		if (venues.isEmpty()) {
 			return List.of();
 		}
@@ -216,6 +225,18 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 						coverOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of())),
 						slideshowOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of()),
 								CARD_SLIDESHOW)))
+				.toList();
+	}
+
+	/**
+	 * The #693 fence for the list read: keep only venues with an {@code ACTIVE} owner, resolved in
+	 * one batch call before the per-venue follow-on reads.
+	 */
+	private List<SummaryRow> onlyVisible(List<SummaryRow> venues) {
+		Set<VenueRef> visible = visibility.visibleAmong(
+				venues.stream().map(v -> new VenueRef(v.id())).toList());
+		return venues.stream()
+				.filter(v -> visible.contains(new VenueRef(v.id())))
 				.toList();
 	}
 

@@ -72,12 +72,16 @@ class VenueListControllerIT {
 
 	@AfterEach
 	void cleanup() {
+		// operator_venue has no cascade from venue, so drop the ownership rows first; then
 		// ON DELETE CASCADE removes set_position, and set_availability cascades from set_position.
+		jdbc.sql("DELETE FROM operator_venue WHERE venue_id IN "
+				+ "(SELECT id FROM venue WHERE region = :r)").param("r", IT_REGION).update();
 		jdbc.sql("DELETE FROM venue WHERE region = :r").param("r", IT_REGION).update();
 	}
 
+	/** Owned by the bootstrap ACTIVE operator — the tourist list hides ownerless venues (#693). */
 	private long insertVenue(String name, String beach, int ratingTenths) {
-		return jdbc.sql("""
+		long id = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, rating_tenths, reviews_count, booking_mode,
 				                   commission_bps, payout_currency)
 				VALUES (:name, :beach, :region, :rating, 10, 'INSTANT', 1500, 'EUR')
@@ -86,6 +90,10 @@ class VenueListControllerIT {
 				.param("name", name).param("beach", beach).param("region", IT_REGION)
 				.param("rating", ratingTenths)
 				.query(Long.class).single();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
+						+ "SELECT :v, id FROM operator WHERE username = 'operator'")
+				.param("v", id).update();
+		return id;
 	}
 
 	private long insertSet(long venueId, int positionNo, long priceMinor) {

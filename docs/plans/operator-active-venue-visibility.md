@@ -235,15 +235,15 @@ other failures client-side.
 
 ## Execution status
 
-**Stage pointer:** implement (Phase 2)
+**Stage pointer:** implement (Phase 3)
 
-**Next action:** venue catalogue fence — RED `VenueCatalogVisibilityIT`, then `JdbcVenueCatalog` consults `VenueVisibility`; fixture sweep (R-2).
+**Next action:** booking reserve fence — RED `ReserveSetServiceTest` hidden-venue refusals + `HiddenVenueSoldBookingRegressionIT`; sweep booking-IT reserve fixtures for ACTIVE owners.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | `bedc7a7`; draft PR #696 |
 | 1 — `operator.api.VenueVisibility` port + JDBC impl | ✅ | "Publish operator VenueVisibility api port" — `OperatorVenueVisibilityIT` 6/6, structural net green |
-| 2 — `venue` catalogue fence (list + detail) | | |
+| 2 — `venue` catalogue fence (list + detail) | ✅ | "Fence the tourist venue reads…" — `VenueCatalogVisibilityIT` 4/4, fixture sweep (4 classes), structural net + role-split tests green; also fixes the Phase-1 plan-guard CI failure |
 | 3 — `booking` reserve fence + sold-booking regression | | |
 | 4 — approval-mail reword | | |
 | 5 — FE: admin console repoint + venue-map not-found + e2e | | |
@@ -266,11 +266,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/operator/application/Operators.java` — driven-port methods for the visibility queries
 - `platform/src/main/java/ai/riviera/platform/operator/application/OperatorService.java` — port implementation wiring (or sibling service class, per module's existing wiring)
 - `platform/src/main/java/ai/riviera/platform/operator/adapter/out/JdbcOperators.java` — the two SQL queries
-- `platform/src/test/java/ai/riviera/platform/operator/**` — port/adapter tests (statuses × unowned × empty-in guard)
+- `platform/src/test/java/ai/riviera/platform/operator/OperatorVenueVisibilityIT.java` — port/adapter tests (statuses × unowned × empty-in guard)
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — visibility-aware list + detail
 - `platform/src/main/java/ai/riviera/platform/venue/api/VenueCatalog.java` — javadoc amendment (hidden venues absent)
 - `platform/src/main/java/ai/riviera/platform/venue/api/SetBookingFacts.java` — javadoc note: deliberately unfenced
-- `platform/src/test/java/ai/riviera/platform/venue/**` — `VenueCatalogVisibilityIT` + fixture sweep fallout
+- `platform/src/test/java/ai/riviera/platform/venue/VenueCatalogVisibilityIT.java` — the catalogue-fence IT
+- `platform/src/test/java/ai/riviera/platform/venue/VenueListControllerIT.java` — fixture sweep: bootstrap-owned venues + mapping cleanup
+- `platform/src/test/java/ai/riviera/platform/venue/VenuePhotoReadModelIT.java` — fixture sweep: `newVenue` grants to bootstrap
+- `platform/src/test/java/ai/riviera/platform/venue/AdminPhotoTakedownIT.java` — fixture sweep: bystander ACTIVE owner keeps takedowns cross-venue
+- `platform/src/test/java/ai/riviera/platform/venue/VenueReadControllerIT.java` — fixture sweep: amenity-venue helper grants + cleanup order
 - `platform/src/main/java/ai/riviera/platform/booking/application/reserve/ReserveSetService.java` — the reserve guard
 - `platform/src/test/java/ai/riviera/platform/booking/**` — reserve refusal tests + `HiddenVenueSoldBookingRegressionIT`
 - `platform/src/main/java/ai/riviera/platform/notification/adapter/out/SmtpMailer.java` — approval-mail copy
@@ -384,6 +388,7 @@ Test `admin-venue-photos.service.spec.ts`, `venue-map.spec.ts`, mocked e2e suite
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-17 | Phase 2 (R-2 fixture sweep) | Tests that insert a `venue` row AND assert on a fenced tourist read (`GET /api/venues`, `GET /api/venues/{id}`, `VenueCatalog`) | `git grep -lE "INSERT INTO venue" -- platform/src/test` ∩ `git grep -lE 'get\("/api/venues"\|get\("/api/venues/\{' -- platform/src/test`, then **every** member judged line-by-line | 4 fixed (`VenueListControllerIT`, `VenuePhotoReadModelIT`, `AdminPhotoTakedownIT`, `VenueReadControllerIT`); `BeachMapReplaceIT`/`VenueAdminControllerIT`/`VenueRepriceIT` safe (venues via `POST /api/venues`, creator-owns-on-create by an ACTIVE session) | Grant fixture venues an ACTIVE owner (bootstrap or bystander); mapping rows deleted before venue deletes (no cascade). **Lesson re-learned (#641):** `VenueReadControllerIT` was pre-judged "Miramar-only, safe" from its class doc and failed in the batch — every enumerated member gets judged by its members, not its summary. Booking-side reserve fixtures are Phase 3's identical sweep |
 
 ---
 
