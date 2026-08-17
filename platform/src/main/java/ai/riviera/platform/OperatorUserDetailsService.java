@@ -1,5 +1,8 @@
 package ai.riviera.platform;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 import org.jspecify.annotations.NullMarked;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -8,6 +11,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 
 /**
  * The platform edge's Spring Security {@link UserDetailsService}: resolves a session-login username
@@ -22,9 +26,10 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
  * and enforced in the application services, invariant #13 — not role-level). A platform-<strong>admin</strong>
  * account ({@code is_admin}) additionally carries {@code ADMIN}, which gates the role-based
  * {@code /api/admin/**} operator-approval surface (invariant #13's admin exemption); it keeps
- * {@code OPERATOR} too, so an admin that also owns venues still reaches the operator console. A
- * {@code SUSPENDED}/{@code PENDING}/{@code REJECTED} account is built {@code disabled}, so the provider
- * rejects it in its pre-authentication check <em>before</em> the password is examined (no existence/timing
+ * {@code OPERATOR} too, so an admin that also owns venues still reaches the operator console. An
+ * account outside the may-authenticate set ({@code ACTIVE} or {@code PENDING} — approval gates
+ * tourist visibility, not console access) is built {@code disabled}, so the provider rejects it in
+ * its pre-authentication check <em>before</em> the password is examined (no existence/timing
  * oracle); an account with no provisioned credential (null hash) or an unknown username is a
  * {@link UsernameNotFoundException}.
  */
@@ -35,6 +40,10 @@ class OperatorUserDetailsService implements UserDetailsService {
 	static final String OPERATOR_ROLE = "OPERATOR";
 	/** The platform-admin role that gates the {@code /api/admin/**} approval surface. */
 	static final String ADMIN_ROLE = "ADMIN";
+
+	/** The statuses the edge lets authenticate: approval gates tourist visibility, never console access. */
+	static final Set<OperatorStatus> MAY_AUTHENTICATE =
+			EnumSet.of(OperatorStatus.ACTIVE, OperatorStatus.PENDING);
 
 	private final OperatorAccounts accounts;
 
@@ -54,7 +63,7 @@ class OperatorUserDetailsService implements UserDetailsService {
 		return User.withUsername(credential.username())
 				.password(credential.passwordHash())
 				.roles(roles)
-				.disabled(!credential.active())
+				.disabled(!MAY_AUTHENTICATE.contains(credential.status()))
 				.build();
 	}
 }

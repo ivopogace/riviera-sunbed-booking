@@ -11,6 +11,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
@@ -23,8 +24,11 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
  */
 public interface Operators {
 
-	/** The id of the {@code ACTIVE} operator with this username, or empty (unknown/suspended). */
-	Optional<OperatorId> idByActiveUsername(String username);
+	/**
+	 * The id of the operator with this username when its status is in the may-operate set
+	 * ({@code ACTIVE} or {@code PENDING}), or empty (unknown / suspended / rejected).
+	 */
+	Optional<OperatorId> idByOperableUsername(String username);
 
 	/** The stored credential of the operator with this username (any status), or empty if unknown. */
 	Optional<OperatorCredential> credentialByUsername(String username);
@@ -49,11 +53,10 @@ public interface Operators {
 	List<OperatorAccount> accounts();
 
 	/**
-	 * The username of the ACTIVE operator with this id, or empty (unknown / not ACTIVE) — the mirror of
-	 * {@link #idByActiveUsername}, read before a suspension so the edge can revoke that principal's
-	 * sessions first.
+	 * The username of the operator with this id when it is in {@code expected} status, or empty —
+	 * read before a session-revoking transition so the edge can revoke that principal first.
 	 */
-	Optional<String> activeUsernameById(OperatorId operatorId);
+	Optional<String> usernameByIdInStatus(OperatorId operatorId, OperatorStatus expected);
 
 	/**
 	 * Transition the PENDING operator with this id to ACTIVE; see {@link ApprovalOutcome} for the

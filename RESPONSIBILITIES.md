@@ -592,15 +592,24 @@ into **`notification`** (#382), which the edge drives through `notification::api
 #128) and the `is_admin` platform-admin flag — and the **operator↔venue ownership mapping**,
 now writable (creator-owns-on-create). Answer five things for the rest of the system: *does
 this operator own this venue?*, *which operators are awaiting approval?*, *which accounts
-exist for an admin to act on?* (invariant #13), — since #357 — *what is the ACTIVE
-operator with this id called?*, so the edge can revoke its sessions **before** a suspension
-commits rather than only after, and — since #693 — *does this venue have an `ACTIVE`
+exist for an admin to act on?* (invariant #13), — since #357 — *what is the operator with
+this id called, if it is in the status the caller expects?* (`usernameInStatus`), so the edge
+can revoke its sessions **before** a session-revoking transition (suspend, and since #694
+reject) commits rather than only after, and — since #693 — *does this venue have an `ACTIVE`
 owner?* (`VenueVisibility`, the one home of the platform rule *a venue is visible to
 tourists iff its owning operator is ACTIVE*; a venue with no ownership row answers no,
 fail-closed). `venue` fences its catalogue reads with it and `booking` its reserve path;
-sold-booking paths never consult it. A suspension **keeps** the operator's
-`operator_venue` rows — it is reversible, and ownership resolves ACTIVE-only anyway — but
-it does hide the operator's venues from tourists until reinstatement (#693).
+sold-booking paths never consult it. **Since #694 the single `ACTIVE` predicate is three
+explicit sets, each at its owner:** the edge's may-authenticate set (`ACTIVE`+`PENDING` —
+approval gates tourist visibility, not console access), ownership resolution's may-operate
+set (`ACTIVE`+`PENDING`, `OperatorDirectory` — a `PENDING` operator owns and works what it
+creates), and the tourist-visible set (`ACTIVE` only, `VenueVisibility` — deliberately NOT
+widened). The published status token (`OperatorStatus`, promoted to `vocabulary/`) is what
+lets each predicate live with its owner. A suspension **keeps** the operator's
+`operator_venue` rows — it is reversible, and a suspended operator resolves to nothing
+either way — but it does hide the operator's venues from tourists until reinstatement
+(#693). `ApprovalOutcome.Rejected` carries the username for the same reason `Changed` does:
+a `PENDING` operator can hold a live session, and the edge must revoke it.
 
 Since #375 an approval also **reports the approved operator's stored contact email**, on
 `ApprovalOutcome.Approved` — the same move `OperatorLifecycleOutcome.Changed` made for the username,
@@ -628,11 +637,11 @@ it — composing and sending a mail — is emphatically not (below).
   verifies the old password, encodes the new one, and calls the `setPassword` I already
   published. That is the boundary working, not a gap in it.
 - **Invalidating live sessions** when an account loses the right to them (suspension,
-  credential rotation, an operator changing its own password #326) → the **platform edge**
+  rejection #694, credential rotation, an operator changing its own password #326) → the **platform edge**
   (`PrincipalSessionRevoker`, #128). I report *that the transition happened* and *whose* it
   was; deleting `SPRING_SESSION` rows is session machinery and I never import
   `org.springframework.session`
-- **Telling an approved operator that it can now sign in** (#375) → the **platform edge**
+- **Telling an approved operator that its venues are now live** (#375; copy reworded by #693) → the **platform edge**
   (`OperatorApprovalMail`) driving **`notification`**. Same split as the line above, and for the same
   reason: I report *that the approval happened* and *which address it registered with*; deciding to
   mail, building the sign-in link, and delivering it are not mine. I import no mail type

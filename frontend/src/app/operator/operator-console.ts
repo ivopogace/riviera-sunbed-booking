@@ -16,6 +16,7 @@ import { TouchTarget } from '../shared/touch-target';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { ConsoleVenueMap } from './console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
+import { PendingApprovalBanner } from './pending-approval-banner';
 import { PendingRequestsStore } from './pending-requests-store';
 
 /** A console tab: its child-route path, its label, and whether it carries the live Requests badge. */
@@ -44,7 +45,14 @@ interface ConsoleTab {
  */
 @Component({
   selector: 'app-operator-console',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConsoleStatsStrip, TouchTarget],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    ConsoleStatsStrip,
+    PendingApprovalBanner,
+    TouchTarget,
+  ],
   templateUrl: './operator-console.html',
   styleUrl: './operator-console.scss',
   host: { 'data-riv-theme': 'porcelain' },

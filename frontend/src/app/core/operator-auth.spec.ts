@@ -56,6 +56,27 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     expect(auth.restoring()).toBe(false);
   });
 
+  it('reports pendingApproval from the restored principal status (#694)', async () => {
+    const auth = TestBed.inject(OperatorAuth);
+    httpMock
+      .expectOne(`${AUTH_API}/me`)
+      .flush({ username: 'sereno', principalType: 'OPERATOR', operatorStatus: 'PENDING' });
+    await Promise.resolve();
+
+    expect(auth.signedIn()).toBe(true);
+    expect(auth.pendingApproval()).toBe(true);
+  });
+
+  it('pendingApproval is false for an ACTIVE principal and when signed out (#694)', async () => {
+    const auth = serviceWithRestore({ username: 'operator' });
+    await Promise.resolve();
+
+    expect(auth.pendingApproval()).toBe(false);
+
+    auth.sessionLost();
+    expect(auth.pendingApproval()).toBe(false);
+  });
+
   it('does NOT adopt a CUSTOMER /me principal — a customer session never signs an operator in (F2)', async () => {
     // /me is polymorphic; OperatorAuth must filter to its own principal type.
     const auth = TestBed.inject(OperatorAuth);

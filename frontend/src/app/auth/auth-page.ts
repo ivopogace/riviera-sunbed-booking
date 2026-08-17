@@ -109,9 +109,9 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
             heading="Registration submitted for approval"
             testId="auth-pending"
           >
-            Thanks — we’ve received your operator registration. Because operators manage real venues
-            and payments, a platform admin reviews each request. You’ll be able to sign in once your
-            account is approved, and can set up your beach map then.
+            Thanks — we’ve received your operator registration. Sign in with your new credentials to
+            set up your venue and beach map right away. A platform admin reviews each registration;
+            your venue is shown to tourists once your account is approved.
             <button
               appTouchTarget
               outcomeCta
@@ -511,14 +511,25 @@ export class AuthPage {
       }
       return;
     }
-    // No session is established: the account is PENDING until a platform admin approves it.
+    // The 202 itself is session-less (D-8); a PENDING account signs in immediately (#694).
     const result = await this.operatorAuth.register(identifier, password, contactEmail);
-    if (result === 'submitted') {
-      this.model.set({ identifier: '', contactEmail: '', password: '' });
-      this.submittedForApproval.set(true);
-    } else {
+    if (result !== 'submitted') {
       this.error.set(operatorRegisterMessage(result));
+      return;
     }
+    // Auto-sign-in: fresh registration lands in the console; a duplicate fails like any sign-in (D-8).
+    const signIn = await this.operatorAuth.signIn(identifier, password);
+    this.model.set({ identifier: '', contactEmail: '', password: '' });
+    if (signIn === 'signed-in') {
+      await this.land(await this.operatorLandingRoute());
+      return;
+    }
+    if (signIn === 'invalid-credentials' || signIn === 'rate-limited') {
+      this.error.set(signInFailureMessage(signIn));
+      return;
+    }
+    // Registration accepted but the sign-in transport failed → the submitted card.
+    this.submittedForApproval.set(true);
   }
 
   private async land(url: string): Promise<void> {

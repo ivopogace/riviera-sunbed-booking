@@ -28,7 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * The admin approval surface (design D-5). The demoted bootstrap operator is the platform ADMIN
  * (is_admin via V29); it lists pending registrations and approves/rejects them under the role-gated,
  * NOT-venue-scoped {@code /api/admin/operators/**} surface (invariant #13's admin exemption). Approval
- * flips PENDING→ACTIVE and ENABLES login; reject flips PENDING→REJECTED and keeps login blocked; a plain
+ * flips PENDING→ACTIVE (since #694 that gates tourist visibility — a PENDING operator already signs
+ * in); reject flips PENDING→REJECTED and blocks login; a plain
  * OPERATOR (no ADMIN authority) is {@code 403}. Real Postgres via Testcontainers (full Flyway chain incl.
  * V29); each login carries a unique {@code X-Forwarded-For} so suite traffic never shares a rate bucket.
  */
@@ -82,14 +83,14 @@ class OperatorApprovalIT {
 	}
 
 	@Test
-	void approveEnablesLogin() throws Exception {
+	void approveKeepsLoginWorkingOnBothSides() throws Exception {
 		long id = registerPending("appr-alice");
-		login("appr-alice", PENDING_PW).andExpect(status().isUnauthorized()); // PENDING cannot log in yet
+		login("appr-alice", PENDING_PW).andExpect(status().isOk()); // PENDING already signs in (#694)
 
 		mvc.perform(post("/api/admin/operators/{id}/approve", id).cookie(adminSession()).with(csrf()))
 				.andExpect(status().isNoContent());
 
-		login("appr-alice", PENDING_PW).andExpect(status().isOk()); // ACTIVE now → login works
+		login("appr-alice", PENDING_PW).andExpect(status().isOk()); // ACTIVE → login still works
 	}
 
 	@Test
