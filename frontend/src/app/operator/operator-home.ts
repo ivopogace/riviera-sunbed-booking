@@ -16,6 +16,7 @@ import { OwnedVenue, OwnedVenues } from '../core/owned-venues';
 import { landingRouteFor, safeReturnUrl } from '../shared/auth-landing';
 import { CardGlass } from '../shared/card-glass';
 import { RetryButton } from '../shared/retry-button';
+import { PendingApprovalBanner } from './pending-approval-banner';
 import { VenueCreateCard } from './venue-create-card';
 
 /**
@@ -36,13 +37,14 @@ import { VenueCreateCard } from './venue-create-card';
  */
 @Component({
   selector: 'app-operator-home',
-  imports: [RouterLink, CardGlass, RetryButton, VenueCreateCard],
+  imports: [RouterLink, CardGlass, RetryButton, PendingApprovalBanner, VenueCreateCard],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section
       class="mx-auto flex min-h-[70vh] max-w-[520px] flex-col justify-center px-4 py-10"
       aria-labelledby="operator-home-title"
     >
+      <app-pending-approval-banner />
       @if (failed()) {
         <div
           appCardGlass

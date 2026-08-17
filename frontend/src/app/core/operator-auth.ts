@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { inject, Service } from '@angular/core';
+import { computed, inject, Service } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { CURRENT_PASSWORD_REQUIRED_MESSAGE, PASSWORD_LENGTH_MESSAGE } from './customer-auth';
@@ -111,6 +111,12 @@ export class OperatorAuth extends SessionAuth {
   /** The signed-in operator's username, or undefined when signed out (the base's principal name). */
   readonly username = this.principalName;
 
+  /**
+   * True while the signed-in operator awaits admin approval (`operatorStatus === 'PENDING'`):
+   * the whole console works, but its venues stay hidden from tourists until approval (#694).
+   */
+  readonly pendingApproval = computed(() => this.currentPrincipal()?.operatorStatus === 'PENDING');
+
   /** Fire the one-time restore once `principalType` is set (field-initializer, a valid DI context). */
   protected readonly restoreOnStartup = this.restore();
 
@@ -146,8 +152,9 @@ export class OperatorAuth extends SessionAuth {
   /**
    * Self-register an operator account. The backend creates a PENDING account and does NOT
    * sign in — a fresh and an already-taken username both return 202 with no session (non-enumeration,
-   * D-8) — so this establishes no principal and always resolves to `submitted` on a 2xx. The account
-   * can sign in only once a platform admin approves it.
+   * D-8) — so this establishes no principal and always resolves to `submitted` on a 2xx. The
+   * register surface follows up with a normal {@link signIn} using the same credentials: a PENDING
+   * account authenticates (#694), and a duplicate username surfaces as a plain failed sign-in.
    */
   async register(
     username: string,

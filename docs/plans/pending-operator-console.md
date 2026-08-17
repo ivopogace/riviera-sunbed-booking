@@ -134,17 +134,15 @@ retires); operator sign-in gains a case. Backend registration is untouched.
 
 ## Open questions / Assumptions
 
-- **Assumption:** the pending banner (wire `operatorStatus` + console notice) is wanted — issue
-  #694 delegates this to the slice ("the slice decides"); shipping it because an operator whose
-  venue is invisible to tourists otherwise has no explanation. — *Owner:* session · *Resolves
-  by:* user review of the PR (flagged in the PR description)
-- **Assumption:** promoting `OperatorStatus` to `vocabulary/` supersedes `OperatorAccount`'s
-  "must not cross the seam" Javadoc note; that note's *decision* (booleans on the admin list
-  wire) is kept — only its rationale sentence is updated. — *Owner:* session · *Resolves by:*
-  phase 1
-- **Assumption:** self-service password change joins the may-operate set (a signed-in PENDING
-  operator can rotate its own credential) — consistency with "the entire operator console".
-  — *Owner:* session · *Resolves by:* phase 2
+### Resolved
+
+- **Pending banner + placement:** maintainer approved (2026-08-17, AskUserQuestion in-session)
+  the banner on the operator home **and** the console shell, with `operator-console.scss`'s
+  migrate-on-touch **deferred** to follow-up issue #698 per the `riviera-tailwind` deferral rule.
+- **`OperatorStatus` promoted to `vocabulary/`** superseding `OperatorAccount`'s "must not cross
+  the seam" note (rationale sentence updated, wire boolean kept) — shipped in phase 1 (`a0d977b`).
+- **Password change joins the login set** (a signed-in PENDING operator can rotate its own
+  credential) — shipped in phase 2 (`4229861`, `allowsAPendingAccountToChangeItsPassword`).
 
 ## Availability & concurrency (invariant #2)
 
@@ -219,9 +217,9 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 
 ## Execution status
 
-**Stage pointer:** implement (phase 5)
+**Stage pointer:** implement (phase 6)
 
-**Next action:** phase 5 red — FE auto-sign-in + pending banner specs
+**Next action:** phase 6 — mocked e2e rewrite (`operator-registration.e2e.ts`)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -230,7 +228,7 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 | 2 — ownership resolves for the may-operate set; console end-to-end | ✅ | (this commit) |
 | 3 — reject revocation bracket + #128 regressions | ✅ | (this commit) |
 | 4 — `operatorStatus` on the wire principal | ✅ | (this commit) |
-| 5 — FE auto-sign-in + pending banner | | |
+| 5 — FE auto-sign-in + pending banner | ✅ | (this commit) |
 | 6 — mocked e2e rewrite | | |
 | 7 — docs close-out (RESPONSIBILITIES/CONTEXT/Javadoc) + gates | | |
 
@@ -293,8 +291,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/pending-approval-banner.spec.ts` — AC-11
 - `frontend/src/app/operator/pending-approval-banner.a11y.spec.ts` — banner a11y
 - `frontend/src/app/operator/operator-home.ts` — renders the banner
-- `frontend/src/app/operator/operator-home.spec.ts` — AC-11
-- `frontend/src/app/operator/**` — the console shell file that hosts the banner (exact file confirmed at phase 5)
+- `frontend/src/app/operator/operator-console.ts` — imports the banner (SCSS migration deferred → #698)
+- `frontend/src/app/operator/operator-console.html` — hosts the banner above the tab outlet
+- `frontend/src/app/auth/auth-page.a11y.spec.ts` — fallback-card flow update
 - `frontend/e2e/operator-registration.e2e.ts` — flow rewrite (AC-10 e2e)
 - `frontend/e2e/**` — any sibling spec asserting the retired pending card or PENDING-cannot-sign-in mock
 - `RESPONSIBILITIES.md` — §`operator` (resolution sets; reject bracket)
@@ -501,6 +500,7 @@ retired card)
 | 2026-08-17 | phase 1 (`OperatorCredential` shape change) | every reader of `OperatorCredential.active()` or the `OperatorStatus` type, enumerated by grep + the compiler after the field change | `grep -rn "\.active()\|OperatorStatus" platform/src` | `OperatorUserDetailsService` (login gate → may-authenticate set), `OperatorAccountController` (password-change gate → kept ACTIVE-only, widens in phase 2), `JdbcOperators` (mapper + SQL predicates → SQL swept in phase 2's audit), `OperatorAccountProvisioningIT`, `OperatorCredentialInitializerTest`, `OperatorAccountControllerTest`, `OperatorLifecycleIT` (mechanical updates) | fixed all; no reader left deriving the old ACTIVE-only boolean |
 | 2026-08-17 | phase 2 (may-operate resolution) | every SQL predicate on `operator.status` in the adapter + every edge status comparison | `grep -n "status" platform/src/main/java/ai/riviera/platform/operator/adapter/out/JdbcOperators.java` + phase-1's repo grep | widened: `idByOperableUsername`, `OperatorAccountController` (login set). Deliberately kept: `hasActiveOwner`/`venuesWithActiveOwner` (#693 fence, ACTIVE-only), `accounts()` (admin list of decided accounts), `pendingOperators()` (approval queue), `activeUsernameById` (suspend pre-revoke; reject bracket lands in phase 3), guarded lifecycle transitions | each site judged against the three-set split; none left implicitly coupled |
 | 2026-08-17 | phase 3 (reject revocation) | every lifecycle transition endpoint that removes the right to a session | `grep -n "PostMapping" AdminOperatorController.java` → approve/reject/suspend/reinstate | reject (now bracketed), suspend (already bracketed), approve + reinstate (deliberately no revoke — rights are kept/restored); customer-side erasure revocation is separate edge machinery, untouched | reject bracketed; no other transition removes session rights un-revoked |
+| 2026-08-17 | phase 5 (`AuthPrincipal` gains `operatorStatus`) | every consumer of `AuthPrincipal` / the auth-state signals | `grep -rn "AuthPrincipal" frontend/src` | `session-auth.ts` (interface + base), `operator-auth.ts` (new `pendingApproval`), `customer-auth.ts` (untouched — field optional, customer paths never read it), specs/fakes (compile-driven) | optional field; no consumer breaks; banner is the one new reader |
 
 ---
 
