@@ -70,7 +70,7 @@ export abstract class SessionAuth {
   /** Whether the signed-in principal is a platform admin; false when signed out / not admin. */
   readonly isAdmin = computed(() => this.principal()?.admin ?? false);
   /** The raw signed-in principal, for subclass-specific reads; undefined when signed out. */
-  protected readonly currentPrincipal = computed(() => this.principal());
+  protected readonly currentPrincipal = this.principal.asReadonly();
 
   /** The principal type this service owns; a `/me` principal is adopted only when it matches. */
   protected abstract readonly principalType: string;

@@ -524,11 +524,11 @@ export class AuthPage {
       await this.land(await this.operatorLandingRoute());
       return;
     }
-    if (signIn === 'invalid-credentials') {
+    if (signIn === 'invalid-credentials' || signIn === 'rate-limited') {
       this.error.set(signInFailureMessage(signIn));
       return;
     }
-    // Registration accepted but sign-in incomplete (rate limit/transport) → the submitted card.
+    // Registration accepted but the sign-in transport failed → the submitted card.
     this.submittedForApproval.set(true);
   }
 

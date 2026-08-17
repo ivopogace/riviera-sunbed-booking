@@ -267,6 +267,18 @@ describe('AuthPage', () => {
       expect(el('auth-form')).not.toBeNull();
     });
 
+    it('shows the wait-a-minute message when the auto-sign-in is rate-limited', async () => {
+      await render({ audience: 'operator', mode: 'register' });
+      operator.signIn.mockResolvedValue('rate-limited');
+      type('auth-identifier', 'sereno');
+      type('auth-contact-email', 'ops@sereno.al');
+      type('auth-password', 'password123');
+      await submit();
+
+      expect(el('auth-error').textContent).toContain('wait a minute');
+      expect(el('auth-form')).not.toBeNull();
+    });
+
     it('falls back to the submitted card when the auto-sign-in cannot complete', async () => {
       await render({ audience: 'operator', mode: 'register' });
       operator.signIn.mockResolvedValue('error');

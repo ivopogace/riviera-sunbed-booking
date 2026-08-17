@@ -106,7 +106,9 @@ for `feature/pending-operator-console` per the riviera-sdlc remote addendum).
 - No change to commission handling (#692 shipped it), payout math, or any money path.
 - No admin-console change beyond the reject revocation: the accounts list still shows only
   ACTIVE/SUSPENDED (PENDING lives in the approval queue), and suspend still targets ACTIVE only.
-- No approval-mail rewording (done in #693) and no new mail on rejection.
+- No new mail on rejection. (The approval mail's opening line — "you can sign in now" —
+  turned out to still carry the pre-#694 contract and was reworded as review finding F-4;
+  the venues-now-live body from #693 is unchanged.)
 - No native-app or SSO work; the operator login remains username/password.
 
 ## Behavior-parity ledger (retirement / replacement slices only)
@@ -118,7 +120,7 @@ retires); operator sign-in gains a case. Backend registration is untouched.
 |---|---|---|
 | `202` → `submittedForApproval` card (`auth-pending` testId) with back-to-sign-in button | changed | replaced by auto-sign-in with the just-entered credentials → navigate via the existing `operatorLandingRoute` helper; the card remains only as the fallback if the auto-sign-in errors for a non-credential reason |
 | Form fields cleared after `202` | preserved | cleared after the auto-sign-in attempt is issued (credentials read into locals first) |
-| Duplicate username → same `202` → same card (indistinguishable) | changed | same `202`, then the auto-sign-in fails (wrong password for the existing account) → the normal failed-sign-in error; no new oracle — sign-in was already publicly attemptable (settled at intake, #694) |
+| Duplicate username → same `202` → same card (indistinguishable) | changed | same `202`, then the auto-sign-in fails (wrong password for the existing account) → the normal failed-sign-in error. **Honest security note (review finding F-5):** the register→sign-in *pair* now reveals whether a username was taken (the sign-in succeeds iff the registration was fresh) — an existence signal D-8's register endpoint alone still does not give. This is inherent to PENDING-may-authenticate itself (not the FE auto-sign-in) and was the maintainer's intake decision in #694; the probe also costs the prober the username (a fresh probe claims it as a PENDING account visible in the admin queue). Recorded here so the trade-off is stated accurately, not as "no new oracle". |
 | Register validation errors (password policy, missing fields) rendered on the card | preserved | untouched — validation happens before the `202` path |
 | PENDING operator manually signing in later → generic 401 | changed | signs in successfully (AC-1); the "cannot sign in until approved" copy in the e2e/mocks retires |
 | Approved operator sign-in → console landing | preserved | untouched path (`operatorLandingRoute`) |
@@ -221,9 +223,21 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 
 ## Execution status
 
-**Stage pointer:** CI gate — awaiting green on `62e48d7`, then ready-for-review
+**Stage pointer:** review gate ran — findings fixed; Sonar re-check after the fix push, then merge close-out
 
-**Next action:** verify CI on `62e48d7`, mark PR #697 ready for review, run the Review gate (`references/pr-gates.md` §1)
+**Next action:** confirm CI + Sonar (API issue list) on the review-fix push, tick the PR gates, merge, close out
+
+**Review gate record (2026-08-17):** invocation ladder rung 1 — the `code-review` Skill probe
+succeeded and ran at high effort; it declared itself a single-pass inline review (its
+multi-agent fan-out could not run in this session) — recorded as a degraded aspect, not a
+skipped gate. `riviera-review-overlay` layered on top: all three reference banks walked
+(backend RV-BE-1..18, frontend RV-FE-1..9/E2E, contract RV-CT-1..5, RV-PROC-1, RV-STYLE-1/2)
+— highest-stakes items: RV-BE-1 n/a (no availability write), RV-BE-9 clean (`assertOwns`
+unchanged, `CrossVenueDenialIT` green, denial uniform), RV-BE-18 clean (reject bracket mirrors
+suspend, pinned by `OperatorRejectionRevocationIT` + the controller ordering test), RV-FE-8
+grep clean (no new cross-feature edge), RV-FE-7 deferral maintainer-approved (#698). Six
+findings (F-4..F-9 in the register), all resolved in the review-fix commit; F-5's decision
+stands per the maintainer's #694 intake settlement with the rationale corrected.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -244,7 +258,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | CI (hygiene, run 32068244247) | plan doc's File structure omitted three phase-1 test paths | fixed-in-`1787746` |
 | F-2 | CI (backend, run 32068351427) | `OperatorApprovalIT.approveEnablesLogin` still pinned the retired PENDING-cannot-log-in contract — scoped runs missed it; swept the test tree for sibling assertions (none) | fixed-in-`4229861` |
-| F-3 | CI (frontend, run 32070791451) | phase-5 push went out with the OLD mocked e2e specs (4 failures: registration, unified-auth register, both suspension specs' seed) — the rewrite was already planned as phase 6; sequencing miss, not a new defect | fixed-in-phase-6 commit |
+| F-3 | CI (frontend, run 32070791451) | phase-5 push went out with the OLD mocked e2e specs (4 failures: registration, unified-auth register, both suspension specs' seed) — the rewrite was already planned as phase 6; sequencing miss, not a new defect | fixed-in-`7c1d5ca` |
+| F-4 | review gate | operator-approved mail still opened with "you can sign in now" (+ stale `OperatorApprovalMail` Javadoc, `OperatorLifecycleIT` comment) — falsified by PENDING-signs-in | fixed-in-review-fix commit |
+| F-5 | review gate | the ledger's "no new oracle" rationale was wrong: the register→sign-in pair does reveal username existence; inherent to PENDING-may-authenticate, maintainer's intake decision — rationale corrected, surfaced in the PR record | fixed (doc) — decision stands per #694 intake |
+| F-6 | review gate | unused `OperatorStatus` import in `OperatorAccountController` | fixed-in-review-fix commit |
+| F-7 | review gate | rate-limited auto-sign-in silently fell back to the "sign in right away" card with no wait hint | fixed: rate-limited now shows the wait-a-minute message; only transport errors reach the fallback card |
+| F-8 | review gate | e2e rewrite dropped the admin pending-queue axe scan + the contactEmail row assertion | fixed: both restored in `operator-registration.e2e.ts` |
+| F-9 | review gate | `currentPrincipal` as a pass-through `computed()` | fixed: `principal.asReadonly()` |
 
 ---
 
@@ -308,6 +328,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `docs/adr/ADR-0013-photo-moderation-trusted-operators.md` — amendment: the human gate moved to the visibility fence
 - `docs/architecture/auth-signin-register.md` — D-5 updated to the #694 contract
 - `.claude/skills/riviera-review-overlay/references/backend-conventions.md` — freshness patch: `activeUsername` → `usernameInStatus` citation
+- `platform/src/main/java/ai/riviera/platform/notification/adapter/out/SmtpMailer.java` — F-4: approval-mail opening reworded to the visibility flip
+- `platform/src/main/java/ai/riviera/platform/OperatorApprovalMail.java` — F-4: Javadoc states the visibility-flip news
 
 ---
 

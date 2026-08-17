@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
-import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**

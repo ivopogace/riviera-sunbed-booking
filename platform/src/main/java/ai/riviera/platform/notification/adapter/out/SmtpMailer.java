@@ -220,12 +220,13 @@ class SmtpMailer implements Mailer {
 	@Override
 	public void sendOperatorApproved(String toEmail, URI signInLink) {
 		send(toEmail, OPERATOR_APPROVED_SUBJECT, """
-				Your operator account has been approved — you can sign in now:
-
-				%s
+				Your operator account has been approved.
 
 				Venues you own are now live and bookable by tourists, and any venue you
-				add goes live as soon as you create it.""".formatted(signInLink));
+				add goes live as soon as you create it. Manage them any time from the
+				operator console:
+
+				%s""".formatted(signInLink));
 	}
 
 	/**

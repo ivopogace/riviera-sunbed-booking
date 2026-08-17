@@ -57,6 +57,8 @@ test('a registering operator lands straight in the console and works it while PE
   await signIn.expectSignedInAs(ADMIN.username);
   await page.goto('/admin');
   await expect(page.getByTestId('admin-op-row')).toContainText(NEW_OP.username);
+  await expect(page.getByTestId('admin-op-row')).toContainText(NEW_OP.contactEmail);
+  await expectNoSeriousAxeViolations(page, 'admin pending queue');
   await page.getByRole('button', { name: 'Approve' }).click();
   await expect(page.getByTestId('admin-ops-empty')).toBeVisible();
 

@@ -148,7 +148,7 @@ class OperatorLifecycleIT {
 
 	/**
 	 * The approval outcome reports the address the operator registered with, so the edge can mail
-	 * it the "you can sign in now" notice without a second read — the same reasoning that put the
+	 * it the "your venues are now live" notice without a second read — the same reasoning that put the
 	 * username on {@link OperatorLifecycleOutcome.Changed}. The address comes from the
 	 * {@code RETURNING} clause of the PENDING-guarded {@code UPDATE}, which is what ties it to the call
 	 * that actually flipped the row rather than to the id that was asked about.
