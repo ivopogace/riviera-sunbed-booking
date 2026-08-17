@@ -13,7 +13,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
-import ai.riviera.platform.operator.domain.OperatorStatus;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.OperatorId;

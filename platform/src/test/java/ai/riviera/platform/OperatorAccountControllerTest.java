@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -319,7 +320,7 @@ class OperatorAccountControllerTest {
 	@Test
 	void refusesAnAccountThatIsNotActive() throws Exception {
 		when(accounts.findByUsername(OPERATOR_USERNAME)).thenReturn(Optional.of(new OperatorCredential(
-				OPERATOR_USERNAME, passwordEncoder.encode(CURRENT_PASSWORD), false, false)));
+				OPERATOR_USERNAME, passwordEncoder.encode(CURRENT_PASSWORD), OperatorStatus.SUSPENDED, false)));
 
 		mvc.perform(isolated(post(CHANGE_PASSWORD)).with(user(OPERATOR_USERNAME).roles("OPERATOR"))
 						.contentType(MediaType.APPLICATION_JSON)
@@ -358,7 +359,7 @@ class OperatorAccountControllerTest {
 
 	private void givenStoredCredential(String username, String rawPassword) {
 		when(accounts.findByUsername(username)).thenReturn(Optional.of(new OperatorCredential(
-				username, passwordEncoder.encode(rawPassword), true, BOOTSTRAP_USERNAME.equals(username))));
+				username, passwordEncoder.encode(rawPassword), OperatorStatus.ACTIVE, BOOTSTRAP_USERNAME.equals(username))));
 	}
 
 	private static String body(String currentPassword, String newPassword) {

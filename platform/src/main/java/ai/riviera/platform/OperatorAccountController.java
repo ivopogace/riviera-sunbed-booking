@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
@@ -133,7 +134,7 @@ class OperatorAccountController {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",
 					"The current password is incorrect.");
 		}
-		if (!existing.get().active()) {
+		if (existing.get().status() != OperatorStatus.ACTIVE) {
 			return ApiProblem.response(HttpStatus.CONFLICT, "ACCOUNT_NOT_ACTIVE",
 					"This account is not active.");
 		}

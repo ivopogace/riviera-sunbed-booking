@@ -219,14 +219,14 @@ APIs. Banner styled with Tailwind on the `--riv-*` tokens (porcelain console the
 
 ## Execution status
 
-**Stage pointer:** plan — plan doc authored, awaiting phase 0 commit + draft PR
+**Stage pointer:** implement (phase 2)
 
-**Next action:** commit this plan doc, push the branch, open the draft PR (#694)
+**Next action:** phase 2 red — `OperatorOwnershipIT` may-operate cases + `PendingOperatorConsoleIT`
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + draft PR | ⏳ | |
-| 1 — status published + may-authenticate set at the edge | | |
+| 0 — plan doc + draft PR | ✅ | 7947475 (PR #697 draft) |
+| 1 — status published + may-authenticate set at the edge | ✅ | (this commit) |
 | 2 — ownership resolves for the may-operate set; console end-to-end | | |
 | 3 — reject revocation bracket + #128 regressions | | |
 | 4 — `operatorStatus` on the wire principal | | |
@@ -487,6 +487,7 @@ retired card)
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-17 | phase 1 (`OperatorCredential` shape change) | every reader of `OperatorCredential.active()` or the `OperatorStatus` type, enumerated by grep + the compiler after the field change | `grep -rn "\.active()\|OperatorStatus" platform/src` | `OperatorUserDetailsService` (login gate → may-authenticate set), `OperatorAccountController` (password-change gate → kept ACTIVE-only, widens in phase 2), `JdbcOperators` (mapper + SQL predicates → SQL swept in phase 2's audit), `OperatorAccountProvisioningIT`, `OperatorCredentialInitializerTest`, `OperatorAccountControllerTest`, `OperatorLifecycleIT` (mechanical updates) | fixed all; no reader left deriving the old ACTIVE-only boolean |
 
 ---
 

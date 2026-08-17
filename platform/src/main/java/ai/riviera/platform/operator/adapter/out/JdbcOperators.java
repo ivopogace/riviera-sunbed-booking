@@ -18,8 +18,8 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
-import ai.riviera.platform.operator.domain.OperatorStatus;
 
 /**
  * JDBC adapter for the {@code operator} module's {@link Operators} port (ADR-0007 {@code adapter/out}).
@@ -67,15 +67,14 @@ class JdbcOperators implements Operators {
 
 	@Override
 	public Optional<OperatorCredential> credentialByUsername(String username) {
-		// Any status — the edge builds a disabled principal for a non-ACTIVE account so the framework
-		// rejects it before the password check. active is derived from the status token (invariant #6a);
+		// Any status — the edge derives its may-authenticate set from the returned token (RV-BE-11);
 		// is_admin drives the edge's ROLE_ADMIN grant.
 		return jdbc.sql("SELECT username, password_hash, status, is_admin FROM operator WHERE username = :username")
 				.param(USERNAME, username)
 				.query((rs, rowNum) -> new OperatorCredential(
 						rs.getString(USERNAME),
 						rs.getString("password_hash"),
-						OperatorStatus.ACTIVE.name().equals(rs.getString("status")),
+						OperatorStatus.valueOf(rs.getString("status")),
 						rs.getBoolean("is_admin")))
 				.optional();
 	}

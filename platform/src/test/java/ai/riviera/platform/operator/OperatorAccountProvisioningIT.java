@@ -12,6 +12,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Module test for the {@code operator} credential ports (AC-1/AC-2) against Testcontainers
  * Postgres — the real {@link OperatorAccounts}/{@link OperatorProvisioning} beans over
  * {@code JdbcOperators} and the V17 {@code password_hash} column. Proves provisioning stores a
- * per-operator credential, {@code findByUsername} reads it back with the right {@code active} flag,
+ * per-operator credential, {@code findByUsername} reads it back with the right lifecycle status,
  * rotation updates the stored hash, and the unknown/suspended edge cases behave. The hash here is an
  * arbitrary opaque token — this layer never encodes/verifies it (that is the edge's job).
  */
@@ -52,7 +53,7 @@ class OperatorAccountProvisioningIT {
 		OperatorCredential credential = accounts.findByUsername("prov-a").orElseThrow();
 		assertEquals("prov-a", credential.username());
 		assertEquals("{noop}hash-a", credential.passwordHash());
-		assertTrue(credential.active());
+		assertEquals(OperatorStatus.ACTIVE, credential.status());
 		// A freshly provisioned operator is ACTIVE and resolvable as an owning principal.
 		assertTrue(id.value() > 0);
 	}
@@ -78,12 +79,12 @@ class OperatorAccountProvisioningIT {
 	}
 
 	@Test
-	void suspendedAccountIsReturnedButInactive() {
+	void suspendedAccountIsReturnedWithItsStatus() {
 		provisioning.provision("prov-susp", "{noop}h");
 		jdbc.sql("UPDATE operator SET status = 'SUSPENDED' WHERE username = 'prov-susp'").update();
 
 		OperatorCredential credential = accounts.findByUsername("prov-susp").orElseThrow();
-		assertFalse(credential.active());
+		assertEquals(OperatorStatus.SUSPENDED, credential.status());
 	}
 
 	@Test
@@ -94,6 +95,6 @@ class OperatorAccountProvisioningIT {
 
 		OperatorCredential credential = accounts.findByUsername("prov-bare").orElseThrow();
 		assertNull(credential.passwordHash());
-		assertTrue(credential.active());
+		assertEquals(OperatorStatus.ACTIVE, credential.status());
 	}
 }
