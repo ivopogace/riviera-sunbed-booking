@@ -175,15 +175,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2 — full gate)
 
-**Next action:** port the live SCSS rules to utilities per the parity ledger
+**Next action:** full frontend gate (lint/format/test/build/mocked e2e) + docs freshness
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — computed-style baseline | ✅ | (scratch only, git-excluded; dump: 21 shell + 6 not-found selectors, 0 missing; hover probes + rendered boxes all ≥44px) |
-| 1 — migrate the console chrome | | |
-| 2 — diff + full frontend gate + docs freshness | | |
+| 1 — migrate the console chrome | ✅ | this branch (scoped: 4 spec files / 49 tests green; touch-target guard green; diff residuals = the three pre-argued benign classes, F-1) |
+| 2 — diff + full frontend gate + docs freshness | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -191,6 +191,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | Phase-1/2 diff | Residual computed-style deltas, all in three pre-argued benign classes: (a) `--tw-*` theme/utility custom props now enumerate in computed style; (b) `rounded-full` computes `calc(infinity*1px)` where SCSS said `999px` (both clamp to the half-box; the badge/tab rendered radii are identical) and `box-shadow` carries fully-transparent zero-size placeholder layers from the var chain; (c) `min-width: auto → 44px` on the header links/tabs from `appTouchTarget`'s `min-w-11` — the deliberate both-axes floor (parity ledger), rendered boxes byte-identical per the probe. One would-be delta pre-empted by the exact-twin norm: the header's border color is side-scoped (`border-b-(--riv-header-border)`) so the unpainted sides keep their currentColor | closed — no rendered difference (probes + boxes byte-identical) |
 
 ---
 
@@ -232,15 +233,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `operator-console.contrast.spec.ts`, `operator-console.a11y.spec.ts` · Delete
 `operator-console.scss`
 
-- [ ] **Step 1:** Port every live rule per the parity ledger: utilities in
+- [x] **Step 1:** Port every live rule per the parity ledger: utilities in
   `operator-console.html` (markers retained), `:host` display/background/ink/font to the
   component `host` class, active-tab utilities into the `routerLinkActive` string,
   `appTouchTarget` on the three header links and the tabs. Delete `styleUrl` + the SCSS.
-- [ ] **Step 2:** Contrast spec: repoint the header at the template; remove the two
+- [x] **Step 2:** Contrast spec: repoint the header at the template; remove the two
   dead-form rows. A11y spec: correct the stale docstring.
-- [ ] **Step 3:** Scoped verify: `npm test -- operator-console` (unit + a11y + contrast)
+- [x] **Step 3:** Scoped verify: `npm test -- operator-console` (unit + a11y + contrast)
   and `node scripts/check-touch-target.mjs --files frontend/src/app/operator/operator-console.html`.
-- [ ] **Step 4:** Commit; update execution status in the same commit window.
+- [x] **Step 4:** Commit; update execution status in the same commit window.
 
 ## Phase 2 — Verification
 

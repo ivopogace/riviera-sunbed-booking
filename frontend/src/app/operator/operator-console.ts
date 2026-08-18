@@ -54,8 +54,11 @@ interface ConsoleTab {
     TouchTarget,
   ],
   templateUrl: './operator-console.html',
-  styleUrl: './operator-console.scss',
-  host: { 'data-riv-theme': 'porcelain' },
+  host: {
+    'data-riv-theme': 'porcelain',
+    class:
+      'block min-h-full bg-(image:--riv-bg) text-(--riv-ink) [font-family:var(--riv-font),sans-serif]',
+  },
 })
 export class OperatorConsole {
   private readonly route = inject(ActivatedRoute);
