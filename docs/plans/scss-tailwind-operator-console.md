@@ -175,13 +175,13 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** plan authored — starting phase 0
+**Stage pointer:** implement (phase 1)
 
-**Next action:** write the git-excluded baseline scratch spec and capture `before.json`
+**Next action:** port the live SCSS rules to utilities per the parity ledger
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — computed-style baseline | | |
+| 0 — computed-style baseline | ✅ | (scratch only, git-excluded; dump: 21 shell + 6 not-found selectors, 0 missing; hover probes + rendered boxes all ≥44px) |
 | 1 — migrate the console chrome | | |
 | 2 — diff + full frontend gate + docs freshness | | |
 
@@ -212,7 +212,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** scratch only (`frontend/e2e/style-baseline.e2e.ts`, excluded from git)
 
-- [ ] **Step 1:** Load `playwright-cli`. Write a Playwright spec against the mocked suite
+- [x] **Step 1:** Load `playwright-cli`. Write a Playwright spec against the mocked suite
   config that mounts the console (`mockWholeConsole` + `signInAsOperator` from
   `e2e/support/operator-console.mocks`), navigates to a tab route, and dumps
   `getComputedStyle` (all properties) for every styled selector of the shell — host,
@@ -221,9 +221,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   footer — plus the venue-not-found card (host, card, title, intro, in-sentence link) via
   an invalid-venue route, plus state probes: hover on a header link (`text-decoration`)
   and an inactive tab (`color`).
-- [ ] **Step 2:** Run it on the **unmodified** tree → `before.json` under the session
+- [x] **Step 2:** Run it on the **unmodified** tree → `before.json` under the session
   scratchpad. Record entry count + zero missing selectors here.
-- [ ] **Step 3:** Update plan-doc execution status (commit the plan doc; scratch spec
+- [x] **Step 3:** Update plan-doc execution status (commit the plan doc; scratch spec
   stays excluded). Open the draft PR (the CI vehicle — no CI without a PR).
 
 ## Phase 1 — Migrate the console chrome
