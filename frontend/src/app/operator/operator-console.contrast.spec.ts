@@ -12,13 +12,15 @@ import {
  * background stops / header glass. Interactive chrome (venue-not-found card, active tab pill,
  * Requests badge, buttons) uses OPAQUE SOLID fills instead of translucent ones — the `css:S7924`
  * treatment — so both the WCAG maths and the static analyzer compute contrast without gradient
- * compositing. These values mirror the Tailwind utilities in `operator-console.html`; a colour
- * edit there must re-pass here.
+ * compositing. These values mirror the Tailwind utilities in `operator-console.html`, the host
+ * class in `operator-console.ts`, and the porcelain `--riv-*` tokens in `styles.scss`; a colour
+ * edit in any of the three must re-pass here.
  */
 
 const WHITE = '#ffffff';
 const INK = '#0a2a33'; // --riv-ink (porcelain)
 const BADGE_FILL = '#0a5f74';
+const SIGNOUT_HOVER_FILL = '#eef1f2';
 
 describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
   it('header wordmark ink meets AA on the porcelain header glass', () => {
@@ -42,6 +44,10 @@ describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
 
   it('Requests badge (white) meets AA on its solid teal fill', () => {
     expect(contrastRatio(WHITE, BADGE_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  it('sign-out ink meets AA on the hovered fill', () => {
+    expect(contrastRatio(INK, SIGNOUT_HOVER_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   it('inactive tab label (ink 0.7) meets AA over every porcelain background stop', () => {

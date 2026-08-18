@@ -36,8 +36,8 @@ are `data-testid` — and that the only open PRs are Dependabot bumps, no overla
 `riviera-plan-doc` (this template — forced the parity ledger below, which is where the
 dead-rule drops and the two deliberate posture changes are argued) · `tdd` (adapted: the
 red/green is the computed-style baseline diff — captured BEFORE the migration, re-diffed
-after) · `riviera-review-overlay` (review gate — runs on the finished diff; RV-FE-7 is the
-item this slice discharges) · `riviera-docs-freshness` (ran over this slice's diff —
+after) · `riviera-review-overlay` (review gate — ran at ready-for-review as the code-review
+skill's 5-agent fan-out + the frontend bank, findings F-2/F-3; RV-FE-7 discharged) · `riviera-docs-freshness` (ran over this slice's diff —
 1 finding: the `riviera-tailwind` SKILL.md remaining-SCSS inventory goes stale, 9→8 files;
 patched in this slice) · `riviera-tailwind` (migration checklist + idioms:
 `bg-(image:--riv-bg)` for the gradient var — bare `bg-(--x)` is a color — `text-[14px]`
@@ -112,15 +112,15 @@ convention is overridden by the remote-session branch mandate).
 | Old-surface behavior | Verdict | How the new surface does it, or why it's gone |
 |---|---|---|
 | Host paints the full-viewport porcelain gradient (`background: var(--riv-bg)` — an image var) + base ink + `--riv-font` family, `display:block; min-height:100%` | preserved | component `host` class: `block min-h-full bg-(image:--riv-bg) text-(--riv-ink) [font-family:var(--riv-font),sans-serif]` — the `image:` form is mandatory (bare `bg-(--x)` emits background-*color*); the `data-riv-theme="porcelain"` host attribute is untouched |
-| Sticky header above content (`z-index:20`) with porcelain glass (`--riv-header-glass` + 22px blur / 170% saturate + bottom border) | preserved | `sticky top-0 z-20 border-b border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]` — byte-identical to the shipped `operator-chrome.ts` header and this template's own footer |
+| Sticky header above content (`z-index:20`) with porcelain glass (`--riv-header-glass` + 22px blur / 170% saturate + bottom border) | preserved | `sticky top-0 z-20 border-b border-b-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]` — the `operator-chrome.ts`/footer treatment, except the border color is **side-scoped** (`border-b-(…)`) as F-1's one exact twin, so the unpainted sides keep their currentColor exactly as the SCSS left them. (Corrected at review F-2 — an earlier draft claimed byte-identity.) |
 | Header/tab/main content column: `max-width:1120px`, centered, fixed paddings; header row wraps | preserved | `mx-auto max-w-[1120px]` + per-surface padding utilities; `flex flex-wrap items-center justify-between gap-4` |
 | `box-sizing: border-box` on `.oc-tabs`/`.oc-main` | dropped | redundant — Tailwind preflight sets `border-box` globally; computed value identical |
 | Header links (`Create a venue`, `Admin`, `Change password`): 13px semibold ink, no underline, `hover:` underline; `display:inline-flex; align-items:center; min-height:44px` (the SCSS's own comment: inline min-height is a no-op) | changed | `appTouchTarget` + `inline-flex items-center text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline` — exactly `operator-chrome.ts`'s links. Two deliberate deltas: (a) `appTouchTarget` adds `min-w-11`, declaring the floor on **both** axes (rule 4; every link's text box already exceeds 44px width, so rendered boxes are unchanged — the e2e sweep measures); (b) plain SCSS `:hover` becomes v4 `hover:`, gated under `(hover:hover)` — hover styling never applied on touch-only devices anyway except via sticky tap-hover, and the gated form is the repo-wide shipped posture |
-| In-sentence "create a venue" link in the venue-not-found card (same `.oc-create-venue` class) | preserved | same utilities minus the directive: `inline-flex items-center min-h-11` keeps the computed box identical; as an inline-prose link it is 2.5.5's own exception, and the guard ignores `<a>` by design — no `data-touch-exempt` needed since the box still meets the floor |
+| In-sentence "create a venue" link in the venue-not-found card (same `.oc-create-venue` class) | preserved | same utilities minus the directive: `inline-flex items-center min-h-11` keeps the computed box identical; as an inline-prose link it is 2.5.5's own exception, and the guard ignores `<a>` by design — no `data-touch-exempt` needed since the box still meets the floor. The review gate raised #605 phase-4's convergence (in-sentence links carry `data-touch-exempt`, never a hand-rolled half floor) — not taken here because dropping the `min-h-11` would shrink the rendered line box, i.e. exactly the drift this slice forbids; parity with the shipped SCSS wins inside a no-drift slice (review F-3, no code change) |
 | Signed-in-as line: 13px soft ink, `strong` in full ink | preserved | utilities on the span + `<strong class="text-(--riv-ink)">` (the SCSS reached the `strong` anonymously; `operator-chrome.ts` precedent) |
 | Wordmark 19px/700/-0.01em + soft "Operator" span; brand column `line-height:1.15`; venue title 10px/600/0.2em uppercase faint ink, 4px top margin | preserved | utilities per element (`text-[19px] font-bold tracking-[-0.01em]`, `leading-[1.15]`, `mt-1 text-[10px] font-semibold tracking-[0.2em] uppercase text-(--riv-ink-faint)`) |
 | Pill tabs: 13.5px semibold soft ink, transparent bg + transparent 1px border, `border-radius:999px`, `padding:8px 15px`, `gap:7px`, `min-height:44px`; hover → full ink | changed | base utilities on the `<a>` (`rounded-full`, `hover:text-(--riv-ink)`) + `appTouchTarget` — same two deliberate deltas as the header links (min-width floor, `(hover:hover)` gating), same argument |
-| Active tab: opaque white pill, dark ink, hairline border `rgba(12,42,51,0.1)`, `0 2px 8px` shadow (the css:S7924 solid-fill treatment), via `routerLinkActive="oc-tab--active"` | preserved | `routerLinkActive` carries the utility string + the `oc-tab--active` marker (the `admin-console-tabs.ts` pattern); `ariaCurrentWhenActive="page"` untouched |
+| Active tab: opaque white pill, dark ink, hairline border `rgba(12,42,51,0.1)`, `0 2px 8px` shadow (the css:S7924 solid-fill treatment), via `routerLinkActive="oc-tab--active"` | preserved | `routerLinkActive` carries only the `oc-tab--active` marker; the active styling lives in `[&.oc-tab--active]:` arbitrary variants on the base class string — a deliberate deviation from `admin-console-tabs.ts` (which puts competing same-property utilities in the `routerLinkActive` string, a latent stylesheet-order coin flip this shape avoids: two classes beat one deterministically). `ariaCurrentWhenActive="page"` untouched. (Corrected at review F-2.) |
 | Requests badge: white 11.5px/700 on solid `#0a5f74`, `min-width:20px`, 20px tall, `line-height:1`, pill | preserved | `inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-[#0a5f74] px-1.5 text-[11.5px] font-bold leading-none text-white` |
 | Venue-not-found card: 440px white card, 22px radius, hairline border, `0 20px 50px` shadow, 24px/700 title, 14px/1.55 soft intro | preserved | utilities on the card/heading/paragraph; the white-card ink pairs stay pinned by the contrast spec's live rows |
 | Signed-out sign-in **form** styling: `.oc-field` (+ nested `input`), `.oc-signin-btn` (+ `(hover:hover)` brighten + reduced-motion guard), `.oc-form-error` | dropped | dead since S9 #277 moved the gate into `operatorSessionGuard` — the template has no form (`grep -rn "oc-field\|oc-signin-btn\|oc-form-error" frontend/src frontend/e2e` matches only the SCSS). The two contrast rows mirroring these colors go with them; the CTA-gradient stops remain pinned by the tourist-surface contrast specs that own them |
@@ -136,16 +136,20 @@ convention is overridden by the remote-session branch mandate).
 | R-3 | Angular emulated encapsulation: SCSS rules carried `[_ngcontent]` specificity, utilities are global single-class — a global rule that previously lost could now win | low | med | The migrated properties are element-local (no global rules target `.oc-*`; checked `styles.scss`/`app.scss`); the baseline diff would catch any flip | agent | closed — diff clean |
 | R-4 | Tailwind representation deltas (`rounded-full` → `calc(infinity*1px)`, `--tw-*` var enumeration, shadow placeholder layers) | high | low | Known-benign class from #691 F-1; normalize in the diff, mirror exact twins where cheap | agent | closed — F-1; the header border color side-scoped as the one cheap exact twin |
 | R-5 | Hygiene guards fire on the touched files (inline comments, TT-1/TT-2 touch-target declaration, plan-doc file structure) | med | low | One-line comments only; `appTouchTarget` on every `<button>`/interactive control the guard scopes; run all three guards + `check-plan-file-structure.mjs --diff origin/main` before pushing | agent | closed — all four guards exit 0 on the diff |
-| R-6 | Pruning the two dead-form contrast rows read as "retuning a test to match" at review | med | med | Only rows mirroring **deleted dead** rules are removed, argued here + in the ledger; every live-surface assertion is untouched; #691 F-4 is the header-repoint precedent | agent | open |
+| R-6 | Pruning the two dead-form contrast rows read as "retuning a test to match" at review | med | med | Only rows mirroring **deleted dead** rules are removed, argued here + in the ledger; every live-surface assertion is untouched; #691 F-4 is the header-repoint precedent | agent | closed — review gate ruled the removal legitimate: grep-verified the form was dead SCSS all along (no template form even at the oldest reachable commit), and both pruned color sets stay pinned by 5+ other live contrast specs |
 | R-7 | `host` class merge: adding a `class` key to a `host` object that already carries `data-riv-theme` could collide with encapsulation attributes | low | low | Host `class` metadata is additive in Angular; the porcelain attribute stays; a11y/unit specs + baseline diff confirm | agent | closed — specs green; diff clean |
 
 ## Open questions / Assumptions
 
+None open.
+
+### Resolved
+
 - **Assumption:** pruning the two dead-form contrast rows (with header repoint) satisfies
-  AC "the existing operator-console.contrast.spec.ts stays green" — the spec stays green
-  and every live assertion is untouched; dead-code tests mirror rules this slice deletes
-  as dead. — *Owner:* agent · *Resolves by:* review gate (flagged for the reviewer via
-  R-6; revert to keeping the rows if review disagrees)
+  AC "the existing operator-console.contrast.spec.ts stays green". — Resolved at the
+  review gate (R-6 closed): three independent review agents verified the form was dead
+  SCSS all along and both pruned color sets remain pinned by 5+ other live contrast
+  specs; no coverage lost. Recorded in the review-fix commit of this branch.
 
 ## Availability & concurrency (invariant #2)
 
@@ -175,9 +179,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** PR — merging main, marking ready for review
+**Stage pointer:** merge close-out — merged via PR #699
 
-**Next action:** merge latest origin/main, push, mark PR #699 ready → Review + Sonar gates
+**Next action:** none — slice complete (post-merge items are GitHub-only: issue #698
+auto-closes via the PR; no parent epic)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -191,6 +196,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | review gate (PR #699) | The gate ran as the code-review skill's 5-agent fan-out + `riviera-review-overlay` (frontend bank; every RV-FE-* item walked — no Blockers/Majors). Two real Minors, both plan-doc accuracy: the parity ledger's active-tab row described the `admin-console-tabs.ts` mechanism instead of the shipped `[&.oc-tab--active]:` arbitrary variants, and its sticky-header row claimed byte-identity while F-1 records the deliberate side-scoped border — both ledger rows corrected. Advisory items: the in-sentence link's hand-rolled `min-h-11` vs #605's `data-touch-exempt` convergence (kept — no-drift wins; ledger row expanded, F-3), a dedup suggestion for the repeated link utility string (declined — matches the shipped `operator-chrome.ts` precedent, no `@apply`/SCSS sharing involved), and one false positive (a `styles.scss` comment allegedly citing a missing spec — `home.contrast.spec.ts:211` has the case). Review verdicts also closed R-6 | fixed in the review-fix commit of this branch |
+| F-3 | review gate (PR #699) | Contrast-spec hardening from the comment-guidance walk: the spec header's "mirror" pointer now names all three sources (template utilities, the host class in `operator-console.ts`, the porcelain tokens in `styles.scss`), and the one live text pair without an assertion — sign-out's `hover:bg-[#eef1f2]` under full ink, a gap that predates this slice — gets its row, discharging the deleted SCSS header's "every text pair proven" promise | fixed in the review-fix commit of this branch |
+| F-4 | sonar gate (PR #699) | Quality Gate passed on the migration head; API-verified (not just the badge): 68 new lines analyzed, 0 issues, 0 hotspots, 0.0% duplication, 0 new bugs/vulnerabilities/smells. Coverage-on-new-code 0.0% is the styling-only shape (class attributes carry no executable lines). Re-verified after the review-fix push | closed |
 | F-1 | Phase-1/2 diff | Residual computed-style deltas, all in three pre-argued benign classes: (a) `--tw-*` theme/utility custom props now enumerate in computed style; (b) `rounded-full` computes `calc(infinity*1px)` where SCSS said `999px` (both clamp to the half-box; the badge/tab rendered radii are identical) and `box-shadow` carries fully-transparent zero-size placeholder layers from the var chain; (c) `min-width: auto → 44px` on the header links/tabs from `appTouchTarget`'s `min-w-11` — the deliberate both-axes floor (parity ledger), rendered boxes byte-identical per the probe. One would-be delta pre-empted by the exact-twin norm: the header's border color is side-scoped (`border-b-(--riv-header-border)`) so the unpainted sides keep their currentColor | closed — no rendered difference (probes + boxes byte-identical) |
 
 ---
@@ -255,7 +263,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   invalidates).
 - [x] **Step 4:** `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan
   doc staged) + the inline-comments and focus-posture guards on the diff.
-- [ ] **Step 5:** Update execution status; commit; push; merge latest `origin/main`;
+- [x] **Step 5:** Update execution status; commit; push; merge latest `origin/main`;
   mark the PR ready for review → run the Review + Sonar gates per
   `references/pr-gates.md`.
 
@@ -278,20 +286,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
