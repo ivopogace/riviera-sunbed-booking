@@ -62,28 +62,28 @@ convention is overridden by the remote-session branch mandate).
 > and (b) a one-time computed-style diff recorded in this plan doc. New permanent test
 > classes would duplicate what the contrast/e2e/touch-target suites already pin.
 
-- [ ] **AC-1:** Given the pre-migration baseline dump of `getComputedStyle` for every
+- [x] **AC-1:** Given the pre-migration baseline dump of `getComputedStyle` for every
   styled element of the console shell (signed-in header/tabs/badge/main/footer with an
   active tab and a Requests badge, plus the venue-not-found card), when the same dump
   runs post-migration, then the diff is empty apart from deltas argued benign in the
   Findings register. *Pinned by:* the Phase-2 diff procedure below (scratch spec, not
   committed).
-- [ ] **AC-2:** Given the migration, when `npm test` runs, then
+- [x] **AC-2:** Given the migration, when `npm test` runs, then
   `operator-console.spec.ts`, `operator-console.a11y.spec.ts` and
   `operator-console.contrast.spec.ts` pass — the contrast spec stays green with every
   live-surface assertion untouched; only the two rows asserting the **dead** sign-in
   form's colors (CTA-gradient submit, form-error ink) are removed with the dead rules
   they mirrored, and the spec header is repointed at the template (the #691 F-4
   precedent). *Pinned by:* those existing specs.
-- [ ] **AC-3:** Given the migration, when the mocked e2e suite runs, then
+- [x] **AC-3:** Given the migration, when the mocked e2e suite runs, then
   `touch-targets.e2e.ts` (the console sweep — measures every rendered control box),
   `operator-onboarding.e2e.ts`, `operator-daily.e2e.ts`, `operator-pricing.e2e.ts`,
   `operator-venue.e2e.ts`, `operator-payouts.e2e.ts` and the rest of the suite pass
   unmodified. *Pinned by:* those existing suites.
-- [ ] **AC-4:** Given the migration, when `git grep "styleUrl" frontend/src/app/operator/operator-console.ts`
+- [x] **AC-4:** Given the migration, when `git grep "styleUrl" frontend/src/app/operator/operator-console.ts`
   runs, then nothing matches and `operator-console.scss` is deleted. *Pinned by:* code
   review (RV-FE-7).
-- [ ] **AC-5:** Given the header links and tabs, when the touch-target declaration is
+- [x] **AC-5:** Given the header links and tabs, when the touch-target declaration is
   checked, then each interactive control carries `[appTouchTarget]` (replacing the SCSS's
   hand-tuned `min-height: 44px`), the in-sentence "create a venue" link keeps its rendered
   box, and `node scripts/check-touch-target.mjs --files frontend/src/app/operator/operator-console.html`
@@ -131,13 +131,13 @@ convention is overridden by the remote-session branch mandate).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Silent computed-style drift (a dropped `cursor`, a wrong shadow, a lost `letter-spacing`) | med | high | Full-surface `getComputedStyle` baseline diff (Phase 0 vs Phase 2): signed-in shell with active tab + badge, venue-not-found card, hover/focus probes on a header link and a tab | agent | open |
-| R-2 | The two deliberate posture deltas (`hover:` gating, `min-w-11`) read as drift in the diff | high | low | Pre-argued in the parity ledger; the diff normalizes them as documented-benign; single-state renders are identical | agent | open |
-| R-3 | Angular emulated encapsulation: SCSS rules carried `[_ngcontent]` specificity, utilities are global single-class — a global rule that previously lost could now win | low | med | The migrated properties are element-local (no global rules target `.oc-*`; checked `styles.scss`/`app.scss`); the baseline diff would catch any flip | agent | open |
-| R-4 | Tailwind representation deltas (`rounded-full` → `calc(infinity*1px)`, `--tw-*` var enumeration, shadow placeholder layers) | high | low | Known-benign class from #691 F-1; normalize in the diff, mirror exact twins where cheap | agent | open |
-| R-5 | Hygiene guards fire on the touched files (inline comments, TT-1/TT-2 touch-target declaration, plan-doc file structure) | med | low | One-line comments only; `appTouchTarget` on every `<button>`/interactive control the guard scopes; run all three guards + `check-plan-file-structure.mjs --diff origin/main` before pushing | agent | open |
+| R-1 | Silent computed-style drift (a dropped `cursor`, a wrong shadow, a lost `letter-spacing`) | med | high | Full-surface `getComputedStyle` baseline diff (Phase 0 vs Phase 2): signed-in shell with active tab + badge, venue-not-found card, hover/focus probes on a header link and a tab | agent | closed — residuals are the three benign classes (F-1); probes + boxes byte-identical |
+| R-2 | The two deliberate posture deltas (`hover:` gating, `min-w-11`) read as drift in the diff | high | low | Pre-argued in the parity ledger; the diff normalizes them as documented-benign; single-state renders are identical | agent | closed — F-1: min-width is the only computed delta; rendered boxes identical |
+| R-3 | Angular emulated encapsulation: SCSS rules carried `[_ngcontent]` specificity, utilities are global single-class — a global rule that previously lost could now win | low | med | The migrated properties are element-local (no global rules target `.oc-*`; checked `styles.scss`/`app.scss`); the baseline diff would catch any flip | agent | closed — diff clean |
+| R-4 | Tailwind representation deltas (`rounded-full` → `calc(infinity*1px)`, `--tw-*` var enumeration, shadow placeholder layers) | high | low | Known-benign class from #691 F-1; normalize in the diff, mirror exact twins where cheap | agent | closed — F-1; the header border color side-scoped as the one cheap exact twin |
+| R-5 | Hygiene guards fire on the touched files (inline comments, TT-1/TT-2 touch-target declaration, plan-doc file structure) | med | low | One-line comments only; `appTouchTarget` on every `<button>`/interactive control the guard scopes; run all three guards + `check-plan-file-structure.mjs --diff origin/main` before pushing | agent | closed — all four guards exit 0 on the diff |
 | R-6 | Pruning the two dead-form contrast rows read as "retuning a test to match" at review | med | med | Only rows mirroring **deleted dead** rules are removed, argued here + in the ledger; every live-surface assertion is untouched; #691 F-4 is the header-repoint precedent | agent | open |
-| R-7 | `host` class merge: adding a `class` key to a `host` object that already carries `data-riv-theme` could collide with encapsulation attributes | low | low | Host `class` metadata is additive in Angular; the porcelain attribute stays; a11y/unit specs + baseline diff confirm | agent | open |
+| R-7 | `host` class merge: adding a `class` key to a `host` object that already carries `data-riv-theme` could collide with encapsulation attributes | low | low | Host `class` metadata is additive in Angular; the porcelain attribute stays; a11y/unit specs + baseline diff confirm | agent | closed — specs green; diff clean |
 
 ## Open questions / Assumptions
 
@@ -175,15 +175,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2 — full gate)
+**Stage pointer:** PR — merging main, marking ready for review
 
-**Next action:** full frontend gate (lint/format/test/build/mocked e2e) + docs freshness
+**Next action:** merge latest origin/main, push, mark PR #699 ready → Review + Sonar gates
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — computed-style baseline | ✅ | (scratch only, git-excluded; dump: 21 shell + 6 not-found selectors, 0 missing; hover probes + rendered boxes all ≥44px) |
 | 1 — migrate the console chrome | ✅ | this branch (scoped: 4 spec files / 49 tests green; touch-target guard green; diff residuals = the three pre-argued benign classes, F-1) |
-| 2 — diff + full frontend gate + docs freshness | ⏳ | |
+| 2 — diff + full frontend gate + docs freshness | ✅ | this branch (lint/format green — the sole Prettier warn is the git-excluded scratch spec; 164 files / 1466 unit tests; build green; mocked e2e 219/219; all four diff guards green; SKILL.md inventory 9→8) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -245,15 +245,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 2 — Verification
 
-- [ ] **Step 1:** Re-run the baseline spec → `after.json`; diff against `before.json`;
+- [x] **Step 1:** Re-run the baseline spec → `after.json`; diff against `before.json`;
   argue every residual delta benign in the Findings register or fix it. Never retune a
   test or the dump to match a regression.
-- [ ] **Step 2:** `npm run lint`, `npm run format:check`, `npm test`, `npm run build`,
+- [x] **Step 2:** `npm run lint`, `npm run format:check`, `npm test`, `npm run build`,
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
-- [ ] **Step 3:** Refresh the `riviera-tailwind` SKILL.md remaining-SCSS inventory
+- [x] **Step 3:** Refresh the `riviera-tailwind` SKILL.md remaining-SCSS inventory
   (9→8; `riviera-docs-freshness` sweep over the slice diff for anything else the deletion
   invalidates).
-- [ ] **Step 4:** `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan
+- [x] **Step 4:** `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan
   doc staged) + the inline-comments and focus-posture guards on the diff.
 - [ ] **Step 5:** Update execution status; commit; push; merge latest `origin/main`;
   mark the PR ready for review → run the Review + Sonar gates per
@@ -270,11 +270,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** baseline diff benign-only — recorded in the Findings register.
-- [ ] **AC-2:** `npm test` green; contrast spec live rows untouched.
-- [ ] **AC-3:** mocked e2e suite green, zero spec edits.
-- [ ] **AC-4:** `git grep "styleUrl" frontend/src/app/operator/operator-console.ts` → no match; SCSS deleted.
-- [ ] **AC-5:** touch-target guard green on the template; `touch-targets.e2e.ts` sweep green.
+- [x] **AC-1:** baseline diff benign-only — recorded in the Findings register.
+- [x] **AC-2:** `npm test` green; contrast spec live rows untouched.
+- [x] **AC-3:** mocked e2e suite green, zero spec edits.
+- [x] **AC-4:** `git grep "styleUrl" frontend/src/app/operator/operator-console.ts` → no match; SCSS deleted.
+- [x] **AC-5:** touch-target guard green on the template; `touch-targets.e2e.ts` sweep green.
 
 ## Self-review checklist (before merge / PR)
 
