@@ -224,6 +224,7 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | CI (`6c26cd8`) | `Frontend (lint + test + build)` red — the breakpoint-resize e2e failed | fixed-in-`9400cca` — the failure was the phase-0 commit's declared red-TDD state, resolved by phase 1's `ResizeObserver`; green on `6021244` |
 | F-2 | docs-freshness sweep | `riviera-tailwind` stated "8 `.scss` files under `frontend/src/app`"; #698 deleted `operator-console.scss`, leaving 7 | fixed-in-`6021244` |
+| F-3 | overlay walk (RV-FE-E2E) | Two new e2e specs read the pan state one-shot straight after a heading-visible wait. `.pannable`, the mask and `scroll-pl` come from a measurement one CD cycle later, so the still-pans test could read them before they applied — the flake class RV-FE-E2E names ("web-first `expect` auto-waiting, no fixed sleeps"). | fixed — the still-pans test now awaits the hint (same measurement) before reading; the fits-whole test awaits a laid-out tile first |
 
 ### Gate record
 

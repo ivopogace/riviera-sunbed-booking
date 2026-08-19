@@ -349,6 +349,8 @@ test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/venues/3');
   await expect(page.getByRole('heading', { name: 'Snug Cove' })).toBeVisible();
+  // Wait for the grid itself: the pan state is only meaningful once tiles have laid out.
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
 
   // The whole point of the breakout: the grid renders inside its viewport, so nothing pans...
   const state = await panState(page);
@@ -391,12 +393,14 @@ test('a venue too wide for the breakout still pans at a desktop viewport (#700)'
   await page.goto('/venues/1');
   await expect(page.getByRole('heading', { name: 'Panorama Bay' })).toBeVisible();
 
+  // The hint first — it shares the measurement with `.pannable`, so its arrival un-races the read.
+  await expect(page.getByTestId('scroll-hint')).toBeVisible();
+
   // 20 columns outgrow even the widened card, so the pan affordances stay exactly as before.
   const state = await panState(page);
   expect(state.overflows).toBe(true);
   expect(state.masked).toBe(true);
   expect(state.scrollPaddingLeft).toBe('16px');
-  await expect(page.getByTestId('scroll-hint')).toBeVisible();
 });
 
 test('the pan affordances follow the viewport across the breakout breakpoint (#700)', async ({
