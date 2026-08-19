@@ -1,4 +1,4 @@
-import { expect, Page, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 
@@ -77,9 +77,9 @@ function wideVenue() {
 }
 
 /**
- * A venue that FITS the #700 desktop breakout: 14 columns × 5 rows is the widest map the
- * 1100px card renders whole, and short enough that the wash scroller never overflows its
- * 532px cap — so "no hint" means no hint on either axis.
+ * A venue that FITS the #700 desktop breakout: 14 columns is the width the issue names, and
+ * the 1100px card renders it whole with room to spare (16 is the first width that pans). Five
+ * rows keeps it under the wash scroller's 532px cap, so "no hint" means no hint on either axis.
  */
 function fitVenue() {
   const sets: MapSet[] = [];
@@ -346,19 +346,19 @@ test('a vertical drag pans the wash scroller — rails ride along — and its re
 test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700)', async ({
   page,
 }) => {
+  // Already the suite's default; pinned explicitly because 1280 is this test's whole subject.
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/venues/3');
   await expect(page.getByRole('heading', { name: 'Snug Cove' })).toBeVisible();
   // Wait for the grid itself: the pan state is only meaningful once tiles have laid out.
   await expect(page.getByTestId('set-tile').first()).toBeVisible();
 
-  // The whole point of the breakout: the grid renders inside its viewport, so nothing pans...
+  // The whole point of the breakout: the grid renders inside its viewport, so nothing pans.
   const state = await panState(page);
   expect(state.overflows).toBe(false);
-  // ...and none of the three pan affordances is applied to a map that doesn't pan.
   await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
-  expect(state.masked).toBe(false);
-  expect(state.scrollPaddingLeft).toBe('auto');
+
+  // Mask/scroll-padding are the breakpoint test's — asserted here they'd pass before measuring.
 
   // Only the map card breaks out: the header and the legend keep the 780px page shell's width.
   const card = (await page.getByTestId('beach-grid').boundingBox())!;
@@ -366,6 +366,8 @@ test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700
   const legend = (await page.getByRole('list', { name: 'Legend' }).boundingBox())!;
   expect(card.width).toBeGreaterThan(head.width);
   expect(legend.width).toBeCloseTo(head.width, 0);
+  // The design canvas's number, pinned — the margin derives from it, so a shell edit can't drift it.
+  expect(card.width).toBeCloseTo(1100, 0);
 
   // A symmetric breakout, not a shift — the wider card stays centred on the header's axis.
   expect(card.x + card.width / 2).toBeCloseTo(head.x + head.width / 2, 0);

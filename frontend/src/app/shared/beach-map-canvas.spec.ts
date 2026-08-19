@@ -95,6 +95,8 @@ describe('BeachMapCanvas (#672)', () => {
 
   afterEach(() => {
     (globalThis as Record<string, unknown>)['ResizeObserver'] = previousResizeObserver;
+    // Each stub closes over a component instance — a retained array pins them for the worker's life.
+    StubResizeObserver.instances = [];
   });
 
   function render(): {
@@ -117,6 +119,24 @@ describe('BeachMapCanvas (#672)', () => {
     const el = host.querySelector<HTMLElement>('[data-testid="test-pan"]');
     expect(el).toBeTruthy();
     return el!;
+  }
+
+  function rowGrid(host: HTMLElement): HTMLElement {
+    const el = viewport(host).firstElementChild as HTMLElement | null;
+    expect(el).toBeTruthy();
+    return el!;
+  }
+
+  /**
+   * Model the real overflow seam: the tile grid is what has a width, and `.pannable` pads THAT
+   * grid — so a spec that seeds the viewport's `scrollWidth` instead cannot see the gate feeding
+   * on its own output. `padded` mirrors the 16px-a-side the class adds once the hint is on.
+   */
+  function seedGridWidth(host: HTMLElement, width: number, padded = false): void {
+    const grid = rowGrid(host);
+    Object.defineProperty(grid, 'scrollWidth', { value: width, configurable: true });
+    grid.style.paddingLeft = padded ? '16px' : '0px';
+    grid.style.paddingRight = padded ? '16px' : '0px';
   }
 
   function washScroller(host: HTMLElement): HTMLElement {
@@ -315,8 +335,8 @@ describe('BeachMapCanvas (#672)', () => {
     const { host, component, detect, fixture } = render();
     // jsdom measures 0 — give the viewport a real overflow through the DOM measurement seam.
     const vp = viewport(host);
-    Object.defineProperty(vp, 'scrollWidth', { value: 500 });
-    Object.defineProperty(vp, 'clientWidth', { value: 100 });
+    seedGridWidth(host, 500);
+    Object.defineProperty(vp, 'clientWidth', { value: 100, configurable: true });
     component.rows.set([...ROWS]);
     detect();
     await fixture.whenStable();
@@ -355,7 +375,7 @@ describe('BeachMapCanvas (#672)', () => {
     expect(observer.observed).toContain(vp);
 
     // A narrower viewport: rows are unchanged, so only the observer can notice the overflow.
-    Object.defineProperty(vp, 'scrollWidth', { value: 500, configurable: true });
+    seedGridWidth(host, 500);
     Object.defineProperty(vp, 'clientWidth', { value: 100, configurable: true });
     observer.fire();
     detect();
@@ -363,6 +383,28 @@ describe('BeachMapCanvas (#672)', () => {
 
     // ...and widening it back retires the hint, rather than leaving a cue that now lies.
     Object.defineProperty(vp, 'clientWidth', { value: 500, configurable: true });
+    observer.fire();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+  });
+
+  it('gates on the grid, not the padding .pannable adds to it, so the hint never sticks (#700)', async () => {
+    const { host, detect, fixture } = render();
+    const vp = viewport(host);
+    await fixture.whenStable();
+    detect();
+    const observer = StubResizeObserver.instances.at(-1)!;
+
+    // Narrow first, so the hint is on and `.pannable` is padding the grid by 16px a side.
+    seedGridWidth(host, 520);
+    Object.defineProperty(vp, 'clientWidth', { value: 400, configurable: true });
+    observer.fire();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeTruthy();
+
+    // Widen to a width the 520px grid fits but grid+32 would not: the old gate stuck on here.
+    seedGridWidth(host, 520, true);
+    Object.defineProperty(vp, 'clientWidth', { value: 540, configurable: true });
     observer.fire();
     detect();
     expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();

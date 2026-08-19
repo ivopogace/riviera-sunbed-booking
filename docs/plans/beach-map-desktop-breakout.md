@@ -138,10 +138,12 @@ the literal `feature/…` branch is deliberately not created.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The canvas measures overflow only on a rows change, so `pannable`/hint go stale on any viewport resize. Verified on `main` at HEAD: 1280→700 leaves `overflows:true` with `pannable:false, hint:false` (a map that pans with no affordance); 700→1280 leaves `overflows:false` with `pannable:true, hint:true` (a hint that lies). The breakout makes the ≥ 1280 case the *fits* case, so narrowing the window becomes the common path into the first failure. | high | med | Re-measure from a `ResizeObserver` on the pan viewport; pinned by AC-4 (e2e) + AC-5 (unit) | this slice | closed — fixed in phase 1 |
-| R-2 | A `ResizeObserver` whose callback writes signals could re-trigger itself ("undelivered notifications" loop). | low | med | Toggling `.pannable` changes only the mask, `scroll-padding-left` and the **child** grid's padding — never the observed viewport's own box — so the observer cannot re-fire from its own effect. The two states are also hysteretic (off→on needs `G > clientW`; on→off needs `G+32 ≤ clientW`), so no oscillation band exists. Verified by the e2e resize pin settling. | this slice | closed — the breakpoint-resize spec settles in both directions, no loop |
-| R-3 | jsdom has no `ResizeObserver`, so five specs that render the canvas (`beach-map-canvas`, `venue-map`, `layout-editor`, `daily-view-tab`, `set-editor`) would throw on construction. | high | high | Feature-guard the observer (`typeof ResizeObserver === 'undefined'` → skip); the canvas spec installs and **restores** its own stub, per `frontend/.claude/CLAUDE.md`'s "isolate stays false — anything a spec mutates globally, it restores itself". | this slice | open |
+| R-2 | A `ResizeObserver` whose callback writes signals could re-trigger itself ("undelivered notifications" loop). | low | med | Toggling `.pannable` changes only the mask, `scroll-padding-left` and the **child** grid's padding — never the observed viewport's own box — so the observer cannot re-fire from its own effect. The two states are also hysteretic (off→on needs `G > clientW`; on→off needs `G+32 ≤ clientW`), so no oscillation band exists. Verified by the e2e resize pin settling. | this slice | closed — no loop; but the hysteresis this row treated as a safeguard was itself the defect, caught at review as R-7 |
+| R-3 | jsdom has no `ResizeObserver`, so five specs that render the canvas (`beach-map-canvas`, `venue-map`, `layout-editor`, `daily-view-tab`, `set-editor`) would throw on construction. | high | high | Feature-guard the observer (`typeof ResizeObserver === 'undefined'` → skip); the canvas spec installs and **restores** its own stub, per `frontend/.claude/CLAUDE.md`'s "isolate stays false — anything a spec mutates globally, it restores itself" — the global **and** the stub's static instance array. | this slice | closed — full unit suite green (164 files / 1470 tests), so no leak and no unguarded construction |
 | R-4 | A fluid `vw`-based breakout overflows the page horizontally by the scrollbar width, because `100vw` counts the classic scrollbar that `documentElement.clientWidth` excludes. | med | med | Fixed `-mx-[184px]` at a breakpoint instead; `documentElement.scrollWidth > clientWidth` asserted false in the new e2e. | this slice | closed — `documentElement.scrollWidth > clientWidth` is false at 1280 |
 | R-5 | Existing #672/#674/#689 rendered-style pins break because the map card changed width. | med | med | Those tests use 20-column fixtures, which still overflow at 1100 px (measured `scrollWidth` 1266 vs `clientWidth` 966), so their `.pannable`, mask, snap and 16 px leading-tile assertions are unaffected. Whole suite re-run before push. | this slice | closed — all 6 venue-map-pan tests green, the #672/#674/#689 pins included |
+| R-7 | The overflow gate measured the **viewport's** `scrollWidth`, which `.pannable` inflates by 32 px of grid padding — so the gate fed on its own output and the hint/fade/scroll-padding stuck to a map that had come to fit, if the width was approached from below. R-2 examined exactly this feedback loop, concluded "hysteretic, no oscillation", and stopped: stability was true and irrelevant. | high | med | Gate on the grid's **unpadded** content width, making the answer independent of the class it sets; pinned by a mutation-checked unit spec | review gate | closed — fixed in the review round; verified live at the reviewer's 735–760 px band |
+| R-8 | Tailwind's `xl` is `80rem`, so a rem-based query drove a px-based card: under a 12 px root font it fired at a 960 px viewport, pushing the 1100 px card's left edge (and the row rail) off-screen with no `overflow-x` guard anywhere above it. | med | high | Px-matched query (`min-[1280px]:`) and a margin derived from 1100 px rather than hard-coded | review gate | closed — verified at a 12 px root: no early fire, no page overflow, card still exactly 1100 px |
 | R-6 | The breakout widens the card past the viewport on a 1280 screen once the page's own vertical scrollbar is counted. | low | high | 1100 px card inside a 1265 px usable width leaves ~82 px each side; asserted by the page-overflow check in the new e2e. | this slice | closed |
 
 ## Open questions / Assumptions
@@ -202,11 +204,12 @@ the repo forbids the decorator anyway).
 
 ## Execution status
 
-**Stage pointer:** `merge close-out — CI green, Sonar gate cleared; review gate blocked on
-subagent authorization`
+**Stage pointer:** `merge close-out — CI + Sonar green, review gate RUN, its 10 findings resolved;
+awaiting the maintainer to un-draft PR #707 and merge`
 
-**Next action:** Once the maintainer authorizes the `/code-review` subagent fan-out, run the
-review gate on PR #707, resolve any findings through the loop, then merge. Merged via PR #707.
+**Next action:** Maintainer un-drafts and merges PR #707 (this session cannot flip the draft
+flag — REST has no field for it and the proxy blocks that GraphQL mutation). This slice merges
+via PR #707.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -225,6 +228,16 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-1 | CI (`6c26cd8`) | `Frontend (lint + test + build)` red — the breakpoint-resize e2e failed | fixed-in-`9400cca` — the failure was the phase-0 commit's declared red-TDD state, resolved by phase 1's `ResizeObserver`; green on `6021244` |
 | F-2 | docs-freshness sweep | `riviera-tailwind` stated "8 `.scss` files under `frontend/src/app`"; #698 deleted `operator-console.scss`, leaving 7 | fixed-in-`6021244` |
 | F-3 | overlay walk (RV-FE-E2E) | Two new e2e specs read the pan state one-shot straight after a heading-visible wait. `.pannable`, the mask and `scroll-pl` come from a measurement one CD cycle later, so the still-pans test could read them before they applied — the flake class RV-FE-E2E names ("web-first `expect` auto-waiting, no fixed sleeps"). | fixed — the still-pans test now awaits the hint (same measurement) before reading; the fits-whole test awaits a laid-out tile first |
+| F-4 | review gate | **Blocker.** The gate measured the viewport's padded `scrollWidth`, feeding on its own output — the hint stuck on a map that fits (R-7) | fixed — gate on the grid's unpadded content width; new mutation-checked spec `gates on the grid, not the padding .pannable adds to it` |
+| F-5 | review gate | The docs-freshness "fix" was itself wrong: `git ls-files 'frontend/src/app/**/*.scss'` silently skips `app.scss` (zero intermediate dirs), so 8 was already correct and F-2 introduced the staleness it claimed to remove | fixed — reverted to 8; F-2 withdrawn |
+| F-6 | review gate | rem-based `xl` + px-based card: at a 12 px root font the breakout fired at 960 px and pushed the card off-screen (R-8) | fixed — `min-[1280px]:` px query, margin derived from 1100 px |
+| F-7 | review gate | `-mx-[184px]` was a magic number coupled to the shell's width/padding on line 1, with no test pinning the 1100 px result | fixed — `calc((100% - 1100px) / 2)` derives it; e2e now asserts the card is 1100 px |
+| F-8 | review gate | `fitVenue`'s TSDoc claimed 14 columns was the widest map that fits; 16 is the first that pans | fixed — wording corrected |
+| F-9 | review gate | Three fits-whole assertions read the component's *initial* signal state, so they pass before any measurement (the F-3 class, left in the sibling) | fixed — the vacuous mask/scroll-padding assertions removed, with a note that the breakpoint test proves them on real transitions |
+| F-10 | review gate | `StubResizeObserver.instances` never cleared in `afterEach`, pinning destroyed components for the worker's life | fixed — cleared alongside the global |
+| F-11 | review gate | Plan doc closed out contradictory: R-3 `open` beside a shipped mitigation, and a stage pointer saying the merge was both pending and done | fixed — this commit |
+| F-12 | review gate | `setViewportSize(1280×720)` is a no-op (already the suite default) | fixed — kept as an explicit pin, with a comment saying why |
+| F-13 | review gate | `Page` imported as a value where the suite's convention is `type Page` | fixed |
 
 ### Gate record
 
@@ -234,11 +247,11 @@ Skill-routing gate for what the fix touches *before* editing).
   `measures` non-empty (`new_lines: 21`) and the `SonarCloud Code Analysis` check-run
   `success`, which is what rules out the false-clean read (#318). `new_bugs 0 ·
   new_vulnerabilities 0 · new_code_smells 0 · new_duplicated_blocks 0 · new_coverage 100.0%`.
-- **Review gate:** **not run.** `/code-review`'s workflow fans out subagents and this session
-  carries a standing instruction not to use the Agent tool unless the user asks. Per
-  `pr-gates.md` §1 that is a blocker to declare rather than substitute silently, so the PR's
-  review checkbox is left unticked and the maintainer has been asked to authorize the
-  fan-out. The overlay's bank items were walked, which is explicitly **not** the gate.
+- **Review gate:** **RAN** — rung 1 of the invocation ladder (`Skill("code-review")`) was
+  probed and succeeded, so the full subagent fan-out executed over `origin/main...HEAD` at high
+  effort. It returned **10 findings**, all real and all fixed (F-4…F-13 above), including one
+  blocker the overlay walk had missed and one *incorrect* fix of mine it caught and reversed.
+  Re-walked RV-PROC-1 and the FE bank over the fix round.
 - **Overlay walk (content added to a review, never a review on its own).** FE scope:
   **RV-FE-1** ✅ no new component; the added `effect` + `onCleanup` is the v22 posture, no
   `@HostListener`, no `ngClass`/`ngStyle`, no redundant `standalone`/`OnPush`.
@@ -266,7 +279,9 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/venue/venue-map.html` — the `xl:` breakout utility on the tourist page's
   `<app-beach-map-canvas>` element
 - `frontend/src/app/shared/beach-map-canvas.ts` — measurement extracted to one method; a
-  `ResizeObserver` on the pan viewport re-runs it
+  `ResizeObserver` on the pan viewport re-runs it; the gate reads the grid's unpadded width
+- `frontend/src/app/shared/beach-map-canvas.html` — `#rowGrid` ref on the tile grid, so the
+  overflow gate can measure the grid rather than the viewport's self-inflated `scrollWidth`
 - `frontend/src/app/shared/beach-map-canvas.spec.ts` — the resize re-measure unit pin, with a
   self-restoring `ResizeObserver` stub
 - `frontend/e2e/venue-map-pan.e2e.ts` — the three new mocked-suite specs (fits-whole desktop
