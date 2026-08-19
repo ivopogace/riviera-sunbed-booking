@@ -56,7 +56,47 @@ class CanvasHost {
   readonly taps: string[] = [];
 }
 
+/**
+ * jsdom ships no `ResizeObserver`, so the canvas's resize re-measure has no seam to drive
+ * without one. This stub records the elements it was handed and exposes each instance's
+ * callback, letting a spec fire a resize deliberately. Installed and **restored** per test
+ * (`isolate` is false — one jsdom per worker, so a leaked global would reach later files).
+ */
+class StubResizeObserver {
+  static instances: StubResizeObserver[] = [];
+  readonly observed: Element[] = [];
+  disconnected = false;
+
+  constructor(private readonly callback: () => void) {
+    StubResizeObserver.instances.push(this);
+  }
+
+  observe(target: Element): void {
+    this.observed.push(target);
+  }
+
+  disconnect(): void {
+    this.disconnected = true;
+  }
+
+  fire(): void {
+    this.callback();
+  }
+}
+
 describe('BeachMapCanvas (#672)', () => {
+  let previousResizeObserver: unknown;
+
+  beforeEach(() => {
+    previousResizeObserver = (globalThis as Record<string, unknown>)['ResizeObserver'];
+    StubResizeObserver.instances = [];
+    (globalThis as Record<string, unknown>)['ResizeObserver'] = StubResizeObserver;
+  });
+
+  afterEach(() => {
+    (globalThis as Record<string, unknown>)['ResizeObserver'] = previousResizeObserver;
+  });
+
   function render(): {
     host: HTMLElement;
     component: CanvasHost;
@@ -301,6 +341,50 @@ describe('BeachMapCanvas (#672)', () => {
     component.dragPan.set(false);
     detect();
     expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+  });
+
+  it('re-measures the pan overflow when the viewport resizes (#700)', async () => {
+    const { host, detect, fixture } = render();
+    const vp = viewport(host);
+    await fixture.whenStable();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+
+    // The canvas observes the pan viewport itself — the element whose width the resize changes.
+    const observer = StubResizeObserver.instances.at(-1)!;
+    expect(observer.observed).toContain(vp);
+
+    // A narrower viewport: rows are unchanged, so only the observer can notice the overflow.
+    Object.defineProperty(vp, 'scrollWidth', { value: 500, configurable: true });
+    Object.defineProperty(vp, 'clientWidth', { value: 100, configurable: true });
+    observer.fire();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeTruthy();
+
+    // ...and widening it back retires the hint, rather than leaving a cue that now lies.
+    Object.defineProperty(vp, 'clientWidth', { value: 500, configurable: true });
+    observer.fire();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+  });
+
+  it('re-measures the vertical axis on resize too, and disconnects the observer on teardown (#700)', async () => {
+    const { host, detect, fixture } = render();
+    const wash = washScroller(host);
+    await fixture.whenStable();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+
+    // A width change also rescales --riv-tile, so rows can outgrow the wash cap with no row change.
+    const observer = StubResizeObserver.instances.at(-1)!;
+    seedVerticalOverflow(wash);
+    observer.fire();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeTruthy();
+
+    expect(observer.disconnected).toBe(false);
+    fixture.destroy();
+    expect(observer.disconnected).toBe(true);
   });
 
   it('projects the footer slot below the viewport and hides it with the grid when empty', () => {

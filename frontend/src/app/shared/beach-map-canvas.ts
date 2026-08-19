@@ -134,13 +134,30 @@ export class BeachMapCanvas {
     return !!el && el.scrollHeight > el.clientHeight + 1;
   }
 
+  /** Read both overflow axes from the live DOM; every piece of pan chrome is gated on this. */
+  private measureOverflow(): void {
+    const el = this.panViewport()?.nativeElement;
+    this.scrollHint.set(!!el && el.scrollWidth > el.clientWidth + 1);
+    this.vScrollHint.set(BeachMapCanvas.overflowsVertically(this.washScroller()?.nativeElement));
+  }
+
   constructor() {
     // Re-measure the pan overflow per render (jsdom reads 0 — the hint is proven in e2e).
     afterRenderEffect(() => {
       this.rows();
+      this.measureOverflow();
+    });
+
+    // A resize changes the overflow without changing rows, which the render effect can't see.
+    effect((onCleanup) => {
       const el = this.panViewport()?.nativeElement;
-      this.scrollHint.set(!!el && el.scrollWidth > el.clientWidth + 1);
-      this.vScrollHint.set(BeachMapCanvas.overflowsVertically(this.washScroller()?.nativeElement));
+      // jsdom has no ResizeObserver; that path is stubbed in the spec and real in the e2e.
+      if (!el || typeof ResizeObserver === 'undefined') {
+        return;
+      }
+      const observer = new ResizeObserver(() => this.measureOverflow());
+      observer.observe(el);
+      onCleanup(() => observer.disconnect());
     });
 
     // Capture-phase because template bindings bubble — the tile's handler would fire first.
