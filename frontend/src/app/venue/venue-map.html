@@ -142,9 +142,9 @@
         </div>
       </div>
 
-      <!-- Desktop breakout (#700): only the map card leaves the 780px shell, widening to the design's 1100px so a 14-column beach fits whole and panning goes back to being the oversized-venue affordance. The margin is derived from 1100px, not hard-coded, so re-sizing the shell above cannot silently mis-size the card. The query is px, matching the px width: Tailwind's rem-based `xl` would fire at a 960px viewport under a 12px root font and push the card off-screen. A vw-derived width is avoided too — 100vw counts the classic scrollbar. -->
+      <!-- Only the map card leaves the 780px shell, to the design's 1100px (#700); the margin derives from that width so a shell edit cannot drift it. The query is px to match: rem-based `xl` tracks the browser's default font size, firing at 960px on Chrome's "Small" setting. -->
       <app-beach-map-canvas
-        class="mt-[18px] block min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
+        class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         label="Beach map — {{ v.name }}"
       >
         <ng-template [appBeachMapRow]="rows()" let-row>

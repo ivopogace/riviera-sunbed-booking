@@ -113,7 +113,7 @@ export class BeachMapCanvas {
   private readonly panViewport = viewChild<ElementRef<HTMLElement>>('canvasViewport');
   /** The vertical wash scroller wrapping the rails and the viewport; the 2D pan's y-axis target. */
   private readonly washScroller = viewChild<ElementRef<HTMLElement>>('washScroller');
-  /** The tile grid inside the viewport — the overflow gate measures THIS, never the viewport's own scrollWidth. */
+  /** The tile grid inside the viewport — what the overflow gate measures. */
   private readonly rowGrid = viewChild<ElementRef<HTMLElement>>('rowGrid');
   /** True when the tile grid is wider than its viewport (drag hint + edge fade + snap padding). */
   protected readonly scrollHint = signal(false);
@@ -136,24 +136,13 @@ export class BeachMapCanvas {
     return !!el && el.scrollHeight > el.clientHeight + 1;
   }
 
-  /**
-   * The tile grid's own width, less the padding `.pannable` adds to it.
-   *
-   * <p>The viewport's `scrollWidth` is NOT usable here: turning `.pannable` on pads this grid by
-   * 32px, which lands in that `scrollWidth` and so feeds the gate its own output — leaving a
-   * 32px-wide band of viewport widths where the hint, fade and scroll padding stay applied to a
-   * map that now fits. Measuring the grid's unpadded content makes the gate a pure function of
-   * the tiles, so it answers the same whichever side the width was approached from.
-   */
-  private static contentWidth(grid: HTMLElement | undefined): number {
-    if (!grid) {
-      return 0;
-    }
+  /** The tile grid's own width, less whatever horizontal padding `.pannable` puts on it. */
+  private static contentWidth(grid: HTMLElement): number {
     const style = getComputedStyle(grid);
     return (
       grid.scrollWidth -
-      (parseFloat(style.paddingLeft) || 0) -
-      (parseFloat(style.paddingRight) || 0)
+      (Number.parseFloat(style.paddingLeft) || 0) -
+      (Number.parseFloat(style.paddingRight) || 0)
     );
   }
 
@@ -161,7 +150,7 @@ export class BeachMapCanvas {
   private measureOverflow(): void {
     const el = this.panViewport()?.nativeElement;
     const grid = this.rowGrid()?.nativeElement;
-    this.scrollHint.set(!!el && BeachMapCanvas.contentWidth(grid) > el.clientWidth + 1);
+    this.scrollHint.set(!!el && !!grid && BeachMapCanvas.contentWidth(grid) > el.clientWidth + 1);
     this.vScrollHint.set(BeachMapCanvas.overflowsVertically(this.washScroller()?.nativeElement));
   }
 

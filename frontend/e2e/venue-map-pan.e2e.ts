@@ -353,12 +353,11 @@ test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700
   // Wait for the grid itself: the pan state is only meaningful once tiles have laid out.
   await expect(page.getByTestId('set-tile').first()).toBeVisible();
 
-  // The whole point of the breakout: the grid renders inside its viewport, so nothing pans.
-  const state = await panState(page);
-  expect(state.overflows).toBe(false);
+  // Nothing pans, so none of the three affordances applies; the breakpoint test proves they move.
+  await expect.poll(async () => (await panState(page)).overflows).toBe(false);
+  await expect.poll(async () => (await panState(page)).masked).toBe(false);
+  await expect.poll(async () => (await panState(page)).scrollPaddingLeft).toBe('auto');
   await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
-
-  // Mask/scroll-padding are the breakpoint test's — asserted here they'd pass before measuring.
 
   // Only the map card breaks out: the header and the legend keep the 780px page shell's width.
   const card = (await page.getByTestId('beach-grid').boundingBox())!;
@@ -430,4 +429,5 @@ test('the pan affordances follow the viewport across the breakout breakpoint (#7
   await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
   await expect.poll(async () => (await panState(page)).overflows).toBe(false);
   await expect.poll(async () => (await panState(page)).masked).toBe(false);
+  await expect.poll(async () => (await panState(page)).scrollPaddingLeft).toBe('auto');
 });

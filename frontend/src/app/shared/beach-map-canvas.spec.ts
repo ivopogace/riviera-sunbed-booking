@@ -122,21 +122,22 @@ describe('BeachMapCanvas (#672)', () => {
   }
 
   function rowGrid(host: HTMLElement): HTMLElement {
-    const el = viewport(host).firstElementChild as HTMLElement | null;
+    const el = viewport(host).querySelector<HTMLElement>('.w-max');
     expect(el).toBeTruthy();
     return el!;
   }
 
   /**
-   * Model the real overflow seam: the tile grid is what has a width, and `.pannable` pads THAT
-   * grid — so a spec that seeds the viewport's `scrollWidth` instead cannot see the gate feeding
-   * on its own output. `padded` mirrors the 16px-a-side the class adds once the hint is on.
+   * Seed the tile grid's CONTENT width — what the gate must answer on. `padded` adds the
+   * 16px-a-side `.pannable` puts on the grid, which lands in `scrollWidth` on top of `content`:
+   * that sum is what a gate reading the raw `scrollWidth` would wrongly compare.
    */
-  function seedGridWidth(host: HTMLElement, width: number, padded = false): void {
+  function seedGridWidth(host: HTMLElement, content: number, padded = false): void {
     const grid = rowGrid(host);
-    Object.defineProperty(grid, 'scrollWidth', { value: width, configurable: true });
-    grid.style.paddingLeft = padded ? '16px' : '0px';
-    grid.style.paddingRight = padded ? '16px' : '0px';
+    const pad = padded ? 16 : 0;
+    Object.defineProperty(grid, 'scrollWidth', { value: content + 2 * pad, configurable: true });
+    grid.style.paddingLeft = `${pad}px`;
+    grid.style.paddingRight = `${pad}px`;
   }
 
   function washScroller(host: HTMLElement): HTMLElement {
@@ -402,7 +403,7 @@ describe('BeachMapCanvas (#672)', () => {
     detect();
     expect(host.querySelector('[data-testid="scroll-hint"]')).toBeTruthy();
 
-    // Widen to a width the 520px grid fits but grid+32 would not: the old gate stuck on here.
+    // Widen into the band: the 520px grid fits 540, but the padded 552 the old gate read does not.
     seedGridWidth(host, 520, true);
     Object.defineProperty(vp, 'clientWidth', { value: 540, configurable: true });
     observer.fire();
