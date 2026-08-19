@@ -239,6 +239,21 @@ Skill-routing gate for what the fix touches *before* editing).
   `pr-gates.md` §1 that is a blocker to declare rather than substitute silently, so the PR's
   review checkbox is left unticked and the maintainer has been asked to authorize the
   fan-out. The overlay's bank items were walked, which is explicitly **not** the gate.
+- **Overlay walk (content added to a review, never a review on its own).** FE scope:
+  **RV-FE-1** ✅ no new component; the added `effect` + `onCleanup` is the v22 posture, no
+  `@HostListener`, no `ngClass`/`ngStyle`, no redundant `standalone`/`OnPush`.
+  **RV-FE-5** ✅ the seat picker is untouched — tiles keep their `aria-label`, keyboard
+  activation and non-colour-only taken/walk-in treatment; axe runs on the new fits-whole
+  render. **RV-FE-7** ✅ one Tailwind utility, no new `.scss`, no `@apply`; no component with
+  legacy SCSS was touched, so migrate-on-touch doesn't fire; no drift risk (nothing restyled —
+  the card only changes width); no control added or resized, so the 44 px floor is unchanged.
+  **RV-FE-8** ✅ no new cross-feature import; the residual-five table is untouched.
+  **RV-FE-9** ➖ nothing is unmounted or disabled; `check-focus-posture.mjs` clean.
+  **RV-FE-E2E** ✅ after F-3 — coverage is in the CI-run mocked suite, role/test-id located,
+  `expect.poll` rather than sleeps. **RV-FE-2 / -3 / -4 / -6** ➖ no availability interaction,
+  money/date rendering, payment UI or form is touched. **RV-STYLE-1** ✅ guard clean.
+  **RV-STYLE-2** ➖ `prettier --check` clean, not the reviewer's call. **RV-PROC-1** ✅ Skills
+  consulted covers every touched area; re-walked after the F-3 fix.
 - **Draft flag:** this session could not flip it — REST has no field for it and the session
   proxy serves only a pinned set of PR-review GraphQL operations, so `gh pr ready` 403s.
   Noted in the PR body.
