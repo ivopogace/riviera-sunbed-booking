@@ -198,15 +198,15 @@ the repo forbids the decorator anyway).
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write the failing e2e for the desktop breakout, confirm it fails
-on the current template, then add `xl:-mx-[184px]`.
+**Next action:** Phase 1 — add the `ResizeObserver` re-measure to `BeachMapCanvas` so the
+breakpoint-resize e2e (currently red by design) and the new unit pin both pass.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Desktop breakout (AC-1, AC-2, AC-3, AC-7) | | |
-| 1 — Re-measure on resize (AC-4, AC-5, AC-6) | | |
+| 0 — Desktop breakout (AC-1, AC-2, AC-3, AC-7) | ✅ | see below |
+| 1 — Re-measure on resize (AC-4, AC-5, AC-6) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -239,29 +239,29 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `frontend/src/app/venue/venue-map.html:145` · Test
 `frontend/e2e/venue-map-pan.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — a `fitVenue()` fixture (14 columns × 5 rows, so
+- [x] **Step 1: Write the failing test** — a `fitVenue()` fixture (14 columns × 5 rows, so
   the grid neither overflows horizontally at 1100 px nor outgrows the 532 px wash cap) served
   at `/venues/3`, plus a spec asserting: the pan viewport does not overflow, no `scroll-hint`
   exists, the map card is wider than `.map-head` while `.map-head` and the legend keep the
   shell width, the card is centred on the header's axis, the page itself does not overflow
   horizontally, and axe is clean.
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts venue-map-pan`
   → FAIL: the viewport overflows (`scrollWidth` 894 > `clientWidth` 598) and `scroll-hint` is
   visible.
 
 > Scope: one spec file, not the whole mocked suite.
 
-- [ ] **Step 3: Minimal implementation** — on `venue-map.html`'s `<app-beach-map-canvas>`,
+- [x] **Step 3: Minimal implementation** — on `venue-map.html`'s `<app-beach-map-canvas>`,
   add `xl:-mx-[184px]` with a one-line comment deriving 184 from `(1100 − 732) / 2`.
 
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS (6 tests: 5 green, the phase-1 breakpoint-resize spec still red by design).
 
 > Scope (end-of-phase regression): the whole `venue-map-pan` spec file, so the #672/#674/#689
 > pins and the 20-column pan tests are re-proved against the wider card (R-5).
 
-- [ ] **Step 5: Generalization-audit pass**
+- [x] **Step 5: Generalization-audit pass**
 
 Population `every template that renders <app-beach-map-canvas>, i.e. every surface a
 card-width change could reach` → enumerate
@@ -271,9 +271,9 @@ operator/set-editor.html` → decision `tourist page only — the three operator
 inside the console shell, which the issue explicitly leaves at its current width; the
 breakout stays on the consumer, never on the shared component`. Append to the log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "Break the tourist beach-map card out to 1100px on desktop (#700)"`
+- [x] **Step 6: Commit** — `git commit -m "Break the tourist beach-map card out to 1100px on desktop (#700)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -330,6 +330,7 @@ candidates `<filled at execution>` → decision `<filled at execution>`. Append 
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-19 | phase 0 (breakout) | Every template that renders the shared canvas — the population a card-width change can reach, enumerated by the element name rather than by "pages that look like the map" | `git ls-files '*.html' '*.ts' \| xargs grep -l 'app-beach-map-canvas'` | 4: `venue/venue-map.html`, `operator/layout-editor.html`, `operator/daily-view-tab.html`, `operator/set-editor.html` (+ the component itself) | Tourist page only. The three operator surfaces render inside the console shell, which #700 leaves at its current width — so the breakout stays a utility on the consumer and never enters `shared/beach-map-canvas.ts`. |
 
 ---
 

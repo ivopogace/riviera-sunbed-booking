@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 
@@ -76,6 +76,56 @@ function wideVenue() {
   };
 }
 
+/**
+ * A venue that FITS the #700 desktop breakout: 14 columns × 5 rows is the widest map the
+ * 1100px card renders whole, and short enough that the wash scroller never overflows its
+ * 532px cap — so "no hint" means no hint on either axis.
+ */
+function fitVenue() {
+  const sets: MapSet[] = [];
+  let id = 0;
+  for (let r = 1; r <= 5; r++) {
+    for (let p = 1; p <= 14; p++) {
+      id += 1;
+      sets.push({
+        id,
+        rowLabel: `Row ${r}`,
+        positionNo: p,
+        tier: r === 1 ? 'PREMIUM' : 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: r === 1 ? 5000 : 3000, currency: 'EUR' },
+        gridX: p,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  return {
+    id: 3,
+    name: 'Snug Cove',
+    beach: 'Borsh',
+    region: 'Albanian Riviera',
+    description: 'A beach that fits a desktop screen whole.',
+    ratingTenths: 46,
+    reviewsCount: 34,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
+/** The pan viewport's overflow state and the three affordances gated on it. */
+async function panState(page: Page) {
+  return page.getByTestId('map-pan').evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      overflows: el.scrollWidth > el.clientWidth + 1,
+      masked: cs.maskImage !== 'none',
+      scrollPaddingLeft: cs.scrollPaddingLeft,
+    };
+  });
+}
+
 /** A venue tall enough (12 rows) that the wash scroller overflows its 532px cap. */
 function tallVenue() {
   const sets: MapSet[] = [];
@@ -113,6 +163,7 @@ function tallVenue() {
 test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: wideVenue() }));
   await page.route(/\/api\/venues\/2(\?.*)?$/, (route) => route.fulfill({ json: tallVenue() }));
+  await page.route(/\/api\/venues\/3(\?.*)?$/, (route) => route.fulfill({ json: fitVenue() }));
 });
 
 test('a plain click on a free tile opens the booking dialog (and the map is accessible)', async ({
@@ -290,4 +341,87 @@ test('a vertical drag pans the wash scroller — rails ride along — and its re
     .first()
     .click();
   await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/venues/3');
+  await expect(page.getByRole('heading', { name: 'Snug Cove' })).toBeVisible();
+
+  // The whole point of the breakout: the grid renders inside its viewport, so nothing pans...
+  const state = await panState(page);
+  expect(state.overflows).toBe(false);
+  // ...and none of the three pan affordances is applied to a map that doesn't pan.
+  await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+  expect(state.masked).toBe(false);
+  expect(state.scrollPaddingLeft).toBe('auto');
+
+  // Only the map card breaks out: the header and the legend keep the 780px page shell's width.
+  const card = (await page.getByTestId('beach-grid').boundingBox())!;
+  const head = (await page.locator('.map-head').boundingBox())!;
+  const legend = (await page.getByRole('list', { name: 'Legend' }).boundingBox())!;
+  expect(card.width).toBeGreaterThan(head.width);
+  expect(legend.width).toBeCloseTo(head.width, 0);
+
+  // A symmetric breakout, not a shift — the wider card stays centred on the header's axis.
+  expect(card.x + card.width / 2).toBeCloseTo(head.x + head.width / 2, 0);
+
+  // A vw-derived width would overrun the page by the scrollbar's width; this one must not.
+  const pageOverflowsX = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(pageOverflowsX).toBe(false);
+
+  await expectNoSeriousAxeViolations(page, 'beach map (fits whole, desktop breakout)');
+
+  // The map still books: fitting the screen changes layout, never the tile interaction.
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('a venue too wide for the breakout still pans at a desktop viewport (#700)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/venues/1');
+  await expect(page.getByRole('heading', { name: 'Panorama Bay' })).toBeVisible();
+
+  // 20 columns outgrow even the widened card, so the pan affordances stay exactly as before.
+  const state = await panState(page);
+  expect(state.overflows).toBe(true);
+  expect(state.masked).toBe(true);
+  expect(state.scrollPaddingLeft).toBe('16px');
+  await expect(page.getByTestId('scroll-hint')).toBeVisible();
+});
+
+test('the pan affordances follow the viewport across the breakout breakpoint (#700)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/venues/3');
+  await expect(page.getByRole('heading', { name: 'Snug Cove' })).toBeVisible();
+  await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+
+  // Below the breakpoint the card drops back to the shell width, so the same map now overflows.
+  await page.setViewportSize({ width: 900, height: 720 });
+  await expect(page.getByTestId('scroll-hint')).toBeVisible();
+  await expect.poll(async () => (await panState(page)).overflows).toBe(true);
+  await expect.poll(async () => (await panState(page)).masked).toBe(true);
+  await expect.poll(async () => (await panState(page)).scrollPaddingLeft).toBe('16px');
+
+  // Mobile: unchanged behaviour — the map pans and says so.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('scroll-hint')).toBeVisible();
+  await expect.poll(async () => (await panState(page)).overflows).toBe(true);
+
+  // Widening back past the breakpoint fits the map again, and the cue goes away with the need.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+  await expect.poll(async () => (await panState(page)).overflows).toBe(false);
+  await expect.poll(async () => (await panState(page)).masked).toBe(false);
 });
