@@ -122,7 +122,7 @@ describe('BeachMapCanvas (#672)', () => {
   }
 
   function rowGrid(host: HTMLElement): HTMLElement {
-    const el = viewport(host).querySelector<HTMLElement>('.w-max');
+    const el = viewport(host).querySelector<HTMLElement>('[data-map-grid]');
     expect(el).toBeTruthy();
     return el!;
   }
@@ -396,7 +396,7 @@ describe('BeachMapCanvas (#672)', () => {
     detect();
     const observer = StubResizeObserver.instances.at(-1)!;
 
-    // Narrow first, so the hint is on and `.pannable` is padding the grid by 16px a side.
+    // Narrow first, so the hint is on; the grid is seeded unpadded, which is the harder case.
     seedGridWidth(host, 520);
     Object.defineProperty(vp, 'clientWidth', { value: 400, configurable: true });
     observer.fire();

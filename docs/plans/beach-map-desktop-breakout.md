@@ -126,7 +126,7 @@ the literal `feature/…` branch is deliberately not created.
 |---|---|---|
 | Map card sits at the 780 px page shell's 732 px content width | **changed** | At a viewport ≥ 1280 px only: exactly 1100 px, via `min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]` on the canvas instance. Below 1280 px, byte-identical to today. |
 | Header, overview card, legend, failure/loading panels sit at the shell width | preserved | untouched — the breakout is one class on the canvas element, not on the shell |
-| `.pannable` (edge-fade mask + `scroll-pl-4`) applied iff the grid overflows horizontally | preserved | same `scrollHint()` binding; only *when it is recomputed* changes |
+| `.pannable` (edge-fade mask + `scroll-pl-4`) applied iff the grid overflows horizontally | **changed** | Same `scrollHint()` binding, but both *when* and *what* it measures changed: it now reads the grid's unpadded content instead of the viewport's padded `scrollWidth`, so across a 32 px band the answer flips from "overflows" to "fits" — deliberately, on all four canvas surfaces (R-7) |
 | Drag hint shown iff (horizontal **or** vertical overflow) **and** `dragPan` | preserved | same `@if` in `beach-map-canvas.html`, untouched |
 | Overflow measured once per render, on a rows change (`afterRenderEffect`) | **changed** | measurement extracted to one private method, called by that same `afterRenderEffect` **and** by a `ResizeObserver` on the pan viewport |
 | Overflow **not** re-measured on viewport resize → stale `pannable`/hint | dropped → **fixed** | see R-1: reproducible on `main` today; the breakout makes it reachable, so it is fixed here rather than left behind a slice that depends on it |
@@ -207,8 +207,8 @@ the repo forbids the decorator anyway).
 
 ## Execution status
 
-**Stage pointer:** `merge close-out — CI + Sonar green, review gate RUN, its 10 findings resolved;
-awaiting the maintainer to un-draft PR #707 and merge`
+**Stage pointer:** `merge close-out — CI + Sonar green on HEAD, review gate run three times and
+its findings resolved; awaiting the maintainer to un-draft PR #707 and merge`
 
 **Next action:** Maintainer un-drafts and merges PR #707 (this session cannot flip the draft
 flag — REST has no field for it and the proxy blocks that GraphQL mutation). This slice merges
@@ -218,7 +218,10 @@ via PR #707.
 |-------|--------|---------|
 | 0 — Desktop breakout (AC-1, AC-2, AC-3, AC-7) | ✅ | `6c26cd8` |
 | 1 — Re-measure on resize (AC-4, AC-5, AC-6) | ✅ | `9400cca` |
-| close-out — docs-freshness patch + plan final state | ✅ | `6021244` + this commit |
+| close-out — plan final state | ✅ | `6021244` (its SCSS edit later reverted), `aea3101`, `223d795` |
+| review round 1 — 10 findings | ✅ | `d881d77` |
+| review round 2 — 13 findings | ✅ | `a30ae4a` |
+| review round 3 — 11 findings | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -233,7 +236,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-3 | overlay walk (RV-FE-E2E) | Two new e2e specs read the pan state one-shot straight after a heading-visible wait. `.pannable`, the mask and `scroll-pl` come from a measurement one CD cycle later, so the still-pans test could read them before they applied — the flake class RV-FE-E2E names ("web-first `expect` auto-waiting, no fixed sleeps"). | fixed — the still-pans test now awaits the hint (same measurement) before reading; the fits-whole test awaits a laid-out tile first |
 | F-4 | review gate | **Blocker.** The gate measured the viewport's padded `scrollWidth`, feeding on its own output — the hint stuck on a map that fits (R-7) | fixed — gate on the grid's unpadded content width; new mutation-checked spec `gates on the grid, not the padding .pannable adds to it` |
 | F-5 | review gate | The docs-freshness "fix" was itself wrong: `git ls-files 'frontend/src/app/**/*.scss'` silently skips `app.scss` (zero intermediate dirs), so 8 was already correct and F-2 introduced the staleness it claimed to remove | fixed — reverted to 8; F-2 withdrawn |
-| F-6 | review gate | rem-based `xl` + px-based card: at a 12 px root font the breakout fired at 960 px and pushed the card off-screen (R-8) | fixed — `min-[1280px]:` px query, margin derived from 1100 px |
+| F-6 | review gate | rem-based `xl` + px-based card: under a 12 px **browser default font size** the breakout fired at a 960 px viewport and pushed the card off-screen (R-8) | fixed — `min-[1280px]:` px query, margin derived from 1100 px |
 | F-7 | review gate | `-mx-[184px]` was a magic number coupled to the shell's width/padding on line 1, with no test pinning the 1100 px result | fixed — `calc((100% - 1100px) / 2)` derives it; e2e now asserts the card is 1100 px |
 | F-8 | review gate | `fitVenue`'s TSDoc claimed 14 columns was the widest map that fits; 16 is the first that pans | fixed — wording corrected |
 | F-9 | review gate | Three fits-whole assertions read the component's *initial* signal state, so they pass before any measurement (the F-3 class, left in the sibling) | fixed — the vacuous mask/scroll-padding assertions removed, with a note that the breakpoint test proves them on real transitions |
@@ -245,7 +248,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-15 | review gate (round 2) | Nothing asserted `scroll-padding-left` returns to `auto` when a map stops overflowing — the deleted assertion was reassigned to a test that never had it | fixed — asserted on the breakpoint test's widen-back leg |
 | F-16 | review gate (round 2) | F-9's fix removed two assertions as vacuous while keeping a third with identical timing, so it cut coverage without cutting the risk | fixed — all three read the settled state via `expect.poll`; the breakpoint test remains what proves they *move* |
 | F-17 | review gate (round 2) | Sonar `typescript:S7773` ×2: prefer `Number.parseFloat` over the global | fixed |
-| F-18 | review gate (round 2) | A missing `#rowGrid` made `contentWidth` return 0, so a wiring error would read as "the map fits" on all four canvas surfaces | fixed — the gate requires `!!grid`, mirroring `overflowsVertically`'s shape; the unreachable `if (!grid)` branch is gone with it |
+| F-18 | review gate (round 2) | A missing `#rowGrid` made `contentWidth` return 0, so a wiring error would read as "the map fits" on all four canvas surfaces | **partly — and the register overclaimed it.** `!!grid` in the gate is behaviourally identical to the `return 0` it replaced (both yield "no hint"); what it buys is that the requirement is stated where the other one is, and that the unreachable branch is gone. The actual guard against the wiring error is the spec suite: `seedGridWidth` seeds the element the component reads, so a renamed or moved ref turns the overflow specs red |
 | F-19 | review gate (round 2) | The `rowGrid` spec helper located the grid positionally (`firstElementChild`) | fixed — anchored on the grid's own `.w-max` |
 | F-20 | review gate (round 2) | `contentWidth`'s TSDoc was 9 lines of decision archaeology against `riviera-java-conventions` §6d's ~3-line, no-history budget; same for `seedGridWidth` and the 490-char template comment | fixed — all three cut to their contract; the rationale lives here, as R-7/R-8 |
 | F-21 | review gate (round 2) | The template comment justified the px query with "a 12 px root font", which cannot move a media query — only the browser's **default** font size can | fixed — comment and R-8 both restated |
@@ -253,26 +256,53 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-23 | review gate (round 2) | The withdrawn F-2 row still asserted the false SCSS count as "fixed", contradicting F-5 two rows below | fixed — struck through and marked do-not-re-apply |
 | F-24 | review gate (round 2) | Risk register ordered R-1…R-5, R-7, R-8, R-6 | fixed — reordered |
 | F-25 | review gate (round 2) | `block` on the canvas instance duplicates the component's own host class | fixed — dropped; display stays a single-owner decision |
+| F-27 | review gate (round 3) | `expect.poll` returns on its **first** successful evaluation, so F-16's re-added negative assertions could never wait for a later application of the pan chrome — the premise was wrong, not just the wording | fixed — the fits-whole test keeps AC-1's two first-paint facts and says so; the breakpoint test is what proves the affordances move, since only a transition can |
+| F-28 | review gate (round 3) | F-18 was written up as a fix but `!!grid` is behaviourally identical to the `return 0` it replaced | fixed — F-18's row rewritten to say what actually changed and what really guards the wiring error |
+| F-29 | review gate (round 3) | The behavior-parity row for `.pannable` said "preserved — only *when* it is recomputed changes"; the R-7 fix also changed *what* is measured, flipping the answer across a 32 px band | fixed — row restated as **changed**, with the band and the four affected surfaces named |
+| F-30 | review gate (round 3) | File-structure row still described the reverted SCSS edit as slice work, inviting a resuming session to re-apply it | fixed — row says touched-and-restored |
+| F-31 | review gate (round 3) | The Sonar record reported the pre-fix tree and was contradicted by F-17 in the same commit | fixed — record now covers all rounds, names the S7773 regression as the reason the *list* matters, and marks the gate due again on the final head |
+| F-32 | review gate (round 3) | Execution status a round behind: "its 10 findings resolved", and `6021244` credited for work later reverted | fixed — stage pointer and phase table rewritten per round |
+| F-33 | review gate (round 3) | "12 more findings (F-14…F-26)" is 13 rows | fixed |
+| F-34 | review gate (round 3) | F-6 still attributed the early fire to "a 12 px root font", the phrasing F-21 corrects two rows below | fixed |
+| F-35 | review gate (round 3) | The sticky-hint spec's stage-1 comment described a padded grid while seeding an unpadded one | fixed |
+| F-36 | review gate (round 3) | `rowGrid` anchored on `.w-max`, a Tailwind sizing utility, one restyle from breaking every seeding spec | fixed — the grid carries `data-map-grid`, matching the file's `data-map-row` / `data-riv-scroller` convention |
+| F-37 | review gate (round 3) | The three-poll block was copy-pasted at three sites, paying three cross-process round trips for a non-atomic read | fixed — one `expect.poll(...).toEqual({…})` per site, which also names the diverging field |
 | F-26 | review gate (round 2) | *Not adopted:* measure a node `.pannable` provably never pads (an inner wrapper, or moving `px-4` to the viewport) rather than subtracting the padding arithmetically | **considered, not taken** — the only existing unpadded node is a projected row, and rows are **not** uniformly wide across surfaces (the canvas's own spec host renders ragged `<ul>`s), so measuring one would under-report the grid; moving `px-4` to the scroll container leans on end-padding behaviour that has historically been unreliable on horizontal scrollers. The subtraction reads *computed* padding, so it tracks any padding value the class sets; a future `.pannable` effect that is not padding would need this revisited, which R-7 now records |
 
 ### Gate record
 
 - **CI:** all 8 checks green on `6021244` (backend build+test, frontend lint/test/build,
   repo hygiene, CodeQL ×2, SonarCloud ×2).
-- **Sonar gate:** green **and its list cleared** — `api/issues/search` total `0`, with
-  `measures` non-empty (`new_lines: 21`) and the `SonarCloud Code Analysis` check-run
-  `success`, which is what rules out the false-clean read (#318). `new_bugs 0 ·
-  new_vulnerabilities 0 · new_code_smells 0 · new_duplicated_blocks 0 · new_coverage 100.0%`.
+- **Sonar gate:** re-pulled after every push, because each fix round re-triggers the analysis.
+  The round-1 fixes introduced two `typescript:S7773` smells (F-17), which is precisely why the
+  gate is the *list* and not the conclusion — the quality gate stayed green through them. On the
+  round-2 head the list is back to `total 0`, with `measures` non-empty and the `SonarCloud Code
+  Analysis` check-run `success` (the two facts that rule out the false-clean read, #318):
+  `new_bugs 0 · new_vulnerabilities 0 · new_code_smells 0 · new_duplicated_blocks 0 ·
+  new_coverage 100.0%`. **Due once more on this commit's head before merge.**
 - **Review gate:** **RAN** — rung 1 of the invocation ladder (`Skill("code-review")`) was
   probed and succeeded, so the full subagent fan-out executed over `origin/main...HEAD` at high
   effort. It returned **10 findings**, all real and all fixed (F-4…F-13 above), including one
   blocker the overlay walk had missed and one *incorrect* fix of mine it caught and reversed.
   Re-walked RV-PROC-1 and the FE bank over the fix round.
 - **Review gate, round 2** — the fix round re-entered at Implement, so the gate was re-run over
-  `223d795..HEAD`. It returned **12 more findings** (F-14…F-26), the sharpest being that the
+  `223d795..HEAD`. It returned **13 more findings** (F-14…F-26), the sharpest being that the
   round-1 mutation check was invalid: it had mutated the gate to a property jsdom leaves at 0,
   so the spec failed for the wrong reason and the padding subtraction was never actually pinned.
   All fixed or, in one case, deliberately not taken with the reasoning recorded.
+- **Review gate, round 3** — re-run over `d881d77..HEAD`; **11 findings**, all recorded as
+  F-27…F-37 and fixed. Two were substantive: `expect.poll` resolves on its **first** successful
+  evaluation, so round 2's "poll makes the negative assertions non-vacuous" premise was simply
+  wrong about Playwright's semantics; and F-18's `!!grid` guard was a behavioural no-op the
+  register had written up as a fix. The rest were the plan doc's own record lagging the round
+  that had just changed it.
+- **Stopping the re-review loop here, deliberately.** Across three rounds the *code* findings
+  converged hard — a shipped blocker, then an invalid test pin, then one real test-validity
+  point — while the *plan-doc record* findings did not, and structurally cannot: every fix round
+  invalidates the record of the round before it, so each pass manufactures its own next batch.
+  Per `pr-gates.md` §1's non-convergence rule the right move is to stop and say what is still
+  flagged rather than keep pushing. What is still flagged: nothing in the code. This section is
+  written against **this** commit; any later commit makes it stale again, which is the loop.
 - **Overlay walk (content added to a review, never a review on its own).** FE scope:
   **RV-FE-1** ✅ no new component; the added `effect` + `onCleanup` is the v22 posture, no
   `@HostListener`, no `ngClass`/`ngStyle`, no redundant `standalone`/`OnPush`.
@@ -307,8 +337,8 @@ Skill-routing gate for what the fix touches *before* editing).
   self-restoring `ResizeObserver` stub
 - `frontend/e2e/venue-map-pan.e2e.ts` — the three new mocked-suite specs (fits-whole desktop
   map; oversized venue still pans; affordances follow the viewport)
-- `.claude/skills/riviera-tailwind/SKILL.md` — the stale SCSS count (8 → 7), the one finding
-  from the docs-freshness sweep; #698 deleted `operator-console.scss` without updating it
+- `.claude/skills/riviera-tailwind/SKILL.md` — touched and then **restored**: the sweep's
+  SCSS-count "fix" was wrong (F-5) and is reverted, so the file is unchanged at HEAD
 
 ---
 

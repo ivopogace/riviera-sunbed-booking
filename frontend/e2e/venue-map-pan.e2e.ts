@@ -353,10 +353,8 @@ test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700
   // Wait for the grid itself: the pan state is only meaningful once tiles have laid out.
   await expect(page.getByTestId('set-tile').first()).toBeVisible();
 
-  // Nothing pans, so none of the three affordances applies; the breakpoint test proves they move.
-  await expect.poll(async () => (await panState(page)).overflows).toBe(false);
-  await expect.poll(async () => (await panState(page)).masked).toBe(false);
-  await expect.poll(async () => (await panState(page)).scrollPaddingLeft).toBe('auto');
+  // AC-1's two facts. Both are first-paint-true, so the breakpoint test owns the affordances.
+  expect((await panState(page)).overflows).toBe(false);
   await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
 
   // Only the map card breaks out: the header and the legend keep the 780px page shell's width.
@@ -415,9 +413,9 @@ test('the pan affordances follow the viewport across the breakout breakpoint (#7
   // Below the breakpoint the card drops back to the shell width, so the same map now overflows.
   await page.setViewportSize({ width: 900, height: 720 });
   await expect(page.getByTestId('scroll-hint')).toBeVisible();
-  await expect.poll(async () => (await panState(page)).overflows).toBe(true);
-  await expect.poll(async () => (await panState(page)).masked).toBe(true);
-  await expect.poll(async () => (await panState(page)).scrollPaddingLeft).toBe('16px');
+  await expect
+    .poll(() => panState(page))
+    .toEqual({ overflows: true, masked: true, scrollPaddingLeft: '16px' });
 
   // Mobile: unchanged behaviour — the map pans and says so.
   await page.setViewportSize({ width: 390, height: 844 });
@@ -427,7 +425,7 @@ test('the pan affordances follow the viewport across the breakout breakpoint (#7
   // Widening back past the breakpoint fits the map again, and the cue goes away with the need.
   await page.setViewportSize({ width: 1280, height: 720 });
   await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
-  await expect.poll(async () => (await panState(page)).overflows).toBe(false);
-  await expect.poll(async () => (await panState(page)).masked).toBe(false);
-  await expect.poll(async () => (await panState(page)).scrollPaddingLeft).toBe('auto');
+  await expect
+    .poll(() => panState(page))
+    .toEqual({ overflows: false, masked: false, scrollPaddingLeft: 'auto' });
 });
