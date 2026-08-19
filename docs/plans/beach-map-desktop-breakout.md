@@ -202,15 +202,17 @@ the repo forbids the decorator anyway).
 
 ## Execution status
 
-**Stage pointer:** `PR #707 (draft) — both phases built, heading to ready-for-review`
+**Stage pointer:** `merge close-out — CI green, Sonar gate cleared; review gate blocked on
+subagent authorization`
 
-**Next action:** Confirm the pushed CI run is green, mark PR #707 ready for review, then run
-the review gate (`/code-review`) and the Sonar gate.
+**Next action:** Once the maintainer authorizes the `/code-review` subagent fan-out, run the
+review gate on PR #707, resolve any findings through the loop, then merge. Merged via PR #707.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Desktop breakout (AC-1, AC-2, AC-3, AC-7) | ✅ | `6c26cd8` |
-| 1 — Re-measure on resize (AC-4, AC-5, AC-6) | ✅ | this commit |
+| 1 — Re-measure on resize (AC-4, AC-5, AC-6) | ✅ | `9400cca` |
+| close-out — docs-freshness patch + plan final state | ✅ | `6021244` + this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -220,7 +222,25 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (`6c26cd8`) | `Frontend (lint + test + build)` red — the breakpoint-resize e2e failed | fixed-in-`9400cca` — the failure was the phase-0 commit's declared red-TDD state, resolved by phase 1's `ResizeObserver`; green on `6021244` |
+| F-2 | docs-freshness sweep | `riviera-tailwind` stated "8 `.scss` files under `frontend/src/app`"; #698 deleted `operator-console.scss`, leaving 7 | fixed-in-`6021244` |
+
+### Gate record
+
+- **CI:** all 8 checks green on `6021244` (backend build+test, frontend lint/test/build,
+  repo hygiene, CodeQL ×2, SonarCloud ×2).
+- **Sonar gate:** green **and its list cleared** — `api/issues/search` total `0`, with
+  `measures` non-empty (`new_lines: 21`) and the `SonarCloud Code Analysis` check-run
+  `success`, which is what rules out the false-clean read (#318). `new_bugs 0 ·
+  new_vulnerabilities 0 · new_code_smells 0 · new_duplicated_blocks 0 · new_coverage 100.0%`.
+- **Review gate:** **not run.** `/code-review`'s workflow fans out subagents and this session
+  carries a standing instruction not to use the Agent tool unless the user asks. Per
+  `pr-gates.md` §1 that is a blocker to declare rather than substitute silently, so the PR's
+  review checkbox is left unticked and the maintainer has been asked to authorize the
+  fan-out. The overlay's bank items were walked, which is explicitly **not** the gate.
+- **Draft flag:** this session could not flip it — REST has no field for it and the session
+  proxy serves only a pinned set of PR-review GraphQL operations, so `gh pr ready` 403s.
+  Noted in the PR body.
 
 ---
 
@@ -374,8 +394,8 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] **Frontend** standards met; no `as any` on the contract; Tailwind used (no new `.scss`).
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
-      `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+      `merged via PR #707`, so no docs-only follow-up PR is needed after the merge.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
 
