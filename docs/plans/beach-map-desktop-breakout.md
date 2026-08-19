@@ -37,8 +37,10 @@ AC-2 is already-shipped `.pannable` behavior, so it is a regression guard, and t
 stale-measurement defect got written down instead of shipped silently) · `tdd` (each phase
 red-first: the failing e2e for the breakout, the failing unit spec for the re-measure) ·
 `riviera-review-overlay` (review gate — RV-FE-E2E for suite placement, run at ready-for-review)
-· `riviera-docs-freshness` (`N/A — no substrate doc states the map card's width or the
-canvas's measurement trigger; re-checked at close-out`) · `riviera-frontend` (placement:
+· `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, 1 finding — no substrate doc
+states the map card's width, the canvas's measurement trigger, or a count this slice grew,
+but the sweep caught `riviera-tailwind` still saying "8 `.scss` files" after #698 deleted
+`operator-console.scss`; patched to 7 here, per close-out step 5's fold-into-the-code-PR rule) · `riviera-frontend` (placement:
 the breakout utility belongs on the tourist page's canvas **instance**, never on the shared
 `shared/beach-map-canvas.ts`, which three operator surfaces also render) ·
 `riviera-tailwind` (utility-first — one arbitrary-value margin utility on the consumer, no
@@ -231,8 +233,10 @@ Skill-routing gate for what the fix touches *before* editing).
   `ResizeObserver` on the pan viewport re-runs it
 - `frontend/src/app/shared/beach-map-canvas.spec.ts` — the resize re-measure unit pin, with a
   self-restoring `ResizeObserver` stub
-- `frontend/e2e/venue-map-pan.e2e.ts` — the two new mocked-suite specs (fits-whole desktop
-  map; affordances follow the viewport)
+- `frontend/e2e/venue-map-pan.e2e.ts` — the three new mocked-suite specs (fits-whole desktop
+  map; oversized venue still pans; affordances follow the viewport)
+- `.claude/skills/riviera-tailwind/SKILL.md` — the stale SCSS count (8 → 7), the one finding
+  from the docs-freshness sweep; #698 deleted `operator-console.scss` without updating it
 
 ---
 
