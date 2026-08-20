@@ -10,7 +10,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, tap } from 'rxjs';
 
 import { TouchTarget } from '../shared/touch-target';
@@ -116,7 +116,15 @@ interface CheckInNotice {
  */
 @Component({
   selector: 'app-daily-view-tab',
-  imports: [CardGlass, BeachMapCanvas, BeachMapRowDef, StatusChip, BusyAction, TouchTarget],
+  imports: [
+    CardGlass,
+    BeachMapCanvas,
+    BeachMapRowDef,
+    StatusChip,
+    BusyAction,
+    TouchTarget,
+    RouterLink,
+  ],
   templateUrl: './daily-view-tab.html',
 })
 export class DailyViewTab {
@@ -127,7 +135,7 @@ export class DailyViewTab {
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
    *  invalid) — reactive to in-place venue switches, which reuse this instance. */
-  private readonly venueId = parentVenueId(this.route);
+  protected readonly venueId = parentVenueId(this.route);
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly bookings = signal<readonly ConsoleDailyBooking[]>([]);

@@ -523,4 +523,24 @@ describe('SetEditor (#600)', () => {
 
     expect(byId('set-panel-empty')).toBeTruthy();
   });
+
+  it('points a set-less venue at the bulk generator, and still adds into the one empty spot (#718)', () => {
+    render([]);
+
+    expect(byId('set-panel-empty')).toBeFalsy();
+    expect(byId('set-panel-no-sets').textContent).toContain('Bulk layout');
+    // The grid never empties here (rowCount/colCount clamp to at least 1x1), so the map IS the way in.
+    expect(cells()).toHaveLength(1);
+
+    click(cells()[0]);
+
+    expect(byId('set-add')).toBeTruthy();
+  });
+
+  it('keeps the pick-a-set copy when the venue has sets (#718)', () => {
+    render();
+
+    expect(byId('set-panel-no-sets')).toBeFalsy();
+    expect(byId('set-panel-empty').textContent).toContain('Pick a set on the map');
+  });
 });
