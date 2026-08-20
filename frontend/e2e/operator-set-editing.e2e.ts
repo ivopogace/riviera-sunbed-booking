@@ -445,7 +445,7 @@ test('a busy action dims exactly as the disabled state did', async ({ page }) =>
 
 /**
  * A venue with no sets opens the tab in BULK mode, so per-set editing here is a deliberate override
- * — and the panel used to answer it with "Pick a set on the map", naming nothing that exists (#718).
+ * — and the panel used to answer it with "Pick a set on the map", naming nothing that exists.
  * The map is never empty on this surface (the extent clamps to at least 1x1), so the one spot on it
  * is the way to the venue's first set; the copy names that and the generator one toggle above.
  */

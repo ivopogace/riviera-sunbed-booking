@@ -332,7 +332,7 @@ test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async
 
 /**
  * A venue whose operator has drawn no layout renders 0 sets, and the map card framed that with the
- * canvas's two orientation banners and nothing between them (#718). This is the state every newly
+ * canvas's two orientation banners and nothing between them. This is the state every newly
  * created venue is in, and the operator is the one who can fix it — so the card ends in the tab
  * that fixes it, and the chrome that decoded the missing tiles goes with them.
  */

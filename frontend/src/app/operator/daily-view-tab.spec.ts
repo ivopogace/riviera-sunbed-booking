@@ -20,7 +20,8 @@ import { QrScanner } from './qr-scanner';
  * availability grid + the Arrivals list. Drives: the three tile states (FREE / booked-online-locked /
  * staff-marked); tap-to-mark and tap-to-release round-trips with optimistic flip + reconcile; the
  * online-booked lock; the arrivals code chips (display-only, invariant #7); the Tirane default date +
- * reload-on-change; and the mark/release 403/401 failure copy (invariant #13).
+ * reload-on-change; the mark/release 403/401 failure copy (invariant #13); and the zero-set state —
+ * the empty map card, and the availability summary and legend that go with the tiles they describe.
  */
 describe('DailyViewTab (#175)', () => {
   let fixture: ComponentFixture<DailyViewTab>;

@@ -9,8 +9,8 @@ import { LayoutEditor } from './layout-editor';
 
 /**
  * Structural a11y audit for the layout editor. The grid must be keyboard + AT operable
- * (an AC): every cell is a labelled `<button>`. axe runs over the empty state, the generated grid,
- * and a painted grid. (Colour contrast is proven by `layout-editor.contrast.spec.ts` — axe can't
+ * (an AC): every cell is a labelled `<button>`. axe runs over the bulk empty state, the generated
+ * grid, a painted grid, and Edit-sets mode on a venue with no sets. (Colour contrast is proven by `layout-editor.contrast.spec.ts` — axe can't
  * measure it under jsdom.)
  */
 describe('LayoutEditor a11y (#172)', () => {

@@ -14,7 +14,8 @@ import { QrScanner } from './qr-scanner';
  * Structural a11y audit for the Daily view tab. Each actionable tile is a labelled
  * `<button>` (`aria-label` names row, position, tier, price and the tap action) and each locked tile
  * a labelled `<span>`, so tile STATE is conveyed by an accessible name, not colour alone. axe runs
- * over the populated grid + arrivals and the empty arrivals state. (Contrast is proven by
+ * over the populated grid + arrivals, the empty arrivals state, and the zero-set map card — whose
+ * empty state adds a heading and a link where the grid would be. (Contrast is proven by
  * `daily-view-tab.contrast.spec.ts` — axe can't measure it under jsdom.)
  */
 describe('DailyViewTab a11y (#175)', () => {
