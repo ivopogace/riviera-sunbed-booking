@@ -85,9 +85,9 @@ test.use({ colorScheme: 'dark' });
  * replaces one in place, DELETE drops one — except against {@link CLAIMED_SET_ID}, whose repool,
  * reposition and removal are refused `409 SET_IN_USE` exactly as the server's claim guard would.
  */
-async function mockConsole(page: Page): Promise<{ sets: () => MockSet[] }> {
+async function mockConsole(page: Page, seed = seedSets()): Promise<{ sets: () => MockSet[] }> {
   let sessionLive = false;
-  let sets = seedSets();
+  let sets = seed;
   let nextId = 20;
 
   await page.route(/\/api\/auth\/me$/, (route) =>
@@ -441,4 +441,37 @@ test('a busy action dims exactly as the disabled state did', async ({ page }) =>
   release();
   await expect(page.getByTestId('set-saved')).toBeVisible();
   expect(await save.evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+});
+
+/**
+ * A venue with no sets opens the tab in BULK mode, so per-set editing here is a deliberate override
+ * — and the panel used to answer it with "Pick a set on the map", naming nothing that exists (#718).
+ * The map is never empty on this surface (the extent clamps to at least 1x1), so the one spot on it
+ * is the way to the venue's first set; the copy names that and the generator one toggle above.
+ */
+test('a set-less venue is pointed at the bulk generator, and adds its first set from the one spot (#718)', async ({
+  page,
+}) => {
+  const mock = await mockConsole(page, []);
+  await page.goto('/operator/1');
+  await signIn(page);
+
+  await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
+  await expect(page.getByTestId('layout-mode-bulk')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('layout-mode-sets').click();
+
+  await expect(page.getByTestId('set-panel-no-sets')).toBeVisible();
+  await expect(page.getByTestId('set-panel-empty')).toHaveCount(0);
+  await expect(page.getByTestId('set-cell')).toHaveCount(1);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'per-set editor with no sets');
+
+  await cell(page, 1, 1).click();
+  await page.getByTestId('set-add').click();
+
+  // The first set landed and stays selected, so the no-sets copy has nothing left to answer.
+  await expect(page.getByTestId('set-selected')).toHaveText(/Row A · position 1/);
+  await expect(page.getByTestId('set-panel-no-sets')).toHaveCount(0);
+  expect(mock.sets()).toHaveLength(1);
 });

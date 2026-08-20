@@ -311,16 +311,17 @@ renders states that today's `GET /api/venues/{id}` response already produces (`s
 > second docs-only PR (case history + details: `riviera-sdlc` `references/pr-gates.md`
 > §3 step 4).
 
-**Stage pointer:** `implement (phase 2)` — phases 0–1 shipped, draft PR #720 open.
+**Stage pointer:** `PR — marking ready for review, then the Review + Sonar gates`.
 
-**Next action:** phase 2 — the mocked Playwright e2e for both zero-set surfaces.
+**Next action:** phase 3 step 1 — mark PR #720 ready for review and run `/code-review` per
+`pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Daily view zero-set state (unit + a11y + contrast) | ✅ | `814c640` |
-| 1 — Per-set editor no-sets panel copy (unit + a11y) | ✅ | `<phase-1>` |
-| 2 — Mocked Playwright e2e, both surfaces | ⏳ | |
-| 3 — Close-out (gates, docs freshness, final plan state) | | |
+| 1 — Per-set editor no-sets panel copy (unit + a11y) | ✅ | `d9d7762` |
+| 2 — Mocked Playwright e2e, both surfaces | ✅ | `<phase-2>` |
+| 3 — Close-out (gates, docs freshness, final plan state) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -435,17 +436,25 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `frontend/e2e/operator-daily.e2e.ts`, `frontend/e2e/operator-set-editing.e2e.ts`
 
-- [ ] **Step 1: Write the failing specs** — AC-8 and AC-9, each re-registering the venue read with
-      `sets: []` **after** the existing mock helper (Playwright resolves the most recently added
-      route first), then asserting the message, the navigation and `expectNoSeriousAxeViolations`.
-- [ ] **Step 2: Run them, verify they fail on `main`'s templates** — `npm run test:e2e:a11y -- operator-daily` → FAIL.
-- [ ] **Step 3:** no implementation — phases 0/1 already shipped it; this phase proves it in a real browser.
-- [ ] **Step 4: Run them, verify they pass** — `npm run test:e2e:a11y -- operator-daily operator-set-editing` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: *every mocked e2e that serves a `sets: []`
-      venue into an operator surface*, enumerated escaping-tolerantly (#717's audit learned this the
-      hard way).
-- [ ] **Step 6: Commit** — `git commit -m "Cover both zero-set operator beach-map surfaces in the mocked e2e suite (#718)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1: Write the specs** — AC-8 re-registers the Daily view's venue read with `sets: []`
+      **after** `mockDaily` (Playwright resolves the most recently added route first — the idiom the
+      neighbouring `#605` spec already uses); AC-9 instead takes a `seed` parameter added to
+      `mockConsole`, so the stateful add still round-trips and the first set can really be created.
+- [x] **Step 2: Run them, verify they fail on `main`'s templates** — the phases are already
+      committed, so the red check is explicit rather than incidental:
+      `git checkout origin/main -- daily-view-tab.{html,ts} set-editor.html` →
+      `playwright test --config playwright.a11y.config.ts -g "#718"` → **2 failed**
+      (`daily-map-empty` / `set-panel-no-sets` not found) → `git checkout HEAD -- …` to restore.
+- [x] **Step 3:** no implementation — phases 0/1 shipped it; this phase proves it in a real browser,
+      including the two things jsdom cannot: the link's **rendered box** against the 44 px floor
+      (`<a>` is outside `check-touch-target.mjs`'s scope) and real-browser axe.
+- [x] **Step 4: Run them, verify they pass** — `-g "#718"` → 2 passed. One assertion was **wrong and
+      the run corrected it**: after adding the first set the panel keeps the new set *selected*, so
+      the spec now asserts that (`set-selected` = Row A · position 1) rather than a return to
+      `set-panel-empty`.
+- [x] **Step 5: Generalization-audit pass** — see the log's phase-2 row.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -466,6 +475,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | phase 2 | **Mechanism:** every mocked e2e that serves a **`sets: []` venue** into a rendered surface — i.e. every spec that can hit one of the states this slice changed, enumerated from the fixture data rather than from spec names. Enumerated escaping-tolerantly, the trap #717's own audit fell into | `grep -rln 'api.\{0,2\}/venues' e2e/*.e2e.ts` (22) narrowed by `grep -rln "sets: \[\]" e2e/*.e2e.ts` (6), then cross-cut with `xargs grep -ln "beach-map\|/daily"` | 6 serve an empty venue; 4 of them reach an operator beach-map surface (`layout-editor`, `operator-daily`, `operator-onboarding`, `operator-venue`); `discovery-flow` + `operator-venue-photos` reach only the tourist map (#717's) or the photos tab | **No change needed, verified not assumed.** Ran all four affected files plus `operator-set-editing` → **26 passed**: the bulk editor still renders `layout-empty`, and no existing assertion depended on the Daily view's 0-of-0 count or its legend |
 | 2026-08-20 | phase 1 | **Mechanism:** every empty-state copy that instructs the reader to *pick an existing thing*, on a surface where that thing can legitimately be absent — the defect is the imperative presupposing its object, not "editor panels" | `grep -rn "Pick a\|Pick an\|Select a\|Choose a\|Tap a\|Tap any" src/app --include=*.html` | 5: `set-editor:217` (fixed here); `set-editor:166` "pick an empty spot" (move-armed — needs a *selected set* to exist, and the grid is growable, so its object cannot be absent); `layout-editor:117` "pick a tool" (the tool list is static, and that surface's empty state already forward-references it); `venue-map:219` "tap any free set" (projected via `canvasFooter`, so the canvas already drops it with the grid — #717); `home:22` (marketing hero, not an empty state) | **One fix, four judged-and-left.** Only the per-set panel's imperative can address nothing; the other four either have a guaranteed object or already drop with the grid |
 | 2026-08-20 | phase 0 | **Mechanism:** every element that *decodes or counts the tiles* of a beach-map surface while living **outside** `<app-beach-map-canvas>` — so the canvas's empty branch cannot drop it with the grid it describes. Enumerated by the markup that does the decoding (the legend list), not by "surfaces that look bare" | `grep -rn 'aria-label="Legend"' src/app --include=*.html` (3), cross-cut with `grep -rn "canvasLegend" src/app --include=*.html` (which of them are projected back **in**) | 3 legends: `venue-map` is projected into the canvas via `canvasLegend` (#701) so it already drops; `daily-view-tab`'s was outside and unguarded; `layout-editor`'s is outside too | **Subset, argued.** The Daily view legend is gated on `totalCount()`. The layout editor's is **not** a defect: that surface's empty state already forward-references it — "Generate a layout to begin, then paint tiers, walk-in sets and aisles" — so its legend and Paint-tool counts read as the next step, not as decoders of nothing. Its `render unchanged` AC (issue #718 AC-3) fences it either way |
 | 2026-08-20 | plan (intake grill) | **Mechanism:** every surface that projects a tile grid into `BeachMapCanvas` and therefore *could* render its `canvasEmpty` slot — then, per surface, whether its `rows()` can actually empty (the property the slot depends on), which is the step #717's audit did not need and #718 assumed | `grep -rl "app-beach-map-canvas" frontend/src/app --include=*.html` → 4; then read each surface's `rows()` computation | 4 project a grid; `venue-map` + `layout-editor` already fill the slot; `daily-view-tab`'s `rows()` **can** empty (`groupSetsByRow(sets)`); `set-editor`'s **cannot** (`Math.max(1, …)` clamped ≥ 1×1) | **Split, not uniform.** The slot goes to `daily-view-tab` only; `set-editor` gets its real zero-set defect fixed in the panel. Recorded as D-1 and on issue #718 |

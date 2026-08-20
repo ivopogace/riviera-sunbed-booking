@@ -329,3 +329,38 @@ test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'daily view, fully sold at 390px');
 });
+
+/**
+ * A venue whose operator has drawn no layout renders 0 sets, and the map card framed that with the
+ * canvas's two orientation banners and nothing between them (#718). This is the state every newly
+ * created venue is in, and the operator is the one who can fix it — so the card ends in the tab
+ * that fixes it, and the chrome that decoded the missing tiles goes with them.
+ */
+test('explains a zero-set day and links to the Beach map tab (#718)', async ({ page }) => {
+  await mockDaily(page);
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({ json: { ...wideVenue('Blank Bay', 'FREE'), sets: [] } }),
+  );
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  await expect(page.getByTestId('daily-map-empty')).toBeVisible();
+  await expect(page.getByTestId('daily-tile')).toHaveCount(0);
+  await expect(page.getByLabel('Legend')).toHaveCount(0);
+  await expect(page.getByTestId('daily-availability')).toHaveText('No sets on the map yet');
+
+  // The 44px floor: <a> is outside check-touch-target's scope, so the rendered box is the proof.
+  const box = (await page.getByTestId('daily-map-empty-link').boundingBox())!;
+  expect(box.height, 'empty-state link height').toBeGreaterThanOrEqual(44);
+  expect(box.width, 'empty-state link width').toBeGreaterThanOrEqual(44);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view with no sets');
+
+  await page.getByTestId('daily-map-empty-link').click();
+  await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
+});
