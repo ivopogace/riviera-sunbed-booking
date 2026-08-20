@@ -259,15 +259,15 @@ served by `GET /api/venues/{id}` and consumed by this component today.
 > **This section is the session-recovery anchor.** Everything a resuming session needs
 > lives HERE, committed — never only in the conversation.
 
-**Stage pointer:** `implement — phase 0 done, phase 1 next`
+**Stage pointer:** `implement — phase 1 done, phase 2 next`
 
-**Next action:** Write the `venue-map.spec.ts` chip/zone-split pins red, then wire
-`rowPriceLabel` into `VenueMap.rows`.
+**Next action:** Write the 390 px truncation e2e red, then cap the rail cell and truncate
+the chip on `shared/beach-map-canvas.html`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the label rule (pure) | ✅ | this commit |
-| 1 — wire it into the tourist map + re-partitioned zones | | |
+| 0 — the label rule (pure) | ✅ | `116442f` |
+| 1 — wire it into the tourist map + re-partitioned zones | ✅ | this commit |
 | 2 — rail truncation cap + e2e pins | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -317,16 +317,20 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `frontend/src/app/venue/venue-map.ts` · Test
 `frontend/src/app/venue/venue-map.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — the enriched per-zone chip list, the walk-in
+- [x] **Step 1: Write the failing tests** — the enriched per-zone chip list, the walk-in
       zone split (chips + `mt-3` on all three columns), the updated #689 span pin, and the
       unchanged-tile-name pin (AC-6).
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/venue/venue-map.spec.ts`.
-- [ ] **Step 3: Minimal implementation** — `rows` maps each row's sets through
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include="src/app/venue/venue-map.spec.ts"`
+      → 3 failed: the three chip lists, each still bare prices (the walk-in row rendering
+      **no** chip at all in the equal-price case — the behaviour AC-4 exists for).
+- [x] **Step 3: Minimal implementation** — `rows` maps each row's sets through
       `rowPriceLabel`; `zoneStart` compares the composed labels (the #689 rule, unchanged).
-- [ ] **Step 4: Run it, verify it passes** — same command, then the whole `venue/` folder.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Split zones by chip meaning, not price alone (#702)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 4: Run it, verify it passes** — same command → 59 passed; then
+      `--include="src/app/venue/**/*.spec.ts" --include="src/app/operator/**/*.spec.ts"`
+      → 508 passed, no operator spec edited (AC-8's first half).
+- [x] **Step 5: Generalization-audit pass** — logged below.
+- [x] **Step 6: Commit** — `git commit -m "Split zones by chip meaning, not price alone (#702)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — Rail truncation cap + e2e pins
 
@@ -353,6 +357,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | phase 1 — zones now partition on a richer label | every surface that derives `zoneStart` from a comparison (rather than hard-coding `true`), enumerated by the field, not by "the price-zone ones" | `grep -rn "zoneStart" frontend/src --include=*.ts --include=*.html` | 2 comparers — `venue/venue-map.ts` (now on the composed label) and `operator/daily-view-tab.ts` (still `prices[i] !== prices[i-1]`); `set-editor.ts` + `layout-editor.ts` hard-code `true` with a stated reason | tourist comparer only. The Daily view is the same *mechanism* but a different audience: it is a staff surface whose cells already carry pool + state per tile, its rail is deliberately bare prices (the issue's fence), and splitting its zones would be an unasked-for visual change to an operator tool. Recorded rather than silently skipped |
 | 2026-08-20 | phase 0 — a new rule for what a rail chip says | every producer of a `BeachMapCanvasRow.priceLabel` (the string the shared rail renders), enumerated by the field name rather than by "the map-ish components" | `grep -rn "priceLabel" frontend/src --include=*.ts --include=*.html` | 4 producers — `venue/venue-map.ts` (tourist rows), `operator/set-editor.ts`, `operator/layout-editor.ts`, `operator/daily-view-tab.ts` — plus 2 same-named fields that are **not** rail chips (`VenueMap.venueView.priceLabel` and `pages/home`'s card "from €X") | tourist producer only. The three operator producers keep bare prices by the issue's explicit fence, and it reads correctly there: those surfaces paint tier/pool per cell and their operator already knows the layout. The two same-named venue-level fields are out of population — noted so a later reader does not "fix" them for symmetry |
 
 ---

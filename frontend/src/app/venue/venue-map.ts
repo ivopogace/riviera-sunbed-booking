@@ -10,7 +10,8 @@ import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/bea
 import { CardGlass } from '../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
 import { MAP_TILE_LEGEND, MAP_TILE_MEANING, MapTile, MapTileState, mapTileState } from './map-tile';
-import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
+import { rowPriceLabel } from './row-price-label';
+import { formatMoney, MoneyView } from '../shared/money';
 import { focusMover } from '../shared/focus-after-render';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
@@ -206,8 +207,11 @@ export class VenueMap {
     };
   });
 
-  /** Sets grouped into rows (read order preserved), each with a derived code + its price label
-   *  (the single price, or the min–max span when the row's prices differ). */
+  /** Sets grouped into rows (read order preserved), each with a derived code + its rail-chip
+   *  label — the price (or the row's min–max span) plus what that price buys, per
+   *  {@link rowPriceLabel}. Zones still compare the RENDERED label (#689), so the richer label
+   *  re-partitions them exactly where it should: a walk-in row priced like the online row above
+   *  it now opens a zone of its own instead of vanishing into it (#702). */
   protected readonly rows = computed<readonly MapRow[]>(() => {
     const byRow = new Map<string, SetView[]>();
     for (const set of this.venue()?.sets ?? []) {
@@ -216,14 +220,13 @@ export class VenueMap {
       byRow.set(set.rowLabel, row);
     }
     const entries = [...byRow.entries()];
-    // A mixed-price row renders its min–max span, so zones compare the rendered labels (#689).
-    const prices = entries.map(([, sets]) => formatMoneyRange(sets.map((s) => s.price)));
+    const labels = entries.map(([, sets]) => rowPriceLabel(sets));
     return entries.map(([label, sets], index) => {
       const code = rowCode(index);
       return {
         code,
-        priceLabel: prices[index],
-        zoneStart: index === 0 || prices[index] !== prices[index - 1],
+        priceLabel: labels[index],
+        zoneStart: index === 0 || labels[index] !== labels[index - 1],
         tileCount: sets.length,
         tiles: sets.map((set) => this.toTile(set, code, label)),
       };
