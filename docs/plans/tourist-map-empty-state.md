@@ -80,23 +80,23 @@ addendum); the literal `feature/…` branch is deliberately not created.
 > therefore written at the surface the issue names, which is the only boundary the change
 > has. No backend behaviour is in scope — see *Spring Modulith* below.
 
-- [ ] **AC-1:** Given a tourist-visible venue with zero sets, when its beach map loads,
+- [x] **AC-1:** Given a tourist-visible venue with zero sets, when its beach map loads,
       then the map card renders an explanatory empty-state message between the two
       orientation banners instead of empty space. *Pinned by:*
       `venue-map.spec.ts` › "explains an empty map instead of framing empty space (#717)"
-- [ ] **AC-2:** Given that same venue, when the map loads, then the empty state offers a
+- [x] **AC-2:** Given that same venue, when the map loads, then the empty state offers a
       "Back to Discover" action, and activating it navigates to `/`. *Pinned by:*
       `venue-map.spec.ts` › "offers a way out of an empty map, back to Discover (#717)"
-- [ ] **AC-3:** Given that same venue, when the map loads, then the availability summary
+- [x] **AC-3:** Given that same venue, when the map loads, then the availability summary
       reads "No sets to book yet" — no "0 of 0", no date — and the decorative
       availability bar is not rendered. *Pinned by:* `venue-map.spec.ts` › "replaces the
       0-of-0 summary and its empty bar with a plain no-sets line (#717)"
-- [ ] **AC-4:** Given that same venue, when the map loads, then no legend, no tile grid
+- [x] **AC-4:** Given that same venue, when the map loads, then no legend, no tile grid
       and no "Tap any free set to book it" footer render. *Pinned by:*
       `venue-map.spec.ts` › "renders no legend, grid or tap-hint for a venue with no sets
       (#717)" (canvas-level counterpart already pinned by `beach-map-canvas.spec.ts` ›
       "projects the legend slot above the wash, and drops it with the grid (#701)")
-- [ ] **AC-5:** Given a venue **with** sets, when its map loads, then the empty state is
+- [x] **AC-5:** Given a venue **with** sets, when its map loads, then the empty state is
       absent and the summary keeps its "N of M sets free on &lt;date&gt;" form with its
       bar. *Pinned by:* `venue-map.spec.ts` › "shows the availability summary '18 of 24'"
       (existing, extended with an empty-state absence assertion)
@@ -104,8 +104,8 @@ addendum); the literal `feature/…` branch is deliberately not created.
       rendered in a real browser, then axe reports no serious violations and the
       "Back to Discover" control returns the tourist to the discovery list. *Pinned by:*
       `frontend/e2e/venue-map-empty.e2e.ts`
-- [ ] **AC-7:** Given the zero-set map component tree, when axe audits it under jsdom,
-      then it reports no violations. *Pinned by:* `venue-map.a11y.spec.ts` › "has no axe
+- [x] **AC-7:** Given the zero-set map component tree, when axe audits it under jsdom,
+      then it reports no violations. *Pinned by:* `venue-map.a11y.spec.ts` › "has no
       violations on a venue with no sets (#717)"
 
 ## Non-goals
@@ -171,11 +171,11 @@ ledger is filled for that state's current behaviours.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Copy implies a **different date** would show sets, sending the tourist back to the picker forever — the map is date-independent (`set_position`), so no date works | high (the issue text itself says "for the chosen day") | med | copy states the layout is unpublished and says "on any date"; AC-1's spec asserts the sentence, not just the element | Claude | open |
-| R-2 | Swapping the `aria-live` **element** (rather than its text) between the count and the no-sets line silently kills the date-change announcement for the populated case | med | med | the `<p data-testid="availability" aria-live="polite">` node is unconditional; only its inner content branches. AC-5 keeps the populated path pinned | Claude | open |
-| R-3 | An added heading in the empty state breaks the page's heading order (h1 → h?) or duplicates a landmark name, failing axe | low | med | the empty state's title is an `<h2>` under the page's single `<h1>` (venue name); AC-6/AC-7 run axe over exactly this state in both jsdom and a real browser | Claude | open |
-| R-4 | New empty-state ink fails WCAG AA on the map-card glass | low | med | reuses the two token pairs `venue-map.contrast.spec.ts` already proves on that surface (`--riv-card-ink`, `--riv-card-ink-soft`) plus the CTA-gradient/white pair proven for the retry button — no new colour is introduced; the spec's test names are updated to name this surface too | Claude | open |
-| R-5 | Touching the map template regresses a populated map (the common case) | low | high | the empty state lives entirely inside the `canvasEmpty` slot, which the canvas renders **only** in the `@else` of `rows().length > 0`; the full existing `venue-map` + `beach-map-canvas` spec files run per phase | Claude | open |
+| R-1 | Copy implies a **different date** would show sets, sending the tourist back to the picker forever — the map is date-independent (`set_position`), so no date works | high (the issue text itself says "for the chosen day") | med | copy states the layout is unpublished and says "on any date"; AC-1's spec asserts the sentence, not just the element | Claude | closed — `dde5a53` |
+| R-2 | Swapping the `aria-live` **element** (rather than its text) between the count and the no-sets line silently kills the date-change announcement for the populated case | med | med | the `<p data-testid="availability" aria-live="polite">` node is unconditional; only its inner content branches. AC-5 keeps the populated path pinned | Claude | closed — `dde5a53` |
+| R-3 | An added heading in the empty state breaks the page's heading order (h1 → h?) or duplicates a landmark name, failing axe | low | med | the empty state's title is an `<h2>` under the page's single `<h1>` (venue name); AC-6/AC-7 run axe over exactly this state in both jsdom and a real browser | Claude | closed (jsdom) — `dde5a53`; browser leg with AC-6 |
+| R-4 | New empty-state ink fails WCAG AA on the map-card glass | low | med | reuses the two token pairs `venue-map.contrast.spec.ts` already proves on that surface (`--riv-card-ink`, `--riv-card-ink-soft`) plus the CTA-gradient/white pair proven for the retry button — no new colour is introduced; the spec's test names are updated to name this surface too | Claude | closed — `dde5a53` |
+| R-5 | Touching the map template regresses a populated map (the common case) | low | high | the empty state lives entirely inside the `canvasEmpty` slot, which the canvas renders **only** in the `@else` of `rows().length > 0`; the full existing `venue-map` + `beach-map-canvas` spec files run per phase | Claude | closed — `dde5a53` (219 specs green across `venue/`, `shared/beach-map-canvas`, all three operator surfaces) |
 | R-6 | The plan's File-structure section drifts from the diff (CI-enforced since #533) | med | low | `node scripts/check-plan-file-structure.mjs --diff origin/main` run before every push, with the plan doc staged | Claude | open |
 
 ## Open questions / Assumptions
@@ -192,6 +192,14 @@ ledger is filled for that state's current behaviours.
   not a bug to fix here. #693 made visibility depend on the owning operator being
   `ACTIVE`, which does not require a drawn layout, and #717 asks to explain the state
   rather than to prevent it. — *Owner:* Claude · *Resolves by:* phase 0
+
+### Resolved
+
+- **Assumption (both of the above) — held, phase 0 (`dde5a53`).** The empty state ships
+  with "Back to Discover" as its only pointer and does not touch visibility. The
+  generalization audit additionally surfaced two operator surfaces with the same
+  unexplained-empty-map defect; deferred to **#718** rather than widened into this slice,
+  because AC-4 requires them to render unchanged.
 
 ## Availability & concurrency (invariant #2)
 
@@ -280,15 +288,15 @@ strict — no `as any`.
 > rows ✅ with commits, Open Questions empty, risk rows closed, AC pin-names matching the
 > shipped tests. Record **`merged via PR #NN`, never a merge SHA**.
 
-**Stage pointer:** `plan` — plan doc authored, phases not started.
+**Stage pointer:** `implement (phase 1)` — phase 0 shipped; the draft PR is the next
+thing to exist so CI fires.
 
-**Next action:** Phase 0 step 1 — write the failing `venue-map.spec.ts` cases for the
-zero-set map.
+**Next action:** Open the draft PR, then write `frontend/e2e/venue-map-empty.e2e.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Empty state + summary branch (unit + a11y) | | |
-| 1 — Mocked Playwright e2e | | |
+| 0 — Empty state + summary branch (unit + a11y) | ✅ | `dde5a53` |
+| 1 — Mocked Playwright e2e | ⏳ | |
 | 2 — Close-out (docs freshness, execution status) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -326,25 +334,25 @@ Skill-routing gate for what the fix touches *before* editing).
 `frontend/src/app/venue/venue-map.spec.ts`, `frontend/src/app/venue/venue-map.a11y.spec.ts`,
 `frontend/src/app/venue/venue-map.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — a `mapless()` fixture (a real venue payload
+- [x] **Step 1: Write the failing tests** — a `mapless()` fixture (a real venue payload
       with `sets: []`, `fromPrice: null`) plus the AC-1..AC-4 cases in `venue-map.spec.ts`,
       the AC-5 absence assertion on the existing "18 of 24" case, and the AC-7 axe case in
       `venue-map.a11y.spec.ts`.
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
       `npx vitest run src/app/venue/venue-map.spec.ts src/app/venue/venue-map.a11y.spec.ts`
       → FAIL (`map-empty` not found; summary still reads "0 of 0").
-- [ ] **Step 3: Minimal implementation** — the `canvasEmpty` block in `venue-map.html`
+- [x] **Step 3: Minimal implementation** — the `canvasEmpty` block in `venue-map.html`
       (`<h2>` + explanatory `<p>` + `<app-retry-button label="Back to Discover">`), and the
       availability `<p>`'s content branch with the bar behind `@if (totalCount())`.
-- [ ] **Step 4: Run them, verify they pass** — the same command → PASS; then the
+- [x] **Step 4: Run them, verify they pass** — the same command → PASS; then the
       surface's full spec set (`venue-map*.spec.ts` + `shared/beach-map-canvas.spec.ts`)
       as the end-of-phase regression.
-- [ ] **Step 5: Generalization-audit pass** — population: *every surface that projects a
+- [x] **Step 5: Generalization-audit pass** — population: *every surface that projects a
       tile grid into `BeachMapCanvas`* (the mechanism, not "surfaces that look empty");
       enumerate with `grep -rl "app-beach-map-canvas" frontend/src/app`, judge each for a
       missing `canvasEmpty`. Append to the log below.
-- [ ] **Step 6: Commit** — `git commit -m "Explain an empty tourist beach map instead of framing empty space (#717)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `dde5a53`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -391,6 +399,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | phase 0 (`dde5a53`) | **Mechanism:** every surface that projects a tile grid into `BeachMapCanvas` and therefore inherits its `canvasEmpty` slot — not "surfaces that look empty", which would have returned only the one in front of me | `grep -rl "app-beach-map-canvas" frontend/src/app --include=*.html` then `grep -rl "canvasEmpty" …` | 4 surfaces project a grid; only 2 project a `canvasEmpty` (`layout-editor`, and now `venue-map`) | **Subset + follow-up.** `operator/daily-view-tab.html` and `operator/set-editor.html` carry the identical defect and are reachable for every venue before its layout exists — but AC-4 of #717 requires operator beach-map surfaces to render **unchanged**, so fixing them here would contradict the slice. Filed as **#718** with the enumeration and the copy register they need |
 
 ---
 
