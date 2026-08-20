@@ -31,10 +31,12 @@ caught that AC-2's mechanism does not exist on the per-set editor, and that "poi
 tab" is wrong for a surface that *is* that tab) · `riviera-plan-doc` (this template — forced the
 Behavior-parity ledger, which is what pinned "the summary branches its content, never its element")
 · `tdd` (each phase writes the failing spec against the zero-set render first, then the template
-branch) · `riviera-review-overlay` (review gate — run at ready-for-review, PR #720) ·
-`riviera-docs-freshness` (**ran** over `dd8c9a9..HEAD`, 0 findings — no substrate doc states
-anything about operator empty states; the counting sweep over "surfaces projecting `canvasEmpty`"
-is recorded in the Generalization-audit log) · `riviera-frontend` (structure — confirmed both edits
+branch) · `riviera-review-overlay` (review gate — walked the FE bank at ready-for-review on PR #720: RV-FE-1/7/E2E/8/9 and RV-STYLE-1/2 clean, RV-FE-2/3/4/6 N/A, RV-PROC-1 reconciled against this line; the fix round re-entered at Implement under `frontend/.claude/CLAUDE.md` §Comments + `riviera-java-conventions` §6d, the rule F-1 turned on) ·
+`riviera-docs-freshness` (**ran** over `origin/main..HEAD` = `dd8c9a9..HEAD`, **0 findings** — the
+rename/removal grep had nothing to chase (this slice renames and removes nothing), and the counting
+sweep's subject, the shared canvas's own prose, stays true: no slot was added, so "three content
+slots" holds; nothing new was projected into `canvasLegend`, so "the tile legend is tourist-only"
+holds; and "the three operator surfaces" is still three) · `riviera-frontend` (structure — confirmed both edits
 stay inside the `operator/` feature folder, no new file, no new cross-feature edge; the empty
 state's link is a `routerLink` into the console's own child-route tree, not a new route) ·
 `riviera-tailwind` (styling — utilities only, no new `.scss`; the CTA link reuses
@@ -71,42 +73,42 @@ These are frontend-render ACs by nature — the slice adds no application-bounda
 (no request, no state change). They are written at the surface's own boundary: what an operator
 looking at a zero-set venue is told, and what they can do about it.
 
-- [ ] **AC-1:** Given an operator on a venue whose map read returns `sets: []`, when the Daily view
+- [x] **AC-1:** Given an operator on a venue whose map read returns `sets: []`, when the Daily view
       tab finishes loading, then the map card renders the empty-state message
       (`daily-map-empty`) — a heading, an explanation, and a link to that venue's Beach map tab —
       and renders no tile, no row/price rail and no scroll hint.
       *Pinned by:* `DailyViewTab (#175) › explains a venue with no sets instead of framing empty space (#718)`
-- [ ] **AC-2:** Given the same zero-set venue, when the Daily view tab renders, then the live
+- [x] **AC-2:** Given the same zero-set venue, when the Daily view tab renders, then the live
       availability summary reads "No sets on the map yet" **in the same `<p data-testid="daily-availability">`
       element** (the `aria-live` region survives), and the tile legend is not rendered at all.
       *Pinned by:* `DailyViewTab (#175) › drops the 0-of-0 count and the tile legend when there are no sets (#718)`
-- [ ] **AC-3:** Given a populated venue, when the Daily view tab renders, then the summary still
+- [x] **AC-3:** Given a populated venue, when the Daily view tab renders, then the summary still
       reads "<n> walk-in marked · <n> of <n> sets free on <date>", the legend renders its three
       entries, and no empty-state element exists.
       *Pinned by:* `DailyViewTab (#175) › keeps the count, the legend and no empty state on a populated map (#718)`
-- [ ] **AC-4:** Given the per-set editor rendered for a venue with zero sets, when the operator has
+- [x] **AC-4:** Given the per-set editor rendered for a venue with zero sets, when the operator has
       selected nothing, then the panel reads the no-sets copy (`set-panel-no-sets`) naming the Bulk
       layout generator, **not** "Pick a set on the map…", and the map still offers exactly one
       empty spot whose click puts the panel into "Add a set".
       *Pinned by:* `SetEditor (#600) › points a set-less venue at the bulk generator, and still adds into the one empty spot (#718)`
-- [ ] **AC-5:** Given the per-set editor rendered for a venue **with** sets and nothing selected,
+- [x] **AC-5:** Given the per-set editor rendered for a venue **with** sets and nothing selected,
       when it renders, then the panel still reads the original "Pick a set on the map…" copy.
       *Pinned by:* `SetEditor (#600) › keeps the pick-a-set copy when the venue has sets (#718)`
-- [ ] **AC-6:** Given the zero-set Daily view, when axe runs over it in jsdom, then there are no
+- [x] **AC-6:** Given the zero-set Daily view, when axe runs over it in jsdom, then there are no
       violations (heading order, link name, live-region shape).
       *Pinned by:* `DailyViewTab a11y (#175) › has no axe violations on a venue with no sets (#718)`
-- [ ] **AC-7:** Given the zero-set per-set editor inside its parent tab, when axe runs over it in
+- [x] **AC-7:** Given the zero-set per-set editor inside its parent tab, when axe runs over it in
       jsdom, then there are no violations.
       *Pinned by:* `LayoutEditor a11y (#172) › has no axe violations in Edit-sets mode with no sets (#718)`
-- [ ] **AC-8:** Given a real browser with the venue read mocked to `sets: []`, when the operator
+- [x] **AC-8:** Given a real browser with the venue read mocked to `sets: []`, when the operator
       opens the Daily view tab, then the empty-state message is visible, the Beach-map link
       navigates to `/operator/1/beach-map`, and axe reports no serious violations.
       *Pinned by:* `operator-daily.e2e.ts › explains a zero-set day and links to the Beach map tab (#718)`
-- [ ] **AC-9:** Given a real browser with `sets: []`, when the operator opens the Beach map tab and
+- [x] **AC-9:** Given a real browser with `sets: []`, when the operator opens the Beach map tab and
       switches to **Edit sets**, then the panel shows the no-sets copy and the single empty spot is
       clickable into "Add set here".
       *Pinned by:* `operator-set-editing.e2e.ts › a set-less venue is pointed at the bulk generator (#718)`
-- [ ] **AC-10:** The tourist beach map and the bulk layout editor render unchanged — **structural,
+- [x] **AC-10:** The tourist beach map and the bulk layout editor render unchanged — **structural,
       not asserted**: no file under `frontend/src/app/venue/`, `frontend/src/app/shared/` or
       `layout-editor.html` appears in the diff (the one `layout-editor.a11y.spec.ts` entry is a
       spec, adding a case, changing no template).
@@ -179,14 +181,14 @@ exactly those branches rather than waived — this is where the aria-live trap w
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Branching the `aria-live` summary swaps the element instead of its content, silently killing date-change announcements on the **populated** map (the common case) | med | high | the branch is `@if` **inside** the `<p>`, never around it; AC-2 asserts the element identity (`daily-availability` present in both states) and AC-3 re-asserts the populated string | Claude | open |
-| R-2 | The empty-state link needs `venueId`, which `DailyViewTab` holds **private** — exposing it as `protected` is a real (if small) API widening on a component whose venue identity drives every request | low | med | expose it `protected` only (template-visible, still not public), reusing the existing `parentVenueId(route)` signal — no second source of the id, no new route read; the link binds `['/operator', id, 'beach-map']`, the same array shape `operator-console.html` uses for the tab links | Claude | open |
-| R-3 | The new `<a>` misses the 44×44 touch floor: `min-h-11` is a **no-op** on a `display: inline` anchor, and `<a>` is outside `check-touch-target.mjs`'s scope, so the guard stays green while the box is short | med | med | pair `[appTouchTarget]` with `inline-flex items-center justify-center` (the documented pairing in `shared/touch-target.ts`), and let the e2e assert the rendered box in AC-8's spec rather than the class list | Claude | open |
-| R-4 | An added `<h2>` in the empty state breaks heading order or duplicates a landmark name → axe failure | low | med | the tab already renders `<h2 id="arrivals-title">` under the shell's single `<h1>`, so `<h2>` is the established level here; AC-6 runs axe over exactly this state | Claude | open |
-| R-5 | New empty-state ink fails WCAG AA on the map-card glass | low | med | reuses `--riv-card-ink` (heading) + `--riv-card-ink-soft` (copy) — rows 1 and 2 of `daily-view-tab.contrast.spec.ts` — plus white on the two `--riv-cta-grad` stops, the pair `set-editor.contrast.spec.ts` and `layout-editor.contrast.spec.ts` already prove; the daily spec gains that CTA row so the surface proves its own | Claude | open |
-| R-6 | Hiding the legend at zero sets regresses the populated map's legend | low | med | one `@if (totalCount())` around the existing `<ul>`, nothing inside it edited; AC-3 asserts the three legend entries on a populated map | Claude | open |
-| R-7 | The plan's File-structure section drifts from the diff (CI-enforced since #533) | med | low | `node scripts/check-plan-file-structure.mjs --diff origin/main` run before every push, with the plan doc staged | Claude | open |
-| R-8 | Deviating from the issue's literal AC-2 (no `canvasEmpty` on the per-set editor) is read at review as scope-dodging rather than a corrected premise | med | med | the deviation is argued from code in D-1 with the exact expressions, recorded as a comment on #718 **before** phase 0, and re-stated in the PR body; the replacement AC-4/AC-5/AC-9 cover the surface's real defect | Claude | open |
+| R-1 | Branching the `aria-live` summary swaps the element instead of its content, silently killing date-change announcements on the **populated** map (the common case) | med | high | the branch is `@if` **inside** the `<p>`, never around it; AC-2 asserts the element identity (`daily-availability` present in both states) and AC-3 re-asserts the populated string | Claude | closed — `814c640`. The branch is an `@if` **inside** the `<p>`; AC-2 asserts the element still carries `aria-live="polite"` in the zero state and AC-3 re-asserts the populated string. The git-history review pass independently confirmed the shape matches #717's tourist precedent |
+| R-2 | The empty-state link needs `venueId`, which `DailyViewTab` holds **private** — exposing it as `protected` is a real (if small) API widening on a component whose venue identity drives every request | low | med | expose it `protected` only (template-visible, still not public), reusing the existing `parentVenueId(route)` signal — no second source of the id, no new route read; the link binds `['/operator', id, 'beach-map']`, the same array shape `operator-console.html` uses for the tab links | Claude | closed — `814c640`. `venueId` is `protected`, not public, and reuses the existing `parentVenueId(route)` signal — no second source of the id |
+| R-3 | The new `<a>` misses the 44×44 touch floor: `min-h-11` is a **no-op** on a `display: inline` anchor, and `<a>` is outside `check-touch-target.mjs`'s scope, so the guard stays green while the box is short | med | med | pair `[appTouchTarget]` with `inline-flex items-center justify-center` (the documented pairing in `shared/touch-target.ts`), and let the e2e assert the rendered box in AC-8's spec rather than the class list | Claude | closed — `ee6a076`. `[appTouchTarget]` paired with `inline-flex items-center justify-center`, and AC-8 measures `boundingBox()` in Chromium rather than trusting the class list |
+| R-4 | An added `<h2>` in the empty state breaks heading order or duplicates a landmark name → axe failure | low | med | the tab already renders `<h2 id="arrivals-title">` under the shell's single `<h1>`, so `<h2>` is the established level here; AC-6 runs axe over exactly this state | Claude | closed — `814c640`. `<h2>` matches the tab's existing `<h2 id="arrivals-title">` under the shell's single `<h1>`; AC-6 runs axe over exactly this state, AC-8 again in a real browser |
+| R-5 | New empty-state ink fails WCAG AA on the map-card glass | low | med | reuses `--riv-card-ink` (heading) + `--riv-card-ink-soft` (copy) — rows 1 and 2 of `daily-view-tab.contrast.spec.ts` — plus white on the two `--riv-cta-grad` stops, the pair `set-editor.contrast.spec.ts` and `layout-editor.contrast.spec.ts` already prove; the daily spec gains that CTA row so the surface proves its own | Claude | closed — `814c640`. Heading and copy reuse the two pairs the spec already proved; the CTA row was added, and Sonar reported no `css:S7924` on the new code |
+| R-6 | Hiding the legend at zero sets regresses the populated map's legend | low | med | one `@if (totalCount())` around the existing `<ul>`, nothing inside it edited; AC-3 asserts the three legend entries on a populated map | Claude | closed — `814c640`. One `@if (totalCount())` around the existing `<ul>`, nothing inside it edited; AC-3 asserts all three entries on a populated map |
+| R-7 | The plan's File-structure section drifts from the diff (CI-enforced since #533) | med | low | `node scripts/check-plan-file-structure.mjs --diff origin/main` run before every push, with the plan doc staged | Claude | closed — `node scripts/check-plan-file-structure.mjs --diff origin/main` run with the doc staged before every push, and green in CI's Repo hygiene job on both runs |
+| R-8 | Deviating from the issue's literal AC-2 (no `canvasEmpty` on the per-set editor) is read at review as scope-dodging rather than a corrected premise | med | med | the deviation is argued from code in D-1 with the exact expressions, recorded as a comment on #718 **before** phase 0, and re-stated in the PR body; the replacement AC-4/AC-5/AC-9 cover the surface's real defect | Claude | closed — the deviation was recorded on #718 **before** phase 0, argued from the code in D-1/D-2/D-3, and re-stated in the PR body. The review gate raised no objection to it |
 | R-9 | In-flight collision with another branch | low | low | checked at intake: the only open PRs are 18 Dependabot bumps, none touching `frontend/src/app/operator/**`; no Flyway migration in this slice, so no `V<n>` to claim | Claude | closed — intake gate |
 
 ## Open questions / Assumptions
@@ -227,7 +229,16 @@ exactly those branches rather than waived — this is where the aria-live trap w
 
 - **D-1, D-2, D-3 — held.** Recorded as a comment on #718 before phase 0; the ACs above replace the
   issue's AC-2 with AC-4/AC-5/AC-9 and keep the issue's intent (explain the state, point at the
-  generator) on the surface's real defect.
+  generator) on the surface's real defect. The review gate examined the deviation and did not
+  dispute it; the code-comment pass independently re-derived D-1's clamp argument from
+  `set-editor.ts`'s own TSDoc.
+- **The AC-1 widening — held, phase 0 (`814c640`).** The legend gate and the summary branch shipped
+  as one `@if` each, no element moved. The review gate raised no scope objection, and the
+  behavior-parity ledger's rows 2–3 carry the reasoning.
+- **A fourth question the slice surfaced and did not answer: `SetEditor` cannot tell "no sets" from
+  "not loaded yet"** — filed as **#721** with the argument for why the copy alone is the wrong fix
+  (the 1×1 grid beside it lies in the same window). Not left open here: it is out of this slice's
+  scope by AC-10, and the register's rule is that an open entry blocks done.
 
 ## Availability & concurrency (invariant #2)
 
@@ -311,17 +322,18 @@ renders states that today's `GET /api/venues/{id}` response already produces (`s
 > second docs-only PR (case history + details: `riviera-sdlc` `references/pr-gates.md`
 > §3 step 4).
 
-**Stage pointer:** `PR — marking ready for review, then the Review + Sonar gates`.
+**Stage pointer:** `merge close-out` — CI green, Review gate run, Sonar gate green with its
+reported list verified empty from the API, all findings resolved or filed.
 
-**Next action:** phase 3 step 1 — mark PR #720 ready for review and run `/code-review` per
-`pr-gates.md` §1.
+**Next action:** merge PR #720, then close-out steps 1–3 (verify #718 closed; no parent epic; #721
+already carries the deferred finding).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Daily view zero-set state (unit + a11y + contrast) | ✅ | `814c640` |
 | 1 — Per-set editor no-sets panel copy (unit + a11y) | ✅ | `d9d7762` |
 | 2 — Mocked Playwright e2e, both surfaces | ✅ | `ee6a076` |
-| 3 — Close-out (gates, docs freshness, final plan state) | ⏳ | |
+| 3 — Close-out (gates, docs freshness, final plan state) | ✅ | `7a92af0` (review-fix round) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -331,7 +343,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (`/code-review`, prior-PR-comments pass) | The three `/** */` doc blocks this slice wrote carried `(#718)`. TSDoc states the contract, not the changelog — **no issue numbers** (`frontend/.claude/CLAUDE.md` Comments; canonical `riviera-java-conventions` §6d). Raised as a finding on **both** preceding PRs to touch these files (#688, #719), and unguardable: `check-inline-comments.mjs` exempts `/** */` by design | fixed-in-`7a92af0` — refs dropped from the doc blocks; `test(…)`/`it(…)` name strings and inline HTML comments keep theirs, both established conventions §6d does not reach |
+| F-2 | review (`/code-review`, shallow-bug-scan pass) | `SetEditor` cannot distinguish "no sets" from "not loaded yet" (`sets` is a plain required input), so during the initial map GET a venue **with** sets renders a 1×1 empty grid and — since this slice — an affirmatively false "This venue has no sets yet" | **deferred → issue #721.** Fixing only the copy would be cosmetic: the map beside it lies in the same window and is the more misleading half. The real fix is a load gate on the surface, which changes what the layout editor renders — ruled out by AC-10 |
+| F-3 | review (`/code-review`, code-comment pass) | Three spec files' own doc blocks enumerate what each covers; tests were added without extending those lists, so each described less than the file does | fixed-in-`7a92af0` — each block gains the state it was missing |
+| — | sonar | Quality gate **passed**, and the reported list pulled from the API is genuinely empty (not the false-clean read): `new_lines: 52` proves an analysis ran; 0 issues, 0 hotspots, 0 duplicated blocks, **100.0 % new-code coverage** | closed — nothing to resolve |
+| — | CI | 8/8 checks green on `22d78ba` (Backend, Frontend, Repo hygiene, both CodeQL analyses, SonarCloud ×2); re-run green on the `7a92af0` fix round | closed |
 
 ---
 
@@ -460,11 +476,23 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Phase 3 — Close-out
 
-- [ ] **Step 1:** mark the PR ready for review; run the **Review gate** per `pr-gates.md` §1.
-- [ ] **Step 2:** run the **Sonar gate** per §2 — pull the new-issue + duplication list, not just the badge.
-- [ ] **Step 3:** run `riviera-docs-freshness` over the slice's range; patch or record.
-- [ ] **Step 4:** finalize this Execution status (stage DONE, phases ✅, risks closed, `merged via PR #NN`).
-- [ ] **Step 5:** merge + close-out checklist per §3.
+- [x] **Step 1: Review gate.** PR #720 marked ready for review; `/code-review` run over
+      `origin/main...HEAD` at high effort (ladder rung 1), five parallel passes — CLAUDE.md
+      adherence, shallow bug scan, git blame/history, prior-PR review comments, code-comment
+      compliance — **plus** the `riviera-review-overlay` FE bank walked on top, since the overlay
+      alone is not the gate. Three findings: F-1 and F-3 fixed in `7a92af0`, F-2 deferred to #721.
+      The two passes that disagreed (CLAUDE.md-adherence called the TSDoc issue refs grandfathered;
+      prior-PR-comments called them a finding) were resolved against the source rule, §6d's
+      verbatim "**No issue numbers**", not by vote.
+- [x] **Step 2: Sonar gate.** Not read off the badge: `api/measures/component` returned
+      `new_lines: 52` — proof an analysis exists, which is what separates a real zero from the
+      false-clean read — alongside 0 bugs / 0 vulnerabilities / 0 code smells / 0 duplicated blocks
+      and **100.0 % new-code coverage**; `api/issues/search` returned `total: 0`. Nothing to resolve.
+- [x] **Step 3: `riviera-docs-freshness`** run over `origin/main..HEAD` — **0 findings**; the
+      reasoning is in *Skills consulted*.
+- [x] **Step 4:** this Execution status finalized in the PR's own last commit, citing
+      **merged via PR #720**.
+- [ ] **Step 5:** merge + close-out checklist per §3 — the only item that cannot precede the merge.
 
 ---
 
@@ -475,6 +503,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | review-fix round (`7a92af0`) | **Mechanism:** every **doc-comment block** (`/** … */`) this diff writes — the surface §6d governs and the one `check-inline-comments.mjs` exempts by design, so the guard's silence carries no information here. Enumerated from the diff's added lines by comment syntax, not by file | `git diff origin/main...HEAD -- 'frontend/**' \| grep -E "^\+" \| grep -E "#7[0-9]{2}"` — then split by whether the hit is a doc-block line (`^+ \*`), a `test`/`it` name string, or an inline HTML comment | 16 added lines cite the ticket: **3** are doc-block lines (all fixed), 11 are `test`/`it` name strings, 2 are inline HTML comments | **Three fixed, thirteen left with reason.** §6d governs Javadoc/TSDoc only; test-name strings and inline HTML comments carry issue refs by established convention here (`venue-map.html`'s own `<!-- Zero sets (#717) -->`), and §6c's rule for inline comments is length, not provenance |
 | 2026-08-20 | phase 2 | **Mechanism:** every mocked e2e that serves a **`sets: []` venue** into a rendered surface — i.e. every spec that can hit one of the states this slice changed, enumerated from the fixture data rather than from spec names. Enumerated escaping-tolerantly, the trap #717's own audit fell into | `grep -rln 'api.\{0,2\}/venues' e2e/*.e2e.ts` (22) narrowed by `grep -rln "sets: \[\]" e2e/*.e2e.ts` (6), then cross-cut with `xargs grep -ln "beach-map\|/daily"` | 6 serve an empty venue; 4 of them reach an operator beach-map surface (`layout-editor`, `operator-daily`, `operator-onboarding`, `operator-venue`); `discovery-flow` + `operator-venue-photos` reach only the tourist map (#717's) or the photos tab | **No change needed, verified not assumed.** Ran all four affected files plus `operator-set-editing` → **26 passed**: the bulk editor still renders `layout-empty`, and no existing assertion depended on the Daily view's 0-of-0 count or its legend |
 | 2026-08-20 | phase 1 | **Mechanism:** every empty-state copy that instructs the reader to *pick an existing thing*, on a surface where that thing can legitimately be absent — the defect is the imperative presupposing its object, not "editor panels" | `grep -rn "Pick a\|Pick an\|Select a\|Choose a\|Tap a\|Tap any" src/app --include=*.html` | 5: `set-editor:217` (fixed here); `set-editor:166` "pick an empty spot" (move-armed — needs a *selected set* to exist, and the grid is growable, so its object cannot be absent); `layout-editor:117` "pick a tool" (the tool list is static, and that surface's empty state already forward-references it); `venue-map:219` "tap any free set" (projected via `canvasFooter`, so the canvas already drops it with the grid — #717); `home:22` (marketing hero, not an empty state) | **One fix, four judged-and-left.** Only the per-set panel's imperative can address nothing; the other four either have a guaranteed object or already drop with the grid |
 | 2026-08-20 | phase 0 | **Mechanism:** every element that *decodes or counts the tiles* of a beach-map surface while living **outside** `<app-beach-map-canvas>` — so the canvas's empty branch cannot drop it with the grid it describes. Enumerated by the markup that does the decoding (the legend list), not by "surfaces that look bare" | `grep -rn 'aria-label="Legend"' src/app --include=*.html` (3), cross-cut with `grep -rn "canvasLegend" src/app --include=*.html` (which of them are projected back **in**) | 3 legends: `venue-map` is projected into the canvas via `canvasLegend` (#701) so it already drops; `daily-view-tab`'s was outside and unguarded; `layout-editor`'s is outside too | **Subset, argued.** The Daily view legend is gated on `totalCount()`. The layout editor's is **not** a defect: that surface's empty state already forward-references it — "Generate a layout to begin, then paint tiers, walk-in sets and aisles" — so its legend and Paint-tool counts read as the next step, not as decoders of nothing. Its `render unchanged` AC (issue #718 AC-3) fences it either way |
@@ -486,39 +515,34 @@ Skill-routing gate for what the fix touches *before* editing).
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1 / AC-2 / AC-3:** `npm test -- daily-view-tab` → 3 new specs pass. Verified at `<sha>`.
-- [ ] **AC-4 / AC-5:** `npm test -- set-editor` → 2 new specs pass. Verified at `<sha>`.
-- [ ] **AC-6:** `npm test -- daily-view-tab.a11y` → axe clean on the zero-set render. Verified at `<sha>`.
-- [ ] **AC-7:** `npm test -- layout-editor.a11y` → axe clean in Edit-sets mode with no sets. Verified at `<sha>`.
-- [ ] **AC-8 / AC-9:** `npm run test:e2e:a11y -- operator-daily operator-set-editing` → pass. Verified at `<sha>`.
-- [ ] **AC-10:** `git diff --stat origin/main` lists no path under `frontend/src/app/venue/`,
+- [x] **AC-1 / AC-2 / AC-3:** `npm test -- daily-view-tab` → 3 new specs pass. Verified at `<sha>`.
+- [x] **AC-4 / AC-5:** `npm test -- set-editor` → 2 new specs pass. Verified at `<sha>`.
+- [x] **AC-6:** `npm test -- daily-view-tab.a11y` → axe clean on the zero-set render. Verified at `<sha>`.
+- [x] **AC-7:** `npm test -- layout-editor.a11y` → axe clean in Edit-sets mode with no sets. Verified at `<sha>`.
+- [x] **AC-8 / AC-9:** `npm run test:e2e:a11y -- operator-daily operator-set-editing` → pass. Verified at `<sha>`.
+- [x] **AC-10:** `git diff --stat origin/main` lists no path under `frontend/src/app/venue/`,
       `frontend/src/app/shared/`, and no `layout-editor.html`. Verified at `<sha>`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
-      findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
-      `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
-      If tooling blocked the review, that is stated in the PR and its checkbox is left
-      unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced — no backend file in the diff at all (invariant #1).
+- [x] **Availability** section filled — no write path added or changed; the tap-to-mark writer lives inside the row template, which is exactly the branch this slice does not touch (invariant #2).
+- [x] Pool + cutoff rules honored — a set-less venue has neither pool, and the empty state deliberately carries no date (invariants #3, #4).
+- [x] **Modulith** section `N/A — frontend-only`; its FE mirror checked instead — RV-FE-8's grep still returns the frozen **five** cross-feature edges, so the diff adds none (invariant #11).
+- [x] **Payment/payout** `N/A — no payment in scope`; no money is read, formatted or moved (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: the zero branch renders **no** date, deliberately — the set count comes from the venue's static layout, so no day reads differently (invariant #6).
+- [x] Booking codes untouched — the arrivals block is outside every branch this slice writes (invariant #7).
+- [x] No schema change, so no migration and no `V<n>` claimed (invariant #12).
+- [x] **Frontend** standards met — the CLAUDE.md-adherence review pass found no violation; no `as any`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, and a findings register whose every row carries a decision (F-1/F-3 fixed, F-2 deferred to #721).
+- [x] Risk register: all nine rows closed with outcomes. Open Questions: all resolved, with the one question the slice did not answer deferred to **#721**.
+- [x] **Close-out written in THIS PR** — this final state is committed here as **merged via PR #720**, never a merge SHA, so no docs-only follow-up PR is needed.
+- [x] **The review gate ran in full** — `/code-review` via ladder rung 1 (the Skill probe succeeded), five parallel review passes over the PR diff, **plus** the `riviera-review-overlay` FE bank walked on top. The session's standing "no Agent tool" instruction was **not** treated as grounds to skip: authorization was requested and granted, exactly as §1 prescribes. Three findings, none a Blocker.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
