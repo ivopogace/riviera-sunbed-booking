@@ -559,7 +559,7 @@ function slot(gridX: number, gridY: number): string {
 
 /**
  * The row label and position number a grid cell implies. A row that already has sets keeps its own
- * label — an operator-named row must not be split by a bare-letter newcomer (#723); an empty row
+ * label — an operator-named row must not be split by a bare-letter newcomer; an empty row
  * takes the same grid-letter derivation the bulk editor defaults to.
  */
 function placementAt(

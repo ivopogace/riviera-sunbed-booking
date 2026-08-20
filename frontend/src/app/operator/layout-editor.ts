@@ -121,7 +121,7 @@ export class LayoutEditor {
   /** The current grid, row-major with row 0 sea-facing. Empty until generated or loaded. */
   protected readonly grid = signal<CellState[][]>([]);
   /**
-   * The operator's name per grid row (#723) — what `row_label` saves as, so the tourist rail can
+   * The operator's name per grid row — what `row_label` saves as, so the tourist rail can
    * speak the venue's own words. Seeded with the loaded labels (or the grid letters on generate);
    * a blanked entry falls back to its grid letter at save time.
    */
@@ -169,7 +169,7 @@ export class LayoutEditor {
     this.grid().map((_, y) => (this.rowNames()[y] ?? '').trim() || gridRowLabel(y)),
   );
 
-  /** The first row name two rows share, if any — a clash the server would refuse as a duplicate position. */
+  /** The first name two rows share, if any — blocked because the map and pricing tab group rows by label. */
   protected readonly duplicateRowName = computed<string | undefined>(() => {
     const seen = new Set<string>();
     for (const name of this.effectiveRowNames()) {

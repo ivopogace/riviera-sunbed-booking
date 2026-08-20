@@ -6,10 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * The validated intent to place one set position. The row label is the operator's own words on the
- * tourist map (#723), so beyond the required-field rule it carries a length bound in lockstep with
- * the V43 {@code set_position_row_label_check} CHECK — counted in code points, matching Postgres
- * {@code char_length} — rejected at the application boundary (→ {@code 400 INVALID_REQUEST}, §6b).
+ * Pins {@link SetCommand}'s row-label bound: the operator's own words are limited to
+ * {@link VenueFieldValidation#MAX_ROW_LABEL_LENGTH} code points — matching Postgres
+ * {@code char_length}, so the V43 CHECK stays the backstop — and a violation is rejected at the
+ * application boundary (→ {@code 400 INVALID_REQUEST}, §6b).
  */
 class SetCommandTest {
 
