@@ -97,6 +97,15 @@ function miramar(): VenueMapView {
   };
 }
 
+/**
+ * A tourist-visible venue whose operator has not drawn a layout yet (#717): zero sets and so a
+ * `null` from-price, exactly as `JdbcVenueCatalog` serves it. Reachable since #693 — tourist
+ * visibility follows the owning operator being ACTIVE, which does not require a published map.
+ */
+function mapless(): VenueMapView {
+  return { ...miramar(), sets: [], fromPrice: null };
+}
+
 describe('rowCode', () => {
   it('derives A…Z then AA after Z by insertion index (no lexicographic sort)', () => {
     expect(rowCode(0)).toBe('A');
@@ -145,6 +154,10 @@ describe('VenueMap', () => {
 
   function flushVenue(): void {
     venueRequest().flush(miramar());
+  }
+
+  function flushMapless(): void {
+    venueRequest().flush(mapless());
   }
 
   function el(): HTMLElement {
@@ -270,6 +283,62 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
     expect(el().querySelector('[data-testid="availability"]')?.textContent).toContain('18 of 24');
+    expect(el().querySelector('[data-testid="availability-bar"]')).not.toBeNull();
+    expect(el().querySelector('[data-testid="map-empty"]')).toBeNull();
+  });
+
+  it('explains an empty map instead of framing empty space (#717)', async () => {
+    flushMapless();
+    await fixture.whenStable();
+
+    const card = el().querySelector('[data-testid="beach-grid"]')!;
+    const empty = card.querySelector<HTMLElement>('[data-testid="map-empty"]');
+    expect(empty).not.toBeNull();
+    expect(empty!.querySelector('h2')?.textContent).toContain('No sunbeds mapped yet');
+    // Sets come from the layout, not the date — say so, or the tourist hunts for a better day.
+    expect(empty!.textContent).toContain('on any date');
+
+    const sea = card.querySelector('.sea-banner')!;
+    const promenade = card.querySelector('.promenade')!;
+    expect(sea.compareDocumentPosition(empty!) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(promenade.compareDocumentPosition(empty!) & Node.DOCUMENT_POSITION_PRECEDING).toBe(
+      Node.DOCUMENT_POSITION_PRECEDING,
+    );
+  });
+
+  it('offers a way out of an empty map, back to Discover (#717)', async () => {
+    flushMapless();
+    await fixture.whenStable();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    const exit = el().querySelector<HTMLButtonElement>('[data-testid="map-empty-back"]')!;
+    expect(exit.textContent).toContain('Back to Discover');
+    exit.click();
+
+    expect(navigate).toHaveBeenCalledWith(['/']);
+  });
+
+  it('replaces the 0-of-0 summary and its empty bar with a plain no-sets line (#717)', async () => {
+    flushMapless();
+    await fixture.whenStable();
+
+    const summary = el().querySelector('[data-testid="availability"]')!;
+    expect(summary.textContent?.trim()).toBe('No sets to book yet');
+    // Only the text branches: swapping the live region itself would announce unreliably.
+    expect(summary.getAttribute('aria-live')).toBe('polite');
+    expect(el().querySelector('[data-testid="availability-bar"]')).toBeNull();
+  });
+
+  it('renders no legend, grid or tap-hint for a venue with no sets (#717)', async () => {
+    flushMapless();
+    await fixture.whenStable();
+
+    expect(el().querySelector('ul[aria-label="Legend"]')).toBeNull();
+    expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
+    expect(el().querySelector('[data-testid="map-pan"]')).toBeNull();
+    expect(el().textContent).not.toContain('Tap any free set to book it');
   });
 
   it('shows the rating and review count for a rated venue', async () => {

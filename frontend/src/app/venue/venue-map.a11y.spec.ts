@@ -116,6 +116,12 @@ describe('VenueMap accessibility (axe)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no violations on a venue with no sets (#717)', async () => {
+    expectVenueRequest().flush({ ...fixture(), sets: [], fromPrice: null });
+    await fixtureRef.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
   it('has no violations in the loading state', async () => {
     const req = expectVenueRequest(); // pending → component shows the loading message
     await fixtureRef.whenStable();

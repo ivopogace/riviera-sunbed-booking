@@ -104,22 +104,35 @@
         appCardGlass
       >
         <div class="pt-1 px-0.5 pb-[14px]">
-          <!-- aria-live: changing the date silently swaps the grid, so announce the new count. -->
+          <!-- aria-live: changing the date silently swaps the grid, so announce the new count. Only the CONTENT branches (#717) — swapping the element would rebuild the live region, which announces unreliably. -->
           <p
             class="mb-2 text-[16px] text-(--riv-card-ink)"
             data-testid="availability"
             aria-live="polite"
           >
-            <strong class="text-[19px] font-bold text-(--riv-accent-ink)">{{ freeCount() }}</strong>
-            of {{ totalCount() }} sets free on {{ dateLabel() }}
+            @if (totalCount()) {
+              <strong class="text-[19px] font-bold text-(--riv-accent-ink)">{{
+                freeCount()
+              }}</strong>
+              of {{ totalCount() }} sets free on {{ dateLabel() }}
+            } @else {
+              <!-- No date: a set count comes from the venue's layout, so no other day reads differently. -->
+              No sets to book yet
+            }
           </p>
-          <!-- Decorative: the count above already conveys this to AT. -->
-          <div class="h-2 rounded-full bg-(--riv-card-track) overflow-hidden" aria-hidden="true">
-            <span
-              class="block h-full bg-(image:--riv-bar-grad)"
-              [style.width.%]="totalCount() ? (freeCount() / totalCount()) * 100 : 0"
-            ></span>
-          </div>
+          @if (totalCount()) {
+            <!-- Decorative: the count above already conveys this to AT. -->
+            <div
+              class="h-2 rounded-full bg-(--riv-card-track) overflow-hidden"
+              data-testid="availability-bar"
+              aria-hidden="true"
+            >
+              <span
+                class="block h-full bg-(image:--riv-bar-grad)"
+                [style.width.%]="(freeCount() / totalCount()) * 100"
+              ></span>
+            </div>
+          }
         </div>
 
         <!-- The venue's photos as the shared slideshow (own controls — the band is no link); the gradient + sun as the empty state. Sea view sits above the grid card's "Facing the sea" banner — the v3 design's spatial order: sea ↑ / promenade ↓. The imagery is decorative (the component hides it from AT); only the step buttons are exposed, so the band itself is NOT aria-hidden. -->
@@ -205,6 +218,19 @@
         >
           Tap any free set to book it · prices are per set, full day.
         </p>
+        <!-- Zero sets (#717): the canvas drops the legend, grid and footer together, so this slot IS the card. The state is date-independent — sets come from the venue's layout — so the copy sends the tourist onward, not back to the picker. -->
+        <div canvasEmpty class="px-3 py-9 text-center" data-testid="map-empty">
+          <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-(--riv-card-ink)">
+            No sunbeds mapped yet
+          </h2>
+          <p
+            class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-(--riv-card-ink-soft)"
+          >
+            This beach is listed on Riviera, but its owner hasn’t drawn the sunbed layout yet — so
+            there’s nothing to book here on any date. The map appears as soon as it’s published.
+          </p>
+          <app-retry-button testId="map-empty-back" label="Back to Discover" (retry)="onBack()" />
+        </div>
       </app-beach-map-canvas>
     </article>
 
