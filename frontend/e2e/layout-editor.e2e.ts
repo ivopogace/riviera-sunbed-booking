@@ -162,6 +162,48 @@ test('generates a grid, paints a walk-in set, and saves the whole layout in one 
   expect(body.expectedVersion).toBe(0); // the setVersion loaded from the map read
 });
 
+test('names a row, saves the venue’s words, and blocks duplicate names before any PUT (#723)', async ({
+  page,
+}) => {
+  const { puts } = await mockEditor(page);
+  await page.goto('/operator/1');
+  await signIn(page);
+
+  await page.getByTestId('layout-gen-rows').fill('2');
+  await page.getByTestId('layout-gen-cols').fill('2');
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(4);
+
+  // One input per row, defaulting to the derived grid letter.
+  const names = page.getByTestId('layout-row-name');
+  await expect(names).toHaveCount(2);
+  await expect(names.first()).toHaveValue('A');
+
+  // Two rows sharing a (trimmed) name surface the clash and hold the save — no PUT leaves the tab.
+  await names.first().fill('Under the pines');
+  await names.nth(1).fill(' Under the pines ');
+  await expect(page.getByTestId('layout-row-name-error')).toBeVisible();
+  await page.getByTestId('layout-save').click();
+  expect(puts).toHaveLength(0);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor row names');
+
+  // Blanking the second row clears the clash (it falls back to its letter) and the save goes through.
+  await names.nth(1).fill('');
+  await expect(page.getByTestId('layout-row-name-error')).toHaveCount(0);
+  await page.getByTestId('layout-save').click();
+  await expect(page.getByTestId('layout-saved')).toBeVisible();
+  expect(puts).toHaveLength(1);
+  const body = puts[0].postDataJSON() as { sets: { rowLabel: string }[] };
+  expect(body.sets.map((s) => s.rowLabel)).toEqual([
+    'Under the pines',
+    'Under the pines',
+    'B',
+    'B',
+  ]);
+});
+
 test('drag-painting across cells paints them and never pans the overflowing grid (#672 slice 2)', async ({
   page,
 }) => {

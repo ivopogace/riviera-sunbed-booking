@@ -225,17 +225,18 @@ column instead of mutating the shared rail.
 > **This section is the session-recovery anchor.** Re-read it plus the current stage's
 > `riviera-sdlc` reference file after any compaction, before acting.
 
-**Stage pointer:** implement (phase 4)
+**Stage pointer:** phase 4 done — next: gates (CI on the pushed head, then ready-for-review)
 
-**Next action:** phase 4 — `set-editor.spec.ts` sibling-label inheritance (AC-8), then the e2e.
+**Next action:** verify CI on the phases-2..4 push, merge latest `origin/main`, mark PR #725
+ready for review, run the review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | `d8bf530`, PR #725 (draft) |
 | 1 — backend length bound (V43 + `SetCommand` + tests) | ✅ | `586b9ce` |
 | 2 — mail spot line (`SmtpMailer`) | ✅ | `0a24ed6` |
-| 3 — layout-editor row names (FE state + UI + specs) | ✅ | see phase-3 commit |
-| 4 — set-editor inheritance + e2e | | |
+| 3 — layout-editor row names (FE state + UI + specs) | ✅ | `df4a60d` |
+| 4 — set-editor inheritance + e2e | ✅ | see phase-4 commit |
 | 5 — gates (CI, review, Sonar) + merge close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -360,6 +361,7 @@ Modify `VenueFieldValidation.java`, `SetCommand.java`, `VenueAdminControllerIT.j
 |---|---|---|---|---|---|
 | 2026-08-20 | phase 1 (length bound) | every backend site handling `rowLabel`/`row_label` | `grep -rln "rowLabel\|row_label" platform/src/main/java --include="*.java"` + same over `src/main/resources` | 31 Java files + 4 migrations | Only write funnel is `SetCommand` (bulk replace, per-set add/edit all construct it) — bounded there. `RowPriceCommand`'s label is a lookup key, never persisted: an overlong key matches no row → typed `NO_SUCH_ROW`; no bound added. All other sites read/display. Migrations: V3 seed max 20 chars < 40, verified by `BeachMapLayoutMigrationIT`. |
 | 2026-08-20 | phase 2 (mail spot line) | every mail renderer of `rowLabel` | `grep -rn "Row \|rowLabel" platform/src/main/java/ai/riviera/platform/notification/` + `grep -rln "sendBookingConfirmation" platform/src/main/java` | `SmtpMailer` (renders), `MockMailer` (no body), cancellation/payment-due mails (no spot, by documented design), facts/listener/resend (carry, don't render) | `SmtpMailer` fixed; nothing else renders a spot line. |
+| 2026-08-20 | phase 4 (FE label derivation) | every FE site deriving a `rowLabel` it *sends* | `grep -rn "gridRowLabel" frontend/src --include="*.ts"` | `layout-editor.toRequest` (fixed, phase 3), `set-editor placementAt` (fixed, phase 4); remaining hits are display/a11y rail codes and cell labels — deliberately positional (editor navigation), unchanged | both senders fixed; display sites unchanged by design. |
 
 ---
 
