@@ -207,12 +207,14 @@ the repo forbids the decorator anyway).
 
 ## Execution status
 
-**Stage pointer:** `merge close-out — CI + Sonar green on HEAD, review gate run three times and
-its findings resolved; awaiting the maintainer to un-draft PR #707 and merge`
+**Stage pointer:** `DONE — every gate passed; awaiting the maintainer to un-draft and merge PR #707`
 
-**Next action:** Maintainer un-drafts and merges PR #707 (this session cannot flip the draft
-flag — REST has no field for it and the proxy blocks that GraphQL mutation). This slice merges
-via PR #707.
+**Next action:** Maintainer un-drafts and merges PR #707. This session cannot flip the draft flag
+itself — REST has no field for it and the session proxy serves only a pinned set of PR-review
+GraphQL operations, so `gh pr ready` 403s. Nothing else is outstanding: CI is green, the Sonar
+list is empty, the review gate ran three times and its findings are resolved, and the two
+post-merge items are GitHub-only (issue #700 closes via `Closes #700`; no parent epic to tick).
+This slice merges via PR #707.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -221,7 +223,7 @@ via PR #707.
 | close-out — plan final state | ✅ | `6021244` (its SCSS edit later reverted), `aea3101`, `223d795` |
 | review round 1 — 10 findings | ✅ | `d881d77` |
 | review round 2 — 13 findings | ✅ | `a30ae4a` |
-| review round 3 — 11 findings | ✅ | this commit |
+| review round 3 — 11 findings | ✅ | `9185ccc` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -278,8 +280,11 @@ Skill-routing gate for what the fix touches *before* editing).
   gate is the *list* and not the conclusion — the quality gate stayed green through them. On the
   round-2 head the list is back to `total 0`, with `measures` non-empty and the `SonarCloud Code
   Analysis` check-run `success` (the two facts that rule out the false-clean read, #318):
-  `new_bugs 0 · new_vulnerabilities 0 · new_code_smells 0 · new_duplicated_blocks 0 ·
-  new_coverage 100.0%`. **Due once more on this commit's head before merge.**
+  **Final verification on `9185ccc`** — the last commit that touches code (this close-out commit
+  is documentation only): CI 8/8 green, `api/issues/search` **total 0**, `measures` non-empty
+  (`new_lines 38`), `SonarCloud Code Analysis` `success` — `new_bugs 0 · new_vulnerabilities 0 ·
+  new_code_smells 0 · new_duplicated_blocks 0 · new_duplicated_lines_density 0.0 ·
+  new_security_hotspots 0 · new_coverage 100.0%`.
 - **Review gate:** **RAN** — rung 1 of the invocation ladder (`Skill("code-review")`) was
   probed and succeeded, so the full subagent fan-out executed over `origin/main...HEAD` at high
   effort. It returned **10 findings**, all real and all fixed (F-4…F-13 above), including one
