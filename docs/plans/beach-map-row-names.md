@@ -225,15 +225,15 @@ column instead of mutating the shared rail.
 > **This section is the session-recovery anchor.** Re-read it plus the current stage's
 > `riviera-sdlc` reference file after any compaction, before acting.
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** phase 2 red test — `SmtpMailerIT` descriptive-label spot line.
+**Next action:** phase 3 red specs — `layout-editor.spec.ts` row-name behaviors (AC-4..7).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | `d8bf530`, PR #725 (draft) |
-| 1 — backend length bound (V43 + `SetCommand` + tests) | ✅ | see phase-1 commit |
-| 2 — mail spot line (`SmtpMailer`) | | |
+| 1 — backend length bound (V43 + `SetCommand` + tests) | ✅ | `586b9ce` |
+| 2 — mail spot line (`SmtpMailer`) | ✅ | see phase-2 commit |
 | 3 — layout-editor row names (FE state + UI + specs) | | |
 | 4 — set-editor inheritance + e2e | | |
 | 5 — gates (CI, review, Sonar) + merge close-out | | |
@@ -359,6 +359,7 @@ Modify `VenueFieldValidation.java`, `SetCommand.java`, `VenueAdminControllerIT.j
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-20 | phase 1 (length bound) | every backend site handling `rowLabel`/`row_label` | `grep -rln "rowLabel\|row_label" platform/src/main/java --include="*.java"` + same over `src/main/resources` | 31 Java files + 4 migrations | Only write funnel is `SetCommand` (bulk replace, per-set add/edit all construct it) — bounded there. `RowPriceCommand`'s label is a lookup key, never persisted: an overlong key matches no row → typed `NO_SUCH_ROW`; no bound added. All other sites read/display. Migrations: V3 seed max 20 chars < 40, verified by `BeachMapLayoutMigrationIT`. |
+| 2026-08-20 | phase 2 (mail spot line) | every mail renderer of `rowLabel` | `grep -rn "Row \|rowLabel" platform/src/main/java/ai/riviera/platform/notification/` + `grep -rln "sendBookingConfirmation" platform/src/main/java` | `SmtpMailer` (renders), `MockMailer` (no body), cancellation/payment-due mails (no spot, by documented design), facts/listener/resend (carry, don't render) | `SmtpMailer` fixed; nothing else renders a spot line. |
 
 ---
 

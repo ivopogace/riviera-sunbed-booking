@@ -48,7 +48,7 @@ class SmtpMailerIT {
 	private static final Instant DEADLINE = Instant.parse("2026-08-14T18:30:00Z");
 
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
-			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "A", 3, 2500, "EUR");
+			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "Front row · Sea view", 3, 2500, "EUR");
 
 	@RegisterExtension
 	static GreenMailExtension greenMail = new GreenMailExtension(ServerSetupTest.SMTP);
@@ -89,8 +89,11 @@ class SmtpMailerIT {
 
 		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
 		String body = message.getContent().toString();
-		assertThat(body).contains(BOOKING_CODE, "Miramar Beach", "15 August 2026", "Row A, position 3",
-				"EUR 25.00");
+		assertThat(body).contains(BOOKING_CODE, "Miramar Beach", "15 August 2026",
+				"Front row · Sea view, position 3", "EUR 25.00");
+		assertThat(body)
+				.as("the spot line renders the row label as the operator wrote it (#723) — no 'Row ' prefix")
+				.doesNotContain("Row Front row");
 		assertThat(body).doesNotContain("<html", "<img", "http://track", "utm_");
 	}
 

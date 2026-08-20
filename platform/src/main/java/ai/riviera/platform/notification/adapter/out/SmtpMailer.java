@@ -105,7 +105,7 @@ class SmtpMailer implements Mailer {
 				  Booking code:  %s
 				  Venue:         %s
 				  Date:          %s
-				  Spot:          Row %s, position %d
+				  Spot:          %s, position %d
 				  Paid:          %s
 
 				Show the booking code at the venue on arrival."""
