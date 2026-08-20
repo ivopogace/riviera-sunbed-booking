@@ -67,7 +67,14 @@ overlay's own
 RV-FE bank walked on top: RV-FE-3 money-from-the-wire, RV-FE-5 picker a11y, RV-FE-7 Tailwind +
 no-drift, RV-FE-E2E suite placement, RV-FE-8 no new cross-feature import, RV-STYLE-1/2 and
 RV-PROC-1 — the fix round pulled in no new area, so this line is unchanged apart from this
-parenthesis) · `riviera-docs-freshness` (<ran over range, findings>)
+parenthesis) · `riviera-docs-freshness` (**ran** pre-merge over
+`origin/main...HEAD`, **0 findings**: the rename grep returned nothing at all — no substrate
+doc states anything about the price rail, the chip's wording, or how a zone is defined — and
+the counting sweep found nothing this slice made the Nth of: the e2e split is still two
+suites, the SCSS count is untouched at 8, the canvas still has three content slots and two
+rails, and `shared/set-label.ts`'s "three tier variants by design" survives precisely
+because the chip reuses `tierLabel` rather than minting a fourth spelling, which is what the
+I-round decided)
 · `riviera-frontend` (placement: the rule is tourist-map vocabulary with exactly one
 consumer, so it colocates flat in the `venue/` feature next to `map-tile.ts` — **not**
 `shared/`, which no second feature needs; the rail's CSS cap *is* shared chrome, so it
@@ -197,12 +204,12 @@ The replaced surface is the rail chip's **label string** and everything that rea
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The enriched label silently re-partitions zones, changing chip counts and gaps on maps nobody re-checked | high | med | made an explicit AC (AC-4) with both a unit and an e2e pin; the ledger row states the mechanism is preserved and only the partition moves | claude | open |
-| R-2 | A long venue-authored label steals tile width at 390 px (the rail is `shrink-0`; the tile viewport is `flex-1 min-w-0`, so it, not the rail, pays) | high | med | `max-w-[92px] sm:max-w-[128px]` + `truncate` on the chip; pinned by the 390 px geometry e2e (AC-7) | claude | open |
-| R-3 | The qualifier heuristic swallows a real word it mistakes for a row ordinal (a row genuinely named `AA`, or `VIP` mis-matched) | med | low | the positional pattern is anchored and narrow — `(row )?` + 1–2 letters **or** 1–3 digits — so 3+-letter words (`VIP`, `Bar`, `Sea`) always survive; each shape is a unit case | claude | open |
-| R-4 | The shared canvas cap changes an operator surface's rendering | low | med | the cap is a `max-width`, and every operator label is a bare `formatMoney` string far under it; AC-8 leaves their specs unedited as the proof | claude | open |
-| R-5 | Duplicate announcement — the qualifier reaching AT twice (rail + tile name) | low | med | rail stays `aria-hidden`; `toTile()` untouched and pinned byte-for-byte (AC-6) | claude | open |
-| R-6 | The e2e chip pin is a plain-text array; the 5-row wide fixture now yields 5 chips, so a stale 4-item expectation fails CI late | high | low | the pin is updated in the same phase as the wiring, not at the end | claude | open |
+| R-1 | The enriched label silently re-partitions zones, changing chip counts and gaps on maps nobody re-checked | high | med | made an explicit AC (AC-4) with both a unit and an e2e pin; the ledger row states the mechanism is preserved and only the partition moves | claude | closed — and it fired: I-1 was exactly this risk in its subtler form (a *premium* re-partition nobody asked for), caught by the review gate and pinned by `venue-map.spec.ts › 'keeps two identically-priced premium rows in one zone (#702)'` |
+| R-2 | A long venue-authored label steals tile width at 390 px (the rail is `shrink-0`; the tile viewport is `flex-1 min-w-0`, so it, not the rail, pays) | high | med | `max-w-[92px] sm:max-w-[128px]` + `truncate` on the chip; pinned by the 390 px geometry e2e (AC-7) | claude | closed — measured at 170 px before the cap, ≤ 92 px after, with the tile viewport identical across an 18- and a 69-character label |
+| R-3 | The qualifier heuristic swallows a real word it mistakes for a row ordinal (a row genuinely named `AA`, or `VIP` mis-matched) | med | low | the positional pattern is anchored and narrow — `(row )?` + 1–2 letters **or** 1–3 digits — so 3+-letter words (`VIP`, `Bar`, `Sea`) always survive; each shape is a unit case | claude | closed — the risk was real and the first two mitigations were both wrong: F-1 (English-only), then G-1 (any `<word> <ref>`, which ate `Cabana 5`). It ended where it should have started: a word plus a reference is positional only when the reference is **this row's** own, while a bare code always is |
+| R-4 | The shared canvas cap changes an operator surface's rendering | low | med | the cap is a `max-width`, and every operator label is a bare `formatMoney` string far under it; AC-8 leaves their specs unedited as the proof | claude | closed — no operator file or spec is in the diff; their specs and e2e pass untouched |
+| R-5 | Duplicate announcement — the qualifier reaching AT twice (rail + tile name) | low | med | rail stays `aria-hidden`; `toTile()` untouched and pinned byte-for-byte (AC-6) | claude | closed — and the pin earned itself: it is why I-2 (an older tile-name inconsistency) had to go to #724 rather than be patched here |
+| R-6 | The e2e chip pin is a plain-text array; the 5-row wide fixture now yields 5 chips, so a stale 4-item expectation fails CI late | high | low | the pin is updated in the same phase as the wiring, not at the end | claude | closed — updated in phase 2 with the wiring; CI never saw a stale pin |
 
 ## Open questions / Assumptions
 
@@ -218,6 +225,7 @@ The replaced surface is the rail chip's **label string** and everything that rea
 - **Assumption (D-3):** The artboard's hand-shortened mobile label (`€50 · Front`) is
   reproduced by CSS truncation rather than a second label, because the words come from the
   venue, not from us. *Owner:* claude · *Resolves by:* phase 2.
+
 ### Resolved
 
 - **Open question (Q-1):** Should the operator layout editor let a venue *name* its rows,
@@ -281,10 +289,12 @@ served by `GET /api/venues/{id}` and consumed by this component today.
 > **This section is the session-recovery anchor.** Everything a resuming session needs
 > lives HERE, committed — never only in the conversation.
 
-**Stage pointer:** `review gate — I-round fixed; re-review of the I-round + sonar gate next`
+**Stage pointer:** `DONE — merged via PR #722`
 
-**Next action:** Re-run `/code-review` over the I-round commit, then pull PR #722's Sonar
-issue list from the API (a green gate is not the check) and close out.
+**Next action:** None in the repo. GitHub-only close-out: #702 closes with the PR; the two
+deferred findings are already written onto their homes (#723 the operator row-naming slice,
+#724 the tile-accessible-name mismatch). This slice belongs to no tracking epic, so there is
+no parent checklist to tick.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -294,7 +304,8 @@ issue list from the API (a green gate is not the check) and close out.
 | review gate — F-1 fixed, F-2 answered | ✅ | `16e538c` |
 | re-review of the fix round — G-1, G-2 | ✅ | `9a2e80a` |
 | re-review of the G-round — H-1, H-2, H-3 | ✅ | `96ca661` |
-| re-review of the H-round — I-1 fixed, I-2 deferred | ✅ | this commit |
+| re-review of the H-round — I-1 fixed, I-2 deferred | ✅ | `8897d96` |
+| re-review of the I-round — plan-doc drift only | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -308,10 +319,9 @@ Skill-routing gate for what the fix touches *before* editing).
 | G-1 | re-review of the F-1 fix | the fix over-generalized: matching the leading word as `\p{L}+` made **any** `<word> <code/ordinal>` positional, so `Cabana 5`, `VIP 2`, `Terrace 2` lost the venue's own name — and on a **premium** row the tier fallback then renamed it `Front row`, which is wrong information, not merely missing information | fixed-in-`this commit`: "positional" now means *this row's actual position* rather than a guessed vocabulary — `rowPriceLabel(sets, position)` takes the row's `{code, ordinal}` and a segment is skipped only when its code/ordinal **is** that row's own. `Cabana 5` is positional on row 5 and a name everywhere else. Pinned by `row-price-label.spec.ts › "keeps a name whose number is not this row's number"`, whose premium case is the wrong-information half |
 | G-2 | re-review of the F-1 fix | a spec comment claimed a two-word guard ("only a bare code or ordinal is positional") that the code did not implement, and the case under it passed for an unrelated reason — the comment is what hid G-1 | fixed-in-`this commit`: the misleading comment and its accidental case are gone; the rule's real boundary is pinned by the G-1 cases instead |
 | H-1 | re-review of the G-round | **regression from G-1's own fix**: judging every segment against this row's position meant a *bare* code no longer dropped unless it matched. The map derives rail codes from insertion order while the venue's labels come from grid rows, so a **walkway** row (all-gap, saved as no sets) shifts them — the venue's `C` lands on rail `B` and chipped `€35 · C` beside a chip reading `B` | fixed-in-`this commit`: the two shapes are judged differently by what dropping them costs. A **bare** code/ordinal has no words to lose, so it goes regardless of position; only a **word plus** a reference (`Row 4`, `Cabana 5`) needs the reference to be this row's own. Pinned by `row-price-label.spec.ts › 'drops a bare code the map itself did not derive…'` and, end-to-end, `venue-map.spec.ts › 'drops a bare row label the rail cannot echo…'` |
-| H-2 | re-review of the G-round | the tier fallback named **any** positional-only all-premium row `Front row` — including a premium row 5 (a VIP cabana block), told it is at the water. G-1's wrong-information failure surviving on the rows where the label coincides | fixed-in-`this commit`: `Front row` is a spatial claim, so it is made only where it is true — `position.ordinal === 1`. A premium row further back keeps the bare price. Pinned by `row-price-label.spec.ts › 'claims the front row only where the front row is (#702 H-2)'` |
+| H-2 | re-review of the G-round | the tier fallback names **any** positional-only all-premium row `Front row` — including a premium row 5 (a VIP cabana block), told it is at the water | **no change, by decision — and one round of getting it wrong.** The H-round did gate it on `position.ordinal === 1`; I-1 then showed that gate splits a homogeneous premium block in two, so it was reverted in the same round that answered this properly: `Front row` is the premium tier's name in this app (`shared/set-label.ts` `tierLabel`), and the same map card's **legend** already labels every premium tile with it (#701) — so the chip agrees with the surface it sits on. Reconciling the three tier spellings across surfaces is a product decision `set-label.ts` explicitly reserves as a non-goal; making it here, unilaterally, would be the larger error. The spatial reading is real but pre-dates this slice |
 | H-3 | re-review of the G-round (note) | `rowCode(index)` was derived twice per row in `VenueMap.rows` — once for the chip's position, once for the rail code | fixed-in-`this commit`: derived once into `positions`, read by both |
 | I-1 | re-review of the H-round | H-2's `ordinal === 1` gate split a homogeneous premium block: two identically-priced all-premium rows read `€50 · Front row` then `€50`, and since zones compare the rendered label, that drew a spurious second chip and gap | fixed-in-`this commit` by **reverting H-2's gate**, which also answers H-2 itself (below). Pinned by `row-price-label.spec.ts › "names the premium tier whatever row it is on…"` and, end-to-end, `venue-map.spec.ts › 'keeps two identically-priced premium rows in one zone (#702)'` |
-| H-2 | re-review of the G-round | (answered at I-1) the tier fallback names any positional-only all-premium row `Front row`, including one further back | **no change, by decision.** `Front row` is the premium tier's name in this app (`shared/set-label.ts` `tierLabel`), and the same map card's **legend** already labels every premium tile with it (#701) — so the chip agrees with the surface it sits on. Reconciling the three tier spellings across surfaces is a product decision `set-label.ts` explicitly reserves as a non-goal; making it here, unilaterally, would be the larger error. The spatial reading is real but pre-dates this slice |
 | I-2 | re-review of the H-round | a tile's accessible name carries two row identities that need not agree (`Set B1, C, …` on a walkway-shifted venue), so H-1's fix reaches sighted users only | **deferred → issue #724.** Older than this slice (`toTile` has combined the derived seat code with the raw `rowLabel` since the map was built) and out of its scope by construction: AC-6 pins tile names byte-identical to `main` so the rail's new wording cannot leak into screen-reader output. The fix wants one decision applied to every surface that prints a set's identity — map, dialog, confirmation, mail — not a patch in `toTile` |
 | F-2 | review gate | A row painted with **mixed** pools renders a bare span (`€25–€30`) with no channel note, so the rail advertises a price only walk-in sets carry | **no change, by decision.** It is the rendering `main` already had (the qualifier is withheld precisely because "at venue" would be false for the row's online half), the per-tile truth is unaffected — those sets keep the #701 hatch and the "walk-in only — book at the venue" accessible name — and a mixed row that has any words of its own still gets them (`€25–€30 · Back`). Inventing a "some at venue" state would add copy and a fourth qualifier branch for a layout the editor permits but no venue has painted; if one ever does, that is its own slice |
 | F-3 | review gate (nit) | Plan AC-6 quoted the pinned tile name ending `…, €45, available`; the shipped assertion ends `…, €45, taken` (A1 is the fixture's taken seat) | fixed-in-`this commit` — doc text only |
@@ -409,30 +419,32 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-6:** `npx vitest run src/app/venue/` → all green.
-- [ ] **AC-7, AC-9:** `npm run test:e2e:a11y -- venue-map-pan` → green.
-- [x] **AC-8:** `npx vitest run src/app/operator/` → green with no operator spec edited
-      (`git diff --stat origin/main -- frontend/src/app/operator` is empty).
+- [x] **AC-1..AC-6:** `npx ng test --watch=false --include="src/app/venue/**/*.spec.ts"` →
+      114 passed at `8897d96`; the whole unit suite (1514) is green in CI on the same head.
+- [x] **AC-7, AC-9:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test
+      --config playwright.a11y.config.ts venue-map-pan` → 11 passed, axe included.
+- [x] **AC-8:** the operator specs pass untouched, and
+      `git diff --stat origin/main -- frontend/src/app/operator` is empty.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND
       findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
