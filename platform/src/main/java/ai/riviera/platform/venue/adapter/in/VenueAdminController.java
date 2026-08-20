@@ -242,6 +242,8 @@ class VenueAdminController {
 					"Another set already occupies this grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Another set already has this row and position.");
+			case ROW_NAME_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
+					"Another row on this venue already has that name.");
 		};
 	}
 

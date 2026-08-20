@@ -42,8 +42,8 @@ public interface Venues {
 
 	/**
 	 * Advance the venue's {@code set_version} by one — {@code UPDATE venue SET set_version =
-	 * set_version + 1 WHERE id = :id} — called ONLY after a set-write commits (the layout was replaced /
-	 * the row repriced). The caller already holds the venue row lock from {@link #lockAndReadSetVersion},
+	 * set_version + 1 WHERE id = :id} — called ONLY after a set-write commits (the layout was replaced,
+	 * the row repriced or renamed). The caller already holds the venue row lock from {@link #lockAndReadSetVersion},
 	 * so this is race-free; a concurrent writer blocked on that lock re-reads the advanced value and gets
 	 * STALE_WRITE.
 	 */
@@ -100,6 +100,22 @@ public interface Venues {
 	 * venue has no set with that row label, so the caller returns {@code NO_SUCH_ROW}.
 	 */
 	int repriceRow(VenueId venueId, RowPriceCommand command);
+
+	/**
+	 * Whether a set <em>outside</em> the row being renamed already carries {@code command.newLabel()}.
+	 * The self-exclusion is part of the question, not the caller's job: renaming a row to the label it
+	 * already reads must not collide with itself.
+	 */
+	boolean rowNameTaken(VenueId venueId, RowNameCommand command);
+
+	/**
+	 * Rename every set in a row of the venue in one non-destructive {@code UPDATE}: overwrite
+	 * {@code row_label} for every {@code set_position} carrying {@code command.rowLabel()}. Touches no
+	 * other column, so set identity, pool, coordinates, price and any {@code set_availability} hold
+	 * survive. Returns the number of set rows changed — {@code 0} means the venue has no set with that
+	 * row label, so the caller returns {@code NO_SUCH_ROW}.
+	 */
+	int renameRow(VenueId venueId, RowNameCommand command);
 
 	/**
 	 * The ids of every set currently on the venue's map, <strong>without locking</strong> — the

@@ -69,6 +69,32 @@ public interface EditBeachMap {
 			RowPriceCommand command);
 
 	/**
+	 * Rename <strong>every set in a row</strong> — a display-only write, the {@link #repriceRow}
+	 * analogue for the row's label. After asserting {@code operator} owns {@code venueId}, it writes
+	 * {@code command.newLabel()} over {@code row_label} for every set carrying
+	 * {@code command.rowLabel()} in one non-destructive {@code UPDATE}: set identity, pool,
+	 * coordinates, price and any {@code set_availability} hold are untouched, so — unlike
+	 * {@link #replaceLayout} and {@link #editSet} — a rename is allowed on a venue with bookings or
+	 * holds and asks no claim question at all. Nothing a claim depends on changes, so nothing can be
+	 * stranded or re-seated; the guest keeps the same set, at the same row position, and reads the
+	 * new name live.
+	 *
+	 * <p>Refused with {@link SetRejection#ROW_NAME_TAKEN} (→ 409) when another row already carries
+	 * the requested label — the database alone would not catch it unless the two rows' position
+	 * numbers also collided, and a shared label merges two physical rows wherever sets are grouped
+	 * by it. A rename to the row's current label is a permitted no-op. Returns
+	 * {@code Rejected(NO_SUCH_VENUE)} / {@code Rejected(NO_SUCH_ROW)} when the venue or the row is
+	 * unknown.
+	 *
+	 * <p>Optimistic concurrency: identical to {@link #repriceRow} — the caller passes the
+	 * {@code set_version} the tab loaded, the write is conditional on it, a mismatch yields
+	 * {@link SetRejection#STALE_WRITE} (→ 409), and the token is advanced only after a successful
+	 * rename so a rejected one leaves the acting tab's own retry valid.
+	 */
+	ChangeOutcome renameRow(OperatorId operator, VenueId venueId, long expectedVersion,
+			RowNameCommand command);
+
+	/**
 	 * Replace the venue's <strong>whole</strong> beach-map layout in one transaction —
 	 * the generate-grid + paint editor's bulk write. After asserting {@code operator} owns {@code venueId},
 	 * it is <em>reject-unless-unclaimed</em>: if any of the venue's existing sets has a booking (any status)

@@ -274,15 +274,15 @@ surface (AC-10).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write `RowNameCommandTest` + the `VenueAdminServiceTest`
-rename cases red-first, then implement the command, outcome, port and service.
+**Next action:** Phase 1 — write `VenueRowRenameIT` red-first, then add the
+`PUT /api/venues/{venueId}/rows/{rowLabel}/name` endpoint and its request DTO.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Backend inner hexagon (command, outcome, port, service) | ⏳ | |
-| 1 — JDBC adapter + REST edge | | |
+| 0 — Backend inner hexagon (command, outcome, port, service, adapter) | ✅ | *(this commit)* |
+| 1 — REST edge + integration tests | ⏳ | |
 | 2 — Layout-editor per-row rename (Angular) | | |
 | 3 — Mocked e2e + substrate docs | | |
 
@@ -329,11 +329,18 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ---
 
-## Phase 0 — Backend inner hexagon (command, outcome, port, service)
+## Phase 0 — Backend inner hexagon (command, outcome, port, service, adapter)
 
 **Files:** Create `RowNameCommand.java`, `RowNameCommandTest.java` · Modify
-`SetRejection.java`, `EditBeachMap.java`, `VenueAdminService.java`, `Venues.java` · Test
+`SetRejection.java`, `EditBeachMap.java`, `VenueAdminService.java`, `Venues.java`,
+`JdbcVenues.java`, `VenueAdminController.java`, `WebSliceStubs.java` · Test
 `VenueAdminServiceTest.java`
+
+> **Scope note (recorded during execution):** the plan split the JDBC adapter into phase 1,
+> but the compiler does not allow it — adding a method to the `Venues` interface breaks
+> `JdbcVenues`, and adding `ROW_NAME_TAKEN` to `SetRejection` breaks the controller's
+> exhaustive `switch`. Both land here, fully implemented rather than stubbed; phase 1 is
+> the REST endpoint and the integration tests.
 
 - [ ] **Step 1: Write the failing tests** — `RowNameCommandTest` (length bound at 40 code
   points, blank rejection) and, in `VenueAdminServiceTest`, the four service outcomes:
@@ -352,11 +359,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ---
 
-## Phase 1 — JDBC adapter + REST edge
+## Phase 1 — REST edge + integration tests
 
-**Files:** Modify `JdbcVenues.java`, `VenueAdminController.java` · Create
-`RowNameRequest.java`, `VenueRowRenameIT.java` · Modify `WebSliceStubs.java`,
-`VenueWriteRoleGateTest.java`, `EndpointProbes.java`, `CrossVenueDenialIT.java`
+**Files:** Create `RowNameRequest.java`, `VenueRowRenameIT.java` · Modify
+`VenueAdminController.java`, `WebSliceStubs.java`, `VenueWriteRoleGateTest.java`,
+`EndpointProbes.java`, `CrossVenueDenialIT.java`
 
 - [ ] **Step 1: Write the failing test** — `VenueRowRenameIT` covering AC-1, AC-2, AC-4,
   AC-5, AC-6, plus the over-long-label `400`.
@@ -415,6 +422,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | Phase 0 — new `set_version`-guarded write | Every application-service write that guards on the venue's `set_version` token (mechanism: it calls `Venues#lockAndReadSetVersion`), judged on whether it advances the token **only** after the write succeeds | `grep -rn "lockAndReadSetVersion" platform/src/main/java --include=*.java` | 3 call sites — `repriceRow`, `renameRow`, `replaceLayout` | No fix needed: all three advance only on success, so a rejected write leaves the acting tab's retry valid. Pattern held; the new site was written to match. |
 
 ---
 

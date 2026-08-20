@@ -215,6 +215,32 @@ class VenueAdminService
 
 	@Override
 	@Transactional
+	public ChangeOutcome renameRow(OperatorId operator, VenueId venueId, long expectedVersion,
+			RowNameCommand command) {
+		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
+		if (!venues.venueExists(venueId)) {
+			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+		}
+		// Same token, lock and order as repriceRow — no new lock edge, and only one racer off a value wins.
+		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
+			return new ChangeOutcome.Rejected(SetRejection.STALE_WRITE);
+		}
+		// Broader than the UNIQUE index, which misses a shared label whose position numbers never collide.
+		if (venues.rowNameTaken(venueId, command)) {
+			return new ChangeOutcome.Rejected(SetRejection.ROW_NAME_TAKEN);
+		}
+		// No claim probe: nothing a hold or booking depends on changes (see EditBeachMap#renameRow).
+		int updated = venues.renameRow(venueId, command);
+		if (updated == 0) {
+			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW);
+		}
+		venues.incrementSetVersion(venueId); // advance the token iff a row was actually renamed
+		return ChangeOutcome.Applied.APPLIED;
+	}
+
+	@Override
+	@Transactional
 	public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId, long expectedVersion,
 			LayoutCommand command) {
 		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
