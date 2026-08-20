@@ -365,7 +365,7 @@ export class SetEditor {
     this.moving.set(false);
     await this.write('move', () =>
       this.console.editSet(this.venueId(), selected.id, {
-        ...placementAt(gridX, gridY),
+        ...placementAt(gridX, gridY, this.sets()),
         tier: selected.tier,
         pool: selected.pool,
         price: selected.price,
@@ -389,7 +389,7 @@ export class SetEditor {
       'add',
       () =>
         this.console.addSet(this.venueId(), {
-          ...placementAt(cell.gridX, cell.gridY),
+          ...placementAt(cell.gridX, cell.gridY, this.sets()),
           tier: draft.tier,
           pool: draft.pool,
           price: { minorUnits, currency: draft.currency },
@@ -558,12 +558,20 @@ function slot(gridX: number, gridY: number): string {
 }
 
 /**
- * The row label and position number a grid cell implies — the same derivation the bulk editor uses,
- * so a set placed here reads to the guest exactly as one generated there would.
+ * The row label and position number a grid cell implies. A row that already has sets keeps its own
+ * label — an operator-named row must not be split by a bare-letter newcomer; an empty row
+ * takes the same grid-letter derivation the bulk editor defaults to.
  */
 function placementAt(
   gridX: number,
   gridY: number,
+  siblings: readonly SetView[],
 ): Pick<SetWriteRequest, 'rowLabel' | 'positionNo' | 'gridX' | 'gridY'> {
-  return { rowLabel: gridRowLabel(gridY - 1), positionNo: gridX, gridX, gridY };
+  const sibling = siblings.find((s) => s.gridY === gridY);
+  return {
+    rowLabel: sibling?.rowLabel ?? gridRowLabel(gridY - 1),
+    positionNo: gridX,
+    gridX,
+    gridY,
+  };
 }

@@ -120,6 +120,12 @@ export class LayoutEditor {
 
   /** The current grid, row-major with row 0 sea-facing. Empty until generated or loaded. */
   protected readonly grid = signal<CellState[][]>([]);
+  /**
+   * The operator's name per grid row — what `row_label` saves as, so the tourist rail can
+   * speak the venue's own words. Seeded with the loaded labels (or the grid letters on generate);
+   * a blanked entry falls back to its grid letter at save time.
+   */
+  protected readonly rowNames = signal<readonly string[]>([]);
   /** The venue's saved sets from the last map read — what {@link SetEditor} edits, by id. */
   protected readonly loadedSets = signal<readonly SetView[]>([]);
   /** The operator's explicit mode choice, or null while the venue's own state decides. */
@@ -157,6 +163,23 @@ export class LayoutEditor {
 
   /** Whether a grid exists (drives the empty-state vs the grid + save button). */
   protected readonly hasLayout = computed(() => this.grid().length > 0);
+
+  /** The name each row saves with: the operator's trimmed words, or the row's grid letter. */
+  private readonly effectiveRowNames = computed<readonly string[]>(() =>
+    this.grid().map((_, y) => (this.rowNames()[y] ?? '').trim() || gridRowLabel(y)),
+  );
+
+  /** The first name two rows share, if any — blocked because the map and pricing tab group rows by label. */
+  protected readonly duplicateRowName = computed<string | undefined>(() => {
+    const seen = new Set<string>();
+    for (const name of this.effectiveRowNames()) {
+      if (seen.has(name)) {
+        return name;
+      }
+      seen.add(name);
+    }
+    return undefined;
+  });
   protected readonly genTotal = computed(
     () => clampGrid(this.genRows(), 1, MAX_ROWS) * clampGrid(this.genCols(), 1, MAX_COLS),
   );
@@ -230,6 +253,7 @@ export class LayoutEditor {
   private resetForVenue(venueId: number): void {
     this.epoch++;
     this.grid.set([]);
+    this.rowNames.set([]);
     this.loadedSets.set([]);
     this.chosenMode.set(null);
     this.priceByCoord.clear();
@@ -324,8 +348,19 @@ export class LayoutEditor {
       grid.push(row);
     }
     this.grid.set(grid);
+    this.rowNames.set(grid.map((_, y) => gridRowLabel(y)));
     this.savedNotice.set(false);
     this.errorCode.set(undefined);
+  }
+
+  /** The derived grid letter for row {@code y} — the row-name input's default and visual anchor. */
+  protected rowCode(y: number): string {
+    return gridRowLabel(y);
+  }
+
+  protected onRowNameInput(y: number, value: string): void {
+    this.rowNames.update((names) => names.map((name, i) => (i === y ? value : name)));
+    this.savedNotice.set(false);
   }
 
   // ---- Paint (click + drag; keyboard via the button's native click) ----
@@ -389,6 +424,9 @@ export class LayoutEditor {
     const venueId = this.venueId();
     if (venueId === undefined) {
       return;
+    }
+    if (this.duplicateRowName() !== undefined) {
+      return; // the row-names panel is already showing the clash; the server would refuse it anyway
     }
     const sets = this.toRequest();
     if (sets.length === 0) {
@@ -506,6 +544,7 @@ export class LayoutEditor {
 
   private toRequest(): LayoutCellRequest[] {
     const sets: LayoutCellRequest[] = [];
+    const rowLabels = this.effectiveRowNames();
     this.grid().forEach((row, y) => {
       row.forEach((state, x) => {
         if (state === 'gap') {
@@ -513,7 +552,7 @@ export class LayoutEditor {
         }
         const premium = state === 'premium';
         sets.push({
-          rowLabel: gridRowLabel(y),
+          rowLabel: rowLabels[y],
           positionNo: x + 1,
           tier: premium ? 'PREMIUM' : 'STANDARD',
           pool: state === 'walkin' ? 'WALK_IN' : 'ONLINE',
@@ -575,6 +614,10 @@ export class LayoutEditor {
       this.priceByCoord.set(coordKey(s.gridX, s.gridY), s.price); // preserve prices for a lossless save
     }
     this.grid.set(grid);
+    // Preserve each row's loaded label for a lossless save (#723); an all-gap row takes its letter.
+    this.rowNames.set(
+      grid.map((_, y) => sets.find((s) => s.gridY === y + 1)?.rowLabel ?? gridRowLabel(y)),
+    );
     this.genRows.set(clampGrid(maxY, 1, MAX_ROWS));
     this.genCols.set(clampGrid(maxX, 1, MAX_COLS));
   }

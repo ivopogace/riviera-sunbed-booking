@@ -374,6 +374,71 @@ describe('SetEditor (#600)', () => {
     expect(changed).toBe(1);
   });
 
+  it('a set added into a named row inherits the row’s label, not a bare letter (#723)', async () => {
+    render([
+      set({
+        id: 10,
+        rowLabel: 'Under the pines',
+        positionNo: 1,
+        tier: 'PREMIUM',
+        gridX: 1,
+        gridY: 1,
+        price: { minorUnits: 3500, currency: 'EUR' },
+      }),
+      set({ id: 12, rowLabel: 'B', positionNo: 1, gridX: 1, gridY: 2 }),
+    ]);
+
+    click(byId('set-add-col'));
+    click(emptyCell(2, 1));
+    click(byId('set-add'));
+
+    const request = http.expectOne(
+      (r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/sets'),
+    );
+    expect(request.request.body).toMatchObject({
+      rowLabel: 'Under the pines',
+      positionNo: 2,
+      gridX: 2,
+      gridY: 1,
+    });
+
+    request.flush({ id: 99 }, { status: 201, statusText: 'Created' });
+    await fixture.whenStable();
+  });
+
+  it('a set moved into a named row takes that row’s label (#723)', async () => {
+    render([
+      set({
+        id: 10,
+        rowLabel: 'Under the pines',
+        positionNo: 1,
+        tier: 'PREMIUM',
+        gridX: 1,
+        gridY: 1,
+        price: { minorUnits: 3500, currency: 'EUR' },
+      }),
+      set({ id: 12, rowLabel: 'B', positionNo: 1, gridX: 1, gridY: 2 }),
+    ]);
+    selectSet(12);
+    click(byId('set-add-col'));
+
+    click(byId('set-move'));
+    click(emptyCell(2, 1));
+
+    const request = http.expectOne(
+      (r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1/sets/12'),
+    );
+    expect(request.request.body).toMatchObject({
+      rowLabel: 'Under the pines',
+      positionNo: 2,
+      gridX: 2,
+      gridY: 1,
+    });
+
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+  });
+
   it('adds a row as well, defaulting a back row to standard rather than front-row premium', () => {
     render();
     click(byId('set-add-row'));

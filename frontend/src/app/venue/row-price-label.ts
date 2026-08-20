@@ -56,8 +56,8 @@ function restatesPosition(segment: string, position: RowPosition): boolean {
  * (invariant #3) is the fact a tourist must not miss, so it outranks the venue's own words;</li>
  * <li><b>the venue's own words</b> — the first segment of its row label that does not merely
  * restate the row's position ("Front row · Sea view" → "Front row", "Row 4 · Back" → "Back");</li>
- * <li><b>the tier</b> — an all-premium row whose label says only where it is (`A`, `Row 1`: what
- * the operator layout editor writes for every venue created in-product) is named by its tier,
+ * <li><b>the tier</b> — an all-premium row whose label says only where it is (`A`, `Row 1`: the
+ * layout editor's default whenever the operator leaves a row unnamed) is named by its tier,
  * from the same {@link tierLabel} the map card's own legend uses for those tiles. Whatever row it
  * sits on: the name is the tier's, not a claim about the map, and gating it on the first row would
  * make two identically-priced premium rows read differently and split into two zones;</li>

@@ -187,6 +187,31 @@ class BeachMapReplaceIT {
 	}
 
 	@Test
+	void descriptiveRowLabelRoundTrips() throws Exception {
+		// #723 AC-2: a row name at the 40-character bound round-trips to the tourist map read.
+		long venue = createVenue("Named Rows Club");
+		String atBound = "Under the pines · far from the beach bar";
+
+		putLayout(venue, layout(0, cell(atBound, 1, "STANDARD", "ONLINE", 3000, 1, 1)), 204);
+
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.sets[0].rowLabel").value(atBound));
+	}
+
+	@Test
+	void overlongRowLabelIs400() throws Exception {
+		// #723 AC-1: a 41-character row name is refused at the command edge (§6b), before the V43 CHECK.
+		long venue = createVenue("Overlong Row Club");
+
+		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(layout(0, cell("x".repeat(41), 1, "STANDARD", "ONLINE", 3000, 1, 1))))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
 	void regenerateReplacesThePreviousLayout() throws Exception {
 		long venue = createVenue("Regenerate Club");
 		putLayout(venue, layout(0,
