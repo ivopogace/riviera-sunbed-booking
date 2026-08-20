@@ -39,8 +39,10 @@ test.use({ colorScheme: 'dark' });
 async function mockEditor(
   page: Page,
   lock = false,
-): Promise<{ puts: Request[]; bump: () => void }> {
+  seededSets: typeof VENUE_MAP.sets = [],
+): Promise<{ puts: Request[]; renames: Request[]; bump: () => void }> {
   const puts: Request[] = [];
+  const renames: Request[] = [];
   let sessionLive = false;
   let serverSetVersion = 0;
   const bump = () => {
@@ -85,9 +87,23 @@ async function mockEditor(
   // below the PUT route.
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
     route.request().method() === 'GET'
-      ? route.fulfill({ json: { ...VENUE_MAP, setVersion: serverSetVersion } })
+      ? route.fulfill({ json: { ...VENUE_MAP, sets: seededSets, setVersion: serverSetVersion } })
       : route.fallback(),
   );
+  // The per-row rename: enforces the same setVersion token the bulk PUT does, and bumps it on success.
+  await page.route(/\/api\/venues\/1\/rows\/[^/]+\/name$/, (route) => {
+    renames.push(route.request());
+    const body = route.request().postDataJSON() as { expectedVersion?: number };
+    if (body.expectedVersion !== serverSetVersion) {
+      return route.fulfill({
+        status: 409,
+        contentType: 'application/problem+json',
+        json: { code: 'STALE_WRITE', detail: '' },
+      });
+    }
+    serverSetVersion += 1;
+    return route.fulfill({ status: 204, body: '' });
+  });
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );
@@ -105,7 +121,7 @@ async function mockEditor(
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );
-  return { puts, bump };
+  return { puts, renames, bump };
 }
 
 async function signIn(page: Page): Promise<void> {
@@ -202,6 +218,60 @@ test('names a row, saves the venue’s words, and blocks duplicate names before 
     'B',
     'B',
   ]);
+});
+
+/** Two saved rows on a trading venue — the shape the bulk save can no longer touch. */
+const SEEDED_SETS = [
+  {
+    id: 1,
+    rowLabel: 'A',
+    positionNo: 1,
+    tier: 'PREMIUM',
+    pool: 'ONLINE',
+    price: { minorUnits: 3500, currency: 'EUR' },
+    gridX: 1,
+    gridY: 1,
+    available: true,
+  },
+  {
+    id: 2,
+    rowLabel: 'B',
+    positionNo: 1,
+    tier: 'STANDARD',
+    pool: 'ONLINE',
+    price: { minorUnits: 2000, currency: 'EUR' },
+    gridX: 1,
+    gridY: 2,
+    available: true,
+  },
+];
+
+test('renames a row on a venue whose bulk save is locked (#726)', async ({ page }) => {
+  const { puts, renames } = await mockEditor(page, true, SEEDED_SETS);
+  await page.goto('/operator/1');
+  await signIn(page);
+
+  // A saved venue opens in per-set mode; reaching the bulk surface is free, only its SAVE is refused.
+  await page.getByTestId('layout-mode-bulk').click();
+  await expect(page.getByTestId('layout-row-name')).toHaveCount(2);
+
+  // The whole-layout save really is locked, which is the situation #726 exists for.
+  await page.getByTestId('layout-save').click();
+  await expect(page.getByTestId('layout-error')).toBeVisible();
+  expect(puts).toHaveLength(1);
+
+  // The per-row rename still goes through, on its own PUT.
+  await page.getByTestId('layout-row-name').nth(1).fill('Back row');
+  await page.getByTestId('layout-row-name-save').nth(1).click();
+  await expect(page.getByTestId('layout-row-name-saved')).toBeVisible();
+
+  expect(renames).toHaveLength(1);
+  expect(new URL(renames[0].url()).pathname).toBe('/api/venues/1/rows/B/name');
+  expect(renames[0].postDataJSON()).toEqual({ newLabel: 'Back row', expectedVersion: 0 });
+  expect(puts).toHaveLength(1); // the bulk layout PUT was not re-sent
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor row rename');
 });
 
 test('drag-painting across cells paints them and never pans the overflowing grid (#672 slice 2)', async ({

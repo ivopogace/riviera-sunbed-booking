@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * The cross-write concurrency test (AC-3): a {@code replaceLayout} and a {@code repriceRow} race
  * off the <strong>same</strong> {@code set_version = V} — exactly one applies and the other is
- * {@code STALE_WRITE}, proving the two set-writes share ONE token (they write overlapping columns:
+ * {@code STALE_WRITE}, proving the set-writes share ONE token (they write overlapping columns:
  * map-replace re-sends {@code price_minor}, reprice overwrites it, so they must not both win). Also
  * exercises the R-1 lock ordering: both paths take the venue row (the {@code set_version} bump) before
  * its {@code set_position} rows, so replace-vs-reprice on one venue can never deadlock — the loser

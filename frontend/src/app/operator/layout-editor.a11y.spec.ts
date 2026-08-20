@@ -71,8 +71,7 @@ describe('LayoutEditor a11y (#172)', () => {
   });
 
   it('has no axe violations with the per-row rename control present (#726)', async () => {
-    // A trading venue: the Row names panel gains a Save-name button per stored row, and each row's
-    // input must stay its own labelled control rather than being captured by the button.
+    // With a Save-name button per stored row, each row's input must stay its own labelled control.
     render([
       {
         id: 1,

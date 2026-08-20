@@ -153,8 +153,9 @@ class VenueAdminService
 
 	/**
 	 * Whether a hold on any of these sets is still ahead — dated today or later in
-	 * {@code Europe/Tirane} (invariant #6). The availability arm <em>all three</em> layout writes
-	 * share: a hold whose day has passed can neither be stranded by a move nor be lost by a delete
+	 * {@code Europe/Tirane} (invariant #6). The availability arm the three <em>claim-probing</em> layout
+	 * writes share ({@code editSet}, {@code removeSet}, {@code replaceLayout} — the display-only reprice
+	 * and rename probe nothing): a hold whose day has passed can neither be stranded by a move nor be lost by a delete
 	 * that matters, and no write path can add one behind this cutoff (invariant #4 closes the sale
 	 * the evening before, and a staff mark refuses a past date) — which is why the probe stays
 	 * race-safe under the row locks. Callers must already hold those locks.

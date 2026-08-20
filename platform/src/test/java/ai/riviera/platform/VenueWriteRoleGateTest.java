@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The {@code OPERATOR} role gate over the two venue-write {@code PUT}s — specifically that it
+ * The {@code OPERATOR} role gate over the venue-write {@code PUT}s — specifically that it
  * holds <em>at the security filter layer</em>, not only inside the controller.
  *
  * <p><strong>The gap this pins.</strong> {@code SecurityConfig}'s {@code authorizeHttpRequests} block

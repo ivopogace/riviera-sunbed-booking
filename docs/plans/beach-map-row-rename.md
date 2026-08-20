@@ -44,9 +44,15 @@ Module-ownership table forced the "why `venue`, not `booking`" answer for the so
 consequence, and the Risk register forced R-3's probe-then-write race to be written down
 rather than discovered at review) · `tdd` (each phase red-first; scoped test commands per
 phase below) · `riviera-review-overlay` (review gate — due at ready-for-review) ·
-`riviera-docs-freshness` (`N/A` at plan time — due pre-merge over `origin/main...HEAD`;
-`RESPONSIBILITIES.md` §`venue`'s layout-lock bullet is the known target, since the "price
-and tier stay editable on a claimed set" sentence becomes "price, tier and the row name")
+`riviera-docs-freshness` (**ran** pre-merge over `origin/main...HEAD` — 6 findings, all
+patched: `RESPONSIBILITIES.md` §`venue`'s layout-lock bullet, its "price and tier stay
+editable" sentence and its "every write asks the one question" sentence, plus three the
+counting sweep found in files this slice never touched — `Venues#lockAndReadSetVersion`'s
+"the two operator set-position writes", `VenueSetWriteConcurrencyIT`'s "the two set-writes
+share ONE token", `VenueWriteRoleGateTest`'s "the two venue-write PUTs". A seventh hit,
+`V23__venue_set_version.sql`'s identical wording, is deliberately **left**: an applied
+Flyway migration is immutable — editing it changes its checksum and fails validation
+(invariant #12). Sweep re-run after the fix round: clean)
 · `riviera-modulith` (kept `renameRow` on the existing `EditBeachMap` port rather than a
 sixth port — Cockburn's "same purposeful conversation"; the new outcome value goes on the
 shared `SetRejection` in `application`, not a published surface, since no other module
@@ -146,7 +152,7 @@ existing draft-and-bulk-save behavior and **gains** a per-row control beside it.
 | R-4 | The rename shares `set_version` with the reprice and the bulk replace, so a rename racing either loses the optimistic race. | med | low | Intended: the shared token is what stops a replace and a rename off the same value from both winning. `set_version` is advanced **only** after a successful rename, so a rejected one leaves the acting tab's next write valid. Pinned by AC-4/AC-5. | plan author | closed — `VenueRowRenameIT.refusesAStaleRename` green |
 | R-5 | Per-venue authorization (BOLA, invariant #13) — a new `/api/venues/{venueId}/**` surface. | low | high | `ownership.assertOwns` is the **first** statement of `VenueAdminService#renameRow`, before `venueExists` and before any read, exactly as the other five beach-map writes do; the controller performs no check of its own. Pinned by AC-6 + `CrossVenueDenialIT`. | plan author | closed — `VenueRowRenameIT` + `CrossVenueDenialIT.rowRenameByNonOwnerIs403` green |
 | R-6 | WCAG 2.4.3 stranded focus: a per-row save button disabled by the flag its own click sets blurs to `<body>` for the whole request — the guard's BUSY-1 shape, red in CI via `scripts/check-focus-posture.mjs`. | med | med | Use `[appBusy]="savingRow() === y"` (`shared/busy-action.ts`), never `[disabled]`; it announces `aria-disabled` and consumes the activating click without moving focus. The row-name `<input>` keeps its draft-only `(input)` handler, so BUSY-2 does not apply. | plan author | closed — `check-focus-posture.mjs --diff origin/main` clean |
-| R-7 | The Row names panel renders only in the layout tab's **bulk** branch (`@else` of `@if (mode() === 'sets')`), and a trading venue defaults to `sets` mode — so the rename could read as unreachable. | med | low | The mode toggle itself is free; only the bulk **Save** is refused. Bulk mode seeds `rowNames` from the loaded sets, so the panel shows real current names. Copy in the panel names the per-row save as the way to rename on a locked venue; AC-8's e2e drives exactly that path (locked venue → toggle → rename → 204). | plan author | open |
+| R-7 | The Row names panel renders only in the layout tab's **bulk** branch (`@else` of `@if (mode() === 'sets')`), and a trading venue defaults to `sets` mode — so the rename could read as unreachable. | med | low | The mode toggle itself is free; only the bulk **Save** is refused. Bulk mode seeds `rowNames` from the loaded sets, so the panel shows real current names. Copy in the panel names the per-row save as the way to rename on a locked venue; AC-8's e2e drives exactly that path (locked venue → toggle → rename → 204). | plan author | closed — `layout-editor.e2e.ts` "renames a row on a venue whose bulk save is locked" green: the bulk PUT 409s, the rename 204s |
 
 ## Open questions / Assumptions
 
@@ -274,16 +280,17 @@ surface (AC-10).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR — branch pushed, awaiting the go-ahead to open the draft PR`
 
-**Next action:** Phase 3 — the mocked e2e spec, then patch `RESPONSIBILITIES.md` §`venue`.
+**Next action:** open the draft PR so CI fires (it only runs on the `pull_request` event),
+then the Review and Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend inner hexagon (command, outcome, port, service, adapter) | ✅ | *(this commit)* |
 | 1 — REST edge + integration tests | ✅ | *(this commit)* |
 | 2 — Layout-editor per-row rename (Angular) | ✅ | *(this commit)* |
-| 3 — Mocked e2e + substrate docs | ⏳ | |
+| 3 — Mocked e2e + substrate docs | ✅ | *(this commit)* |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -322,6 +329,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/operator/layout-editor.a11y.spec.ts` — axe over the panel.
 - `frontend/e2e/layout-editor.e2e.ts` — AC-8 end-to-end.
 - `RESPONSIBILITIES.md` — §`venue` layout-lock bullet gains the rename.
+- `platform/src/test/java/ai/riviera/platform/venue/VenueSetWriteConcurrencyIT.java` — docs-freshness: its "the two set-writes share ONE token" javadoc (counting sweep, not anticipated in this list).
 
 > Run `node scripts/check-plan-file-structure.mjs --diff origin/main` before every push —
 > **with this plan doc staged or committed**, or the guard short-circuits and passes.
