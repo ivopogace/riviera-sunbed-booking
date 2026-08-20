@@ -320,7 +320,7 @@ renders states that today's `GET /api/venues/{id}` response already produces (`s
 |-------|--------|---------|
 | 0 — Daily view zero-set state (unit + a11y + contrast) | ✅ | `814c640` |
 | 1 — Per-set editor no-sets panel copy (unit + a11y) | ✅ | `d9d7762` |
-| 2 — Mocked Playwright e2e, both surfaces | ✅ | `<phase-2>` |
+| 2 — Mocked Playwright e2e, both surfaces | ✅ | `ee6a076` |
 | 3 — Close-out (gates, docs freshness, final plan state) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
