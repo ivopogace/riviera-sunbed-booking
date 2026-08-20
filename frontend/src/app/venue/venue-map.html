@@ -142,7 +142,11 @@
         </div>
       </div>
 
-      <app-beach-map-canvas class="mt-[18px] block" label="Beach map — {{ v.name }}">
+      <!-- Only the map card leaves the 780px shell, to the design's 1100px (#700); the margin derives from that width so a shell edit cannot drift it. The query is px to match: rem-based `xl` tracks the browser's default font size, firing at 960px on Chrome's "Small" setting. -->
+      <app-beach-map-canvas
+        class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
+        label="Beach map — {{ v.name }}"
+      >
         <ng-template [appBeachMapRow]="rows()" let-row>
           <ul
             class="set-row list-none h-full grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"

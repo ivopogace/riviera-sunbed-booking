@@ -56,7 +56,49 @@ class CanvasHost {
   readonly taps: string[] = [];
 }
 
+/**
+ * jsdom ships no `ResizeObserver`, so the canvas's resize re-measure has no seam to drive
+ * without one. This stub records the elements it was handed and exposes each instance's
+ * callback, letting a spec fire a resize deliberately. Installed and **restored** per test
+ * (`isolate` is false — one jsdom per worker, so a leaked global would reach later files).
+ */
+class StubResizeObserver {
+  static instances: StubResizeObserver[] = [];
+  readonly observed: Element[] = [];
+  disconnected = false;
+
+  constructor(private readonly callback: () => void) {
+    StubResizeObserver.instances.push(this);
+  }
+
+  observe(target: Element): void {
+    this.observed.push(target);
+  }
+
+  disconnect(): void {
+    this.disconnected = true;
+  }
+
+  fire(): void {
+    this.callback();
+  }
+}
+
 describe('BeachMapCanvas (#672)', () => {
+  let previousResizeObserver: unknown;
+
+  beforeEach(() => {
+    previousResizeObserver = (globalThis as Record<string, unknown>)['ResizeObserver'];
+    StubResizeObserver.instances = [];
+    (globalThis as Record<string, unknown>)['ResizeObserver'] = StubResizeObserver;
+  });
+
+  afterEach(() => {
+    (globalThis as Record<string, unknown>)['ResizeObserver'] = previousResizeObserver;
+    // Each stub closes over a component instance — a retained array pins them for the worker's life.
+    StubResizeObserver.instances = [];
+  });
+
   function render(): {
     host: HTMLElement;
     component: CanvasHost;
@@ -77,6 +119,25 @@ describe('BeachMapCanvas (#672)', () => {
     const el = host.querySelector<HTMLElement>('[data-testid="test-pan"]');
     expect(el).toBeTruthy();
     return el!;
+  }
+
+  function rowGrid(host: HTMLElement): HTMLElement {
+    const el = viewport(host).querySelector<HTMLElement>('[data-map-grid]');
+    expect(el).toBeTruthy();
+    return el!;
+  }
+
+  /**
+   * Seed the tile grid's CONTENT width — what the gate must answer on. `padded` adds the
+   * 16px-a-side `.pannable` puts on the grid, which lands in `scrollWidth` on top of `content`:
+   * that sum is what a gate reading the raw `scrollWidth` would wrongly compare.
+   */
+  function seedGridWidth(host: HTMLElement, content: number, padded = false): void {
+    const grid = rowGrid(host);
+    const pad = padded ? 16 : 0;
+    Object.defineProperty(grid, 'scrollWidth', { value: content + 2 * pad, configurable: true });
+    grid.style.paddingLeft = `${pad}px`;
+    grid.style.paddingRight = `${pad}px`;
   }
 
   function washScroller(host: HTMLElement): HTMLElement {
@@ -275,8 +336,8 @@ describe('BeachMapCanvas (#672)', () => {
     const { host, component, detect, fixture } = render();
     // jsdom measures 0 — give the viewport a real overflow through the DOM measurement seam.
     const vp = viewport(host);
-    Object.defineProperty(vp, 'scrollWidth', { value: 500 });
-    Object.defineProperty(vp, 'clientWidth', { value: 100 });
+    seedGridWidth(host, 500);
+    Object.defineProperty(vp, 'clientWidth', { value: 100, configurable: true });
     component.rows.set([...ROWS]);
     detect();
     await fixture.whenStable();
@@ -301,6 +362,72 @@ describe('BeachMapCanvas (#672)', () => {
     component.dragPan.set(false);
     detect();
     expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+  });
+
+  it('re-measures the pan overflow when the viewport resizes (#700)', async () => {
+    const { host, detect, fixture } = render();
+    const vp = viewport(host);
+    await fixture.whenStable();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+
+    // The canvas observes the pan viewport itself — the element whose width the resize changes.
+    const observer = StubResizeObserver.instances.at(-1)!;
+    expect(observer.observed).toContain(vp);
+
+    // A narrower viewport: rows are unchanged, so only the observer can notice the overflow.
+    seedGridWidth(host, 500);
+    Object.defineProperty(vp, 'clientWidth', { value: 100, configurable: true });
+    observer.fire();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeTruthy();
+
+    // ...and widening it back retires the hint, rather than leaving a cue that now lies.
+    Object.defineProperty(vp, 'clientWidth', { value: 500, configurable: true });
+    observer.fire();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+  });
+
+  it('gates on the grid, not the padding .pannable adds to it, so the hint never sticks (#700)', async () => {
+    const { host, detect, fixture } = render();
+    const vp = viewport(host);
+    await fixture.whenStable();
+    detect();
+    const observer = StubResizeObserver.instances.at(-1)!;
+
+    // Narrow first, so the hint is on; the grid is seeded unpadded, which is the harder case.
+    seedGridWidth(host, 520);
+    Object.defineProperty(vp, 'clientWidth', { value: 400, configurable: true });
+    observer.fire();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeTruthy();
+
+    // Widen into the band: the 520px grid fits 540, but the padded 552 the old gate read does not.
+    seedGridWidth(host, 520, true);
+    Object.defineProperty(vp, 'clientWidth', { value: 540, configurable: true });
+    observer.fire();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+  });
+
+  it('re-measures the vertical axis on resize too, and disconnects the observer on teardown (#700)', async () => {
+    const { host, detect, fixture } = render();
+    const wash = washScroller(host);
+    await fixture.whenStable();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+
+    // A width change also rescales --riv-tile, so rows can outgrow the wash cap with no row change.
+    const observer = StubResizeObserver.instances.at(-1)!;
+    seedVerticalOverflow(wash);
+    observer.fire();
+    detect();
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeTruthy();
+
+    expect(observer.disconnected).toBe(false);
+    fixture.destroy();
+    expect(observer.disconnected).toBe(true);
   });
 
   it('projects the footer slot below the viewport and hides it with the grid when empty', () => {

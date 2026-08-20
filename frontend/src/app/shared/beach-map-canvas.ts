@@ -113,6 +113,8 @@ export class BeachMapCanvas {
   private readonly panViewport = viewChild<ElementRef<HTMLElement>>('canvasViewport');
   /** The vertical wash scroller wrapping the rails and the viewport; the 2D pan's y-axis target. */
   private readonly washScroller = viewChild<ElementRef<HTMLElement>>('washScroller');
+  /** The tile grid inside the viewport — what the overflow gate measures. */
+  private readonly rowGrid = viewChild<ElementRef<HTMLElement>>('rowGrid');
   /** True when the tile grid is wider than its viewport (drag hint + edge fade + snap padding). */
   protected readonly scrollHint = signal(false);
   /** True when the rows outgrow the wash scroller's height cap (drag hint only — no fade/snap). */
@@ -134,13 +136,43 @@ export class BeachMapCanvas {
     return !!el && el.scrollHeight > el.clientHeight + 1;
   }
 
+  /** The tile grid's own width, less whatever horizontal padding `.pannable` puts on it. */
+  private static contentWidth(grid: HTMLElement): number {
+    const style = getComputedStyle(grid);
+    return (
+      grid.scrollWidth -
+      (Number.parseFloat(style.paddingLeft) || 0) -
+      (Number.parseFloat(style.paddingRight) || 0)
+    );
+  }
+
+  /** Read both overflow axes from the live DOM; every piece of pan chrome is gated on this. */
+  private measureOverflow(): void {
+    const el = this.panViewport()?.nativeElement;
+    const grid = this.rowGrid()?.nativeElement;
+    this.scrollHint.set(!!el && !!grid && BeachMapCanvas.contentWidth(grid) > el.clientWidth + 1);
+    this.vScrollHint.set(BeachMapCanvas.overflowsVertically(this.washScroller()?.nativeElement));
+  }
+
   constructor() {
-    // Re-measure the pan overflow per render (jsdom reads 0 — the hint is proven in e2e).
-    afterRenderEffect(() => {
-      this.rows();
+    // The `read` phase, not the default mixedReadWrite: measuring is a pure DOM read.
+    afterRenderEffect({
+      read: () => {
+        this.rows();
+        this.measureOverflow();
+      },
+    });
+
+    // A resize changes the overflow without changing rows, which the render effect can't see.
+    effect((onCleanup) => {
       const el = this.panViewport()?.nativeElement;
-      this.scrollHint.set(!!el && el.scrollWidth > el.clientWidth + 1);
-      this.vScrollHint.set(BeachMapCanvas.overflowsVertically(this.washScroller()?.nativeElement));
+      // jsdom has no ResizeObserver; that path is stubbed in the spec and real in the e2e.
+      if (!el || typeof ResizeObserver === 'undefined') {
+        return;
+      }
+      const observer = new ResizeObserver(() => this.measureOverflow());
+      observer.observe(el);
+      onCleanup(() => observer.disconnect());
     });
 
     // Capture-phase because template bindings bubble — the tile's handler would fire first.
