@@ -424,6 +424,27 @@ describe('VenueMap', () => {
     expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
   });
 
+  it('keeps two identically-priced premium rows in one zone (#702)', async () => {
+    const base = miramar();
+    // Rows A and B are both premium at €45: one price, one tier, so one zone and one chip.
+    const rows = [...new Set(base.sets.map((s) => s.rowLabel))];
+    const sets = base.sets.map((s) =>
+      s.rowLabel === rows[1]
+        ? { ...s, tier: 'PREMIUM' as const, price: { minorUnits: 4500, currency: 'EUR' } }
+        : s,
+    );
+    venueRequest().flush({ ...base, sets });
+    await fixture.whenStable();
+
+    const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+    expect(
+      [...el().querySelectorAll('[data-map-row]')].map((r) => r.classList.contains('mt-3')),
+    ).toEqual([false, false, true, true]);
+  });
+
   it('keeps the enriched rail decorative — tile names are unchanged (#702)', async () => {
     flushVenue();
     await fixture.whenStable();

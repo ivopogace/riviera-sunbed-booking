@@ -94,11 +94,11 @@ describe('rowPriceLabel', () => {
     expect(labelled('Cabana 5', 'STANDARD', 'ONLINE', 3500, 1)).toBe('€35 · Cabana 5');
   });
 
-  it('claims the front row only where the front row is (#702 H-2)', () => {
-    expect(labelled('E', 'PREMIUM', 'ONLINE', 5000, 4)).toBe('€50');
-    expect(labelled('Rreshti 5', 'PREMIUM', 'ONLINE', 5000, 4)).toBe('€50');
-    // Row A is where the tier name is also a true statement about the map.
+  it("names the premium tier whatever row it is on — the card's legend already does (#702 I-1)", () => {
+    // The #701 legend labels every premium tile "Front row"; two at one price must read alike.
     expect(labelled('A', 'PREMIUM', 'ONLINE', 5000)).toBe('€50 · Front row');
+    expect(labelled('B', 'PREMIUM', 'ONLINE', 5000, 1)).toBe('€50 · Front row');
+    expect(labelled('Rreshti 5', 'PREMIUM', 'ONLINE', 5000, 4)).toBe('€50 · Front row');
   });
 
   it("keeps a name whose number is not this row's number", () => {
@@ -107,8 +107,8 @@ describe('rowPriceLabel', () => {
     expect(labelled('VIP 2', 'STANDARD', 'ONLINE', 4500)).toBe('€45 · VIP 2');
     // The premium fallback is the dangerous half: a named row must never be renamed by it.
     expect(labelled('Cabana 5', 'PREMIUM', 'ONLINE', 5000, 3)).toBe('€50 · Cabana 5');
-    // On the row whose number it does restate, the name goes — but nothing false replaces it.
-    expect(labelled('Cabana 5', 'PREMIUM', 'ONLINE', 5000, 4)).toBe('€50');
+    // On the row whose number it does restate, the name goes and the tier's own name stands in.
+    expect(labelled('Cabana 5', 'PREMIUM', 'ONLINE', 5000, 4)).toBe('€50 · Front row');
     // …and on the row it does name, it is a restatement like any other.
     expect(labelled('Zona A', 'STANDARD', 'ONLINE', 4500)).toBe('€45');
     expect(labelled('Cabana 5', 'STANDARD', 'ONLINE', 4500, 4)).toBe('€45');

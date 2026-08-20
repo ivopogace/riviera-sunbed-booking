@@ -60,7 +60,9 @@ resolve by asking, not by skipping. 2 findings, 1 fixed and 1 answered — and t
 re-entry rule, produced 2 more (G-1, G-2): my own F-1 fix had over-generalized, which is
 exactly the case for re-running the gate rather than hand-waving a one-line change — and
 re-reviewing *that* round found 3 more (H-1..H-3), one of them a regression the G-fix had
-introduced. Three rounds, each catching the previous round's own mistake. The
+introduced — and the round after that found I-1, a zone artifact H-2's fix had created, plus
+I-2, which is older than the slice and now issue #724. Four rounds, each catching the
+previous round's own mistake; the rule ended simpler than any single round left it. The
 overlay's own
 RV-FE bank walked on top: RV-FE-3 money-from-the-wire, RV-FE-5 picker a11y, RV-FE-7 Tailwind +
 no-drift, RV-FE-E2E suite placement, RV-FE-8 no new cross-feature import, RV-STYLE-1/2 and
@@ -216,10 +218,14 @@ The replaced surface is the rail chip's **label string** and everything that rea
 - **Assumption (D-3):** The artboard's hand-shortened mobile label (`€50 · Front`) is
   reproduced by CSS truncation rather than a second label, because the words come from the
   venue, not from us. *Owner:* claude · *Resolves by:* phase 2.
+### Resolved
+
 - **Open question (Q-1):** Should the operator layout editor let a venue *name* its rows,
   so a real venue's chips can say `Front row` / `Back` from its own words rather than from
-  our tier fallback? Out of scope here (Non-goals). *Owner:* maintainer · *Resolves by:*
-  a follow-up issue filed at merge close-out.
+  our tier fallback? → **Filed as issue #723** (with the length-bound and rail-code
+  questions it has to settle first). Out of scope here per Non-goals.
+- **D-1, D-2, D-3** (the three assumptions above) → all encoded and pinned: D-1 by the
+  fallback ladder's specs, D-2 by the walk-in cases, D-3 by the 390 px truncation e2e.
 
 ## Availability & concurrency (invariant #2)
 
@@ -275,9 +281,9 @@ served by `GET /api/venues/{id}` and consumed by this component today.
 > **This section is the session-recovery anchor.** Everything a resuming session needs
 > lives HERE, committed — never only in the conversation.
 
-**Stage pointer:** `review gate — H-round fixed; re-review of the H-round + sonar gate next`
+**Stage pointer:** `review gate — I-round fixed; re-review of the I-round + sonar gate next`
 
-**Next action:** Re-run `/code-review` over the H-round commit, then pull PR #722's Sonar
+**Next action:** Re-run `/code-review` over the I-round commit, then pull PR #722's Sonar
 issue list from the API (a green gate is not the check) and close out.
 
 | Phase | Status | Commits |
@@ -287,7 +293,8 @@ issue list from the API (a green gate is not the check) and close out.
 | 2 — rail truncation cap + e2e pins | ✅ | `c6e5748` |
 | review gate — F-1 fixed, F-2 answered | ✅ | `16e538c` |
 | re-review of the fix round — G-1, G-2 | ✅ | `9a2e80a` |
-| re-review of the G-round — H-1, H-2, H-3 | ✅ | this commit |
+| re-review of the G-round — H-1, H-2, H-3 | ✅ | `96ca661` |
+| re-review of the H-round — I-1 fixed, I-2 deferred | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -303,6 +310,9 @@ Skill-routing gate for what the fix touches *before* editing).
 | H-1 | re-review of the G-round | **regression from G-1's own fix**: judging every segment against this row's position meant a *bare* code no longer dropped unless it matched. The map derives rail codes from insertion order while the venue's labels come from grid rows, so a **walkway** row (all-gap, saved as no sets) shifts them — the venue's `C` lands on rail `B` and chipped `€35 · C` beside a chip reading `B` | fixed-in-`this commit`: the two shapes are judged differently by what dropping them costs. A **bare** code/ordinal has no words to lose, so it goes regardless of position; only a **word plus** a reference (`Row 4`, `Cabana 5`) needs the reference to be this row's own. Pinned by `row-price-label.spec.ts › 'drops a bare code the map itself did not derive…'` and, end-to-end, `venue-map.spec.ts › 'drops a bare row label the rail cannot echo…'` |
 | H-2 | re-review of the G-round | the tier fallback named **any** positional-only all-premium row `Front row` — including a premium row 5 (a VIP cabana block), told it is at the water. G-1's wrong-information failure surviving on the rows where the label coincides | fixed-in-`this commit`: `Front row` is a spatial claim, so it is made only where it is true — `position.ordinal === 1`. A premium row further back keeps the bare price. Pinned by `row-price-label.spec.ts › 'claims the front row only where the front row is (#702 H-2)'` |
 | H-3 | re-review of the G-round (note) | `rowCode(index)` was derived twice per row in `VenueMap.rows` — once for the chip's position, once for the rail code | fixed-in-`this commit`: derived once into `positions`, read by both |
+| I-1 | re-review of the H-round | H-2's `ordinal === 1` gate split a homogeneous premium block: two identically-priced all-premium rows read `€50 · Front row` then `€50`, and since zones compare the rendered label, that drew a spurious second chip and gap | fixed-in-`this commit` by **reverting H-2's gate**, which also answers H-2 itself (below). Pinned by `row-price-label.spec.ts › "names the premium tier whatever row it is on…"` and, end-to-end, `venue-map.spec.ts › 'keeps two identically-priced premium rows in one zone (#702)'` |
+| H-2 | re-review of the G-round | (answered at I-1) the tier fallback names any positional-only all-premium row `Front row`, including one further back | **no change, by decision.** `Front row` is the premium tier's name in this app (`shared/set-label.ts` `tierLabel`), and the same map card's **legend** already labels every premium tile with it (#701) — so the chip agrees with the surface it sits on. Reconciling the three tier spellings across surfaces is a product decision `set-label.ts` explicitly reserves as a non-goal; making it here, unilaterally, would be the larger error. The spatial reading is real but pre-dates this slice |
+| I-2 | re-review of the H-round | a tile's accessible name carries two row identities that need not agree (`Set B1, C, …` on a walkway-shifted venue), so H-1's fix reaches sighted users only | **deferred → issue #724.** Older than this slice (`toTile` has combined the derived seat code with the raw `rowLabel` since the map was built) and out of its scope by construction: AC-6 pins tile names byte-identical to `main` so the rail's new wording cannot leak into screen-reader output. The fix wants one decision applied to every surface that prints a set's identity — map, dialog, confirmation, mail — not a patch in `toTile` |
 | F-2 | review gate | A row painted with **mixed** pools renders a bare span (`€25–€30`) with no channel note, so the rail advertises a price only walk-in sets carry | **no change, by decision.** It is the rendering `main` already had (the qualifier is withheld precisely because "at venue" would be false for the row's online half), the per-tile truth is unaffected — those sets keep the #701 hatch and the "walk-in only — book at the venue" accessible name — and a mixed row that has any words of its own still gets them (`€25–€30 · Back`). Inventing a "some at venue" state would add copy and a fourth qualifier branch for a layout the editor permits but no venue has painted; if one ever does, that is its own slice |
 | F-3 | review gate (nit) | Plan AC-6 quoted the pinned tile name ending `…, €45, available`; the shipped assertion ends `…, €45, taken` (A1 is the fixture's taken seat) | fixed-in-`this commit` — doc text only |
 | F-0 | local e2e run (phase 2) | `customer-password.e2e.ts` + `operator-venue.e2e.ts` failed in the sandbox's full-suite run; both are sign-in-heavy flows this diff does not touch (no operator or auth file changed, and the shared cap only bounds a rail cell's width) | **not a defect** — both green in isolation (10 passed, 40s) against this same HEAD; the sandbox's 9.4-minute single-worker full run is the variable, not the diff. CI on PR #722 re-runs the same suite |
