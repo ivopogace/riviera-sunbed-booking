@@ -290,11 +290,11 @@ strict — no `as any`.
 > rows ✅ with commits, Open Questions empty, risk rows closed, AC pin-names matching the
 > shipped tests. Record **`merged via PR #NN`, never a merge SHA**.
 
-**Stage pointer:** `PR — ready for review` (draft **#719** opened at the phase-0 commit;
-CI green, Sonar gate green on the draft).
+**Stage pointer:** `review gate — fixing findings` on PR **#719** (ready for review; all 8
+check runs green; Sonar gate verified green **with an empty reported list**).
 
-**Next action:** Mark #719 ready for review, then run the Review gate per
-`riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** Land the review-gate fixes, then re-verify CI + Sonar and finalize this
+section for the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -310,7 +310,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (CLAUDE.md-adherence agent) | The new `mapless()` TSDoc — and the sentence added to `venue-map.contrast.spec.ts`'s header block — carried issue numbers (`#717`, `#693`), which `riviera-java-conventions` §6d forbids in a doc comment ("provenance is `git blame`'s job"; `frontend/.claude/CLAUDE.md` cites it as canonical). Real: the guard cannot catch it, because `check-inline-comments.mjs` exempts `/** */` blocks by design. The adjacent pre-existing `miramar()` fixture has the same shape but is **untouched by this diff**, and RV-STYLE-1 scopes to what the diff writes | fixed-in-`8fe8690` |
+| — | sonar | Gate green **and list pulled**: 0 issues, 0 code smells, 0 duplicated blocks. Analysis confirmed real (`new_lines = 30`, `ncloc = 256`) rather than the false-clean-on-unanalyzed zero. `new_coverage` was **not among the gate's 5 conditions** — no new coverable lines exist (an Angular template plus spec/e2e files), so the ≥80% bar has nothing to apply to; it is not being waived | no action |
+| — | CI | All 8 check runs green on `50db1f6` (backend, frontend incl. the 226-test mocked e2e suite, repo hygiene, CodeQL ×2 + app, SonarCloud ×2) | no action |
 
 ---
 

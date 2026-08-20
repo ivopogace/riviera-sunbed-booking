@@ -38,8 +38,8 @@ import {
  * This table mirrors every text-bearing token `venue-map.html` sets itself; the shared directives
  * it composes prove their own (the amenity chips in `shared/amenities.contrast.spec.ts` — solid
  * fills, so backdrop-independent; the failure panel's inks are the `--riv-card-ink` /
- * `--riv-card-ink-soft` pair already below, and the #717 empty-map heading + copy reuse that
- * same pair on the same card glass). Deviations from the design file, on purpose:
+ * `--riv-card-ink-soft` pair already below, and the empty-map heading + copy reuse that same
+ * pair on the same card glass). Deviations from the design file, on purpose:
  * the header + back pill sit on the AA-proven dark header glass, not the bare
  * gradient; the seat tiles are TRANSLUCENT over the sea→sand wash (#672), whose gradient stops
  * are opaque and theme-independent — so each tile/chip ink is proven composited (fill alpha over

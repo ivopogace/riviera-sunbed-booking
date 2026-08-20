@@ -97,11 +97,8 @@ function miramar(): VenueMapView {
   };
 }
 
-/**
- * A tourist-visible venue whose operator has not drawn a layout yet (#717): zero sets and so a
- * `null` from-price, exactly as `JdbcVenueCatalog` serves it. Reachable since #693 — tourist
- * visibility follows the owning operator being ACTIVE, which does not require a published map.
- */
+/** A tourist-visible venue whose operator has not drawn a layout yet: zero sets and so a
+ *  `null` from-price, exactly the shape `JdbcVenueCatalog` serves for an unpublished map. */
 function mapless(): VenueMapView {
   return { ...miramar(), sets: [], fromPrice: null };
 }
