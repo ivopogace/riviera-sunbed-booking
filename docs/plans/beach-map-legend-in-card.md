@@ -89,30 +89,30 @@ addendum). It was cut fresh from `origin/main` at `8c5604f`.
 > tests (Cockburn 2005). This keeps ACs stable across UI/payment-adapter churn and
 > reusable from any driving adapter.
 
-- [ ] **AC-1:** Given a loaded venue map, when the tourist map renders, then the
+- [x] **AC-1:** Given a loaded venue map, when the tourist map renders, then the
       `Legend` list is a descendant of the map card (`[data-testid="beach-grid"]`), appears
       before the first `[data-testid="set-tile"]` in document order, and no `Legend` list
       exists outside the card. _Pinned by:_
       `venue-map.spec.ts › 'renders the legend inside the map card, above the tile grid (#701)'`
-- [ ] **AC-2:** Given a 390 × 760 mobile viewport, when the beach map page loads, then the
+- [x] **AC-2:** Given a 390 × 760 mobile viewport, when the beach map page loads, then the
       legend's bounding box bottom is above the first tile row's top and the legend is within
       one screen as the first tile row — i.e. no scrolling _past the grid_ to find it (the issue's
       own wording; "within the initial viewport" would be false, the page header alone exceeds
       760 px). _Pinned by:_
       `venue-map-pan.e2e.ts › 'the legend leads the map card on mobile — decoded before the first tile row (#701)'`
-- [ ] **AC-3:** Given a venue whose row 5 is the walk-in pool, when the map renders, then
+- [x] **AC-3:** Given a venue whose row 5 is the walk-in pool, when the map renders, then
       every free walk-in tile's computed `background-image` is a `repeating-linear-gradient`
       while a free premium tile's is `none`, and the walk-in numeral colour clears WCAG AA
       (≥ 4.5:1) composited over **both** hatch bands on **every** wash stop. _Pinned by:_
       `venue-map-pan.e2e.ts › 'a free walk-in tile is hatched, a premium tile is not (#701)'` +
       `venue-map.contrast.spec.ts › 'the walk-in numeral meets AA on both hatch bands over every wash stop'`
-- [ ] **AC-4:** Given the rendered map, when the legend swatches and the tiles are compared
+- [x] **AC-4:** Given the rendered map, when the legend swatches and the tiles are compared
       by computed style, then the walk-in swatch's `background-image`/`background-color`/
       `border-color` equal the walk-in tile's, and the taken swatch's `border-style` is
       `dashed` like the taken tile's. _Pinned by:_
       `venue-map-pan.e2e.ts › 'every legend swatch renders exactly like the tile it stands for (#701)'` +
       `map-tile.spec.ts › 'renders each state from the one shared appearance record, and nothing besides'`
-- [ ] **AC-5:** Given a `BeachMapCanvas` host that projects **no** `canvasLegend` content
+- [x] **AC-5:** Given a `BeachMapCanvas` host that projects **no** `canvasLegend` content
       (every operator surface), when it renders, then the wash scroller is the frame's first
       child after the sea banner and no legend band exists — the operator layout editor, Daily
       view and per-set editor render byte-identically to `main`. _Pinned by:_
@@ -120,7 +120,7 @@ addendum). It was cut fresh from `origin/main` at `8c5604f`.
       and `layout-editor.e2e.ts`'s rendered proof (the band's computed `display` is `none`, and
       banner-bottom == wash-top) — plus the unchanged `operator-daily.e2e.ts` /
       `operator-set-editing.e2e.ts` staying green
-- [ ] **AC-6:** Given the map in either theme, when axe and the contrast suite run, then
+- [x] **AC-6:** Given the map in either theme, when axe and the contrast suite run, then
       there are no serious/critical violations, the legend list still exposes the accessible
       name `Legend`, and the legend ink clears AA on the band — which, since F-1, is the wash's
       own first stop, so the proof is one theme-independent solid pair. _Pinned by:_
@@ -205,23 +205,27 @@ expressed as `[&.premium]:` / `[&.walkin]:` / `[&.taken]:` arbitrary variants.
 
 > **Mandatory. Work is NOT done while this has unresolved entries.**
 
-- **Assumption:** the design canvas's **mobile** artboard shortens the walk-in legend
-  label to "Walk-in only" purely to fit a 390 px artboard, not as a product requirement.
-  We ship the full "Walk-in only — book at the venue" at every width and let it wrap:
-  hiding the actionable half of the sentence (`hidden`/`sm:inline`) would also hide it
-  from assistive tech, and mobile is exactly the audience that needs "book at the venue".
-  — _Owner:_ this slice · _Resolves by:_ phase 2 (recorded as a deliberate deviation; the
-  e2e's `toContainText('Walk-in only')` passes either way, so the assumption is cheap to
-  revisit)
+None open.
 
 ### Resolved
 
+- **Design call, settled by the maintainer at the review gate (F-1):** the legend band's
+  background departs from the design canvas's `rgba(255,255,255,0.55)` plate — it is painted the
+  canvas's `--riv-map-sea`, the wash's own first stop, so the band reads as the sea end of the map
+  and a swatch composites over exactly the ground its tiles do. The 8% hairline goes with it: a
+  rule between two identical colours is a line across the sea. Shipped in `3d34862`.
+- **Assumption, held (deliberate deviation):** the design canvas's **mobile** artboard shortens
+  the walk-in legend label to "Walk-in only" to fit a 390 px artboard, not as a product
+  requirement. We ship the full "Walk-in only — book at the venue" at every width and let it
+  wrap: hiding the actionable half (`hidden`/`sm:inline`) would hide it from assistive tech too,
+  and mobile is exactly the audience that needs "book at the venue". Cheap to revisit — the e2e's
+  `toContainText('Walk-in only')` passes either way. Settled in phase 2 (`8b51995`).
 - **Open question (resolved at plan time):** where does the legend markup live — in the
   shared frame, the shared canvas, or the tourist page? → **the tourist page**, projected
   through a `canvasLegend` slot on `BeachMapCanvas`. #701 states the constraint ("the
   legend is tourist-only content, so it must arrive by projection/composition"); the slot
-  sits on the canvas rather than `BeachGridFrame` because the canvas already owns the two
-  existing projection slots and the frame is deliberately markup-free chrome.
+  sits on the canvas rather than `BeachGridFrame` because the canvas already owned the two
+  projection slots that existed then, and the frame is deliberately markup-free chrome.
 
 ## Availability & concurrency (invariant #2)
 
@@ -308,10 +312,11 @@ consumes the same `VenueMapView` it does today.
 > second docs-only PR (case history + details: `riviera-sdlc` `references/pr-gates.md`
 > §3 step 4).
 
-**Stage pointer:** `sonar gate — CI + review gate cleared, all 14 findings resolved`
+**Stage pointer:** `DONE — merged via PR #716`
 
-**Next action:** Pull the SonarCloud issue + duplication list for PR #716 (green is necessary,
-not sufficient), then tick the PR's Gates boxes and merge.
+**Next action:** None. Close-out items that are GitHub-only: #701 closes with the PR; the
+out-of-scope zero-set map card is carried by #717. This slice belongs to no tracking epic, so
+there is no parent checklist to tick.
 
 | Phase                                                                        | Status | Commits     |
 | ---------------------------------------------------------------------------- | ------ | ----------- |
@@ -421,20 +426,20 @@ Skill-routing gate for what the fix touches _before_ editing).
 `frontend/src/app/shared/beach-map-canvas.ts` · Test
 `frontend/src/app/shared/beach-map-canvas.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — mirror the existing footer-slot spec: with rows,
+- [x] **Step 1: Write the failing test** — mirror the existing footer-slot spec: with rows,
       a `<p canvasLegend>` projects **between** the sea banner and `[data-riv-scroller]`;
       with no `canvasLegend` host content, the wash scroller is the first element after the
       banner and the frame's child count is unchanged from `main`.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- beach-map-canvas` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `npm test -- beach-map-canvas` → FAIL
       (`canvasLegend` content is not projected; it lands nowhere).
-- [ ] **Step 3: Minimal implementation** — one line at the top of the `rows().length > 0`
+- [x] **Step 3: Minimal implementation** — one line at the top of the `rows().length > 0`
       branch in `beach-map-canvas.html`:
       `<ng-content select="[canvasLegend]" />`, plus the class-doc sentence naming the
       third slot. **No wrapper element** (R-4): all spacing lives on the projected node.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- beach-map-canvas` → PASS
-- [ ] **Step 5: Generalization-audit pass**
-- [ ] **Step 6: Commit** — `git commit -m "Beach-map canvas: project a tourist-only legend slot above the grid (#701)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- beach-map-canvas` → PASS
+- [x] **Step 5: Generalization-audit pass**
+- [x] **Step 6: Commit** — `git commit -m "Beach-map canvas: project a tourist-only legend slot above the grid (#701)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -444,22 +449,22 @@ Skill-routing gate for what the fix touches _before_ editing).
 `frontend/src/app/venue/map-tile.spec.ts` · Modify
 `frontend/src/app/venue/venue-map.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — (a) `map-tile.spec.ts`: a host with each
+- [x] **Step 1: Write the failing tests** — (a) `map-tile.spec.ts`: a host with each
       `MapTileState` carries that state's fill/border/ink classes and `data-state`, and the
       `walkin` state carries the `repeating-linear-gradient`; (b) `venue-map.contrast.spec.ts`:
       the walk-in numeral `#5f4d2a` clears AA composited over both hatch bands
       (`rgba(95,77,42,0.16)` stripe and the bare `#efe0bd`@0.6 fill) over every `WASH_STOPS`
       entry.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- map-tile venue-map.contrast` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `npm test -- map-tile venue-map.contrast` → FAIL
       (no `map-tile.ts`; the contrast table still carries the 0.85 flat fill).
-- [ ] **Step 3: Minimal implementation** — `map-tile.ts` per the Architecture note; retune
+- [x] **Step 3: Minimal implementation** — `map-tile.ts` per the Architecture note; retune
       the contrast spec's `TILE_SURFACES` walk-in row to alpha 0.6 and add the hatch-band
       case + the R-2 paragraph in the file header.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- map-tile venue-map` → PASS
-- [ ] **Step 5: Generalization-audit pass** — population: every place that hand-writes a
+- [x] **Step 4: Run it, verify it passes** — `npm test -- map-tile venue-map` → PASS
+- [x] **Step 5: Generalization-audit pass** — population: every place that hand-writes a
       beach-map tile/swatch appearance literal.
-- [ ] **Step 6: Commit** — `git commit -m "Walk-in tiles get a diagonal hatch, from one shared tile-appearance record (#701)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Walk-in tiles get a diagonal hatch, from one shared tile-appearance record (#701)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -468,21 +473,21 @@ Skill-routing gate for what the fix touches _before_ editing).
 **Files:** Modify `frontend/src/app/venue/venue-map.html` ·
 `frontend/src/app/venue/venue-map.ts` · Test `frontend/src/app/venue/venue-map.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — AC-1: the `Legend` list is inside
+- [x] **Step 1: Write the failing test** — AC-1: the `Legend` list is inside
       `[data-testid="beach-grid"]`, precedes the first `[data-testid="set-tile"]` in
       document order, and is the only `Legend` list on the page; plus a spec that a taken
       walk-in tile resolves `state === 'taken'` and a free walk-in resolves `'walkin'`.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- venue-map.spec` → FAIL (the legend
+- [x] **Step 2: Run it, verify it fails** — `npm test -- venue-map.spec` → FAIL (the legend
       is still the trailing card, outside the grid).
-- [ ] **Step 3: Minimal implementation** — project the `<ul canvasLegend>` (full-bleed band,
+- [x] **Step 3: Minimal implementation** — project the `<ul canvasLegend>` (full-bleed band,
       the band on the canvas-owned spacing per R-3, painted `--riv-map-sea` — the design canvas's
       white/55 plate and its hairline were what shipped here first and what F-1 replaced — swatches via
       `[appMapTile]`), delete the trailing legend card, and swap the tile's `[&.state]:`
       variants for `[appMapTile]` while keeping every `[class.*]` marker binding.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- venue-map` → PASS
-- [ ] **Step 5: Generalization-audit pass**
-- [ ] **Step 6: Commit** — `git commit -m "Beach map: the legend leads the map card; the trailing legend card retires (#701)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- venue-map` → PASS
+- [x] **Step 5: Generalization-audit pass**
+- [x] **Step 6: Commit** — `git commit -m "Beach map: the legend leads the map card; the trailing legend card retires (#701)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -490,18 +495,18 @@ Skill-routing gate for what the fix touches _before_ editing).
 
 **Files:** Modify `frontend/e2e/venue-map-pan.e2e.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-2 (mobile viewport: legend above the first
+- [x] **Step 1: Write the failing tests** — AC-2 (mobile viewport: legend above the first
       tile row and within the first screen), AC-3 (walk-in tile hatched, premium tile not),
       AC-4 (each swatch's computed fill/border/hatch equals its tile's), and the re-aimed
       `legend.width ≈ card.width` in the #700 test.
-- [ ] **Step 2: Run it, verify it fails** — `npx playwright test venue-map-pan` → FAIL on
+- [x] **Step 2: Run it, verify it fails** — `npx playwright test venue-map-pan` → FAIL on
       the new assertions before phases 0–2 land (and, on `main`, on the re-aimed one).
-- [ ] **Step 3: Minimal implementation** — none expected beyond phases 0–2; any gap the e2e
+- [x] **Step 3: Minimal implementation** — none expected beyond phases 0–2; any gap the e2e
       exposes is fixed here and re-enters at Implement.
-- [ ] **Step 4: Run it, verify it passes** — `npm run test:e2e:a11y -- venue-map-pan` → PASS
-- [ ] **Step 5: Generalization-audit pass**
-- [ ] **Step 6: Commit** — `git commit -m "Pin the legend-in-card and hatched walk-in tiles as rendered (#701)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — `npm run test:e2e:a11y -- venue-map-pan` → PASS
+- [x] **Step 5: Generalization-audit pass**
+- [x] **Step 6: Commit** — `git commit -m "Pin the legend-in-card and hatched walk-in tiles as rendered (#701)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -524,36 +529,42 @@ Skill-routing gate for what the fix touches _before_ editing).
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1:** Run `npm test -- venue-map.spec` → the legend-inside-the-card spec passes.
-- [ ] **AC-2:** Run `npm run test:e2e:a11y -- venue-map-pan` → the mobile legend-order test passes.
-- [ ] **AC-3:** Run `npm run test:e2e:a11y -- venue-map-pan` **and** `npm test -- venue-map.contrast` → hatch present on walk-in only; numeral AA on both bands.
-- [ ] **AC-4:** Run `npm run test:e2e:a11y -- venue-map-pan` **and** `npm test -- map-tile` → swatch/tile computed styles equal.
-- [ ] **AC-5:** Run `npm test -- beach-map-canvas` **and** `npm run test:e2e:a11y -- layout-editor operator-daily operator-set-editing` → no legend band without projection; operator suites green.
-- [ ] **AC-6:** Run `npm run test:a11y` **and** the e2e axe run → no serious/critical violations; `Legend` accessible name intact.
+- [x] **AC-1:** Run `npm test -- venue-map.spec` → the legend-inside-the-card spec passes.
+- [x] **AC-2:** Run `npm run test:e2e:a11y -- venue-map-pan` → the mobile legend-order test passes.
+- [x] **AC-3:** Run `npm run test:e2e:a11y -- venue-map-pan` **and** `npm test -- venue-map.contrast` → hatch present on walk-in only; numeral AA on both bands.
+- [x] **AC-4:** Run `npm run test:e2e:a11y -- venue-map-pan` **and** `npm test -- map-tile` → swatch/tile computed styles equal.
+- [x] **AC-5:** Run `npm test -- beach-map-canvas` **and** `npm run test:e2e:a11y -- layout-editor operator-daily operator-set-editing` → no legend band without projection; operator suites green.
+- [x] **AC-6:** Run `npm run test:a11y` **and** the e2e axe run → no serious/critical violations; `Legend` accessible name intact.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
-      findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
-      `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 _plus_ `riviera-review-overlay`, not the overlay alone.
-      If tooling blocked the review, that is stated in the PR and its checkbox is left
-      unticked.
+- [x] Every AC has an implementing task and a verifying test — pin-names re-checked against the
+      shipped titles after the review-gate renames (finding G-5).
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — no file under `platform/` is in the diff at all.
+- [x] **Availability** section filled (justified N/A for writes — display-only; the section states
+      why invariant #3 is _reinforced_ in presentation and #2's write paths are untouched).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — `bookable` is unchanged, and
+      `mapTileState` now fails **closed** on any non-`FREE` availability (finding G-10).
+- [x] **Modulith** section filled (N/A — frontend-only); no backend file in the diff.
+- [x] **Payment/payout** section filled (N/A — no money in scope).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — untouched.
+- [x] Booking codes unguessable (invariant #7) — untouched.
+- [x] Flyway migration present for schema changes (invariant #12) — none needed, no schema change.
+- [x] **Frontend** standards met; no `as any`; Tailwind throughout and no new `.scss` (the count
+      stays 8); host-object bindings, `input()`/`computed()`, no explicit `OnPush`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table AND findings register
+      (both rounds, F-1…F-14 and G-1…G-10, every row carrying its outcome).
+- [x] Risk register has no stale `open` rows (R-1…R-7 all closed with outcomes); Open Questions
+      empty — its one live entry moved to `### Resolved` when the maintainer settled F-1.
+- [x] **Close-out written in THIS PR** — this final state is committed here, citing
+      `merged via PR #716`, so no docs-only follow-up PR is needed after the merge.
+- [x] **The review gate ran in full** — `/code-review` at high effort over `origin/main...HEAD`
+      (the invocation ladder's rung 2: the installed plugin's command payload, executed directly)
+      with `riviera-review-overlay` layered on, **twice**: once on the slice, once on the fix
+      round per the re-entry rule. 24 findings total, 23 fixed here and one (F-1) decided by the
+      maintainer; nothing deferred except the pre-existing gap carried by #717.
