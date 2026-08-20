@@ -63,7 +63,10 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
  * chrome, the sea→sand wash
  * on the vertical scroller, the aria-hidden row-code and per-zone price rails, the zone-gap
  * layout, and the pannable viewport (2D mouse drag + horizontal scroll snap + edge fade, the
- * horizontal chrome gated on actual overflow via `.pannable`). A drag pans horizontally via
+ * horizontal chrome gated on actual overflow via `.pannable`). Three content slots ride along:
+ * `canvasLegend` above the grid, `canvasFooter` below it, and `canvasEmpty` in place of both —
+ * all optional, because their content is per-surface (the tile legend is tourist-only, #701).
+ * A drag pans horizontally via
  * the viewport's `scrollLeft` and — whenever the wash scroller actually overflows — vertically
  * via its `scrollTop`; on a short map the vertical axis stays inert, so a sloppy tap never
  * loses its click. Tile rows are projected via

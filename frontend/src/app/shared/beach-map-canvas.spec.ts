@@ -45,6 +45,9 @@ const ROWS: readonly TestRow[] = [
           }
         </ul>
       </ng-template>
+      <ul canvasLegend data-testid="legend-note">
+        <li>Available</li>
+      </ul>
       <p canvasFooter data-testid="footer-note">Tap any free set to book it.</p>
       <p canvasEmpty data-testid="empty-note">Nothing here yet.</p>
     </app-beach-map-canvas>
@@ -54,6 +57,26 @@ class CanvasHost {
   readonly rows = signal<readonly TestRow[]>(ROWS);
   readonly dragPan = signal(true);
   readonly taps: string[] = [];
+}
+
+/**
+ * The operator shape: the same canvas with NO `canvasLegend` content, which is how the layout
+ * editor, the Daily view and the per-set editor render it. The legend slot must emit nothing at
+ * all here — the sea banner's `mb-3.5` and the wash's `-mt-3.5` still have to meet each other
+ * (#701, R-4).
+ */
+@Component({
+  imports: [BeachMapCanvas, BeachMapRowDef],
+  template: `
+    <app-beach-map-canvas frameTestid="test-frame" viewportTestid="test-pan">
+      <ng-template [appBeachMapRow]="rows()" let-row>
+        <ul class="set-row" [attr.data-row]="row.code"></ul>
+      </ng-template>
+    </app-beach-map-canvas>
+  `,
+})
+class LegendlessCanvasHost {
+  readonly rows = signal<readonly TestRow[]>(ROWS);
 }
 
 /**
@@ -443,5 +466,38 @@ describe('BeachMapCanvas (#672)', () => {
     expect(host.querySelector('[data-testid="test-pan"]')).toBeNull();
     // The frame chrome stays either way.
     expect(host.textContent).toContain('Facing the sea');
+  });
+
+  /** The frame's own children, in render order: banner, whatever the canvas projected, promenade. */
+  function frameChildren(host: HTMLElement): readonly Element[] {
+    const frame = host.querySelector('[data-testid="test-frame"]');
+    expect(frame).toBeTruthy();
+    return [...frame!.children];
+  }
+
+  it('projects the legend slot above the wash, and renders nothing there when unprojected (#701)', () => {
+    const { host, component, detect } = render();
+    const children = frameChildren(host);
+    const banner = children.findIndex((el) => el.textContent?.includes('Facing the sea'));
+    const legend = children.findIndex((el) => el.matches('[data-testid="legend-note"]'));
+    const wash = children.findIndex((el) => el.matches('[data-riv-scroller]'));
+    // The whole point of #701: decode the colours BEFORE reading the tiles.
+    expect(banner).toBeGreaterThanOrEqual(0);
+    expect(legend).toBe(banner + 1);
+    expect(wash).toBe(legend + 1);
+
+    // A legend with no tiles to decode is noise — it goes with the grid.
+    component.rows.set([]);
+    detect();
+    expect(host.querySelector('[data-testid="legend-note"]')).toBeNull();
+  });
+
+  it('emits no legend box for a host that projects none — the operator surfaces (#701)', () => {
+    const fixture = TestBed.createComponent(LegendlessCanvasHost);
+    fixture.detectChanges();
+    const children = frameChildren(fixture.nativeElement as HTMLElement);
+    const banner = children.findIndex((el) => el.textContent?.includes('Facing the sea'));
+    // No stray element between the banner and the wash: the two margins still cancel.
+    expect(children[banner + 1]?.matches('[data-riv-scroller]')).toBe(true);
   });
 });

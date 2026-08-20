@@ -1,5 +1,7 @@
 <app-beach-grid-frame [testid]="frameTestid()" [label]="label()">
   @if (rows().length > 0) {
+    <!-- Tourist-only legend slot (#701): projected between the sea banner and the wash so the colours are decoded BEFORE the tiles are read. Deliberately a bare ng-content — an unprojected slot must emit no box, or the banner's mb-3.5 and the wash's -mt-3.5 stop meeting on the three operator surfaces. Spacing therefore rides on the projected element itself. -->
+    <ng-content select="[canvasLegend]" />
     <!-- The sea→sand wash: aqua at the sea banner fading to warm sand at the promenade, fixed to the viewport of the vertical scroller so "the water is up there" reads at any scroll depth. -->
     <div
       #washScroller

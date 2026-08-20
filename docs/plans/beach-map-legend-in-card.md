@@ -43,7 +43,7 @@ background-image:repeating-linear-gradient(135deg,rgba(95,77,42,0.16) 0px,rgba(9
 
 **Skills consulted:** `riviera-sdlc` (routing + the issue-intake grill gate — caught that
 the #700 breakout e2e pins `legend.width ≈ head.width`, an assertion this slice must
-*invert*, and that no Flyway number or in-flight PR overlaps: the only open PRs are
+_invert_, and that no Flyway number or in-flight PR overlaps: the only open PRs are
 Dependabot bumps) · `riviera-plan-doc` (this template — its Behavior-parity ledger is
 what forced the premium **+** walk-in tile combination into the open: today both classes
 apply and Tailwind stylesheet order silently picks a winner) · `tdd` (each phase red
@@ -53,17 +53,18 @@ directive, the composited hatch-band maths before the new fill) ·
 ready-for-review) · `riviera-docs-freshness` (to run at merge close-out over
 `origin/main...HEAD`) · `riviera-frontend` (placement: the appearance directive is
 tourist-only, so it colocates in the `venue/` feature folder next to its consumer — **not**
-`shared/`, which no second feature needs; the `canvasLegend` slot *is* shared chrome, so
+`shared/`, which no second feature needs; the `canvasLegend` slot _is_ shared chrome, so
 it belongs on `shared/beach-map-canvas.ts`) · `riviera-tailwind` (rule 1 — share at the
 directive layer, never `@apply`; rule 2 — the `.set-tile` / `.premium` / `.walkin` /
 `.taken` marker classes stay as inert test hooks while the directive does the styling;
 geometry stays with the consumer per the `beach-cell.ts` precedent) · `angular-developer`
-+ angular-cli MCP (`get_best_practices`: host bindings in the `host` object not
-`@HostBinding`, `input()`/`computed()` signal APIs, no explicit `OnPush`) ·
-`playwright-cli` (the new e2e assertions are role/test-id located with web-first
-`expect` and computed-style reads, no fixed sleeps) · `riviera-local-debug` (scoped Vitest
-+ `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` for the mocked e2e — never
-`playwright install`).
+
+- angular-cli MCP (`get_best_practices`: host bindings in the `host` object not
+  `@HostBinding`, `input()`/`computed()` signal APIs, no explicit `OnPush`) ·
+  `playwright-cli` (the new e2e assertions are role/test-id located with web-first
+  `expect` and computed-style reads, no fixed sleeps) · `riviera-local-debug` (scoped Vitest
+- `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` for the mocked e2e — never
+  `playwright install`).
 
 **Branch:** `claude/sdlc-701-nrkj2v` — the cloud session's **designated** branch, standing
 in for `feature/beach-map-legend-in-card` (`riviera-sdlc` § Remote / cloud session
@@ -82,45 +83,45 @@ addendum). It was cut fresh from `origin/main` at `8c5604f`.
 > reusable from any driving adapter.
 
 - [ ] **AC-1:** Given a loaded venue map, when the tourist map renders, then the
-  `Legend` list is a descendant of the map card (`[data-testid="beach-grid"]`), appears
-  before the first `[data-testid="set-tile"]` in document order, and no `Legend` list
-  exists outside the card. *Pinned by:*
-  `venue-map.spec.ts › 'renders the legend inside the map card, above the tile grid (#701)'`
+      `Legend` list is a descendant of the map card (`[data-testid="beach-grid"]`), appears
+      before the first `[data-testid="set-tile"]` in document order, and no `Legend` list
+      exists outside the card. _Pinned by:_
+      `venue-map.spec.ts › 'renders the legend inside the map card, above the tile grid (#701)'`
 - [ ] **AC-2:** Given a 390 × 760 mobile viewport, when the beach map page loads, then the
-  legend's bounding box bottom is above the first tile row's top and the legend is within
-  the initial viewport (no scroll needed to reach it). *Pinned by:*
-  `venue-map-pan.e2e.ts › 'the legend leads the map card on mobile — decoded before the first tile row (#701)'`
+      legend's bounding box bottom is above the first tile row's top and the legend is within
+      the initial viewport (no scroll needed to reach it). _Pinned by:_
+      `venue-map-pan.e2e.ts › 'the legend leads the map card on mobile — decoded before the first tile row (#701)'`
 - [ ] **AC-3:** Given a venue whose row 5 is the walk-in pool, when the map renders, then
-  every free walk-in tile's computed `background-image` is a `repeating-linear-gradient`
-  while a free premium tile's is `none`, and the walk-in numeral colour clears WCAG AA
-  (≥ 4.5:1) composited over **both** hatch bands on **every** wash stop. *Pinned by:*
-  `venue-map-pan.e2e.ts › 'a free walk-in tile is hatched, a premium tile is not (#701)'` +
-  `venue-map.contrast.spec.ts › 'the walk-in numeral meets AA on both hatch bands over every wash stop'`
+      every free walk-in tile's computed `background-image` is a `repeating-linear-gradient`
+      while a free premium tile's is `none`, and the walk-in numeral colour clears WCAG AA
+      (≥ 4.5:1) composited over **both** hatch bands on **every** wash stop. _Pinned by:_
+      `venue-map-pan.e2e.ts › 'a free walk-in tile is hatched, a premium tile is not (#701)'` +
+      `venue-map.contrast.spec.ts › 'the walk-in numeral meets AA on both hatch bands over every wash stop'`
 - [ ] **AC-4:** Given the rendered map, when the legend swatches and the tiles are compared
-  by computed style, then the walk-in swatch's `background-image`/`background-color`/
-  `border-color` equal the walk-in tile's, and the taken swatch's `border-style` is
-  `dashed` like the taken tile's. *Pinned by:*
-  `venue-map-pan.e2e.ts › 'every legend swatch renders exactly like the tile it stands for (#701)'` +
-  `map-tile.spec.ts › 'renders each state from the one shared appearance record'`
+      by computed style, then the walk-in swatch's `background-image`/`background-color`/
+      `border-color` equal the walk-in tile's, and the taken swatch's `border-style` is
+      `dashed` like the taken tile's. _Pinned by:_
+      `venue-map-pan.e2e.ts › 'every legend swatch renders exactly like the tile it stands for (#701)'` +
+      `map-tile.spec.ts › 'renders each state from the one shared appearance record'`
 - [ ] **AC-5:** Given a `BeachMapCanvas` host that projects **no** `canvasLegend` content
-  (every operator surface), when it renders, then the wash scroller is the frame's first
-  child after the sea banner and no legend band exists — the operator layout editor, Daily
-  view and per-set editor render byte-identically to `main`. *Pinned by:*
-  `beach-map-canvas.spec.ts › 'projects the legend slot above the wash, and renders nothing there when unprojected (#701)'`
-  (+ the unchanged `layout-editor.e2e.ts` / `operator-daily.e2e.ts` / `operator-set-editing.e2e.ts` staying green)
+      (every operator surface), when it renders, then the wash scroller is the frame's first
+      child after the sea banner and no legend band exists — the operator layout editor, Daily
+      view and per-set editor render byte-identically to `main`. _Pinned by:_
+      `beach-map-canvas.spec.ts › 'projects the legend slot above the wash, and renders nothing there when unprojected (#701)'`
+      (+ `beach-map-canvas.spec.ts › 'emits no legend box for a host that projects none — the operator surfaces (#701)'`, + the unchanged `layout-editor.e2e.ts` / `operator-daily.e2e.ts` / `operator-set-editing.e2e.ts` staying green)
 - [ ] **AC-6:** Given the map in either theme, when axe and the contrast suite run, then
-  there are no serious/critical violations, the legend list still exposes the accessible
-  name `Legend`, and the legend ink clears AA over the new white-plate band on the card
-  glass over every theme stop. *Pinned by:*
-  `venue-map.a11y.spec.ts` + `venue-map.contrast.spec.ts › 'legend ink meets AA on the legend plate over the card glass'` +
-  `venue-map-pan.e2e.ts` axe run
+      there are no serious/critical violations, the legend list still exposes the accessible
+      name `Legend`, and the legend ink clears AA over the new white-plate band on the card
+      glass over every theme stop. _Pinned by:_
+      `venue-map.a11y.spec.ts` + `venue-map.contrast.spec.ts › 'legend ink meets AA on the legend plate over the card glass'` +
+      `venue-map-pan.e2e.ts` axe run
 
 ## Non-goals
 
 > **Mandatory.** What is explicitly OUT of scope — guards against "while I'm here…".
 
 - **Restyling the operator legends.** The layout editor and Daily view keep their own
-  legends *outside* their canvas; unifying them is a separate slice.
+  legends _outside_ their canvas; unifying them is a separate slice.
 - **Promoting the tile-appearance directive to `shared/`.** Only `venue/` consumes it;
   a second consumer is what would justify the move (`riviera-frontend` import rules).
 - **Changing tile geometry, the wash, the rails, the pan behaviour or the 1100 px desktop
@@ -144,21 +145,21 @@ addendum). It was cut fresh from `origin/main` at `8c5604f`.
 Old surface = the trailing legend card (`venue-map.html`) **plus** the tile appearance
 expressed as `[&.premium]:` / `[&.walkin]:` / `[&.taken]:` arbitrary variants.
 
-| Old-surface behavior | Verdict (preserved / changed / dropped) | How the new surface does it, or why it's gone |
-|---|---|---|
-| Legend is a `<ul aria-label="Legend">` of four `<li>` (Available · Front row · Walk-in only — book at the venue · Taken), in that order | preserved | same element, same `aria-label`, same four items in the same order — projected into `canvasLegend` instead of following the card |
-| Legend labels verbatim, incl. the em-dash "Walk-in only — book at the venue" | preserved | copied unchanged; `venue-map.spec.ts` + the e2e still assert on "Walk-in only" |
-| Legend sits on its own `appCardGlass` pill below the map card | changed | it is now a full-bleed band **inside** the map card on a `white/55` plate with a hairline bottom rule — that is the whole point of #701 (decode before reading) |
-| Legend ink is `--riv-card-ink-soft` | preserved | unchanged token; the design canvas's `rgba(12,42,51,0.78)` **is** that token's value |
-| Legend width tracks the 780 px page shell (pinned by the #700 breakout e2e) | changed | the legend now lives in the map card, so it tracks the card — 1100 px at ≥ 1280 px. The #700 assertion is inverted to `legend.width ≈ card.width` in the same slice (it is the same fact, re-aimed) |
-| Legend swatches are hand-copied fill/border literals | changed | both swatch and tile now read the one `MAP_TILE_CLASS` record — AC-4 is structural, not a promise |
-| Free walk-in tile: `#efe0bd`@0.85, solid, border `#c8ab62`, ink `#5f4d2a` | changed | fill drops to 0.6 and gains the 135° hatch (design canvas values); border and ink unchanged — the ink is re-proven AA on both bands |
-| Available / front-row / taken tile fills, borders, inks | preserved | identical literals, relocated into `MAP_TILE_CLASS`; the e2e's computed-style pins (ghost alpha < 0.5, dashed border) still hold |
-| `.set-tile`, `.premium`, `.walkin`, `.taken`, `.bookable` classes as test hooks | preserved | the `[class.*]` bindings on the `<li>` are untouched (`riviera-tailwind` rule 2); only the *styling* moves to the directive |
-| `[&.bookable]:p-0` (bookable tile drops padding so the button fills it) | preserved | stays a static class on the `<li>`; it keys off the untouched `[class.bookable]` binding |
-| A **taken** tile beats walk-in and premium ("the ghost wins", #672) | preserved | now explicit: `MapTileState` resolves `taken` first, so it can no longer depend on Tailwind stylesheet order |
-| A **premium + walk-in** tile renders … whichever variant Tailwind happened to order last | changed → **defined**: walk-in wins | matches `operator/beach-cell.ts`'s `cellStateOf` ("walk-in reads as walk-in whatever its tier") and AC-3's intent — "you cannot book this online" must never lose to a tier tint. No fixture exercises the combination today, so this changes no current pixel |
-| Tile hover/focus/transition, accessible names, tap targets, the tap-to-book flow | preserved | untouched — the directive supplies fill/border/ink only, the `<li>`/`<button>` markup is unchanged |
+| Old-surface behavior                                                                                                                    | Verdict (preserved / changed / dropped) | How the new surface does it, or why it's gone                                                                                                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Legend is a `<ul aria-label="Legend">` of four `<li>` (Available · Front row · Walk-in only — book at the venue · Taken), in that order | preserved                               | same element, same `aria-label`, same four items in the same order — projected into `canvasLegend` instead of following the card                                                                                                                               |
+| Legend labels verbatim, incl. the em-dash "Walk-in only — book at the venue"                                                            | preserved                               | copied unchanged; `venue-map.spec.ts` + the e2e still assert on "Walk-in only"                                                                                                                                                                                 |
+| Legend sits on its own `appCardGlass` pill below the map card                                                                           | changed                                 | it is now a full-bleed band **inside** the map card on a `white/55` plate with a hairline bottom rule — that is the whole point of #701 (decode before reading)                                                                                                |
+| Legend ink is `--riv-card-ink-soft`                                                                                                     | preserved                               | unchanged token; the design canvas's `rgba(12,42,51,0.78)` **is** that token's value                                                                                                                                                                           |
+| Legend width tracks the 780 px page shell (pinned by the #700 breakout e2e)                                                             | changed                                 | the legend now lives in the map card, so it tracks the card — 1100 px at ≥ 1280 px. The #700 assertion is inverted to `legend.width ≈ card.width` in the same slice (it is the same fact, re-aimed)                                                            |
+| Legend swatches are hand-copied fill/border literals                                                                                    | changed                                 | both swatch and tile now read the one `MAP_TILE_CLASS` record — AC-4 is structural, not a promise                                                                                                                                                              |
+| Free walk-in tile: `#efe0bd`@0.85, solid, border `#c8ab62`, ink `#5f4d2a`                                                               | changed                                 | fill drops to 0.6 and gains the 135° hatch (design canvas values); border and ink unchanged — the ink is re-proven AA on both bands                                                                                                                            |
+| Available / front-row / taken tile fills, borders, inks                                                                                 | preserved                               | identical literals, relocated into `MAP_TILE_CLASS`; the e2e's computed-style pins (ghost alpha < 0.5, dashed border) still hold                                                                                                                               |
+| `.set-tile`, `.premium`, `.walkin`, `.taken`, `.bookable` classes as test hooks                                                         | preserved                               | the `[class.*]` bindings on the `<li>` are untouched (`riviera-tailwind` rule 2); only the _styling_ moves to the directive                                                                                                                                    |
+| `[&.bookable]:p-0` (bookable tile drops padding so the button fills it)                                                                 | preserved                               | stays a static class on the `<li>`; it keys off the untouched `[class.bookable]` binding                                                                                                                                                                       |
+| A **taken** tile beats walk-in and premium ("the ghost wins", #672)                                                                     | preserved                               | now explicit: `MapTileState` resolves `taken` first, so it can no longer depend on Tailwind stylesheet order                                                                                                                                                   |
+| A **premium + walk-in** tile renders … whichever variant Tailwind happened to order last                                                | changed → **defined**: walk-in wins     | matches `operator/beach-cell.ts`'s `cellStateOf` ("walk-in reads as walk-in whatever its tier") and AC-3's intent — "you cannot book this online" must never lose to a tier tint. No fixture exercises the combination today, so this changes no current pixel |
+| Tile hover/focus/transition, accessible names, tap targets, the tap-to-book flow                                                        | preserved                               | untouched — the directive supplies fill/border/ink only, the `<li>`/`<button>` markup is unchanged                                                                                                                                                             |
 
 ## Risk register
 
@@ -177,15 +178,15 @@ expressed as `[&.premium]:` / `[&.walkin]:` / `[&.taken]:` arbitrary variants.
 > `references/issue-intake-gate.md` (free on `main` AND unclaimed by open PRs; name
 > who renumbers).
 
-| # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
-|---|---|---|---|---|---|---|
-| R-1 | The hatch darkens the walk-in tile under its own numeral and drops it below WCAG AA — the tile ink is a dark brown on a light sand, so *any* dark overlay costs contrast | med | high | Prove the numeral composited over **both** bands (hatch stripe and gap) over **every** wash stop, not just the flat fill; the design's `rgba(95,77,42,0.16)` on a 0.6 fill computes to 5.05:1 worst case (`#cfeef6` stop), 6.37:1 on the gap band. A `0.3`-alpha hatch on the old 0.85 fill — the operator surfaces' value — computes to **3.46:1** and was rejected on that arithmetic | this slice | open → phase 1 |
-| R-2 | A reviewer reads the hatch as a WCAG 1.4.11 "graphical object required to understand content" and asks for 3:1 against the tile fill — the precedent exists (the ghost-taken dashed border is proven at 3:1, and the review gate rejected the softer "inactive component" reading there) | med | med | 3:1 *and* an AA numeral are arithmetically incompatible on this tile (a 3:1 stripe needs ≈ 0.55 alpha, which puts the numeral at 2.1:1). So state the position in the contrast spec's header rather than leave it implicit: the walk-in state is carried by the tile's **accessible name** ("walk-in only — book at the venue") and by the absence of a button — the hatch is redundant reinforcement, the same exclusion the file already applies to the decorative tier borders (`#e6c483` / `#c8ab62`, neither of which reaches 3:1 either, on `main` today) | review gate | open |
-| R-3 | The wash scroller's `-mt-3.5` (which today cancels the sea banner's `mb-3.5` so the wash sits flush under the banner) pulls **up over** the new legend band, clipping it | high | med | The band carries `-mt-3.5 mb-3.5`: its top margin cancels the banner's, its bottom margin cancels the wash's, so all three stay flush with no overlap and the no-legend case is byte-identical. Verified by measuring bounding boxes in the e2e (legend bottom ≤ wash top, legend height > 0) | this slice | open → phase 2 |
-| R-4 | The `canvasLegend` slot is added to a component **three operator surfaces** render; an unprojected `<ng-content>` that still emits a box would shift every one of them | med | high | The slot is a bare `<ng-content select="[canvasLegend]">` — no wrapper element, so nothing is emitted when unprojected (all margins live on the projected `<ul>` itself). Pinned by AC-5's canvas spec plus the three untouched operator e2e specs | this slice | open → phase 0 |
-| R-5 | `venue-map-pan.e2e.ts`'s #700 breakout test asserts `legend.width ≈ head.width` — true only while the legend is outside the card. Left alone it turns CI red *after* the feature is correct | high | med | Found by the issue-intake grill before phase 0 and folded into AC-1/AC-2: the assertion is re-aimed at `legend.width ≈ card.width` in the same commit that moves the legend, keeping the test's real subject (only the map card breaks out) | this slice | open → phase 3 |
-| R-6 | The hatch is a Tailwind arbitrary value carrying commas, parentheses and underscore-escaped spaces; a mis-parse silently emits no `background-image` and the tile just looks paler | med | med | Follow the form already proven in this repo (`operator/beach-cell.ts`'s `bg-[repeating-linear-gradient(45deg,…_0_3px,…_3px_6px)]`), then verify by **computed style** in the e2e (AC-3) rather than by class list, and run `npm run build` before pushing | this slice | open → phase 1 |
-| R-7 | Moving tile styling into a directive changes a computed value by accident (a dropped `hover:`, a re-ordered `border-*`) — the class list can look right while pixels drift | med | med | `riviera-tailwind`'s hard rule: diff **computed styles**, not classes. The existing e2e already pins the ghost alpha and the dashed border; phase 3 adds the swatch-vs-tile computed-style equality (AC-4), which fails loudly on any drift | this slice | open → phase 3 |
+| #   | Description                                                                                                                                                                                                                                                                              | Likelihood | Impact | Mitigation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Owner       | Resolution                                                                                                               |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| R-1 | The hatch darkens the walk-in tile under its own numeral and drops it below WCAG AA — the tile ink is a dark brown on a light sand, so _any_ dark overlay costs contrast                                                                                                                 | med        | high   | Prove the numeral composited over **both** bands (hatch stripe and gap) over **every** wash stop, not just the flat fill; the design's `rgba(95,77,42,0.16)` on a 0.6 fill computes to 5.05:1 worst case (`#cfeef6` stop), 6.37:1 on the gap band. A `0.3`-alpha hatch on the old 0.85 fill — the operator surfaces' value — computes to **3.46:1** and was rejected on that arithmetic                                                                                                                                                                         | this slice  | open → phase 1                                                                                                           |
+| R-2 | A reviewer reads the hatch as a WCAG 1.4.11 "graphical object required to understand content" and asks for 3:1 against the tile fill — the precedent exists (the ghost-taken dashed border is proven at 3:1, and the review gate rejected the softer "inactive component" reading there) | med        | med    | 3:1 _and_ an AA numeral are arithmetically incompatible on this tile (a 3:1 stripe needs ≈ 0.55 alpha, which puts the numeral at 2.1:1). So state the position in the contrast spec's header rather than leave it implicit: the walk-in state is carried by the tile's **accessible name** ("walk-in only — book at the venue") and by the absence of a button — the hatch is redundant reinforcement, the same exclusion the file already applies to the decorative tier borders (`#e6c483` / `#c8ab62`, neither of which reaches 3:1 either, on `main` today) | review gate | open                                                                                                                     |
+| R-3 | The wash scroller's `-mt-3.5` (which today cancels the sea banner's `mb-3.5` so the wash sits flush under the banner) pulls **up over** the new legend band, clipping it                                                                                                                 | high       | med    | The band carries `-mt-3.5 mb-3.5`: its top margin cancels the banner's, its bottom margin cancels the wash's, so all three stay flush with no overlap and the no-legend case is byte-identical. Verified by measuring bounding boxes in the e2e (legend bottom ≤ wash top, legend height > 0)                                                                                                                                                                                                                                                                   | this slice  | open → phase 2                                                                                                           |
+| R-4 | The `canvasLegend` slot is added to a component **three operator surfaces** render; an unprojected `<ng-content>` that still emits a box would shift every one of them                                                                                                                   | med        | high   | The slot is a bare `<ng-content select="[canvasLegend]">` — no wrapper element, so nothing is emitted when unprojected (all margins live on the projected `<ul>` itself). Pinned by AC-5's canvas spec plus the three untouched operator e2e specs                                                                                                                                                                                                                                                                                                              | this slice  | closed — phase 0: the slot is a bare `<ng-content>`; the legendless-host spec pins the wash as the banner's next sibling |
+| R-5 | `venue-map-pan.e2e.ts`'s #700 breakout test asserts `legend.width ≈ head.width` — true only while the legend is outside the card. Left alone it turns CI red _after_ the feature is correct                                                                                              | high       | med    | Found by the issue-intake grill before phase 0 and folded into AC-1/AC-2: the assertion is re-aimed at `legend.width ≈ card.width` in the same commit that moves the legend, keeping the test's real subject (only the map card breaks out)                                                                                                                                                                                                                                                                                                                     | this slice  | open → phase 3                                                                                                           |
+| R-6 | The hatch is a Tailwind arbitrary value carrying commas, parentheses and underscore-escaped spaces; a mis-parse silently emits no `background-image` and the tile just looks paler                                                                                                       | med        | med    | Follow the form already proven in this repo (`operator/beach-cell.ts`'s `bg-[repeating-linear-gradient(45deg,…_0_3px,…_3px_6px)]`), then verify by **computed style** in the e2e (AC-3) rather than by class list, and run `npm run build` before pushing                                                                                                                                                                                                                                                                                                       | this slice  | open → phase 1                                                                                                           |
+| R-7 | Moving tile styling into a directive changes a computed value by accident (a dropped `hover:`, a re-ordered `border-*`) — the class list can look right while pixels drift                                                                                                               | med        | med    | `riviera-tailwind`'s hard rule: diff **computed styles**, not classes. The existing e2e already pins the ghost alpha and the dashed border; phase 3 adds the swatch-vs-tile computed-style equality (AC-4), which fails loudly on any drift                                                                                                                                                                                                                                                                                                                     | this slice  | open → phase 3                                                                                                           |
 
 ## Open questions / Assumptions
 
@@ -196,7 +197,7 @@ expressed as `[&.premium]:` / `[&.walkin]:` / `[&.taken]:` arbitrary variants.
   We ship the full "Walk-in only — book at the venue" at every width and let it wrap:
   hiding the actionable half of the sentence (`hidden`/`sm:inline`) would also hide it
   from assistive tech, and mobile is exactly the audience that needs "book at the venue".
-  — *Owner:* this slice · *Resolves by:* phase 2 (recorded as a deliberate deviation; the
+  — _Owner:_ this slice · _Resolves by:_ phase 2 (recorded as a deliberate deviation; the
   e2e's `toContainText('Walk-in only')` passes either way, so the assumption is cheap to
   revisit)
 
@@ -225,7 +226,7 @@ no request, no state, no server contract changes.
 - **Concurrency strategy:** unchanged; nothing in this slice runs on the write path.
 - **Pool rule (invariant #3):** **strengthened, in presentation only.** A walk-in tile is
   still non-bookable in exactly the way it is today — `toTile` computes `bookable =
-  availability === 'FREE' && pool === 'ONLINE'`, so a walk-in tile renders no `<button>`
+availability === 'FREE' && pool === 'ONLINE'`, so a walk-in tile renders no `<button>`
   and cannot open the booking dialog; the server remains authoritative. What changes is
   legibility: the hatch plus the legend-before-the-grid make "you cannot book this online"
   visible **before** a tourist taps, instead of after. Pinned by the untouched
@@ -259,12 +260,12 @@ accrued; the price rail and the booking dialog are untouched.
 > **Mandatory if frontend is in scope. Backend-only: `N/A — backend-only`.** Load
 > `angular-developer`.
 
-| # | Surface | Existing/new | Type | State/reactivity | Forms |
-|---|---|---|---|---|---|
-| FE-1 | `venue/map-tile.ts` | new | attribute (variant) directive `[appMapTile]` | one required `input()` + one `computed()` for the class string; host bindings in the `host` object | none |
-| FE-2 | `venue/venue-map.html` | existing | template | unchanged signals; the tile view model gains a precomputed `state` field | none |
-| FE-3 | `venue/venue-map.ts` | existing | standalone component | `toTile()` resolves `MapTileState` once per tile inside the existing `rows` `computed()` | none |
-| FE-4 | `shared/beach-map-canvas.html` | existing | template | one added `<ng-content select="[canvasLegend]">`; no new state | none |
+| #    | Surface                        | Existing/new | Type                                         | State/reactivity                                                                                   | Forms |
+| ---- | ------------------------------ | ------------ | -------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----- |
+| FE-1 | `venue/map-tile.ts`            | new          | attribute (variant) directive `[appMapTile]` | one required `input()` + one `computed()` for the class string; host bindings in the `host` object | none  |
+| FE-2 | `venue/venue-map.html`         | existing     | template                                     | unchanged signals; the tile view model gains a precomputed `state` field                           | none  |
+| FE-3 | `venue/venue-map.ts`           | existing     | standalone component                         | `toTile()` resolves `MapTileState` once per tile inside the existing `rows` `computed()`           | none  |
+| FE-4 | `shared/beach-map-canvas.html` | existing     | template                                     | one added `<ng-content select="[canvasLegend]">`; no new state                                     | none  |
 
 **Standards:** standalone components, `inject()`, `@if`/`@for`, `input()`/`output()`
 signal APIs, `NgOptimizedImage` for new images. Document any deviation. (Full
@@ -285,7 +286,7 @@ consumes the same `VenueMapView` it does today.
 > session, or whenever unsure: re-read it (plus the current stage's `riviera-sdlc`
 > reference file) before acting. Update it in the SAME commit window as the change it
 > records — the same commit or the immediately-following one, nothing unrelated between;
-> covers every plan-doc update incl. *Skills consulted* — at every phase boundary and
+> covers every plan-doc update incl. _Skills consulted_ — at every phase boundary and
 > SDLC stage transition (why: `riviera-sdlc` §Context hygiene).
 >
 > **Finalize BEFORE the merge, in the PR's own last commit** — stage pointer DONE, phase
@@ -294,27 +295,27 @@ consumes the same `VenueMapView` it does today.
 > second docs-only PR (case history + details: `riviera-sdlc` `references/pr-gates.md`
 > §3 step 4).
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write the failing `beach-map-canvas.spec.ts` projection spec
-for the `canvasLegend` slot, then add the slot.
+**Next action:** Phase 1 — write the failing `map-tile.spec.ts` + the hatch-band contrast
+cases, then add `venue/map-tile.ts`.
 
-| Phase | Status | Commits |
-|-------|--------|---------|
-| 0 — `canvasLegend` projection slot on the shared canvas | | |
-| 1 — `[appMapTile]` appearance directive + the walk-in hatch, contrast-proven | | |
-| 2 — tourist map recomposition: legend into the card, trailing card retired | | |
-| 3 — e2e coverage (mocked suite) + the re-aimed #700 breakout assertion | | |
+| Phase                                                                        | Status | Commits     |
+| ---------------------------------------------------------------------------- | ------ | ----------- |
+| 0 — `canvasLegend` projection slot on the shared canvas                      | ✅     | this commit |
+| 1 — `[appMapTile]` appearance directive + the walk-in hatch, contrast-proven |        |             |
+| 2 — tourist map recomposition: legend into the card, trailing card retired   |        |             |
+| 3 — e2e coverage (mocked suite) + the re-aimed #700 breakout assertion       |        |             |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
 Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule (run the
-Skill-routing gate for what the fix touches *before* editing).
+Skill-routing gate for what the fix touches _before_ editing).
 
-| # | Source (review / sonar / CI) | Finding | Status |
-|---|---|---|---|
-| — | — | none yet | — |
+| #   | Source (review / sonar / CI) | Finding  | Status |
+| --- | ---------------------------- | -------- | ------ |
+| —   | —                            | none yet | —      |
 
 ---
 
@@ -465,8 +466,9 @@ Skill-routing gate for what the fix touches *before* editing).
 > Append-only. One row per bug-fix / pattern-introducing phase. **Population** names the
 > mechanism swept and how it was enumerated (mechanism-not-resemblance — #641, Step 5).
 
-| Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
-|---|---|---|---|---|---|
+| Date       | Trigger (commit/phase)            | Population (mechanism + how enumerated)                                                                                                                                                                      | Search command                                                                      | Sites found                                                                                                                    | Action                                                                                                                                                                                                                                 |
+| ---------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-20 | phase 0 — the `canvasLegend` slot | Every surface that **renders `<app-beach-map-canvas>`** (not "every surface with a legend" — the resemblance framing would have missed `set-editor.html`, which renders the canvas and has no legend at all) | `grep -rln 'app-beach-map-canvas' frontend/src --include='*.html' --include='*.ts'` | 4 consumers: `venue/venue-map.html`, `operator/daily-view-tab.html`, `operator/layout-editor.html`, `operator/set-editor.html` | Only the tourist map projects the slot. The two operator legends stay **outside** their canvas (Non-goals: unifying them is a separate slice) and `set-editor` has none; all three are pinned unchanged by AC-5's legendless-host spec |
 
 ---
 
@@ -504,6 +506,6 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+      `references/pr-gates.md` §1 _plus_ `riviera-review-overlay`, not the overlay alone.
       If tooling blocked the review, that is stated in the PR and its checkbox is left
       unticked.
