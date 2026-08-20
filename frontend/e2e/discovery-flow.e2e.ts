@@ -292,3 +292,34 @@ test('a hidden venue answers a not-available state with a way back, not a retry 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId('venue-card').first()).toBeVisible();
 });
+
+test('a venue with no published map explains itself and points back to Discover (#717)', async ({
+  page,
+}) => {
+  // Tourist-visible (#693: its operator is ACTIVE) but its layout was never drawn — so 0 sets.
+  await page.route(/\/api\/venues\/8(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: { ...VENUE_MAP, id: 8, name: 'Unmapped Cove', fromPrice: null, sets: [] },
+    }),
+  );
+  await page.goto('/venues/8');
+
+  const empty = page.getByTestId('map-empty');
+  await expect(empty).toBeVisible();
+  await expect(empty.getByRole('heading', { name: 'No sunbeds mapped yet' })).toBeVisible();
+  // Sets come from the layout, not the day — the copy must not send the tourist to the picker.
+  await expect(empty).toContainText('on any date');
+
+  // Nothing that promises tiles outlives them: no grid, no legend, no pan viewport, no ratio.
+  await expect(page.getByTestId('set-tile')).toHaveCount(0);
+  await expect(page.getByRole('list', { name: 'Legend' })).toHaveCount(0);
+  await expect(page.getByTestId('map-pan')).toHaveCount(0);
+  await expect(page.getByTestId('availability')).toHaveText('No sets to book yet');
+  await expect(page.getByTestId('availability-bar')).toHaveCount(0);
+
+  await expectNoSeriousAxeViolations(page, 'venue map (no published layout)');
+
+  await empty.getByRole('button', { name: 'Back to Discover' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByTestId('venue-card').first()).toBeVisible();
+});

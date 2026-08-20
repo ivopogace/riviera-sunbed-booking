@@ -38,7 +38,8 @@ import {
  * This table mirrors every text-bearing token `venue-map.html` sets itself; the shared directives
  * it composes prove their own (the amenity chips in `shared/amenities.contrast.spec.ts` — solid
  * fills, so backdrop-independent; the failure panel's inks are the `--riv-card-ink` /
- * `--riv-card-ink-soft` pair already below). Deviations from the design file, on purpose:
+ * `--riv-card-ink-soft` pair already below, and the empty-map heading + copy reuse that same
+ * pair on the same card glass). Deviations from the design file, on purpose:
  * the header + back pill sit on the AA-proven dark header glass, not the bare
  * gradient; the seat tiles are TRANSLUCENT over the sea→sand wash (#672), whose gradient stops
  * are opaque and theme-independent — so each tile/chip ink is proven composited (fill alpha over
@@ -174,11 +175,11 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
     }
   });
 
-  it('card ink (availability count) meets AA on the map card glass', () => {
+  it('card ink (availability count, empty-map heading) meets AA on the map card glass', () => {
     expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
   });
 
-  it('card ink-soft (promenade, failure copy) meets AA on the card glass', () => {
+  it('card ink-soft (promenade, failure + empty-map copy) meets AA on the card glass', () => {
     expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
   });
 
@@ -236,7 +237,7 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
     expect(contrastRatio('#ffffff', '#0e7a89')).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
-  it('the failure-panel "Try again" button (white) meets AA over both CTA-gradient stops', () => {
+  it('the CTA button ("Try again", "Back to Discover") meets AA over both CTA stops', () => {
     for (const stop of CTA_STOPS) {
       expect(contrastRatio('#ffffff', stop), `over stop ${stop}`).toBeGreaterThanOrEqual(AA_NORMAL);
     }
