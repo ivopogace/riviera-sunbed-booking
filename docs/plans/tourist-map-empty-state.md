@@ -100,10 +100,12 @@ addendum); the literal `feature/…` branch is deliberately not created.
       absent and the summary keeps its "N of M sets free on &lt;date&gt;" form with its
       bar. *Pinned by:* `venue-map.spec.ts` › "shows the availability summary '18 of 24'"
       (existing, extended with an empty-state absence assertion)
-- [ ] **AC-6:** Given a tourist-visible venue with zero sets, when its beach map is
+- [x] **AC-6:** Given a tourist-visible venue with zero sets, when its beach map is
       rendered in a real browser, then axe reports no serious violations and the
       "Back to Discover" control returns the tourist to the discovery list. *Pinned by:*
-      `frontend/e2e/venue-map-empty.e2e.ts`
+      `frontend/e2e/discovery-flow.e2e.ts` › "a venue with no published map explains itself
+      and points back to Discover (#717)" — the CI-run mocked suite (RV-FE-E2E: render +
+      navigation, not wiring)
 - [x] **AC-7:** Given the zero-set map component tree, when axe audits it under jsdom,
       then it reports no violations. *Pinned by:* `venue-map.a11y.spec.ts` › "has no
       violations on a venue with no sets (#717)"
@@ -288,16 +290,17 @@ strict — no `as any`.
 > rows ✅ with commits, Open Questions empty, risk rows closed, AC pin-names matching the
 > shipped tests. Record **`merged via PR #NN`, never a merge SHA**.
 
-**Stage pointer:** `implement (phase 1)` — phase 0 shipped; the draft PR is the next
-thing to exist so CI fires.
+**Stage pointer:** `PR — ready for review` (draft **#719** opened at the phase-0 commit;
+CI green, Sonar gate green on the draft).
 
-**Next action:** Open the draft PR, then write `frontend/e2e/venue-map-empty.e2e.ts`.
+**Next action:** Mark #719 ready for review, then run the Review gate per
+`riviera-sdlc` `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Empty state + summary branch (unit + a11y) | ✅ | `dde5a53` |
-| 1 — Mocked Playwright e2e | ⏳ | |
-| 2 — Close-out (docs freshness, execution status) | | |
+| 1 — Mocked Playwright e2e | ✅ | `fd4285f` |
+| 2 — Close-out (docs freshness, execution status) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -324,7 +327,11 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/venue/venue-map.a11y.spec.ts` — AC-7, axe over the zero-set map.
 - `frontend/src/app/venue/venue-map.contrast.spec.ts` — test-name/header refresh so the
   proven token pairs name the empty state too (no new arithmetic).
-- `frontend/e2e/venue-map-empty.e2e.ts` — AC-6, the CI-safe mocked browser spec.
+- `frontend/e2e/discovery-flow.e2e.ts` — AC-6, added beside its sibling rather than in a
+  new file: the `#693` "hidden venue → way back, not a retry loop" test is the same shape
+  (a venue-map dead end that must offer an exit), and this file already mocks the
+  discovery list the "Back to Discover" leg has to land on. A new spec file would have
+  duplicated that mock to assert less.
 
 ---
 
@@ -358,26 +365,27 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Phase 1 — Mocked Playwright e2e
 
-**Files:** Create `frontend/e2e/venue-map-empty.e2e.ts`
+**Files:** Modify `frontend/e2e/discovery-flow.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — mock `GET /api/venues/1?date=…` with a
-      zero-set venue via `page.route`; assert the empty-state message renders inside
-      `[data-testid="beach-grid"]`, that no legend / `set-tile` / scroll-hint is present,
-      that the summary reads the no-sets line, that `expectNoSeriousAxeViolations` is
-      clean, and that "Back to Discover" lands on the discovery list.
-- [ ] **Step 2: Run it, verify it fails** (before phase 0's commit is on the branch it
-      would fail; run it after phase 0 to confirm it passes) —
-      `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-map-empty`
-- [ ] **Step 3: Implementation** — none needed beyond phase 0; the spec is the
+- [x] **Step 1: Write the test** — a zero-set venue served at `/api/venues/8` via
+      `page.route`; assert the empty state and its heading, that the copy says "on any
+      date", that no `set-tile` / Legend list / `map-pan` viewport / `availability-bar`
+      is present, that the summary reads the no-sets line, that
+      `expectNoSeriousAxeViolations` is clean, and that "Back to Discover" lands on the
+      discovery list.
+- [x] **Step 2: Run it** —
+      `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts discovery-flow --grep "#717"`
+      → 1 passed. (It is a presence assertion on markup phase 0 introduced, so it cannot
+      pass vacuously; phase 0's unit specs were verified red before that markup existed.)
+- [x] **Step 3: Implementation** — none needed beyond phase 0; the spec is the
       deliverable.
-- [ ] **Step 4: Run it, verify it passes** — the same command → PASS. Then
-      `npm run lint` + `npm run format:check` (lint covers `e2e/**/*.ts`).
-- [ ] **Step 5: Generalization-audit pass** — population: *every mocked e2e that stubs
-      the tourist venue-map endpoint*, enumerated with
-      `grep -rl "api/venues" frontend/e2e/*.e2e.ts`; judge whether any assumes a
-      non-empty map in a way this change breaks.
-- [ ] **Step 6: Commit** — `git commit -m "Cover the zero-set tourist map in the mocked e2e suite (#717)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run the regression** — the whole `discovery-flow` file (8 passed), then
+      the **entire** mocked suite (`226 passed`, 6.1 min), plus `npm run lint` +
+      `npm run format:check` clean.
+- [x] **Step 5: Generalization-audit pass** — see the log below; it corrected its own
+      first enumeration, which was the interesting part.
+- [x] **Step 6: Commit** — `fd4285f`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -399,6 +407,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | phase 1 (`fd4285f`) | **Mechanism:** every mocked e2e that stubs the tourist venue-map read, so it renders the surface this slice changed. **The first enumeration was wrong and that is the point:** `grep -rln "api/venues" e2e/*.e2e.ts` returned 6 files and silently missed the ones that write the route as an escaped regex (`/\/api\/venues\/1(\?.*)?$/`) — including `venue-map-pan.e2e.ts` and `discovery-flow.e2e.ts`, the two most affected. Re-enumerated escaping-tolerant | `grep -rln 'api.\{0,2\}/venues' e2e/*.e2e.ts` (22 files), cross-cut with `grep -rn "sets: \[\]"` and `grep -rn "goto('/venues/"` | 22 stub the read; 5 serve a `sets: []` venue; of those, **`operator-venue.e2e.ts:208` also visits the tourist `/venues/1`** — so it renders the new empty state | **No change needed, verified not assumed.** That spec asserts only the edited venue name is visible, which the empty state does not disturb. Confirmed by running the **whole** mocked suite: 226 passed |
 | 2026-08-20 | phase 0 (`dde5a53`) | **Mechanism:** every surface that projects a tile grid into `BeachMapCanvas` and therefore inherits its `canvasEmpty` slot — not "surfaces that look empty", which would have returned only the one in front of me | `grep -rl "app-beach-map-canvas" frontend/src/app --include=*.html` then `grep -rl "canvasEmpty" …` | 4 surfaces project a grid; only 2 project a `canvasEmpty` (`layout-editor`, and now `venue-map`) | **Subset + follow-up.** `operator/daily-view-tab.html` and `operator/set-editor.html` carry the identical defect and are reachable for every venue before its layout exists — but AC-4 of #717 requires operator beach-map surfaces to render **unchanged**, so fixing them here would contradict the slice. Filed as **#718** with the enumeration and the copy register they need |
 
 ---
