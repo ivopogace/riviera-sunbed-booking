@@ -259,13 +259,14 @@ served by `GET /api/venues/{id}` and consumed by this component today.
 > **This section is the session-recovery anchor.** Everything a resuming session needs
 > lives HERE, committed — never only in the conversation.
 
-**Stage pointer:** `plan — committed; entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, phase 1 next`
 
-**Next action:** Write `venue/row-price-label.spec.ts` red, then the rule.
+**Next action:** Write the `venue-map.spec.ts` chip/zone-split pins red, then wire
+`rowPriceLabel` into `VenueMap.rows`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the label rule (pure) | | |
+| 0 — the label rule (pure) | ✅ | this commit |
 | 1 — wire it into the tourist map + re-partitioned zones | | |
 | 2 — rail truncation cap + e2e pins | | |
 
@@ -299,18 +300,17 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Create `frontend/src/app/venue/row-price-label.ts` · Test
 `frontend/src/app/venue/row-price-label.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — every branch of the priority: walk-in channel,
+- [x] **Step 1: Write the failing test** — every branch of the priority: walk-in channel,
       descriptive label, positional-only + premium, positional-only + standard, mixed-price
       span composition, and the R-3 shapes (`AA`, `Row 12`, `VIP`).
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/venue/row-price-label.spec.ts`
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include="src/app/venue/row-price-label.spec.ts"`
       → FAIL (module not found).
-- [ ] **Step 3: Minimal implementation** — `rowPriceLabel(sets)` returning
+- [x] **Step 3: Minimal implementation** — `rowPriceLabel(sets)` returning
       `price` or `price · qualifier`, with `POSITIONAL_SEGMENT` anchored per R-3.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every surface that renders a
-      `priceLabel` into the shared rail.
-- [ ] **Step 6: Commit** — `git commit -m "Compose the tourist map's rail chip from price + row meaning (#702)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS (7 cases).
+- [x] **Step 5: Generalization-audit pass** — logged below; tourist producer only.
+- [x] **Step 6: Commit** — `git commit -m "Compose the tourist map's rail chip from price + row meaning (#702)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Wire it into the tourist map
 
@@ -353,6 +353,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | phase 0 — a new rule for what a rail chip says | every producer of a `BeachMapCanvasRow.priceLabel` (the string the shared rail renders), enumerated by the field name rather than by "the map-ish components" | `grep -rn "priceLabel" frontend/src --include=*.ts --include=*.html` | 4 producers — `venue/venue-map.ts` (tourist rows), `operator/set-editor.ts`, `operator/layout-editor.ts`, `operator/daily-view-tab.ts` — plus 2 same-named fields that are **not** rail chips (`VenueMap.venueView.priceLabel` and `pages/home`'s card "from €X") | tourist producer only. The three operator producers keep bare prices by the issue's explicit fence, and it reads correctly there: those surfaces paint tier/pool per cell and their operator already knows the layout. The two same-named venue-level fields are out of population — noted so a later reader does not "fix" them for symmetry |
 
 ---
 
