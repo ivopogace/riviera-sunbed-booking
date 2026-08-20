@@ -220,7 +220,9 @@ export class VenueMap {
       byRow.set(set.rowLabel, row);
     }
     const entries = [...byRow.entries()];
-    const labels = entries.map(([, sets]) => rowPriceLabel(sets));
+    const labels = entries.map(([, sets], index) =>
+      rowPriceLabel(sets, { code: rowCode(index), ordinal: index + 1 }),
+    );
     return entries.map(([label, sets], index) => {
       const code = rowCode(index);
       return {

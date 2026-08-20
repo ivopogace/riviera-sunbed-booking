@@ -56,7 +56,10 @@ wiring, the 390 px geometry pin before the CSS cap) · `riviera-review-overlay` 
 gate — **ran** at ready-for-review, layered on `/code-review` at high effort over
 `origin/main...HEAD` after the maintainer authorized the subagent fan-out — this session
 carries a standing "no Agent tool unless asked" instruction, which `pr-gates.md` §1 says to
-resolve by asking, not by skipping. 2 findings, 1 fixed and 1 answered; the overlay's own
+resolve by asking, not by skipping. 2 findings, 1 fixed and 1 answered — and the fix round, **re-reviewed** per the
+re-entry rule, produced 2 more (G-1, G-2): my own F-1 fix had over-generalized, which is
+exactly the case for re-running the gate rather than hand-waving a one-line change. The
+overlay's own
 RV-FE bank walked on top: RV-FE-3 money-from-the-wire, RV-FE-5 picker a11y, RV-FE-7 Tailwind +
 no-drift, RV-FE-E2E suite placement, RV-FE-8 no new cross-feature import, RV-STYLE-1/2 and
 RV-PROC-1 — the fix round pulled in no new area, so this line is unchanged apart from this
@@ -270,9 +273,9 @@ served by `GET /api/venues/{id}` and consumed by this component today.
 > **This section is the session-recovery anchor.** Everything a resuming session needs
 > lives HERE, committed — never only in the conversation.
 
-**Stage pointer:** `review gate — ran; F-1 fixed, F-2 answered; re-review + sonar gate next`
+**Stage pointer:** `review gate — re-review round done (G-1, G-2 fixed); re-review of THAT round + sonar gate next`
 
-**Next action:** Re-run `/code-review` over the fix commit, then pull PR #722's Sonar
+**Next action:** Re-run `/code-review` over the G-round commit, then pull PR #722's Sonar
 issue list from the API (a green gate is not the check) and close out.
 
 | Phase | Status | Commits |
@@ -280,7 +283,8 @@ issue list from the API (a green gate is not the check) and close out.
 | 0 — the label rule (pure) | ✅ | `116442f` |
 | 1 — wire it into the tourist map + re-partitioned zones | ✅ | `b7c4b87` |
 | 2 — rail truncation cap + e2e pins | ✅ | `c6e5748` |
-| review gate — F-1 fixed, F-2 answered | ✅ | this commit |
+| review gate — F-1 fixed, F-2 answered | ✅ | `16e538c` |
+| re-review of the fix round — G-1, G-2 | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -291,6 +295,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | review gate | `POSITIONAL_SEGMENT` only knew the **English** word `row`, so an Albanian-riviera venue's own label (`Rreshti 4 · Prapa`) chipped `€30 · Rreshti 4` — restating the position the left rail already shows and dropping the word that carried the meaning | fixed-in-`this commit`: the leading word is now matched, never named (`/^(\p{L}+\s+)?(\p{L}{1,2}\|\d{1,3})$/u`), pinned by `row-price-label.spec.ts › 'reads a positional segment in the venue's own language, not just English'`; the two-word-name guard (`Sea view`, `2nd row`) is pinned beside it |
+| G-1 | re-review of the F-1 fix | the fix over-generalized: matching the leading word as `\p{L}+` made **any** `<word> <code/ordinal>` positional, so `Cabana 5`, `VIP 2`, `Terrace 2` lost the venue's own name — and on a **premium** row the tier fallback then renamed it `Front row`, which is wrong information, not merely missing information | fixed-in-`this commit`: "positional" now means *this row's actual position* rather than a guessed vocabulary — `rowPriceLabel(sets, position)` takes the row's `{code, ordinal}` and a segment is skipped only when its code/ordinal **is** that row's own. `Cabana 5` is positional on row 5 and a name everywhere else. Pinned by `row-price-label.spec.ts › "keeps a name whose number is not this row's number"`, whose premium case is the wrong-information half |
+| G-2 | re-review of the F-1 fix | a spec comment claimed a two-word guard ("only a bare code or ordinal is positional") that the code did not implement, and the case under it passed for an unrelated reason — the comment is what hid G-1 | fixed-in-`this commit`: the misleading comment and its accidental case are gone; the rule's real boundary is pinned by the G-1 cases instead |
 | F-2 | review gate | A row painted with **mixed** pools renders a bare span (`€25–€30`) with no channel note, so the rail advertises a price only walk-in sets carry | **no change, by decision.** It is the rendering `main` already had (the qualifier is withheld precisely because "at venue" would be false for the row's online half), the per-tile truth is unaffected — those sets keep the #701 hatch and the "walk-in only — book at the venue" accessible name — and a mixed row that has any words of its own still gets them (`€25–€30 · Back`). Inventing a "some at venue" state would add copy and a fourth qualifier branch for a layout the editor permits but no venue has painted; if one ever does, that is its own slice |
 | F-3 | review gate (nit) | Plan AC-6 quoted the pinned tile name ending `…, €45, available`; the shipped assertion ends `…, €45, taken` (A1 is the fixture's taken seat) | fixed-in-`this commit` — doc text only |
 | F-0 | local e2e run (phase 2) | `customer-password.e2e.ts` + `operator-venue.e2e.ts` failed in the sandbox's full-suite run; both are sign-in-heavy flows this diff does not touch (no operator or auth file changed, and the shared cap only bounds a rail cell's width) | **not a defect** — both green in isolation (10 passed, 40s) against this same HEAD; the sandbox's 9.4-minute single-worker full run is the variable, not the diff. CI on PR #722 re-runs the same suite |
