@@ -72,11 +72,14 @@ class VenueWriteRoleGateTest {
 
 	private static final String BEACH_MAP = "/api/venues/1/beach-map";
 	private static final String ROW_PRICE = "/api/venues/1/rows/A/price";
+	private static final String ROW_NAME = "/api/venues/1/rows/A/name";
 	private static final String PUBLIC_VENUE_READ = "/api/venues/1";
 	private static final String LAYOUT_BODY = """
 			{"sets": [], "expectedVersion": 3}""";
 	private static final String PRICE_BODY = """
 			{"price": {"minorUnits": 2500, "currency": "EUR"}, "expectedVersion": 3}""";
+	private static final String NAME_BODY = """
+			{"newLabel": "Back row", "expectedVersion": 3}""";
 
 	@Autowired
 	MockMvc mvc;
@@ -123,18 +126,34 @@ class VenueWriteRoleGateTest {
 	}
 
 	@Test
+	void customerPutToRowNameIsRejectedBeforeTheController() throws Exception {
+		MvcResult result = mvc.perform(put(ROW_NAME).with(csrf()).with(user("tourist@example.com").roles("CUSTOMER"))
+						.contentType(MediaType.APPLICATION_JSON).content(NAME_BODY))
+				.andReturn();
+
+		assertNeverDispatched(result);
+		assertThat(result.getResponse().getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
+		verify(editBeachMap, never()).renameRow(any(), any(), anyLong(), any());
+	}
+
+	@Test
 	void anonymousPutsAreUnauthorizedBeforeTheController() throws Exception {
 		MvcResult layout = mvc.perform(put(BEACH_MAP).with(csrf())
 				.contentType(MediaType.APPLICATION_JSON).content(LAYOUT_BODY)).andReturn();
 		MvcResult price = mvc.perform(put(ROW_PRICE).with(csrf())
 				.contentType(MediaType.APPLICATION_JSON).content(PRICE_BODY)).andReturn();
+		MvcResult name = mvc.perform(put(ROW_NAME).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content(NAME_BODY)).andReturn();
 
 		assertNeverDispatched(layout);
 		assertNeverDispatched(price);
+		assertNeverDispatched(name);
 		assertThat(layout.getResponse().getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
 		assertThat(price.getResponse().getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+		assertThat(name.getResponse().getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
 		verify(editBeachMap, never()).replaceLayout(any(), any(), anyLong(), any());
 		verify(editBeachMap, never()).repriceRow(any(), any(), anyLong(), any());
+		verify(editBeachMap, never()).renameRow(any(), any(), anyLong(), any());
 	}
 
 	/**

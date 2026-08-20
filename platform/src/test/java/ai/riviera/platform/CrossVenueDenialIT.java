@@ -180,6 +180,18 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void rowRenameByNonOwnerIs403() throws Exception {
+		// Venue-scoped like every beach-map write: denied before the version read (invariant #13).
+		actingAs(operatorA);
+		mvc.perform(put("/api/venues/{v}/rows/{r}/name", MIRAMAR, "A").cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"newLabel\":\"Back row\",\"expectedVersion\":0}"))
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void staffBookingsReadByNonOwnerIs403() throws Exception {
 		actingAs(operatorA);
 		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(operatorSession))

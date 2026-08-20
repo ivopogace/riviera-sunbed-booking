@@ -140,11 +140,11 @@ existing draft-and-bulk-save behavior and **gains** a per-row control beside it.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Renaming onto a label another row already carries silently **merges** two physical rows into one on the tourist map, the price rail and the pricing tab (they all `groupSetsByRow`). The DB constraint does **not** catch it when the two rows' `position_no` ranges don't overlap — which is the common case. | high | high | Probe before the write: refuse with the new `SetRejection.ROW_NAME_TAKEN` → `409` if any set outside the source row carries the target label. Pinned by AC-2 at both the service and the IT level. | plan author | open |
+| R-1 | Renaming onto a label another row already carries silently **merges** two physical rows into one on the tourist map, the price rail and the pricing tab (they all `groupSetsByRow`). The DB constraint does **not** catch it when the two rows' `position_no` ranges don't overlap — which is the common case. | high | high | Probe before the write: refuse with the new `SetRejection.ROW_NAME_TAKEN` → `409` if any set outside the source row carries the target label. Pinned by AC-2 at both the service and the IT level. | plan author | closed — `VenueRowRenameIT.refusesANameAnotherRowAlreadyCarries` green, with disjoint position numbers so the UNIQUE index alone would have let the merge through |
 | R-2 | The rename is the **first** path that can change a row's name while sold bookings exist. A guest whose confirmation mail says "Row B" will see "Back row" in their booking view and in any resent confirmation. | high | med | **Accepted, deliberately** (maintainer decision at the intake grill, 2026-08-20): a venue renaming a row is renaming the physical row, so signage moves with it and the live read is the truthful one; the guest's row+position pair still addresses the same sunbeds. `row_label` is stored on `set_position` only — verified across every migration — so there is nothing to snapshot and no divergence to reconcile. Recorded in `RESPONSIBILITIES.md` §`venue` at phase 3. | maintainer | accepted |
 | R-3 | Probe-then-write race: `addSet` does not take the venue row lock, so it can insert a set carrying the target label between the duplicate probe and the `UPDATE`, and `set_position_cell_uniq` then surfaces as a `500` rather than the honest `409`. | low | low | **Accepted, mirroring the existing posture** — `addSet` itself probes with `findConflict` then relies on the same constraint as "the hard backstop" (`EditBeachMap` javadoc). Both writers are the same operator's console on the same venue; the window is one statement wide. If it ever bites, the fix is to map `DuplicateKeyException` to `ROW_NAME_TAKEN` in the adapter — noted here so a future session doesn't re-derive it. | plan author | accepted |
-| R-4 | The rename shares `set_version` with the reprice and the bulk replace, so a rename racing either loses the optimistic race. | med | low | Intended: the shared token is what stops a replace and a rename off the same value from both winning. `set_version` is advanced **only** after a successful rename, so a rejected one leaves the acting tab's next write valid. Pinned by AC-4/AC-5. | plan author | open |
-| R-5 | Per-venue authorization (BOLA, invariant #13) — a new `/api/venues/{venueId}/**` surface. | low | high | `ownership.assertOwns` is the **first** statement of `VenueAdminService#renameRow`, before `venueExists` and before any read, exactly as the other five beach-map writes do; the controller performs no check of its own. Pinned by AC-6 + `CrossVenueDenialIT`. | plan author | open |
+| R-4 | The rename shares `set_version` with the reprice and the bulk replace, so a rename racing either loses the optimistic race. | med | low | Intended: the shared token is what stops a replace and a rename off the same value from both winning. `set_version` is advanced **only** after a successful rename, so a rejected one leaves the acting tab's next write valid. Pinned by AC-4/AC-5. | plan author | closed — `VenueRowRenameIT.refusesAStaleRename` green |
+| R-5 | Per-venue authorization (BOLA, invariant #13) — a new `/api/venues/{venueId}/**` surface. | low | high | `ownership.assertOwns` is the **first** statement of `VenueAdminService#renameRow`, before `venueExists` and before any read, exactly as the other five beach-map writes do; the controller performs no check of its own. Pinned by AC-6 + `CrossVenueDenialIT`. | plan author | closed — `VenueRowRenameIT` + `CrossVenueDenialIT.rowRenameByNonOwnerIs403` green |
 | R-6 | WCAG 2.4.3 stranded focus: a per-row save button disabled by the flag its own click sets blurs to `<body>` for the whole request — the guard's BUSY-1 shape, red in CI via `scripts/check-focus-posture.mjs`. | med | med | Use `[appBusy]="savingRow() === y"` (`shared/busy-action.ts`), never `[disabled]`; it announces `aria-disabled` and consumes the activating click without moving focus. The row-name `<input>` keeps its draft-only `(input)` handler, so BUSY-2 does not apply. | plan author | open |
 | R-7 | The Row names panel renders only in the layout tab's **bulk** branch (`@else` of `@if (mode() === 'sets')`), and a trading venue defaults to `sets` mode — so the rename could read as unreachable. | med | low | The mode toggle itself is free; only the bulk **Save** is refused. Bulk mode seeds `rowNames` from the loaded sets, so the panel shows real current names. Copy in the panel names the per-row save as the way to rename on a locked venue; AC-8's e2e drives exactly that path (locked venue → toggle → rename → 204). | plan author | open |
 
@@ -274,16 +274,16 @@ surface (AC-10).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — write `VenueRowRenameIT` red-first, then add the
-`PUT /api/venues/{venueId}/rows/{rowLabel}/name` endpoint and its request DTO.
+**Next action:** Phase 2 — the layout tab's per-row rename control, red-first in
+`layout-editor.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend inner hexagon (command, outcome, port, service, adapter) | ✅ | *(this commit)* |
-| 1 — REST edge + integration tests | ⏳ | |
-| 2 — Layout-editor per-row rename (Angular) | | |
+| 1 — REST edge + integration tests | ✅ | *(this commit)* |
+| 2 — Layout-editor per-row rename (Angular) | ⏳ | |
 | 3 — Mocked e2e + substrate docs | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -309,12 +309,12 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — the two statements.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/RowNameRequest.java` — new request DTO.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueAdminController.java` — the endpoint + the new `SetRejection` switch arm.
+- `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — role-gate the new `PUT` path (found by `VenueWriteRoleGateTest`, not anticipated in this list).
 - `platform/src/test/java/ai/riviera/platform/venue/application/RowNameCommandTest.java` — new.
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — rename cases.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueRowRenameIT.java` — new.
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — stub the new port method.
 - `platform/src/test/java/ai/riviera/platform/VenueWriteRoleGateTest.java` — role gate for the new path.
-- `platform/src/test/java/ai/riviera/platform/EndpointProbes.java` — probe for the new path.
 - `platform/src/test/java/ai/riviera/platform/CrossVenueDenialIT.java` — cross-venue probe.
 - `frontend/src/app/operator/operator-console.model.ts` — `RowNameErrorCode`.
 - `frontend/src/app/operator/operator-console.service.ts` — `renameRow` + `rowNameErrorOf`.
@@ -362,8 +362,14 @@ Skill-routing gate for what the fix touches *before* editing).
 ## Phase 1 — REST edge + integration tests
 
 **Files:** Create `RowNameRequest.java`, `VenueRowRenameIT.java` · Modify
-`VenueAdminController.java`, `WebSliceStubs.java`, `VenueWriteRoleGateTest.java`,
-`EndpointProbes.java`, `CrossVenueDenialIT.java`
+`VenueAdminController.java`, `SecurityConfig.java`, `VenueWriteRoleGateTest.java`,
+`CrossVenueDenialIT.java`
+
+> **Found during execution:** `SecurityConfig` gates the venue writes **per verb and path**,
+> not by namespace, so the new `PUT` fell straight through to the controller. Caught by
+> `VenueWriteRoleGateTest`'s new case (it reached the mock and NPE'd instead of being refused
+> at the filter chain). `EndpointProbes` needed no edit — it discovers mapped endpoints and
+> already samples `rowLabel`.
 
 - [ ] **Step 1: Write the failing test** — `VenueRowRenameIT` covering AC-1, AC-2, AC-4,
   AC-5, AC-6, plus the over-long-label `400`.
@@ -422,6 +428,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | Phase 1 — new venue-scoped write verb | Every operator-only `/api/venues/**` write path, judged on whether `SecurityConfig` role-gates it (mechanism: it is a `requestMatchers(HttpMethod.…, …)` entry, not a namespace rule) | `grep -n "requestMatchers(HttpMethod" platform/src/main/java/ai/riviera/platform/SecurityConfig.java` | 1 gap — the new `PUT …/rows/*/name` | Gated it beside `ROW_PRICE_PATH`. The standing `EndpointRoleGateCoverageTest` is the mechanical net for this class; it and `VenueWriteRoleGateTest` are both green. |
 | 2026-08-20 | Phase 0 — new `set_version`-guarded write | Every application-service write that guards on the venue's `set_version` token (mechanism: it calls `Venues#lockAndReadSetVersion`), judged on whether it advances the token **only** after the write succeeds | `grep -rn "lockAndReadSetVersion" platform/src/main/java --include=*.java` | 3 call sites — `repriceRow`, `renameRow`, `replaceLayout` | No fix needed: all three advance only on success, so a rejected write leaves the acting tab's retry valid. Pattern held; the new site was written to match. |
 
 ---
