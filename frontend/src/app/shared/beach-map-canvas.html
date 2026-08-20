@@ -53,16 +53,16 @@
           </div>
         </div>
 
-        <!-- Right rail: the price, once per price zone (aria-hidden; surfaces carry price in tile names where it matters). -->
+        <!-- Right rail: the chip, once per zone (aria-hidden; surfaces carry price in tile names where it matters). The tourist map's chip carries the row's MEANING beside its price (#702), and those words are the venue's own, so the cell is capped and the chip ellipsizes: past the cap a longer label costs the tile viewport (flex-1 min-w-0 — it is what gives, not the shrink-0 rail) nothing. The cap is the design canvas's own rail width, 128px, narrowed below sm where 390px has none to spare — which lands where the mobile artboard's hand-shortened "€50 · Front" did. Operator rails render a bare formatMoney string, far under either cap, so they are unchanged. -->
         <div class="flex flex-col gap-1.5 shrink-0" data-testid="price-col" aria-hidden="true">
           @for (row of rows(); track row.code; let i = $index) {
             <span
-              class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px]"
+              class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px] max-w-[92px] sm:max-w-[128px]"
               [class.mt-3]="row.zoneStart && i > 0"
             >
               @if (row.zoneStart && row.priceLabel; as price) {
                 <span
-                  class="rounded-full bg-white/80 border border-[#cfe3df] px-2 py-[3px] text-[11px] font-bold text-[#0a4f5e] shadow-[0_1px_4px_rgba(7,42,58,0.10)]"
+                  class="rounded-full bg-white/80 border border-[#cfe3df] px-2 py-[3px] text-[11px] font-bold text-[#0a4f5e] shadow-[0_1px_4px_rgba(7,42,58,0.10)] min-w-0 max-w-full truncate"
                   data-testid="row-price"
                   >{{ price }}</span
                 >

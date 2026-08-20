@@ -368,14 +368,98 @@ describe('VenueMap', () => {
     expect(codes).toEqual(['A', 'B', 'C', 'D']); // insertion order, not sorted by the descriptive label
   });
 
-  it('renders the price once per price zone, not per row (#672)', async () => {
+  it("renders the price once per zone, carrying the row's meaning (#672, #702)", async () => {
     flushVenue();
     await fixture.whenStable();
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
     // Rows B and C share €35 — one zone, one chip: 4 rows render 3 chips, from minor units.
-    expect(prices).toEqual(['€45', '€35', '€25']);
+    // Each chip now says what the price buys: the named front row, the back row's channel.
+    expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+  });
+
+  it('splits an equally-priced walk-in row into its own zone (#702)', async () => {
+    const base = miramar();
+    // At row B/C's €35, price alone would fold row D into their zone and render no chip.
+    const sets = base.sets.map((s) =>
+      s.pool === 'WALK_IN' ? { ...s, price: { minorUnits: 3500, currency: 'EUR' } } : s,
+    );
+    venueRequest().flush({ ...base, sets });
+    await fixture.whenStable();
+
+    const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    expect(prices).toEqual(['€45 · Front row', '€35', '€35 · at venue']);
+    // …and the split is spatial too: D opens a zone, so the gap lands on all three columns.
+    const zoneGaps = [false, true, false, true];
+    expect(
+      [...el().querySelectorAll('[data-map-row]')].map((r) => r.classList.contains('mt-3')),
+    ).toEqual(zoneGaps);
+    const priceCells = [...el().querySelector('[data-testid="price-col"]')!.children];
+    expect(priceCells.map((c) => c.classList.contains('mt-3'))).toEqual(zoneGaps);
+  });
+
+  it('drops a bare row label the rail cannot echo — a walkway shifts them (#702)', async () => {
+    const base = miramar();
+    // A gap row in the editor's grid saves no sets, so the venue's own labels skip a letter.
+    const original = [...new Set(base.sets.map((s) => s.rowLabel))];
+    const shifted = ['A', 'C', 'D', 'E'];
+    const sets = base.sets.map((s) => ({
+      ...s,
+      rowLabel: shifted[original.indexOf(s.rowLabel)],
+    }));
+    venueRequest().flush({ ...base, sets });
+    await fixture.whenStable();
+
+    const codes = [...el().querySelectorAll('[data-testid="row-code"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    // The rail says A B C D; no chip claims a letter beside a chip that contradicts it.
+    expect(codes).toEqual(['A', 'B', 'C', 'D']);
+    expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+  });
+
+  it('keeps two identically-priced premium rows in one zone (#702)', async () => {
+    const base = miramar();
+    // Rows A and B are both premium at €45: one price, one tier, so one zone and one chip.
+    const rows = [...new Set(base.sets.map((s) => s.rowLabel))];
+    const sets = base.sets.map((s) =>
+      s.rowLabel === rows[1]
+        ? { ...s, tier: 'PREMIUM' as const, price: { minorUnits: 4500, currency: 'EUR' } }
+        : s,
+    );
+    venueRequest().flush({ ...base, sets });
+    await fixture.whenStable();
+
+    const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+    expect(
+      [...el().querySelectorAll('[data-map-row]')].map((r) => r.classList.contains('mt-3')),
+    ).toEqual([false, false, true, true]);
+  });
+
+  it('keeps the enriched rail decorative — tile names are unchanged (#702)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const chip = el().querySelector('[data-testid="row-price"]')!;
+    expect(chip.closest('[aria-hidden="true"]')).not.toBeNull();
+    // Byte-identical to main's format: the chip's new words are announced nowhere.
+    const firstTile = el().querySelector('[data-testid="set-tile"]');
+    expect(firstTile?.getAttribute('aria-label')).toBe(
+      'Set A1, Front row · Sea view, front row, €45, taken',
+    );
+    const names = [...el().querySelectorAll('[data-testid="set-tile"]')].map(
+      (t) =>
+        t.getAttribute('aria-label') ?? t.querySelector('button')?.getAttribute('aria-label') ?? '',
+    );
+    expect(names.some((name) => name.includes('at venue'))).toBe(false);
   });
 
   it('separates price zones with a gap at zone starts, aligned across all three columns (#672)', async () => {
@@ -409,7 +493,7 @@ describe('VenueMap', () => {
       n.textContent?.trim(),
     );
     // Row 2 mixes €35 + €45: its chip is the span, so it no longer shares Row 3's €35 zone.
-    expect(prices).toEqual(['€45', '€35–€45', '€35', '€25']);
+    expect(prices).toEqual(['€45 · Front row', '€35–€45', '€35', '€25 · at venue']);
   });
 
   it('renders the venue description in the header', async () => {

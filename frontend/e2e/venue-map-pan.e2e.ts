@@ -114,6 +114,44 @@ function fitVenue() {
   };
 }
 
+/**
+ * A 5 × 6 venue whose front row carries `frontRowLabel` verbatim — the fixtures for the rail's
+ * width cap. Everything else is identical between them, so a rail or viewport difference between
+ * two of these can only come from the label.
+ */
+function labelledVenue(id: number, name: string, frontRowLabel: string) {
+  const sets: MapSet[] = [];
+  let n = 0;
+  for (let r = 1; r <= 5; r++) {
+    for (let p = 1; p <= 6; p++) {
+      n += 1;
+      sets.push({
+        id: n,
+        rowLabel: r === 1 ? frontRowLabel : `Row ${r}`,
+        positionNo: p,
+        tier: r === 1 ? 'PREMIUM' : 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: r === 1 ? 5000 : 3000, currency: 'EUR' },
+        gridX: p,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  return {
+    id,
+    name,
+    beach: 'Himarë',
+    region: 'Albanian Riviera',
+    description: 'A venue with a lot to say about its front row.',
+    ratingTenths: 45,
+    reviewsCount: 12,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
 /** The pan viewport's overflow state and the three affordances gated on it. */
 async function panState(page: Page) {
   return page.getByTestId('map-pan').evaluate((el) => {
@@ -164,6 +202,18 @@ test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: wideVenue() }));
   await page.route(/\/api\/venues\/2(\?.*)?$/, (route) => route.fulfill({ json: tallVenue() }));
   await page.route(/\/api\/venues\/3(\?.*)?$/, (route) => route.fulfill({ json: fitVenue() }));
+  await page.route(/\/api\/venues\/4(\?.*)?$/, (route) =>
+    route.fulfill({ json: labelledVenue(4, 'Wordy Bay', 'Front row sea view') }),
+  );
+  await page.route(/\/api\/venues\/5(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: labelledVenue(
+        5,
+        'Wordier Bay',
+        'Front row sea view sunset side with the good cabanas and the quiet end',
+      ),
+    }),
+  );
 });
 
 test('a plain click on a free tile opens the booking dialog (and the map is accessible)', async ({
@@ -215,8 +265,14 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
     .evaluate((el) => getComputedStyle(el).boxShadow);
   expect(frameShadow).toContain('rgba(7, 42, 58, 0.28)');
 
-  // One chip per zone (rows 4+5 share €30, #672); mixed Row 3 chips its span, not set 1 (#689).
-  await expect(page.getByTestId('row-price')).toHaveText(['€50', '€40', '€35–€45', '€30']);
+  // One chip per zone (#672), Row 3's span not its set 1 (#689), each saying what it buys (#702).
+  await expect(page.getByTestId('row-price')).toHaveText([
+    '€50 · Front row',
+    '€40',
+    '€35–€45',
+    '€30 · Back',
+    '€30 · at venue',
+  ]);
 
   // Taken sets are ghosts (#672): translucent FILL + dashed outline — group opacity broke AA.
   const ghost = await page
@@ -534,4 +590,45 @@ test('every legend swatch declares exactly what the tile it stands for declares 
   expect(
     (await face(page.locator('[aria-label="Legend"] [data-state="taken"]'))).borderTopStyle,
   ).toBe('dashed');
+});
+
+/** The price rail's own width and the tile viewport's, as the browser lays them out. */
+async function railAndViewport(page: Page) {
+  const rail = (await page.getByTestId('price-col').boundingBox())!;
+  const viewport = (await page.getByTestId('map-pan').boundingBox())!;
+  const chip = page.getByTestId('row-price').first();
+  return {
+    railWidth: rail.width,
+    viewportWidth: viewport.width,
+    truncated: await chip.evaluate((el) => el.scrollWidth > el.clientWidth),
+    chipRight: (await chip.boundingBox())!.x + (await chip.boundingBox())!.width,
+  };
+}
+
+test('a long row label truncates in the rail instead of eating the tile grid (#702)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 760 });
+
+  await page.goto('/venues/4');
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+  const wordy = await railAndViewport(page);
+
+  await page.goto('/venues/5');
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+  const wordier = await railAndViewport(page);
+
+  // The cap is a hard stop: a label almost four times longer buys not one pixel of rail…
+  expect(wordy.railWidth).toBeLessThanOrEqual(92);
+  expect(wordier.railWidth).toBeCloseTo(wordy.railWidth, 0);
+  // …so it costs the tiles nothing, and the grid keeps at least three columns of spots visible.
+  expect(wordier.viewportWidth).toBeCloseTo(wordy.viewportWidth, 0);
+  expect(wordier.viewportWidth).toBeGreaterThanOrEqual(150);
+  // What gives instead is the text — ellipsis inside the chip, never overflow outside it.
+  expect(wordy.truncated).toBe(true);
+  expect(wordier.truncated).toBe(true);
+  const card = (await page.getByTestId('beach-grid').boundingBox())!;
+  expect(wordier.chipRight).toBeLessThanOrEqual(card.x + card.width);
+
+  await expectNoSeriousAxeViolations(page, 'beach map (long row labels, mobile)');
 });
