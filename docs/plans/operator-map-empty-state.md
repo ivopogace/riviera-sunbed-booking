@@ -311,16 +311,15 @@ renders states that today's `GET /api/venues/{id}` response already produces (`s
 > second docs-only PR (case history + details: `riviera-sdlc` `references/pr-gates.md`
 > §3 step 4).
 
-**Stage pointer:** `implement (phase 1)` — phase 0 shipped; the draft PR opens with it.
+**Stage pointer:** `implement (phase 2)` — phases 0–1 shipped, draft PR #720 open.
 
-**Next action:** phase 1 — the failing `SetEditor` no-sets specs, then the `set-editor.html`
-panel branch.
+**Next action:** phase 2 — the mocked Playwright e2e for both zero-set surfaces.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Daily view zero-set state (unit + a11y + contrast) | ✅ | `5a07fcb` |
-| 1 — Per-set editor no-sets panel copy (unit + a11y) | ⏳ | |
-| 2 — Mocked Playwright e2e, both surfaces | | |
+| 0 — Daily view zero-set state (unit + a11y + contrast) | ✅ | `814c640` |
+| 1 — Per-set editor no-sets panel copy (unit + a11y) | ✅ | `<phase-1>` |
+| 2 — Mocked Playwright e2e, both surfaces | ⏳ | |
 | 3 — Close-out (gates, docs freshness, final plan state) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -414,17 +413,21 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `frontend/src/app/operator/set-editor.html` · Test
 `frontend/src/app/operator/set-editor.spec.ts`, `frontend/src/app/operator/layout-editor.a11y.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-4 (`render([])`: `set-panel-no-sets` present, the one
+- [x] **Step 1: Write the failing tests** — AC-4 (`render([])`: `set-panel-no-sets` present, the one
       cell clicks into "Add a set"), AC-5 (`render()`: the original copy survives), AC-7 (axe in
-      Edit-sets mode with no sets).
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- set-editor` → FAIL.
-- [ ] **Step 3: Minimal implementation** — `@else if (sets().length)` keeps the original `<p>`; the
-      new `@else` carries the no-sets copy naming **Bulk layout**.
-- [ ] **Step 4: Run them, verify they pass** — `npm test -- set-editor layout-editor` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: *every "pick / select an X" empty-state
-      copy that presupposes an X exists*, enumerated across the operator console.
-- [ ] **Step 6: Commit** — `git commit -m "Point a set-less venue's per-set editor at the bulk generator (#718)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+      Edit-sets mode with no sets — the parent's a11y spec already flushes a `sets: []` venue, so
+      the case is one mode click).
+- [x] **Step 2: Run them, verify they fail** — `ng test --include="src/app/operator/set-editor.spec.ts"`
+      → AC-4 FAILs on `set-panel-empty` still present. AC-5 is the **characterization** half of the
+      branch (parity-ledger row 8) and passes on write by design.
+- [x] **Step 3: Minimal implementation** — `@else if (sets().length)` keeps the original `<p>`
+      verbatim; the new `@else` carries the no-sets copy naming **Bulk layout** (D-2: the generator
+      is a sibling toggle in this same tab, not another tab).
+- [x] **Step 4: Run them, verify they pass** — 81/81 across the `set-editor*` + `layout-editor*`
+      spec files.
+- [x] **Step 5: Generalization-audit pass** — see the log's phase-1 row.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -463,6 +466,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | phase 1 | **Mechanism:** every empty-state copy that instructs the reader to *pick an existing thing*, on a surface where that thing can legitimately be absent — the defect is the imperative presupposing its object, not "editor panels" | `grep -rn "Pick a\|Pick an\|Select a\|Choose a\|Tap a\|Tap any" src/app --include=*.html` | 5: `set-editor:217` (fixed here); `set-editor:166` "pick an empty spot" (move-armed — needs a *selected set* to exist, and the grid is growable, so its object cannot be absent); `layout-editor:117` "pick a tool" (the tool list is static, and that surface's empty state already forward-references it); `venue-map:219` "tap any free set" (projected via `canvasFooter`, so the canvas already drops it with the grid — #717); `home:22` (marketing hero, not an empty state) | **One fix, four judged-and-left.** Only the per-set panel's imperative can address nothing; the other four either have a guaranteed object or already drop with the grid |
 | 2026-08-20 | phase 0 | **Mechanism:** every element that *decodes or counts the tiles* of a beach-map surface while living **outside** `<app-beach-map-canvas>` — so the canvas's empty branch cannot drop it with the grid it describes. Enumerated by the markup that does the decoding (the legend list), not by "surfaces that look bare" | `grep -rn 'aria-label="Legend"' src/app --include=*.html` (3), cross-cut with `grep -rn "canvasLegend" src/app --include=*.html` (which of them are projected back **in**) | 3 legends: `venue-map` is projected into the canvas via `canvasLegend` (#701) so it already drops; `daily-view-tab`'s was outside and unguarded; `layout-editor`'s is outside too | **Subset, argued.** The Daily view legend is gated on `totalCount()`. The layout editor's is **not** a defect: that surface's empty state already forward-references it — "Generate a layout to begin, then paint tiers, walk-in sets and aisles" — so its legend and Paint-tool counts read as the next step, not as decoders of nothing. Its `render unchanged` AC (issue #718 AC-3) fences it either way |
 | 2026-08-20 | plan (intake grill) | **Mechanism:** every surface that projects a tile grid into `BeachMapCanvas` and therefore *could* render its `canvasEmpty` slot — then, per surface, whether its `rows()` can actually empty (the property the slot depends on), which is the step #717's audit did not need and #718 assumed | `grep -rl "app-beach-map-canvas" frontend/src/app --include=*.html` → 4; then read each surface's `rows()` computation | 4 project a grid; `venue-map` + `layout-editor` already fill the slot; `daily-view-tab`'s `rows()` **can** empty (`groupSetsByRow(sets)`); `set-editor`'s **cannot** (`Math.max(1, …)` clamped ≥ 1×1) | **Split, not uniform.** The slot goes to `daily-view-tab` only; `set-editor` gets its real zero-set defect fixed in the panel. Recorded as D-1 and on issue #718 |
 

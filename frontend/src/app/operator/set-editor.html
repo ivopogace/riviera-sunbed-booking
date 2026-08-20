@@ -209,13 +209,22 @@
             {{ message }}
           </p>
         }
-      } @else {
+      } @else if (sets().length) {
         <p
           class="mt-1 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)"
           data-testid="set-panel-empty"
         >
           Pick a set on the map to change its tier, pool or price. Editing one set at a time works
           even when the venue has bookings.
+        </p>
+      } @else {
+        <!-- No set to pick (#718): the grid still renders one empty spot, and Bulk layout sits one toggle above. -->
+        <p
+          class="mt-1 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)"
+          data-testid="set-panel-no-sets"
+        >
+          This venue has no sets yet. Tap the empty spot on the map to add the first one — or switch
+          to Bulk layout above to generate the whole grid at once.
         </p>
       }
     </section>

@@ -70,6 +70,14 @@ describe('LayoutEditor a11y (#172)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no axe violations in Edit-sets mode with no sets (#718)', async () => {
+    render();
+    byId('layout-mode-sets').click();
+    fixture.detectChanges();
+
+    await expectNoAxeViolations(host());
+  });
+
   it('has no axe violations with a generated + painted grid', async () => {
     render();
     setInput('layout-gen-rows', '3');
