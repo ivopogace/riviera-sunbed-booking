@@ -146,6 +146,45 @@
             }
           </div>
         </section>
+
+        @if (hasLayout()) {
+          <section appCardGlass class="rounded-[20px] px-[18px] py-4">
+            <h2 class="text-[15px] font-bold text-(--riv-card-ink)">Row names</h2>
+            <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+              What a row’s price chip says on the public map — “Under the pines”, “Back row”. Leave
+              the letter to keep the automatic label.
+            </p>
+            <div class="flex flex-col gap-2">
+              @for (name of rowNames(); track $index; let y = $index) {
+                <label class="flex items-center gap-2">
+                  <span
+                    class="w-6 shrink-0 text-center text-[11px] font-bold uppercase text-(--riv-card-ink-faint)"
+                    >{{ rowCode(y) }}</span
+                  >
+                  <input
+                    appTouchTarget
+                    type="text"
+                    maxlength="40"
+                    [value]="name"
+                    (input)="onRowNameInput(y, $any($event.target).value)"
+                    [attr.aria-label]="'Row ' + rowCode(y) + ' name'"
+                    data-testid="layout-row-name"
+                    class="w-full min-w-0 rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[14px] text-(--riv-card-ink)"
+                  />
+                </label>
+              }
+            </div>
+            @if (duplicateRowName(); as clash) {
+              <p
+                class="mt-2 text-[12.5px] font-semibold text-[#a3160e]"
+                role="alert"
+                data-testid="layout-row-name-error"
+              >
+                Two rows are both named “{{ clash }}”. Give each row its own name before saving.
+              </p>
+            }
+          </section>
+        }
       </div>
 
       <!-- The sea-facing grid on the shared canvas; the editor's own drag gesture is paint, so drag-pan is off. -->

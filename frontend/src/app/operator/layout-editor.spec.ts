@@ -330,6 +330,87 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-saved')).toBeTruthy();
   });
 
+  function rowNameInputs(): HTMLInputElement[] {
+    return Array.from(host.querySelectorAll<HTMLInputElement>('[data-testid="layout-row-name"]'));
+  }
+
+  function setRowName(index: number, value: string): void {
+    const input = rowNameInputs()[index];
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  }
+
+  it('saves the operator’s row name; untouched and blanked rows keep grid letters (#723)', () => {
+    render();
+    generate('2', '2');
+
+    setRowName(0, ' Under the pines ');
+    setRowName(1, '   '); // a blanked name falls back to the derived grid letter
+
+    byId('layout-save').click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+    );
+    expect(body(req).sets.map((s) => s.rowLabel)).toEqual([
+      'Under the pines',
+      'Under the pines',
+      'B',
+      'B',
+    ]);
+    req.flush(null);
+  });
+
+  it('preserves loaded row labels on an untouched save (#723)', () => {
+    render([
+      seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'Front row · Sea view'),
+      seat(2, 'STANDARD', 'ONLINE', 1, 2, 'Row 2'),
+    ]);
+    useBulkMode();
+
+    expect(rowNameInputs().map((i) => i.value)).toEqual(['Front row · Sea view', 'Row 2']);
+
+    byId('layout-save').click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+    );
+    expect(body(req).sets.map((s) => s.rowLabel)).toEqual(['Front row · Sea view', 'Row 2']);
+    req.flush(null);
+  });
+
+  it('blocks saving duplicate row names with row-name copy, before any PUT (#723)', () => {
+    render();
+    generate('2', '2');
+
+    setRowName(0, 'Pines');
+    setRowName(1, ' Pines ');
+
+    byId('layout-save').click();
+    http.expectNone((r) => r.method === 'PUT');
+    expect(byId('layout-row-name-error').textContent).toContain('name');
+
+    // Fixing the clash clears the message and lets the save through.
+    setRowName(1, 'Back');
+    expect(byId('layout-row-name-error')).toBeFalsy();
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+      .flush(null);
+  });
+
+  it('a confirmed regenerate resets row names to the grid-letter defaults (#723)', () => {
+    render();
+    generate('2', '2');
+    setRowName(0, 'Pines');
+
+    byId('layout-generate').click();
+    fixture.detectChanges();
+    byId('layout-confirm-yes').click();
+    fixture.detectChanges();
+
+    expect(rowNameInputs().map((i) => i.value)).toEqual(['A', 'B']);
+  });
+
   it('drops the shared console snapshot after a successful save (#486 AC-4)', async () => {
     // The PUT retires the sets the shell's warm snapshot describes, so leaving it stales both tabs.
     render();
@@ -681,10 +762,11 @@ function seat(
   pool: 'ONLINE' | 'WALK_IN',
   gridX: number,
   gridY: number,
+  rowLabel = 'A',
 ): SetView {
   return {
     id,
-    rowLabel: 'A',
+    rowLabel,
     positionNo: gridX,
     tier,
     pool,

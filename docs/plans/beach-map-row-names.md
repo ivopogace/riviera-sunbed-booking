@@ -225,16 +225,16 @@ column instead of mutating the shared rail.
 > **This section is the session-recovery anchor.** Re-read it plus the current stage's
 > `riviera-sdlc` reference file after any compaction, before acting.
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** implement (phase 4)
 
-**Next action:** phase 3 red specs — `layout-editor.spec.ts` row-name behaviors (AC-4..7).
+**Next action:** phase 4 — `set-editor.spec.ts` sibling-label inheritance (AC-8), then the e2e.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | `d8bf530`, PR #725 (draft) |
 | 1 — backend length bound (V43 + `SetCommand` + tests) | ✅ | `586b9ce` |
-| 2 — mail spot line (`SmtpMailer`) | ✅ | see phase-2 commit |
-| 3 — layout-editor row names (FE state + UI + specs) | | |
+| 2 — mail spot line (`SmtpMailer`) | ✅ | `0a24ed6` |
+| 3 — layout-editor row names (FE state + UI + specs) | ✅ | see phase-3 commit |
 | 4 — set-editor inheritance + e2e | | |
 | 5 — gates (CI, review, Sonar) + merge close-out | | |
 
