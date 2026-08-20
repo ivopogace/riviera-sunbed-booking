@@ -3,6 +3,7 @@ package ai.riviera.platform.venue.application;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -102,11 +103,12 @@ public interface Venues {
 	int repriceRow(VenueId venueId, RowPriceCommand command);
 
 	/**
-	 * Whether a set <em>outside</em> the row being renamed already carries {@code command.newLabel()}.
-	 * The self-exclusion is part of the question, not the caller's job: renaming a row to the label it
-	 * already reads must not collide with itself.
+	 * Every distinct {@code row_label} on the venue's map. One read answers both questions a rename
+	 * asks — does the row being renamed exist, and does another row already carry the requested label —
+	 * so the two cannot disagree about the map, and the same-label carve-out stays in the service where
+	 * it is testable rather than folded into SQL. A venue has at most a couple of dozen rows.
 	 */
-	boolean rowNameTaken(VenueId venueId, RowNameCommand command);
+	Set<String> distinctRowLabels(VenueId venueId);
 
 	/**
 	 * Rename every set in a row of the venue in one non-destructive {@code UPDATE}: overwrite

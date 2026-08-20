@@ -38,6 +38,20 @@ class RowNameCommandTest {
 	}
 
 	@Test
+	void stripsSurroundingWhitespaceFromBothLabels() {
+		// " A" renders as "A", so padding surviving would dodge the duplicate-label refusal.
+		RowNameCommand command = new RowNameCommand("  B  ", "  Back row  ");
+
+		assertEquals("B", command.rowLabel());
+		assertEquals("Back row", command.newLabel());
+	}
+
+	@Test
+	void stripsBeforeApplyingTheLengthBound() {
+		assertEquals(FORTY_CODE_POINTS, new RowNameCommand("B", "  " + FORTY_CODE_POINTS + "  ").newLabel());
+	}
+
+	@Test
 	void rejectsBlankLabels() {
 		assertThrows(IllegalArgumentException.class, () -> new RowNameCommand("  ", "Back row"));
 		assertThrows(IllegalArgumentException.class, () -> new RowNameCommand(null, "Back row"));

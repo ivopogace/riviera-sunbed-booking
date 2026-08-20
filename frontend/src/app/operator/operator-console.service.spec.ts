@@ -359,8 +359,8 @@ describe('OperatorConsoleService — per-set beach-map writes (#600)', () => {
 });
 
 /**
- * The per-set write error mapper (#600). `SET_IN_USE` is the #567/#599 claim guard — the one code
- * the panel explains in its own words, because it is the ordinary outcome on a live venue, not a fault.
+ * The per-row rename error mapper (#726). `ROW_NAME_TAKEN` is the one code the Row names panel
+ * explains in its own words: it is the ordinary outcome of picking a name another row already has.
  */
 describe('rowNameErrorOf (#726)', () => {
   function problem(status: number, code?: string): HttpErrorResponse {
@@ -391,6 +391,10 @@ describe('rowNameErrorOf (#726)', () => {
   });
 });
 
+/**
+ * The per-set write error mapper (#600). `SET_IN_USE` is the #567/#599 claim guard — the one code
+ * the panel explains in its own words, because it is the ordinary outcome on a live venue, not a fault.
+ */
 describe('setWriteErrorOf (#600)', () => {
   function problem(status: number, code?: string): HttpErrorResponse {
     return new HttpErrorResponse({ status, error: code ? { code } : null });

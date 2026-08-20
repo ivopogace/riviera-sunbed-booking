@@ -280,6 +280,8 @@ export class LayoutEditor {
     this.reloading.set(false);
     this.reloadFailed.set(false);
     this.loadFailed.set(false);
+    this.clearRenameNotices();
+    this.renamingRow.set(null);
     this.loadExisting(venueId);
   }
 
@@ -378,6 +380,12 @@ export class LayoutEditor {
   protected onRowNameInput(y: number, value: string): void {
     this.rowNames.update((names) => names.map((name, i) => (i === y ? value : name)));
     this.savedNotice.set(false);
+    this.clearRenameNotices();
+  }
+
+  /** Drop both per-row notices. They are pinned to a grid index, so anything that re-indexes the
+   *  rows — a re-seed, a reload, a venue switch — must clear them or they describe another row. */
+  private clearRenameNotices(): void {
     this.renamedRow.set(null);
     this.rowNameError.set(null);
   }
@@ -401,8 +409,8 @@ export class LayoutEditor {
     if (venueId === undefined || from === undefined || expectedVersion === null) {
       return; // defensive: the button renders only for a stored row, which implies a loaded token
     }
-    if (this.renamingRow() !== null) {
-      return; // one rename at a time: the shared token cannot admit two concurrent writes
+    if (this.renamingRow() !== null || this.saving()) {
+      return; // the shared set_version admits one writer: a rename cannot race another or the bulk save
     }
     const epoch = this.epoch;
     this.renamedRow.set(null);
@@ -695,6 +703,7 @@ export class LayoutEditor {
   }
 
   private seedFrom(sets: readonly SetView[]): void {
+    this.clearRenameNotices(); // above the early return: an emptied venue re-indexes the rows too
     if (sets.length === 0 || this.hasLayout()) {
       // Empty venue, or the async read resolved after the operator already generated/painted — don't
       // clobber their in-progress work with the loaded layout.
@@ -710,11 +719,14 @@ export class LayoutEditor {
       this.priceByCoord.set(coordKey(s.gridX, s.gridY), s.price); // preserve prices for a lossless save
     }
     this.grid.set(grid);
+    // One pass for both arrays: two independent scans could drift, and the layout can be 1040 sets.
+    const storedByRow = new Map<number, string>();
+    for (const s of sets) {
+      storedByRow.set(s.gridY - 1, s.rowLabel);
+    }
     // Preserve each row's loaded label for a lossless save (#723); an all-gap row takes its letter.
-    this.rowNames.set(
-      grid.map((_, y) => sets.find((s) => s.gridY === y + 1)?.rowLabel ?? gridRowLabel(y)),
-    );
-    this.storedRowNames.set(grid.map((_, y) => sets.find((s) => s.gridY === y + 1)?.rowLabel));
+    this.rowNames.set(grid.map((_, y) => storedByRow.get(y) ?? gridRowLabel(y)));
+    this.storedRowNames.set(grid.map((_, y) => storedByRow.get(y)));
     this.genRows.set(clampGrid(maxY, 1, MAX_ROWS));
     this.genCols.set(clampGrid(maxX, 1, MAX_COLS));
   }

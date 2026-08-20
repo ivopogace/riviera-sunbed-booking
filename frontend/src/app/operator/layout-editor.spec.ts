@@ -623,6 +623,84 @@ describe('LayoutEditor (#172)', () => {
     http.expectNone((r) => r.method === 'PUT');
   });
 
+  it('clears a rename notice when the venue switches in place (#726 review F-6)', async () => {
+    renderSaved();
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-row-name-saved')).toBeTruthy();
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({
+        id: 2,
+        name: 'W',
+        sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1, 'Z')],
+        setVersion: 0,
+      });
+    fixture.detectChanges();
+    useBulkMode();
+
+    // The notice was pinned to a grid index on venue 1; venue 2's row never was renamed.
+    expect(host.querySelector('[data-testid="layout-row-name-saved"]')).toBeNull();
+  });
+
+  it('clears a rename error when a stale reload re-indexes the rows (#726 review F-11)', async () => {
+    renderSaved();
+    // Not a LOCAL duplicate, so #723's guard lets the bulk save through; only the server refuses it.
+    setRowName(1, 'Front row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-row-name-write-error')).toBeTruthy();
+
+    // A bulk-save conflict's Reload re-seeds the grid; the row at index 1 may now be a different row.
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    byId('layout-stale-reload').click();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({
+        id: 1,
+        name: 'V',
+        sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A')],
+        setVersion: 9,
+      });
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
+  });
+
+  it('does not race a rename against an in-flight bulk save (#726 review F-7)', async () => {
+    renderSaved();
+
+    byId('layout-save').click();
+    const save = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+    );
+
+    // Both writes turn on the one set_version token, so the rename must wait rather than false-conflict.
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http.expectNone((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'));
+
+    save.flush(null);
+    await fixture.whenStable();
+  });
+
   it('offers no per-row rename on a grid that was never saved (#726)', () => {
     render();
     generate('2', '2');

@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.RowMapper;
@@ -300,19 +301,11 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	@Override
-	public boolean rowNameTaken(VenueId venueId, RowNameCommand c) {
-		// row_label <> :rowLabel excludes the source row, so renaming to its own label is not a collision.
-		return Boolean.TRUE.equals(jdbc.sql("""
-				SELECT EXISTS (
-				    SELECT 1 FROM set_position
-				    WHERE venue_id = :venue AND row_label = :newLabel AND row_label <> :rowLabel
-				)
-				""")
+	public Set<String> distinctRowLabels(VenueId venueId) {
+		return Set.copyOf(jdbc.sql("SELECT DISTINCT row_label FROM set_position WHERE venue_id = :venue")
 				.param(P_VENUE, venueId.value())
-				.param(P_NEW_LABEL, c.newLabel())
-				.param(P_ROW_LABEL, c.rowLabel())
-				.query(Boolean.class)
-				.single());
+				.query(String.class)
+				.list());
 	}
 
 	@Override

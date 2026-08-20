@@ -101,8 +101,8 @@ branch, standing in for `feature/beach-map-row-rename` (riviera-sdlc cloud adden
   advanced. *Pinned by:* `VenueRowRenameIT.refusesAnUnknownRow`.
 - [ ] **AC-6:** Given an authenticated operator who does not own the path `venueId`, when a
   rename is requested, then the **application service** refuses with `403` before any read
-  or write (invariant #13). *Pinned by:* `VenueRowRenameIT.refusesACrossVenueRename` +
-  the standing `CrossVenueDenialIT` probe.
+  or write (invariant #13). *Pinned by:* `CrossVenueDenialIT.rowRenameByNonOwnerIs403` +
+  `VenueAdminServiceTest.renameByANonOwnerIsDeniedBeforeAnyWrite`.
 - [ ] **AC-7:** Given a new label of 41 code points, when the request is parsed into
   `RowNameCommand`, then it is rejected with `IllegalArgumentException` → `400
   INVALID_REQUEST` at the edge, and a 40-code-point Unicode label is accepted.
@@ -148,7 +148,7 @@ existing draft-and-bulk-save behavior and **gains** a per-row control beside it.
 |---|---|---|---|---|---|---|
 | R-1 | Renaming onto a label another row already carries silently **merges** two physical rows into one on the tourist map, the price rail and the pricing tab (they all `groupSetsByRow`). The DB constraint does **not** catch it when the two rows' `position_no` ranges don't overlap — which is the common case. | high | high | Probe before the write: refuse with the new `SetRejection.ROW_NAME_TAKEN` → `409` if any set outside the source row carries the target label. Pinned by AC-2 at both the service and the IT level. | plan author | closed — `VenueRowRenameIT.refusesANameAnotherRowAlreadyCarries` green, with disjoint position numbers so the UNIQUE index alone would have let the merge through |
 | R-2 | The rename is the **first** path that can change a row's name while sold bookings exist. A guest whose confirmation mail says "Row B" will see "Back row" in their booking view and in any resent confirmation. | high | med | **Accepted, deliberately** (maintainer decision at the intake grill, 2026-08-20): a venue renaming a row is renaming the physical row, so signage moves with it and the live read is the truthful one; the guest's row+position pair still addresses the same sunbeds. `row_label` is stored on `set_position` only — verified across every migration — so there is nothing to snapshot and no divergence to reconcile. Recorded in `RESPONSIBILITIES.md` §`venue` at phase 3. | maintainer | accepted |
-| R-3 | Probe-then-write race: `addSet` does not take the venue row lock, so it can insert a set carrying the target label between the duplicate probe and the `UPDATE`, and `set_position_cell_uniq` then surfaces as a `500` rather than the honest `409`. | low | low | **Accepted, mirroring the existing posture** — `addSet` itself probes with `findConflict` then relies on the same constraint as "the hard backstop" (`EditBeachMap` javadoc). Both writers are the same operator's console on the same venue; the window is one statement wide. If it ever bites, the fix is to map `DuplicateKeyException` to `ROW_NAME_TAKEN` in the adapter — noted here so a future session doesn't re-derive it. | plan author | accepted |
+| R-3 | Probe-then-write race: `addSet` does not take the venue row lock, so it can insert a set carrying the target label between the duplicate probe and the `UPDATE`, and `set_position_cell_uniq` then surfaces as a `500` rather than the honest `409`. | low | low | **Accepted, mirroring the existing posture** — `addSet` itself probes with `findConflict` then relies on the same constraint as "the hard backstop" (`EditBeachMap` javadoc). Both writers are the same operator's console on the same venue; the window is one statement wide. If it ever bites, the fix is to map `DuplicateKeyException` to `ROW_NAME_TAKEN` in the adapter — noted here so a future session doesn't re-derive it. | plan author | **superseded by review finding F-3 — the stated mitigation is wrong when the position numbers do not collide: the constraint does not fire and the merge is silent rather than a 500** |
 | R-4 | The rename shares `set_version` with the reprice and the bulk replace, so a rename racing either loses the optimistic race. | med | low | Intended: the shared token is what stops a replace and a rename off the same value from both winning. `set_version` is advanced **only** after a successful rename, so a rejected one leaves the acting tab's next write valid. Pinned by AC-4/AC-5. | plan author | closed — `VenueRowRenameIT.refusesAStaleRename` green |
 | R-5 | Per-venue authorization (BOLA, invariant #13) — a new `/api/venues/{venueId}/**` surface. | low | high | `ownership.assertOwns` is the **first** statement of `VenueAdminService#renameRow`, before `venueExists` and before any read, exactly as the other five beach-map writes do; the controller performs no check of its own. Pinned by AC-6 + `CrossVenueDenialIT`. | plan author | closed — `VenueRowRenameIT` + `CrossVenueDenialIT.rowRenameByNonOwnerIs403` green |
 | R-6 | WCAG 2.4.3 stranded focus: a per-row save button disabled by the flag its own click sets blurs to `<body>` for the whole request — the guard's BUSY-1 shape, red in CI via `scripts/check-focus-posture.mjs`. | med | med | Use `[appBusy]="savingRow() === y"` (`shared/busy-action.ts`), never `[disabled]`; it announces `aria-disabled` and consumes the activating click without moving focus. The row-name `<input>` keeps its draft-only `(input)` handler, so BUSY-2 does not apply. | plan author | closed — `check-focus-posture.mjs --diff origin/main` clean |
@@ -280,10 +280,10 @@ surface (AC-10).
 
 ## Execution status
 
-**Stage pointer:** `sonar gate — fixing findings (re-entered at Implement)`
+**Stage pointer:** `review gate — findings fixed; one architectural finding awaiting the maintainer`
 
-**Next action:** push the F-1/F-2 fixes, wait for the Sonar re-run to go green, then mark
-PR #727 ready for review and run the Review gate.
+**Next action:** maintainer decision on F-3 (the one-label-per-row invariant is enforced only
+on the rename path). Everything else is fixed and pushed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -291,7 +291,8 @@ PR #727 ready for review and run the Review gate.
 | 1 — REST edge + integration tests | ✅ | *(this commit)* |
 | 2 — Layout-editor per-row rename (Angular) | ✅ | *(this commit)* |
 | 3 — Mocked e2e + substrate docs | ✅ | `e2f57c7` |
-| 4 — Sonar findings F-1, F-2 | ⏳ | |
+| 4 — Sonar findings F-1, F-2 | ✅ | `b2ad107` |
+| 5 — Review-gate findings F-4..F-13 | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -302,7 +303,19 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | sonar (gate FAILED) | 77.9% coverage on new code, below the 80% bar — 14 uncovered new lines: 11 in `layout-editor.ts` (the six `rowNameErrorMessage` arms, both epoch guards, the re-entrancy guard, `sessionLost`, the token guard) and 3 in `operator-console.service.ts` (`rowNameErrorOf`'s 401, unknown-code and non-HTTP arms). | fixed — 13 of 14 covered by new specs in `layout-editor.spec.ts` + `operator-console.service.spec.ts`; the 14th is the defensive token guard, deliberately kept and commented (the button renders only for a stored row, which implies a loaded token — the same shape the pricing tab documents) |
+| F-3 | review (`/code-review`, high) | **The one-label-per-row invariant is enforced only on the rename path.** `ROW_NAME_TAKEN` refuses a duplicate label, but `LayoutCommand.duplicateWithin` checks only `(rowLabel, positionNo)` and `(gridX, gridY)`, and `findConflict` the same two — so `replaceLayout`, `addSet` and `editSet` can all still create two grid rows sharing a label, no DB constraint backs it, and none of those three takes the venue-row lock (so `addSet` can also slip a duplicate in between the rename's label read and its UPDATE, and a stale `editSet` can split a renamed row by rewriting one set's `row_label`). Verified: `updateSet` does write `row_label`; `duplicateWithin` does not check labels. This supersedes and corrects R-3, whose stated mitigation ("the UNIQUE constraint is the backstop") is wrong whenever the position numbers do not collide — the merge is then silent, not a 500. | **open — architecturally significant, beyond this slice's stated scope; put to the maintainer rather than decided here** |
 | F-2 | sonar (MAJOR code smell, `Web:S6819`) | `layout-editor.html:193` — `<p role="status">` for the saved notice; use `<output>`. | fixed — swapped to `<output>`, which is what the same file's `layout-saved` notice already uses; my markup was the outlier |
+
+| F-4 | review | `resetForVenue` cleared every venue-scoped flag except the three new rename signals, so a "Row name saved." notice (or a pinned error, or a stuck "Saving…") leaked across an in-place venue switch. | fixed — `clearRenameNotices()` + `renamingRow` reset, pinned by `layout-editor.spec.ts` "clears a rename notice when the venue switches in place" |
+| F-5 | review | The rename re-entrancy guard checked only `renamingRow`, not `saving()`, and the button stayed live during a bulk save — so both writes could be in flight off the same `expectedVersion`. | fixed — guard now covers `saving()`, `[appBusy]` covers it too; pinned by "does not race a rename against an in-flight bulk save" |
+| F-6 | review | `seedFrom` / `reloadAfterStale` / `onSetsChanged` re-index the rows but left `renamedRow` / `rowNameError` pinned to the old index, so a notice could describe a different row. | fixed — `clearRenameNotices()` at the top of `seedFrom`, above its early return; pinned by "clears a rename error when a stale reload re-indexes the rows" |
+| F-7 | review | The `ROW_NAME_TAKEN` probe ran before the source row's existence was established, so renaming a row that no longer exists onto a taken label answered 409 instead of 404. | fixed — `distinctRowLabels` answers both questions off one read, existence first; pinned by `renameOfAMissingRowOntoATakenLabelIsNotFoundNotTaken` |
+| F-8 | review | `newLabel` was never trimmed, so `" A"` slipped past the exact-match duplicate refusal and stored a label that renders identically to `"A"`. `SetCommand` had the same gap, so the bulk path could seed it. | fixed — `VenueFieldValidation.strip` applied in **both** commands (generalization pass below); case deliberately left alone, since `"back row"` and `"Back row"` read differently |
+| F-9 | review | `VenueSetWriteConcurrencyIT`'s javadoc claimed "the set-writes share ONE token" but only raced replace-vs-reprice. | fixed — added `replaceAndRenameCannotBothWin` (6 repetitions), which also asserts the venue ends with one distinct label |
+| F-10 | review | Plan AC-6 cited `VenueRowRenameIT.refusesACrossVenueRename`, which does not exist. | fixed — repointed at `CrossVenueDenialIT.rowRenameByNonOwnerIs403` + `VenueAdminServiceTest.renameByANonOwnerIsDeniedBeforeAnyWrite`, which is where the coverage actually is |
+| F-11 | review | `console-venue-map.ts`'s "Invalidation is the sharp edge" doc enumerates every `reset()` call site and the rename was missing — the enumerate-then-drift class my own docs-freshness sweep did not catch. | fixed — the rename is named in the list |
+| F-12 | review | The new `rowNameErrorOf` describe was inserted under the TSDoc belonging to `setWriteErrorOf`, so the comment annotated the wrong suite. | fixed — each describe carries its own doc |
+| F-13 | review | `seedFrom` scanned `sets` twice per grid row to build two arrays that must agree. | fixed — one `Map` pass builds both, so they cannot drift |
 
 ---
 
@@ -313,7 +326,9 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/venue/application/SetRejection.java` — add `ROW_NAME_TAKEN`.
 - `platform/src/main/java/ai/riviera/platform/venue/application/EditBeachMap.java` — add `renameRow`.
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java` — implement `renameRow`.
-- `platform/src/main/java/ai/riviera/platform/venue/application/Venues.java` — add `rowNameTaken` + `renameRow`.
+- `platform/src/main/java/ai/riviera/platform/venue/application/Venues.java` — add `distinctRowLabels` + `renameRow`.
+- `platform/src/main/java/ai/riviera/platform/venue/application/SetCommand.java` — review F-8: strip the row label on the bulk path too.
+- `platform/src/main/java/ai/riviera/platform/venue/application/VenueFieldValidation.java` — review F-8: the shared `strip` helper.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — the two statements.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/RowNameRequest.java` — new request DTO.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueAdminController.java` — the endpoint + the new `SetRejection` switch arm.
@@ -327,6 +342,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/operator/operator-console.model.ts` — `RowNameErrorCode`.
 - `frontend/src/app/operator/operator-console.service.ts` — `renameRow` + `rowNameErrorOf`.
 - `frontend/src/app/operator/layout-editor.ts|.html` — the per-row rename control.
+- `frontend/src/app/operator/console-venue-map.ts` — review F-11: the rename joins the `reset()` call-site list.
 - `frontend/src/app/operator/layout-editor.spec.ts` — AC-8/9/10 + the F-1 coverage cases.
 - `frontend/src/app/operator/operator-console.service.spec.ts` — F-1: `rowNameErrorOf` coverage.
 - `frontend/src/app/operator/layout-editor.a11y.spec.ts` — axe over the panel.
@@ -445,6 +461,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | Phase 5 — review F-8 (untrimmed label) | Every command that writes `set_position.row_label` (mechanism: its compact constructor calls `VenueFieldValidation.requireText` on a `rowLabel`/`newLabel`) — each judged on whether padding can reach storage | `grep -rn "rowLabel" platform/src/main/java --include=*Command.java` | 2 — `RowNameCommand`, `SetCommand` | Both strip now. Fixing only the rename would have left the bulk path able to seed the exact state `ROW_NAME_TAKEN` refuses. |
 | 2026-08-20 | Phase 1 — new venue-scoped write verb | Every operator-only `/api/venues/**` write path, judged on whether `SecurityConfig` role-gates it (mechanism: it is a `requestMatchers(HttpMethod.…, …)` entry, not a namespace rule) | `grep -n "requestMatchers(HttpMethod" platform/src/main/java/ai/riviera/platform/SecurityConfig.java` | 1 gap — the new `PUT …/rows/*/name` | Gated it beside `ROW_PRICE_PATH`. The standing `EndpointRoleGateCoverageTest` is the mechanical net for this class; it and `VenueWriteRoleGateTest` are both green. |
 | 2026-08-20 | Phase 0 — new `set_version`-guarded write | Every application-service write that guards on the venue's `set_version` token (mechanism: it calls `Venues#lockAndReadSetVersion`), judged on whether it advances the token **only** after the write succeeds | `grep -rn "lockAndReadSetVersion" platform/src/main/java --include=*.java` | 3 call sites — `repriceRow`, `renameRow`, `replaceLayout` | No fix needed: all three advance only on success, so a rejected write leaves the acting tab's retry valid. Pattern held; the new site was written to match. |
 

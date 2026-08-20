@@ -227,13 +227,17 @@ class VenueAdminService
 		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
 			return new ChangeOutcome.Rejected(SetRejection.STALE_WRITE);
 		}
+		Set<String> labels = venues.distinctRowLabels(venueId);
+		// Existence first: a rename of a row that is gone must say so, not blame the target label.
+		if (!labels.contains(command.rowLabel())) {
+			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW);
+		}
 		// Broader than the UNIQUE index, which misses a shared label whose position numbers never collide.
-		if (venues.rowNameTaken(venueId, command)) {
+		if (!command.newLabel().equals(command.rowLabel()) && labels.contains(command.newLabel())) {
 			return new ChangeOutcome.Rejected(SetRejection.ROW_NAME_TAKEN);
 		}
-		// No claim probe: nothing a hold or booking depends on changes (see EditBeachMap#renameRow).
-		int updated = venues.renameRow(venueId, command);
-		if (updated == 0) {
+		// Rows-affected still guards: a concurrent removeSet can empty the row after the label read.
+		if (venues.renameRow(venueId, command) == 0) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW);
 		}
 		venues.incrementSetVersion(venueId); // advance the token iff a row was actually renamed

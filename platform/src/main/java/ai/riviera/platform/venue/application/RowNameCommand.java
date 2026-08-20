@@ -13,10 +13,18 @@ package ai.riviera.platform.venue.application;
  * constraint violation. {@code rowLabel} names the row to rename and is required but unbounded: it
  * has to match a stored label, which is already within the bound, so a longer one simply finds no
  * row.
+ *
+ * <p>Both labels are <strong>stripped</strong> before validation. Surrounding whitespace does not
+ * survive into storage, so {@code " Back row"} cannot slip past the duplicate-label refusal by
+ * differing from the {@code "Back row"} it renders identically to. Case is deliberately left alone:
+ * {@code "back row"} and {@code "Back row"} read differently on the map, so they are two names, not
+ * one name written twice.
  */
 public record RowNameCommand(String rowLabel, String newLabel) {
 
 	public RowNameCommand {
+		rowLabel = VenueFieldValidation.strip(rowLabel);
+		newLabel = VenueFieldValidation.strip(newLabel);
 		VenueFieldValidation.requireText(rowLabel, "rowLabel");
 		VenueFieldValidation.requireText(newLabel, "newLabel", VenueFieldValidation.MAX_ROW_LABEL_LENGTH);
 	}

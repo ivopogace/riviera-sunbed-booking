@@ -33,6 +33,15 @@ final class VenueFieldValidation {
 	private VenueFieldValidation() {
 	}
 
+	/**
+	 * Surrounding whitespace off a stored label, null-safe so the caller still reports a missing value
+	 * rather than a NPE. Unicode-aware ({@code strip}, not {@code trim}), and applied before the length
+	 * bound so padding cannot push a legal label over it.
+	 */
+	static String strip(String value) {
+		return value == null ? null : value.strip();
+	}
+
 	static void requireText(String value, String field) {
 		if (value == null || value.isBlank()) {
 			throw new IllegalArgumentException(field + " is required");

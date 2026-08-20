@@ -179,7 +179,7 @@
                     <button
                       appTouchTarget
                       type="button"
-                      [appBusy]="renamingRow() === y"
+                      [appBusy]="renamingRow() === y || saving()"
                       (click)="onRenameRow(y)"
                       [attr.aria-label]="'Save the name for row ' + stored"
                       data-testid="layout-row-name-save"
