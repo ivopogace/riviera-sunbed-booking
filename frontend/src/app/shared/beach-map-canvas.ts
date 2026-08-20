@@ -155,10 +155,12 @@ export class BeachMapCanvas {
   }
 
   constructor() {
-    // Re-measure the pan overflow per render (jsdom reads 0 — the hint is proven in e2e).
-    afterRenderEffect(() => {
-      this.rows();
-      this.measureOverflow();
+    // The `read` phase, not the default mixedReadWrite: measuring is a pure DOM read.
+    afterRenderEffect({
+      read: () => {
+        this.rows();
+        this.measureOverflow();
+      },
     });
 
     // A resize changes the overflow without changing rows, which the render effect can't see.

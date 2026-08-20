@@ -40,17 +40,19 @@ AC-2 is already-shipped `.pannable` behavior, so it is a regression guard, and t
 stale-measurement defect got written down instead of shipped silently) · `tdd` (each phase
 red-first: the failing e2e for the breakout, the failing unit spec for the re-measure) ·
 `riviera-review-overlay` (review gate — RV-FE-E2E for suite placement, run at ready-for-review)
-· `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, 1 finding — no substrate doc
-states the map card's width, the canvas's measurement trigger, or a count this slice grew,
-but the sweep caught `riviera-tailwind` still saying "8 `.scss` files" after #698 deleted
-`operator-console.scss`; patched to 7 here, per close-out step 5's fold-into-the-code-PR rule) · `riviera-frontend` (placement:
+· `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, **0 findings** — no substrate doc
+states the map card's width, the canvas's measurement trigger, or a count this slice grew. Its
+one reported finding, `riviera-tailwind`'s SCSS count, was **withdrawn at review**: the count was
+already correct and the "fix" was an artifact of a glob that skips `app.scss`; see F-5) · `riviera-frontend` (placement:
 the breakout utility belongs on the tourist page's canvas **instance**, never on the shared
 `shared/beach-map-canvas.ts`, which three operator surfaces also render) ·
 `riviera-tailwind` (utility-first — one arbitrary-value margin utility on the consumer, no
 `@apply`, no new `.scss`; a derived `margin-inline` over a `vw`-derived `clamp()` for the
-scrollbar reason above) · `angular-developer` + angular-cli MCP `get_best_practices` (v22 posture:
-the re-measure is an `effect` + `onCleanup` disconnect mirroring the canvas's existing
-capture-click effect, not a lifecycle hook or `@HostListener`) · `playwright-cli` (the new
+scrollbar reason above) · `angular-developer` + angular-cli MCP (`get_best_practices` for the v22 posture — the
+re-measure is an `effect` + `onCleanup` disconnect mirroring the canvas's existing capture-click
+effect, not a lifecycle hook or `@HostListener`; then `search_documentation` to **validate** the
+design against angular.dev rather than from memory, which moved the measurement onto
+`afterRenderEffect`'s explicit `read` phase — see the validation note in the Gate record) · `playwright-cli` (the new
 specs are role/test-id located with web-first `expect` and no fixed sleeps; the resize pin
 uses `expect.poll` rather than a `waitForTimeout`) · `riviera-local-debug` (scoped Vitest +
 `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` for the mocked e2e — never
@@ -301,6 +303,26 @@ Skill-routing gate for what the fix touches *before* editing).
   wrong about Playwright's semantics; and F-18's `!!grid` guard was a behavioural no-op the
   register had written up as a fix. The rest were the plan doc's own record lagging the round
   that had just changed it.
+- **angular.dev validation (angular-cli MCP `search_documentation`, v22).** The slice's three
+  framework claims were checked against the docs rather than asserted from memory, per
+  `frontend/.claude/CLAUDE.md`. Two held and one did not:
+  - **`ResizeObserver` over a render hook — endorsed.** The effects guide states it outright:
+    *"You often don't need `afterRenderEffect` to check for DOM changes. APIs like
+    `ResizeObserver`, `MutationObserver` and `IntersectionObserver` are **preferred** to
+    `effect` or `afterRenderEffect` when possible."* R-1's fix is the documented mechanism.
+  - **`effect((onCleanup) => …)` with a disconnect — matches the documented pattern**, whose own
+    example is the `setTimeout`/`clearTimeout` shape; and *"when a component or directive is
+    destroyed, Angular automatically cleans up any associated effects"*, which is exactly what
+    the teardown spec asserts (`fixture.destroy()` → `observer.disconnected`).
+  - **The unphased `afterRenderEffect` was wrong — fixed.** The API docs mark it **CRITICAL**:
+    *"If you don't specify the phase, `afterRenderEffect` runs callbacks during the
+    `mixedReadWrite` phase. This may worsen application performance by causing additional DOM
+    reflows"*, and *"prefer specifying an explicit phase … or you risk significant performance
+    degradation."* `measureOverflow` is a pure DOM read (`scrollWidth`, `clientWidth`,
+    `getComputedStyle`) that writes only signals, so it now runs in the **`read`** phase. This
+    also answers the round-2 finding about `getComputedStyle` forcing a style recalc: the phase
+    is what the framework provides to batch exactly that. The form was pre-existing, not
+    introduced here, but the slice had already taken ownership of this effect.
 - **Stopping the re-review loop here, deliberately.** Across three rounds the *code* findings
   converged hard — a shipped blocker, then an invalid test pin, then one real test-validity
   point — while the *plan-doc record* findings did not, and structurally cannot: every fix round
