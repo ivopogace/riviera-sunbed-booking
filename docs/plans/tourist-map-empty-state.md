@@ -45,8 +45,20 @@ Behavior-parity ledger forced the *existing* zero-set behaviours into the open, 
 how the legend/footer/`fromPrice` suppression turned out to be already-correct and
 therefore ACs to **pin**, not code to write) · `tdd` (each phase red first: the empty-state
 spec before the `canvasEmpty` block, the summary spec before the branch) ·
-`riviera-review-overlay` (review gate — filled at ready-for-review) ·
-`riviera-docs-freshness` (filled at merge close-out) · `riviera-frontend` (placement: this
+`riviera-review-overlay` (review gate — **ran** at ready-for-review, layered on
+`/code-review`'s subagent fan-out over `origin/main...HEAD` at high effort: six independent
+reviewers — CLAUDE.md adherence, shallow bug scan, git-history context, prior-PR comments,
+code-comment guidance, and the RV-FE overlay bank. **1 finding, F-1, fixed in the same PR**;
+the overlay walked every applicable RV-FE item plus RV-STYLE-1/2 and RV-PROC-1 and
+independently re-verified this plan's three substantive claims against the code) ·
+`riviera-java-conventions` (§6c–6d, pulled in by the F-1 fix — a doc comment states the
+contract, not the changelog, so the new TSDoc lost its issue numbers) ·
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD`, **0 findings**: the rename grep
+finds no substrate doc naming `canvasEmpty`/`layout-empty`/`map-empty` at all, and the
+counting sweep found nothing this slice made the Nth of — the one nearby count,
+`beach-map-canvas.html`'s "the three operator surfaces", is about the *legend* slot and stays
+exactly true, while `riviera-frontend`'s cross-feature-import table keeps its 3 and 1 because
+this slice adds no import) · `riviera-frontend` (placement: this
 is tourist-map-local markup inside an existing feature file, so nothing is promoted to
 `shared/` — no new file, no new cross-feature import; the e2e goes in the **CI-safe mocked
 suite** because the change is render + navigation, per RV-FE-E2E) · `riviera-tailwind`
@@ -175,7 +187,7 @@ ledger is filled for that state's current behaviours.
 |---|---|---|---|---|---|---|
 | R-1 | Copy implies a **different date** would show sets, sending the tourist back to the picker forever — the map is date-independent (`set_position`), so no date works | high (the issue text itself says "for the chosen day") | med | copy states the layout is unpublished and says "on any date"; AC-1's spec asserts the sentence, not just the element | Claude | closed — `dde5a53` |
 | R-2 | Swapping the `aria-live` **element** (rather than its text) between the count and the no-sets line silently kills the date-change announcement for the populated case | med | med | the `<p data-testid="availability" aria-live="polite">` node is unconditional; only its inner content branches. AC-5 keeps the populated path pinned | Claude | closed — `dde5a53` |
-| R-3 | An added heading in the empty state breaks the page's heading order (h1 → h?) or duplicates a landmark name, failing axe | low | med | the empty state's title is an `<h2>` under the page's single `<h1>` (venue name); AC-6/AC-7 run axe over exactly this state in both jsdom and a real browser | Claude | closed (jsdom) — `dde5a53`; browser leg with AC-6 |
+| R-3 | An added heading in the empty state breaks the page's heading order (h1 → h?) or duplicates a landmark name, failing axe | low | med | the empty state's title is an `<h2>` under the page's single `<h1>` (venue name); AC-6/AC-7 run axe over exactly this state in both jsdom and a real browser | Claude | closed — `dde5a53` (jsdom) + `fd4285f` (real browser, axe clean) |
 | R-4 | New empty-state ink fails WCAG AA on the map-card glass | low | med | reuses the two token pairs `venue-map.contrast.spec.ts` already proves on that surface (`--riv-card-ink`, `--riv-card-ink-soft`) plus the CTA-gradient/white pair proven for the retry button — no new colour is introduced; the spec's test names are updated to name this surface too | Claude | closed — `dde5a53` |
 | R-5 | Touching the map template regresses a populated map (the common case) | low | high | the empty state lives entirely inside the `canvasEmpty` slot, which the canvas renders **only** in the `@else` of `rows().length > 0`; the full existing `venue-map` + `beach-map-canvas` spec files run per phase | Claude | closed — `dde5a53` (219 specs green across `venue/`, `shared/beach-map-canvas`, all three operator surfaces) |
 | R-6 | The plan's File-structure section drifts from the diff (CI-enforced since #533) | med | low | `node scripts/check-plan-file-structure.mjs --diff origin/main` run before every push, with the plan doc staged | Claude | open |
@@ -290,17 +302,19 @@ strict — no `as any`.
 > rows ✅ with commits, Open Questions empty, risk rows closed, AC pin-names matching the
 > shipped tests. Record **`merged via PR #NN`, never a merge SHA**.
 
-**Stage pointer:** `review gate — fixing findings` on PR **#719** (ready for review; all 8
-check runs green; Sonar gate verified green **with an empty reported list**).
+**Stage pointer:** `merge close-out` — **DONE** pending the merge of PR **#719**. CI green,
+review gate run in full (1 finding, fixed), Sonar gate green with its reported list pulled
+and empty, docs-freshness run with 0 findings.
 
-**Next action:** Land the review-gate fixes, then re-verify CI + Sonar and finalize this
-section for the merge.
+**Next action:** Merge #719, then finish close-out steps 1–3 and 6–7 (verify the issue
+closed, propagate #718, unsubscribe, notify) — none of which needs a further commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Empty state + summary branch (unit + a11y) | ✅ | `dde5a53` |
 | 1 — Mocked Playwright e2e | ✅ | `fd4285f` |
-| 2 — Close-out (docs freshness, execution status) | ⏳ | |
+| review gate — F-1 (TSDoc issue numbers) | ✅ | `290de42` |
+| 2 — Close-out (docs freshness, execution status) | ✅ | `3ce73bc` + this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -393,12 +407,13 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Phase 2 — Close-out
 
-- [ ] **Step 1:** `riviera-docs-freshness` over `origin/main...HEAD`; patch or record.
-- [ ] **Step 2:** `node scripts/check-plan-file-structure.mjs --diff origin/main`,
-      `node scripts/check-inline-comments.mjs --diff origin/main` — both clean.
-- [ ] **Step 3:** Finalize this Execution status (stage DONE, phase rows ✅ with commits,
-      Open Questions resolved, risk rows closed, `merged via PR #NN`) in the PR's own last
-      commit.
+- [x] **Step 1:** `riviera-docs-freshness` over `origin/main...HEAD` — **0 findings**; the
+      run is recorded in *Skills consulted* with what both sweeps looked for.
+- [x] **Step 2:** `check-plan-file-structure.mjs`, `check-inline-comments.mjs`,
+      `check-touch-target.mjs` and `check-focus-posture.mjs` (all `--diff origin/main`) —
+      clean, and CI's Repo-hygiene job agrees.
+- [x] **Step 3:** Execution status finalized here, in this PR's own last commit —
+      **merged via PR #719**, so no docs-only follow-up PR.
 
 ---
 
@@ -418,28 +433,33 @@ Skill-routing gate for what the fix touches *before* editing).
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1..AC-5, AC-7:** Run `npx vitest run src/app/venue` → all pass. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- venue-map-empty` → pass. Verified at commit `<sha>`.
+- [x] **AC-1..AC-5, AC-7:** `npx ng test --watch=false --include="src/app/venue/**/*.spec.ts"`
+      → **99 passed** (5 files). Verified after the F-1 fix, at commit `290de42`; CI re-runs
+      the same specs in the Frontend job.
+- [x] **AC-6:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts discovery-flow`
+      → **8 passed**, and the whole mocked suite → **226 passed**. Verified at commit
+      `fd4285f`; CI runs the same suite.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, no Java in the diff.
-- [ ] **Availability** section filled; no write path added (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled (`N/A — frontend-only`); no cross-module imports (invariant #11).
-- [ ] **Payment/payout** section filled (`N/A`) (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — untouched; the empty-state copy carries no date.
-- [ ] Booking codes unguessable (invariant #7) — untouched.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, no Java in the diff.
+- [x] **Availability** section filled; no write path added (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled (`N/A — frontend-only`); no cross-module imports (invariant #11).
+- [x] **Payment/payout** section filled (`N/A`) (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — untouched; the empty-state copy carries no date.
+- [x] Booking codes unguessable (invariant #7) — untouched.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (both assumptions resolved; the one deferral cites #718).
+- [x] **Close-out written in THIS PR** — **merged via PR #719**; no docs-only follow-up PR needed.
+- [x] **The review gate ran in full** — invocation-ladder rung 1 succeeded
+      (`Skill("code-review")` loaded), its subagent fan-out ran at high effort with
+      `riviera-review-overlay` layered on as a sixth reviewer. Not a degraded mode.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
