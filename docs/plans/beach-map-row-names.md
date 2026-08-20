@@ -33,9 +33,10 @@ pricing-tab label-as-identity coupling, and the set-editor grid-letter split) ·
 `riviera-plan-doc` (this template — forced the behavior-parity ledger that surfaced
 "bulk save destroys descriptive labels today") · `tdd` (each phase red-first, scoped
 test commands below) · `riviera-review-overlay` (review gate — due at ready-for-review) ·
-`riviera-docs-freshness` (N/A at plan time — due at merge close-out; CONTEXT.md's
-"Set position" line and `row-price-label.ts`'s "what the operator layout editor writes"
-doc are the known candidates) · `postgres` (V12-idiom `CHECK` migration, constraint
+`riviera-docs-freshness` (**ran** pre-merge over `origin/main...HEAD`: 1 finding —
+`row-price-label.ts`'s "what the operator layout editor writes for every venue created
+in-product" doc, patched in this PR; counting sweep clean; the
+`beach-map-price-rail-meaning.md:45` hit is a historical plan record, left as-is) · `postgres` (V12-idiom `CHECK` migration, constraint
 naming `set_position_row_label_check`, `char_length` semantics) · `riviera-modulith`
 (validation stays package-private in `venue.application`; mail rendering in
 `notification.adapter/out`; no new ports/events/grants) · `riviera-java-conventions`
@@ -267,6 +268,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/set-editor.ts` — sibling-label inheritance in `placementAt`.
 - `frontend/src/app/operator/set-editor.spec.ts` — AC-8.
 - `frontend/e2e/layout-editor.e2e.ts` — row-name save + duplicate-guard e2e.
+- `frontend/src/app/venue/row-price-label.ts` — docs-freshness patch: the "every venue created in-product" doc line, now the letters are only the unnamed default.
 
 ---
 
