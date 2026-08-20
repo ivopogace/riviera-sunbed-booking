@@ -226,6 +226,7 @@ This slice merges via PR #707.
 | review round 1 — 10 findings | ✅ | `d881d77` |
 | review round 2 — 13 findings | ✅ | `a30ae4a` |
 | review round 3 — 11 findings | ✅ | `9185ccc` |
+| angular.dev validation (angular-cli MCP) | ✅ | `e30d9db` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -282,9 +283,8 @@ Skill-routing gate for what the fix touches *before* editing).
   gate is the *list* and not the conclusion — the quality gate stayed green through them. On the
   round-2 head the list is back to `total 0`, with `measures` non-empty and the `SonarCloud Code
   Analysis` check-run `success` (the two facts that rule out the false-clean read, #318):
-  **Final verification on `9185ccc`** — the last commit that touches code (this close-out commit
-  is documentation only): CI 8/8 green, `api/issues/search` **total 0**, `measures` non-empty
-  (`new_lines 38`), `SonarCloud Code Analysis` `success` — `new_bugs 0 · new_vulnerabilities 0 ·
+  **Final verification on `e30d9db`** — the last commit that touches code: CI 8/8 green, `api/issues/search` **total 0**, `measures` non-empty
+  (`new_lines 43`), `SonarCloud Code Analysis` `success` — `new_bugs 0 · new_vulnerabilities 0 ·
   new_code_smells 0 · new_duplicated_blocks 0 · new_duplicated_lines_density 0.0 ·
   new_security_hotspots 0 · new_coverage 100.0%`.
 - **Review gate:** **RAN** — rung 1 of the invocation ladder (`Skill("code-review")`) was
