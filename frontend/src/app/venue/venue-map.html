@@ -147,10 +147,10 @@
         class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         label="Beach map — {{ v.name }}"
       >
-        <!-- The legend leads the card (#701): the tourist decodes the colours BEFORE reading the tiles, so it is projected above the grid rather than trailing it. Swatches wear the SAME appMapTile appearance as the tiles they stand for, so they cannot claim a look the grid does not have; the canvas owns the band's vertical spacing. -->
+        <!-- The legend leads the card (#701): the tourist decodes the colours BEFORE reading the tiles, so it is projected above the grid rather than trailing it. Swatches wear the SAME appMapTile appearance as the tiles they stand for AND sit on the wash's own first stop, so a translucent swatch composites over the same ground its tiles do — matching computed styles is not the same as looking alike. The canvas owns the band's vertical spacing. -->
         <ul
           canvasLegend
-          class="flex list-none flex-wrap items-center justify-center gap-x-[22px] gap-y-2 border-b border-b-[#0c2a33]/8 bg-white/55 px-4 py-[9px] text-[12px] text-(--riv-card-ink-soft)"
+          class="flex list-none flex-wrap items-center justify-center gap-x-[22px] gap-y-2 bg-[#cfeef6] px-4 py-[9px] text-[12px] text-(--riv-card-ink-soft)"
           aria-label="Legend"
         >
           @for (entry of legend; track entry.state) {

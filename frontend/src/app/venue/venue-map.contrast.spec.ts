@@ -43,7 +43,9 @@ import {
  * gradient; the seat tiles are TRANSLUCENT over the sea→sand wash (#672), whose gradient stops
  * are opaque and theme-independent — so each tile/chip ink is proven composited (fill alpha over
  * every wash stop) rather than as a solid pair; the date field is near-opaque (it sits on dark
- * glass, unlike Discover's field on light card glass).
+ * glass, unlike Discover's field on light card glass); and the legend band is painted the wash's
+ * own FIRST stop, so its swatches composite over exactly the ground their tiles do — which makes
+ * its ink a theme-independent solid pair rather than a per-theme glass composite.
  *
  * The walk-in tile is absent from `TILE_SURFACES` on purpose: its own test below proves the same
  * ink over the same fill on BOTH hatch bands, so a row here would assert the gap band's arithmetic
@@ -75,8 +77,6 @@ const ACCENT = '#085a6e'; // --riv-accent-ink (availability count, scroll hint)
 
 /** The walk-in tile's hatch stripe (`map-tile.ts`): the tile's own ink, laid over its fill. */
 const WALK_IN_HATCH: Glass = { color: hexToRgb('5f4d2a'), alpha: 0.16 };
-/** The legend band's white plate over the map card's glass (`venue-map.html`, #701). */
-const LEGEND_PLATE_ALPHA = 0.55;
 
 /** NOT `--riv-field-fill`: a literal (`venue-map.html`) — on the DARK header glass a 0.55 fill fails AA. */
 const DATE_FIELD_FILL_ALPHA = 0.9;
@@ -182,18 +182,6 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
     expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
   });
 
-  it('legend ink meets AA on the legend plate over the card glass (#701)', () => {
-    for (const stop of theme.stops) {
-      const card = surfaceOver(theme.cardGlass, stop);
-      const plate = composite(WHITE, LEGEND_PLATE_ALPHA, card);
-      const ink = composite(CARD_INK, CARD_INK_SOFT_ALPHA, plate);
-      expect(
-        contrastRatio(rgbToHex(ink), rgbToHex(plate)),
-        `over stop ${rgbToHex(stop)}`,
-      ).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
-  });
-
   it('card ink-faint (tap hint) meets AA on the card glass', () => {
     expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
   });
@@ -213,6 +201,12 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
         `over stop ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
+  });
+
+  it("legend ink meets AA on the band, which is the wash's own first stop (#701)", () => {
+    const band = WASH_STOPS[0];
+    const ink = composite(CARD_INK, CARD_INK_SOFT_ALPHA, band);
+    expect(contrastRatio(rgbToHex(ink), rgbToHex(band))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   it('the walk-in numeral meets AA on both hatch bands over every wash stop (#701)', () => {

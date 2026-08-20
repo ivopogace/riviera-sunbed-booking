@@ -19,7 +19,9 @@ appearance source as the tiles, and no change to any operator beach-map surface.
 shared `BeachMapCanvas` grows one more named slot, `canvasLegend`, rendered between the
 frame's sea banner and the sea→sand wash; the tourist map projects its `<ul>` into it and
 the three operator surfaces project nothing, so the shared frame stays tourist-agnostic
-(the `canvasFooter` / `canvasEmpty` precedent). (2) Tile **appearance** moves out of the
+(the `canvasFooter` / `canvasEmpty` precedent), painted the wash's own first stop so a
+translucent swatch composites over exactly the ground its tiles do — matching computed styles is
+not the same as looking alike (F-1). (2) Tile **appearance** moves out of the
 template's `[&.premium]:`-style arbitrary variants into a variant directive,
 `venue/map-tile.ts` (`[appMapTile]`, the `shared/amenity-chip.ts` + `operator/beach-cell.ts`
 shape): one `Record<MapTileState, string>` of fill/border/ink classes that the tile `<li>`
@@ -36,7 +38,8 @@ untouched).
 (`https://claude.ai/code/artifact/464f8512-ec58-441f-aeca-284b484abe71`), whose map-card
 markup specifies the legend band (`margin: 0 -18px; padding: 9px 16px; background:
 rgba(255,255,255,0.55); border-bottom: 1px solid rgba(12,42,51,0.08); font-size: 12px;
-color: rgba(12,42,51,0.78)`, 18 px swatches at radius 6 px) and the walk-in tile style
+color: rgba(12,42,51,0.78)`, 18 px swatches at radius 6 px — **its background is the one
+deliberate departure**, see F-1) and the walk-in tile style
 (`border:1.5px solid #c8ab62; background-color:rgba(239,224,189,0.6);
 background-image:repeating-linear-gradient(135deg,rgba(95,77,42,0.16) 0px,rgba(95,77,42,0.16)
 3px,transparent 3px,transparent 8px); color:#5f4d2a`) verbatim.
@@ -299,11 +302,10 @@ consumes the same `VenueMapView` it does today.
 > second docs-only PR (case history + details: `riviera-sdlc` `references/pr-gates.md`
 > §3 step 4).
 
-**Stage pointer:** `review gate — findings fixed; F-1 (the legend band's ground) awaiting the maintainer's call`
+**Stage pointer:** `sonar gate — CI + review gate cleared, all 14 findings resolved`
 
-**Next action:** Resolve F-1 with the maintainer (keep the design canvas's white plate, or move
-the band onto the wash's top stop so swatch and tile share a ground), then re-check CI + the
-Sonar issue list and close out.
+**Next action:** Pull the SonarCloud issue + duplication list for PR #716 (green is necessary,
+not sufficient), then tick the PR's Gates boxes and merge.
 
 | Phase                                                                        | Status | Commits     |
 | ---------------------------------------------------------------------------- | ------ | ----------- |
