@@ -401,6 +401,29 @@ describe('VenueMap', () => {
     expect(priceCells.map((c) => c.classList.contains('mt-3'))).toEqual(zoneGaps);
   });
 
+  it('drops a bare row label the rail cannot echo — a walkway shifts them (#702)', async () => {
+    const base = miramar();
+    // A gap row in the editor's grid saves no sets, so the venue's own labels skip a letter.
+    const original = [...new Set(base.sets.map((s) => s.rowLabel))];
+    const shifted = ['A', 'C', 'D', 'E'];
+    const sets = base.sets.map((s) => ({
+      ...s,
+      rowLabel: shifted[original.indexOf(s.rowLabel)],
+    }));
+    venueRequest().flush({ ...base, sets });
+    await fixture.whenStable();
+
+    const codes = [...el().querySelectorAll('[data-testid="row-code"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    // The rail says A B C D; no chip claims a letter beside a chip that contradicts it.
+    expect(codes).toEqual(['A', 'B', 'C', 'D']);
+    expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+  });
+
   it('keeps the enriched rail decorative — tile names are unchanged (#702)', async () => {
     flushVenue();
     await fixture.whenStable();

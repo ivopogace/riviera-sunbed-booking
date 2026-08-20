@@ -8,8 +8,11 @@ export interface RowPosition {
   readonly ordinal: number;
 }
 
-/** A label segment shaped like a row reference: a bare code/ordinal, or one word plus one. */
-const ROW_REFERENCE = /^(?:\p{L}+\s+)?(\p{L}{1,2}|\d{1,3})$/u;
+/** A bare row reference — a code (`A`, `AA`) or an ordinal (`4`), with no words of its own. */
+const BARE_REFERENCE = /^(\p{L}{1,2}|\d{1,3})$/u;
+
+/** One word plus a row reference: `Row 4`, `Rreshti 4`, `Fila B` — and also `Cabana 5`. */
+const NAMED_REFERENCE = /^\p{L}+\s+(\p{L}{1,2}|\d{1,3})$/u;
 
 /** The separator the venue's own row labels compose with ("Front row · Sea view"), and the chip's. */
 const SEPARATOR = '·';
@@ -18,17 +21,26 @@ const SEPARATOR = '·';
 const WALK_IN_QUALIFIER = 'at venue';
 
 /**
- * Whether a label segment only restates where this row already says it is — `A` or `4` on their
- * own, or one word of any language plus one of those: `Row 4`, `Rreshti 4`, `Fila B`.
+ * Whether a label segment says nothing the row's own rail chip does not already say.
  *
- * <p>The test is against the row's ACTUAL position, never against a vocabulary of words meaning
- * "row": matching the leading word without checking what follows it would read `Cabana 5` as a
- * position and drop the venue's own name for the row — worse, on a premium row it would then be
- * renamed `Front row` by the tier fallback, which is wrong information rather than missing
- * information. So `Cabana 5` is positional on row 5 and a name everywhere else.
+ * <p>Two shapes, judged differently, because they differ in what dropping them costs:
+ *
+ * <ul>
+ * <li>A <b>bare</b> code or ordinal (`A`, `AA`, `4`) has no words to lose, so it goes whatever
+ * the row's position is. It need not match: the map derives its rail codes from insertion order,
+ * while the venue's labels come from grid rows — a walkway row saves no sets, so the venue's `C`
+ * can legitimately land on rail `B`, and `€35 · C` beside a chip reading `B` helps nobody.</li>
+ * <li>One <b>word plus</b> a code or ordinal (`Row 4`, `Rreshti 4`, `Fila B`) goes only when that
+ * reference is this row's own. The word is matched, never named — hard-coding `row` would read
+ * only the English half of an Albanian-riviera venue's labels — but a word carries meaning, so
+ * `Cabana 5` is a restatement on row 5 and the venue's name for the row everywhere else.</li>
+ * </ul>
  */
 function restatesPosition(segment: string, position: RowPosition): boolean {
-  const reference = ROW_REFERENCE.exec(segment)?.[1];
+  if (BARE_REFERENCE.test(segment)) {
+    return true;
+  }
+  const reference = NAMED_REFERENCE.exec(segment)?.[1];
   return (
     reference !== undefined &&
     (reference.toUpperCase() === position.code || reference === String(position.ordinal))
@@ -44,9 +56,11 @@ function restatesPosition(segment: string, position: RowPosition): boolean {
  * (invariant #3) is the fact a tourist must not miss, so it outranks the venue's own words;</li>
  * <li><b>the venue's own words</b> — the first segment of its row label that does not merely
  * restate the row's position ("Front row · Sea view" → "Front row", "Row 4 · Back" → "Back");</li>
- * <li><b>the tier</b> — an all-premium row whose label says only where it is (`A`, `Row 1`: what
- * the operator layout editor writes for every venue created in-product) is named by its tier,
- * from the same {@link tierLabel} the operator surfaces use;</li>
+ * <li><b>the tier</b> — the all-premium <b>first</b> row, whose label says only where it is
+ * (`A`, `Row 1`: what the operator layout editor writes for every venue created in-product), is
+ * named by its tier, from the same {@link tierLabel} the operator surfaces use. Only the first
+ * row: that label is a spatial claim ("Front row"), so a premium row further back — a VIP cabana
+ * block — keeps the bare price rather than being told it is at the water;</li>
  * <li><b>nothing</b> — a standard row with no words of its own keeps the bare price it has
  * always rendered.</li>
  * </ol>
@@ -64,7 +78,8 @@ function qualifierOf(sets: readonly SetView[], position: RowPosition): string | 
   if (named !== undefined) {
     return named;
   }
-  return sets.every((s) => s.tier === 'PREMIUM') ? tierLabel('PREMIUM') : null;
+  const frontRow = position.ordinal === 1 && sets.every((s) => s.tier === 'PREMIUM');
+  return frontRow ? tierLabel('PREMIUM') : null;
 }
 
 /**

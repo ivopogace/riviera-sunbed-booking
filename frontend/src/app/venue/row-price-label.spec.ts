@@ -86,12 +86,29 @@ describe('rowPriceLabel', () => {
     expect(labelled('Sea view', 'STANDARD', 'ONLINE', 4500)).toBe('€45 · Sea view');
   });
 
+  it('drops a bare code the map itself did not derive — a walkway shifts them (#702 H-1)', () => {
+    // A gap row in the editor's grid is saved as no sets, so the venue's own C lands on rail B.
+    expect(labelled('C', 'STANDARD', 'ONLINE', 3500, 1)).toBe('€35');
+    expect(labelled('7', 'STANDARD', 'ONLINE', 3500, 1)).toBe('€35');
+    // A bare code loses nothing when dropped; a NAME plus a foreign code still keeps its name.
+    expect(labelled('Cabana 5', 'STANDARD', 'ONLINE', 3500, 1)).toBe('€35 · Cabana 5');
+  });
+
+  it('claims the front row only where the front row is (#702 H-2)', () => {
+    expect(labelled('E', 'PREMIUM', 'ONLINE', 5000, 4)).toBe('€50');
+    expect(labelled('Rreshti 5', 'PREMIUM', 'ONLINE', 5000, 4)).toBe('€50');
+    // Row A is where the tier name is also a true statement about the map.
+    expect(labelled('A', 'PREMIUM', 'ONLINE', 5000)).toBe('€50 · Front row');
+  });
+
   it("keeps a name whose number is not this row's number", () => {
     // "Cabana 5" on row D restates nothing: the rail says D, the venue says Cabana 5.
     expect(labelled('Cabana 5', 'STANDARD', 'ONLINE', 4500, 3)).toBe('€45 · Cabana 5');
     expect(labelled('VIP 2', 'STANDARD', 'ONLINE', 4500)).toBe('€45 · VIP 2');
     // The premium fallback is the dangerous half: a named row must never be renamed by it.
     expect(labelled('Cabana 5', 'PREMIUM', 'ONLINE', 5000, 3)).toBe('€50 · Cabana 5');
+    // On the row whose number it does restate, the name goes — but nothing false replaces it.
+    expect(labelled('Cabana 5', 'PREMIUM', 'ONLINE', 5000, 4)).toBe('€50');
     // …and on the row it does name, it is a restatement like any other.
     expect(labelled('Zona A', 'STANDARD', 'ONLINE', 4500)).toBe('€45');
     expect(labelled('Cabana 5', 'STANDARD', 'ONLINE', 4500, 4)).toBe('€45');
