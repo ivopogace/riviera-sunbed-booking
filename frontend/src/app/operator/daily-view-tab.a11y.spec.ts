@@ -95,6 +95,11 @@ describe('DailyViewTab a11y (#175)', () => {
     render([seat(1, 'A', 1, 'STANDARD', 'WALK_IN', 'FREE')], []);
     await expectNoAxeViolations(host());
   });
+
+  it('has no axe violations on a venue with no sets (#718)', async () => {
+    render([], []);
+    await expectNoAxeViolations(host());
+  });
 });
 
 function seat(

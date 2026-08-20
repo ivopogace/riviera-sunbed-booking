@@ -311,15 +311,15 @@ renders states that today's `GET /api/venues/{id}` response already produces (`s
 > second docs-only PR (case history + details: `riviera-sdlc` `references/pr-gates.md`
 > §3 step 4).
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)` — phase 0 shipped; the draft PR opens with it.
 
-**Next action:** phase 0 — write the failing `DailyViewTab` zero-set specs, then branch
-`daily-view-tab.html`.
+**Next action:** phase 1 — the failing `SetEditor` no-sets specs, then the `set-editor.html`
+panel branch.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Daily view zero-set state (unit + a11y + contrast) | | |
-| 1 — Per-set editor no-sets panel copy (unit + a11y) | | |
+| 0 — Daily view zero-set state (unit + a11y + contrast) | ✅ | `5a07fcb` |
+| 1 — Per-set editor no-sets panel copy (unit + a11y) | ⏳ | |
 | 2 — Mocked Playwright e2e, both surfaces | | |
 | 3 — Close-out (gates, docs freshness, final plan state) | | |
 
@@ -387,19 +387,24 @@ Skill-routing gate for what the fix touches *before* editing).
 `frontend/src/app/operator/daily-view-tab.a11y.spec.ts`,
 `frontend/src/app/operator/daily-view-tab.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — three in `daily-view-tab.spec.ts` (AC-1/2/3), one in
-      `daily-view-tab.a11y.spec.ts` (AC-6), one row in `daily-view-tab.contrast.spec.ts` (R-5), each
-      rendering `render([], [], [])` for the zero-set case.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- daily-view-tab` → FAIL
-      (`daily-map-empty` is null).
-- [ ] **Step 3: Minimal implementation** — the `canvasEmpty` slot + the summary `@if` + the legend
-      `@if` in `daily-view-tab.html`; `protected readonly venueId` + `RouterLink` in the `.ts`.
-- [ ] **Step 4: Run them, verify they pass** — `npm test -- daily-view-tab` → PASS, then the
-      operator folder's map-adjacent specs as the end-of-phase regression.
-- [ ] **Step 5: Generalization-audit pass** — population: *every surface projecting a tile grid into
-      `BeachMapCanvas`*, re-enumerated after this phase.
-- [ ] **Step 6: Commit** — `git commit -m "Explain a zero-set operator Daily view instead of framing empty space (#718)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window; open the **draft PR**
+- [x] **Step 1: Write the failing tests** — one at a time (vertical slices, not all-tests-then-all-code):
+      AC-1, then AC-2, then AC-3 in `daily-view-tab.spec.ts`; AC-6 in `daily-view-tab.a11y.spec.ts`;
+      the CTA row (R-5) in `daily-view-tab.contrast.spec.ts`. The zero-set case is `render([], [], [])`.
+- [x] **Step 2: Run them, verify they fail** — `ng test --include="src/app/operator/daily-view-tab.spec.ts"`
+      → AC-1 FAILs on `expected null not to be null` (`daily-map-empty`); AC-2 FAILs on the received
+      `"0 walk-in marked · 0 of 0 sets free on Mon 15 Jun 2026"`. AC-3 is a **characterization** test
+      of preserved behavior (parity-ledger rows 2–3) and passes on write by design.
+- [x] **Step 3: Minimal implementation** — the `canvasEmpty` slot + the summary `@if` + the legend
+      `@if` in `daily-view-tab.html`; `private` → `protected venueId` + `RouterLink` in the `.ts`.
+      The link is guarded by an `@if` **inside** the projected `<div canvasEmpty>`, never around it:
+      content projection matches the static template, so an `@if` wrapping the slot element itself
+      would hand the canvas an `<ng-template>` carrying no `canvasEmpty` attribute.
+- [x] **Step 4: Run them, verify they pass** — 50/50 across the three `daily-view-tab*` spec files;
+      end-of-phase regression `--include="src/app/operator/*.spec.ts"` +
+      `shared/beach-map-canvas.spec.ts` + `venue/venue-map*.spec.ts` → **510 passed**.
+- [x] **Step 5: Generalization-audit pass** — see the log's phase-0 row.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window; open the **draft PR**
       immediately after this first phase commit (CI fires on the `pull_request` event only).
 
 ---
@@ -458,6 +463,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | phase 0 | **Mechanism:** every element that *decodes or counts the tiles* of a beach-map surface while living **outside** `<app-beach-map-canvas>` — so the canvas's empty branch cannot drop it with the grid it describes. Enumerated by the markup that does the decoding (the legend list), not by "surfaces that look bare" | `grep -rn 'aria-label="Legend"' src/app --include=*.html` (3), cross-cut with `grep -rn "canvasLegend" src/app --include=*.html` (which of them are projected back **in**) | 3 legends: `venue-map` is projected into the canvas via `canvasLegend` (#701) so it already drops; `daily-view-tab`'s was outside and unguarded; `layout-editor`'s is outside too | **Subset, argued.** The Daily view legend is gated on `totalCount()`. The layout editor's is **not** a defect: that surface's empty state already forward-references it — "Generate a layout to begin, then paint tiers, walk-in sets and aisles" — so its legend and Paint-tool counts read as the next step, not as decoders of nothing. Its `render unchanged` AC (issue #718 AC-3) fences it either way |
 | 2026-08-20 | plan (intake grill) | **Mechanism:** every surface that projects a tile grid into `BeachMapCanvas` and therefore *could* render its `canvasEmpty` slot — then, per surface, whether its `rows()` can actually empty (the property the slot depends on), which is the step #717's audit did not need and #718 assumed | `grep -rl "app-beach-map-canvas" frontend/src/app --include=*.html` → 4; then read each surface's `rows()` computation | 4 project a grid; `venue-map` + `layout-editor` already fill the slot; `daily-view-tab`'s `rows()` **can** empty (`groupSetsByRow(sets)`); `set-editor`'s **cannot** (`Math.max(1, …)` clamped ≥ 1×1) | **Split, not uniform.** The slot goes to `daily-view-tab` only; `set-editor` gets its real zero-set defect fixed in the panel. Recorded as D-1 and on issue #718 |
 
 ---

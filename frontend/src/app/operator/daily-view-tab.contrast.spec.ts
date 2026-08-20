@@ -25,7 +25,10 @@ import {
  * The FREE tile's number is proven AA composited over the wash's worst-case stops; the locked
  * tile's number is proven over its striped fill's worst case, the darker stripe (the `●` beside it
  * stays `aria-hidden` decorative — state is carried by sr-only text); the filled STAFF_MARKED
- * tile — white text on the `#0a6e85` teal, also its legend swatch — is wash-independent. Values
+ * tile — white text on the `#0a6e85` teal, also its legend swatch — is wash-independent. The
+ * zero-set empty state (#718) introduces no colour: its heading is `--riv-card-ink` and its copy
+ * `--riv-card-ink-soft`, both already proven on this card glass, and its link is white on the
+ * `--riv-cta-grad` stops the sibling operator CTAs prove. Values
  * mirror the template + `styles.scss`; a token edit there must re-pass here.
  */
 
@@ -33,6 +36,8 @@ import {
 const FREE_TILE_FILL = { color: WHITE, alpha: 0.85 };
 // The locked tile's worst-case fill: the striped gradient's darker rgba(12,42,51,0.28) band.
 const LOCKED_STRIPE_FILL = { color: CARD_INK, alpha: 0.28 };
+// --riv-cta-grad stops (the AA-safe darkened teal shared with every CTA); the empty-state link sits on these.
+const CTA_STOPS = ['#0c7288', '#0a5f74'];
 
 describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
   it('headings + labels + arrivals + availability counts (--riv-card-ink) meet AA on the card glass', () => {
@@ -71,6 +76,12 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
 
   it('the locked-tile position number (--riv-card-ink) meets AA over the dark stripe on every wash stop (#686)', () => {
     expectAaOverStops(INK_DARK, 1, LOCKED_STRIPE_FILL, WASH_STOPS);
+  });
+
+  it('the empty-map link (white) meets AA on both CTA gradient stops (#718)', () => {
+    for (const stop of CTA_STOPS) {
+      expect(contrastRatio('#ffffff', stop), `over stop ${stop}`).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
   });
 
   it('the write-failure notice + load-error ink (#a3160e) meet AA over every porcelain stop', () => {

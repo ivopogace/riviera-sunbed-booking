@@ -719,6 +719,37 @@ describe('DailyViewTab (#175)', () => {
     expect(host.querySelectorAll('[data-set-id]')).toHaveLength(1);
     expect(tile(9).getAttribute('data-state')).toBe('FREE');
   });
+
+  it('explains a venue with no sets instead of framing empty space (#718)', () => {
+    render([], [], []);
+    const empty = byId('daily-map-empty');
+    expect(empty).not.toBeNull();
+    expect(empty.textContent).toContain('No beach map for this venue yet');
+    // The operator can fix this state, so the copy ends in the tab that fixes it.
+    expect(empty.querySelector('a')!.getAttribute('href')).toBe('/operator/1/beach-map');
+    // The chrome the tiles were framed by goes with them.
+    expect(host.querySelectorAll('[data-testid="daily-tile"]')).toHaveLength(0);
+    expect(host.querySelector('[data-testid="row-code"]')).toBeNull();
+    expect(host.querySelector('[data-testid="row-price"]')).toBeNull();
+  });
+
+  it('drops the 0-of-0 count and the tile legend when there are no sets (#718)', () => {
+    render([], [], []);
+    // Only the CONTENT branches: a rebuilt aria-live region announces unreliably.
+    const summary = byId('daily-availability');
+    expect(summary.getAttribute('aria-live')).toBe('polite');
+    expect(summary.textContent.replace(/\s+/g, ' ').trim()).toBe('No sets on the map yet');
+    expect(host.querySelector('[aria-label="Legend"]')).toBeNull();
+  });
+
+  it('keeps the count, the legend and no empty state on a populated map (#718)', () => {
+    render();
+    expect(byId('daily-availability').textContent.replace(/\s+/g, ' ').trim()).toBe(
+      '1 walk-in marked · 2 of 4 sets free on Mon 15 Jun 2026',
+    );
+    expect(host.querySelectorAll('[aria-label="Legend"] li')).toHaveLength(3);
+    expect(host.querySelector('[data-testid="daily-map-empty"]')).toBeNull();
+  });
 });
 
 function seat(

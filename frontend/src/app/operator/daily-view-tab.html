@@ -29,14 +29,20 @@
             class="rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
           />
         </label>
+        <!-- Only the CONTENT branches (#718): swapping the element rebuilds the live region, which announces unreliably. -->
         <p
           class="text-[13px] text-(--riv-card-ink-soft)"
           data-testid="daily-availability"
           aria-live="polite"
         >
-          <strong class="text-(--riv-card-ink)">{{ markedCount() }}</strong> walk-in marked ·
-          <strong class="text-(--riv-card-ink)">{{ freeCount() }}</strong> of
-          {{ totalCount() }} sets free on {{ dateLabel() }}
+          @if (totalCount()) {
+            <strong class="text-(--riv-card-ink)">{{ markedCount() }}</strong> walk-in marked ·
+            <strong class="text-(--riv-card-ink)">{{ freeCount() }}</strong> of
+            {{ totalCount() }} sets free on {{ dateLabel() }}
+          } @else {
+            <!-- No date: the set count comes from the venue's layout, so no other day reads differently. -->
+            No sets on the map yet
+          }
         </p>
       </div>
       @if (notice(); as msg) {
@@ -106,32 +112,56 @@
           }
         </ul>
       </ng-template>
+
+      <!-- Zero sets: the canvas drops the grid and both rails together, so this slot IS the card. Unlike the tourist map, the operator can fix the state, so the copy ends in the tab that fixes it. -->
+      <div canvasEmpty class="px-3 py-9 text-center" data-testid="daily-map-empty">
+        <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-(--riv-card-ink)">
+          No beach map for this venue yet
+        </h2>
+        <p
+          class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-(--riv-card-ink-soft)"
+        >
+          There is no set to mark, book or check in — on this date or any other. Generate the layout
+          in the Beach map tab and every day's grid follows from it.
+        </p>
+        @if (venueId(); as id) {
+          <a
+            appTouchTarget
+            [routerLink]="['/operator', id, 'beach-map']"
+            data-testid="daily-map-empty-link"
+            class="inline-flex items-center justify-center rounded-[14px] bg-(image:--riv-cta-grad) px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)]"
+            >Go to the Beach map tab</a
+          >
+        }
+      </div>
     </app-beach-map-canvas>
 
-    <!-- Legend -->
-    <ul
-      class="mx-0.5 mt-3.5 flex list-none flex-wrap gap-4 p-0 text-[12.5px] text-(--riv-card-ink)"
-      aria-label="Legend"
-    >
-      <li class="flex items-center gap-[7px]">
-        <span
-          class="h-[13px] w-[13px] rounded-[4px] border border-[#0c2a33]/15 bg-white/85"
-          aria-hidden="true"
-        ></span>
-        Free (tap to mark)
-      </li>
-      <li class="flex items-center gap-[7px]">
-        <span class="h-[13px] w-[13px] rounded-[4px] bg-[#0a6e85]" aria-hidden="true"></span>
-        Walk-in marked
-      </li>
-      <li class="flex items-center gap-[7px]">
-        <span
-          class="h-[13px] w-[13px] rounded-[4px] bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.28)_0_3px,rgba(12,42,51,0.1)_3px_6px)]"
-          aria-hidden="true"
-        ></span>
-        Booked online (locked)
-      </li>
-    </ul>
+    <!-- Legend — decodes tile states, so it goes with the tiles (#718). -->
+    @if (totalCount()) {
+      <ul
+        class="mx-0.5 mt-3.5 flex list-none flex-wrap gap-4 p-0 text-[12.5px] text-(--riv-card-ink)"
+        aria-label="Legend"
+      >
+        <li class="flex items-center gap-[7px]">
+          <span
+            class="h-[13px] w-[13px] rounded-[4px] border border-[#0c2a33]/15 bg-white/85"
+            aria-hidden="true"
+          ></span>
+          Free (tap to mark)
+        </li>
+        <li class="flex items-center gap-[7px]">
+          <span class="h-[13px] w-[13px] rounded-[4px] bg-[#0a6e85]" aria-hidden="true"></span>
+          Walk-in marked
+        </li>
+        <li class="flex items-center gap-[7px]">
+          <span
+            class="h-[13px] w-[13px] rounded-[4px] bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.28)_0_3px,rgba(12,42,51,0.1)_3px_6px)]"
+            aria-hidden="true"
+          ></span>
+          Booked online (locked)
+        </li>
+      </ul>
+    }
 
     <!-- Arrivals: the day's bookings (confirmed, checked-in, no-show) with their arrival codes -->
     <section
