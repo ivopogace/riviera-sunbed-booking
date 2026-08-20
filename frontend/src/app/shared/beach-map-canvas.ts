@@ -24,7 +24,9 @@ import { BeachGridFrame } from './beach-grid-frame';
 export interface BeachMapCanvasRow {
   /** The rail chip's row code (`A`, `B`, … `AA`). Must be unique per map (used as track key). */
   readonly code: string;
-  /** The zone chip's text; `null` renders no chip even on a zone start. */
+  /** The zone chip's text; `null` renders no chip even on a zone start. The rail caps the chip's
+   *  width and ellipsizes what does not fit (92px below `sm`, 128px above), so this may be a
+   *  phrase — a price plus what it buys — and not only an amount. */
   readonly priceLabel: string | null;
   /** True where this row starts a new price zone — draws the zone gap + the price chip. */
   readonly zoneStart: boolean;

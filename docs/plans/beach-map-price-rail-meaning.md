@@ -85,54 +85,58 @@ addendum). Cut fresh from `origin/main` at `b19ece2`.
 > tests (Cockburn 2005). This keeps ACs stable across UI/payment-adapter churn and
 > reusable from any driving adapter.
 
-- [ ] **AC-1:** Given a premium zone whose row label carries words beyond its position
+- [x] **AC-1:** Given a premium zone whose row label carries words beyond its position
       (`Front row · Sea view`), when the map renders, then its chip reads
       `€45 · Front row` — the price plus the label's first non-positional segment.
       *Pinned by:* `row-price-label.spec.ts › 'names a descriptive row by its first
       non-positional segment'` + `venue-map.spec.ts › 'renders the price once per zone,
-      carrying the row's meaning (#702)'`
-- [ ] **AC-2:** Given a premium zone whose row label states only its position (`A`,
+      carrying the row's meaning (#672, #702)'`
+- [x] **AC-2:** Given a premium zone whose row label states only its position (`A`,
       `Row 1` — what the operator layout editor writes), when the map renders, then its
       chip still names the tier (`€50 · Front row`, from `tierLabel('PREMIUM')`), and an
       equivalent **standard** zone renders the price alone (`€35`), exactly as on `main`.
       *Pinned by:* `row-price-label.spec.ts › 'falls back to the tier name for a
       positional-only premium row'` + `… › 'leaves a positional-only standard row as the
       bare price'`
-- [ ] **AC-3:** Given a zone whose sets are all `WALK_IN`, when the map renders, then its
+- [x] **AC-3:** Given a zone whose sets are all `WALK_IN`, when the map renders, then its
       chip reads `€25 · at venue` — price retained, channel stated — regardless of the
       row's label or tier. *Pinned by:* `row-price-label.spec.ts › 'states the at-venue
       channel for a walk-in row, price retained'` + `venue-map.spec.ts › 'renders the
-      price once per zone, carrying the row's meaning (#702)'`
-- [ ] **AC-4:** Given adjacent rows at the **same** price but different channels (an
+      price once per zone, carrying the row's meaning (#672, #702)'`
+- [x] **AC-4:** Given adjacent rows at the **same** price but different channels (an
       online `Row 4 · Back` and a walk-in `Row 5 · Walk-in`, both €30 — today one zone
       with one chip), when the map renders, then they are two zones: two chips
       (`€30 · Back`, `€30 · at venue`) and a zone gap between them on all three columns.
       *Pinned by:* `venue-map.spec.ts › 'splits an equally-priced walk-in row into its own
       zone (#702)'` + `venue-map-pan.e2e.ts › 'a plain click on a free tile opens the
       booking dialog (and the map is accessible)'` (its `row-price` pin)
-- [ ] **AC-5:** Given a row whose sets differ in price, when the map renders, then its
+- [x] **AC-5:** Given a row whose sets differ in price, when the map renders, then its
       chip keeps the #689 min–max span and composes the qualifier onto it
       (`€35–€45`, or `€35–€45 · Front row` when the row is named). *Pinned by:*
       `row-price-label.spec.ts › 'composes the qualifier onto a mixed-price span (#689)'`
       + the updated `venue-map.spec.ts › 'renders a mixed-price row as its min–max span,
       in a zone of its own (#689)'`
-- [ ] **AC-6:** Given the rendered map, when a screen reader reads it, then the price rail
+- [x] **AC-6:** Given the rendered map, when a screen reader reads it, then the price rail
       is still `aria-hidden` and every tile's accessible name is **byte-identical** to
       `main`'s (`Set A1, Front row · Sea view, front row, €45, available`) — the new words
       are announced nowhere. *Pinned by:* `venue-map.spec.ts › 'keeps the enriched rail
       decorative — tile names are unchanged (#702)'`
-- [ ] **AC-7:** Given a venue whose row label is pathologically long (40 chars) at a
-      390 × 760 viewport, when the map renders, then the price rail is **no wider than
-      92 px**, its chip is ellipsis-truncated (`scrollWidth > clientWidth`), and the tile
-      viewport is no narrower than it is for the same venue with a short label — a long
-      label costs the tiles nothing. *Pinned by:* `venue-map-pan.e2e.ts › 'a long row
+- [x] **AC-7:** Given two venues whose front-row labels both exceed the rail's cap (18 and
+      69 chars) at a 390 × 760 viewport, when their maps render, then both rails are **≤ 92 px
+      and identical in width**, both chips are ellipsis-truncated (`scrollWidth > clientWidth`),
+      and both tile viewports are identical and ≥ 150 px (three tile columns) — past the cap,
+      extra characters cost the tiles nothing. *Pinned by:* `venue-map-pan.e2e.ts › 'a long row
       label truncates in the rail instead of eating the tile grid (#702)'`
-- [ ] **AC-8:** Given the three operator beach-map surfaces (layout editor, Daily view,
+      <!-- Restated at phase 2 from "no narrower than the same venue with a SHORT label": with a
+      short label the rail is narrower and the viewport WIDER, so that comparison could never be an
+      equality. Two over-cap labels of very different lengths pin the property that matters — the
+      cap is a hard stop — and the absolute ≥ 150 px pins that the stop is set somewhere reasonable. -->
+- [x] **AC-8:** Given the three operator beach-map surfaces (layout editor, Daily view,
       per-set editor), when they render, then their rail chips are unchanged bare prices
       and no operator spec needs an edit. *Pinned by:* the unedited
       `layout-editor.spec.ts`, `daily-view-tab.spec.ts`, `set-editor.spec.ts` price
       assertions + `operator-daily.e2e.ts` / `layout-editor.e2e.ts` staying green.
-- [ ] **AC-9:** Given the beach map at 390 px, when axe runs over it, then there are no
+- [x] **AC-9:** Given the beach map at 390 px, when axe runs over it, then there are no
       serious violations. *Pinned by:* `venue-map-pan.e2e.ts ›` the new spec's
       `expectNoSeriousAxeViolations` call.
 
@@ -259,16 +263,16 @@ served by `GET /api/venues/{id}` and consumed by this component today.
 > **This section is the session-recovery anchor.** Everything a resuming session needs
 > lives HERE, committed — never only in the conversation.
 
-**Stage pointer:** `implement — phase 1 done, phase 2 next`
+**Stage pointer:** `implement — all three phases done; PR #722 ready-for-review next`
 
-**Next action:** Write the 390 px truncation e2e red, then cap the rail cell and truncate
-the chip on `shared/beach-map-canvas.html`.
+**Next action:** Mark PR #722 ready for review, then run the review gate
+(`riviera-sdlc` `references/pr-gates.md` §1) and pull the Sonar issue list (§2).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the label rule (pure) | ✅ | `116442f` |
-| 1 — wire it into the tourist map + re-partitioned zones | ✅ | this commit |
-| 2 — rail truncation cap + e2e pins | | |
+| 1 — wire it into the tourist map + re-partitioned zones | ✅ | `b7c4b87` |
+| 2 — rail truncation cap + e2e pins | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -278,7 +282,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-0 | local e2e run (phase 2) | `customer-password.e2e.ts` + `operator-venue.e2e.ts` failed in the sandbox's full-suite run; both are sign-in-heavy flows this diff does not touch (no operator or auth file changed, and the shared cap only bounds a rail cell's width) | open — re-running in isolation; CI on PR #722 is the arbiter |
 
 ---
 
@@ -337,16 +341,22 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Modify `frontend/src/app/shared/beach-map-canvas.html`,
 `frontend/src/app/shared/beach-map-canvas.ts` · Test `frontend/e2e/venue-map-pan.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — the 390 px spec: a 40-char row label, rail
-      ≤ 92 px, chip truncated, tile viewport no narrower than the short-label control, axe
-      clean; plus the updated 5-chip pin on the wide venue.
-- [ ] **Step 2: Run it, verify it fails** — `npm run test:e2e:a11y -- venue-map-pan`.
-- [ ] **Step 3: Minimal implementation** — `max-w-[92px] sm:max-w-[128px]` on the rail cell,
-      `min-w-0 max-w-full truncate` on the chip; refresh the canvas doc comment.
-- [ ] **Step 4: Run it, verify it passes** — same command; then the full mocked e2e suite.
-- [ ] **Step 5: Generalization-audit pass.**
-- [ ] **Step 6: Commit** — `git commit -m "Cap the price rail so a long row label never costs tile width (#702)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Write the failing test** — the 390 px spec (two over-cap labels, per the
+      restated AC-7), axe clean; plus the updated 5-chip pin on the wide venue.
+- [x] **Step 2: Run it, verify it fails** —
+      `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts venue-map-pan`
+      → 1 failed: the rail measured **170 px** at 390 px wide, which is the regression this
+      phase exists to prevent; the other 10 (incl. the new 5-chip pin) passed.
+- [x] **Step 3: Minimal implementation** — `max-w-[92px] sm:max-w-[128px]` on the rail cell,
+      `min-w-0 max-w-full truncate` on the chip; the canvas's `priceLabel` contract doc now
+      states the cap, so a caller knows it may pass a phrase.
+- [x] **Step 4: Run it, verify it passes** — same command → 11 passed; then the full unit
+      suite (1508 passed) and the full mocked e2e suite (227 passed; two specs unrelated to
+      this diff — `customer-password.e2e.ts`, `operator-venue.e2e.ts` — failed in the sandbox
+      and are being re-run in isolation, with CI as the arbiter, see F-0).
+- [x] **Step 5: Generalization-audit pass** — logged below.
+- [x] **Step 6: Commit** — `git commit -m "Cap the price rail so a long row label never costs tile width (#702)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -357,6 +367,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | phase 2 — an unbounded venue-authored string now reaches shared chrome | every element in the shared canvas that renders caller-supplied text (rather than a value the canvas itself derives), enumerated from the row contract's fields, not from "the rail" | `grep -n "row\.\|{{" frontend/src/app/shared/beach-map-canvas.html` | 2 — `row.priceLabel` (now a phrase) and `row.code` (the canvas's own `A`/`B`, bounded by `rowCode`); the projected tile row is the surface's own template, not the canvas's | capped `priceLabel` only. `row.code` needs no cap: every producer derives it (`rowCode`, `gridRowLabel`) rather than passing venue text through, so it cannot exceed two characters — noted so the asymmetry reads as a decision, not an oversight |
 | 2026-08-20 | phase 1 — zones now partition on a richer label | every surface that derives `zoneStart` from a comparison (rather than hard-coding `true`), enumerated by the field, not by "the price-zone ones" | `grep -rn "zoneStart" frontend/src --include=*.ts --include=*.html` | 2 comparers — `venue/venue-map.ts` (now on the composed label) and `operator/daily-view-tab.ts` (still `prices[i] !== prices[i-1]`); `set-editor.ts` + `layout-editor.ts` hard-code `true` with a stated reason | tourist comparer only. The Daily view is the same *mechanism* but a different audience: it is a staff surface whose cells already carry pool + state per tile, its rail is deliberately bare prices (the issue's fence), and splitting its zones would be an unasked-for visual change to an operator tool. Recorded rather than silently skipped |
 | 2026-08-20 | phase 0 — a new rule for what a rail chip says | every producer of a `BeachMapCanvasRow.priceLabel` (the string the shared rail renders), enumerated by the field name rather than by "the map-ish components" | `grep -rn "priceLabel" frontend/src --include=*.ts --include=*.html` | 4 producers — `venue/venue-map.ts` (tourist rows), `operator/set-editor.ts`, `operator/layout-editor.ts`, `operator/daily-view-tab.ts` — plus 2 same-named fields that are **not** rail chips (`VenueMap.venueView.priceLabel` and `pages/home`'s card "from €X") | tourist producer only. The three operator producers keep bare prices by the issue's explicit fence, and it reads correctly there: those surfaces paint tier/pool per cell and their operator already knows the layout. The two same-named venue-level fields are out of population — noted so a later reader does not "fix" them for symmetry |
 
@@ -366,7 +377,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 - [ ] **AC-1..AC-6:** `npx vitest run src/app/venue/` → all green.
 - [ ] **AC-7, AC-9:** `npm run test:e2e:a11y -- venue-map-pan` → green.
-- [ ] **AC-8:** `npx vitest run src/app/operator/` → green with no operator spec edited
+- [x] **AC-8:** `npx vitest run src/app/operator/` → green with no operator spec edited
       (`git diff --stat origin/main -- frontend/src/app/operator` is empty).
 
 ## Self-review checklist (before merge / PR)
