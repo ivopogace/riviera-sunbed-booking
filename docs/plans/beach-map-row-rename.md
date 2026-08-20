@@ -280,17 +280,18 @@ surface (AC-10).
 
 ## Execution status
 
-**Stage pointer:** `PR — branch pushed, awaiting the go-ahead to open the draft PR`
+**Stage pointer:** `sonar gate — fixing findings (re-entered at Implement)`
 
-**Next action:** open the draft PR so CI fires (it only runs on the `pull_request` event),
-then the Review and Sonar gates.
+**Next action:** push the F-1/F-2 fixes, wait for the Sonar re-run to go green, then mark
+PR #727 ready for review and run the Review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend inner hexagon (command, outcome, port, service, adapter) | ✅ | *(this commit)* |
 | 1 — REST edge + integration tests | ✅ | *(this commit)* |
 | 2 — Layout-editor per-row rename (Angular) | ✅ | *(this commit)* |
-| 3 — Mocked e2e + substrate docs | ✅ | *(this commit)* |
+| 3 — Mocked e2e + substrate docs | ✅ | `e2f57c7` |
+| 4 — Sonar findings F-1, F-2 | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -300,7 +301,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| *(none yet)* | | | |
+| F-1 | sonar (gate FAILED) | 77.9% coverage on new code, below the 80% bar — 14 uncovered new lines: 11 in `layout-editor.ts` (the six `rowNameErrorMessage` arms, both epoch guards, the re-entrancy guard, `sessionLost`, the token guard) and 3 in `operator-console.service.ts` (`rowNameErrorOf`'s 401, unknown-code and non-HTTP arms). | fixed — 13 of 14 covered by new specs in `layout-editor.spec.ts` + `operator-console.service.spec.ts`; the 14th is the defensive token guard, deliberately kept and commented (the button renders only for a stored row, which implies a loaded token — the same shape the pricing tab documents) |
+| F-2 | sonar (MAJOR code smell, `Web:S6819`) | `layout-editor.html:193` — `<p role="status">` for the saved notice; use `<output>`. | fixed — swapped to `<output>`, which is what the same file's `layout-saved` notice already uses; my markup was the outlier |
 
 ---
 
@@ -325,7 +327,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/operator/operator-console.model.ts` — `RowNameErrorCode`.
 - `frontend/src/app/operator/operator-console.service.ts` — `renameRow` + `rowNameErrorOf`.
 - `frontend/src/app/operator/layout-editor.ts|.html` — the per-row rename control.
-- `frontend/src/app/operator/layout-editor.spec.ts` — AC-8/9/10.
+- `frontend/src/app/operator/layout-editor.spec.ts` — AC-8/9/10 + the F-1 coverage cases.
+- `frontend/src/app/operator/operator-console.service.spec.ts` — F-1: `rowNameErrorOf` coverage.
 - `frontend/src/app/operator/layout-editor.a11y.spec.ts` — axe over the panel.
 - `frontend/e2e/layout-editor.e2e.ts` — AC-8 end-to-end.
 - `RESPONSIBILITIES.md` — §`venue` layout-lock bullet gains the rename.

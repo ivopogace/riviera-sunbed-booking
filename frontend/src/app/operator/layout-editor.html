@@ -190,13 +190,12 @@
                   }
                 </div>
                 @if (renamedRow() === y) {
-                  <p
-                    class="ml-8 text-[12.5px] font-semibold text-(--riv-card-ink-soft)"
-                    role="status"
+                  <output
+                    class="ml-8 block text-[12.5px] font-semibold text-(--riv-card-ink-soft)"
                     data-testid="layout-row-name-saved"
                   >
                     Row name saved.
-                  </p>
+                  </output>
                 }
                 @if (rowNameError(); as failure) {
                   @if (failure.y === y) {

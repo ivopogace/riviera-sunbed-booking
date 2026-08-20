@@ -19,6 +19,7 @@ import {
   checkInErrorOf,
   checkInWrongDateOf,
   setWriteErrorOf,
+  rowNameErrorOf,
 } from './operator-console.service';
 
 const BASE = environment.apiBaseUrl;
@@ -361,6 +362,35 @@ describe('OperatorConsoleService — per-set beach-map writes (#600)', () => {
  * The per-set write error mapper (#600). `SET_IN_USE` is the #567/#599 claim guard — the one code
  * the panel explains in its own words, because it is the ordinary outcome on a live venue, not a fault.
  */
+describe('rowNameErrorOf (#726)', () => {
+  function problem(status: number, code?: string): HttpErrorResponse {
+    return new HttpErrorResponse({ status, error: code ? { code } : null });
+  }
+
+  it('maps 401 to UNAUTHORIZED before reading the body', () => {
+    expect(rowNameErrorOf(problem(401, 'ROW_NAME_TAKEN'))).toBe('UNAUTHORIZED');
+  });
+
+  it('passes through every code the Row names panel explains', () => {
+    for (const code of [
+      'ROW_NAME_TAKEN',
+      'STALE_WRITE',
+      'NO_SUCH_ROW',
+      'NO_SUCH_VENUE',
+      'NOT_VENUE_OWNER',
+      'INVALID_REQUEST',
+    ]) {
+      expect(rowNameErrorOf(problem(409, code))).toBe(code);
+    }
+  });
+
+  it('maps an unknown code and a non-HTTP failure to UNKNOWN', () => {
+    expect(rowNameErrorOf(problem(500, 'SOMETHING_ELSE'))).toBe('UNKNOWN');
+    expect(rowNameErrorOf(problem(500))).toBe('UNKNOWN');
+    expect(rowNameErrorOf(new Error('offline'))).toBe('UNKNOWN');
+  });
+});
+
 describe('setWriteErrorOf (#600)', () => {
   function problem(status: number, code?: string): HttpErrorResponse {
     return new HttpErrorResponse({ status, error: code ? { code } : null });

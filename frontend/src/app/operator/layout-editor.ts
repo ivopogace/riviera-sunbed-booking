@@ -399,7 +399,7 @@ export class LayoutEditor {
     const to = this.effectiveRowNames()[y];
     const expectedVersion = this.loadedSetVersion();
     if (venueId === undefined || from === undefined || expectedVersion === null) {
-      return;
+      return; // defensive: the button renders only for a stored row, which implies a loaded token
     }
     if (this.renamingRow() !== null) {
       return; // one rename at a time: the shared token cannot admit two concurrent writes

@@ -505,6 +505,124 @@ describe('LayoutEditor (#172)', () => {
     expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
   });
 
+  it('explains every rename failure the panel can receive (#726)', async () => {
+    // One case per rowNameErrorMessage arm: an unexplained code falls back to generic copy.
+    const cases: [string, string][] = [
+      ['ROW_NAME_TAKEN', 'Another row already has that name'],
+      ['NO_SUCH_ROW', 'no longer exists'],
+      ['NOT_VENUE_OWNER', 'do not manage this venue'],
+      ['NO_SUCH_VENUE', 'could not be found'],
+      ['INVALID_REQUEST', 'up to 40 characters'],
+      ['WHAT_IS_THIS', 'Something went wrong'],
+    ];
+    for (const [code, expected] of cases) {
+      renderSaved();
+      setRowName(1, 'Back row');
+      rowNameSaves()[1].click();
+      http
+        .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+        .flush({ code }, { status: 409, statusText: 'Conflict' });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(byId('layout-row-name-write-error').textContent).toContain(expected);
+      http.verify();
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('signs the operator out when a rename comes back 401 (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('layout-row-name-write-error').textContent).toContain('session has expired');
+  });
+
+  it('ignores a rename that a venue switch superseded (#726, #180)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
+    );
+
+    // A venue switch mid-flight: the rename's outcome must not land on the new venue's editor.
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({
+        id: 2,
+        name: 'W',
+        sets: [],
+        setVersion: 0,
+      });
+    req.flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="layout-row-name-saved"]')).toBeNull();
+  });
+
+  it('drops a superseded rename failure after a venue switch too (#726, #180)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
+    );
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({
+        id: 2,
+        name: 'W',
+        sets: [],
+        setVersion: 0,
+      });
+    req.flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
+  });
+
+  it('ignores a second rename while one is already in flight (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
+    );
+
+    // The shared token cannot admit two concurrent writes, so the second click is dropped.
+    rowNameSaves()[0].click();
+    http.expectNone((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/A/name'));
+
+    req.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('does not rename a row when the map read never yielded a token (#726)', () => {
+    renderWithFailedLoad();
+
+    // No setVersion and no stored rows: the same guard seen from both sides.
+    expect(rowNameSaves()).toHaveLength(0);
+    http.expectNone((r) => r.method === 'PUT');
+  });
+
   it('offers no per-row rename on a grid that was never saved (#726)', () => {
     render();
     generate('2', '2');
