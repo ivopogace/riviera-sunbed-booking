@@ -53,7 +53,14 @@ existing behavior riding on the label string, so enriching the label silently re
 the zones; that became AC-4 rather than a surprise at review) · `tdd` (each phase red
 first: the label-rule spec before the function, the re-partitioned zone spec before the
 wiring, the 390 px geometry pin before the CSS cap) · `riviera-review-overlay` (review
-gate — <ran at ready-for-review>) · `riviera-docs-freshness` (<ran over range, findings>)
+gate — **ran** at ready-for-review, layered on `/code-review` at high effort over
+`origin/main...HEAD` after the maintainer authorized the subagent fan-out — this session
+carries a standing "no Agent tool unless asked" instruction, which `pr-gates.md` §1 says to
+resolve by asking, not by skipping. 2 findings, 1 fixed and 1 answered; the overlay's own
+RV-FE bank walked on top: RV-FE-3 money-from-the-wire, RV-FE-5 picker a11y, RV-FE-7 Tailwind +
+no-drift, RV-FE-E2E suite placement, RV-FE-8 no new cross-feature import, RV-STYLE-1/2 and
+RV-PROC-1 — the fix round pulled in no new area, so this line is unchanged apart from this
+parenthesis) · `riviera-docs-freshness` (<ran over range, findings>)
 · `riviera-frontend` (placement: the rule is tourist-map vocabulary with exactly one
 consumer, so it colocates flat in the `venue/` feature next to `map-tile.ts` — **not**
 `shared/`, which no second feature needs; the rail's CSS cap *is* shared chrome, so it
@@ -118,7 +125,7 @@ addendum). Cut fresh from `origin/main` at `b19ece2`.
       in a zone of its own (#689)'`
 - [x] **AC-6:** Given the rendered map, when a screen reader reads it, then the price rail
       is still `aria-hidden` and every tile's accessible name is **byte-identical** to
-      `main`'s (`Set A1, Front row · Sea view, front row, €45, available`) — the new words
+      `main`'s (`Set A1, Front row · Sea view, front row, €45, taken` — A1 is the fixture's taken seat) — the new words
       are announced nowhere. *Pinned by:* `venue-map.spec.ts › 'keeps the enriched rail
       decorative — tile names are unchanged (#702)'`
 - [x] **AC-7:** Given two venues whose front-row labels both exceed the rail's cap (18 and
@@ -263,16 +270,17 @@ served by `GET /api/venues/{id}` and consumed by this component today.
 > **This section is the session-recovery anchor.** Everything a resuming session needs
 > lives HERE, committed — never only in the conversation.
 
-**Stage pointer:** `implement — all three phases done; PR #722 ready-for-review next`
+**Stage pointer:** `review gate — ran; F-1 fixed, F-2 answered; re-review + sonar gate next`
 
-**Next action:** Mark PR #722 ready for review, then run the review gate
-(`riviera-sdlc` `references/pr-gates.md` §1) and pull the Sonar issue list (§2).
+**Next action:** Re-run `/code-review` over the fix commit, then pull PR #722's Sonar
+issue list from the API (a green gate is not the check) and close out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the label rule (pure) | ✅ | `116442f` |
 | 1 — wire it into the tourist map + re-partitioned zones | ✅ | `b7c4b87` |
-| 2 — rail truncation cap + e2e pins | ✅ | this commit |
+| 2 — rail truncation cap + e2e pins | ✅ | `c6e5748` |
+| review gate — F-1 fixed, F-2 answered | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -282,6 +290,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate | `POSITIONAL_SEGMENT` only knew the **English** word `row`, so an Albanian-riviera venue's own label (`Rreshti 4 · Prapa`) chipped `€30 · Rreshti 4` — restating the position the left rail already shows and dropping the word that carried the meaning | fixed-in-`this commit`: the leading word is now matched, never named (`/^(\p{L}+\s+)?(\p{L}{1,2}\|\d{1,3})$/u`), pinned by `row-price-label.spec.ts › 'reads a positional segment in the venue's own language, not just English'`; the two-word-name guard (`Sea view`, `2nd row`) is pinned beside it |
+| F-2 | review gate | A row painted with **mixed** pools renders a bare span (`€25–€30`) with no channel note, so the rail advertises a price only walk-in sets carry | **no change, by decision.** It is the rendering `main` already had (the qualifier is withheld precisely because "at venue" would be false for the row's online half), the per-tile truth is unaffected — those sets keep the #701 hatch and the "walk-in only — book at the venue" accessible name — and a mixed row that has any words of its own still gets them (`€25–€30 · Back`). Inventing a "some at venue" state would add copy and a fourth qualifier branch for a layout the editor permits but no venue has painted; if one ever does, that is its own slice |
+| F-3 | review gate (nit) | Plan AC-6 quoted the pinned tile name ending `…, €45, available`; the shipped assertion ends `…, €45, taken` (A1 is the fixture's taken seat) | fixed-in-`this commit` — doc text only |
 | F-0 | local e2e run (phase 2) | `customer-password.e2e.ts` + `operator-venue.e2e.ts` failed in the sandbox's full-suite run; both are sign-in-heavy flows this diff does not touch (no operator or auth file changed, and the shared cap only bounds a rail cell's width) | **not a defect** — both green in isolation (10 passed, 40s) against this same HEAD; the sandbox's 9.4-minute single-worker full run is the variable, not the diff. CI on PR #722 re-runs the same suite |
 
 ---
@@ -367,6 +378,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | review F-1 — an English literal was deciding what venue-authored text means | every frontend site that **parses** a venue-authored `rowLabel` (as opposed to rendering or grouping by it), enumerated from the field rather than from "the map files" | `grep -rn "rowLabel" frontend/src --include=*.ts \| grep -v spec` | 1 parser — `venue/row-price-label.ts`; the other 30 sites render it verbatim (booking dialog, confirmations, my-bookings, operator labels) or key a map by it (`shared/availability-grid.ts`, `venue-map.ts`), and are language-agnostic already | the parser only. Worth stating: the fix's value is that the **only** place that reads meaning out of venue prose no longer assumes English — the verbatim renderers never did |
 | 2026-08-20 | phase 2 — an unbounded venue-authored string now reaches shared chrome | every element in the shared canvas that renders caller-supplied text (rather than a value the canvas itself derives), enumerated from the row contract's fields, not from "the rail" | `grep -n "row\.\|{{" frontend/src/app/shared/beach-map-canvas.html` | 2 — `row.priceLabel` (now a phrase) and `row.code` (the canvas's own `A`/`B`, bounded by `rowCode`); the projected tile row is the surface's own template, not the canvas's | capped `priceLabel` only. `row.code` needs no cap: every producer derives it (`rowCode`, `gridRowLabel`) rather than passing venue text through, so it cannot exceed two characters — noted so the asymmetry reads as a decision, not an oversight |
 | 2026-08-20 | phase 1 — zones now partition on a richer label | every surface that derives `zoneStart` from a comparison (rather than hard-coding `true`), enumerated by the field, not by "the price-zone ones" | `grep -rn "zoneStart" frontend/src --include=*.ts --include=*.html` | 2 comparers — `venue/venue-map.ts` (now on the composed label) and `operator/daily-view-tab.ts` (still `prices[i] !== prices[i-1]`); `set-editor.ts` + `layout-editor.ts` hard-code `true` with a stated reason | tourist comparer only. The Daily view is the same *mechanism* but a different audience: it is a staff surface whose cells already carry pool + state per tile, its rail is deliberately bare prices (the issue's fence), and splitting its zones would be an unasked-for visual change to an operator tool. Recorded rather than silently skipped |
 | 2026-08-20 | phase 0 — a new rule for what a rail chip says | every producer of a `BeachMapCanvasRow.priceLabel` (the string the shared rail renders), enumerated by the field name rather than by "the map-ish components" | `grep -rn "priceLabel" frontend/src --include=*.ts --include=*.html` | 4 producers — `venue/venue-map.ts` (tourist rows), `operator/set-editor.ts`, `operator/layout-editor.ts`, `operator/daily-view-tab.ts` — plus 2 same-named fields that are **not** rail chips (`VenueMap.venueView.priceLabel` and `pages/home`'s card "from €X") | tourist producer only. The three operator producers keep bare prices by the issue's explicit fence, and it reads correctly there: those surfaces paint tier/pool per cell and their operator already knows the layout. The two same-named venue-level fields are out of population — noted so a later reader does not "fix" them for symmetry |

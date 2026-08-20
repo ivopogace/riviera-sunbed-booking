@@ -57,10 +57,20 @@ describe('rowPriceLabel', () => {
     expect(rowPriceLabel(row('Row 12', 'STANDARD', 'ONLINE', 3500))).toBe('€35');
   });
 
+  it("reads a positional segment in the venue's own language, not just English", () => {
+    // "Rreshti 4" restates the position exactly as "Row 4" does; "Prapa" carries the meaning.
+    expect(rowPriceLabel(row('Rreshti 4 · Prapa', 'STANDARD', 'ONLINE', 3000))).toBe('€30 · Prapa');
+    expect(rowPriceLabel(row('Fila B', 'STANDARD', 'ONLINE', 3000))).toBe('€30');
+    expect(rowPriceLabel(row('Rreshti 1', 'PREMIUM', 'ONLINE', 5000))).toBe('€50 · Front row');
+  });
+
   it('keeps a short word that only looks positional', () => {
     // Three letters is a word, not a row ordinal — the pattern must not eat it.
     expect(rowPriceLabel(row('VIP', 'STANDARD', 'ONLINE', 4500))).toBe('€45 · VIP');
     expect(rowPriceLabel(row('Row 3 · Bar', 'STANDARD', 'ONLINE', 4500))).toBe('€45 · Bar');
+    // Two words are a name, however short the second: only a bare code or ordinal is positional.
+    expect(rowPriceLabel(row('Sea view', 'STANDARD', 'ONLINE', 4500))).toBe('€45 · Sea view');
+    expect(rowPriceLabel(row('2nd row · Back', 'STANDARD', 'ONLINE', 4500))).toBe('€45 · 2nd row');
   });
 
   it('states the at-venue channel for a walk-in row, price retained', () => {

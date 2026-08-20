@@ -4,11 +4,14 @@ import { SetView } from '../shared/venue-views';
 
 /**
  * A label segment that only restates where the row sits — a bare code (`A`, `AA`, matching
- * {@link rowCode}'s own shape) or an ordinal (`4`, `Row 4`, `Row 12`). Those words say nothing the
- * left rail's row chip does not already say, so the chip skips them. Deliberately narrow: it
- * matches one or two letters, never three, so real short words (`VIP`, `Bar`, `Spa`) always survive.
+ * {@link rowCode}'s own shape) or an ordinal, alone or after one word of any language:
+ * `4`, `Row 4`, `Rreshti 4`, `Fila B`. Those say nothing the left rail's row chip does not already
+ * say, so the chip skips them. The leading word is matched, never named: hard-coding `row` would
+ * read only the English half of an Albanian-riviera venue's own labels. Deliberately narrow
+ * otherwise — the code is one or two letters, never three, so real short words (`VIP`, `Bar`,
+ * `Spa`) survive, as does any two-word name whose second word is a word (`Sea view`).
  */
-const POSITIONAL_SEGMENT = /^(row\s+)?([a-z]{1,2}|\d{1,3})$/i;
+const POSITIONAL_SEGMENT = /^(\p{L}+\s+)?(\p{L}{1,2}|\d{1,3})$/u;
 
 /** The separator the venue's own row labels compose with ("Front row · Sea view"), and the chip's. */
 const SEPARATOR = '·';
