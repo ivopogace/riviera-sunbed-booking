@@ -378,6 +378,51 @@ describe('VenueMap', () => {
     expect(legend.querySelectorAll('li').length).toBe(4); // Available · Front row · Walk-in · Taken
   });
 
+  it('renders the legend inside the map card, above the tile grid (#701)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const legends = el().querySelectorAll('ul[aria-label="Legend"]');
+    expect(legends.length).toBe(1);
+
+    const legend = legends[0];
+    const card = el().querySelector('[data-testid="beach-grid"]')!;
+    expect(card.contains(legend)).toBe(true);
+
+    const firstTile = el().querySelector('[data-testid="set-tile"]')!;
+    // Node.DOCUMENT_POSITION_FOLLOWING: the tile comes after the legend, so colours decode first.
+    expect(legend.compareDocumentPosition(firstTile) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('gives every legend swatch the state of the tile it stands for (#701)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const swatches = [...el().querySelectorAll('ul[aria-label="Legend"] [data-state]')];
+    expect(swatches.map((s) => s.getAttribute('data-state'))).toEqual([
+      'available',
+      'premium',
+      'walkin',
+      'taken',
+    ]);
+  });
+
+  it('renders a free walk-in tile hatched and a taken one as the ghost (#701)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    // A bookable tile carries its name on the inner button, a static one on the `<li>` itself.
+    const stateOf = (seat: string): string | null => {
+      const named = `[aria-label^="Set ${seat},"]`;
+      const tile = [...el().querySelectorAll('.set-tile')].find(
+        (t) => t.matches(named) || t.querySelector(named) !== null,
+      );
+      return tile!.getAttribute('data-state');
+    };
+    expect(stateOf('D1')).toBe('walkin');
+    expect(stateOf('D4')).toBe('taken');
+    expect(stateOf('A2')).toBe('premium');
+  });
+
   it('keeps the bookable button accessible name ending in "Select to book"', async () => {
     flushVenue();
     await fixture.whenStable();

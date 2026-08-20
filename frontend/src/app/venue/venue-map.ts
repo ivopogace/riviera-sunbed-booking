@@ -9,6 +9,7 @@ import { AmenityChip } from '../shared/amenity-chip';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { CardGlass } from '../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
+import { MapTile, MapTileState, mapTileState } from './map-tile';
 import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
 import { focusMover } from '../shared/focus-after-render';
 import { formatBookingDate } from '../shared/booking-date-label';
@@ -30,12 +31,14 @@ import { TouchTarget } from '../shared/touch-target';
  * (`A1`, `B7`), whether it is bookable (invariant #3), and its accessible name (state
  * carried by text, not colour — WCAG AA).
  */
-interface MapTile {
+interface TileView {
   readonly set: SetView;
   readonly seat: string;
   readonly bookable: boolean;
   /** True for a FREE walk-in-pool set: rendered distinctly and named "walk-in only" (#672). */
   readonly walkInOnly: boolean;
+  /** How the tile looks — the appearance `[appMapTile]` and the legend swatches both read. */
+  readonly state: MapTileState;
   /** Accessible name for a non-interactive tile (`<li>`). */
   readonly name: string;
   /** Accessible name for the bookable button (adds the "Select to book" affordance). */
@@ -44,7 +47,7 @@ interface MapTile {
 
 /** One row of the map: the shared canvas's row contract plus this surface's tiles. */
 interface MapRow extends BeachMapCanvasRow {
-  readonly tiles: readonly MapTile[];
+  readonly tiles: readonly TileView[];
 }
 
 /**
@@ -117,6 +120,7 @@ export function rowCode(index: number): string {
     TouchTarget,
     BeachMapCanvas,
     BeachMapRowDef,
+    MapTile,
     ...FAILURE_DIRECTIVES,
   ],
   templateUrl: './venue-map.html',
@@ -126,6 +130,14 @@ export function rowCode(index: number): string {
   },
 })
 export class VenueMap {
+  /** The tile state as the accessible name says it — colour is never the only carrier. */
+  private static readonly STATE_PHRASE: Record<MapTileState, string> = {
+    available: 'available',
+    premium: 'available',
+    walkin: 'walk-in only — book at the venue',
+    taken: 'taken',
+  };
+
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);
   private readonly router = inject(Router);
@@ -267,19 +279,14 @@ export class VenueMap {
   }
 
   /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */
-  private toTile(set: SetView, code: string, descriptiveLabel: string): MapTile {
+  private toTile(set: SetView, code: string, descriptiveLabel: string): TileView {
     const tier = tierSentenceLabel(set.tier);
-    const walkInOnly = set.availability === 'FREE' && set.pool === 'WALK_IN';
-    let state = 'available';
-    if (set.availability === 'TAKEN') {
-      state = 'taken';
-    } else if (walkInOnly) {
-      state = 'walk-in only — book at the venue';
-    }
+    const state = mapTileState(set);
+    const walkInOnly = state === 'walkin';
     const seat = `${code}${set.positionNo}`;
     const bookable = set.availability === 'FREE' && set.pool === 'ONLINE';
-    const name = `Set ${seat}, ${descriptiveLabel}, ${tier}, ${this.money(set.price)}, ${state}`;
-    return { set, seat, bookable, walkInOnly, name, bookName: `${name}. Select to book.` };
+    const name = `Set ${seat}, ${descriptiveLabel}, ${tier}, ${this.money(set.price)}, ${VenueMap.STATE_PHRASE[state]}`;
+    return { set, seat, bookable, walkInOnly, state, name, bookName: `${name}. Select to book.` };
   }
 
   /** Fetch the map for the currently selected date. */
