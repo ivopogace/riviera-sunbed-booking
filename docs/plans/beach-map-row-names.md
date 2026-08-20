@@ -55,19 +55,20 @@ in for `feature/beach-map-row-names` (riviera-sdlc cloud addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a layout write containing a set whose `rowLabel` exceeds 40
+- [x] **AC-1:** Given a layout write containing a set whose `rowLabel` exceeds 40
   characters (code points), when the request is parsed into `SetCommand`, then it is
   rejected with `IllegalArgumentException` → `400 INVALID_REQUEST` at the edge.
-  *Pinned by:* `SetCommandTest.rejectsRowLabelOverLengthBound` and
-  `VenueAdminControllerIT.overlongRowLabelIs400`.
-- [ ] **AC-2:** Given a 40-character `rowLabel` (Unicode, containing `·`), when the
+  *Pinned by:* `SetCommandTest.rejectsARowLabelOverTheLengthBound` and
+  `BeachMapReplaceIT.overlongRowLabelIs400` (placed with the replace helpers, not
+  `VenueAdminControllerIT` as first planned).
+- [x] **AC-2:** Given a 40-character `rowLabel` (Unicode, containing `·`), when the
   layout is replaced, then the label round-trips unchanged to the venue map read
-  (`SetView.rowLabel`). *Pinned by:* `SetCommandTest.acceptsRowLabelAtLengthBound` +
-  `BeachMapReplaceIT` (descriptive-label round-trip assert).
-- [ ] **AC-3:** Given a direct SQL `INSERT` bypassing the application with
+  (`SetView.rowLabel`). *Pinned by:* `SetCommandTest.acceptsARowLabelAtTheLengthBound` +
+  `BeachMapReplaceIT.descriptiveRowLabelRoundTrips`.
+- [x] **AC-3:** Given a direct SQL `INSERT` bypassing the application with
   `char_length(row_label) > 40`, then the database rejects it via
   `set_position_row_label_check`. *Pinned by:*
-  `BeachMapLayoutMigrationIT.rowLabelLengthCheckRejectsOverlongLabel`.
+  `BeachMapLayoutMigrationIT.rejectsAnOverlongRowLabel`.
 - [ ] **AC-4:** Given a generated grid in the bulk editor, when the operator names row 1
   "Under the pines" and saves, then the PUT body carries `rowLabel: "Under the pines"`
   for that row's sets and the untouched rows keep their grid letters. *Pinned by:*
@@ -224,15 +225,14 @@ column instead of mutating the shared rail.
 > **This section is the session-recovery anchor.** Re-read it plus the current stage's
 > `riviera-sdlc` reference file after any compaction, before acting.
 
-**Stage pointer:** plan committed — next: implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** open the draft PR for `claude/sdlc-723-g3r3rc`, then phase 1 red test
-(`SetCommandTest`).
+**Next action:** phase 2 red test — `SmtpMailerIT` descriptive-label spot line.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + draft PR | ⏳ | |
-| 1 — backend length bound (V43 + `SetCommand` + tests) | | |
+| 0 — plan doc + draft PR | ✅ | `d8bf530`, PR #725 (draft) |
+| 1 — backend length bound (V43 + `SetCommand` + tests) | ✅ | see phase-1 commit |
 | 2 — mail spot line (`SmtpMailer`) | | |
 | 3 — layout-editor row names (FE state + UI + specs) | | |
 | 4 — set-editor inheritance + e2e | | |
@@ -358,6 +358,7 @@ Modify `VenueFieldValidation.java`, `SetCommand.java`, `VenueAdminControllerIT.j
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-20 | phase 1 (length bound) | every backend site handling `rowLabel`/`row_label` | `grep -rln "rowLabel\|row_label" platform/src/main/java --include="*.java"` + same over `src/main/resources` | 31 Java files + 4 migrations | Only write funnel is `SetCommand` (bulk replace, per-set add/edit all construct it) — bounded there. `RowPriceCommand`'s label is a lookup key, never persisted: an overlong key matches no row → typed `NO_SUCH_ROW`; no bound added. All other sites read/display. Migrations: V3 seed max 20 chars < 40, verified by `BeachMapLayoutMigrationIT`. |
 
 ---
 

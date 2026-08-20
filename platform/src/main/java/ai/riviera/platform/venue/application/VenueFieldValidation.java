@@ -27,6 +27,8 @@ final class VenueFieldValidation {
 			Arrays.stream(BookingMode.values()).map(Enum::name).collect(Collectors.toUnmodifiableSet());
 	/** Commission bps upper bound (100%), mirroring the {@code venue_commission_bps_check} CHECK. */
 	static final int MAX_BPS = 10_000;
+	/** Row-label bound in code points, mirroring the V43 {@code set_position_row_label_check} CHECK. */
+	static final int MAX_ROW_LABEL_LENGTH = 40;
 
 	private VenueFieldValidation() {
 	}
@@ -34,6 +36,14 @@ final class VenueFieldValidation {
 	static void requireText(String value, String field) {
 		if (value == null || value.isBlank()) {
 			throw new IllegalArgumentException(field + " is required");
+		}
+	}
+
+	/** Bounded variant; code points match Postgres {@code char_length}, so the CHECK never fires first. */
+	static void requireText(String value, String field, int maxLength) {
+		requireText(value, field);
+		if (value.codePointCount(0, value.length()) > maxLength) {
+			throw new IllegalArgumentException(field + " must be at most " + maxLength + " characters");
 		}
 	}
 
