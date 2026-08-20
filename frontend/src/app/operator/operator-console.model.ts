@@ -98,6 +98,22 @@ export type RepriceErrorCode =
   | 'UNKNOWN';
 
 /**
+ * A known per-row rename failure, mapped from the RFC-7807 `code` for operator-facing copy.
+ * `ROW_NAME_TAKEN` is the rename's own 409 — another row already carries the requested label, which
+ * would merge the two wherever sets are grouped by label; `STALE_WRITE` is the venue-level 409 the
+ * editor's reload banner owns, not a per-row error.
+ */
+export type RowNameErrorCode =
+  | 'NOT_VENUE_OWNER'
+  | 'NO_SUCH_ROW'
+  | 'NO_SUCH_VENUE'
+  | 'INVALID_REQUEST'
+  | 'ROW_NAME_TAKEN'
+  | 'STALE_WRITE'
+  | 'UNAUTHORIZED'
+  | 'UNKNOWN';
+
+/**
  * One booking in the Daily view's arrivals list (`GET /api/venues/{id}/bookings?date`) — which set
  * it holds, its arrival code, and its `status`: `CONFIRMED` (expected), `COMPLETED` (scanned in) or
  * `NO_SHOW` (the service day passed unscanned), so a past day still lists who was booked. The code

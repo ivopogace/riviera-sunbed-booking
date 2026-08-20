@@ -411,6 +411,110 @@ describe('LayoutEditor (#172)', () => {
     expect(rowNameInputs().map((i) => i.value)).toEqual(['A', 'B']);
   });
 
+  function rowNameSaves(): HTMLButtonElement[] {
+    return Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[data-testid="layout-row-name-save"]'),
+    );
+  }
+
+  /** A trading venue: two saved rows, so the bulk save is locked but each row is renameable. */
+  function renderSaved(): void {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A'), seat(2, 'STANDARD', 'ONLINE', 1, 2, 'B')], 3);
+    useBulkMode();
+  }
+
+  it('saves one row’s name without the bulk save (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
+    );
+    expect(req.request.body).toEqual({ newLabel: 'Back row', expectedVersion: 3 });
+    req.flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('layout-row-name-saved')).toBeTruthy();
+    // The write bumped set_version, so a follow-up rename must not carry the spent token.
+    setRowName(0, 'Front row');
+    rowNameSaves()[0].click();
+    const next = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/A/name'),
+    );
+    expect(next.request.body).toEqual({ newLabel: 'Front row', expectedVersion: 4 });
+    next.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('renames the row the URL names even after the draft changed twice (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back');
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+
+    // The path carries the STORED label, never the draft — otherwise the second save 404s.
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    setRowName(1, 'Back terrace');
+    rowNameSaves()[1].click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/Back%20row/name'),
+    );
+    req.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('surfaces a taken row name against the row that asked, keeping the draft (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'A');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('layout-row-name-write-error').textContent).toContain('name');
+    // The typed draft survives so the operator can correct it rather than retype from scratch.
+    expect(rowNameInputs()[1].value).toBe('A');
+    // A per-row conflict is not the venue-level stale banner.
+    expect(host.querySelector('[data-testid="layout-stale-banner"]')).toBeNull();
+  });
+
+  it('routes a stale rename into the reload banner, not the row error (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('layout-stale-banner')).toBeTruthy();
+    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
+  });
+
+  it('offers no per-row rename on a grid that was never saved (#726)', () => {
+    render();
+    generate('2', '2');
+
+    setRowName(0, 'Pines');
+
+    // Nothing is stored yet, so there is no row to rename — the bulk save creates these labels.
+    expect(rowNameSaves()).toHaveLength(0);
+  });
+
   it('drops the shared console snapshot after a successful save (#486 AC-4)', async () => {
     // The PUT retires the sets the shell's warm snapshot describes, so leaving it stales both tabs.
     render();

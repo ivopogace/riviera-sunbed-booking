@@ -19,6 +19,7 @@ import {
   PendingRequestItem,
   ReleaseErrorCode,
   RepriceErrorCode,
+  RowNameErrorCode,
   RequestDecision,
   RequestErrorCode,
   SetDayState,
@@ -160,6 +161,24 @@ export class OperatorConsoleService {
     return this.http.put<void>(
       `${this.base}/api/venues/${venueId}/rows/${encodeURIComponent(rowLabel)}/price`,
       { price, expectedVersion },
+    );
+  }
+
+  /**
+   * Rename one beach-map row — a display-only write the layout locks cannot reach, so it keeps
+   * working on a venue that has already sold. `rowLabel` is the label currently STORED for the row
+   * (the draft the operator typed is `newLabel`), and `expectedVersion` is the same `setVersion`
+   * token the reprice and the bulk replace share.
+   */
+  renameRow(
+    venueId: number,
+    rowLabel: string,
+    newLabel: string,
+    expectedVersion: number,
+  ): Observable<void> {
+    return this.http.put<void>(
+      `${this.base}/api/venues/${venueId}/rows/${encodeURIComponent(rowLabel)}/name`,
+      { newLabel, expectedVersion },
     );
   }
 
@@ -406,6 +425,28 @@ export function repriceErrorOf(error: unknown): RepriceErrorCode {
       case 'NO_SUCH_ROW':
       case 'NO_SUCH_VENUE':
       case 'INVALID_REQUEST':
+      case 'STALE_WRITE':
+        return code;
+      default:
+        return 'UNKNOWN';
+    }
+  }
+  return 'UNKNOWN';
+}
+
+/** Map an HTTP failure of the per-row rename to a known {@link RowNameErrorCode} (RFC-7807 `code`). */
+export function rowNameErrorOf(error: unknown): RowNameErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'NOT_VENUE_OWNER':
+      case 'NO_SUCH_ROW':
+      case 'NO_SUCH_VENUE':
+      case 'INVALID_REQUEST':
+      case 'ROW_NAME_TAKEN':
       case 'STALE_WRITE':
         return code;
       default:

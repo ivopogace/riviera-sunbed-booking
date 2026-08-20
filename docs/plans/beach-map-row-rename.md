@@ -145,7 +145,7 @@ existing draft-and-bulk-save behavior and **gains** a per-row control beside it.
 | R-3 | Probe-then-write race: `addSet` does not take the venue row lock, so it can insert a set carrying the target label between the duplicate probe and the `UPDATE`, and `set_position_cell_uniq` then surfaces as a `500` rather than the honest `409`. | low | low | **Accepted, mirroring the existing posture** — `addSet` itself probes with `findConflict` then relies on the same constraint as "the hard backstop" (`EditBeachMap` javadoc). Both writers are the same operator's console on the same venue; the window is one statement wide. If it ever bites, the fix is to map `DuplicateKeyException` to `ROW_NAME_TAKEN` in the adapter — noted here so a future session doesn't re-derive it. | plan author | accepted |
 | R-4 | The rename shares `set_version` with the reprice and the bulk replace, so a rename racing either loses the optimistic race. | med | low | Intended: the shared token is what stops a replace and a rename off the same value from both winning. `set_version` is advanced **only** after a successful rename, so a rejected one leaves the acting tab's next write valid. Pinned by AC-4/AC-5. | plan author | closed — `VenueRowRenameIT.refusesAStaleRename` green |
 | R-5 | Per-venue authorization (BOLA, invariant #13) — a new `/api/venues/{venueId}/**` surface. | low | high | `ownership.assertOwns` is the **first** statement of `VenueAdminService#renameRow`, before `venueExists` and before any read, exactly as the other five beach-map writes do; the controller performs no check of its own. Pinned by AC-6 + `CrossVenueDenialIT`. | plan author | closed — `VenueRowRenameIT` + `CrossVenueDenialIT.rowRenameByNonOwnerIs403` green |
-| R-6 | WCAG 2.4.3 stranded focus: a per-row save button disabled by the flag its own click sets blurs to `<body>` for the whole request — the guard's BUSY-1 shape, red in CI via `scripts/check-focus-posture.mjs`. | med | med | Use `[appBusy]="savingRow() === y"` (`shared/busy-action.ts`), never `[disabled]`; it announces `aria-disabled` and consumes the activating click without moving focus. The row-name `<input>` keeps its draft-only `(input)` handler, so BUSY-2 does not apply. | plan author | open |
+| R-6 | WCAG 2.4.3 stranded focus: a per-row save button disabled by the flag its own click sets blurs to `<body>` for the whole request — the guard's BUSY-1 shape, red in CI via `scripts/check-focus-posture.mjs`. | med | med | Use `[appBusy]="savingRow() === y"` (`shared/busy-action.ts`), never `[disabled]`; it announces `aria-disabled` and consumes the activating click without moving focus. The row-name `<input>` keeps its draft-only `(input)` handler, so BUSY-2 does not apply. | plan author | closed — `check-focus-posture.mjs --diff origin/main` clean |
 | R-7 | The Row names panel renders only in the layout tab's **bulk** branch (`@else` of `@if (mode() === 'sets')`), and a trading venue defaults to `sets` mode — so the rename could read as unreachable. | med | low | The mode toggle itself is free; only the bulk **Save** is refused. Bulk mode seeds `rowNames` from the loaded sets, so the panel shows real current names. Copy in the panel names the per-row save as the way to rename on a locked venue; AC-8's e2e drives exactly that path (locked venue → toggle → rename → 204). | plan author | open |
 
 ## Open questions / Assumptions
@@ -274,17 +274,16 @@ surface (AC-10).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — the layout tab's per-row rename control, red-first in
-`layout-editor.spec.ts`.
+**Next action:** Phase 3 — the mocked e2e spec, then patch `RESPONSIBILITIES.md` §`venue`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend inner hexagon (command, outcome, port, service, adapter) | ✅ | *(this commit)* |
 | 1 — REST edge + integration tests | ✅ | *(this commit)* |
-| 2 — Layout-editor per-row rename (Angular) | ⏳ | |
-| 3 — Mocked e2e + substrate docs | | |
+| 2 — Layout-editor per-row rename (Angular) | ✅ | *(this commit)* |
+| 3 — Mocked e2e + substrate docs | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -395,8 +394,15 @@ Skill-routing gate for what the fix touches *before* editing).
 - [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/operator/layout-editor.spec.ts` → FAIL.
 - [ ] **Step 3: Minimal implementation** — the service method, the error-code union and
   mapper, the four signals, `renameRow(y)`, and the button (`[appBusy]`, `[appTouchTarget]`,
-  an `aria-label` naming the row, `data-testid="layout-row-name-save"`) shown only when the
-  row has a stored label and the draft differs from it.
+  an `aria-label` naming the row, `data-testid="layout-row-name-save"`) shown whenever the row
+  has a stored label.
+
+> **Found during execution:** the button could not go inside the existing `<label>` — a
+> `<button>` is a labelable element, so a label containing one may label the button instead of
+> the row-name input. The row is now a flex `<div>` wrapping the `<label>` (input only) and the
+> button as siblings; the new axe case in `layout-editor.a11y.spec.ts` is what pins it. The
+> "only when the draft differs" condition was dropped: a control that appears and disappears as
+> you type is worse than one that is always there for a stored row.
 - [ ] **Step 4: Run it, verify it passes** — `npx vitest run src/app/operator/` then `npm run lint && npm run format:check` → PASS.
 - [ ] **Step 5: Guards** — `node scripts/check-focus-posture.mjs --diff origin/main`,
   `node scripts/check-touch-target.mjs --diff origin/main`,
