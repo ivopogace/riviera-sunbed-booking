@@ -494,7 +494,31 @@ test('a free walk-in tile is hatched, a premium tile is not (#701)', async ({ pa
   expect(walkin.borderTopColor).not.toBe(premium.borderTopColor);
 });
 
-test('every legend swatch renders exactly like the tile it stands for (#701)', async ({ page }) => {
+test("the legend band is painted the wash's own first stop, so swatches share the tiles' ground (#701)", async ({
+  page,
+}) => {
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  const bandDisplay = await page
+    .getByTestId('legend-band')
+    .evaluate((el) => getComputedStyle(el).display);
+  const washTopStop = await page
+    .locator('[data-testid="beach-grid"] [data-riv-scroller]')
+    .first()
+    .evaluate((el) => /rgba?\([^)]*\)/.exec(getComputedStyle(el).backgroundImage)?.[0]);
+
+  expect(bandDisplay).not.toBe('none');
+  // A translucent swatch only looks like its tile if it composites over the same ground.
+  const bandBg = await page
+    .getByRole('list', { name: 'Legend' })
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(bandBg).toBe(washTopStop);
+});
+
+test('every legend swatch declares exactly what the tile it stands for declares (#701)', async ({
+  page,
+}) => {
   await page.goto('/venues/1');
   await expect(page.getByTestId('set-tile').first()).toBeVisible();
 

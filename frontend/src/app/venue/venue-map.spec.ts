@@ -151,6 +151,13 @@ describe('VenueMap', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  /** The colour classes the directive gives a state, read off the legend swatch wearing it. */
+  function appearanceClassesFor(state: string): string[] {
+    const swatch = el().querySelector(`ul[aria-label="Legend"] [data-state="${state}"]`)!;
+    const geometry = new Set(['h-[18px]', 'w-[18px]', 'rounded-[6px]', 'border-[1.5px]']);
+    return [...swatch.classList].filter((token) => !geometry.has(token));
+  }
+
   it('requests the venue from the route id', () => {
     flushVenue();
     expect(fixture.componentInstance).toBeTruthy();
@@ -233,6 +240,20 @@ describe('VenueMap', () => {
     // A taken front-row set is a ghost, not a premium tile: the 6 split 4 + 2 (#701).
     expect(el().querySelectorAll('.set-tile.premium').length).toBe(4);
     expect(el().querySelectorAll('.set-tile.taken').length).toBe(6); // 18 of 24 free
+  });
+
+  it('lets the appearance directive own every tile colour — the template adds none (#701)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    // The unit host in `map-tile.spec.ts` cannot see this: it pins the directive against itself.
+    const paints = /^(bg-|text-\[#|border-\[#|border-dashed)/;
+    for (const tile of el().querySelectorAll('.set-tile')) {
+      const state = tile.getAttribute('data-state')!;
+      const own = [...tile.classList].filter((token) => paints.test(token));
+      expect(own.sort(), `the ${state} tile paints itself`).toEqual(
+        appearanceClassesFor(state).sort(),
+      );
+    }
   });
 
   it('spells one state two ways that can never select different tiles (#701)', async () => {

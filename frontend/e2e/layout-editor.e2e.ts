@@ -142,8 +142,12 @@ test('generates a grid, paints a walk-in set, and saves the whole layout in one 
   await expect(page.getByTestId('layout-cell').first()).toHaveAttribute('data-state', 'walkin');
   await expect(page.getByTestId('layout-count-walkin')).toHaveText('1');
 
-  // #701's legend slot is empty here, so the banner and the wash must still meet with no gap.
+  // #701's legend slot is empty here, so `:empty` must give its band no box at all.
   await expect(page.getByRole('list', { name: 'Legend' })).toHaveCount(1); // the editor's own
+  const bandDisplay = await page
+    .getByTestId('legend-band')
+    .evaluate((el) => getComputedStyle(el).display);
+  expect(bandDisplay).toBe('none');
   const banner = (await page.locator('.sea-banner').boundingBox())!;
   const wash = (await page.locator('[data-riv-scroller]').first().boundingBox())!;
   expect(wash.y).toBeCloseTo(banner.y + banner.height, 0);

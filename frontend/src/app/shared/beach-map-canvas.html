@@ -1,13 +1,13 @@
 <app-beach-grid-frame [testid]="frameTestid()" [label]="label()">
   @if (rows().length > 0) {
     <!-- Tourist-only legend slot (#701): projected between the sea banner and the wash so the colours are decoded BEFORE the tiles are read. The canvas owns the band's spacing, because the two margins it has to cancel — the banner's mb-3.5 and the wash's -mt-3.5 — are its own; :empty makes this wrapper generate no box when nothing is projected, so on the three operator surfaces those two still meet exactly as before. -->
-    <div class="-mx-[18px] -mt-3.5 mb-3.5 empty:hidden">
+    <div class="-mx-[18px] -mt-3.5 mb-3.5 empty:hidden" data-testid="legend-band">
       <ng-content select="[canvasLegend]" />
     </div>
     <!-- The sea→sand wash: aqua at the sea banner fading to warm sand at the promenade, fixed to the viewport of the vertical scroller so "the water is up there" reads at any scroll depth. -->
     <div
       #washScroller
-      class="overflow-y-auto overflow-x-hidden max-h-[532px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-[18px] px-[18px] -mt-3.5 pt-3.5 pb-3 bg-[linear-gradient(180deg,#cfeef6_0%,#e7f5f1_55%,#f6eedb_100%)]"
+      class="overflow-y-auto overflow-x-hidden max-h-[532px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-[18px] px-[18px] -mt-3.5 pt-3.5 pb-3 bg-[linear-gradient(180deg,var(--riv-map-sea)_0%,#e7f5f1_55%,#f6eedb_100%)]"
       data-riv-scroller
     >
       <div class="flex items-start gap-2.5" [style.--riv-map-cols]="mapCols()">

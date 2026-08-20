@@ -497,6 +497,14 @@ describe('BeachMapCanvas (#672)', () => {
     expect(host.querySelector('[data-testid="legend-note"]')).toBeNull();
   });
 
+  it("publishes the wash's sea stop as --riv-map-sea, which the wash itself reads (#701)", () => {
+    const { host } = render();
+    const canvas = host.querySelector<HTMLElement>('app-beach-map-canvas')!;
+    expect(canvas.style.getPropertyValue('--riv-map-sea').trim()).toBe('#cfeef6');
+    // Projected content sits on the same ground only while the wash reads the property, not a copy.
+    expect(washScroller(host).className).toContain('var(--riv-map-sea)');
+  });
+
   it('collapses the legend band for a host that projects none — the operator surfaces (#701)', () => {
     const fixture = TestBed.createComponent(LegendlessCanvasHost);
     fixture.detectChanges();

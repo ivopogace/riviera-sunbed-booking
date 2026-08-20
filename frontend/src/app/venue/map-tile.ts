@@ -56,9 +56,15 @@ export const MAP_TILE_MEANING: Record<MapTileState, { legend: string; announced:
 export const MAP_TILE_LEGEND: readonly { readonly state: MapTileState; readonly label: string }[] =
   MAP_TILE_STATES.map((state) => ({ state, label: MAP_TILE_MEANING[state].legend }));
 
-/** How a set renders on the tourist map, resolving the {@link MapTileState} priority. */
+/**
+ * How a set renders on the tourist map, resolving the {@link MapTileState} priority.
+ *
+ * <p>The availability test is `!== 'FREE'`, not `=== 'TAKEN'`, so it fails **closed**: should the
+ * venue read ever grow a third availability (blocked, closed), such a set renders as the ghost
+ * rather than as a bookable-looking tile that announces the wrong thing.
+ */
 export function mapTileState(set: SetView): MapTileState {
-  if (set.availability === 'TAKEN') {
+  if (set.availability !== 'FREE') {
     return 'taken';
   }
   if (set.pool === 'WALK_IN') {
