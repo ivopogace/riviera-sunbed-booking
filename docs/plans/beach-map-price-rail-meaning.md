@@ -282,7 +282,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-0 | local e2e run (phase 2) | `customer-password.e2e.ts` + `operator-venue.e2e.ts` failed in the sandbox's full-suite run; both are sign-in-heavy flows this diff does not touch (no operator or auth file changed, and the shared cap only bounds a rail cell's width) | open — re-running in isolation; CI on PR #722 is the arbiter |
+| F-0 | local e2e run (phase 2) | `customer-password.e2e.ts` + `operator-venue.e2e.ts` failed in the sandbox's full-suite run; both are sign-in-heavy flows this diff does not touch (no operator or auth file changed, and the shared cap only bounds a rail cell's width) | **not a defect** — both green in isolation (10 passed, 40s) against this same HEAD; the sandbox's 9.4-minute single-worker full run is the variable, not the diff. CI on PR #722 re-runs the same suite |
 
 ---
 
@@ -353,7 +353,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - [x] **Step 4: Run it, verify it passes** — same command → 11 passed; then the full unit
       suite (1508 passed) and the full mocked e2e suite (227 passed; two specs unrelated to
       this diff — `customer-password.e2e.ts`, `operator-venue.e2e.ts` — failed in the sandbox
-      and are being re-run in isolation, with CI as the arbiter, see F-0).
+      and passed on an isolated re-run against the same HEAD, see F-0).
 - [x] **Step 5: Generalization-audit pass** — logged below.
 - [x] **Step 6: Commit** — `git commit -m "Cap the price rail so a long row label never costs tile width (#702)"`
 - [x] **Step 7: Update plan-doc execution status.**
