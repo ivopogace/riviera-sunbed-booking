@@ -432,6 +432,9 @@ test('the pan affordances follow the viewport across the breakout breakpoint (#7
     .toEqual({ overflows: false, masked: false, scrollPaddingLeft: 'auto' });
 });
 
+/** The tile states the legend explains, in render order (mirrors `venue/map-tile.ts`). */
+const TILE_STATES = ['available', 'premium', 'walkin', 'taken'] as const;
+
 /** What a tile or a swatch actually looks like — computed, never the class list (#701 AC-4). */
 async function face(locator: Locator) {
   return locator.evaluate((el) => {
@@ -467,11 +470,13 @@ test('the legend leads the map card on mobile — decoded before the first tile 
     .boundingBox())!;
   expect(wash.y).toBeCloseTo(legend.y + legend.height, 0);
 
-  // Bringing the map card into view brings the legend with it — one screen, no hunting.
+  // One screen: reaching the grid is what reveals the legend, never scrolling past it.
   await page.getByTestId('beach-grid').evaluate((el) => el.scrollIntoView({ block: 'start' }));
-  const onScreen = (await page.getByRole('list', { name: 'Legend' }).boundingBox())!;
-  expect(onScreen.y).toBeGreaterThanOrEqual(0);
-  expect(onScreen.y + onScreen.height).toBeLessThanOrEqual(760);
+  const shownLegend = (await page.getByRole('list', { name: 'Legend' }).boundingBox())!;
+  const shownTile = (await page.getByTestId('set-tile').first().boundingBox())!;
+  expect(shownLegend.y).toBeGreaterThanOrEqual(0);
+  expect(shownLegend.y + shownLegend.height).toBeLessThanOrEqual(760);
+  expect(shownTile.y + shownTile.height).toBeLessThanOrEqual(760);
 });
 
 test('a free walk-in tile is hatched, a premium tile is not (#701)', async ({ page }) => {
@@ -493,7 +498,9 @@ test('every legend swatch renders exactly like the tile it stands for (#701)', a
   await page.goto('/venues/1');
   await expect(page.getByTestId('set-tile').first()).toBeVisible();
 
-  for (const state of ['available', 'premium', 'walkin', 'taken']) {
+  // Exhaustiveness guard: a fifth tile state adds a fifth swatch and fails this count.
+  await expect(page.locator('[aria-label="Legend"] [data-state]')).toHaveCount(TILE_STATES.length);
+  for (const state of TILE_STATES) {
     const swatch = page.locator(`[aria-label="Legend"] [data-state="${state}"]`);
     const tile = page.locator(`.set-tile[data-state="${state}"]`).first();
     await expect(swatch).toHaveCount(1);

@@ -230,8 +230,19 @@ describe('VenueMap', () => {
   it('marks the premium front row and the taken sets distinctly', async () => {
     flushVenue();
     await fixture.whenStable();
-    expect(el().querySelectorAll('.set-tile.premium').length).toBe(6); // front row
+    // A taken front-row set is a ghost, not a premium tile: the 6 split 4 + 2 (#701).
+    expect(el().querySelectorAll('.set-tile.premium').length).toBe(4);
     expect(el().querySelectorAll('.set-tile.taken').length).toBe(6); // 18 of 24 free
+  });
+
+  it('spells one state two ways that can never select different tiles (#701)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    for (const state of ['premium', 'walkin', 'taken']) {
+      const byClass = [...el().querySelectorAll(`.set-tile.${state}`)];
+      const byAttribute = [...el().querySelectorAll(`.set-tile[data-state="${state}"]`)];
+      expect(byClass, `.${state} vs [data-state=${state}]`).toEqual(byAttribute);
+    }
   });
 
   it('shows the availability summary "18 of 24"', async () => {

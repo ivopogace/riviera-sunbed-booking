@@ -9,7 +9,7 @@ import { AmenityChip } from '../shared/amenity-chip';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { CardGlass } from '../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
-import { MapTile, MapTileState, mapTileState } from './map-tile';
+import { MAP_TILE_LEGEND, MAP_TILE_MEANING, MapTile, MapTileState, mapTileState } from './map-tile';
 import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
 import { focusMover } from '../shared/focus-after-render';
 import { formatBookingDate } from '../shared/booking-date-label';
@@ -35,9 +35,8 @@ interface TileView {
   readonly set: SetView;
   readonly seat: string;
   readonly bookable: boolean;
-  /** True for a FREE walk-in-pool set: rendered distinctly and named "walk-in only" (#672). */
-  readonly walkInOnly: boolean;
-  /** How the tile looks — the appearance `[appMapTile]` and the legend swatches both read. */
+  /** How the tile looks and what it announces — the appearance, the markers and the legend
+   *  swatches all resolve from this one value (a FREE walk-in set is `walkin`, #672). */
   readonly state: MapTileState;
   /** Accessible name for a non-interactive tile (`<li>`). */
   readonly name: string;
@@ -130,13 +129,8 @@ export function rowCode(index: number): string {
   },
 })
 export class VenueMap {
-  /** The tile state as the accessible name says it — colour is never the only carrier. */
-  private static readonly STATE_PHRASE: Record<MapTileState, string> = {
-    available: 'available',
-    premium: 'available',
-    walkin: 'walk-in only — book at the venue',
-    taken: 'taken',
-  };
+  /** The legend's rows, in tile-state order — labelled beside the colours they explain. */
+  protected readonly legend = MAP_TILE_LEGEND;
 
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);
@@ -282,11 +276,11 @@ export class VenueMap {
   private toTile(set: SetView, code: string, descriptiveLabel: string): TileView {
     const tier = tierSentenceLabel(set.tier);
     const state = mapTileState(set);
-    const walkInOnly = state === 'walkin';
     const seat = `${code}${set.positionNo}`;
     const bookable = set.availability === 'FREE' && set.pool === 'ONLINE';
-    const name = `Set ${seat}, ${descriptiveLabel}, ${tier}, ${this.money(set.price)}, ${VenueMap.STATE_PHRASE[state]}`;
-    return { set, seat, bookable, walkInOnly, state, name, bookName: `${name}. Select to book.` };
+    const announced = MAP_TILE_MEANING[state].announced;
+    const name = `Set ${seat}, ${descriptiveLabel}, ${tier}, ${this.money(set.price)}, ${announced}`;
+    return { set, seat, bookable, state, name, bookName: `${name}. Select to book.` };
   }
 
   /** Fetch the map for the currently selected date. */

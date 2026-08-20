@@ -3,11 +3,18 @@ import { computed, Directive, input } from '@angular/core';
 import { SetView } from '../shared/venue-views';
 
 /**
+ * Every tile state, in legend order. {@link MapTileState} is derived FROM this tuple rather than
+ * declared beside it, so a new state cannot be added without every state-driven loop — the legend,
+ * the appearance record, the specs — seeing it.
+ */
+export const MAP_TILE_STATES = ['available', 'premium', 'walkin', 'taken'] as const;
+
+/**
  * How one tile on the tourist beach map looks. The order is a priority, not a list: `taken`
  * beats everything (the ghost wins), and `walkin` beats `premium` — "you cannot book this
  * online" is the fact a tourist must not miss, so it never loses to a tier tint.
  */
-export type MapTileState = 'available' | 'premium' | 'walkin' | 'taken';
+export type MapTileState = (typeof MAP_TILE_STATES)[number];
 
 /**
  * Fill, border colour and ink per state — the one home of what a tourist tile looks like, so
@@ -29,6 +36,26 @@ const MAP_TILE_CLASS: Record<MapTileState, string> = {
   taken: 'bg-white/20 border-dashed border-[#6b7d77] text-[#566560]',
 };
 
+/**
+ * What each state means in words, kept beside the colours it explains (the
+ * `operator/beach-cell.ts` `CELL_STATE_DESC` shape): `legend` is the swatch's label on the map
+ * card, `announced` the phrase inside the tile's accessible name. Colour is never the only
+ * carrier, so the two must say the same thing — `map-tile.spec.ts` pins that they do.
+ */
+export const MAP_TILE_MEANING: Record<MapTileState, { legend: string; announced: string }> = {
+  available: { legend: 'Available', announced: 'available' },
+  premium: { legend: 'Front row', announced: 'available' },
+  walkin: {
+    legend: 'Walk-in only — book at the venue',
+    announced: 'walk-in only — book at the venue',
+  },
+  taken: { legend: 'Taken', announced: 'taken' },
+};
+
+/** The legend's rows, in tile-state order — what `venue-map.html` iterates. */
+export const MAP_TILE_LEGEND: readonly { readonly state: MapTileState; readonly label: string }[] =
+  MAP_TILE_STATES.map((state) => ({ state, label: MAP_TILE_MEANING[state].legend }));
+
 /** How a set renders on the tourist map, resolving the {@link MapTileState} priority. */
 export function mapTileState(set: SetView): MapTileState {
   if (set.availability === 'TAKEN') {
@@ -46,8 +73,9 @@ export function mapTileState(set: SetView): MapTileState {
  * for them, so a swatch cannot claim a look the tile does not have.
  *
  * <p>`data-state` rides along as an inert hook, mirroring `operator/beach-cell.ts`. The `<li>`
- * keeps its own `premium` / `walkin` / `taken` / `bookable` marker classes: those are test
- * hooks and layout keys, not styling.
+ * keeps `premium` / `walkin` / `taken` marker classes beside it, but they are bound from the
+ * SAME resolved state — one vocabulary, two spellings — so `.set-tile.premium` and
+ * `[data-state="premium"]` can never select different tiles.
  */
 @Directive({
   selector: '[appMapTile]',

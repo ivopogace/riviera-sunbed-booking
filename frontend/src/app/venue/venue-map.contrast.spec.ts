@@ -45,6 +45,10 @@ import {
  * every wash stop) rather than as a solid pair; the date field is near-opaque (it sits on dark
  * glass, unlike Discover's field on light card glass).
  *
+ * The walk-in tile is absent from `TILE_SURFACES` on purpose: its own test below proves the same
+ * ink over the same fill on BOTH hatch bands, so a row here would assert the gap band's arithmetic
+ * a second time and give a future retune two places to miss.
+ *
  * The ghost-taken tile is deliberately the faintest surface (free inventory pops, #672) but is
  * NOT excluded: its seat number is proven AA and its dashed border — the non-colour "taken"
  * cue beside the accessible name — is proven at 3:1 (1.4.11), both composited below. The
@@ -89,7 +93,6 @@ const TILE_SURFACES: readonly {
 }[] = [
   { fg: '#0f7d8c', fill: WHITE, alpha: 0.75, usage: 'available tile' },
   { fg: '#875911', fill: hexToRgb('fbf1d9'), alpha: 0.85, usage: 'premium (front-row) tile' },
-  { fg: '#5f4d2a', fill: hexToRgb('efe0bd'), alpha: 0.6, usage: 'walk-in tile (hatch gap band)' },
   { fg: '#566560', fill: WHITE, alpha: 0.2, usage: 'ghost taken tile' },
   // css:S7924 stayed quiet on the translucent chips (PR #673); if it re-fires, solidify per failure-panel.
   { fg: '#0a4f5e', fill: WHITE, alpha: 0.6, usage: 'row-code chip' },

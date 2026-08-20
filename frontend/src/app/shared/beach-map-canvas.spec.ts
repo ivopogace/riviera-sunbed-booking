@@ -475,16 +475,21 @@ describe('BeachMapCanvas (#672)', () => {
     return [...frame!.children];
   }
 
-  it('projects the legend slot above the wash, and renders nothing there when unprojected (#701)', () => {
+  /** Index of the frame child holding the sea banner — the legend band's anchor. */
+  function bannerIndex(children: readonly Element[]): number {
+    const index = children.findIndex((el) => el.textContent?.includes('Facing the sea'));
+    expect(index).toBeGreaterThanOrEqual(0);
+    return index;
+  }
+
+  it('projects the legend slot above the wash, and drops it with the grid (#701)', () => {
     const { host, component, detect } = render();
     const children = frameChildren(host);
-    const banner = children.findIndex((el) => el.textContent?.includes('Facing the sea'));
-    const legend = children.findIndex((el) => el.matches('[data-testid="legend-note"]'));
-    const wash = children.findIndex((el) => el.matches('[data-riv-scroller]'));
+    const banner = bannerIndex(children);
+    const band = children[banner + 1];
     // The whole point of #701: decode the colours BEFORE reading the tiles.
-    expect(banner).toBeGreaterThanOrEqual(0);
-    expect(legend).toBe(banner + 1);
-    expect(wash).toBe(legend + 1);
+    expect(band.querySelector('[data-testid="legend-note"]')).toBeTruthy();
+    expect(children[banner + 2].matches('[data-riv-scroller]')).toBe(true);
 
     // A legend with no tiles to decode is noise — it goes with the grid.
     component.rows.set([]);
@@ -492,12 +497,14 @@ describe('BeachMapCanvas (#672)', () => {
     expect(host.querySelector('[data-testid="legend-note"]')).toBeNull();
   });
 
-  it('emits no legend box for a host that projects none — the operator surfaces (#701)', () => {
+  it('collapses the legend band for a host that projects none — the operator surfaces (#701)', () => {
     const fixture = TestBed.createComponent(LegendlessCanvasHost);
     fixture.detectChanges();
     const children = frameChildren(fixture.nativeElement as HTMLElement);
-    const banner = children.findIndex((el) => el.textContent?.includes('Facing the sea'));
-    // No stray element between the banner and the wash: the two margins still cancel.
-    expect(children[banner + 1]?.matches('[data-riv-scroller]')).toBe(true);
+    const band = children[bannerIndex(children) + 1];
+    // `:empty` is what makes the band generate no box, so the two margins still cancel.
+    expect(band.children.length).toBe(0);
+    expect(band.classList.contains('empty:hidden')).toBe(true);
+    expect(children[bannerIndex(children) + 2].matches('[data-riv-scroller]')).toBe(true);
   });
 });

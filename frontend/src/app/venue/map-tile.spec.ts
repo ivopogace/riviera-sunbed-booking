@@ -2,38 +2,44 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { SetView } from '../shared/venue-views';
-import { MapTile, MapTileState, mapTileState } from './map-tile';
+import {
+  MAP_TILE_LEGEND,
+  MAP_TILE_MEANING,
+  MAP_TILE_STATES,
+  MapTile,
+  MapTileState,
+  mapTileState,
+} from './map-tile';
 
 /**
  * The tourist beach-map tile's appearance, extracted out of `venue-map.html`'s `[&.premium]:`
- * arbitrary variants so the tile and its legend swatch cannot drift (#701 AC-4) — the
+ * arbitrary variants so the tile and its legend swatch cannot drift (#701) — the
  * `operator/beach-cell.ts` shape, one step later.
  *
- * `PRE_MOVE_TILE_CLASS` is the NO-DRIFT PIN: each string is byte-identical to the variant the
- * template carried before the move, so the extraction is verifiable rather than eyeballed. The
- * ONE deliberate departure is `walkin`, and it is the point of the slice: its fill drops
- * `0.85` → `0.6` and it gains the 135° hatch, so "you cannot book this online" no longer
- * differs from front-row cream by tint alone. (Precedent for pinning a departure this way:
- * `beach-cell.spec.ts`'s `/35` → `/55` gap border.)
+ * `PRE_MOVE_TILE_CLASS` is the NO-DRIFT PIN: each string is the complete, byte-identical set of
+ * appearance classes the template carried before the move, and the comparison below is an
+ * EQUALITY, not a subset — an added stray utility fails it too. `walkin` is the one deliberate
+ * departure and the point of the slice, so only its unchanged half is pinned here; what it gained
+ * is asserted separately, and its retired fill is named nowhere (a Tailwind literal in any scanned
+ * source file, spec files included, keeps emitting its rule into the shipped stylesheet).
  */
 const PRE_MOVE_TILE_CLASS: Record<MapTileState, string> = {
   available: 'border-[#bfe3df] bg-white/75 text-[#0f7d8c]',
   premium: 'bg-[#fbf1d9]/85 border-[#e6c483] text-[#875911]',
-  walkin: 'bg-[#efe0bd]/85 border-[#c8ab62] text-[#5f4d2a]',
+  walkin: 'border-[#c8ab62] text-[#5f4d2a]',
   taken: 'bg-white/20 border-dashed border-[#6b7d77] text-[#566560]',
 };
 
-/** What the walk-in tile is allowed to change to, and nothing else. */
-const WALK_IN_HATCH =
-  'bg-[repeating-linear-gradient(135deg,rgba(95,77,42,0.16)_0px,rgba(95,77,42,0.16)_3px,transparent_3px,transparent_8px)]';
+/** What the walk-in tile gained: a lighter sand under a 135° hatch of its own ink. */
+const WALK_IN_DEPARTURE =
+  'bg-[#efe0bd]/60 bg-[repeating-linear-gradient(135deg,rgba(95,77,42,0.16)_0px,rgba(95,77,42,0.16)_3px,transparent_3px,transparent_8px)]';
+
+/** The geometry + markers the consumer owns; the directive must add to them, never replace them. */
+const HOST_CLASS = 'set-tile rounded-[10px] border-[1.5px] font-bold text-[12.5px]';
 
 @Component({
   imports: [MapTile],
-  template: `<li
-    appMapTile
-    [state]="state()"
-    class="set-tile rounded-[10px] border-[1.5px] font-bold text-[12.5px]"
-  ></li>`,
+  template: `<li appMapTile [state]="state()" class="${HOST_CLASS}"></li>`,
 })
 class TileHost {
   readonly state = signal<MapTileState>('available');
@@ -54,7 +60,11 @@ function set(overrides: Partial<SetView>): SetView {
   };
 }
 
-const ALL_STATES = ['available', 'premium', 'walkin', 'taken'] as const;
+/** Everything the host wears, minus the geometry and markers it owns — i.e. what the directive added. */
+function appearanceOf(tile: HTMLElement): Set<string> {
+  const own = new Set(HOST_CLASS.split(' '));
+  return new Set([...tile.classList].filter((token) => !own.has(token)));
+}
 
 describe('MapTile appearance (#701)', () => {
   function render(): { tile: HTMLElement; component: TileHost; detect: () => void } {
@@ -67,19 +77,19 @@ describe('MapTile appearance (#701)', () => {
     };
   }
 
-  it('renders each state from the one shared appearance record', () => {
+  it('renders each state from the one shared appearance record, and nothing besides', () => {
     const { tile, component, detect } = render();
 
-    for (const state of ALL_STATES) {
+    for (const state of MAP_TILE_STATES) {
       component.state.set(state);
       detect();
       const expected =
         state === 'walkin'
-          ? `${PRE_MOVE_TILE_CLASS.walkin.replace('bg-[#efe0bd]/85', 'bg-[#efe0bd]/60')} ${WALK_IN_HATCH}`
+          ? `${PRE_MOVE_TILE_CLASS.walkin} ${WALK_IN_DEPARTURE}`
           : PRE_MOVE_TILE_CLASS[state];
-      for (const token of expected.split(' ')) {
-        expect(tile.classList.contains(token), `${state} is missing ${token}`).toBe(true);
-      }
+      expect([...appearanceOf(tile)].sort(), `the ${state} tile`).toEqual(
+        expected.split(' ').sort(),
+      );
     }
   });
 
@@ -88,7 +98,7 @@ describe('MapTile appearance (#701)', () => {
     component.state.set('taken');
     detect();
     // Fill/border-colour/ink are the directive's; geometry and test hooks stay with the consumer.
-    for (const token of ['set-tile', 'rounded-[10px]', 'border-[1.5px]', 'text-[12.5px]']) {
+    for (const token of HOST_CLASS.split(' ')) {
       expect(tile.classList.contains(token)).toBe(true);
     }
   });
@@ -107,7 +117,7 @@ describe('MapTile appearance (#701)', () => {
 
   it('exposes the state as an inert `data-state` hook, like the operator grid cells', () => {
     const { tile, component, detect } = render();
-    for (const state of ALL_STATES) {
+    for (const state of MAP_TILE_STATES) {
       component.state.set(state);
       detect();
       expect(tile.getAttribute('data-state')).toBe(state);
@@ -124,5 +134,20 @@ describe('MapTile appearance (#701)', () => {
     expect(mapTileState(set({ availability: 'TAKEN' }))).toBe('taken');
     expect(mapTileState(set({ availability: 'TAKEN', pool: 'WALK_IN' }))).toBe('taken');
     expect(mapTileState(set({ availability: 'TAKEN', tier: 'PREMIUM' }))).toBe('taken');
+  });
+
+  it('gives the legend one row per state, in state order, labelled from the meaning record', () => {
+    expect(MAP_TILE_LEGEND.map((row) => row.state)).toEqual([...MAP_TILE_STATES]);
+    expect(MAP_TILE_LEGEND.map((row) => row.label)).toEqual([
+      'Available',
+      'Front row',
+      'Walk-in only — book at the venue',
+      'Taken',
+    ]);
+  });
+
+  it('says the same thing in the legend as in the walk-in tile accessible name', () => {
+    const walkin = MAP_TILE_MEANING.walkin;
+    expect(walkin.legend.toLowerCase()).toBe(walkin.announced);
   });
 });
