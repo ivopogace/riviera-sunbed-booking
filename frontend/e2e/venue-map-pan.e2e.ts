@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 
@@ -357,12 +357,14 @@ test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700
   expect((await panState(page)).overflows).toBe(false);
   await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
 
-  // Only the map card breaks out: the header and the legend keep the 780px page shell's width.
+  // Only the map card breaks out; since #701 the legend is inside it, full-bleed like the banner.
   const card = (await page.getByTestId('beach-grid').boundingBox())!;
   const head = (await page.locator('.map-head').boundingBox())!;
+  const banner = (await page.locator('.sea-banner').boundingBox())!;
   const legend = (await page.getByRole('list', { name: 'Legend' }).boundingBox())!;
   expect(card.width).toBeGreaterThan(head.width);
-  expect(legend.width).toBeCloseTo(head.width, 0);
+  expect(legend.width).toBeCloseTo(banner.width, 0);
+  expect(legend.width).toBeGreaterThan(head.width);
   // The design canvas's number, pinned — the margin derives from it, so a shell edit can't drift it.
   expect(card.width).toBeCloseTo(1100, 0);
 
@@ -428,4 +430,108 @@ test('the pan affordances follow the viewport across the breakout breakpoint (#7
   await expect
     .poll(() => panState(page))
     .toEqual({ overflows: false, masked: false, scrollPaddingLeft: 'auto' });
+});
+
+/** The tile states the legend explains, in render order (mirrors `venue/map-tile.ts`). */
+const TILE_STATES = ['available', 'premium', 'walkin', 'taken'] as const;
+
+/** What a tile or a swatch actually looks like — computed, never the class list (#701 AC-4). */
+async function face(locator: Locator) {
+  return locator.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      backgroundColor: cs.backgroundColor,
+      backgroundImage: cs.backgroundImage,
+      borderTopColor: cs.borderTopColor,
+      borderTopStyle: cs.borderTopStyle,
+      color: cs.color,
+    };
+  });
+}
+
+test('the legend leads the map card on mobile — decoded before the first tile row (#701)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 760 });
+  await page.goto('/venues/1');
+  await expect(page.getByRole('heading', { name: 'Panorama Bay' })).toBeVisible();
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  const legend = (await page.getByRole('list', { name: 'Legend' }).boundingBox())!;
+  const firstTile = (await page.getByTestId('set-tile').first().boundingBox())!;
+  // The whole point: the colours are decoded above the grid, never past it.
+  expect(legend.y + legend.height).toBeLessThanOrEqual(firstTile.y + 1);
+  expect(legend.height).toBeGreaterThan(0);
+
+  // R-3: the band's margins cancel the banner's and the wash's, so the wash starts where it ends.
+  const wash = (await page
+    .locator('[data-testid="beach-grid"] [data-riv-scroller]')
+    .first()
+    .boundingBox())!;
+  expect(wash.y).toBeCloseTo(legend.y + legend.height, 0);
+
+  // One screen: reaching the grid is what reveals the legend, never scrolling past it.
+  await page.getByTestId('beach-grid').evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  const shownLegend = (await page.getByRole('list', { name: 'Legend' }).boundingBox())!;
+  const shownTile = (await page.getByTestId('set-tile').first().boundingBox())!;
+  expect(shownLegend.y).toBeGreaterThanOrEqual(0);
+  expect(shownLegend.y + shownLegend.height).toBeLessThanOrEqual(760);
+  expect(shownTile.y + shownTile.height).toBeLessThanOrEqual(760);
+});
+
+test('a free walk-in tile is hatched, a premium tile is not (#701)', async ({ page }) => {
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  const walkin = await face(page.locator('.set-tile[data-state="walkin"]').first());
+  const premium = await face(page.locator('.set-tile[data-state="premium"]').first());
+
+  // More than a fill tint apart: the one state that means "you cannot book this online" is hatched.
+  expect(walkin.backgroundImage).toContain('repeating-linear-gradient');
+  expect(walkin.backgroundImage).toContain('135deg');
+  expect(premium.backgroundImage).toBe('none');
+  expect(walkin.backgroundColor).not.toBe(premium.backgroundColor);
+  expect(walkin.borderTopColor).not.toBe(premium.borderTopColor);
+});
+
+test("the legend band is painted the wash's own first stop, so swatches share the tiles' ground (#701)", async ({
+  page,
+}) => {
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  const bandDisplay = await page
+    .getByTestId('legend-band')
+    .evaluate((el) => getComputedStyle(el).display);
+  const washTopStop = await page
+    .locator('[data-testid="beach-grid"] [data-riv-scroller]')
+    .first()
+    .evaluate((el) => /rgba?\([^)]*\)/.exec(getComputedStyle(el).backgroundImage)?.[0]);
+
+  expect(bandDisplay).not.toBe('none');
+  // A translucent swatch only looks like its tile if it composites over the same ground.
+  const bandBg = await page
+    .getByRole('list', { name: 'Legend' })
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(bandBg).toBe(washTopStop);
+});
+
+test('every legend swatch declares exactly what the tile it stands for declares (#701)', async ({
+  page,
+}) => {
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  // Exhaustiveness guard: a fifth tile state adds a fifth swatch and fails this count.
+  await expect(page.locator('[aria-label="Legend"] [data-state]')).toHaveCount(TILE_STATES.length);
+  for (const state of TILE_STATES) {
+    const swatch = page.locator(`[aria-label="Legend"] [data-state="${state}"]`);
+    const tile = page.locator(`.set-tile[data-state="${state}"]`).first();
+    await expect(swatch).toHaveCount(1);
+    expect(await face(swatch), `the ${state} swatch`).toEqual(await face(tile));
+  }
+  // The ghost swatch keeps the dashed outline that marks "taken" on the grid.
+  expect(
+    (await face(page.locator('[aria-label="Legend"] [data-state="taken"]'))).borderTopStyle,
+  ).toBe('dashed');
 });

@@ -43,7 +43,13 @@ import {
  * gradient; the seat tiles are TRANSLUCENT over the sea→sand wash (#672), whose gradient stops
  * are opaque and theme-independent — so each tile/chip ink is proven composited (fill alpha over
  * every wash stop) rather than as a solid pair; the date field is near-opaque (it sits on dark
- * glass, unlike Discover's field on light card glass).
+ * glass, unlike Discover's field on light card glass); and the legend band is painted the wash's
+ * own FIRST stop, so its swatches composite over exactly the ground their tiles do — which makes
+ * its ink a theme-independent solid pair rather than a per-theme glass composite.
+ *
+ * The walk-in tile is absent from `TILE_SURFACES` on purpose: its own test below proves the same
+ * ink over the same fill on BOTH hatch bands, so a row here would assert the gap band's arithmetic
+ * a second time and give a future retune two places to miss.
  *
  * The ghost-taken tile is deliberately the faintest surface (free inventory pops, #672) but is
  * NOT excluded: its seat number is proven AA and its dashed border — the non-colour "taken"
@@ -55,9 +61,22 @@ import {
  * bar track+fill (`N of M free` carries the fact), the ★ / · glyphs and the sun disc
  * (aria-hidden; the numeric rating carries the value), the failure badge (aria-hidden; the
  * heading carries the meaning), and the decorative live-tile/card borders.
+ *
+ * The walk-in tile's 135° hatch (#701) joins that exclusion, and the reasoning is written down
+ * here because the ghost tile above shows the bar is not automatic. The hatch is
+ * `rgba(95,77,42,0.16)`, ≈1.26:1 against its own tile fill — nowhere near 3:1, and it cannot be:
+ * a 3:1 stripe on this sand needs ≈0.55 alpha, which drops the tile's own numeral to ≈2.1:1, so
+ * 1.4.11 and 1.4.3 are arithmetically incompatible on one tile. It is excluded because it is
+ * **redundant**, not because it is faint: the walk-in state is carried by the tile's accessible
+ * name ("walk-in only — book at the venue") and by the tile rendering no button at all, exactly
+ * like the `#e6c483` / `#c8ab62` tier borders beside it. What the hatch may not do is cost the
+ * numeral its AA — so the numeral is proven below on BOTH bands, stripe and gap.
  */
 
 const ACCENT = '#085a6e'; // --riv-accent-ink (availability count, scroll hint)
+
+/** The walk-in tile's hatch stripe (`map-tile.ts`): the tile's own ink, laid over its fill. */
+const WALK_IN_HATCH: Glass = { color: hexToRgb('5f4d2a'), alpha: 0.16 };
 
 /** NOT `--riv-field-fill`: a literal (`venue-map.html`) — on the DARK header glass a 0.55 fill fails AA. */
 const DATE_FIELD_FILL_ALPHA = 0.9;
@@ -74,7 +93,6 @@ const TILE_SURFACES: readonly {
 }[] = [
   { fg: '#0f7d8c', fill: WHITE, alpha: 0.75, usage: 'available tile' },
   { fg: '#875911', fill: hexToRgb('fbf1d9'), alpha: 0.85, usage: 'premium (front-row) tile' },
-  { fg: '#5f4d2a', fill: hexToRgb('efe0bd'), alpha: 0.85, usage: 'walk-in tile' },
   { fg: '#566560', fill: WHITE, alpha: 0.2, usage: 'ghost taken tile' },
   // css:S7924 stayed quiet on the translucent chips (PR #673); if it re-fires, solidify per failure-panel.
   { fg: '#0a4f5e', fill: WHITE, alpha: 0.6, usage: 'row-code chip' },
@@ -160,7 +178,7 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
     expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
   });
 
-  it('card ink-soft (promenade, legend, failure copy) meets AA on the card glass', () => {
+  it('card ink-soft (promenade, failure copy) meets AA on the card glass', () => {
     expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
   });
 
@@ -182,6 +200,25 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
         contrastRatio(surface.fg, rgbToHex(bg)),
         `over stop ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it("legend ink meets AA on the band, which is the wash's own first stop (#701)", () => {
+    const band = WASH_STOPS[0];
+    const ink = composite(CARD_INK, CARD_INK_SOFT_ALPHA, band);
+    expect(contrastRatio(rgbToHex(ink), rgbToHex(band))).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  it('the walk-in numeral meets AA on both hatch bands over every wash stop (#701)', () => {
+    for (const stop of WASH_STOPS) {
+      const gap = composite(hexToRgb('efe0bd'), 0.6, stop);
+      const stripe = composite(WALK_IN_HATCH.color, WALK_IN_HATCH.alpha, gap);
+      for (const band of [gap, stripe]) {
+        expect(
+          contrastRatio('#5f4d2a', rgbToHex(band)),
+          `over stop ${rgbToHex(stop)}, band ${rgbToHex(band)}`,
+        ).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
     }
   });
 

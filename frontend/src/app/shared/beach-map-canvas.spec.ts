@@ -45,6 +45,9 @@ const ROWS: readonly TestRow[] = [
           }
         </ul>
       </ng-template>
+      <ul canvasLegend data-testid="legend-note">
+        <li>Available</li>
+      </ul>
       <p canvasFooter data-testid="footer-note">Tap any free set to book it.</p>
       <p canvasEmpty data-testid="empty-note">Nothing here yet.</p>
     </app-beach-map-canvas>
@@ -54,6 +57,26 @@ class CanvasHost {
   readonly rows = signal<readonly TestRow[]>(ROWS);
   readonly dragPan = signal(true);
   readonly taps: string[] = [];
+}
+
+/**
+ * The operator shape: the same canvas with NO `canvasLegend` content, which is how the layout
+ * editor, the Daily view and the per-set editor render it. The legend slot must emit nothing at
+ * all here — the sea banner's `mb-3.5` and the wash's `-mt-3.5` still have to meet each other
+ * (#701, R-4).
+ */
+@Component({
+  imports: [BeachMapCanvas, BeachMapRowDef],
+  template: `
+    <app-beach-map-canvas frameTestid="test-frame" viewportTestid="test-pan">
+      <ng-template [appBeachMapRow]="rows()" let-row>
+        <ul class="set-row" [attr.data-row]="row.code"></ul>
+      </ng-template>
+    </app-beach-map-canvas>
+  `,
+})
+class LegendlessCanvasHost {
+  readonly rows = signal<readonly TestRow[]>(ROWS);
 }
 
 /**
@@ -443,5 +466,53 @@ describe('BeachMapCanvas (#672)', () => {
     expect(host.querySelector('[data-testid="test-pan"]')).toBeNull();
     // The frame chrome stays either way.
     expect(host.textContent).toContain('Facing the sea');
+  });
+
+  /** The frame's own children, in render order: banner, whatever the canvas projected, promenade. */
+  function frameChildren(host: HTMLElement): readonly Element[] {
+    const frame = host.querySelector('[data-testid="test-frame"]');
+    expect(frame).toBeTruthy();
+    return [...frame!.children];
+  }
+
+  /** Index of the frame child holding the sea banner — the legend band's anchor. */
+  function bannerIndex(children: readonly Element[]): number {
+    const index = children.findIndex((el) => el.textContent?.includes('Facing the sea'));
+    expect(index).toBeGreaterThanOrEqual(0);
+    return index;
+  }
+
+  it('projects the legend slot above the wash, and drops it with the grid (#701)', () => {
+    const { host, component, detect } = render();
+    const children = frameChildren(host);
+    const banner = bannerIndex(children);
+    const band = children[banner + 1];
+    // The whole point of #701: decode the colours BEFORE reading the tiles.
+    expect(band.querySelector('[data-testid="legend-note"]')).toBeTruthy();
+    expect(children[banner + 2].matches('[data-riv-scroller]')).toBe(true);
+
+    // A legend with no tiles to decode is noise — it goes with the grid.
+    component.rows.set([]);
+    detect();
+    expect(host.querySelector('[data-testid="legend-note"]')).toBeNull();
+  });
+
+  it("publishes the wash's sea stop as --riv-map-sea, which the wash itself reads (#701)", () => {
+    const { host } = render();
+    const canvas = host.querySelector<HTMLElement>('app-beach-map-canvas')!;
+    expect(canvas.style.getPropertyValue('--riv-map-sea').trim()).toBe('#cfeef6');
+    // Projected content sits on the same ground only while the wash reads the property, not a copy.
+    expect(washScroller(host).className).toContain('var(--riv-map-sea)');
+  });
+
+  it('collapses the legend band for a host that projects none — the operator surfaces (#701)', () => {
+    const fixture = TestBed.createComponent(LegendlessCanvasHost);
+    fixture.detectChanges();
+    const children = frameChildren(fixture.nativeElement as HTMLElement);
+    const band = children[bannerIndex(children) + 1];
+    // `:empty` is what makes the band generate no box, so the two margins still cancel.
+    expect(band.children.length).toBe(0);
+    expect(band.classList.contains('empty:hidden')).toBe(true);
+    expect(children[bannerIndex(children) + 2].matches('[data-riv-scroller]')).toBe(true);
   });
 });

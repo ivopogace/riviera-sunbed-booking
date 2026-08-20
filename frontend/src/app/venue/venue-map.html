@@ -147,17 +147,37 @@
         class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         label="Beach map — {{ v.name }}"
       >
+        <!-- The legend leads the card (#701): the tourist decodes the colours BEFORE reading the tiles, so it is projected above the grid rather than trailing it. Swatches wear the SAME appMapTile appearance as the tiles they stand for AND sit on the wash's own first stop, so a translucent swatch composites over the same ground its tiles do — matching computed styles is not the same as looking alike. The canvas owns the band's vertical spacing. -->
+        <ul
+          canvasLegend
+          class="flex list-none flex-wrap items-center justify-center gap-x-[22px] gap-y-2 bg-(--riv-map-sea) px-4 py-[9px] text-[12px] text-(--riv-card-ink-soft)"
+          aria-label="Legend"
+        >
+          @for (entry of legend; track entry.state) {
+            <li class="flex items-center gap-[7px]">
+              <span
+                appMapTile
+                [state]="entry.state"
+                class="h-[18px] w-[18px] rounded-[6px] border-[1.5px]"
+                aria-hidden="true"
+              ></span>
+              {{ entry.label }}
+            </li>
+          }
+        </ul>
         <ng-template [appBeachMapRow]="rows()" let-row>
           <ul
             class="set-row list-none h-full grid grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
           >
             @for (tile of row.tiles; track tile.set.id) {
               <li
-                class="set-tile snap-start h-full min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] border-[#bfe3df] bg-white/75 text-[#0f7d8c] font-bold text-[12.5px] [&.premium]:bg-[#fbf1d9]/85 [&.premium]:border-[#e6c483] [&.premium]:text-[#875911] [&.walkin]:bg-[#efe0bd]/85 [&.walkin]:border-[#c8ab62] [&.walkin]:text-[#5f4d2a] [&.taken]:bg-white/20 [&.taken]:border-dashed [&.taken]:border-[#6b7d77] [&.taken]:text-[#566560] [&.bookable]:p-0"
+                appMapTile
+                [state]="tile.state"
+                class="set-tile snap-start h-full min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] font-bold text-[12.5px] [&.bookable]:p-0"
                 data-testid="set-tile"
-                [class.premium]="tile.set.tier === 'PREMIUM'"
-                [class.walkin]="tile.walkInOnly"
-                [class.taken]="tile.set.availability === 'TAKEN'"
+                [class.premium]="tile.state === 'premium'"
+                [class.walkin]="tile.state === 'walkin'"
+                [class.taken]="tile.state === 'taken'"
                 [class.bookable]="tile.bookable"
                 [attr.aria-label]="tile.bookable ? null : tile.name"
               >
@@ -186,41 +206,6 @@
           Tap any free set to book it · prices are per set, full day.
         </p>
       </app-beach-map-canvas>
-
-      <ul
-        class="list-none flex gap-[18px] flex-wrap px-4 py-3 mt-4 rounded-2xl backdrop-blur-[20px] backdrop-saturate-[1.7] text-[13px] text-(--riv-card-ink-soft)"
-        appCardGlass
-        aria-label="Legend"
-      >
-        <li class="flex items-center gap-2">
-          <span
-            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#bfe3df] bg-white/75"
-            aria-hidden="true"
-          ></span>
-          Available
-        </li>
-        <li class="flex items-center gap-2">
-          <span
-            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#e6c483] bg-[#fbf1d9]/85"
-            aria-hidden="true"
-          ></span>
-          Front row
-        </li>
-        <li class="flex items-center gap-2">
-          <span
-            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-[#c8ab62] bg-[#efe0bd]/85"
-            aria-hidden="true"
-          ></span>
-          Walk-in only — book at the venue
-        </li>
-        <li class="flex items-center gap-2">
-          <span
-            class="w-3.5 h-3.5 rounded-[5px] border-[1.5px] border-dashed border-[#6b7d77] bg-white/20"
-            aria-hidden="true"
-          ></span>
-          Taken
-        </li>
-      </ul>
     </article>
 
     @if (selectedSet(); as set) {

@@ -45,7 +45,8 @@ export const FIELD_BORDER_ALPHA = 0.55;
 export const RIVIERA_CHIP = { color: WHITE, alpha: 0.16 };
 export const PORCELAIN_CHIP = { color: CARD_INK, alpha: 0.05 };
 
-/** The shared beach-map canvas's sea→sand wash stops (`beach-map-canvas.html`, #672). */
+/** The shared beach-map canvas's sea→sand wash stops (`beach-map-canvas.html`, #672).
+ *  The first is the canvas host's `--riv-map-sea`, which the tourist legend band also wears. */
 export const WASH_STOPS: readonly Rgb[] = ['cfeef6', 'e7f5f1', 'f6eedb'].map(hexToRgb);
 
 /** Worst-case background-gradient stops a glass surface can sit over, per theme. */

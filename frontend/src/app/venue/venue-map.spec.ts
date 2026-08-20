@@ -151,6 +151,13 @@ describe('VenueMap', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  /** The colour classes the directive gives a state, read off the legend swatch wearing it. */
+  function appearanceClassesFor(state: string): string[] {
+    const swatch = el().querySelector(`ul[aria-label="Legend"] [data-state="${state}"]`)!;
+    const geometry = new Set(['h-[18px]', 'w-[18px]', 'rounded-[6px]', 'border-[1.5px]']);
+    return [...swatch.classList].filter((token) => !geometry.has(token));
+  }
+
   it('requests the venue from the route id', () => {
     flushVenue();
     expect(fixture.componentInstance).toBeTruthy();
@@ -230,8 +237,33 @@ describe('VenueMap', () => {
   it('marks the premium front row and the taken sets distinctly', async () => {
     flushVenue();
     await fixture.whenStable();
-    expect(el().querySelectorAll('.set-tile.premium').length).toBe(6); // front row
+    // A taken front-row set is a ghost, not a premium tile: the 6 split 4 + 2 (#701).
+    expect(el().querySelectorAll('.set-tile.premium').length).toBe(4);
     expect(el().querySelectorAll('.set-tile.taken').length).toBe(6); // 18 of 24 free
+  });
+
+  it('lets the appearance directive own every tile colour — the template adds none (#701)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    // The unit host in `map-tile.spec.ts` cannot see this: it pins the directive against itself.
+    const paints = /^(bg-|text-\[#|border-\[#|border-dashed)/;
+    for (const tile of el().querySelectorAll('.set-tile')) {
+      const state = tile.getAttribute('data-state')!;
+      const own = [...tile.classList].filter((token) => paints.test(token));
+      expect(own.sort(), `the ${state} tile paints itself`).toEqual(
+        appearanceClassesFor(state).sort(),
+      );
+    }
+  });
+
+  it('spells one state two ways that can never select different tiles (#701)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    for (const state of ['premium', 'walkin', 'taken']) {
+      const byClass = [...el().querySelectorAll(`.set-tile.${state}`)];
+      const byAttribute = [...el().querySelectorAll(`.set-tile[data-state="${state}"]`)];
+      expect(byClass, `.${state} vs [data-state=${state}]`).toEqual(byAttribute);
+    }
   });
 
   it('shows the availability summary "18 of 24"', async () => {
@@ -376,6 +408,51 @@ describe('VenueMap', () => {
     const legend = el().querySelector('ul[aria-label="Legend"]')!;
     expect(legend.textContent).toContain('Walk-in only');
     expect(legend.querySelectorAll('li').length).toBe(4); // Available · Front row · Walk-in · Taken
+  });
+
+  it('renders the legend inside the map card, above the tile grid (#701)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const legends = el().querySelectorAll('ul[aria-label="Legend"]');
+    expect(legends.length).toBe(1);
+
+    const legend = legends[0];
+    const card = el().querySelector('[data-testid="beach-grid"]')!;
+    expect(card.contains(legend)).toBe(true);
+
+    const firstTile = el().querySelector('[data-testid="set-tile"]')!;
+    // Node.DOCUMENT_POSITION_FOLLOWING: the tile comes after the legend, so colours decode first.
+    expect(legend.compareDocumentPosition(firstTile) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('gives every legend swatch the state of the tile it stands for (#701)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const swatches = [...el().querySelectorAll('ul[aria-label="Legend"] [data-state]')];
+    expect(swatches.map((s) => s.getAttribute('data-state'))).toEqual([
+      'available',
+      'premium',
+      'walkin',
+      'taken',
+    ]);
+  });
+
+  it('renders a free walk-in tile hatched and a taken one as the ghost (#701)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    // A bookable tile carries its name on the inner button, a static one on the `<li>` itself.
+    const stateOf = (seat: string): string | null => {
+      const named = `[aria-label^="Set ${seat},"]`;
+      const tile = [...el().querySelectorAll('.set-tile')].find(
+        (t) => t.matches(named) || t.querySelector(named) !== null,
+      );
+      return tile!.getAttribute('data-state');
+    };
+    expect(stateOf('D1')).toBe('walkin');
+    expect(stateOf('D4')).toBe('taken');
+    expect(stateOf('A2')).toBe('premium');
   });
 
   it('keeps the bookable button accessible name ending in "Select to book"', async () => {
