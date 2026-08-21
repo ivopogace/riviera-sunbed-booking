@@ -20,8 +20,9 @@ answers both symptoms, because both are the same missing fact:
   rather than the `[]` default. Passed into `SetEditor` as a new required `loaded` input; false
   renders the skeleton. It is deliberately *not* cleared by `onSetsChanged()`'s re-read, so the
   common per-set-write path never flashes a skeleton over sets it already has.
-- **`reading`** — a map read is **in flight**. Generate is disabled while it is true, so the
-  destructive regenerate acts only on a map the operator has actually been shown. This one *does*
+- **`reading`** — a map read is **in flight**. Generate is inert while it is true (via `[appBusy]`'s
+  `aria-disabled`, never `[disabled]` — F-2), so the destructive regenerate acts only on a map the
+  operator has actually been shown. This one *does*
   cover `onSetsChanged()`'s window, which is why the gate is "the read has settled" and not "the
   grid is non-empty" (issue #721, *How it's reached*).
 
@@ -47,7 +48,14 @@ ready-for-review; RV-FE-8's grep still returns the frozen five edges, RV-FE-9 is
 `riviera-tailwind` + `angular-developer` for the template and `frontend/.claude/CLAUDE.md`'s
 busy-posture rule for the guard-script line — no `riviera-sdlc` row routes `scripts/`, so the rule
 it enforces is the authority there) ·
-`riviera-docs-freshness` (close-out — see Execution status) · `riviera-frontend` (structure —
+`riviera-docs-freshness` (**ran** over `origin/main..HEAD`, **1 finding, patched**: the
+counting sweep caught `check-focus-posture.mjs`'s own prose claiming "every one of the **51**
+`[appBusy]` bindings in the app is on a `<button>`" — 53 after this slice's own binding, and already
+stale by one before it; the count was dropped rather than re-pinned, since the claim it supports
+does not need one. The rename/removal grep had nothing to chase — nothing is renamed or removed,
+`layout-load-failed` keeps its testid — and no substrate doc states either component's contract:
+`riviera-frontend`'s cross-feature table still reads three `operator/ → venue/` edges, and the
+"two-suite e2e split" is still two) · `riviera-frontend` (structure —
 confirmed both edits stay inside the `operator/` feature folder: no new file, no new cross-feature
 edge, and the skeleton stays in `set-editor.html` rather than being promoted to `shared/`, which
 has exactly one consumer today) · `riviera-tailwind` (styling — utilities only, no new `.scss`
@@ -205,7 +213,7 @@ exactly those gates rather than waived — this is where the `onSetsChanged()` t
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `[disabled]="reading()"` on Generate strands focus on `<body>` if the button is focused when a read starts (WCAG 2.4.3, the repo's most-repeated bug class — RV-FE-9) | low | high | phase 1 shipped `[disabled]` on the argument that every window renders the button *already* inert, so nothing is blurred; the review gate rejected that reasoning (F-2) and it was right — an in-place venue switch reached by browser back/forward flips the flag under a focused button, and #616's finding is about the flip, not about who started the request | Claude | closed — `[appBusy]="reading()"` (`e0dd15b`), the posture its sibling buttons already use; specs pin `aria-disabled` **and** that the DOM `disabled` property stays false, and `reading` was added to `check-focus-posture.mjs`'s `BUSY_STEMS` so the guard now fails the build on a relapse |
+| R-1 | `[disabled]="reading()"` on Generate strands focus on `<body>` if the button is focused when a read starts (WCAG 2.4.3, the repo's most-repeated bug class — RV-FE-9) | low | high | phase 1 shipped `[disabled]` on the argument that every window renders the button *already* inert, so nothing is blurred; the review gate rejected that reasoning (F-2) and it was right — an in-place venue switch reached by browser back/forward flips the flag under a focused button, and #616's finding is about the flip, not about who started the request | Claude | closed — `[appBusy]="reading()"` (`8173354`), the posture its sibling buttons already use; specs pin `aria-disabled` **and** that the DOM `disabled` property stays false, and `reading` was added to `check-focus-posture.mjs`'s `BUSY_STEMS` so the guard now fails the build on a relapse |
 | R-2 | The skeleton's `animate-pulse` never finishes, so a real-browser axe run that first awaits `getAnimations().finished` (the repo's rule for animated surfaces) would hang the e2e | med | med | do not run axe over the skeleton in Playwright; jsdom axe covers the in-flight structure (AC-9), and the e2e asserts geometry + gating only. Recorded here so a later slice does not "fix" the missing axe call into a hang | Claude | open |
 | R-3 | Making `loaded` a **required** input breaks the three existing `SetEditor` spec files that call `setInput('sets', …)` and nothing else | high | low | deliberate: a defaulted `loaded = true` would silently re-open this bug for the next caller. All three render helpers take the flag (defaulting to `true` in the helper, not in the component) — `set-editor.spec.ts`, `set-editor.a11y.spec.ts` are the callers; `set-editor.contrast.spec.ts` renders nothing | Claude | open |
 | R-4 | The skeleton canvas reuses `set-grid`/`set-grid-frame`, so an existing wait matches the skeleton and a spec asserts against placeholder tiles | med | med | distinct testids (`set-skeleton-grid`, `set-skeleton-frame`, `set-skeleton-tile`), and AC-2 asserts **no** skeleton element survives the read | Claude | open |
@@ -338,11 +346,12 @@ changes only what the tab renders between issuing today's `GET /api/venues/{id}`
 > shipped tests. Record **`merged via PR #NN`, never a merge SHA** (case history + details:
 > `riviera-sdlc` `references/pr-gates.md` §3 step 4).
 
-**Stage pointer:** `close-out` — phases 0–3 shipped, **PR #731** ready for review, review gate run
-(five `/code-review` passes + the overlay FE bank), its two fixes landed and re-verified.
+**Stage pointer:** `merge close-out` — CI green, review gate run with its findings resolved, Sonar
+gate green **and** its reported list pulled from the API and verified empty, docs-freshness run.
 
-**Next action:** CI green on the fix round, then the Sonar gate (pull the reported list from the
-API, not the badge), `riviera-docs-freshness`, final plan state, merge.
+**Next action:** merge **PR #731** (a merge to `main` deploys to Render, so it is the maintainer's
+call — asked explicitly), then close-out steps 1–3: verify #721 closed, no parent epic, and that
+this doc's final state needs no follow-up PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -350,7 +359,7 @@ API, not the badge), `riviera-docs-freshness`, final plan state, merge.
 | 1 — Generate gated on the read settling | ✅ | `b4d299b` |
 | 2 — Failed-read path on both surfaces | ✅ | `45acf63` |
 | 3 — Mocked Playwright e2e (held GET) | ✅ | `4fcea28` |
-| 4 — Close-out: review gate + its fix round | ⏳ | (this commit) |
+| 4 — Close-out: review gate + its fix round | ✅ | `8173354` + this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -523,11 +532,17 @@ Skill-routing gate for what the fix touches *before* editing).
       clean via the guards, RV-PROC-1 reconciled). The session's standing "no Agent tool" instruction
       was not treated as grounds to skip: authorization was asked for and granted. Three findings
       (F-1, F-2 fixed; F-3 judged and left); the fix round re-entered at Implement, test-first.
-- [ ] **Step 2: Sonar gate** — pull the reported new-issue + duplication list from the API (not the
-      badge) and clear every entry.
-- [ ] **Step 3: `riviera-docs-freshness`** over `origin/main..HEAD`.
-- [ ] **Step 4:** finalize this Execution status in the PR's own last commit, citing
-      **merged via PR #NN**.
+- [x] **Step 2: Sonar gate** — read from the API, never the badge. `api/measures/component` returns
+      **`new_lines` non-zero** — the proof that separates a real zero from the false-clean read —
+      alongside 0 new bugs / 0 vulnerabilities / 0 code smells / **0 security hotspots** /
+      **0 duplicated blocks** (density 0.0 %) and **89.5 % new-code coverage**, over the ≥ 80 % bar;
+      `api/issues/search` returns `total: 0`. Nothing to resolve. Re-checked on the merge head after
+      this final commit, since every push re-triggers the analysis.
+- [x] **Step 3: `riviera-docs-freshness`** over `origin/main..HEAD` — 1 finding, patched in place;
+      the reasoning is in *Skills consulted*. Re-run after the fix round per the skill's own rule,
+      since that round is what added the 53rd `[appBusy]` binding.
+- [x] **Step 4:** this Execution status finalized in the PR's own last commit, citing
+      **merged via PR #731** — never a merge SHA, so no docs-only follow-up PR is needed.
 - [ ] **Step 5:** merge + close-out checklist per §3.
 
 ---
@@ -550,36 +565,47 @@ Skill-routing gate for what the fix touches *before* editing).
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1 / AC-2 / AC-3 / AC-7 / AC-8:** `npm test -- set-editor` → the in-flight, resolved and
-      set-less renders pass.
-- [ ] **AC-4 / AC-5 / AC-6:** `npm test -- layout-editor` → the Generate gate and the failed-read
-      path pass.
-- [x] **AC-9:** `npm test -- set-editor.a11y layout-editor.a11y` → axe clean on both new states.
-- [x] **AC-10:** `npm run test:e2e:a11y -- layout-editor` → passes.
+- [x] **AC-1 / AC-2 / AC-3 / AC-7 / AC-8:** `ng test --include="src/app/operator/set-editor*.spec.ts"`
+      → the in-flight, resolved and set-less renders pass (37/37).
+- [x] **AC-4 / AC-5 / AC-6:** `ng test --include="src/app/operator/layout-editor.spec.ts"` → the
+      Generate gate (both unsettled windows and the superseded-read case) and the failed-read path
+      pass, with the inert posture pinned as `aria-disabled` and NOT DOM-`disabled`.
+- [x] **AC-9:** both `*.a11y.spec.ts` files → axe clean on the in-flight skeleton and on the
+      failed-read tab in both modes.
+- [x] **AC-10:** `playwright test --config playwright.a11y.config.ts layout-editor` → **8 passed**,
+      including the held-GET spec — proven red first against `origin/main`'s templates.
+- [x] **Whole-suite regression:** `ng test --include="src/app/operator/*.spec.ts"` → **436 passed**;
+      `playwright ... layout-editor operator-set-editing operator-daily` → **23 passed**.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced — no backend file in the diff at all (invariant #1).
-- [ ] **Availability** section filled — no write path added or changed; the slice removes a way to
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced — no backend file in the diff at all (invariant #1).
+- [x] **Availability** section filled — no write path added or changed; the slice removes a way to
       overwrite `set_position`, and touches no availability row (invariant #2).
-- [ ] Pool + cutoff rules honored — the skeleton renders neither (invariants #3, #4).
-- [ ] **Modulith** section `N/A — frontend-only`; its FE mirror checked instead — RV-FE-8's grep
+- [x] Pool + cutoff rules honored — the skeleton renders neither (invariants #3, #4).
+- [x] **Modulith** section `N/A — frontend-only`; its FE mirror checked instead — RV-FE-8's grep
       still returns the frozen five cross-feature edges (invariant #11).
-- [ ] **Payment/payout** `N/A — no payment in scope` (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: the slice renders no date; the read's `todayBookingDate(new Date())` argument is
+- [x] **Payment/payout** `N/A — no payment in scope` (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: the slice renders no date; the read's `todayBookingDate(new Date())` argument is
       untouched (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change, so no migration and no `V<n>` claimed (invariant #12).
-- [ ] **Frontend** standards met — no `as any`, signal APIs, native control flow.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register: every row closed with an outcome. Open Questions: all resolved.
-- [ ] **Close-out written in THIS PR** — the final state committed here as **merged via PR #NN**.
-- [ ] **The review gate ran in full** — `/code-review` plus the `riviera-review-overlay` FE bank.
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change, so no migration and no `V<n>` claimed (invariant #12).
+- [x] **Frontend** standards met — no `as any`, signal APIs, native control flow; the review gate's
+      CLAUDE.md-adherence pass found no violation, and the busy-posture finding it did find (F-2) is
+      fixed and now machine-guarded.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register: every row closed with an outcome. Open Questions: all resolved.
+- [x] **Close-out written in THIS PR** — this final state is committed here as **merged via PR
+      #731**, never a merge SHA, so no docs-only follow-up PR is needed.
+- [x] **The review gate ran in full** — `/code-review` at ladder rung 1 (five parallel passes) plus
+      the `riviera-review-overlay` FE bank on top. The session's standing "no Agent tool" instruction
+      was not treated as grounds to skip: authorization was requested and granted. Three findings —
+      two fixed and re-verified, one judged and left with its reasoning in D-3.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

@@ -96,8 +96,8 @@ export const BUSY_STEMS = [
  *
  * An allow-list, not a deny-list: `BusyAction` is for buttons only — inertness comes from consuming
  * the activating click — so advising it on a `<fieldset>` or a child component's `disabled` input
- * asks for a rewrite that cannot be written, and every one of the 51 `[appBusy]` bindings in the
- * app is on a `<button>`.
+ * asks for a rewrite that cannot be written, and every `[appBusy]` binding in the app is on a
+ * `<button>`.
  */
 const ACTIONABLE = new Set(['button', 'a']);
 

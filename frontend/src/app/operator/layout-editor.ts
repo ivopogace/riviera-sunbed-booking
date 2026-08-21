@@ -353,7 +353,7 @@ export class LayoutEditor {
 
   protected onGenerate(): void {
     if (this.reading()) {
-      return; // the button is disabled meanwhile; never generate over a layout nobody has seen
+      return; // the button is inert meanwhile; never generate over a layout nobody has seen
     }
     if (this.hasLayout()) {
       this.confirmRegen.set(true); // regenerate replaces — confirm first
