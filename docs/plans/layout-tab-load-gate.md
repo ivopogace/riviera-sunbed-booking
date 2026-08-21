@@ -120,7 +120,7 @@ operator is shown, and what the tab lets them do, before/at/after the map read s
       failed-read tab, then there are no violations.
       *Pinned by:* `SetEditor a11y (#600) › has no axe violations while the map read is in flight (#721)` +
       `LayoutEditor a11y (#172) › has no axe violations when the initial map read failed (#721)`
-- [ ] **AC-10:** Given a real browser whose venue GET is held open, when the operator re-enters the
+- [x] **AC-10:** Given a real browser whose venue GET is held open, when the operator re-enters the
       Beach map tab, then Generate is disabled, Edit sets shows the skeleton, and releasing the read
       restores both surfaces (real tiles; Generate enabled and confirming).
       *Pinned by:* `layout-editor.e2e.ts › holds both surfaces until the map read settles (#721)`
@@ -328,16 +328,16 @@ changes only what the tab renders between issuing today's `GET /api/venues/{id}`
 > shipped tests. Record **`merged via PR #NN`, never a merge SHA** (case history + details:
 > `riviera-sdlc` `references/pr-gates.md` §3 step 4).
 
-**Stage pointer:** `implement` — phases 0–2 shipped; draft **PR #731** open, CI running per push.
+**Stage pointer:** `implement` — phases 0–3 shipped; draft **PR #731** open, CI running per push.
 
-**Next action:** phase 3 (the mocked held-GET e2e).
+**Next action:** phase 4 close-out — mark the PR ready for review, then the review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Per-set load gate + skeleton (unit + a11y) | ✅ | `664b19c` |
 | 1 — Generate gated on the read settling | ✅ | `b4d299b` |
-| 2 — Failed-read path on both surfaces | ✅ | (this commit) |
-| 3 — Mocked Playwright e2e (held GET) | | |
+| 2 — Failed-read path on both surfaces | ✅ | `45acf63` |
+| 3 — Mocked Playwright e2e (held GET) | ✅ | (this commit) |
 | 4 — Close-out (gates, docs freshness, final plan state) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -479,20 +479,21 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `frontend/e2e/layout-editor.e2e.ts`
 
-- [ ] **Step 1: Write the spec** — AC-10: sign in with the venue GET served (so the shell renders),
-      then arm a hold on the next venue GET, navigate Daily view → Beach map to force a fresh tab
-      mount, assert Generate disabled + the Edit-sets skeleton, release the read, assert the real
-      tiles and that Generate is enabled and confirms over the seeded layout. No axe run over the
-      skeleton (R-2).
-- [ ] **Step 2: Run it, verify it fails on `main`'s templates** — restore the two templates from
-      `origin/main`, run `-g "#721"`, then restore `HEAD`.
-- [ ] **Step 3:** no implementation — phases 0–2 shipped it; this phase proves it in a real browser.
-- [ ] **Step 4: Run it, verify it passes** —
-      `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
-- [ ] **Step 5: Generalization-audit pass** — mechanism: every mocked e2e that asserts a surface's
-      state while a read is deliberately unresolved.
-- [ ] **Step 6: Commit**
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1: Write the spec** — AC-10: sign in with the venue GET served (so the shell renders),
+      go to Daily view, *then* park the next venue GET and return to Beach map to force a fresh tab
+      mount, assert Generate disabled + its loading label + the Edit-sets skeleton, release the
+      read, assert the real tiles and that Generate is enabled and confirms over the seeded layout.
+      No axe run over the skeleton (R-2). The hold is a `mapGate` promise the route handler awaits.
+- [x] **Step 2: Run it, verify it fails on `main`'s templates** —
+      `git checkout origin/main -- layout-editor.{html,ts} set-editor.{html,ts}` →
+      `-g "#721"` → **1 failed**: `expect(locator).toBeDisabled() — unexpected value "enabled"`,
+      i.e. the in-flight Generate this issue reports. Restored with `git checkout HEAD -- …`.
+- [x] **Step 3:** no implementation — phases 0–2 shipped it; this phase proves it in a real browser.
+- [x] **Step 4: Run it, verify it passes** — `-g "#721"` → 1 passed; the three affected files
+      (`layout-editor`, `operator-set-editing`, `operator-daily`) → **23 passed**.
+- [x] **Step 5: Generalization-audit pass** — see the log's phase-3 row.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -516,6 +517,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-21 | phase 3 | **Mechanism:** every **surface that renders a loading state**, and whether any spec in the mocked browser suite ever *reaches* it — the suite's mocks all resolve instantly, so an in-flight render can be invisible to it by construction. Enumerated from the loading states themselves (their testids), then cross-cut against the whole e2e suite | `grep -rno 'data-testid="[a-z-]*loading[a-z-]*"' src/app --include=*.html --include=*.ts \| sort -u` (12 surfaces), then each id searched across `e2e/*.e2e.ts` | 12 loading states — home's skeleton grid, `my-bookings` (×2), six admin tabs, `operator-home`, `payouts-tab`, `requests-tab`. **None** is asserted by any mocked e2e; `set-loading`, added here, is the first | **Left, with the finding recorded.** Each of the twelve is unit-covered in jsdom (e.g. `home.spec.ts`'s skeleton assertions), so this is coverage *depth*, not a defect, and widening it is not this slice's scope. What the slice does leave behind is the technique — a `mapGate` promise the route handler awaits — for the next spec that needs one |
 | 2026-08-21 | phase 2 | **Mechanism:** every **notice whose signal is set by mode-independent code but which renders inside ONE arm of an in-component surface switch** — so half the surfaces it describes never show it. Enumerated from the switches (a component holding a mode signal and branching its template on it), not from "error messages that look misplaced" | `grep -rn "signal<'\|= signal<[A-Za-z]*Mode\|Mode>(" src/app --include=*.ts` (mode-holding components) cross-cut with `grep -rc 'role="alert"' src/app/**/*.html`, then each switch's arms read for a notice | 3 in-component surface switches: `layout-editor` (`mode()` bulk/sets — the defect: `layout-load-failed` lived in the bulk arm while `loadFailed` is set by the shared read), `auth-page` (`mode()` signin/register — `auth-error` is a form-level sibling of the register-only hint, so it renders in both), `booking-dialog` (`mode()` INSTANT/REQUEST — `dialog-error` sits at panel level, outside both arms). Every other console surface is a **route** tab with one arm, where the shape cannot occur | **One fix, two judged and left.** Both survivors already place the notice outside the arms, which is the fix applied here |
 | 2026-08-21 | phase 1 | **Mechanism:** every **destructive or irreversible action whose confirmation is conditional on fetched state** — the shape where "there is nothing to lose" and "we have not looked yet" are the same value. Enumerated from the confirm machinery itself (who sets a confirm flag, and under what condition) rather than from "editors with a Generate button" | `grep -rln "app-confirm-panel" src/app --include=*.html` (2 surfaces) + `grep -rn "confirm[A-Za-z]*\.set(true)" src/app --include=*.ts -B 3` (5 sites, with their guards), cross-checked against `grep -rn "length === 0" src/app --include=*.ts` for write guards reading a collection | 5 confirm sites. **Exactly one is conditional:** `layout-editor.onGenerate()`'s `if (hasLayout())` — the defect. The other four are unconditional (`set-editor`'s remove, `booking-view`'s cancel and withdraw, `set-password`'s), and each is reachable only from an already-loaded subject (`@if (booking(); as b)`, a selected set). `onSave()`'s `sets.length === 0` reads the **painted grid**, not a read, and is fenced again by the null `setVersion` token | **One fix, four judged and left.** The conditional-confirm shape exists once in this app, and it is the one this issue reports |
 | 2026-08-21 | phase 0 | **Mechanism:** every surface that renders a **fetched collection's emptiness as a fact** — either it takes the collection as a required input from a parent that may still be reading, or it seeds its own list signal with `[]` and branches on `.length`. Enumerated from the two syntactic shapes that create the state, not from "editors that look like this one" | `grep -rn "input.required<readonly" src/app --include=*.ts` (5) + `grep -rln "signal<readonly [A-Za-z]*\[\]>(\[\])\|signal<[A-Za-z]*\[\]>(\[\])" src/app --include=*.ts` (12), then read each surface's emptiness branch for a settled flag | 16 sites. **Inputs:** `set-editor` (the defect); `payout-statement` — its parent gates the whole tab on `@if (!loaded())`; `photo-slideshow` — both callers bind from an already-loaded object (`@if (venue(); as v)` / a loaded card); `segmented-control` — static config, never fetched; `beach-map-canvas` — a presentational primitive whose consumers own the question. **Own-read surfaces:** 11 of 11 already distinguish unread from empty — 10 via a `loaded`/`loading` signal, `admin-mail-delivery` via `searched() && bookings().length === 0` | **One fix, fifteen judged and left.** The population's defect rate is 1/16, and the one hit is the surface whose settled flag lives in a *different component* — which is exactly why it was the one to go missing |
@@ -531,7 +533,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - [ ] **AC-4 / AC-5 / AC-6:** `npm test -- layout-editor` → the Generate gate and the failed-read
       path pass.
 - [x] **AC-9:** `npm test -- set-editor.a11y layout-editor.a11y` → axe clean on both new states.
-- [ ] **AC-10:** `npm run test:e2e:a11y -- layout-editor` → passes.
+- [x] **AC-10:** `npm run test:e2e:a11y -- layout-editor` → passes.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 

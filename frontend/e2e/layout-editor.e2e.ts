@@ -7,8 +7,11 @@ import { settle } from './support/booking-dialog';
  * Real-render CI-safe e2e for the layout editor. Drives the actual generate → confirm →
  * paint → save flow on the default beach-map tab, asserting the single bulk PUT payload, the
  * server-locked (`LAYOUT_IN_USE`) path, and the stale-write conflict (409 STALE_WRITE keeps the
- * painted grid + offers Reload — co-located here as the venue tab does in operator-venue.e2e.ts). API
- * mocked via `page.route` (no backend), axe over the editor.
+ * painted grid + offers Reload — co-located here as the venue tab does in operator-venue.e2e.ts). It
+ * also parks the map GET open to drive the tab's in-flight window on both surfaces, the one state
+ * jsdom cannot show as a real mount. API mocked via `page.route` (no backend), axe over the editor —
+ * never over the skeleton, whose `animate-pulse` never finishes and would hang the suite's
+ * `getAnimations().finished` wait.
  */
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
@@ -40,13 +43,29 @@ async function mockEditor(
   page: Page,
   lock = false,
   seededSets: typeof VENUE_MAP.sets = [],
-): Promise<{ puts: Request[]; renames: Request[]; bump: () => void }> {
+): Promise<{
+  puts: Request[];
+  renames: Request[];
+  bump: () => void;
+  holdMap: () => void;
+  releaseMap: () => void;
+}> {
   const puts: Request[] = [];
   const renames: Request[] = [];
   let sessionLive = false;
   let serverSetVersion = 0;
   const bump = () => {
     serverSetVersion += 1;
+  };
+  // The map GET, parked open on demand — the in-flight window #721 is about, held until released.
+  let mapGate: Promise<void> | undefined;
+  let openMapGate: (() => void) | undefined;
+  const holdMap = () => {
+    mapGate = new Promise<void>((resolve) => (openMapGate = resolve));
+  };
+  const releaseMap = () => {
+    openMapGate?.();
+    mapGate = undefined;
   };
   await page.route(/\/api\/auth\/me$/, (route) =>
     sessionLive
@@ -85,11 +104,15 @@ async function mockEditor(
   });
   // The venue map (editor seed + shell header/stats) — carries the current setVersion; GET only, kept
   // below the PUT route.
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.request().method() === 'GET'
-      ? route.fulfill({ json: { ...VENUE_MAP, sets: seededSets, setVersion: serverSetVersion } })
-      : route.fallback(),
-  );
+  await page.route(/\/api\/venues\/1(\?.*)?$/, async (route) => {
+    if (route.request().method() !== 'GET') {
+      return route.fallback();
+    }
+    await mapGate;
+    return route.fulfill({
+      json: { ...VENUE_MAP, sets: seededSets, setVersion: serverSetVersion },
+    });
+  });
   // The per-row rename: enforces the same setVersion token the bulk PUT does, and bumps it on success.
   await page.route(/\/api\/venues\/1\/rows\/[^/]+\/name$/, (route) => {
     renames.push(route.request());
@@ -121,7 +144,7 @@ async function mockEditor(
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );
-  return { puts, renames, bump };
+  return { puts, renames, bump, holdMap, releaseMap };
 }
 
 async function signIn(page: Page): Promise<void> {
@@ -245,6 +268,44 @@ const SEEDED_SETS = [
     available: true,
   },
 ];
+
+test('holds both surfaces until the map read settles (#721)', async ({ page }) => {
+  const { holdMap, releaseMap } = await mockEditor(page, false, SEEDED_SETS);
+  await page.goto('/operator/1');
+  await signIn(page);
+  await expect(page.getByTestId('set-editor')).toBeVisible();
+
+  // Leave and re-enter the tab with its map GET parked: every mount pays an uncached read.
+  const tabs = page.getByTestId('oc-tabs');
+  await tabs.getByRole('link', { name: 'Daily view' }).click();
+  await expect(page.getByTestId('layout-editor')).toHaveCount(0);
+  holdMap();
+  await tabs.getByRole('link', { name: 'Beach map' }).click();
+
+  // Bulk is the mode the tab opens in during the window, so Generate is one click from the layout.
+  const generate = page.getByTestId('layout-generate');
+  await expect(generate).toBeDisabled();
+  await expect(generate).toHaveText(/Loading the current layout/);
+
+  await page.getByTestId('layout-mode-sets').click();
+  await expect(page.getByTestId('set-loading')).toContainText('Loading this venue’s sets');
+  expect(await page.getByTestId('set-skeleton-tile').count()).toBeGreaterThan(0);
+  await expect(page.getByTestId('set-cell')).toHaveCount(0);
+  await expect(page.getByTestId('set-panel-no-sets')).toHaveCount(0);
+
+  releaseMap();
+
+  // The venue's real map arrives with no further interaction, and the skeleton leaves with it.
+  await expect(page.getByTestId('set-cell')).toHaveCount(2);
+  await expect(page.getByTestId('set-skeleton-tile')).toHaveCount(0);
+  await expect(page.getByTestId('set-loading')).toHaveCount(0);
+
+  // And the destructive path the window bypassed now asks first.
+  await page.getByTestId('layout-mode-bulk').click();
+  await expect(generate).toBeEnabled();
+  await generate.click();
+  await expect(page.getByTestId('layout-confirm-regen')).toBeVisible();
+});
 
 test('renames a row on a venue whose bulk save is locked (#726)', async ({ page }) => {
   const { puts, renames } = await mockEditor(page, true, SEEDED_SETS);
