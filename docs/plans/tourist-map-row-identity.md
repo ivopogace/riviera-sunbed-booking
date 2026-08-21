@@ -196,9 +196,9 @@ N/A — no contract change. The map already receives `rowLabel` on `SetView`.
 
 ## Execution status
 
-**Stage pointer:** sonar gate (review gate ran: /code-review high + riviera-review-overlay FE bank walked; 3 findings fixed)
+**Stage pointer:** merge close-out (review gate ran + fixed; Sonar gate green on PR head — verify the list on the final head)
 
-**Next action:** confirm CI green on the review-fix push, then pull the SonarCloud issue + measures lists for PR #729 (pr-gates §2) and clear them
+**Next action:** confirm CI fully green on the F-2 fix push, re-confirm the Sonar list on that head, finalize the plan doc, tick the PR gates, merge
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -216,6 +216,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | I-1 | review gate (/code-review, high) | 32px mobile rail cap renders distinct row names as identical chips ("Row 1…" ×3) — defeats the row-identity purpose on the primary tourist device | fixed: product call escalated (48px mobile cap, grid floor 135px); e2e now pins that a short name ("Row 2") renders whole and untruncated |
 | I-2 | review gate (/code-review, high) | `BeachMapCanvasRow.code` TSDoc overclaimed: "the stored rowLabel on every surface" (editor passes grid letters) and "the backend guarantees it" (#728 open) | fixed: TSDoc now names each surface's supply and credits uniqueness to the row grouping |
 | I-3 | review gate (/code-review, high) | `truncateRailCodes` TSDoc called 48/96 "the price rail's own split" — its values are 92/128; only the two-tier pattern is shared | fixed: TSDoc states the pattern is mirrored with its own values |
+| F-2 | CI (Repo hygiene on 2f79ae3→d656682) | `check-inline-comments`: two multi-line inline comments in `venue-map-pan.e2e.ts` (the local pre-push run used a wrong `--files` invocation that silently checked nothing; CI's `--diff` caught them) | fixed: both shortened to one line; guard re-run locally with `--diff origin/main`, clean |
 
 ---
 
