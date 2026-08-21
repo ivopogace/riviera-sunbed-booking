@@ -1,14 +1,11 @@
 import { Component, input } from '@angular/core';
 
 /**
- * The admin console's access-denied line, stated once for all seven admin pages. Each page used
- * to carry its own copy of the sentence and its styling, which is the drift shape #735 removed
- * from the cutoff note: every page's spec pinned that page's own template, so a copy edit to one
- * left the other six green and stale.
+ * The admin console's access-denied line, for every admin page that gates on the role.
  *
- * <p>An attribute selector on the native `<p>`, so each page's element and its place in the
- * `@else if` chain are untouched. The test id stays per-page — the seven specs each assert their
- * own — so it is the component's one input rather than a fixed host attribute.
+ * <p>An attribute selector on the native `<p>`, so each page keeps its element and its place in the
+ * surrounding `@else if` chain. The test id is per-page — each page's spec asserts its own — so it
+ * is this component's one input rather than a fixed host attribute.
  */
 @Component({
   selector: 'p[appAdminForbidden]',

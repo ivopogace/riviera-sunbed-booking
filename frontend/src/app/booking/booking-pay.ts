@@ -124,7 +124,7 @@ type PayState =
           <app-withheld-email-notice />
         }
 
-        <app-manage-booking-link [code]="code" skin="btn-primary" />
+        <a appManageBookingLink [routerLink]="['/booking', code]" class="btn-primary"></a>
         <a routerLink="/" class="link">Back to the beach</a>
       </section>
     } @else {

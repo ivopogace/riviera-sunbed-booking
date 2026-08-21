@@ -4,13 +4,13 @@ import { Field, FormField } from '@angular/forms/signals';
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * The venue's booking-cutoff time field, stated once for both forms that set it. The label names
- * the zone explicitly — the cutoff is a wall-clock time in `Europe/Tirane` (invariant #6), and an
- * operator reading it in their own zone would set the wrong hour.
+ * The venue's booking-cutoff time field, for every form that sets it. The label names the zone
+ * explicitly — the cutoff is a wall-clock time in `Europe/Tirane` (invariant #6), and an operator
+ * reading it in their own zone would set the wrong hour.
  *
  * <p>Like the booking-mode field beside it, the component owns its `<label>` and hosts on
- * `display: contents`: the two forms place this field in different grids, so the field is shared
- * and the layout is not.
+ * `display: contents`: forms place this field in different grids, so the field is shared and the
+ * layout is not.
  */
 @Component({
   selector: 'app-booking-cutoff-field',

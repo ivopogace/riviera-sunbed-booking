@@ -57,7 +57,7 @@ describe('VenueCreateCard (#278)', () => {
 
   /** Set a Signal Forms field by the text of its label, then notify the form. */
   function setField(label: string, value: string): void {
-    const field = Array.from(host().querySelectorAll('label.field')).find((l) =>
+    const field = Array.from(host().querySelectorAll('label')).find((l) =>
       l.querySelector('span')?.textContent?.trim().startsWith(label),
     );
     if (!field) {

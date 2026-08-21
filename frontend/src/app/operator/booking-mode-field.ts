@@ -5,16 +5,14 @@ import { BookingMode } from '../shared/venue-views';
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * The venue's booking-mode picker, stated once for both forms that set it — the create card and
- * the console's venue tab. The label and the two mode names are the operator-facing statement of
- * ADR-0002's Instant/Request split, and each form used to carry its own copy.
+ * The venue's booking-mode picker, for every form that sets it. The two mode names are the
+ * operator-facing statement of the Instant/Request split (ADR-0002).
  *
- * <p>The component owns the `<label>` rather than binding to one the call site writes: with the
- * control supplied from here, the call site's label would be empty in its own template, which
- * `label-has-associated-control` cannot tell apart from a label with no control at all. The host
- * is `display: contents`, so the label is still the direct grid item — which matters, because the
- * two forms group this field with different neighbours. Only the field itself is shared, never the
- * layout around it; the form field and the test id come from the call site.
+ * <p>The component owns its `<label>` rather than binding to one the call site writes: with the
+ * control supplied from here, a call-site label would be empty in its own template, which
+ * `label-has-associated-control` cannot tell apart from a label with no control at all. The host is
+ * `display: contents`, so the label is still the direct grid item — which matters, because forms
+ * group this field with different neighbours. The field itself is shared; the layout around it is not.
  */
 @Component({
   selector: 'app-booking-mode-field',

@@ -184,6 +184,11 @@ describe('AdminRefundOutbox', () => {
     const fixture = await render(authStub(), service);
 
     expect(has(fixture, 'admin-refunds-error')).toBe(true);
+    // Names its own outbox: both pages once said "the outbox", naming neither.
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-refunds-error"]')
+        ?.textContent,
+    ).toContain('the refund outbox');
     expect(has(fixture, 'admin-refunds-resubmit')).toBe(false);
   });
 

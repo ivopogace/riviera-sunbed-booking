@@ -65,7 +65,7 @@ import { BookingService } from './booking.service';
         </div>
 
         <a routerLink="/" class="btn-primary">Back to the beach</a>
-        <app-manage-booking-link [code]="c.code" skin="link" />
+        <a appManageBookingLink [routerLink]="['/booking', c.code]" class="link"></a>
       </section>
     } @else {
       <section class="confirmation" appCardGlass aria-labelledby="confirmation-title">

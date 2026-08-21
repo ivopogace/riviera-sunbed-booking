@@ -1,26 +1,22 @@
-import { Component, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component } from '@angular/core';
 
 /**
- * The link a guest follows from a just-completed booking to its management page — the label, the
- * `manage-link` test id and the route into `/booking/:code`, all of which the confirmation page
- * and the payment page used to build separately.
+ * The link from a completed booking to its management page. Supplies the label and the
+ * `manage-link` test id; the route and the skin stay with the call site.
  *
- * <p>An element selector wrapping the anchor, rather than an attribute selector on the call site's
- * own `<a>`: with the label supplied from here, the call site's anchor would be empty in its own
- * template, which is indistinguishable from a genuinely empty link to `elements-content`. The host
- * is `display: contents`, so the anchor is still the direct child of whatever lays the page out.
- * Only the skin varies between the two pages, so it is the second input.
+ * <p>An attribute selector on the caller's own `<a>`, which is load-bearing rather than stylistic:
+ * `.btn-primary` and `.link` are declared in each page's `styleUrl` stylesheet, so emulated
+ * encapsulation compiles them to `.btn-primary[_ngcontent-<page>]`. An anchor rendered from this
+ * component's template would carry this component's stamp instead, match neither rule, and lose
+ * its styling silently. The anchor therefore stays in the page's view; only its text comes from here.
+ *
+ * <p>`elements-content` sees an anchor with no children in the caller's template and cannot know
+ * the content arrives from a directive, so `eslint.config.js` names this attribute in that rule's
+ * `allowList` — teaching the rule about this one directive rather than silencing it for a file.
  */
 @Component({
-  selector: 'app-manage-booking-link',
-  imports: [RouterLink],
-  host: { class: 'contents' },
-  template: `<a [routerLink]="['/booking', code()]" [class]="skin()" data-testid="manage-link"
-    >View or manage this booking</a
-  >`,
+  selector: 'a[appManageBookingLink]',
+  host: { 'data-testid': 'manage-link' },
+  template: `View or manage this booking`,
 })
-export class ManageBookingLink {
-  readonly code = input.required<string>();
-  readonly skin = input.required<string>();
-}
+export class ManageBookingLink {}

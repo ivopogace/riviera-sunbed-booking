@@ -1,12 +1,11 @@
 import { Component } from '@angular/core';
 
 /**
- * The legal footer line, stated once for both chromes — the tourist shell and the operator
- * console. Each carried its own copy of the notice and the two document links; only the
- * surrounding surface differs, so the skin stays at the call site and the content lives here.
+ * The legal footer line, for every chrome that shows it. The surrounding surface is the call site's;
+ * the notice and its two document links are fixed here.
  *
- * <p>New tab rather than in-app nav: routing away would unmount `/booking/pay`'s Payment Element
- * or swap an admin out of the tourist chrome. The touch-target exemption is the documented
+ * <p>New tab rather than in-app nav: routing away would unmount a mounted Payment Element or swap a
+ * signed-in admin out of the tourist chrome. The touch-target exemption is the documented
  * inline-link class (WCAG 2.5.5) and belongs to this content wherever it renders.
  */
 @Component({

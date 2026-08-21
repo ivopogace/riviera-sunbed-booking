@@ -506,7 +506,8 @@ describe('Home (venue discovery)', () => {
     // The test id exists only in shared/cutoff-note.ts, so finding it proves the note mounted.
     const note = el().querySelector('[data-testid="cutoff-note"]')!;
     expect(note.tagName).toBe('P');
-    expect(note.textContent?.trim()).not.toBe('');
+    // A clause, not the sentence — the wording stays pinned once, in cutoff-note.spec.ts.
+    expect(note.textContent).toContain('sales close at');
     expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     // Class pins (jsdom computes no Tailwind): the skin stays Discover's, not the component's.
     expect(note.classList.contains('rounded-full')).toBe(true);

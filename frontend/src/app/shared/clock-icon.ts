@@ -15,7 +15,8 @@ import { Component } from '@angular/core';
  * <p>Zero API surface, because the cascade already gives each call site full control: `currentColor`
  * makes the stroke follow whatever ink the surrounding note sets, and the size is a **presentation
  * attribute**, which loses to every CSS rule — so a call site resizes with a plain class
- * (`[&>svg]:size-[15px]`) and needs no `input()`. The host is `display: contents` so the svg stays
+ * (`[&_svg]:size-[15px]` — the descendant form, so it keeps matching however deeply the glyph is
+ * wrapped) and needs no `input()`. The host is `display: contents` so the svg stays
  * the direct flex child of the note and each call site's own `gap-1`/`shrink-0` layout is untouched.
  * `aria-hidden` sits on the host **and** the svg: the note's sentence carries the meaning.
  */

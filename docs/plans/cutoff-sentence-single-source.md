@@ -113,10 +113,11 @@ it: mutate the source and exactly the two pins go red, no site stays silently gr
   carrying `data-testid="cutoff-note"` and an `aria-hidden` `<svg>`, and axe reports no
   serious violations. *Pinned by:* `home.spec.ts`, `venue-map.spec.ts`,
   `cutoff-note.spec.ts`, and `expectNoSeriousAxeViolations` in the mocked suite
-- [x] **AC-7:** Given the whole `frontend/src` tree, when every ≥25-char text run rendered from a
-  `.html` file or an inline `template:` is grouped by normalized text, then **no group spans more
-  than one file** — i.e. no user-facing sentence is rendered from two templates. *Pinned by:* the
-  AC-verification sweep below (the enumerator that found the population in the first place)
+- [x] **AC-7:** Given the whole `frontend/src` tree, when every **≥25-char** text run rendered from
+  a `.html` file or an inline `template:` is grouped by normalized text, then **no group spans more
+  than one file**. The threshold is the AC's boundary, not an implementation detail: shorter strings
+  are out of population by the recorded judgement below, so this AC deliberately says nothing about
+  them. *Pinned by:* the AC-verification sweep below
 - [x] **AC-6:** Given `shared/cutoff-note.ts`, when it renders standalone, then its host
   static classes merge with (rather than replace) a class written at the call site, and its
   text is the exact sentence including the non-breaking space in `6&nbsp;PM`. *Pinned by:*
@@ -301,7 +302,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Findings register**
 
-*(empty — the review gate has not run yet.)*
+Review gate ran on PR #737 via the `code-review` workflow (rung 1 of the invocation ladder), with
+`riviera-review-overlay`'s bank layered on. **11 findings, one of them a real shipped regression.**
+Every fix re-entered at Implement through the frontend routing row.
+
+| # | Source | Finding | Status |
+|---|---|---|---|
+| F-1 | review | **`ManageBookingLink` silently stripped both call sites' styling.** `.btn-primary`/`.link` are declared in each page's `styleUrl` stylesheet, so emulated encapsulation compiles them to `.btn-primary[_ngcontent-<page>]`; an anchor rendered from the component's own template carries the component's stamp and matches neither rule. A genuine visual regression that no spec or e2e covered — and the exact trap the ICON-4 text *edited in this same PR* describes | **fixed** — the anchor goes back into the caller's view via an attribute selector, so the page's own rules apply; the `skin` input is gone (it was a false abstraction too — the two pages' `.btn-primary` genuinely differ, and each page styles other buttons with the same class). `elements-content` is taught about the directive through its **`allowList` option**, not silenced per file — falsified by removing the entry, which produces 3 errors. **A mechanism sweep over all eight extracted components** (caller-scoped class names appearing inside an extracted template, plus any `[class]` bound from a caller) confirms this was the only instance |
+| F-2 | review | AC-7's claim was **false as written**: "Sign out" still renders from `app.html` as well as the shared cluster, and the enumerator's 25-char threshold structurally cannot see it, so the re-run was vacuous for the short members | **fixed as a claim** — AC-7 now states what was actually verified (sentences ≥25 chars) and the tourist chrome's own "Sign out" is recorded as an explicit out-of-population decision, not an oversight |
+| F-3 | review | `clock-icon.ts`'s TSDoc still prescribed the **child** combinator `[&>svg]`, which this slice's extra wrapper makes unmatchable — in the file the skill names as the precedent to read before adding a glyph | **fixed** — prescribes the descendant form. The freshness sweep missed it because it grepped docs, not source TSDoc, which the skill's own map lists as in scope |
+| F-4 | review | The extracted labels dropped the `field` marker, narrowing `venue-create-card.spec.ts`'s `setField()` helper to the fields that kept it — a latent, confusing failure for the next spec that sets either field | **fixed** — the helper walks `label` directly, matching the sweep already changed for the same reason |
+| F-5 | review | The two rewritten outbox strings were pinned by nothing, leaving the one member fixed *as copy* free to drift straight back | **fixed** — each spec now asserts its own page's phrase |
+| F-6 | review | The surface specs' `not.toBe('')` passes for any text, so nothing in the unit suite proved a surface mounts the **right** note; the only cross-surface pin was an e2e the session could not run | **fixed** — each surface pins the clause `sales close at`: enough to identify the note, short of re-typing the sentence |
+| F-7 | review | Every new component's TSDoc was written as changelog and decision history with issue numbers, which `frontend/.claude/CLAUDE.md` forbids (`states the contract, not the changelog`) | **fixed** — all eight rewritten as contracts. F-3 is the standing demonstration of why: narrated history goes stale the moment it stops being current |
+| F-8 | review | `booking-pay.scss` / `booking-confirmation.scss` were touched without migration or a recorded deferral — only `app.scss` got one | **fixed** — #739 extended to name all three stylesheets, applying the deferral rationale the maintainer already granted for the identical situation |
+| F-9 | review | Unconstrained `string` inputs re-opened by type the drift the extraction closed by markup | **partially fixed** — `LegalConsent.lead` is now the union `ConsentLead`; `ManageBookingLink.skin` is gone entirely with F-1. The test-id inputs stay `string` deliberately: they are identifiers, not a closed vocabulary, and a union of them would have to be edited by every new call site |
+| F-10 | review | The attribute-selector exemption is a hand-maintained list of file paths, so a future attribute component fails with an error pointing at the selector rather than the allowlist | **accepted, not fixed** — the list is the deliberate choice recorded in D-3: a glob would have to key on a naming convention the repo does not have, and widening the rule globally would stop it catching a component that *should* have been an element. `riviera-tailwind` rule 1 now names the override explicitly so the next author is pointed at it rather than at an inline disable |
+| F-11 | review | `testId()` was a plain method behind five template bindings in a sticky header, re-allocating five strings on every change-detection pass | **fixed** — one `computed()` record |
 
 ---
 
@@ -331,7 +348,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/{operator-chrome.ts,operator-console.ts,operator-console.html}` — the two headers' call sites + the console footer
 - `frontend/src/app/operator/booking-mode-field.ts|.spec.ts`, `booking-cutoff-field.ts|.spec.ts` — the two venue form fields, ×2 → 1 each (new)
 - `frontend/src/app/operator/{venue-create-card.ts,venue-create-card.html,venue-tab.ts,venue-tab.html}` — their call sites; the create card's form model gains an explicit type
-- `frontend/src/app/operator/venue-create-card.spec.ts` — its field sweep stops keying on an inert marker class
+- `frontend/src/app/operator/venue-create-card.spec.ts` — its field sweep and `setField` helper stop keying on an inert marker class
+- `frontend/src/app/admin/admin-mail-outbox.spec.ts`, `admin-refund-outbox.spec.ts` — each pins its page's own error copy (review finding F-5)
+- `frontend/src/app/shared/clock-icon.ts` — its TSDoc prescribed the child combinator `[&>svg]`, which this slice's extra wrapper makes unmatchable (review finding F-3)
 - `.claude/skills/riviera-tailwind/SKILL.md` — rule 1's taxonomy gains the third branch this
   slice introduces (attribute-selector component over a native element)
 
@@ -392,6 +411,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | 2026-08-21 | Phase 1 | **Surfaces stating the cutoff rule in prose**, keyed by *wording* rather than by the `cutoff-note` test id — re-running #734's sweep to confirm this slice's Non-goals still describe reality | `grep -rniE "6\s*(&nbsp;\|\xc2\xa0\| )?PM\|evening before\|day before\|same.day\|closes? (the )?(evening\|day)" frontend/src frontend/e2e --include=*.html --include=*.ts` | 8, all previously enumerated: `booking/booking-dialog.ts`, `booking/booking-view.ts`, `admin/admin-commissions.ts`, the three `pages/legal/terms-of-service.*`, `e2e/legal-pages.e2e.ts`, `e2e/discovery-flow.e2e.ts` | **None.** Unchanged from #734 — the two `booking/` hits state the **cancellation** policy (invariant #10), `admin-commissions` explains accrual to an admin, the legal pages state the rule in legal register with no clock time, and the `discovery-flow` hit is this slice's own browser pin. Non-goals verified against the tree, not recalled |
 | 2026-08-21 | Phase 1 | **The real mechanism: any user-facing sentence rendered from more than one template** — *not* "places that mention the cutoff". Keying on the cutoff would have returned clean and hidden the population, which is #641's lesson exactly. Enumerated by extracting every ≥25-char text run from every tracked `.html` and inline `template:` and grouping by normalized text | a throwaway script over `git ls-files 'frontend/src/**/*.html' 'frontend/src/**/*.ts'`, grouping `/>([^<>{}@]{25,})</g` matches by normalized text (recorded in the follow-up issue; it is a rough enumerator, not a guard — it also matches TS generics) | **7 further members** beyond this slice's: "You don't have access to this page." ×**7** (`admin/*.ts`), "Sign out" ×3, "Booking cutoff (Europe/Tirane)" ×2 (`operator/venue-create-card.html`, `venue-tab.html`), "Something went wrong loading the outbox." ×2, "View or manage this booking" ×2, "and acknowledge our" ×2, "© Riviera Sunbed Booking ·" ×2 | **All — the rest fixed here too, at the maintainer's direction (D-4).** Originally raised as #738; Each carries the identical failure mode (per-template specs, so a copy edit to one sibling leaves the others green and stale), but the maintainer chose to fix them in this PR rather than defer. Both judgements the enumeration raised held up: the outbox pair was indeed a **copy bug** (fixed as copy, not deduplicated), and two entries were tips of structural duplications whose real seams were extracted instead of their bare words |
 | 2026-08-21 | Phase 4 (fix round) | **Re-run of the same enumerator over the finished tree** — #373's rule that a fix round can create its own staleness, applied to the audit's own population | the same script | 11 hits, **all** TypeScript false positives (generics and spec boilerplate between `>` and `<`); zero real template copy | **None needed.** The population is empty, which is AC-7 |
+| 2026-08-21 | Close-out (review F-2) | **The tourist chrome's own "Sign out"** — `app.html` renders it twice (desktop and mobile nav) and the operator cluster renders it once, so the string still spans two templates after the fix | `grep -rn "Sign out" frontend/src` | `app.html` ×2, `operator-actions.ts` ×1 | **Out of population, deliberately — and stated rather than left implied.** The tourist chrome signs out a **customer session**; the operator cluster an **operator session**. They are two different actions that share a two-word label, and a shared primitive would couple two chromes that are deliberately separate for no drift benefit — a copy edit to one is not an edit the other wants. The two inside `app.html` are one template's desktop and mobile nav, not a cross-file duplicate. This is the same call the 8-char run below makes for short labels generally |
 | 2026-08-21 | Phase 4 | **The threshold's own blind spot** — the enumerator keys on runs of ≥25 chars, so shorter repeated strings are invisible to it. Re-run at 8 chars to see what the cutoff hid | the same script with `{8,}` | dozens: "Booking code" ×5, "New password" ×3, "Email address" ×2, "Back to home" ×2, "All beaches" ×2, … | **Out of population, deliberately.** These are short field labels and button captions — normal UI vocabulary, not drifting prose, and sharing them would couple unrelated features for no drift benefit. The 25-char threshold is a reasonable proxy for "sentence"; recording the 8-char run is what makes that a judgement rather than an accident of the cutoff |
 
 ---
@@ -417,7 +437,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [ ] **AC-5:** the surface specs + the mocked suite's axe checks.
 - [x] **AC-6:** `npx ng test --watch=false --include="src/app/shared/cutoff-note.spec.ts"` →
   7 passed, including the host/call-site class merge and the `6&nbsp;PM` pin. Verified at `b3a64e8`.
-- [x] **AC-7:** the duplicate-sentence enumerator re-run over the finished tree → **zero** groups
+- [x] **AC-7 (as scoped — see the finding F-2 correction):** the enumerator re-run over the finished
+  tree → **zero** groups
   spanning more than one file once TypeScript false positives are excluded (the regex also matches
   generics between `>` and `<`, e.g. `input.required<string>` and `let params$: BehaviorSubject<…>`;
   those 11 residual hits are all `.ts` code, not template copy). Before the slice it returned 8
