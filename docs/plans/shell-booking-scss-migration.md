@@ -179,16 +179,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3 — booking-pay)
+**Stage pointer:** implement (phase 4 — manage-booking-link element form)
 
-**Next action:** port booking-pay.ts to utilities; delete its stylesheet.
+**Next action:** rewrite manage-booking-link.spec.ts (red), then the element-form component + both call sites + allowList drop.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | `Plan the app-shell and booking SCSS migration` · PR #740 (draft) |
 | 1 — my-bookings migration + pulsing skeleton (AC-1/AC-2) | ✅ | `My bookings: Tailwind migration + pulsing skeleton` — red→green (2 new specs), 42 my-bookings + 279 booking specs, lint + TT/IC guards clean |
 | 2 — booking-confirmation migration | ✅ | `Booking confirmation: Tailwind migration` — 13 specs green unmodified |
-| 3 — booking-pay migration | | |
+| 3 — booking-pay migration | ✅ | `Booking pay: Tailwind migration` — 36 specs green unmodified; pay-spin keyframe now global in styles.scss |
 | 4 — manage-booking-link element form + allowList drop (AC-5) | | |
 | 5 — app-shell migration (AC-3) | | |
 | 6 — verify sweep: e2e + computed-style parity (AC-4/AC-6/AC-7), docs freshness | | |
@@ -257,10 +257,12 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `booking-pay.ts` · Delete `booking-pay.scss`
 
-- [ ] Port to utilities: `%card-surface` extras repeated per surface (template repetition
+- [x] Port to utilities: `%card-surface` extras repeated per surface (template repetition
   is the norm — home/set-editor precedent); `sr-status` → `sr-only`; spinner →
-  `animate-[spin_0.8s_linear_infinite]`; retain `pay-done`/`pay-checkout`/`btn-primary`
-  markers; grid via `min-[720px]:`; delete stylesheet. a11y + unit specs green
+  `animate-[pay-spin_0.8s_linear_infinite]` (keyframe moved to `styles.scss` — Tailwind
+  emits its own `spin` keyframes only for the named utility, not arbitrary values);
+  retain `pay-done`/`pay-checkout` markers (`btn-primary` unqueried outside the phase-4
+  spec — dropped); grid via `min-[720px]:`; delete stylesheet. a11y + unit specs green
   unmodified.
 
 ## Phase 4 — manage-booking-link element form

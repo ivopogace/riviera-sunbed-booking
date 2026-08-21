@@ -159,6 +159,10 @@ body {
   }
 }
 
-/* NOTE: reduced-motion guards live NEXT TO each animation, in the component stylesheet that
-   declares it (see app.scss) — a global guard here always loses the specificity contest against
-   Angular's emulated-encapsulation attribute selectors, so it would be dead code. */
+@keyframes pay-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Consumed by name from arbitrary animation utilities; each consumer carries its own motion-reduce guard. */

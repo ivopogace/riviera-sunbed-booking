@@ -69,77 +69,149 @@ type PayState =
     <!-- One persistent live region announces every state change. A live region only announces
          content that MUTATES after it is in the DOM — a region re-created together with the
          confirmed/awaiting section would never announce its initial text (a11y). -->
-    <p class="sr-status" role="status" aria-live="polite" data-testid="pay-status">
+    <p class="sr-only" role="status" aria-live="polite" data-testid="pay-status">
       {{ liveStatus() }}
     </p>
     @if (state() === 'missing') {
-      <section class="pay-standalone" appCardGlass aria-labelledby="pay-title">
-        <h1 id="pay-title">No payment in progress</h1>
-        <p class="lead">
+      <section
+        class="mx-auto my-8 max-w-[420px] rounded-[28px] px-[30px] pt-[34px] pb-[30px] text-center shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]"
+        appCardGlass
+        aria-labelledby="pay-title"
+      >
+        <h1 class="mb-1 text-[23px] font-bold tracking-[-0.02em]" id="pay-title">
+          No payment in progress
+        </h1>
+        <p class="mb-[18px] text-[14px] leading-[1.5] text-(--riv-card-ink-soft)">
           Your payment session isn’t available here anymore. Please start a new booking.
         </p>
-        <a routerLink="/" class="link">Back to home</a>
+        <a
+          routerLink="/"
+          class="mt-3 block min-h-11 text-[14px] font-semibold text-(--riv-accent-ink) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
+          >Back to home</a
+        >
       </section>
     } @else if (state() === 'confirmed' || state() === 'awaiting') {
-      <section class="pay-done" appCardGlass aria-labelledby="pay-title">
-        <div class="done-badge" [class.warn]="state() === 'awaiting'" aria-hidden="true">
+      <section
+        class="pay-done mx-auto my-8 max-w-[420px] rounded-[28px] px-[30px] pt-[34px] pb-[30px] text-center shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]"
+        appCardGlass
+        aria-labelledby="pay-title"
+      >
+        <div
+          class="mx-auto mb-[18px] flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] text-[30px] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+          [class]="
+            state() === 'awaiting' ? 'bg-[#fcf0d9] text-[#8a5410]' : 'bg-[#d9f2f7] text-[#0a5f74]'
+          "
+          aria-hidden="true"
+        >
           {{ state() === 'confirmed' ? '✓' : '⏳' }}
         </div>
         @if (state() === 'confirmed') {
-          <h1 id="pay-title">You’re booked.</h1>
-          <p class="lead">Your payment is complete. Show this code to staff when you arrive.</p>
+          <h1 class="mb-1 text-[23px] font-bold tracking-[-0.02em]" id="pay-title">
+            You’re booked.
+          </h1>
+          <p class="mb-[18px] text-[14px] leading-[1.5] text-(--riv-card-ink-soft)">
+            Your payment is complete. Show this code to staff when you arrive.
+          </p>
         } @else {
-          <h1 id="pay-title">Payment received</h1>
-          <p class="lead">
+          <h1 class="mb-1 text-[23px] font-bold tracking-[-0.02em]" id="pay-title">
+            Payment received
+          </h1>
+          <p class="mb-[18px] text-[14px] leading-[1.5] text-(--riv-card-ink-soft)">
             We’ve received your payment and are waiting for final confirmation. This can take a
             moment — your booking is saved under the code below, and you can check it any time.
           </p>
         }
 
-        <dl class="summary">
-          <div class="sum-row">
-            <dt>Venue</dt>
-            <dd>{{ booking!.venueName }}</dd>
+        <dl class="mt-3">
+          <div
+            class="flex items-baseline justify-between gap-3 border-b border-(--riv-card-track) py-[9px] text-[14px]"
+          >
+            <dt class="text-(--riv-card-ink-soft)">Venue</dt>
+            <dd class="text-right font-bold">{{ booking!.venueName }}</dd>
           </div>
-          <div class="sum-row">
-            <dt>Set</dt>
-            <dd>{{ booking!.rowLabel }} · spot {{ booking!.positionNo }}</dd>
+          <div
+            class="flex items-baseline justify-between gap-3 border-b border-(--riv-card-track) py-[9px] text-[14px]"
+          >
+            <dt class="text-(--riv-card-ink-soft)">Set</dt>
+            <dd class="text-right font-bold">
+              {{ booking!.rowLabel }} · spot {{ booking!.positionNo }}
+            </dd>
           </div>
-          <div class="sum-row">
-            <dt>Date</dt>
-            <dd>{{ dateLabel }}</dd>
+          <div
+            class="flex items-baseline justify-between gap-3 border-b border-(--riv-card-track) py-[9px] text-[14px]"
+          >
+            <dt class="text-(--riv-card-ink-soft)">Date</dt>
+            <dd class="text-right font-bold">{{ dateLabel }}</dd>
           </div>
-          <div class="sum-row total">
-            <dt>{{ state() === 'confirmed' ? 'Paid' : 'Total' }}</dt>
-            <dd>{{ formatMoney(booking!.amount) }}</dd>
+          <div class="flex items-baseline justify-between gap-3 pt-[13px] pb-[9px] text-[14px]">
+            <dt class="text-(--riv-card-ink-soft)">
+              {{ state() === 'confirmed' ? 'Paid' : 'Total' }}
+            </dt>
+            <dd class="text-right text-[22px] font-bold tracking-[-0.02em] text-(--riv-accent-ink)">
+              {{ formatMoney(booking!.amount) }}
+            </dd>
           </div>
         </dl>
 
-        <p class="code" data-testid="booking-code">
-          <span class="code-label">Booking code</span>
-          <strong>{{ code }}</strong>
+        <p
+          class="my-[18px] rounded-[18px] border border-dashed border-(--riv-field-border) bg-[rgba(255,255,255,0.4)] p-[15px]"
+          data-testid="booking-code"
+        >
+          <span class="block text-[11px] tracking-[0.16em] uppercase text-(--riv-card-ink-soft)"
+            >Booking code</span
+          >
+          <strong
+            class="mt-[5px] block text-[26px] font-bold tracking-[0.12em] text-(--riv-accent-ink)"
+            >{{ code }}</strong
+          >
         </p>
 
         @if (emailWithheld()) {
           <app-withheld-email-notice />
         }
 
-        <a appManageBookingLink [routerLink]="['/booking', code]" class="btn-primary"></a>
-        <a routerLink="/" class="link">Back to the beach</a>
+        <a
+          appManageBookingLink
+          [routerLink]="['/booking', code]"
+          class="mt-4 block w-full rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) motion-reduce:transition-none"
+        ></a>
+        <a
+          routerLink="/"
+          class="mt-3 block min-h-11 text-[14px] font-semibold text-(--riv-accent-ink) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
+          >Back to the beach</a
+        >
       </section>
     } @else {
-      <section class="pay-checkout" aria-labelledby="pay-title">
+      <section
+        class="pay-checkout relative mx-auto max-w-[920px] px-6 pt-6 pb-[72px]"
+        aria-labelledby="pay-title"
+      >
         @if (state() !== 'processing') {
-          <a routerLink="/" class="cancel-link" appPanelGlass data-testid="pay-cancel">Cancel</a>
+          <!-- Dark header-glass pill: white ink clears AA over any gradient stop (bare-gradient chips would not). -->
+          <a
+            routerLink="/"
+            class="mb-3.5 inline-flex min-h-11 items-center rounded-full px-4 py-2 text-[13px] font-semibold text-(--riv-ink) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+            appPanelGlass
+            data-testid="pay-cancel"
+            >Cancel</a
+          >
         }
-        <div class="pay-grid">
-          <div class="pay-card" appCardGlass>
+        <div class="grid grid-cols-1 items-start gap-5 min-[720px]:grid-cols-[minmax(0,1fr)_320px]">
+          <div
+            class="min-h-[340px] rounded-[28px] px-[26px] pt-[26px] pb-6 shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]"
+            appCardGlass
+          >
             @switch (state()) {
               @case ('processing') {
-                <div class="confirming">
-                  <span class="spinner" aria-hidden="true"></span>
-                  <h1 id="pay-title">Confirming your booking…</h1>
-                  <p class="lead">
+                <div class="px-[10px] pt-[30px] pb-3 text-center">
+                  <span
+                    class="mb-[18px] inline-block h-13 w-13 animate-[pay-spin_0.8s_linear_infinite] rounded-full border-4 border-[rgba(43,184,212,0.25)] border-t-[#0e8aa8] motion-reduce:animate-none"
+                    aria-hidden="true"
+                  ></span>
+                  <h1 class="mb-1 text-[23px] font-bold tracking-[-0.02em]" id="pay-title">
+                    Confirming your booking…
+                  </h1>
+                  <p class="mb-[18px] text-[14px] leading-[1.5] text-(--riv-card-ink-soft)">
                     Your payment went through. We’re waiting for the confirmation from our payment
                     provider — this takes just a moment. Please don’t close this page.
                   </p>
@@ -147,18 +219,29 @@ type PayState =
               }
               @case ('error') {
                 @if (terminalError()) {
-                  <div class="fail-badge" aria-hidden="true">✕</div>
-                  <h1 id="pay-title">Payment couldn’t be completed</h1>
+                  <div
+                    class="mx-auto mt-1.5 mb-4 flex h-[60px] w-[60px] items-center justify-center rounded-full border border-[#eecdc4] bg-[#f7e8e4] text-[28px] text-[#a3372a]"
+                    aria-hidden="true"
+                  >
+                    ✕
+                  </div>
+                  <h1 class="mb-1 text-[23px] font-bold tracking-[-0.02em]" id="pay-title">
+                    Payment couldn’t be completed
+                  </h1>
                 } @else {
-                  <h1 id="pay-title">Complete your payment</h1>
-                  <p class="lead">
+                  <h1 class="mb-1 text-[23px] font-bold tracking-[-0.02em]" id="pay-title">
+                    Complete your payment
+                  </h1>
+                  <p class="mb-[18px] text-[14px] leading-[1.5] text-(--riv-card-ink-soft)">
                     Your card wasn’t charged. Check the details and try again below.
                   </p>
                 }
               }
               @default {
-                <h1 id="pay-title">Complete your payment</h1>
-                <p class="lead">
+                <h1 class="mb-1 text-[23px] font-bold tracking-[-0.02em]" id="pay-title">
+                  Complete your payment
+                </h1>
+                <p class="mb-[18px] text-[14px] leading-[1.5] text-(--riv-card-ink-soft)">
                   Enter your card to confirm the booking. Payments are processed securely by Stripe
                   — Riviera never sees your card number.
                 </p>
@@ -167,52 +250,94 @@ type PayState =
 
             <!-- Payment Element host. Kept in the DOM across mounting/ready/error so the Stripe
                  iframe survives a retry; hidden (not removed) once the card step is done. -->
-            <div #peHost class="pe-host" [hidden]="!showElement()" data-testid="pe-host"></div>
+            <div
+              #peHost
+              class="min-h-[120px] rounded-[18px] border border-(--riv-card-track) bg-[rgba(255,255,255,0.7)] p-4"
+              [hidden]="!showElement()"
+              data-testid="pe-host"
+            ></div>
 
             @if (showElement()) {
-              <p class="trust">
+              <p class="mt-3 flex items-center gap-1.5 text-[11.5px] text-(--riv-card-ink-faint)">
                 <span aria-hidden="true">🔒</span> Encrypted &amp; PCI-compliant · powered by Stripe
               </p>
             }
 
             @if (state() === 'mounting') {
-              <p class="status">Loading the secure payment form…</p>
+              <p class="mt-3 text-[13.5px] text-(--riv-card-ink-soft)">
+                Loading the secure payment form…
+              </p>
             }
 
             @if (errorMessage(); as msg) {
-              <p class="form-error" role="alert" data-testid="pay-error">{{ msg }}</p>
+              <p
+                class="mt-3.5 rounded-xl bg-[#f6e8e7] px-3.5 py-[11px] text-[13.5px] font-semibold text-[#a3160e]"
+                role="alert"
+                data-testid="pay-error"
+              >
+                {{ msg }}
+              </p>
             }
 
             @if (state() === 'error' && terminalError()) {
-              <a [routerLink]="['/booking', code]" class="link" data-testid="booking-status-link">
+              <a
+                [routerLink]="['/booking', code]"
+                class="mt-3 inline-flex min-h-11 items-center text-[14px] font-semibold text-(--riv-accent-ink) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
+                data-testid="booking-status-link"
+              >
                 View booking status
               </a>
-              <a routerLink="/" class="link" data-testid="startover-link">Start a new booking</a>
+              <a
+                routerLink="/"
+                class="mt-3 inline-flex min-h-11 items-center text-[14px] font-semibold text-(--riv-accent-ink) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
+                data-testid="startover-link"
+                >Start a new booking</a
+              >
             }
           </div>
 
-          <aside class="pay-summary" appCardGlass>
-            <span class="summary-label">Order summary</span>
+          <aside
+            class="rounded-[28px] px-[26px] pt-[26px] pb-6 shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8] min-[720px]:sticky min-[720px]:top-[88px]"
+            appCardGlass
+          >
+            <span
+              class="mb-3 block text-[11px] font-bold tracking-[0.12em] uppercase text-(--riv-card-ink-soft)"
+              >Order summary</span
+            >
             <dl>
-              <div class="sum-row">
-                <dt>Venue</dt>
-                <dd>{{ booking!.venueName }}</dd>
+              <div
+                class="flex items-baseline justify-between gap-3 border-b border-(--riv-card-track) pt-0 pb-[9px] text-[14px]"
+              >
+                <dt class="text-(--riv-card-ink-soft)">Venue</dt>
+                <dd class="text-right font-bold">{{ booking!.venueName }}</dd>
               </div>
-              <div class="sum-row">
-                <dt>Set</dt>
-                <dd>{{ booking!.rowLabel }} · spot {{ booking!.positionNo }}</dd>
+              <div
+                class="flex items-baseline justify-between gap-3 border-b border-(--riv-card-track) py-[9px] text-[14px]"
+              >
+                <dt class="text-(--riv-card-ink-soft)">Set</dt>
+                <dd class="text-right font-bold">
+                  {{ booking!.rowLabel }} · spot {{ booking!.positionNo }}
+                </dd>
               </div>
-              <div class="sum-row">
-                <dt>Date</dt>
-                <dd>{{ dateLabel }}</dd>
+              <div
+                class="flex items-baseline justify-between gap-3 border-b border-(--riv-card-track) py-[9px] text-[14px]"
+              >
+                <dt class="text-(--riv-card-ink-soft)">Date</dt>
+                <dd class="text-right font-bold">{{ dateLabel }}</dd>
               </div>
-              <div class="sum-row">
-                <dt>Includes</dt>
-                <dd>2 loungers + umbrella</dd>
+              <div
+                class="flex items-baseline justify-between gap-3 border-b border-(--riv-card-track) py-[9px] text-[14px]"
+              >
+                <dt class="text-(--riv-card-ink-soft)">Includes</dt>
+                <dd class="text-right font-bold">2 loungers + umbrella</dd>
               </div>
-              <div class="sum-row total">
-                <dt>Total</dt>
-                <dd>{{ formatMoney(booking!.amount) }}</dd>
+              <div class="flex items-baseline justify-between gap-3 pt-[13px] pb-[9px] text-[14px]">
+                <dt class="text-(--riv-card-ink-soft)">Total</dt>
+                <dd
+                  class="text-right text-[22px] font-bold tracking-[-0.02em] text-(--riv-accent-ink)"
+                >
+                  {{ formatMoney(booking!.amount) }}
+                </dd>
               </div>
             </dl>
 
@@ -226,7 +351,7 @@ type PayState =
               <button
                 appTouchTarget
                 type="button"
-                class="btn-primary"
+                class="mt-4 block w-full cursor-pointer rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) disabled:cursor-default disabled:opacity-70 motion-reduce:transition-none"
                 (click)="pay()"
                 [appBusy]="paying()"
                 data-testid="pay-button"
@@ -235,14 +360,19 @@ type PayState =
               </button>
             }
             @if (state() === 'processing') {
-              <p class="finalising" role="status">Finalising… hang tight.</p>
+              <p
+                class="mt-3.5 text-center text-[13px] font-semibold text-(--riv-accent-ink)"
+                role="status"
+              >
+                Finalising… hang tight.
+              </p>
             }
           </aside>
         </div>
       </section>
     }
   `,
-  styleUrl: './booking-pay.scss',
+  host: { class: 'block text-(--riv-card-ink)' },
 })
 export class BookingPay {
   private readonly bookings = inject(BookingService);
