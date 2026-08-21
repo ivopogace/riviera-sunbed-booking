@@ -160,7 +160,7 @@ run `/code-review` + `riviera-review-overlay`.
 |-------|--------|---------|
 | 0 — Plan doc committed | ✅ | `69f1bae` |
 | 1 — Unit red-green: `LayoutCommand.splitsRowLabel()` + `ReplaceRejection.ROW_NAME_TAKEN` + service check + controller 409 | ✅ | `1a08817` |
-| 2 — HTTP pinning IT + javadoc/docs sweep | ✅ | see PR #730 (phase-2 commit) |
+| 2 — HTTP pinning IT + javadoc/docs sweep | ✅ | `e803dba` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -237,7 +237,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **AC-1/AC-3/AC-4:** `gradle test --tests "*VenueAdminServiceTest*"` → green
   (64 tests, 3 new). Verified at `1a08817`.
 - [x] **AC-2:** `gradle test --tests "*BeachMapReplaceIT*"` → green against real Postgres
-  (16 tests, 0 skipped). Verified at the phase-2 commit.
+  (16 tests, 0 skipped). Verified at `e803dba`.
 
 ## Self-review checklist (before merge / PR)
 
