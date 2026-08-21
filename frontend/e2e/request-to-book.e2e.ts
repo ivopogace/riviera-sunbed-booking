@@ -96,6 +96,10 @@ test('request-to-book: request dialog → 202 PENDING_REQUEST → request-sent �
 
   await page.goto('/venues/1');
   await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
+  // A REQUEST venue explains the no-charge deal on the map, before the tourist commits to a spot (#703).
+  await expect(page.getByTestId('beach-grid')).toContainText(
+    'Pick a set to request it — you pay only once Miramar Beach Club accepts.',
+  );
   await page
     .getByRole('button', { name: /Select to book/ })
     .first()

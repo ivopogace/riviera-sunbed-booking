@@ -213,11 +213,17 @@
             }
           </ul>
         </ng-template>
+        <!-- The footer states the venue's own deal where the tap happens (#703): a REQUEST venue's tourist otherwise first meets the no-charge-until-accepted flow inside the dialog, after committing to a spot. -->
         <p
           canvasFooter
           class="text-center text-[12px] text-(--riv-card-ink-faint) mt-2.5 tracking-[0.02em]"
         >
-          Tap any free set to book it · prices are per set, full day.
+          @if (v.bookingMode === 'REQUEST') {
+            Pick a set to request it — you pay only once {{ v.name }} accepts.<br />
+            Prices are per set, full day.
+          } @else {
+            Pick any free set to book it · prices are per set, full day.
+          }
         </p>
         <!-- Zero sets (#717): the canvas drops the legend, grid and footer together, so this slot IS the card. The state is date-independent — sets come from the venue's layout — so the copy sends the tourist onward, not back to the picker. -->
         <div canvasEmpty class="px-3 py-9 text-center" data-testid="map-empty">

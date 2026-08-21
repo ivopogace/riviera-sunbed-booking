@@ -49,7 +49,7 @@ const ROWS: readonly TestRow[] = [
       <ul canvasLegend data-testid="legend-note">
         <li>Available</li>
       </ul>
-      <p canvasFooter data-testid="footer-note">Tap any free set to book it.</p>
+      <p canvasFooter data-testid="footer-note">Projected footer.</p>
       <p canvasEmpty data-testid="empty-note">Nothing here yet.</p>
     </app-beach-map-canvas>
   `,

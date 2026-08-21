@@ -103,6 +103,11 @@ function mapless(): VenueMapView {
   return { ...miramar(), sets: [], fromPrice: null };
 }
 
+/** The same venue in Request-to-Book mode — the map footer is the one surface that branches on it. */
+function requestMode(): VenueMapView {
+  return { ...miramar(), bookingMode: 'REQUEST' };
+}
+
 describe('VenueMap', () => {
   let fixture: ComponentFixture<VenueMap>;
   let httpMock: HttpTestingController;
@@ -146,6 +151,10 @@ describe('VenueMap', () => {
 
   function flushMapless(): void {
     venueRequest().flush(mapless());
+  }
+
+  function flushRequestVenue(): void {
+    venueRequest().flush(requestMode());
   }
 
   function el(): HTMLElement {
@@ -319,6 +328,27 @@ describe('VenueMap', () => {
     expect(el().querySelector('[data-testid="availability-bar"]')).toBeNull();
   });
 
+  it('the INSTANT footer names booking, device-neutrally', async () => {
+    flushVenue();
+    await fixture.whenStable();
+
+    const footer = el().querySelector('[canvasFooter]')!;
+    expect(footer.textContent).toContain('Pick any free set to book it');
+    expect(footer.textContent).toContain('prices are per set, full day');
+    expect(footer.textContent).not.toMatch(/tap|request/i);
+  });
+
+  it('the REQUEST footer explains the no-charge deal at the tap, naming the venue', async () => {
+    flushRequestVenue();
+    await fixture.whenStable();
+
+    const footer = el().querySelector('[canvasFooter]')!;
+    expect(footer.textContent).toContain(
+      'Pick a set to request it \u2014 you pay only once Miramar Beach Club accepts.',
+    );
+    expect(footer.textContent).toContain('Prices are per set, full day.');
+  });
+
   it('renders no legend, grid or tap-hint for a venue with no sets (#717)', async () => {
     flushMapless();
     await fixture.whenStable();
@@ -326,7 +356,7 @@ describe('VenueMap', () => {
     expect(el().querySelector('ul[aria-label="Legend"]')).toBeNull();
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
     expect(el().querySelector('[data-testid="map-pan"]')).toBeNull();
-    expect(el().textContent).not.toContain('Tap any free set to book it');
+    expect(el().textContent).not.toContain('Pick any free set to book it');
   });
 
   it('shows the rating and review count for a rated venue', async () => {

@@ -166,7 +166,7 @@ the strings ride on.
 | R-2 | "appears only when the grid overflows" (AC) misread as *horizontal* overflow, dropping `vScrollHint()` and stranding a tall map with no hint | med | med | The condition is not touched at all, and the six existing gating specs (incl. the vertical-only case) are left in place as the regression net | agent | closed by construction — `beach-map-canvas.ts` unmodified |
 | R-3 | The pan-hint edit is in shared chrome; an operator surface's spec or e2e could assert the old sentence and go red | med | low | Enumerated by mechanism before editing: `grep -rn "scroll-hint\|Drag or swipe" src e2e` → only `beach-map-canvas.spec.ts` (presence/absence, no text) and `venue-map-pan.e2e.ts` (visibility only). No operator spec reads the copy | agent | closed — see Generalization-audit log |
 | R-4 | The map's cutoff note is reframed while Discover's stays negative + emoji, shipping two voices for one rule | high | low | Deliberate and recorded (Non-goals + Open questions), not accidental; the map is the surface #703 scopes. A follow-up issue is offered at close-out | agent | open → Open questions Q-1 |
-| R-5 | Copy assertions elsewhere break on the retired strings (the #717 zero-set case asserts `not.toContain('Tap any free set to book it')` — a *negative* assertion that keeps passing against the new string and so silently stops testing anything) | med | med | That exact case is retargeted to the new INSTANT string in Phase 0, not left to pass vacuously; `grep -rn "Tap any free set\|isn.t bookable"` re-run at the end of the slice must return zero | agent | open → closes in Phase 0 |
+| R-5 | Copy assertions elsewhere break on the retired strings (the #717 zero-set case asserts `not.toContain('Tap any free set to book it')` — a *negative* assertion that keeps passing against the new string and so silently stops testing anything) | med | med | That exact case is retargeted to the new INSTANT string in Phase 0, not left to pass vacuously; `grep -rn "Tap any free set\|isn.t bookable"` re-run at the end of the slice must return zero | agent | closed in Phase 0 — retargeted, and the audit found a second site (the canvas spec's projection stub) | 
 | R-6 | First inline `<svg>` in the app (`grep -rln "<svg" src/app` → none): an unsized or currentColor-less icon could break the note's line box or its AA contrast on header glass | low | med | Fixed `width`/`height` in px, `stroke="currentColor"` so it inherits `text-(--riv-ink-faint)` (the token the contrast spec already proves AA), `aria-hidden="true"`, `shrink-0` inside the existing `inline-flex` | agent | open → closes in Phase 1 |
 
 ## Open questions / Assumptions
@@ -253,15 +253,15 @@ already on the wire and already consumed (the mode chip + the booking dialog).
 > **This section is the session-recovery anchor.** Everything a resuming session needs
 > lives HERE, committed — never only in the conversation.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 step 1 — write the two failing footer specs in
-`frontend/src/app/venue/venue-map.spec.ts` (INSTANT + a new REQUEST fixture) and watch them
-fail on the current "Tap any free set…" string.
+**Next action:** Phase 1 step 1 — rewrite the cutoff case in
+`frontend/src/app/venue/venue-map.spec.ts` red against the positive copy + `<svg aria-hidden>`,
+keeping its `min` assertion.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Mode-aware footer + device-neutral verb | | |
+| 0 — Mode-aware footer + device-neutral verb | ✅ | `<phase-0-sha>` |
 | 1 — Positive cutoff note + inline SVG clock | | |
 | 2 — One-line quiet pan hint | | |
 | 3 — Close-out (docs freshness, plan-doc final state) | | |
@@ -514,6 +514,7 @@ it('the pan hint is one plain line, no decorative glyph', async () => {
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-21 | plan (R-3, pre-edit) | Every file that reads the pan hint — by test id or by its sentence, not by "looks like a map spec" | `grep -rn "scroll-hint\|Drag or swipe" frontend/src frontend/e2e` | `beach-map-canvas.spec.ts` (presence/absence ×11), `venue-map-pan.e2e.ts` (visibility ×6), `beach-map-canvas.html` (the source) | No copy assertion anywhere → the hint rewrite is safe; Phase 2 adds the first one |
+| 2026-08-21 | Phase 0 | Every site that *renders or asserts* the map footer — enumerated by the projection slot `canvasFooter` (the mechanism) as well as by the retired sentence, so a site that carries the copy without naming it is still caught | `grep -rn "canvasFooter\|Tap any free set\|free set to book it" frontend/src frontend/e2e` | `venue-map.html` (source), `venue-map.spec.ts` ×3, `beach-map-canvas.html`/`.ts` (the slot itself), **`beach-map-canvas.spec.ts:52`** — a *test-host projection stub* literally spelling the retired sentence | Retargeted the #717 vacuous negative **and** neutralized the stub to "Projected footer.". The stub is what resemblance-matching would have missed: it is a canvas spec, not a map spec, and its text is never asserted — but it kept `grep "Tap any free set"` returning a hit, which is how a retired string looks alive |
 
 ---
 
