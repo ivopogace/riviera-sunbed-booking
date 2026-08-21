@@ -503,8 +503,7 @@ describe('Home (venue discovery)', () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
-    // The test id exists only in shared/cutoff-note.ts, so finding it IS the proof that the
-    // shared note rendered; the wording is pinned there, never re-typed per surface (#735).
+    // The test id exists only in shared/cutoff-note.ts, so finding it proves the note mounted.
     const note = el().querySelector('[data-testid="cutoff-note"]')!;
     expect(note.tagName).toBe('P');
     expect(note.textContent?.trim()).not.toBe('');

@@ -30,9 +30,13 @@ the `<p>`-element row, neither of which is visible in the diff) · `tdd` (each p
 the failing spec first; `cutoff-note.spec.ts` is written before the component, and D-2's
 mutation check is a deliberate falsification, not a green run) · `riviera-review-overlay`
 (review gate — due at ready-for-review; register below) · `riviera-docs-freshness`
-(close-out — **due**: this slice makes `riviera-tailwind` rule 1's two-branch taxonomy
-incomplete and touches a shipped plan doc's present-tense claims; range + findings recorded
-at phase 3) · `riviera-frontend` (**decided the folder**: `shared/` is the only stratum both
+(**ran** over `04a5575..HEAD` — **5 findings, all patched**, all in `riviera-tailwind`: rule 1's
+two-branch taxonomy, ICON-1's "the one place … is forced" (a counting-sweep hit — this slice makes
+it two), ICON-4's worked example (the size override moved off `<app-clock-icon>`), ICON-5's "each
+call site", and the glyph's call-site parenthetical. Swept `CLAUDE.md`, `CONTEXT.md`,
+`RESPONSIBILITIES.md`, `docs/adr/`, `docs/agents/`, `docs/architecture/`, `docs/design/` and the
+`riviera-*` skills; re-ran both sweeps after the fix round per #373. `docs/design/` states the
+cutoff *copy*, which this slice does not change — whether it joins the map is #736's question) · `riviera-frontend` (**decided the folder**: `shared/` is the only stratum both
 `pages/home/` and `venue/` may import from, so the seam lands there and creates no
 cross-feature edge — the identical argument `clock-icon.ts` was placed on) ·
 `riviera-tailwind` (**rule 1** — a reused *element* is a component, which is the branch this
@@ -84,12 +88,12 @@ it: mutate the source and exactly the two pins go red, no site stays silently gr
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the whole `frontend/` tree, when swept for the cutoff sentence's
+- [x] **AC-1:** Given the whole `frontend/` tree, when swept for the cutoff sentence's
   distinguishing clause, then exactly **three** files match — `shared/cutoff-note.ts`,
   `shared/cutoff-note.spec.ts`, `e2e/discovery-flow.e2e.ts` — and neither template nor
   either surface spec matches. *Pinned by:* AC-verification command
   `grep -rln "sales close at 6" frontend/src frontend/e2e`
-- [ ] **AC-2:** Given the sentence is edited in `shared/cutoff-note.ts` alone, when the
+- [x] **AC-2:** Given the sentence is edited in `shared/cutoff-note.ts` alone, when the
   frontend unit suite and the mocked e2e suite run, then **both** pins fail and **no**
   surface spec passes-while-stale. *Pinned by:* the deliberate mutation run recorded in
   *Acceptance-criteria verification*; reverted after.
@@ -106,7 +110,7 @@ it: mutate the source and exactly the two pins go red, no site stays silently gr
   carrying `data-testid="cutoff-note"` and an `aria-hidden` `<svg>`, and axe reports no
   serious violations. *Pinned by:* `home.spec.ts`, `venue-map.spec.ts`,
   `cutoff-note.spec.ts`, and `expectNoSeriousAxeViolations` in the mocked suite
-- [ ] **AC-6:** Given `shared/cutoff-note.ts`, when it renders standalone, then its host
+- [x] **AC-6:** Given `shared/cutoff-note.ts`, when it renders standalone, then its host
   static classes merge with (rather than replace) a class written at the call site, and its
   text is the exact sentence including the non-breaking space in `6&nbsp;PM`. *Pinned by:*
   `cutoff-note.spec.ts`
@@ -149,12 +153,13 @@ it: mutate the source and exactly the two pins go red, no site stays silently gr
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | An attribute-selector **component** is new here (the repo has 11 attribute *directives* and 0 attribute components), so it fails to compile, or silently doesn't match, on a `<p>` | low | high | Angular supports it as a first-class shape and the v22 a11y guide names it the recommended way to reuse a native element; pinned by `cutoff-note.spec.ts` rendering a host `<p>` and asserting the projected content, written **before** the component | claude | open |
-| R-2 | The call-site `class` replaces the component's host `class` (or vice versa), silently dropping `inline-flex`/`gap-1` and collapsing the note's layout | low | med | Angular merges host metadata classes with the template's static class — the exact behavior `clock-icon.spec.ts` already pins; re-pinned here as AC-6 rather than assumed, and the rendered box is re-measured in a browser | claude | open |
+| R-1 | An attribute-selector **component** is new here (the repo has 11 attribute *directives* and 0 attribute components), so it fails to compile, or silently doesn't match, on a `<p>` | low | high | Angular supports it as a first-class shape and the v22 a11y guide names it the recommended way to reuse a native element; pinned by `cutoff-note.spec.ts` rendering a host `<p>` and asserting the projected content, written **before** the component | claude | **closed** `b3a64e8` — it compiles and matches; the spec was red on the missing component first, and the lint rule that did *not* expect this shape became D-3 |
+| R-2 | The call-site `class` replaces the component's host `class` (or vice versa), silently dropping `inline-flex`/`gap-1` and collapsing the note's layout | low | med | Angular merges host metadata classes with the template's static class — the exact behavior `clock-icon.spec.ts` already pins; re-pinned here as AC-6 rather than assumed, and the rendered box is re-measured in a browser | claude | **closed** `b3a64e8` — the merge case passes: the host's `inline-flex`/`gap-1` and the call site's `text-[11.5px]`/`[&_svg]:size-[15px]` all survive on one element |
 | R-3 | Moving `[&_svg]:size-[15px]` from the glyph element up to the `<p>` silently drops Discover's glyph to 13 px | med | low | ICON-4: the descendant variant compiles to a global `… svg` rule that matches through the `display: contents` host, so the move is inert; the pre-existing `toHaveCSS` 15 px assertion is the executable proof and is deliberately **falsified** by removing the class | claude | open |
 | R-4 | The `&nbsp;` in `6&nbsp;PM` is lost in the move, letting the note wrap between "6" and "PM" — invisible to a normalized string compare, which is exactly how it went unasserted before #734's F-7 | med | med | the copy moves as an HTML **entity** into an HTML **template**, not into a TS string literal where it would become an invisible byte or a ` ` escape (a stated reason for D-1); `cutoff-note.spec.ts` pins `6 PM` separately from the normalized compare, inheriting F-7's fix | claude | open |
-| R-5 | The two surface specs stop asserting the copy, and the copy ends up pinned **nowhere** — a dedupe that quietly deletes the coverage | med | high | AC-2 is a **mutation** check, not an assertion: edit the source sentence and confirm the suites go red. A dedupe that removed the gate would show up as a green run | claude | open |
+| R-5 | The two surface specs stop asserting the copy, and the copy ends up pinned **nowhere** — a dedupe that quietly deletes the coverage | med | high | AC-2 is a **mutation** check, not an assertion: edit the source sentence and confirm the suites go red. A dedupe that removed the gate would show up as a green run | claude | **closed** — the mutation run turned exactly the unit pin red (2 failures) and left no surface stale; recorded under AC-2 |
 | R-6 | The mocked e2e is not run in this cloud session, so a real-browser-only break (the parity assertion, the glyph size) ships | med | med | run it per `riviera-local-debug`; **the local run was declined in this session**, so CI's own run of the same suite is the proof and the risk stays open until that run is green. One ambiguity the local run would have settled was removed by construction instead: the captured text is normalized in the spec rather than left to `toHaveText`, which would otherwise collapse the U+00A0 in `6 PM` on only one side of the compare | claude | open — awaiting CI |
+| R-8 | A guard-violating edit slips past the local `PostToolUse` hooks because the file was written from a shell heredoc rather than an editing tool, so it is caught only by CI | med | low | run the five `scripts/check-*.mjs` guards **by hand** before every push, not just the one the hook happens to fire on — the whole set takes seconds | claude | **closed** — this is exactly how the phase-2 push went red (two 2-line comments in the surface specs, written via heredoc). Fixed, and the full guard set now runs locally before each push |
 | R-7 | AC-3's parity assertion is vacuously true — e.g. both locators resolve to the same element, or both texts are empty | low | med | assert the captured text is non-empty **and** matches the sentence's shape before comparing, and confirm the two assertions run against different URLs (Discover, then `/venues/1`) | claude | open |
 
 ## Open questions / Assumptions
@@ -266,17 +271,17 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 
 ## Execution status
 
-**Stage pointer:** `IMPLEMENT — phases 0–2 done; phase 3 (close-out) next`
+**Stage pointer:** `CLOSE-OUT — AC-2 and the freshness sweep done; review + Sonar gates next`
 
-**Next action:** phase 3 — AC-2's mutation check, the docs-freshness sweep, the file-structure
-guard, then the review and Sonar gates.
+**Next action:** mark PR #737 ready for review, then run the review gate and pull the Sonar
+issue list from the API.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared cutoff-note seam | ✅ | `b3a64e8` |
 | 1 — both surfaces adopt it; the specs stop re-typing the copy | ✅ | `03757fe` |
-| 2 — the cross-surface parity assertion in the mocked e2e | ✅ | this commit |
-| 3 — close-out (docs freshness, review + Sonar gates, final state) | | |
+| 2 — the cross-surface parity assertion in the mocked e2e | ✅ | `281b5ae` |
+| 3 — close-out (docs freshness, review + Sonar gates, final state) | ⏳ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -367,12 +372,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 > `@angular/build:unit-test` builder, so a bare run dies with `describe is not defined`
 > (ADR-0014 / #663). Go through `ng test` instead.
 
-- [ ] **AC-1:** `grep -rln "sales close at 6" frontend/src frontend/e2e` → exactly three files.
-- [ ] **AC-2:** mutation run — edit the sentence in `shared/cutoff-note.ts` only, run both
-  suites, record which tests fail, revert.
+- [x] **AC-1:** `grep -rln "sales close at 6" frontend/src frontend/e2e` → exactly three:
+  `shared/cutoff-note.ts`, `shared/cutoff-note.spec.ts`, `e2e/discovery-flow.e2e.ts`. Before the
+  swap the same command returned seven. Verified at `03757fe`.
+- [x] **AC-2:** mutation run — the source sentence changed to "7 PM" and nothing else. Result:
+  **2 failures, both in `cutoff-note.spec.ts`** (the exact-sentence compare and the no-break-space
+  pin); 160 other tests passed. Critically, **both surfaces rendered "7 PM"** — no site stayed on
+  the old copy, which is the property the five duplicates could not give. Reverted; `git diff`
+  clean against HEAD. The **unit** half is executed; the e2e pin's redness is established by
+  inspection only — its regex asserts `sales close at 6\s+PM` literally, so "7 PM" cannot match —
+  because the browser suite could not be run in this session (R-6).
 - [ ] **AC-3/AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
 - [ ] **AC-5:** the surface specs + the mocked suite's axe checks.
-- [ ] **AC-6:** `npx ng test --watch=false --include="src/app/shared/cutoff-note.spec.ts"`.
+- [x] **AC-6:** `npx ng test --watch=false --include="src/app/shared/cutoff-note.spec.ts"` →
+  7 passed, including the host/call-site class merge and the `6&nbsp;PM` pin. Verified at `b3a64e8`.
 - [ ] **No-drift proof** (`riviera-tailwind`'s hard rule — computed styles, not class lists):
   a throwaway Playwright probe reads `getComputedStyle` on both notes and both glyphs before
   and after the change; deleted after the run.

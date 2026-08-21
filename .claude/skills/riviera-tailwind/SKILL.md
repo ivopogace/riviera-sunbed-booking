@@ -20,8 +20,16 @@ This skill states only the few decisions and traps the *code can't show you*.
 1. **Share at the component/directive layer — NEVER `@apply` or `@utility`.** Tailwind has
    no mixin; this repo deliberately does not fake one in CSS. A reused *surface* is an
    attribute directive (`shared/card-glass.ts`, `panel-glass.ts`); a reused *element* is a
-   component (`retry-button.ts`) or variant directive (`amenity-chip.ts`). The directive's
-   host `class` string is scanned by Tailwind, so the utilities generate normally.
+   component (`retry-button.ts`) or variant directive (`amenity-chip.ts`). When that reused
+   element must stay a **native** tag — for its semantics, or so the call site's own skin keeps
+   painting on the real box — the component takes an **attribute selector** over that tag
+   (`shared/cutoff-note.ts` is `p[appCutoffNote]`), which is what angular.dev's a11y guide
+   recommends for augmenting a native element. Two consequences worth knowing before you write
+   one: `@angular-eslint/component-selector` is configured `type: 'element'` and cannot express
+   both forms at once (`style` takes a single value, and the two disagree on case), so an
+   attribute component needs a **file-scoped override** running the rule in attribute mode — not
+   an inline disable, which would stop checking the selector at all. The directive's host
+   `class` string is scanned by Tailwind, so the utilities generate normally.
 2. **Keep the old semantic class as an inert marker when a test queries it.** Unit/e2e specs
    query `.set-tile.premium`, `.amenity-chip`, `.failure-title`, etc. Retain those class
    names (on the element or the directive host) so a styling-only change never forces a
@@ -73,12 +81,14 @@ This skill states only the few decisions and traps the *code can't show you*.
 There is **no icon library and no icon registry** here: `MatIconRegistry` is Angular Material
 (not in this stack), the angular-cli MCP has no SVG tooling, and angular.dev's v22 index returns
 nothing for an icon component. An icon is an inline `<svg>` you write. The repo's one glyph and
-its precedent is **`shared/clock-icon.ts`** (the cutoff-note clock on Discover + the beach map) —
-read it before adding a second.
+its precedent is **`shared/clock-icon.ts`** (the cutoff-note clock, reached by both Discover and
+the beach map through `shared/cutoff-note.ts`) — read it before adding a second.
 
-**ICON-1. A shared glyph is a `@Component`, not a directive** — the one place the top-level
-rule 1's "reused *element*" branch is forced rather than chosen. A directive only adds classes and
-attributes to an element that already exists, so it cannot carry the `circle`/`path` geometry. It
+**ICON-1. A shared glyph is a `@Component`, not a directive** — one of the two places the
+top-level rule 1's "reused *element*" branch is **forced** rather than chosen (the other is
+`shared/cutoff-note.ts`, whose sentence and glyph a directive equally cannot supply). A directive
+only adds classes and attributes to an element that already exists, so it cannot carry the
+`circle`/`path` geometry. It
 will look inconsistent with the `appFailureIcon` / `appAmenityChip` neighbours; it isn't.
 
 **ICON-2. `stroke="currentColor"` (or `stroke-current`) is what lets one copy serve two call
@@ -93,8 +103,9 @@ class — no `input()`, no specificity arithmetic.
 **ICON-4. Utilities are global here, so the call site can reach into the glyph.**
 `src/tailwind.css` loads through `angular.json`'s `styles` array, and emulated encapsulation only
 stamps `_ngcontent-*` onto rules compiled from a component's own `styles`/`styleUrls`. So
-`[&_svg]:size-[15px]` written on `<app-clock-icon>` in the **parent** template compiles to a plain
-`… svg` descendant rule and matches the glyph, with zero API surface on the component. Two costs
+`[&_svg]:size-[15px]` written on any **ancestor** in the parent template — today Discover's
+`<p appCutoffNote>`, two elements above the glyph — compiles to a plain `… svg` descendant rule and
+matches it, with zero API surface on either component. Two costs
 to take with it: **prefer the descendant `[&_svg]` to the child `[&>svg]`** — the child form
 silently stops matching the day anyone wraps the root element — and remember this makes the
 glyph's internal DOM part of its contract, which nothing in jsdom can see. So **pin the rendered
@@ -103,7 +114,7 @@ size in the mocked e2e with `toHaveCSS`** (worked example: `discovery-flow.e2e.t
 
 **ICON-5. `class: 'contents'` on the host** (→ `display: contents`) drops the wrapper out of
 layout, so the SVG — not the `<app-clock-icon>` element — is what the sentence's flex container
-lays out. Each call site's existing `gap-1`/`shrink-0` keeps working, so adopting the component
+lays out. The note's `gap-1`/`shrink-0` keeps working, so adopting the component
 causes no visual diff. The reason is the **wrapper**, not preflight: without `contents` the host
 becomes the flex item and the child's `shrink-0` and the parent's `gap` no longer act on the
 glyph. (Preflight's `img, svg, … { display: block }` is a separate fact — it is why an svg needs a
