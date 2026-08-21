@@ -1,7 +1,9 @@
 package ai.riviera.platform.venue.application;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -51,6 +53,13 @@ public record LayoutCommand(List<SetCommand> sets) {
 		for (SetCommand c : sets) {
 			if (!cells.add(c.gridX() + " " + c.gridY())) {
 				return Optional.of(Venues.Conflict.CELL_TAKEN);
+			}
+		}
+		Map<String, Integer> rowOfLabel = new HashMap<>();
+		for (SetCommand c : sets) {
+			Integer seen = rowOfLabel.putIfAbsent(c.rowLabel(), c.gridY());
+			if (seen != null && seen != c.gridY()) {
+				return Optional.of(Venues.Conflict.ROW_LABEL_ON_ANOTHER_ROW);
 			}
 		}
 		return Optional.empty();

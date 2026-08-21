@@ -28,6 +28,13 @@ public enum ReplaceRejection {
 	DUPLICATE_POSITION,
 	/** Two submitted cells share the same {@code (grid_x, grid_y)} cell. */
 	CELL_TAKEN,
+	/**
+	 * Two grid rows in the payload carry the same {@code row_label}. A label names one physical row —
+	 * the tourist map, the price rail and the pricing tab all group sets by it — so accepting this
+	 * would render the two rows as one. The bulk twin of {@link SetRejection#ROW_NAME_TAKEN}.
+	 * Maps to 409 {@code ROW_NAME_TAKEN}.
+	 */
+	ROW_NAME_TAKEN,
 	/** The submitted layout has no sets — an empty replace would silently wipe the map, so it is refused. */
 	EMPTY_LAYOUT,
 	/** The submitted layout exceeds the maximum grid size ({@link LayoutCommand#MAX_SETS} sets). */

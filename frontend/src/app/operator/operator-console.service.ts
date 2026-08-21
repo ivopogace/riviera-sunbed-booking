@@ -401,6 +401,7 @@ export function setWriteErrorOf(error: unknown): SetWriteErrorCode {
       case 'SET_IN_USE':
       case 'CELL_TAKEN':
       case 'DUPLICATE_POSITION':
+      case 'ROW_NAME_TAKEN':
       case 'NO_SUCH_SET':
       case 'NO_SUCH_VENUE':
       case 'NOT_VENUE_OWNER':
@@ -467,6 +468,7 @@ export function layoutErrorOf(error: unknown): LayoutErrorCode {
       case 'LAYOUT_IN_USE':
       case 'DUPLICATE_POSITION':
       case 'CELL_TAKEN':
+      case 'ROW_NAME_TAKEN':
       case 'EMPTY_LAYOUT':
       case 'LAYOUT_TOO_LARGE':
       case 'NO_SUCH_VENUE':

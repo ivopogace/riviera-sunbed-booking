@@ -479,6 +479,8 @@ export class SetEditor {
       case 'CELL_TAKEN':
       case 'DUPLICATE_POSITION':
         return 'Another set already occupies that spot. Reload the tab and pick a free one.';
+      case 'ROW_NAME_TAKEN':
+        return 'Another grid row already uses that row name. A name belongs to one row only.';
       case 'NO_SUCH_SET':
         return 'This set no longer exists. Reload the tab to see the current map.';
       case 'NO_SUCH_VENUE':

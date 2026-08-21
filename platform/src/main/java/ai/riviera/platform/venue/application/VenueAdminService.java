@@ -295,6 +295,7 @@ class VenueAdminService
 		return switch (conflict) {
 			case DUPLICATE_POSITION -> ReplaceRejection.DUPLICATE_POSITION;
 			case CELL_TAKEN -> ReplaceRejection.CELL_TAKEN;
+			case ROW_LABEL_ON_ANOTHER_ROW -> ReplaceRejection.ROW_NAME_TAKEN;
 		};
 	}
 
@@ -302,6 +303,7 @@ class VenueAdminService
 		return switch (conflict) {
 			case DUPLICATE_POSITION -> SetRejection.DUPLICATE_POSITION;
 			case CELL_TAKEN -> SetRejection.CELL_TAKEN;
+			case ROW_LABEL_ON_ANOTHER_ROW -> SetRejection.ROW_NAME_TAKEN;
 		};
 	}
 }

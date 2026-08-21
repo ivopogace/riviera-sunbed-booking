@@ -280,10 +280,10 @@ surface (AC-10).
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed; one architectural finding awaiting the maintainer`
+**Stage pointer:** `review gate — all findings fixed; re-review due on the new diff`
 
-**Next action:** maintainer decision on F-3 (the one-label-per-row invariant is enforced only
-on the rename path). Everything else is fixed and pushed.
+**Next action:** push, wait for CI + Sonar on the new head, then re-run the review gate over
+the F-3 diff (it widened three more write paths) before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -292,7 +292,8 @@ on the rename path). Everything else is fixed and pushed.
 | 2 — Layout-editor per-row rename (Angular) | ✅ | *(this commit)* |
 | 3 — Mocked e2e + substrate docs | ✅ | `e2f57c7` |
 | 4 — Sonar findings F-1, F-2 | ✅ | `b2ad107` |
-| 5 — Review-gate findings F-4..F-13 | ⏳ | |
+| 5 — Review-gate findings F-4..F-13 | ✅ | `a094c23` |
+| 6 — Review finding F-3 (one label per row, all four paths) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -303,7 +304,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | sonar (gate FAILED) | 77.9% coverage on new code, below the 80% bar — 14 uncovered new lines: 11 in `layout-editor.ts` (the six `rowNameErrorMessage` arms, both epoch guards, the re-entrancy guard, `sessionLost`, the token guard) and 3 in `operator-console.service.ts` (`rowNameErrorOf`'s 401, unknown-code and non-HTTP arms). | fixed — 13 of 14 covered by new specs in `layout-editor.spec.ts` + `operator-console.service.spec.ts`; the 14th is the defensive token guard, deliberately kept and commented (the button renders only for a stored row, which implies a loaded token — the same shape the pricing tab documents) |
-| F-3 | review (`/code-review`, high) | **The one-label-per-row invariant is enforced only on the rename path.** `ROW_NAME_TAKEN` refuses a duplicate label, but `LayoutCommand.duplicateWithin` checks only `(rowLabel, positionNo)` and `(gridX, gridY)`, and `findConflict` the same two — so `replaceLayout`, `addSet` and `editSet` can all still create two grid rows sharing a label, no DB constraint backs it, and none of those three takes the venue-row lock (so `addSet` can also slip a duplicate in between the rename's label read and its UPDATE, and a stale `editSet` can split a renamed row by rewriting one set's `row_label`). Verified: `updateSet` does write `row_label`; `duplicateWithin` does not check labels. This supersedes and corrects R-3, whose stated mitigation ("the UNIQUE constraint is the backstop") is wrong whenever the position numbers do not collide — the merge is then silent, not a 500. | **open — architecturally significant, beyond this slice's stated scope; put to the maintainer rather than decided here** |
+| F-3 | review (`/code-review`, high) | **The one-label-per-row invariant is enforced only on the rename path.** `ROW_NAME_TAKEN` refuses a duplicate label, but `LayoutCommand.duplicateWithin` checks only `(rowLabel, positionNo)` and `(gridX, gridY)`, and `findConflict` the same two — so `replaceLayout`, `addSet` and `editSet` can all still create two grid rows sharing a label, no DB constraint backs it, and none of those three takes the venue-row lock (so `addSet` can also slip a duplicate in between the rename's label read and its UPDATE, and a stale `editSet` can split a renamed row by rewriting one set's `row_label`). Verified: `updateSet` does write `row_label`; `duplicateWithin` does not check labels. This supersedes and corrects R-3, whose stated mitigation ("the UNIQUE constraint is the backstop") is wrong whenever the position numbers do not collide — the merge is then silent, not a 500. | **fixed in this PR (maintainer's call, 2026-08-20).** All four write paths now refuse a split label: the rename, `addSet`/`editSet` via a new `Venues.Conflict.ROW_LABEL_ON_ANOTHER_ROW` out of `findConflict`, and the bulk replace via `LayoutCommand#duplicateWithin` + `ReplaceRejection.ROW_NAME_TAKEN`. Both new 409s are explained in the layout editor and the set editor rather than falling back to generic copy. Application-level only — the DB half is a functional dependency (`row_label` determines `grid_y`) that no plain `UNIQUE` expresses; recorded as such in `RESPONSIBILITIES.md` §`venue`. |
 | F-2 | sonar (MAJOR code smell, `Web:S6819`) | `layout-editor.html:193` — `<p role="status">` for the saved notice; use `<output>`. | fixed — swapped to `<output>`, which is what the same file's `layout-saved` notice already uses; my markup was the outlier |
 
 | F-4 | review | `resetForVenue` cleared every venue-scoped flag except the three new rename signals, so a "Row name saved." notice (or a pinned error, or a stuck "Saving…") leaked across an in-place venue switch. | fixed — `clearRenameNotices()` + `renamingRow` reset, pinned by `layout-editor.spec.ts` "clears a rename notice when the venue switches in place" |
@@ -324,6 +325,10 @@ Skill-routing gate for what the fix touches *before* editing).
 - `docs/plans/beach-map-row-rename.md` — this plan.
 - `platform/src/main/java/ai/riviera/platform/venue/application/RowNameCommand.java` — new; the validated rename intent.
 - `platform/src/main/java/ai/riviera/platform/venue/application/SetRejection.java` — add `ROW_NAME_TAKEN`.
+- `platform/src/main/java/ai/riviera/platform/venue/application/ReplaceRejection.java` — F-3: the bulk twin.
+- `platform/src/main/java/ai/riviera/platform/venue/application/LayoutCommand.java` — F-3: the in-payload label check.
+- `frontend/src/app/operator/set-editor.ts|.spec.ts` — F-3: explain the per-set `ROW_NAME_TAKEN`.
+- `platform/src/test/java/ai/riviera/platform/venue/BeachMapReplaceIT.java` — F-3: the bulk-path refusal + its control.
 - `platform/src/main/java/ai/riviera/platform/venue/application/EditBeachMap.java` — add `renameRow`.
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java` — implement `renameRow`.
 - `platform/src/main/java/ai/riviera/platform/venue/application/Venues.java` — add `distinctRowLabels` + `renameRow`.

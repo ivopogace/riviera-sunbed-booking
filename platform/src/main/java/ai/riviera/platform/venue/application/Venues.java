@@ -186,6 +186,12 @@ public interface Venues {
 		/** Another set holds the target {@code (row_label, position_no)} slot. */
 		DUPLICATE_POSITION,
 		/** Another set holds the target {@code (grid_x, grid_y)} cell. */
-		CELL_TAKEN
+		CELL_TAKEN,
+		/**
+		 * A <em>different</em> grid row already carries the target {@code row_label}. A label names one
+		 * physical row: the tourist map, the price rail and the pricing tab all group sets by it, so two
+		 * grid rows sharing one would read as a single row of twice the length.
+		 */
+		ROW_LABEL_ON_ANOTHER_ROW
 	}
 }

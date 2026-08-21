@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -230,6 +231,45 @@ class VenueRowRenameIT {
 
 		// A rejected rename must not advance the token, or the acting tab's next write would be stale.
 		assertEquals(before, currentSetVersion(venue));
+	}
+
+	@Test
+	void refusesAddingASetUnderAnotherGridRowsLabel() throws Exception {
+		// The rename's one-label-per-row rule, enforced on the path that could otherwise seed a split.
+		long venue = seedVenue("Split Add Club");
+
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(cell("A", 9, "ONLINE", 3, 2)))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("ROW_NAME_TAKEN"));
+
+		assertEquals(2, setIdsOfRow(venue, "A").size());
+	}
+
+	@Test
+	void allowsAddingASetToItsOwnGridRow() throws Exception {
+		// The control: extending a row along its own grid row is the ordinary case, not a split.
+		long venue = seedVenue("Wide Add Club");
+
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(cell("A", 9, "ONLINE", 3, 1)))
+				.andExpect(status().isCreated());
+
+		assertEquals(3, setIdsOfRow(venue, "A").size());
+	}
+
+	@Test
+	void refusesMovingASetOntoAnotherGridRowsLabel() throws Exception {
+		long venue = seedVenue("Split Edit Club");
+		long b3 = setIdsOfRow(venue, "B").getFirst();
+
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, b3).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(cell("A", 3, "ONLINE", 1, 2)))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("ROW_NAME_TAKEN"));
 	}
 
 	@Test

@@ -231,7 +231,10 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				           AND (:exclude::bigint IS NULL OR id <> :exclude)) AS position_taken,
 				  EXISTS(SELECT 1 FROM set_position
 				         WHERE venue_id = :venue AND grid_x = :gridX AND grid_y = :gridY
-				           AND (:exclude::bigint IS NULL OR id <> :exclude)) AS cell_taken
+				           AND (:exclude::bigint IS NULL OR id <> :exclude)) AS cell_taken,
+				  EXISTS(SELECT 1 FROM set_position
+				         WHERE venue_id = :venue AND row_label = :rowLabel AND grid_y <> :gridY
+				           AND (:exclude::bigint IS NULL OR id <> :exclude)) AS label_elsewhere
 				""")
 				.param(P_VENUE, venueId.value())
 				.param(P_ROW_LABEL, c.rowLabel())
@@ -239,14 +242,17 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.param("gridX", c.gridX())
 				.param("gridY", c.gridY())
 				.param("exclude", excludeId)
-				.query((rs, rowNum) -> new ConflictRow(
-						rs.getBoolean("position_taken"), rs.getBoolean("cell_taken")))
+				.query((rs, rowNum) -> new ConflictRow(rs.getBoolean("position_taken"),
+						rs.getBoolean("cell_taken"), rs.getBoolean("label_elsewhere")))
 				.single();
 		if (row.positionTaken()) {
 			return Optional.of(Conflict.DUPLICATE_POSITION);
 		}
 		if (row.cellTaken()) {
 			return Optional.of(Conflict.CELL_TAKEN);
+		}
+		if (row.labelElsewhere()) {
+			return Optional.of(Conflict.ROW_LABEL_ON_ANOTHER_ROW);
 		}
 		return Optional.empty();
 	}
@@ -505,6 +511,6 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				"gridX", c.gridX(), "gridY", c.gridY());
 	}
 
-	private record ConflictRow(boolean positionTaken, boolean cellTaken) {
+	private record ConflictRow(boolean positionTaken, boolean cellTaken, boolean labelElsewhere) {
 	}
 }

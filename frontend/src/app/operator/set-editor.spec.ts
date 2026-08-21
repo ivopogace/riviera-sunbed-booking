@@ -198,6 +198,18 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-saved')).toBeTruthy();
   });
 
+  it('explains a row name that belongs to another grid row (#726 review F-3)', async () => {
+    render();
+    selectSet(12);
+
+    click(byId('set-save'));
+    expectPatch(12).flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('set-error').textContent).toContain('row name');
+  });
+
   it('keepsTheSetUnchangedOnSetInUse: a refused repool leaves the grid as the server has it (AC-2)', async () => {
     render();
     selectSet(12);
