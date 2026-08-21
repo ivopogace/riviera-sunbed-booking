@@ -202,7 +202,7 @@ const CLS = {
       <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
       <app-load-announcer
         [loading]="loading()"
-        [ready]="!loading() && !accountError()"
+        [ready]="!loading() && !accountPending() && !accountError()"
         loadingLabel="Loading your bookings…"
         readyLabel="Your bookings loaded."
       />
@@ -354,6 +354,14 @@ export class MyBookings {
    * account bookings behind the device-local ones.
    */
   protected readonly accountError = signal(false);
+
+  /**
+   * The account list is out. Distinct from {@link loading}, which the device rows clear the moment
+   * they render — so without this there is a window where nothing is "loading" and nothing has
+   * failed yet, and the announcer would call that loaded (#741 re-review). Never true for a guest:
+   * {@link loadAccount} is the only writer. Protected only because the template reads it.
+   */
+  protected readonly accountPending = signal(false);
   /**
    * Codes the account list has already answered for. Consulted when a queued per-code lookup
    * is DEQUEUED — never as a barrier, so device rows are still issued immediately.
@@ -422,6 +430,7 @@ export class MyBookings {
    */
   private loadAccount(): void {
     this.accountError.set(false);
+    this.accountPending.set(true);
     this.bookings
       .myBookings()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -436,8 +445,12 @@ export class MyBookings {
               bookingDate: b.bookingDate,
             })),
           );
+          this.accountPending.set(false);
         },
-        error: () => this.accountError.set(true),
+        error: () => {
+          this.accountError.set(true);
+          this.accountPending.set(false);
+        },
       });
   }
 

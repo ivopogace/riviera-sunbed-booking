@@ -500,6 +500,44 @@ describe('MyBookings (device-local list, issue #139)', () => {
       expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
     });
 
+    it('stays silent while the account read is still in flight (#741 re-review)', async () => {
+      // The device rows clear `loading` while the account list is still out (the gap #741's re-review found).
+      const reads: Subject<MyBookingSummary[]>[] = [];
+      const service = {
+        ...stubService({ DEVONLY1: detail('DEVONLY1', 'CONFIRMED') }),
+        myBookings: () => {
+          const read = new Subject<MyBookingSummary[]>();
+          reads.push(read);
+          return read.asObservable();
+        },
+      };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+      const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+
+      expect(announcer.textContent?.trim()).toBe('');
+
+      reads[0].error({ status: 500 });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('');
+      expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
+
+      // Retry clears accountError at dispatch, reopening the same window.
+      host.querySelector<HTMLButtonElement>('[data-testid="account-retry"]')!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('');
+
+      reads[1].next([]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
+    });
+
     it('shows the account list when the device has no remembered codes', async () => {
       seedCodes([]);
       const service: Partial<BookingService> = {

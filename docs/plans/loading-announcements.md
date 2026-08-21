@@ -194,18 +194,19 @@ the region shape but is not modified.
 **New primitive:** `shared/load-announcer.ts` — `app-load-announcer`, `host: { class: 'contents' }`,
 template a single `<p class="sr-only" role="status" aria-live="polite" data-testid="load-announcer">{{ message() }}</p>`.
 
-API: `loading = input.required<boolean>()` · `failed = input(false)` ·
+API: `loading = input.required<boolean>()` · `ready = input(false)` ·
 `loadingLabel = input.required<string>()` · `readyLabel = input('')`;
-`message = computed(() => loading() ? loadingLabel() : failed() ? '' : readyLabel())`.
+`message = computed(() => loading() ? loadingLabel() : ready() ? readyLabel() : '')` — so
+`loading` wins a contradiction, and any state that is neither is silent.
 
-**The eight adoption sites** (`loading` / `failed` come from a named `computed()` in the
-component, never inline template logic — R-6):
+**The eight adoption sites** (a surface with a non-trivial chain names its phase in a `computed()`
+rather than inline template logic — R-6):
 
 | # | Surface | `loading` | `ready` (the **loaded branch**, nothing else) | `loadingLabel` | `readyLabel` |
 |---|---|---|---|---|---|
 | 1 | `pages/home/home.html` (Discover) | `!failed() && venues() === undefined` | — (no `readyLabel`) | Loading venues… | `''` — the persistent results-count region already announces the count (B-7) |
 | 2 | `operator/set-editor.html` | `!loaded()` | `loaded()` | Loading this venue’s sets… | Sets loaded. |
-| 3 | `booking/my-bookings.ts` | `loading()` | `!loading() && !accountError()` | Loading your bookings… | Your bookings loaded. |
+| 3 | `booking/my-bookings.ts` | `loading()` | `!loading() && !accountPending() && !accountError()` — `loading` is cleared the moment the device rows render, so the in-flight account read needs its own signal (re-review F-8) | Loading your bookings… | Your bookings loaded. |
 | 4 | `operator/daily-view-tab.html` | `!loaded()` | `loaded() && !loadError()` | Loading the daily view… | Daily view loaded. |
 | 5 | `operator/requests-tab.html` | `!loaded()` | `loaded() && !loadError()` | Loading requests… | Requests loaded. |
 | 6 | `operator/payouts-tab.html` | `!loaded()` | `loaded() && loadErrorMsg() === undefined` | Loading payouts… | Payouts loaded. |
@@ -236,8 +237,8 @@ N/A — no request or response shape changes.
 
 **Stage pointer:** `review gate — fixes pushed, awaiting re-review + Sonar`.
 
-**Next action:** Confirm CI green on the fix commit, re-review the changed surface, then pull
-Sonar's reported new-issue + duplication list (green gate is not the check).
+**Next action:** Confirm CI green on the F-8 fix commit, then pull Sonar's reported new-issue +
+duplication list (a green gate is not the check) and clear every entry.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -247,6 +248,7 @@ Sonar's reported new-issue + duplication list (green gate is not the check).
 | 3 — Adopt on the five surfaces the grill swept up | ✅ | |
 | 4 — e2e, docs freshness (RV-FE-10), close-out | ✅ | |
 | 5 — Review-gate findings F-1…F-7 | ✅ | |
+| 6 — Re-review findings F-8, F-9 | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -263,6 +265,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-5 | review gate (same run) | untracked `e2e/zz-dbg.e2e.ts` debug spec left in the tree — it matches the mocked config's glob and would run | fixed — deleted (an earlier `rm` ran from the wrong cwd) |
 | F-6 | review gate (noted, not reported) | `set-password`'s inline comment said "the announcer below" where it is above | fixed |
 | F-7 | review gate (noted, not reported) | the plan's Non-goals claimed no failure panel is a live region; `home.html` and `venue-map.html` do carry `role="alert"` | fixed — Non-goals rewritten, and the follow-up issue narrowed to the surfaces genuinely uncovered |
+| F-8 | **re-review** of the F-1…F-7 fix round | `my-bookings`: F-2 was not actually fixed. `loadDeviceLocal` clears `loading` synchronously while the account read is still out, so with a real async client `ready` went true and the region announced "Your bookings loaded." *before* the retry card appeared. My spec passed only because its `throwError` stub emits synchronously — the exact false comfort RV-FE-10 warns about, produced while writing RV-FE-10 | fixed — `accountPending` signal tracks the in-flight read (and closes the `retryAccount()` re-open); pinned by a `Subject`-based async spec covering both the first read and the retry, mutation-checked |
+| F-9 | re-review (same run) | the plan's "New primitive" API block still documented `failed` and the old `message` computed, contradicting the `ready` table below it | fixed |
 
 ---
 
@@ -367,7 +371,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | AC-4 | the same 8 specs (identity assertion) — **mutation-checked** on `requests-tab` | ✅ |
 | AC-5 | the same 8 specs (`aria-hidden` on the skeleton / visible copy) | ✅ |
 | AC-6 | `loading-announcements.e2e.ts` — **mutation-checked**: scoping the region back inside Discover's `@if` fails it in 5s | ✅ |
-| AC-7 | `npm run lint` ✅ · `format:check` ✅ · `npm test` ✅ 176 files / 1608 tests · `test:e2e:a11y` ✅ 233/233 | ✅ |
+| AC-7 | `npm run lint` ✅ · `format:check` ✅ · `npm test` ✅ 176 files / 1609 tests · `test:e2e:a11y` ✅ 233/233 | ✅ |
 | AC-8 | `venue-map.spec.ts` / `my-bookings.spec.ts` / `set-password.spec.ts`, all three mutation-checked | ✅ |
 
 ---
