@@ -6,7 +6,10 @@
 
 **Goal:** The cutoff rule's sentence exists **once** in the source. Discover and the beach
 map mount the same shared note, so a copy edit cannot leave one surface stale while both
-suites stay green — the failure #733 was meant to repair and did not.
+suites stay green — the failure #733 was meant to repair and did not. **And, at the
+maintainer's direction, the same for every other sentence in that defect class**: the slice's
+own generalization audit enumerated seven more, and #738's population is fixed here rather
+than deferred.
 
 **Architecture:** The one significant decision is the **shape of the seam**, which #735
 leaves open (exported constant vs `<app-cutoff-note>`). Decided below (D-1): a **component
@@ -110,6 +113,10 @@ it: mutate the source and exactly the two pins go red, no site stays silently gr
   carrying `data-testid="cutoff-note"` and an `aria-hidden` `<svg>`, and axe reports no
   serious violations. *Pinned by:* `home.spec.ts`, `venue-map.spec.ts`,
   `cutoff-note.spec.ts`, and `expectNoSeriousAxeViolations` in the mocked suite
+- [x] **AC-7:** Given the whole `frontend/src` tree, when every ≥25-char text run rendered from a
+  `.html` file or an inline `template:` is grouped by normalized text, then **no group spans more
+  than one file** — i.e. no user-facing sentence is rendered from two templates. *Pinned by:* the
+  AC-verification sweep below (the enumerator that found the population in the first place)
 - [x] **AC-6:** Given `shared/cutoff-note.ts`, when it renders standalone, then its host
   static classes merge with (rather than replace) a class written at the call site, and its
   text is the exact sentence including the non-breaking space in `6&nbsp;PM`. *Pinned by:*
@@ -148,6 +155,13 @@ it: mutate the source and exactly the two pins go red, no site stays silently gr
 | Discover: `.cutoff-note` marker class | **dropped** | swept `frontend/src frontend/e2e` — **no** test queries it (specs query the test id) and no stylesheet, `home.scss` included, references it. `riviera-tailwind` rule 2 protects a marker class only when a test queries it; this is the same call #733's ledger made for `.cutoff-icon`, applied to the one it did not examine |
 | Both surface specs assert the exact sentence | **changed** | they assert the shared note **mounted** and the surface's own concerns; the words are pinned once in `cutoff-note.spec.ts`. Keeping them would be keeping the duplicate that let #703's drift pass green — the defect, not the coverage |
 | `discovery-flow.e2e.ts` asserts the sentence in the load-failure state | **preserved** | kept verbatim as the browser-level copy pin (the "pins vs duplicates" table above), and joined by AC-3's parity assertion |
+| **#738 —** the seven admin pages' access-denied line, each with its own test id | **preserved** | one component, `testId` as its input; all seven specs keep asserting their own id, unedited |
+| **#738 —** both outboxes' load-error copy, identical and naming neither outbox | **changed** | the mail page now says "the email outbox" and the refund page "the refund outbox". A **copy fix, not a dedupe**: every other admin page names its own subject ("the audit trail", "the venue list", "operators"), so these two were the family's odd ones out. Deduplicating a wrong string would have frozen the ambiguity |
+| **#738 —** the operator nav cluster's markup, mirrored in both headers | **preserved** | one component on a `display: contents` host, so each header's own flex container and gap still lay the items out. The test-id prefix is an input (`opc-` / `oc-`) and **sign-out is an output**, because the two headers genuinely tear down differently — the chrome parks focus on `<main>` first, the console additionally resets the venue, map and request stores |
+| **#738 —** the console's `oc-create-venue` / `oc-signed-in-as` marker classes | **dropped** | swept `src` and `e2e`: no stylesheet and no spec queries them (the specs query the test ids), so `riviera-tailwind` rule 2 does not protect them |
+| **#738 —** the venue booking-mode and cutoff fields, in both forms | **preserved** | one component each. Deliberately **two field components, not one fieldset**: the create card pairs booking-mode with payout currency and puts the cutoff in a different grid, so an extracted "booking fields" block would have had to move the create card's layout |
+| `venue-create-card.spec.ts` swept its fields via `label.field span` | **changed** | the two extracted labels carry no `.field` marker, so the sweep now walks `label` directly and takes each one's first `span`. This asserts the same seven names in the same order without depending on an inert marker class — which the earlier grep for `.field` missed, because the query spells it `label.field span` |
+| `venue-create-card.ts` typed its form model by inference, casting `m.bookingMode as BookingMode` on submit | **changed** | the shared field's `Field<BookingMode>` input would not accept the inferred `string`. The model now has an explicit `VenueDraft` type and the submit-path cast is gone — the console's venue tab already typed its own model this way |
 
 ## Risk register
 
@@ -271,17 +285,17 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 
 ## Execution status
 
-**Stage pointer:** `CLOSE-OUT — AC-2 and the freshness sweep done; review + Sonar gates next`
+**Stage pointer:** `CLOSE-OUT — #738's population folded in; review + Sonar gates next`
 
-**Next action:** mark PR #737 ready for review, then run the review gate and pull the Sonar
-issue list from the API.
+**Next action:** run the review gate on PR #737, then pull the Sonar issue list from the API.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared cutoff-note seam | ✅ | `b3a64e8` |
 | 1 — both surfaces adopt it; the specs stop re-typing the copy | ✅ | `03757fe` |
 | 2 — the cross-surface parity assertion in the mocked e2e | ✅ | `281b5ae` |
-| 3 — close-out (docs freshness, review + Sonar gates, final state) | ⏳ | this commit |
+| 3 — close-out (docs freshness, review + Sonar gates, final state) | ⏳ | `b814964` (freshness) |
+| 4 — #738's population, folded in at the maintainer's direction (D-4) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -302,7 +316,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/venue/venue-map.spec.ts` — same, keeping its unrelated `min` assertion
 - `frontend/e2e/discovery-flow.e2e.ts` — the cross-surface parity assertion (AC-3)
 - `frontend/eslint.config.js` — a file-scoped override so `component-selector` checks the
-  attribute form in attribute mode (see D-3)
+  attribute-selector components in attribute mode (see D-3)
+
+**The #738 population, folded in at the maintainer's direction (D-4):**
+
+- `frontend/src/app/admin/admin-forbidden.ts|.spec.ts` — the access-denied line, ×7 → 1 (new)
+- `frontend/src/app/admin/{admin-audit,admin-commissions,admin-mail-outbox,admin-operators,admin-privacy,admin-refund-outbox,admin-venue-photos}.ts` — the seven call sites; the two outboxes also get the copy fix
+- `frontend/src/app/booking/legal-consent.ts|.spec.ts` — the consent sentence + both document links, ×2 → 1 (new)
+- `frontend/src/app/booking/manage-booking-link.ts|.spec.ts` — the manage-booking link, ×2 → 1 (new)
+- `frontend/src/app/booking/{booking-dialog,booking-pay,booking-confirmation}.ts` — their call sites
+- `frontend/src/app/shared/legal-footer.ts|.spec.ts` — the footer notice, ×2 → 1 (new)
+- `frontend/src/app/app.ts|.html` — the tourist chrome's footer call site
+- `frontend/src/app/operator/operator-actions.ts|.spec.ts` — the operator nav cluster, ×2 → 1 (new)
+- `frontend/src/app/operator/{operator-chrome.ts,operator-console.ts,operator-console.html}` — the two headers' call sites + the console footer
+- `frontend/src/app/operator/booking-mode-field.ts|.spec.ts`, `booking-cutoff-field.ts|.spec.ts` — the two venue form fields, ×2 → 1 each (new)
+- `frontend/src/app/operator/{venue-create-card.ts,venue-create-card.html,venue-tab.ts,venue-tab.html}` — their call sites; the create card's form model gains an explicit type
+- `frontend/src/app/operator/venue-create-card.spec.ts` — its field sweep stops keying on an inert marker class
 - `.claude/skills/riviera-tailwind/SKILL.md` — rule 1's taxonomy gains the third branch this
   slice introduces (attribute-selector component over a native element)
 
@@ -361,7 +390,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-21 | Phase 1 | **Surfaces stating the cutoff rule in prose**, keyed by *wording* rather than by the `cutoff-note` test id — re-running #734's sweep to confirm this slice's Non-goals still describe reality | `grep -rniE "6\s*(&nbsp;\|\xc2\xa0\| )?PM\|evening before\|day before\|same.day\|closes? (the )?(evening\|day)" frontend/src frontend/e2e --include=*.html --include=*.ts` | 8, all previously enumerated: `booking/booking-dialog.ts`, `booking/booking-view.ts`, `admin/admin-commissions.ts`, the three `pages/legal/terms-of-service.*`, `e2e/legal-pages.e2e.ts`, `e2e/discovery-flow.e2e.ts` | **None.** Unchanged from #734 — the two `booking/` hits state the **cancellation** policy (invariant #10), `admin-commissions` explains accrual to an admin, the legal pages state the rule in legal register with no clock time, and the `discovery-flow` hit is this slice's own browser pin. Non-goals verified against the tree, not recalled |
-| 2026-08-21 | Phase 1 | **The real mechanism: any user-facing sentence rendered from more than one template** — *not* "places that mention the cutoff". Keying on the cutoff would have returned clean and hidden the population, which is #641's lesson exactly. Enumerated by extracting every ≥25-char text run from every tracked `.html` and inline `template:` and grouping by normalized text | a throwaway script over `git ls-files 'frontend/src/**/*.html' 'frontend/src/**/*.ts'`, grouping `/>([^<>{}@]{25,})</g` matches by normalized text (recorded in the follow-up issue; it is a rough enumerator, not a guard — it also matches TS generics) | **7 further members** beyond this slice's: "You don't have access to this page." ×**7** (`admin/*.ts`), "Sign out" ×3, "Booking cutoff (Europe/Tirane)" ×2 (`operator/venue-create-card.html`, `venue-tab.html`), "Something went wrong loading the outbox." ×2, "View or manage this booking" ×2, "and acknowledge our" ×2, "© Riviera Sunbed Booking ·" ×2 | **Subset — this one fixed, the rest raised as #738.** Each carries the identical failure mode (per-template specs, so a copy edit to one sibling leaves the others green and stale), but fixing seven more surfaces is a different slice: the seven-way admin one wants a shared primitive, and the outbox pair looks like a **copy bug** rather than duplication (both outboxes say "the outbox", naming neither). Enumerating them was the audit's job; deciding them is not this slice's |
+| 2026-08-21 | Phase 1 | **The real mechanism: any user-facing sentence rendered from more than one template** — *not* "places that mention the cutoff". Keying on the cutoff would have returned clean and hidden the population, which is #641's lesson exactly. Enumerated by extracting every ≥25-char text run from every tracked `.html` and inline `template:` and grouping by normalized text | a throwaway script over `git ls-files 'frontend/src/**/*.html' 'frontend/src/**/*.ts'`, grouping `/>([^<>{}@]{25,})</g` matches by normalized text (recorded in the follow-up issue; it is a rough enumerator, not a guard — it also matches TS generics) | **7 further members** beyond this slice's: "You don't have access to this page." ×**7** (`admin/*.ts`), "Sign out" ×3, "Booking cutoff (Europe/Tirane)" ×2 (`operator/venue-create-card.html`, `venue-tab.html`), "Something went wrong loading the outbox." ×2, "View or manage this booking" ×2, "and acknowledge our" ×2, "© Riviera Sunbed Booking ·" ×2 | **All — the rest fixed here too, at the maintainer's direction (D-4).** Originally raised as #738; Each carries the identical failure mode (per-template specs, so a copy edit to one sibling leaves the others green and stale), but the maintainer chose to fix them in this PR rather than defer. Both judgements the enumeration raised held up: the outbox pair was indeed a **copy bug** (fixed as copy, not deduplicated), and two entries were tips of structural duplications whose real seams were extracted instead of their bare words |
+| 2026-08-21 | Phase 4 (fix round) | **Re-run of the same enumerator over the finished tree** — #373's rule that a fix round can create its own staleness, applied to the audit's own population | the same script | 11 hits, **all** TypeScript false positives (generics and spec boilerplate between `>` and `<`); zero real template copy | **None needed.** The population is empty, which is AC-7 |
+| 2026-08-21 | Phase 4 | **The threshold's own blind spot** — the enumerator keys on runs of ≥25 chars, so shorter repeated strings are invisible to it. Re-run at 8 chars to see what the cutoff hid | the same script with `{8,}` | dozens: "Booking code" ×5, "New password" ×3, "Email address" ×2, "Back to home" ×2, "All beaches" ×2, … | **Out of population, deliberately.** These are short field labels and button captions — normal UI vocabulary, not drifting prose, and sharing them would couple unrelated features for no drift benefit. The 25-char threshold is a reasonable proxy for "sentence"; recording the 8-char run is what makes that a judgement rather than an accident of the cutoff |
 
 ---
 
@@ -386,6 +417,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [ ] **AC-5:** the surface specs + the mocked suite's axe checks.
 - [x] **AC-6:** `npx ng test --watch=false --include="src/app/shared/cutoff-note.spec.ts"` →
   7 passed, including the host/call-site class merge and the `6&nbsp;PM` pin. Verified at `b3a64e8`.
+- [x] **AC-7:** the duplicate-sentence enumerator re-run over the finished tree → **zero** groups
+  spanning more than one file once TypeScript false positives are excluded (the regex also matches
+  generics between `>` and `<`, e.g. `input.required<string>` and `let params$: BehaviorSubject<…>`;
+  those 11 residual hits are all `.ts` code, not template copy). Before the slice it returned 8
+  real groups — this one plus #738's seven.
+- [x] **Whole-suite proof for the folded-in work:** `npm test` → **1591 passed / 175 files**,
+  `npx ng lint` → clean, `npm run format:check` → clean, `npm run build` → succeeded. The seven
+  admin specs, both booking specs that assert the legal links, and both operator header specs are
+  **unedited** and still green, which is what proves the extractions preserved behavior.
 - [ ] **No-drift proof** (`riviera-tailwind`'s hard rule — computed styles, not class lists):
   a throwaway Playwright probe reads `getComputedStyle` on both notes and both glyphs before
   and after the change; deleted after the run.

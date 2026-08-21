@@ -1,4 +1,6 @@
 import { Component, effect, inject, signal, untracked } from '@angular/core';
+import { OperatorActions } from './operator-actions';
+import { LegalFooter } from '../shared/legal-footer';
 import {
   ActivatedRoute,
   Router,
@@ -46,6 +48,8 @@ interface ConsoleTab {
 @Component({
   selector: 'app-operator-console',
   imports: [
+    OperatorActions,
+    LegalFooter,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,

@@ -1,4 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
+import { BookingCutoffField } from './booking-cutoff-field';
+import { BookingModeField } from './booking-mode-field';
 import { form, required, submit, FormField } from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -13,6 +15,18 @@ import { BookingMode } from '../shared/venue-views';
 import { VenueAdminErrorCode, VenueDefaults } from './venue-admin.model';
 import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
 
+/** The new-venue fields bound to the Signal Form. Typed rather than inferred, so `bookingMode`
+ *  is the union the server accepts instead of a bare string the submit path has to assert. */
+interface VenueDraft {
+  name: string;
+  beach: string;
+  region: string;
+  description: string;
+  bookingMode: BookingMode;
+  payoutCurrency: string;
+  bookingCutoff: string; // "HH:mm" Europe/Tirane
+}
+
 /**
  * The create-venue form inside the operator console surface — the retired
  * `/venue-admin` editor's one surviving job, restyled to Liquid Glass. Rendered by
@@ -26,7 +40,7 @@ import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
  */
 @Component({
   selector: 'app-venue-create-card',
-  imports: [CardGlass, FormField, BusyAction, TouchTarget],
+  imports: [BookingCutoffField, BookingModeField, CardGlass, FormField, BusyAction, TouchTarget],
   templateUrl: './venue-create-card.html',
 })
 export class VenueCreateCard {
@@ -54,7 +68,7 @@ export class VenueCreateCard {
     });
   }
 
-  protected readonly venueModel = signal({
+  protected readonly venueModel = signal<VenueDraft>({
     name: '',
     beach: '',
     region: '',
@@ -83,7 +97,7 @@ export class VenueCreateCard {
             beach: m.beach,
             region: m.region,
             description: m.description,
-            bookingMode: m.bookingMode as BookingMode,
+            bookingMode: m.bookingMode,
             payoutCurrency: m.payoutCurrency,
             bookingCutoff: m.bookingCutoff,
           }),

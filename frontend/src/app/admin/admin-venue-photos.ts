@@ -1,4 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
+
+import { AdminForbidden } from './admin-forbidden';
 import { NgOptimizedImage } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
@@ -46,6 +48,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
 @Component({
   selector: 'app-admin-venue-photos',
   imports: [
+    AdminForbidden,
     RouterLink,
     NgOptimizedImage,
     CardGlass,
@@ -74,9 +77,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
           >
         </p>
       } @else if (!auth.isAdmin()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-photos-forbidden">
-          You don't have access to this page.
-        </p>
+        <p appAdminForbidden testId="admin-photos-forbidden"></p>
       } @else {
         <app-admin-console-tabs label="Admin console sections" />
 

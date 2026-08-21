@@ -25,11 +25,25 @@ This skill states only the few decisions and traps the *code can't show you*.
    painting on the real box — the component takes an **attribute selector** over that tag
    (`shared/cutoff-note.ts` is `p[appCutoffNote]`), which is what angular.dev's a11y guide
    recommends for augmenting a native element. Two consequences worth knowing before you write
-   one: `@angular-eslint/component-selector` is configured `type: 'element'` and cannot express
-   both forms at once (`style` takes a single value, and the two disagree on case), so an
+   one. First, `@angular-eslint/component-selector` is configured `type: 'element'` and cannot
+   express both forms at once (`style` takes a single value, and the two disagree on case), so an
    attribute component needs a **file-scoped override** running the rule in attribute mode — not
-   an inline disable, which would stop checking the selector at all. The directive's host
-   `class` string is scanned by Tailwind, so the utilities generate normally.
+   an inline disable, which would stop checking the selector at all; `eslint.config.js` keeps the
+   list, and adding to it is meant to be deliberate. Second, and this is the criterion:
+
+   > **Augment by attribute when the element is a text container; own the element inside the
+   > component when its own content carries a11y meaning.**
+
+   `<p>` and `<div>` take the attribute form happily (`p[appCutoffNote]`, `p[appAdminForbidden]`,
+   `p[appLegalConsent]`, `div[appLegalFooter]`). An `<a>` or a `<label>` does not: written empty at
+   the call site, with its content supplied by the component, it is indistinguishable to
+   `elements-content` and `label-has-associated-control` from a genuinely empty link or a label
+   with no control — and silencing those per file blinds them to real violations elsewhere in the
+   same file. Those primitives take an **element selector with a `class: 'contents'` host** and
+   render the native element in their own template, where the linter can see the content and the
+   host still drops out of the parent's flex or grid (`app-manage-booking-link`,
+   `app-booking-mode-field`, `app-booking-cutoff-field`). The directive's host `class` string is
+   scanned by Tailwind, so the utilities generate normally.
 2. **Keep the old semantic class as an inert marker when a test queries it.** Unit/e2e specs
    query `.set-tile.premium`, `.amenity-chip`, `.failure-title`, etc. Retain those class
    names (on the element or the directive host) so a styling-only change never forces a
@@ -84,11 +98,10 @@ nothing for an icon component. An icon is an inline `<svg>` you write. The repo'
 its precedent is **`shared/clock-icon.ts`** (the cutoff-note clock, reached by both Discover and
 the beach map through `shared/cutoff-note.ts`) — read it before adding a second.
 
-**ICON-1. A shared glyph is a `@Component`, not a directive** — one of the two places the
-top-level rule 1's "reused *element*" branch is **forced** rather than chosen (the other is
-`shared/cutoff-note.ts`, whose sentence and glyph a directive equally cannot supply). A directive
-only adds classes and attributes to an element that already exists, so it cannot carry the
-`circle`/`path` geometry. It
+**ICON-1. A shared glyph is a `@Component`, not a directive** — an instance of the general rule
+that a directive only adds classes and attributes to an element that already exists, so anything
+supplying *markup* (this glyph's `circle`/`path` geometry, a shared note's sentence) is forced onto
+rule 1's "reused *element*" branch rather than choosing it. It
 will look inconsistent with the `appFailureIcon` / `appAmenityChip` neighbours; it isn't.
 
 **ICON-2. `stroke="currentColor"` (or `stroke-current`) is what lets one copy serve two call

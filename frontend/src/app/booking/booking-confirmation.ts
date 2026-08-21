@@ -1,4 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
+import { ManageBookingLink } from './manage-booking-link';
 import { RouterLink } from '@angular/router';
 
 import { CardGlass } from '../shared/card-glass';
@@ -25,7 +26,7 @@ import { BookingService } from './booking.service';
  */
 @Component({
   selector: 'app-booking-confirmation',
-  imports: [RouterLink, CardGlass, BookingQr, WithheldEmailNotice],
+  imports: [ManageBookingLink, RouterLink, CardGlass, BookingQr, WithheldEmailNotice],
   template: `
     @if (confirmation(); as c) {
       <section class="confirmation" appCardGlass aria-labelledby="confirmation-title">
@@ -64,9 +65,7 @@ import { BookingService } from './booking.service';
         </div>
 
         <a routerLink="/" class="btn-primary">Back to the beach</a>
-        <a [routerLink]="['/booking', c.code]" class="link" data-testid="manage-link">
-          View or manage this booking
-        </a>
+        <app-manage-booking-link [code]="c.code" skin="link" />
       </section>
     } @else {
       <section class="confirmation" appCardGlass aria-labelledby="confirmation-title">

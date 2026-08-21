@@ -1,4 +1,6 @@
 import { Component, effect, inject } from '@angular/core';
+
+import { AdminForbidden } from './admin-forbidden';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -41,7 +43,15 @@ import { TouchTarget } from '../shared/touch-target';
  */
 @Component({
   selector: 'app-admin-mail-outbox',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs, AdminMailDelivery, BusyAction, TouchTarget],
+  imports: [
+    AdminForbidden,
+    RouterLink,
+    CardGlass,
+    AdminConsoleTabs,
+    AdminMailDelivery,
+    BusyAction,
+    TouchTarget,
+  ],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-outbox-title">
@@ -62,9 +72,7 @@ import { TouchTarget } from '../shared/touch-target';
           >
         </p>
       } @else if (!auth.isAdmin()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-outbox-forbidden">
-          You don't have access to this page.
-        </p>
+        <p appAdminForbidden testId="admin-outbox-forbidden"></p>
       } @else {
         <app-admin-console-tabs label="Admin console sections" />
 
@@ -74,7 +82,7 @@ import { TouchTarget } from '../shared/touch-target';
           </p>
         } @else if (lever.loadError()) {
           <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-outbox-error">
-            Something went wrong loading the outbox.
+            Something went wrong loading the email outbox.
             <button
               type="button"
               data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"

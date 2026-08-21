@@ -42,47 +42,7 @@
           >
         </div>
         <div class="oc-header-right flex flex-wrap items-center gap-3.5">
-          <!-- Venue creation lives in the operator home's create state; keep it reachable here. -->
-          <a
-            appTouchTarget
-            class="oc-create-venue inline-flex items-center text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
-            data-testid="oc-create-venue"
-            routerLink="/operator"
-            [queryParams]="{ create: '1' }"
-            >Create a venue</a
-          >
-          @if (operator.isAdmin()) {
-            <!-- Platform-admin operator-approval surface; shown only to an ADMIN principal. -->
-            <a
-              appTouchTarget
-              class="oc-create-venue inline-flex items-center text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
-              data-testid="oc-admin-link"
-              routerLink="/admin"
-              >Admin</a
-            >
-          }
-          <!-- Self-service credential rotation. Shown to every operator, incl. the bootstrap admin, whose refusal the page explains. -->
-          <a
-            appTouchTarget
-            class="oc-create-venue inline-flex items-center text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
-            data-testid="oc-change-password"
-            routerLink="/account/operator-password"
-            >Change password</a
-          >
-          <span
-            class="oc-signed-in-as text-[13px] text-(--riv-ink-soft)"
-            data-testid="oc-signed-in-as"
-            >Signed in as <strong class="text-(--riv-ink)">{{ operator.username() }}</strong></span
-          >
-          <button
-            type="button"
-            appTouchTarget
-            class="cursor-pointer rounded-full border border-[rgba(12,42,51,0.14)] bg-white px-3.75 py-1.75 font-sans text-[13px] font-semibold text-(--riv-ink) shadow-[0_1px_2px_rgba(7,42,58,0.08)] transition-colors hover:bg-[#eef1f2] motion-reduce:transition-none"
-            data-testid="oc-signout"
-            (click)="onSignOut()"
-          >
-            Sign out
-          </button>
+          <app-operator-actions testIdPrefix="oc" (signOut)="onSignOut()" />
         </div>
       </div>
     </header>
@@ -125,13 +85,9 @@
       data-testid="oc-footer"
     >
       <div
+        appLegalFooter
         class="mx-auto max-w-[1120px] px-6 py-4 text-[13px] text-(--riv-ink-soft)"
-        data-touch-exempt="links inside a sentence (WCAG 2.5.5 inline exception)"
-      >
-        © Riviera Sunbed Booking ·
-        <a class="underline" href="/legal/privacy" target="_blank" rel="noopener">Privacy</a> ·
-        <a class="underline" href="/legal/terms" target="_blank" rel="noopener">Terms</a>
-      </div>
+      ></div>
     </footer>
   </div>
 }

@@ -8,6 +8,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { LegalConsent } from './legal-consent';
+import { ManageBookingLink } from './manage-booking-link';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
@@ -53,7 +55,16 @@ type PayState =
  */
 @Component({
   selector: 'app-booking-pay',
-  imports: [RouterLink, CardGlass, PanelGlass, WithheldEmailNotice, BusyAction, TouchTarget],
+  imports: [
+    LegalConsent,
+    ManageBookingLink,
+    RouterLink,
+    CardGlass,
+    PanelGlass,
+    WithheldEmailNotice,
+    BusyAction,
+    TouchTarget,
+  ],
   template: `
     <!-- One persistent live region announces every state change. A live region only announces
          content that MUTATES after it is in the DOM — a region re-created together with the
@@ -113,9 +124,7 @@ type PayState =
           <app-withheld-email-notice />
         }
 
-        <a [routerLink]="['/booking', code]" class="btn-primary" data-testid="manage-link">
-          View or manage this booking
-        </a>
+        <app-manage-booking-link [code]="code" skin="btn-primary" />
         <a routerLink="/" class="link">Back to the beach</a>
       </section>
     } @else {
@@ -210,29 +219,10 @@ type PayState =
             @if (showPayButton()) {
               <!-- New tab (not routerLink) so the mounted Payment Element survives reading the document. -->
               <p
+                appLegalConsent
+                lead="By paying"
                 class="mt-[10px] text-[12px] leading-[1.5] text-(--riv-card-ink-soft)"
-                data-testid="legal-agreement"
-                data-touch-exempt="links inside a sentence (WCAG 2.5.5 inline exception)"
-              >
-                By paying you agree to our
-                <a
-                  class="underline"
-                  data-testid="legal-terms-link"
-                  href="/legal/terms"
-                  target="_blank"
-                  rel="noopener"
-                  >Terms of Service</a
-                >
-                and acknowledge our
-                <a
-                  class="underline"
-                  data-testid="legal-privacy-link"
-                  href="/legal/privacy"
-                  target="_blank"
-                  rel="noopener"
-                  >Privacy Policy</a
-                >.
-              </p>
+              ></p>
               <button
                 appTouchTarget
                 type="button"
