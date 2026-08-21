@@ -48,14 +48,17 @@
     </p>
   }
 
-  @if (mode() === 'sets' && !mapUnavailable()) {
+  @if (mode() === 'sets') {
     @if (venueId(); as id) {
-      <app-set-editor
-        [venueId]="id"
-        [sets]="loadedSets()"
-        [loaded]="mapLoaded()"
-        (changed)="onSetsChanged()"
-      />
+      <!-- Nothing at all when there is no map: falling back to the bulk surface under a pressed "Edit sets" would misstate the mode. -->
+      @if (!mapUnavailable()) {
+        <app-set-editor
+          [venueId]="id"
+          [sets]="loadedSets()"
+          [loaded]="mapLoaded()"
+          (changed)="onSetsChanged()"
+        />
+      }
     }
   } @else {
     <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[280px_1fr]">
@@ -104,9 +107,9 @@
             appTouchTarget
             type="button"
             (click)="onGenerate()"
-            [disabled]="reading()"
+            [appBusy]="reading()"
             data-testid="layout-generate"
-            class="mt-3 w-full rounded-[14px] border border-white/40 bg-(image:--riv-cta-grad) px-3 py-[11px] text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] [transition:filter_0.12s_ease] disabled:opacity-50 hover:brightness-105"
+            class="mt-3 w-full rounded-[14px] border border-white/40 bg-(image:--riv-cta-grad) px-3 py-[11px] text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] [transition:filter_0.12s_ease] aria-disabled:opacity-50 hover:brightness-105"
           >
             @if (reading()) {
               Loading the current layout…

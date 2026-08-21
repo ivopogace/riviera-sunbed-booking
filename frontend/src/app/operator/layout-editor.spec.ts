@@ -96,6 +96,11 @@ describe('LayoutEditor (#172)', () => {
     return Array.from(host.querySelectorAll<HTMLButtonElement>('[data-testid="layout-cell"]'));
   }
 
+  /** Generate's inert posture is `aria-disabled` via `[appBusy]`, never `[disabled]` (RV-FE-9). */
+  function generateInert(): boolean {
+    return byId('layout-generate').getAttribute('aria-disabled') === 'true';
+  }
+
   /**
    * Show the bulk generate/paint surface. Needed wherever a test seeds a venue that already has sets:
    * since #600 such a venue opens in per-set mode, because that is the only mode that keeps working
@@ -124,7 +129,7 @@ describe('LayoutEditor (#172)', () => {
     render();
     expect(byId('layout-empty')).toBeTruthy();
     // A settled read on a set-less venue: emptiness is a fact now, so Generate acts with no confirm.
-    expect((byId('layout-generate') as HTMLButtonElement).disabled).toBe(false);
+    expect(generateInert()).toBe(false);
 
     generate('2', '3');
 
@@ -150,7 +155,7 @@ describe('LayoutEditor (#172)', () => {
     // Regenerate to a smaller grid: the first click only opens the confirm, it does not replace yet.
     setInput('layout-gen-rows', '1');
     setInput('layout-gen-cols', '1');
-    expect((byId('layout-generate') as HTMLButtonElement).disabled).toBe(false);
+    expect(generateInert()).toBe(false);
     byId('layout-generate').click();
     fixture.detectChanges();
     expect(byId('layout-confirm-regen')).toBeTruthy();
@@ -851,6 +856,9 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-load-failed')).toBeTruthy();
     expect(byId('set-editor')).toBeFalsy();
     expect(host.querySelector('[data-testid="set-skeleton-tile"]')).toBeNull();
+    // Nor a silent fall-back to the bulk surface under a pressed "Edit sets".
+    expect(byId('layout-mode-sets').getAttribute('aria-pressed')).toBe('true');
+    expect(byId('layout-generate')).toBeFalsy();
   });
 
   it('keeps the per-set editor on the last-known sets when a LATER re-read fails (#721)', async () => {
@@ -1113,7 +1121,9 @@ describe('LayoutEditor (#172)', () => {
     host = fixture.nativeElement as HTMLElement;
 
     const generate = byId('layout-generate') as HTMLButtonElement;
-    expect(generate.disabled).toBe(true);
+    expect(generateInert()).toBe(true);
+    // Inert via aria-disabled, NOT [disabled]: disabling a focused button blurs it to <body> (#616).
+    expect(generate.disabled).toBe(false);
     generate.click();
     fixture.detectChanges();
     expect(cells()).toHaveLength(0); // nothing generated over a layout nobody has seen
@@ -1122,7 +1132,7 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     useBulkMode();
 
-    expect((byId('layout-generate') as HTMLButtonElement).disabled).toBe(false);
+    expect(generateInert()).toBe(false);
     expect(cells()).toHaveLength(1);
   });
 
@@ -1143,8 +1153,8 @@ describe('LayoutEditor (#172)', () => {
     // The reconcile clears the grid and re-reads, so hasLayout() alone would read as "empty venue".
     const reread = http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'));
     useBulkMode();
-    const generate = byId('layout-generate') as HTMLButtonElement;
-    expect(generate.disabled).toBe(true);
+    const generate = byId('layout-generate');
+    expect(generateInert()).toBe(true);
     generate.click();
     fixture.detectChanges();
     expect(cells()).toHaveLength(0);
@@ -1158,7 +1168,7 @@ describe('LayoutEditor (#172)', () => {
     });
     fixture.detectChanges();
 
-    expect((byId('layout-generate') as HTMLButtonElement).disabled).toBe(false);
+    expect(generateInert()).toBe(false);
     expect(cells()).toHaveLength(1);
   });
 
@@ -1175,11 +1185,11 @@ describe('LayoutEditor (#172)', () => {
     // Venue 1's read lands late: it must not report venue 2's still-running read as settled.
     first.flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 0 });
     fixture.detectChanges();
-    expect((byId('layout-generate') as HTMLButtonElement).disabled).toBe(true);
+    expect(generateInert()).toBe(true);
 
     second.flush({ id: 2, name: 'W', sets: [], setVersion: 0 });
     fixture.detectChanges();
-    expect((byId('layout-generate') as HTMLButtonElement).disabled).toBe(false);
+    expect(generateInert()).toBe(false);
   });
 
   it('drops the shared snapshot and re-reads the map after a per-set write (#486 rule, AC-1)', async () => {

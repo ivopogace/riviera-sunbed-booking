@@ -41,7 +41,12 @@ of AC-4 to take, and what the *failed* read must render on the per-set surface, 
 `riviera-plan-doc` (this template — its Behavior-parity ledger is what forced the `onSetsChanged()`
 row, i.e. the reason `mapLoaded` and `reading` are two signals rather than one) · `tdd` (each phase
 writes the failing spec against the unsettled render first, then the gate) ·
-`riviera-review-overlay` (review gate — walked at ready-for-review; see Execution status) ·
+`riviera-review-overlay` (review gate — the FE bank walked on top of `/code-review`'s five passes at
+ready-for-review; RV-FE-8's grep still returns the frozen five edges, RV-FE-9 is what turned F-2 from
+"argued safe" into a fix, and the fix round re-entered at Implement under `riviera-frontend` +
+`riviera-tailwind` + `angular-developer` for the template and `frontend/.claude/CLAUDE.md`'s
+busy-posture rule for the guard-script line — no `riviera-sdlc` row routes `scripts/`, so the rule
+it enforces is the authority there) ·
 `riviera-docs-freshness` (close-out — see Execution status) · `riviera-frontend` (structure —
 confirmed both edits stay inside the `operator/` feature folder: no new file, no new cross-feature
 edge, and the skeleton stays in `set-editor.html` rather than being promoted to `shared/`, which
@@ -95,8 +100,8 @@ operator is shown, and what the tab lets them do, before/at/after the map read s
       and no skeleton is present (no regression).
       *Pinned by:* `SetEditor (#600) › points a set-less venue at the bulk generator, and still adds into the one empty spot (#718)` (extended with the no-skeleton assertion)
 - [x] **AC-4:** Given a venue whose map read has not resolved, when the operator reaches Generate,
-      then it is **unavailable** (`disabled`, labelled as loading) and activating it neither
-      generates nor saves anything — the stored layout is never silently replaced. Holds for **both**
+      then it is **unavailable** — inert via `[appBusy]`'s `aria-disabled`, labelled as loading —
+      and activating it neither generates nor saves anything — the stored layout is never silently replaced. Holds for **both**
       windows that open one: the tab's own mount and `onSetsChanged()`'s re-read.
       *Pinned by:* `LayoutEditor (#172) › refuses Generate until the map read settles, on mount and on the per-set reconcile (#721)`
 - [x] **AC-5:** Given a genuinely set-less venue whose read has resolved, when Generate is activated,
@@ -200,7 +205,7 @@ exactly those gates rather than waived — this is where the `onSetsChanged()` t
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `[disabled]="reading()"` on Generate strands focus on `<body>` if the button is focused when a read starts (WCAG 2.4.3, the repo's most-repeated bug class — RV-FE-9) | low | high | enumerate the transitions: the mount and mode-toggle windows render the button **already** disabled (a disabled button is not focusable, so nothing to blur); the only mid-life flip to disabled is `onSetsChanged()`, which fires from `SetEditor` (bulk not rendered), and the in-place venue switch, which is activated from the console shell's own switcher and therefore holds focus itself. `[disabled]` — not `[appBusy]` — is the correct posture per `frontend/.claude/CLAUDE.md`'s decision table: this is a *state* gate ("the map is unknown"), not a write this button started, and its sibling `layout-save` already uses `[disabled]="!hasLayout()"` for the same kind of state | Claude | open |
+| R-1 | `[disabled]="reading()"` on Generate strands focus on `<body>` if the button is focused when a read starts (WCAG 2.4.3, the repo's most-repeated bug class — RV-FE-9) | low | high | phase 1 shipped `[disabled]` on the argument that every window renders the button *already* inert, so nothing is blurred; the review gate rejected that reasoning (F-2) and it was right — an in-place venue switch reached by browser back/forward flips the flag under a focused button, and #616's finding is about the flip, not about who started the request | Claude | closed — `[appBusy]="reading()"` (`e0dd15b`), the posture its sibling buttons already use; specs pin `aria-disabled` **and** that the DOM `disabled` property stays false, and `reading` was added to `check-focus-posture.mjs`'s `BUSY_STEMS` so the guard now fails the build on a relapse |
 | R-2 | The skeleton's `animate-pulse` never finishes, so a real-browser axe run that first awaits `getAnimations().finished` (the repo's rule for animated surfaces) would hang the e2e | med | med | do not run axe over the skeleton in Playwright; jsdom axe covers the in-flight structure (AC-9), and the e2e asserts geometry + gating only. Recorded here so a later slice does not "fix" the missing axe call into a hang | Claude | open |
 | R-3 | Making `loaded` a **required** input breaks the three existing `SetEditor` spec files that call `setInput('sets', …)` and nothing else | high | low | deliberate: a defaulted `loaded = true` would silently re-open this bug for the next caller. All three render helpers take the flag (defaulting to `true` in the helper, not in the component) — `set-editor.spec.ts`, `set-editor.a11y.spec.ts` are the callers; `set-editor.contrast.spec.ts` renders nothing | Claude | open |
 | R-4 | The skeleton canvas reuses `set-grid`/`set-grid-frame`, so an existing wait matches the skeleton and a spec asserts against placeholder tiles | med | med | distinct testids (`set-skeleton-grid`, `set-skeleton-frame`, `set-skeleton-tile`), and AC-2 asserts **no** skeleton element survives the read | Claude | open |
@@ -221,8 +226,9 @@ exactly those gates rather than waived — this is where the `onSetsChanged()` t
   they have not seen — and on a genuinely empty venue it would state "Regenerate replaces your
   current layout", which is false; worse, confirming still lands the destructive outcome the issue
   describes (`seedFrom()` early-returns, the token resolves, Save writes over the real layout).
-  Disabling states exactly what is true: Generate acts only on a known map. — *Owner:* Claude ·
-  *Resolves by:* phase 1
+  Making it inert states exactly what is true: Generate acts only on a known map. (The *mechanism*
+  moved at the review gate — `[appBusy]`'s `aria-disabled` rather than `[disabled]`, F-2 — but the
+  arm chosen did not.) — *Owner:* Claude · *Resolves by:* phase 1
 - **D-2 (gap in the issue, settled at intake — what a *failed* read renders on the per-set
   surface).** AC-6 says the skeleton must resolve into the existing `loadFailed` messaging, but that
   messaging lives inside the **bulk** branch of `layout-editor.html` today, and simply letting
@@ -230,10 +236,14 @@ exactly those gates rather than waived — this is where the `onSetsChanged()` t
   the same false claim, one state later. So the notice is hoisted to tab level (both modes) and the
   per-set editor is not rendered while `loadFailed() && !mapLoaded()`. — *Owner:* Claude ·
   *Resolves by:* phase 2
-- **D-3 (scope, held).** A read that *fails* leaves Generate ungated (no confirmation), because a
-  failed read is settled. This is safe rather than an oversight: without the `setVersion` token
-  `onSave()` cannot write at all, and the operator is now told the map could not be loaded before
-  they paint anything. — *Owner:* Claude · *Resolves by:* phase 2
+- **D-3 (scope, held — re-tested at the review gate as F-3).** A read that *fails* leaves Generate
+  ungated (no confirmation), because a failed read is settled. Held, with the reasoning now written
+  down: nothing stored is at risk (without the `setVersion` token `onSave()` cannot write at all,
+  and this slice makes the failure announce itself at the top of the tab *before* any painting, so a
+  Generate there is informed rather than silent); the only cost is a local draft the operator would
+  lose on the refresh the notice asks for. Gating it would also make `onSave()`'s null-token branch —
+  and the spec that pins it — unreachable, trading a small UX win for deleted safety coverage. —
+  *Owner:* Claude · *Resolves by:* phase 2
 - **Assumption:** the skeleton belongs to `SetEditor` (which owns the shape it mirrors) rather than
   to `LayoutEditor` (which owns the read). Keeping the skeleton next to the real markup is what
   keeps the two in sync; the parent passes only the fact. — *Owner:* Claude · *Resolves by:* phase 0
@@ -328,17 +338,19 @@ changes only what the tab renders between issuing today's `GET /api/venues/{id}`
 > shipped tests. Record **`merged via PR #NN`, never a merge SHA** (case history + details:
 > `riviera-sdlc` `references/pr-gates.md` §3 step 4).
 
-**Stage pointer:** `implement` — phases 0–3 shipped; draft **PR #731** open, CI running per push.
+**Stage pointer:** `close-out` — phases 0–3 shipped, **PR #731** ready for review, review gate run
+(five `/code-review` passes + the overlay FE bank), its two fixes landed and re-verified.
 
-**Next action:** phase 4 close-out — mark the PR ready for review, then the review + Sonar gates.
+**Next action:** CI green on the fix round, then the Sonar gate (pull the reported list from the
+API, not the badge), `riviera-docs-freshness`, final plan state, merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Per-set load gate + skeleton (unit + a11y) | ✅ | `664b19c` |
 | 1 — Generate gated on the read settling | ✅ | `b4d299b` |
 | 2 — Failed-read path on both surfaces | ✅ | `45acf63` |
-| 3 — Mocked Playwright e2e (held GET) | ✅ | (this commit) |
-| 4 — Close-out (gates, docs freshness, final plan state) | | |
+| 3 — Mocked Playwright e2e (held GET) | ✅ | `4fcea28` |
+| 4 — Close-out: review gate + its fix round | ⏳ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -348,6 +360,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (overlay walk, independently confirmed by `/code-review`'s shallow-bug-scan pass) | Phase 2's `@if (mode() === 'sets' && !mapUnavailable())` put the **bulk** surface on screen under a pressed "Edit sets" when the initial read failed — the toggle and the content disagreed. Traded one wrong state for another | fixed — the guard moved inside the sets branch, so that mode renders nothing but the failure notice; the spec now asserts `aria-pressed` **and** the absence of `layout-generate` |
+| F-2 | review (`/code-review`, prior-PR-comments **and** code-comment passes, converging) | `[disabled]="reading()"` on Generate is the stranded-focus shape #616 closed elsewhere: a real browser blurs a focused button to `<body>` the instant it is disabled, and an in-place venue switch can flip the flag under it. `check-focus-posture.mjs` is silent here by construction — `reading` is not in `BUSY_STEMS` | fixed — `[appBusy]="reading()"` + `aria-disabled:opacity-50`, the posture every sibling button in this diff already uses; specs pin both halves (aria-disabled true, DOM `disabled` false) in jsdom and in Chromium, and `reading` joined `BUSY_STEMS` (57 guard tests green, `--all` sweep clean) so a relapse fails the build |
+| F-3 | review (`/code-review`, shallow-bug-scan pass) | Generate stays enabled after the initial read **fails** — the operator can build a layout locally that Save will then refuse | **judged and left** (D-3), pre-existing and not a regression: nothing stored is at risk, the failure now announces itself before any painting, and gating it would make `onSave()`'s null-token branch and its spec unreachable |
 
 ---
 
@@ -391,6 +406,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/operator/layout-editor.spec.ts` — AC-4, AC-5, AC-6
 - `frontend/src/app/operator/layout-editor.a11y.spec.ts` — AC-9 (failed-read axe)
 - `frontend/e2e/layout-editor.e2e.ts` — AC-10
+- `scripts/check-focus-posture.mjs` — `reading` added to `BUSY_STEMS` (review finding F-2)
 
 ---
 
@@ -499,8 +515,14 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Phase 4 — Close-out
 
-- [ ] **Step 1: Review gate** — PR marked ready for review; `/code-review` via the
-      `references/pr-gates.md` §1 ladder, plus the `riviera-review-overlay` FE bank on top.
+- [x] **Step 1: Review gate** — PR #731 marked ready for review; `/code-review` started via ladder
+      **rung 1** (the `Skill("code-review:code-review")` probe succeeded), five parallel passes over
+      `origin/main...HEAD` at high effort — CLAUDE.md adherence, shallow bug scan, git blame/history,
+      prior-PR review comments, code-comment compliance — **plus** the `riviera-review-overlay` FE
+      bank walked on top (RV-FE-1/3/5/7/E2E/8 clean, RV-FE-2/4/6 N/A, RV-FE-9 → F-2, RV-STYLE-1/2
+      clean via the guards, RV-PROC-1 reconciled). The session's standing "no Agent tool" instruction
+      was not treated as grounds to skip: authorization was asked for and granted. Three findings
+      (F-1, F-2 fixed; F-3 judged and left); the fix round re-entered at Implement, test-first.
 - [ ] **Step 2: Sonar gate** — pull the reported new-issue + duplication list from the API (not the
       badge) and clear every entry.
 - [ ] **Step 3: `riviera-docs-freshness`** over `origin/main..HEAD`.

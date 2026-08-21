@@ -284,7 +284,9 @@ test('holds both surfaces until the map read settles (#721)', async ({ page }) =
 
   // Bulk is the mode the tab opens in during the window, so Generate is one click from the layout.
   const generate = page.getByTestId('layout-generate');
-  await expect(generate).toBeDisabled();
+  // aria-disabled, never [disabled] — a disabled button blurs to <body> the instant it flips (#616).
+  await expect(generate).toHaveAttribute('aria-disabled', 'true');
+  expect(await generate.evaluate((el) => (el as HTMLButtonElement).disabled)).toBe(false);
   await expect(generate).toHaveText(/Loading the current layout/);
 
   await page.getByTestId('layout-mode-sets').click();
@@ -302,7 +304,7 @@ test('holds both surfaces until the map read settles (#721)', async ({ page }) =
 
   // And the destructive path the window bypassed now asks first.
   await page.getByTestId('layout-mode-bulk').click();
-  await expect(generate).toBeEnabled();
+  await expect(generate).not.toHaveAttribute('aria-disabled', 'true');
   await generate.click();
   await expect(page.getByTestId('layout-confirm-regen')).toBeVisible();
 });
