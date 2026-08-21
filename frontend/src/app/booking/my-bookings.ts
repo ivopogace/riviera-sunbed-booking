@@ -201,13 +201,13 @@ const CLS = {
 
       <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
       <app-load-announcer
-        [loading]="loading()"
+        [loading]="showSkeleton()"
         [ready]="announceReady()"
         loadingLabel="Loading your bookings…"
         readyLabel="Your bookings loaded."
       />
 
-      @if (loading()) {
+      @if (showSkeleton()) {
         <!-- Wholly decorative skeleton — the announcer above owns the words (#741). -->
         <div aria-hidden="true" data-testid="my-bookings-loading">
           <div [class]="cls.rowPlaceholder" appCardGlass>
@@ -217,7 +217,7 @@ const CLS = {
             </span>
           </div>
         </div>
-      } @else if (rows().length === 0 && !accountError() && !accountPending()) {
+      } @else if (rows().length === 0 && !accountError()) {
         <section
           [class]="cls.emptyCard"
           appCardGlass
@@ -347,8 +347,8 @@ export class MyBookings {
   /**
    * True until the initial list is decided (the session restore has settled AND the first rows are
    * set). It is cleared as soon as the DEVICE rows render, so it cannot gate the empty card on its
-   * own — {@link accountPending} is what actually keeps a signed-in account fetch in flight from
-   * flashing "No booking yet" at a customer whose bookings are all on the server (#741 re-review).
+   * own; {@link showSkeleton} is what does, by keeping the skeleton up while a signed-in account
+   * fetch is still out and there is nothing else to draw (#741 review rounds 2–3).
    */
   protected readonly loading = signal(true);
   /**
@@ -366,18 +366,34 @@ export class MyBookings {
   protected readonly accountPending = signal(false);
 
   /**
-   * Every page-level read has settled and produced something to announce. Four conditions because
-   * this surface leaves its loading state in four ways that are not "loaded": the initial gate,
-   * the account list still out, that list having failed, and — the one the first two fixes both
-   * missed — per-code device rows still resolving behind their own skeletons. "Not loading" has
-   * never meant "loaded" here (#741 and its two review rounds).
+   * Nothing to show yet, so the skeleton stands in — and the same signal is the announcer's
+   * `loading`, because a surface that looks busy and says nothing is the #741 defect in a new
+   * costume. It is deliberately NOT just {@link loading}: that is cleared the moment the device
+   * rows render, which for a signed-in customer whose bookings all live on the server means zero
+   * rows and no skeleton — a blank page for the whole round trip (#741 review round 3).
+   */
+  protected readonly showSkeleton = computed(
+    () => this.loading() || (this.accountPending() && this.rows().length === 0),
+  );
+
+  /**
+   * Every page-level read has settled **and produced a booking, or none**. Rows must be `'loaded'`,
+   * not merely "not loading": a `'failed'` row renders a "Couldn't load this booking" retry card,
+   * and announcing success over it is the same lie the `ready` polarity exists to prevent.
+   *
+   * <p>That is also what keeps the announcement single. A per-row Retry sends its row back to
+   * `'loading'`, which would take this false and true again — but the button only exists inside
+   * the `'failed'` case, and a failed row means the page never announced in the first place. So
+   * the sequence a guest hears is silence → "loaded", never "loaded" → silence → "loaded". A
+   * latch was written for this and then removed: it guarded a state the template cannot reach,
+   * and no test could tell it from its absence (#741 review round 3).
    */
   protected readonly announceReady = computed(
     () =>
       !this.loading() &&
       !this.accountPending() &&
       !this.accountError() &&
-      this.rows().every((row) => row.state !== 'loading'),
+      this.rows().every((row) => row.state === 'loaded'),
   );
   /**
    * Codes the account list has already answered for. Consulted when a queued per-code lookup

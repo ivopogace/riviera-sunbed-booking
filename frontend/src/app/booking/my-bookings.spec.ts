@@ -565,12 +565,51 @@ describe('MyBookings (device-local list, issue #139)', () => {
       const host = fixture.nativeElement as HTMLElement;
 
       expect(host.querySelector('[data-testid="my-bookings-empty"]')).toBeNull();
+      // Absence is not the contract — asserting only that would have passed over a blank page.
+      expect(host.querySelector('[data-testid="my-bookings-loading"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe(
+        'Loading your bookings…',
+      );
 
       account.next([]);
       await fixture.whenStable();
       fixture.detectChanges();
 
       expect(host.querySelector('[data-testid="my-bookings-empty"]')).not.toBeNull();
+    });
+
+    it('says nothing when a device row failed — a retry card is not a loaded booking', async () => {
+      seedCodes(['DEVONLY1']);
+      const service = stubService({ DEVONLY1: { error: { status: 500 } } });
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
+    });
+
+    it('announces once, after a row retry succeeds — never before it', async () => {
+      // The order is the contract: silence → "loaded", never "loaded" → silence → "loaded".
+      seedCodes(['DEVONLY1']);
+      let attempt = 0;
+      const service = {
+        ...stubService({}),
+        getByCode: () => {
+          attempt += 1;
+          return attempt === 1
+            ? throwError(() => ({ status: 500 }))
+            : of(detail('DEVONLY1', 'CONFIRMED'));
+        },
+      };
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+      const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+      expect(announcer.textContent?.trim()).toBe('');
+
+      host.querySelector<HTMLButtonElement>('[data-testid="row-retry"]')!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
     });
 
     it('shows the account list when the device has no remembered codes', async () => {
