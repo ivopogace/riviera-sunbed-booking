@@ -110,6 +110,14 @@ change-detection timing cannot) · `riviera-local-debug` (scoped test runs; clou
 - **`aria-busy`.** Considered and rejected: it is a hint about a region being updated, not an
   announcement mechanism, and adding it would not change what is spoken. The per-row
   `aria-busy` on my-bookings (a known booking still resolving inside a real list) stays as is.
+- **The loading *visual*.** Raised by the maintainer mid-review: three of the eight surfaces show
+  a pulsing skeleton and five show a centred "Loading…" line, and the skeleton is the better
+  treatment for at least four of the five (it mirrors the loaded layout, so nothing jumps). That
+  is a real gap and this plan's Non-goals should have named it from the start — it was a hole,
+  not a decision. Deliberately **not** folded in here: a skeleton's value is per-surface layout
+  mirroring, so it is four real pieces of work, and it is orthogonal to the announcement (the
+  announcer behaves identically either way). → **issue #744**, with the four-not-five scope and
+  the `aria-hidden` + `motion-reduce` constraints this slice imposes on it.
 - Adding `@angular/cdk` for `LiveAnnouncer`.
 
 ---
