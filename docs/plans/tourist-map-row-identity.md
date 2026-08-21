@@ -185,15 +185,14 @@ N/A — no contract change. The map already receives `rowLabel` on `SetView`.
 
 ## Execution status
 
-**Stage pointer:** plan — committed, awaiting phase 1
+**Stage pointer:** implement (phase 3)
 
-**Next action:** open the draft PR, then phase 1 (red: walkway-collision spec)
+**Next action:** phase 3 — tourist rail truncation (canvas opt-in) + e2e touch-up
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + draft PR | ⏳ | |
-| 1 — one identity in `venue-map` (retire `rowCode`, label-keyed rows, `spotLabel` names) | | |
-| 2 — `row-price-label` qualifier rework (channel > tier; venue-words retires) | | |
+| 0 — plan doc + draft PR | ✅ | 5490020, PR #729 |
+| 1+2 — one identity in `venue-map` + `row-price-label` qualifier rework (landed together: `row-price-label.spec.ts`'s `at()` helper imports `rowCode`, so the phases are compile-coupled — a separate phase 1 could not be green) | ✅ | (this commit) |
 | 3 — tourist rail truncation (canvas opt-in) + e2e touch-up | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -354,6 +353,8 @@ it('still marks an all-walk-in row by its channel, over the tier', () => {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-21 | phase 1+2 | frontend code deriving a row identity from an array index | `grep -rn "rowCode\|fromCodePoint(65" frontend/src/app` (non-spec) | layout editor's grid pair (`beach-cell.ts:59`, `layout-editor.ts:375` + template) | skip — grid coordinates for painting, the plan's explicit non-goal; tourist map now clean |
+| 2026-08-21 | phase 1+2 | code comparing a derived rail code to venue words | `grep -rn "restatesPosition\|BARE_REFERENCE\|NAMED_REFERENCE\|RowPosition" frontend/src/app` | none | population extinct after rework |
 
 ---
 

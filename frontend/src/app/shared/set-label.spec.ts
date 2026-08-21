@@ -1,5 +1,12 @@
 import { SetView } from './venue-views';
-import { setLabel, setsById, tierLabel, tierSentenceLabel, touristTierLabel } from './set-label';
+import {
+  setLabel,
+  setsById,
+  spotLabel,
+  tierLabel,
+  tierSentenceLabel,
+  touristTierLabel,
+} from './set-label';
 
 /**
  * The shared set + tier labelling vocabulary: the per-surface rendered strings are pinned
@@ -21,6 +28,12 @@ describe('set-label', () => {
       const byId = setsById(undefined);
       expect(byId.size).toBe(0);
       expect(setLabel(byId, 5)).toBe('Set 5');
+    });
+  });
+
+  describe('spotLabel', () => {
+    it("renders the booking surfaces' identity phrase (#724)", () => {
+      expect(spotLabel('Front row · Sea view', 1)).toBe('Front row · Sea view · spot 1');
     });
   });
 

@@ -21,20 +21,18 @@ import { isRated, ratingScore } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
 import { defaultBookingDate, isIsoDate } from '../shared/booking-date';
 import { routeIdParam } from '../shared/parent-venue-id';
-import { tierSentenceLabel } from '../shared/set-label';
+import { spotLabel, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from './venue.service';
 
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * One rendered set on the map: the raw {@link SetView} plus its precomputed seat code
- * (`A1`, `B7`), whether it is bookable (invariant #3), and its accessible name (state
- * carried by text, not colour — WCAG AA).
+ * One rendered set on the map: the raw {@link SetView}, whether it is bookable
+ * (invariant #3), and its accessible name (state carried by text, not colour — WCAG AA).
  */
 interface TileView {
   readonly set: SetView;
-  readonly seat: string;
   readonly bookable: boolean;
   /** How the tile looks and what it announces — the appearance, the markers and the legend
    *  swatches all resolve from this one value (a FREE walk-in set is `walkin`, #672). */
@@ -73,23 +71,6 @@ interface VenueHeader {
   readonly priceLabel: string | null;
   readonly water: string | null;
   readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
-}
-
-/**
- * Derive a row's compact display code from its **insertion index** — `0→A … 25→Z, 26→AA,
- * 27→AB …` (bijective base-26, spreadsheet-column style). The map assigns these over the
- * rows in the order the API returns them (ordered `grid_y, grid_x`), so two-letter codes
- * stay in insertion order (`…Z, AA`) and are never lexicographically sorted (which would
- * wrongly place `AA` before `B`). Pure, so it is unit-tested directly.
- */
-export function rowCode(index: number): string {
-  let n = index;
-  let code = '';
-  do {
-    code = String.fromCodePoint(65 + (n % 26)) + code;
-    n = Math.floor(n / 26) - 1;
-  } while (n >= 0);
-  return code;
 }
 
 /**
@@ -207,8 +188,8 @@ export class VenueMap {
     };
   });
 
-  /** Sets grouped into rows (read order preserved), each with a derived code + its rail-chip
-   *  label — the price (or the row's min–max span) plus what that price buys, per
+  /** Sets grouped into rows (read order preserved), each coded by its stored `rowLabel` — the
+   *  one per-venue row identity (#724) — plus its rail-chip price label per
    *  {@link rowPriceLabel}. Zones still compare the RENDERED label (#689), so the richer label
    *  re-partitions them exactly where it should: a walk-in row priced like the online row above
    *  it now opens a zone of its own instead of vanishing into it (#702). */
@@ -220,18 +201,14 @@ export class VenueMap {
       byRow.set(set.rowLabel, row);
     }
     const entries = [...byRow.entries()];
-    const positions = entries.map((_, index) => ({ code: rowCode(index), ordinal: index + 1 }));
-    const labels = entries.map(([, sets], index) => rowPriceLabel(sets, positions[index]));
-    return entries.map(([label, sets], index) => {
-      const code = positions[index].code;
-      return {
-        code,
-        priceLabel: labels[index],
-        zoneStart: index === 0 || labels[index] !== labels[index - 1],
-        tileCount: sets.length,
-        tiles: sets.map((set) => this.toTile(set, code, label)),
-      };
-    });
+    const labels = entries.map(([, sets]) => rowPriceLabel(sets));
+    return entries.map(([label, sets], index) => ({
+      code: label,
+      priceLabel: labels[index],
+      zoneStart: index === 0 || labels[index] !== labels[index - 1],
+      tileCount: sets.length,
+      tiles: sets.map((set) => this.toTile(set)),
+    }));
   });
 
   constructor() {
@@ -277,14 +254,13 @@ export class VenueMap {
   }
 
   /** Build the render+a11y view of one set (invariant #3: only free ONLINE sets are bookable). */
-  private toTile(set: SetView, code: string, descriptiveLabel: string): TileView {
+  private toTile(set: SetView): TileView {
     const tier = tierSentenceLabel(set.tier);
     const state = mapTileState(set);
-    const seat = `${code}${set.positionNo}`;
     const bookable = set.availability === 'FREE' && set.pool === 'ONLINE';
     const announced = MAP_TILE_MEANING[state].announced;
-    const name = `Set ${seat}, ${descriptiveLabel}, ${tier}, ${this.money(set.price)}, ${announced}`;
-    return { set, seat, bookable, state, name, bookName: `${name}. Select to book.` };
+    const name = `${spotLabel(set.rowLabel, set.positionNo)}, ${tier}, ${this.money(set.price)}, ${announced}`;
+    return { set, bookable, state, name, bookName: `${name}. Select to book.` };
   }
 
   /** Fetch the map for the currently selected date. */
