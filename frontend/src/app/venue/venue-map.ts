@@ -8,6 +8,7 @@ import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '.
 import { AmenityChip } from '../shared/amenity-chip';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { CardGlass } from '../shared/card-glass';
+import { ClockIcon } from '../shared/clock-icon';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
 import { MAP_TILE_LEGEND, MAP_TILE_MEANING, MapTile, MapTileState, mapTileState } from './map-tile';
 import { rowPriceLabel } from './row-price-label';
@@ -98,6 +99,7 @@ interface VenueHeader {
     PanelGlass,
     PhotoSlideshow,
     CardGlass,
+    ClockIcon,
     AmenityChip,
     TouchTarget,
     BeachMapCanvas,

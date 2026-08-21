@@ -9,6 +9,7 @@ import {
 } from '../../shared/amenities';
 import { AmenityChip } from '../../shared/amenity-chip';
 import { CardGlass } from '../../shared/card-glass';
+import { ClockIcon } from '../../shared/clock-icon';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
 import { FieldGlass } from '../../shared/field-glass';
 import { focusMover } from '../../shared/focus-after-render';
@@ -70,6 +71,7 @@ interface VenueCard {
     PanelGlass,
     PhotoSlideshow,
     CardGlass,
+    ClockIcon,
     AmenityChip,
     FieldGlass,
     TouchTarget,

@@ -150,14 +150,15 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — complete, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1 complete)`
 
-**Next action:** Phase 0 — write `clock-icon.spec.ts` red, then create `shared/clock-icon.ts`.
+**Next action:** Phase 2 — retire the `discovery-flow.e2e.ts:212` assertion and add the icon §
+to `riviera-tailwind`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the shared clock-icon seam | | |
-| 1 — adopt it on both notes + reframe Discover's copy | | |
+| 0 — the shared clock-icon seam | ✅ | `404f3b6` |
+| 1 — adopt it on both notes + reframe Discover's copy | ⏳ | |
 | 2 — e2e assertion + the `riviera-tailwind` icon § | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

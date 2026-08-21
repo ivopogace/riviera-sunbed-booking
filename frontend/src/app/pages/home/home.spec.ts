@@ -499,16 +499,18 @@ describe('Home (venue discovery)', () => {
     expect(el().querySelectorAll('[data-testid="venue-card"]').length).toBe(1);
   });
 
-  it('renders the cutoff explainer line under the filter bar (display-only, invariant #4)', async () => {
+  it('states the cutoff as an invitation, iconed by an aria-hidden SVG (no emoji)', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
-    const note = el().querySelector('[data-testid="cutoff-note"]');
-    expect(note).not.toBeNull();
-    // \s matches the non-breaking space in "6 PM", so the copy reads plainly here.
-    const text = note?.textContent ?? '';
-    expect(text).toContain('Bookings close the evening before');
-    expect(text).toMatch(/book by 6\s+PM the day before/);
+    const note = el().querySelector('[data-testid="cutoff-note"]')!;
+    // The glyph contributes no text and the &ngsp; is gone, so the note reads as its sentence alone.
+    const text = note.textContent?.replace(/\s+/g, ' ').trim();
+    expect(text).toBe(
+      'Book any day from tomorrow \u2014 each day\u2019s sales close at 6 PM the evening before.',
+    );
+    expect(note.textContent).not.toContain('\u23f0');
+    expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('shows the loading state before the response arrives', async () => {
