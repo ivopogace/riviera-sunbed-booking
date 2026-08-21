@@ -100,11 +100,21 @@ every AC is a rendered-surface assertion by construction. Each names its pinning
   modes, then `expectNoSeriousAxeViolations` passes on the beach map in each.
   *Pinned by:* `booking-flow.e2e.ts` + `request-to-book.e2e.ts` (existing axe calls, which
   now cover the changed copy).
-- [ ] **AC-6:** Given the whole slice, when the diff is read, then no file under
-  `frontend/src/app/venue/venue-map.ts`, `frontend/src/app/shared/beach-map-canvas.ts`, or
-  any backend path changed — the date fence (`minDate()`/`defaultBookingDate`), the request
-  flow and the payment flow are byte-identical. *Pinned by:* `git diff --stat` at the
-  Acceptance-criteria verification step + the Behavior-parity ledger below.
+- [ ] **AC-6 (amended at the review gate — see below):** Given the whole slice, when the
+  diff is read, then **no executable code** changed: `beach-map-canvas.ts` and every backend
+  path are untouched, and `venue-map.ts`'s only edit is a **TSDoc correction** whose changed
+  lines all begin `` * `` — so the date fence (`minDate()`/`defaultBookingDate`), the request
+  flow and the payment flow are byte-identical. *Pinned by:* `git diff --stat origin/main`
+  plus the comment-only proof
+  (`git diff --unified=0 -- frontend/src/app/venue/venue-map.ts | grep -E '^[+-]' | grep -vE '^[+-] \* '`
+  returns nothing) at the Acceptance-criteria verification step, and the Behavior-parity
+  ledger below.
+
+  > **Why it was amended, stated rather than quietly relaxed.** As first written AC-6 said
+  > "no component `.ts` changed" — a *proxy* for its real claim, "no behavior changed".
+  > Review finding F-1/F-2 made two TSDoc sentences in `venue-map.ts` stale, and fixing a
+  > stale doc is not a behavior change; the honest move is to say what the AC always meant
+  > and add a check that proves it, not to leave the docs wrong so a proxy stays green.
 
 ## Non-goals
 
@@ -280,7 +290,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate — `/code-review` reviewer #5 (code-comment guidance) | `venue-map.ts:54` TSDoc states "`bookingMode` is carried raw **for the booking dialog**" — the new mode-aware footer reads it raw too, so the field's documented purpose was understated. A stale present-tense fact in a file the slice deliberately did not touch | fixed-in-`758c863` — TSDoc names both consumers; routing gate re-run (`riviera-frontend` + `frontend/.claude/CLAUDE.md`'s "TSDoc states the contract, not the changelog") |
+| F-2 | review gate — `/code-review` reviewer #5 (code-comment guidance) | `venue-map.ts:86` TSDoc states the component "owns only the tourist tile vocabulary **(tap-to-book)**" — stale twice over: the slice retired the word "Tap" from the surface, and a REQUEST venue's footer is not "book" wording at all | fixed-in-`758c863` — reworded to the tile names **and** the mode-aware footer; same routing-gate re-run as F-1 |
+| F-3 | review gate — `/code-review` reviewer #1 (CLAUDE.md compliance), soft note | The rewritten cutoff comment in `venue-map.html` is a long single line (~237 chars); compliant with `check-inline-comments.mjs`, flagged as "worth a human glance" | **considered, declined** — 237 chars is the exact median of the 15 HTML comments in the two touched files (range 102–756, measured). Shortening it would be churn against the file's own convention, not an improvement |
 
 ---
 
@@ -288,6 +300,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 - `docs/plans/beach-map-mode-aware-copy.md` — this plan doc
 - `frontend/src/app/venue/venue-map.html` — mode-aware footer; positive cutoff note + inline SVG clock
+- `frontend/src/app/venue/venue-map.ts` — **TSDoc only** (review findings F-1/F-2); no executable line changed
 - `frontend/src/app/venue/venue-map.spec.ts` — REQUEST fixture + footer/cutoff copy assertions
 - `frontend/src/app/shared/beach-map-canvas.html` — one-line pan hint, ✦ removed
 - `frontend/src/app/shared/beach-map-canvas.spec.ts` — pan-hint copy assertion
@@ -535,7 +548,7 @@ it('the pan hint is one plain line, no decorative glyph', async () => {
 - [ ] **AC-3:** Run `npm test -- venue-map.spec.ts` → the cutoff case passes (copy + `<svg aria-hidden>` + no ⏰ + `min` unchanged). Verified at commit `<sha>`.
 - [ ] **AC-4:** Run `npm test -- beach-map-canvas.spec.ts` → the new copy case and all six gating cases pass. Verified at commit `<sha>`.
 - [ ] **AC-5:** Run `npm run test:e2e:a11y -- booking-flow request-to-book` → both pass, axe green. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `git diff --stat origin/main` → no `.ts` component file and no `platform/` path in the diff. Verified at commit `<sha>`.
+- [ ] **AC-6:** Run `git diff --stat origin/main` → no `platform/` path; the one `.ts` file present (`venue-map.ts`) passes the comment-only proof in the AC. Verified at commit `<sha>`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 

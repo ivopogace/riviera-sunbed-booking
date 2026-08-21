@@ -53,7 +53,7 @@ interface MapRow extends BeachMapCanvasRow {
  * needs, precomputed once from the {@link VenueMapView} by {@link VenueMap.venueView} rather than
  * re-derived from the template each change-detection tick. The pure `shared/` helpers stay
  * signal-free; this record memoizes their outputs off the `venue` signal. `bookingMode` is carried
- * raw for the booking dialog; `modeLabel` is its display string.
+ * raw for the booking dialog and the mode-aware map footer; `modeLabel` is its display string.
  */
 interface VenueHeader {
   readonly name: string;
@@ -83,7 +83,8 @@ interface VenueHeader {
  * mount. Money is rendered from integer minor units; tile state is conveyed
  * by an accessible name, not colour alone (WCAG AA). The grid chrome — wash, rails, zone
  * layout, drag-pan with its click-vs-drag threshold — is the shared {@link BeachMapCanvas};
- * this component owns only the tourist tile vocabulary (tap-to-book) projected into it.
+ * this component owns only the tourist vocabulary projected into it — the tile names and the
+ * mode-aware footer, which states booking or request terms per the venue's own mode.
  *
  * Display parity only: availability truth stays server-side (invariant #2); only free
  * ONLINE-pool sets are bookable (invariant #3); the picker's `min` excludes today but the
