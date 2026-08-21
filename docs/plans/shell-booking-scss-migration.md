@@ -179,15 +179,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2 — booking-confirmation)
+**Stage pointer:** implement (phase 3 — booking-pay)
 
-**Next action:** port booking-confirmation.ts to utilities; delete its stylesheet.
+**Next action:** port booking-pay.ts to utilities; delete its stylesheet.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | `Plan the app-shell and booking SCSS migration` · PR #740 (draft) |
 | 1 — my-bookings migration + pulsing skeleton (AC-1/AC-2) | ✅ | `My bookings: Tailwind migration + pulsing skeleton` — red→green (2 new specs), 42 my-bookings + 279 booking specs, lint + TT/IC guards clean |
-| 2 — booking-confirmation migration | | |
+| 2 — booking-confirmation migration | ✅ | `Booking confirmation: Tailwind migration` — 13 specs green unmodified |
 | 3 — booking-pay migration | | |
 | 4 — manage-booking-link element form + allowList drop (AC-5) | | |
 | 5 — app-shell migration (AC-3) | | |
@@ -249,7 +249,7 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `booking-confirmation.ts` · Delete `booking-confirmation.scss`
 
-- [ ] Port to utilities (card surface = `appCardGlass` + its own blur/shadow/radius
+- [x] Port to utilities (card surface = `appCardGlass` + its own blur/shadow/radius
   extras); keep `manage-link` call-site anchor as-is this phase; delete stylesheet;
   specs stay green unmodified.
 
