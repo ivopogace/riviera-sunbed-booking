@@ -650,12 +650,15 @@ describe('VenueMap', () => {
     expect(label).toContain('Select to book'); // pinned so booking-flow.e2e.ts keeps matching
   });
 
-  it('renders the cutoff explainer and sets the date-picker min to tomorrow (today not offered)', async () => {
+  it('states the cutoff as an invitation, iconed by an aria-hidden SVG (no emoji)', async () => {
     flushVenue();
     await fixture.whenStable();
-    const note = el().querySelector('[data-testid="cutoff-note"]');
+    const note = el().querySelector('[data-testid="cutoff-note"]')!;
     // \s matches the non-breaking space in "6 PM", so the copy reads plainly here.
-    expect(note?.textContent).toMatch(/book by 6\s+PM the day before/i);
+    expect(note.textContent).toMatch(/Book any day from tomorrow/);
+    expect(note.textContent).toMatch(/sales close at 6\s+PM the evening before/);
+    expect(note.textContent).not.toContain('\u23f0');
+    expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
     expect(input.getAttribute('min')).toBe(defaultBookingDate(new Date())); // tomorrow, Europe/Tirane
   });

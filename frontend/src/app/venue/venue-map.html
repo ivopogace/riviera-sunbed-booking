@@ -85,14 +85,29 @@
             (change)="onDateChange($event)"
           />
         </p>
-        <!-- Cutoff explainer (invariant #4 — display only; the server enforces the real cutoff).
-             The ngsp entity keeps a real space between the clock glyph and the copy. -->
+        <!-- Cutoff explainer (invariant #4 — display only; the server enforces the real cutoff). The glyph is an inline SVG on currentColor, not the ⏰ emoji, which renders platform-dependently and reads as an error mark against the glass. -->
         <p
           class="inline-flex items-center gap-1 mt-2 text-[11.5px] leading-[1.35] text-(--riv-ink-faint)"
           data-testid="cutoff-note"
         >
-          <span class="text-[14px] leading-none" aria-hidden="true">⏰</span>&ngsp;
-          <span>Book by 6&nbsp;PM the day before — today isn’t bookable.</span>
+          <svg
+            class="shrink-0"
+            aria-hidden="true"
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+          <span
+            >Book any day from tomorrow — each day’s sales close at 6&nbsp;PM the evening
+            before.</span
+          >
         </p>
       </header>
 
