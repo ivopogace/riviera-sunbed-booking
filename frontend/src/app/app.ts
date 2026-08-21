@@ -22,7 +22,6 @@ import { TouchTarget } from './shared/touch-target';
   selector: 'app-root',
   imports: [LegalFooter, RouterOutlet, RouterLink, FindBooking, OperatorChrome, TouchTarget],
   templateUrl: './app.html',
-  styleUrl: './app.scss',
   host: {
     '(document:keydown.escape)': 'closeMenus()',
     // Pins the subtree porcelain on operator-chrome routes, whatever tourist theme is selected.

@@ -1,4 +1,4 @@
-<div class="riv-app">
+<div class="relative flex min-h-screen flex-col">
   <!-- Above the chrome conditional so it also shows on /operator/**, the shared-tablet case. -->
   @if (signOutNotice.visible()) {
     <div
@@ -29,11 +29,19 @@
   }
 
   <!-- Three chrome modes: tourist (default), shared operator (data.operatorChrome), none (console). -->
+  <!-- Negative z keeps the layer behind unpositioned page content, so <main> needs no stacking context (modals must beat the sticky header). -->
   @if (shellChrome() !== 'none') {
-    <div class="riv-bg" aria-hidden="true">
+    <div
+      class="riv-bg fixed inset-0 z-[-1] overflow-hidden bg-(image:--riv-bg) [transition:background_0.5s_ease]"
+      aria-hidden="true"
+    >
       @if (shellChrome() === 'tourist') {
-        <span class="riv-blob riv-blob-1"></span>
-        <span class="riv-blob riv-blob-2"></span>
+        <span
+          class="riv-blob riv-blob-1 pointer-events-none absolute -top-[120px] -left-20 h-[560px] w-[560px] animate-[riv-drift_18s_ease-in-out_infinite] rounded-full bg-(image:--riv-blob-1) opacity-55 blur-[50px] motion-reduce:animate-none"
+        ></span>
+        <span
+          class="riv-blob riv-blob-2 pointer-events-none absolute -right-[60px] -bottom-40 h-[620px] w-[620px] animate-[riv-drift_22s_ease-in-out_infinite_reverse] rounded-full bg-(image:--riv-blob-2) opacity-50 blur-[55px] motion-reduce:animate-none"
+        ></span>
       }
     </div>
   }
@@ -43,24 +51,41 @@
   }
 
   @if (shellChrome() === 'tourist') {
-    <header class="riv-header">
-      <div class="riv-header-inner">
-        <a class="riv-brand" routerLink="/" data-testid="brand-home">
-          <span class="riv-sun" aria-hidden="true"></span>
-          <span class="riv-brand-text">
-            <span class="riv-brand-name">Riviera</span>
-            <span class="riv-brand-sub">Albanian Coast</span>
+    <!-- The glass lives on a pseudo-element: backdrop-filter on the header itself would make it the containing block for fixed descendants (Filter Effects L2). -->
+    <header
+      class="riv-header sticky top-0 z-20 border-b border-(--riv-header-border) shadow-[0_8px_30px_rgba(6,38,52,0.14)] before:absolute before:inset-0 before:z-[-1] before:bg-(--riv-header-glass) before:backdrop-blur-[22px] before:backdrop-saturate-[1.7] before:content-['']"
+    >
+      <div
+        class="relative mx-auto flex w-full max-w-[1080px] items-center justify-between gap-4 px-6 py-3.5"
+      >
+        <a
+          class="flex min-h-11 items-center gap-3 text-(--riv-ink)"
+          routerLink="/"
+          data-testid="brand-home"
+        >
+          <span
+            class="block h-8 w-8 rounded-full bg-[radial-gradient(circle_at_34%_30%,#ffe6a3,#f0aa2e_70%)] shadow-[0_0_0_4px_rgba(255,255,255,0.18),0_4px_14px_rgba(240,170,46,0.5)]"
+            aria-hidden="true"
+          ></span>
+          <span class="flex flex-col leading-none">
+            <span class="text-[21px] font-bold tracking-[-0.01em]">Riviera</span>
+            <span class="mt-1 text-[10px] tracking-[0.24em] uppercase text-(--riv-ink-faint)"
+              >Albanian Coast</span
+            >
           </span>
         </a>
 
-        <nav class="riv-nav-desktop" aria-label="Primary">
-          <a routerLink="/" class="riv-nav-link">Beaches</a>
-          <a routerLink="/my-bookings" class="riv-nav-link">My bookings</a>
+        <nav
+          class="riv-nav-desktop hidden items-center gap-[22px] text-[13.5px] text-(--riv-ink-soft) sm:flex"
+          aria-label="Primary"
+        >
+          <a routerLink="/" class="cursor-pointer hover:text-(--riv-ink)">Beaches</a>
+          <a routerLink="/my-bookings" class="cursor-pointer hover:text-(--riv-ink)">My bookings</a>
           <button
             appTouchTarget
             #findButton
             type="button"
-            class="riv-nav-link riv-nav-btn"
+            class="cursor-pointer hover:text-(--riv-ink)"
             data-testid="find-open"
             (click)="openFind(false)"
           >
@@ -71,33 +96,36 @@
           @if (!customerAuth.restoring()) {
             @if (customerAuth.signedIn()) {
               <!-- Account menu — a disclosure, not role=menu; see App.accountOpen for why. -->
-              <div class="riv-account-menu">
+              <div class="relative flex items-center">
                 <button
                   appTouchTarget
                   #accountButton
                   type="button"
-                  class="riv-nav-user riv-nav-btn"
+                  class="inline-flex cursor-pointer items-center gap-[7px] text-[13.5px] font-semibold"
                   data-testid="nav-user"
                   [attr.aria-expanded]="accountOpen()"
                   (click)="toggleAccountMenu()"
                 >
                   <span>Signed in as {{ customerAuth.email() }}</span>
-                  <span class="riv-caret" aria-hidden="true">&#9662;</span>
+                  <span class="text-[9px] opacity-85" aria-hidden="true">&#9662;</span>
                 </button>
 
                 @if (accountOpen()) {
                   <div
-                    class="riv-backdrop"
+                    class="fixed inset-0 z-30 bg-[rgba(6,30,40,0.2)]"
                     data-testid="account-backdrop"
                     (click)="closeMenus()"
                     (keydown.escape)="closeMenus()"
                     aria-hidden="true"
                   ></div>
-                  <div class="riv-pop riv-pop-in riv-account-pop" data-testid="nav-account-menu">
+                  <div
+                    class="riv-account-pop absolute top-[calc(100%+10px)] right-0 z-40 w-[186px] animate-[riv-pop_0.2s_ease] rounded-[18px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.92)] p-[7px] text-[#0a2a33] shadow-[0_22px_54px_rgba(6,30,40,0.4),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
+                    data-testid="nav-account-menu"
+                  >
                     <!-- Closes itself: a same-URL activation emits NavigationSkipped, not NavigationEnd. -->
                     <a
                       routerLink="/account/password"
-                      class="riv-account-item"
+                      class="block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-[#0a2a33] [transition:background_0.12s_ease] hover:bg-[rgba(12,42,51,0.06)]"
                       data-testid="nav-account-link"
                       (click)="closeMenus()"
                       >Your account</a
@@ -105,7 +133,7 @@
                     <button
                       appTouchTarget
                       type="button"
-                      class="riv-account-item riv-account-btn"
+                      class="block w-full cursor-pointer rounded-xl px-2.5 py-[9px] text-left text-[14px] font-semibold text-[#0a2a33] [transition:background_0.12s_ease] hover:bg-[rgba(12,42,51,0.06)]"
                       data-testid="nav-signout"
                       (click)="signOut()"
                     >
@@ -115,66 +143,75 @@
                 }
               </div>
             } @else {
-              <a routerLink="/account/sign-in" class="riv-nav-link" data-testid="nav-signin"
+              <a
+                routerLink="/account/sign-in"
+                class="cursor-pointer hover:text-(--riv-ink)"
+                data-testid="nav-signin"
                 >Sign in</a
               >
               <a
                 routerLink="/account/sign-in"
                 [queryParams]="{ mode: 'register' }"
-                class="riv-nav-link"
+                class="cursor-pointer hover:text-(--riv-ink)"
                 data-testid="nav-register"
                 >Register</a
               >
             }
           }
 
-          <div class="riv-theme-picker">
+          <div class="relative flex items-center">
             <button
               appTouchTarget
               #themeButton
               type="button"
-              class="riv-chip-btn"
+              class="inline-flex cursor-pointer items-center gap-[9px] rounded-full border border-(--riv-chip-border) bg-(--riv-chip-bg) px-[13px] py-1.5 text-[13.5px] font-semibold text-(--riv-ink) shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none"
               data-testid="theme-toggle"
               [attr.aria-label]="'Color theme: ' + activeTheme().name"
               [attr.aria-expanded]="themeOpen()"
               (click)="toggleThemePicker()"
             >
               <span
-                class="riv-swatch"
+                class="h-4 w-4 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)]"
                 [style.background]="activeTheme().swatch"
                 aria-hidden="true"
               ></span>
               <span>{{ activeTheme().name }}</span>
-              <span class="riv-caret" aria-hidden="true">&#9662;</span>
+              <span class="text-[9px] opacity-85" aria-hidden="true">&#9662;</span>
             </button>
 
             @if (themeOpen()) {
               <div
-                class="riv-backdrop"
+                class="fixed inset-0 z-30 bg-[rgba(6,30,40,0.2)]"
                 data-testid="theme-backdrop"
                 (click)="closeMenus()"
                 (keydown.escape)="closeMenus()"
                 aria-hidden="true"
               ></div>
               <!-- Pressed-state toggle buttons, not ARIA radios: the radio pattern would demand roving tabindex + arrow keys (WCAG 4.1.2). -->
-              <div class="riv-pop riv-pop-in riv-theme-pop">
+              <div
+                class="riv-theme-pop absolute top-[calc(100%+10px)] right-0 z-40 w-[214px] animate-[riv-pop_0.2s_ease] rounded-[18px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.92)] p-[7px] text-[#0a2a33] shadow-[0_22px_54px_rgba(6,30,40,0.4),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
+              >
                 @for (option of themes.options; track option.id) {
                   <button
                     appTouchTarget
                     type="button"
-                    class="riv-theme-option"
+                    class="flex w-full cursor-pointer items-center gap-[11px] rounded-xl bg-transparent px-2.5 py-[9px] text-left [transition:background_0.12s_ease] hover:bg-[rgba(12,42,51,0.06)]"
                     [attr.aria-pressed]="option.id === themes.theme()"
                     [attr.data-testid]="'theme-option-' + option.id"
                     (click)="selectTheme(option.id)"
                   >
                     <span
-                      class="riv-swatch riv-swatch-lg"
+                      class="h-[26px] w-[26px] shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)]"
                       [style.background]="option.swatch"
                       aria-hidden="true"
                     ></span>
-                    <span class="riv-theme-name">{{ option.name }}</span>
+                    <span class="flex-1 text-[14px] font-semibold text-[#0a2a33]">{{
+                      option.name
+                    }}</span>
                     @if (option.id === themes.theme()) {
-                      <span class="riv-check" aria-hidden="true">&#10003;</span>
+                      <span class="text-[15px] font-bold text-[#0a6e85]" aria-hidden="true"
+                        >&#10003;</span
+                      >
                     }
                   </button>
                 }
@@ -187,38 +224,46 @@
           appTouchTarget
           #menuButton
           type="button"
-          class="riv-menu-btn"
+          class="flex h-11 w-11 cursor-pointer flex-col items-center justify-center gap-[4.5px] rounded-[14px] border border-(--riv-chip-border) bg-(--riv-chip-bg) backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] sm:hidden motion-reduce:transition-none"
           data-testid="menu-toggle"
           aria-label="Menu"
           [attr.aria-expanded]="menuOpen()"
           (click)="toggleMenu()"
         >
-          <span class="riv-menu-bar" aria-hidden="true"></span>
-          <span class="riv-menu-bar" aria-hidden="true"></span>
-          <span class="riv-menu-bar" aria-hidden="true"></span>
+          <span class="block h-0.5 w-[17px] rounded-[2px] bg-(--riv-ink)" aria-hidden="true"></span>
+          <span class="block h-0.5 w-[17px] rounded-[2px] bg-(--riv-ink)" aria-hidden="true"></span>
+          <span class="block h-0.5 w-[17px] rounded-[2px] bg-(--riv-ink)" aria-hidden="true"></span>
         </button>
 
         @if (menuOpen()) {
           <div
-            class="riv-backdrop"
+            class="fixed inset-0 z-30 bg-[rgba(6,30,40,0.2)]"
             data-testid="menu-backdrop"
             (click)="closeMenus()"
             (keydown.escape)="closeMenus()"
             aria-hidden="true"
           ></div>
           <nav
-            class="riv-pop riv-pop-in riv-mobile-menu"
+            class="absolute top-[calc(100%+8px)] right-3 left-3 z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.92)] p-2 text-[#0a2a33] shadow-[0_22px_54px_rgba(6,30,40,0.4),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
             aria-label="Menu"
             data-testid="mobile-menu"
           >
-            <a routerLink="/" class="riv-mobile-link" (click)="closeMenus()">Beaches</a>
-            <a routerLink="/my-bookings" class="riv-mobile-link" (click)="closeMenus()"
+            <a
+              routerLink="/"
+              class="block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
+              (click)="closeMenus()"
+              >Beaches</a
+            >
+            <a
+              routerLink="/my-bookings"
+              class="block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
+              (click)="closeMenus()"
               >My bookings</a
             >
             <button
               appTouchTarget
               type="button"
-              class="riv-mobile-link riv-mobile-btn"
+              class="block w-full cursor-pointer rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
               data-testid="find-open-mobile"
               (click)="openFind(true)"
             >
@@ -228,13 +273,15 @@
             <!-- Customer auth, mobile menu twin of the desktop controls. -->
             @if (!customerAuth.restoring()) {
               @if (customerAuth.signedIn()) {
-                <!-- Account group: flattened into the sheet, per the riv-mobile-theme precedent. -->
-                <span class="riv-mobile-user" data-testid="nav-user-mobile"
+                <!-- Account group: flattened into the sheet, per the theme-block precedent below. -->
+                <span
+                  class="block px-3.5 py-[13px] text-[14px] font-semibold text-[#0a2a33]"
+                  data-testid="nav-user-mobile"
                   >Signed in as {{ customerAuth.email() }}</span
                 >
                 <a
                   routerLink="/account/password"
-                  class="riv-mobile-link"
+                  class="block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
                   data-testid="nav-account-link-mobile"
                   (click)="closeMenus()"
                   >Your account</a
@@ -242,7 +289,7 @@
                 <button
                   appTouchTarget
                   type="button"
-                  class="riv-mobile-link riv-mobile-btn"
+                  class="block w-full cursor-pointer rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
                   data-testid="nav-signout-mobile"
                   (click)="signOut()"
                 >
@@ -251,7 +298,7 @@
               } @else {
                 <a
                   routerLink="/account/sign-in"
-                  class="riv-mobile-link"
+                  class="block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
                   data-testid="nav-signin-mobile"
                   (click)="closeMenus()"
                   >Sign in</a
@@ -259,22 +306,32 @@
                 <a
                   routerLink="/account/sign-in"
                   [queryParams]="{ mode: 'register' }"
-                  class="riv-mobile-link"
+                  class="block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
                   data-testid="nav-register-mobile"
                   (click)="closeMenus()"
                   >Register</a
                 >
               }
             }
-            <div class="riv-mobile-theme">
-              <span class="riv-mobile-theme-label" id="riv-mobile-theme-label">Color theme</span>
-              <div class="riv-mobile-swatches">
+            <div class="mt-1 border-t border-[rgba(12,42,51,0.1)] px-3.5 pt-2.5 pb-3">
+              <!-- Ink at 0.7 (design: 0.5): AA for 10.5px text on the popover. -->
+              <span
+                class="text-[10.5px] font-bold tracking-[0.12em] uppercase text-[rgba(12,42,51,0.7)]"
+                id="riv-mobile-theme-label"
+                >Color theme</span
+              >
+              <div class="mt-[9px] flex flex-wrap gap-[9px]">
                 @for (option of themes.options; track option.id) {
+                  <!-- 44px hit area, 30px dot: the target is the button, the visual is its ::before (#605). -->
                   <button
                     appTouchTarget
                     type="button"
-                    class="riv-mobile-swatch"
-                    [class.riv-mobile-swatch-active]="option.id === themes.theme()"
+                    class="grid h-11 w-11 cursor-pointer place-items-center before:h-[30px] before:w-[30px] before:rounded-full before:bg-(--riv-swatch) before:[transition:transform_0.12s_ease] before:content-[''] hover:before:scale-[1.12] motion-reduce:before:transition-none motion-reduce:hover:before:scale-100"
+                    [class]="
+                      option.id === themes.theme()
+                        ? 'before:shadow-[0_0_0_2px_#ffffff,0_0_0_4px_#0e8aa8]'
+                        : 'before:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.6)]'
+                    "
                     [style.--riv-swatch]="option.swatch"
                     [attr.aria-pressed]="option.id === themes.theme()"
                     [attr.aria-label]="option.name"
@@ -291,14 +348,25 @@
   }
 
   <!-- tabindex=-1: closing the find modal on navigation lands keyboard/AT focus here, not document.body. -->
-  <main #mainEl tabindex="-1" class="riv-main" [class.riv-legacy-surface]="legacySurface()">
+  <!-- Deliberately unpositioned: a stacking context here would trap page-level fixed modals below the sticky header. -->
+  <main
+    #mainEl
+    tabindex="-1"
+    class="flex-1"
+    [class]="legacySurface() ? 'riv-legacy-surface bg-[#f8fafc] text-[#0f172a]' : ''"
+  >
     <router-outlet />
   </main>
 
   <!-- Shared by the tourist and operator chromes (tokens re-scope under the porcelain pin). -->
   @if (shellChrome() !== 'none') {
-    <footer class="riv-footer">
-      <div appLegalFooter class="riv-footer-inner"></div>
+    <footer
+      class="riv-footer border-t border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]"
+    >
+      <div
+        appLegalFooter
+        class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-(--riv-ink-soft)"
+      ></div>
     </footer>
   }
 

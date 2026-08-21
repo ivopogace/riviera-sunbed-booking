@@ -179,9 +179,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 5 — app shell)
+**Stage pointer:** implement (phase 6 — verify + docs freshness)
 
-**Next action:** port app.scss (507 lines) to utilities in app.html; delete it; update the styles.scss note.
+**Next action:** mocked e2e run, computed-style parity snapshot vs main, SKILL.md inventory update, then ready-for-review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -190,7 +190,7 @@ N/A — no contract change.
 | 2 — booking-confirmation migration | ✅ | `Booking confirmation: Tailwind migration` — 13 specs green unmodified |
 | 3 — booking-pay migration | ✅ | `Booking pay: Tailwind migration` — 36 specs green unmodified; pay-spin keyframe now global in styles.scss |
 | 4 — manage-booking-link element form + allowList drop (AC-5) | ✅ | `Manage-booking link owns its anchor` — spec rewritten red→green; allowList + component-selector overrides dropped; 281 booking specs + lint green |
-| 5 — app-shell migration (AC-3) | | |
+| 5 — app-shell migration (AC-3) | ✅ | `App shell: Tailwind migration` — 53 app specs; full suite 1594 green; lint + build green |
 | 6 — verify sweep: e2e + computed-style parity (AC-4/AC-6/AC-7), docs freshness | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -280,12 +280,14 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `app.html`, `app.ts`, `styles.scss` · Delete `app.scss`
 
-- [ ] Port the 507 lines to utilities in `app.html`: bg/blobs (arbitrary `riv-drift`
+- [x] Port the 507 lines to utilities in `app.html`: bg/blobs (arbitrary `riv-drift`
   animations + `motion-reduce:animate-none`), header `before:` glass, nav (`sm:`),
   chip/menu buttons, popovers (`animate-[riv-pop_0.2s_ease]`), account/theme menus,
   mobile menu + swatches (`before:` dot, full-swap active ring), legacy-surface
-  `[class]` ternary, footer. Retain the 10 queried shell classes as markers. Update the
-  `styles.scss` note. `app.spec.ts` / `app.a11y.spec.ts` green unmodified.
+  `[class]` ternary, footer. `z-[-1]` (not `-z-10`) keeps computed z-index parity.
+  Retained markers: riv-bg, riv-blob, riv-blob-1/2, riv-header, riv-nav-desktop,
+  riv-account-pop, riv-theme-pop, riv-legacy-surface, riv-footer, riv-footer-inner.
+  Updated the `styles.scss` note. `app.spec.ts` / `app.a11y.spec.ts` green unmodified.
 
 ## Phase 6 — verify + docs freshness
 
