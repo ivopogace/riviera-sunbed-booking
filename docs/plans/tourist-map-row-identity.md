@@ -50,24 +50,24 @@ standing in for `bugfix/tourist-map-row-identity` per the riviera-sdlc remote ad
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (the collision dies):** Given a venue whose stored row labels skip a
+- [x] **AC-1 (the collision dies):** Given a venue whose stored row labels skip a
   letter (a walkway row saves no sets: labels `A, C, D, E`), when the tourist map
   renders, then the left rail reads `A, C, D, E` — the stored labels, not derived
   `A, B, C, D` — and no tile's accessible name contains a row identity that differs
   from its set's `rowLabel`. *Pinned by:* `venue-map.spec.ts › 'announces the stored
   row label — a walkway cannot shift identities (#724)'`
-- [ ] **AC-2 (one identity, booking vocabulary):** Given the seeded Miramar venue,
+- [x] **AC-2 (one identity, booking vocabulary):** Given the seeded Miramar venue,
   when tiles render, then a tile's accessible name is
   `Front row · Sea view · spot 1, front row, €45, taken` — the stored label in the
   same `rowLabel · spot N` phrase the booking surfaces print, with no derived
   `A1`-style seat code anywhere in the name. *Pinned by:* `venue-map.spec.ts`
   (updated tile-name specs) + `set-label.spec.ts › spotLabel`
-- [ ] **AC-3 (the price chip never restates the rail):** Given any row, when its
+- [x] **AC-3 (the price chip never restates the rail):** Given any row, when its
   zone's price chip renders, then the chip's qualifier is only ever the channel
   (`at venue`) or the tier (`Front row`) — never words copied from the `rowLabel`
   the adjacent rail chip now displays itself. *Pinned by:* `row-price-label.spec.ts`
   (reworked)
-- [ ] **AC-4 (tourist rail truncates, operator rail doesn't):** Given a row label
+- [x] **AC-4 (tourist rail truncates, operator rail doesn't):** Given a row label
   longer than the tourist rail cap, when the tourist map renders, then the rail
   chip's label span carries the ellipsis cap (`max-w-12 sm:max-w-[96px] truncate` —
   responsive, mirroring the price rail's own mobile/`sm:` two-tier pattern; short
@@ -76,8 +76,8 @@ standing in for `bugfix/tourist-map-row-identity` per the riviera-sdlc remote ad
   still reads in the tile accessible names; and given the operator Daily view on
   the same shared canvas, the cap is absent (opt-in input, default off).
   *Pinned by:* `venue-map.spec.ts` (cap present) + `beach-map-canvas.spec.ts`
-  (default off + opt-in) + `venue-map-pan.e2e.ts` (measured cap + ≥150px grid)
-- [ ] **AC-5 (the namespace is gone):** Given the frontend sources, when searched,
+  (default off + opt-in) + `venue-map-pan.e2e.ts` (measured cap + ≥135px grid)
+- [x] **AC-5 (the namespace is gone):** Given the frontend sources, when searched,
   then no insertion-index `rowCode` derivation remains under `frontend/src/app/venue/`
   (the layout editor's grid-based `rowCode(y)`/`gridRowLabel` are out of scope and
   remain). *Pinned by:* compile + `git grep -n "rowCode" frontend/src/app/venue/`
@@ -127,20 +127,20 @@ the old tourist-map behaviors are enumerated:
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Retiring the venue-words qualifier silently re-partitions price zones (rows that split under #702 merge back) | med | med | Deliberate verdict in the parity ledger; `row-price-label.spec.ts` reworked to pin the new rule; `venue-map.spec.ts` zone specs re-asserted (seed output identical) | session | resolved — specs reworked; seed chip output byte-identical (`venue-map.spec.ts` zone cases green) |
-| R-2 | Truncation drifts the shared chip's computed styles on operator surfaces (no-drift rule) | low | med | Opt-in `input()` default **off**; cap classes on an inner span so the chip box is untouched; e2e `venue-map-pan` already pins chip fill/radius by computed style | session | open |
+| R-2 | Truncation drifts the shared chip's computed styles on operator surfaces (no-drift rule) | low | med | Opt-in `input()` default **off**; cap classes on an inner span so the chip box is untouched; e2e `venue-map-pan` already pins chip fill/radius by computed style | session | resolved — cap shipped as opt-in on an inner span (`beach-map-canvas.spec.ts` pins default-off); `venue-map-pan.e2e.ts` computed-style chip assertions green on 026baa6 |
 | R-3 | e2e specs assert the old derived rail text | low | low | Checked at plan time: `venue-map-pan.e2e.ts` asserts computed styles and geometry, never chip text; fixtures already use real labels | session | resolved (plan-time survey) |
 | R-4 | Long labels make tile accessible names verbose | low | low | Accepted: a long correct name beats a short wrong one; axe suite re-run (`npm run test:a11y`, mocked e2e) | session | resolved — full mocked suite incl. axe green after phase 3 |
 | R-5 | A hidden consumer of `rowCode()`/`TileView.seat` breaks | low | low | Blast radius surveyed (issue brief + plan-time grep): only `venue-map.ts:223`, its spec, and `row-price-label.spec.ts`; `TileView.seat` is template-unused. Negative confirmed against `git ls-files`, not just search | session | resolved (plan-time survey) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the live database's venues currently mis-announce only where a
-  walkway/gap row exists; the V3 seed's labels agree ordinally, so no seeded surface
-  changes meaning (only wording). Verified against repo fixtures, **not** the live
-  DB — treated as a wording-risk note, not a data migration need. — *Owner:*
-  session · *Resolves by:* close-out (no action unless review disagrees)
-
 ### Resolved
+
+- **Assumption (live-DB wording risk):** the V3 seed's labels agree ordinally, so no
+  seeded surface changes meaning (only wording); venues mis-announce only where a
+  walkway/gap row exists. Verified against repo fixtures, not the live DB. Review
+  gate raised no objection; accepted at close-out as a wording-risk note, no data
+  migration. — resolved at merge close-out, PR #729
 
 - **Rail width for long labels (product call):** truncate with ellipsis at a
   ~96px cap on the tourist map; operator surfaces unchanged. — answered by
@@ -196,15 +196,15 @@ N/A — no contract change. The map already receives `rowLabel` on `SetView`.
 
 ## Execution status
 
-**Stage pointer:** merge close-out (review gate ran + fixed; Sonar gate green on PR head — verify the list on the final head)
+**Stage pointer:** DONE — merged via PR #729
 
-**Next action:** confirm CI fully green on the F-2 fix push, re-confirm the Sonar list on that head, finalize the plan doc, tick the PR gates, merge
+**Next action:** none — slice complete. Gates verified on head 026baa6: CI 8/8 green; review gate ran (/code-review, high; I-1..I-3 fixed); Sonar list pulled fresh at close-out — 0 issues, analysis confirmed (new_lines=62), 100% new-code coverage, 0 duplication.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | 5490020, PR #729 |
-| 1+2 — one identity in `venue-map` + `row-price-label` qualifier rework (landed together: `row-price-label.spec.ts`'s `at()` helper imports `rowCode`, so the phases are compile-coupled — a separate phase 1 could not be green) | ✅ | (this commit) |
-| 3 — tourist rail truncation (canvas opt-in) + e2e touch-up (incl. reworking the three e2e cases premised on the old namespace/qualifier) | ✅ | (this commit) |
+| 1+2 — one identity in `venue-map` + `row-price-label` qualifier rework (landed together: `row-price-label.spec.ts`'s `at()` helper imports `rowCode`, so the phases are compile-coupled — a separate phase 1 could not be green) | ✅ | 754a7ba |
+| 3 — tourist rail truncation (canvas opt-in) + e2e touch-up (incl. reworking the three e2e cases premised on the old namespace/qualifier) | ✅ | 2f79ae3 (fix rounds: d656682, 026baa6) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -241,15 +241,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `docs/plans/tourist-map-row-identity.md`
 
-- [ ] **Step 1:** Commit this plan doc on the designated branch.
-- [ ] **Step 2:** Push and open the **draft PR** (CI fires on `pull_request` only, #417).
-- [ ] **Step 3:** Update Execution status (phase 0 ✅) in the same commit window.
+- [x] **Step 1:** Commit this plan doc on the designated branch.
+- [x] **Step 2:** Push and open the **draft PR** (CI fires on `pull_request` only, #417).
+- [x] **Step 3:** Update Execution status (phase 0 ✅) in the same commit window.
 
 ## Phase 1 — One identity in `venue-map`
 
 **Files:** Modify `venue/venue-map.ts`, `venue/venue-map.spec.ts`, `shared/set-label.ts`, `shared/set-label.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — the issue brief's repro, as a permanent spec:
+- [x] **Step 1: Write the failing test** — the issue brief's repro, as a permanent spec:
 
 ```ts
 it('announces the stored row label — a walkway cannot shift identities (#724)', async () => {
@@ -283,26 +283,26 @@ it('renders the booking surfaces\' identity phrase', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify red** — `npx ng test` (from `frontend/`; scoped by the failing specs)
-- [ ] **Step 3: Minimal implementation** — `shared/set-label.ts` gains
+- [x] **Step 2: Run, verify red** — `npx ng test` (from `frontend/`; scoped by the failing specs)
+- [x] **Step 3: Minimal implementation** — `shared/set-label.ts` gains
   `spotLabel(rowLabel: string, positionNo: number): string`; `venue-map.ts` deletes
   `rowCode()` and `TileView.seat`, `rows` uses the stored label as `code` (interim:
   passes `{ code: label, ordinal: index + 1 }` to `rowPriceLabel` until phase 2),
   `toTile(set, label)` builds `name` as
   `` `${spotLabel(set.rowLabel, set.positionNo)}, ${tier}, ${money}, ${announced}` ``.
-- [ ] **Step 4: Run, verify green** — `npx ng test` (full Vitest run, ~13s; update the
+- [x] **Step 4: Run, verify green** — `npx ng test` (full Vitest run, ~13s; update the
   existing tile-name/rail specs and delete the `rowCode` describe-block in the same pass)
-- [ ] **Step 5: Generalization audit** — population: *frontend code deriving a row
+- [x] **Step 5: Generalization audit** — population: *frontend code deriving a row
   identity from an array index* → `grep -rn "rowCode\|fromCodePoint(65" frontend/src`
   → expect only the layout editor's grid-based pair (in-scope non-goal). Log below.
-- [ ] **Step 6: Commit** — `Announce the stored row label on tourist map tiles (#724)`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 6: Commit** — `Announce the stored row label on tourist map tiles (#724)`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 2 — `row-price-label` qualifier rework
 
 **Files:** Modify `venue/row-price-label.ts`, `venue/row-price-label.spec.ts`, `venue/venue-map.ts` (call site), `venue/venue-map.spec.ts` (zone specs re-asserted)
 
-- [ ] **Step 1: Write the failing tests** — the new rule: the chip never repeats the
+- [x] **Step 1: Write the failing tests** — the new rule: the chip never repeats the
   rail; channel then tier then nothing:
 
 ```ts
@@ -322,47 +322,47 @@ it('still marks an all-walk-in row by its channel, over the tier', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify red** — `npx ng test`
-- [ ] **Step 3: Minimal implementation** — `rowPriceLabel(sets)` (drop the `position`
+- [x] **Step 2: Run, verify red** — `npx ng test`
+- [x] **Step 3: Minimal implementation** — `rowPriceLabel(sets)` (drop the `position`
   parameter, `RowPosition`, `restatesPosition`, both regexes); `qualifierOf`:
   walk-in → `at venue`; all-premium → `tierLabel('PREMIUM')`; else `null`. Rewrite
   the file's doc comment: the premise ("the map derives its rail codes…") is gone —
   the rail shows the label, so the chip only adds what the label cannot say
   (channel, tier). Update the `venue-map.ts` call site (drop the interim positions).
-- [ ] **Step 4: Run, verify green** — `npx ng test` (seed zone chips must still read
+- [x] **Step 4: Run, verify green** — `npx ng test` (seed zone chips must still read
   `['€45 · Front row', '€35', '€25 · at venue']`; #702's walk-in-split and
   premium-merge specs must survive with qualifiers only)
-- [ ] **Step 5: Generalization audit** — population: *code comparing a derived rail
+- [x] **Step 5: Generalization audit** — population: *code comparing a derived rail
   code to venue words* → `grep -rn "restatesPosition\|BARE_REFERENCE\|NAMED_REFERENCE" frontend/src`
   → must be empty after this phase. Log below.
-- [ ] **Step 6: Commit** — `Price chips stop restating the rail's row names (#724)`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 6: Commit** — `Price chips stop restating the rail's row names (#724)`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 3 — Tourist rail truncation + e2e
 
 **Files:** Modify `shared/beach-map-canvas.ts` + `.html`, `venue/venue-map.html`, `venue/venue-map.spec.ts`, `frontend/e2e/venue-map-pan.e2e.ts`
 
-- [ ] **Step 1: Write the failing tests** — unit: the tourist rail chip carries the
+- [x] **Step 1: Write the failing tests** — unit: the tourist rail chip carries the
   cap on an inner span (`.max-w-\[96px\].truncate` inside `[data-testid="row-code"]`)
   and the canvas default leaves it off (canvas rendered without the opt-in has no
   capped span — asserted where the Daily view already pins its rail). e2e: on the
   tourist map, a long-label fixture's first `row-code` chip is no wider than ~110px
   and its text still starts with the stored label.
-- [ ] **Step 2: Run, verify red** — `npx ng test`; e2e deferred to step 4's suite run.
-- [ ] **Step 3: Minimal implementation** — `BeachMapCanvas` gains
+- [x] **Step 2: Run, verify red** — `npx ng test`; e2e deferred to step 4's suite run.
+- [x] **Step 3: Minimal implementation** — `BeachMapCanvas` gains
   `truncateRailCodes = input<boolean>(false)`; the chip's text moves into an inner
   `<span>` that conditionally carries `max-w-[96px] truncate` (`@if`/ternary class),
   so the chip's own box and computed styles are untouched for the three operator
   surfaces; `venue-map.html` passes `[truncateRailCodes]="true"`.
-- [ ] **Step 4: Run, verify green** — `npx ng test`, `npm run lint`,
+- [x] **Step 4: Run, verify green** — `npx ng test`, `npm run lint`,
   `npm run format:check`, then the mocked e2e (`npm run test:e2e:a11y`) per
   `riviera-local-debug`.
-- [ ] **Step 5: Generalization audit** — population: *shared-canvas consumers whose
+- [x] **Step 5: Generalization audit** — population: *shared-canvas consumers whose
   rail could overflow* → `grep -rln "app-beach-map-canvas" frontend/src` → tourist
   map (capped here), layout editor / daily view / set editor (operator precedent:
   untruncated — non-goal). Log below.
-- [ ] **Step 6: Commit** — `Cap the tourist rail's row-name chips with an ellipsis (#724)`
-- [ ] **Step 7: Update Execution status; merge latest origin/main; mark PR ready for review.**
+- [x] **Step 6: Commit** — `Cap the tourist rail's row-name chips with an ellipsis (#724)`
+- [x] **Step 7: Update Execution status; merge latest origin/main; mark PR ready for review.**
 
 ---
 
@@ -379,11 +379,11 @@ it('still marks an all-walk-in row by its channel, over the tier', () => {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npx ng test` → walkway spec green. Verified at commit `<sha>`.
-- [ ] **AC-2:** `npx ng test` → tile-name + `spotLabel` specs green. Verified at commit `<sha>`.
-- [ ] **AC-3:** `npx ng test` → reworked `row-price-label.spec.ts` green. Verified at commit `<sha>`.
-- [ ] **AC-4:** `npx ng test` + `npm run test:e2e:a11y` → cap present on tourist, absent by default. Verified at commit `<sha>`.
-- [ ] **AC-5:** `git grep -n "rowCode" frontend/src/app/venue/` → empty. Verified at commit `<sha>`.
+- [x] **AC-1:** `npx ng test` → walkway spec green. Verified at commit `<sha>`.
+- [x] **AC-2:** `npx ng test` → tile-name + `spotLabel` specs green. Verified at commit `<sha>`.
+- [x] **AC-3:** `npx ng test` → reworked `row-price-label.spec.ts` green. Verified at commit `<sha>`.
+- [x] **AC-4:** `npx ng test` + `npm run test:e2e:a11y` → cap present on tourist, absent by default. Verified at commit `<sha>`.
+- [x] **AC-5:** `git grep -n "rowCode" frontend/src/app/venue/` → empty. Verified at commit `<sha>`.
 
 ## Self-review checklist (before merge / PR)
 
