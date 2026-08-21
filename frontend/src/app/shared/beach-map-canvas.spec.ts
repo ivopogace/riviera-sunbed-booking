@@ -49,7 +49,7 @@ const ROWS: readonly TestRow[] = [
       <ul canvasLegend data-testid="legend-note">
         <li>Available</li>
       </ul>
-      <p canvasFooter data-testid="footer-note">Tap any free set to book it.</p>
+      <p canvasFooter data-testid="footer-note">Projected footer.</p>
       <p canvasEmpty data-testid="empty-note">Nothing here yet.</p>
     </app-beach-map-canvas>
   `,
@@ -371,6 +371,20 @@ describe('BeachMapCanvas (#672)', () => {
     expect(vp.getAttribute('aria-label')).toBe('Beach map');
     // aria-label is prohibited on role=generic — a labelled viewport must be a named region (#674 F-4).
     expect(vp.getAttribute('role')).toBe('region');
+  });
+
+  it('the pan hint is one plain line, no decorative glyph', async () => {
+    const { host, component, detect, fixture } = render();
+    seedGridWidth(host, 500);
+    Object.defineProperty(viewport(host), 'clientWidth', { value: 100, configurable: true });
+    component.rows.set([...ROWS]);
+    detect();
+    await fixture.whenStable();
+    detect();
+
+    const hint = host.querySelector('[data-testid="scroll-hint"]')!;
+    expect(hint.textContent?.trim()).toBe('Drag or swipe to see the whole beach.');
+    expect(hint.querySelector('[aria-hidden="true"]')).toBeNull();
   });
 
   it('shows the pan hint only where drag actually pans (never on a dragPan-off surface)', async () => {

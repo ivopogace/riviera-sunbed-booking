@@ -129,6 +129,8 @@ test.beforeEach(async ({ page }) => {
 test('booking flow is accessible end-to-end', async ({ page }) => {
   await page.goto('/venues/1');
   await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
+  // An INSTANT venue's map footer keeps booking wording (#703).
+  await expect(page.getByTestId('beach-grid')).toContainText('Pick any free set to book it');
   await expectNoSeriousAxeViolations(page, 'beach map');
 
   // Keyboard-select the free online set (the seat-picker must be operable by keyboard).
