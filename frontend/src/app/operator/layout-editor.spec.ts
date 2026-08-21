@@ -701,21 +701,6 @@ describe('LayoutEditor (#172)', () => {
     await fixture.whenStable();
   });
 
-  it('explains a bulk save refused for duplicate row names (#726 review F-3)', async () => {
-    render();
-    generate('2', '2');
-
-    // The local guard cannot see a clash another tab created between this tab's load and its save.
-    byId('layout-save').click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
-      .flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(byId('layout-error').textContent).toContain('same name');
-  });
-
   it('offers no per-row rename on a grid that was never saved (#726)', () => {
     render();
     generate('2', '2');

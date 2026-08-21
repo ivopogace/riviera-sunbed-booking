@@ -104,37 +104,6 @@ class BeachMapReplaceIT {
 		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
 	}
 
-	@Test
-	void refusesALayoutWhereTwoGridRowsShareARowLabel() throws Exception {
-		// Sets are grouped by label, so a split label reads as one row; the UNIQUE misses it (#726 review).
-		long venue = createVenue("Split Label Club");
-
-		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(layout(0,
-								cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
-								cell("A", 2, "STANDARD", "ONLINE", 2000, 1, 2))))
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("ROW_NAME_TAKEN"));
-
-		assertEquals(0, setIds(venue).size()); // nothing was written
-	}
-
-	@Test
-	void acceptsTheSameRowLabelAcrossPositionsOfOneGridRow() throws Exception {
-		// The control: one label over many positions of ONE grid row is the normal shape, not a split.
-		long venue = createVenue("Wide Row Club");
-
-		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(layout(0,
-								cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
-								cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1))))
-				.andExpect(status().isNoContent());
-
-		assertEquals(2, setIds(venue).size());
-	}
-
 	private static String cell(String rowLabel, int positionNo, String tier, String pool,
 			long minor, int gridX, int gridY) {
 		return """

@@ -1,9 +1,7 @@
 package ai.riviera.platform.venue.application;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -45,17 +43,14 @@ public record LayoutCommand(List<SetCommand> sets) {
 	Optional<Venues.Conflict> duplicateWithin() {
 		Set<String> positions = new HashSet<>();
 		Set<String> cells = new HashSet<>();
-		Map<String, Integer> rowOfLabel = new HashMap<>();
 		for (SetCommand c : sets) {
 			if (!positions.add(c.rowLabel() + ' ' + c.positionNo())) {
 				return Optional.of(Venues.Conflict.DUPLICATE_POSITION);
 			}
+		}
+		for (SetCommand c : sets) {
 			if (!cells.add(c.gridX() + " " + c.gridY())) {
 				return Optional.of(Venues.Conflict.CELL_TAKEN);
-			}
-			Integer seen = rowOfLabel.putIfAbsent(c.rowLabel(), c.gridY());
-			if (seen != null && seen.intValue() != c.gridY()) {
-				return Optional.of(Venues.Conflict.ROW_LABEL_ON_ANOTHER_ROW);
 			}
 		}
 		return Optional.empty();

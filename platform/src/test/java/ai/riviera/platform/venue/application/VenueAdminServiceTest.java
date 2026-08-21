@@ -619,30 +619,6 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.deletedAllCount);
 	}
 
-	@Test
-	void addingASetUnderAnotherGridRowsLabelIsRefused() {
-		// The rename refuses a duplicate label; so must the paths that could otherwise seed one.
-		venues.venues.add(VENUE.value());
-		venues.conflict = Optional.of(Venues.Conflict.ROW_LABEL_ON_ANOTHER_ROW);
-
-		AddSetOutcome outcome = service.addSet(OWNER, VENUE, SET_CMD);
-
-		assertEquals(SetRejection.ROW_NAME_TAKEN, ((AddSetOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.insertedSets);
-	}
-
-	@Test
-	void editingASetOntoAnotherGridRowsLabelIsRefused() {
-		venues.venues.add(VENUE.value());
-		venues.sets.put(SET.value(), VENUE.value());
-		venues.conflict = Optional.of(Venues.Conflict.ROW_LABEL_ON_ANOTHER_ROW);
-
-		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, SET_CMD);
-
-		assertEquals(SetRejection.ROW_NAME_TAKEN, ((ChangeOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.updatedSets);
-	}
-
 	// ---- Per-row reprice ----
 
 	private static final RowPriceCommand REPRICE_CMD = new RowPriceCommand("A", 4200, "EUR");

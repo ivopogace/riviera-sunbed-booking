@@ -409,7 +409,6 @@ describe('setWriteErrorOf (#600)', () => {
       'SET_IN_USE',
       'CELL_TAKEN',
       'DUPLICATE_POSITION',
-      'ROW_NAME_TAKEN',
       'NO_SUCH_SET',
       'NO_SUCH_VENUE',
       'NOT_VENUE_OWNER',

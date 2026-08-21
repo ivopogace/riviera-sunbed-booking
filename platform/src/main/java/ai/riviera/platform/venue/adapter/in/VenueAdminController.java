@@ -270,8 +270,6 @@ class VenueAdminController {
 					"Two sets occupy the same grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Two sets share the same row and position.");
-			case ROW_NAME_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
-					"Two rows share the same name.");
 			case EMPTY_LAYOUT -> ApiProblem.response(HttpStatus.BAD_REQUEST, reason.name(),
 					"A layout must have at least one set.");
 			case LAYOUT_TOO_LARGE -> ApiProblem.response(HttpStatus.BAD_REQUEST, reason.name(),

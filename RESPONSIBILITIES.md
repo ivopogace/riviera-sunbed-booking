@@ -140,20 +140,12 @@ standing rules:
     confirmation — while the mail already in their inbox keeps the old one. A venue renaming
     a row is renaming the physical row, so the live read is the truthful one and the guest's
     row+position pair still addresses the same sunbeds.
-- **A row label names exactly one physical row** (#726). Every write that can set
-  `row_label` refuses to put one label on two grid rows: the rename
-  (`SetRejection.ROW_NAME_TAKEN`), `addSet`/`editSet` (the same code, via
-  `Venues.Conflict.ROW_LABEL_ON_ANOTHER_ROW` out of `findConflict`), and the bulk replace
-  (`ReplaceRejection.ROW_NAME_TAKEN`, checked within the payload by
-  `LayoutCommand#duplicateWithin`). Broader than the `set_position_cell_uniq` backstop on
-  purpose: two rows can share a label with **no** `(row_label, position_no)` pair colliding,
-  which the database accepts — but the tourist map, the price rail and the pricing tab all
-  group sets by label, so the two rows would silently render as one of twice the length.
-  Renaming a row to the label it already carries is a permitted no-op, and one label across
-  many positions of the *same* grid row is the ordinary case, not a split. The rule is
-  **application-level only**: it is a functional dependency (`row_label` determines
-  `grid_y`), which no plain `UNIQUE` expresses — a trigger or exclusion constraint is the
-  open question if the DB half is ever wanted.
+  - A rename is refused only for a reason of its own: `ROW_NAME_TAKEN` when another row
+    already carries the requested label. Broader than the `set_position_cell_uniq` backstop
+    on purpose — two rows can share a label with no `(row_label, position_no)` pair
+    colliding, which the database accepts, but the tourist map, the price rail and the
+    pricing tab all group sets by label, so the two physical rows would silently read as
+    one. Renaming a row to the label it already carries is a permitted no-op.
   - Because the pool is **mutable** layout data, `SetBookingFacts#poolForClaim` is a
     **locking** read — `FOR KEY SHARE`, the weakest lock that conflicts with the edit's
     `FOR UPDATE`, and the very lock the claim's own insert takes for its FK check. It is

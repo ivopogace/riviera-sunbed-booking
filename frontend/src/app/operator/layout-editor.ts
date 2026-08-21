@@ -599,8 +599,6 @@ export class LayoutEditor {
       case 'DUPLICATE_POSITION':
       case 'CONFLICT':
         return 'Two sets overlap on the grid. Please adjust and try again.';
-      case 'ROW_NAME_TAKEN':
-        return 'Two rows have the same name. Give each row its own name before saving.';
       case 'NO_SUCH_VENUE':
         return 'This venue could not be found.';
       case 'STALE_WRITE':
