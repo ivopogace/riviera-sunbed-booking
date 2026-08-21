@@ -308,6 +308,40 @@ describe('MyBookings (device-local list, issue #139)', () => {
     await expectNoAxeViolations(host);
   });
 
+  it('skeletons pulse on the shared track token, guarded for reduced motion (#739)', async () => {
+    seedCodes(['LOAD0001']);
+    const fixture = await render({
+      getByCode: () => new Subject<BookingDetail>().asObservable(),
+    });
+    const host = fixture.nativeElement as HTMLElement;
+
+    const lines = host.querySelectorAll('[data-testid="booking-row-loading"] .skeleton');
+    expect(lines).toHaveLength(2);
+    for (const line of lines) {
+      expect(line.classList.contains('animate-pulse')).toBe(true);
+      expect(line.classList.contains('motion-reduce:animate-none')).toBe(true);
+      expect(line.classList.contains('bg-(--riv-card-track)')).toBe(true);
+    }
+  });
+
+  it('page-level loading is decorative and announced — the Discover posture (#739)', async () => {
+    const restoring = {
+      restoring: signal(true),
+      signedIn: signal(false),
+    } as unknown as CustomerAuth;
+    const fixture = await render(stubService({}), restoring);
+    const host = fixture.nativeElement as HTMLElement;
+
+    const loading = host.querySelector('[data-testid="my-bookings-loading"]')!;
+    // The announcement is real text for AT; the skeleton row is decoration.
+    expect(loading.getAttribute('aria-live')).toBe('polite');
+    expect(loading.textContent).toContain('Loading your bookings…');
+    const skeleton = loading.querySelector('[aria-hidden="true"]');
+    expect(skeleton).not.toBeNull();
+    expect(skeleton!.querySelectorAll('.skeleton')).toHaveLength(2);
+    await expectNoAxeViolations(host);
+  });
+
   describe('fetch fan-out (#164)', () => {
     const many = (prefix: string): string[] =>
       Array.from({ length: 12 }, (_, i) => `${prefix}${String(i).padStart(4, '0')}`);

@@ -179,15 +179,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0 — plan doc + draft PR)
+**Stage pointer:** implement (phase 2 — booking-confirmation)
 
-**Next action:** commit this plan, push, open the draft PR, then start phase 1
-(my-bookings red specs).
+**Next action:** port booking-confirmation.ts to utilities; delete its stylesheet.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + draft PR | ⏳ | |
-| 1 — my-bookings migration + pulsing skeleton (AC-1/AC-2) | | |
+| 0 — plan doc + draft PR | ✅ | `Plan the app-shell and booking SCSS migration` · PR #740 (draft) |
+| 1 — my-bookings migration + pulsing skeleton (AC-1/AC-2) | ✅ | `My bookings: Tailwind migration + pulsing skeleton` — red→green (2 new specs), 42 my-bookings + 279 booking specs, lint + TT/IC guards clean |
 | 2 — booking-confirmation migration | | |
 | 3 — booking-pay migration | | |
 | 4 — manage-booking-link element form + allowList drop (AC-5) | | |
@@ -235,16 +234,16 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `my-bookings.ts`, `my-bookings.spec.ts` · Delete `my-bookings.scss`
 
-- [ ] **Step 1 (red):** extend `my-bookings.spec.ts`: skeleton spans carry
+- [x] **Step 1 (red):** extend `my-bookings.spec.ts`: skeleton spans carry
   `animate-pulse` + `motion-reduce:animate-none` (both call sites); page-level loading is
   `aria-hidden` + announced sr-only line; per-row keeps `aria-busy` (existing assertion).
   Run `npm test -- --include '**/my-bookings.spec.ts'` → FAIL.
-- [ ] **Step 2 (green):** port `my-bookings.scss` to utilities in the inline template
+- [x] **Step 2 (green):** port `my-bookings.scss` to utilities in the inline template
   (host `class: 'block text-(--riv-card-ink)'`); skeleton →
   `animate-pulse motion-reduce:animate-none` + `bg-(--riv-card-track)` per line; retain
   `.code` (spec-queried) and `skeleton`/`row` markers; delete the stylesheet. → PASS.
-- [ ] **Step 3:** scoped regression: `npm test` (booking specs) + lint + TT guard.
-- [ ] **Step 4:** commit + update Execution status.
+- [x] **Step 3:** scoped regression: `npm test` (booking specs) + lint + TT guard.
+- [x] **Step 4:** commit + update Execution status.
 
 ## Phase 2 — booking-confirmation
 
