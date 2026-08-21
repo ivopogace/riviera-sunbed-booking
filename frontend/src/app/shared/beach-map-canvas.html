@@ -20,7 +20,9 @@
               ><span
                 class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
                 data-testid="row-code"
-                >{{ row.code }}</span
+                ><span [class]="truncateRailCodes() ? 'max-w-8 sm:max-w-[96px] truncate' : ''">{{
+                  row.code
+                }}</span></span
               ></span
             >
           }
@@ -53,7 +55,7 @@
           </div>
         </div>
 
-        <!-- Right rail: the chip, once per zone (aria-hidden; surfaces carry price in tile names where it matters). The tourist map's chip carries the row's MEANING beside its price (#702), and those words are the venue's own, so the cell is capped and the chip ellipsizes: past the cap a longer label costs the tile viewport (flex-1 min-w-0 — it is what gives, not the shrink-0 rail) nothing. The cap is the design canvas's own rail width, 128px, narrowed below sm where 390px has none to spare — which lands where the mobile artboard's hand-shortened "€50 · Front" did. Operator rails render a bare formatMoney string, far under either cap, so they are unchanged. -->
+        <!-- Right rail: the chip, once per zone (aria-hidden; surfaces carry price in tile names where it matters). The tourist map's chip carries what the price buys beside its price — since #724 only the tier or the channel, the two facts the left rail's row name cannot state (#702's venue-words qualifier retired with the derived codes) — so the cell is capped and the chip ellipsizes: past the cap a longer phrase costs the tile viewport (flex-1 min-w-0 — it is what gives, not the shrink-0 rail) nothing. The cap is the design canvas's own rail width, 128px, narrowed below sm where 390px has none to spare. Operator rails render a bare formatMoney string, far under either cap, so they are unchanged. -->
         <div class="flex flex-col gap-1.5 shrink-0" data-testid="price-col" aria-hidden="true">
           @for (row of rows(); track row.code; let i = $index) {
             <span

@@ -108,6 +108,10 @@ export class BeachMapCanvas {
   readonly viewportLabel = input<string>('');
   /** Mouse drag-to-pan; a surface whose drag gesture is its own (paint) switches it off. */
   readonly dragPan = input<boolean>(true);
+  /** Cap rail chips with an ellipsis (32px, 96px from `sm:` — the price rail's own split) — the
+   *  tourist map's opt-in (#724): its tile names carry the full row label, while operator
+   *  surfaces keep whole-label chips. */
+  readonly truncateRailCodes = input<boolean>(false);
 
   protected readonly rowDef = contentChild.required<BeachMapRowDef>(BeachMapRowDef);
   protected readonly rows = computed<readonly BeachMapCanvasRow[]>(() =>

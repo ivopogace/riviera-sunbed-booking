@@ -233,7 +233,7 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
   expect(headBg).not.toBe('rgba(0, 0, 0, 0)');
   expect(headBg).not.toBe('transparent');
 
-  // The row-code side labels (A–D) render as the v3 design's subtle chips — a filled, rounded pill,
+  // The row-name side labels render as the v3 design's subtle chips — a filled, rounded pill,
   // not bare text (design-comparison follow-up). Guards that the chip fill/radius isn't dropped.
   const chip = await page
     .getByTestId('row-code')
@@ -265,12 +265,13 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
     .evaluate((el) => getComputedStyle(el).boxShadow);
   expect(frameShadow).toContain('rgba(7, 42, 58, 0.28)');
 
-  // One chip per zone (#672), Row 3's span not its set 1 (#689), each saying what it buys (#702).
+  // One chip per zone (#672), Row 3's span not its set 1 (#689). A chip only adds what the
+  // left rail's own row name cannot say — the tier or the channel, never the venue's words (#724).
   await expect(page.getByTestId('row-price')).toHaveText([
     '€50 · Front row',
     '€40',
     '€35–€45',
-    '€30 · Back',
+    '€30',
     '€30 · at venue',
   ]);
 
@@ -368,7 +369,7 @@ test('a vertical drag pans the wash scroller — rails ride along — and its re
   await expect.poll(() => wash.evaluate((el) => el.scrollHeight > el.clientHeight + 1)).toBe(true);
 
   // Anchor mid-map (row H = 8 of 12); hover() scrolls it into view, so measure baselines afterwards.
-  const anchor = page.getByRole('button', { name: /^Set H11, Row 8/ });
+  const anchor = page.getByRole('button', { name: /^Row 8 · spot 11,/ });
   await anchor.hover();
   const scrollBefore = await wash.evaluate((el) => el.scrollTop);
   const chipYBefore = (await page.getByTestId('row-code').first().boundingBox())!.y;
@@ -592,20 +593,21 @@ test('every legend swatch declares exactly what the tile it stands for declares 
   ).toBe('dashed');
 });
 
-/** The price rail's own width and the tile viewport's, as the browser lays them out. */
+/** The row-name rail's first chip and the tile viewport, as the browser lays them out. */
 async function railAndViewport(page: Page) {
-  const rail = (await page.getByTestId('price-col').boundingBox())!;
+  const chip = page.getByTestId('row-code').first();
+  const box = (await chip.boundingBox())!;
   const viewport = (await page.getByTestId('map-pan').boundingBox())!;
-  const chip = page.getByTestId('row-price').first();
   return {
-    railWidth: rail.width,
+    chipWidth: box.width,
+    chipText: await chip.textContent(),
     viewportWidth: viewport.width,
-    truncated: await chip.evaluate((el) => el.scrollWidth > el.clientWidth),
-    chipRight: (await chip.boundingBox())!.x + (await chip.boundingBox())!.width,
+    truncated: await chip.locator('span').evaluate((el) => el.scrollWidth > el.clientWidth),
+    chipRight: box.x + box.width,
   };
 }
 
-test('a long row label truncates in the rail instead of eating the tile grid (#702)', async ({
+test('a long row name truncates in the left rail instead of eating the tile grid (#724)', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 760 });
@@ -618,17 +620,19 @@ test('a long row label truncates in the rail instead of eating the tile grid (#7
   await expect(page.getByTestId('set-tile').first()).toBeVisible();
   const wordier = await railAndViewport(page);
 
-  // The cap is a hard stop: a label almost four times longer buys not one pixel of rail…
-  expect(wordy.railWidth).toBeLessThanOrEqual(92);
-  expect(wordier.railWidth).toBeCloseTo(wordy.railWidth, 0);
+  // The rail chip shows the venue's own row name — the identity every other surface prints (#724)…
+  expect(wordy.chipText).toContain('Front row');
+  expect(wordier.chipText).toContain('Front row');
+  // …under a hard cap: a label almost four times longer buys not one pixel of rail…
+  expect(wordy.chipWidth).toBeLessThanOrEqual(104);
+  expect(wordier.chipWidth).toBeCloseTo(wordy.chipWidth, 0);
   // …so it costs the tiles nothing, and the grid keeps at least three columns of spots visible.
   expect(wordier.viewportWidth).toBeCloseTo(wordy.viewportWidth, 0);
   expect(wordier.viewportWidth).toBeGreaterThanOrEqual(150);
   // What gives instead is the text — ellipsis inside the chip, never overflow outside it.
-  expect(wordy.truncated).toBe(true);
   expect(wordier.truncated).toBe(true);
   const card = (await page.getByTestId('beach-grid').boundingBox())!;
   expect(wordier.chipRight).toBeLessThanOrEqual(card.x + card.width);
 
-  await expectNoSeriousAxeViolations(page, 'beach map (long row labels, mobile)');
+  await expectNoSeriousAxeViolations(page, 'beach map (long row names, mobile)');
 });

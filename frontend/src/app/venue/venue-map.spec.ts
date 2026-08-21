@@ -359,6 +359,15 @@ describe('VenueMap', () => {
     expect(codes).toEqual(['Front row · Sea view', 'Row 2', 'Row 3', 'Row 4 · Back']);
   });
 
+  it('caps the rail chips with an ellipsis — tile names carry the full label (#724)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const inner = el().querySelector('[data-testid="row-code"] .truncate')!;
+    expect(inner.classList.contains('max-w-8')).toBe(true);
+    expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
+    expect(inner.textContent?.trim()).toBe('Front row · Sea view');
+  });
+
   it("renders the price once per zone, carrying the row's meaning (#672, #702)", async () => {
     flushVenue();
     await fixture.whenStable();

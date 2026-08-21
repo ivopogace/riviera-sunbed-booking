@@ -68,11 +68,13 @@ standing in for `bugfix/tourist-map-row-identity` per the riviera-sdlc remote ad
   (reworked)
 - [ ] **AC-4 (tourist rail truncates, operator rail doesn't):** Given a row label
   longer than the tourist rail cap, when the tourist map renders, then the rail
-  chip's label span carries the ellipsis cap (`max-w-[96px] truncate`) while the
-  full label still reads in the tile accessible names; and given the operator Daily
-  view on the same shared canvas, the cap is absent (opt-in input, default off).
-  *Pinned by:* `venue-map.spec.ts` (cap present) + `beach-map-canvas` default
-  asserted via `daily-view-tab.spec.ts` or a canvas-level spec (cap absent)
+  chip's label span carries the ellipsis cap (`max-w-8 sm:max-w-[96px] truncate` —
+  responsive, mirroring the price rail's own mobile/`sm:` split, so the shipped
+  three-tile-column mobile floor from #702's e2e still holds) while the full label
+  still reads in the tile accessible names; and given the operator Daily view on
+  the same shared canvas, the cap is absent (opt-in input, default off).
+  *Pinned by:* `venue-map.spec.ts` (cap present) + `beach-map-canvas.spec.ts`
+  (default off + opt-in) + `venue-map-pan.e2e.ts` (measured cap + ≥150px grid)
 - [ ] **AC-5 (the namespace is gone):** Given the frontend sources, when searched,
   then no insertion-index `rowCode` derivation remains under `frontend/src/app/venue/`
   (the layout editor's grid-based `rowCode(y)`/`gridRowLabel` are out of scope and
@@ -122,10 +124,10 @@ the old tourist-map behaviors are enumerated:
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Retiring the venue-words qualifier silently re-partitions price zones (rows that split under #702 merge back) | med | med | Deliberate verdict in the parity ledger; `row-price-label.spec.ts` reworked to pin the new rule; `venue-map.spec.ts` zone specs re-asserted (seed output identical) | session | open |
+| R-1 | Retiring the venue-words qualifier silently re-partitions price zones (rows that split under #702 merge back) | med | med | Deliberate verdict in the parity ledger; `row-price-label.spec.ts` reworked to pin the new rule; `venue-map.spec.ts` zone specs re-asserted (seed output identical) | session | resolved — specs reworked; seed chip output byte-identical (`venue-map.spec.ts` zone cases green) |
 | R-2 | Truncation drifts the shared chip's computed styles on operator surfaces (no-drift rule) | low | med | Opt-in `input()` default **off**; cap classes on an inner span so the chip box is untouched; e2e `venue-map-pan` already pins chip fill/radius by computed style | session | open |
 | R-3 | e2e specs assert the old derived rail text | low | low | Checked at plan time: `venue-map-pan.e2e.ts` asserts computed styles and geometry, never chip text; fixtures already use real labels | session | resolved (plan-time survey) |
-| R-4 | Long labels make tile accessible names verbose | low | low | Accepted: a long correct name beats a short wrong one; axe suite re-run (`npm run test:a11y`, mocked e2e) | session | open |
+| R-4 | Long labels make tile accessible names verbose | low | low | Accepted: a long correct name beats a short wrong one; axe suite re-run (`npm run test:a11y`, mocked e2e) | session | resolved — full mocked suite incl. axe green after phase 3 |
 | R-5 | A hidden consumer of `rowCode()`/`TileView.seat` breaks | low | low | Blast radius surveyed (issue brief + plan-time grep): only `venue-map.ts:223`, its spec, and `row-price-label.spec.ts`; `TileView.seat` is template-unused. Negative confirmed against `git ls-files`, not just search | session | resolved (plan-time survey) |
 
 ## Open questions / Assumptions
@@ -140,7 +142,11 @@ the old tourist-map behaviors are enumerated:
 
 - **Rail width for long labels (product call):** truncate with ellipsis at a
   ~96px cap on the tourist map; operator surfaces unchanged. — answered by
-  maintainer via AskUserQuestion, 2026-08-21.
+  maintainer via AskUserQuestion, 2026-08-21. *Refined at implement:* the cap is
+  responsive — 32px below `sm`, 96px from `sm` up — because a flat ~96px chip left
+  a 390px phone only ~90px of tile grid, breaking the three-tile-column floor
+  #702's e2e pins; the split mirrors the price rail's own shipped
+  `max-w-[92px] sm:max-w-[128px]` pattern.
 - **Which identity survives:** the stored `rowLabel` (issue comment 1: derivation
   can no longer match labels post-#723/#726; the backend already guarantees label
   uniqueness).
@@ -185,15 +191,15 @@ N/A — no contract change. The map already receives `rowLabel` on `SetView`.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** PR — merge latest main, mark ready for review, run the gates
 
-**Next action:** phase 3 — tourist rail truncation (canvas opt-in) + e2e touch-up
+**Next action:** merge `origin/main`, mark PR #729 ready for review, run the review gate (pr-gates §1)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + draft PR | ✅ | 5490020, PR #729 |
 | 1+2 — one identity in `venue-map` + `row-price-label` qualifier rework (landed together: `row-price-label.spec.ts`'s `at()` helper imports `rowCode`, so the phases are compile-coupled — a separate phase 1 could not be green) | ✅ | (this commit) |
-| 3 — tourist rail truncation (canvas opt-in) + e2e touch-up | | |
+| 3 — tourist rail truncation (canvas opt-in) + e2e touch-up (incl. reworking the three e2e cases premised on the old namespace/qualifier) | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -201,6 +207,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (run 32464825248 on 754a7ba) | mocked e2e red: 3 `venue-map-pan` cases still asserted the derived-code names / venue-words chips ('Set H11…' selector, '€30 · Back' chip text, the #702 price-rail cap test) | fixed in the phase-3 commit (selector + chip text updated; #702 cap test reworked to the left rail as the #724 test) |
 
 ---
 
@@ -214,6 +221,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/set-label.ts` — add `spotLabel(rowLabel, positionNo)` to the vocabulary seam
 - `frontend/src/app/shared/set-label.spec.ts` — pin `spotLabel`
 - `frontend/src/app/shared/beach-map-canvas.ts` — `truncateRailCodes` input (default false)
+- `frontend/src/app/shared/beach-map-canvas.spec.ts` — pin the default (off) and the opt-in cap
 - `frontend/src/app/shared/beach-map-canvas.html` — rail chip renders label via inner span; cap classes under the opt-in
 - `frontend/src/app/venue/venue-map.html` — pass the opt-in to the canvas
 - `frontend/e2e/venue-map-pan.e2e.ts` — assert the rail shows stored labels + the cap geometry on the tourist map
@@ -355,6 +363,8 @@ it('still marks an all-walk-in row by its channel, over the tier', () => {
 |---|---|---|---|---|---|
 | 2026-08-21 | phase 1+2 | frontend code deriving a row identity from an array index | `grep -rn "rowCode\|fromCodePoint(65" frontend/src/app` (non-spec) | layout editor's grid pair (`beach-cell.ts:59`, `layout-editor.ts:375` + template) | skip — grid coordinates for painting, the plan's explicit non-goal; tourist map now clean |
 | 2026-08-21 | phase 1+2 | code comparing a derived rail code to venue words | `grep -rn "restatesPosition\|BARE_REFERENCE\|NAMED_REFERENCE\|RowPosition" frontend/src/app` | none | population extinct after rework |
+| 2026-08-21 | phase 3 | e2e assertions premised on derived codes or venue-words chips | `grep -rn "Set [A-Z]\+[0-9]\|row-code\|row-price" frontend/e2e` | `venue-map-pan.e2e.ts` only (3 cases) | all three fixed in phase 3; no other e2e file references either namespace |
+| 2026-08-21 | phase 3 | shared-canvas consumers whose rail could overflow | `grep -rln "app-beach-map-canvas" frontend/src` | tourist map + layout editor + daily view + set editor | tourist capped (opt-in); the three operator surfaces keep whole labels — the plan's non-goal |
 
 ---
 

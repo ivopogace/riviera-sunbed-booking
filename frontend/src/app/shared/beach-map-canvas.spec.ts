@@ -35,6 +35,7 @@ const ROWS: readonly TestRow[] = [
       [viewportTabindex]="0"
       viewportLabel="Beach map"
       [dragPan]="dragPan()"
+      [truncateRailCodes]="truncate()"
     >
       <ng-template [appBeachMapRow]="rows()" let-row let-i="index">
         <ul class="set-row" [attr.data-row]="row.code">
@@ -56,6 +57,7 @@ const ROWS: readonly TestRow[] = [
 class CanvasHost {
   readonly rows = signal<readonly TestRow[]>(ROWS);
   readonly dragPan = signal(true);
+  readonly truncate = signal(false);
   readonly taps: string[] = [];
 }
 
@@ -202,6 +204,22 @@ describe('BeachMapCanvas (#672)', () => {
     // The projected rows live inside the pan viewport; the rails do not.
     expect(viewport(host).querySelectorAll('ul.set-row').length).toBe(4);
     expect(viewport(host).querySelector('[data-testid="row-code"]')).toBeNull();
+  });
+
+  it('leaves rail labels uncapped by default — operator surfaces render them whole (#724)', () => {
+    const { host } = render();
+    expect(host.querySelector('[data-testid="row-code"] .truncate')).toBeNull();
+  });
+
+  it('caps rail labels with an ellipsis when the surface opts in (#724)', () => {
+    const { fixture, host, detect } = render();
+    fixture.componentInstance.truncate.set(true);
+    detect();
+    const inner = host.querySelector('[data-testid="row-code"] .truncate')!;
+    expect(inner).toBeTruthy();
+    expect(inner.classList.contains('max-w-8')).toBe(true);
+    expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
+    expect(inner.textContent).toBe('A');
   });
 
   it('sizes every row wrapper and rail cell from the identical fixed --riv-tile height (#685)', () => {
