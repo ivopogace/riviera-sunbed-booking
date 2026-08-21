@@ -120,24 +120,22 @@ for `feature/scss-migration-shell-booking` (riviera-sdlc cloud addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A dropped class is queried somewhere the sweep missed | low | med | Explore-agent sweep (14 hits retained as inert markers); full `npm test` + mocked e2e; "empty search ≠ absence" double-checked with bare-name greps | agent | open |
-| R-2 | Same-property utility pairs resolve by stylesheet order, not class order (radius/display/shadow coin-flip) | med | med | never two competing utilities on one element: full-swap `[class]` ternaries (swatch ring), per-element widths (skeleton lines) | agent | open |
-| R-3 | Pseudo-element ports (`riv-header::before` glass, swatch `::before`) drift subtly | med | high | AC-6 computed-style snapshot targets those exact elements in both themes | agent | open |
-| R-4 | Deleting `.riv-pop-in` while sweeping "riv-pop" breaks `admin-privacy`/`booking-dialog` keyframe consumers | low | high | AC-7; `styles.scss` keyframes untouched | agent | open |
-| R-5 | Touch-target floor regresses on links whose `display` moves (min-height no-op on inline) | low | high | keep `inline-flex items-center min-h-11` shapes; `touch-targets*.e2e.ts` measures; TT guard on diff | agent | open |
-| R-6 | `manage-booking-link` refactor changes a contract e2e depends on | low | med | sweep found zero e2e queries of `manage-link`; unit spec rewritten deliberately (AC-5) | agent | open |
-| R-7 | `text-sm`-style named utilities smuggle in line-height drift | med | med | arbitrary values only (`text-[14px]`, `min-[720px]:`), per the idiom table; AC-6 catches leaks | agent | open |
+| R-1 | A dropped class is queried somewhere the sweep missed | low | med | Explore-agent sweep (14 hits retained as inert markers); full `npm test` + mocked e2e; "empty search ≠ absence" double-checked with bare-name greps | agent | closed — AC-4: 1594 unit + 232 e2e green, suite unmodified |
+| R-2 | Same-property utility pairs resolve by stylesheet order, not class order (radius/display/shadow coin-flip) | med | med | never two competing utilities on one element: full-swap `[class]` ternaries (swatch ring), per-element widths (skeleton lines) | agent | closed — AC-6 diff shows no ordering flip |
+| R-3 | Pseudo-element ports (`riv-header::before` glass, swatch `::before`) drift subtly | med | high | AC-6 computed-style snapshot targets those exact elements in both themes | agent | closed — header `::before` and swatch `::before` byte-identical (after F-1) |
+| R-4 | Deleting `.riv-pop-in` while sweeping "riv-pop" breaks `admin-privacy`/`booking-dialog` keyframe consumers | low | high | AC-7; `styles.scss` keyframes untouched | agent | closed — theme-shell e2e green; keyframes intact (+`pay-spin`) |
+| R-5 | Touch-target floor regresses on links whose `display` moves (min-height no-op on inline) | low | high | keep `inline-flex items-center min-h-11` shapes; `touch-targets*.e2e.ts` measures; TT guard on diff | agent | closed — touch-target e2e green in the 232 + re-run |
+| R-6 | `manage-booking-link` refactor changes a contract e2e depends on | low | med | sweep found zero e2e queries of `manage-link`; unit spec rewritten deliberately (AC-5) | agent | closed — AC-5 verified |
+| R-7 | `text-sm`-style named utilities smuggle in line-height drift | med | med | arbitrary values only (`text-[14px]`, `min-[720px]:`), per the idiom table; AC-6 catches leaks | agent | closed — AC-6 clean |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the element-form refactor of `ManageBookingLink` is the intended
-  "deliberate lift" of issue #739's constraint section — supported by `riviera-tailwind`
-  rule 1 already naming `app-manage-booking-link` in its element-selector list and by
-  the issue naming the `allowList` drop as the payoff. — *Owner:* agent · *Resolves by:*
-  review gate (maintainer sees it as its own commit; trivially revertible).
-- **Assumption:** the skeleton's `rgba(12,42,51,0.1)` → `--riv-card-track`
-  (`rgba(12,42,51,0.12)`) fill change is sanctioned drift — the issue says "prefer the
-  shared token over the hardcoded rgba". — *Owner:* agent · *Resolves by:* phase 1.
+### Resolved
+
+- **Element-form refactor of `ManageBookingLink`** — shipped as its own commit
+  (`Manage-booking link owns its anchor`); the review gate raised no objection.
+- **Skeleton fill `rgba(12,42,51,0.1)` → `--riv-card-track`** — sanctioned by the issue
+  text; shipped in phase 1 and declared in the AC-6 diff.
 
 ## Availability & concurrency (invariant #2)
 
@@ -179,9 +177,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** review gate ran (4 findings — 3 fixed, 1 deferred); Sonar gate next
+**Stage pointer:** merge close-out — DONE (merged via PR #740)
 
-**Next action:** wait for CI + SonarCloud on the review-fix head, pull the Sonar issue list (`references/pr-gates.md` §2), then merge close-out.
+**Next action:** none — slice complete. Deferred findings live on #741 (skeleton live-region posture) and #742 (venue-map transition property).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -203,9 +201,9 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-1 | AC-6 parity harness (pre-push) | mobile theme-swatch dot used `before:bg-(--riv-swatch)` — the *color* form — on a gradient token, rendering no dot | fixed in phase-6 commit (`bg-(image:--riv-swatch)`); generalization audit swept all color-form `bg-(--riv-*)` uses — no other member |
 | F-2 | review (`/code-review` fork, 2026-08-21) | row hover lift lost its ease: `[transition:transform_…]` beside `hover:-translate-y-0.5`, but v4 translate utilities animate the `translate` property (verified in the built CSS) | fixed — transitions name `translate`; parity re-capture shows only the deliberate property rename |
 | F-3 | review (same run) | swatch-dot hover scale unesed for the same reason (`scale` property vs `transform` transition) | fixed — `before:[transition:scale_0.12s_ease]` |
-| F-4 | review (same run) | page-level loading `aria-live` region enters the DOM already holding its text, so most SR combos won't announce it — internally inconsistent with the live-region rule booking-pay.ts documents | deferred → follow-up issue (the identical Discover/set-editor posture shipped in #675/#721; a fix belongs to all three surfaces at once, not this restyle) |
+| F-4 | review (same run) | page-level loading `aria-live` region enters the DOM already holding its text, so most SR combos won't announce it — internally inconsistent with the live-region rule booking-pay.ts documents | deferred → issue #741 (the identical Discover/set-editor posture shipped in #675/#721; a fix belongs to all three surfaces at once, not this restyle) |
 | F-5 | review (same run) | row/CTA/popover/card-surface recipes duplicated up to 6× instead of hoisted | fixed — `cls` consts per the `booking-view.ts` idiom in my-bookings, app shell, booking-pay, booking-confirmation |
-| F-6 | review fix-round generalization | the F-2/F-3 mechanism (`transition` naming `transform` while a v4 translate/scale utility animates) exists once outside this diff: `venue-map.html:194` | deferred → follow-up issue (pre-existing, outside this slice's surface) |
+| F-6 | review fix-round generalization | the F-2/F-3 mechanism (`transition` naming `transform` while a v4 translate/scale utility animates) exists once outside this diff: `venue-map.html:194` | deferred → issue #742 (pre-existing, outside this slice's surface) |
 
 ---
 
@@ -356,6 +354,5 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings.
 - [ ] Risk register closed (R-1–R-7 all resolved by the AC-4/AC-6 verification); Open
   Questions resolved below.
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN` (number
-      known once the draft PR opens).
+- [x] **Close-out written in THIS PR** — final state cites `merged via PR #740`.
 - [ ] **The review gate ran in full** — `/code-review` fan-out + `riviera-review-overlay`.
