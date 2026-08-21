@@ -163,47 +163,78 @@ function isNotFound(error: unknown): boolean {
  * #6). On a `404` a device-local row is dropped from view but the code is kept (invariant #7 — a 404
  * can be transient); a transient/offline failure shows Retry. Codes are treated as secrets — never logged.
  */
+/** The card-glass row chrome (v4 translate utilities animate `translate`, so the transition lists it). */
+const ROW =
+  'flex w-full items-center gap-3.5 rounded-[22px] px-[18px] py-4 shadow-[0_10px_30px_rgba(7,42,58,0.22),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[24px] backdrop-saturate-[1.7] [transition:translate_0.15s_ease,box-shadow_0.15s_ease] hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(7,42,58,0.3),inset_0_1px_0_rgba(255,255,255,0.9)] motion-reduce:transition-none';
+const SKELETON =
+  'skeleton block animate-pulse rounded-[6px] bg-(--riv-card-track) motion-reduce:animate-none';
+const EMPTY_CARD =
+  'rounded-[28px] px-[30px] py-10 text-center shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7]';
+
+/** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
+const CLS = {
+  row: `${ROW} focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)`,
+  rowPlaceholder: `${ROW} justify-between`,
+  rowMain: 'flex min-w-0 flex-1 flex-col gap-[3px]',
+  meta: 'text-[13px] text-(--riv-card-ink-soft)',
+  skeletonLine: `${SKELETON} h-[12px] w-3/5`,
+  skeletonLineShort: `${SKELETON} mt-2 h-[10px] w-[35%]`,
+  emptyCard: EMPTY_CARD,
+  emptyLead: 'mb-5 text-[14.5px] leading-[1.5] text-(--riv-card-ink-soft)',
+  cta: 'inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-[26px] py-[13px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
+} as const;
+
 @Component({
   selector: 'app-my-bookings',
   imports: [RouterLink, CardGlass, StatusChip, BookingQr, TouchTarget],
   template: `
-    <section class="my-bookings" aria-labelledby="mb-title">
-      <a routerLink="/" class="back-link">← All beaches</a>
-      <h1 id="mb-title">Your bookings</h1>
+    <section class="mx-auto w-full max-w-[560px] px-5 pt-6 pb-20" aria-labelledby="mb-title">
+      <a
+        routerLink="/"
+        class="mb-3.5 inline-flex min-h-11 items-center text-[14px] font-semibold text-(--riv-accent-ink) hover:underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
+        >← All beaches</a
+      >
+      <h1 class="mb-[18px] text-[clamp(28px,4vw,34px)] font-bold tracking-[-0.02em]" id="mb-title">
+        Your bookings
+      </h1>
 
       @if (loading()) {
-        <div class="rows" aria-busy="true" data-testid="my-bookings-loading">
-          <div class="row row--loading" appCardGlass>
-            <span class="row-main">
-              <span class="skeleton skeleton-line"></span>
-              <span class="skeleton skeleton-line short"></span>
+        <!-- Announced sr-only line + decorative skeleton — the Discover/set-editor posture (#739). -->
+        <div aria-live="polite" data-testid="my-bookings-loading">
+          <p class="sr-only">Loading your bookings…</p>
+          <div [class]="cls.rowPlaceholder" appCardGlass aria-hidden="true">
+            <span [class]="cls.rowMain">
+              <span [class]="cls.skeletonLine"></span>
+              <span [class]="cls.skeletonLineShort"></span>
             </span>
           </div>
         </div>
       } @else if (rows().length === 0 && !accountError()) {
         <section
-          class="empty-card"
+          [class]="cls.emptyCard"
           appCardGlass
           aria-labelledby="mb-empty-title"
           data-testid="my-bookings-empty"
         >
-          <h2 id="mb-empty-title">No booking yet</h2>
-          <p class="empty-lead">
+          <h2 class="mb-2 text-[26px] font-bold tracking-[-0.02em]" id="mb-empty-title">
+            No booking yet
+          </h2>
+          <p [class]="cls.emptyLead">
             Pick a beach, choose your exact set on the map, and your booking code will live here.
           </p>
-          <a routerLink="/" class="btn-cta" data-testid="browse-beaches">Browse beaches</a>
+          <a routerLink="/" [class]="cls.cta" data-testid="browse-beaches">Browse beaches</a>
         </section>
       } @else {
         @if (accountError()) {
-          <section class="empty-card" appCardGlass role="status" data-testid="account-error">
-            <p class="empty-lead">
+          <section [class]="cls.emptyCard" appCardGlass role="status" data-testid="account-error">
+            <p [class]="cls.emptyLead">
               We couldn’t load your account bookings just now — any made on other devices may be
               missing.
             </p>
             <button
               appTouchTarget
               type="button"
-              class="btn-cta"
+              [class]="cls.cta"
               (click)="retryAccount()"
               data-testid="account-retry"
             >
@@ -211,55 +242,62 @@ function isNotFound(error: unknown): boolean {
             </button>
           </section>
         }
-        <ul class="rows" role="list">
+        <ul class="flex flex-col gap-3" role="list">
           @for (row of rows(); track row.code) {
             <li>
               @switch (row.state) {
                 @case ('loaded') {
                   <a
                     [routerLink]="['/booking', row.view.code]"
-                    class="row"
+                    [class]="cls.row"
                     appCardGlass
                     data-testid="booking-row"
                   >
-                    <span class="row-main">
-                      <span class="venue">{{ row.view.venueName }}</span>
-                      <span class="meta">{{ row.view.setLabel }}</span>
-                      <span class="meta">{{ row.view.dateLabel }}</span>
+                    <span [class]="cls.rowMain">
+                      <span class="text-[16px] font-bold">{{ row.view.venueName }}</span>
+                      <span [class]="cls.meta">{{ row.view.setLabel }}</span>
+                      <span [class]="cls.meta">{{ row.view.dateLabel }}</span>
                       @if (row.view.subLine) {
-                        <span class="subline" data-testid="row-subline">{{
-                          row.view.subLine
-                        }}</span>
+                        <span
+                          class="text-[12px] font-semibold text-(--riv-card-ink-soft)"
+                          data-testid="row-subline"
+                          >{{ row.view.subLine }}</span
+                        >
                       }
-                      <span class="code">{{ row.view.code }}</span>
+                      <span
+                        class="code mt-[2px] text-[12px] font-bold tracking-[0.08em] text-(--riv-accent-ink)"
+                        >{{ row.view.code }}</span
+                      >
                       @if (row.view.showQr) {
                         <app-booking-qr class="mt-2" [code]="row.view.code" [size]="104" />
                       }
                     </span>
-                    <span class="row-side">
+                    <span class="flex shrink-0 flex-col items-end gap-1.5">
                       <!-- Status conveyed in text (the chip label), never colour alone (WCAG AA). -->
                       <span [appStatusChip]="row.view.chipClass" data-testid="row-status">{{
                         row.view.statusLabel
                       }}</span>
-                      <span class="amount-wrap">
-                        <span class="amount-label" data-testid="row-amount-label">{{
-                          row.view.amountLabel
-                        }}</span>
-                        <span class="amount">{{ row.view.amountStr }}</span>
+                      <span class="flex flex-col items-end gap-[1px]">
+                        <span
+                          class="text-[10px] font-bold tracking-[0.08em] uppercase text-(--riv-card-ink-soft)"
+                          data-testid="row-amount-label"
+                          >{{ row.view.amountLabel }}</span
+                        >
+                        <span class="text-[13.5px] font-bold">{{ row.view.amountStr }}</span>
                       </span>
                     </span>
                   </a>
                 }
                 @case ('failed') {
-                  <div class="row row--failed" appCardGlass data-testid="booking-row-failed">
-                    <span class="row-main">
-                      <span class="venue">Couldn’t load this booking</span>
-                      <span class="meta">Check your connection and try again.</span>
+                  <div [class]="cls.rowPlaceholder" appCardGlass data-testid="booking-row-failed">
+                    <span [class]="cls.rowMain">
+                      <span class="text-[16px] font-bold">Couldn’t load this booking</span>
+                      <span [class]="cls.meta">Check your connection and try again.</span>
                     </span>
                     <button
                       appTouchTarget
                       type="button"
-                      class="btn-retry"
+                      class="shrink-0 cursor-pointer rounded-[14px] border-[1.5px] border-[rgba(255,255,255,0.7)] bg-[#f4f6f7] px-3.5 py-2 text-[13px] font-semibold text-[#0a4f5e] [transition:background_0.15s_ease] hover:bg-[#e7ebec] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) motion-reduce:transition-none"
                       (click)="retry(row.code)"
                       data-testid="row-retry"
                     >
@@ -269,14 +307,14 @@ function isNotFound(error: unknown): boolean {
                 }
                 @default {
                   <div
-                    class="row row--loading"
+                    [class]="cls.rowPlaceholder"
                     appCardGlass
                     aria-busy="true"
                     data-testid="booking-row-loading"
                   >
-                    <span class="row-main">
-                      <span class="skeleton skeleton-line"></span>
-                      <span class="skeleton skeleton-line short"></span>
+                    <span [class]="cls.rowMain">
+                      <span [class]="cls.skeletonLine"></span>
+                      <span [class]="cls.skeletonLineShort"></span>
                     </span>
                   </div>
                 }
@@ -287,9 +325,11 @@ function isNotFound(error: unknown): boolean {
       }
     </section>
   `,
-  styleUrl: './my-bookings.scss',
+  host: { class: 'block text-(--riv-card-ink)' },
 })
 export class MyBookings {
+  protected readonly cls = CLS;
+
   private readonly store = inject(DeviceLocalBookings);
   private readonly bookings = inject(BookingService);
   private readonly auth = inject(CustomerAuth);

@@ -1,22 +1,36 @@
-import { Component } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
+
+/** The two skins the link's surfaces need: the pay page's block CTA, confirmation's quiet link. */
+const SKINS = {
+  primary:
+    'mt-4 block w-full rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) motion-reduce:transition-none',
+  link: 'mt-3 inline-block text-[14.5px] font-semibold text-(--riv-accent-ink) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)',
+} as const;
+
+export type ManageBookingLinkVariant = keyof typeof SKINS;
 
 /**
- * The link from a completed booking to its management page. Supplies the label and the
- * `manage-link` test id; the route and the skin stay with the call site.
+ * The link from a completed booking to its management page. Owns the anchor: label, route
+ * (`/booking/{code}`), skin (by {@link ManageBookingLinkVariant}) and the `manage-link` test id all
+ * live here, and the `contents` host keeps the caller's card laying out the anchor itself.
  *
- * <p>An attribute selector on the caller's own `<a>`, which is load-bearing rather than stylistic:
- * `.btn-primary` and `.link` are declared in each page's `styleUrl` stylesheet, so emulated
- * encapsulation compiles them to `.btn-primary[_ngcontent-<page>]`. An anchor rendered from this
- * component's template would carry this component's stamp instead, match neither rule, and lose
- * its styling silently. The anchor therefore stays in the page's view; only its text comes from here.
- *
- * <p>`elements-content` sees an anchor with no children in the caller's template and cannot know
- * the content arrives from a directive, so `eslint.config.js` names this attribute in that rule's
- * `allowList` — teaching the rule about this one directive rather than silencing it for a file.
+ * <p>Rendering the anchor in this template (rather than augmenting a caller-owned `<a>` by
+ * attribute) is what lets `elements-content` see the link's content — the attribute form needed an
+ * `allowList` entry in `eslint.config.js`. It became possible when #739 turned the pages'
+ * page-scoped `.btn-primary`/`.link` rules into global utilities.
  */
 @Component({
-  selector: 'a[appManageBookingLink]',
-  host: { 'data-testid': 'manage-link' },
-  template: `View or manage this booking`,
+  selector: 'app-manage-booking-link',
+  imports: [RouterLink],
+  host: { class: 'contents' },
+  template: `<a [routerLink]="['/booking', code()]" [class]="skin()" data-testid="manage-link"
+    >View or manage this booking</a
+  >`,
 })
-export class ManageBookingLink {}
+export class ManageBookingLink {
+  readonly code = input.required<string>();
+  readonly variant = input.required<ManageBookingLinkVariant>();
+
+  protected readonly skin = computed(() => SKINS[this.variant()]);
+}
