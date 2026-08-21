@@ -38,7 +38,12 @@
 
   @if (mode() === 'sets') {
     @if (venueId(); as id) {
-      <app-set-editor [venueId]="id" [sets]="loadedSets()" (changed)="onSetsChanged()" />
+      <app-set-editor
+        [venueId]="id"
+        [sets]="loadedSets()"
+        [loaded]="mapLoaded()"
+        (changed)="onSetsChanged()"
+      />
     }
   } @else {
     <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[280px_1fr]">

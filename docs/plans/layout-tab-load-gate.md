@@ -81,16 +81,16 @@ These are frontend-render ACs by nature — the slice adds no application-bounda
 request, no state change server-side). They are written at the surface's own boundary: what an
 operator is shown, and what the tab lets them do, before/at/after the map read settles.
 
-- [ ] **AC-1:** Given a venue with sets whose map GET has not resolved, when the operator switches to
+- [x] **AC-1:** Given a venue with sets whose map GET has not resolved, when the operator switches to
       Edit sets, then the per-set surface renders the skeleton — pulsing placeholder tiles on the
       canvas and placeholder lines in the panel — and renders **no** `set-cell`, no
       `set-panel-no-sets` copy.
       *Pinned by:* `SetEditor (#600) › shows a skeleton, not an empty venue, while the map read is in flight (#721)`
-- [ ] **AC-2:** Given that read then resolves with the venue's sets, when it lands, then the grid and
+- [x] **AC-2:** Given that read then resolves with the venue's sets, when it lands, then the grid and
       panel render the real sets with no further interaction and **no skeleton element remains in the
       DOM**.
       *Pinned by:* `SetEditor (#600) › replaces the skeleton with the venue's real sets when the read lands (#721)`
-- [ ] **AC-3:** Given a genuinely set-less venue whose read **has** resolved, when Edit sets is
+- [x] **AC-3:** Given a genuinely set-less venue whose read **has** resolved, when Edit sets is
       chosen, then the #718 no-sets copy (`set-panel-no-sets`) and the single empty spot still render
       and no skeleton is present (no regression).
       *Pinned by:* `SetEditor (#600) › points a set-less venue at the bulk generator, and still adds into the one empty spot (#718)` (extended with the no-skeleton assertion)
@@ -108,10 +108,10 @@ operator is shown, and what the tab lets them do, before/at/after the map read s
       modes, and the per-set editor is not rendered at all (it would otherwise repeat the very
       "no sets yet" claim this issue is about, over a venue whose sets are simply unknown).
       *Pinned by:* `LayoutEditor (#172) › explains a failed map read on both surfaces instead of an empty per-set editor (#721)`
-- [ ] **AC-7:** Given `prefers-reduced-motion`, when a skeleton renders, then it does not animate —
+- [x] **AC-7:** Given `prefers-reduced-motion`, when a skeleton renders, then it does not animate —
       every pulsing element carries `motion-reduce:animate-none` beside `animate-pulse`.
       *Pinned by:* `SetEditor (#600) › skeletons are decorative: aria-hidden, announced sr-only, and motion-reduce safe (#721)`
-- [ ] **AC-8:** Given assistive tech, when the skeleton renders, then the skeleton tree is
+- [x] **AC-8:** Given assistive tech, when the skeleton renders, then the skeleton tree is
       `aria-hidden="true"` and a polite `sr-only` line names what is loading — the home-grid contract
       (`home.spec.ts` *"renders pulsing skeleton cards (decorative) with a text announcement while
       loading"*).
@@ -328,13 +328,13 @@ changes only what the tab renders between issuing today's `GET /api/venues/{id}`
 > shipped tests. Record **`merged via PR #NN`, never a merge SHA** (case history + details:
 > `riviera-sdlc` `references/pr-gates.md` §3 step 4).
 
-**Stage pointer:** `plan` — plan doc authored, intake grill done, ACs fixed.
+**Stage pointer:** `implement` — phase 0 shipped; draft PR to open on its push.
 
-**Next action:** phase 0 (the per-set load gate + skeleton), test-first.
+**Next action:** phase 1 (Generate gated on the read settling), test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Per-set load gate + skeleton (unit + a11y) | | |
+| 0 — Per-set load gate + skeleton (unit + a11y) | ✅ | (this commit) |
 | 1 — Generate gated on the read settling | | |
 | 2 — Failed-read path on both surfaces | | |
 | 3 — Mocked Playwright e2e (held GET) | | |
@@ -402,22 +402,25 @@ Skill-routing gate for what the fix touches *before* editing).
 `frontend/src/app/operator/set-editor.spec.ts`,
 `frontend/src/app/operator/set-editor.a11y.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — one at a time: AC-1 (`render(SETS, { loaded: false })`
-      → skeleton tiles present, `set-cell` absent, `set-panel-no-sets` absent), then AC-2 (flip the
-      input → real cells, no skeleton), then AC-7 + AC-8 (the decorative contract), then AC-3's
-      no-skeleton extension, then AC-9 in the a11y spec.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- set-editor`.
-- [ ] **Step 3: Minimal implementation** — `loaded = input.required<boolean>()`; `@if (loaded())`
+- [x] **Step 1: Write the failing tests** — one at a time: AC-1 (`render([], false)` → skeleton
+      tiles present, `set-cell` absent, `set-panel-no-sets` absent), then AC-2 (flip both inputs →
+      real cells, no skeleton), then AC-7 + AC-8 (the decorative contract), then AC-3's
+      no-skeleton extension, then AC-9's set-editor half in the a11y spec.
+- [x] **Step 2: Run them, verify they fail** —
+      `ng test --include="src/app/operator/set-editor*.spec.ts"` → **30 + 7 failed**, every one on
+      `NG0303: Can't set value of the 'loaded' input` (the gate does not exist yet).
+- [x] **Step 3: Minimal implementation** — `loaded = input.required<boolean>()`; `@if (loaded())`
       around the existing two-column grid; the `@else` skeleton (aria-live wrapper + `sr-only`
       line + aria-hidden tree; panel placeholder lines; `app-beach-map-canvas` with its own
       testids and placeholder rows). In `LayoutEditor`: the `mapLoaded` signal (set after the
       epoch guard in `loadExisting`'s success and in `reloadAfterStale`'s success; cleared in
       `resetForVenue`) and the `[loaded]="mapLoaded()"` binding.
-- [ ] **Step 4: Run them, verify they pass** — the `set-editor*` + `layout-editor*` spec files.
-- [ ] **Step 5: Generalization-audit pass** — enumerate by mechanism: every component that renders
-      a **required collection input / fetched list** as ground truth without a settled flag.
-- [ ] **Step 6: Commit**
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window; open the **draft PR**
+- [x] **Step 4: Run them, verify they pass** — 37/37 across the two `set-editor*` spec files;
+      end-of-phase regression `--include="src/app/operator/*.spec.ts"` → **430 passed**. Lint,
+      Prettier, `check-touch-target.mjs` and `check-inline-comments.mjs` all clean.
+- [x] **Step 5: Generalization-audit pass** — see the log's phase-0 row.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window; open the **draft PR**
       immediately after this first phase commit (CI fires on the `pull_request` event only).
 
 ---
@@ -507,6 +510,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-21 | phase 0 | **Mechanism:** every surface that renders a **fetched collection's emptiness as a fact** — either it takes the collection as a required input from a parent that may still be reading, or it seeds its own list signal with `[]` and branches on `.length`. Enumerated from the two syntactic shapes that create the state, not from "editors that look like this one" | `grep -rn "input.required<readonly" src/app --include=*.ts` (5) + `grep -rln "signal<readonly [A-Za-z]*\[\]>(\[\])\|signal<[A-Za-z]*\[\]>(\[\])" src/app --include=*.ts` (12), then read each surface's emptiness branch for a settled flag | 16 sites. **Inputs:** `set-editor` (the defect); `payout-statement` — its parent gates the whole tab on `@if (!loaded())`; `photo-slideshow` — both callers bind from an already-loaded object (`@if (venue(); as v)` / a loaded card); `segmented-control` — static config, never fetched; `beach-map-canvas` — a presentational primitive whose consumers own the question. **Own-read surfaces:** 11 of 11 already distinguish unread from empty — 10 via a `loaded`/`loading` signal, `admin-mail-delivery` via `searched() && bookings().length === 0` | **One fix, fifteen judged and left.** The population's defect rate is 1/16, and the one hit is the surface whose settled flag lives in a *different component* — which is exactly why it was the one to go missing |
 
 ---
 

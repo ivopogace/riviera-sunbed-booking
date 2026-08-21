@@ -116,6 +116,12 @@ export class SetEditor {
   readonly venueId = input.required<number>();
   /** The venue's saved sets, from the parent's map read. Replacing this re-seeds selection and draft. */
   readonly sets = input.required<readonly SetView[]>();
+  /**
+   * Whether {@link sets} is the settled answer from the parent's map read. Required, not defaulted:
+   * an unread map is not an empty venue, and every caller has to say which one it is holding. While
+   * it is false the surface renders a skeleton instead of a 1×1 grid and the no-sets copy.
+   */
+  readonly loaded = input.required<boolean>();
   /** A write landed: the parent drops the shared console snapshot and re-reads the map. */
   readonly changed = output<void>();
 
@@ -309,6 +315,24 @@ export class SetEditor {
     const cell = this.selectedCell();
     return cell === undefined ? '' : `Row ${gridRowLabel(cell.gridY - 1)} · position ${cell.gridX}`;
   });
+
+  /** One skeleton row's placeholder tiles; the count also drives each row's `tileCount`. */
+  protected readonly skeletonTiles = [1, 2, 3, 4, 5, 6] as const;
+
+  /**
+   * The in-flight skeleton's geometry, on the canvas's own row contract — the bulk generator's 4 × 6
+   * default, so the shape a venue usually lands with is already on screen. It renders through
+   * {@link BeachMapCanvas} rather than beside it, because the tile size is the canvas's own
+   * `--riv-tile` and a copy of that literal would drift.
+   */
+  protected readonly skeletonRows: readonly BeachMapCanvasRow[] = ['A', 'B', 'C', 'D'].map(
+    (code) => ({
+      code,
+      priceLabel: null,
+      zoneStart: true,
+      tileCount: this.skeletonTiles.length,
+    }),
+  );
 
   protected readonly tiers: readonly { key: Tier; label: string }[] = [
     { key: 'PREMIUM', label: 'Front row · premium' },

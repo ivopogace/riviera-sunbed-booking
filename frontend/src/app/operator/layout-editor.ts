@@ -165,6 +165,14 @@ export class LayoutEditor {
   /** True when the initial map read failed (no `setVersion` token loaded). Save cannot proceed without the
    *  token, so instead of a silent no-op the editor prompts a refresh (review finding). */
   protected readonly loadFailed = signal(false);
+  /**
+   * True once a map read has SUCCEEDED for this venue — i.e. `loadedSets` is what the server holds
+   * rather than the empty default. {@link SetEditor} renders its skeleton until then, because a read
+   * that has not landed says nothing about how many sets a venue has. Deliberately NOT cleared by
+   * {@link onSetsChanged}'s re-read: that path keeps `loadedSets`, so the per-set surface must keep
+   * rendering them instead of flashing a skeleton over every write.
+   */
+  protected readonly mapLoaded = signal(false);
 
   /**
    * The mode actually shown: the operator's choice once made, otherwise the one the venue needs — a
@@ -280,6 +288,7 @@ export class LayoutEditor {
     this.reloading.set(false);
     this.reloadFailed.set(false);
     this.loadFailed.set(false);
+    this.mapLoaded.set(false);
     this.clearRenameNotices();
     this.renamingRow.set(null);
     this.loadExisting(venueId);
@@ -644,6 +653,7 @@ export class LayoutEditor {
         this.grid.set([]); // hasLayout() → false, so seedFrom re-seeds (or leaves the empty state)
         this.loadedSetVersion.set(venue.setVersion ?? null);
         this.loadFailed.set(false);
+        this.mapLoaded.set(true);
         this.loadedSets.set(venue.sets);
         this.seedFrom(venue.sets);
         this.errorCode.set(undefined);
@@ -704,6 +714,7 @@ export class LayoutEditor {
           return; // a venue switch superseded this load — never seed the new venue's editor (#180)
         }
         this.loadFailed.set(false);
+        this.mapLoaded.set(true);
         this.loadedSetVersion.set(venue.setVersion ?? null);
         this.loadedSets.set(venue.sets);
         this.seedFrom(venue.sets);

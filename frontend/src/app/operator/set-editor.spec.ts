@@ -15,7 +15,9 @@ import { SetEditor } from './set-editor';
  * The per-set beach-map editor (#600) — the surface that makes a live venue's map editable at all.
  * Drives select → change → save against the U7 `PATCH`, and pins the two properties the slice turns
  * on: the write carries the WHOLE set body, and a `409 SET_IN_USE` leaves the map exactly as the
- * server still has it (no optimistic flip survives a refusal).
+ * server still has it (no optimistic flip survives a refusal). Also pins the load gate: until the
+ * parent says the map read has settled, the surface renders a decorative skeleton rather than
+ * reading its empty `sets` input as "this venue has none".
  */
 describe('SetEditor (#600)', () => {
   let fixture: ComponentFixture<SetEditor>;
@@ -60,7 +62,7 @@ describe('SetEditor (#600)', () => {
     set({ id: 13, rowLabel: 'B', positionNo: 2, gridX: 2, gridY: 2, pool: 'WALK_IN' }),
   ];
 
-  function render(sets: readonly SetView[] = SETS): void {
+  function render(sets: readonly SetView[] = SETS, loaded = true): void {
     TestBed.configureTestingModule({
       imports: [SetEditor],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
@@ -70,6 +72,7 @@ describe('SetEditor (#600)', () => {
     changed = 0;
     fixture.componentRef.setInput('venueId', 1);
     fixture.componentRef.setInput('sets', sets);
+    fixture.componentRef.setInput('loaded', loaded);
     fixture.componentInstance.changed.subscribe(() => (changed += 1));
     fixture.detectChanges();
     // OperatorAuth restores the session on construction — settle it as signed-out.
@@ -88,6 +91,10 @@ describe('SetEditor (#600)', () => {
 
   function cells(): HTMLButtonElement[] {
     return Array.from(host.querySelectorAll<HTMLButtonElement>('[data-testid="set-cell"]'));
+  }
+
+  function skeletonTiles(): HTMLElement[] {
+    return Array.from(host.querySelectorAll<HTMLElement>('[data-testid="set-skeleton-tile"]'));
   }
 
   function cellForSet(setId: number): HTMLButtonElement {
@@ -589,9 +596,47 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-panel-empty')).toBeTruthy();
   });
 
+  it('shows a skeleton, not an empty venue, while the map read is in flight (#721)', () => {
+    // The parent seeds `sets` with [] until its GET resolves; without the gate that reads as "none".
+    render([], false);
+
+    expect(skeletonTiles().length).toBeGreaterThan(0);
+    expect(byId('set-skeleton-panel')).toBeTruthy();
+    expect(cells()).toHaveLength(0);
+    expect(byId('set-panel-no-sets')).toBeFalsy();
+    expect(byId('set-panel-empty')).toBeFalsy();
+  });
+
+  it('replaces the skeleton with the venue’s real sets when the read lands (#721)', () => {
+    render([], false);
+
+    fixture.componentRef.setInput('sets', SETS);
+    fixture.componentRef.setInput('loaded', true);
+    fixture.detectChanges();
+
+    expect(skeletonTiles()).toHaveLength(0);
+    expect(host.querySelector('[data-testid="set-skeleton-panel"]')).toBeNull();
+    expect(cells()).toHaveLength(4);
+    expect(byId('set-panel-empty').textContent).toContain('Pick a set on the map');
+  });
+
+  it('skeletons are decorative: aria-hidden, announced sr-only, and motion-reduce safe (#721)', () => {
+    render([], false);
+
+    const loading = byId('set-loading');
+    expect(loading.getAttribute('aria-live')).toBe('polite');
+    expect(loading.textContent).toContain('Loading this venue’s sets');
+    expect(byId('set-skeleton').getAttribute('aria-hidden')).toBe('true');
+    for (const pulsing of [skeletonTiles()[0], byId('set-skeleton-panel')]) {
+      expect(pulsing.classList.contains('animate-pulse')).toBe(true);
+      expect(pulsing.classList.contains('motion-reduce:animate-none')).toBe(true);
+    }
+  });
+
   it('points a set-less venue at the bulk generator, and still adds into the one empty spot (#718)', () => {
     render([]);
 
+    expect(skeletonTiles()).toHaveLength(0); // a settled read: emptiness is now a fact, not a default
     expect(byId('set-panel-empty')).toBeFalsy();
     expect(byId('set-panel-no-sets').textContent).toContain('Bulk layout');
     // The grid never empties here (rowCount/colCount clamp to at least 1x1), so the map IS the way in.
