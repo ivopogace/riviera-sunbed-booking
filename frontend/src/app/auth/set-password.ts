@@ -50,8 +50,7 @@ const RESEND_NOTICES = {
       <div class="auth-card" appCardGlass>
         <h1 id="setpw-title" class="auth-title">Your account</h1>
 
-        <!-- Above the @if chain on purpose: a live region only announces what changes while it is
-             already in the DOM, so it has to outlive the branch it describes (#741). -->
+        <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
         <app-load-announcer
           [loading]="auth.restoring()"
           loadingLabel="Loading…"

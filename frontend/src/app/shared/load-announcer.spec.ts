@@ -32,8 +32,7 @@ describe('LoadAnnouncer', () => {
   }
 
   it('keeps the SAME element across loading → loaded, so the text is a mutation of a region already in the DOM', () => {
-    // The whole point of #741: a region born holding its text is not announced. Element
-    // identity across the transition is the mechanism — and the only part jsdom can prove.
+    // Identity across the transition is the mechanism — and all jsdom can prove (#741).
     const { fixture, cmp, region, spoken } = mount();
     const whileLoading = region();
     expect(spoken(whileLoading)).toBe('Loading venues…');
@@ -46,8 +45,7 @@ describe('LoadAnnouncer', () => {
   });
 
   it('says nothing when the load failed — "not loading" is not "loaded"', () => {
-    // Four of the eight surfaces can leave the loading state by failing. "Payouts loaded."
-    // over a failure panel is worse than the silence this keeps.
+    // Four of the eight surfaces can leave the loading state by failing.
     const { fixture, cmp, region, spoken } = mount();
 
     cmp.failed.set(true);
@@ -67,8 +65,7 @@ describe('LoadAnnouncer', () => {
   });
 
   it('costs no layout, so a call site can mount it anywhere above its loading branch', () => {
-    // display:contents on the host + an absolutely-positioned sr-only child: neither becomes
-    // a flex or grid item in whatever container the call site drops it into.
+    // display:contents + an sr-only child: neither becomes a flex or grid item.
     const fixture = TestBed.createComponent(Host);
     fixture.detectChanges();
     const element = (fixture.nativeElement as HTMLElement).querySelector('app-load-announcer')!;

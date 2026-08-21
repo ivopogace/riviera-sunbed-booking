@@ -180,8 +180,7 @@ describe('VenueMap', () => {
     flushVenue();
     fixture.detectChanges();
 
-    // Same node, mutated text: the mechanism that makes a live region speak. The availability
-    // count region cannot do this job — it lives inside the loaded branch, so it is rebuilt.
+    // Same node, mutated text. The availability count region is rebuilt, so it cannot do this.
     expect(el().querySelector('[data-testid="load-announcer"]')).toBe(announcer);
     expect(announcer.textContent?.trim()).toBe('Beach map loaded.');
   });

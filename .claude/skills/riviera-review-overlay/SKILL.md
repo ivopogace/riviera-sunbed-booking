@@ -47,7 +47,10 @@ frontend-only review never pays for the backend bank:
   transition that destroys the focused element moves focus — the repo's
   most-repeated bug class, fifteen instances across #604/#614/#616/#621/#625.
   One of the guard's two rules gates, the other only advises, and both have
-  shapes they cannot match — the item is what covers those).
+  shapes they cannot match — the item is what covers those), and **RV-FE-10**
+  (a live region outlives the content it announces — a region created together
+  with its message announces nothing, and the text being present means every
+  spec reading it passes either way; #741 shipped that on eight surfaces).
 - **Fullstack diff** → both of the above, plus `references/fe-be-contract.md` —
   API typing, money/date on the wire, webhook-vs-redirect, idempotency.
 

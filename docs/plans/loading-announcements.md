@@ -128,24 +128,27 @@ The old surface is "a loading container that is itself the live region". Behavio
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
 | R-1 | Inserting a persistent element at the top of a template shifts `:first-child`/`nth-child`/`first:` styling | Medium | Visual regression | **Closed.** Host is `class: 'contents'` and the inner `<p>` is `sr-only` (absolutely positioned → out of flow, not a flex/grid item); `grep -n 'first:\|nth-child\|first-child\|last:'` over all eight touched templates returns nothing |
-| R-2 | Double announcement where a persistent count region already speaks (Discover) | Medium | Noisy AT | Discover's `readyLabel` is empty by design (B-7). Verified per surface in the adoption table below |
-| R-3 | `readyLabel` derived from a live count would re-announce on every later mutation (date change, accepting a request) | Medium | Noisy AT | `readyLabel` is a **static string** per call site, never a computed count |
-| R-4 | The announcer announces "loaded" when the load failed | High if unguarded | Wrong information to AT | `failed` input suppresses the ready label (AC-2) |
+| R-2 | Double announcement where a persistent count region already speaks (Discover) | Medium | Noisy AT | **Closed.** Only Discover's count region is persistent, so only Discover's `readyLabel` is empty; `venue-map` and `daily-view-tab` count regions sit inside the loaded branch and are rebuilt, so they get a real one |
+| R-3 | `readyLabel` derived from a live count would re-announce on every later mutation (date change, accepting a request) | Medium | Noisy AT | **Closed.** `readyLabel` is a static string at all eight call sites; pinned by RV-FE-10 for future slices |
+| R-4 | The announcer announces "loaded" when the load failed | High if unguarded | Wrong information to AT | **Closed.** `failed` input suppresses the ready label (AC-2), bound on the four surfaces that have an error signal |
 | R-5 | jsdom cannot prove a real screen reader announces | Certain | False confidence | **Closed.** Specs assert the *mechanism* (element identity across the transition) and were **mutation-checked**: moving the announcer back inside `requests-tab`'s `@if` fails the new spec, so it bites the exact defect. Spec titles/comments no longer claim an announcement none of them proved |
-| R-6 | Eight surfaces adopted mechanically, one signal mapped wrong (e.g. a surface whose "loaded" is also its error state) | Medium | Silent or wrong announcement | Each surface's `loading`/`failed` expression is derived from a named `computed()` in the component, not template logic, and asserted per surface (AC-3/AC-4) |
+| R-6 | Eight surfaces adopted mechanically, one signal mapped wrong (e.g. a surface whose "loaded" is also its error state) | Medium | Silent or wrong announcement | **Closed.** `home` and `venue-map` got named `loading` computeds; the other six bind an existing signal directly. Each asserted per surface (AC-3/AC-4) |
 
 ---
 
 ## Open questions / Assumptions
 
-- **A-1 (assumption):** Announcing the *completion* is the valuable half; the initial-mount
+All questions resolved; the two assumptions below held through implementation and are recorded
+as decisions, not open items.
+
+- **A-1 (assumption, held):** Announcing the *completion* is the valuable half; the initial-mount
   "Loading…" text may still go unspoken because the component mounts already loading. This
   matches angular.dev's own framing ("screen readers that focus on a deferred section will
   initially read the placeholder … but may not announce changes when the deferred content
   loads"). A deferred first write to force the initial announcement was considered and
   rejected as untestable timing hackery. **Re-loads** (filter change, date change, retry) do
   announce "Loading…" because the region is already mounted.
-- **A-2 (assumption):** Static ready sentences ("Beach map loaded.") over live counts — R-3.
+- **A-2 (assumption, held):** Static ready sentences ("Beach map loaded.") over live counts — R-3.
 
 ### Resolved
 
@@ -219,11 +222,9 @@ N/A — no request or response shape changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)` — all eight surfaces adopted; full unit suite green
-(176 files, 1606 tests), lint and format clean.
+**Stage pointer:** `review gate` — implementation complete, all phases green.
 
-**Next action:** Write the mocked-suite e2e (AC-6), add RV-FE-10 to the review overlay, then
-mark the PR ready for review.
+**Next action:** Mark PR #743 ready for review, run the Review gate, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -231,7 +232,7 @@ mark the PR ready for review.
 | 1 — The `load-announcer` primitive (TDD) | ✅ | |
 | 2 — Adopt on the three surfaces #741 names | ✅ | |
 | 3 — Adopt on the five surfaces the grill swept up | ✅ | |
-| 4 — e2e, docs freshness (RV-FE-10), close-out | ⏳ | |
+| 4 — e2e, docs freshness (RV-FE-10), close-out | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -267,6 +268,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/auth/set-password.ts` — same treatment (inline template).
 - `frontend/src/app/auth/set-password.spec.ts` — AC-3/AC-4/AC-5.
 - `frontend/e2e/loading-announcements.e2e.ts` — AC-6, mocked suite (CI-run).
+- `frontend/e2e/layout-editor.e2e.ts` — one assertion follows the words out of `set-loading` into the announcer.
+- `.claude/skills/riviera-review-overlay/SKILL.md` — index the new RV-FE-10 alongside RV-FE-8/9.
 - `.claude/skills/riviera-review-overlay/references/frontend-conventions.md` — new **RV-FE-10** (live regions must outlive the content they announce), so the decision is enforced on future slices rather than re-derived.
 
 ---
@@ -329,6 +332,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | G-1 | #741 names three surfaces | "an `aria-live`/`role=status` element that enters the DOM already holding its text and is removed wholesale" | `grep -rn 'aria-live\|role="status"\|<output' frontend/src --include=*.html --include=*.ts \| grep -v '\.spec\.ts'` | 8 **loading** regions (the 3 named + `daily-view-tab`, `requests-tab`, `payouts-tab`, `venue-map`, `set-password`) | All 8 fixed (maintainer confirmed scope) |
 | G-2 | Same sweep, adjacent population | The same shape on **result/notice** regions (`<output>`, admin notices, `home.html:143` empty state) | same command | ~20 | Out of scope (Non-goals) — different defect class; several are already correct. Recorded, not silently dropped |
 | G-3 | R-4 | "a surface whose loaded state is also reachable on error" | read each of the 8 components' error signals | 4 of 8 have an explicit error signal | `failed` input added so none announces "loaded" on failure |
+| G-4 | The three surfaces' text moved out of their loading containers | "a test that asserts loading copy **through the container** rather than the announcer" | `grep -rn 'Loading ' frontend/e2e frontend/src --include=*.ts` | 1 outside the diff — `layout-editor.e2e.ts:293` | Updated in this PR; it now asserts the announcer's text and the container's `aria-hidden` |
 
 ---
 
@@ -336,23 +340,23 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | AC | Verified by | Result |
 |---|---|---|
-| AC-1 | `load-announcer.spec.ts` | |
-| AC-2 | `load-announcer.spec.ts` | |
-| AC-3 | 8 surface specs | |
-| AC-4 | 8 surface specs | |
-| AC-5 | 8 surface specs | |
-| AC-6 | `loading-announcements.e2e.ts` | |
-| AC-7 | lint + format + `npm test` + `test:e2e:a11y` | |
+| AC-1 | `load-announcer.spec.ts` › "keeps the SAME element across loading → loaded…" | ✅ |
+| AC-2 | `load-announcer.spec.ts` › "says nothing when the load failed…" | ✅ |
+| AC-3 | 8 surface specs › "announces through one region that survives loading → loaded (#741)" | ✅ |
+| AC-4 | the same 8 specs (identity assertion) — **mutation-checked** on `requests-tab` | ✅ |
+| AC-5 | the same 8 specs (`aria-hidden` on the skeleton / visible copy) | ✅ |
+| AC-6 | `loading-announcements.e2e.ts` — **mutation-checked**: scoping the region back inside Discover's `@if` fails it in 5s | ✅ |
+| AC-7 | `npm run lint` ✅ · `format:check` ✅ · `npm test` ✅ 176 files / 1606 tests · `test:e2e:a11y` ✅ | ✅ |
 
 ---
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] All ACs verified above, with real results (not "should pass").
+- [x] All ACs verified above, with real results (not "should pass").
 - [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` clean (plan doc staged first).
 - [ ] `node scripts/check-touch-target.mjs --files <touched>` clean (no new interactive controls, but the touched templates are in scope).
-- [ ] Open questions empty or each citing a follow-up issue.
+- [x] Open questions empty; the two assumptions held and are recorded as decisions.
 - [ ] Findings register current; every finding re-entered at Implement.
-- [ ] No spec claims an announcement it does not prove (R-5).
+- [x] No spec claims an announcement it does not prove (R-5) — titles and comments rewritten on all three surfaces that carried the claim.
 - [ ] Follow-up issue filed for silent failure panels (Non-goals).
-- [ ] `riviera-docs-freshness` run over the slice's diff.
+- [x] `riviera-docs-freshness` run over the slice's diff — one finding, fixed here: no substrate doc stated a live-region rule, so RV-FE-10 was added to the review overlay (+ its SKILL.md index).

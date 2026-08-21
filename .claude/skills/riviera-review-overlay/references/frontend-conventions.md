@@ -363,3 +363,44 @@ server error). Not a finding at all for a BUSY-1 shape — CI already failed it 
   three the guard is blind to: does this component already move focus somewhere *else* (so FOCUS-1
   exempts it), is anything torn down here that isn't a confirm branch at all, and does any disabled
   field start its own write?"
+
+---
+
+### RV-FE-10. A live region outlives the content it announces (#741)
+**Gate:** Does every `aria-live` / `role="status"` / `<output>` region the diff writes **already
+exist in the DOM before the text it announces changes**?
+- [ ] the region is **outside** the `@if`/`@switch` branch it describes — a region created together
+      with its message announces nothing on most screen-reader/browser combinations
+- [ ] only the **content** branches; the element does not
+- [ ] a *loading* surface uses `shared/load-announcer.ts` (`app-load-announcer`) rather than a
+      hand-rolled region — one shape, one place to fix
+- [ ] the surface has exactly **one** source for a given sentence: the skeleton or visible
+      "Loading…" copy beside an announcer is `aria-hidden="true"`, and a `readyLabel` is empty
+      wherever a persistent count region already speaks the outcome
+- [ ] `readyLabel` is a **static** sentence, not a live count — a count re-announces on every later
+      mutation (a date change, an accepted request)
+- [ ] leaving the loading state by **failing** does not announce success (`[failed]` is bound
+      wherever the surface has an error signal)
+- [ ] the spec asserts **element identity across the transition**, not the presence of text
+
+> **The trap this item exists for:** the text is always there, so a spec that reads it passes either
+> way, and both the assertion and the comment beside it end up claiming an announcement nobody
+> proved. #741 shipped that shape on **eight** surfaces at once — three of them named in the ticket,
+> five found only by enumerating the mechanism (`grep -rn 'aria-live\|role="status"\|<output>'
+> frontend/src`). `booking/booking-pay.ts`'s `pay-status` region and the #717/#718 count regions had
+> the rule right the whole time; the loading surfaces never adopted it. angular.dev says the same
+> thing under `@defer` › *Keep accessibility in mind*.
+>
+> **Ask whether the spec was mutation-checked.** Moving the region back inside its branch must fail
+> it — a passing identity assertion that cannot fail is the same false comfort in a new place
+> (worked examples: `requests-tab.spec.ts` and `e2e/loading-announcements.e2e.ts`, both
+> mutation-checked in PR #743).
+
+**Default severity:** **Major** — a loading state that says nothing is a WCAG AA failure on a shipped
+surface, and it is invisible to every automated check including axe. **Blocker** when the region is
+the *only* signal a state changed (a status a sighted user also cannot see). **Minor** where a
+persistent sibling region already announces the same outcome and the new one is merely redundant.
+**Skill framing:**
+- Peer-review: "For each live region in this diff: is the element still there before and after the
+  change it announces, or is it created along with its message? Which single region owns each
+  sentence on that surface — and does anything else repeat it? What does it say when the load fails?"

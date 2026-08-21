@@ -333,8 +333,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     const loading = host.querySelector('[data-testid="my-bookings-loading"]')!;
-    // Wholly decoration: it used to be the live region itself, born holding its text and so
-    // never announced (#741). The persistent announcer below carries the words now.
+    // Decoration now: it used to be the live region, born holding its text (#741).
     expect(loading.getAttribute('aria-live')).toBeNull();
     expect(loading.getAttribute('aria-hidden')).toBe('true');
     expect(loading.querySelectorAll('.skeleton')).toHaveLength(2);

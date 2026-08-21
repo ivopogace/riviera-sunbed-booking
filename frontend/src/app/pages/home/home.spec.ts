@@ -526,8 +526,7 @@ describe('Home (venue discovery)', () => {
     await fixture.whenStable();
 
     const loading = el().querySelector('[data-testid="loading"]')!;
-    // Decoration only: it used to BE the live region, which is the #741 defect — a region born
-    // holding its text is not announced, so the words move to the persistent announcer below.
+    // Decoration only: it used to BE the live region, born holding its text (#741).
     expect(loading.getAttribute('aria-live')).toBeNull();
     expect(loading.getAttribute('aria-hidden')).toBe('true');
     const skeletons = loading.querySelectorAll('[data-testid="skeleton-card"]');
@@ -551,8 +550,7 @@ describe('Home (venue discovery)', () => {
 
     // The SAME node, still mounted: that identity is what makes the change an announcement.
     expect(el().querySelector('[data-testid="load-announcer"]')).toBe(announcer);
-    // Empty on purpose — the results-count region above the @if chain already speaks the
-    // outcome, and it survives every list state. One source per sentence.
+    // Empty on purpose: the persistent results-count region already speaks the outcome.
     expect(announcer.textContent?.trim()).toBe('');
   });
 });

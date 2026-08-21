@@ -123,8 +123,7 @@
     class="mx-[2px] mt-3 rounded-full px-[15px] py-2 text-[13px] text-(--riv-card-ink-soft) backdrop-blur-[20px] backdrop-saturate-[1.7] [&_svg]:size-[15px]"
   ></p>
 
-  <!-- Above the @if chain on purpose: a live region only announces what changes while it is
-       already in the DOM, so it must outlive the branch it describes (#741). -->
+  <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
   <app-load-announcer [loading]="loading()" [failed]="failed()" loadingLabel="Loading venues…" />
 
   @if (failed()) {
@@ -302,8 +301,7 @@
       </ul>
     }
   } @else {
-    <!-- Pulsing skeleton cards mirror the loaded grid so the layout doesn't jump when results land.
-         Wholly decorative: the announcer above owns the words (#741). -->
+    <!-- Skeletons mirror the grid so the layout doesn't jump; the announcer owns the words (#741). -->
     <div data-testid="loading" aria-hidden="true">
       <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
         @for (slot of skeletons; track slot) {

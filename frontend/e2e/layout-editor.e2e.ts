@@ -290,7 +290,9 @@ test('holds both surfaces until the map read settles (#721)', async ({ page }) =
   await expect(generate).toHaveText(/Loading the current layout/);
 
   await page.getByTestId('layout-mode-sets').click();
-  await expect(page.getByTestId('set-loading')).toContainText('Loading this venue’s sets');
+  // The words live in the persistent announcer now; the skeleton beside it is decoration (#741).
+  await expect(page.getByTestId('load-announcer')).toHaveText('Loading this venue’s sets…');
+  await expect(page.getByTestId('set-loading')).toHaveAttribute('aria-hidden', 'true');
   expect(await page.getByTestId('set-skeleton-tile').count()).toBeGreaterThan(0);
   await expect(page.getByTestId('set-cell')).toHaveCount(0);
   await expect(page.getByTestId('set-panel-no-sets')).toHaveCount(0);
