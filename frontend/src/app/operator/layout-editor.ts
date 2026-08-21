@@ -165,6 +165,22 @@ export class LayoutEditor {
   /** True when the initial map read failed (no `setVersion` token loaded). Save cannot proceed without the
    *  token, so instead of a silent no-op the editor prompts a refresh (review finding). */
   protected readonly loadFailed = signal(false);
+  /**
+   * True once a map read has SUCCEEDED for this venue — i.e. `loadedSets` is what the server holds
+   * rather than the empty default. {@link SetEditor} renders its skeleton until then, because a read
+   * that has not landed says nothing about how many sets a venue has. Deliberately NOT cleared by
+   * {@link onSetsChanged}'s re-read: that path keeps `loadedSets`, so the per-set surface must keep
+   * rendering them instead of flashing a skeleton over every write.
+   */
+  protected readonly mapLoaded = signal(false);
+  /**
+   * True while a map read is in flight. Generate is shut for exactly that long, because until the
+   * read lands `hasLayout()` is false for a venue that HAS a layout — and a regenerate then replaces
+   * it with no confirmation, which a later Save writes over the real one with a token the resolving
+   * read has quietly made valid. It covers both windows: the tab's own mount and
+   * {@link onSetsChanged}'s re-read.
+   */
+  protected readonly reading = signal(false);
 
   /**
    * The mode actually shown: the operator's choice once made, otherwise the one the venue needs — a
@@ -176,6 +192,14 @@ export class LayoutEditor {
 
   /** Whether a grid exists (drives the empty-state vs the grid + save button). */
   protected readonly hasLayout = computed(() => this.grid().length > 0);
+
+  /**
+   * The read failed with nothing ever loaded, so the tab holds no map at all. The per-set surface is
+   * not rendered in that state: it would read the empty `loadedSets` as "this venue has no sets yet"
+   * and offer to add the first one, over a venue whose sets are simply unknown. A LATER read failing
+   * is different — the surface keeps the sets it already has, and only the notice is new.
+   */
+  protected readonly mapUnavailable = computed(() => this.loadFailed() && !this.mapLoaded());
 
   /** The name each row saves with: the operator's trimmed words, or the row's grid letter. */
   private readonly effectiveRowNames = computed<readonly string[]>(() =>
@@ -280,6 +304,7 @@ export class LayoutEditor {
     this.reloading.set(false);
     this.reloadFailed.set(false);
     this.loadFailed.set(false);
+    this.mapLoaded.set(false);
     this.clearRenameNotices();
     this.renamingRow.set(null);
     this.loadExisting(venueId);
@@ -327,6 +352,9 @@ export class LayoutEditor {
   }
 
   protected onGenerate(): void {
+    if (this.reading()) {
+      return; // the button is inert meanwhile; never generate over a layout nobody has seen
+    }
     if (this.hasLayout()) {
       this.confirmRegen.set(true); // regenerate replaces — confirm first
       return;
@@ -644,6 +672,7 @@ export class LayoutEditor {
         this.grid.set([]); // hasLayout() → false, so seedFrom re-seeds (or leaves the empty state)
         this.loadedSetVersion.set(venue.setVersion ?? null);
         this.loadFailed.set(false);
+        this.mapLoaded.set(true);
         this.loadedSets.set(venue.sets);
         this.seedFrom(venue.sets);
         this.errorCode.set(undefined);
@@ -698,12 +727,15 @@ export class LayoutEditor {
    */
   private loadExisting(venueId: number): void {
     const epoch = this.epoch;
+    this.reading.set(true);
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this load — never seed the new venue's editor (#180)
         }
+        this.reading.set(false);
         this.loadFailed.set(false);
+        this.mapLoaded.set(true);
         this.loadedSetVersion.set(venue.setVersion ?? null);
         this.loadedSets.set(venue.sets);
         this.seedFrom(venue.sets);
@@ -712,6 +744,7 @@ export class LayoutEditor {
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this load (#180)
         }
+        this.reading.set(false);
         this.loadFailed.set(true);
         if (error instanceof HttpErrorResponse && error.status === 401) {
           this.operator.sessionLost();

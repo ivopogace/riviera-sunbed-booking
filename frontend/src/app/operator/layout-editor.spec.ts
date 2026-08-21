@@ -96,6 +96,11 @@ describe('LayoutEditor (#172)', () => {
     return Array.from(host.querySelectorAll<HTMLButtonElement>('[data-testid="layout-cell"]'));
   }
 
+  /** Generate's inert posture is `aria-disabled` via `[appBusy]`, never `[disabled]` (RV-FE-9). */
+  function generateInert(): boolean {
+    return byId('layout-generate').getAttribute('aria-disabled') === 'true';
+  }
+
   /**
    * Show the bulk generate/paint surface. Needed wherever a test seeds a venue that already has sets:
    * since #600 such a venue opens in per-set mode, because that is the only mode that keeps working
@@ -123,6 +128,8 @@ describe('LayoutEditor (#172)', () => {
   it('starts empty and generates an R×C grid with row A front-row premium', () => {
     render();
     expect(byId('layout-empty')).toBeTruthy();
+    // A settled read on a set-less venue: emptiness is a fact now, so Generate acts with no confirm.
+    expect(generateInert()).toBe(false);
 
     generate('2', '3');
 
@@ -148,6 +155,7 @@ describe('LayoutEditor (#172)', () => {
     // Regenerate to a smaller grid: the first click only opens the confirm, it does not replace yet.
     setInput('layout-gen-rows', '1');
     setInput('layout-gen-cols', '1');
+    expect(generateInert()).toBe(false);
     byId('layout-generate').click();
     fixture.detectChanges();
     expect(byId('layout-confirm-regen')).toBeTruthy();
@@ -836,6 +844,48 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()[0].getAttribute('data-state')).toBe('walkin');
   });
 
+  it('explains a failed map read on both surfaces instead of an empty per-set editor (#721)', () => {
+    renderWithFailedLoad();
+
+    expect(byId('layout-load-failed')).toBeTruthy();
+
+    byId('layout-mode-sets').click();
+    fixture.detectChanges();
+
+    // An unknown map is not an empty one: no editor claiming no sets, and no skeleton pulsing on.
+    expect(byId('layout-load-failed')).toBeTruthy();
+    expect(byId('set-editor')).toBeFalsy();
+    expect(host.querySelector('[data-testid="set-skeleton-tile"]')).toBeNull();
+    // Nor a silent fall-back to the bulk surface under a pressed "Edit sets".
+    expect(byId('layout-mode-sets').getAttribute('aria-pressed')).toBe('true');
+    expect(byId('layout-generate')).toBeFalsy();
+  });
+
+  it('keeps the per-set editor on the last-known sets when a LATER re-read fails (#721)', async () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
+
+    byId('set-cell').click();
+    fixture.detectChanges();
+    byId('set-pool-WALK_IN').click();
+    fixture.detectChanges();
+    byId('set-save').click();
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.includes('/api/venues/1/sets/1'))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+
+    // The map HAS been read once, so the surface keeps what it holds and only explains the reload.
+    expect(byId('set-editor')).toBeTruthy();
+    expect(byId('set-cell')).toBeTruthy();
+    expect(byId('layout-load-failed')).toBeTruthy();
+  });
+
   it('shows a load-failed message (not a silent no-op) when Save is pressed after a failed initial load', () => {
     // With no token (the initial map read failed), Save must surface an error prompting a refresh.
     renderWithFailedLoad();
@@ -1061,6 +1111,85 @@ describe('LayoutEditor (#172)', () => {
     useBulkMode();
     expect(cells()).toHaveLength(1);
     expect(cells()[0].getAttribute('data-state')).toBe('walkin');
+  });
+
+  it('refuses Generate until the map read settles, on mount and on the per-set reconcile (#721)', () => {
+    // The tab opens in bulk mode during the read (loadedSets is still []), so Generate is one click away.
+    configure();
+    const read = http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'));
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    const generate = byId('layout-generate') as HTMLButtonElement;
+    expect(generateInert()).toBe(true);
+    // Inert via aria-disabled, NOT [disabled]: disabling a focused button blurs it to <body> (#616).
+    expect(generate.disabled).toBe(false);
+    generate.click();
+    fixture.detectChanges();
+    expect(cells()).toHaveLength(0); // nothing generated over a layout nobody has seen
+
+    read.flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 0 });
+    fixture.detectChanges();
+    useBulkMode();
+
+    expect(generateInert()).toBe(false);
+    expect(cells()).toHaveLength(1);
+  });
+
+  it('refuses Generate during the per-set write re-read, the tab’s second unsettled window (#721)', async () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
+
+    byId('set-cell').click();
+    fixture.detectChanges();
+    byId('set-pool-WALK_IN').click();
+    fixture.detectChanges();
+    byId('set-save').click();
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.includes('/api/venues/1/sets/1'))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The reconcile clears the grid and re-reads, so hasLayout() alone would read as "empty venue".
+    const reread = http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'));
+    useBulkMode();
+    const generate = byId('layout-generate');
+    expect(generateInert()).toBe(true);
+    generate.click();
+    fixture.detectChanges();
+    expect(cells()).toHaveLength(0);
+    http.expectNone((r) => r.method === 'PUT');
+
+    reread.flush({
+      id: 1,
+      name: 'V',
+      sets: [seat(1, 'PREMIUM', 'WALK_IN', 1, 1)],
+      setVersion: 0,
+    });
+    fixture.detectChanges();
+
+    expect(generateInert()).toBe(false);
+    expect(cells()).toHaveLength(1);
+  });
+
+  it('keeps Generate shut for the venue on screen when a superseded read lands (#180, #721)', () => {
+    configure();
+    const first = http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'));
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    const second = http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'));
+
+    // Venue 1's read lands late: it must not report venue 2's still-running read as settled.
+    first.flush({ id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1)], setVersion: 0 });
+    fixture.detectChanges();
+    expect(generateInert()).toBe(true);
+
+    second.flush({ id: 2, name: 'W', sets: [], setVersion: 0 });
+    fixture.detectChanges();
+    expect(generateInert()).toBe(false);
   });
 
   it('drops the shared snapshot and re-reads the map after a per-set write (#486 rule, AC-1)', async () => {

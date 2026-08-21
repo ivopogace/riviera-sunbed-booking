@@ -1,5 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+  TestRequest,
+} from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
@@ -10,14 +14,15 @@ import { LayoutEditor } from './layout-editor';
 /**
  * Structural a11y audit for the layout editor. The grid must be keyboard + AT operable
  * (an AC): every cell is a labelled `<button>`. axe runs over the bulk empty state, the generated
- * grid, a painted grid, and Edit-sets mode on a venue with no sets. (Colour contrast is proven by `layout-editor.contrast.spec.ts` — axe can't
+ * grid, a painted grid, Edit-sets mode on a venue with no sets, and the failed-read state on both
+ * surfaces. (Colour contrast is proven by `layout-editor.contrast.spec.ts` — axe can't
  * measure it under jsdom.)
  */
 describe('LayoutEditor a11y (#172)', () => {
   let fixture: ComponentFixture<LayoutEditor>;
   let http: HttpTestingController;
 
-  function render(sets: unknown[] = []): void {
+  function configure(): void {
     TestBed.configureTestingModule({
       imports: [LayoutEditor],
       providers: [
@@ -42,9 +47,22 @@ describe('LayoutEditor a11y (#172)', () => {
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
-    http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets, setVersion: 2 });
+  }
+
+  function mapRequest(): TestRequest {
+    return http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'));
+  }
+
+  function render(sets: unknown[] = []): void {
+    configure();
+    mapRequest().flush({ id: 1, name: 'V', sets, setVersion: 2 });
+    fixture.detectChanges();
+  }
+
+  /** The initial map read FAILS, so the tab has no map to offer on either surface. */
+  function renderWithFailedLoad(): void {
+    configure();
+    mapRequest().flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
   }
 
@@ -94,6 +112,18 @@ describe('LayoutEditor a11y (#172)', () => {
 
   it('has no axe violations in Edit-sets mode with no sets (#718)', async () => {
     render();
+    byId('layout-mode-sets').click();
+    fixture.detectChanges();
+
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations when the initial map read failed (#721)', async () => {
+    renderWithFailedLoad();
+
+    expect(byId('layout-load-failed')).toBeTruthy();
+    await expectNoAxeViolations(host());
+
     byId('layout-mode-sets').click();
     fixture.detectChanges();
 
