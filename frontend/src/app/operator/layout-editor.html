@@ -36,7 +36,19 @@
     </div>
   </fieldset>
 
-  @if (mode() === 'sets') {
+  <!-- Mode-independent, so it sits above the branch: neither surface has a map when the read failed. -->
+  @if (loadFailed()) {
+    <p
+      class="mb-4 text-[13px] font-semibold text-[#a3160e]"
+      role="alert"
+      data-testid="layout-load-failed"
+    >
+      Couldn’t load this venue’s beach map, so it can’t be edited or saved yet. Refresh the page and
+      try again.
+    </p>
+  }
+
+  @if (mode() === 'sets' && !mapUnavailable()) {
     @if (venueId(); as id) {
       <app-set-editor
         [venueId]="id"
@@ -332,16 +344,6 @@
           data-testid="layout-error"
         >
           {{ message }}
-        </span>
-      }
-      @if (loadFailed()) {
-        <span
-          class="text-[13px] font-semibold text-[#a3160e]"
-          role="alert"
-          data-testid="layout-load-failed"
-        >
-          Couldn’t load the current layout, so it can’t be saved yet. Refresh the page and try
-          again.
         </span>
       }
     </div>

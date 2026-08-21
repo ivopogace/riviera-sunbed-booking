@@ -839,6 +839,45 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()[0].getAttribute('data-state')).toBe('walkin');
   });
 
+  it('explains a failed map read on both surfaces instead of an empty per-set editor (#721)', () => {
+    renderWithFailedLoad();
+
+    expect(byId('layout-load-failed')).toBeTruthy();
+
+    byId('layout-mode-sets').click();
+    fixture.detectChanges();
+
+    // An unknown map is not an empty one: no editor claiming no sets, and no skeleton pulsing on.
+    expect(byId('layout-load-failed')).toBeTruthy();
+    expect(byId('set-editor')).toBeFalsy();
+    expect(host.querySelector('[data-testid="set-skeleton-tile"]')).toBeNull();
+  });
+
+  it('keeps the per-set editor on the last-known sets when a LATER re-read fails (#721)', async () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
+
+    byId('set-cell').click();
+    fixture.detectChanges();
+    byId('set-pool-WALK_IN').click();
+    fixture.detectChanges();
+    byId('set-save').click();
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.includes('/api/venues/1/sets/1'))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+
+    // The map HAS been read once, so the surface keeps what it holds and only explains the reload.
+    expect(byId('set-editor')).toBeTruthy();
+    expect(byId('set-cell')).toBeTruthy();
+    expect(byId('layout-load-failed')).toBeTruthy();
+  });
+
   it('shows a load-failed message (not a silent no-op) when Save is pressed after a failed initial load', () => {
     // With no token (the initial map read failed), Save must surface an error prompting a refresh.
     renderWithFailedLoad();

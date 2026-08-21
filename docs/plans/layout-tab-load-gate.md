@@ -103,7 +103,7 @@ operator is shown, and what the tab lets them do, before/at/after the map read s
       then it still generates immediately with no confirmation; and given a venue **with** a layout,
       Generate still asks for the destructive-regenerate confirmation (no regression, both arms).
       *Pinned by:* `LayoutEditor (#172) › starts empty and generates an R×C grid with row A front-row premium` + `… asks for confirmation before regenerating over an existing grid` (both extended to assert Generate is enabled once settled)
-- [ ] **AC-6:** Given the initial map read **fails**, when the operator is on either surface, then the
+- [x] **AC-6:** Given the initial map read **fails**, when the operator is on either surface, then the
       skeleton does not pulse forever: the tab renders the `layout-load-failed` notice in **both**
       modes, and the per-set editor is not rendered at all (it would otherwise repeat the very
       "no sets yet" claim this issue is about, over a venue whose sets are simply unknown).
@@ -116,7 +116,7 @@ operator is shown, and what the tab lets them do, before/at/after the map read s
       (`home.spec.ts` *"renders pulsing skeleton cards (decorative) with a text announcement while
       loading"*).
       *Pinned by:* `SetEditor (#600) › skeletons are decorative: aria-hidden, announced sr-only, and motion-reduce safe (#721)`
-- [ ] **AC-9:** Given axe in jsdom, when it runs over the in-flight per-set surface and over the
+- [x] **AC-9:** Given axe in jsdom, when it runs over the in-flight per-set surface and over the
       failed-read tab, then there are no violations.
       *Pinned by:* `SetEditor a11y (#600) › has no axe violations while the map read is in flight (#721)` +
       `LayoutEditor a11y (#172) › has no axe violations when the initial map read failed (#721)`
@@ -328,15 +328,15 @@ changes only what the tab renders between issuing today's `GET /api/venues/{id}`
 > shipped tests. Record **`merged via PR #NN`, never a merge SHA** (case history + details:
 > `riviera-sdlc` `references/pr-gates.md` §3 step 4).
 
-**Stage pointer:** `implement` — phases 0–1 shipped; draft **PR #731** open, CI running per push.
+**Stage pointer:** `implement` — phases 0–2 shipped; draft **PR #731** open, CI running per push.
 
-**Next action:** phase 2 (the failed-read path on both surfaces), test-first.
+**Next action:** phase 3 (the mocked held-GET e2e).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Per-set load gate + skeleton (unit + a11y) | ✅ | `664b19c` |
-| 1 — Generate gated on the read settling | ✅ | (this commit) |
-| 2 — Failed-read path on both surfaces | | |
+| 1 — Generate gated on the read settling | ✅ | `b4d299b` |
+| 2 — Failed-read path on both surfaces | ✅ | (this commit) |
 | 3 — Mocked Playwright e2e (held GET) | | |
 | 4 — Close-out (gates, docs freshness, final plan state) | | |
 
@@ -457,18 +457,21 @@ Skill-routing gate for what the fix touches *before* editing).
 `frontend/src/app/operator/layout-editor.spec.ts`,
 `frontend/src/app/operator/layout-editor.a11y.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-6 (failed initial read → `layout-load-failed`
+- [x] **Step 1: Write the failing tests** — AC-6 (failed initial read → `layout-load-failed`
       present in bulk **and** after switching to Edit sets; `set-editor` not rendered; no skeleton
       pulsing on), the later-failed-re-read parity row (editor kept), and AC-9's axe case.
-- [ ] **Step 2: Run them, verify they fail**.
-- [ ] **Step 3: Minimal implementation** — `mapUnavailable` computed; hoist the notice above the
-      mode branch with mode-neutral copy; gate the `<app-set-editor>` on `!mapUnavailable()`.
-- [ ] **Step 4: Run them, verify they pass** — including the untouched "Save after a failed load"
-      spec (R-6).
-- [ ] **Step 5: Generalization-audit pass** — mechanism: every error notice rendered inside one
-      branch of a mode/tab switch whose condition is mode-independent.
-- [ ] **Step 6: Commit**
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 2: Run them, verify they fail** — **2 failed / 58 passed**, both `expected null to be
+      truthy` on `layout-load-failed` in Edit-sets mode. The a11y case passed on write: the bulk
+      half already rendered the notice, which is exactly why the gap was mode-shaped.
+- [x] **Step 3: Minimal implementation** — `mapUnavailable` computed; the notice hoisted above the
+      mode branch with mode-neutral copy; `<app-set-editor>` gated on `!mapUnavailable()`.
+- [x] **Step 4: Run them, verify they pass** — `--include="src/app/operator/*.spec.ts"` → **436
+      passed**, including the untouched "Save after a failed load" spec (R-6). The ink is unmoved
+      (`#a3160e` on the same porcelain page ground), so `layout-editor.contrast.spec.ts`'s existing
+      "save error … over every porcelain stop" row still covers it — no contrast row needed.
+- [x] **Step 5: Generalization-audit pass** — see the log's phase-2 row.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -513,6 +516,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-21 | phase 2 | **Mechanism:** every **notice whose signal is set by mode-independent code but which renders inside ONE arm of an in-component surface switch** — so half the surfaces it describes never show it. Enumerated from the switches (a component holding a mode signal and branching its template on it), not from "error messages that look misplaced" | `grep -rn "signal<'\|= signal<[A-Za-z]*Mode\|Mode>(" src/app --include=*.ts` (mode-holding components) cross-cut with `grep -rc 'role="alert"' src/app/**/*.html`, then each switch's arms read for a notice | 3 in-component surface switches: `layout-editor` (`mode()` bulk/sets — the defect: `layout-load-failed` lived in the bulk arm while `loadFailed` is set by the shared read), `auth-page` (`mode()` signin/register — `auth-error` is a form-level sibling of the register-only hint, so it renders in both), `booking-dialog` (`mode()` INSTANT/REQUEST — `dialog-error` sits at panel level, outside both arms). Every other console surface is a **route** tab with one arm, where the shape cannot occur | **One fix, two judged and left.** Both survivors already place the notice outside the arms, which is the fix applied here |
 | 2026-08-21 | phase 1 | **Mechanism:** every **destructive or irreversible action whose confirmation is conditional on fetched state** — the shape where "there is nothing to lose" and "we have not looked yet" are the same value. Enumerated from the confirm machinery itself (who sets a confirm flag, and under what condition) rather than from "editors with a Generate button" | `grep -rln "app-confirm-panel" src/app --include=*.html` (2 surfaces) + `grep -rn "confirm[A-Za-z]*\.set(true)" src/app --include=*.ts -B 3` (5 sites, with their guards), cross-checked against `grep -rn "length === 0" src/app --include=*.ts` for write guards reading a collection | 5 confirm sites. **Exactly one is conditional:** `layout-editor.onGenerate()`'s `if (hasLayout())` — the defect. The other four are unconditional (`set-editor`'s remove, `booking-view`'s cancel and withdraw, `set-password`'s), and each is reachable only from an already-loaded subject (`@if (booking(); as b)`, a selected set). `onSave()`'s `sets.length === 0` reads the **painted grid**, not a read, and is fenced again by the null `setVersion` token | **One fix, four judged and left.** The conditional-confirm shape exists once in this app, and it is the one this issue reports |
 | 2026-08-21 | phase 0 | **Mechanism:** every surface that renders a **fetched collection's emptiness as a fact** — either it takes the collection as a required input from a parent that may still be reading, or it seeds its own list signal with `[]` and branches on `.length`. Enumerated from the two syntactic shapes that create the state, not from "editors that look like this one" | `grep -rn "input.required<readonly" src/app --include=*.ts` (5) + `grep -rln "signal<readonly [A-Za-z]*\[\]>(\[\])\|signal<[A-Za-z]*\[\]>(\[\])" src/app --include=*.ts` (12), then read each surface's emptiness branch for a settled flag | 16 sites. **Inputs:** `set-editor` (the defect); `payout-statement` — its parent gates the whole tab on `@if (!loaded())`; `photo-slideshow` — both callers bind from an already-loaded object (`@if (venue(); as v)` / a loaded card); `segmented-control` — static config, never fetched; `beach-map-canvas` — a presentational primitive whose consumers own the question. **Own-read surfaces:** 11 of 11 already distinguish unread from empty — 10 via a `loaded`/`loading` signal, `admin-mail-delivery` via `searched() && bookings().length === 0` | **One fix, fifteen judged and left.** The population's defect rate is 1/16, and the one hit is the surface whose settled flag lives in a *different component* — which is exactly why it was the one to go missing |
 
@@ -526,7 +530,7 @@ Skill-routing gate for what the fix touches *before* editing).
       set-less renders pass.
 - [ ] **AC-4 / AC-5 / AC-6:** `npm test -- layout-editor` → the Generate gate and the failed-read
       path pass.
-- [ ] **AC-9:** `npm test -- set-editor.a11y layout-editor.a11y` → axe clean on both new states.
+- [x] **AC-9:** `npm test -- set-editor.a11y layout-editor.a11y` → axe clean on both new states.
 - [ ] **AC-10:** `npm run test:e2e:a11y -- layout-editor` → passes.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.

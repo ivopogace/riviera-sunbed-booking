@@ -193,6 +193,14 @@ export class LayoutEditor {
   /** Whether a grid exists (drives the empty-state vs the grid + save button). */
   protected readonly hasLayout = computed(() => this.grid().length > 0);
 
+  /**
+   * The read failed with nothing ever loaded, so the tab holds no map at all. The per-set surface is
+   * not rendered in that state: it would read the empty `loadedSets` as "this venue has no sets yet"
+   * and offer to add the first one, over a venue whose sets are simply unknown. A LATER read failing
+   * is different — the surface keeps the sets it already has, and only the notice is new.
+   */
+  protected readonly mapUnavailable = computed(() => this.loadFailed() && !this.mapLoaded());
+
   /** The name each row saves with: the operator's trimmed words, or the row's grid letter. */
   private readonly effectiveRowNames = computed<readonly string[]>(() =>
     this.grid().map((_, y) => (this.rowNames()[y] ?? '').trim() || gridRowLabel(y)),
