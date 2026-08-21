@@ -179,9 +179,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 4 — manage-booking-link element form)
+**Stage pointer:** implement (phase 5 — app shell)
 
-**Next action:** rewrite manage-booking-link.spec.ts (red), then the element-form component + both call sites + allowList drop.
+**Next action:** port app.scss (507 lines) to utilities in app.html; delete it; update the styles.scss note.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -189,7 +189,7 @@ N/A — no contract change.
 | 1 — my-bookings migration + pulsing skeleton (AC-1/AC-2) | ✅ | `My bookings: Tailwind migration + pulsing skeleton` — red→green (2 new specs), 42 my-bookings + 279 booking specs, lint + TT/IC guards clean |
 | 2 — booking-confirmation migration | ✅ | `Booking confirmation: Tailwind migration` — 13 specs green unmodified |
 | 3 — booking-pay migration | ✅ | `Booking pay: Tailwind migration` — 36 specs green unmodified; pay-spin keyframe now global in styles.scss |
-| 4 — manage-booking-link element form + allowList drop (AC-5) | | |
+| 4 — manage-booking-link element form + allowList drop (AC-5) | ✅ | `Manage-booking link owns its anchor` — spec rewritten red→green; allowList + component-selector overrides dropped; 281 booking specs + lint green |
 | 5 — app-shell migration (AC-3) | | |
 | 6 — verify sweep: e2e + computed-style parity (AC-4/AC-6/AC-7), docs freshness | | |
 
@@ -270,10 +270,11 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `manage-booking-link.ts`, `manage-booking-link.spec.ts`,
 `booking-pay.ts`, `booking-confirmation.ts`, `eslint.config.js`
 
-- [ ] **Red:** rewrite the spec for the element contract (owns anchor, `variant` skins,
+- [x] **Red:** rewrite the spec for the element contract (owns anchor, `variant` skins,
   label + testid on the anchor). **Green:** element selector + `contents` host +
   `RouterLink`; call sites swap to `<app-manage-booking-link [code]="…" variant="…" />`;
-  drop the allowList entry; lint passes.
+  drop the allowList entry AND the file's `component-selector` attribute-mode override
+  (both #737 workarounds); lint passes.
 
 ## Phase 5 — app shell
 
