@@ -209,6 +209,16 @@ it: mutate the source and exactly the two pins go red, no site stays silently gr
   `frontend/src` (verified: zero such imports today) — the black-box boundary is deliberate, and
   a shared constant reaching into it would be the more expensive mistake.
 
+- **D-3 (surfaced at phase 0, not at plan time): the lint rule had encoded the old taxonomy.**
+  `@angular-eslint/component-selector` was configured `type: 'element'`, so the first
+  attribute-selector component in the repo fails the lint. The rule cannot express both forms
+  in one entry — `type` accepts an array but `style` does not, and an element selector is
+  kebab-case while an attribute selector is camelCase. Resolved with a **file-scoped override**
+  that runs the same rule in `type: 'attribute'` mode, rather than widening the global rule
+  (which would stop catching a component that should have been an element) or writing an
+  inline `eslint-disable` (which would stop checking the selector at all). Falsified: renaming
+  the selector to `p[cutoffNote]` still fails the lint on the missing prefix.
+
 ## Availability & concurrency (invariant #2)
 
 N/A — does not affect availability. No `availability(set_id, booking_date)` row is read or
@@ -256,14 +266,14 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 
 ## Execution status
 
-**Stage pointer:** `PLAN — plan doc authored, not yet committed`
+**Stage pointer:** `IMPLEMENT — phase 0 done; phase 1 next`
 
-**Next action:** commit this plan doc on `claude/dedupe-cutoff-sentence-oo12cg`, then start
-phase 0 (write `cutoff-note.spec.ts` red before the component exists).
+**Next action:** phase 1 — rewrite both surface specs red (dropping the re-typed sentence),
+then swap both templates to mount the shared note.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the shared cutoff-note seam | | |
+| 0 — the shared cutoff-note seam | ✅ | this commit |
 | 1 — both surfaces adopt it; the specs stop re-typing the copy | | |
 | 2 — the cross-surface parity assertion in the mocked e2e | | |
 | 3 — close-out (docs freshness, review + Sonar gates, final state) | | |
@@ -286,6 +296,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/venue/venue-map.ts|.html` — the map mounts the shared note
 - `frontend/src/app/venue/venue-map.spec.ts` — same, keeping its unrelated `min` assertion
 - `frontend/e2e/discovery-flow.e2e.ts` — the cross-surface parity assertion (AC-3)
+- `frontend/eslint.config.js` — a file-scoped override so `component-selector` checks the
+  attribute form in attribute mode (see D-3)
 - `.claude/skills/riviera-tailwind/SKILL.md` — rule 1's taxonomy gains the third branch this
   slice introduces (attribute-selector component over a native element)
 

@@ -37,6 +37,20 @@ module.exports = defineConfig([
     },
   },
   {
+    // A component augmenting a native element is camelCase-attribute-selected, like a directive.
+    files: ['src/app/shared/cutoff-note.ts'],
+    rules: {
+      '@angular-eslint/component-selector': [
+        'error',
+        {
+          type: 'attribute',
+          prefix: 'app',
+          style: 'camelCase',
+        },
+      ],
+    },
+  },
+  {
     files: ['src/**/*.ts'],
     rules: {
       'no-restricted-syntax': [
