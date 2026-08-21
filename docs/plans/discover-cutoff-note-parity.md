@@ -111,7 +111,8 @@ session addendum).
 | R-3 | The call-site override loses to the component's own size, so Discover's glyph silently drops 15 px → 13 px | med | low | the component sizes via **presentation attributes** (`width="13"`), which lose to *every* CSS rule — so a call-site class wins unconditionally, with no specificity arithmetic to get wrong | claude | **closed** `f8ef9aa` — computed `width`/`height` measure 15 px on Discover and 13 px on the map, and each stroke resolves to exactly its note's ink |
 | R-4 | The host's static `class: 'contents'` replaces the call site's class (or vice versa), silently dropping one | low | med | Angular merges host metadata classes with the template's static class; pinned by a `clock-icon.spec.ts` case rather than assumed | claude | **closed** `404f3b6` — the merge case passes, and the browser measurement confirms both classes act |
 | R-5 | An SVG at the root of an **inline** template is parsed in the HTML namespace, so `<circle>`/`<path>` never paint | low | high | pinned by `clock-icon.spec.ts` asserting `namespaceURI`; the map's rendered output re-checked by `venue-map.spec.ts` | claude | **closed** `404f3b6` — svg, circle and path all report the SVG namespace |
-| R-6 | The e2e regex is updated but the suite is never run in this cloud session, so a copy typo ships | med | med | run the mocked suite with `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` per `riviera-local-debug`; CI runs it again | claude | **closed** — the full mocked suite ran green locally (232 passed); CI re-runs it on the PR |
+| R-6 | The e2e regex is updated but the suite is never run in this cloud session, so a copy typo ships | med | med | run the mocked suite with `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` per `riviera-local-debug`; CI runs it again | claude | **closed** — the full mocked suite ran green locally (232 passed); CI re-ran it green on `79ae097` |
+| R-7 | *(added at the review gate)* Discover's 15 px override is pinned by no executable test, so it regresses to 13 px silently — jsdom computes no Tailwind and the probe that proved it was deleted | med | med | measure the rendered box in the mocked e2e (`toHaveCSS`), and **falsify the pin** rather than trusting it | claude | **closed** `79ae097` — removing the class turns it red (13 px vs 15 px expected); the descendant `[&_svg]` also removes the wrap-the-root failure mode |
 
 ## Open questions / Assumptions
 
@@ -162,17 +163,33 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, awaiting CI + the Sonar gate on PR #734`
+**Stage pointer:** `DONE — merged via PR #734`
 
-**Next action:** confirm CI green on the review-fix push, then pull the SonarCloud new-issue list
-for PR #734 and clear it.
+**Next action:** none — all three gates cleared on the final head `79ae097`. Post-merge, only the
+two GitHub-only items remain: nothing to tick (no parent epic), and the deferred findings are
+already written onto **#735** / **#736**.
+
+**Gate record (final head `79ae097`):**
+
+- **CI:** green — `Backend (build + test)`, `Frontend (lint + test + build)`, `Repo hygiene
+  (diff-scoped)`, `CodeQL`, both `Analyze` jobs, all `success`.
+- **Review gate:** ran via the `code-review` plugin workflow (invocation ladder rung 1) with
+  `riviera-review-overlay` layered on. 10 findings, **no functional defect**; 8 fixed in
+  `79ae097`, 2 deferred to #735 / #736. Register below.
+- **Sonar gate:** `SonarCloud Code Analysis` = `success`, and the **reported list pulled from the
+  API, not just the gate conclusion**: 0 issues, 0 security hotspots, 0 new bugs / vulnerabilities
+  / code smells, **100.0%** coverage on new code (bar ≥80%), **0.0%** duplication and **0**
+  duplicated blocks. The false-clean read was ruled out per `pr-gates.md` §2: `new_lines = 50`
+  proves an analysis exists, so the zero is genuine and not an unanalyzed PR. (Note for the next
+  session: the measures API returns `periods` — plural, an array — not `period`; parsing for the
+  singular key silently yields `None` for every metric and looks exactly like the false clean.)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared clock-icon seam | ✅ | `404f3b6` |
 | 1 — adopt it on both notes + reframe Discover's copy | ✅ | `f8ef9aa` |
 | 2 — e2e assertion + the `riviera-tailwind` icon § | ✅ | `28bb5d7` |
-| 3 — close-out (docs freshness, review + Sonar gates, final state) | ⏳ | `922982d` (freshness), review-gate fixes below |
+| 3 — close-out (docs freshness, review + Sonar gates, final state) | ✅ | `922982d` (freshness), `79ae097` (review-gate fixes), this commit (final state) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -239,6 +256,7 @@ behavior. Every fix re-entered at Implement through the frontend routing row.
 |---|---|---|---|---|---|
 | 2026-08-21 | Phase 1 | **Duplicated SVG geometry** — every inline `<svg>` in app source, the mechanism the seam exists to collapse (not "places that look like icons") | `grep -rnF '<svg' frontend/src --include=\*.html --include=\*.ts` | before: 1 (`venue/venue-map.html`); after: 1 (`shared/clock-icon.ts`) | **All.** The population was a single site plus the one Discover was about to add, which is exactly why #703 correctly declined the seam and why this slice buys it. AC-4 is this command |
 | 2026-08-21 | Phase 1 | **Surfaces stating the cutoff rule in prose**, keyed by *wording* rather than by the `cutoff-note` test id — a surface can state the rule without carrying the id, so id-keying would have returned a false clean | `grep -rniE "6\s*(&nbsp;\|\xc2\xa0\| )?PM\|evening before\|day before\|same.day\|closes? (the )?(evening\|day)" frontend/src frontend/e2e --include=\*.html --include=\*.ts` | 6 beyond the two notes: `admin/admin-commissions.ts:49,313`, `booking/booking-dialog.ts:260`, `booking/booking-view.ts:733`, `pages/legal/terms-of-service.html:30,43` (+ its `.ts:14`), `e2e/legal-pages.e2e.ts:78` | **Subset, with reasons.** The two `booking/` hits state the **cancellation** policy (invariant #10) — same instant, different rule. `admin-commissions` explains to an admin why today's commissions already accrued — different audience, not a point-of-sale invitation. The legal pages state the rule in legal register and deliberately name no clock time (their own doc comment says so). None carries a glyph, so the icon population is unaffected. Only the two tourist-facing point-of-sale notes were ever in scope |
+| 2026-08-21 | Close-out | **Counting sweep** (`riviera-docs-freshness` step 2b) — docs stating a *count* of glyphs/icons/shared primitives go stale outside the diff when a slice makes the Nth instance, so none of them is findable by reviewing changed files | `grep -rniE "the (one\|two\|three\|only) (glyph\|icon\|svg\|shared component)\|no icon\|zero occurrences of\|first icon" CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr/ .claude/skills/ --include=*.md` | 1 hit, and it is this slice's own new ICON § ("no icon library and no icon registry"), which stays true — a hand-written glyph is not a library | **None needed.** `riviera-tailwind` rule 1's `retry-button.ts` citation and `riviera-frontend`'s `shared/` examples are illustrative, not exhaustive counts, so neither is falsified |
 | 2026-08-21 | Phase 1 | **Every `⏰` in app source**, re-run to confirm the glyph swap left no stragglers | `grep -rn '⏰' frontend/src frontend/e2e` | `operator/requests-tab.html:78` + 3 doc mentions + `e2e/operator-requests.e2e.ts:59`, and the new `shared/clock-icon.ts:5` | **Skip, deliberately.** The requests-tab ⏰ means *urgency*, not the cutoff rule — out of population despite matching the glyph, the same call #703's audit made. The `clock-icon.ts` hit is the rationale prose ("not the ⏰ emoji, which…") that moved out of `venue-map.html`'s comment, not a glyph |
 
 ---
