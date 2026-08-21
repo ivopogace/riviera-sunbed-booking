@@ -9,6 +9,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { LegalConsent } from './legal-consent';
 import { email, FormField, form, required, submit } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 
@@ -44,7 +45,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
  */
 @Component({
   selector: 'app-booking-dialog',
-  imports: [FormField, BusyAction, FieldGlass, TouchTarget],
+  imports: [LegalConsent, FormField, BusyAction, FieldGlass, TouchTarget],
   host: {
     // The fixed, scrim-backed backdrop must paint ABOVE the sticky glass header (z-60) — the app shell relies on this.
     class:
@@ -264,28 +265,10 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
 
             <!-- New tab (not routerLink) so the modal's checkout state survives reading the document. -->
             <p
+              appLegalConsent
+              lead="By continuing"
               class="fine mt-2.5 mb-1 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)"
-              data-testid="legal-agreement"
-            >
-              By continuing you agree to our
-              <a
-                class="underline"
-                data-testid="legal-terms-link"
-                href="/legal/terms"
-                target="_blank"
-                rel="noopener"
-                >Terms of Service</a
-              >
-              and acknowledge our
-              <a
-                class="underline"
-                data-testid="legal-privacy-link"
-                href="/legal/privacy"
-                target="_blank"
-                rel="noopener"
-                >Privacy Policy</a
-              >.
-            </p>
+            ></p>
           }
         </div>
 

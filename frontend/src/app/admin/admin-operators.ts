@@ -1,4 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
+
+import { AdminForbidden } from './admin-forbidden';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -35,6 +37,7 @@ import { TouchTarget } from '../shared/touch-target';
 @Component({
   selector: 'app-admin-operators',
   imports: [
+    AdminForbidden,
     RouterLink,
     CardGlass,
     AdminConsoleTabs,
@@ -63,9 +66,7 @@ import { TouchTarget } from '../shared/touch-target';
           >
         </p>
       } @else if (!auth.isAdmin()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-forbidden">
-          You don't have access to this page.
-        </p>
+        <p appAdminForbidden testId="admin-ops-forbidden"></p>
       } @else {
         <app-admin-console-tabs label="Admin console sections" />
         <p

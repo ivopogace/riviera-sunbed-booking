@@ -650,15 +650,17 @@ describe('VenueMap', () => {
     expect(label).toContain('Select to book'); // pinned so booking-flow.e2e.ts keeps matching
   });
 
-  it('states the cutoff as an invitation, iconed by an aria-hidden SVG (no emoji)', async () => {
+  it('mounts the shared cutoff note above the date floor it explains', async () => {
     flushVenue();
     await fixture.whenStable();
+    // The test id exists only in shared/cutoff-note.ts, so finding it proves the note mounted.
     const note = el().querySelector('[data-testid="cutoff-note"]')!;
-    // \s matches the non-breaking space in "6 PM", so the copy reads plainly here.
-    expect(note.textContent).toMatch(/Book any day from tomorrow/);
-    expect(note.textContent).toMatch(/sales close at 6\s+PM the evening before/);
-    expect(note.textContent).not.toContain('\u23f0');
+    expect(note.tagName).toBe('P');
+    // A clause, not the sentence — the wording stays pinned once, in cutoff-note.spec.ts.
+    expect(note.textContent).toContain('sales close at');
     expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    // Class pin (jsdom computes no Tailwind): the map keeps the bare header-glass ink.
+    expect(note.classList.contains('text-(--riv-ink-faint)')).toBe(true);
     const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
     expect(input.getAttribute('min')).toBe(defaultBookingDate(new Date())); // tomorrow, Europe/Tirane
   });

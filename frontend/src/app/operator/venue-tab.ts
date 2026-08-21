@@ -1,6 +1,8 @@
 import { NgOptimizedImage } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { BookingCutoffField } from './booking-cutoff-field';
+import { BookingModeField } from './booking-mode-field';
 import { form, required, submit, FormField } from '@angular/forms/signals';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -86,7 +88,16 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
  */
 @Component({
   selector: 'app-venue-tab',
-  imports: [FormField, CardGlass, NgOptimizedImage, StaleWriteBanner, BusyAction, TouchTarget],
+  imports: [
+    BookingCutoffField,
+    BookingModeField,
+    FormField,
+    CardGlass,
+    NgOptimizedImage,
+    StaleWriteBanner,
+    BusyAction,
+    TouchTarget,
+  ],
   templateUrl: './venue-tab.html',
 })
 export class VenueTab {

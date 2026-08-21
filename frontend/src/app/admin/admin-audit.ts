@@ -7,6 +7,8 @@ import {
   Injector,
   signal,
 } from '@angular/core';
+
+import { AdminForbidden } from './admin-forbidden';
 import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -30,7 +32,7 @@ import { AdminAuditEntryView } from './admin.model';
  */
 @Component({
   selector: 'app-admin-audit',
-  imports: [RouterLink, CardGlass, AdminConsoleTabs],
+  imports: [AdminForbidden, RouterLink, CardGlass, AdminConsoleTabs],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[860px] px-4 py-10" aria-labelledby="admin-audit-title">
@@ -51,9 +53,7 @@ import { AdminAuditEntryView } from './admin.model';
           >
         </p>
       } @else if (!auth.isAdmin()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-audit-forbidden">
-          You don't have access to this page.
-        </p>
+        <p appAdminForbidden testId="admin-audit-forbidden"></p>
       } @else {
         <app-admin-console-tabs label="Admin console sections" />
 

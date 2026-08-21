@@ -1,4 +1,5 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { LegalFooter } from './shared/legal-footer';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
@@ -19,7 +20,7 @@ import { TouchTarget } from './shared/touch-target';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, FindBooking, OperatorChrome, TouchTarget],
+  imports: [LegalFooter, RouterOutlet, RouterLink, FindBooking, OperatorChrome, TouchTarget],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   host: {

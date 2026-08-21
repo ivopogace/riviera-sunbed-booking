@@ -88,18 +88,10 @@
       </label>
 
       <div class="grid grid-cols-2 gap-3">
-        <label class="field flex flex-col gap-1">
-          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Booking mode</span>
-          <select
-            [formField]="venueForm.bookingMode"
-            data-testid="venue-create-booking-mode"
-            appTouchTarget
-            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
-          >
-            <option value="INSTANT">Instant Book</option>
-            <option value="REQUEST">Request to Book</option>
-          </select>
-        </label>
+        <app-booking-mode-field
+          [field]="venueForm.bookingMode"
+          testId="venue-create-booking-mode"
+        />
         <label class="field flex flex-col gap-1">
           <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
             >Payout currency (ISO 4217)</span
@@ -121,23 +113,7 @@
       </div>
 
       <div class="grid grid-cols-2 gap-3">
-        <label class="field flex flex-col gap-1">
-          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
-            >Booking cutoff (Europe/Tirane)</span
-          >
-          <input
-            type="time"
-            [formField]="venueForm.bookingCutoff"
-            data-testid="venue-create-cutoff"
-            appTouchTarget
-            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
-          />
-          @if (venueForm.bookingCutoff().touched() && venueForm.bookingCutoff().errors().length) {
-            <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
-              venueForm.bookingCutoff().errors()[0].message
-            }}</span>
-          }
-        </label>
+        <app-booking-cutoff-field [field]="venueForm.bookingCutoff" testId="venue-create-cutoff" />
       </div>
 
       @if (platformDefaults(); as defaults) {

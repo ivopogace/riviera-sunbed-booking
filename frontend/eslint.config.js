@@ -37,6 +37,26 @@ module.exports = defineConfig([
     },
   },
   {
+    // Components augmenting a native element are camelCase-attribute-selected, like a directive.
+    files: [
+      'src/app/admin/admin-forbidden.ts',
+      'src/app/booking/legal-consent.ts',
+      'src/app/booking/manage-booking-link.ts',
+      'src/app/shared/cutoff-note.ts',
+      'src/app/shared/legal-footer.ts',
+    ],
+    rules: {
+      '@angular-eslint/component-selector': [
+        'error',
+        {
+          type: 'attribute',
+          prefix: 'app',
+          style: 'camelCase',
+        },
+      ],
+    },
+  },
+  {
     files: ['src/**/*.ts'],
     rules: {
       'no-restricted-syntax': [
@@ -52,7 +72,13 @@ module.exports = defineConfig([
   {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
-    rules: {},
+    rules: {
+      // <a appManageBookingLink> takes its label from that component, not from this template.
+      '@angular-eslint/template/elements-content': [
+        'error',
+        { allowList: ['appManageBookingLink'] },
+      ],
+    },
   },
   {
     // Build tooling, outside every TS project: type-aware rules would only see `any`.

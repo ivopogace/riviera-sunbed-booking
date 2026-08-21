@@ -101,6 +101,11 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   const cutoffGlyph = page.getByTestId('cutoff-note').locator('svg');
   await expect(cutoffGlyph).toHaveCSS('width', '15px');
   await expect(cutoffGlyph).toHaveCSS('height', '15px');
+  // Captured, not re-typed, so the map below compares against Discover itself (#735).
+  const rawCutoff = await page.getByTestId('cutoff-note').textContent();
+  // Normalized here: toHaveText would collapse the U+00A0 in "6 PM" on only one side.
+  const discoverCutoff = rawCutoff?.replace(/\s+/g, ' ').trim();
+  expect(discoverCutoff).toBeTruthy();
   // One combined assertion: bare toContainText('2') would be vacuously satisfied by the
   // year digits in the date label (review finding).
   await expect(page.getByTestId('results')).toContainText('2 venues');
@@ -143,6 +148,9 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(headerChips.locator('.amenity-chip')).toHaveCount(5); // to-water + all 4
   await expect(headerChips).toContainText('15m to water');
   await expect(headerChips).toContainText('WiFi');
+
+  // One rule, one voice: the map's note reads exactly as the one Discover just rendered.
+  await expect(page.getByTestId('cutoff-note')).toHaveText(discoverCutoff!);
   await expectNoSeriousAxeViolations(page, 'venue beach map');
 });
 

@@ -57,7 +57,7 @@ describe('VenueCreateCard (#278)', () => {
 
   /** Set a Signal Forms field by the text of its label, then notify the form. */
   function setField(label: string, value: string): void {
-    const field = Array.from(host().querySelectorAll('label.field')).find((l) =>
+    const field = Array.from(host().querySelectorAll('label')).find((l) =>
       l.querySelector('span')?.textContent?.trim().startsWith(label),
     );
     if (!field) {
@@ -85,8 +85,9 @@ describe('VenueCreateCard (#278)', () => {
   }
 
   it('renders the 7 fields with the defaults (INSTANT / EUR / 18:00) and no commission control', () => {
-    const labels = Array.from(host().querySelectorAll('label.field span')).map((s) =>
-      s.textContent?.trim(),
+    // Every field's own <label>, marker-class-free: two of them come from shared components.
+    const labels = Array.from(host().querySelectorAll('label')).map((l) =>
+      l.querySelector('span')?.textContent?.replace(/\s+/g, ' ').trim(),
     );
     expect(labels).toEqual([
       'Name',

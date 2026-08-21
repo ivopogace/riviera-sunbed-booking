@@ -1,4 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
+
+import { AdminForbidden } from './admin-forbidden';
 import { email, FormField, form, required } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
@@ -50,7 +52,15 @@ type ErasureStage = 'form' | 'confirm' | 'done';
  */
 @Component({
   selector: 'app-admin-privacy',
-  imports: [RouterLink, FormField, CardGlass, AdminConsoleTabs, BusyAction, TouchTarget],
+  imports: [
+    AdminForbidden,
+    RouterLink,
+    FormField,
+    CardGlass,
+    AdminConsoleTabs,
+    BusyAction,
+    TouchTarget,
+  ],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[880px] px-4 py-10" aria-labelledby="admin-privacy-title">
@@ -71,9 +81,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
           >
         </p>
       } @else if (!auth.isAdmin()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-privacy-forbidden">
-          You don't have access to this page.
-        </p>
+        <p appAdminForbidden testId="admin-privacy-forbidden"></p>
       } @else {
         <app-admin-console-tabs label="Admin console sections" />
 
