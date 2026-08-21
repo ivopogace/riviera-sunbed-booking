@@ -8,7 +8,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 @Component({
   imports: [ClockIcon],
   template: `<p class="inline-flex items-center gap-1">
-    <app-clock-icon class="[&>svg]:size-[15px]" />
+    <app-clock-icon class="[&_svg]:size-[15px]" />
     <span>Book any day from tomorrow.</span>
   </p>`,
 })
@@ -56,7 +56,7 @@ describe('ClockIcon', () => {
     const host = (fixture.nativeElement as HTMLElement).querySelector('app-clock-icon')!;
 
     expect(host.classList.contains('contents')).toBe(true);
-    expect(host.classList.contains('[&>svg]:size-[15px]')).toBe(true);
+    expect(host.classList.contains('[&_svg]:size-[15px]')).toBe(true);
   });
 
   it('contributes no text, so a note reads as its sentence alone', () => {

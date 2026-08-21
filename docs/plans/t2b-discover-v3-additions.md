@@ -15,6 +15,11 @@ elements T2 didn't build (T2 restyled against v2 just before the v3 gap-fill lan
    Keep the `role="alert"` / `data-testid="error"` semantics T2 shipped.
 2. **Cutoff explainer line** under the filter bar — ⏰ "Bookings close the evening before — book by
    6 PM the day before. Today isn't available." (invariant #4 — **display only**; the server enforces).
+   **Superseded by #733:** both the emoji and this wording are retired — the line now reads "Book any
+   day from tomorrow — each day's sales close at 6 PM the evening before." behind
+   `shared/clock-icon.ts`. The design artboard this item cites
+   (`docs/design/riviera-sunbeds-liquid-glass-v3.dc.html:157`) still shows the old copy, as does its
+   beach-map line 232 (retired earlier by #703); tracked separately rather than rewritten here.
 
 ## Acceptance criteria → tests
 

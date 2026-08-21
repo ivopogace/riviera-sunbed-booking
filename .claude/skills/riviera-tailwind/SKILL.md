@@ -76,29 +76,43 @@ nothing for an icon component. An icon is an inline `<svg>` you write. The repo'
 its precedent is **`shared/clock-icon.ts`** (the cutoff-note clock on Discover + the beach map) —
 read it before adding a second.
 
-1. **A shared glyph is a `@Component`, not a directive** — the one place rule 1's "reused
-   *element*" branch is forced rather than chosen. A directive only adds classes and attributes to
-   an element that already exists, so it cannot carry the `circle`/`path` geometry. It will look
-   inconsistent with the `appFailureIcon` / `appAmenityChip` neighbours; it isn't.
-2. **`stroke="currentColor"` (or `stroke-current`) is what lets one copy serve two call sites** on
-   different inks — the surrounding note's `color` cascades in and the stroke follows. This is why
-   a shared glyph needs **no colour input and no variant**.
-3. **Size with presentation attributes, override with a class.** `width="13"`/`stroke-width="2"`
-   on the element sit below author stylesheets in the cascade, so *any* utility beats them: the
-   component's attributes are **defaults**, and a call site resizes with a plain class — no
-   `input()`, no specificity arithmetic.
-4. **Utilities are global here, so the call site can reach into the glyph.** `src/tailwind.css`
-   loads through `angular.json`'s `styles` array, and emulated encapsulation only stamps
-   `_ngcontent-*` onto rules compiled from a component's own `styles`/`styleUrls`. So
-   `[&>svg]:size-[15px]` written on `<app-clock-icon>` in the **parent** template compiles to a
-   plain `… > svg` rule and matches the child's SVG. Zero API surface on the component.
-5. **`class: 'contents'` on the host** (→ `display: contents`) drops the wrapper out of layout so
-   the SVG stays the **direct** flex child of the sentence — each call site's existing
-   `gap-1`/`shrink-0` keeps working and adopting the component causes no visual diff. Needed
-   because preflight sets `img, svg, video, canvas, … { display: block }`.
-6. **`aria-hidden` goes on the host AND the inner `<svg>`.** Redundant but free: the sentence
-   carries the meaning, specs query the inner one, and a call site that never looks at the SVG is
-   still covered.
+**ICON-1. A shared glyph is a `@Component`, not a directive** — the one place the top-level
+rule 1's "reused *element*" branch is forced rather than chosen. A directive only adds classes and
+attributes to an element that already exists, so it cannot carry the `circle`/`path` geometry. It
+will look inconsistent with the `appFailureIcon` / `appAmenityChip` neighbours; it isn't.
+
+**ICON-2. `stroke="currentColor"` (or `stroke-current`) is what lets one copy serve two call
+sites** on different inks — the surrounding note's `color` cascades in and the stroke follows.
+This is why a shared glyph needs **no colour input and no variant**.
+
+**ICON-3. Size with presentation attributes, override with a class.** `width="13"` /
+`stroke-width="2"` on the element sit below author stylesheets in the cascade, so *any* utility
+beats them: the component's attributes are **defaults**, and a call site resizes with a plain
+class — no `input()`, no specificity arithmetic.
+
+**ICON-4. Utilities are global here, so the call site can reach into the glyph.**
+`src/tailwind.css` loads through `angular.json`'s `styles` array, and emulated encapsulation only
+stamps `_ngcontent-*` onto rules compiled from a component's own `styles`/`styleUrls`. So
+`[&_svg]:size-[15px]` written on `<app-clock-icon>` in the **parent** template compiles to a plain
+`… svg` descendant rule and matches the glyph, with zero API surface on the component. Two costs
+to take with it: **prefer the descendant `[&_svg]` to the child `[&>svg]`** — the child form
+silently stops matching the day anyone wraps the root element — and remember this makes the
+glyph's internal DOM part of its contract, which nothing in jsdom can see. So **pin the rendered
+size in the mocked e2e with `toHaveCSS`** (worked example: `discovery-flow.e2e.ts`). Rule 4's
+"the proof is the rendered box, never the class list" applies to glyphs too.
+
+**ICON-5. `class: 'contents'` on the host** (→ `display: contents`) drops the wrapper out of
+layout, so the SVG — not the `<app-clock-icon>` element — is what the sentence's flex container
+lays out. Each call site's existing `gap-1`/`shrink-0` keeps working, so adopting the component
+causes no visual diff. The reason is the **wrapper**, not preflight: without `contents` the host
+becomes the flex item and the child's `shrink-0` and the parent's `gap` no longer act on the
+glyph. (Preflight's `img, svg, … { display: block }` is a separate fact — it is why an svg needs a
+flex or inline context to sit beside text at all.) Not a new pattern: `shared/stat-tile.ts`
+already hosts on `class: 'contents'` for the same reason.
+
+**ICON-6. `aria-hidden` goes on the host AND the inner `<svg>`.** Redundant but free: the sentence
+carries the meaning, specs query the inner one, and a call site that never looks at the SVG is
+still covered.
 
 > **Rejected:** the esbuild `import clock from './clock.svg' with { loader: 'text' }` route. It
 > inlines the file at build time but then needs `innerHTML` (sanitizer friction), loses per-call-site

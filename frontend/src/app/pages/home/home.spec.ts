@@ -510,6 +510,8 @@ describe('Home (venue discovery)', () => {
       'Book any day from tomorrow \u2014 each day\u2019s sales close at 6 PM the evening before.',
     );
     expect(note.textContent).not.toContain('\u23f0');
+    // The normalized compare above collapses U+00A0, so the no-break space is pinned separately.
+    expect(note.textContent).toContain('6\u00a0PM');
     expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 

@@ -26,7 +26,7 @@ right-size rule is why this slice gets a plan doc at all) · `riviera-plan-doc` 
 template — forced the behavior-parity ledger that caught the dropped `&ngsp;` and the
 `cutoff-icon` marker class) · `tdd` (each phase writes the failing spec first; the
 `clock-icon.spec.ts` host-merge case was written before the component existed) ·
-`riviera-review-overlay` (review gate — due at ready-for-review) · `riviera-docs-freshness`
+`riviera-review-overlay` (review gate — **ran** on PR #734 at ready-for-review; its bank rode on top of the `code-review` plugin workflow, 10 findings, register below) · `riviera-docs-freshness`
 (**ran** over `9a45a4a..HEAD` — 3 findings, all patched here: the icon § `riviera-tailwind`
 owed per #733 §5, and two now-false present-tense claims in #703's shipped plan doc, whose
 Non-goals still read "still ⏰ …" and "One call site". Swept `CLAUDE.md`, `CONTEXT.md`,
@@ -52,27 +52,27 @@ session addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given Discover has loaded, when the cutoff note renders, then its text is
+- [x] **AC-1:** Given Discover has loaded, when the cutoff note renders, then its text is
   "Book any day from tomorrow — each day's sales close at 6 PM the evening before." and
   contains neither the retired "book by 6 PM the day before" clause nor "Today isn't
   available". *Pinned by:* `home.spec.ts` › `states the cutoff as an invitation, iconed by an aria-hidden SVG (no emoji)`
-- [ ] **AC-2:** Given Discover has loaded, when the cutoff note renders, then it contains no
+- [x] **AC-2:** Given Discover has loaded, when the cutoff note renders, then it contains no
   `⏰` character and its leading glyph is an `<svg aria-hidden="true">`, so the note's
   `textContent` is the sentence alone. *Pinned by:* the same `home.spec.ts` case
-- [ ] **AC-3:** Given the shared `<app-clock-icon />`, when it renders, then the host is
+- [x] **AC-3:** Given the shared `<app-clock-icon />`, when it renders, then the host is
   `aria-hidden="true"` **and** the inner `<svg>` is `aria-hidden="true"`, and the host's
   static `contents` class merges with (rather than replaces) a class written at the call
   site. *Pinned by:* `clock-icon.spec.ts`
-- [ ] **AC-4:** Given the whole frontend source tree, when swept for `<svg` in `.html`/`.ts`,
+- [x] **AC-4:** Given the whole frontend source tree, when swept for `<svg` in `.html`/`.ts`,
   then exactly one hit remains — `shared/clock-icon.ts`. *Pinned by:* AC-verification
   command `grep -rnF '<svg' frontend/src --include=\*.html --include=\*.ts`
-- [ ] **AC-5:** Given the beach map's cutoff note, when it renders after adopting the shared
+- [x] **AC-5:** Given the beach map's cutoff note, when it renders after adopting the shared
   component, then its copy, its `<svg aria-hidden>` and the date input's `min` are unchanged.
   *Pinned by:* the pre-existing `venue-map.spec.ts` › `states the cutoff as an invitation, iconed by an aria-hidden SVG (no emoji)` (edited: no)
-- [ ] **AC-6:** Given the mocked e2e suite, when Discover renders in its list, empty and
+- [x] **AC-6:** Given the mocked e2e suite, when Discover renders in its list, empty and
   load-failure states, then the cutoff note matches the new copy and axe reports no serious
   violations. *Pinned by:* `discovery-flow.e2e.ts` + `expectNoSeriousAxeViolations`
-- [ ] **AC-7:** Given the contrast specs, when run, then `--riv-card-ink-soft` on the card
+- [x] **AC-7:** Given the contrast specs, when run, then `--riv-card-ink-soft` on the card
   glass (Discover) and `--riv-ink-faint` on the header glass (map) both still pass AA.
   *Pinned by:* `home.contrast.spec.ts`, `venue-map.contrast.spec.ts` (both unedited)
 
@@ -162,25 +162,39 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement complete — opening the draft PR (CI gate)`
+**Stage pointer:** `review gate — findings fixed, awaiting CI + the Sonar gate on PR #734`
 
-**Next action:** open the draft PR so CI fires, then mark ready for review to make the Review
-and Sonar gates due.
+**Next action:** confirm CI green on the review-fix push, then pull the SonarCloud new-issue list
+for PR #734 and clear it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared clock-icon seam | ✅ | `404f3b6` |
 | 1 — adopt it on both notes + reframe Discover's copy | ✅ | `f8ef9aa` |
-| 2 — e2e assertion + the `riviera-tailwind` icon § | ✅ | this commit (SHA filled at close-out) |
-| 3 — close-out (docs freshness, review + Sonar gates, final state) | | |
+| 2 — e2e assertion + the `riviera-tailwind` icon § | ✅ | `28bb5d7` |
+| 3 — close-out (docs freshness, review + Sonar gates, final state) | ⏳ | `922982d` (freshness), review-gate fixes below |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Findings register**
 
+Review gate ran on PR #734 via the `code-review` plugin workflow (rung 1 of the invocation
+ladder succeeded), with `riviera-review-overlay`'s bank layered on. **10 findings, no functional
+defect** — the reviewer independently re-measured the rendered glyph and confirmed the shipped
+behavior. Every fix re-entered at Implement through the frontend routing row.
+
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review | Discover's 15 px override was pinned by **no executable test** — the only rendered-box proof was the throwaway probe, so it could regress silently. Violates rule 4's own "the proof is the rendered box, never the class list" | fixed — `discovery-flow.e2e.ts` now asserts `toHaveCSS` 15 px on the glyph; **falsified** by removing the class (went red at 13 px), so the pin genuinely bites |
+| F-2 | review | Zero API surface made the component's internal DOM part of its contract: `[&>svg]` breaks the day anyone wraps the root, with no compile error and no failing test | fixed — moved to the **descendant** `[&_svg]`, which survives wrapping; the residual coupling is now guarded by F-1's measured pin and stated as a cost in ICON-4 rather than sold as free |
+| F-3 | review | The slice dedupes the glyph but leaves the **sentence** duplicated in 5 places — the exact drift #733 exists to repair can recur | deferred → **#735**. #733's ACs scope this slice to copy + icon, and the shape (constant vs `<app-cutoff-note>`) is a real tradeoff; the repo's precedent for that is a follow-up issue (#703 → #733 itself) |
+| F-4 | review | The freshness sweep missed `docs/design/` and the rest of `docs/plans/` — two docs still state the retired copy | split: `t2b-discover-v3-additions.md` patched here (a plan-doc final state, inside the skill's map); the artboards deferred → **#736**, which also asks whether `docs/design/` should join that map. Verified both claims before acting — artboard line 232 has been stale since **#703**, not this slice |
+| F-5 | review | The new Icons § opened a second `1.`–`6.` list in a skill whose rules are cited by bare number — this plan doc's own "rule 2" citation became ambiguous | fixed — renumbered **ICON-1…ICON-6**; the upward cross-reference now says "the top-level rule 1" |
+| F-6 | review | ICON-5 gave an **incorrect** causal rationale (blamed preflight's `svg{display:block}`) and presented `host: { class: 'contents' }` as novel when `shared/stat-tile.ts` already ships it | fixed — the cause is the **wrapper** becoming the flex item, preflight noted as the separate fact it is; `stat-tile.ts` cited as precedent. R-1's "verified against tailwindcss@4.3.3" re-derived an in-repo precedent |
+| F-7 | review | The spec's whitespace normalization collapses U+00A0, so `6&nbsp;PM` was asserted **nowhere** — replacing it with a plain space passed every suite, letting the note wrap between "6" and "PM" | fixed — `home.spec.ts` pins `6\u00a0PM` alongside the normalized compare |
+| F-8 | review | The plan doc contradicted itself: unticked ACs and phase steps beside a ✅ table, a placeholder beside a ticked "no placeholders", a stage pointer behind HEAD | fixed — this section |
+| F-9 | review | The e2e regex was loosened to `.*` over the clause that actually differed between the surfaces, and Playwright skips whitespace normalization for RegExp matchers, so it depended on Angular's collapsing to match at all | fixed — asserts the "each day's" clause explicitly and uses `[\s\S]*` so a reflowed template can't turn it red |
+| F-10 | review | The component's rationale ("emoji render platform-dependently") is a property of the glyph that applies to the app's other on-glass emoji, but the audit rejected those on a *meaning* argument — a rule applied to one of three instances | fixed — the doc comment now scopes the judgement to these two notes and says the remaining emoji glyphs are unrelated and stay |
 
 ---
 
@@ -202,16 +216,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `frontend/src/app/shared/clock-icon.ts` · Test `frontend/src/app/shared/clock-icon.spec.ts`
 
-- [ ] **Step 1–4:** spec first (host + inner `aria-hidden`, SVG namespace, class merge), then
+- [x] **Step 1–4:** spec first (host + inner `aria-hidden`, SVG namespace, class merge), then
   the component; `npx vitest run src/app/shared/clock-icon.spec.ts`.
 
 ## Phase 1 — Both notes adopt it; Discover's copy is reframed
 
 **Files:** Modify `venue-map.html|.ts`, `home.html|.ts` · Test `home.spec.ts`, `venue-map.spec.ts`
 
-- [ ] **Step 1–4:** rewrite `home.spec.ts`'s cutoff case red, then swap both templates;
+- [x] **Step 1–4:** rewrite `home.spec.ts`'s cutoff case red, then swap both templates;
   `npx vitest run src/app/pages/home src/app/venue/venue-map.spec.ts`.
-- [ ] **Step 5:** Generalization-audit pass — sweep by mechanism, not resemblance.
+- [x] **Step 5:** Generalization-audit pass — sweep by mechanism, not resemblance.
 
 ## Phase 2 — e2e + the docs gap the precedent creates
 
@@ -272,5 +286,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Frontend** standards met; no `as any`; folder placement per `riviera-frontend`.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full.**
+- [x] **Close-out written in THIS PR**, citing PR **#734** — the final `merged via PR #734`
+      stage pointer lands in this PR's last commit, so no docs-only follow-up PR is needed.
+- [x] **The review gate ran in full** — the `code-review` plugin workflow executed (invocation
+      ladder rung 1) with `riviera-review-overlay` layered on, not the overlay alone. 10 findings,
+      8 fixed here, 2 deferred with issues **#735** / **#736**.
