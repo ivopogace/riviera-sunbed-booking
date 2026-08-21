@@ -411,6 +411,340 @@ describe('LayoutEditor (#172)', () => {
     expect(rowNameInputs().map((i) => i.value)).toEqual(['A', 'B']);
   });
 
+  function rowNameSaves(): HTMLButtonElement[] {
+    return Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[data-testid="layout-row-name-save"]'),
+    );
+  }
+
+  /** A trading venue: two saved rows, so the bulk save is locked but each row is renameable. */
+  function renderSaved(): void {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A'), seat(2, 'STANDARD', 'ONLINE', 1, 2, 'B')], 3);
+    useBulkMode();
+  }
+
+  it('saves one row’s name without the bulk save (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
+    );
+    expect(req.request.body).toEqual({ newLabel: 'Back row', expectedVersion: 3 });
+    req.flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('layout-row-name-saved')).toBeTruthy();
+    // The write bumped set_version, so a follow-up rename must not carry the spent token.
+    setRowName(0, 'Front row');
+    rowNameSaves()[0].click();
+    const next = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/A/name'),
+    );
+    expect(next.request.body).toEqual({ newLabel: 'Front row', expectedVersion: 4 });
+    next.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('renames the row the URL names even after the draft changed twice (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back');
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+
+    // The path carries the STORED label, never the draft — otherwise the second save 404s.
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    setRowName(1, 'Back terrace');
+    rowNameSaves()[1].click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/Back%20row/name'),
+    );
+    req.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('surfaces a taken row name against the row that asked, keeping the draft (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'A');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('layout-row-name-write-error').textContent).toContain('name');
+    // The typed draft survives so the operator can correct it rather than retype from scratch.
+    expect(rowNameInputs()[1].value).toBe('A');
+    // A per-row conflict is not the venue-level stale banner.
+    expect(host.querySelector('[data-testid="layout-stale-banner"]')).toBeNull();
+  });
+
+  it('routes a stale rename into the reload banner, not the row error (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('layout-stale-banner')).toBeTruthy();
+    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
+  });
+
+  it('explains every rename failure the panel can receive (#726)', async () => {
+    // One case per rowNameErrorMessage arm: an unexplained code falls back to generic copy.
+    const cases: [string, string][] = [
+      ['ROW_NAME_TAKEN', 'Another row already has that name'],
+      ['NO_SUCH_ROW', 'no longer exists'],
+      ['NOT_VENUE_OWNER', 'do not manage this venue'],
+      ['NO_SUCH_VENUE', 'could not be found'],
+      ['INVALID_REQUEST', 'up to 40 characters'],
+      ['WHAT_IS_THIS', 'Something went wrong'],
+    ];
+    for (const [code, expected] of cases) {
+      renderSaved();
+      setRowName(1, 'Back row');
+      rowNameSaves()[1].click();
+      http
+        .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+        .flush({ code }, { status: 409, statusText: 'Conflict' });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(byId('layout-row-name-write-error').textContent).toContain(expected);
+      http.verify();
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('signs the operator out when a rename comes back 401 (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('layout-row-name-write-error').textContent).toContain('session has expired');
+  });
+
+  it('ignores a rename that a venue switch superseded (#726, #180)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
+    );
+
+    // A venue switch mid-flight: the rename's outcome must not land on the new venue's editor.
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({
+        id: 2,
+        name: 'W',
+        sets: [],
+        setVersion: 0,
+      });
+    req.flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="layout-row-name-saved"]')).toBeNull();
+  });
+
+  it('drops a superseded rename failure after a venue switch too (#726, #180)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
+    );
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({
+        id: 2,
+        name: 'W',
+        sets: [],
+        setVersion: 0,
+      });
+    req.flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
+  });
+
+  it('ignores a second rename while one is already in flight (#726)', async () => {
+    renderSaved();
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
+    );
+
+    // The shared token cannot admit two concurrent writes, so the second click is dropped.
+    rowNameSaves()[0].click();
+    http.expectNone((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/A/name'));
+
+    req.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('does not rename a row when the map read never yielded a token (#726)', () => {
+    renderWithFailedLoad();
+
+    // No setVersion and no stored rows: the same guard seen from both sides.
+    expect(rowNameSaves()).toHaveLength(0);
+    http.expectNone((r) => r.method === 'PUT');
+  });
+
+  it('clears a rename notice when the venue switches in place (#726 review F-6)', async () => {
+    renderSaved();
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-row-name-saved')).toBeTruthy();
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .flush({
+        id: 2,
+        name: 'W',
+        sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1, 'Z')],
+        setVersion: 0,
+      });
+    fixture.detectChanges();
+    useBulkMode();
+
+    // The notice was pinned to a grid index on venue 1; venue 2's row never was renamed.
+    expect(host.querySelector('[data-testid="layout-row-name-saved"]')).toBeNull();
+  });
+
+  it('clears a rename error when a stale reload re-indexes the rows (#726 review F-11)', async () => {
+    renderSaved();
+    // Not a LOCAL duplicate, so #723's guard lets the bulk save through; only the server refuses it.
+    setRowName(1, 'Front row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-row-name-write-error')).toBeTruthy();
+
+    // A bulk-save conflict's Reload re-seeds the grid; the row at index 1 may now be a different row.
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    byId('layout-stale-reload').click();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({
+        id: 1,
+        name: 'V',
+        sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A')],
+        setVersion: 9,
+      });
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
+  });
+
+  it('does not race a rename against an in-flight bulk save (#726 review F-7)', async () => {
+    renderSaved();
+
+    byId('layout-save').click();
+    const save = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+    );
+
+    // Both writes turn on the one set_version token, so the rename must wait rather than false-conflict.
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http.expectNone((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'));
+
+    save.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('treats a cleared name field as cancel, not a rename to the grid letter (#726 review R2-10)', async () => {
+    renderSaved();
+
+    setRowName(1, '');
+    rowNameSaves()[1].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Renaming row B to "B" would be a visible change for guests already booked into it.
+    http.expectNone((r) => r.method === 'PUT');
+    expect(rowNameInputs()[1].value).toBe('B');
+  });
+
+  it('never sends a same-label rename, so the token cannot run ahead of the server (#726)', async () => {
+    renderSaved();
+
+    // The server would no-op without bumping, leaving this tab a version ahead of it.
+    rowNameSaves()[1].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    http.expectNone((r) => r.method === 'PUT');
+    expect(byId('layout-row-name-saved')).toBeTruthy();
+
+    // The token is untouched, so a real rename right after still carries the loaded value.
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
+    );
+    expect(req.request.body).toEqual({ newLabel: 'Back row', expectedVersion: 3 });
+    req.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('offers no per-row rename on a grid that was never saved (#726)', () => {
+    render();
+    generate('2', '2');
+
+    setRowName(0, 'Pines');
+
+    // Nothing is stored yet, so there is no row to rename — the bulk save creates these labels.
+    expect(rowNameSaves()).toHaveLength(0);
+  });
+
   it('drops the shared console snapshot after a successful save (#486 AC-4)', async () => {
     // The PUT retires the sets the shell's warm snapshot describes, so leaving it stales both tabs.
     render();

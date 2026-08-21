@@ -17,7 +17,7 @@ describe('LayoutEditor a11y (#172)', () => {
   let fixture: ComponentFixture<LayoutEditor>;
   let http: HttpTestingController;
 
-  function render(): void {
+  function render(sets: unknown[] = []): void {
     TestBed.configureTestingModule({
       imports: [LayoutEditor],
       providers: [
@@ -44,7 +44,7 @@ describe('LayoutEditor a11y (#172)', () => {
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [] });
+      .flush({ id: 1, name: 'V', sets, setVersion: 2 });
     fixture.detectChanges();
   }
 
@@ -67,6 +67,28 @@ describe('LayoutEditor a11y (#172)', () => {
 
   it('has no axe violations in the empty state', async () => {
     render();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations with the per-row rename control present (#726)', async () => {
+    // With a Save-name button per stored row, each row's input must stay its own labelled control.
+    render([
+      {
+        id: 1,
+        rowLabel: 'A',
+        positionNo: 1,
+        tier: 'PREMIUM',
+        pool: 'ONLINE',
+        price: { minorUnits: 2000, currency: 'EUR' },
+        gridX: 1,
+        gridY: 1,
+        available: true,
+      },
+    ]);
+    byId('layout-mode-bulk').click();
+    fixture.detectChanges();
+
+    expect(byId('layout-row-name-save')).toBeTruthy();
     await expectNoAxeViolations(host());
   });
 

@@ -682,6 +682,140 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.incrementedSetVersions); // fail closed before the version read/write too
 	}
 
+	// ---- Per-row rename ----
+
+	private static final RowNameCommand RENAME_CMD = new RowNameCommand("B", "Back row");
+
+	@Test
+	void renamesRowForOwnedVenue() {
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
+		assertEquals(1, venues.renamedRows);
+		assertEquals(1, venues.incrementedSetVersions); // token advanced once, on success
+	}
+
+	@Test
+	void renameNeverProbesClaims() {
+		// Unlike editSet/removeSet/replaceLayout, a rename asks neither availability nor booking.
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+		availability.holdOn.put(SET, TODAY_IN_TIRANE);
+		bookings.setHasLiveBookings = true;
+
+		assertSame(ChangeOutcome.Applied.APPLIED, service.renameRow(OWNER, VENUE, 0L, RENAME_CMD));
+		assertFalse(callLog.contains("anyClaimsFrom"));
+	}
+
+	@Test
+	void rejectsARenameOntoAnotherRowsLabel() {
+		// A shared label merges two rows wherever sets are grouped by it; the UNIQUE index misses that.
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.addAll(Set.of("A", "B"));
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "A"));
+
+		assertEquals(SetRejection.ROW_NAME_TAKEN, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.renamedRows);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void allowsARenameToTheSameLabel() {
+		// A no-op, not a self-collision — and it must not spend the token other tabs are holding.
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "B"));
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
+		assertEquals(0, venues.renamedRows);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void renameOnUnknownVenueIsRejectedBeforeAnyWrite() {
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_VENUE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.renamedRows);
+	}
+
+	@Test
+	void renameOfARowWithNoSetsIsNotFound() {
+		venues.venues.add(VENUE.value()); // no row carries "B"
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.renamedRows); // refused before the UPDATE, not by its rows-affected
+		// A rejected rename leaves the token alone, so the acting tab's next write off it still works.
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void renameLosesTheRowToAConcurrentRemoveAndIsNotFound() {
+		// A concurrent removeSet can empty the row after the label read — rows-affected is a real guard.
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+		venues.forceRenameRows = 0;
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void renameOfAMissingRowOntoATakenLabelIsNotFoundNotTaken() {
+		// Both refusals apply; the honest one names what is actually wrong — the row is gone.
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("A");
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "A"));
+
+		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
+	}
+
+	@Test
+	void renameStripsSurroundingWhitespaceSoItCannotDodgeTheDuplicateRefusal() {
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.addAll(Set.of("A", "B"));
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", " A "));
+
+		assertEquals(SetRejection.ROW_NAME_TAKEN, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.renamedRows);
+	}
+
+	@Test
+	void renameWithStaleSetVersionIsStaleWrite() {
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+
+		assertEquals(SetRejection.STALE_WRITE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.renamedRows);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void renameByANonOwnerIsDeniedBeforeAnyWrite() {
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+
+		// Invariant #13: the ownership guard is the first act — a stranger never reaches the UPDATE.
+		assertThrows(NotVenueOwnerException.class,
+				() -> service.renameRow(STRANGER, VENUE, 0L, RENAME_CMD));
+		assertEquals(0, venues.renamedRows);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
 	// ---- Owned-venues read ----
 
 	private static final OperatorId MULTI_OWNER = new OperatorId(7);
@@ -915,6 +1049,23 @@ class VenueAdminServiceTest {
 		public int repriceRow(VenueId venueId, RowPriceCommand command) {
 			repricedRows++;
 			return forceRepriceRows != null ? forceRepriceRows : 1;
+		}
+
+		int renamedRows;
+		// null ⇒ a rename finds its sets (1 row updated); set to 0 to model a row emptied mid-write.
+		Integer forceRenameRows;
+		// The venue's labels, so the fake answers both questions a rename asks off one piece of state.
+		final Set<String> rowLabels = new HashSet<>();
+
+		@Override
+		public Set<String> distinctRowLabels(VenueId venueId) {
+			return Set.copyOf(rowLabels);
+		}
+
+		@Override
+		public int renameRow(VenueId venueId, RowNameCommand command) {
+			renamedRows++;
+			return forceRenameRows != null ? forceRenameRows : 1;
 		}
 	}
 

@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.RowMapper;
@@ -26,6 +27,7 @@ import ai.riviera.platform.venue.application.NewVenueCommand;
 import ai.riviera.platform.venue.application.OwnedVenueView;
 import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.application.PhotoSlotView;
+import ai.riviera.platform.venue.application.RowNameCommand;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetPlacement;
@@ -53,6 +55,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	private static final String P_SET_ID = "setId";
 	private static final String P_VENUE = "venue";
 	private static final String P_ROW_LABEL = "rowLabel";
+	private static final String P_NEW_LABEL = "newLabel";
 	/** Venue text-column / bind-param names, reused across insert / profile-update / profile-read
 	 *  (named once — Sonar S1192; mirrors JdbcVenueCatalog's COL_* constants). */
 	private static final String COL_NAME = "name";
@@ -292,6 +295,28 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				""")
 				.param("priceMinor", c.priceMinor())
 				.param("priceCurrency", c.priceCurrency())
+				.param(P_VENUE, venueId.value())
+				.param(P_ROW_LABEL, c.rowLabel())
+				.update();
+	}
+
+	@Override
+	public Set<String> distinctRowLabels(VenueId venueId) {
+		return Set.copyOf(jdbc.sql("SELECT DISTINCT row_label FROM set_position WHERE venue_id = :venue")
+				.param(P_VENUE, venueId.value())
+				.query(String.class)
+				.list());
+	}
+
+	@Override
+	public int renameRow(VenueId venueId, RowNameCommand c) {
+		// Display-only: only row_label is written, so identity/pool/price/holds survive. 0 ⇒ unknown row.
+		return jdbc.sql("""
+				UPDATE set_position
+				SET row_label = :newLabel
+				WHERE venue_id = :venue AND row_label = :rowLabel
+				""")
+				.param(P_NEW_LABEL, c.newLabel())
 				.param(P_VENUE, venueId.value())
 				.param(P_ROW_LABEL, c.rowLabel())
 				.update();

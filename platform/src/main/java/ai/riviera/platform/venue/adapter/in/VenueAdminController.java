@@ -219,6 +219,17 @@ class VenueAdminController {
 		return toResponse(editBeachMap.repriceRow(operator, new VenueId(venueId), expectedVersion, command));
 	}
 
+	@PutMapping("/{venueId}/rows/{rowLabel}/name")
+	ResponseEntity<?> renameRow(Authentication authentication, @PathVariable long venueId,
+			@PathVariable String rowLabel, @RequestBody RowNameRequest request) {
+		OperatorId operator = currentOperator.require(authentication);
+		// A missing token is a 400 before the write, never a silent 0 — as on the reprice above.
+		long expectedVersion = InvalidApiRequestException
+				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));
+		var command = InvalidApiRequestException.parsing(() -> request.toCommand(rowLabel));
+		return toResponse(editBeachMap.renameRow(operator, new VenueId(venueId), expectedVersion, command));
+	}
+
 	private static ResponseEntity<?> toResponse(ChangeOutcome outcome) {
 		return switch (outcome) {
 			case ChangeOutcome.Applied ignored -> ResponseEntity.noContent().build();
@@ -242,6 +253,8 @@ class VenueAdminController {
 					"Another set already occupies this grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Another set already has this row and position.");
+			case ROW_NAME_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
+					"Another row on this venue already has that name.");
 		};
 	}
 

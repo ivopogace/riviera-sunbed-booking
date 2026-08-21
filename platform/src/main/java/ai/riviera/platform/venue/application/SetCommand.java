@@ -18,6 +18,7 @@ public record SetCommand(String rowLabel, int positionNo, String tier, String po
 	private static final Set<String> POOLS = Set.of("ONLINE", "WALK_IN");
 
 	public SetCommand {
+		rowLabel = VenueFieldValidation.strip(rowLabel);
 		VenueFieldValidation.requireText(rowLabel, "rowLabel", VenueFieldValidation.MAX_ROW_LABEL_LENGTH);
 		if (positionNo < 1) {
 			throw new IllegalArgumentException("positionNo must be >= 1");

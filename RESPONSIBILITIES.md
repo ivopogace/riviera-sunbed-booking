@@ -108,10 +108,12 @@ standing rules:
 - **A layout write that a live claim depends on is refused** (#567/#599/#602). Scope
   follows what the write destroys: the bulk replace deletes every set, so it asks the
   venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet` touch one set, so they ask
-  the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row.
-  - *Availability arm — symmetric, and the relief is total:* every write asks the one
-    question — is a hold on these sets dated today or later — through the single
-    `hasLiveHold` predicate (`SetAvailabilityLookup` publishes no date-agnostic probe at
+  the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row. The two
+  **row-scoped display writes** — `repriceRow` and `renameRow` (#726) — destroy nothing, so
+  they ask **no claim question at all** and stay available on a venue that has sold.
+  - *Availability arm — symmetric, and the relief is total:* every **claim-probing** write
+    (`editSet`, `removeSet`, the replace) asks the one question — is a hold on these sets
+    dated today or later — through the single `hasLiveHold` predicate (`SetAvailabilityLookup` publishes no date-agnostic probe at
     all), so no write blocks on a hold that has been honoured: last season's walk-in mark
     freezes nothing.
   - *Booking arm — asymmetric, forced by the schema:* `removeSet` and the replace refuse
@@ -130,9 +132,20 @@ standing rules:
     the range they stopped asking about is one nothing can be written into.
   - Which statuses are live is `booking`'s call (`BookingStatus#isTerminal`, reached
     through `BookingPresence#hasLiveBookings`); `venue` never enumerates booking statuses.
-    Price and tier stay editable on a claimed set — a booking's charge is snapshotted at
-    reserve time (the same call `repriceRow` already makes), so a reprice can never alter
-    it.
+    Price, tier and the row's **name** stay editable on a claimed set — a booking's charge
+    is snapshotted at reserve time (the same call `repriceRow` already makes), so a reprice
+    can never alter it, and `row_label` lives on `set_position` alone, so nothing snapshots
+    it either. Consequence of the rename, **accepted by design** (#726): a guest already
+    booked into the row reads the new name live — in their booking view and in any resent
+    confirmation — while the mail already in their inbox keeps the old one. A venue renaming
+    a row is renaming the physical row, so the live read is the truthful one and the guest's
+    row+position pair still addresses the same sunbeds.
+  - A rename is refused only for a reason of its own: `ROW_NAME_TAKEN` when another row
+    already carries the requested label. Broader than the `set_position_cell_uniq` backstop
+    on purpose — two rows can share a label with no `(row_label, position_no)` pair
+    colliding, which the database accepts, but the tourist map, the price rail and the
+    pricing tab all group sets by label, so the two physical rows would silently read as
+    one. Renaming a row to the label it already carries is a permitted no-op.
   - Because the pool is **mutable** layout data, `SetBookingFacts#poolForClaim` is a
     **locking** read — `FOR KEY SHARE`, the weakest lock that conflicts with the edit's
     `FOR UPDATE`, and the very lock the claim's own insert takes for its FK check. It is

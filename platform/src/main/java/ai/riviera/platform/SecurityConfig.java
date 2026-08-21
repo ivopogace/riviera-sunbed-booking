@@ -71,7 +71,7 @@ class SecurityConfig {
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water); session + CSRF. */
 	private static final String VENUE_ITEM_PATH = "/api/venues/*";
 	/**
-	 * The two operator-only venue-write {@code PUT}s — bulk beach-map layout replace and row reprice.
+	 * The operator-only venue-write {@code PUT}s — bulk beach-map layout replace, row reprice, row rename.
 	 *
 	 * <p>Gated per-verb rather than by namespace, deliberately: unlike {@code /api/me/**} (where a
 	 * method-agnostic rule is right because every verb belongs to one principal type),
@@ -81,6 +81,7 @@ class SecurityConfig {
 	 */
 	private static final String BEACH_MAP_PATH = "/api/venues/*/beach-map";
 	private static final String ROW_PRICE_PATH = "/api/venues/*/rows/*/price";
+	private static final String ROW_NAME_PATH = "/api/venues/*/rows/*/name";
 	/**
 	 * A single venue photo slot: POST upload / DELETE remove, operator-only. The public GET serving path
 	 * falls under {@code GET /api/venues/**} below.
@@ -351,7 +352,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/venues/*/sets").hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PATCH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
-						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH, ROW_NAME_PATH)
+						.hasRole(OPERATOR_ROLE)
 						// Non-GET, so these never shadow the public serving read above.
 						.requestMatchers(HttpMethod.POST, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)
