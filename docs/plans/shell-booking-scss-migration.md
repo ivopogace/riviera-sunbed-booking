@@ -179,9 +179,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 6 — verify + docs freshness)
+**Stage pointer:** PR — ready for review (review gate + Sonar gate due)
 
-**Next action:** mocked e2e run, computed-style parity snapshot vs main, SKILL.md inventory update, then ready-for-review.
+**Next action:** mark PR #740 ready for review; run `/code-review` per `references/pr-gates.md` §1, then the Sonar issue-list pull (§2).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -191,7 +191,7 @@ N/A — no contract change.
 | 3 — booking-pay migration | ✅ | `Booking pay: Tailwind migration` — 36 specs green unmodified; pay-spin keyframe now global in styles.scss |
 | 4 — manage-booking-link element form + allowList drop (AC-5) | ✅ | `Manage-booking link owns its anchor` — spec rewritten red→green; allowList + component-selector overrides dropped; 281 booking specs + lint green |
 | 5 — app-shell migration (AC-3) | ✅ | `App shell: Tailwind migration` — 53 app specs; full suite 1594 green; lint + build green |
-| 6 — verify sweep: e2e + computed-style parity (AC-4/AC-6/AC-7), docs freshness | | |
+| 6 — verify sweep: e2e + computed-style parity (AC-4/AC-6/AC-7), docs freshness | ✅ | `Verify sweep: parity fix + docs freshness` — 232 mocked e2e green unmodified; 135-element × 2-theme computed-style diff clean after one fix (F-1); SKILL.md inventory 8→4 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -200,6 +200,7 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | AC-6 parity harness (pre-push) | mobile theme-swatch dot used `before:bg-(--riv-swatch)` — the *color* form — on a gradient token, rendering no dot | fixed in phase-6 commit (`bg-(image:--riv-swatch)`); generalization audit swept all color-form `bg-(--riv-*)` uses — no other member |
 
 ---
 
@@ -291,13 +292,18 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Phase 6 — verify + docs freshness
 
-- [ ] `npm run lint` + `npm run format:check` + `npm test` + `npm run build` +
-  `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
-- [ ] AC-6 computed-style parity: scratch Playwright spec (`.git/info/exclude`d)
-  capturing before (main) / after snapshots; quote results in the PR.
-- [ ] `riviera-tailwind` SKILL.md inventory 8→4; `node
+- [x] `npm run lint` + `npm test` (1594) + `npm run build` +
+  `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` (232 green,
+  suite unmodified).
+- [x] AC-6 computed-style parity: scratch Playwright spec (`.git/info/exclude`d), 135
+  elements × both themes across shell/menus/mobile/my-bookings/confirmation/pay states,
+  before (origin/main worktree) vs after. One real defect found and fixed (F-1); the
+  residue is representational (Tailwind's transparent shadow-var stack, `rounded-full`'s
+  huge-px radius, `left`→`start`, zero-width border colors, inert `align-items` on the
+  two `display:block` links) plus the two declared skeleton changes.
+- [x] `riviera-tailwind` SKILL.md inventory 8→4; `node
   scripts/check-plan-file-structure.mjs --diff origin/main` green with the plan staged.
-- [ ] Mark ready for review → gates (`references/pr-gates.md`).
+- [x] Mark ready for review → gates (`references/pr-gates.md`).
 
 ---
 
@@ -305,39 +311,43 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-21 | Phase 4 (attribute→element form) | components whose attribute selector sits on a native element with component-supplied content (the lint-blindness mechanism) | `grep -rn "selector: '[a-z]\+\[app" frontend/src/app` | `p[appCutoffNote]`, `p[appAdminForbidden]`, `p[appLegalConsent]`, `div[appLegalFooter]`, `a[appManageBookingLink]` | only the `<a>` moves to element form — `<p>`/`<div>` are rule 1's text-container branch, correctly attribute-form |
+| 2026-08-21 | Phase 6 / F-1 (color-form utility on a gradient token) | every color-form `bg-(--riv-*)` utility, judged against the gradient-valued tokens in `styles.scss` | `grep -rho "bg-(--riv-[a-z-]*)" frontend/src/app` × `grep -n gradient frontend/src/styles.scss` | 11 distinct color-form uses; 6 gradient tokens | no overlap after the F-1 fix — every gradient token is consumed via `bg-(image:…)` |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-2:** `npm test -- --include '**/my-bookings.spec.ts'` → skeleton-pulse +
-  posture specs pass.
-- [ ] **AC-3:** `git ls-files 'frontend/**/*.scss'` → only `home.scss`, `auth.scss`,
+- [x] **AC-1/AC-2:** `npm test -- --include '**/my-bookings.spec.ts'` → 42 pass incl.
+  the pulse + posture specs (red first, then green in phase 1).
+- [x] **AC-3:** `git ls-files '*.scss'` → only `home.scss`, `auth.scss`,
   `request-confirmation.scss`, `find-booking.scss`, `styles.scss` remain; `npm run
   build` green.
-- [ ] **AC-4:** `npm test` + `npm run test:e2e:a11y` all green; only the declared spec
-  files changed.
-- [ ] **AC-5:** `npm run lint` green with the allowList entry removed.
-- [ ] **AC-6:** computed-style snapshot diff over both themes: 0 diffs outside the
-  declared skeleton change (border-width snapping tolerated).
-- [ ] **AC-7:** `theme-shell.e2e.ts` animation waits green; `styles.scss` keyframes
-  untouched in the diff.
+- [x] **AC-4:** `npm test` (1594) + `npm run test:e2e:a11y` (232, suite files
+  unmodified) all green; only the declared spec files changed.
+- [x] **AC-5:** `npm run lint` green with the allowList entry and the
+  `component-selector` override removed.
+- [x] **AC-6:** 135-element computed-style snapshot × both themes: 0 rendering diffs
+  outside the declared skeleton change (F-1 found by this harness and fixed).
+- [x] **AC-7:** `theme-shell.e2e.ts` animation waits green in the suite run;
+  `styles.scss` keyframes untouched (one added: `pay-spin`, moved from
+  `booking-pay.scss`).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1 — frontend-only).
-- [ ] **Availability** section justified N/A (invariant #2 — no logic change).
-- [ ] Pool + cutoff rules honored (invariants #3, #4 — untouched).
-- [ ] **Modulith** section justified N/A (invariant #11 — frontend-only).
-- [ ] **Payment/payout** justified N/A (restyle only; state machine untouched).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] Booking codes untouched (invariant #7 — codes never logged by the scratch spec).
-- [ ] No schema change (invariant #12).
-- [ ] **Frontend** standards met; no `as any`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1 — frontend-only).
+- [x] **Availability** section justified N/A (invariant #2 — no logic change).
+- [x] Pool + cutoff rules honored (invariants #3, #4 — untouched).
+- [x] **Modulith** section justified N/A (invariant #11 — frontend-only).
+- [x] **Payment/payout** justified N/A (restyle only; state machine untouched).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] Booking codes untouched (invariant #7 — codes never logged by the scratch spec).
+- [x] No schema change (invariant #12).
+- [x] **Frontend** standards met; no `as any`.
 - [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings.
 - [ ] Risk register closed (R-1–R-7 all resolved by the AC-4/AC-6 verification); Open
   Questions resolved below.
