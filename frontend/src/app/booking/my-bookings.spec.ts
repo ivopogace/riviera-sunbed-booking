@@ -502,6 +502,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
 
     it('stays silent while the account read is still in flight (#741 re-review)', async () => {
       // The device rows clear `loading` while the account list is still out (the gap #741's re-review found).
+      seedCodes(['DEVONLY1']);
       const reads: Subject<MyBookingSummary[]>[] = [];
       const service = {
         ...stubService({ DEVONLY1: detail('DEVONLY1', 'CONFIRMED') }),
@@ -536,6 +537,40 @@ describe('MyBookings (device-local list, issue #139)', () => {
       fixture.detectChanges();
 
       expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
+    });
+
+    it('stays silent while device rows are still resolving behind their skeletons', async () => {
+      // A guest never touches the account list, so this window is the common path, not the rare one.
+      seedCodes(['DEVONLY1']);
+      const lookup = new Subject<BookingDetail>();
+      const service = { ...stubService({}), getByCode: () => lookup.asObservable() };
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+      const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+
+      expect(announcer.textContent?.trim()).toBe('');
+
+      lookup.next(detail('DEVONLY1', 'CONFIRMED'));
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
+    });
+
+    it('never flashes the empty card while a signed-in account read is in flight', async () => {
+      // No device codes, so `loading` clears with zero rows — exactly when the card would flash.
+      const account = new Subject<MyBookingSummary[]>();
+      const service = { ...stubService({}), myBookings: () => account.asObservable() };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="my-bookings-empty"]')).toBeNull();
+
+      account.next([]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="my-bookings-empty"]')).not.toBeNull();
     });
 
     it('shows the account list when the device has no remembered codes', async () => {

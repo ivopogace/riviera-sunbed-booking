@@ -206,7 +206,7 @@ rather than inline template logic — R-6):
 |---|---|---|---|---|---|
 | 1 | `pages/home/home.html` (Discover) | `!failed() && venues() === undefined` | — (no `readyLabel`) | Loading venues… | `''` — the persistent results-count region already announces the count (B-7) |
 | 2 | `operator/set-editor.html` | `!loaded()` | `loaded()` | Loading this venue’s sets… | Sets loaded. |
-| 3 | `booking/my-bookings.ts` | `loading()` | `!loading() && !accountPending() && !accountError()` — `loading` is cleared the moment the device rows render, so the in-flight account read needs its own signal (re-review F-8) | Loading your bookings… | Your bookings loaded. |
+| 3 | `booking/my-bookings.ts` | `loading()` | `announceReady()` — a named computed over **four** conditions; this surface leaves its loading state in four ways that are not "loaded" (F-8, F-10) | Loading your bookings… | Your bookings loaded. |
 | 4 | `operator/daily-view-tab.html` | `!loaded()` | `loaded() && !loadError()` | Loading the daily view… | Daily view loaded. |
 | 5 | `operator/requests-tab.html` | `!loaded()` | `loaded() && !loadError()` | Loading requests… | Requests loaded. |
 | 6 | `operator/payouts-tab.html` | `!loaded()` | `loaded() && loadErrorMsg() === undefined` | Loading payouts… | Payouts loaded. |
@@ -249,6 +249,7 @@ duplication list (a green gate is not the check) and clear every entry.
 | 4 — e2e, docs freshness (RV-FE-10), close-out | ✅ | |
 | 5 — Review-gate findings F-1…F-7 | ✅ | |
 | 6 — Re-review findings F-8, F-9 | ✅ | |
+| 7 — Second re-review findings F-10…F-12 | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -267,6 +268,9 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-7 | review gate (noted, not reported) | the plan's Non-goals claimed no failure panel is a live region; `home.html` and `venue-map.html` do carry `role="alert"` | fixed — Non-goals rewritten, and the follow-up issue narrowed to the surfaces genuinely uncovered |
 | F-8 | **re-review** of the F-1…F-7 fix round | `my-bookings`: F-2 was not actually fixed. `loadDeviceLocal` clears `loading` synchronously while the account read is still out, so with a real async client `ready` went true and the region announced "Your bookings loaded." *before* the retry card appeared. My spec passed only because its `throwError` stub emits synchronously — the exact false comfort RV-FE-10 warns about, produced while writing RV-FE-10 | fixed — `accountPending` signal tracks the in-flight read (and closes the `retryAccount()` re-open); pinned by a `Subject`-based async spec covering both the first read and the retry, mutation-checked |
 | F-9 | re-review (same run) | the plan's "New primitive" API block still documented `failed` and the old `message` computed, contradicting the `ready` table below it | fixed |
+| F-10 | **second re-review** | `my-bookings`: the same premature-"loaded" window on the **more common** path — a guest with remembered codes, whose per-code rows are still skeletons when `loading` clears. Third instance of one mechanism | fixed — the four conditions hoisted into an `announceReady()` computed incl. `rows().every(state !== 'loading')`; pinned + mutation-checked |
+| F-11 | second re-review | `my-bookings`: `loading`'s docstring claims it "gates the empty card so a signed-in account fetch in flight never flashes 'No booking yet'" — it cannot, being cleared by the device rows. A **pre-existing** visual bug its own doc denied | fixed — `accountPending` added to the empty gate, docstring corrected; pinned + mutation-checked. **Scope note:** visual, not announcement; taken because the fix is one token on a signal this slice added and the alternative was shipping a docstring known to be false |
+| F-12 | second re-review | the F-8 regression spec never seeded device codes, so it exercised the zero-row path rather than the one its comment named (and its `getByCode` stub key was wrong) | fixed — seeded, and a second spec covers the device-row window directly |
 
 ---
 
@@ -357,6 +361,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | G-2 | Same sweep, adjacent population | The same shape on **result/notice** regions (`<output>`, admin notices, `home.html:143` empty state) | same command | ~20 | Out of scope (Non-goals) — different defect class; several are already correct. Recorded, not silently dropped |
 | G-3 | R-4 | "a surface whose loaded state is also reachable on error" | read each of the 8 components' error signals | 4 of 8 have an explicit error signal | `failed` input added so none announces "loaded" on failure |
 | G-4 | The three surfaces' text moved out of their loading containers | "a test that asserts loading copy **through the container** rather than the announcer" | `grep -rn 'Loading ' frontend/e2e frontend/src --include=*.ts` | 1 outside the diff — `layout-editor.e2e.ts:293` | Updated in this PR; it now asserts the announcer's text and the container's `aria-hidden` |
+| G-6 | Re-review findings F-8 and F-10 | **The same mechanism, a third time.** "A signal that leaves the loading state before every read behind it has settled." Enumerated by reading each `set(false)`/`set(true)` on every phase signal in the eight components and asking what is still in flight at that line | `my-bookings` only — the other seven set their phase signal once, at the point their single read settles | Fixed by hoisting all four conditions into one named `announceReady()` computed, so the surface has a single place to add the fifth if one appears |
 | G-5 | Review findings F-1/F-2/F-3 | **The audit that missed them (G-3) is the lesson.** G-3 enumerated "surfaces with an explicit error signal" — resemblance, not mechanism. The mechanism is "a branch of the surface's `@if` chain that is neither loading nor loaded", which also covers a 404, a partial read and a signed-out visitor. Re-enumerated by reading all eight `@if` chains, not by grepping for error-shaped names | 3 more exits on 3 surfaces | Fixed by inverting the input to `ready` so the population no longer has to be enumerated correctly — an exit nobody described is silent by construction. RV-FE-10 states the rule |
 
 ---
@@ -371,7 +376,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | AC-4 | the same 8 specs (identity assertion) — **mutation-checked** on `requests-tab` | ✅ |
 | AC-5 | the same 8 specs (`aria-hidden` on the skeleton / visible copy) | ✅ |
 | AC-6 | `loading-announcements.e2e.ts` — **mutation-checked**: scoping the region back inside Discover's `@if` fails it in 5s | ✅ |
-| AC-7 | `npm run lint` ✅ · `format:check` ✅ · `npm test` ✅ 176 files / 1609 tests · `test:e2e:a11y` ✅ 233/233 | ✅ |
+| AC-7 | `npm run lint` ✅ · `format:check` ✅ · `npm test` ✅ 176 files / 1611 tests · `test:e2e:a11y` ✅ 233/233 | ✅ |
 | AC-8 | `venue-map.spec.ts` / `my-bookings.spec.ts` / `set-password.spec.ts`, all three mutation-checked | ✅ |
 
 ---

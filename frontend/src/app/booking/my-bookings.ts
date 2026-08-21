@@ -1,4 +1,4 @@
-import { Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { EMPTY, Observable, catchError, defer, from, mergeMap, tap } from 'rxjs';
@@ -202,7 +202,7 @@ const CLS = {
       <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
       <app-load-announcer
         [loading]="loading()"
-        [ready]="!loading() && !accountPending() && !accountError()"
+        [ready]="announceReady()"
         loadingLabel="Loading your bookings…"
         readyLabel="Your bookings loaded."
       />
@@ -217,7 +217,7 @@ const CLS = {
             </span>
           </div>
         </div>
-      } @else if (rows().length === 0 && !accountError()) {
+      } @else if (rows().length === 0 && !accountError() && !accountPending()) {
         <section
           [class]="cls.emptyCard"
           appCardGlass
@@ -346,7 +346,9 @@ export class MyBookings {
   protected readonly rows = signal<readonly Row[]>([]);
   /**
    * True until the initial list is decided (the session restore has settled AND the first rows are
-   * set). Gates the empty card so a signed-in account fetch in flight never flashes "No booking yet".
+   * set). It is cleared as soon as the DEVICE rows render, so it cannot gate the empty card on its
+   * own — {@link accountPending} is what actually keeps a signed-in account fetch in flight from
+   * flashing "No booking yet" at a customer whose bookings are all on the server (#741 re-review).
    */
   protected readonly loading = signal(true);
   /**
@@ -362,6 +364,21 @@ export class MyBookings {
    * {@link loadAccount} is the only writer. Protected only because the template reads it.
    */
   protected readonly accountPending = signal(false);
+
+  /**
+   * Every page-level read has settled and produced something to announce. Four conditions because
+   * this surface leaves its loading state in four ways that are not "loaded": the initial gate,
+   * the account list still out, that list having failed, and — the one the first two fixes both
+   * missed — per-code device rows still resolving behind their own skeletons. "Not loading" has
+   * never meant "loaded" here (#741 and its two review rounds).
+   */
+  protected readonly announceReady = computed(
+    () =>
+      !this.loading() &&
+      !this.accountPending() &&
+      !this.accountError() &&
+      this.rows().every((row) => row.state !== 'loading'),
+  );
   /**
    * Codes the account list has already answered for. Consulted when a queued per-code lookup
    * is DEQUEUED — never as a barrier, so device rows are still issued immediately.
