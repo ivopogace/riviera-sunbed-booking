@@ -209,7 +209,9 @@ test('discovery load-failure panel recovers when Retry is pressed (#149)', async
   await expect(panel).toHaveAttribute('role', 'alert');
   await expect(panel.getByRole('heading', { name: /couldn.t load the beaches/ })).toBeVisible();
   // The cutoff explainer sits under the filter bar in every state, including this one.
-  await expect(page.getByTestId('cutoff-note')).toContainText(/book by 6\s+PM the day before/);
+  await expect(page.getByTestId('cutoff-note')).toContainText(
+    /Book any day from tomorrow .* sales close at 6\s+PM the evening before/,
+  );
   await expectNoSeriousAxeViolations(page, 'discovery load-failure panel');
 
   // Retry refetches → the panel is replaced by the venue list.

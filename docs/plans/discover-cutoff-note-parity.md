@@ -102,19 +102,27 @@ session addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `display: contents` on the host changes the map's flex layout, so the glyph shifts or stops shrinking | low | med | the SVG stays the direct flex child, so `gap-1` and its own `shrink-0` still apply; `contents` verified to compile to `display: contents` against this repo's `tailwindcss@4.3.3` | claude | open |
-| R-2 | Tailwind never generates the component's utilities because they live in an inline `.ts` template | low | high | `src/tailwind.css` is `@import 'tailwindcss'` with no `source(none)`, so auto source detection scans `.ts`; the `shared/retry-button.ts` precedent already ships utilities from an inline template | claude | open |
-| R-3 | The call-site override loses to the component's own size, so Discover's glyph silently drops 15 px → 13 px | med | low | the component sizes via **presentation attributes** (`width="13"`), which lose to *every* CSS rule — so a call-site class wins unconditionally, with no specificity arithmetic to get wrong | claude | open |
-| R-4 | The host's static `class: 'contents'` replaces the call site's class (or vice versa), silently dropping one | low | med | Angular merges host metadata classes with the template's static class; pinned by a `clock-icon.spec.ts` case rather than assumed | claude | open |
-| R-5 | An SVG at the root of an **inline** template is parsed in the HTML namespace, so `<circle>`/`<path>` never paint | low | high | pinned by `clock-icon.spec.ts` asserting `namespaceURI`; the map's rendered output re-checked by `venue-map.spec.ts` | claude | open |
-| R-6 | The e2e regex is updated but the suite is never run in this cloud session, so a copy typo ships | med | med | run the mocked suite with `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` per `riviera-local-debug`; CI runs it again | claude | open |
+| R-1 | `display: contents` on the host changes the map's flex layout, so the glyph shifts or stops shrinking | low | med | the SVG stays the direct flex child, so `gap-1` and its own `shrink-0` still apply; `contents` verified to compile to `display: contents` against this repo's `tailwindcss@4.3.3` | claude | **closed** `f8ef9aa` — measured in a real browser: host `display` is `contents` on both surfaces and the svg is still the note's direct flex child |
+| R-2 | Tailwind never generates the component's utilities because they live in an inline `.ts` template | low | high | `src/tailwind.css` is `@import 'tailwindcss'` with no `source(none)`, so auto source detection scans `.ts`; the `shared/retry-button.ts` precedent already ships utilities from an inline template | claude | **closed** `f8ef9aa` — `shrink-0` and the call-site `[&>svg]:size-[15px]` both resolve in the rendered page |
+| R-3 | The call-site override loses to the component's own size, so Discover's glyph silently drops 15 px → 13 px | med | low | the component sizes via **presentation attributes** (`width="13"`), which lose to *every* CSS rule — so a call-site class wins unconditionally, with no specificity arithmetic to get wrong | claude | **closed** `f8ef9aa` — computed `width`/`height` measure 15 px on Discover and 13 px on the map, and each stroke resolves to exactly its note's ink |
+| R-4 | The host's static `class: 'contents'` replaces the call site's class (or vice versa), silently dropping one | low | med | Angular merges host metadata classes with the template's static class; pinned by a `clock-icon.spec.ts` case rather than assumed | claude | **closed** `404f3b6` — the merge case passes, and the browser measurement confirms both classes act |
+| R-5 | An SVG at the root of an **inline** template is parsed in the HTML namespace, so `<circle>`/`<path>` never paint | low | high | pinned by `clock-icon.spec.ts` asserting `namespaceURI`; the map's rendered output re-checked by `venue-map.spec.ts` | claude | **closed** `404f3b6` — svg, circle and path all report the SVG namespace |
+| R-6 | The e2e regex is updated but the suite is never run in this cloud session, so a copy typo ships | med | med | run the mocked suite with `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` per `riviera-local-debug`; CI runs it again | claude | **closed** — the full mocked suite ran green locally (232 passed); CI re-runs it on the PR |
 
 ## Open questions / Assumptions
 
-- **Assumption:** Discover keeps the map's sentence **verbatim** rather than adapting it to
-  read about *beaches*. #733 offers the adaptation ("the sentence may want to read about
-  beaches rather than a single map") but does not require it. — *Owner:* claude · *Resolves
-  by:* phase 1
+*(empty — the one assumption is resolved below.)*
+
+### Resolved
+
+- **A-1 (assumption → resolved at phase 1, `f8ef9aa`):** should Discover adapt the map's
+  sentence to read about *beaches*? **No — verbatim.** #733 offers the adaptation but does not
+  require it, and the map's sentence never names a map: "Book any day from tomorrow — each
+  day's sales close at 6 PM the evening before." is already surface-neutral, and it sits
+  directly under Discover's date picker, which is exactly what it talks about. The candidate
+  adaptation ("book any *beach* from tomorrow") also conflates the two axes — you book a
+  sunbed set on a date, not a beach. Re-diverging the wording is the thing this slice exists
+  to fix, so the strongest reading of "one rule, one voice" is the identical sentence.
 
 ## Availability & concurrency (invariant #2)
 
@@ -150,16 +158,17 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1 complete)`
+**Stage pointer:** `implement complete — opening the draft PR (CI gate)`
 
-**Next action:** Phase 2 — retire the `discovery-flow.e2e.ts:212` assertion and add the icon §
-to `riviera-tailwind`.
+**Next action:** open the draft PR so CI fires, then mark ready for review to make the Review
+and Sonar gates due.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared clock-icon seam | ✅ | `404f3b6` |
-| 1 — adopt it on both notes + reframe Discover's copy | ⏳ | |
-| 2 — e2e assertion + the `riviera-tailwind` icon § | | |
+| 1 — adopt it on both notes + reframe Discover's copy | ✅ | `f8ef9aa` |
+| 2 — e2e assertion + the `riviera-tailwind` icon § | ✅ | this commit (SHA filled at close-out) |
+| 3 — close-out (docs freshness, review + Sonar gates, final state) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -209,34 +218,54 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-21 | Phase 1 | **Duplicated SVG geometry** — every inline `<svg>` in app source, the mechanism the seam exists to collapse (not "places that look like icons") | `grep -rnF '<svg' frontend/src --include=\*.html --include=\*.ts` | before: 1 (`venue/venue-map.html`); after: 1 (`shared/clock-icon.ts`) | **All.** The population was a single site plus the one Discover was about to add, which is exactly why #703 correctly declined the seam and why this slice buys it. AC-4 is this command |
+| 2026-08-21 | Phase 1 | **Surfaces stating the cutoff rule in prose**, keyed by *wording* rather than by the `cutoff-note` test id — a surface can state the rule without carrying the id, so id-keying would have returned a false clean | `grep -rniE "6\s*(&nbsp;\|\xc2\xa0\| )?PM\|evening before\|day before\|same.day\|closes? (the )?(evening\|day)" frontend/src frontend/e2e --include=\*.html --include=\*.ts` | 6 beyond the two notes: `admin/admin-commissions.ts:49,313`, `booking/booking-dialog.ts:260`, `booking/booking-view.ts:733`, `pages/legal/terms-of-service.html:30,43` (+ its `.ts:14`), `e2e/legal-pages.e2e.ts:78` | **Subset, with reasons.** The two `booking/` hits state the **cancellation** policy (invariant #10) — same instant, different rule. `admin-commissions` explains to an admin why today's commissions already accrued — different audience, not a point-of-sale invitation. The legal pages state the rule in legal register and deliberately name no clock time (their own doc comment says so). None carries a glyph, so the icon population is unaffected. Only the two tourist-facing point-of-sale notes were ever in scope |
+| 2026-08-21 | Phase 1 | **Every `⏰` in app source**, re-run to confirm the glyph swap left no stragglers | `grep -rn '⏰' frontend/src frontend/e2e` | `operator/requests-tab.html:78` + 3 doc mentions + `e2e/operator-requests.e2e.ts:59`, and the new `shared/clock-icon.ts:5` | **Skip, deliberately.** The requests-tab ⏰ means *urgency*, not the cutoff rule — out of population despite matching the glyph, the same call #703's audit made. The `clock-icon.ts` hit is the rationale prose ("not the ⏰ emoji, which…") that moved out of `venue-map.html`'s comment, not a glyph |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-2:** `npx vitest run src/app/pages/home` → the cutoff case passes.
-- [ ] **AC-3:** `npx vitest run src/app/shared/clock-icon.spec.ts` → passes.
-- [ ] **AC-4:** `grep -rnF '<svg' frontend/src --include=\*.html --include=\*.ts` → one hit.
-- [ ] **AC-5:** `npx vitest run src/app/venue/venue-map.spec.ts` → passes, unedited.
-- [ ] **AC-6:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → green.
-- [ ] **AC-7:** `npm run test:a11y` → green.
+> The commands `#733` suggests use bare `npx vitest`, which **cannot** run this repo's specs —
+> the setup file is registered in `vitest-base.config.ts` and applied by the
+> `@angular/build:unit-test` builder, so a bare run dies with `describe is not defined`
+> (ADR-0014 / #663 explain why it lives there). Go through `ng test` instead.
+
+- [x] **AC-1/AC-2:** `npx ng test --watch=false --include="src/app/pages/home/**/*.spec.ts"` →
+  the cutoff case passes; the note's whitespace-normalized text equals the new sentence exactly,
+  which is what pins "no emoji, no `&ngsp;`, accessible text is the sentence alone". Verified at `f8ef9aa`.
+- [x] **AC-3:** `npx ng test --watch=false --include="src/app/shared/clock-icon.spec.ts"` →
+  6 passed. Verified at `404f3b6`.
+- [x] **AC-4:** `grep -rnF '<svg' frontend/src --include=\*.html --include=\*.ts` → exactly one
+  hit, `shared/clock-icon.ts`. Verified at `f8ef9aa`.
+- [x] **AC-5:** `npx ng test --watch=false --include="src/app/venue/venue-map.spec.ts"` → passes,
+  **unedited** — including its `note.querySelector('svg')` aria-hidden assertion. Verified at `f8ef9aa`.
+- [x] **AC-6:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` →
+  232 passed, axe included. Verified at phase 2.
+- [x] **AC-7:** `npm run test:a11y` → 58 files / 356 tests passed, both contrast specs unedited.
+  Verified at `f8ef9aa`.
+- [x] **No-drift proof** (`riviera-tailwind`'s hard rule — computed styles, not class lists): a
+  throwaway Playwright probe read `getComputedStyle` on both glyphs — Discover `15px × 15px`
+  with `stroke` = `rgba(12,42,51,0.78)` = its note's `--riv-card-ink-soft`; the map `13px × 13px`
+  with `stroke` = `rgba(12,42,51,0.66)` = its note's `--riv-ink-faint`; host `display: contents`
+  on both. The map's box is unchanged from the shipped inline SVG. Probe deleted after the run.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A); invariant #4 appears as display copy only.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — no fencing behavior changed.
-- [ ] **Modulith** section filled (N/A — frontend-only).
-- [ ] **Payment/payout** section filled (N/A).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — the `Europe/Tirane` clamp is untouched.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A.
-- [ ] **Frontend** standards met; no `as any`; folder placement per `riviera-frontend`.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A); invariant #4 appears as display copy only.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — no fencing behavior changed.
+- [x] **Modulith** section filled (N/A — frontend-only).
+- [x] **Payment/payout** section filled (N/A).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — the `Europe/Tirane` clamp is untouched.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A.
+- [x] **Frontend** standards met; no `as any`; folder placement per `riviera-frontend`.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full.**
