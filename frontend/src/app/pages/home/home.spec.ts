@@ -499,20 +499,19 @@ describe('Home (venue discovery)', () => {
     expect(el().querySelectorAll('[data-testid="venue-card"]').length).toBe(1);
   });
 
-  it('states the cutoff as an invitation, iconed by an aria-hidden SVG (no emoji)', async () => {
+  it('mounts the shared cutoff note, wearing its own glass pill', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
+    // The test id exists only in shared/cutoff-note.ts, so finding it IS the proof that the
+    // shared note rendered; the wording is pinned there, never re-typed per surface (#735).
     const note = el().querySelector('[data-testid="cutoff-note"]')!;
-    // The glyph contributes no text and the &ngsp; is gone, so the note reads as its sentence alone.
-    const text = note.textContent?.replace(/\s+/g, ' ').trim();
-    expect(text).toBe(
-      'Book any day from tomorrow \u2014 each day\u2019s sales close at 6 PM the evening before.',
-    );
-    expect(note.textContent).not.toContain('\u23f0');
-    // The normalized compare above collapses U+00A0, so the no-break space is pinned separately.
-    expect(note.textContent).toContain('6\u00a0PM');
+    expect(note.tagName).toBe('P');
+    expect(note.textContent?.trim()).not.toBe('');
     expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    // Class pins (jsdom computes no Tailwind): the skin stays Discover's, not the component's.
+    expect(note.classList.contains('rounded-full')).toBe(true);
+    expect(note.classList.contains('[&_svg]:size-[15px]')).toBe(true);
   });
 
   it('shows the loading state before the response arrives', async () => {

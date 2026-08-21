@@ -116,17 +116,12 @@
     </p>
   </form>
 
-  <!-- Cutoff explainer (invariant #4 — display only; the server enforces the cutoff). Backed by a subtle glass pill so its ink clears WCAG AA over the bare gradient; the shared glyph is sized from here to match this surface's larger copy. -->
+  <!-- The glass pill clears WCAG AA over the bare gradient; the glyph is sized up for this surface's larger copy. -->
   <p
-    class="cutoff-note mx-[2px] mt-3 inline-flex items-center gap-1 rounded-full px-[15px] py-2 text-[13px] leading-[1.35] text-(--riv-card-ink-soft) backdrop-blur-[20px] backdrop-saturate-[1.7]"
+    appCutoffNote
     appCardGlass
-    data-testid="cutoff-note"
-  >
-    <app-clock-icon class="[&_svg]:size-[15px]" />
-    <span
-      >Book any day from tomorrow — each day’s sales close at 6&nbsp;PM the evening before.</span
-    >
-  </p>
+    class="mx-[2px] mt-3 rounded-full px-[15px] py-2 text-[13px] text-(--riv-card-ink-soft) backdrop-blur-[20px] backdrop-saturate-[1.7] [&_svg]:size-[15px]"
+  ></p>
 
   @if (failed()) {
     <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->

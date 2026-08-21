@@ -85,17 +85,7 @@
             (change)="onDateChange($event)"
           />
         </p>
-        <!-- Cutoff explainer (invariant #4 — display only; the server enforces the real cutoff). -->
-        <p
-          class="inline-flex items-center gap-1 mt-2 text-[11.5px] leading-[1.35] text-(--riv-ink-faint)"
-          data-testid="cutoff-note"
-        >
-          <app-clock-icon />
-          <span
-            >Book any day from tomorrow — each day’s sales close at 6&nbsp;PM the evening
-            before.</span
-          >
-        </p>
+        <p appCutoffNote class="mt-2 text-[11.5px] text-(--riv-ink-faint)"></p>
       </header>
 
       <!-- Overview card: availability + the photo placeholder. Kept on its own card glass so the dark

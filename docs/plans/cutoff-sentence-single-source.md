@@ -266,15 +266,15 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 
 ## Execution status
 
-**Stage pointer:** `IMPLEMENT — phase 0 done; phase 1 next`
+**Stage pointer:** `IMPLEMENT — phases 0–1 done; phase 2 next`
 
-**Next action:** phase 1 — rewrite both surface specs red (dropping the re-typed sentence),
-then swap both templates to mount the shared note.
+**Next action:** phase 2 — the cross-surface parity assertion in the mocked e2e (AC-3),
+then run the mocked suite.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the shared cutoff-note seam | ✅ | this commit |
-| 1 — both surfaces adopt it; the specs stop re-typing the copy | | |
+| 0 — the shared cutoff-note seam | ✅ | `b3a64e8` |
+| 1 — both surfaces adopt it; the specs stop re-typing the copy | ✅ | this commit |
 | 2 — the cross-surface parity assertion in the mocked e2e | | |
 | 3 — close-out (docs freshness, review + Sonar gates, final state) | | |
 
@@ -355,7 +355,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-08-21 | Phase 1 | **Surfaces stating the cutoff rule in prose**, keyed by *wording* rather than by the `cutoff-note` test id — re-running #734's sweep to confirm this slice's Non-goals still describe reality | `grep -rniE "6\s*(&nbsp;\|\xc2\xa0\| )?PM\|evening before\|day before\|same.day\|closes? (the )?(evening\|day)" frontend/src frontend/e2e --include=*.html --include=*.ts` | 8, all previously enumerated: `booking/booking-dialog.ts`, `booking/booking-view.ts`, `admin/admin-commissions.ts`, the three `pages/legal/terms-of-service.*`, `e2e/legal-pages.e2e.ts`, `e2e/discovery-flow.e2e.ts` | **None.** Unchanged from #734 — the two `booking/` hits state the **cancellation** policy (invariant #10), `admin-commissions` explains accrual to an admin, the legal pages state the rule in legal register with no clock time, and the `discovery-flow` hit is this slice's own browser pin. Non-goals verified against the tree, not recalled |
+| 2026-08-21 | Phase 1 | **The real mechanism: any user-facing sentence rendered from more than one template** — *not* "places that mention the cutoff". Keying on the cutoff would have returned clean and hidden the population, which is #641's lesson exactly. Enumerated by extracting every ≥25-char text run from every tracked `.html` and inline `template:` and grouping by normalized text | a throwaway script over `git ls-files 'frontend/src/**/*.html' 'frontend/src/**/*.ts'`, grouping `/>([^<>{}@]{25,})</g` matches by normalized text (recorded in the follow-up issue; it is a rough enumerator, not a guard — it also matches TS generics) | **7 further members** beyond this slice's: "You don't have access to this page." ×**7** (`admin/*.ts`), "Sign out" ×3, "Booking cutoff (Europe/Tirane)" ×2 (`operator/venue-create-card.html`, `venue-tab.html`), "Something went wrong loading the outbox." ×2, "View or manage this booking" ×2, "and acknowledge our" ×2, "© Riviera Sunbed Booking ·" ×2 | **Subset — this one fixed, the rest raised as #738.** Each carries the identical failure mode (per-template specs, so a copy edit to one sibling leaves the others green and stale), but fixing seven more surfaces is a different slice: the seven-way admin one wants a shared primitive, and the outbox pair looks like a **copy bug** rather than duplication (both outboxes say "the outbox", naming neither). Enumerating them was the audit's job; deciding them is not this slice's |
 
 ---
 
