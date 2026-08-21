@@ -95,7 +95,9 @@ every AC is a rendered-surface assertion by construction. Each names its pinning
   beach." with no decorative glyph; and given a grid that does not overflow, or a
   `dragPan`-off surface, then no hint renders at all. *Pinned by:*
   `beach-map-canvas.spec.ts › 'the pan hint is one plain line, no decorative glyph'` plus
-  the six existing hint-gating cases in that file (unchanged).
+  the **five** existing hint-gating cases in that file — eleven assertions across them, all
+  unchanged (`awk` over the spec's `it(` blocks; corrected from "six" by review finding F-4,
+  which counted the new case among the old).
 - [ ] **AC-5:** Given the map after all copy changes, when the mocked e2e suite runs both
   modes, then `expectNoSeriousAxeViolations` passes on the beach map in each.
   *Pinned by:* `booking-flow.e2e.ts` + `request-to-book.e2e.ts` (existing axe calls, which
@@ -292,6 +294,7 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | review gate — `/code-review` reviewer #5 (code-comment guidance) | `venue-map.ts:54` TSDoc states "`bookingMode` is carried raw **for the booking dialog**" — the new mode-aware footer reads it raw too, so the field's documented purpose was understated. A stale present-tense fact in a file the slice deliberately did not touch | fixed-in-`758c863` — TSDoc names both consumers; routing gate re-run (`riviera-frontend` + `frontend/.claude/CLAUDE.md`'s "TSDoc states the contract, not the changelog") |
 | F-2 | review gate — `/code-review` reviewer #5 (code-comment guidance) | `venue-map.ts:86` TSDoc states the component "owns only the tourist tile vocabulary **(tap-to-book)**" — stale twice over: the slice retired the word "Tap" from the surface, and a REQUEST venue's footer is not "book" wording at all | fixed-in-`758c863` — reworded to the tile names **and** the mode-aware footer; same routing-gate re-run as F-1 |
+| F-4 | review gate — `/code-review` reviewer #4 (prior-PR comment themes) | AC-4 cited "the **six** existing hint-gating cases"; the spec holds **five** pre-existing cases (eleven assertions) plus this slice's new one — the new case was counted among the old. Same citation-accuracy class prior PRs #649 and #707 were flagged for | fixed-in-`9c664fe` — recounted mechanically over the spec's `it(` blocks; AC-4 corrected in the plan doc and the PR body. No test changed |
 | F-3 | review gate — `/code-review` reviewer #1 (CLAUDE.md compliance), soft note | The rewritten cutoff comment in `venue-map.html` is a long single line (~237 chars); compliant with `check-inline-comments.mjs`, flagged as "worth a human glance" | **considered, declined** — 237 chars is the exact median of the 15 HTML comments in the two touched files (range 102–756, measured). Shortening it would be churn against the file's own convention, not an improvement |
 
 ---
@@ -546,7 +549,7 @@ it('the pan hint is one plain line, no decorative glyph', async () => {
 - [ ] **AC-1:** Run `npm test -- venue-map.spec.ts` → the INSTANT footer case passes. Verified at commit `<sha>`.
 - [ ] **AC-2:** Run `npm test -- venue-map.spec.ts` → the REQUEST footer case passes. Verified at commit `<sha>`.
 - [ ] **AC-3:** Run `npm test -- venue-map.spec.ts` → the cutoff case passes (copy + `<svg aria-hidden>` + no ⏰ + `min` unchanged). Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `npm test -- beach-map-canvas.spec.ts` → the new copy case and all six gating cases pass. Verified at commit `<sha>`.
+- [ ] **AC-4:** Run `npm test -- beach-map-canvas.spec.ts` → the new copy case and all five pre-existing gating cases pass. Verified at commit `<sha>`.
 - [ ] **AC-5:** Run `npm run test:e2e:a11y -- booking-flow request-to-book` → both pass, axe green. Verified at commit `<sha>`.
 - [ ] **AC-6:** Run `git diff --stat origin/main` → no `platform/` path; the one `.ts` file present (`venue-map.ts`) passes the comment-only proof in the AC. Verified at commit `<sha>`.
 
