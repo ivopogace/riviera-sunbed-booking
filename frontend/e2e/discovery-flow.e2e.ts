@@ -96,6 +96,11 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(cards).toHaveCount(2);
   await expect(cards.first()).toContainText('Miramar Beach Club');
   await expect(cards.first()).toContainText('18 of 24 free');
+
+  // Discover sizes the shared glyph from its own template — the rendered box, which jsdom can't prove.
+  const cutoffGlyph = page.getByTestId('cutoff-note').locator('svg');
+  await expect(cutoffGlyph).toHaveCSS('width', '15px');
+  await expect(cutoffGlyph).toHaveCSS('height', '15px');
   // One combined assertion: bare toContainText('2') would be vacuously satisfied by the
   // year digits in the date label (review finding).
   await expect(page.getByTestId('results')).toContainText('2 venues');
@@ -209,7 +214,9 @@ test('discovery load-failure panel recovers when Retry is pressed (#149)', async
   await expect(panel).toHaveAttribute('role', 'alert');
   await expect(panel.getByRole('heading', { name: /couldn.t load the beaches/ })).toBeVisible();
   // The cutoff explainer sits under the filter bar in every state, including this one.
-  await expect(page.getByTestId('cutoff-note')).toContainText(/book by 6\s+PM the day before/);
+  await expect(page.getByTestId('cutoff-note')).toContainText(
+    /Book any day from tomorrow[\s\S]*each day.s sales close at 6\s+PM the evening before\./,
+  );
   await expectNoSeriousAxeViolations(page, 'discovery load-failure panel');
 
   // Retry refetches → the panel is replaced by the venue list.
