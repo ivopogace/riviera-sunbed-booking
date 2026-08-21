@@ -280,7 +280,7 @@
   <!-- Outside the @if on purpose: a live region must outlive the branch it describes (#741). -->
   <app-load-announcer
     [loading]="loading()"
-    [failed]="failed()"
+    [ready]="!!venueView()"
     loadingLabel="Loading the beach map…"
     readyLabel="Beach map loaded."
   />

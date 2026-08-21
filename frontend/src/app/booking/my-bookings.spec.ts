@@ -496,6 +496,8 @@ describe('MyBookings (device-local list, issue #139)', () => {
       // …and the failed account list is surfaced with a retry, not hidden.
       expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
       expect(host.querySelector('[data-testid="account-retry"]')).not.toBeNull();
+      // Silent: bookings made elsewhere may be missing, so "loaded" overstates it (#741 review).
+      expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
     });
 
     it('shows the account list when the device has no remembered codes', async () => {

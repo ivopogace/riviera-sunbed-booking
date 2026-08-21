@@ -10,7 +10,7 @@
   <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
   <app-load-announcer
     [loading]="!loaded()"
-    [failed]="loadErrorMsg() !== undefined"
+    [ready]="loaded() && loadErrorMsg() === undefined"
     loadingLabel="Loading payouts…"
     readyLabel="Payouts loaded."
   />

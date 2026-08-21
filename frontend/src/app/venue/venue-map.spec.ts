@@ -775,6 +775,13 @@ describe('VenueMap', () => {
     expect(navigate).toHaveBeenCalledWith(['/']);
   });
 
+  it('says nothing over the not-available panel — a 404 is not a loaded map (#741 review)', async () => {
+    venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
+    await fixture.whenStable();
+
+    expect(el().querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
+  });
+
   /** #693 review F-1: a hidden-while-browsing venue must not keep serving the stale map. */
   it('replaces a loaded map with the not-available panel when a date change 404s', async () => {
     flushVenue();

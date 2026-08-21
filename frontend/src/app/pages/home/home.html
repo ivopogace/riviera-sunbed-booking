@@ -124,7 +124,7 @@
   ></p>
 
   <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
-  <app-load-announcer [loading]="loading()" [failed]="failed()" loadingLabel="Loading venues…" />
+  <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" />
 
   @if (failed()) {
     <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->

@@ -53,6 +53,7 @@ const RESEND_NOTICES = {
         <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
         <app-load-announcer
           [loading]="auth.restoring()"
+          [ready]="!erased() && !auth.restoring() && auth.signedIn()"
           loadingLabel="Loading…"
           readyLabel="Account loaded."
         />
@@ -64,7 +65,7 @@ const RESEND_NOTICES = {
             removed.
           </p>
         } @else if (auth.restoring()) {
-          <!-- Visible copy only; the announcer below owns the announcement (#741). -->
+          <!-- Visible copy only; the announcer above owns the announcement (#741). -->
           <p class="auth-intro" aria-hidden="true" data-testid="setpw-loading">Loading…</p>
         } @else if (!auth.signedIn()) {
           <p class="auth-intro" data-testid="setpw-signed-out">Sign in to manage your account.</p>

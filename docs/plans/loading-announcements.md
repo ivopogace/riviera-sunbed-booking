@@ -68,9 +68,13 @@ change-detection timing cannot) · `riviera-local-debug` (scoped test runs; clou
   asserted by holding an element reference across change detection, not by re-querying), its
   text becomes `readyLabel`, and it is `sr-only` + `role="status"` + `aria-live="polite"`.
   *Pinned by:* `shared/load-announcer.spec.ts`.
-- [ ] **AC-2:** Given `app-load-announcer` with `failed` true and `loading` false, when it
-  renders, then its text is empty — a failed load never announces "loaded". *Pinned by:*
-  `shared/load-announcer.spec.ts`.
+- [ ] **AC-2:** Given `app-load-announcer` outside both `loading` and `ready`, when it renders,
+  then its text is empty — any exit the call site did not call ready is silent, and `loading`
+  wins over `ready` if both are asserted. *Pinned by:* `shared/load-announcer.spec.ts` (two specs).
+- [ ] **AC-8:** Given each surface's non-success exits — the beach map's 404, My bookings' failed
+  account read, the account page's signed-out visitor — when they render, then the announcer says
+  nothing. *Pinned by:* `venue-map.spec.ts`, `my-bookings.spec.ts`, `set-password.spec.ts`; all
+  three mutation-checked.
 - [ ] **AC-3:** Given each of the eight surfaces below, when the component renders in its
   **loaded** state, then an `app-load-announcer` region is present in the DOM (it is not
   scoped to the loading branch), and no loading container carries `aria-live` any more.
@@ -93,10 +97,13 @@ change-detection timing cannot) · `riviera-local-debug` (scoped test runs; clou
 
 ## Non-goals
 
-- **Failure announcements.** No surface's failure panel is a live region today
-  (`shared/failure-panel.ts` has no `role="alert"`), so a failed load is silent. This slice only
-  ensures the announcer does not *lie* ("loaded") on failure; making failure audible is a
-  separate defect → follow-up issue at close-out.
+- **Failure announcements.** Corrected at the review gate: `shared/failure-panel.ts` carries no
+  `role="alert"` of its own, but its **call sites** add one — `home.html:131`,
+  `venue-map.html:249/259`, and the `auth-error` paragraphs — and `role="alert"` on insertion is
+  the one live-region case screen readers announce reliably. So failures are largely covered
+  already, and this slice's job on that side is only to keep the announcer from *contradicting*
+  them. The genuinely uncovered surfaces (`daily-view-tab`, `requests-tab`, `payouts-tab` error
+  paragraphs, `my-bookings`' account-error card) → follow-up issue at close-out.
 - **The result/notice regions** (`<output>` elements, admin notices, `booking-view`'s
   withdraw/cancel results). Some share the born-with-text shape, but they are result
   announcements, not loading ones, and several are already correct. Out of scope.
@@ -130,7 +137,7 @@ The old surface is "a loading container that is itself the live region". Behavio
 | R-1 | Inserting a persistent element at the top of a template shifts `:first-child`/`nth-child`/`first:` styling | Medium | Visual regression | **Closed.** Host is `class: 'contents'` and the inner `<p>` is `sr-only` (absolutely positioned → out of flow, not a flex/grid item); `grep -n 'first:\|nth-child\|first-child\|last:'` over all eight touched templates returns nothing |
 | R-2 | Double announcement where a persistent count region already speaks (Discover) | Medium | Noisy AT | **Closed.** Only Discover's count region is persistent, so only Discover's `readyLabel` is empty; `venue-map` and `daily-view-tab` count regions sit inside the loaded branch and are rebuilt, so they get a real one |
 | R-3 | `readyLabel` derived from a live count would re-announce on every later mutation (date change, accepting a request) | Medium | Noisy AT | **Closed.** `readyLabel` is a static string at all eight call sites; pinned by RV-FE-10 for future slices |
-| R-4 | The announcer announces "loaded" when the load failed | High if unguarded | Wrong information to AT | **Closed.** `failed` input suppresses the ready label (AC-2), bound on the four surfaces that have an error signal |
+| R-4 | The announcer announces "loaded" when the load failed | High if unguarded | Wrong information to AT | **Closed — but only after the review gate caught the first fix being wrong.** A `failed` flag was fail-open and three call sites had unbound exits (F-1/F-2/F-3). The shipped `ready` input is fail-safe: an undescribed exit is silent (AC-2, AC-8) |
 | R-5 | jsdom cannot prove a real screen reader announces | Certain | False confidence | **Closed.** Specs assert the *mechanism* (element identity across the transition) and were **mutation-checked**: moving the announcer back inside `requests-tab`'s `@if` fails the new spec, so it bites the exact defect. Spec titles/comments no longer claim an announcement none of them proved |
 | R-6 | Eight surfaces adopted mechanically, one signal mapped wrong (e.g. a surface whose "loaded" is also its error state) | Medium | Silent or wrong announcement | **Closed.** `home` and `venue-map` got named `loading` computeds; the other six bind an existing signal directly. Each asserted per surface (AC-3/AC-4) |
 
@@ -194,16 +201,21 @@ API: `loading = input.required<boolean>()` · `failed = input(false)` ·
 **The eight adoption sites** (`loading` / `failed` come from a named `computed()` in the
 component, never inline template logic — R-6):
 
-| # | Surface | `loading` | `failed` | `loadingLabel` | `readyLabel` |
+| # | Surface | `loading` | `ready` (the **loaded branch**, nothing else) | `loadingLabel` | `readyLabel` |
 |---|---|---|---|---|---|
-| 1 | `pages/home/home.html` (Discover) | `!failed() && venues() === undefined` | `failed()` | Loading venues… | `''` — the persistent results-count region already announces the count (B-7) |
-| 2 | `operator/set-editor.html` | `!loaded()` | — | Loading this venue’s sets… | Sets loaded. |
-| 3 | `booking/my-bookings.ts` | `loading()` | — | Loading your bookings… | Your bookings loaded. |
-| 4 | `operator/daily-view-tab.html` | `!loaded()` | `loadError()` | Loading the daily view… | Daily view loaded. |
-| 5 | `operator/requests-tab.html` | `!loaded()` | `loadError()` | Loading requests… | Requests loaded. |
-| 6 | `operator/payouts-tab.html` | `!loaded()` | `loadErrorMsg() !== undefined` | Loading payouts… | Payouts loaded. |
-| 7 | `venue/venue-map.html` | `!failed() && !notFound() && !venueView()` | `failed()` | Loading the beach map… | Beach map loaded. |
-| 8 | `auth/set-password.ts` | `auth.restoring()` | — | Loading… | Account loaded. |
+| 1 | `pages/home/home.html` (Discover) | `!failed() && venues() === undefined` | — (no `readyLabel`) | Loading venues… | `''` — the persistent results-count region already announces the count (B-7) |
+| 2 | `operator/set-editor.html` | `!loaded()` | `loaded()` | Loading this venue’s sets… | Sets loaded. |
+| 3 | `booking/my-bookings.ts` | `loading()` | `!loading() && !accountError()` | Loading your bookings… | Your bookings loaded. |
+| 4 | `operator/daily-view-tab.html` | `!loaded()` | `loaded() && !loadError()` | Loading the daily view… | Daily view loaded. |
+| 5 | `operator/requests-tab.html` | `!loaded()` | `loaded() && !loadError()` | Loading requests… | Requests loaded. |
+| 6 | `operator/payouts-tab.html` | `!loaded()` | `loaded() && loadErrorMsg() === undefined` | Loading payouts… | Payouts loaded. |
+| 7 | `venue/venue-map.html` | `!failed() && !notFound() && !venueView()` | `!!venueView()` — which is the loaded branch, so it covers the 404 and the failure at once | Loading the beach map… | Beach map loaded. |
+| 8 | `auth/set-password.ts` | `auth.restoring()` | `!erased() && !auth.restoring() && auth.signedIn()` | Loading… | Account loaded. |
+
+**The input is `ready`, not `failed` — the review gate's doing.** The first cut asked each call
+site "did it fail?", which makes silence conditional on remembering every non-success exit; three
+of the eight had one nobody had bound. `ready` inverts it, so an undescribed exit is silent
+instead of announcing "…loaded." over a panel saying the opposite. Fail-safe, not fail-open.
 
 Rows 4 and 7 get a non-empty `readyLabel` **because** their availability/set-count regions sit
 inside the loaded branch and are therefore rebuilt on load — unlike Discover's (row 1), which
@@ -222,9 +234,10 @@ N/A — no request or response shape changes.
 
 ## Execution status
 
-**Stage pointer:** `review gate` — implementation complete, all phases green.
+**Stage pointer:** `review gate — fixes pushed, awaiting re-review + Sonar`.
 
-**Next action:** Mark PR #743 ready for review, run the Review gate, then the Sonar gate.
+**Next action:** Confirm CI green on the fix commit, re-review the changed surface, then pull
+Sonar's reported new-issue + duplication list (green gate is not the check).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -233,6 +246,7 @@ N/A — no request or response shape changes.
 | 2 — Adopt on the three surfaces #741 names | ✅ | |
 | 3 — Adopt on the five surfaces the grill swept up | ✅ | |
 | 4 — e2e, docs freshness (RV-FE-10), close-out | ✅ | |
+| 5 — Review-gate findings F-1…F-7 | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -242,7 +256,13 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (`/code-review`, high) | `venue-map`: `[failed]` missed `notFound()`, so a 404 announced "Beach map loaded." over the not-available panel | fixed — `ready` inversion + spec, mutation-checked |
+| F-2 | review gate (same run) | `my-bookings`: no failure binding at all, so a failed account read announced "Your bookings loaded." beside the retry card | fixed — same inversion + spec, mutation-checked |
+| F-3 | review gate (same run) | `set-password`: a signed-out visitor (and the post-erasure state) heard "Account loaded." over "Sign in to manage your account" | fixed — same inversion + spec, mutation-checked; the transition spec's own premise was wrong too and was corrected |
+| F-4 | review gate (same run) | `loading-announcements.e2e.ts` omitted `expectNoSeriousAxeViolations`'s required `context` argument | fixed |
+| F-5 | review gate (same run) | untracked `e2e/zz-dbg.e2e.ts` debug spec left in the tree — it matches the mocked config's glob and would run | fixed — deleted (an earlier `rm` ran from the wrong cwd) |
+| F-6 | review gate (noted, not reported) | `set-password`'s inline comment said "the announcer below" where it is above | fixed |
+| F-7 | review gate (noted, not reported) | the plan's Non-goals claimed no failure panel is a live region; `home.html` and `venue-map.html` do carry `role="alert"` | fixed — Non-goals rewritten, and the follow-up issue narrowed to the surfaces genuinely uncovered |
 
 ---
 
@@ -333,6 +353,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | G-2 | Same sweep, adjacent population | The same shape on **result/notice** regions (`<output>`, admin notices, `home.html:143` empty state) | same command | ~20 | Out of scope (Non-goals) — different defect class; several are already correct. Recorded, not silently dropped |
 | G-3 | R-4 | "a surface whose loaded state is also reachable on error" | read each of the 8 components' error signals | 4 of 8 have an explicit error signal | `failed` input added so none announces "loaded" on failure |
 | G-4 | The three surfaces' text moved out of their loading containers | "a test that asserts loading copy **through the container** rather than the announcer" | `grep -rn 'Loading ' frontend/e2e frontend/src --include=*.ts` | 1 outside the diff — `layout-editor.e2e.ts:293` | Updated in this PR; it now asserts the announcer's text and the container's `aria-hidden` |
+| G-5 | Review findings F-1/F-2/F-3 | **The audit that missed them (G-3) is the lesson.** G-3 enumerated "surfaces with an explicit error signal" — resemblance, not mechanism. The mechanism is "a branch of the surface's `@if` chain that is neither loading nor loaded", which also covers a 404, a partial read and a signed-out visitor. Re-enumerated by reading all eight `@if` chains, not by grepping for error-shaped names | 3 more exits on 3 surfaces | Fixed by inverting the input to `ready` so the population no longer has to be enumerated correctly — an exit nobody described is silent by construction. RV-FE-10 states the rule |
 
 ---
 
@@ -341,12 +362,13 @@ Skill-routing gate for what the fix touches *before* editing).
 | AC | Verified by | Result |
 |---|---|---|
 | AC-1 | `load-announcer.spec.ts` › "keeps the SAME element across loading → loaded…" | ✅ |
-| AC-2 | `load-announcer.spec.ts` › "says nothing when the load failed…" | ✅ |
+| AC-2 | `load-announcer.spec.ts` › "says nothing on any exit the call site did not call ready…" + the contradiction spec | ✅ |
 | AC-3 | 8 surface specs › "announces through one region that survives loading → loaded (#741)" | ✅ |
 | AC-4 | the same 8 specs (identity assertion) — **mutation-checked** on `requests-tab` | ✅ |
 | AC-5 | the same 8 specs (`aria-hidden` on the skeleton / visible copy) | ✅ |
 | AC-6 | `loading-announcements.e2e.ts` — **mutation-checked**: scoping the region back inside Discover's `@if` fails it in 5s | ✅ |
-| AC-7 | `npm run lint` ✅ · `format:check` ✅ · `npm test` ✅ 176 files / 1606 tests · `test:e2e:a11y` ✅ | ✅ |
+| AC-7 | `npm run lint` ✅ · `format:check` ✅ · `npm test` ✅ 176 files / 1608 tests · `test:e2e:a11y` ✅ 233/233 | ✅ |
+| AC-8 | `venue-map.spec.ts` / `my-bookings.spec.ts` / `set-password.spec.ts`, all three mutation-checked | ✅ |
 
 ---
 

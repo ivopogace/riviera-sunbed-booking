@@ -202,6 +202,7 @@ const CLS = {
       <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
       <app-load-announcer
         [loading]="loading()"
+        [ready]="!loading() && !accountError()"
         loadingLabel="Loading your bookings…"
         readyLabel="Your bookings loaded."
       />

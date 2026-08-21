@@ -22,7 +22,7 @@
   <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
   <app-load-announcer
     [loading]="!loaded()"
-    [failed]="loadError()"
+    [ready]="loaded() && !loadError()"
     loadingLabel="Loading requests…"
     readyLabel="Requests loaded."
   />

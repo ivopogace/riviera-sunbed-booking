@@ -379,8 +379,11 @@ exist in the DOM before the text it announces changes**?
       wherever a persistent count region already speaks the outcome
 - [ ] `readyLabel` is a **static** sentence, not a live count — a count re-announces on every later
       mutation (a date change, an accepted request)
-- [ ] leaving the loading state by **failing** does not announce success (`[failed]` is bound
-      wherever the surface has an error signal)
+- [ ] the "loaded" signal is **fail-safe**: the call site says when it *reached its loaded branch*
+      (`[ready]`), never when it failed. A "did it fail?" flag makes silence conditional on
+      remembering every non-success exit, and the exits are always more numerous than they look —
+      a 404, a partial read, a signed-out visitor, a post-erasure state. Enumerate the branches of
+      the surface's `@if` chain and check the binding is true in exactly one of them
 - [ ] the spec asserts **element identity across the transition**, not the presence of text
 
 > **The trap this item exists for:** the text is always there, so a spec that reads it passes either
@@ -391,10 +394,18 @@ exist in the DOM before the text it announces changes**?
 > the rule right the whole time; the loading surfaces never adopted it. angular.dev says the same
 > thing under `@defer` › *Keep accessibility in mind*.
 >
+> **The fail-open trap, paid for once already.** PR #743's own review gate caught the `[ready]`
+> rule above the hard way: the first cut took a `[failed]` flag, and three of eight call sites had
+> a non-success exit nobody had thought to bind — the beach map's 404, My bookings' failed account
+> read, the account page's signed-out visitor — each announcing "…loaded." over a panel saying the
+> opposite. Announcing the failure itself is a *different* item: the failure panels carry
+> `role="alert"`, the one live-region case reliably announced on insertion.
+>
 > **Ask whether the spec was mutation-checked.** Moving the region back inside its branch must fail
-> it — a passing identity assertion that cannot fail is the same false comfort in a new place
-> (worked examples: `requests-tab.spec.ts` and `e2e/loading-announcements.e2e.ts`, both
-> mutation-checked in PR #743).
+> it, and so must widening `[ready]` past the loaded branch — a passing assertion that cannot fail
+> is the same false comfort in a new place (worked examples, all mutation-checked in PR #743:
+> `requests-tab.spec.ts`, `e2e/loading-announcements.e2e.ts`, and the three `[ready]` specs in
+> `venue-map.spec.ts` / `my-bookings.spec.ts` / `set-password.spec.ts`).
 
 **Default severity:** **Major** — a loading state that says nothing is a WCAG AA failure on a shipped
 surface, and it is invisible to every automated check including axe. **Blocker** when the region is

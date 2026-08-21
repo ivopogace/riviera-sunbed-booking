@@ -19,10 +19,18 @@ import { Component, computed, input } from '@angular/core';
  * jsdom would tell you — which is why each adopting surface's spec asserts element identity across
  * the transition rather than the presence of text.
  *
- * <p>`failed` exists because "not loading" is not "loaded": four of the eight surfaces can leave the
- * loading state by failing, and a region that says "Payouts loaded." over a failure panel is worse
- * than silence. Announcing the failure itself is deliberately NOT this component's job — no failure
- * panel in the app is a live region yet, and that is one defect, fixed in one place, not here.
+ * <p>`ready` is the call site saying it reached its **loaded** branch — not merely that it stopped
+ * loading. The difference is the whole reason this input has the polarity it does. A `failed` flag
+ * was tried first and is fail-OPEN: it makes silence conditional on remembering every non-success
+ * exit, and the review of this very PR found three that had been missed — a 404 on the beach map, a
+ * failed account read on My bookings, a signed-out visitor on the account page — each announcing
+ * "…loaded." over a panel saying the opposite. `ready` inverts that. An exit nobody described is
+ * silent, and silence is the recoverable failure; a lie is not. Announcing the failure itself is
+ * deliberately not this component's job (the failure panels carry `role="alert"`, which IS reliably
+ * announced on insertion — the one live-region case with good support).
+ *
+ * <p>`loading` wins over `ready` if a call site somehow asserts both: in flight is the safer read of
+ * a contradiction.
  *
  * <p>`readyLabel` is a static sentence, never a live count: a count re-announces on every later
  * mutation (a date change, an accepted request), and the surfaces that have a count already have a
@@ -48,8 +56,11 @@ export class LoadAnnouncer {
   /** True while the surface's content is in flight. */
   readonly loading = input.required<boolean>();
 
-  /** True when the load ended in failure — suppresses {@link readyLabel}, announcing nothing. */
-  readonly failed = input(false);
+  /**
+   * True only in the surface's **loaded** branch. Anything else — a failure, a 404, a signed-out
+   * visitor — leaves it false and this region silent. See the class note on why it is not `failed`.
+   */
+  readonly ready = input(false);
 
   /** Spoken while loading, and on every re-load once the region is mounted. */
   readonly loadingLabel = input.required<string>();
@@ -57,7 +68,10 @@ export class LoadAnnouncer {
   /** Spoken when the content lands. Empty where another persistent region already says it. */
   readonly readyLabel = input('');
 
-  protected readonly message = computed(() =>
-    this.loading() ? this.loadingLabel() : this.failed() ? '' : this.readyLabel(),
-  );
+  protected readonly message = computed(() => {
+    if (this.loading()) {
+      return this.loadingLabel();
+    }
+    return this.ready() ? this.readyLabel() : '';
+  });
 }

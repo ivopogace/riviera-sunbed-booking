@@ -57,5 +57,5 @@ test('Discover announces through a region that outlives the load (#741)', async 
   await expect(announcer).toHaveText('');
   await expect(page.getByTestId('results')).toContainText('1');
 
-  await expectNoSeriousAxeViolations(page);
+  await expectNoSeriousAxeViolations(page, 'Discover, loaded');
 });

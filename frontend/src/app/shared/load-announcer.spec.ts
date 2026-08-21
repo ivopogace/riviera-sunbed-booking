@@ -7,14 +7,14 @@ import { LoadAnnouncer } from './load-announcer';
   imports: [LoadAnnouncer],
   template: `<app-load-announcer
     [loading]="loading()"
-    [failed]="failed()"
+    [ready]="ready()"
     loadingLabel="Loading venues…"
     readyLabel="Venues loaded."
   />`,
 })
 class Host {
   readonly loading = signal(true);
-  readonly failed = signal(false);
+  readonly ready = signal(false);
 }
 
 describe('LoadAnnouncer', () => {
@@ -37,6 +37,7 @@ describe('LoadAnnouncer', () => {
     const whileLoading = region();
     expect(spoken(whileLoading)).toBe('Loading venues…');
 
+    cmp.ready.set(true);
     cmp.loading.set(false);
     fixture.detectChanges();
 
@@ -44,15 +45,23 @@ describe('LoadAnnouncer', () => {
     expect(spoken(whileLoading)).toBe('Venues loaded.');
   });
 
-  it('says nothing when the load failed — "not loading" is not "loaded"', () => {
-    // Four of the eight surfaces can leave the loading state by failing.
+  it('says nothing on any exit the call site did not call ready — "not loading" is not "loaded"', () => {
+    // Fail-safe: an exit nobody described is silent, not a lie (the three #741's review caught).
     const { fixture, cmp, region, spoken } = mount();
 
-    cmp.failed.set(true);
     cmp.loading.set(false);
     fixture.detectChanges();
 
     expect(spoken(region())).toBe('');
+  });
+
+  it('reads a contradiction as still in flight, the safer half', () => {
+    const { fixture, cmp, region, spoken } = mount();
+
+    cmp.ready.set(true);
+    fixture.detectChanges();
+
+    expect(spoken(region())).toBe('Loading venues…');
   });
 
   it('is a visually-hidden polite status region, not a visible one', () => {
