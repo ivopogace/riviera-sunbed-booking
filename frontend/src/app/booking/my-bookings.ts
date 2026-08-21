@@ -297,7 +297,12 @@ const CLS = {
                   </a>
                 }
                 @case ('failed') {
-                  <div [class]="cls.rowPlaceholder" appCardGlass data-testid="booking-row-failed">
+                  <div
+                    [class]="cls.rowPlaceholder"
+                    appCardGlass
+                    role="alert"
+                    data-testid="booking-row-failed"
+                  >
                     <span [class]="cls.rowMain">
                       <span class="text-[16px] font-bold">Couldn’t load this booking</span>
                       <span [class]="cls.meta">Check your connection and try again.</span>
@@ -348,9 +353,9 @@ export class MyBookings {
    * True until the initial list is decided (the session restore has settled AND the first rows are
    * set). It is cleared as soon as the DEVICE rows render, so it cannot gate the empty card on its
    * own; {@link showSkeleton} is what does, by keeping the skeleton up while a signed-in account
-   * fetch is still out and there is nothing else to draw (#741 review rounds 2–3).
+   * fetch is still out and there is nothing else to draw (#741).
    */
-  protected readonly loading = signal(true);
+  private readonly loading = signal(true);
   /**
    * The account list (signed-in) failed to load — surface a Retry rather than silently hiding the
    * account bookings behind the device-local ones.
@@ -360,17 +365,22 @@ export class MyBookings {
   /**
    * The account list is out. Distinct from {@link loading}, which the device rows clear the moment
    * they render — so without this there is a window where nothing is "loading" and nothing has
-   * failed yet, and the announcer would call that loaded (#741 re-review). Never true for a guest:
-   * {@link loadAccount} is the only writer. Protected only because the template reads it.
+   * failed yet, and the announcer would call that loaded (#741). Never true for a guest:
+   * {@link loadAccount} is the only writer. Read by {@link showSkeleton} and
+   * {@link announceReady}, never by the template.
    */
-  protected readonly accountPending = signal(false);
+  private readonly accountPending = signal(false);
 
   /**
-   * Nothing to show yet, so the skeleton stands in — and the same signal is the announcer's
-   * `loading`, because a surface that looks busy and says nothing is the #741 defect in a new
-   * costume. It is deliberately NOT just {@link loading}: that is cleared the moment the device
-   * rows render, which for a signed-in customer whose bookings all live on the server means zero
-   * rows and no skeleton — a blank page for the whole round trip (#741 review round 3).
+   * Nothing to draw yet, so the page-level skeleton stands in — and the same signal is the
+   * announcer's `loading`, so what is drawn and what is announced cannot disagree. Deliberately
+   * NOT just {@link loading}: that is cleared the moment the device rows render, which for a
+   * signed-in customer whose bookings all live on the server leaves zero rows and no skeleton
+   * for the whole account round trip (#741).
+   *
+   * <p>Per-code rows resolving behind their own row skeletons are NOT this signal's business —
+   * the page has something to draw then. {@link announceReady} is what withholds the
+   * announcement until they settle.
    */
   protected readonly showSkeleton = computed(
     () => this.loading() || (this.accountPending() && this.rows().length === 0),
@@ -379,14 +389,12 @@ export class MyBookings {
   /**
    * Every page-level read has settled **and produced a booking, or none**. Rows must be `'loaded'`,
    * not merely "not loading": a `'failed'` row renders a "Couldn't load this booking" retry card,
-   * and announcing success over it is the same lie the `ready` polarity exists to prevent.
+   * and announcing success over it is the same lie the `ready` polarity exists to prevent (#741).
    *
    * <p>That is also what keeps the announcement single. A per-row Retry sends its row back to
    * `'loading'`, which would take this false and true again — but the button only exists inside
    * the `'failed'` case, and a failed row means the page never announced in the first place. So
-   * the sequence a guest hears is silence → "loaded", never "loaded" → silence → "loaded". A
-   * latch was written for this and then removed: it guarded a state the template cannot reach,
-   * and no test could tell it from its absence (#741 review round 3).
+   * the sequence a guest hears is silence → "loaded", never "loaded" → silence → "loaded".
    */
   protected readonly announceReady = computed(
     () =>

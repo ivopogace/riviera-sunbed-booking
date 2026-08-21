@@ -102,8 +102,12 @@ change-detection timing cannot) · `riviera-local-debug` (scoped test runs; clou
   `venue-map.html:249/259`, and the `auth-error` paragraphs — and `role="alert"` on insertion is
   the one live-region case screen readers announce reliably. So failures are largely covered
   already, and this slice's job on that side is only to keep the announcer from *contradicting*
-  them. The genuinely uncovered surfaces (`daily-view-tab`, `requests-tab`, `payouts-tab` error
-  paragraphs, `my-bookings`' account-error card) → follow-up issue at close-out.
+  them. **One exception, taken in round 4 (F-17):** `my-bookings`' per-row `booking-row-failed`
+  card was missed by this enumeration entirely, and F-14 had just made it the *only* thing a
+  partially-failed page could say — so it got its `role="alert"` here, one attribute, in the
+  file the slice was already changing. The still-uncovered surfaces (`daily-view-tab`,
+  `requests-tab`, `payouts-tab` error paragraphs, `my-bookings`' account-error card) →
+  follow-up issue at close-out.
 - **The result/notice regions** (`<output>` elements, admin notices, `booking-view`'s
   withdraw/cancel results). Some share the born-with-text shape, but they are result
   announcements, not loading ones, and several are already correct. Out of scope.
@@ -243,11 +247,11 @@ N/A — no request or response shape changes.
 
 ## Execution status
 
-**Stage pointer:** `review gate — round 3 fixes pushed, one more re-review due`.
+**Stage pointer:** `review gate — round 4 fixes pushed, re-review due`.
 
-**Next action:** Re-review the round-3 diff (`/code-review HEAD~1..HEAD high`). If it comes back
-clean, pull Sonar's new-issue + duplication list from the API for the final head (a green gate is
-not the check), then run the merge close-out in `riviera-sdlc` `references/pr-gates.md` §3.
+**Next action:** Re-review the round-4 diff. If it comes back clean, confirm CI green on the
+final head, pull Sonar's new-issue + duplication list from the API for that head (a green gate
+is not the check), then run the merge close-out in `riviera-sdlc` `references/pr-gates.md` §3.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -260,6 +264,7 @@ not the check), then run the merge close-out in `riviera-sdlc` `references/pr-ga
 | 6 — Re-review findings F-8, F-9 | ✅ | |
 | 7 — Second re-review findings F-10…F-12 | ✅ | |
 | 8 — Third-round findings F-13…F-16 | ✅ | |
+| 9 — Fourth-round findings F-17…F-24 | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -280,11 +285,41 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-9 | re-review (same run) | the plan's "New primitive" API block still documented `failed` and the old `message` computed, contradicting the `ready` table below it | fixed |
 | F-10 | **second re-review** | `my-bookings`: the same premature-"loaded" window on the **more common** path — a guest with remembered codes, whose per-code rows are still skeletons when `loading` clears. Third instance of one mechanism | fixed — the four conditions hoisted into an `announceReady()` computed incl. `rows().every(state !== 'loading')`; pinned + mutation-checked |
 | F-11 | second re-review | `my-bookings`: `loading`'s docstring claims it "gates the empty card so a signed-in account fetch in flight never flashes 'No booking yet'" — it cannot, being cleared by the device rows. A **pre-existing** visual bug its own doc denied | fixed — `accountPending` added to the empty gate, docstring corrected; pinned + mutation-checked. **Scope note:** visual, not announcement; taken because the fix is one token on a signal this slice added and the alternative was shipping a docstring known to be false |
+| F-12 | second re-review | the F-8 regression spec never seeded device codes, so it exercised the zero-row path rather than the one its comment named (and its `getByCode` stub key was wrong) | fixed — seeded, and a second spec covers the device-row window directly |
 | F-13 | **third review round** | `my-bookings`: the F-11 fix suppressed the empty card but put nothing in its place — `loading` was already false, so a signed-in customer with no device codes got a **blank page** for the whole account round trip. The spec asserted only the card's *absence*, so it could not see it | fixed — a `showSkeleton()` computed keeps the skeleton up while there is nothing to draw, and drives the announcer's `loading` too; the spec now asserts what IS there, not just what isn't |
 | F-14 | third review round | `announceReady` counted a `'failed'` device row as loaded (`state !== 'loading'`), announcing success over a "Couldn't load this booking" retry card | fixed — `state === 'loaded'`; pinned + mutation-checked |
 | F-15 | third review round | a per-row Retry could re-announce the page | **fixed by F-14, not by new code.** A latch was written for it, then removed: `row-retry` renders only inside the `'failed'` case, and a failed row now blocks the announcement, so the latch guarded an unreachable state — and deleting it failed no test (G-7). The spec asserts the real contract instead: silence → "loaded", never "loaded" → silence → "loaded" |
 | F-16 | third review round (noted, not reported) | the plan's generalization log had G-6 inserted above G-5 | fixed |
-| F-12 | second re-review | the F-8 regression spec never seeded device codes, so it exercised the zero-row path rather than the one its comment named (and its `getByCode` stub key was wrong) | fixed — seeded, and a second spec covers the device-row window directly |
+| F-17 | **fourth review round** (re-review of the round-3 diff) | `my-bookings`: F-14 correctly stopped a `'failed'` row announcing success, but nothing took its place — the `booking-row-failed` card carries no role, so a partially-failed page now says nothing at all. `load-announcer.ts`'s own docstring and RV-FE-10 both assert "the failure panels carry `role="alert"`", which this card did not | fixed — `role="alert"` on the card, matching every other error panel in the app; pinned by an assertion, mutation-checked (dropping the role fails the spec) |
+| F-18 | fourth review round | `accountPending`'s TSDoc said "Protected only because the template reads it" — the template does not read it (only `showSkeleton()`/`announceReady()` do), and `loading` had become template-invisible too. A false doc of exactly the F-11 class | fixed — both `private`, docstring corrected to name the real readers |
+| F-19 | fourth review round | four TSDoc blocks carried decision history and round-by-round issue refs ("A latch was written for this and then removed…", "#741 review round 3"), which `frontend/.claude/CLAUDE.md` forbids: TSDoc "states the contract, not the changelog". `check-inline-comments.mjs` exempts doc comments, so CI could not catch it (RV-STYLE-1) | fixed — contract kept, changelog removed; the bare `(#741)` provenance marker is house style (46 instances outside this file) and stays. The latch history lives in F-15/G-7, where it belongs |
+| F-20 | fourth review round | the round-3 spec `says nothing when a device row failed` asserted **only** that the announcer was empty — it could not tell "a retry card, silently" from "a blank page, silently". The absence-only mistake F-13 was raised for, repeated in the fix for F-14 | fixed — it now asserts the retry card is present and carries `role="alert"`, then the silence |
+| F-21 | fourth review round | the round-3 spec `announces once, after a row retry succeeds — never before it` could not observe the ordering it named: `of(...)` resolved the retry synchronously inside the click handler, so the intermediate `'loading'` window never rendered and the spec would pass with or without the contract | fixed — the retry now resolves through a `Subject`, and the spec asserts the row skeleton is up **and** the announcer silent mid-flight. Mutation-checked: restoring `of(...)` fails it |
+| F-22 | fourth review round (noted, not reported) | `...stubService({})` in that spec was dead — `stubService` returns only `getByCode`, overwritten on the next line | fixed — spread dropped, the stub typed `Partial<BookingService>` like its siblings |
+| F-23 | fourth review round | G-6's Outcome still claimed the fix gave "a single place to add the fifth condition", while the same commit added F-13's condition to a **second** computed (`showSkeleton()`) — the row cited a finding that falsified its own conclusion | fixed — G-6's Outcome now states the real shape: two questions, two computeds, neither allowed to split across inline conditions |
+| F-24 | fourth review round (noted, not reported) | F-13…F-16 were appended **above** the pre-existing F-12 row — the same out-of-order defect F-16 itself records for G-5/G-6, committed one table higher | fixed — F-12 restored to sequence |
+
+
+**Considered and rejected in round 4** (recorded so the next reader does not re-derive them):
+
+- *"`showSkeleton()` omits per-code rows still resolving, so the announcer is silent while row
+  skeletons are up."* — Not a defect. The sequence a guest gets is "Loading your bookings…"
+  (page skeleton) → `''` (row skeletons) → "Your bookings loaded."; emptying a live region
+  announces nothing, so no announcement is lost, and the row skeletons carry `aria-busy`. The
+  two computeds answer different questions **by design** — now stated in `showSkeleton()`'s
+  docstring and in G-6 rather than left implicit (F-19, F-23).
+- *"`showSkeleton()` can flip false→true after content has rendered, tearing the list down."* —
+  Unreachable as described. Only a `'loading'` row can leave `rows()` (the 404 filter); a
+  `'loaded'` row never does, so `rows()` can empty back out only from a set that was still
+  skeletons. Rendering the page skeleton when there is again nothing to draw and a read is
+  still out is exactly the contract, and the resulting "Loading…" is accurate, not a lie.
+- *"The new retry spec near-duplicates `keeps a transiently-failed code and retries it` —
+  Sonar CPD risk."* — The F-21 fix moves it to a `Subject` and a different assertion set, so
+  the resemblance is gone. Sonar's reported duplication on the final head is the check, and it
+  is 0 blocks.
+- *"The empty-card gate's coupling to `showSkeleton()`'s formula is untested."* — It is tested:
+  the round-3 spec asserts the skeleton **is present** in that state, so narrowing
+  `showSkeleton()` fails it. That assertion is what F-13 added.
 
 ---
 
@@ -376,7 +411,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | G-3 | R-4 | "a surface whose loaded state is also reachable on error" | read each of the 8 components' error signals | 4 of 8 have an explicit error signal | `failed` input added so none announces "loaded" on failure |
 | G-4 | The three surfaces' text moved out of their loading containers | "a test that asserts loading copy **through the container** rather than the announcer" | `grep -rn 'Loading ' frontend/e2e frontend/src --include=*.ts` | 1 outside the diff — `layout-editor.e2e.ts:293` | Updated in this PR; it now asserts the announcer's text and the container's `aria-hidden` |
 | G-5 | Review findings F-1/F-2/F-3 | **The audit that missed them (G-3) is the lesson.** G-3 enumerated "surfaces with an explicit error signal" — resemblance, not mechanism. The mechanism is "a branch of the surface's `@if` chain that is neither loading nor loaded", which also covers a 404, a partial read and a signed-out visitor. Re-enumerated by reading all eight `@if` chains, not by grepping for error-shaped names | 3 more exits on 3 surfaces | Fixed by inverting the input to `ready` so the population no longer has to be enumerated correctly — an exit nobody described is silent by construction. RV-FE-10 states the rule |
-| G-6 | Re-review findings F-8, F-10, F-13 | **The same mechanism, a third time.** "A signal that leaves the loading state before every read behind it has settled." Enumerated by reading each `set(false)`/`set(true)` on every phase signal in the eight components and asking what is still in flight at that line | `my-bookings` only — the other seven set their phase signal once, at the point their single read settles | Fixed by hoisting all four conditions into one named `announceReady()` computed, so the surface has a single place to add the fifth if one appears |
+| G-6 | Re-review findings F-8, F-10, F-13 | **The same mechanism, a third time.** "A signal that leaves the loading state before every read behind it has settled." Enumerated by reading each `set(false)`/`set(true)` on every phase signal in the eight components and asking what is still in flight at that line | `my-bookings` only — the other seven set their phase signal once, at the point their single read settles | Fixed by hoisting the announcement conditions into one named `announceReady()` computed. F-13 then showed the surface answers **two** questions, not one — *what is drawn* (`showSkeleton()`) and *what is announced* (`announceReady()`) — so there are two computeds by design, each with its own contract; what must never split again is either question across several inline conditions |
 | G-7 | Review round 3 | "a clause added to guard a state the template cannot reach" — asked of each condition in `announceReady` by tracing back to the control that produces it | 1: the latch written for the per-row-Retry re-announcement | **Removed.** `row-retry` renders only inside the `'failed'` case, and a failed row already blocks the announcement, so the latch guarded an unreachable state — and the mutation check proved it: deleting it failed no test. A clause no test can distinguish is not defence in depth, it is a claim the code does not have to keep |
 
 ---

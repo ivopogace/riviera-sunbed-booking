@@ -584,20 +584,23 @@ describe('MyBookings (device-local list, issue #139)', () => {
       const fixture = await render(service);
       const host = fixture.nativeElement as HTMLElement;
 
+      // Silence only counts as right if the retry card is what stands there, and it speaks.
+      const failed = host.querySelector('[data-testid="booking-row-failed"]');
+      expect(failed).not.toBeNull();
+      expect(failed!.getAttribute('role')).toBe('alert');
+      expect(host.querySelector('[data-testid="row-retry"]')).not.toBeNull();
       expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
     });
 
-    it('announces once, after a row retry succeeds — never before it', async () => {
+    it('announces once, after a row retry succeeds — never while it is still in flight', async () => {
       // The order is the contract: silence → "loaded", never "loaded" → silence → "loaded".
       seedCodes(['DEVONLY1']);
+      const second = new Subject<BookingDetail>();
       let attempt = 0;
-      const service = {
-        ...stubService({}),
+      const service: Partial<BookingService> = {
         getByCode: () => {
           attempt += 1;
-          return attempt === 1
-            ? throwError(() => ({ status: 500 }))
-            : of(detail('DEVONLY1', 'CONFIRMED'));
+          return attempt === 1 ? throwError(() => ({ status: 500 })) : second;
         },
       };
       const fixture = await render(service);
@@ -609,6 +612,16 @@ describe('MyBookings (device-local list, issue #139)', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
+      // The window the ordering claim lives in — a real one, because the retry is still open.
+      expect(host.querySelector('[data-testid="booking-row-loading"]')).not.toBeNull();
+      expect(announcer.textContent?.trim()).toBe('');
+
+      second.next(detail('DEVONLY1', 'CONFIRMED'));
+      second.complete();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="booking-row"]')?.textContent).toContain('DEVONLY1');
       expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
     });
 
