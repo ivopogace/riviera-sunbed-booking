@@ -27,8 +27,12 @@ template — forced the behavior-parity ledger that caught the dropped `&ngsp;` 
 `cutoff-icon` marker class) · `tdd` (each phase writes the failing spec first; the
 `clock-icon.spec.ts` host-merge case was written before the component existed) ·
 `riviera-review-overlay` (review gate — due at ready-for-review) · `riviera-docs-freshness`
-(**ran** over `9a45a4a..HEAD` at close-out — the icon § this slice owes
-`riviera-tailwind` per issue #733 §5 is the finding it exists to catch) ·
+(**ran** over `9a45a4a..HEAD` — 3 findings, all patched here: the icon § `riviera-tailwind`
+owed per #733 §5, and two now-false present-tense claims in #703's shipped plan doc, whose
+Non-goals still read "still ⏰ …" and "One call site". Swept `CLAUDE.md`, `CONTEXT.md`,
+`RESPONSIBILITIES.md`, `docs/adr/`, `docs/architecture/` and the `riviera-*` skills for the
+old copy, the emoji and the SVG-inlining claim — no other doc states them;
+`domain-model.md:125` states the cutoff *rule*, which this slice does not change) ·
 `riviera-frontend` (**decided the folder**: `shared/` is the only stratum both `pages/home/`
 and `venue/` may import from, so the seam lands there and creates no cross-feature edge) ·
 `riviera-tailwind` (rule 1 — a reused *element* is a component, never `@apply`; and the
@@ -190,6 +194,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/venue/venue-map.ts|.html` — the map's inline SVG replaced by the component
 - `frontend/e2e/discovery-flow.e2e.ts` — the retired `book by 6 PM the day before` assertion
 - `.claude/skills/riviera-tailwind/SKILL.md` — the icon § this slice's precedent owes it (#733 §5)
+- `docs/plans/beach-map-mode-aware-copy.md` — #703's two Non-goals that this slice closes
 
 ---
 

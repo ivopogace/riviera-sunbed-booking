@@ -127,9 +127,11 @@ every AC is a rendered-surface assertion by construction. Each names its pinning
   available."). #703 scopes itself to the map; changing Discover's copy would also move
   `discovery-flow.e2e.ts:212`'s assertion. The divergence this slice knowingly ships — map
   positive + SVG, Discover negative + emoji — is recorded in Open questions as a follow-up
-  candidate, not silently left.
+  candidate, not silently left. **Closed by #733** — Discover now states the same sentence,
+  so the two-voice divergence described above no longer exists.
 - **Promoting the clock icon to a shared component.** One call site; the second caller
-  (Discover, above) is out of scope, so the seam is not bought yet.
+  (Discover, above) is out of scope, so the seam is not bought yet. **Bought by #733**, which
+  made Discover the second caller: the glyph is now `shared/clock-icon.ts`.
 - **The ⏰ elsewhere in the app** (`operator/requests-tab.html`'s urgent time-left chip) —
   a different meaning (urgency, not a rule) on a different surface.
 - **Any behavior change.** No fencing, no request-flow, no payment, no availability logic.
