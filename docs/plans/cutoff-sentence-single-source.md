@@ -170,12 +170,13 @@ it: mutate the source and exactly the two pins go red, no site stays silently gr
 |---|---|---|---|---|---|---|
 | R-1 | An attribute-selector **component** is new here (the repo has 11 attribute *directives* and 0 attribute components), so it fails to compile, or silently doesn't match, on a `<p>` | low | high | Angular supports it as a first-class shape and the v22 a11y guide names it the recommended way to reuse a native element; pinned by `cutoff-note.spec.ts` rendering a host `<p>` and asserting the projected content, written **before** the component | claude | **closed** `b3a64e8` — it compiles and matches; the spec was red on the missing component first, and the lint rule that did *not* expect this shape became D-3 |
 | R-2 | The call-site `class` replaces the component's host `class` (or vice versa), silently dropping `inline-flex`/`gap-1` and collapsing the note's layout | low | med | Angular merges host metadata classes with the template's static class — the exact behavior `clock-icon.spec.ts` already pins; re-pinned here as AC-6 rather than assumed, and the rendered box is re-measured in a browser | claude | **closed** `b3a64e8` — the merge case passes: the host's `inline-flex`/`gap-1` and the call site's `text-[11.5px]`/`[&_svg]:size-[15px]` all survive on one element |
-| R-3 | Moving `[&_svg]:size-[15px]` from the glyph element up to the `<p>` silently drops Discover's glyph to 13 px | med | low | ICON-4: the descendant variant compiles to a global `… svg` rule that matches through the `display: contents` host, so the move is inert; the pre-existing `toHaveCSS` 15 px assertion is the executable proof and is deliberately **falsified** by removing the class | claude | open |
+| R-3 | Moving `[&_svg]:size-[15px]` from the glyph element up to the `<p>` silently drops Discover's glyph to 13 px | med | low | ICON-4: the descendant variant compiles to a global `… svg` rule that matches through the `display: contents` host, so the move is inert; the pre-existing `toHaveCSS` 15 px assertion is the executable proof | claude | **closed** — CI's run of the mocked suite exercises that assertion. The review also surfaced the doc half of this risk: `clock-icon.ts` still told the next author to use the child combinator, which the extra wrapper makes unmatchable (F-3, fixed) |
+| R-9 | An extracted component renders markup that depends on a class defined in the **caller's** encapsulated stylesheet, so the class silently stops applying | med | high | *(added at the review gate — it had already happened.)* Keep such an element in the caller's view (attribute selector) rather than moving it into the component. Enumerate by mechanism, not by eye: sweep every extracted component's own template for class names declared in any `styleUrl` stylesheet, plus any `[class]` bound from a caller | claude | **closed** `abc46dc` — F-1 fixed; the sweep confirms `manage-booking-link` was the only instance of eight |
 | R-4 | The `&nbsp;` in `6&nbsp;PM` is lost in the move, letting the note wrap between "6" and "PM" — invisible to a normalized string compare, which is exactly how it went unasserted before #734's F-7 | med | med | the copy moves as an HTML **entity** into an HTML **template**, not into a TS string literal where it would become an invisible byte or a ` ` escape (a stated reason for D-1); `cutoff-note.spec.ts` pins `6 PM` separately from the normalized compare, inheriting F-7's fix | claude | open |
 | R-5 | The two surface specs stop asserting the copy, and the copy ends up pinned **nowhere** — a dedupe that quietly deletes the coverage | med | high | AC-2 is a **mutation** check, not an assertion: edit the source sentence and confirm the suites go red. A dedupe that removed the gate would show up as a green run | claude | **closed** — the mutation run turned exactly the unit pin red (2 failures) and left no surface stale; recorded under AC-2 |
 | R-6 | The mocked e2e is not run in this cloud session, so a real-browser-only break (the parity assertion, the glyph size) ships | med | med | run it per `riviera-local-debug`; **the local run was declined in this session**, so CI's own run of the same suite is the proof and the risk stays open until that run is green. One ambiguity the local run would have settled was removed by construction instead: the captured text is normalized in the spec rather than left to `toHaveText`, which would otherwise collapse the U+00A0 in `6 PM` on only one side of the compare | claude | open — awaiting CI |
 | R-8 | A guard-violating edit slips past the local `PostToolUse` hooks because the file was written from a shell heredoc rather than an editing tool, so it is caught only by CI | med | low | run the five `scripts/check-*.mjs` guards **by hand** before every push, not just the one the hook happens to fire on — the whole set takes seconds | claude | **closed** — this is exactly how the phase-2 push went red (two 2-line comments in the surface specs, written via heredoc). Fixed, and the full guard set now runs locally before each push |
-| R-7 | AC-3's parity assertion is vacuously true — e.g. both locators resolve to the same element, or both texts are empty | low | med | assert the captured text is non-empty **and** matches the sentence's shape before comparing, and confirm the two assertions run against different URLs (Discover, then `/venues/1`) | claude | open |
+| R-7 | AC-3's parity assertion is vacuously true — e.g. both locators resolve to the same element, or both texts are empty | low | med | the captured text is asserted truthy before the compare, and the two reads run against different URLs (`/`, then `/venues/1`, after a `toHaveURL` gate) | claude | **closed** — the two locators cannot resolve to one element across a navigation, and an empty capture fails the truthy assertion before the compare |
 
 ## Open questions / Assumptions
 
@@ -286,9 +287,12 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 
 ## Execution status
 
-**Stage pointer:** `CLOSE-OUT — #738's population folded in; review + Sonar gates next`
+**Stage pointer:** `CLOSE-OUT — review gate ran (11 findings, all resolved); CI + Sonar gates outstanding`
 
-**Next action:** run the review gate on PR #737, then pull the Sonar issue list from the API.
+**Next action:** confirm CI green on `abc46dc` — the mocked e2e run there is the only proof for
+AC-3/AC-4 and the last thing holding R-6 open — then pull the Sonar new-issue and duplication
+lists from the API and clear every entry. Merge is the maintainer's call; this session was not
+asked to merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -296,7 +300,8 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 | 1 — both surfaces adopt it; the specs stop re-typing the copy | ✅ | `03757fe` |
 | 2 — the cross-surface parity assertion in the mocked e2e | ✅ | `281b5ae` |
 | 3 — close-out (docs freshness, review + Sonar gates, final state) | ⏳ | `b814964` (freshness) |
-| 4 — #738's population, folded in at the maintainer's direction (D-4) | ✅ | this commit |
+| 4 — #738's population, folded in at the maintainer's direction (D-4) | ✅ | `e6f7f0c` |
+| 5 — review-gate fixes (11 findings, incl. the F-1 regression) | ✅ | `abc46dc` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
