@@ -155,11 +155,11 @@ the unknown-code fallback message is the accepted behavior for non-browser clien
 
 ## Execution status
 
-**Stage pointer:** PR — merge latest `origin/main`, mark ready for review, then the
-review + Sonar gates (`references/pr-gates.md`).
+**Stage pointer:** DONE — merged via PR #730 (final state written pre-merge per
+`references/pr-gates.md` §3 step 4).
 
-**Next action:** confirm CI green on the phase-2 push, mark PR #730 ready for review,
-run `/code-review` + `riviera-review-overlay`.
+**Next action:** none — slice complete. Post-merge items are GitHub-only: the #728
+close verification and the `addSet`/`editSet` triage comment (already posted).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -174,9 +174,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | review (`/code-review` agent 1, verified) | Docs claimed the `addSet`/`editSet` gap was "surfaced on #728" before any comment existed there — the triage handoff would have evaporated at merge | fixed — comment posted on #728 (no code change), making the statement true |
-| F-2 | review (`/code-review` agent 3, verify-scored 75) | `operator-console.model.ts:102` said `ROW_NAME_TAKEN` is "the rename's **own** 409" — an exclusivity claim this slice falsifies (docs-freshness: a stated fact outside the diff) | fixed — wording patched to name both paths; `riviera-frontend` loaded for the FE touch |
-| F-3 | review (`/code-review` agent 3) | `layoutErrorOf` not taught `ROW_NAME_TAKEN` (generic fallback message for a deterministic 409) | rejected — deliberate, documented in Non-goals; unreachable from the browser (client guard verified at `layout-editor.ts:543`); verification scoring concurred it is below threshold |
-| F-4 | review (`/code-review` agent 4) | Two one-line "#728 reproducer" test comments + one rationale clause repeated across files (§6d echoes) | rejected — guard-clean one-liners with standing main precedent; enum-doc duplication is the plan's recorded "each enum documents its own manifestation" decision |
+| F-2 | review (`/code-review` agent 3, verify-scored 75) | `operator-console.model.ts:102` said `ROW_NAME_TAKEN` is "the rename's **own** 409" — an exclusivity claim this slice falsifies (docs-freshness: a stated fact outside the diff) | fixed-in-`62f1a98` — wording patched to name both paths; `riviera-frontend` loaded for the FE touch |
+| F-3 | review (`/code-review` agent 3, verify-scored 0) | `layoutErrorOf` not taught `ROW_NAME_TAKEN` (generic fallback message for a deterministic 409) | rejected — deliberate, documented in Non-goals; unreachable from the browser (client guard verified at `layout-editor.ts:543`) |
+| F-4 | review (`/code-review` agent 4, verify-scored 25) | Two one-line "#728 reproducer" test comments + one rationale clause repeated across files (§6d echoes) | rejected — guard-clean one-liners with standing main precedent; enum-doc duplication is the plan's recorded "each enum documents its own manifestation" decision |
 
 ---
 
@@ -252,23 +252,27 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section filled; no concurrency behavior changed, existing ITs pin it (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module imports added; no events touched (invariant #11).
-- [ ] **Payment/payout** N/A; prices flow through unchanged (invariant #5 untouched).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change → no Flyway migration (invariant #12 honored by absence).
-- [ ] **Frontend** untouched by design (Non-goals).
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section filled; no concurrency behavior changed, existing ITs pin it (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module imports added; no events touched (invariant #11).
+- [x] **Payment/payout** N/A; prices flow through unchanged (invariant #5 untouched).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change → no Flyway migration (invariant #12 honored by absence).
+- [x] **Frontend** behavior untouched by design (Non-goals); the one FE edit is the F-2
+      TSDoc staleness patch, comment-only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND
       findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here,
-      citing `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here,
+      citing `merged via PR #730`, so no docs-only follow-up PR is needed after the merge.
+- [x] **The review gate ran in full** — `/code-review` (plugin workflow: eligibility check,
+      5 parallel reviewers, per-finding verification scoring) *plus* `riviera-review-overlay`
+      bank items; findings F-1..F-4 dispositioned in the register above. Sonar gate green
+      with the reported list verified empty (0 issues, 0 duplicated blocks, 100% new-code
+      coverage on 42 new lines).
