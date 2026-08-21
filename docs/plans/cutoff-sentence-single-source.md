@@ -154,7 +154,7 @@ it: mutate the source and exactly the two pins go red, no site stays silently gr
 | R-3 | Moving `[&_svg]:size-[15px]` from the glyph element up to the `<p>` silently drops Discover's glyph to 13 px | med | low | ICON-4: the descendant variant compiles to a global `… svg` rule that matches through the `display: contents` host, so the move is inert; the pre-existing `toHaveCSS` 15 px assertion is the executable proof and is deliberately **falsified** by removing the class | claude | open |
 | R-4 | The `&nbsp;` in `6&nbsp;PM` is lost in the move, letting the note wrap between "6" and "PM" — invisible to a normalized string compare, which is exactly how it went unasserted before #734's F-7 | med | med | the copy moves as an HTML **entity** into an HTML **template**, not into a TS string literal where it would become an invisible byte or a ` ` escape (a stated reason for D-1); `cutoff-note.spec.ts` pins `6 PM` separately from the normalized compare, inheriting F-7's fix | claude | open |
 | R-5 | The two surface specs stop asserting the copy, and the copy ends up pinned **nowhere** — a dedupe that quietly deletes the coverage | med | high | AC-2 is a **mutation** check, not an assertion: edit the source sentence and confirm the suites go red. A dedupe that removed the gate would show up as a green run | claude | open |
-| R-6 | The mocked e2e is not run in this cloud session, so a real-browser-only break (the parity assertion, the glyph size) ships | med | med | run it per `riviera-local-debug` with `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`; CI runs it again on the PR | claude | open |
+| R-6 | The mocked e2e is not run in this cloud session, so a real-browser-only break (the parity assertion, the glyph size) ships | med | med | run it per `riviera-local-debug`; **the local run was declined in this session**, so CI's own run of the same suite is the proof and the risk stays open until that run is green. One ambiguity the local run would have settled was removed by construction instead: the captured text is normalized in the spec rather than left to `toHaveText`, which would otherwise collapse the U+00A0 in `6 PM` on only one side of the compare | claude | open — awaiting CI |
 | R-7 | AC-3's parity assertion is vacuously true — e.g. both locators resolve to the same element, or both texts are empty | low | med | assert the captured text is non-empty **and** matches the sentence's shape before comparing, and confirm the two assertions run against different URLs (Discover, then `/venues/1`) | claude | open |
 
 ## Open questions / Assumptions
@@ -266,16 +266,16 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 
 ## Execution status
 
-**Stage pointer:** `IMPLEMENT — phases 0–1 done; phase 2 next`
+**Stage pointer:** `IMPLEMENT — phases 0–2 done; phase 3 (close-out) next`
 
-**Next action:** phase 2 — the cross-surface parity assertion in the mocked e2e (AC-3),
-then run the mocked suite.
+**Next action:** phase 3 — AC-2's mutation check, the docs-freshness sweep, the file-structure
+guard, then the review and Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared cutoff-note seam | ✅ | `b3a64e8` |
-| 1 — both surfaces adopt it; the specs stop re-typing the copy | ✅ | this commit |
-| 2 — the cross-surface parity assertion in the mocked e2e | | |
+| 1 — both surfaces adopt it; the specs stop re-typing the copy | ✅ | `03757fe` |
+| 2 — the cross-surface parity assertion in the mocked e2e | ✅ | this commit |
 | 3 — close-out (docs freshness, review + Sonar gates, final state) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
