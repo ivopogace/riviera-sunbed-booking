@@ -20,7 +20,7 @@ import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { defaultBookingDate } from '../shared/booking-date';
 import { SetView, VenueMapView } from '../shared/venue-views';
-import { rowCode, VenueMap } from './venue-map';
+import { VenueMap } from './venue-map';
 
 /** A 24-set fixture mirroring the Miramar seed: 4 rows × 6, 6 taken (18 free), front row premium.
  *  Rows 2+3 share a price (€35) so the per-zone price rendering (#672) is observable. */
@@ -102,15 +102,6 @@ function miramar(): VenueMapView {
 function mapless(): VenueMapView {
   return { ...miramar(), sets: [], fromPrice: null };
 }
-
-describe('rowCode', () => {
-  it('derives A…Z then AA after Z by insertion index (no lexicographic sort)', () => {
-    expect(rowCode(0)).toBe('A');
-    expect(rowCode(25)).toBe('Z');
-    expect(rowCode(26)).toBe('AA'); // AA follows Z; a string sort would put it before B
-    expect(rowCode(27)).toBe('AB');
-  });
-});
 
 describe('VenueMap', () => {
   let fixture: ComponentFixture<VenueMap>;
@@ -359,13 +350,22 @@ describe('VenueMap', () => {
     expect(header.textContent).not.toContain('0 reviews');
   });
 
-  it('renders rows with derived A/B/… codes in insertion order', async () => {
+  it('renders the stored row labels on the rail, in insertion order (#724)', async () => {
     flushVenue();
     await fixture.whenStable();
     const codes = [...el().querySelectorAll('[data-testid="row-code"]')].map((n) =>
       n.textContent?.trim(),
     );
-    expect(codes).toEqual(['A', 'B', 'C', 'D']); // insertion order, not sorted by the descriptive label
+    expect(codes).toEqual(['Front row · Sea view', 'Row 2', 'Row 3', 'Row 4 · Back']);
+  });
+
+  it('caps the rail chips with an ellipsis — tile names carry the full label (#724)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    const inner = el().querySelector('[data-testid="row-code"] .truncate')!;
+    expect(inner.classList.contains('max-w-12')).toBe(true);
+    expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
+    expect(inner.textContent?.trim()).toBe('Front row · Sea view');
   });
 
   it("renders the price once per zone, carrying the row's meaning (#672, #702)", async () => {
@@ -401,7 +401,7 @@ describe('VenueMap', () => {
     expect(priceCells.map((c) => c.classList.contains('mt-3'))).toEqual(zoneGaps);
   });
 
-  it('drops a bare row label the rail cannot echo — a walkway shifts them (#702)', async () => {
+  it('announces the stored row label — a walkway cannot shift identities (#724)', async () => {
     const base = miramar();
     // A gap row in the editor's grid saves no sets, so the venue's own labels skip a letter.
     const original = [...new Set(base.sets.map((s) => s.rowLabel))];
@@ -413,15 +413,24 @@ describe('VenueMap', () => {
     venueRequest().flush({ ...base, sets });
     await fixture.whenStable();
 
+    // The rail reads the venue's own letters — including the skip.
     const codes = [...el().querySelectorAll('[data-testid="row-code"]')].map((n) =>
       n.textContent?.trim(),
     );
+    expect(codes).toEqual(['A', 'C', 'D', 'E']);
+    // A bare label still adds nothing beside a rail that now reads it verbatim.
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
-    // The rail says A B C D; no chip claims a letter beside a chip that contradicts it.
-    expect(codes).toEqual(['A', 'B', 'C', 'D']);
     expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+    // Tiles announce only the stored label — "Set B1, C, …" can no longer be spoken.
+    const names = [...el().querySelectorAll('[data-testid="set-tile"]')].map(
+      (t) =>
+        t.getAttribute('aria-label') ?? t.querySelector('button')?.getAttribute('aria-label') ?? '',
+    );
+    expect(names[0]).toBe('A · spot 1, front row, €45, taken');
+    expect(names.some((n) => n.startsWith('C · spot '))).toBe(true);
+    expect(names.some((n) => /^Set [A-Z]+\d/.test(n))).toBe(false);
   });
 
   it('keeps two identically-priced premium rows in one zone (#702)', async () => {
@@ -445,15 +454,15 @@ describe('VenueMap', () => {
     ).toEqual([false, false, true, true]);
   });
 
-  it('keeps the enriched rail decorative — tile names are unchanged (#702)', async () => {
+  it('keeps the rail decorative — tile names carry the one stored identity (#702, #724)', async () => {
     flushVenue();
     await fixture.whenStable();
     const chip = el().querySelector('[data-testid="row-price"]')!;
     expect(chip.closest('[aria-hidden="true"]')).not.toBeNull();
-    // Byte-identical to main's format: the chip's new words are announced nowhere.
+    // The booking surfaces' own phrase: what the map announces, the mail later prints.
     const firstTile = el().querySelector('[data-testid="set-tile"]');
     expect(firstTile?.getAttribute('aria-label')).toBe(
-      'Set A1, Front row · Sea view, front row, €45, taken',
+      'Front row · Sea view · spot 1, front row, €45, taken',
     );
     const names = [...el().querySelectorAll('[data-testid="set-tile"]')].map(
       (t) =>
@@ -513,12 +522,11 @@ describe('VenueMap', () => {
     expect(texts).toEqual(['8m to water', 'Beach bar', 'Free parking', 'WiFi']);
   });
 
-  it('gives each tile an accessible name carrying its seat, descriptive row and state (not colour-only)', async () => {
+  it('gives each tile an accessible name carrying its row, spot and state (not colour-only)', async () => {
     flushVenue();
     await fixture.whenStable();
-    const firstTile = el().querySelector('[data-testid="set-tile"]'); // A1 — taken, so the <li> carries the name
-    expect(firstTile?.getAttribute('aria-label')).toContain('Set A1');
-    expect(firstTile?.getAttribute('aria-label')).toContain('Front row · Sea view');
+    const firstTile = el().querySelector('[data-testid="set-tile"]'); // spot 1 — taken, so the <li> carries the name
+    expect(firstTile?.getAttribute('aria-label')).toContain('Front row · Sea view · spot 1');
     expect(firstTile?.getAttribute('aria-label')).toContain('taken');
   });
 
@@ -545,7 +553,7 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
     const d4 = [...el().querySelectorAll('.set-tile')].find((t) =>
-      t.getAttribute('aria-label')?.startsWith('Set D4'),
+      t.getAttribute('aria-label')?.startsWith('Row 4 · Back · spot 4,'),
     )!;
     expect(d4.classList.contains('taken')).toBe(true);
     expect(d4.classList.contains('walkin')).toBe(false);
@@ -593,16 +601,16 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
     // A bookable tile carries its name on the inner button, a static one on the `<li>` itself.
-    const stateOf = (seat: string): string | null => {
-      const named = `[aria-label^="Set ${seat},"]`;
+    const stateOf = (rowLabel: string, positionNo: number): string | null => {
+      const named = `[aria-label^="${rowLabel} · spot ${positionNo},"]`;
       const tile = [...el().querySelectorAll('.set-tile')].find(
         (t) => t.matches(named) || t.querySelector(named) !== null,
       );
       return tile!.getAttribute('data-state');
     };
-    expect(stateOf('D1')).toBe('walkin');
-    expect(stateOf('D4')).toBe('taken');
-    expect(stateOf('A2')).toBe('premium');
+    expect(stateOf('Row 4 · Back', 1)).toBe('walkin');
+    expect(stateOf('Row 4 · Back', 4)).toBe('taken');
+    expect(stateOf('Front row · Sea view', 2)).toBe('premium');
   });
 
   it('keeps the bookable button accessible name ending in "Select to book"', async () => {
