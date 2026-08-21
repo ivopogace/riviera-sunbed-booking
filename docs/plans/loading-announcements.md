@@ -219,16 +219,16 @@ N/A — no request or response shape changes.
 
 ## Execution status
 
-**Stage pointer:** `plan` — plan doc authored, about to commit and open the draft PR.
+**Stage pointer:** `implement (phase 2)` — the primitive exists and is green.
 
-**Next action:** Commit this plan doc on `claude/sdlc-741-4966yh`, push, open the draft PR
-(CI fires on `pull_request` only), then start Phase 1.
+**Next action:** Adopt `app-load-announcer` on Discover, `set-editor` and `my-bookings`
+(the three surfaces #741 names), red-first per surface.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + draft PR | ⏳ | |
-| 1 — The `load-announcer` primitive (TDD) | | |
-| 2 — Adopt on the three surfaces #741 names | | |
+| 0 — Plan doc + draft PR | ✅ | draft PR #743 |
+| 1 — The `load-announcer` primitive (TDD) | ✅ | |
+| 2 — Adopt on the three surfaces #741 names | ⏳ | |
 | 3 — Adopt on the five surfaces the grill swept up | | |
 | 4 — e2e, docs freshness (RV-FE-10), close-out | | |
 
