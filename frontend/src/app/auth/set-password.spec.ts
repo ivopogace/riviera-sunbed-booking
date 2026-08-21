@@ -91,6 +91,26 @@ function text(fixture: ComponentFixture<SetPassword>, testid: string): string {
 }
 
 describe('SetPassword', () => {
+  it('announces through one region that survives loading → loaded (#741)', async () => {
+    const auth = authStub({ restoring: true, signedIn: false });
+    const fixture = await render(auth);
+    const host = fixture.nativeElement as HTMLElement;
+
+    const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading…');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(host.querySelector('[data-testid="setpw-loading"]')!.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
+
+    (auth.restoring as unknown as { set(v: boolean): void }).set(false);
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(host.querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Account loaded.');
+  });
+
   it('prompts to sign in when signed out', async () => {
     const fixture = await render(authStub({ signedIn: false }));
     expect(text(fixture, 'setpw-signed-out')).toContain('Sign in to manage your account');

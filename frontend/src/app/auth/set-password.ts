@@ -10,6 +10,7 @@ import {
 } from '../core/customer-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { focusMover } from '../shared/focus-after-render';
 
 import { TouchTarget } from '../shared/touch-target';
@@ -43,11 +44,19 @@ const RESEND_NOTICES = {
  */
 @Component({
   selector: 'app-set-password',
-  imports: [FormField, RouterLink, CardGlass, BusyAction, TouchTarget],
+  imports: [FormField, RouterLink, CardGlass, LoadAnnouncer, BusyAction, TouchTarget],
   template: `
     <section class="auth-wrap" aria-labelledby="setpw-title">
       <div class="auth-card" appCardGlass>
         <h1 id="setpw-title" class="auth-title">Your account</h1>
+
+        <!-- Above the @if chain on purpose: a live region only announces what changes while it is
+             already in the DOM, so it has to outlive the branch it describes (#741). -->
+        <app-load-announcer
+          [loading]="auth.restoring()"
+          loadingLabel="Loading…"
+          readyLabel="Account loaded."
+        />
 
         @if (erased()) {
           <p class="auth-intro" role="status" tabindex="-1" data-testid="erase-done">
@@ -56,7 +65,8 @@ const RESEND_NOTICES = {
             removed.
           </p>
         } @else if (auth.restoring()) {
-          <p class="auth-intro" role="status">Loading…</p>
+          <!-- Visible copy only; the announcer below owns the announcement (#741). -->
+          <p class="auth-intro" aria-hidden="true" data-testid="setpw-loading">Loading…</p>
         } @else if (!auth.signedIn()) {
           <p class="auth-intro" data-testid="setpw-signed-out">Sign in to manage your account.</p>
           <p class="auth-alt">

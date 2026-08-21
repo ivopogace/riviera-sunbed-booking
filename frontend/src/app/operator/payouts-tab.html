@@ -7,10 +7,20 @@
     </p>
   </header>
 
+  <!-- Above the @if chain on purpose: a live region only announces what changes while it is
+       already in the DOM, so it has to outlive the branch it describes (#741). -->
+  <app-load-announcer
+    [loading]="!loaded()"
+    [failed]="loadErrorMsg() !== undefined"
+    loadingLabel="Loading payouts…"
+    readyLabel="Payouts loaded."
+  />
+
   @if (!loaded()) {
+    <!-- Visible copy only; the announcer above owns the announcement (#741). -->
     <p
       class="px-5 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
-      aria-live="polite"
+      aria-hidden="true"
       data-testid="payouts-loading"
     >
       Loading payouts…

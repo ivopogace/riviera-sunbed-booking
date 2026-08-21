@@ -168,6 +168,24 @@ describe('VenueMap', () => {
     return [...swatch.classList].filter((token) => !geometry.has(token));
   }
 
+  it('announces through one region that survives loading → loaded (#741)', () => {
+    fixture.detectChanges();
+    const announcer = el().querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading the beach map…');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(el().querySelector('[data-testid="map-loading"]')!.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
+
+    flushVenue();
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak. The availability
+    // count region cannot do this job — it lives inside the loaded branch, so it is rebuilt.
+    expect(el().querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Beach map loaded.');
+  });
+
   it('requests the venue from the route id', () => {
     flushVenue();
     expect(fixture.componentInstance).toBeTruthy();

@@ -266,12 +266,23 @@
       <app-retry-button testId="map-retry" (retry)="retry()" />
     </div>
   } @else {
+    <!-- Visible copy only; the announcer below owns the announcement (#741). -->
     <p
       class="mt-6 px-5 py-12 rounded-[26px] text-center text-[15px] text-(--riv-ink-soft)"
       appPanelGlass
-      aria-live="polite"
+      aria-hidden="true"
+      data-testid="map-loading"
     >
       Loading the beach map…
     </p>
   }
+
+  <!-- Outside the @if chain on purpose: a live region only announces what changes while it is
+       already in the DOM, so it has to outlive the branch it describes (#741). -->
+  <app-load-announcer
+    [loading]="loading()"
+    [failed]="failed()"
+    loadingLabel="Loading the beach map…"
+    readyLabel="Beach map loaded."
+  />
 </div>

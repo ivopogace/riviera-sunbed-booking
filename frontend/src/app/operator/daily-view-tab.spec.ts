@@ -110,6 +110,23 @@ describe('DailyViewTab (#175)', () => {
 
   afterEach(() => http.verify());
 
+  it('announces through one region that survives loading → loaded (#741)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+    const announcer = el.querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading the daily view…');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(el.querySelector('[data-testid="daily-loading"]')!.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
+
+    flushLoad(SEED, BOOKINGS, STATES);
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(el.querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Daily view loaded.');
+  });
+
   function byId(id: string): HTMLElement {
     return host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!;
   }

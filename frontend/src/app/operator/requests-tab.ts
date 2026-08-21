@@ -6,6 +6,7 @@ import { TouchTarget } from '../shared/touch-target';
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { formatDeadline, isUrgent, timeLeftLabel } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -55,7 +56,7 @@ interface RequestRow {
  */
 @Component({
   selector: 'app-requests-tab',
-  imports: [CardGlass, BusyAction, TouchTarget],
+  imports: [CardGlass, LoadAnnouncer, BusyAction, TouchTarget],
   templateUrl: './requests-tab.html',
 })
 export class RequestsTab {

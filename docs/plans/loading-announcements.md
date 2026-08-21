@@ -131,7 +131,7 @@ The old surface is "a loading container that is itself the live region". Behavio
 | R-2 | Double announcement where a persistent count region already speaks (Discover) | Medium | Noisy AT | Discover's `readyLabel` is empty by design (B-7). Verified per surface in the adoption table below |
 | R-3 | `readyLabel` derived from a live count would re-announce on every later mutation (date change, accepting a request) | Medium | Noisy AT | `readyLabel` is a **static string** per call site, never a computed count |
 | R-4 | The announcer announces "loaded" when the load failed | High if unguarded | Wrong information to AT | `failed` input suppresses the ready label (AC-2) |
-| R-5 | jsdom cannot prove a real screen reader announces | Certain | False confidence | Specs assert the *mechanism* (element identity preserved across the transition), which is the falsifiable part; the e2e proves it in a real browser. Specs must not claim "announced" as a proven fact — the wording defect #741 called out |
+| R-5 | jsdom cannot prove a real screen reader announces | Certain | False confidence | **Closed.** Specs assert the *mechanism* (element identity across the transition) and were **mutation-checked**: moving the announcer back inside `requests-tab`'s `@if` fails the new spec, so it bites the exact defect. Spec titles/comments no longer claim an announcement none of them proved |
 | R-6 | Eight surfaces adopted mechanically, one signal mapped wrong (e.g. a surface whose "loaded" is also its error state) | Medium | Silent or wrong announcement | Each surface's `loading`/`failed` expression is derived from a named `computed()` in the component, not template logic, and asserted per surface (AC-3/AC-4) |
 
 ---
@@ -219,18 +219,19 @@ N/A — no request or response shape changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)` — the three surfaces #741 names are green.
+**Stage pointer:** `implement (phase 4)` — all eight surfaces adopted; full unit suite green
+(176 files, 1606 tests), lint and format clean.
 
-**Next action:** Adopt on the five surfaces the grill swept up — `daily-view-tab`,
-`requests-tab`, `payouts-tab`, `venue-map`, `set-password` — red-first per surface.
+**Next action:** Write the mocked-suite e2e (AC-6), add RV-FE-10 to the review overlay, then
+mark the PR ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | draft PR #743 |
 | 1 — The `load-announcer` primitive (TDD) | ✅ | |
 | 2 — Adopt on the three surfaces #741 names | ✅ | |
-| 3 — Adopt on the five surfaces the grill swept up | ⏳ | |
-| 4 — e2e, docs freshness (RV-FE-10), close-out | | |
+| 3 — Adopt on the five surfaces the grill swept up | ✅ | |
+| 4 — e2e, docs freshness (RV-FE-10), close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
