@@ -73,24 +73,24 @@ designated remote branch stands in; the literal `feature/` branch is not created
 This slice's inner hexagon is the browser: it adds no backend behavior and no API call, so
 every AC is a rendered-surface assertion by construction. Each names its pinning spec.
 
-- [ ] **AC-1:** Given a venue whose `bookingMode` is `INSTANT`, when its map renders, then
+- [x] **AC-1:** Given a venue whose `bookingMode` is `INSTANT`, when its map renders, then
   the map footer reads "Pick any free set to book it · prices are per set, full day." and
   contains neither the word "Tap" nor the word "request". *Pinned by:*
   `venue-map.spec.ts › 'the INSTANT footer names booking, device-neutrally'` and
   `booking-flow.e2e.ts › 'booking flow is accessible end-to-end'`.
-- [ ] **AC-2:** Given a venue whose `bookingMode` is `REQUEST`, when its map renders, then
+- [x] **AC-2:** Given a venue whose `bookingMode` is `REQUEST`, when its map renders, then
   the footer reads "Pick a set to request it — you pay only once Miramar Beach Club
   accepts." over a second line "Prices are per set, full day.", naming that venue.
   *Pinned by:* `venue-map.spec.ts › 'the REQUEST footer explains the no-charge deal at the
   tap, naming the venue'` and `request-to-book.e2e.ts › 'request-to-book: request dialog →
   202 PENDING_REQUEST → request-sent → pending view'`.
-- [ ] **AC-3:** Given any tourist map, when the cutoff note renders, then its text states
+- [x] **AC-3:** Given any tourist map, when the cutoff note renders, then its text states
   the rule positively — "Book any day from tomorrow — each day's sales close at 6 PM the
   evening before." — carries no ⏰ (or any emoji), and its leading glyph is an
   `aria-hidden="true"` inline `<svg>`, so the note's accessible text is the sentence alone.
   *Pinned by:* `venue-map.spec.ts › 'states the cutoff as an invitation, iconed by an
   aria-hidden SVG (no emoji)'`.
-- [ ] **AC-4:** Given a map grid that overflows its viewport on either axis with drag-pan
+- [x] **AC-4:** Given a map grid that overflows its viewport on either axis with drag-pan
   on, when the hint renders, then it is the single sentence "Drag or swipe to see the whole
   beach." with no decorative glyph; and given a grid that does not overflow, or a
   `dragPan`-off surface, then no hint renders at all. *Pinned by:*
@@ -98,11 +98,11 @@ every AC is a rendered-surface assertion by construction. Each names its pinning
   the **five** existing hint-gating cases in that file — eleven assertions across them, all
   unchanged (`awk` over the spec's `it(` blocks; corrected from "six" by review finding F-4,
   which counted the new case among the old).
-- [ ] **AC-5:** Given the map after all copy changes, when the mocked e2e suite runs both
+- [x] **AC-5:** Given the map after all copy changes, when the mocked e2e suite runs both
   modes, then `expectNoSeriousAxeViolations` passes on the beach map in each.
   *Pinned by:* `booking-flow.e2e.ts` + `request-to-book.e2e.ts` (existing axe calls, which
   now cover the changed copy).
-- [ ] **AC-6 (amended at the review gate — see below):** Given the whole slice, when the
+- [x] **AC-6 (amended at the review gate — see below):** Given the whole slice, when the
   diff is read, then **no executable code** changed: `beach-map-canvas.ts` and every backend
   path are untouched, and `venue-map.ts`'s only edit is a **TSDoc correction** whose changed
   lines all begin `` * `` — so the date fence (`minDate()`/`defaultBookingDate`), the request
@@ -272,17 +272,33 @@ already on the wire and already consumed (the mode chip + the booking dialog).
 > **This section is the session-recovery anchor.** Everything a resuming session needs
 > lives HERE, committed — never only in the conversation.
 
-**Stage pointer:** `review gate`
+**Stage pointer:** `DONE — merged via PR #732`
 
-**Next action:** run the review gate on PR #732 per `riviera-sdlc` `references/pr-gates.md`
-§1, then the Sonar gate.
+**Next action:** none — all gates cleared. Merged via PR #732.
+
+**Gate record.** CI green on the final head (8/8 checks: backend, frontend, repo hygiene,
+both CodeQL analyses, SonarCloud scan + Code Analysis). **Review gate ran in full** via the
+`riviera-sdlc` `references/pr-gates.md` §1 ladder — rung 1 (`Skill("code-review")`) succeeded,
+so the plugin's own workflow ran: eligibility triage, a change summary, **five parallel
+reviewers** (CLAUDE.md compliance / shallow bug scan / git-blame history / prior-PR comment
+themes / code-comment guidance), with `riviera-review-overlay`'s frontend bank walked on top.
+The subagent fan-out needed the session's Agent-tool restriction lifted; the maintainer
+authorized it rather than the gate being skipped. Four findings, all dispositioned in the
+register above (F-1, F-2, F-4 fixed; F-3 considered and declined with a measurement).
+**Sonar gate green with an empty reported list**, read from the API rather than the badge:
+`new_bugs`/`new_vulnerabilities`/`new_code_smells`/`new_security_hotspots`/`new_duplicated_blocks`
+all 0, `new_duplicated_lines_density` 0.0%, `issues/search` total 0. The false-clean guard
+clears — `new_lines` reports **30**, so an analysis genuinely exists. `new_coverage` is
+**absent** from the measures: the 30 new lines are templates, spec files and markdown, none
+of them coverable, so the ≥80% new-code-coverage condition had nothing to evaluate rather
+than being met — stated plainly instead of claimed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Mode-aware footer + device-neutral verb | ✅ | `fda7d50` |
 | 1 — Positive cutoff note + inline SVG clock | ✅ | `a9add5a` |
 | 2 — One-line quiet pan hint | ✅ | `c942208` |
-| 3 — Close-out (docs freshness, plan-doc final state) | ⏳ | lint/format/guards green; scoped mocked e2e 28/28; docs-freshness 0 findings |
+| 3 — Close-out (docs freshness, review + Sonar gates, final state) | ✅ | `f970d1a` (F-1/F-2), `6dd5d3f` (F-4) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -292,9 +308,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review gate — `/code-review` reviewer #5 (code-comment guidance) | `venue-map.ts:54` TSDoc states "`bookingMode` is carried raw **for the booking dialog**" — the new mode-aware footer reads it raw too, so the field's documented purpose was understated. A stale present-tense fact in a file the slice deliberately did not touch | fixed-in-`758c863` — TSDoc names both consumers; routing gate re-run (`riviera-frontend` + `frontend/.claude/CLAUDE.md`'s "TSDoc states the contract, not the changelog") |
-| F-2 | review gate — `/code-review` reviewer #5 (code-comment guidance) | `venue-map.ts:86` TSDoc states the component "owns only the tourist tile vocabulary **(tap-to-book)**" — stale twice over: the slice retired the word "Tap" from the surface, and a REQUEST venue's footer is not "book" wording at all | fixed-in-`758c863` — reworded to the tile names **and** the mode-aware footer; same routing-gate re-run as F-1 |
-| F-4 | review gate — `/code-review` reviewer #4 (prior-PR comment themes) | AC-4 cited "the **six** existing hint-gating cases"; the spec holds **five** pre-existing cases (eleven assertions) plus this slice's new one — the new case was counted among the old. Same citation-accuracy class prior PRs #649 and #707 were flagged for | fixed-in-`9c664fe` — recounted mechanically over the spec's `it(` blocks; AC-4 corrected in the plan doc and the PR body. No test changed |
+| F-1 | review gate — `/code-review` reviewer #5 (code-comment guidance) | `venue-map.ts:54` TSDoc states "`bookingMode` is carried raw **for the booking dialog**" — the new mode-aware footer reads it raw too, so the field's documented purpose was understated. A stale present-tense fact in a file the slice deliberately did not touch | fixed-in-`f970d1a` — TSDoc names both consumers; routing gate re-run (`riviera-frontend` + `frontend/.claude/CLAUDE.md`'s "TSDoc states the contract, not the changelog") |
+| F-2 | review gate — `/code-review` reviewer #5 (code-comment guidance) | `venue-map.ts:86` TSDoc states the component "owns only the tourist tile vocabulary **(tap-to-book)**" — stale twice over: the slice retired the word "Tap" from the surface, and a REQUEST venue's footer is not "book" wording at all | fixed-in-`f970d1a` — reworded to the tile names **and** the mode-aware footer; same routing-gate re-run as F-1 |
+| F-4 | review gate — `/code-review` reviewer #4 (prior-PR comment themes) | AC-4 cited "the **six** existing hint-gating cases"; the spec holds **five** pre-existing cases (eleven assertions) plus this slice's new one — the new case was counted among the old. Same citation-accuracy class prior PRs #649 and #707 were flagged for | fixed-in-`6dd5d3f` — recounted mechanically over the spec's `it(` blocks; AC-4 corrected in the plan doc and the PR body. No test changed |
 | F-3 | review gate — `/code-review` reviewer #1 (CLAUDE.md compliance), soft note | The rewritten cutoff comment in `venue-map.html` is a long single line (~237 chars); compliant with `check-inline-comments.mjs`, flagged as "worth a human glance" | **considered, declined** — 237 chars is the exact median of the 15 HTML comments in the two touched files (range 102–756, measured). Shortening it would be churn against the file's own convention, not an improvement |
 
 ---
@@ -318,7 +334,7 @@ Skill-routing gate for what the fix touches *before* editing).
 `frontend/src/app/venue/venue-map.spec.ts`, `frontend/e2e/booking-flow.e2e.ts`,
 `frontend/e2e/request-to-book.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — add a REQUEST fixture beside `miramar()` and two
+- [x] **Step 1: Write the failing test** — add a REQUEST fixture beside `miramar()` and two
       cases; retarget the #717 zero-set negative assertion (R-5) to the new string.
 
 ```ts
@@ -353,12 +369,12 @@ it('the REQUEST footer explains the no-charge deal at the tap, naming the venue'
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- venue-map.spec.ts` → FAIL:
+- [x] **Step 2: Run it, verify it fails** — `npm test -- venue-map.spec.ts` → FAIL:
       `expected '…Tap any free set to book it · prices…' to contain 'Pick any free set to book it'`
 
 > Scope: target ONE spec file. Not the full suite.
 
-- [ ] **Step 3: Minimal implementation** — replace the single footer `<p>`'s body:
+- [x] **Step 3: Minimal implementation** — replace the single footer `<p>`'s body:
 
 ```html
 <p
@@ -374,14 +390,14 @@ it('the REQUEST footer explains the no-charge deal at the tap, naming the venue'
 </p>
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- venue-map.spec.ts` → PASS
+- [x] **Step 4: Run it, verify it passes** — `npm test -- venue-map.spec.ts` → PASS
 
 > Scope (end-of-phase regression): `npm test -- venue-map` (the venue feature's specs).
 
-- [ ] **Step 5: Generalization-audit pass** — population: *every place that asserts or
+- [x] **Step 5: Generalization-audit pass** — population: *every place that asserts or
       renders the retired footer string*. Enumerate, don't guess. Append to the log.
 
-- [ ] **Step 6: Add the two e2e mode assertions** — one line each, inside the existing
+- [x] **Step 6: Add the two e2e mode assertions** — one line each, inside the existing
       map-rendered blocks (no new spec files):
 
 ```ts
@@ -394,9 +410,9 @@ await expect(page.getByTestId('beach-grid')).toContainText(
 );
 ```
 
-- [ ] **Step 7: Commit** — `git commit -m "Beach map: the footer explains the venue's own booking mode (#703)"`
+- [x] **Step 7: Commit** — `git commit -m "Beach map: the footer explains the venue's own booking mode (#703)"`
 
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -405,7 +421,7 @@ await expect(page.getByTestId('beach-grid')).toContainText(
 **Files:** Modify `frontend/src/app/venue/venue-map.html:88-96` · Test
 `frontend/src/app/venue/venue-map.spec.ts:623-632`
 
-- [ ] **Step 1: Write the failing test** — rewrite the existing cutoff case (it already
+- [x] **Step 1: Write the failing test** — rewrite the existing cutoff case (it already
       asserts the `min`, which must keep passing — AC-6):
 
 ```ts
@@ -426,10 +442,10 @@ it('states the cutoff as an invitation, iconed by an aria-hidden SVG (no emoji)'
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- venue-map.spec.ts` → FAIL:
+- [x] **Step 2: Run it, verify it fails** — `npm test -- venue-map.spec.ts` → FAIL:
       `expected '⏰ Book by 6 PM the day before — today isn't bookable.' to match /Book any day from tomorrow/`
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```html
 <!-- Cutoff explainer (invariant #4 — display only; the server enforces the real cutoff). -->
@@ -455,15 +471,15 @@ it('states the cutoff as an invitation, iconed by an aria-hidden SVG (no emoji)'
 </p>
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- venue-map.spec.ts` → PASS, then
+- [x] **Step 4: Run it, verify it passes** — `npm test -- venue-map.spec.ts` → PASS, then
       `npm test -- venue-map` (picks up `venue-map.contrast.spec.ts`'s ink-faint case).
 
-- [ ] **Step 5: Generalization-audit pass** — population: *every surface rendering the ⏰
+- [x] **Step 5: Generalization-audit pass** — population: *every surface rendering the ⏰
       glyph for the cutoff rule*. Enumerate by mechanism, then decide per site.
 
-- [ ] **Step 6: Commit** — `git commit -m "Beach map: state the cutoff as an invitation, not a refusal (#703)"`
+- [x] **Step 6: Commit** — `git commit -m "Beach map: state the cutoff as an invitation, not a refusal (#703)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -472,7 +488,7 @@ it('states the cutoff as an invitation, iconed by an aria-hidden SVG (no emoji)'
 **Files:** Modify `frontend/src/app/shared/beach-map-canvas.html:78-86` · Test
 `frontend/src/app/shared/beach-map-canvas.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — one added case; the six gating cases stay (R-2):
+- [x] **Step 1: Write the failing test** — one added case; the five pre-existing gating cases stay (R-2):
 
 ```ts
 it('the pan hint is one plain line, no decorative glyph', async () => {
@@ -490,10 +506,10 @@ it('the pan hint is one plain line, no decorative glyph', async () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- beach-map-canvas.spec.ts` → FAIL:
+- [x] **Step 2: Run it, verify it fails** — `npm test -- beach-map-canvas.spec.ts` → FAIL:
       `expected '✦ Drag or swipe to pan the map — this beach is bigger than your screen.' to be 'Drag or swipe to see the whole beach.'`
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```html
 @if ((scrollHint() || vScrollHint()) && dragPan()) {
@@ -506,24 +522,24 @@ it('the pan hint is one plain line, no decorative glyph', async () => {
 }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- beach-map-canvas.spec.ts` → PASS,
+- [x] **Step 4: Run it, verify it passes** — `npm test -- beach-map-canvas.spec.ts` → PASS,
       then `npm test -- beach-map-canvas venue-map` for the shared-chrome consumers.
 
-- [ ] **Step 5: Generalization-audit pass** — population: *every spec or e2e reading the pan
+- [x] **Step 5: Generalization-audit pass** — population: *every spec or e2e reading the pan
       hint's text on any of the four canvas surfaces* (R-3's enumeration, re-run post-edit).
 
-- [ ] **Step 6: Commit** — `git commit -m "Beach map: one quiet line of pan hint (#703)"`
+- [x] **Step 6: Commit** — `git commit -m "Beach map: one quiet line of pan hint (#703)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
 ## Phase 3 — Close-out
 
-- [ ] **Step 1:** `npm run lint` + `npm run format:check` + `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc staged first).
-- [ ] **Step 2:** `npm run test:e2e:a11y -- booking-flow request-to-book venue-map-pan` — the mocked suite, scoped.
-- [ ] **Step 3:** `riviera-docs-freshness` over the slice's range; patch or record.
-- [ ] **Step 4:** Finalize Execution status (stage DONE, phases ✅ with commits, Open
+- [x] **Step 1:** `npm run lint` + `npm run format:check` + `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc staged first).
+- [x] **Step 2:** `npm run test:e2e:a11y -- booking-flow request-to-book venue-map-pan` — the mocked suite, scoped.
+- [x] **Step 3:** `riviera-docs-freshness` over the slice's range; patch or record.
+- [x] **Step 4:** Finalize Execution status (stage DONE, phases ✅ with commits, Open
       questions empty or issue-referenced, `merged via PR #NN`) **in this PR's last commit**.
 
 ---
@@ -546,36 +562,36 @@ it('the pan hint is one plain line, no decorative glyph', async () => {
 
 > The gate before claiming done. Not a wish.
 
-- [ ] **AC-1:** Run `npm test -- venue-map.spec.ts` → the INSTANT footer case passes. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `npm test -- venue-map.spec.ts` → the REQUEST footer case passes. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `npm test -- venue-map.spec.ts` → the cutoff case passes (copy + `<svg aria-hidden>` + no ⏰ + `min` unchanged). Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `npm test -- beach-map-canvas.spec.ts` → the new copy case and all five pre-existing gating cases pass. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `npm run test:e2e:a11y -- booking-flow request-to-book` → both pass, axe green. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `git diff --stat origin/main` → no `platform/` path; the one `.ts` file present (`venue-map.ts`) passes the comment-only proof in the AC. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `npm test -- venue-map.spec.ts` → the INSTANT footer case passes. Verified at commit `fda7d50`.
+- [x] **AC-2:** Run `npm test -- venue-map.spec.ts` → the REQUEST footer case passes. Verified at commit `fda7d50`.
+- [x] **AC-3:** Run `npm test -- venue-map.spec.ts` → the cutoff case passes (copy + `<svg aria-hidden>` + no ⏰ + `min` unchanged). Verified at commit `a9add5a`.
+- [x] **AC-4:** Run `npm test -- beach-map-canvas.spec.ts` → the new copy case and all five pre-existing gating cases pass. Verified at commit `c942208`.
+- [x] **AC-5:** Run `npm run test:e2e:a11y -- booking-flow request-to-book` → both pass, axe green (28/28 with venue-map-pan). Verified at commit `c942208`.
+- [x] **AC-6:** Run `git diff --stat origin/main` → no `platform/` path; the one `.ts` file present (`venue-map.ts`) passes the comment-only proof in the AC. Verified at commit `<sha>`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND
       findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
       If tooling blocked the review, that is stated in the PR and its checkbox is left
       unticked.
