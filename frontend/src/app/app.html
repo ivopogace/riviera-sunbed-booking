@@ -79,13 +79,13 @@
           class="riv-nav-desktop hidden items-center gap-[22px] text-[13.5px] text-(--riv-ink-soft) sm:flex"
           aria-label="Primary"
         >
-          <a routerLink="/" class="cursor-pointer hover:text-(--riv-ink)">Beaches</a>
-          <a routerLink="/my-bookings" class="cursor-pointer hover:text-(--riv-ink)">My bookings</a>
+          <a routerLink="/" [class]="cls.navLink">Beaches</a>
+          <a routerLink="/my-bookings" [class]="cls.navLink">My bookings</a>
           <button
             appTouchTarget
             #findButton
             type="button"
-            class="cursor-pointer hover:text-(--riv-ink)"
+            [class]="cls.navLink"
             data-testid="find-open"
             (click)="openFind(false)"
           >
@@ -112,20 +112,17 @@
 
                 @if (accountOpen()) {
                   <div
-                    class="fixed inset-0 z-30 bg-[rgba(6,30,40,0.2)]"
+                    [class]="cls.backdrop"
                     data-testid="account-backdrop"
                     (click)="closeMenus()"
                     (keydown.escape)="closeMenus()"
                     aria-hidden="true"
                   ></div>
-                  <div
-                    class="riv-account-pop absolute top-[calc(100%+10px)] right-0 z-40 w-[186px] animate-[riv-pop_0.2s_ease] rounded-[18px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.92)] p-[7px] text-[#0a2a33] shadow-[0_22px_54px_rgba(6,30,40,0.4),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
-                    data-testid="nav-account-menu"
-                  >
+                  <div [class]="cls.accountPop" data-testid="nav-account-menu">
                     <!-- Closes itself: a same-URL activation emits NavigationSkipped, not NavigationEnd. -->
                     <a
                       routerLink="/account/password"
-                      class="block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-[#0a2a33] [transition:background_0.12s_ease] hover:bg-[rgba(12,42,51,0.06)]"
+                      [class]="cls.popItem"
                       data-testid="nav-account-link"
                       (click)="closeMenus()"
                       >Your account</a
@@ -133,7 +130,7 @@
                     <button
                       appTouchTarget
                       type="button"
-                      class="block w-full cursor-pointer rounded-xl px-2.5 py-[9px] text-left text-[14px] font-semibold text-[#0a2a33] [transition:background_0.12s_ease] hover:bg-[rgba(12,42,51,0.06)]"
+                      [class]="cls.popBtn"
                       data-testid="nav-signout"
                       (click)="signOut()"
                     >
@@ -143,16 +140,13 @@
                 }
               </div>
             } @else {
-              <a
-                routerLink="/account/sign-in"
-                class="cursor-pointer hover:text-(--riv-ink)"
-                data-testid="nav-signin"
+              <a routerLink="/account/sign-in" [class]="cls.navLink" data-testid="nav-signin"
                 >Sign in</a
               >
               <a
                 routerLink="/account/sign-in"
                 [queryParams]="{ mode: 'register' }"
-                class="cursor-pointer hover:text-(--riv-ink)"
+                [class]="cls.navLink"
                 data-testid="nav-register"
                 >Register</a
               >
@@ -181,16 +175,14 @@
 
             @if (themeOpen()) {
               <div
-                class="fixed inset-0 z-30 bg-[rgba(6,30,40,0.2)]"
+                [class]="cls.backdrop"
                 data-testid="theme-backdrop"
                 (click)="closeMenus()"
                 (keydown.escape)="closeMenus()"
                 aria-hidden="true"
               ></div>
               <!-- Pressed-state toggle buttons, not ARIA radios: the radio pattern would demand roving tabindex + arrow keys (WCAG 4.1.2). -->
-              <div
-                class="riv-theme-pop absolute top-[calc(100%+10px)] right-0 z-40 w-[214px] animate-[riv-pop_0.2s_ease] rounded-[18px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.92)] p-[7px] text-[#0a2a33] shadow-[0_22px_54px_rgba(6,30,40,0.4),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
-              >
+              <div [class]="cls.themePop">
                 @for (option of themes.options; track option.id) {
                   <button
                     appTouchTarget
@@ -237,33 +229,21 @@
 
         @if (menuOpen()) {
           <div
-            class="fixed inset-0 z-30 bg-[rgba(6,30,40,0.2)]"
+            [class]="cls.backdrop"
             data-testid="menu-backdrop"
             (click)="closeMenus()"
             (keydown.escape)="closeMenus()"
             aria-hidden="true"
           ></div>
-          <nav
-            class="absolute top-[calc(100%+8px)] right-3 left-3 z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.92)] p-2 text-[#0a2a33] shadow-[0_22px_54px_rgba(6,30,40,0.4),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
-            aria-label="Menu"
-            data-testid="mobile-menu"
-          >
-            <a
-              routerLink="/"
-              class="block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
-              (click)="closeMenus()"
-              >Beaches</a
-            >
-            <a
-              routerLink="/my-bookings"
-              class="block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
-              (click)="closeMenus()"
+          <nav [class]="cls.mobileMenu" aria-label="Menu" data-testid="mobile-menu">
+            <a routerLink="/" [class]="cls.mobileItem" (click)="closeMenus()">Beaches</a>
+            <a routerLink="/my-bookings" [class]="cls.mobileItem" (click)="closeMenus()"
               >My bookings</a
             >
             <button
               appTouchTarget
               type="button"
-              class="block w-full cursor-pointer rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
+              [class]="cls.mobileBtn"
               data-testid="find-open-mobile"
               (click)="openFind(true)"
             >
@@ -281,7 +261,7 @@
                 >
                 <a
                   routerLink="/account/password"
-                  class="block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
+                  [class]="cls.mobileItem"
                   data-testid="nav-account-link-mobile"
                   (click)="closeMenus()"
                   >Your account</a
@@ -289,7 +269,7 @@
                 <button
                   appTouchTarget
                   type="button"
-                  class="block w-full cursor-pointer rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
+                  [class]="cls.mobileBtn"
                   data-testid="nav-signout-mobile"
                   (click)="signOut()"
                 >
@@ -298,7 +278,7 @@
               } @else {
                 <a
                   routerLink="/account/sign-in"
-                  class="block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
+                  [class]="cls.mobileItem"
                   data-testid="nav-signin-mobile"
                   (click)="closeMenus()"
                   >Sign in</a
@@ -306,7 +286,7 @@
                 <a
                   routerLink="/account/sign-in"
                   [queryParams]="{ mode: 'register' }"
-                  class="block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]"
+                  [class]="cls.mobileItem"
                   data-testid="nav-register-mobile"
                   (click)="closeMenus()"
                   >Register</a
@@ -326,7 +306,7 @@
                   <button
                     appTouchTarget
                     type="button"
-                    class="grid h-11 w-11 cursor-pointer place-items-center before:h-[30px] before:w-[30px] before:rounded-full before:bg-(image:--riv-swatch) before:[transition:transform_0.12s_ease] before:content-[''] hover:before:scale-[1.12] motion-reduce:before:transition-none motion-reduce:hover:before:scale-100"
+                    class="grid h-11 w-11 cursor-pointer place-items-center before:h-[30px] before:w-[30px] before:rounded-full before:bg-(image:--riv-swatch) before:[transition:scale_0.12s_ease] before:content-[''] hover:before:scale-[1.12] motion-reduce:before:transition-none motion-reduce:hover:before:scale-100"
                     [class]="
                       option.id === themes.theme()
                         ? 'before:shadow-[0_0_0_2px_#ffffff,0_0_0_4px_#0e8aa8]'

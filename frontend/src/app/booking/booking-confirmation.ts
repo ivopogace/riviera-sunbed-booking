@@ -9,6 +9,13 @@ import { formatBookingDate } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
 
+/** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
+const CLS = {
+  card: 'mx-auto my-8 max-w-[400px] rounded-[30px] px-[30px] pt-9 pb-[30px] text-center shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]',
+  h1: 'mb-2 text-[30px] font-bold tracking-[-0.02em]',
+  lead: 'mb-[18px] text-[15px] leading-[1.45] text-(--riv-card-ink-soft)',
+} as const;
+
 /**
  * Confirmation screen shown after a successful booking. Renders
  * the "You're booked." glass card — the booking code (a bearer credential, invariant #7, confined
@@ -29,21 +36,15 @@ import { BookingService } from './booking.service';
   imports: [ManageBookingLink, RouterLink, CardGlass, BookingQr, WithheldEmailNotice],
   template: `
     @if (confirmation(); as c) {
-      <section
-        class="mx-auto my-8 max-w-[400px] rounded-[30px] px-[30px] pt-9 pb-[30px] text-center shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]"
-        appCardGlass
-        aria-labelledby="confirmation-title"
-      >
+      <section [class]="cls.card" appCardGlass aria-labelledby="confirmation-title">
         <div
           class="mx-auto mb-[18px] flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] bg-[#d9f2f7] text-[30px] text-[#0a5f74] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
           aria-hidden="true"
         >
           ✓
         </div>
-        <h1 class="mb-2 text-[30px] font-bold tracking-[-0.02em]" id="confirmation-title">
-          You’re booked.
-        </h1>
-        <p class="mb-[18px] text-[15px] leading-[1.45] text-(--riv-card-ink-soft)">
+        <h1 [class]="cls.h1" id="confirmation-title">You’re booked.</h1>
+        <p [class]="cls.lead">
           {{ c.rowLabel }} · spot {{ c.positionNo }} at {{ c.venueName }}<br />on {{ dateLabel() }}.
         </p>
 
@@ -96,17 +97,9 @@ import { BookingService } from './booking.service';
         <app-manage-booking-link [code]="c.code" variant="link" />
       </section>
     } @else {
-      <section
-        class="mx-auto my-8 max-w-[400px] rounded-[30px] px-[30px] pt-9 pb-[30px] text-center shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]"
-        appCardGlass
-        aria-labelledby="confirmation-title"
-      >
-        <h1 class="mb-2 text-[30px] font-bold tracking-[-0.02em]" id="confirmation-title">
-          No booking to show
-        </h1>
-        <p class="mb-[18px] text-[15px] leading-[1.45] text-(--riv-card-ink-soft)">
-          Your booking details aren’t available here anymore.
-        </p>
+      <section [class]="cls.card" appCardGlass aria-labelledby="confirmation-title">
+        <h1 [class]="cls.h1" id="confirmation-title">No booking to show</h1>
+        <p [class]="cls.lead">Your booking details aren’t available here anymore.</p>
         <a
           routerLink="/"
           class="mt-3 inline-block text-[14.5px] font-semibold text-(--riv-accent-ink) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
@@ -117,6 +110,8 @@ import { BookingService } from './booking.service';
   `,
 })
 export class BookingConfirmation {
+  protected readonly cls = CLS;
+
   private readonly bookings = inject(BookingService);
 
   // Only render the "You're booked. / Paid" card for an actually-CONFIRMED booking. An

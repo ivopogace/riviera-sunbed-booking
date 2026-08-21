@@ -163,6 +163,27 @@ function isNotFound(error: unknown): boolean {
  * #6). On a `404` a device-local row is dropped from view but the code is kept (invariant #7 — a 404
  * can be transient); a transient/offline failure shows Retry. Codes are treated as secrets — never logged.
  */
+/** The card-glass row chrome (v4 translate utilities animate `translate`, so the transition lists it). */
+const ROW =
+  'flex w-full items-center gap-3.5 rounded-[22px] px-[18px] py-4 shadow-[0_10px_30px_rgba(7,42,58,0.22),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[24px] backdrop-saturate-[1.7] [transition:translate_0.15s_ease,box-shadow_0.15s_ease] hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(7,42,58,0.3),inset_0_1px_0_rgba(255,255,255,0.9)] motion-reduce:transition-none';
+const SKELETON =
+  'skeleton block animate-pulse rounded-[6px] bg-(--riv-card-track) motion-reduce:animate-none';
+const EMPTY_CARD =
+  'rounded-[28px] px-[30px] py-10 text-center shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7]';
+
+/** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
+const CLS = {
+  row: `${ROW} focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)`,
+  rowPlaceholder: `${ROW} justify-between`,
+  rowMain: 'flex min-w-0 flex-1 flex-col gap-[3px]',
+  meta: 'text-[13px] text-(--riv-card-ink-soft)',
+  skeletonLine: `${SKELETON} h-[12px] w-3/5`,
+  skeletonLineShort: `${SKELETON} mt-2 h-[10px] w-[35%]`,
+  emptyCard: EMPTY_CARD,
+  emptyLead: 'mb-5 text-[14.5px] leading-[1.5] text-(--riv-card-ink-soft)',
+  cta: 'inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-[26px] py-[13px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
+} as const;
+
 @Component({
   selector: 'app-my-bookings',
   imports: [RouterLink, CardGlass, StatusChip, BookingQr, TouchTarget],
@@ -181,24 +202,16 @@ function isNotFound(error: unknown): boolean {
         <!-- Announced sr-only line + decorative skeleton — the Discover/set-editor posture (#739). -->
         <div aria-live="polite" data-testid="my-bookings-loading">
           <p class="sr-only">Loading your bookings…</p>
-          <div
-            class="flex w-full items-center justify-between gap-3.5 rounded-[22px] px-[18px] py-4 shadow-[0_10px_30px_rgba(7,42,58,0.22),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[24px] backdrop-saturate-[1.7] [transition:transform_0.15s_ease,box-shadow_0.15s_ease] hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(7,42,58,0.3),inset_0_1px_0_rgba(255,255,255,0.9)] motion-reduce:transition-none"
-            appCardGlass
-            aria-hidden="true"
-          >
-            <span class="flex min-w-0 flex-1 flex-col gap-[3px]">
-              <span
-                class="skeleton block h-[12px] w-3/5 animate-pulse rounded-[6px] bg-(--riv-card-track) motion-reduce:animate-none"
-              ></span>
-              <span
-                class="skeleton mt-2 block h-[10px] w-[35%] animate-pulse rounded-[6px] bg-(--riv-card-track) motion-reduce:animate-none"
-              ></span>
+          <div [class]="cls.rowPlaceholder" appCardGlass aria-hidden="true">
+            <span [class]="cls.rowMain">
+              <span [class]="cls.skeletonLine"></span>
+              <span [class]="cls.skeletonLineShort"></span>
             </span>
           </div>
         </div>
       } @else if (rows().length === 0 && !accountError()) {
         <section
-          class="rounded-[28px] px-[30px] py-10 text-center shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7]"
+          [class]="cls.emptyCard"
           appCardGlass
           aria-labelledby="mb-empty-title"
           data-testid="my-bookings-empty"
@@ -206,32 +219,22 @@ function isNotFound(error: unknown): boolean {
           <h2 class="mb-2 text-[26px] font-bold tracking-[-0.02em]" id="mb-empty-title">
             No booking yet
           </h2>
-          <p class="mb-5 text-[14.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+          <p [class]="cls.emptyLead">
             Pick a beach, choose your exact set on the map, and your booking code will live here.
           </p>
-          <a
-            routerLink="/"
-            class="inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-[26px] py-[13px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
-            data-testid="browse-beaches"
-            >Browse beaches</a
-          >
+          <a routerLink="/" [class]="cls.cta" data-testid="browse-beaches">Browse beaches</a>
         </section>
       } @else {
         @if (accountError()) {
-          <section
-            class="rounded-[28px] px-[30px] py-10 text-center shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7]"
-            appCardGlass
-            role="status"
-            data-testid="account-error"
-          >
-            <p class="mb-5 text-[14.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+          <section [class]="cls.emptyCard" appCardGlass role="status" data-testid="account-error">
+            <p [class]="cls.emptyLead">
               We couldn’t load your account bookings just now — any made on other devices may be
               missing.
             </p>
             <button
               appTouchTarget
               type="button"
-              class="inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-[26px] py-[13px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+              [class]="cls.cta"
               (click)="retryAccount()"
               data-testid="account-retry"
             >
@@ -246,18 +249,14 @@ function isNotFound(error: unknown): boolean {
                 @case ('loaded') {
                   <a
                     [routerLink]="['/booking', row.view.code]"
-                    class="flex w-full items-center gap-3.5 rounded-[22px] px-[18px] py-4 shadow-[0_10px_30px_rgba(7,42,58,0.22),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[24px] backdrop-saturate-[1.7] [transition:transform_0.15s_ease,box-shadow_0.15s_ease] hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(7,42,58,0.3),inset_0_1px_0_rgba(255,255,255,0.9)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) motion-reduce:transition-none"
+                    [class]="cls.row"
                     appCardGlass
                     data-testid="booking-row"
                   >
-                    <span class="flex min-w-0 flex-1 flex-col gap-[3px]">
+                    <span [class]="cls.rowMain">
                       <span class="text-[16px] font-bold">{{ row.view.venueName }}</span>
-                      <span class="text-[13px] text-(--riv-card-ink-soft)">{{
-                        row.view.setLabel
-                      }}</span>
-                      <span class="text-[13px] text-(--riv-card-ink-soft)">{{
-                        row.view.dateLabel
-                      }}</span>
+                      <span [class]="cls.meta">{{ row.view.setLabel }}</span>
+                      <span [class]="cls.meta">{{ row.view.dateLabel }}</span>
                       @if (row.view.subLine) {
                         <span
                           class="text-[12px] font-semibold text-(--riv-card-ink-soft)"
@@ -290,16 +289,10 @@ function isNotFound(error: unknown): boolean {
                   </a>
                 }
                 @case ('failed') {
-                  <div
-                    class="flex w-full items-center justify-between gap-3.5 rounded-[22px] px-[18px] py-4 shadow-[0_10px_30px_rgba(7,42,58,0.22),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[24px] backdrop-saturate-[1.7] [transition:transform_0.15s_ease,box-shadow_0.15s_ease] hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(7,42,58,0.3),inset_0_1px_0_rgba(255,255,255,0.9)] motion-reduce:transition-none"
-                    appCardGlass
-                    data-testid="booking-row-failed"
-                  >
-                    <span class="flex min-w-0 flex-1 flex-col gap-[3px]">
+                  <div [class]="cls.rowPlaceholder" appCardGlass data-testid="booking-row-failed">
+                    <span [class]="cls.rowMain">
                       <span class="text-[16px] font-bold">Couldn’t load this booking</span>
-                      <span class="text-[13px] text-(--riv-card-ink-soft)"
-                        >Check your connection and try again.</span
-                      >
+                      <span [class]="cls.meta">Check your connection and try again.</span>
                     </span>
                     <button
                       appTouchTarget
@@ -314,18 +307,14 @@ function isNotFound(error: unknown): boolean {
                 }
                 @default {
                   <div
-                    class="flex w-full items-center justify-between gap-3.5 rounded-[22px] px-[18px] py-4 shadow-[0_10px_30px_rgba(7,42,58,0.22),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[24px] backdrop-saturate-[1.7] [transition:transform_0.15s_ease,box-shadow_0.15s_ease] hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(7,42,58,0.3),inset_0_1px_0_rgba(255,255,255,0.9)] motion-reduce:transition-none"
+                    [class]="cls.rowPlaceholder"
                     appCardGlass
                     aria-busy="true"
                     data-testid="booking-row-loading"
                   >
-                    <span class="flex min-w-0 flex-1 flex-col gap-[3px]">
-                      <span
-                        class="skeleton block h-[12px] w-3/5 animate-pulse rounded-[6px] bg-(--riv-card-track) motion-reduce:animate-none"
-                      ></span>
-                      <span
-                        class="skeleton mt-2 block h-[10px] w-[35%] animate-pulse rounded-[6px] bg-(--riv-card-track) motion-reduce:animate-none"
-                      ></span>
+                    <span [class]="cls.rowMain">
+                      <span [class]="cls.skeletonLine"></span>
+                      <span [class]="cls.skeletonLineShort"></span>
                     </span>
                   </div>
                 }
@@ -339,6 +328,8 @@ function isNotFound(error: unknown): boolean {
   host: { class: 'block text-(--riv-card-ink)' },
 })
 export class MyBookings {
+  protected readonly cls = CLS;
+
   private readonly store = inject(DeviceLocalBookings);
   private readonly bookings = inject(BookingService);
   private readonly auth = inject(CustomerAuth);

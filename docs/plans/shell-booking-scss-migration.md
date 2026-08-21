@@ -179,9 +179,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** PR — ready for review (review gate + Sonar gate due)
+**Stage pointer:** review gate ran (4 findings — 3 fixed, 1 deferred); Sonar gate next
 
-**Next action:** mark PR #740 ready for review; run `/code-review` per `references/pr-gates.md` §1, then the Sonar issue-list pull (§2).
+**Next action:** wait for CI + SonarCloud on the review-fix head, pull the Sonar issue list (`references/pr-gates.md` §2), then merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -201,6 +201,11 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | AC-6 parity harness (pre-push) | mobile theme-swatch dot used `before:bg-(--riv-swatch)` — the *color* form — on a gradient token, rendering no dot | fixed in phase-6 commit (`bg-(image:--riv-swatch)`); generalization audit swept all color-form `bg-(--riv-*)` uses — no other member |
+| F-2 | review (`/code-review` fork, 2026-08-21) | row hover lift lost its ease: `[transition:transform_…]` beside `hover:-translate-y-0.5`, but v4 translate utilities animate the `translate` property (verified in the built CSS) | fixed — transitions name `translate`; parity re-capture shows only the deliberate property rename |
+| F-3 | review (same run) | swatch-dot hover scale unesed for the same reason (`scale` property vs `transform` transition) | fixed — `before:[transition:scale_0.12s_ease]` |
+| F-4 | review (same run) | page-level loading `aria-live` region enters the DOM already holding its text, so most SR combos won't announce it — internally inconsistent with the live-region rule booking-pay.ts documents | deferred → follow-up issue (the identical Discover/set-editor posture shipped in #675/#721; a fix belongs to all three surfaces at once, not this restyle) |
+| F-5 | review (same run) | row/CTA/popover/card-surface recipes duplicated up to 6× instead of hoisted | fixed — `cls` consts per the `booking-view.ts` idiom in my-bookings, app shell, booking-pay, booking-confirmation |
+| F-6 | review fix-round generalization | the F-2/F-3 mechanism (`transition` naming `transform` while a v4 translate/scale utility animates) exists once outside this diff: `venue-map.html:194` | deferred → follow-up issue (pre-existing, outside this slice's surface) |
 
 ---
 
