@@ -267,6 +267,9 @@ class VenueAdminService
 		if (internal.isPresent()) {
 			return new ReplaceLayoutOutcome.Rejected(toReplaceRejection(internal.get()));
 		}
+		if (command.splitsRowLabel()) {
+			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.ROW_NAME_TAKEN);
+		}
 		// Optimistic lock — take the venue row lock and read set_version BEFORE lockSetsOfVenue's
 		// FOR UPDATE. Both set-writes acquire the venue row first, then their set rows: one consistent order
 		// → no deadlock (R-1). A mismatch means another replace/reprice advanced it since the load →

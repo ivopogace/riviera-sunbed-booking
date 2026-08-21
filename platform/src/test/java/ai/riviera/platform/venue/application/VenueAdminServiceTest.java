@@ -585,6 +585,49 @@ class VenueAdminServiceTest {
 	}
 
 	@Test
+	void rejectsALayoutSharingOneLabelAcrossTwoGridRows() {
+		venues.venues.add(VENUE.value());
+		// The #728 reproducer: gap-cell numbering keeps every (rowLabel, positionNo) pair unique.
+		LayoutCommand split = new LayoutCommand(List.of(
+				new SetCommand("A", 2, "PREMIUM", "ONLINE", 2000, "EUR", 2, 1),
+				new SetCommand("A", 3, "PREMIUM", "ONLINE", 2000, "EUR", 3, 1),
+				new SetCommand("A", 1, "STANDARD", "ONLINE", 2000, "EUR", 1, 2)));
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, split);
+
+		assertEquals(ReplaceRejection.ROW_NAME_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedAllCount);
+		assertEquals(0, venues.insertedInLayout);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void duplicatePositionOutranksTheSplitLabel() {
+		venues.venues.add(VENUE.value());
+		LayoutCommand doubleFault = new LayoutCommand(List.of(
+				new SetCommand("A", 1, "PREMIUM", "ONLINE", 2000, "EUR", 1, 1),
+				new SetCommand("A", 1, "STANDARD", "ONLINE", 2000, "EUR", 1, 2)));
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, doubleFault);
+
+		assertEquals(ReplaceRejection.DUPLICATE_POSITION, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+	}
+
+	@Test
+	void acceptsOneLabelSpanningManyPositionsOnOneGridRow() {
+		venues.venues.add(VENUE.value());
+		// Gap-cell numbering on a single grid row — same label repeated is the normal shape, never a split.
+		LayoutCommand gapped = new LayoutCommand(List.of(
+				new SetCommand("A", 2, "PREMIUM", "ONLINE", 2000, "EUR", 2, 1),
+				new SetCommand("A", 3, "PREMIUM", "ONLINE", 2000, "EUR", 3, 1)));
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, gapped);
+
+		assertEquals(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
+		assertEquals(2, venues.insertedInLayout);
+	}
+
+	@Test
 	void rejectsReplaceOnUnknownVenue() {
 		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(1, 1));
 

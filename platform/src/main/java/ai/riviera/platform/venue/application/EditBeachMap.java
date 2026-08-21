@@ -106,6 +106,11 @@ public interface EditBeachMap {
 	 * goes with its set. On a clear venue the existing sets are deleted and {@code command}'s grid inserted
 	 * atomically.
 	 *
+	 * <p>Refused with {@link ReplaceRejection#ROW_NAME_TAKEN} (→ 409) when one submitted
+	 * {@code rowLabel} appears under two distinct grid rows — {@link #renameRow}'s one-label-one-row
+	 * rule checked within the batch, which no DB constraint can see (gap-cell numbering keeps every
+	 * {@code (row_label, position_no)} pair unique).
+	 *
 	 * <p>Optimistic concurrency: the caller passes the {@code expectedVersion} (the venue's
 	 * {@code set_version}) the tab loaded with the map; the write is conditional on it. Another writer having
 	 * bumped it since the load yields {@link ReplaceRejection#STALE_WRITE} (→ 409), so a stale layout tab

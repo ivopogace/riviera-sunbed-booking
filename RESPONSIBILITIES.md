@@ -145,7 +145,11 @@ standing rules:
     on purpose — two rows can share a label with no `(row_label, position_no)` pair
     colliding, which the database accepts, but the tourist map, the price rail and the
     pricing tab all group sets by label, so the two physical rows would silently read as
-    one. Renaming a row to the label it already carries is a permitted no-op.
+    one. Renaming a row to the label it already carries is a permitted no-op. The bulk
+    replace enforces the same one-label-one-physical-row rule within its submitted batch
+    (`ReplaceRejection.ROW_NAME_TAKEN`, #728) — gap-cell position numbering can otherwise
+    keep every `(row_label, position_no)` pair unique while two grid rows share a label,
+    which the single-set `addSet`/`editSet` paths do not yet check (surfaced on #728).
   - Because the pool is **mutable** layout data, `SetBookingFacts#poolForClaim` is a
     **locking** read — `FOR KEY SHARE`, the weakest lock that conflicts with the edit's
     `FOR UPDATE`, and the very lock the claim's own insert takes for its FK check. It is
