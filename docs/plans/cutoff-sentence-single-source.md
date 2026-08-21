@@ -100,16 +100,16 @@ it: mutate the source and exactly the two pins go red, no site stays silently gr
   frontend unit suite and the mocked e2e suite run, then **both** pins fail and **no**
   surface spec passes-while-stale. *Pinned by:* the deliberate mutation run recorded in
   *Acceptance-criteria verification*; reverted after.
-- [ ] **AC-3:** Given a user walks Discover → a venue's beach map, when both cutoff notes
+- [x] **AC-3:** Given a user walks Discover → a venue's beach map, when both cutoff notes
   render, then the map's note text **equals the text captured from Discover's note** —
   compared page-to-page, never against a re-typed literal. *Pinned by:*
   `discovery-flow.e2e.ts` › `discovery → filter → venue map is accessible end-to-end`
-- [ ] **AC-4:** Given both surfaces after the change, when computed styles are read in a real
+- [x] **AC-4:** Given both surfaces after the change, when computed styles are read in a real
   browser, then Discover's glyph is 15 × 15 px and the map's 13 × 13 px, each stroke resolves
   to its own note's ink (`--riv-card-ink-soft` / `--riv-ink-faint`), and Discover's note keeps
   its glass pill — all unchanged from before the change. *Pinned by:* the existing
   `discovery-flow.e2e.ts` `toHaveCSS` assertions + the no-drift probe recorded below
-- [ ] **AC-5:** Given either surface, when the note renders, then it is a `<p>` element
+- [x] **AC-5:** Given either surface, when the note renders, then it is a `<p>` element
   carrying `data-testid="cutoff-note"` and an `aria-hidden` `<svg>`, and axe reports no
   serious violations. *Pinned by:* `home.spec.ts`, `venue-map.spec.ts`,
   `cutoff-note.spec.ts`, and `expectNoSeriousAxeViolations` in the mocked suite
@@ -174,7 +174,7 @@ it: mutate the source and exactly the two pins go red, no site stays silently gr
 | R-9 | An extracted component renders markup that depends on a class defined in the **caller's** encapsulated stylesheet, so the class silently stops applying | med | high | *(added at the review gate — it had already happened.)* Keep such an element in the caller's view (attribute selector) rather than moving it into the component. Enumerate by mechanism, not by eye: sweep every extracted component's own template for class names declared in any `styleUrl` stylesheet, plus any `[class]` bound from a caller | claude | **closed** `abc46dc` — F-1 fixed; the sweep confirms `manage-booking-link` was the only instance of eight |
 | R-4 | The `&nbsp;` in `6&nbsp;PM` is lost in the move, letting the note wrap between "6" and "PM" — invisible to a normalized string compare, which is exactly how it went unasserted before #734's F-7 | med | med | the copy moves as an HTML **entity** into an HTML **template**, not into a TS string literal where it would become an invisible byte or a ` ` escape (a stated reason for D-1); `cutoff-note.spec.ts` pins `6 PM` separately from the normalized compare, inheriting F-7's fix | claude | open |
 | R-5 | The two surface specs stop asserting the copy, and the copy ends up pinned **nowhere** — a dedupe that quietly deletes the coverage | med | high | AC-2 is a **mutation** check, not an assertion: edit the source sentence and confirm the suites go red. A dedupe that removed the gate would show up as a green run | claude | **closed** — the mutation run turned exactly the unit pin red (2 failures) and left no surface stale; recorded under AC-2 |
-| R-6 | The mocked e2e is not run in this cloud session, so a real-browser-only break (the parity assertion, the glyph size) ships | med | med | run it per `riviera-local-debug`; **the local run was declined in this session**, so CI's own run of the same suite is the proof and the risk stays open until that run is green. One ambiguity the local run would have settled was removed by construction instead: the captured text is normalized in the spec rather than left to `toHaveText`, which would otherwise collapse the U+00A0 in `6 PM` on only one side of the compare | claude | open — awaiting CI |
+| R-6 | The mocked e2e is not run in this cloud session, so a real-browser-only break (the parity assertion, the glyph size) ships | med | med | run it per `riviera-local-debug`; the local run was declined in this session, so CI's own run of the same suite is the proof. One ambiguity the local run would have settled was removed by construction instead: the captured text is normalized in the spec rather than left to `toHaveText`, which would otherwise collapse the U+00A0 in `6 PM` on only one side of the compare | claude | **closed** `3553671` — the frontend job, which runs the mocked suite, is green on the final head. This is the only executable proof for AC-3 and AC-4 |
 | R-8 | A guard-violating edit slips past the local `PostToolUse` hooks because the file was written from a shell heredoc rather than an editing tool, so it is caught only by CI | med | low | run the five `scripts/check-*.mjs` guards **by hand** before every push, not just the one the hook happens to fire on — the whole set takes seconds | claude | **closed** — this is exactly how the phase-2 push went red (two 2-line comments in the surface specs, written via heredoc). Fixed, and the full guard set now runs locally before each push |
 | R-7 | AC-3's parity assertion is vacuously true — e.g. both locators resolve to the same element, or both texts are empty | low | med | the captured text is asserted truthy before the compare, and the two reads run against different URLs (`/`, then `/venues/1`, after a `toHaveURL` gate) | claude | **closed** — the two locators cannot resolve to one element across a navigation, and an empty capture fails the truthy assertion before the compare |
 
@@ -287,12 +287,33 @@ N/A — no contract change. No endpoint, DTO or client typing is touched.
 
 ## Execution status
 
-**Stage pointer:** `CLOSE-OUT — review gate ran (11 findings, all resolved); CI + Sonar gates outstanding`
+**Stage pointer:** `DONE — merged via PR #737`
 
-**Next action:** confirm CI green on `abc46dc` — the mocked e2e run there is the only proof for
-AC-3/AC-4 and the last thing holding R-6 open — then pull the Sonar new-issue and duplication
-lists from the API and clear every entry. Merge is the maintainer's call; this session was not
-asked to merge.
+**Next action:** none — all three gates cleared on the final head. Post-merge only the
+issue-tracker items remain, and they are already written: **#738** closed by this PR with its
+per-member outcomes, **#739** open for the three deferred stylesheet migrations.
+
+**Gate record (final head `3553671`):**
+
+- **CI:** green — `Backend (build + test)`, `Frontend (lint + test + build)`, `Repo hygiene
+  (diff-scoped)`, `CodeQL`, both `Analyze` jobs, `SonarCloud scan`, all `success`. The **frontend
+  job is what closes R-6**: it runs the mocked Playwright suite, which is the only proof for AC-3
+  (the page-to-page parity compare) and AC-4 (the 15 px / 13 px glyph boxes), and could not be run
+  in this session. An earlier run on `abc46dc` shows `cancelled` rather than `failure` — the
+  plan-doc push superseded it, which is Actions' concurrency behaviour, and the two heads carry
+  byte-identical code.
+- **Review gate:** ran via the `code-review` workflow (invocation ladder rung 1) with
+  `riviera-review-overlay` layered on. **11 findings, one of them a shipped regression** (F-1);
+  10 fixed, 1 accepted with rationale. Register above.
+- **Sonar gate:** `SonarCloud Code Analysis` = `success`, **and the reported list pulled from the
+  API rather than trusting the conclusion**: `total: 0` issues, 0 security hotspots, 0 new bugs /
+  vulnerabilities / code smells, **0 duplicated blocks** at 0.0% density, **100.0%** coverage on
+  new code (bar ≥80%). The false-clean read is ruled out per `pr-gates.md` §2: **`new_lines = 432`**
+  proves an analysis exists, so the zero is genuine and not an unanalyzed PR. Read with `curl`
+  rather than `WebFetch`, whose 15-minute cache can persist an early "clean" answer across the
+  whole gate; and the measures API returns **`periods`** — plural, an array — so a parser looking
+  for the singular `period` silently yields `None` for every metric and looks exactly like the
+  false clean.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -302,6 +323,7 @@ asked to merge.
 | 3 — close-out (docs freshness, review + Sonar gates, final state) | ⏳ | `b814964` (freshness) |
 | 4 — #738's population, folded in at the maintainer's direction (D-4) | ✅ | `e6f7f0c` |
 | 5 — review-gate fixes (11 findings, incl. the F-1 regression) | ✅ | `abc46dc` |
+| 6 — close-out (risk register, gate record, final state) | ✅ | `3553671`, this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -365,47 +387,49 @@ Every fix re-entered at Implement through the frontend routing row.
 
 **Files:** Create `frontend/src/app/shared/cutoff-note.ts` · Test `frontend/src/app/shared/cutoff-note.spec.ts`
 
-- [ ] **Step 1:** Write `cutoff-note.spec.ts` **first**, red — a host `<p appCutoffNote>` in a
+- [x] **Step 1:** Write `cutoff-note.spec.ts` **first**, red — a host `<p appCutoffNote>` in a
   test component renders the exact sentence (normalized compare **and** a separate `6 PM`
   assertion, per R-4), carries `data-testid="cutoff-note"`, contains an `aria-hidden` `<svg>`
   and no `⏰`, and merges its host classes with a call-site class (AC-6).
-- [ ] **Step 2:** Write the component: `selector: 'p[appCutoffNote]'`, host
+- [x] **Step 2:** Write the component: `selector: 'p[appCutoffNote]'`, host
   `class: 'inline-flex items-center gap-1 leading-[1.35]'` + `data-testid`, template
   `<app-clock-icon /><span>…</span>`, TSDoc carrying the invariant-#4 statement the two
   template comments used to hold.
-- [ ] **Step 3:** `npx ng test --watch=false --include="src/app/shared/cutoff-note.spec.ts"` → green.
+- [x] **Step 3:** `npx ng test --watch=false --include="src/app/shared/cutoff-note.spec.ts"` → green.
 
 ## Phase 1 — Both surfaces adopt it; the specs stop re-typing the copy
 
 **Files:** Modify `home.html|.ts`, `venue-map.html|.ts` · Test `home.spec.ts`, `venue-map.spec.ts`
 
-- [ ] **Step 1:** Rewrite both surface specs' cutoff cases red — assert the note mounted
+- [x] **Step 1:** Rewrite both surface specs' cutoff cases red — assert the note mounted
   (`[data-testid="cutoff-note"]` now exists only via the component), that it is still a `<p>`,
   and each surface's own concerns; delete the re-typed sentences.
-- [ ] **Step 2:** Swap both templates to `<p appCutoffNote class="…skin…" …></p>`, moving
+- [x] **Step 2:** Swap both templates to `<p appCutoffNote class="…skin…" …></p>`, moving
   Discover's `[&_svg]:size-[15px]` onto the `<p>` and dropping the dead `.cutoff-note` marker
   and the two duplicated comments; update both `imports:` arrays.
-- [ ] **Step 3:** `npx ng test --watch=false --include="src/app/pages/home/**/*.spec.ts" --include="src/app/venue/venue-map*.spec.ts"` → green, contrast specs unedited.
-- [ ] **Step 4:** Generalization-audit pass — enumerate by **mechanism** (surfaces stating the
+- [x] **Step 3:** `npx ng test --watch=false --include="src/app/pages/home/**/*.spec.ts" --include="src/app/venue/venue-map*.spec.ts"` → green, contrast specs unedited.
+- [x] **Step 4:** Generalization-audit pass — enumerate by **mechanism** (surfaces stating the
   cutoff rule in prose), not by resemblance, and record the command in the log below.
 
 ## Phase 2 — The cross-surface parity assertion
 
 **Files:** Modify `frontend/e2e/discovery-flow.e2e.ts`
 
-- [ ] **Step 1:** In the Discover → map walk, capture the Discover note's text, assert it is
+- [x] **Step 1:** In the Discover → map walk, capture the Discover note's text, assert it is
   non-empty and matches the sentence's shape, then after landing on `/venues/1` assert the map
   note's text **equals the captured value** (AC-3, R-7).
-- [ ] **Step 2:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
+- [x] **Step 2:** ~~`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`~~ —
+  **not run locally**; the run was declined in this session. CI's run of the same suite on the
+  final head is the proof instead (R-6, and the gate record above).
 
 ## Phase 3 — Close-out
 
 **Files:** Modify `.claude/skills/riviera-tailwind/SKILL.md`, this plan doc
 
-- [ ] **Step 1:** Run AC-2's mutation check and revert it.
-- [ ] **Step 2:** `riviera-docs-freshness` over the slice's range, incl. the counting sweep.
-- [ ] **Step 3:** `node scripts/check-plan-file-structure.mjs --diff origin/main` with this doc staged.
-- [ ] **Step 4:** Review gate, Sonar gate, final Execution status.
+- [x] **Step 1:** Run AC-2's mutation check and revert it — 2 failures, both the intended pin.
+- [x] **Step 2:** `riviera-docs-freshness` over the slice's range, incl. the counting sweep.
+- [x] **Step 3:** `node scripts/check-plan-file-structure.mjs --diff origin/main` with this doc staged.
+- [x] **Step 4:** Review gate, Sonar gate, final Execution status.
 
 ---
 
@@ -438,8 +462,9 @@ Every fix re-entered at Implement through the frontend routing row.
   clean against HEAD. The **unit** half is executed; the e2e pin's redness is established by
   inspection only — its regex asserts `sales close at 6\s+PM` literally, so "7 PM" cannot match —
   because the browser suite could not be run in this session (R-6).
-- [ ] **AC-3/AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
-- [ ] **AC-5:** the surface specs + the mocked suite's axe checks.
+- [x] **AC-3/AC-4:** the mocked Playwright suite — **run by CI** on the final head (green), not
+  locally: the local run was declined in this session, so this is the honest provenance.
+- [x] **AC-5:** the surface specs (green locally and in CI) + the mocked suite's axe checks (CI).
 - [x] **AC-6:** `npx ng test --watch=false --include="src/app/shared/cutoff-note.spec.ts"` →
   7 passed, including the host/call-site class merge and the `6&nbsp;PM` pin. Verified at `b3a64e8`.
 - [x] **AC-7 (as scoped — see the finding F-2 correction):** the enumerator re-run over the finished
@@ -452,27 +477,30 @@ Every fix re-entered at Implement through the frontend routing row.
   `npx ng lint` → clean, `npm run format:check` → clean, `npm run build` → succeeded. The seven
   admin specs, both booking specs that assert the legal links, and both operator header specs are
   **unedited** and still green, which is what proves the extractions preserved behavior.
-- [ ] **No-drift proof** (`riviera-tailwind`'s hard rule — computed styles, not class lists):
-  a throwaway Playwright probe reads `getComputedStyle` on both notes and both glyphs before
-  and after the change; deleted after the run.
+- [x] **No-drift proof** (`riviera-tailwind`'s hard rule — computed styles, not class lists): the
+  mocked suite's existing `toHaveCSS` assertions measure the rendered glyph boxes in a real
+  browser and are green on the final head. The separate throwaway probe was **not** run — the
+  local browser run was declined — so the drift evidence here is CI's `toHaveCSS`, narrower than
+  #733's probe, and stated as such rather than implied.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A); invariant #4 appears as display copy only.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — no fencing behavior changed.
-- [ ] **Modulith** section filled (N/A — frontend-only).
-- [ ] **Payment/payout** section filled (N/A).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — the `Europe/Tirane` clamp is untouched.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A.
-- [ ] **Frontend** standards met; no `as any`; folder placement per `riviera-frontend`.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing its PR number.
-- [ ] **The review gate ran in full** — the `code-review` workflow, with
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A); invariant #4 appears as display copy only.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — no fencing behavior changed.
+- [x] **Modulith** section filled (N/A — frontend-only).
+- [x] **Payment/payout** section filled (N/A).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — the `Europe/Tirane` clamp is untouched.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A.
+- [x] **Frontend** standards met; no `as any`; folder placement per `riviera-frontend`.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — the `merged via PR #737` stage pointer lands in this PR's
+      last commit, so no docs-only follow-up PR is needed.
+- [x] **The review gate ran in full** — the `code-review` workflow, with
       `riviera-review-overlay` layered on, not the overlay alone.
