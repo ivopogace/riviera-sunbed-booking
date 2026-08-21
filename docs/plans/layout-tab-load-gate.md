@@ -94,12 +94,12 @@ operator is shown, and what the tab lets them do, before/at/after the map read s
       chosen, then the #718 no-sets copy (`set-panel-no-sets`) and the single empty spot still render
       and no skeleton is present (no regression).
       *Pinned by:* `SetEditor (#600) › points a set-less venue at the bulk generator, and still adds into the one empty spot (#718)` (extended with the no-skeleton assertion)
-- [ ] **AC-4:** Given a venue whose map read has not resolved, when the operator reaches Generate,
+- [x] **AC-4:** Given a venue whose map read has not resolved, when the operator reaches Generate,
       then it is **unavailable** (`disabled`, labelled as loading) and activating it neither
       generates nor saves anything — the stored layout is never silently replaced. Holds for **both**
       windows that open one: the tab's own mount and `onSetsChanged()`'s re-read.
       *Pinned by:* `LayoutEditor (#172) › refuses Generate until the map read settles, on mount and on the per-set reconcile (#721)`
-- [ ] **AC-5:** Given a genuinely set-less venue whose read has resolved, when Generate is activated,
+- [x] **AC-5:** Given a genuinely set-less venue whose read has resolved, when Generate is activated,
       then it still generates immediately with no confirmation; and given a venue **with** a layout,
       Generate still asks for the destructive-regenerate confirmation (no regression, both arms).
       *Pinned by:* `LayoutEditor (#172) › starts empty and generates an R×C grid with row A front-row premium` + `… asks for confirmation before regenerating over an existing grid` (both extended to assert Generate is enabled once settled)
@@ -328,14 +328,14 @@ changes only what the tab renders between issuing today's `GET /api/venues/{id}`
 > shipped tests. Record **`merged via PR #NN`, never a merge SHA** (case history + details:
 > `riviera-sdlc` `references/pr-gates.md` §3 step 4).
 
-**Stage pointer:** `implement` — phase 0 shipped; draft PR to open on its push.
+**Stage pointer:** `implement` — phases 0–1 shipped; draft **PR #731** open, CI running per push.
 
-**Next action:** phase 1 (Generate gated on the read settling), test-first.
+**Next action:** phase 2 (the failed-read path on both surfaces), test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Per-set load gate + skeleton (unit + a11y) | ✅ | (this commit) |
-| 1 — Generate gated on the read settling | | |
+| 0 — Per-set load gate + skeleton (unit + a11y) | ✅ | `664b19c` |
+| 1 — Generate gated on the read settling | ✅ | (this commit) |
 | 2 — Failed-read path on both surfaces | | |
 | 3 — Mocked Playwright e2e (held GET) | | |
 | 4 — Close-out (gates, docs freshness, final plan state) | | |
@@ -431,19 +431,22 @@ Skill-routing gate for what the fix touches *before* editing).
 `frontend/src/app/operator/layout-editor.html` · Test
 `frontend/src/app/operator/layout-editor.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-4 on both windows (mount: the GET left pending;
-      reconcile: a per-set `changed` emission's re-read left pending), asserting the button is
-      `disabled` and that clicking it produces neither a grid nor a PUT; AC-5's two no-regression
-      arms; plus the R-5 venue-switch assertion (a superseded read does not un-gate the live one).
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- layout-editor`.
-- [ ] **Step 3: Minimal implementation** — the `reading` signal (set true in `loadExisting`,
+- [x] **Step 1: Write the failing tests** — AC-4 on both windows (mount: the GET left pending;
+      reconcile: a real per-set save through the child, its re-read left pending), asserting the
+      button is `disabled` and that clicking it produces neither a grid nor a PUT; AC-5's two
+      no-regression arms; plus the R-5 venue-switch assertion (a superseded read does not un-gate
+      the live one).
+- [x] **Step 2: Run them, verify they fail** —
+      `ng test --include="src/app/operator/layout-editor.spec.ts"` → **3 failed / 49 passed**, each
+      on `expected false to be true` for `generate.disabled`.
+- [x] **Step 3: Minimal implementation** — the `reading` signal (set true in `loadExisting`,
       cleared after the epoch guard in **both** handlers), the `onGenerate()` early return, the
       `[disabled]="reading()"` binding and the button's loading label.
-- [ ] **Step 4: Run them, verify they pass**.
-- [ ] **Step 5: Generalization-audit pass** — mechanism: every destructive/irreversible action
-      whose guard reads a signal that is *also* the unloaded default.
-- [ ] **Step 6: Commit**
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass** — `--include="src/app/operator/*.spec.ts"` → **433
+      passed**; `check-focus-posture.mjs --diff origin/main` and `check-touch-target.mjs` clean.
+- [x] **Step 5: Generalization-audit pass** — see the log's phase-1 row.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -510,6 +513,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-21 | phase 1 | **Mechanism:** every **destructive or irreversible action whose confirmation is conditional on fetched state** — the shape where "there is nothing to lose" and "we have not looked yet" are the same value. Enumerated from the confirm machinery itself (who sets a confirm flag, and under what condition) rather than from "editors with a Generate button" | `grep -rln "app-confirm-panel" src/app --include=*.html` (2 surfaces) + `grep -rn "confirm[A-Za-z]*\.set(true)" src/app --include=*.ts -B 3` (5 sites, with their guards), cross-checked against `grep -rn "length === 0" src/app --include=*.ts` for write guards reading a collection | 5 confirm sites. **Exactly one is conditional:** `layout-editor.onGenerate()`'s `if (hasLayout())` — the defect. The other four are unconditional (`set-editor`'s remove, `booking-view`'s cancel and withdraw, `set-password`'s), and each is reachable only from an already-loaded subject (`@if (booking(); as b)`, a selected set). `onSave()`'s `sets.length === 0` reads the **painted grid**, not a read, and is fenced again by the null `setVersion` token | **One fix, four judged and left.** The conditional-confirm shape exists once in this app, and it is the one this issue reports |
 | 2026-08-21 | phase 0 | **Mechanism:** every surface that renders a **fetched collection's emptiness as a fact** — either it takes the collection as a required input from a parent that may still be reading, or it seeds its own list signal with `[]` and branches on `.length`. Enumerated from the two syntactic shapes that create the state, not from "editors that look like this one" | `grep -rn "input.required<readonly" src/app --include=*.ts` (5) + `grep -rln "signal<readonly [A-Za-z]*\[\]>(\[\])\|signal<[A-Za-z]*\[\]>(\[\])" src/app --include=*.ts` (12), then read each surface's emptiness branch for a settled flag | 16 sites. **Inputs:** `set-editor` (the defect); `payout-statement` — its parent gates the whole tab on `@if (!loaded())`; `photo-slideshow` — both callers bind from an already-loaded object (`@if (venue(); as v)` / a loaded card); `segmented-control` — static config, never fetched; `beach-map-canvas` — a presentational primitive whose consumers own the question. **Own-read surfaces:** 11 of 11 already distinguish unread from empty — 10 via a `loaded`/`loading` signal, `admin-mail-delivery` via `searched() && bookings().length === 0` | **One fix, fifteen judged and left.** The population's defect rate is 1/16, and the one hit is the surface whose settled flag lives in a *different component* — which is exactly why it was the one to go missing |
 
 ---

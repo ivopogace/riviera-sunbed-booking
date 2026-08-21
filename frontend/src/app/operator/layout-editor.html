@@ -92,10 +92,15 @@
             appTouchTarget
             type="button"
             (click)="onGenerate()"
+            [disabled]="reading()"
             data-testid="layout-generate"
-            class="mt-3 w-full rounded-[14px] border border-white/40 bg-(image:--riv-cta-grad) px-3 py-[11px] text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] [transition:filter_0.12s_ease] hover:brightness-105"
+            class="mt-3 w-full rounded-[14px] border border-white/40 bg-(image:--riv-cta-grad) px-3 py-[11px] text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] [transition:filter_0.12s_ease] disabled:opacity-50 hover:brightness-105"
           >
-            Generate {{ genTotal() }} sets
+            @if (reading()) {
+              Loading the current layout…
+            } @else {
+              Generate {{ genTotal() }} sets
+            }
           </button>
           <p class="mt-2.5 text-[11.5px] leading-[1.4] text-(--riv-card-ink-soft)">
             Regenerating replaces the current layout. Row A is priced as front row automatically.

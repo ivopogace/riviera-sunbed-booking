@@ -173,6 +173,14 @@ export class LayoutEditor {
    * rendering them instead of flashing a skeleton over every write.
    */
   protected readonly mapLoaded = signal(false);
+  /**
+   * True while a map read is in flight. Generate is shut for exactly that long, because until the
+   * read lands `hasLayout()` is false for a venue that HAS a layout — and a regenerate then replaces
+   * it with no confirmation, which a later Save writes over the real one with a token the resolving
+   * read has quietly made valid. It covers both windows: the tab's own mount and
+   * {@link onSetsChanged}'s re-read.
+   */
+  protected readonly reading = signal(false);
 
   /**
    * The mode actually shown: the operator's choice once made, otherwise the one the venue needs — a
@@ -336,6 +344,9 @@ export class LayoutEditor {
   }
 
   protected onGenerate(): void {
+    if (this.reading()) {
+      return; // the button is disabled meanwhile; never generate over a layout nobody has seen
+    }
     if (this.hasLayout()) {
       this.confirmRegen.set(true); // regenerate replaces — confirm first
       return;
@@ -708,11 +719,13 @@ export class LayoutEditor {
    */
   private loadExisting(venueId: number): void {
     const epoch = this.epoch;
+    this.reading.set(true);
     this.venues.getVenueMap(venueId, todayBookingDate(new Date())).subscribe({
       next: (venue) => {
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this load — never seed the new venue's editor (#180)
         }
+        this.reading.set(false);
         this.loadFailed.set(false);
         this.mapLoaded.set(true);
         this.loadedSetVersion.set(venue.setVersion ?? null);
@@ -723,6 +736,7 @@ export class LayoutEditor {
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this load (#180)
         }
+        this.reading.set(false);
         this.loadFailed.set(true);
         if (error instanceof HttpErrorResponse && error.status === 401) {
           this.operator.sessionLost();
