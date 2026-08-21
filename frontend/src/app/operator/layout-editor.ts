@@ -368,8 +368,7 @@ export class LayoutEditor {
     this.storedRowNames.set([]); // a regenerated grid is unsaved: nothing to rename until it is
     this.savedNotice.set(false);
     this.errorCode.set(undefined);
-    this.renamedRow.set(null);
-    this.rowNameError.set(null);
+    this.clearRenameNotices();
   }
 
   /** The derived grid letter for row {@code y} — the row-name input's default and visual anchor. */
@@ -404,11 +403,18 @@ export class LayoutEditor {
   protected async onRenameRow(y: number): Promise<void> {
     const venueId = this.venueId();
     const from = this.storedRowName(y);
-    const to = this.effectiveRowNames()[y];
+    const typed = (this.rowNames()[y] ?? '').trim();
     const expectedVersion = this.loadedSetVersion();
     if (venueId === undefined || from === undefined || expectedVersion === null) {
       return; // defensive: the button renders only for a stored row, which implies a loaded token
     }
+    if (typed === '') {
+      // A cleared field reads as "cancel", not "rename me to my grid letter" — restore what is stored.
+      this.rowNames.update((names) => names.map((name, i) => (i === y ? from : name)));
+      this.clearRenameNotices();
+      return;
+    }
+    const to = typed;
     if (this.renamingRow() !== null || this.saving()) {
       return; // the shared set_version admits one writer: a rename cannot race another or the bulk save
     }
@@ -543,6 +549,9 @@ export class LayoutEditor {
       this.loadFailed.set(true);
       return;
     }
+    if (this.renamingRow() !== null) {
+      return; // the other half of the shared-token guard: a rename in flight owns the version
+    }
     const epoch = this.epoch;
     this.saving.set(true);
     this.errorCode.set(undefined);
@@ -553,7 +562,10 @@ export class LayoutEditor {
         return; // a venue switch superseded this save (#180); saving clears in finally
       }
       this.savedNotice.set(true);
-      this.storedRowNames.set([...this.effectiveRowNames()]); // the save just wrote these labels
+      // Only rows that contributed a set exist server-side; an all-gap row has nothing to rename.
+      const written = new Set(sets.map((set) => set.gridY - 1));
+      const saved = this.effectiveRowNames();
+      this.storedRowNames.set(saved.map((label, y) => (written.has(y) ? label : undefined)));
       // The layout was replaced, so the console's shared snapshot now describes retired sets.
       this.venueMap.reset();
       // The conditional write bumped set_version by one; advance the token so a second save isn't stale.

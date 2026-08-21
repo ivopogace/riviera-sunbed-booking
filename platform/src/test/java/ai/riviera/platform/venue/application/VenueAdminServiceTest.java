@@ -749,14 +749,15 @@ class VenueAdminServiceTest {
 
 	@Test
 	void allowsARenameToTheSameLabel() {
-		// Renaming a row to what it already reads is a no-op, not a collision with itself.
+		// A no-op, not a self-collision — and it must not spend the token other tabs are holding.
 		venues.venues.add(VENUE.value());
 		venues.rowLabels.add("B");
 
 		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "B"));
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
-		assertEquals(1, venues.renamedRows);
+		assertEquals(0, venues.renamedRows);
+		assertEquals(0, venues.incrementedSetVersions);
 	}
 
 	@Test

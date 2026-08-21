@@ -304,7 +304,7 @@
         type="button"
         (click)="onSave()"
         [disabled]="!hasLayout()"
-        [appBusy]="saving()"
+        [appBusy]="saving() || renamingRow() !== null"
         data-testid="layout-save"
         class="rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
       >

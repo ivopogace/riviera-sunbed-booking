@@ -194,12 +194,15 @@ class VenueRowRenameIT {
 	@Test
 	void allowsARenameToTheRowsOwnLabel() throws Exception {
 		long venue = seedVenue("Idempotent Rename Club");
+		long before = currentSetVersion(venue);
 
 		mvc.perform(put("/api/venues/{v}/rows/{r}/name", venue, "B").cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON).content(nameBody("B", currentSetVersion(venue))))
+						.contentType(MediaType.APPLICATION_JSON).content(nameBody("B", before)))
 				.andExpect(status().isNoContent());
 
 		assertEquals(2, setIdsOfRow(venue, "B").size());
+		// A write of nothing must not stale the other tabs' token.
+		assertEquals(before, currentSetVersion(venue));
 	}
 
 	@Test

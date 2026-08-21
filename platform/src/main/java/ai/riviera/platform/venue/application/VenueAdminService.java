@@ -232,8 +232,12 @@ class VenueAdminService
 		if (!labels.contains(command.rowLabel())) {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW);
 		}
+		if (command.newLabel().equals(command.rowLabel())) {
+			// Nothing to write: spending the shared token here would stale every other tab for free.
+			return ChangeOutcome.Applied.APPLIED;
+		}
 		// Broader than the UNIQUE index, which misses a shared label whose position numbers never collide.
-		if (!command.newLabel().equals(command.rowLabel()) && labels.contains(command.newLabel())) {
+		if (labels.contains(command.newLabel())) {
 			return new ChangeOutcome.Rejected(SetRejection.ROW_NAME_TAKEN);
 		}
 		// Rows-affected still guards: a concurrent removeSet can empty the row after the label read.
