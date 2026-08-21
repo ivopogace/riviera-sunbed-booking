@@ -41,7 +41,7 @@ in for `bugfix/replace-layout-row-label-uniqueness` (riviera-sdlc cloud addendum
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a layout command carrying `rowLabel` "A" on grid row 1 (positions
+- [x] **AC-1:** Given a layout command carrying `rowLabel` "A" on grid row 1 (positions
   2 and 3) and `rowLabel` "A" on grid row 2 (position 1) — no `(rowLabel, positionNo)`
   or `(gridX, gridY)` pair colliding — when `replaceLayout` runs, then the outcome is
   `Rejected(ROW_NAME_TAKEN)` and nothing is deleted, inserted, or version-bumped.
@@ -50,11 +50,11 @@ in for `bugfix/replace-layout-row-label-uniqueness` (riviera-sdlc cloud addendum
   by the owning operator, when the request is processed, then the response is
   `409` with problem `code` `ROW_NAME_TAKEN` and the venue's stored layout is unchanged.
   *Pinned by:* `BeachMapReplaceIT.rejectsRowLabelSharedByTwoGridRows`
-- [ ] **AC-3:** Given a layout that has BOTH a duplicate `(rowLabel, positionNo)` pair
+- [x] **AC-3:** Given a layout that has BOTH a duplicate `(rowLabel, positionNo)` pair
   and a split label, when `replaceLayout` runs, then `DUPLICATE_POSITION` is reported —
   the existing pass order (positions, cells, then labels) is preserved.
   *Pinned by:* `VenueAdminServiceTest.duplicatePositionOutranksTheSplitLabel`
-- [ ] **AC-4:** Given a layout whose one row "A" carries non-dense position numbers
+- [x] **AC-4:** Given a layout whose one row "A" carries non-dense position numbers
   (2 and 3 only, gap at 1) on a single grid row, when `replaceLayout` runs, then the
   replace succeeds — same-row repetition of a label is never a false positive.
   *Pinned by:* `VenueAdminServiceTest.acceptsOneLabelSpanningManyPositionsOnOneGridRow`
@@ -82,21 +82,22 @@ was always invalid (every label-grouping read surface already merges such rows w
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | False positive: a legitimate layout (one label, many positions, one grid row — dense or gapped) gets refused, breaking every editor save | low | high | AC-4 unit test + the existing `BeachMapReplaceIT`/`VenueAdminServiceTest` green suites, which all use per-row labels | session | open |
-| R-2 | The new enum constant breaks an exhaustive `switch` elsewhere | low | low | Compiler-enforced; grep shows the only `ReplaceRejection` switch is `VenueAdminController.error(...)` — the new 409 case lands with the constant | session | open |
-| R-3 | Check ordering drift: rejecting on the label before the position/cell passes changes reported codes for layouts with multiple defects | low | low | AC-3 pins the order (positions → cells → labels, mirroring `duplicateWithin`'s documented priority) | session | open |
+| R-1 | False positive: a legitimate layout (one label, many positions, one grid row — dense or gapped) gets refused, breaking every editor save | low | high | AC-4 unit test + the existing `BeachMapReplaceIT`/`VenueAdminServiceTest` green suites, which all use per-row labels | session | closed — `1a08817` |
+| R-2 | The new enum constant breaks an exhaustive `switch` elsewhere | low | low | Compiler-enforced; grep shows the only `ReplaceRejection` switch is `VenueAdminController.error(...)` — the new 409 case lands with the constant | session | closed — `1a08817` |
+| R-3 | Check ordering drift: rejecting on the label before the position/cell passes changes reported codes for layouts with multiple defects | low | low | AC-3 pins the order (positions → cells → labels, mirroring `duplicateWithin`'s documented priority) | session | closed — `1a08817` |
 
 ## Open questions / Assumptions
 
+### Resolved
+
 - **Assumption:** reusing the token `ROW_NAME_TAKEN` (rather than minting e.g.
   `ROW_NAME_SPLIT`) is right for the replace path — same domain rule, same 409 family,
-  and any future FE mapping reuses the rename copy. `SetRejection`'s constant stays
-  rename-only; each enum documents its own manifestation. — *Owner:* session ·
-  *Resolves by:* phase 1 (naming is the session's call per riviera-plan-doc).
+  and any future FE mapping reuses the rename copy. — *Resolved:* yes, in `1a08817`;
+  `SetRejection`'s constant stays rename-only and each enum documents its own
+  manifestation.
 - **Assumption:** `gridY` is the row identity within a submitted batch (the FE derives
-  one label per grid row) — confirmed against `LayoutEditor.toRequest()` and the grid
-  semantics of `set_position` (V2/V12 unique constraints). — *Owner:* session ·
-  *Resolves by:* phase 1.
+  one label per grid row). — *Resolved:* confirmed against `LayoutEditor.toRequest()`
+  and the grid semantics of `set_position` (V2/V12); pinned by AC-4 in `1a08817`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -149,15 +150,15 @@ the unknown-code fallback message is the accepted behavior for non-browser clien
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** write the failing AC-1 unit test in `VenueAdminServiceTest`, run it red.
+**Next action:** write the AC-2 IT in `BeachMapReplaceIT`, run it against the session dockerd.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc committed | ⏳ | |
-| 1 — Unit red-green: `LayoutCommand.splitsRowLabel()` + `ReplaceRejection.ROW_NAME_TAKEN` + service check + controller 409 | | |
-| 2 — HTTP pinning IT + javadoc/docs sweep | | |
+| 0 — Plan doc committed | ✅ | `69f1bae` |
+| 1 — Unit red-green: `LayoutCommand.splitsRowLabel()` + `ReplaceRejection.ROW_NAME_TAKEN` + service check + controller 409 | ✅ | `1a08817` |
+| 2 — HTTP pinning IT + javadoc/docs sweep | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -187,21 +188,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `LayoutCommand.java`, `ReplaceRejection.java`, `VenueAdminService.java`,
 `VenueAdminController.java` · Test `VenueAdminServiceTest.java`
 
-- [ ] **Step 1: Write the failing AC-1 test** — the issue's exact reproducer shape
+- [x] **Step 1: Write the failing AC-1 test** — the issue's exact reproducer shape
   (gap-cell position numbering), against the service's public port.
-- [ ] **Step 2: Run it, verify it fails** —
-  `./gradlew test --tests "*VenueAdminServiceTest*"` → AC-1 red (outcome is `Replaced`).
-- [ ] **Step 3: Minimal implementation** — `splitsRowLabel()` on `LayoutCommand`
+- [x] **Step 2: Run it, verify it fails** — red: `ClassCastException` (outcome was
+  `Replaced`, not `Rejected`) at the AC-1 assertion.
+- [x] **Step 3: Minimal implementation** — `splitsRowLabel()` on `LayoutCommand`
   (first label seen under two distinct `gridY` values), checked in
   `VenueAdminService.replaceLayout` after `duplicateWithin()`, returning the new
   `ReplaceRejection.ROW_NAME_TAKEN`; `VenueAdminController.error(ReplaceRejection)`
   gains the 409 case (compiler-forced).
-- [ ] **Step 4: AC-3 + AC-4 red-green, then package regression** —
-  `./gradlew test --tests "*VenueAdminServiceTest*"`, then the venue app package.
-- [ ] **Step 5: Generalization-audit pass** — population: every write path that
-  persists or mutates `row_label`; append to the log.
-- [ ] **Step 6: Commit** — `Reject a replace splitting one row label across grid rows (#728)`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: AC-3 + AC-4 red-green, then package regression** — green:
+  `VenueAdminServiceTest` (64 tests), the structural net, and
+  `ai.riviera.platform.venue.application.*`.
+- [x] **Step 5: Generalization-audit pass** — see log (`addSet`/`editSet` surfaced for
+  triage, not widened into this slice).
+- [x] **Step 6: Commit** — `1a08817`.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — HTTP pinning IT + docs sweep (AC-2)
 
@@ -224,6 +226,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-21 | Phase 1 (`1a08817`) | Every write path that persists or mutates `row_label` — each could mint or merge a label identity | `git grep -n "INSERT INTO set_position\|UPDATE set_position" -- 'platform/src/main/java/*.java'` → `JdbcVenues` `INSERT_SET_SQL` (addSet + insertSets/replace), `updateSet`, `renameRow` (reprice writes no label) | 4 application paths: `addSet`, `editSet`, `renameRow`, `replaceLayout` | `renameRow` already enforces; `replaceLayout` fixed here. `addSet`/`editSet` share the API-level hole (a single set placed with an existing label on a DIFFERENT `gridY` merges rows the same way) — but same-label-same-row placement is the legitimate common case, the FE set editor can't produce the cross-row join, and the refusal needs its own label→gridY read; surfaced on #728 at close-out for maintainer triage rather than silently widening this slice. |
 
 ---
 
