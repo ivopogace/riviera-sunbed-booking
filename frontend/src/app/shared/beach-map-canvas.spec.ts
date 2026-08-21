@@ -373,6 +373,20 @@ describe('BeachMapCanvas (#672)', () => {
     expect(vp.getAttribute('role')).toBe('region');
   });
 
+  it('the pan hint is one plain line, no decorative glyph', async () => {
+    const { host, component, detect, fixture } = render();
+    seedGridWidth(host, 500);
+    Object.defineProperty(viewport(host), 'clientWidth', { value: 100, configurable: true });
+    component.rows.set([...ROWS]);
+    detect();
+    await fixture.whenStable();
+    detect();
+
+    const hint = host.querySelector('[data-testid="scroll-hint"]')!;
+    expect(hint.textContent?.trim()).toBe('Drag or swipe to see the whole beach.');
+    expect(hint.querySelector('[aria-hidden="true"]')).toBeNull();
+  });
+
   it('shows the pan hint only where drag actually pans (never on a dragPan-off surface)', async () => {
     const { host, component, detect, fixture } = render();
     // jsdom measures 0 — give the viewport a real overflow through the DOM measurement seam.
