@@ -32,8 +32,9 @@ escalated the rail-width product call instead of auto-filling it) · `riviera-pl
 price-chip qualifier becomes a rail restatement and needs a deliberate verdict, not a
 side effect) · `tdd` (the walkway-collision repro from the issue brief is written
 first, red, in phase 1) · `riviera-review-overlay` (review gate — at ready-for-review)
-· `riviera-docs-freshness` (to run at close-out over this PR's range — #702's plan-doc
-premise about disagreeing namespaces goes stale) · `riviera-frontend` (placement:
+· `riviera-docs-freshness` (**ran** pre-merge over `origin/main...HEAD`: substrate docs
+clean — the derived-code namespace was never documented outside the code; 1 finding,
+`BeachMapCanvasRow.code`'s TSDoc still showing derived-code examples, patched in-PR) · `riviera-frontend` (placement:
 `spotLabel()` belongs in `shared/set-label.ts`, the published vocabulary home; the
 truncation input stays on the shared canvas in `shared/`) · `riviera-tailwind`
 (truncation as utilities on an inner span so the shared chip's computed styles don't

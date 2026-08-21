@@ -22,7 +22,8 @@ import { BeachGridFrame } from './beach-grid-frame';
  * only these fields and hands the full object back to the projected tile-row template.
  */
 export interface BeachMapCanvasRow {
-  /** The rail chip's row code (`A`, `B`, … `AA`). Must be unique per map (used as track key). */
+  /** The rail chip's row identity — the stored `rowLabel` on every surface since #724. Must be
+   *  unique per map (used as track key); the backend guarantees it per venue. */
   readonly code: string;
   /** The zone chip's text; `null` renders no chip even on a zone start. The rail caps the chip's
    *  width and ellipsizes what does not fit (92px below `sm`, 128px above), so this may be a
