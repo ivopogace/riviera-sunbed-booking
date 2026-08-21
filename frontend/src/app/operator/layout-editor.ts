@@ -415,6 +415,12 @@ export class LayoutEditor {
       return;
     }
     const to = typed;
+    if (to === from) {
+      // The server no-ops this without spending set_version, so sending it would stale our token.
+      this.rowNameError.set(null);
+      this.renamedRow.set(y);
+      return;
+    }
     if (this.renamingRow() !== null || this.saving()) {
       return; // the shared set_version admits one writer: a rename cannot race another or the bulk save
     }

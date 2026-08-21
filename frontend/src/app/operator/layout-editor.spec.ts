@@ -701,6 +701,40 @@ describe('LayoutEditor (#172)', () => {
     await fixture.whenStable();
   });
 
+  it('treats a cleared name field as cancel, not a rename to the grid letter (#726 review R2-10)', async () => {
+    renderSaved();
+
+    setRowName(1, '');
+    rowNameSaves()[1].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Renaming row B to "B" would be a visible change for guests already booked into it.
+    http.expectNone((r) => r.method === 'PUT');
+    expect(rowNameInputs()[1].value).toBe('B');
+  });
+
+  it('never sends a same-label rename, so the token cannot run ahead of the server (#726)', async () => {
+    renderSaved();
+
+    // The server would no-op without bumping, leaving this tab a version ahead of it.
+    rowNameSaves()[1].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    http.expectNone((r) => r.method === 'PUT');
+    expect(byId('layout-row-name-saved')).toBeTruthy();
+
+    // The token is untouched, so a real rename right after still carries the loaded value.
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
+    );
+    expect(req.request.body).toEqual({ newLabel: 'Back row', expectedVersion: 3 });
+    req.flush(null);
+    await fixture.whenStable();
+  });
+
   it('offers no per-row rename on a grid that was never saved (#726)', () => {
     render();
     generate('2', '2');

@@ -280,10 +280,10 @@ surface (AC-10).
 
 ## Execution status
 
-**Stage pointer:** `review gate — all findings resolved; F-3 built then reverted by maintainer decision`
+**Stage pointer:** `DONE — merged via PR #727`
 
-**Next action:** CI + Sonar on the new head, then the merge close-out
-(`riviera-sdlc` `references/pr-gates.md` §3).
+**Next action:** none — merged via PR #727. Two documented gaps carry no ticket by the
+maintainer's standing instruction; see the findings register.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -295,6 +295,7 @@ surface (AC-10).
 | 5 — Review-gate findings F-4..F-13 | ✅ | `a094c23` |
 | 6 — Review finding F-3 (one label per row, all four paths) | ↩️ | `1b9fba1`, reverted — see F-3 |
 | 7 — Re-review findings R2-4, R2-6, R2-8..R2-13 | ✅ | `bddf3a3` |
+| 8 — Revert F-3; close-out | ✅ | `f5cb40d` + this PR's last commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done, ↩️ = shipped then reverted.
 
@@ -317,6 +318,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-10 | review | Plan AC-6 cited `VenueRowRenameIT.refusesACrossVenueRename`, which does not exist. | fixed — repointed at `CrossVenueDenialIT.rowRenameByNonOwnerIs403` + `VenueAdminServiceTest.renameByANonOwnerIsDeniedBeforeAnyWrite`, which is where the coverage actually is |
 | F-11 | review | `console-venue-map.ts`'s "Invalidation is the sharp edge" doc enumerates every `reset()` call site and the rename was missing — the enumerate-then-drift class my own docs-freshness sweep did not catch. | fixed — the rename is named in the list |
 | F-12 | review | The new `rowNameErrorOf` describe was inserted under the TSDoc belonging to `setWriteErrorOf`, so the comment annotated the wrong suite. | fixed — each describe carries its own doc |
+| R2-14 | close-out (self-caught) | The R2-9 fix stopped the server bumping `set_version` on a same-label rename, but the client still advanced `loadedSetVersion` by one on **any** 204 — so re-saving an unchanged name left the tab a version ahead of the server and falsely staled its *next* write. Found by re-reading `EditBeachMap#renameRow`'s javadoc against the client after the coverage check flagged the branch. | fixed — the client short-circuits a same-label rename without sending it; pinned by `layout-editor.spec.ts` "never sends a same-label rename". The port javadoc now states what "successful" means for the token, since that is the contract a caller optimistically advancing its own copy depends on. |
+| R2-15 | close-out (Sonar coverage read) | Two branches added in the review rounds shipped unpinned: the cleared-field cancel path and `onSave`'s rename guard. | cleared-field path pinned by `layout-editor.spec.ts` "treats a cleared name field as cancel"; `onSave`'s guard left unpinned and uncovered **on purpose** — `[appBusy]` consumes the click before `onSave` runs, so it is defence in depth behind the directive, like the token guard at `onRenameRow`'s head. |
 | F-13 | review | `seedFrom` scanned `sets` twice per grid row to build two arrays that must agree. | fixed — one `Map` pass builds both, so they cannot drift |
 
 ---
@@ -472,31 +475,32 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-7:** Run `./gradlew test --tests "*VenueRowRenameIT*" --tests "*RowNameCommandTest*" --tests "*VenueAdminServiceTest*"` → all green.
-- [ ] **AC-8..AC-10:** Run `npx vitest run src/app/operator/layout-editor.spec.ts` and `npm run test:e2e:a11y -- layout-editor` → all green.
+- [x] **AC-1..AC-7:** `gradle test --tests "*VenueRowRenameIT*" --tests "*RowNameCommandTest*" --tests "*VenueAdminServiceTest*"` → green. `VenueRowRenameIT` reports `tests="10" skipped="0" failures="0"` against Testcontainers Postgres, so the ITs genuinely ran.
+- [x] **AC-8..AC-10:** `ng test --include="src/app/operator/**/*.spec.ts"` → 426 green; `playwright test --config playwright.a11y.config.ts layout-editor` → 7 green.
+- [x] **Full suite:** CI's `Backend (build + test)` and `Frontend (lint + test + build)` both green on the PR head — the half the cloud sandbox cannot run.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; the no-claim-probe argument holds (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — neither is written.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new published surface, no sixth event (invariant #11).
-- [ ] **Payment/payout** N/A justified (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: no time reasoning in scope (invariant #6).
-- [ ] Booking codes unguessable — untouched (invariant #7).
-- [ ] No schema change, so no Flyway migration; the V43 CHECK and V2 UNIQUE still back the bound (invariant #12).
-- [ ] Per-venue ownership asserted in the application service (invariant #13); `CrossVenueDenialIT` covers the new path.
-- [ ] **Frontend** standards met; `[appBusy]` not `[disabled]`; `[appTouchTarget]` present; no new `.scss`; no `as any`.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` clean, with this doc committed.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; the no-claim-probe argument holds (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — neither is written.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no new published surface, no sixth event (invariant #11).
+- [x] **Payment/payout** N/A justified (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: no time reasoning in scope (invariant #6).
+- [x] Booking codes unguessable — untouched (invariant #7).
+- [x] No schema change, so no Flyway migration; the V43 CHECK and V2 UNIQUE still back the bound (invariant #12).
+- [x] Per-venue ownership asserted in the application service (invariant #13); `CrossVenueDenialIT` covers the new path.
+- [x] **Frontend** standards met; `[appBusy]` not `[disabled]`; `[appTouchTarget]` present; no new `.scss`; no `as any`.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` clean, with this doc committed.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — twice (`/code-review` at high effort + the overlay); 13 findings in round 1, 13 in round 2, all resolved. — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

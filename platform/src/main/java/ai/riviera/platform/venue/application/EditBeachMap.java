@@ -88,8 +88,10 @@ public interface EditBeachMap {
 	 *
 	 * <p>Optimistic concurrency: identical to {@link #repriceRow} — the caller passes the
 	 * {@code set_version} the tab loaded, the write is conditional on it, a mismatch yields
-	 * {@link SetRejection#STALE_WRITE} (→ 409), and the token is advanced only after a successful
-	 * rename so a rejected one leaves the acting tab's own retry valid.
+	 * {@link SetRejection#STALE_WRITE} (→ 409), and the token is advanced only after a rename that
+	 * actually wrote — so a rejected one, <em>and the same-label no-op</em>, both leave the acting
+	 * tab's own retry valid. A caller that optimistically advances its own copy of the token must
+	 * therefore not send a same-label rename, or it will run one ahead of the server.
 	 */
 	ChangeOutcome renameRow(OperatorId operator, VenueId venueId, long expectedVersion,
 			RowNameCommand command);
