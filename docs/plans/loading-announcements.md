@@ -102,12 +102,12 @@ change-detection timing cannot) · `riviera-local-debug` (scoped test runs; clou
   `venue-map.html:249/259`, and the `auth-error` paragraphs — and `role="alert"` on insertion is
   the one live-region case screen readers announce reliably. So failures are largely covered
   already, and this slice's job on that side is only to keep the announcer from *contradicting*
-  them. **One exception, taken in round 4 (F-17):** `my-bookings`' per-row `booking-row-failed`
-  card was missed by this enumeration entirely, and F-14 had just made it the *only* thing a
-  partially-failed page could say — so it got its `role="alert"` here, one attribute, in the
-  file the slice was already changing. The still-uncovered surfaces (`daily-view-tab`,
-  `requests-tab`, `payouts-tab` error paragraphs, `my-bookings`' account-error card) →
-  follow-up issue at close-out.
+  them. `my-bookings`' per-row `booking-row-failed` card was missed by this enumeration entirely;
+  round 4 gave it a `role="alert"` and round 5 took that back out (F-25) — a per-row assertive
+  region is the wrong shape, and the fix belongs with the others. The still-uncovered surfaces (`daily-view-tab`,
+  `requests-tab`, `payouts-tab` error paragraphs) → follow-up issue at close-out, together with
+  `my-bookings`' `booking-row-failed` card. `my-bookings`' **account-error** card is *not* on that
+  list — it carries `role="status"` already (my-bookings.ts:237), politely announced on insertion.
 - **The result/notice regions** (`<output>` elements, admin notices, `booking-view`'s
   withdraw/cancel results). Some share the born-with-text shape, but they are result
   announcements, not loading ones, and several are already correct. Out of scope.
@@ -247,9 +247,9 @@ N/A — no request or response shape changes.
 
 ## Execution status
 
-**Stage pointer:** `review gate — round 4 fixes pushed, re-review due`.
+**Stage pointer:** `review gate — round 5 fixes pushed, re-review due`.
 
-**Next action:** Re-review the round-4 diff. If it comes back clean, confirm CI green on the
+**Next action:** Re-review the round-5 diff. If it comes back clean, confirm CI green on the
 final head, pull Sonar's new-issue + duplication list from the API for that head (a green gate
 is not the check), then run the merge close-out in `riviera-sdlc` `references/pr-gates.md` §3.
 
@@ -265,6 +265,7 @@ is not the check), then run the merge close-out in `riviera-sdlc` `references/pr
 | 7 — Second re-review findings F-10…F-12 | ✅ | |
 | 8 — Third-round findings F-13…F-16 | ✅ | |
 | 9 — Fourth-round findings F-17…F-24 | ✅ | |
+| 10 — Fifth-round findings F-25…F-31 (F-17 reverted; F-29…F-31 deferred) | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -290,14 +291,21 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-14 | third review round | `announceReady` counted a `'failed'` device row as loaded (`state !== 'loading'`), announcing success over a "Couldn't load this booking" retry card | fixed — `state === 'loaded'`; pinned + mutation-checked |
 | F-15 | third review round | a per-row Retry could re-announce the page | **fixed by F-14, not by new code.** A latch was written for it, then removed: `row-retry` renders only inside the `'failed'` case, and a failed row now blocks the announcement, so the latch guarded an unreachable state — and deleting it failed no test (G-7). The spec asserts the real contract instead: silence → "loaded", never "loaded" → silence → "loaded" |
 | F-16 | third review round (noted, not reported) | the plan's generalization log had G-6 inserted above G-5 | fixed |
-| F-17 | **fourth review round** (re-review of the round-3 diff) | `my-bookings`: F-14 correctly stopped a `'failed'` row announcing success, but nothing took its place — the `booking-row-failed` card carries no role, so a partially-failed page now says nothing at all. `load-announcer.ts`'s own docstring and RV-FE-10 both assert "the failure panels carry `role="alert"`", which this card did not | fixed — `role="alert"` on the card, matching every other error panel in the app; pinned by an assertion, mutation-checked (dropping the role fails the spec) |
+| F-17 | **fourth review round** (re-review of the round-3 diff) | `my-bookings`: F-14 correctly stopped a `'failed'` row announcing success, but nothing took its place — the `booking-row-failed` card carries no role, so a partially-failed page now says nothing at all. `load-announcer.ts`'s own docstring and RV-FE-10 both assert "the failure panels carry `role="alert"`", which this card did not | **reverted in round 5 — see F-25.** The `role="alert"` shipped and was then taken back out: per-row is the wrong host for a live region, and the spec could not show it working |
 | F-18 | fourth review round | `accountPending`'s TSDoc said "Protected only because the template reads it" — the template does not read it (only `showSkeleton()`/`announceReady()` do), and `loading` had become template-invisible too. A false doc of exactly the F-11 class | fixed — both `private`, docstring corrected to name the real readers |
-| F-19 | fourth review round | four TSDoc blocks carried decision history and round-by-round issue refs ("A latch was written for this and then removed…", "#741 review round 3"), which `frontend/.claude/CLAUDE.md` forbids: TSDoc "states the contract, not the changelog". `check-inline-comments.mjs` exempts doc comments, so CI could not catch it (RV-STYLE-1) | fixed — contract kept, changelog removed; the bare `(#741)` provenance marker is house style (46 instances outside this file) and stays. The latch history lives in F-15/G-7, where it belongs |
+| F-19 | fourth review round | four TSDoc blocks carried decision history and round-by-round issue refs ("A latch was written for this and then removed…", "#741 review round 3"), which `frontend/.claude/CLAUDE.md` forbids: TSDoc "states the contract, not the changelog". `check-inline-comments.mjs` exempts doc comments, so CI could not catch it (RV-STYLE-1) | fixed — contract kept, changelog removed. The bare `(#741)` markers were kept at first on a house-style argument; round 5 (F-26) overturned that and removed them too. The latch history lives in F-15/G-7, where it belongs |
 | F-20 | fourth review round | the round-3 spec `says nothing when a device row failed` asserted **only** that the announcer was empty — it could not tell "a retry card, silently" from "a blank page, silently". The absence-only mistake F-13 was raised for, repeated in the fix for F-14 | fixed — it now asserts the retry card is present and carries `role="alert"`, then the silence |
 | F-21 | fourth review round | the round-3 spec `announces once, after a row retry succeeds — never before it` could not observe the ordering it named: `of(...)` resolved the retry synchronously inside the click handler, so the intermediate `'loading'` window never rendered and the spec would pass with or without the contract | fixed — the retry now resolves through a `Subject`, and the spec asserts the row skeleton is up **and** the announcer silent mid-flight. Mutation-checked: restoring `of(...)` fails it |
 | F-22 | fourth review round (noted, not reported) | `...stubService({})` in that spec was dead — `stubService` returns only `getByCode`, overwritten on the next line | fixed — spread dropped, the stub typed `Partial<BookingService>` like its siblings |
 | F-23 | fourth review round | G-6's Outcome still claimed the fix gave "a single place to add the fifth condition", while the same commit added F-13's condition to a **second** computed (`showSkeleton()`) — the row cited a finding that falsified its own conclusion | fixed — G-6's Outcome now states the real shape: two questions, two computeds, neither allowed to split across inline conditions |
 | F-24 | fourth review round (noted, not reported) | F-13…F-16 were appended **above** the pre-existing F-12 row — the same out-of-order defect F-16 itself records for G-5/G-6, committed one table higher | fixed — F-12 restored to sequence |
+| F-25 | **fifth review round** (re-review of the round-4 diff) | F-17's `role="alert"` was the wrong fix, on three counts the round-4 review did not reach: (a) `alert` is **assertive and per-row** — five offline codes fire five interrupting copies of the same sentence, and it is louder than the *page-level* account-failure panel 65 lines up, which is the polite `role="status"`; (b) `@for … track` implements a re-sort as detach+insert, so `inDisplayOrder` can re-announce a failure that has not changed; (c) decisively, the spec pinned it in a state where it cannot work — `throwError` resolves inside the first `detectChanges()`, so the card is in the **initial** render, and an alert already present at first paint is not spoken. The attribute was proven present, never proven to announce | **fixed by reverting F-17.** The card is back to no role, and the whole failure-announcement question — `booking-row-failed` included — goes to the follow-up issue, where it can be solved once on the shared `failure-panel` host instead of a sixth hand-placed attribute (the G-5 lesson). Silence on failure was always this plan's stated Non-goal; round 4 broke that scope decision on a "regression" framing that was itself wrong — pre-slice this path *lied*, which is worse than silent |
+| F-26 | fifth review round | the round-4 TSDoc rewrite kept its `(#741)` markers, arguing house style. The rule does not allow it: `frontend/.claude/CLAUDE.md` §Comments says TSDoc "states the contract, not the changelog (**no issue numbers**, no decision history)" — and since `check-inline-comments.mjs` exempts doc comments, the written rule is the only authority | fixed — the four markers removed. Provenance lives in this plan and in git history, which is what they are for |
+| F-27 | fifth review round | the round-4 retry spec still ended on the assertion that already ends `keeps a transiently-failed code and retries it` 340 lines above, leaving two owners for one happy path. Round 4 dismissed the overlap on Sonar-CPD grounds; the maintenance argument is the better one | fixed — the duplicated terminal assertion dropped. What is left is the in-flight window, which is the only thing this spec knows and the other cannot see |
+| F-28 | fifth review round | the Non-goals list named `my-bookings`' account-error card among the "still-uncovered" failure surfaces, but it carries `role="status"` (my-bookings.ts:237). The follow-up issue would have been filed asking for a role that is already there | fixed — the card removed from the list, with the reason stated; `booking-row-failed` takes its place after the F-25 revert |
+| F-29 | fifth review round | **RV-FE-9, pre-existing:** the per-row Retry destroys the focused button — `retry()` → `fetch()` → `setRow('loading')` swaps the `@case ('failed')` subtree for the skeleton in the same tick — and no `focusMover()` runs, so focus strands on `<body>` (WCAG 2.4.3). `retryAccount()` does the same to `account-retry` | **deferred → follow-up issue at close-out.** Real and named (the repo's most-repeated bug class), but not this slice's: both buttons and both transitions predate #741, the diff changes neither, and choosing the focus target is design work, not a one-liner. Recorded rather than dropped |
+| F-30 | fifth review round | on the same account-retry path, the page shows no busy indicator and an empty live region for the whole second round trip (`rows()` is non-empty, so `showSkeleton()` stays false) | **deferred → same follow-up issue.** The announcer is silent rather than wrong, which is this slice's contract; making a *retry* audible is the follow-up's question, alongside F-29's focus target on the identical control |
+| F-31 | fifth review round | nothing enforces "every failure surface announces itself" — it is hand-placed attributes, which is how `booking-row-failed` was missed in the first place | **folded into the follow-up issue**, which is scoped to the shared `failure-panel` host rather than per-site: the durable form of the G-5 lesson |
 
 
 **Considered and rejected in round 4** (recorded so the next reader does not re-derive them):

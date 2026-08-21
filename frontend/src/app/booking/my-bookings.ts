@@ -297,12 +297,7 @@ const CLS = {
                   </a>
                 }
                 @case ('failed') {
-                  <div
-                    [class]="cls.rowPlaceholder"
-                    appCardGlass
-                    role="alert"
-                    data-testid="booking-row-failed"
-                  >
+                  <div [class]="cls.rowPlaceholder" appCardGlass data-testid="booking-row-failed">
                     <span [class]="cls.rowMain">
                       <span class="text-[16px] font-bold">Couldn’t load this booking</span>
                       <span [class]="cls.meta">Check your connection and try again.</span>
@@ -353,7 +348,7 @@ export class MyBookings {
    * True until the initial list is decided (the session restore has settled AND the first rows are
    * set). It is cleared as soon as the DEVICE rows render, so it cannot gate the empty card on its
    * own; {@link showSkeleton} is what does, by keeping the skeleton up while a signed-in account
-   * fetch is still out and there is nothing else to draw (#741).
+   * fetch is still out and there is nothing else to draw.
    */
   private readonly loading = signal(true);
   /**
@@ -365,7 +360,7 @@ export class MyBookings {
   /**
    * The account list is out. Distinct from {@link loading}, which the device rows clear the moment
    * they render — so without this there is a window where nothing is "loading" and nothing has
-   * failed yet, and the announcer would call that loaded (#741). Never true for a guest:
+   * failed yet, and the announcer would call that loaded. Never true for a guest:
    * {@link loadAccount} is the only writer. Read by {@link showSkeleton} and
    * {@link announceReady}, never by the template.
    */
@@ -376,7 +371,7 @@ export class MyBookings {
    * announcer's `loading`, so what is drawn and what is announced cannot disagree. Deliberately
    * NOT just {@link loading}: that is cleared the moment the device rows render, which for a
    * signed-in customer whose bookings all live on the server leaves zero rows and no skeleton
-   * for the whole account round trip (#741).
+   * for the whole account round trip.
    *
    * <p>Per-code rows resolving behind their own row skeletons are NOT this signal's business —
    * the page has something to draw then. {@link announceReady} is what withholds the
@@ -389,7 +384,7 @@ export class MyBookings {
   /**
    * Every page-level read has settled **and produced a booking, or none**. Rows must be `'loaded'`,
    * not merely "not loading": a `'failed'` row renders a "Couldn't load this booking" retry card,
-   * and announcing success over it is the same lie the `ready` polarity exists to prevent (#741).
+   * and announcing success over it is the same lie the `ready` polarity exists to prevent.
    *
    * <p>That is also what keeps the announcement single. A per-row Retry sends its row back to
    * `'loading'`, which would take this false and true again — but the button only exists inside
