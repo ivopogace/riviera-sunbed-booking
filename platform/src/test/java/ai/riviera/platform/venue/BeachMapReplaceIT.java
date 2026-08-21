@@ -374,6 +374,21 @@ class BeachMapReplaceIT {
 				.andExpect(jsonPath("$.code").value("CELL_TAKEN"));
 	}
 
+	@Test
+	void rejectsRowLabelSharedByTwoGridRows() throws Exception {
+		long venue = createVenue("Split Club");
+		// The #728 reproducer: gap-cell numbering keeps every (row_label, position_no) pair unique.
+		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(layout(0,
+								cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1),
+								cell("A", 3, "PREMIUM", "ONLINE", 3500, 3, 1),
+								cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 2))))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("ROW_NAME_TAKEN"));
+		assertEquals(List.of(), setIds(venue), "a refused replace must write nothing");
+	}
+
 	/**
 	 * Invariant #2 (RV-BE-1): a walk-in mark committed concurrently with a regenerate must never be
 	 * silently lost. The replace locks the venue's {@code set_position} rows {@code FOR UPDATE} before

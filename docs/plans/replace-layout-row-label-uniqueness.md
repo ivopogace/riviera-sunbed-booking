@@ -46,7 +46,7 @@ in for `bugfix/replace-layout-row-label-uniqueness` (riviera-sdlc cloud addendum
   or `(gridX, gridY)` pair colliding — when `replaceLayout` runs, then the outcome is
   `Rejected(ROW_NAME_TAKEN)` and nothing is deleted, inserted, or version-bumped.
   *Pinned by:* `VenueAdminServiceTest.rejectsALayoutSharingOneLabelAcrossTwoGridRows`
-- [ ] **AC-2:** Given the same shape submitted as a real `PUT /api/venues/{v}/beach-map`
+- [x] **AC-2:** Given the same shape submitted as a real `PUT /api/venues/{v}/beach-map`
   by the owning operator, when the request is processed, then the response is
   `409` with problem `code` `ROW_NAME_TAKEN` and the venue's stored layout is unchanged.
   *Pinned by:* `BeachMapReplaceIT.rejectsRowLabelSharedByTwoGridRows`
@@ -150,15 +150,17 @@ the unknown-code fallback message is the accepted behavior for non-browser clien
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** PR — merge latest `origin/main`, mark ready for review, then the
+review + Sonar gates (`references/pr-gates.md`).
 
-**Next action:** write the AC-2 IT in `BeachMapReplaceIT`, run it against the session dockerd.
+**Next action:** confirm CI green on the phase-2 push, mark PR #730 ready for review,
+run `/code-review` + `riviera-review-overlay`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc committed | ✅ | `69f1bae` |
 | 1 — Unit red-green: `LayoutCommand.splitsRowLabel()` + `ReplaceRejection.ROW_NAME_TAKEN` + service check + controller 409 | ✅ | `1a08817` |
-| 2 — HTTP pinning IT + javadoc/docs sweep | ⏳ | |
+| 2 — HTTP pinning IT + javadoc/docs sweep | ✅ | see PR #730 (phase-2 commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -210,15 +212,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Test `BeachMapReplaceIT.java` · Modify `EditBeachMap.java` (javadoc),
 `RESPONSIBILITIES.md`
 
-- [ ] **Step 1: Write the AC-2 IT** — owner PUTs the reproducer layout → 409
-  `ROW_NAME_TAKEN`, stored layout unchanged (Testcontainers; skips cleanly without
-  Docker, in which case CI proves it).
-- [ ] **Step 2: Run** — `./gradlew test --tests "*BeachMapReplaceIT*"` (needs the
-  hook-provided dockerd per `riviera-local-debug`).
-- [ ] **Step 3: Docs** — `EditBeachMap#replaceLayout` javadoc names the refusal;
-  `RESPONSIBILITIES.md` §`venue` drops "rename-only" phrasing for the rule.
-- [ ] **Step 4: Commit + execution status; run**
-  `node scripts/check-plan-file-structure.mjs --diff origin/main`.
+- [x] **Step 1: Write the AC-2 IT** — owner PUTs the reproducer layout → 409
+  `ROW_NAME_TAKEN`, stored layout unchanged.
+- [x] **Step 2: Run** — green against the session dockerd: 16 tests, 0 failures,
+  0 skipped (`rejectsRowLabelSharedByTwoGridRows` ran for real).
+- [x] **Step 3: Docs** — `EditBeachMap#replaceLayout` javadoc names the refusal;
+  `RESPONSIBILITIES.md` §`venue` records the replace-path enforcement (and the
+  still-unchecked `addSet`/`editSet` paths, surfaced on #728).
+- [x] **Step 4: Commit + execution status; run**
+  `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
 
 ---
 
@@ -232,9 +234,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-3/AC-4:** Run `./gradlew test --tests "*VenueAdminServiceTest*"` → green.
-- [ ] **AC-2:** Run `./gradlew test --tests "*BeachMapReplaceIT*"` → green against real
-  Postgres (or CI when no local dockerd).
+- [x] **AC-1/AC-3/AC-4:** `gradle test --tests "*VenueAdminServiceTest*"` → green
+  (64 tests, 3 new). Verified at `1a08817`.
+- [x] **AC-2:** `gradle test --tests "*BeachMapReplaceIT*"` → green against real Postgres
+  (16 tests, 0 skipped). Verified at the phase-2 commit.
 
 ## Self-review checklist (before merge / PR)
 
