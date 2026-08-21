@@ -127,7 +127,7 @@ The old surface is "a loading container that is itself the live region". Behavio
 
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| R-1 | Inserting a persistent element at the top of a template shifts `:first-child`/`nth-child`/`first:` styling | Medium | Visual regression | Host is `class: 'contents'` and the inner `<p>` is `sr-only` (absolutely positioned → out of flow, not a flex/grid item). Grep each touched template for `first:`/`nth-child`/`:first-child` before placing; the mocked e2e's axe+render pass is the backstop |
+| R-1 | Inserting a persistent element at the top of a template shifts `:first-child`/`nth-child`/`first:` styling | Medium | Visual regression | **Closed.** Host is `class: 'contents'` and the inner `<p>` is `sr-only` (absolutely positioned → out of flow, not a flex/grid item); `grep -n 'first:\|nth-child\|first-child\|last:'` over all eight touched templates returns nothing |
 | R-2 | Double announcement where a persistent count region already speaks (Discover) | Medium | Noisy AT | Discover's `readyLabel` is empty by design (B-7). Verified per surface in the adoption table below |
 | R-3 | `readyLabel` derived from a live count would re-announce on every later mutation (date change, accepting a request) | Medium | Noisy AT | `readyLabel` is a **static string** per call site, never a computed count |
 | R-4 | The announcer announces "loaded" when the load failed | High if unguarded | Wrong information to AT | `failed` input suppresses the ready label (AC-2) |
@@ -219,17 +219,17 @@ N/A — no request or response shape changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)` — the primitive exists and is green.
+**Stage pointer:** `implement (phase 3)` — the three surfaces #741 names are green.
 
-**Next action:** Adopt `app-load-announcer` on Discover, `set-editor` and `my-bookings`
-(the three surfaces #741 names), red-first per surface.
+**Next action:** Adopt on the five surfaces the grill swept up — `daily-view-tab`,
+`requests-tab`, `payouts-tab`, `venue-map`, `set-password` — red-first per surface.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | draft PR #743 |
 | 1 — The `load-announcer` primitive (TDD) | ✅ | |
-| 2 — Adopt on the three surfaces #741 names | ⏳ | |
-| 3 — Adopt on the five surfaces the grill swept up | | |
+| 2 — Adopt on the three surfaces #741 names | ✅ | |
+| 3 — Adopt on the five surfaces the grill swept up | ⏳ | |
 | 4 — e2e, docs freshness (RV-FE-10), close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

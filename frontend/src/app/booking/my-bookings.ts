@@ -8,6 +8,7 @@ import { DeviceLocalBookings } from '../core/device-local-bookings';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { amountLabelFor, metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
@@ -186,7 +187,7 @@ const CLS = {
 
 @Component({
   selector: 'app-my-bookings',
-  imports: [RouterLink, CardGlass, StatusChip, BookingQr, TouchTarget],
+  imports: [RouterLink, CardGlass, LoadAnnouncer, StatusChip, BookingQr, TouchTarget],
   template: `
     <section class="mx-auto w-full max-w-[560px] px-5 pt-6 pb-20" aria-labelledby="mb-title">
       <a
@@ -198,11 +199,18 @@ const CLS = {
         Your bookings
       </h1>
 
+      <!-- Above the @if on purpose: a live region only announces what changes while it is already
+           in the DOM, so it has to outlive the branch it describes (#741). -->
+      <app-load-announcer
+        [loading]="loading()"
+        loadingLabel="Loading your bookings…"
+        readyLabel="Your bookings loaded."
+      />
+
       @if (loading()) {
-        <!-- Announced sr-only line + decorative skeleton — the Discover/set-editor posture (#739). -->
-        <div aria-live="polite" data-testid="my-bookings-loading">
-          <p class="sr-only">Loading your bookings…</p>
-          <div [class]="cls.rowPlaceholder" appCardGlass aria-hidden="true">
+        <!-- Wholly decorative skeleton — the announcer above owns the words (#741). -->
+        <div aria-hidden="true" data-testid="my-bookings-loading">
+          <div [class]="cls.rowPlaceholder" appCardGlass>
             <span [class]="cls.rowMain">
               <span [class]="cls.skeletonLine"></span>
               <span [class]="cls.skeletonLineShort"></span>

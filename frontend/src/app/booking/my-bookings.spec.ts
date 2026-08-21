@@ -324,7 +324,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     }
   });
 
-  it('page-level loading is decorative and announced — the Discover posture (#739)', async () => {
+  it('page-level loading is wholly decorative — the announcer owns the words (#739, #741)', async () => {
     const restoring = {
       restoring: signal(true),
       signedIn: signal(false),
@@ -333,13 +333,32 @@ describe('MyBookings (device-local list, issue #139)', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     const loading = host.querySelector('[data-testid="my-bookings-loading"]')!;
-    // The announcement is real text for AT; the skeleton row is decoration.
-    expect(loading.getAttribute('aria-live')).toBe('polite');
-    expect(loading.textContent).toContain('Loading your bookings…');
-    const skeleton = loading.querySelector('[aria-hidden="true"]');
-    expect(skeleton).not.toBeNull();
-    expect(skeleton!.querySelectorAll('.skeleton')).toHaveLength(2);
+    // Wholly decoration: it used to be the live region itself, born holding its text and so
+    // never announced (#741). The persistent announcer below carries the words now.
+    expect(loading.getAttribute('aria-live')).toBeNull();
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
+    expect(loading.querySelectorAll('.skeleton')).toHaveLength(2);
     await expectNoAxeViolations(host);
+  });
+
+  it('announces through one region that survives loading → loaded (#741)', async () => {
+    const restoring = {
+      restoring: signal(true),
+      signedIn: signal(false),
+    } as unknown as CustomerAuth;
+    const fixture = await render(stubService({}), restoring);
+    const host = fixture.nativeElement as HTMLElement;
+
+    const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading your bookings…');
+
+    restoring.restoring.set(false);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(host.querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
   });
 
   describe('fetch fan-out (#164)', () => {

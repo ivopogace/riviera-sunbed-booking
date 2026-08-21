@@ -12,6 +12,7 @@ import { CardGlass } from '../../shared/card-glass';
 import { CutoffNote } from '../../shared/cutoff-note';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
 import { FieldGlass } from '../../shared/field-glass';
+import { LoadAnnouncer } from '../../shared/load-announcer';
 import { focusMover } from '../../shared/focus-after-render';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
@@ -74,6 +75,7 @@ interface VenueCard {
     CutoffNote,
     AmenityChip,
     FieldGlass,
+    LoadAnnouncer,
     TouchTarget,
     ...FAILURE_DIRECTIVES,
   ],
@@ -87,6 +89,12 @@ export class Home {
   /** The displayed (filtered) venues; `undefined` while a request is in flight (loading). */
   protected readonly venues = signal<VenueSummary[] | undefined>(undefined);
   protected readonly failed = signal(false);
+
+  /**
+   * In flight: no response yet and no failure. Named here rather than derived in the template so
+   * the announcer's phase is one reviewable expression (and cannot drift from the `@if` chain).
+   */
+  protected readonly loading = computed(() => !this.failed() && this.venues() === undefined);
 
   /** Current filter selection. Empty string = "all" (no constraint). */
   protected readonly beach = signal('');
