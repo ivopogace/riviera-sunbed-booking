@@ -99,9 +99,10 @@ export type RepriceErrorCode =
 
 /**
  * A known per-row rename failure, mapped from the RFC-7807 `code` for operator-facing copy.
- * `ROW_NAME_TAKEN` is the rename's own 409 — another row already carries the requested label, which
- * would merge the two wherever sets are grouped by label; `STALE_WRITE` is the venue-level 409 the
- * editor's reload banner owns, not a per-row error.
+ * `ROW_NAME_TAKEN` is the rename path's 409 — another row already carries the requested label, which
+ * would merge the two wherever sets are grouped by label (the bulk replace answers the same code for
+ * a label split within its batch); `STALE_WRITE` is the venue-level 409 the editor's reload banner
+ * owns, not a per-row error.
  */
 export type RowNameErrorCode =
   | 'NOT_VENUE_OWNER'

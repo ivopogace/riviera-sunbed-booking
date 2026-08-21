@@ -27,12 +27,17 @@ application-level validation only; the issue records why no DB backstop exists (
 the issue matches today's code, no in-flight overlap, no Flyway number needed) ·
 `riviera-plan-doc` (this template — forced the false-positive AC and the parity ledger
 N/A call) · `tdd` (unit red-green first, then the HTTP-level pinning IT) ·
-`riviera-review-overlay` (review gate — at ready-for-review) · `riviera-docs-freshness`
-(due at close-out: `RESPONSIBILITIES.md` §`venue` says the rule is a rename-only refusal)
+`riviera-review-overlay` (review gate — ran with `/code-review` at ready-for-review) ·
+`riviera-docs-freshness` (**ran** pre-merge smoke over `origin/main...HEAD`: 2 findings —
+the `RESPONSIBILITIES.md` rename-only phrasing, patched in phase 2, and the
+`operator-console.model.ts:102` exclusivity claim, patched as F-2; historical plan docs
+left as records)
 · `riviera-modulith` (all inside `venue.application`/`adapter/in` — no published-surface
 or boundary change; `ReplaceRejection` is module-internal) · `riviera-java-conventions`
 (typed-outcome rejection, no exception; §6b `ApiProblem` 409 with stable `code`; §6c/6d
-comment discipline) · `riviera-local-debug` (scoped Gradle runs in the cloud sandbox).
+comment discipline) · `riviera-local-debug` (scoped Gradle runs in the cloud sandbox)
+· `riviera-frontend` (loaded for the F-2 staleness patch — a TSDoc wording fix in
+`operator/operator-console.model.ts`, no placement or behavior change).
 
 **Branch:** `claude/sdlc-728-1oorrt` — the session's designated remote branch, standing
 in for `bugfix/replace-layout-row-label-uniqueness` (riviera-sdlc cloud addendum).
@@ -168,6 +173,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`/code-review` agent 1, verified) | Docs claimed the `addSet`/`editSet` gap was "surfaced on #728" before any comment existed there — the triage handoff would have evaporated at merge | fixed — comment posted on #728 (no code change), making the statement true |
+| F-2 | review (`/code-review` agent 3, verify-scored 75) | `operator-console.model.ts:102` said `ROW_NAME_TAKEN` is "the rename's **own** 409" — an exclusivity claim this slice falsifies (docs-freshness: a stated fact outside the diff) | fixed — wording patched to name both paths; `riviera-frontend` loaded for the FE touch |
+| F-3 | review (`/code-review` agent 3) | `layoutErrorOf` not taught `ROW_NAME_TAKEN` (generic fallback message for a deterministic 409) | rejected — deliberate, documented in Non-goals; unreachable from the browser (client guard verified at `layout-editor.ts:543`); verification scoring concurred it is below threshold |
+| F-4 | review (`/code-review` agent 4) | Two one-line "#728 reproducer" test comments + one rationale clause repeated across files (§6d echoes) | rejected — guard-clean one-liners with standing main precedent; enum-doc duplication is the plan's recorded "each enum documents its own manifestation" decision |
 
 ---
 
@@ -182,6 +191,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — AC-1, AC-3, AC-4
 - `platform/src/test/java/ai/riviera/platform/venue/BeachMapReplaceIT.java` — AC-2
 - `RESPONSIBILITIES.md` — §`venue`: the rule is no longer a rename-only refusal
+- `frontend/src/app/operator/operator-console.model.ts` — F-2 staleness patch: the
+  `ROW_NAME_TAKEN` TSDoc no longer claims rename exclusivity
 
 ---
 
