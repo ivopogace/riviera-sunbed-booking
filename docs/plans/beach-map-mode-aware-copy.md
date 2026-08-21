@@ -39,8 +39,11 @@ is three surfaces, and that "appears only when the grid overflows" is already to
 behavior) · `riviera-plan-doc` (this template — forced the behavior-parity ledger, which is
 what turned "copy-only" into an enumerated per-string verdict) · `tdd` (each phase writes
 the copy assertion red first, then edits the template) · `riviera-review-overlay` (review
-gate — runs at ready-for-review) · `riviera-docs-freshness` (ran at close-out over the
-slice's own range — see Execution status) · `riviera-frontend` (placement: the footer
+gate — runs at ready-for-review) · `riviera-docs-freshness` (**ran** over
+`origin/main..HEAD`, **0 findings** — the rename grep's only hits are the superseded v3
+design canvas, a historical artefact no sibling refinement slice maintains; the counting
+sweep found no falsified "the two X" statement, and `CONTEXT.md`'s cutoff definition
+already reads 18:00 the evening before, which is what the new copy now says in words) · `riviera-frontend` (placement: the footer
 strings stay in the `venue/` feature, the hint in `shared/`; no new file, no new
 cross-feature edge) · `riviera-tailwind` (the SVG carries no colour of its own —
 `stroke="currentColor"` under the note's existing `text-(--riv-ink-faint)`; `text-[11.5px]`
@@ -253,17 +256,17 @@ already on the wire and already consumed (the mode chip + the booking dialog).
 > **This section is the session-recovery anchor.** Everything a resuming session needs
 > lives HERE, committed — never only in the conversation.
 
-**Stage pointer:** `implement (phase 3 — close-out checks)`
+**Stage pointer:** `review gate`
 
-**Next action:** Phase 3 step 1 — run lint, `format:check`, the plan-file-structure guard
-and the scoped mocked e2e suite, then mark PR #732 ready for review.
+**Next action:** run the review gate on PR #732 per `riviera-sdlc` `references/pr-gates.md`
+§1, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Mode-aware footer + device-neutral verb | ✅ | `fda7d50` |
 | 1 — Positive cutoff note + inline SVG clock | ✅ | `a9add5a` |
-| 2 — One-line quiet pan hint | ✅ | `<phase-2-sha>` |
-| 3 — Close-out (docs freshness, plan-doc final state) | | |
+| 2 — One-line quiet pan hint | ✅ | `c942208` |
+| 3 — Close-out (docs freshness, plan-doc final state) | ⏳ | lint/format/guards green; scoped mocked e2e 28/28; docs-freshness 0 findings |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
