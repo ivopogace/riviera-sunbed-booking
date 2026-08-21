@@ -168,7 +168,7 @@ the strings ride on.
 | R-1 | The REQUEST footer states *when money moves* ("you pay only once {venue} accepts"). If the real flow ever charged earlier, the map would lie about payment on the surface where the tourist commits | low | high | Verified against the shipped flow before writing the string: `VenueMap.onRequested()` routes to the request-sent screen with nothing charged; the pay step is driven by `BookingPaymentDue` after the venue accepts (`CLAUDE.md` § booking). The string asserts no client-side rule — invariant #8 keeps the webhook authoritative | agent | closed — copy matches the shipped request flow |
 | R-2 | "appears only when the grid overflows" (AC) misread as *horizontal* overflow, dropping `vScrollHint()` and stranding a tall map with no hint | med | med | The condition is not touched at all, and the six existing gating specs (incl. the vertical-only case) are left in place as the regression net | agent | closed — `beach-map-canvas.ts` unmodified; all 11 gating assertions still green |
 | R-3 | The pan-hint edit is in shared chrome; an operator surface's spec or e2e could assert the old sentence and go red | med | low | Enumerated by mechanism before editing: `grep -rn "scroll-hint\|Drag or swipe" src e2e` → only `beach-map-canvas.spec.ts` (presence/absence, no text) and `venue-map-pan.e2e.ts` (visibility only). No operator spec reads the copy | agent | closed — no spec or e2e reads the hint's text; the 3 drag-pan surfaces all pass post-edit |
-| R-4 | The map's cutoff note is reframed while Discover's stays negative + emoji, shipping two voices for one rule | high | low | Deliberate and recorded (Non-goals + Open questions), not accidental; the map is the surface #703 scopes. A follow-up issue is offered at close-out | agent | open → Open questions Q-1 |
+| R-4 | The map's cutoff note is reframed while Discover's stays negative + emoji, shipping two voices for one rule | high | low | Deliberate and recorded (Non-goals + Open questions), not accidental; the map is the surface #703 scopes. A follow-up issue is offered at close-out | agent | closed — maintainer chose a follow-up: **#733** (Discover adopts the framing + the icon, promoted to a shared piece there) |
 | R-5 | Copy assertions elsewhere break on the retired strings (the #717 zero-set case asserts `not.toContain('Tap any free set to book it')` — a *negative* assertion that keeps passing against the new string and so silently stops testing anything) | med | med | That exact case is retargeted to the new INSTANT string in Phase 0, not left to pass vacuously; `grep -rn "Tap any free set\|isn.t bookable"` re-run at the end of the slice must return zero | agent | closed in Phase 0 — retargeted, and the audit found a second site (the canvas spec's projection stub) | 
 | R-6 | First inline `<svg>` in the app (`grep -rln "<svg" src/app` → none): an unsized or currentColor-less icon could break the note's line box or its AA contrast on header glass | low | med | Fixed `width`/`height` in px, `stroke="currentColor"` so it inherits `text-(--riv-ink-faint)` (the token the contrast spec already proves AA), `aria-hidden="true"`, `shrink-0` inside the existing `inline-flex` | agent | closed in Phase 1 — 13px fixed box, `currentColor`, `shrink-0`, `aria-hidden`; `venue-map.contrast.spec.ts` green |
 
@@ -176,12 +176,16 @@ the strings ride on.
 
 > **Mandatory. Work is NOT done while this has unresolved entries.**
 
-- **Q-1 (open question):** Should Discover's cutoff note (`pages/home/home.html`) adopt the
-  same positive framing + SVG clock, so one rule has one voice? Out of scope for #703 by
-  its own ACs. — *Owner:* maintainer · *Resolves by:* close-out — raised in the PR/reply as
-  a follow-up-issue offer; if declined, the divergence stands as recorded in Non-goals.
+*(none open)*
 
 ### Resolved
+
+- **Q-1 (open question → resolved at the review gate):** Should Discover's cutoff note
+  (`pages/home/home.html`) adopt the same positive framing + SVG clock, so one rule has one
+  voice? **Maintainer's call: follow-up issue, not this slice** — filed as **#733**, which
+  also carries the icon's promotion to a shared piece (Discover is the second call site, so
+  it is the slice that earns the seam #703 deliberately did not buy). The divergence #703
+  ships stands as recorded in Non-goals, now with an owner.
 
 - **A-1 (assumption → resolved at plan time):** the artboard's pan hint reads **"Swipe to
   see the whole beach."**, but "swipe" is exactly the device-specific verb #703 is
