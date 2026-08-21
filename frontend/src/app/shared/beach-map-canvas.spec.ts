@@ -217,7 +217,7 @@ describe('BeachMapCanvas (#672)', () => {
     detect();
     const inner = host.querySelector('[data-testid="row-code"] .truncate')!;
     expect(inner).toBeTruthy();
-    expect(inner.classList.contains('max-w-8')).toBe(true);
+    expect(inner.classList.contains('max-w-12')).toBe(true);
     expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
     expect(inner.textContent).toBe('A');
   });

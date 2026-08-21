@@ -69,9 +69,10 @@ standing in for `bugfix/tourist-map-row-identity` per the riviera-sdlc remote ad
   (reworked)
 - [ ] **AC-4 (tourist rail truncates, operator rail doesn't):** Given a row label
   longer than the tourist rail cap, when the tourist map renders, then the rail
-  chip's label span carries the ellipsis cap (`max-w-8 sm:max-w-[96px] truncate` —
-  responsive, mirroring the price rail's own mobile/`sm:` split, so the shipped
-  three-tile-column mobile floor from #702's e2e still holds) while the full label
+  chip's label span carries the ellipsis cap (`max-w-12 sm:max-w-[96px] truncate` —
+  responsive, mirroring the price rail's own mobile/`sm:` two-tier pattern; short
+  real names render whole on mobile and the #702 e2e tile-grid floor relaxes to
+  135px — review finding I-1's product call) while the full label
   still reads in the tile accessible names; and given the operator Daily view on
   the same shared canvas, the cap is absent (opt-in input, default off).
   *Pinned by:* `venue-map.spec.ts` (cap present) + `beach-map-canvas.spec.ts`
@@ -144,10 +145,13 @@ the old tourist-map behaviors are enumerated:
 - **Rail width for long labels (product call):** truncate with ellipsis at a
   ~96px cap on the tourist map; operator surfaces unchanged. — answered by
   maintainer via AskUserQuestion, 2026-08-21. *Refined at implement:* the cap is
-  responsive — 32px below `sm`, 96px from `sm` up — because a flat ~96px chip left
-  a 390px phone only ~90px of tile grid, breaking the three-tile-column floor
-  #702's e2e pins; the split mirrors the price rail's own shipped
-  `max-w-[92px] sm:max-w-[128px]` pattern.
+  responsive — 96px from `sm` up; below `sm` a flat ~96px chip left a 390px phone
+  only ~90px of tile grid (under two tile columns). *Refined again at the review
+  gate (I-1):* the first mobile value (32px) made distinct names collide
+  ("Row 1…" ×3), so the maintainer chose **48px** — short real names ("Row 12",
+  "Rreshti 1") render whole and stay distinguishable; the #702 e2e grid floor
+  relaxes 150px → 135px (~2.6 tile columns). Answered via AskUserQuestion,
+  2026-08-21.
 - **Which identity survives:** the stored `rowLabel` (issue comment 1: derivation
   can no longer match labels post-#723/#726; the backend already guarantees label
   uniqueness).
@@ -192,9 +196,9 @@ N/A — no contract change. The map already receives `rowLabel` on `SetView`.
 
 ## Execution status
 
-**Stage pointer:** PR — merge latest main, mark ready for review, run the gates
+**Stage pointer:** sonar gate (review gate ran: /code-review high + riviera-review-overlay FE bank walked; 3 findings fixed)
 
-**Next action:** merge `origin/main`, mark PR #729 ready for review, run the review gate (pr-gates §1)
+**Next action:** confirm CI green on the review-fix push, then pull the SonarCloud issue + measures lists for PR #729 (pr-gates §2) and clear them
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -209,6 +213,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (run 32464825248 on 754a7ba) | mocked e2e red: 3 `venue-map-pan` cases still asserted the derived-code names / venue-words chips ('Set H11…' selector, '€30 · Back' chip text, the #702 price-rail cap test) | fixed in the phase-3 commit (selector + chip text updated; #702 cap test reworked to the left rail as the #724 test) |
+| I-1 | review gate (/code-review, high) | 32px mobile rail cap renders distinct row names as identical chips ("Row 1…" ×3) — defeats the row-identity purpose on the primary tourist device | fixed: product call escalated (48px mobile cap, grid floor 135px); e2e now pins that a short name ("Row 2") renders whole and untruncated |
+| I-2 | review gate (/code-review, high) | `BeachMapCanvasRow.code` TSDoc overclaimed: "the stored rowLabel on every surface" (editor passes grid letters) and "the backend guarantees it" (#728 open) | fixed: TSDoc now names each surface's supply and credits uniqueness to the row grouping |
+| I-3 | review gate (/code-review, high) | `truncateRailCodes` TSDoc called 48/96 "the price rail's own split" — its values are 92/128; only the two-tier pattern is shared | fixed: TSDoc states the pattern is mirrored with its own values |
 
 ---
 

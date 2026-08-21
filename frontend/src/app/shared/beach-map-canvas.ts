@@ -22,8 +22,9 @@ import { BeachGridFrame } from './beach-grid-frame';
  * only these fields and hands the full object back to the projected tile-row template.
  */
 export interface BeachMapCanvasRow {
-  /** The rail chip's row identity — the stored `rowLabel` on every surface since #724. Must be
-   *  unique per map (used as track key); the backend guarantees it per venue. */
+  /** The rail chip's row identity, unique per map (used as track key) — each surface supplies
+   *  its own: the tourist map and the Daily view pass the stored `rowLabel` (#724; uniqueness
+   *  from grouping rows by it), the layout editor its grid letters (a grid being painted). */
   readonly code: string;
   /** The zone chip's text; `null` renders no chip even on a zone start. The rail caps the chip's
    *  width and ellipsizes what does not fit (92px below `sm`, 128px above), so this may be a
@@ -109,9 +110,11 @@ export class BeachMapCanvas {
   readonly viewportLabel = input<string>('');
   /** Mouse drag-to-pan; a surface whose drag gesture is its own (paint) switches it off. */
   readonly dragPan = input<boolean>(true);
-  /** Cap rail chips with an ellipsis (32px, 96px from `sm:` — the price rail's own split) — the
-   *  tourist map's opt-in (#724): its tile names carry the full row label, while operator
-   *  surfaces keep whole-label chips. */
+  /** Cap rail chips with an ellipsis — the tourist map's opt-in (#724): its tile names carry
+   *  the full row label, while operator surfaces keep whole-label chips. Two tiers like the
+   *  price rail's own mobile/`sm:` split, with its own values: 48px, 96px from `sm:` — the
+   *  mobile cap is the #724 product call's balance (short real names render whole; ~2.6 tile
+   *  columns stay visible on a 390px phone). */
   readonly truncateRailCodes = input<boolean>(false);
 
   protected readonly rowDef = contentChild.required<BeachMapRowDef>(BeachMapRowDef);

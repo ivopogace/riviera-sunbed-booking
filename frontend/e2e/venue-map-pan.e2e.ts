@@ -628,9 +628,16 @@ test('a long row name truncates in the left rail instead of eating the tile grid
   expect(wordier.chipWidth).toBeCloseTo(wordy.chipWidth, 0);
   // …so it costs the tiles nothing, and the grid keeps at least three columns of spots visible.
   expect(wordier.viewportWidth).toBeCloseTo(wordy.viewportWidth, 0);
-  expect(wordier.viewportWidth).toBeGreaterThanOrEqual(150);
+  expect(wordier.viewportWidth).toBeGreaterThanOrEqual(135);
   // What gives instead is the text — ellipsis inside the chip, never overflow outside it.
   expect(wordier.truncated).toBe(true);
+  // …and only the text that overflows: a short real name renders whole, so two rows named
+  // "Row 2" and "Row 3" stay distinguishable — the point of showing names at all (#724 I-1).
+  const shortChip = page.getByTestId('row-code').nth(1);
+  await expect(shortChip).toHaveText('Row 2');
+  expect(await shortChip.locator('span').evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(
+    false,
+  );
   const card = (await page.getByTestId('beach-grid').boundingBox())!;
   expect(wordier.chipRight).toBeLessThanOrEqual(card.x + card.width);
 
