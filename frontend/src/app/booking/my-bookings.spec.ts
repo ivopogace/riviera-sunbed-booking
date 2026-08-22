@@ -558,7 +558,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
       expect(announcer.textContent?.trim()).toBe('');
       expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
 
-      // Retry clears accountError at dispatch, reopening the same window.
+      // accountError stays true for the whole retry round trip (#746 RV-FE-9) — still silent.
       host.querySelector<HTMLButtonElement>('[data-testid="account-retry"]')!.click();
       await fixture.whenStable();
       fixture.detectChanges();
@@ -639,12 +639,18 @@ describe('MyBookings (device-local list, issue #139)', () => {
       const announcer = host.querySelector('[data-testid="load-announcer"]')!;
       expect(announcer.textContent?.trim()).toBe('');
 
-      host.querySelector<HTMLButtonElement>('[data-testid="row-retry"]')!.click();
+      const retryButton = host.querySelector<HTMLButtonElement>('[data-testid="row-retry"]')!;
+      retryButton.focus();
+      retryButton.click();
       await fixture.whenStable();
       fixture.detectChanges();
 
-      // The window the ordering claim lives in — a real one, because the retry is still open.
-      expect(host.querySelector('[data-testid="booking-row-loading"]')).not.toBeNull();
+      // The row stays 'failed' — same button, same DOM node — for the whole round trip (#746 RV-FE-9).
+      expect(host.querySelector('[data-testid="booking-row-loading"]')).toBeNull();
+      expect(host.querySelector('[data-testid="booking-row-failed"]')).not.toBeNull();
+      expect(retryButton.getAttribute('aria-disabled')).toBe('true');
+      expect(retryButton.textContent?.trim()).toBe('Retrying…');
+      expect(document.activeElement).toBe(retryButton);
       expect(announcer.textContent?.trim()).toBe('');
 
       second.next(detail('DEVONLY1', 'CONFIRMED'));
@@ -656,6 +662,26 @@ describe('MyBookings (device-local list, issue #139)', () => {
       expect(host.querySelector('[data-testid="booking-row-failed"]')).toBeNull();
       expect(host.querySelector('[data-testid="booking-row"]')?.textContent).toContain('DEVONLY1');
       expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
+      // The pressed button is gone now — focus lands on the row that replaced it (WCAG 2.4.3).
+      expect(document.activeElement).toBe(host.querySelector('[data-testid="booking-row"]'));
+    });
+
+    it('keeps focus on the row-retry button while a retry re-fails, never destroying it (#746 RV-FE-9)', async () => {
+      seedCodes(['DEVONLY1']);
+      const fixture = await render(stubService({ DEVONLY1: { error: { status: 500 } } }));
+      const host = fixture.nativeElement as HTMLElement;
+
+      const retryButton = host.querySelector<HTMLButtonElement>('[data-testid="row-retry"]')!;
+      retryButton.focus();
+      retryButton.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Same failed card, same button element — a retry that re-fails never strands focus.
+      expect(host.querySelector('[data-testid="row-retry"]')).toBe(retryButton);
+      expect(document.activeElement).toBe(retryButton);
+      expect(retryButton.getAttribute('aria-disabled')).toBeNull();
+      expect(retryButton.textContent?.trim()).toBe('Retry');
     });
 
     it('shows the account list when the device has no remembered codes', async () => {
@@ -793,27 +819,43 @@ describe('MyBookings (device-local list, issue #139)', () => {
       expect(codes).toEqual(['NEW00001', 'MID00001', 'OLD00001']);
     });
 
-    it('retry re-loads the account list after a failure', async () => {
-      seedCodes([]);
+    it('retry re-loads the account list after a failure, staying busy and focused throughout (#746 RV-FE-9)', async () => {
+      // A device row already renders, so `showSkeleton()` never takes over (#746's exact repro).
+      seedCodes(['DEVONLY1']);
+      const second = new Subject<MyBookingSummary[]>();
       let calls = 0;
       const service: Partial<BookingService> = {
-        ...stubService({}),
-        myBookings: () =>
-          calls++ === 0 ? throwError(() => ({ status: 500 })) : of([summary('ACCTLATER1')]),
+        ...stubService({ DEVONLY1: detail('DEVONLY1', 'CONFIRMED') }),
+        myBookings: () => (calls++ === 0 ? throwError(() => ({ status: 500 })) : second),
       };
       const fixture = await render(service, authStub(true));
       const host = fixture.nativeElement as HTMLElement;
 
       expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
-      host.querySelector<HTMLButtonElement>('[data-testid="account-retry"]')!.click();
+      const retryButton = host.querySelector<HTMLButtonElement>('[data-testid="account-retry"]')!;
+      retryButton.focus();
+      retryButton.click();
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
 
+      // The card — and the just-pressed button inside it — stays mounted while the retry is out.
+      expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="account-retry"]')).toBe(retryButton);
+      expect(retryButton.getAttribute('aria-disabled')).toBe('true');
+      expect(retryButton.textContent?.trim()).toBe('Retrying…');
+      expect(document.activeElement).toBe(retryButton);
+
+      second.next([summary('ACCTLATER1')]);
+      second.complete();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
       expect(host.querySelector('[data-testid="account-error"]')).toBeNull();
-      expect(host.querySelector('[data-testid="booking-row"]')?.textContent).toContain(
-        'ACCTLATER1',
-      );
+      const rows = [...host.querySelectorAll('[data-testid="booking-row"]')];
+      expect(rows.some((r) => r.textContent?.includes('ACCTLATER1'))).toBe(true);
+      // The error card (and its button) is gone now — focus lands on the page heading (WCAG 2.4.3).
+      expect(document.activeElement).toBe(host.querySelector('[data-testid="mb-title"]'));
     });
   });
 });
