@@ -344,6 +344,17 @@ async function leftEdgeOf(page: Page, testid: string): Promise<number> {
   return box!.x;
 }
 
+/** A hint line's full vertical footprint, its own margin included — what the card grows by. */
+function lineHeightOf(page: Page, testid: string): Promise<number> {
+  return page
+    .getByTestId(testid)
+    .evaluate(
+      (el) =>
+        el.getBoundingClientRect().height +
+        (Number.parseFloat(getComputedStyle(el).marginTop) || 0),
+    );
+}
+
 /** Whether the pan viewport really overflows — a hint assertion is vacuous on a grid that fits. */
 function overflowsHorizontally(page: Page, testid: string): Promise<boolean> {
   return page.getByTestId(testid).evaluate((el) => el.scrollWidth > el.clientWidth + 1);
@@ -470,6 +481,8 @@ for (const [surface, tileTestid, gridTestid, open] of [
     ).toBe(true);
     await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
     await expect(page.getByTestId(gridTestid)).not.toHaveClass(/cursor-grab/);
+    // The sentence is withheld, its LINE is not — else the card grows by it when the map lands.
+    const reserved = await lineHeightOf(page, 'scroll-hint-placeholder');
 
     release();
     await expect(
@@ -477,5 +490,9 @@ for (const [surface, tileTestid, gridTestid, open] of [
     ).toBeVisible();
     // The loaded map overflows the same phone, so the hint the skeleton withheld is now honest.
     await expect(page.getByTestId('scroll-hint')).toHaveCount(1);
+    expect(
+      Math.abs(reserved - (await lineHeightOf(page, 'scroll-hint'))),
+      'the reserved line is exactly the line the hint goes on to need',
+    ).toBeLessThan(1);
   });
 }

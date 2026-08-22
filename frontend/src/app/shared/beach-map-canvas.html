@@ -89,10 +89,12 @@
     </div>
 
     <!-- Named per surface: on a paint surface "drag" would name the gesture that paints instead. -->
-    @if (!loading() && (scrollHint() || vScrollHint())) {
+    <!-- While loading the same sentence renders `invisible`: hidden from sight and from the a11y tree, but still occupying its line, so the card does not grow by it when the map lands — reserving the hint is the same argument as reserving the rail (#749). -->
+    @if (scrollHint() || vScrollHint()) {
       <p
         class="text-center text-[12px] font-semibold text-(--riv-accent-ink) mt-3"
-        data-testid="scroll-hint"
+        [class.invisible]="loading()"
+        [attr.data-testid]="loading() ? 'scroll-hint-placeholder' : 'scroll-hint'"
       >
         {{
           dragPan()
