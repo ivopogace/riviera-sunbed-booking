@@ -619,6 +619,9 @@ describe('MyBookings (device-local list, issue #139)', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
+      // "loaded" is vacuously true for an empty list, so pin what the retry actually produced.
+      expect(host.querySelector('[data-testid="booking-row-failed"]')).toBeNull();
+      expect(host.querySelector('[data-testid="booking-row"]')?.textContent).toContain('DEVONLY1');
       expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
     });
 

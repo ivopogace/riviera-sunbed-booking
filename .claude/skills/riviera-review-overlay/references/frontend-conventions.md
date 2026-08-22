@@ -398,8 +398,13 @@ exist in the DOM before the text it announces changes**?
 > rule above the hard way: the first cut took a `[failed]` flag, and three of eight call sites had
 > a non-success exit nobody had thought to bind — the beach map's 404, My bookings' failed account
 > read, the account page's signed-out visitor — each announcing "…loaded." over a panel saying the
-> opposite. Announcing the failure itself is a *different* item: the failure panels carry
-> `role="alert"`, the one live-region case reliably announced on insertion.
+> opposite. Announcing the failure itself is a *different* item — and an **open** one: only
+> `role="alert"` is reliably announced on insertion, and just three panels in the app use it
+> (`home`, the two on `venue-map`). The rest carry `role="status"` born with its text, or no role,
+> and are silent. So never wave a call site's failure branch through on the grounds that "the
+> panels handle it" — PR #743 did exactly that and had to revert a per-row `alert` it reached for
+> instead (assertive, one per row, re-announced on re-sort). Check the branch; if it is silent,
+> that is a finding for the failure-announcement backlog, not something to fix inline.
 >
 > **Ask whether the spec was mutation-checked.** Moving the region back inside its branch must fail
 > it, and so must widening `[ready]` past the loaded branch — a passing assertion that cannot fail

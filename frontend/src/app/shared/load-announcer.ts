@@ -7,7 +7,7 @@ import { Component, computed, input } from '@angular/core';
  * <p>A live region generally announces only content that MUTATES after the region is already in the
  * DOM. Every loading surface here used to do the opposite — a container that entered the DOM
  * holding its "Loading…" line and was removed wholesale when the content landed — so the line read
- * as silence while the specs asserting its text stayed green (#741, the deferred F-4 of #740).
+ * as silence while the specs asserting its text stayed green.
  * angular.dev says the same thing about `@defer`: screen readers "may not announce changes when the
  * deferred content loads", and the fix is a live region that wraps the transition. Its example puts
  * the region around the content with `aria-atomic`; that shape suits a small profile card, not a
@@ -20,14 +20,17 @@ import { Component, computed, input } from '@angular/core';
  * the transition rather than the presence of text.
  *
  * <p>`ready` is the call site saying it reached its **loaded** branch — not merely that it stopped
- * loading. The difference is the whole reason this input has the polarity it does. A `failed` flag
- * was tried first and is fail-OPEN: it makes silence conditional on remembering every non-success
- * exit, and the review of this very PR found three that had been missed — a 404 on the beach map, a
- * failed account read on My bookings, a signed-out visitor on the account page — each announcing
- * "…loaded." over a panel saying the opposite. `ready` inverts that. An exit nobody described is
- * silent, and silence is the recoverable failure; a lie is not. Announcing the failure itself is
- * deliberately not this component's job (the failure panels carry `role="alert"`, which IS reliably
- * announced on insertion — the one live-region case with good support).
+ * loading. The difference is the whole reason this input has the polarity it does. The alternative,
+ * a `failed` flag, is fail-OPEN: it makes silence conditional on remembering every non-success
+ * exit — a 404, a partial read, a signed-out visitor — and any exit nobody thought to bind
+ * announces "…loaded." over a panel saying the opposite. `ready` inverts that: an exit nobody
+ * described is silent, and silence is the recoverable failure; a lie is not.
+ *
+ * <p>Announcing the failure **itself** is deliberately not this component's job — but nor is it
+ * reliably done elsewhere yet. `role="alert"` is announced on insertion and three panels use it
+ * (`home`, the two on `venue-map`); the rest of the app's failure surfaces carry `role="status"`
+ * born with its text, or no role at all, and are effectively silent. Do not assume a call site's
+ * failure branch is covered because this one is silent: check it.
  *
  * <p>`loading` wins over `ready` if a call site somehow asserts both: in flight is the safer read of
  * a contradiction.
